@@ -20,10 +20,13 @@ interface ProjectionEntry {
 const projections = new Map<string, ProjectionEntry[]>();
 /** A skill read is the source text the agent rewrites with skill_update; never shorten it. */
 export const VERBATIM_TOOL_RESULTS: ReadonlySet<string> = new Set(["skill_read"]);
-// History reads are exact evidence and keep their own offset-aware shortening elsewhere.
+// History reads are exact evidence and keep their own offset-aware shortening elsewhere. The Inbox
+// overview is already bounded and is what the agent answers from after it shows email cards; cut to
+// 1,024 characters it lost every sender and subject.
 const UNSHORTENED_TOOL_RESULTS = new Set([
   "read_history",
   "search_history",
+  "inbox_overview",
   ...VERBATIM_TOOL_RESULTS,
 ]);
 const messageHash = (message: Message) =>

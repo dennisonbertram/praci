@@ -44,10 +44,12 @@ vi.mock("./inbox/InboxMessageDialog", () => ({
 }));
 const archive = vi.fn(async (_input: unknown) => ({ ok: true }));
 const markRead = vi.fn(async (_input: unknown) => ({ ok: true }));
+const unarchive = vi.fn(async (_input: unknown) => ({ ok: true }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
     inbox: {
       archive: (input: unknown) => archive(input),
+      unarchive: (input: unknown) => unarchive(input),
       markRead: (input: unknown) => markRead(input),
     },
   },
@@ -191,5 +193,59 @@ it("puts the unread state back when marking read fails", async () => {
   await act(async () => (button as HTMLElement).click());
   expect(document.querySelector('[role="dialog"]')?.getAttribute("data-unread")).toBe("");
   expect(view.container.querySelector('[role="alert"]')).not.toBeNull();
+  await view.cleanup();
+});
+
+it("masks currency on cards and rows while amounts are hidden", async () => {
+  const { setHideAmounts } = await import("../lib/hide-amounts-preference");
+  setHideAmounts(true);
+  const view = await render({
+    kind: "emails",
+    emails: [
+      email("t", "today", { subject: "Charge of $2,400", snippet: "Paid $58,400.00" }),
+      email("l", "later", { subject: "Invoice $4,812.00" }),
+    ],
+  });
+  expect(view.container.textContent).not.toMatch(/2,400|58,400|4,812/);
+  setHideAmounts(false);
+  await view.cleanup();
+});
+
+it("says a card's email was archived and offers Undo, as the Inbox list does", async () => {
+  const view = await render({ kind: "emails", emails: [email("t", "today")] });
+  const click = (el: Element | null | undefined) =>
+    act(async () => (el as HTMLElement | null)?.click());
+  await click(view.container.querySelector('[data-testid="email-card"]'));
+  await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Archive"));
+  expect(archive).toHaveBeenCalledWith({ messageId: "t" });
+  const card = view.container.querySelector('[data-testid="email-card"]');
+  expect(card?.textContent).toContain("Archived");
+  const status = view.container.querySelector('[role="status"]');
+  expect(status?.textContent).toContain('Archived "Subject t"');
+  await click(
+    [...(status?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Undo"),
+  );
+  expect(unarchive).toHaveBeenCalledWith({ messageId: "t" });
+  expect(view.container.querySelector('[role="status"]')).toBeNull();
+  expect(card?.textContent).not.toContain("Archived");
+  await view.cleanup();
+});
+
+it("starts Undo only after the archive it reverses has finished", async () => {
+  unarchive.mockClear();
+  let finishArchive: (value: { ok: boolean }) => void = () => {};
+  archive.mockReturnValueOnce(new Promise((r) => (finishArchive = r)));
+  const view = await render({ kind: "emails", emails: [email("t", "today")] });
+  const click = (el: Element | null | undefined) =>
+    act(async () => (el as HTMLElement | null)?.click());
+  await click(view.container.querySelector('[data-testid="email-card"]'));
+  await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Archive"));
+  const status = view.container.querySelector('[role="status"]');
+  await click(
+    [...(status?.querySelectorAll("button") ?? [])].find((b) => b.textContent === "Undo"),
+  );
+  expect(unarchive).not.toHaveBeenCalled();
+  await act(async () => finishArchive({ ok: true }));
+  expect(unarchive).toHaveBeenCalledWith({ messageId: "t" });
   await view.cleanup();
 });

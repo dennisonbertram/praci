@@ -137,6 +137,7 @@ export const Empty: Story = {
 };
 
 export const NoMailAccount: Story = {
+  args: { spaceName: "Empty space" },
   beforeEach: () => mockRpc({ "inbox.list": { ...list, accounts: [], rows: [] } }),
 };
 
@@ -152,6 +153,31 @@ export const LoadError: Story = {
     mockRpc({
       "inbox.list": () => {
         throw new Error("Could not load mail");
+      },
+    }),
+};
+
+export const NeedsReconnectNoMail: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": {
+        ...list,
+        rows: [],
+        failedAccounts: ["conn_1"],
+        reconnectAccounts: ["conn_1"],
+      },
+    }),
+};
+
+export const RateLimitedNoMail: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": {
+        ...list,
+        rows: [],
+        failedAccounts: ["conn_1"],
+        reconnectAccounts: [],
+        rateLimitedAccounts: ["conn_1"],
       },
     }),
 };

@@ -30,6 +30,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { clientLocale, fileToBase64, prefillHtml, textToHtml } from "../lib/compose-body";
 import { createDraftSaver } from "../lib/compose-draft";
 import { formatBytes } from "../lib/format-bytes";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { holdDiscard, holdSend } from "../lib/outbox";
 import { invalidRecipients, summarizeRecipients, takeEntries } from "../lib/recipients";
 import { rpc } from "../lib/rpc";
@@ -81,6 +82,8 @@ export interface ComposeRestore {
   fields: Fields;
   replyToId?: string;
   forwarded: Forwarded[];
+  /** The original's files that were too large to forward. */
+  leftOut?: { filename: string; size: number }[];
   files: File[];
   /** A Gmail draft may exist, so Discard has one to remove. */
   saved: boolean;
@@ -94,11 +97,16 @@ const isBlank = (f: Fields) =>
   [f.subject, f.text].every((text) => text.trim() === "") &&
   f.to.length + f.cc.length + f.bcc.length === 0;
 
-function problemText(status: ComposeResult["status"], sending: boolean): string {
+function problemText(
+  { status, reason }: Pick<ComposeResult, "status" | "reason">,
+  sending: boolean,
+): string {
   if (status === "reconnect") return t`Gmail needs to be reconnected.`;
   if (status === "disabled") return t`Sending is turned off.`;
   if (status === "unknown") return t`Not confirmed as sent. Check Sent before trying again.`;
-  return sending ? t`Couldn't send. Try again.` : t`Couldn't save the draft`;
+  if (reason === "rejected") return t`Gmail didn't accept it. Check the addresses.`;
+  if (reason === "rate_limited") return t`Gmail is limiting requests. Try again in a minute.`;
+  return sending ? t`Gmail didn't respond. Try again.` : t`Couldn't save the draft`;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -204,6 +212,11 @@ export function ComposeEmail({
   const [linkOpen, setLinkOpen] = useState(false);
   const [quoteOpen, setQuoteOpen] = useState(false);
   const [forwarded, setForwarded] = useState<Forwarded[]>(restore?.forwarded ?? []);
+  // Named for as long as the composer is open, so autosave's "Draft saved" never hides it.
+  const [leftOut, setLeftOut] = useState(restore?.leftOut ?? []);
+  // Display only: the warning masks amounts in file names when they are hidden.
+  useHideAmounts();
+  const leftOutNames = maskCurrencyWhenHidden(leftOut.map((file) => file.filename).join(", "));
   const [files, setFiles] = useState<File[]>(recalled?.files ?? []);
   const [dragging, setDragging] = useState(false);
   const [sending, setSending] = useState(false);
@@ -251,12 +264,13 @@ export function ComposeEmail({
     () =>
       createDraftSaver<Payload>(async (value) => {
         try {
-          const { status } = await rpc.inbox.compose.draftSave(value);
+          const result = await rpc.inbox.compose.draftSave(value);
+          const { status } = result;
           if (status === "saved") {
             saved.current = true;
             setNotice({ kind: "saved", text: t`Draft saved` });
           } else if (status !== "sent") {
-            setNotice({ kind: "error", text: problemText(status, false) });
+            setNotice({ kind: "error", text: problemText(result, false) });
           }
         } catch {
           setNotice({ kind: "error", text: t`Couldn't save the draft` });
@@ -318,8 +332,10 @@ export function ComposeEmail({
         // An older server sends no attachment list.
         setForwarded(next.attachments ?? []);
         // The server filled To and Subject from its cached copy. The form is usable, so no retry that would overwrite edits.
+        setLeftOut(next.attachmentsLeftOut ?? []);
         if (next.quoteUnavailable) setQuoteMissing(true);
-        else if (next.attachmentsTooLarge)
+        // An older server says only that something was too large.
+        else if (next.attachmentsTooLarge && !next.attachmentsLeftOut)
           setNotice({
             kind: "error",
             text: t`Attachments can't be over ${MAX_COMPOSE_ATTACHMENT_MB} MB.`,
@@ -383,6 +399,7 @@ export function ComposeEmail({
     fields: fieldsRef.current,
     ...(replyToRef.current ? { replyToId: replyToRef.current } : {}),
     forwarded,
+    leftOut,
     files: kept,
     saved: hasDraft,
     // A reply has no picker, so it keeps the one account it is sent from.
@@ -505,8 +522,10 @@ export function ComposeEmail({
       // Held for a few seconds so Undo can bring this composer back; a failure does too.
       holdSend(async () => {
         try {
-          const { status } = await rpc.inbox.compose.send(request);
-          return status === "sent" ? null : notSent(problemText(status, true), status);
+          const result = await rpc.inbox.compose.send(request);
+          return result.status === "sent"
+            ? null
+            : notSent(problemText(result, true), result.status);
         } catch (cause) {
           return notSent(errorText(cause));
         }
@@ -725,6 +744,15 @@ export function ComposeEmail({
           ) : null}
         </div>
 
+        {leftOut.length ? (
+          <p
+            role="status"
+            data-testid="compose-left-out"
+            className="shrink-0 border-t border-border px-4 py-2 text-xs text-destructive"
+          >
+            {t`Not attached, over the ${MAX_COMPOSE_ATTACHMENT_MB} MB limit: ${leftOutNames}. Download it from the original to share it another way.`}
+          </p>
+        ) : null}
         {files.length + forwarded.length ? (
           <ul
             aria-label={t`Attachments`}

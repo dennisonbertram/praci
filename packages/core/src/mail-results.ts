@@ -2,7 +2,9 @@
 // The row type is structural so this module does not depend on the mail provider package.
 
 // ponytail: fixed budget; switch to the model's context window if small-context models truncate too often.
-export const MAIL_GREP_BUDGET = 16_000;
+// Under the 12,000 characters past which the pi runtime shortens a tool result (serializeToolResult),
+// so the model reads every row whole; above it the overview lost its senders and subjects.
+export const MAIL_GREP_BUDGET = 11_500;
 
 const FIELD_MAX = 500;
 const PREVIEW_MAX = 700;

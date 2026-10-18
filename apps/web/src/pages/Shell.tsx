@@ -1729,8 +1729,13 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, query);
+    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId);
   }, [bootstrapMe, botSections, bots, groups, spaces, query]);
+  // After a space switch its header may sit below the fold; bring it into view.
+  useEffect(() => {
+    if (!bootstrapMe?.spaceId) return;
+    document.querySelector("[data-sidebar-current]")?.scrollIntoView?.({ block: "nearest" });
+  }, [bootstrapMe?.spaceId]);
 
   const openSpaceChat = useCallback(
     (spaceId: string, path: string) => {
@@ -2760,10 +2765,8 @@ export function ShellPage() {
         createLabel: t`Create Inbox agent`,
         creating: creatingInboxAgent,
         error: inboxAgentError,
-        suggestions: [
-          t`What needs a reply from me today?`,
-          t`Summarize this week's investor email`,
-        ],
+        // InboxAgentIntro is its empty thread, with its own questions.
+        suggestions: [],
       }
     : financeMode
       ? {
@@ -3380,7 +3383,7 @@ export function ShellPage() {
     <div
       data-testid="shell-root"
       data-ready={shellReady}
-      className="relative flex h-full min-w-0 overflow-hidden bg-background text-foreground/90"
+      className="relative flex h-full min-w-0 overflow-clip bg-background text-foreground/90"
       onTouchStartCapture={(event) => {
         if (
           mobileSidebarOpen ||
@@ -3642,7 +3645,9 @@ export function ShellPage() {
           }}
         />
         <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
-        <div className="rk-scroll flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
+        {/* Lines above and below mark where the chat list scrolls, so a half-hidden row reads as cut by
+            the edge rather than tucked under the links. */}
+        <div className="rk-scroll mt-1 flex flex-1 flex-col gap-0.5 overflow-y-auto border-y border-sidebar-border px-2.5 pt-1 pb-2.5">
           {showSpaceSearch ? (
             <SpaceSearchResults
               query={spaceQuery}
@@ -3687,7 +3692,11 @@ export function ShellPage() {
                   );
                 const hasSpaceActions = group.canRenameSpace || group.canDeleteSpace;
                 return (
-                  <div key={group.key} data-sidebar-group={group.key}>
+                  <div
+                    key={group.key}
+                    data-sidebar-group={group.key}
+                    data-sidebar-current={group.current ? "" : undefined}
+                  >
                     {group.title || hasSpaceActions ? (
                       <div
                         className={
@@ -3699,7 +3708,8 @@ export function ShellPage() {
                         {group.title ? (
                           <button
                             type="button"
-                            className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground/60 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
+                            aria-current={group.current ? "true" : undefined}
+                            className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-muted-foreground/60"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                             onClick={() => {
                               if (group.emptySpaceId) {
                                 openSpaceChat(group.emptySpaceId, "/onboarding");
@@ -3750,6 +3760,12 @@ export function ShellPage() {
                             }
                           >
                             <span className="flex min-w-0 items-center gap-1.5">
+                              {group.current ? (
+                                <span
+                                  className="size-1.5 shrink-0 rounded-full bg-primary"
+                                  aria-hidden="true"
+                                />
+                              ) : null}
                               {group.showLock ? (
                                 <Lock size={11} strokeWidth={2} aria-hidden="true" />
                               ) : null}
@@ -4173,7 +4189,7 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate("/app/integrations");
           }}
-          className={`mx-3 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
+          className={`mx-3 mt-1 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
             integrationsMode ? "bg-sidebar-accent" : ""
           }`}
         >
@@ -4482,7 +4498,13 @@ export function ShellPage() {
                 : undefined
             }
             onRefreshed={refreshInboxUnread}
-            onConnectMail={() => navigate("/app/integrations?q=gmail")}
+            onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
+            onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
           />
         ) : !active && !activeGroup && initialBotsLoaded ? (
           <div className="grid flex-1 place-items-center">
@@ -4541,6 +4563,7 @@ export function ShellPage() {
                 <>
                   {transcriptMessages.length === 0 &&
                   !transcriptRunning &&
+                  !inboxMode &&
                   (!capTableMode || activeSnapshot) ? (
                     <AgentPanelIntro
                       description={capTableMode ? cartaAgentIntro : active.description}

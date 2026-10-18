@@ -181,6 +181,18 @@ it("revokes only the switched-off recipient and allows only the switched-on one"
   expect(consent.allowRecipient).toHaveBeenCalledExactlyOnceWith("typesafe-key");
 });
 
+it("tells an open Inbox to reload once a switch changes", async () => {
+  consent.aiConsentStatus.mockResolvedValue(statusOf());
+  consent.revokeRecipient.mockResolvedValue(statusOf());
+  const changed = vi.fn();
+  window.addEventListener("rakazo:inbox-changed", changed);
+  await render(<AiDataSharingSection />);
+  expect(changed).not.toHaveBeenCalled();
+  await click(container.querySelector('[aria-label="Allow OpenRouter"]'));
+  expect(changed).toHaveBeenCalledTimes(1);
+  window.removeEventListener("rakazo:inbox-changed", changed);
+});
+
 it("renders nothing when there are no model recipients or the status cannot load", async () => {
   consent.aiConsentStatus.mockResolvedValue(
     statusOf([recipients[2] as AiConsentStatus["recipients"][number]]),

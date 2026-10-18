@@ -63,11 +63,13 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     messageId,
     onClose,
     onArchive,
+    onMoveToInbox,
     notice,
   }: {
     messageId: string | null;
     onClose: () => void;
     onArchive?: () => void;
+    onMoveToInbox?: () => void;
     notice?: ReactNode;
   }) =>
     messageId ? (
@@ -81,6 +83,11 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
             dialog archive
           </button>
         ) : null}
+        {onMoveToInbox ? (
+          <button type="button" onClick={onMoveToInbox}>
+            dialog move
+          </button>
+        ) : null}
         <div data-testid="notice">{notice}</div>
       </div>
     ) : null;
@@ -91,6 +98,7 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
 });
 vi.mock("../components/inbox/InboxRow", () => ({
   InboxGroup: ({
+    title,
     rows,
     onOpen,
     onMark,
@@ -98,14 +106,16 @@ vi.mock("../components/inbox/InboxRow", () => ({
     onRead,
     selectedId,
   }: {
+    title?: ReactNode;
     rows: MailRow[];
     onOpen: (id: string) => void;
     onMark?: (id: string, mark: "noise" | null) => void;
     onArchive?: (id: string) => void;
     onRead?: (id: string, read: boolean) => void;
     selectedId?: string;
-  }) =>
-    rows.map((row) => (
+  }) => [
+    title && rows.length ? <h2 key="title">{title}</h2> : null,
+    ...rows.map((row) => (
       <div key={row.id}>
         <button
           type="button"
@@ -132,6 +142,7 @@ vi.mock("../components/inbox/InboxRow", () => ({
         </button>
       </div>
     )),
+  ],
 }));
 
 import { InboxPage } from "./Inbox";
@@ -176,6 +187,7 @@ const Probe = () => {
 };
 
 const cleanups: Array<() => Promise<void>> = [];
+const connectMail = vi.fn();
 async function render(entries = ["/app/inbox"], index?: number) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
@@ -185,7 +197,7 @@ async function render(entries = ["/app/inbox"], index?: number) {
     root.render(
       <MemoryRouter initialEntries={entries} initialIndex={index}>
         <Probe />
-        <InboxPage onConnectMail={() => {}} onRefreshed={() => {}} paused={false} />
+        <InboxPage onConnectMail={connectMail} onRefreshed={() => {}} paused={false} />
       </MemoryRouter>,
     ),
   );
@@ -418,11 +430,39 @@ it("archives under a filter and a search too", async () => {
   expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "b" });
 });
 
+it("keeps an archived search result, which can then be moved back with Undo", async () => {
+  const c = await render(["/app/inbox?q=grant&mail=a"]);
+  await click(byText(c, "dialog archive"));
+  expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "a" });
+  // The search still finds it, so it stays rather than leaving "No results".
+  expect(c.querySelector('[data-row-id="a"]')).not.toBeNull();
+  await click(c.querySelector('[data-row-id="a"]'));
+  await click(byText(c, "dialog move"));
+  expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "a" });
+  const notice = c.querySelector('[data-testid="notice"]') as HTMLElement;
+  expect(notice.textContent).toContain('Moved "Subject a" to Inbox');
+  await click(byText(notice, "Undo"));
+  expect(rpcMock.archive).toHaveBeenCalledTimes(2);
+});
+
+it("shows a slow search even when a reload starts while it is loading", async () => {
+  const c = await render();
+  let settle: (value: InboxListOutput) => void = () => {};
+  rpcMock.list.mockReturnValueOnce(new Promise((r) => (settle = r)));
+  rpcMock.list.mockReturnValue(new Promise(() => {}));
+  await act(async () => go("/app/inbox?q=invoice"));
+  // A sync or triage poll reloads the list before the search answers.
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await act(async () => settle(list([row("inv", { subject: "Invoice" })])));
+  expect(c.textContent).toContain("Invoice");
+});
+
 it("offers Undo after an archive, which restores the thread and reloads the list", async () => {
   const c = await render();
   await click(byText(c, "archive b"));
   const toast = c.querySelector('[role="status"]');
-  expect(toast?.textContent).toContain("Archived");
+  // It names the email, so the person knows which one Undo brings back.
+  expect(toast?.textContent).toContain('Archived "Subject b"');
   const lists = rpcMock.list.mock.calls.length;
   await click(byText(toast as HTMLElement, "Undo"));
   expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "b" });
@@ -523,6 +563,16 @@ it("offers no archive for mail that is not in the inbox", async () => {
   expect(rpcMock.archive).not.toHaveBeenCalled();
   await click(c.querySelector('[data-row-id="a"]'));
   expect(byText(c, "dialog archive")).toBeUndefined();
+});
+
+it("moving an archived search result to the Inbox confirms it and offers Archive", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { inInbox: false })]));
+  const c = await render(["/app/inbox?q=old&mail=a"]);
+  rpcMock.list.mockResolvedValue(list([row("a")]));
+  await click(byText(c, "dialog move"));
+  expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "a" });
+  expect(c.querySelector('[data-testid="notice"]')?.textContent).toContain("to Inbox");
+  expect(byText(c, "dialog archive")).toBeDefined();
 });
 
 it("does not say No results while loaded pages still have rows", async () => {
@@ -685,4 +735,126 @@ it("says it is sorting while the first triage runs, and names the sender a mark 
   expect(c.querySelector('[role="status"]')?.textContent).toContain(
     "Mail from Dana is now marked as noise",
   );
+});
+
+it("calls today's group 'Other mail today' when Needs reply is above it", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { needsReply: true }), row("b")]));
+  const c = await render();
+  const headings = [...c.querySelectorAll("h2")].map((h) => h.textContent);
+  expect(headings).toEqual(["Needs reply", "Other mail today"]);
+  rpcMock.list.mockResolvedValue(list([row("b")]));
+  const plain = await render();
+  expect([...plain.querySelectorAll("h2")].map((h) => h.textContent)).toContain("Today");
+});
+
+it("looks for new mail once a minute while it is open", async () => {
+  vi.useFakeTimers();
+  try {
+    await render();
+    const syncs = rpcMock.refresh.mock.calls.length;
+    const lists = rpcMock.list.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(rpcMock.refresh.mock.calls.length).toBe(syncs + 1);
+    expect(rpcMock.list.mock.calls.length).toBe(lists + 1);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("keeps Load more results when the minute refresh reloads the list", async () => {
+  vi.useFakeTimers();
+  try {
+    rpcMock.list.mockResolvedValue(list([row("a")], { nextPageToken: "p2" }));
+    const c = await render(["/app/inbox?q=zebra"]);
+    rpcMock.list.mockResolvedValue(list([row("b")]));
+    await click(byText(c, "Load more"));
+    expect(c.textContent).toContain("Subject b");
+    rpcMock.list.mockResolvedValue(list([row("a")], { nextPageToken: "p2" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(60_000);
+    });
+    expect(c.textContent).toContain("Subject a");
+    expect(c.textContent).toContain("Subject b");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("Undo after Move to Inbox waits for the move before archiving again", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { inInbox: false })]));
+  const c = await render(["/app/inbox?q=old&mail=a"]);
+  let finishMove: (value: unknown) => void = () => {};
+  rpcMock.unarchive.mockReturnValue(new Promise((r) => (finishMove = r)));
+  rpcMock.list.mockResolvedValue(list([row("a")]));
+  await click(byText(c, "dialog move"));
+  await click(byText(c, "Undo"));
+  expect(rpcMock.archive).not.toHaveBeenCalled();
+  await act(async () => finishMove({ ok: true }));
+  expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "a" });
+});
+
+it("offers Reconnect Gmail, not Try again, when an account's sign-in lapsed", async () => {
+  rpcMock.list.mockResolvedValue(
+    list([row("a")], { failedAccounts: ["Me"], reconnectAccounts: ["Me"] }),
+  );
+  const c = await render();
+  expect(c.querySelector('[role="alert"]')?.textContent).toContain(
+    "Gmail needs to be reconnected.",
+  );
+  await click(byText(c, "Reconnect Gmail"));
+  expect(connectMail).toHaveBeenCalledTimes(1);
+  expect(c.textContent).not.toContain("Try again");
+});
+
+it("explains a rate-limited Inbox with no mail, and shows Try again working", async () => {
+  rpcMock.list.mockResolvedValue(
+    list([], { failedAccounts: ["Me"], reconnectAccounts: [], rateLimitedAccounts: ["Me"] }),
+  );
+  const c = await render();
+  expect(c.querySelector("h2")?.textContent).toBe("Your mail didn't load");
+  expect(c.querySelector('[role="alert"]')?.textContent).toContain("Gmail is limiting requests");
+  let finish: (value: unknown) => void = () => {};
+  rpcMock.refresh.mockReturnValue(new Promise((r) => (finish = r)));
+  await click(byText(c, "Try again"));
+  expect(byText(c, "Trying again…")?.disabled).toBe(true);
+  await act(async () => finish({}));
+  expect(byText(c, "Try again")?.disabled).toBe(false);
+});
+
+it("turns off search and Filter until mail is connected", async () => {
+  rpcMock.list.mockResolvedValue(list([], { accounts: [] }));
+  const c = await render();
+  expect(c.textContent).toContain("No mail connected");
+  expect(c.querySelector<HTMLInputElement>('input[aria-label="Search mail"]')?.disabled).toBe(true);
+});
+
+it("opens the shortcut list with ? while a message is open", async () => {
+  await render(["/app/inbox?mail=b"]);
+  await press("?");
+  expect(document.body.textContent).toContain("Keyboard shortcuts");
+});
+
+it("keeps the chosen account tab after leaving the Inbox and coming back", async () => {
+  const accounts = [
+    { connectionId: "c1", label: "Me" },
+    { connectionId: "c2", label: "Sales" },
+  ] as InboxListOutput["accounts"];
+  rpcMock.list.mockResolvedValue(list([row("a")], { accounts }));
+  const c = await render();
+  const sales = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (el) => el.textContent === "Sales",
+  );
+  await click(sales ?? null);
+  expect(rpcMock.list).toHaveBeenLastCalledWith(expect.objectContaining({ connectionId: "c2" }));
+  for (const cleanup of cleanups.splice(0)) await cleanup();
+  rpcMock.list.mockClear();
+  await render();
+  expect(rpcMock.list).toHaveBeenCalledWith(expect.objectContaining({ connectionId: "c2" }));
+  // Back to All for the tests that follow.
+  const again = [...document.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (el) => el.textContent === "All",
+  );
+  await click(again ?? null);
 });

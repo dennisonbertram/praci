@@ -85,7 +85,7 @@ describePostgres("ensureInboxAgent (PostgreSQL)", () => {
     expect(rows[0]).toMatchObject({
       name: "Inbox agent",
       title: "",
-      description: "Searches your connected mail.",
+      description: "Reads your mail, finds what needs a reply and writes replies.",
       notifyOnFinish: true,
       spawnKey: inboxAgentSpawnKey(userA),
       disabledBuiltinTools: [],

@@ -267,7 +267,7 @@ it("lists the conversation's earlier messages and shows one's text when clicked"
   );
   act(() => root.render(<InboxMessageDialog messageId="latest" onClose={() => {}} />));
   await flush();
-  expect(document.body.textContent).toContain("2 messages");
+  expect(document.body.textContent).toContain("1 earlier message");
   const row = [...document.querySelectorAll("button")].find((b) =>
     b.textContent?.includes("Morgan"),
   );
@@ -296,7 +296,7 @@ it("lists the user's later reply after the open message, as You", async () => {
   act(() => root.render(<InboxMessageDialog messageId="open" onClose={() => {}} />));
   await flush();
   const text = document.body.textContent ?? "";
-  expect(text).toContain("2 messages");
+  expect(text).not.toContain("earlier message");
   expect(text.indexOf("The open message.")).toBeLessThan(
     text.indexOf("Later in this conversation"),
   );
@@ -402,11 +402,62 @@ it("shows a reply sent from the dialog without reopening it", async () => {
   get.mockResolvedValueOnce({ ...message("m1"), thread: thread(1) });
   act(() => root.render(<InboxMessageDialog messageId="m1" onClose={() => {}} />));
   await flush();
-  expect(document.body.textContent).toContain("2 messages");
+  expect(document.body.textContent).toContain("1 earlier message");
   get.mockResolvedValue({ ...message("m1"), thread: thread(2) });
   await act(async () => {
     window.dispatchEvent(new Event(MAIL_SENT_EVENT));
   });
   await flush();
-  expect(document.body.textContent).toContain("3 messages");
+  expect(document.body.textContent).toContain("2 earlier messages");
+});
+
+it("explains a stale link and offers a way back instead of Try again", async () => {
+  get.mockRejectedValue(Object.assign(new Error("Not found"), { code: "NOT_FOUND" }));
+  act(() =>
+    root.render(
+      <InboxMessageDialog messageId="gone" nextId="m3" onNavigate={vi.fn()} onClose={() => {}} />,
+    ),
+  );
+  await flush();
+  expect(document.body.textContent).toContain("Email not found");
+  expect(document.body.textContent).toContain("This email isn't in your mail any more.");
+  expect(document.body.textContent).toContain("Back to Inbox");
+  expect(document.body.textContent).not.toContain("Try again");
+  expect(document.querySelector('[aria-label="Next message"]')).toBeNull();
+});
+
+it("drops the quoted 'On … wrote:' header from a reply's preview", async () => {
+  const { withoutQuoteHeader } = await import("./InboxMessageDialog");
+  expect(
+    withoutQuoteHeader("Thanks, signed. On Sat, Oct 17, 2026 at 3:10 PM Morgan wrote: > Alex"),
+  ).toBe("Thanks, signed.");
+  expect(withoutQuoteHeader("Plain note")).toBe("Plain note");
+});
+
+it("follows the caller's archived state over an older loaded copy", async () => {
+  // Loaded before it was archived in this session, so the copy still says Inbox.
+  get.mockResolvedValue({ ...message("m1"), inInbox: true });
+  const onMoveToInbox = vi.fn();
+  const show = (inInbox: boolean) =>
+    root.render(
+      <InboxMessageDialog
+        messageId="m1"
+        inInbox={inInbox}
+        onArchive={vi.fn()}
+        onMoveToInbox={onMoveToInbox}
+        onClose={() => {}}
+      />,
+    );
+  act(() => show(false));
+  await flush();
+  const labels = () => [...document.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labels()).not.toContain("Archive");
+  const move = [...document.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("Move to Inbox"),
+  );
+  await act(async () => move?.click());
+  expect(onMoveToInbox).toHaveBeenCalledTimes(1);
+  act(() => show(true));
+  expect(labels()).toContain("Archive");
+  expect(labels()).not.toContain("Move to Inbox");
 });

@@ -319,6 +319,8 @@ export function IntegrationsHome({
   const jumpToFinance = useRef(params.get("category") === "finance");
   // /app/integrations?connect=carta opens that first-party tile's sign-in once the page has loaded.
   const connectOnLoad = useRef(params.get("connect"));
+  // /app/integrations?open=gmail shows that app's page, where its accounts can be removed or added.
+  const openOnLoad = useRef(params.get("open"));
   // ...&returnTo=/app/cap-table sends the founder back there when that dialog closes.
   const returnTo = useRef(safeAppPath(params.get("returnTo")));
   const navigate = useNavigate();
@@ -424,12 +426,19 @@ export function IntegrationsHome({
   }
 
   useEffect(() => {
-    if (!connectOnLoad.current || !data.loaded) return;
-    const entry = firstPartyMcp.find((candidate) => candidate.id === connectOnLoad.current);
+    const wanted = connectOnLoad.current ?? openOnLoad.current;
+    if (!wanted || !data.loaded) return;
+    const connect = Boolean(connectOnLoad.current);
     connectOnLoad.current = null;
-    if (entry) connectFirstParty(entry);
-    else returnTo.current = null;
-  }, [data.loaded, firstPartyMcp]);
+    openOnLoad.current = null;
+    const entry = connect ? firstPartyMcp.find((candidate) => candidate.id === wanted) : undefined;
+    if (entry) return connectFirstParty(entry);
+    // A catalog app (?connect=gmail from the Inbox) opens its own page's connect flow.
+    const app = data.catalog.find((item) => item.slug.toLowerCase() === wanted.toLowerCase());
+    if (app) navigate(appPath(app, { connect, next: returnTo.current ?? undefined }));
+    else setQuery(wanted);
+    returnTo.current = null;
+  }, [data.loaded, data.catalog, firstPartyMcp, navigate]);
 
   function retry(app: ConnectedApp) {
     const item = data.catalog.find((entry) => `${entry.connectorId}:${entry.slug}` === app.key);

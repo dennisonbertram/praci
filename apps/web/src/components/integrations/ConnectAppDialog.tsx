@@ -33,6 +33,8 @@ export function ConnectAppDialog({
   onClose,
   onConnected,
   confirmFirst = false,
+  accountName,
+  replacesConnectionId,
 }: {
   item: ConnectionCatalogItem;
   data: IntegrationsData;
@@ -42,6 +44,10 @@ export function ConnectAppDialog({
   onConnected?: () => void;
   /** Wait for an explicit Connect before creating anything, for dialogs opened by a link. */
   confirmFirst?: boolean;
+  /** The name for the new account, when it replaces one that must sign in again. */
+  accountName?: string;
+  /** Reconnect: this connection is replaced by the new sign-in, keeping its Inbox data. */
+  replacesConnectionId?: string;
 }) {
   const { t } = useLingui();
   const [phase, setPhase] = useState<Phase>(
@@ -131,11 +137,11 @@ export function ConnectAppDialog({
       const begun = await rpc.connections.begin({
         connectorId: item.connectorId,
         provider: item.slug,
-        displayName: nextAccountLabel(
-          item.name,
-          rows.filter((entry) => entry.status === "connected").length,
-        ),
+        displayName:
+          accountName ??
+          nextAccountLabel(item.name, rows.filter((entry) => entry.status === "connected").length),
         ...(viaSystemBrowser ? { redirect: "desktop" as const } : {}),
+        ...(replacesConnectionId ? { replacesConnectionId } : {}),
       });
       connectionId.current = begun.connectionId;
       for (const old of stale)
@@ -226,6 +232,12 @@ export function ConnectAppDialog({
               <AppLogo name={item.name} logo={item.logo} size="xl" />
             </div>
             <DialogTitle className="text-center">{t`Connect ${item.name}`}</DialogTitle>
+            <DialogDescription className="mt-1.5 text-center">
+              <Trans>
+                You'll sign in to {item.name} in a new window. Then you choose which bots can use
+                it.
+              </Trans>
+            </DialogDescription>
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="outline" onClick={close}>
                 <Trans>Cancel</Trans>

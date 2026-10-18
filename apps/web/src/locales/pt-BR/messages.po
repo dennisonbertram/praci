@@ -27,14 +27,14 @@ msgstr "— tokens"
 msgid ", {0} already imported"
 msgstr ""
 
+#. placeholder {0}: message.thread.length
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "{0, plural, one {# earlier message} other {# earlier messages}}"
+msgstr ""
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
-msgstr ""
-
-#. placeholder {0}: (message.thread?.length ?? 0) + (message.later?.length ?? 0) + 1
-#: src/components/inbox/InboxMessageDialog.tsx
-msgid "{0, plural, one {# message} other {# messages}}"
 msgstr ""
 
 #. placeholder {0}: group.entries.length
@@ -762,6 +762,11 @@ msgstr ""
 msgid "All items"
 msgstr ""
 
+#. placeholder {0}: row.from
+#: src/components/inbox/InboxRow.tsx
+msgid "All mail from {0}"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "All providers"
 msgstr ""
@@ -964,14 +969,6 @@ msgstr "Aprovar"
 msgid "Approve this server to let your bot use its tools."
 msgstr ""
 
-#: src/components/MailApprovalCard.tsx
-msgid "Approved to save"
-msgstr ""
-
-#: src/components/MailApprovalCard.tsx
-msgid "Approved to send"
-msgstr ""
-
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Apps"
 msgstr ""
@@ -991,10 +988,19 @@ msgstr "Arquivar"
 msgid "archived"
 msgstr "arquivado"
 
+#: src/components/EmailCards.tsx
+#: src/components/inbox/InboxRow.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Shell.tsx
 msgid "Archived"
 msgstr "Arquivado"
+
+#. placeholder {0}: maskCurrencyWhenHidden(lastArchived.subject)
+#. placeholder {0}: maskCurrencyWhenHidden(status.subject)
+#: src/components/EmailCards.tsx
+#: src/pages/Inbox.tsx
+msgid "Archived \"{0}\""
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Archived. Chat, memory, and files kept."
@@ -1195,6 +1201,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Back to Cap table"
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Back to Inbox"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -2721,10 +2731,6 @@ msgstr ""
 msgid "Couldn't save. Try again."
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
-msgid "Couldn't send. Try again."
-msgstr ""
-
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr ""
@@ -3235,11 +3241,8 @@ msgid "Draft not saved"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-msgid "Draft saved"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
-msgid "Draft saved by you"
+msgid "Draft saved"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -3331,6 +3334,10 @@ msgstr ""
 #: src/lib/user-error.ts
 msgid "Email is not allowed to register"
 msgstr "Este e-mail não tem permissão para se cadastrar"
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Email not found"
+msgstr ""
 
 #: src/lib/user-error.ts
 msgid "Email verification required"
@@ -3746,13 +3753,33 @@ msgstr ""
 msgid "Gmail"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Gmail didn't accept it. Check the addresses."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Gmail didn't respond. Try again."
+msgstr ""
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now. Try again in a minute."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+msgid "Gmail is limiting requests. Try again in a minute."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Gmail needs to be reconnected"
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail needs to be reconnected."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Gmail signed this account out. Sign in again to see your mail here."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3859,7 +3886,11 @@ msgid "Hide transcript"
 msgstr "Ocultar transcrição"
 
 #: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show."
+msgid "Hides money amounts in finance, chat and email."
+msgstr ""
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
 msgstr ""
 
 #: src/lib/ticket-priority.ts
@@ -4769,6 +4800,15 @@ msgstr "Mova-os para a sua memória compartilhada."
 msgid "Move to"
 msgstr "Mover para"
 
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Move to Inbox"
+msgstr ""
+
+#. placeholder {0}: maskCurrencyWhenHidden(status.subject)
+#: src/pages/Inbox.tsx
+msgid "Moved \"{0}\" to Inbox"
+msgstr ""
+
 #: src/components/call/CallCard.tsx
 msgid "Mute"
 msgstr "Silenciar"
@@ -5173,6 +5213,10 @@ msgstr ""
 msgid "Not a valid email address"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Not attached, over the {MAX_COMPOSE_ATTACHMENT_MB} MB limit: {leftOutNames}. Download it from the original to share it another way."
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not confirmed as saved. Check Drafts in your mail before trying again."
 msgstr ""
@@ -5519,6 +5563,10 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Other crypto"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Other mail today"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -5939,6 +5987,7 @@ msgid "Recently added"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -5952,6 +6001,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Reconnect Carta"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Reconnect Gmail"
 msgstr ""
 
 #: src/App.tsx
@@ -6695,6 +6748,7 @@ msgid "Select an item to see its relations."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
 msgid "Send"
@@ -6742,12 +6796,9 @@ msgstr ""
 msgid "Sending…"
 msgstr "Enviando…"
 
+#: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
-msgstr ""
-
-#: src/components/MailApprovalCard.tsx
-msgid "Sent by you"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -6964,6 +7015,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Sign-in was denied or failed."
+msgstr ""
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Signed out. Reconnect to keep reading this account's mail."
 msgstr ""
 
 #. placeholder {0}: shortDay(card.from)
@@ -7240,10 +7295,6 @@ msgstr ""
 msgid "Subtracted from burn"
 msgstr ""
 
-#: src/pages/Shell.tsx
-msgid "Summarize this week's investor email"
-msgstr ""
-
 #: src/components/inbox/InboxAgentIntro.tsx
 msgid "Summarize what's new this week"
 msgstr ""
@@ -7420,6 +7471,10 @@ msgstr ""
 msgid "The Inbox page stops showing new mail until you reconnect."
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "The Inbox sorts and reads your mail only while its model is allowed here."
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "The Legal agent scans your Data room for contracts and deadlines."
 msgstr ""
@@ -7488,6 +7543,10 @@ msgstr ""
 #. placeholder {0}: pendingDelete.versionCount
 #: src/pages/Artifacts.tsx
 msgid "This deletes all {0} versions of this artifact. This can't be undone."
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "This email isn't in your mail any more. It may have been deleted or moved."
 msgstr ""
 
 #: src/components/ArtifactFileCard.tsx
@@ -7701,6 +7760,10 @@ msgstr ""
 msgid "Try the test again."
 msgstr "Tente o teste novamente."
 
+#: src/pages/Inbox.tsx
+msgid "Trying again…"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"
 msgstr ""
@@ -7750,6 +7813,7 @@ msgstr ""
 msgid "Underline"
 msgstr ""
 
+#: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
@@ -8139,10 +8203,6 @@ msgstr ""
 msgid "What is our runway?"
 msgstr ""
 
-#: src/pages/Shell.tsx
-msgid "What needs a reply from me today?"
-msgstr ""
-
 #: src/components/inbox/InboxAgentIntro.tsx
 msgid "What needs my reply today?"
 msgstr ""
@@ -8280,6 +8340,11 @@ msgstr ""
 msgid "You have control"
 msgstr "Você tem o controle"
 
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "You'll sign in to {0} in a new window. Then you choose which bots can use it."
+msgstr ""
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"
 msgstr ""
@@ -8300,6 +8365,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Your email address"
 msgstr "Seu endereço de e-mail"
+
+#: src/pages/Inbox.tsx
+msgid "Your mail didn't load"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Your name"

@@ -124,6 +124,24 @@ describe("connections.list", () => {
     ]);
   });
 
+  it("marks a mail account whose sign-in the provider refused, as the Inbox does", async () => {
+    const lapsed = { needsReconnect: true, lastErrorAt: new Date() };
+    const h = harness(
+      [
+        conn("a", "connected", { mailSyncState: lapsed }),
+        conn("b", "connected", { mailSyncState: { needsReconnect: true, lastErrorAt: null } }),
+        conn("c", "connected"),
+      ],
+      [],
+    );
+    const { json } = await h.call("connections/list", undefined);
+    expect(json.map((r: Row) => [r.id, r.needsReconnect])).toEqual([
+      ["a", true],
+      ["b", undefined],
+      ["c", undefined],
+    ]);
+  });
+
   it("does not list another user's rows", async () => {
     const h = harness([conn("a", "connected")], []);
     expect((await h.call("connections/list", undefined, stranger)).json).toEqual([]);

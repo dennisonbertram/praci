@@ -39,11 +39,16 @@ function AccountRow({
   row,
   onChanged,
   onRemove,
+  onReconnect,
 }: {
   row: Connection;
   onChanged: () => void;
-  onRemove: (row: Connection) => void;
+  /** Left out for the only account: Disconnect below does the same thing, and two such buttons confuse. */
+  onRemove?: (row: Connection) => void;
+  /** Offered when the provider refuses this account's sign-in. */
+  onReconnect?: (row: Connection) => void;
 }) {
+  const lapsed = row.status === "connected" && row.needsReconnect === true;
   const { t } = useLingui();
   const [draft, setDraft] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -85,8 +90,10 @@ function AccountRow({
             }}
           />
         )}
-        <small className="block text-xs text-muted-foreground">
-          {row.status === "connected" ? (
+        <small className={`block text-xs ${lapsed ? "text-destructive" : "text-muted-foreground"}`}>
+          {lapsed ? (
+            <Trans>Signed out. Reconnect to keep reading this account's mail.</Trans>
+          ) : row.status === "connected" ? (
             <Trans>Connected {new Date(row.createdAt).toLocaleDateString()}</Trans>
           ) : row.status === "error" ? (
             (row.error ?? t`Sign-in failed`)
@@ -96,18 +103,25 @@ function AccountRow({
         </small>
         {error ? <small className="block text-xs text-destructive">{error}</small> : null}
       </div>
+      {lapsed && onReconnect ? (
+        <Button size="sm" onClick={() => onReconnect(row)}>
+          <Trans>Reconnect</Trans>
+        </Button>
+      ) : null}
       <Button size="sm" variant="outline" onClick={() => setDraft(row.displayName)}>
         <Trans>Rename</Trans>
       </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        className="text-destructive"
-        aria-label={t`Remove ${row.displayName}`}
-        onClick={() => onRemove(row)}
-      >
-        <Trans>Remove account</Trans>
-      </Button>
+      {onRemove ? (
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-destructive"
+          aria-label={t`Remove ${row.displayName}`}
+          onClick={() => onRemove(row)}
+        >
+          <Trans>Remove account</Trans>
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -136,6 +150,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   const [tools, setTools] = useState<Tool[] | null>(null);
   const [adding, setAdding] = useState(false);
   const [removingRow, setRemovingRow] = useState<Connection | null>(null);
+  /** The signed-out account a reconnect replaces once the new sign-in succeeds. */
+  const [replacing, setReplacing] = useState<Connection | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -215,11 +231,27 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
         data={data}
         activeBotId={activeBotId}
         confirmFirst={confirmFirst}
+        accountName={replacing?.displayName}
+        replacesConnectionId={replacing?.id}
         onClose={() => {
           setAdding(false);
           setConfirmFirst(false);
+          setReplacing(null);
         }}
-        onConnected={next ? () => navigate(next) : undefined}
+        onConnected={
+          replacing || next
+            ? async () => {
+                // The new sign-in takes the old account's place, so its mail is not listed twice.
+                if (replacing) {
+                  await rpc.connections
+                    .revoke({ connectionId: replacing.id })
+                    .catch(() => undefined);
+                  await data.refresh();
+                }
+                if (next) navigate(next);
+              }
+            : undefined
+        }
       />
     ) : null;
 
@@ -312,7 +344,15 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                 key={row.id}
                 row={row}
                 onChanged={() => void data.refresh()}
-                onRemove={setRemovingRow}
+                onRemove={accountCount > 1 ? setRemovingRow : undefined}
+                onReconnect={
+                  item
+                    ? (lapsed) => {
+                        setReplacing(lapsed);
+                        setAdding(true);
+                      }
+                    : undefined
+                }
               />
             ))}
           </div>

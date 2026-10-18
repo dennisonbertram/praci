@@ -1,4 +1,5 @@
 import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
+import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   brexAccountsResponse,
   brexExpense,
@@ -20,6 +21,14 @@ export const MOCK_NOTE = "Mock demo data";
 export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
 /** A space with nothing connected, for the first-run and empty states. */
 export const DEMO_EMPTY_SPACE = "MOCK DEMO DATA — Empty space";
+/** A space whose only Gmail account lost its sign-in, for the Reconnect state. */
+export const DEMO_RECONNECT_SPACE = "MOCK DEMO DATA — Mail needs reconnect";
+/** A space whose Gmail answers every call with a rate limit. */
+export const DEMO_RATE_LIMIT_SPACE = "MOCK DEMO DATA — Mail rate-limited";
+/** Mail sent to this domain fails, so a failed send can be tried (for example bounce@…). */
+export const DEMO_BOUNCE_DOMAIN = "send-fail.example.test";
+/** How long after the stack starts the mock new email arrives. */
+export const DEMO_NEW_MAIL_DELAY_MS = 3 * 60_000;
 export const DEMO_USER_NAME = "Alex Founder (Mock)";
 /** A second member of the company, so sharing and privacy can be looked at. */
 export const DEMO_COFOUNDER = {
@@ -147,7 +156,12 @@ const MAIL: Mail[] = [
         filename: "MOCK-q3-board-deck.pdf",
         mimeType: "application/pdf",
         size: 0,
-        data: Buffer.from("%PDF-1.4 MOCK DEMO DATA board deck").toString("base64"),
+        // A real one-page PDF, so it opens and shows a sensible size.
+        data: Buffer.from(
+          makePdf(
+            "MOCK DEMO DATA - Northwind Robotics Q3 board deck. Revenue, burn and hiring use the September close. Invented for UX testing.",
+          ),
+        ).toString("base64"),
       },
     ],
   },
@@ -339,6 +353,14 @@ const MAIL: Mail[] = [
     subject: "Grant application received",
     text: "We received your application for the Robotics Innovation Grant. Decisions are announced Dec 5.\n\nMock Innovation Fund",
   },
+  // Older than the 14-day sync window: only Search older mail finds it.
+  {
+    thread: "w9-request",
+    agoMs: 40 * DAY_MS,
+    from: "Riley Testwell <riley@bookkeeping.example.test>",
+    subject: "W-9 for the new vendor",
+    text: "Alex, can you send the W-9 for Globex Cloud (Mock) so I can file it?\n\nRiley",
+  },
   {
     thread: "support-ticket",
     agoMs: 12 * DAY_MS,
@@ -393,6 +415,20 @@ function toMessages(prefix: string, mail: Mail[], now: Date): EmulatedMessage[] 
       ...(item.attachments ? { attachments: item.attachments } : {}),
     };
   });
+}
+
+/** The email that arrives a few minutes after the stack starts, to watch new mail come in. */
+export function demoNewMail(now = new Date()): EmulatedMessage {
+  return {
+    id: `mock-demo-new-${now.getTime()}`,
+    threadId: "mock-demo-thread-new-mail",
+    date: now.toISOString(),
+    labels: ["INBOX", "UNREAD"],
+    from: "Priya Placeholder <priya@quill-capital.example.test>",
+    to: ME,
+    subject: `${MOCK_SUBJECT_PREFIX} Quick question on the hiring plan`,
+    text: `Hi Alex,\n\nBefore the LP call, can you confirm we still plan two engineering hires in Q4?\n\nPriya${FOOTER}`,
+  };
 }
 
 /**

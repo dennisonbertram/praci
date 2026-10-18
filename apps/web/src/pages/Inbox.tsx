@@ -28,7 +28,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { ListFilter, Mail, Search, SquarePen, X } from "lucide-react";
+import { ListFilter, Mail, MailWarning, Search, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
@@ -39,6 +39,7 @@ import { InboxGroup } from "../components/inbox/InboxRow";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
 import { TodoCard } from "../components/inbox/TodoCard";
 import { PageEmptyState } from "../components/PageEmptyState";
+import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
 import { useInboxKeyboard } from "../lib/inbox-keyboard";
 import {
   inboxListInput,
@@ -56,15 +57,22 @@ const ALL = "all";
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 12;
+// ponytail: an open Inbox looks for new mail once a minute (the server syncs at most that often);
+// switch to a pushed event if the delay matters.
+const NEW_MAIL_POLL_MS = 60_000;
 // Long enough to read the toast and reach its Undo.
 const STATUS_MS = 10_000;
 const PREFETCH_DELAY_MS = 250;
 /** Marks the `?mail=` history entry the list pushed, so closing the message can go Back. */
 const LIST_OPEN = { inboxList: true };
 
+/** The account tab last chosen in this window; a removed account falls back to All. */
+let rememberedTab: string | undefined;
+
 type Status =
   | { kind: "marked"; messageId: string; mark: InboxMark; sender: string }
-  | { kind: "archived"; messageId: string };
+  | { kind: "archived"; messageId: string; subject: string }
+  | { kind: "moved"; messageId: string; subject: string };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
 type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
@@ -94,11 +102,17 @@ const categoryLabels = (): Record<InboxViewCategory, string> => ({
 
 export function InboxPage({
   onConnectMail,
+  onReconnectMail,
   onRefreshed,
   onShowAgent,
   paused,
+  spaceName,
 }: {
   onConnectMail: () => void;
+  /** Opens Gmail's page, where a lapsed account can be removed and connected again. */
+  onReconnectMail?: () => void;
+  /** The space's name, when the user has more than one, so they know whose mail this is. */
+  spaceName?: string;
   /** Called after a sync so the sidebar can refresh its unread count. */
   onRefreshed: () => void;
   /** Set while the Inbox agent panel is collapsed; shows the button that reopens it. */
@@ -114,7 +128,11 @@ export function InboxPage({
   const { filter, query, view, category } = listState;
   const filtered = Boolean(filter || query);
   const [draft, setDraft] = useState(query);
-  const [tab, setTab] = useState<string | undefined>();
+  // Kept while the app is open, so leaving the Inbox and coming back keeps the chosen account.
+  const [tab, setTab] = useState<string | undefined>(() => rememberedTab);
+  useEffect(() => {
+    rememberedTab = tab;
+  }, [tab]);
   const [data, setData] = useState<InboxListOutput | null>(null);
   // Which request `data` answers, so a changed tab, filter or search shows loading, not old rows.
   const listKey = JSON.stringify([tab, filter, query, view, category]);
@@ -123,6 +141,8 @@ export function InboxPage({
   const cache = useRef(new Map<string, InboxListOutput>());
   const keyRef = useRef(listKey);
   keyRef.current = listKey;
+  const listRequest = useRef(0);
+  const listApplied = useRef(0);
   // Pages after the first of a filtered or searched list, which Gmail pages for us.
   const [more, setMore] = useState<{ rows: MailRow[]; token?: string; busy: boolean }>({
     rows: [],
@@ -140,11 +160,14 @@ export function InboxPage({
   const [help, setHelp] = useState(false);
   const searchRef = useRef<HTMLFormElement>(null);
   const [synced, setSynced] = useState(false);
+  // "Try again" is busy until its sync answers, so the click visibly does something.
+  const [retrying, setRetrying] = useState(false);
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
   // Triage still pending after the last poll: say so and offer a retry instead of spinning.
   const [stalled, setStalled] = useState(false);
+  const appliedKey = useRef<string | null>(null);
   const archiving = useRef(new Map<string, Promise<boolean>>());
   const [composing, setComposing] = useState(false);
   // The first sort after Allow: rows keep their places until triage finishes, then regroup once.
@@ -171,6 +194,16 @@ export function InboxPage({
     };
   }, [onRefreshed]);
 
+  // New mail shows up, and the sidebar count follows, while the page stays open.
+  useEffect(() => {
+    if (paused) return;
+    // The same sync as opening the page: it fetches new mail, then the list and the count reload.
+    const timer = setInterval(() => {
+      if (document.visibilityState === "visible") setAttempt((n) => n + 1);
+    }, NEW_MAIL_POLL_MS);
+    return () => clearInterval(timer);
+  }, [paused]);
+
   useEffect(() => {
     if (!status) return;
     const timer = setTimeout(() => setStatus(null), STATUS_MS);
@@ -179,25 +212,37 @@ export function InboxPage({
 
   useEffect(() => {
     if (paused) return;
-    let live = true;
+    const key = listKey;
+    const request = ++listRequest.current;
+    // A reload (a triage poll, a sync) must not throw away an answer for the list still on screen:
+    // a slow search would otherwise never land while polls keep restarting it. Only a newer answer
+    // for the same list, or a different list, replaces it.
+    const live = () => keyRef.current === key && request > listApplied.current;
     rpc.inbox
       .list(inboxListInput(listState, tab))
       .then((next) => {
-        if (!live) return;
-        cache.current.set(listKey, next);
+        if (!live()) return;
+        listApplied.current = request;
+        cache.current.set(key, next);
         setData(next);
-        setDataKey(listKey);
-        setMore({ rows: [], token: next.nextPageToken, busy: false });
+        setDataKey(key);
+        // A refresh of the same list keeps the pages already loaded (minus rows the fresh first
+        // page now holds); only a different list starts over.
+        const same = appliedKey.current === key;
+        appliedKey.current = key;
+        const fresh = new Set(next.rows.map((row) => row.id));
+        setMore((m) =>
+          same && m.rows.length > 0
+            ? { ...m, rows: m.rows.filter((row) => !fresh.has(row.id)) }
+            : { rows: [], token: next.nextPageToken, busy: false },
+        );
       })
       .catch((cause) => {
-        if (!live) return;
+        if (!live()) return;
         // A removed account leaves its tab behind; fall back to All.
         if (tab) setTab(undefined);
         else setError(errorText(cause));
       });
-    return () => {
-      live = false;
-    };
   }, [tab, filter, query, view, category, reload, paused]);
 
   useEffect(() => setDraft(query), [query]);
@@ -271,6 +316,7 @@ export function InboxPage({
         if (live) setError(errorText(cause));
       })
       .then(() => {
+        setRetrying(false);
         if (!live) return;
         setSynced(true);
         setReload((n) => n + 1);
@@ -337,8 +383,14 @@ export function InboxPage({
   const accounts = data?.accounts ?? [];
   const failed = error || (shown ? syncErrorText(shown) : "");
   const todos = todosByTab[tabKey];
+  // A lapsed sign-in is fixed by signing in again; trying again would fail the same way.
+  const reconnect = !error && Boolean(shown?.reconnectAccounts.length);
+  // With nothing to show, the problem is the page, not a line above an empty list.
+  const failedEmpty =
+    Boolean(failed) && (!shown || rows.length === 0) && !(data && accounts.length === 0);
   const retry = () => {
     setError("");
+    setRetrying(true);
     setAttempt((n) => n + 1);
     setReload((n) => n + 1);
   };
@@ -355,11 +407,16 @@ export function InboxPage({
     (!filtered && shown.rows.length === 0 && !synced) ||
     (showTodos && todos === undefined && !sorting);
   // Applies a change to every copy of the rows: the list, the pages after it and the cached lists.
-  const patchRows = (change: (rows: MailRow[]) => MailRow[]) => {
-    const patch = (list: InboxListOutput) => ({ ...list, rows: change(list.rows) });
-    setData((list) => list && patch(list));
-    setMore((m) => ({ ...m, rows: change(m.rows) }));
-    for (const [key, list] of cache.current) cache.current.set(key, patch(list));
+  const patchRows = (change: (rows: MailRow[], searched: boolean) => MailRow[]) => {
+    const patch = (list: InboxListOutput, searched: boolean) => ({
+      ...list,
+      rows: change(list.rows, searched),
+    });
+    setData((list) => list && patch(list, Boolean(query)));
+    setMore((m) => ({ ...m, rows: change(m.rows, Boolean(query)) }));
+    // The key is [tab, filter, query, view, category].
+    for (const [key, list] of cache.current)
+      cache.current.set(key, patch(list, Boolean(JSON.parse(key)[2])));
   };
   const patchFeedback = (messageId: string, feedback: InboxMark | null) =>
     patchRows((list) => list.map((row) => (row.id === messageId ? { ...row, feedback } : row)));
@@ -387,9 +444,18 @@ export function InboxPage({
     const index = ids.indexOf(messageId);
     const neighbor = ids[index + 1] ?? ids[index - 1];
     if (selectedId === messageId) setSelectedId(neighbor);
-    patchRows((list) => list.filter((row) => row.id !== messageId));
-    setStatus({ kind: "archived", messageId });
-    const call = rpc.inbox.archive({ messageId });
+    const subject = rows.find((row) => row.id === messageId)?.subject ?? "";
+    // A search also finds archived mail, so its row stays and says Archived.
+    patchRows((list, searched) =>
+      searched
+        ? list.map((row) => (row.id === messageId ? { ...row, inInbox: false } : row))
+        : list.filter((row) => row.id !== messageId),
+    );
+    setStatus({ kind: "archived", messageId, subject });
+    // A pending Move to Inbox finishes first, so the archive is not overtaken by it.
+    const call = (archiving.current.get(messageId) ?? Promise.resolve()).then(() =>
+      rpc.inbox.archive({ messageId }),
+    );
     // Resolves to whether the archive saved, so Undo never overtakes it.
     archiving.current.set(
       messageId,
@@ -510,6 +576,22 @@ export function InboxPage({
     },
     help: () => setHelp(true),
   });
+  // "?" also works with a message open, where the list's keys are off.
+  useEffect(() => {
+    if (paused || !openId || composing || help) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "?" || event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target instanceof HTMLElement ? event.target : null;
+      if (
+        target?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false])")
+      )
+        return;
+      event.preventDefault();
+      setHelp(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [paused, openId, composing, help]);
   // Warm the cache so the first messages and the selected one open instantly.
   useEffect(() => {
     for (const id of ids.slice(0, 3)) prefetchInboxMessage(id);
@@ -534,20 +616,55 @@ export function InboxPage({
     }
   }, [openId, selectedId]);
 
+  // The main action of the empty page, as Connect mail is; a small one beside a line above rows.
+  const fixVariant = failedEmpty ? "default" : "outline";
+  const fixButton = reconnect ? (
+    <Button
+      variant={fixVariant}
+      size={failedEmpty ? "default" : "sm"}
+      onClick={onReconnectMail ?? onConnectMail}
+    >
+      <Trans>Reconnect Gmail</Trans>
+    </Button>
+  ) : (
+    <Button
+      variant={fixVariant}
+      size={failedEmpty ? "default" : "sm"}
+      onClick={retry}
+      disabled={retrying}
+    >
+      {retrying ? <Trans>Trying again…</Trans> : <Trans>Try again</Trans>}
+    </Button>
+  );
+
   const toast = status ? (
-    <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
+    <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg">
       {status.kind === "archived" ? (
-        <Trans>Archived</Trans>
+        <span className="min-w-0 truncate" dir="auto">
+          {status.subject ? (
+            <Trans>Archived "{maskCurrencyWhenHidden(status.subject)}"</Trans>
+          ) : (
+            <Trans>Archived</Trans>
+          )}
+        </span>
+      ) : status.kind === "moved" ? (
+        <span className="min-w-0 truncate" dir="auto">
+          <Trans>Moved "{maskCurrencyWhenHidden(status.subject)}" to Inbox</Trans>
+        </span>
       ) : status.mark === "noise" ? (
         <Trans>Mail from {status.sender} is now marked as noise</Trans>
       ) : (
         <Trans>Mail from {status.sender} is now marked important</Trans>
       )}
       <Button
-        variant="ghost"
+        variant="secondary"
         size="sm"
         onClick={() =>
-          status.kind === "archived" ? unarchive(status.messageId) : mark(status.messageId, null)
+          status.kind === "archived"
+            ? unarchive(status.messageId)
+            : status.kind === "moved"
+              ? archive(status.messageId)
+              : mark(status.messageId, null)
         }
       >
         <Trans>Undo</Trans>
@@ -555,15 +672,29 @@ export function InboxPage({
     </div>
   ) : null;
 
+  // The bottom padding lets the last rows scroll clear of a toast.
   return (
     <div
       data-inbox-page
-      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-6 xl:px-10"
+      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-6 xl:px-10"
     >
       <div className="mb-5 flex flex-wrap items-center gap-2 @md:flex-nowrap">
-        <h1 className="me-auto shrink-0 text-lg font-semibold @md:me-1">
-          <Trans>Inbox</Trans>
-        </h1>
+        {/* On phones the title takes the room the buttons leave, so a long space name truncates
+            instead of pushing the buttons to a second line. */}
+        <div className="me-auto flex min-w-0 grow basis-0 flex-col @md:me-1 @md:shrink-0 @md:grow-0 @md:basis-auto">
+          <h1 className="text-lg font-semibold">
+            <Trans>Inbox</Trans>
+          </h1>
+          {spaceName ? (
+            // Wraps rather than truncating: the end of the name is often what tells spaces apart.
+            <span
+              title={spaceName}
+              className="line-clamp-2 text-xs break-words text-muted-foreground @md:max-w-72"
+            >
+              {spaceName}
+            </span>
+          ) : null}
+        </div>
         <form
           ref={searchRef}
           className="order-last min-w-0 basis-full @md:order-none @md:flex-1 @md:basis-auto"
@@ -586,8 +717,12 @@ export function InboxPage({
                 setDraft("");
                 if (query) setParam("q", "");
               }}
-              placeholder={t`Search mail, e.g. from:sam has:attachment`}
+              // Short enough to fit beside the agent panel; the hover title keeps the example.
+              placeholder={t`Search mail`}
+              title={t`Search mail, e.g. from:sam has:attachment`}
               aria-label={t`Search mail`}
+              // Nothing to search or filter before mail is connected.
+              disabled={Boolean(data) && accounts.length === 0}
               maxLength={MAX_QUERY}
               className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
               autoComplete="off"
@@ -623,6 +758,7 @@ export function InboxPage({
         <DropdownMenu>
           <DropdownMenuTrigger
             data-testid="inbox-filter"
+            disabled={Boolean(data) && accounts.length === 0}
             render={
               <Button
                 variant={filter || (triage && category) ? "secondary" : "outline"}
@@ -734,16 +870,36 @@ export function InboxPage({
         </Tabs>
       ) : null}
 
-      {failed ? (
+      {failed && !failedEmpty ? (
         <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
           <span>{failed}</span>
-          <Button variant="outline" size="sm" onClick={retry}>
-            <Trans>Try again</Trans>
-          </Button>
+          {fixButton}
         </div>
       ) : null}
 
-      {data && accounts.length === 0 ? (
+      {failedEmpty ? (
+        <PageEmptyState
+          icon={<MailWarning className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+          title={
+            reconnect ? (
+              <Trans>Gmail needs to be reconnected</Trans>
+            ) : (
+              <Trans>Your mail didn't load</Trans>
+            )
+          }
+          description={
+            <span role="alert">
+              {reconnect ? (
+                <Trans>Gmail signed this account out. Sign in again to see your mail here.</Trans>
+              ) : (
+                failed
+              )}
+            </span>
+          }
+        >
+          {fixButton}
+        </PageEmptyState>
+      ) : data && accounts.length === 0 ? (
         <PageEmptyState
           icon={<Mail className="size-8" strokeWidth={1.6} aria-hidden="true" />}
           title={<Trans>No mail connected</Trans>}
@@ -863,7 +1019,10 @@ export function InboxPage({
           ) : (
             <>
               <InboxGroup
-                title={<Trans>Today</Trans>}
+                // Today's mail that needs a reply is above, so this group says it holds the rest.
+                title={
+                  groups.needsReply.length ? <Trans>Other mail today</Trans> : <Trans>Today</Trans>
+                }
                 rows={groups.today}
                 onOpen={openMessage}
                 onMark={triage ? mark : undefined}
@@ -914,12 +1073,39 @@ export function InboxPage({
         nextId={openIndex >= 0 ? ids[openIndex + 1] : undefined}
         onNavigate={goToMessage}
         unread={openRow?.unread}
+        inInbox={openRow?.inInbox}
         onArchive={
           openRow?.inInbox
             ? () => {
                 // Back to the list, as Archive from the list does; the toast there offers Undo.
                 archive(openRow.id);
                 closeMessage();
+              }
+            : undefined
+        }
+        onMoveToInbox={
+          openRow && !openRow.inInbox
+            ? () => {
+                const { id, subject } = openRow;
+                patchRows((list) =>
+                  list.map((row) => (row.id === id ? { ...row, inInbox: true } : row)),
+                );
+                setStatus({ kind: "moved", messageId: id, subject });
+                setError("");
+                const pending = (archiving.current.get(id) ?? Promise.resolve())
+                  .then(() => rpc.inbox.unarchive({ messageId: id }))
+                  .then(onRefreshed);
+                // Undo (an archive) waits for this move to finish.
+                archiving.current.set(
+                  id,
+                  pending.then(
+                    () => true,
+                    () => false,
+                  ),
+                );
+                pending
+                  .catch((cause) => setError(errorText(cause)))
+                  .then(() => setReload((n) => n + 1));
               }
             : undefined
         }

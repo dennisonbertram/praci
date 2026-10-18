@@ -162,13 +162,17 @@ function addressText(address: MailAddress | null | undefined): string {
   return address.name ? `${address.name} <${address.address}>` : address.address;
 }
 
-function accountName(account: MailAccount): string {
+export function accountName(account: MailAccount): string {
   return account.address ?? account.label;
 }
 
-function findAccount(accounts: MailAccount[], wanted: string): MailAccount | undefined {
+/** By address; else by the account's name as the user calls it ("Sales" for "Sales mail"), if only one fits. */
+export function findAccount(accounts: MailAccount[], wanted: string): MailAccount | undefined {
   const lower = wanted.trim().toLowerCase();
-  return accounts.find((account) => account.address?.toLowerCase() === lower);
+  const byAddress = accounts.find((account) => account.address?.toLowerCase() === lower);
+  if (byAddress || !lower) return byAddress;
+  const named = accounts.filter((account) => account.label?.toLowerCase().startsWith(lower));
+  return named.length === 1 ? named[0] : undefined;
 }
 
 function noAccount(wanted: string) {
@@ -516,7 +520,35 @@ async function mailGrep(deps: MailToolDeps, args: Record<string, unknown>) {
 
 // --- mail_get ---
 
-/** The account named by `args.account`, or the only connected one. */
+/**
+ * With several accounts and none named: the one account whose synced mail holds the message the
+ * call replies to (`replyToId`) or changes (`id`). A reply goes out from the address it came to.
+ */
+export async function inferMailAccount(
+  prisma: PrismaClient,
+  owner: { spaceId: string; userId: string },
+  accounts: MailAccount[],
+  args: Record<string, unknown>,
+): Promise<MailAccount | undefined> {
+  if (typeof args.account === "string" && args.account.trim()) return undefined;
+  if (accounts.length === 1) return accounts[0];
+  const ref = [args.replyToId, args.id].find(
+    (value): value is string => typeof value === "string" && value.trim() !== "",
+  );
+  if (!ref || accounts.length === 0) return undefined;
+  const rows = await prisma.cachedMailMessage.findMany({
+    where: {
+      ...owner,
+      providerMessageId: ref.trim(),
+      connectionId: { in: accounts.map((account) => account.id) },
+    },
+    select: { connectionId: true },
+  });
+  const ids = new Set(rows.map((row) => row.connectionId));
+  return ids.size === 1 ? accounts.find((account) => ids.has(account.id)) : undefined;
+}
+
+/** The account named by `args.account`, the only connected one, or the one the message is in. */
 async function resolveAccount(
   deps: MailToolDeps,
   args: Record<string, unknown>,
@@ -526,6 +558,9 @@ async function resolveAccount(
     const account = findAccount(accounts, args.account);
     return account ? { account } : noAccount(args.account);
   }
+  const owner = { spaceId: deps.scope.spaceId, userId: deps.scope.userId };
+  const inferred = await inferMailAccount(deps.prisma, owner, accounts, args);
+  if (inferred) return { account: inferred };
   if (accounts.length > 1) {
     return {
       error:
@@ -644,7 +679,12 @@ async function showEmails(
   if (emails.length === 0) return CARD_NOT_FOUND;
   await deps.publish([{ kind: "emails", emails }]);
   const notFound = [...requested.keys()].filter((id) => !found.has(id));
-  return { shown: emails.length, ...(notFound.length ? { notFound } : {}) };
+  return {
+    shown: emails.length,
+    ...(notFound.length ? { notFound } : {}),
+    // Models tended to list every card again as text below them.
+    note: "The user now sees these emails as cards with sender, subject and date. Do not list them again; answer in a sentence or two.",
+  };
 }
 
 // --- mail_draft, mail_modify, mail_send ---
@@ -840,6 +880,7 @@ async function mailSend(
       account: accountName(account),
       to: draft.to.map(addressText),
       subject: draft.subject,
+      note: "The email was sent. Tell the user it was sent; do not offer it again.",
     };
   } catch (error) {
     if (sending && !(error instanceof MailProviderError && error.kind !== "unknown")) {

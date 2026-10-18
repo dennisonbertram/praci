@@ -246,6 +246,10 @@ export const ComposePrefillOutputSchema = z.object({
   ),
   /** The original had attachments, but together they are over the attachment limit. */
   attachmentsTooLarge: z.boolean().optional(),
+  /** With attachmentsTooLarge: the files that did not fit, so the composer can name them. */
+  attachmentsLeftOut: z
+    .array(z.object({ filename: z.string(), size: z.number().int().nonnegative() }))
+    .optional(),
   /** Gmail could not be read, so To and Subject come from the cached copy and the quote is empty. */
   quoteUnavailable: z.boolean().optional(),
 });
@@ -297,6 +301,8 @@ export const ComposeFieldsSchema = z.object({
  */
 export const ComposeResultSchema = z.object({
   status: z.enum(["saved", "sent", "unknown", "reconnect", "disabled", "failed"]),
+  /** Why a `failed` send failed, when Gmail said: it refused the message, or it is limiting requests. */
+  reason: z.enum(["rejected", "rate_limited"]).optional(),
 });
 
 /** `mark: null` removes the mark from the message's sender. */

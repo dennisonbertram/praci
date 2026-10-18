@@ -68,6 +68,17 @@ export const ManyAccountsOneFailed: Story = {
   ),
 };
 
+/** The provider refused this account's sign-in on the last mail sync. */
+export const SignedOutAccount: Story = {
+  render: () => (
+    <Page
+      data={demoIntegrations({
+        connections: [demoConnection({ displayName: "Founder mail", needsReconnect: true })],
+      })}
+    />
+  ),
+};
+
 export const ToolsLoading: Story = {
   beforeEach: () => mockRpc({ "connections.tools": () => new Promise(() => undefined) }),
 };

@@ -37,8 +37,13 @@ export function filterCatalog(
 export type StatusKind = "connected" | "reconnect" | "failed" | "connecting";
 
 /** Status of one managed app, from all of its account rows. A working account wins. */
-export function appStatus(rows: readonly Pick<Connection, "status">[]): StatusKind | null {
-  if (rows.some((row) => row.status === "connected")) return "connected";
+export function appStatus(
+  rows: readonly Pick<Connection, "status" | "needsReconnect">[],
+): StatusKind | null {
+  const live = rows.filter((row) => row.status === "connected");
+  if (live.some((row) => !row.needsReconnect)) return "connected";
+  // Every account is connected on paper, but its provider refuses the sign-in.
+  if (live.length > 0) return "reconnect";
   if (rows.some((row) => row.status === "pending")) return "connecting";
   if (rows.some((row) => row.status === "error")) return "failed";
   return null;
@@ -264,10 +269,10 @@ export function popularApps(
       .filter((row) => row.status !== "revoked")
       .map((row) => `${row.connectorId}:${row.provider}`),
   );
-  // First-party services (X, Treg, ...) have their own tile; listing them here too would give two ways in.
+  // `item.connected` is the provider's per-user flag, which also counts other spaces; this space's
+  // rows decide. First-party services (X, Treg, ...) have their own tile, so they are left out here.
   const open = catalog.filter(
     (item) =>
-      !item.connected &&
       !used.has(appKey(item)) &&
       !FIRST_PARTY_SLUGS.has(item.slug.toLowerCase().replace(/[^a-z0-9]+/g, "")),
   );

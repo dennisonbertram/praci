@@ -19,6 +19,7 @@ import {
   FileImage,
   FileText,
   Forward,
+  Inbox,
   Mail,
   MailOpen,
   Reply,
@@ -50,7 +51,9 @@ export function InboxMessageDialog({
   nextId,
   onNavigate,
   unread,
+  inInbox,
   onArchive,
+  onMoveToInbox,
   onRead,
   notice,
   onClose,
@@ -67,7 +70,11 @@ export function InboxMessageDialog({
    * loaded message's state, and Archive shows only while the message is in the Inbox.
    */
   unread?: boolean;
+  /** Whether the message is in the Inbox, when the caller knows better than the loaded copy. */
+  inInbox?: boolean;
   onArchive?: () => void;
+  /** Offered while the message is archived, such as a search result. */
+  onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
   /** A brief message with its own action, shown here because the page behind the dialog is inert. */
   notice?: React.ReactNode;
@@ -84,13 +91,15 @@ export function InboxMessageDialog({
   useEffect(() => setComposing(null), [messageId]);
   return (
     <Dialog open={messageId !== null} onOpenChange={(next) => !next && onClose()}>
+      {/* Anchored at the top on wide screens, so a loading body or a notice grows it downward instead
+          of moving the whole dialog. */}
       <DialogContent
         ref={popupRef}
         initialFocus={popupRef}
         tabIndex={-1}
         showCloseButton={false}
         className={cn(
-          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-1/2 md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:-translate-y-1/2 md:rounded-xl md:ring-1 md:has-[iframe]:h-[min(85vh,820px)]",
+          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1 md:has-[iframe]:h-[min(85vh,820px)]",
           composing && "invisible",
         )}
       >
@@ -103,13 +112,15 @@ export function InboxMessageDialog({
             nextId={nextId}
             onNavigate={onNavigate}
             unread={unread}
+            inInbox={inInbox}
             onArchive={onArchive}
+            onMoveToInbox={onMoveToInbox}
             onRead={onRead}
+            notice={notice}
             composing={composing}
             setComposing={setComposing}
           />
         ) : null}
-        {messageId && notice ? <div className="flex justify-center">{notice}</div> : null}
       </DialogContent>
     </Dialog>
   );
@@ -124,8 +135,11 @@ function InboxMessage({
   nextId,
   onNavigate,
   unread,
+  inInbox: inInboxProp,
   onArchive,
+  onMoveToInbox,
   onRead,
+  notice,
   composing,
   setComposing,
 }: {
@@ -135,8 +149,11 @@ function InboxMessage({
   nextId?: string;
   onNavigate?: (messageId: string) => void;
   unread?: boolean;
+  inInbox?: boolean;
   onArchive?: () => void;
+  onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  notice?: React.ReactNode;
   composing: ComposeMode | null;
   setComposing: (mode: ComposeMode | null) => void;
 }) {
@@ -146,6 +163,8 @@ function InboxMessage({
     () => peekInboxMessage(messageId) ?? null,
   );
   const [error, setError] = useState("");
+  // A stale link: the email was deleted or moved, so trying again cannot help.
+  const [gone, setGone] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const seed = useMemo(
     () => (composing ? ({ kind: composing, messageId } as const) : null),
@@ -155,12 +174,15 @@ function InboxMessage({
     if (attempt === 0 && peekInboxMessage(messageId)) return;
     let live = true;
     setError("");
+    setGone(false);
     loadInboxMessage(messageId)
       .then((next) => {
         if (live) setMessage(next);
       })
       .catch((cause) => {
-        if (live) setError(errorText(cause));
+        if (!live) return;
+        if ((cause as { code?: string } | null)?.code === "NOT_FOUND") setGone(true);
+        else setError(errorText(cause));
       });
     return () => {
       live = false;
@@ -177,7 +199,9 @@ function InboxMessage({
   // Read on every render: closing the composer re-renders, so a kept draft shows at once.
   const draft = recallClosed({ kind: "reply", messageId });
   const shownUnread = unread ?? message?.unread;
-  const canArchive = onArchive && message?.inInbox !== false ? onArchive : undefined;
+  // The caller's row is newer than the loaded copy after an archive or a move.
+  const inInbox = inInboxProp ?? message?.inInbox !== false;
+  const canArchive = onArchive && inInbox ? onArchive : undefined;
   useEffect(() => {
     if (!onNavigate || composing) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -197,7 +221,9 @@ function InboxMessage({
     return () => document.removeEventListener("keydown", onKeyDown);
   }, [onNavigate, composing, setComposing, nextId, previousId, message, canArchive]);
 
-  const title = message?.subject ?? subject ?? "";
+  const title = gone
+    ? t`Email not found`
+    : maskCurrencyWhenHidden(message?.subject ?? subject ?? "");
   const sent = message ? new Date(message.date) : null;
   const parsed = splitSender(message?.from ?? "");
   // The user's own message, such as their reply found by search, says "You" as the conversation does.
@@ -210,7 +236,7 @@ function InboxMessage({
         <DialogTitle dir="auto" className="min-w-0 flex-1 text-xl leading-snug font-medium">
           {title}
         </DialogTitle>
-        {onNavigate ? (
+        {onNavigate && !gone ? (
           <>
             <Button
               variant="ghost"
@@ -291,20 +317,23 @@ function InboxMessage({
           {canArchive ? (
             <Button variant="outline" size="sm" onClick={canArchive}>
               <Archive aria-hidden="true" />
-              {/* Icons only on phones, so the actions stay on one line. */}
-              <span className="max-sm:sr-only">
-                <Trans>Archive</Trans>
-              </span>
+              <Trans>Archive</Trans>
+            </Button>
+          ) : null}
+          {onMoveToInbox && !inInbox ? (
+            <Button variant="outline" size="sm" onClick={onMoveToInbox}>
+              <Inbox aria-hidden="true" />
+              <Trans>Move to Inbox</Trans>
             </Button>
           ) : null}
           {onRead && shownUnread !== undefined ? (
             <Button variant="outline" size="sm" onClick={() => onRead(shownUnread)}>
               {shownUnread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
-              <span className="max-sm:sr-only">
-                {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
-              </span>
+              {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
             </Button>
           ) : null}
+          {/* In the toolbar, so it neither covers the email nor moves the dialog. */}
+          {notice ? <div className="ms-auto flex min-w-0 max-w-full">{notice}</div> : null}
         </div>
       ) : null}
       {message && !composing && draft ? (
@@ -322,16 +351,28 @@ function InboxMessage({
       ) : null}
       {seed ? <ComposeEmail seed={seed} accounts={[]} onClose={() => setComposing(null)} /> : null}
       <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-        {message && (message.thread?.length || message.later?.length) ? (
+        {message?.thread?.length ? (
+          // The open message is below with its own sender line, so this counts only the rows here.
           <ThreadMessages
-            heading={plural((message.thread?.length ?? 0) + (message.later?.length ?? 0) + 1, {
-              one: "# message",
-              other: "# messages",
+            heading={plural(message.thread.length, {
+              one: "# earlier message",
+              other: "# earlier messages",
             })}
-            messages={message.thread ?? []}
+            messages={message.thread}
           />
         ) : null}
-        {error ? (
+        {gone ? (
+          <div className="flex flex-col items-start gap-3">
+            <p role="status" className="text-sm text-muted-foreground">
+              <Trans>
+                This email isn't in your mail any more. It may have been deleted or moved.
+              </Trans>
+            </p>
+            <DialogClose render={<Button variant="outline" size="sm" />}>
+              <Trans>Back to Inbox</Trans>
+            </DialogClose>
+          </div>
+        ) : error ? (
           <div className="flex flex-col items-start gap-2">
             <p role="alert" className="text-sm text-destructive">
               {error}
@@ -486,6 +527,11 @@ function InboxAttachments({
 }
 
 /** Other messages of the conversation, one line each; a click shows that message's text. */
+/** A reply's preview without the "On <date>, <name> wrote:" line that starts its quote. */
+export function withoutQuoteHeader(snippet: string): string {
+  return snippet.replace(/\s*On [^\n]{4,160}? wrote:[\s\S]*$/, "").trim() || snippet;
+}
+
 function ThreadMessages({
   heading,
   messages,
@@ -531,7 +577,7 @@ function ThreadMessage({ item }: { item: InboxThreadMessage }) {
           {item.fromSelf ? <Trans>You</Trans> : item.from}
         </span>
         <span dir="auto" className="min-w-0 flex-1 truncate text-muted-foreground">
-          {open ? null : maskCurrencyWhenHidden(item.snippet)}
+          {open ? null : maskCurrencyWhenHidden(withoutQuoteHeader(item.snippet))}
         </span>
         <time
           dateTime={item.receivedAt}

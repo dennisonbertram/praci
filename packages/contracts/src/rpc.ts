@@ -902,6 +902,8 @@ export const appContract = {
           displayName: z.string(),
           /** `desktop`: Google returns to the app's loopback listener instead of the web callback. */
           redirect: z.literal("desktop").optional(),
+          /** Reconnect: the account of this connection may sign in again and takes its place. */
+          replacesConnectionId: Id.optional(),
         }),
       )
       .output(z.object({ connectionId: Id, authorizationUrl: z.string().nullable() })),

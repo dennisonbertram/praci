@@ -14,6 +14,7 @@ export function InboxShortcuts({ open, onClose }: { open: boolean; onClose: () =
     ["r", <Trans key="r">Reply</Trans>],
     ["a", <Trans key="a">Reply all</Trans>],
     ["f", <Trans key="f">Forward</Trans>],
+    ["⌘/Ctrl Enter", <Trans key="send">Send</Trans>],
     ["?", <Trans key="h">Keyboard shortcuts</Trans>],
     ["Esc", <Trans key="e">Close</Trans>],
   ];

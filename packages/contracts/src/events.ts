@@ -182,6 +182,8 @@ export const MailApprovalSchema = z.object({
   outcome: z.enum(["sent", "saved", "unknown", "failed"]).optional(),
   /** With a failed outcome: the connection the composer should open on. */
   connectionId: z.string().optional(),
+  /** With a failed outcome: why, in words the person can act on. */
+  error: z.string().max(300).optional(),
 });
 export type MailApproval = z.infer<typeof MailApprovalSchema>;
 

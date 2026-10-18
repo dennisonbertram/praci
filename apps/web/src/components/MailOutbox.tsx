@@ -1,5 +1,5 @@
 import { Trans } from "@lingui/react/macro";
-import { Button } from "@rakazo/ui-web";
+import { Button, cn } from "@rakazo/ui-web";
 import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { closeRestored, getOutbox, subscribeOutbox, undoSend } from "../lib/outbox";
@@ -12,6 +12,7 @@ import { ComposeEmail } from "./ComposeEmail";
  */
 export function MailOutbox() {
   const { view, restoring } = useSyncExternalStore(subscribeOutbox, getOutbox);
+  const undoable = view?.kind === "discarded" || (view?.kind === "sending" && view.undoable);
   return (
     <>
       {view
@@ -22,12 +23,18 @@ export function MailOutbox() {
               role="status"
               className="pointer-events-none fixed inset-x-0 bottom-4 z-100 flex justify-center px-4"
             >
-              <div className="pointer-events-auto flex items-center gap-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
+              {/* The same high-contrast toast as the Inbox's Archived notice, so it stands apart from the rows under it. */}
+              <div
+                className={cn(
+                  "pointer-events-auto flex min-h-9 items-center gap-2 rounded-lg bg-primary py-1 ps-3 text-sm text-primary-foreground shadow-lg",
+                  undoable ? "pe-1" : "pe-3",
+                )}
+              >
                 {view.kind === "sent" ? <Trans>Sent</Trans> : null}
                 {view.kind === "sending" ? <Trans>Sending…</Trans> : null}
                 {view.kind === "discarded" ? <Trans>Draft discarded</Trans> : null}
-                {view.kind === "discarded" || (view.kind === "sending" && view.undoable) ? (
-                  <Button variant="ghost" size="sm" onClick={undoSend}>
+                {undoable ? (
+                  <Button variant="secondary" size="sm" onClick={undoSend}>
                     <Trans>Undo</Trans>
                   </Button>
                 ) : null}

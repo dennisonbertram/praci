@@ -632,6 +632,8 @@ export const ConnectionSchema = z.object({
   status: z.enum(["pending", "connected", "revoked", "error"]),
   /** Short user-safe reason when status is "error"; null otherwise. */
   error: z.string().nullable(),
+  /** Mail accounts only: the provider refused the sign-in on the last sync, so it must be signed in again. */
+  needsReconnect: z.boolean().optional(),
   capabilities: z.array(z.string()),
   createdAt: z.string(),
 });

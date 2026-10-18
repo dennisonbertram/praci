@@ -69,4 +69,12 @@ export const Unknown: Story = {
     mail: { ...mail, connectionId: "connection_1", outcome: "unknown" },
   },
 };
+/** The agent's own send failed after approval: the card says why. */
+export const AgentSendFailed: Story = {
+  args: {
+    status: "answered",
+    answer: "allow",
+    mail: { ...mail, outcome: "failed", error: "No connected mail account sales@example.test" },
+  },
+};
 export const NotWaiting: Story = { args: { canAnswer: false } };

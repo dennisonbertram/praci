@@ -296,6 +296,7 @@ import {
   selectCompactedHistory,
   shouldEnqueueCompaction,
 } from "./history-compaction.js";
+import { triageStatus } from "./inbox-triage.js";
 import {
   assertConnectorToolArgs,
   CATALOG_EXECUTE,
@@ -311,7 +312,10 @@ import {
   legalToolsAllowed,
   lockLegalBot,
 } from "./legal-tools.js";
+import { approvedMailOutcome, mailSendRefusal } from "./mail-approval-recovery.js";
 import {
+  accountName,
+  inferMailAccount,
   MAIL_TOOL_NAMES,
   mailToolFromTool,
   mailToolsAllowed,
@@ -3177,11 +3181,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
         : undefined,
     };
   };
+  // A run checks the same consent as triage, so this is shared by the object and the runs.
+  const resolveModel = (scope: { userId: string; spaceId: string; botId?: string }) =>
+    resolveRunModel(deps, scope);
   return {
     resolveConnectedModel,
     contextStrategy,
-    resolveModel: (scope: { userId: string; spaceId: string; botId?: string }) =>
-      resolveRunModel(deps, scope),
+    resolveModel,
 
     async wakeRoutine(routineId: string, scheduledFor: string) {
       const scheduledAt = new Date(scheduledFor);
@@ -4037,6 +4043,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
             messagingChannelRun,
             trigger: run.trigger,
           }) && (await mailAccounts().catch(() => [])).length > 0;
+        // The Inbox agent reads mail only with the AI data sharing consent the Inbox sorting needs,
+        // so turning that off stops both. Read on every mail tool call, so revoking it mid-run applies.
+        const inboxMailConsentMissing = () => {
+          if (!isInboxAgentSpawnKey(bot.spawnKey)) return Promise.resolve(false);
+          return triageStatus(
+            { prisma: deps.prisma, resolveModel },
+            { userId: bot.userId, spaceId: run.spaceId },
+          ).then(
+            (status) => status.blocked?.reason === "needs_consent",
+            // Unknown is treated as not allowed: mail content never leaves on a failed check.
+            () => true,
+          );
+        };
         // Connected Google Drive accounts of the bot owner, looked up once per run.
         let driveAccountsPromise: ReturnType<typeof listDriveAccounts> | undefined;
         const driveAccounts = () => {
@@ -4809,6 +4828,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           const needsApproval = gateDecision === "ask";
           const bypassApproval = gateDecision === "allow" && requiresApprovalByDefault;
           let claimedEffect = false;
+          /** The call runs because the person approved its card. */
+          let approvedByCard = false;
 
           const claimOrReturn = async (
             from: "approved" | "intended",
@@ -4816,6 +4837,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             const claim = from === "approved" ? claimApprovedEffect : claimIntendedEffect;
             if (await claim(deps.prisma, applied!.effect.id)) {
               claimedEffect = true;
+              approvedByCard = from === "approved";
               return undefined;
             }
             const current = await deps.prisma.externalEffect.findUnique({
@@ -4829,6 +4851,22 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }
             }
             throw uncertainEffectError(name);
+          };
+
+          // The card names the From account the send will use, even when the agent named none.
+          const approvalMailAccount = async () => {
+            if (name !== "mail_send" && name !== "mail_draft") return undefined;
+            if (!deps.mail || !mailEnabled) return undefined;
+            const accounts = await mailAccounts();
+            // With one account the From line would say nothing new.
+            if (accounts.length < 2) return undefined;
+            const inferred = await inferMailAccount(
+              deps.prisma,
+              { spaceId: run.spaceId, userId: bot.userId },
+              accounts,
+              args,
+            ).catch(() => undefined);
+            return inferred ? accountName(inferred) : undefined;
           };
 
           const requestApproval = async () => {
@@ -4850,6 +4888,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   reviewReason,
                   fullMail: isCartaMailSend(bot.spawnKey, name),
                   cartaWriteTool,
+                  mailAccount: await approvalMailAccount(),
                 }),
               ],
             });
@@ -4872,6 +4911,25 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return pauseForApproval();
           };
 
+          if (applied && !applied.duplicate && name === "mail_send") {
+            const prior = await deps.prisma.externalEffect.findMany({
+              where: {
+                spaceId: run.spaceId,
+                kind: "mail_send",
+                id: { not: applied.effect.id },
+                run: { threadId: run.threadId },
+              },
+              orderBy: { createdAt: "desc" },
+              take: 50,
+              select: { runId: true, status: true, request: true, result: true },
+            });
+            const refusal = mailSendRefusal(args, prior, runId);
+            if (refusal) {
+              const result = { error: refusal };
+              await completeEffect(deps, applied.effect.id, "intended", result);
+              return result;
+            }
+          }
           if (applied?.duplicate) {
             const gate = resolveDuplicateEffectGate(applied.effect, name);
             if (gate.action === "return") {
@@ -5548,23 +5606,34 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (MAIL_TOOL_NAMES.has(name) && deps.mail && mailEnabled) {
-            return finish(
-              await mailToolFromTool(
-                name,
-                {
-                  mail: deps.mail,
-                  prisma: deps.prisma,
-                  jobs: deps.jobs,
-                  accounts: mailAccounts,
-                  publish: (blocks) => publishMessage(deps, run, "bot", blocks),
-                  writesDisabled: deps.mailWritesDisabled,
-                  idempotencyKey: effectKey,
-                  scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id },
-                },
-                context,
-                args,
-              ),
+            if (await inboxMailConsentMissing()) {
+              const refused = { error: MAIL_CONSENT_OFF };
+              if (!claimedEffect) return refused;
+              // An approved send or draft was already claimed: settle it so it is not left executing.
+              if (approvedByCard && applied && (name === "mail_send" || name === "mail_draft")) {
+                await recordApprovedMailOutcome(deps, run, applied.effect.id, name, refused);
+              }
+              return finish(refused);
+            }
+            const result = await mailToolFromTool(
+              name,
+              {
+                mail: deps.mail,
+                prisma: deps.prisma,
+                jobs: deps.jobs,
+                accounts: mailAccounts,
+                publish: (blocks) => publishMessage(deps, run, "bot", blocks),
+                writesDisabled: deps.mailWritesDisabled,
+                idempotencyKey: effectKey,
+                scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id },
+              },
+              context,
+              args,
             );
+            if (approvedByCard && applied && (name === "mail_send" || name === "mail_draft")) {
+              await recordApprovedMailOutcome(deps, run, applied.effect.id, name, result);
+            }
+            return finish(result);
           }
           if (DATA_ROOM_TOOL_NAMES.has(name) && deps.artifacts && dataRoomEnabled) {
             const artifacts = deps.artifacts;
@@ -8715,6 +8784,52 @@ function redactBlocks(blocks: MessageBlock[], secrets: string[]): MessageBlock[]
     }
     return block;
   });
+}
+
+/** What the Inbox agent is told when AI data sharing for mail is off. */
+export const MAIL_CONSENT_OFF =
+  "AI data sharing is off for mail, so mail cannot be read or changed. Tell the user they can allow it again on the Inbox page.";
+
+/**
+ * Puts how an approved mail_send or mail_draft ended on its card, so "Send" never reads as sent
+ * when the send failed. The card stays as it was if it is gone (a cleared thread).
+ */
+async function recordApprovedMailOutcome(
+  deps: ExecutorDeps,
+  run: { id: string; spaceId: string },
+  effectId: string,
+  name: "mail_send" | "mail_draft",
+  result: Record<string, unknown>,
+) {
+  const { outcome, error } = approvedMailOutcome(name, result);
+  try {
+    const messages = await deps.prisma.message.findMany({
+      where: { runId: run.id, role: "bot" },
+      select: { id: true, threadId: true, blocks: true },
+    });
+    const card = messages.find(
+      (message) =>
+        Array.isArray(message.blocks) &&
+        message.blocks.some(
+          (block) =>
+            block !== null &&
+            typeof block === "object" &&
+            (block as { approvalEffectId?: unknown }).approvalEffectId === effectId,
+        ),
+    );
+    if (!card) return;
+    await deps.events.setMailApprovalOutcome({
+      spaceId: run.spaceId,
+      threadId: card.threadId,
+      messageId: card.id,
+      effectId,
+      outcome,
+      ...(error ? { error } : {}),
+    });
+  } catch (cause) {
+    // The card is a view of the result; the agent still gets the real one.
+    getLogger().error("mail approval outcome", cause);
+  }
 }
 
 async function publishMessage(

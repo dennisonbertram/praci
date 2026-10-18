@@ -926,6 +926,8 @@ export interface SetMailApprovalOutcomeInput {
   outcome: NonNullable<MailApproval["outcome"]>;
   /** Replaces the note the agent reads when it resumes, so it matches how the send ended. */
   note?: string;
+  /** With a failed outcome: the reason the card shows. */
+  error?: string;
   /**
    * For a recovery write: apply only while the approval is still unsettled (the effect still has
    * this note) and the compose record is in this state (null: there is none). Checked under the
@@ -959,7 +961,7 @@ export async function setMailApprovalOutcome(
     if (input.note) {
       await tx.externalEffect.updateMany({
         where: { id: input.effectId, spaceId: input.spaceId, status: "denied" },
-        data: { result: { note: input.note } },
+        data: { result: { note: input.note, outcome: input.outcome } },
       });
     }
     if (!input.messageId) return null;
@@ -976,7 +978,14 @@ export async function setMailApprovalOutcome(
         return block;
       }
       changed = true;
-      return { ...block, mail: { ...block.mail, outcome: input.outcome } };
+      return {
+        ...block,
+        mail: {
+          ...block.mail,
+          outcome: input.outcome,
+          ...(input.error ? { error: input.error.slice(0, 300) } : {}),
+        },
+      };
     });
     if (!changed) return null;
     await tx.message.update({ where: { id: message.id }, data: { blocks } });

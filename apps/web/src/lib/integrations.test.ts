@@ -75,6 +75,12 @@ describe("status badges", () => {
     expect(appStatus([row("revoked")])).toBeNull();
   });
 
+  it("needs a reconnect when every connected account's sign-in was refused", () => {
+    const lapsed = { ...row("connected"), needsReconnect: true };
+    expect(appStatus([lapsed])).toBe("reconnect");
+    expect(appStatus([lapsed, row("connected")])).toBe("connected");
+  });
+
   const server = (extra: Partial<McpServer>): McpServer => ({
     id: "s",
     spaceId: "w",
@@ -134,6 +140,11 @@ describe("groupConnections and popularApps", () => {
     expect(grouped).toHaveLength(1);
     expect(grouped[0]).toMatchObject({ name: "Slack", status: "connected" });
     expect(popularApps(catalog, rows).map((i) => i.slug)).toEqual(["notion"]);
+  });
+  it("offers an app connected only in another space", () => {
+    // The provider flags Gmail connected for the user, but this space has no Gmail row.
+    const catalog = [item("gmail", "email_calendar", { connected: true })];
+    expect(popularApps(catalog, []).map((i) => i.slug)).toEqual(["gmail"]);
   });
   it("surfaces the server error of a failed app", () => {
     const [app] = groupConnections([row("error", { error: "Access was denied" })], []);

@@ -15,6 +15,8 @@ import {
   DEMO_EMPTY_SPACE,
   DEMO_GROUP,
   DEMO_READING_DOCUMENT,
+  DEMO_RATE_LIMIT_SPACE,
+  DEMO_RECONNECT_SPACE,
   DEMO_USER_NAME,
   DEMO_WALLET,
   demoFinance,
@@ -56,10 +58,16 @@ class DemoSession {
       .join("; ");
   }
 
-  async rpc<T>(procedure: string, body?: unknown): Promise<T> {
+  /** `spaceId` acts in that space, as the browser does once it is selected. */
+  async rpc<T>(procedure: string, body?: unknown, spaceId?: string): Promise<T> {
     const response = await fetch(`${this.apiUrl}/rpc/${procedure}`, {
       method: "POST",
-      headers: { "content-type": "application/json", cookie: this.cookie, origin: this.origin },
+      headers: {
+        "content-type": "application/json",
+        cookie: this.cookie,
+        origin: this.origin,
+        ...(spaceId ? { "x-rakazo-space-id": spaceId } : {}),
+      },
       body: JSON.stringify({ json: body ?? null }),
     });
     const parsed = (await response.json()) as { json?: T; error?: { message?: string } };
@@ -338,5 +346,22 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   // A second, empty space: what a founder sees before connecting anything (switch to it to test).
   await session.rpc("spaces/create", { name: DEMO_EMPTY_SPACE });
   done.push(`empty space "${DEMO_EMPTY_SPACE}"`);
+
+  // Spaces whose Gmail is broken: the demo's emulator answers 401 (sign-in lapsed, so the Inbox
+  // shows Reconnect) or 429 (rate limited) for each one's first account.
+  for (const [name, label, what] of [
+    [DEMO_RECONNECT_SPACE, "Old mail (Mock)", "needs reconnecting"],
+    [DEMO_RATE_LIMIT_SPACE, "Busy mail (Mock)", "is rate-limited"],
+  ] as const) {
+    const space = await session.rpc<{ id: string }>("spaces/create", { name });
+    const begun = await session.rpc<{ connectionId: string }>(
+      "connections/begin",
+      { provider: "GMAIL", displayName: label },
+      space.id,
+    );
+    await session.rpc("connections/complete", { connectionId: begun.connectionId }, space.id);
+    await session.rpc("inbox/refresh", {}, space.id).catch(() => undefined);
+    done.push(`space "${name}" with a Gmail account that ${what}`);
+  }
   return done;
 }
