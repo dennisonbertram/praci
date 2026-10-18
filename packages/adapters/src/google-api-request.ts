@@ -11,9 +11,12 @@ const MAX_ATTEMPTS = 3;
 const BASE_DELAY_MS = 500;
 // A longer Retry-After is not slept through (it would hold the caller); the error carries it instead.
 const MAX_RETRY_AFTER_MS = 30_000;
-// Gmail allows 6,000 quota units per user per minute (100/s) and messages.get costs 20 units, so
-// about 5 gets/s. Through the Composio proxy (about 290 ms per get) 2 in flight is about 7/s: close
-// to the limit, with the 429 retry below absorbing the rest. 12 sent about 30/s, six times the limit.
+// Gmail allows 6,000 quota units per user per minute and messages.get (format=metadata) costs 20
+// units, so 300 gets/min is the ceiling. Through the Composio proxy a get takes about 290 ms, so 2
+// in flight alone is about 8,300 units/min, over the limit. Starts are therefore also spaced
+// START_GAP_MS apart per account: at most 4 starts/s = 4,800 metadata units/min, under the limit; the
+// 429 retry absorbs bursts and the more expensive calls (format=full costs 60).
+const START_GAP_MS = 250;
 export const GOOGLE_API_CONCURRENCY = 2;
 const AUTH_REASONS = new Set(["authError", "insufficientPermissions"]);
 const RATE_REASONS = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
@@ -116,13 +119,34 @@ export interface GoogleApiCall {
  * it is retried for every method.
  */
 export class GoogleApiClient {
-  private readonly slots = new Map<string, { active: number; queue: Array<() => void> }>();
+  private readonly slots = new Map<
+    string,
+    { active: number; queue: Array<() => void>; nextStartAt: number }
+  >();
   private readonly sleep: GoogleApiSleep;
   private readonly random: () => number;
+  private readonly startGapMs: number;
+  private readonly now: () => number;
+  private readonly pause: (ms: number) => Promise<void>;
 
-  constructor(options: { sleep?: GoogleApiSleep; random?: () => number } = {}) {
+  /**
+   * `startGapMs` is the minimum time between request starts for one account. Tests that inject
+   * `sleep` run without pacing unless they ask for it; `now` and `pause` fake the pacing clock.
+   */
+  constructor(
+    options: {
+      sleep?: GoogleApiSleep;
+      random?: () => number;
+      startGapMs?: number;
+      now?: () => number;
+      pause?: (ms: number) => Promise<void>;
+    } = {},
+  ) {
     this.sleep = options.sleep ?? defaultGoogleApiSleep;
     this.random = options.random ?? Math.random;
+    this.startGapMs = options.startGapMs ?? (options.sleep ? 0 : START_GAP_MS);
+    this.now = options.now ?? Date.now;
+    this.pause = options.pause ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   }
 
   /** Resolves with the 2xx response; throws `GoogleApiError` for anything else. */
@@ -180,7 +204,7 @@ export class GoogleApiClient {
   private async limit<T>(key: string, run: () => Promise<T>): Promise<T> {
     let slot = this.slots.get(key);
     if (!slot) {
-      slot = { active: 0, queue: [] };
+      slot = { active: 0, queue: [], nextStartAt: 0 };
       this.slots.set(key, slot);
     }
     const mine = slot;
@@ -188,11 +212,16 @@ export class GoogleApiClient {
       await new Promise<void>((resolve) => mine.queue.push(resolve));
     else mine.active++;
     try {
+      // Reserve the start time before waiting so concurrent callers queue behind each other.
+      const startAt = Math.max(this.now(), mine.nextStartAt);
+      mine.nextStartAt = startAt + this.startGapMs;
+      if (startAt > this.now()) await this.pause(startAt - this.now());
       return await run();
     } finally {
       const waiting = mine.queue.shift();
       if (waiting) waiting();
-      else if (--mine.active === 0) this.slots.delete(key);
+      // Keep the slot while its pacing reservation is still ahead, or a new slot would start at once.
+      else if (--mine.active === 0 && mine.nextStartAt <= this.now()) this.slots.delete(key);
     }
   }
 }

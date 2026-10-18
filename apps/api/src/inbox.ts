@@ -458,12 +458,13 @@ export async function inboxFeedbackSet(
 
 /** A sync inside a rate-limit backoff is skipped, so "Try again" would do nothing: wait it out (at most 30 s). */
 async function waitOutBackoff(prisma: PrismaClient, connectionId: string, signal?: AbortSignal) {
-  const state = await prisma.mailSyncState.findUnique({
-    where: { connectionId },
-    select: { backoffUntil: true },
-  });
-  const wait = state?.backoffUntil ? state.backoffUntil.getTime() - Date.now() : 0;
-  if (wait <= 0 || wait > 30_000) return;
+  if (signal?.aborted) return;
+  // The remaining time comes from Postgres' clock, the one that set backoffUntil and that sync compares it to.
+  const [row] = await prisma.$queryRaw<Array<{ waitMs: number | null }>>`
+    SELECT EXTRACT(EPOCH FROM ("backoffUntil" - timezone('utc', now()))) * 1000 AS "waitMs"
+    FROM mail_sync_states WHERE "connectionId" = ${connectionId}`;
+  const wait = Number(row?.waitMs ?? 0);
+  if (!(wait > 0) || wait > 30_000 || signal?.aborted) return;
   await new Promise<void>((resolve) => {
     const done = () => {
       clearTimeout(timer);
@@ -492,8 +493,9 @@ export async function inboxRefresh(
   // At most four accounts at a time; syncMailbox records provider errors instead of throwing.
   const queue = [...accounts];
   const worker = async () => {
-    for (let account = queue.shift(); account; account = queue.shift()) {
+    for (let account = queue.shift(); account && !signal?.aborted; account = queue.shift()) {
       await waitOutBackoff(deps.prisma, account.id, signal);
+      if (signal?.aborted) return;
       await syncMailbox(deps, account, context);
     }
   };

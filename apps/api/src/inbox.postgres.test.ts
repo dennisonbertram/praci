@@ -679,6 +679,25 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(out.rateLimitedAccounts).toEqual([]);
     });
 
+    it("does not wait or sync when the request is already aborted", async () => {
+      await wipe();
+      seedMailboxes();
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: connA,
+          lastErrorAt: new Date(),
+          lastErrorKind: "rate_limited",
+          backoffUntil: new Date(Date.now() + 5000),
+        },
+      });
+
+      const started = Date.now();
+      await inboxRefresh(deps, a, { connectionId: connA }, AbortSignal.abort());
+
+      expect(Date.now() - started).toBeLessThan(1000);
+      expect(gmail.requests).toEqual([]);
+    });
+
     it("rejects someone else's, a revoked or an unknown connection id with NOT_FOUND", async () => {
       await wipe();
       seedMailboxes();
