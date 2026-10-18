@@ -16,8 +16,8 @@ import { ConnectAppsButton } from "./ConnectAppsButton";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const app = (slug: string): ConnectionCatalogItem => ({
-  connectorId: "composio",
+const app = (slug: string, connectorId = "composio"): ConnectionCatalogItem => ({
+  connectorId,
   slug,
   name: slug,
   logo: `https://logos.example.test/${slug}.svg`,
@@ -26,7 +26,7 @@ const app = (slug: string): ConnectionCatalogItem => ({
   description: null,
   category: "other",
 });
-const catalog = ["gmail", "slack", "notion", "googledrive", "figma"].map(app);
+const catalog = ["gmail", "slack", "notion", "googledrive", "figma"].map((slug) => app(slug));
 
 async function render() {
   const container = document.createElement("div");
@@ -76,4 +76,15 @@ it("shows the plain row while loading", async () => {
   connections.catalog.mockReturnValue(new Promise(() => {}));
   const { container } = await render();
   expect(row(container)?.textContent).toBe("Integrations");
+});
+
+it("leaves out Gmail when native Google Gmail is connected", async () => {
+  connections.catalog.mockResolvedValue([app("gmail", "google"), ...catalog]);
+  connections.list.mockResolvedValue([
+    { connectorId: "google", provider: "gmail", status: "connected" },
+  ]);
+  const { container } = await render();
+  const names = [...container.querySelectorAll("[data-testid=app-logo]")].map((el) => el.outerHTML);
+  expect(names.join("")).not.toContain("gmail");
+  expect(container.querySelectorAll("[data-testid=app-logo]")).toHaveLength(3);
 });

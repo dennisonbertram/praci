@@ -1,18 +1,23 @@
 import { Trans } from "@lingui/react/macro";
 import type { Connection, ConnectionCatalogItem } from "@rakazo/contracts";
+import { preferNativeGoogle } from "@rakazo/contracts";
 import { matchFeaturedConnectorId } from "@rakazo/core";
 import { LayoutGrid } from "lucide-react";
 import { useEffect, useState } from "react";
+import { desktopBridge, nativeGoogleAvailable } from "../lib/desktop";
 import { popularApps } from "../lib/integrations";
 import { rpc } from "../lib/rpc";
 import { AppLogo } from "./integrations/AppLogo";
 
 /** Featured apps this space has not connected yet, at most three. */
 export function unconnectedFeatured(
-  catalog: readonly ConnectionCatalogItem[],
+  catalog: ConnectionCatalogItem[],
   connections: readonly Connection[],
 ): ConnectionCatalogItem[] {
-  return popularApps(catalog, connections)
+  const visible = preferNativeGoogle(catalog, {
+    nativeGoogle: nativeGoogleAvailable(desktopBridge()),
+  });
+  return popularApps(visible, connections)
     .filter(
       (item) =>
         matchFeaturedConnectorId(item.slug) !== null ||
@@ -27,7 +32,7 @@ export function unconnectedFeatured(
  */
 export function ConnectAppsButton({ active, onClick }: { active: boolean; onClick: () => void }) {
   const [apps, setApps] = useState<ConnectionCatalogItem[]>([]);
-  // Reload on mount, on focus and when leaving the Integrations page, where apps get connected.
+  // Reload on mount and when leaving the Integrations page, where apps get connected.
   useEffect(() => {
     if (active) return;
     let cancelled = false;
@@ -41,10 +46,8 @@ export function ConnectAppsButton({ active, onClick }: { active: boolean; onClic
         });
     };
     load();
-    window.addEventListener("focus", load);
     return () => {
       cancelled = true;
-      window.removeEventListener("focus", load);
     };
   }, [active]);
 
