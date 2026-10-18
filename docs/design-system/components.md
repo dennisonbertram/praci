@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 179 of 179
-- Web and shared components: 512
+- Web and shared component files with stories: 180 of 180
+- Web and shared components: 517
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -129,7 +129,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | FolderTree | [apps/web/src/components/data-room/FolderTree.tsx](../../apps/web/src/components/data-room/FolderTree.tsx) | [FolderTree.stories.tsx](../../apps/web/src/components/data-room/FolderTree.stories.tsx) | web |
 | DrivePicker, DriveImportButton | [apps/web/src/components/data-room/ImportFromDrive.tsx](../../apps/web/src/components/data-room/ImportFromDrive.tsx) | [ImportFromDrive.stories.tsx](../../apps/web/src/components/data-room/ImportFromDrive.stories.tsx) | web |
 | MessageRow, EmailPicker, ImportSources | [apps/web/src/components/data-room/ImportFromEmail.tsx](../../apps/web/src/components/data-room/ImportFromEmail.tsx) | [ImportFromEmail.stories.tsx](../../apps/web/src/components/data-room/ImportFromEmail.stories.tsx) | web |
-| ItemDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
+| ItemDialog, DeleteDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
 | ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx), [ItemMenu.stories.tsx](../../apps/web/src/components/data-room/ItemMenu.stories.tsx) | web |
 | Marker, TableHead, ItemRow, SubfolderList, ListView, GridView, Snippet, ResultsView | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
 | Field, Tag, ImagePreview, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
@@ -223,8 +223,8 @@ Every rendered React component, grouped by area. A web or shared component file 
 | IntegrationsPage | [apps/web/src/pages/Integrations.tsx](../../apps/web/src/pages/Integrations.tsx) | [Integrations.stories.tsx](../../apps/web/src/pages/Integrations.stories.tsx) | web |
 | IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/pages/IntegrationSetup.stories.tsx) | web |
 | KnowledgeSection, SpaceMemorySection, MemoryDocumentList, SkillSourceBadge, AgentSkills | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
-| LegalPage, Legal, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
-| LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
+| LegalPage, Legal, ModelBlockerNotice, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
+| Title, Status, LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
 | LegalDeadlines | [apps/web/src/pages/legal/LegalDeadlines.tsx](../../apps/web/src/pages/legal/LegalDeadlines.tsx) | [LegalDeadlines.stories.tsx](../../apps/web/src/pages/legal/LegalDeadlines.stories.tsx) | web |
 | LocalSettingsPage | [apps/web/src/pages/LocalSettings.tsx](../../apps/web/src/pages/LocalSettings.tsx) | [LocalSettings.stories.tsx](../../apps/web/src/pages/LocalSettings.stories.tsx) | web |
 | McpOAuthCallbackPage | [apps/web/src/pages/McpOAuthCallback.tsx](../../apps/web/src/pages/McpOAuthCallback.tsx) | [McpOAuthCallback.stories.tsx](../../apps/web/src/pages/McpOAuthCallback.stories.tsx) | web |
@@ -252,6 +252,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | PinsStrip, ItemRow, PinsList | [apps/web/src/pages/shell/bot-pins.tsx](../../apps/web/src/pages/shell/bot-pins.tsx) | [bot-pins.stories.tsx](../../apps/web/src/pages/shell/bot-pins.stories.tsx) | web |
 | ReplyThumbnail, TimeSeparator, ComposerReplyPreview, ReplyLine | [apps/web/src/pages/shell/chat-context.tsx](../../apps/web/src/pages/shell/chat-context.tsx) | [chat-context.stories.tsx](../../apps/web/src/pages/shell/chat-context.stories.tsx) | web |
 | CommandPalette | [apps/web/src/pages/shell/command-palette.tsx](../../apps/web/src/pages/shell/command-palette.tsx) | [command-palette.stories.tsx](../../apps/web/src/pages/shell/command-palette.stories.tsx) | web |
+| ComposerError | [apps/web/src/pages/shell/composer-error.tsx](../../apps/web/src/pages/shell/composer-error.tsx) | [composer-error.stories.tsx](../../apps/web/src/pages/shell/composer-error.stories.tsx) | web |
 | NewSpaceDialog, RenameSpaceDialog, PickerInfoDialog, NewBotSectionDialog, RenameBotSectionDialog, ClearConversationDialog, DeleteBotDialog, DeleteItemDialog | [apps/web/src/pages/shell/dialogs.tsx](../../apps/web/src/pages/shell/dialogs.tsx) | [dialogs.stories.tsx](../../apps/web/src/pages/shell/dialogs.stories.tsx) | web |
 | MentionIcon | [apps/web/src/pages/shell/mention-icon.tsx](../../apps/web/src/pages/shell/mention-icon.tsx) | [mention-icon.stories.tsx](../../apps/web/src/pages/shell/mention-icon.stories.tsx) | web |
 | ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |

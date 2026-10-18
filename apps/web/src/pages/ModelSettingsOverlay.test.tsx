@@ -174,13 +174,15 @@ async function typeInto(input: HTMLInputElement, value: string) {
   });
 }
 
-async function renderSettings() {
+async function renderSettings(focusProvider?: string) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(<ModelSettingsOverlay embedded onClose={() => undefined} />);
+    root.render(
+      <ModelSettingsOverlay embedded onClose={() => undefined} focusProvider={focusProvider} />,
+    );
   });
   await act(async () => {
     await Promise.resolve();
@@ -287,6 +289,49 @@ it("treats the provider this space already uses as connected, with a key optiona
     expect(text).toContain("This space already uses DeepSeek.");
     expect(text).not.toContain("Connect this provider");
     expect(text).toContain("Use your own key");
+  } finally {
+    await view.unmount();
+  }
+});
+
+it("opens the own-key form when a page asks for that provider's key", async () => {
+  const ownKey = (container: HTMLElement) =>
+    [...container.querySelectorAll("details")].find((d) =>
+      d.querySelector("summary")?.textContent?.includes("Use your own key"),
+    );
+  const closed = await renderSettings();
+  try {
+    expect(ownKey(closed.container)?.open).toBe(false);
+  } finally {
+    await closed.unmount();
+  }
+  const view = await renderSettings("deepseek");
+  try {
+    expect(ownKey(view.container)?.open).toBe(true);
+    // The field the link promised is on screen and ready for the key.
+    expect(document.activeElement).toBe(keyField(view.container));
+  } finally {
+    await view.unmount();
+  }
+});
+
+it("focuses the stored key's replace field when opened from a rejected key", async () => {
+  models.credentials.mockResolvedValue([
+    {
+      id: "cred-deepseek",
+      provider: "deepseek",
+      label: "DeepSeek",
+      hasKey: true,
+      isDefault: true,
+      modelId: "deepseek-chat",
+    },
+  ]);
+  const view = await renderSettings("");
+  try {
+    expect(document.activeElement).toBe(keyField(view.container));
+    // With no new key typed, the button under the field says what it would do.
+    expect(view.container.textContent).not.toContain("Save limits");
+    expect(buttons(view.container, "Replace API key").at(-1)?.disabled).toBe(true);
   } finally {
     await view.unmount();
   }

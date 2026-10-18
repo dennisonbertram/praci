@@ -481,6 +481,39 @@ describe("Composer", () => {
   });
 });
 
+function transcriptProps() {
+  const scrollRef = createRef<HTMLDivElement>();
+  const noop = () => {};
+  return {
+    scrollRef,
+    sentHere: { current: false },
+    onScrollRequestHandled: noop,
+    artifactTarget: { botId: "bot-1" },
+    showToolActivity: false,
+    olderCursor: null,
+    loadingOlder: false,
+    answerableAskMessageId: null,
+    running: false,
+    workingBots: [],
+    onLoadOlder: noop,
+    onOpenBot: noop,
+    onAnswer: async () => {},
+    onReply: noop,
+    onQuote: noop,
+    onReact: async () => {},
+    onJumpToMessage: noop,
+    onOpenPeerMessages: noop,
+    peerBot: () => undefined,
+    onRefresh: async () => {},
+    onBotChanged: async () => {},
+    onAddRoutine: noop,
+    voiceReady: false,
+    speakingMessageId: null,
+    onSpeak: noop,
+    onOpenComputer: noop,
+  } as unknown as ComponentProps<typeof Transcript>;
+}
+
 describe("Transcript jump to a search result", () => {
   const msg = (id: string, seq: number): ThreadMessage => ({
     id,
@@ -506,36 +539,7 @@ describe("Transcript jump to a search result", () => {
     container = document.createElement("div");
     document.body.append(container);
     root = createRoot(container);
-    const scrollRef = createRef<HTMLDivElement>();
-    const noop = () => {};
-    const props = {
-      scrollRef,
-      sentHere: { current: false },
-      onScrollRequestHandled: noop,
-      artifactTarget: { botId: "bot-1" },
-      showToolActivity: false,
-      olderCursor: null,
-      loadingOlder: false,
-      answerableAskMessageId: null,
-      running: false,
-      workingBots: [],
-      onLoadOlder: noop,
-      onOpenBot: noop,
-      onAnswer: async () => {},
-      onReply: noop,
-      onQuote: noop,
-      onReact: async () => {},
-      onJumpToMessage: noop,
-      onOpenPeerMessages: noop,
-      peerBot: () => undefined,
-      onRefresh: async () => {},
-      onBotChanged: async () => {},
-      onAddRoutine: noop,
-      voiceReady: false,
-      speakingMessageId: null,
-      onSpeak: noop,
-      onOpenComputer: noop,
-    } as unknown as ComponentProps<typeof Transcript>;
+    const props = transcriptProps();
     const render = (
       messages: ThreadMessage[],
       scrollRequest: { messageId: string; nonce: number } | null,
@@ -554,5 +558,33 @@ describe("Transcript jump to a search result", () => {
     });
     expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
     expect(scrollTo).not.toHaveBeenCalled();
+  });
+});
+
+describe("Transcript failed-run note", () => {
+  it("names a failed routine run as scheduled, so a thread with no question explains itself", () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.scrollTo = vi.fn() as never;
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    const note = () => container?.querySelector('[data-testid="transcript-failed-note"]');
+    const render = (failedScheduled: boolean) =>
+      act(() =>
+        root?.render(
+          <Transcript
+            {...transcriptProps()}
+            messages={[]}
+            scrollRequest={null}
+            failedNote="Key rejected."
+            failedScheduled={failedScheduled}
+          />,
+        ),
+      );
+    render(true);
+    expect(note()?.textContent).toBe("Scheduled run failed: Key rejected.");
+    render(false);
+    expect(note()?.textContent).toBe("Last run failed: Key rejected.");
   });
 });

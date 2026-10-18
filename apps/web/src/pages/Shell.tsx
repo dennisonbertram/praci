@@ -31,6 +31,7 @@ import {
   ATTACHMENT_MAX_COUNT,
   canReactToThreadMessage,
   DEFAULT_AVATAR_STYLE,
+  LEGAL_AGENT_MODEL,
   MESSAGE_REACTIONS,
 } from "@rakazo/contracts";
 import type { ComposerMention, SlashActionId } from "@rakazo/core";
@@ -267,6 +268,7 @@ import {
   computerPanelAutoUsesBoot,
   computerPanelNeedsMaintenance,
   computerTakeoverBlocked,
+  dismissedThreadRunError,
   isComputerStatusEvent,
   isThreadSnapshotEvent,
   prependThreadMessagePage,
@@ -322,6 +324,7 @@ import { BotCreatePicker } from "./shell/bot-picker";
 import { PinsList, PinsStrip, useBotPins } from "./shell/bot-pins";
 import { ComposerReplyPreview, ReplyLine, TimeSeparator } from "./shell/chat-context";
 import { CommandPalette, isCommandPaletteHotkey } from "./shell/command-palette";
+import { ComposerError } from "./shell/composer-error";
 import {
   ClearConversationDialog,
   DeleteBotDialog,
@@ -670,6 +673,7 @@ export function ShellPage() {
   // A link inside Settings (for example Server integrations) opens a page; the dialog closes.
   useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
+  const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
   const [messagingSurfaceEnabled, setMessagingSurfaceEnabled] = useState(false);
   const [messagingProviders, setMessagingProviders] = useState<string[]>([]);
@@ -2043,6 +2047,7 @@ export function ShellPage() {
   const runError = threadRunError(activeSnapshot, dismissedRunErrorIds);
   const displayedRunError = !sendError ? runError : null;
   const displayedRunErrorId = displayedRunError ? (activeSnapshot?.run?.id ?? null) : null;
+  const dismissedRunError = dismissedThreadRunError(activeSnapshot, dismissedRunErrorIds);
   const handleRunErrorPresented = useCallback((runId: string) => {
     rememberSeenRunErrorId(runId);
   }, []);
@@ -2785,8 +2790,10 @@ export function ShellPage() {
     writeBotsSidebarCollapsed(userId, collapsed);
   }
 
-  function openSettings(section: SettingsSection = "general") {
+  /** `modelProvider` opens Models on that provider with its own-key form open. */
+  function openSettings(section: SettingsSection = "general", modelProvider?: string) {
     setSettingsSection(section);
+    setSettingsModelProvider(modelProvider);
     setSettingsOpen(true);
   }
 
@@ -3166,6 +3173,8 @@ export function ShellPage() {
                 workingBots={workingBots}
                 workingActivity={soleWorkingActivity}
                 workingStartedAt={workingStartedAt}
+                failedNote={dismissedRunError}
+                failedScheduled={activeSnapshot?.run?.trigger === "routine"}
                 onLoadOlder={loadOlder}
                 onOpenBot={openBot}
                 onAnswer={answerMessage}
@@ -3263,6 +3272,10 @@ export function ShellPage() {
               runErrorId={displayedRunErrorId}
               onRunErrorPresented={handleRunErrorPresented}
               onDismissError={dismissComposerError}
+              onOpenModelSettings={(provider) =>
+                // "" is a rejected key: open the provider the failed run used.
+                openSettings("models", provider || (activeSnapshot?.run?.modelProvider ?? ""))
+              }
               sending={sending}
               fileInputRef={fileInputRef}
               onAttachmentPick={onAttachmentPick}
@@ -4399,8 +4412,13 @@ export function ShellPage() {
         ) : legalMode ? (
           <LegalPage
             onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
-            onOpenSettings={() => openSettings("models")}
+            onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
             settingsOpen={settingsOpen}
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
           />
         ) : capTableMode ? (
           <CapTablePage
@@ -5320,6 +5338,7 @@ export function ShellPage() {
             usage={usage}
             onUsageOpen={refreshUsage}
             initialSection={settingsSection}
+            modelProvider={settingsModelProvider}
             avatarStyle={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}
             isDeploymentOwner={bootstrapMe?.isDeploymentOwner === true}
             billingEnabled={bootstrapMe?.billingEnabled === true}
@@ -5573,6 +5592,8 @@ export const Transcript = memo(function Transcript({
   workingBots,
   workingActivity: activity,
   workingStartedAt,
+  failedNote,
+  failedScheduled = false,
   onLoadOlder,
   onOpenBot,
   onAnswer,
@@ -5606,6 +5627,10 @@ export const Transcript = memo(function Transcript({
   workingBots: GroupAvatarMember[];
   workingActivity?: WorkingActivity;
   workingStartedAt?: number;
+  /** Why the last run failed, once its error above the composer was dismissed; "" when unknown. */
+  failedNote?: string | null;
+  /** The failed run was a routine (a scheduled or Scan now run), not a reply to a message. */
+  failedScheduled?: boolean;
   onLoadOlder: () => void | Promise<void>;
   onOpenBot: (botId: string) => void;
   onAnswer: (
@@ -6132,6 +6157,21 @@ export const Transcript = memo(function Transcript({
         ) ? (
           <ActiveBotGlyph bots={workingBots} label={workingLabel} startedAt={workingStartedAt} />
         ) : null}
+        {!running && failedNote != null ? (
+          <p data-testid="transcript-failed-note" className="py-2 text-xs text-destructive">
+            {failedScheduled ? (
+              failedNote ? (
+                <Trans>Scheduled run failed: {failedNote}</Trans>
+              ) : (
+                <Trans>Scheduled run failed.</Trans>
+              )
+            ) : failedNote ? (
+              <Trans>Last run failed: {failedNote}</Trans>
+            ) : (
+              <Trans>Last run failed.</Trans>
+            )}
+          </p>
+        ) : null}
       </div>
       {quoteDraft ? (
         <QuoteSelectionButton
@@ -6248,6 +6288,7 @@ export const Composer = memo(function Composer({
   runErrorId,
   onRunErrorPresented,
   onDismissError,
+  onOpenModelSettings,
   sending,
   fileInputRef,
   onAttachmentPick,
@@ -6276,6 +6317,8 @@ export const Composer = memo(function Composer({
   runErrorId: string | null;
   onRunErrorPresented: (runId: string) => void;
   onDismissError: () => void;
+  /** Opens the Models settings a model-setup run error points to. */
+  onOpenModelSettings?: (provider?: string) => void;
   sending: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onAttachmentPick: (files: FileList | null) => boolean;
@@ -6760,26 +6803,15 @@ export const Composer = memo(function Composer({
         {replyAnnouncement}
       </div>
       {sendError || runError ? (
-        <div
+        <ComposerError
           ref={runErrorRef}
-          role="alert"
-          data-testid="composer-error"
-          className="mb-3 flex items-center gap-2 rounded-[14px] border border-destructive/40 bg-destructive/10 px-4 py-2 text-[13px] text-destructive"
-        >
-          <span className="min-w-0 flex-1">{sendError ?? runError}</span>
-          <button
-            type="button"
-            aria-label={t`Dismiss error`}
-            data-testid="composer-error-dismiss"
-            onClick={() => {
-              onDismissError();
-              window.requestAnimationFrame(() => textareaRef.current?.focus());
-            }}
-            className="shrink-0 text-destructive hover:text-foreground"
-          >
-            <X size={13} strokeWidth={2} />
-          </button>
-        </div>
+          message={(sendError ?? runError) as string}
+          onOpenModelSettings={!sendError ? onOpenModelSettings : undefined}
+          onDismiss={() => {
+            onDismissError();
+            window.requestAnimationFrame(() => textareaRef.current?.focus());
+          }}
+        />
       ) : null}
       {replyTarget ? (
         <ComposerReplyPreview

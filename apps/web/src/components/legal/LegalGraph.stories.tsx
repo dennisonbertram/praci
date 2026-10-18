@@ -39,3 +39,14 @@ export const TooManyNodes: Story = {
     },
   },
 };
+
+/** Narrower than the drawing: it scrolls sideways and says so. */
+export const Narrow: Story = {
+  decorators: [
+    (Story) => (
+      <div className="w-[358px]">
+        <Story />
+      </div>
+    ),
+  ],
+};

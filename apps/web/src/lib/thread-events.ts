@@ -13,6 +13,8 @@ import {
   prependThreadHistoryPage,
 } from "@rakazo/core";
 
+import { runErrorText } from "./user-error";
+
 export { activeThreadRuns, isThreadSnapshotEvent, reduceThreadSnapshot } from "@rakazo/core";
 
 const computerStates: ReadonlySet<unknown> = new Set<ComputerStatus["state"]>([
@@ -73,7 +75,20 @@ export function threadRunError(
 ): string | null {
   const run = snapshot?.run;
   if (run?.status !== "failed" || dismissedRunIds?.has(run.id)) return null;
-  return run.error ?? null;
+  return run.error ? runErrorText(run.error) : null;
+}
+
+/**
+ * The error of a failed last run the user dismissed. The transcript keeps it as a short note, so
+ * the question that failed does not look unanswered for no reason.
+ */
+export function dismissedThreadRunError(
+  snapshot: ThreadSnapshot | null,
+  dismissedRunIds: ReadonlySet<string>,
+): string | null {
+  const run = snapshot?.run;
+  if (run?.status !== "failed" || !dismissedRunIds.has(run.id)) return null;
+  return run.error ? runErrorText(run.error) : "";
 }
 
 export function clearActiveThreadRuns(snapshot: ThreadSnapshot): ThreadSnapshot {

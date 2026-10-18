@@ -7,6 +7,16 @@ export function errorText(error: unknown, fallback = t`Something went wrong. Try
   return userErrorMessage(error, { fallback, offline: t`Could not reach the server` });
 }
 
+/** A provider's raw "401" for a run, in words that say what to fix. */
+export const KEY_REJECTED_PATTERN = /^401\b|"code":\s*401\b/;
+
+/** A run's stored error as the user reads it: a rejected API key says where to fix it. */
+export function runErrorText(error: string): string {
+  return KEY_REJECTED_PATTERN.test(error)
+    ? t`The model provider did not accept your API key. Check it in Settings > Models.`
+    : error;
+}
+
 export function credentialIssueText(field: CredentialField): string {
   return field === "email" ? t`Enter a valid email` : t`Enter a password`;
 }

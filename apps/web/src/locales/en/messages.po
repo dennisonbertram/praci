@@ -27,6 +27,11 @@ msgstr "— tokens"
 msgid ", {0} already imported"
 msgstr ", {0} already imported"
 
+#. placeholder {0}: counts.unreviewedDocuments
+#: src/pages/Legal.tsx
+msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
+msgstr "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -66,6 +71,16 @@ msgstr "{0, plural, one {#+ result} other {#+ results}}"
 #: src/pages/finance/FinanceSpend.tsx
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr "{0, plural, one {Last full month} other {Last # full months}}"
+
+#. placeholder {0}: allOpen.length
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{0, plural, one {Show all # open deadline} other {Show all # open deadlines}}"
+msgstr "{0, plural, one {Show all # open deadline} other {Show all # open deadlines}}"
+
+#. placeholder {0}: open.length
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
+msgstr "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
 
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
@@ -265,6 +280,10 @@ msgstr "{days, plural, one {Due in # day} other {Due in # days}}"
 #: src/lib/relative-time.ts
 msgid "{days}d ago"
 msgstr "{days}d ago"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "{deadlines, plural, one {# deadline} other {# deadlines}}"
+msgstr "{deadlines, plural, one {# deadline} other {# deadlines}}"
 
 #: src/components/data-room/format.ts
 msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
@@ -679,6 +698,14 @@ msgstr "Add wallet"
 msgid "Add your investors, auditors and counsel here. Contacts are your address book."
 msgstr "Add your investors, auditors and counsel here. Contacts are your address book."
 
+#: src/pages/Legal.tsx
+msgid "Add your OpenRouter key"
+msgstr "Add your OpenRouter key"
+
+#: src/pages/Legal.tsx
+msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
+msgstr "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 msgid "Address or ENS"
@@ -774,6 +801,10 @@ msgstr "Allow {0} without asking"
 #: src/components/AiDataSharing.tsx
 msgid "Allow {name}"
 msgstr "Allow {name}"
+
+#: src/pages/Legal.tsx
+msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
+msgstr "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
 #: src/pages/Legal.tsx
 msgid "Allow access below first."
@@ -2461,6 +2492,11 @@ msgstr "Could not reconnect"
 msgid "Could not refresh from Carta"
 msgstr "Could not refresh from Carta"
 
+#. placeholder {0}: overview.error
+#: src/pages/Legal.tsx
+msgid "Could not refresh: {0}"
+msgstr "Could not refresh: {0}"
+
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
@@ -3070,7 +3106,7 @@ msgstr "Dismiss"
 msgid "Dismiss {0}"
 msgstr "Dismiss {0}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Dismiss error"
 msgstr "Dismiss error"
 
@@ -4074,18 +4110,38 @@ msgstr "Last 90 days"
 msgid "Last charge"
 msgstr "Last charge"
 
+#: src/pages/Shell.tsx
+msgid "Last run failed: {failedNote}"
+msgstr "Last run failed: {failedNote}"
+
+#: src/pages/Shell.tsx
+msgid "Last run failed."
+msgstr "Last run failed."
+
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}"
-msgstr "Last scan {lastScan}"
+msgid "Last scan {lastScan}. Daily scan paused."
+msgstr "Last scan {lastScan}. Daily scan paused."
+
+#: src/pages/Legal.tsx
+msgid "Last scan {lastScan}. Daily scans wait until you allow access."
+msgstr "Last scan {lastScan}. Daily scans wait until you allow access."
+
+#: src/pages/Legal.tsx
+msgid "Last scan {lastScan}. Scans daily."
+msgstr "Last scan {lastScan}. Scans daily."
 
 #: src/pages/Legal.tsx
 msgid "Last scan failed"
 msgstr "Last scan failed"
 
-#. placeholder {0}: lastRun.error
+#. placeholder {0}: runErrorText(lastRun.error)
 #: src/pages/Legal.tsx
 msgid "Last scan failed: {0}"
 msgstr "Last scan failed: {0}"
+
+#: src/pages/Legal.tsx
+msgid "Last scan failed: OpenRouter did not accept your key."
+msgstr "Last scan failed: OpenRouter did not accept your key."
 
 #: src/components/DesktopUpdates.tsx
 #: src/components/EmailCards.tsx
@@ -4128,8 +4184,12 @@ msgid "Legal relationships"
 msgstr "Legal relationships"
 
 #: src/pages/Legal.tsx
-msgid "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
-msgstr "Legal runs only on Muse Spark 1.2, which needs an OpenRouter key."
+msgid "Legal runs on Muse Spark 1.2 and needs your own OpenRouter key. The space's shared OpenRouter access can't be used for Legal."
+msgstr "Legal runs on Muse Spark 1.2 and needs your own OpenRouter key. The space's shared OpenRouter access can't be used for Legal."
+
+#: src/pages/Legal.tsx
+msgid "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
+msgstr "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Rakazo read your documents"
@@ -4724,6 +4784,10 @@ msgstr "Needs attention"
 msgid "Needs input"
 msgstr "Needs input"
 
+#: src/pages/Legal.tsx
+msgid "Needs Muse Spark 1.2."
+msgstr "Needs Muse Spark 1.2."
+
 #: src/components/integrations/parts.tsx
 msgid "Needs reconnect"
 msgstr "Needs reconnect"
@@ -4745,6 +4809,10 @@ msgstr "Needs takeover"
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Needs you"
+
+#: src/pages/Legal.tsx
+msgid "Needs your OpenRouter key."
+msgstr "Needs your OpenRouter key."
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -5106,6 +5174,10 @@ msgstr "Not now"
 msgid "Not scanned yet"
 msgstr "Not scanned yet"
 
+#: src/pages/Legal.tsx
+msgid "Not scanned yet. Daily scan paused."
+msgstr "Not scanned yet. Daily scan paused."
+
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
 msgstr "Not sent"
@@ -5121,6 +5193,10 @@ msgstr "Not waiting for approval"
 #: src/pages/CapTable.tsx
 msgid "Notes"
 msgstr "Notes"
+
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Nothing is overdue."
+msgstr "Nothing is overdue."
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Nothing is still running"
@@ -5264,7 +5340,7 @@ msgstr "Open in Mercury"
 msgid "Open Inbox"
 msgstr "Open Inbox"
 
-#: src/pages/Legal.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
 msgstr "Open Models settings"
 
@@ -5579,6 +5655,14 @@ msgstr "POST to"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Posted"
 msgstr "Posted"
+
+#: src/pages/Legal.tsx
+msgid "Press Scan now to read your Data room for contracts and deadlines."
+msgstr "Press Scan now to read your Data room for contracts and deadlines."
+
+#: src/pages/Legal.tsx
+msgid "Press Scan now to read your Data room for contracts and deadlines. Legal also scans every day."
+msgstr "Press Scan now to read your Data room for contracts and deadlines. Legal also scans every day."
 
 #: src/components/data-room/Preview.tsx
 msgid "Preview"
@@ -6039,6 +6123,10 @@ msgstr "Replace API key"
 msgid "Replace key"
 msgstr "Replace key"
 
+#: src/pages/Legal.tsx
+msgid "Replace OpenRouter key"
+msgstr "Replace OpenRouter key"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Replace value"
 msgstr "Replace value"
@@ -6129,7 +6217,6 @@ msgstr "Results"
 #: src/components/AccountAccess.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
-#: src/pages/Legal.tsx
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Retry"
 msgstr "Retry"
@@ -6285,13 +6372,13 @@ msgstr "Save credential"
 msgid "Save draft"
 msgstr "Save draft"
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Save limits"
-msgstr "Save limits"
-
 #: src/pages/shell/bot-credentials.tsx
 msgid "Save new value"
 msgstr "Save new value"
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Save output limit"
+msgstr "Save output limit"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Save the workspace and install current software."
@@ -6348,9 +6435,21 @@ msgstr "Scan now"
 msgid "Scanning…"
 msgstr "Scanning…"
 
+#: src/pages/Shell.tsx
+msgid "Scheduled run failed: {failedNote}"
+msgstr "Scheduled run failed: {failedNote}"
+
+#: src/pages/Shell.tsx
+msgid "Scheduled run failed."
+msgstr "Scheduled run failed."
+
 #: src/pages/Inbox.tsx
 msgid "Scheduling"
 msgstr "Scheduling"
+
+#: src/components/legal/LegalGraph.tsx
+msgid "Scroll sideways to see the whole graph."
+msgstr "Scroll sideways to see the whole graph."
 
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -6554,6 +6653,10 @@ msgstr "Server integrations"
 msgid "Server URL"
 msgstr "Server URL"
 
+#: src/pages/Legal.tsx
+msgid "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
+msgstr "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Set up app catalog"
@@ -6745,6 +6848,10 @@ msgstr "Sign-in was denied or failed."
 #: src/components/FinanceCards.tsx
 msgid "since {0}"
 msgstr "since {0}"
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Since {from}"
+msgstr "Since {from}"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
@@ -7167,8 +7274,16 @@ msgid "The Inbox page stops showing new mail until you reconnect."
 msgstr "The Inbox page stops showing new mail until you reconnect."
 
 #: src/pages/Legal.tsx
-msgid "The Legal agent scans your Data room for contracts and deadlines."
-msgstr "The Legal agent scans your Data room for contracts and deadlines."
+msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
+msgstr "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
+msgstr "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
+
+#: src/lib/user-error.ts
+msgid "The model provider did not accept your API key. Check it in Settings > Models."
+msgstr "The model provider did not accept your API key. Check it in Settings > Models."
 
 #: src/components/ComposeEmail.tsx
 msgid "The original message didn't load."
@@ -7201,6 +7316,14 @@ msgstr "Thinking"
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Thinking: {activeThinkingLabel}"
 msgstr "Thinking: {activeThinkingLabel}"
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "This also removes the Legal contract {contractTitle} and its links in the Legal graph. This can't be undone."
+msgstr "This also removes the Legal contract {contractTitle} and its links in the Legal graph. This can't be undone."
+
+#: src/components/data-room/ItemDialogs.tsx
+msgid "This also removes the Legal contract {contractTitle}, its {deadlineCount} (including ones added by hand) and its links in the Legal graph. This can't be undone."
+msgstr "This also removes the Legal contract {contractTitle}, its {deadlineCount} (including ones added by hand) and its links in the Legal graph. This can't be undone."
 
 #: src/pages/Shell.tsx
 msgid "This bot runs on this computer, not a Linux desktop. Shell and files use your home folder."
@@ -7535,10 +7658,6 @@ msgstr "Unpin"
 msgid "Unread"
 msgstr "Unread"
 
-#: src/pages/Legal.tsx
-msgid "Unreviewed documents"
-msgstr "Unreviewed documents"
-
 #: src/components/data-room/DropZone.tsx
 msgid "Unsupported file name"
 msgstr "Unsupported file name"
@@ -7556,6 +7675,10 @@ msgstr "until {0}"
 #: src/pages/Finance.tsx
 msgid "Until {runOutMonth}"
 msgstr "Until {runOutMonth}"
+
+#: src/pages/legal/LegalContracts.tsx
+msgid "Until {to}"
+msgstr "Until {to}"
 
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx

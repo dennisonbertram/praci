@@ -183,6 +183,12 @@ function ItemRow({
           {folder ? (
             <span className="truncate text-xs font-normal text-muted-foreground">{folder}</span>
           ) : null}
+          {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
+          {item.status === "failed" && item.error ? (
+            <span data-testid="data-room-error" className="text-xs font-normal text-destructive">
+              {item.error}
+            </span>
+          ) : null}
         </span>
       </span>
       {!facets && status ? (

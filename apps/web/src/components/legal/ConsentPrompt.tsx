@@ -47,6 +47,13 @@ export function LegalConsentPrompt({
         <Trans>Let the Legal agent read your documents</Trans>
       </h2>
       <p className="text-xs text-muted-foreground">{consent.disclosure}</p>
+      {/* Settings > Models shows the space's model; say plainly that Legal does not use it. */}
+      <p className="text-xs text-muted-foreground">
+        <Trans>
+          The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key.
+          Your other agents keep the model chosen in Settings.
+        </Trans>
+      </p>
       {consent.recipients.length > 0 ? (
         <ul className="flex flex-col gap-0.5 text-xs">
           {consent.recipients.map((recipient) => (

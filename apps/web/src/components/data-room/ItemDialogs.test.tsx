@@ -11,7 +11,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
@@ -20,9 +24,12 @@ const rpc = vi.hoisted(() => ({
   itemMove: vi.fn(),
   folderMove: vi.fn(),
   folderDelete: vi.fn(),
+  itemDelete: vi.fn(),
 }));
-vi.mock("../../lib/rpc", () => ({ rpc: { dataRoom: rpc } }));
+const legal = vi.hoisted(() => ({ itemLinks: vi.fn() }));
+vi.mock("../../lib/rpc", () => ({ rpc: { dataRoom: rpc, legal } }));
 
+import { resetHideAmountsMemory, setHideAmounts } from "../../lib/hide-amounts-preference";
 import { folderNodes } from "./folders";
 import { ItemDialog } from "./ItemDialogs";
 
@@ -40,6 +47,7 @@ beforeEach(() => {
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
+  legal.itemLinks.mockResolvedValue({ contractTitle: null, deadlines: 0 });
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -170,3 +178,62 @@ it("says to empty a folder first when the server refuses to delete it", async ()
   expect(document.body.textContent).toContain("Move or delete what is in this folder first.");
   expect(onClose).not.toHaveBeenCalled();
 });
+
+const flushAll = () => act(async () => {});
+const dialogText = () => document.body.textContent ?? "";
+
+it("says the file's Legal contract and its deadlines go with it", async () => {
+  legal.itemLinks.mockResolvedValue({ contractTitle: "MOCK Office Lease", deadlines: 2 });
+  await act(async () =>
+    root.render(
+      <ItemDialog action="delete" item={item} folders={[]} onClose={() => {}} onDone={() => {}} />,
+    ),
+  );
+  await flushAll();
+  expect(legal.itemLinks).toHaveBeenCalledWith({ itemId: "i1" });
+  expect(dialogText()).toContain(
+    "This also removes the Legal contract MOCK Office Lease, its 2 deadlines (including ones added by hand)",
+  );
+});
+
+it("keeps the plain warning when Legal has nothing for the file or cannot be asked", async () => {
+  legal.itemLinks.mockRejectedValue(new Error("offline"));
+  await act(async () =>
+    root.render(
+      <ItemDialog action="delete" item={item} folders={[]} onClose={() => {}} onDone={() => {}} />,
+    ),
+  );
+  await flushAll();
+  expect(dialogText()).toContain("This can't be undone.");
+  expect(dialogText()).not.toContain("Legal contract");
+});
+
+it.each([
+  [2, "This also removes the Legal contract"],
+  [0, "This also removes the Legal contract"],
+])(
+  "masks a currency amount in the contract title while amounts are hidden (%i deadlines)",
+  async (deadlines, lead) => {
+    setHideAmounts(true);
+    try {
+      legal.itemLinks.mockResolvedValue({ contractTitle: "Lease — $12,500 deposit", deadlines });
+      await act(async () =>
+        root.render(
+          <ItemDialog
+            action="delete"
+            item={item}
+            folders={[]}
+            onClose={() => {}}
+            onDone={() => {}}
+          />,
+        ),
+      );
+      await flushAll();
+      expect(dialogText()).toContain(lead);
+      expect(dialogText()).not.toContain("12,500");
+    } finally {
+      setHideAmounts(false);
+      resetHideAmountsMemory();
+    }
+  },
+);

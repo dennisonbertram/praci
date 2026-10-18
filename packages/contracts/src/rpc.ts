@@ -187,6 +187,7 @@ import {
 import {
   LegalDeadlineSchema,
   LegalGraphSchema,
+  LegalItemLinksSchema,
   LegalOverviewSchema,
   LegalScanNowOutputSchema,
   LegalUpdateDeadlineInputSchema,
@@ -1168,6 +1169,8 @@ export const appContract = {
     updateDeadline: oc.input(LegalUpdateDeadlineInputSchema).output(LegalDeadlineSchema),
     /** Queues one scan run in the Legal agent's thread (returns the active run if one is already going). */
     scanNow: oc.output(LegalScanNowOutputSchema),
+    /** The Legal records deleting this Data room item would remove with it (read-only; never creates the agent). */
+    itemLinks: oc.input(z.object({ itemId: Id })).output(LegalItemLinksSchema),
     /** Data Room consent for the Legal agent's own model; same shapes as dataRoom.consent. */
     consent: oc.output(DataRoomConsentStatusSchema),
     consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),

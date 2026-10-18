@@ -21,10 +21,15 @@ export function LegalDeadlines({
   deadlines,
   onChanged,
   today = todayIso(),
+  onlyOverdue = false,
+  onShowAll,
 }: {
   deadlines: LegalDeadline[];
   onChanged: () => void;
   today?: string;
+  /** Lists only the overdue deadlines, with a way back to all of them. */
+  onlyOverdue?: boolean;
+  onShowAll?: () => void;
 }) {
   const [closing, setClosing] = useState<string | null>(null);
   const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
@@ -67,7 +72,26 @@ export function LegalDeadlines({
       setError(errorText(cause));
     }
   };
-  const open = deadlines.filter((deadline) => !gone.has(deadline.id));
+  const allOpen = deadlines.filter((deadline) => !gone.has(deadline.id));
+  const open = onlyOverdue
+    ? allOpen.filter((deadline) => daysBetween(today, deadline.dueDate) < 0)
+    : allOpen;
+  const filterBar = onlyOverdue ? (
+    <p className="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      {plural(open.length, {
+        one: "Showing # overdue deadline.",
+        other: "Showing # overdue deadlines.",
+      })}
+      {onShowAll ? (
+        <Button size="sm" variant="ghost" onClick={onShowAll}>
+          {plural(allOpen.length, {
+            one: "Show all # open deadline",
+            other: "Show all # open deadlines",
+          })}
+        </Button>
+      ) : null}
+    </p>
+  ) : null;
   const undoBar = undo ? (
     <p role="status" className="mb-2 flex items-center gap-2 text-sm">
       {undo.status === "done" ? (
@@ -83,15 +107,17 @@ export function LegalDeadlines({
   if (open.length === 0) {
     return (
       <div>
+        {filterBar}
         {undoBar}
         <p className="py-8 text-center text-sm text-muted-foreground">
-          <Trans>No open deadlines.</Trans>
+          {onlyOverdue ? <Trans>Nothing is overdue.</Trans> : <Trans>No open deadlines.</Trans>}
         </p>
       </div>
     );
   }
   return (
     <div>
+      {filterBar}
       {undoBar}
       {error ? (
         <p role="alert" className="mb-2 text-sm text-destructive">

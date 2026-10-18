@@ -14,7 +14,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
@@ -39,6 +43,7 @@ vi.mock("../lib/rpc", () => ({
       consent: rpcMock.consent,
       itemDelete: rpcMock.itemDelete,
     },
+    legal: { itemLinks: async () => ({ contractTitle: null, deadlines: 0 }) },
   },
   withSpaceHeaders: () => new Headers(),
   selectedSpaceId: () => "s1",

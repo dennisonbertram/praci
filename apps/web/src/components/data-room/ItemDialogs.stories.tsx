@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { folders, readyItem } from "../../stories/fixtures/data-room";
 
 const contracts = folders[0]!;
@@ -27,7 +28,15 @@ type Story = StoryObj<typeof meta>;
 
 export const Rename: Story = { args: { action: "rename" } };
 export const Move: Story = { args: { action: "move" } };
-export const Delete: Story = { args: { action: "delete" } };
+export const Delete: Story = {
+  args: { action: "delete" },
+  beforeEach: () => mockRpc({ "legal.itemLinks": { contractTitle: null, deadlines: 0 } }),
+};
+/** A file Legal has read: the dialog says its contract and deadlines go with it. */
+export const DeleteWithLegalContract: Story = {
+  args: { action: "delete" },
+  beforeEach: () => mockRpc({ "legal.itemLinks": { contractTitle: "Office lease", deadlines: 2 } }),
+};
 /** "New folder…" chosen: a name field appears and Save creates the folder, then moves the item. */
 export const MoveToNewFolder: Story = {
   args: { action: "move" },
