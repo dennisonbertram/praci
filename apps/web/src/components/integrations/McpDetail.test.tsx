@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import type { McpServer } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -8,7 +9,16 @@ import { afterEach, expect, it, vi } from "vitest";
 import { mockIntegrations, mockServer } from "../../stories/fixtures";
 
 const setWrites = vi.hoisted(() => vi.fn());
-vi.mock("../../lib/rpc", () => ({ rpc: { mcp: { servers: { setWrites } } } }));
+const create = vi.hoisted(() => vi.fn());
+const setExclusive = vi.hoisted(() => vi.fn());
+const navigate = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/rpc", () => ({
+  rpc: { mcp: { servers: { setWrites } }, integrationAgents: { create, setExclusive } },
+}));
+vi.mock("react-router-dom", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-router-dom")>()),
+  useNavigate: () => navigate,
+}));
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
     t: (parts: TemplateStringsArray, ...values: unknown[]) =>
@@ -29,9 +39,15 @@ document.body.append(container);
 const root = createRoot(container);
 const refresh = vi.fn();
 
-async function show(writesEnabled: boolean, endpoint = "https://mcp.app.carta.com/mcp") {
+async function show(
+  writesEnabled: boolean,
+  endpoint = "https://mcp.app.carta.com/mcp",
+  extra: Partial<McpServer> = {},
+) {
   const data = {
-    ...mockIntegrations({ servers: [mockServer("s1", "Carta", { endpoint, writesEnabled })] }),
+    ...mockIntegrations({
+      servers: [mockServer("s1", "Carta", { endpoint, writesEnabled, ...extra })],
+    }),
     refresh,
   };
   await act(async () =>
@@ -44,7 +60,7 @@ async function show(writesEnabled: boolean, endpoint = "https://mcp.app.carta.co
     ),
   );
 }
-const writesSwitch = () => container.querySelector<HTMLElement>("#carta-writes");
+const writesSwitch = () => container.querySelector<HTMLElement>("#server-writes");
 const press = (label: string) =>
   act(async () =>
     [...document.querySelectorAll<HTMLElement>("button")]
@@ -54,6 +70,9 @@ const press = (label: string) =>
 
 afterEach(() => {
   setWrites.mockReset();
+  create.mockReset();
+  setExclusive.mockReset();
+  navigate.mockReset();
   act(() => root.render(null));
 });
 
@@ -120,4 +139,64 @@ it("offers Disconnect sign-in only while signed in", async () => {
   expect(container.textContent).toContain("Disconnect sign-in");
   await render("reconnect");
   expect(container.textContent).not.toContain("Disconnect sign-in");
+});
+
+const OTHER = "https://mcp.example.com/sse";
+const withAgent = { agentBotId: "bot_ada" };
+const label = (text: string) =>
+  [...container.querySelectorAll<HTMLElement>("label")].find((l) => l.textContent?.includes(text));
+
+it("offers Create agent, which creates the agent and opens its chat", async () => {
+  create.mockResolvedValue({ server: {}, botId: "bot_new" });
+  await show(false, OTHER);
+  expect(container.textContent).not.toContain("Allow changes in");
+  await press("Create agent");
+  expect(create).toHaveBeenCalledWith({ serverId: "s1" });
+  expect(navigate).toHaveBeenCalledWith("/app/bot_new");
+});
+
+it("shows an error and stays when creating the agent fails", async () => {
+  create.mockRejectedValue(new Error("nope"));
+  await show(false, OTHER);
+  await press("Create agent");
+  expect(navigate).not.toHaveBeenCalled();
+  expect(container.querySelector('[role="alert"]')).not.toBeNull();
+});
+
+it("has no Create agent button on Carta or once an agent exists", async () => {
+  await show(false);
+  expect(container.textContent).not.toContain("Create agent");
+  await show(false, OTHER, withAgent);
+  expect(container.textContent).not.toContain("Create agent");
+  expect(container.textContent).toContain("Only this agent");
+  expect(container.querySelector<HTMLAnchorElement>('a[href="/app/bot_ada"]')?.textContent).toBe(
+    "Ada",
+  );
+});
+
+it("asks before the agent's changes switch turns on, not off", async () => {
+  setWrites.mockResolvedValue({});
+  await show(false, OTHER, withAgent);
+  expect(label("Allow changes in Carta")).toBeDefined();
+  await act(async () => writesSwitch()?.click());
+  expect(setWrites).not.toHaveBeenCalled();
+  expect(document.body.textContent).toContain("It asks before each change.");
+  await press("Allow changes");
+  expect(setWrites).toHaveBeenCalledWith({ id: "s1", enabled: true });
+  await show(true, OTHER, withAgent);
+  await act(async () => writesSwitch()?.click());
+  expect(setWrites).toHaveBeenLastCalledWith({ id: "s1", enabled: false });
+});
+
+it("Only this agent saves at once and, while on, Used by lists only the agent", async () => {
+  setExclusive.mockResolvedValue({});
+  await show(false, OTHER, withAgent);
+  expect(container.textContent).toContain("Bram");
+  await act(async () => container.querySelector<HTMLElement>("#server-exclusive")?.click());
+  expect(setExclusive).toHaveBeenCalledWith({ serverId: "s1", exclusive: true });
+  await show(false, OTHER, { ...withAgent, agentExclusive: true });
+  expect(container.textContent).not.toContain("Bram can use");
+  expect(container.querySelectorAll('[role="switch"][aria-label$="can use Carta"]')).toHaveLength(
+    1,
+  );
 });
