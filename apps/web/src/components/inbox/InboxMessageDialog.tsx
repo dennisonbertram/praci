@@ -51,6 +51,7 @@ export function InboxMessageDialog({
   nextId,
   onNavigate,
   unread,
+  inInbox,
   onArchive,
   onMoveToInbox,
   onRead,
@@ -69,6 +70,8 @@ export function InboxMessageDialog({
    * loaded message's state, and Archive shows only while the message is in the Inbox.
    */
   unread?: boolean;
+  /** Whether the message is in the Inbox, when the caller knows better than the loaded copy. */
+  inInbox?: boolean;
   onArchive?: () => void;
   /** Offered while the message is archived, such as a search result. */
   onMoveToInbox?: () => void;
@@ -107,14 +110,15 @@ export function InboxMessageDialog({
             nextId={nextId}
             onNavigate={onNavigate}
             unread={unread}
+            inInbox={inInbox}
             onArchive={onArchive}
             onMoveToInbox={onMoveToInbox}
             onRead={onRead}
+            notice={notice}
             composing={composing}
             setComposing={setComposing}
           />
         ) : null}
-        {messageId && notice ? <div className="flex justify-center">{notice}</div> : null}
       </DialogContent>
     </Dialog>
   );
@@ -129,9 +133,11 @@ function InboxMessage({
   nextId,
   onNavigate,
   unread,
+  inInbox: inInboxProp,
   onArchive,
   onMoveToInbox,
   onRead,
+  notice,
   composing,
   setComposing,
 }: {
@@ -141,9 +147,11 @@ function InboxMessage({
   nextId?: string;
   onNavigate?: (messageId: string) => void;
   unread?: boolean;
+  inInbox?: boolean;
   onArchive?: () => void;
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  notice?: React.ReactNode;
   composing: ComposeMode | null;
   setComposing: (mode: ComposeMode | null) => void;
 }) {
@@ -189,9 +197,8 @@ function InboxMessage({
   // Read on every render: closing the composer re-renders, so a kept draft shows at once.
   const draft = recallClosed({ kind: "reply", messageId });
   const shownUnread = unread ?? message?.unread;
-  // Moving it back here makes it an Inbox message again, though the loaded copy still says archived.
-  const [movedIn, setMovedIn] = useState<string | null>(null);
-  const inInbox = message?.inInbox !== false || movedIn === messageId;
+  // The caller's row is newer than the loaded copy after an archive or a move.
+  const inInbox = inInboxProp ?? message?.inInbox !== false;
   const canArchive = onArchive && inInbox ? onArchive : undefined;
   useEffect(() => {
     if (!onNavigate || composing) return;
@@ -312,14 +319,7 @@ function InboxMessage({
             </Button>
           ) : null}
           {onMoveToInbox && !inInbox ? (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                onMoveToInbox();
-                setMovedIn(messageId);
-              }}
-            >
+            <Button variant="outline" size="sm" onClick={onMoveToInbox}>
               <Inbox aria-hidden="true" />
               <Trans>Move to Inbox</Trans>
             </Button>
@@ -330,6 +330,8 @@ function InboxMessage({
               {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
             </Button>
           ) : null}
+          {/* In the toolbar, so it neither covers the email nor moves the dialog. */}
+          {notice ? <div className="ms-auto flex min-w-0 max-w-full">{notice}</div> : null}
         </div>
       ) : null}
       {message && !composing && draft ? (

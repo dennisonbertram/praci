@@ -430,6 +430,33 @@ it("archives under a filter and a search too", async () => {
   expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "b" });
 });
 
+it("keeps an archived search result, which can then be moved back with Undo", async () => {
+  const c = await render(["/app/inbox?q=grant&mail=a"]);
+  await click(byText(c, "dialog archive"));
+  expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "a" });
+  // The search still finds it, so it stays rather than leaving "No results".
+  expect(c.querySelector('[data-row-id="a"]')).not.toBeNull();
+  await click(c.querySelector('[data-row-id="a"]'));
+  await click(byText(c, "dialog move"));
+  expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "a" });
+  const notice = c.querySelector('[data-testid="notice"]') as HTMLElement;
+  expect(notice.textContent).toContain('Moved "Subject a" to Inbox');
+  await click(byText(notice, "Undo"));
+  expect(rpcMock.archive).toHaveBeenCalledTimes(2);
+});
+
+it("shows a slow search even when a reload starts while it is loading", async () => {
+  const c = await render();
+  let settle: (value: InboxListOutput) => void = () => {};
+  rpcMock.list.mockReturnValueOnce(new Promise((r) => (settle = r)));
+  rpcMock.list.mockReturnValue(new Promise(() => {}));
+  await act(async () => go("/app/inbox?q=invoice"));
+  // A sync or triage poll reloads the list before the search answers.
+  await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+  await act(async () => settle(list([row("inv", { subject: "Invoice" })])));
+  expect(c.textContent).toContain("Invoice");
+});
+
 it("offers Undo after an archive, which restores the thread and reloads the list", async () => {
   const c = await render();
   await click(byText(c, "archive b"));
@@ -747,6 +774,21 @@ it("offers Reconnect Gmail, not Try again, when an account's sign-in lapsed", as
   await click(byText(c, "Reconnect Gmail"));
   expect(connectMail).toHaveBeenCalledTimes(1);
   expect(c.textContent).not.toContain("Try again");
+});
+
+it("explains a rate-limited Inbox with no mail, and shows Try again working", async () => {
+  rpcMock.list.mockResolvedValue(
+    list([], { failedAccounts: ["Me"], reconnectAccounts: [], rateLimitedAccounts: ["Me"] }),
+  );
+  const c = await render();
+  expect(c.querySelector("h2")?.textContent).toBe("Your mail didn't load");
+  expect(c.querySelector('[role="alert"]')?.textContent).toContain("Gmail is limiting requests");
+  let finish: (value: unknown) => void = () => {};
+  rpcMock.refresh.mockReturnValue(new Promise((r) => (finish = r)));
+  await click(byText(c, "Try again"));
+  expect(byText(c, "Trying again…")?.disabled).toBe(true);
+  await act(async () => finish({}));
+  expect(byText(c, "Try again")?.disabled).toBe(false);
 });
 
 it("turns off search and Filter until mail is connected", async () => {

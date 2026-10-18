@@ -156,3 +156,28 @@ export const LoadError: Story = {
       },
     }),
 };
+
+export const NeedsReconnectNoMail: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": {
+        ...list,
+        rows: [],
+        failedAccounts: ["conn_1"],
+        reconnectAccounts: ["conn_1"],
+      },
+    }),
+};
+
+export const RateLimitedNoMail: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": {
+        ...list,
+        rows: [],
+        failedAccounts: ["conn_1"],
+        reconnectAccounts: [],
+        rateLimitedAccounts: ["conn_1"],
+      },
+    }),
+};

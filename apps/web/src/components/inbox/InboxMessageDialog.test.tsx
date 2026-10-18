@@ -434,26 +434,30 @@ it("drops the quoted 'On … wrote:' header from a reply's preview", async () =>
   expect(withoutQuoteHeader("Plain note")).toBe("Plain note");
 });
 
-it("offers Move to Inbox for an archived message, then Archive once it is back", async () => {
-  get.mockResolvedValue({ ...message("m1"), inInbox: false });
+it("follows the caller's archived state over an older loaded copy", async () => {
+  // Loaded before it was archived in this session, so the copy still says Inbox.
+  get.mockResolvedValue({ ...message("m1"), inInbox: true });
   const onMoveToInbox = vi.fn();
-  act(() =>
+  const show = (inInbox: boolean) =>
     root.render(
       <InboxMessageDialog
         messageId="m1"
+        inInbox={inInbox}
         onArchive={vi.fn()}
         onMoveToInbox={onMoveToInbox}
         onClose={() => {}}
       />,
-    ),
-  );
+    );
+  act(() => show(false));
   await flush();
+  const labels = () => [...document.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labels()).not.toContain("Archive");
   const move = [...document.querySelectorAll("button")].find((b) =>
     b.textContent?.includes("Move to Inbox"),
   );
   await act(async () => move?.click());
   expect(onMoveToInbox).toHaveBeenCalledTimes(1);
-  const labels = [...document.querySelectorAll("button")].map((b) => b.textContent);
-  expect(labels).toContain("Archive");
-  expect(labels).not.toContain("Move to Inbox");
+  act(() => show(true));
+  expect(labels()).toContain("Archive");
+  expect(labels()).not.toContain("Move to Inbox");
 });

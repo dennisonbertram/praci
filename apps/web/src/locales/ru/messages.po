@@ -3712,9 +3712,17 @@ msgstr ""
 msgid "Gmail is limiting requests. Try again in a minute."
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Gmail needs to be reconnected"
+msgstr ""
+
 #: src/components/ComposeEmail.tsx
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail needs to be reconnected."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Gmail signed this account out. Sign in again to see your mail here."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -7506,6 +7514,10 @@ msgstr ""
 msgid "Try the test again."
 msgstr "Повторите тест."
 
+#: src/pages/Inbox.tsx
+msgid "Trying again…"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"
 msgstr ""
@@ -8087,6 +8099,10 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Your email address"
 msgstr "Ваш адрес электронной почты"
+
+#: src/pages/Inbox.tsx
+msgid "Your mail didn't load"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Your name"
