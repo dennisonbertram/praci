@@ -758,6 +758,7 @@ export function detectRecurring(
         accounts,
       ),
       fixedCost: isFixedCost(key, lastTxn.category),
+      ...(categorySlug(lastTxn.category) === "credit-loan-payments" ? { cardBill: true } : {}),
     });
   }
   return found.sort((a, b) => b.monthlyCents - a.monthlyCents || a.key.localeCompare(b.key));
@@ -819,6 +820,7 @@ export function upcoming(
         name: charge.name,
         dates,
         amountCents: charge.amountCents,
+        ...(charge.cardBill ? { cardBill: true } : {}),
       });
     }
   }

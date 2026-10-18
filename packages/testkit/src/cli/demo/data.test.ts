@@ -272,6 +272,11 @@ describe("mock demo data", () => {
     expect(thisMonth.size).toBeGreaterThanOrEqual(8);
     expect(all.some((e) => e.amount.currency === "EUR")).toBe(true);
     expect(all.some((e) => /\$\d/.test(e.memo))).toBe(true);
+    // Each memo says what the charge was for (a vendor page lists them), and stays marked Mock.
+    for (const e of all) {
+      expect(e.memo).toMatch(/\(Mock\)$/);
+      expect(e.memo).not.toBe(MOCK_NOTE);
+    }
     const treasury = (await mercury("getTreasury", {})) as {
       accounts: Array<{ netReturns: unknown[] }>;
     };

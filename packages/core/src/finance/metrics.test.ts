@@ -930,6 +930,10 @@ describe("subscriptions", () => {
       "office-space",
     ]);
     expect(subscriptions(fixed).items.map((s) => s.key)).toEqual(["notion"]);
+    // Upcoming calls it a card bill, not a recurring vendor.
+    const next = upcoming(fixed, [], [], NOW).items;
+    expect(next.find((i) => i.key === "brex")?.cardBill).toBe(true);
+    expect(next.find((i) => i.key === "notion")?.cardBill).toBeUndefined();
   });
   it("tags no overlap when only one vendor of a group is subscribed", () => {
     const only = subscriptions(detectRecurring(monthly("Anthropic", "06", 70000, 4), NOW));

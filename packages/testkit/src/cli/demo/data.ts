@@ -424,11 +424,36 @@ const MERCURY_MONTHLY: Array<{
   },
 ];
 
-const BREX_MONTHLY: Array<Recurring & { day: number; risePerMonth?: number }> = [
-  { vendor: "Cloudnine Hosting (Mock)", cents: 481_200, category: "Servers", day: 8 },
-  { vendor: "Docuflow (Mock)", cents: 12_900, category: "Software", day: 9 },
-  { vendor: "Chatterbox Messaging (Mock)", cents: 8_750, category: "Software", day: 10 },
-  { vendor: "Sketchpad Design (Mock)", cents: 4_500, category: "Software", day: 14 },
+/** `memo` says what the charge was for, as a card memo would; the month and "(Mock)" are added. */
+const BREX_MONTHLY: Array<Recurring & { day: number; memo: string; risePerMonth?: number }> = [
+  {
+    vendor: "Cloudnine Hosting (Mock)",
+    cents: 481_200,
+    category: "Servers",
+    day: 8,
+    memo: "Hosting",
+  },
+  {
+    vendor: "Docuflow (Mock)",
+    cents: 12_900,
+    category: "Software",
+    day: 9,
+    memo: "Document signing plan",
+  },
+  {
+    vendor: "Chatterbox Messaging (Mock)",
+    cents: 8_750,
+    category: "Software",
+    day: 10,
+    memo: "Team chat seats",
+  },
+  {
+    vendor: "Sketchpad Design (Mock)",
+    cents: 4_500,
+    category: "Software",
+    day: 14,
+    memo: "Design tool seat",
+  },
   // Rising about 8% a month, so a vendor page shows a real change.
   {
     vendor: "Globex Cloud (Mock)",
@@ -436,16 +461,59 @@ const BREX_MONTHLY: Array<Recurring & { day: number; risePerMonth?: number }> = 
     category: "Servers",
     day: 16,
     risePerMonth: 0.08,
+    memo: "Compute usage",
   },
-  { vendor: "Mockbooks Accounting (Mock)", cents: 15_000, category: "Software", day: 18 },
+  {
+    vendor: "Mockbooks Accounting (Mock)",
+    cents: 15_000,
+    category: "Software",
+    day: 18,
+    memo: "Bookkeeping plan",
+  },
   // Two AI tools in the same overlap group, so Subscriptions shows the "overlaps" pill.
-  { vendor: "Cursor Seats (Mock)", cents: 20_000, category: "Software", day: 4 },
-  { vendor: "Devin Agent Seats (Mock)", cents: 50_000, category: "Software", day: 6 },
+  {
+    vendor: "Cursor Seats (Mock)",
+    cents: 20_000,
+    category: "Software",
+    day: 4,
+    memo: "Editor seats",
+  },
+  {
+    vendor: "Devin Agent Seats (Mock)",
+    cents: 50_000,
+    category: "Software",
+    day: 6,
+    memo: "Agent seats",
+  },
   // More categories, early in the month, so the month-to-date Breakdown has 8 or more.
-  { vendor: "Penwright Office Supply (Mock)", cents: 31_400, category: "Office Supplies", day: 2 },
-  { vendor: "Brightsign Ads (Mock)", cents: 180_000, category: "Marketing", day: 3 },
-  { vendor: "Lunchbox Catering (Mock)", cents: 42_600, category: "Meals", day: 7 },
-  { vendor: "Placeholder Legal LLP (Mock)", cents: 125_000, category: "Legal", day: 11 },
+  {
+    vendor: "Penwright Office Supply (Mock)",
+    cents: 31_400,
+    category: "Office Supplies",
+    day: 2,
+    memo: "Office supplies",
+  },
+  {
+    vendor: "Brightsign Ads (Mock)",
+    cents: 180_000,
+    category: "Marketing",
+    day: 3,
+    memo: "Search ads",
+  },
+  {
+    vendor: "Lunchbox Catering (Mock)",
+    cents: 42_600,
+    category: "Meals",
+    day: 7,
+    memo: "Team lunch",
+  },
+  {
+    vendor: "Placeholder Legal LLP (Mock)",
+    cents: 125_000,
+    category: "Legal",
+    day: 11,
+    memo: "Monthly retainer",
+  },
 ];
 
 /** How many months of history the demo holds (the catalog asks for 7 or more). */
@@ -563,7 +631,7 @@ export function demoFinance(now = new Date()) {
             merchant: { id: `pmch_${m.day}`, name: m.vendor },
             vendor: { id: `pmch_${m.day}`, name: m.vendor, email: null },
             merchant_category: { id: `pmca_${m.day}`, name: m.category },
-            memo: MOCK_NOTE,
+            memo: `${m.memo}, ${at.toLocaleString("en-US", { month: "long", timeZone: "UTC" })} (Mock)`,
             original_amount: money,
             purchased_amount: money,
             amount: money,
@@ -645,7 +713,7 @@ export function demoFinance(now = new Date()) {
       merchant: { id: "pmch_air", name: "Skyline Air (Mock)" },
       vendor: { id: "pmch_air", name: "Skyline Air (Mock)", email: null },
       merchant_category: { id: "pmca_air", name: "Travel" },
-      memo: MOCK_NOTE,
+      memo: "Flight to the robotics expo (Mock)",
       original_amount: pendingMoney,
       purchased_amount: pendingMoney,
       amount: pendingMoney,
@@ -665,7 +733,7 @@ export function demoFinance(now = new Date()) {
       merchant: { id: "pmch_eur", name: "Berlin Coworking (Mock)" },
       vendor: { id: "pmch_eur", name: "Berlin Coworking (Mock)", email: null },
       merchant_category: { id: "pmca_rent", name: "Rent" },
-      memo: MOCK_NOTE,
+      memo: "Coworking day passes (Mock)",
       original_amount: euros,
       purchased_amount: euros,
       amount: euros,

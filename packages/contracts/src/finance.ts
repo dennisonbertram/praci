@@ -446,6 +446,8 @@ export const RecurringChargeSchema = z.object({
   paidWith: z.array(PaidWithEntrySchema),
   /** True for payroll and rent: recurring, but fixed costs rather than subscriptions. Absent from older payloads. */
   fixedCost: z.boolean().optional(),
+  /** True for a card or loan bill paid from the bank (its category is Credit & Loan Payments). */
+  cardBill: z.boolean().optional(),
 });
 
 export const UpcomingItemSchema = z.object({
@@ -461,6 +463,8 @@ export const UpcomingItemSchema = z.object({
   billStatus: z.string().optional(),
   /** A bill's own due date, which may be before today when it is overdue. Bills only. */
   dueAt: DayId.optional(),
+  /** A recurring card bill paid from the bank, shown as a card bill rather than a recurring vendor. */
+  cardBill: z.boolean().optional(),
 });
 
 export const UpcomingSchema = z.object({
