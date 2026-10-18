@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -22,6 +22,7 @@ import type { createApp } from "../../../apps/api/src/app.ts";
 import type { BotIntroHarness } from "./discard-bot-intro.js";
 import { discardBotIntroFromCreate } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
+import { isolatedDatabase } from "./isolated-database.js";
 
 type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
 process.env.WAKEUP_DRIVER = "memory";
@@ -35,6 +36,7 @@ let botIntroHarness: BotIntroHarness | undefined;
 describeJourneys("required product journeys", () => {
   let app: App;
   let stop: () => Promise<void>;
+  let database: Awaited<ReturnType<typeof isolatedDatabase>> | undefined;
   let prisma: Awaited<ReturnType<typeof createApp>>["prisma"];
   let connector: Awaited<ReturnType<typeof createApp>>["connector"];
   let executor: Awaited<ReturnType<typeof createApp>>["executor"];
@@ -113,8 +115,10 @@ describeJourneys("required product journeys", () => {
 
   beforeAll(async () => {
     const { createApp } = await import("../../../apps/api/src/app.ts");
+    database = await isolatedDatabase(process.env.DATABASE_URL!);
     const handles = await createApp({
-      databaseUrl: process.env.DATABASE_URL!,
+      databaseUrl: database.url,
+      realtimeDatabaseUrl: database.url,
       dataDir,
       sandboxProvider: "fake",
       agentRuntime: "scripted",
@@ -131,7 +135,15 @@ describeJourneys("required product journeys", () => {
   });
 
   afterAll(async () => {
-    await stop?.();
+    try {
+      await stop?.();
+    } finally {
+      try {
+        await database?.close();
+      } finally {
+        rmSync(dataDir, { recursive: true, force: true });
+      }
+    }
   });
 
   it("computer updates preserve the workspace and reserve the shared computer until completion", async () => {

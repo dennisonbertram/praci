@@ -248,11 +248,7 @@ import {
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
-import {
-  chatStarterQuestions,
-  financeAgentSuggestions,
-  findFinanceAgent,
-} from "../lib/finance-agent";
+import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { findLegalAgent } from "../lib/legal-agent";
@@ -3283,15 +3279,6 @@ export function ShellPage() {
     .toUpperCase();
 
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
-  const chatStarters = chatStarterQuestions(
-    active,
-    userId,
-    Boolean(activeSnapshot) &&
-      transcriptMessages.length === 0 &&
-      activeSnapshot?.olderCursor == null &&
-      !transcriptRunning &&
-      !sending,
-  );
   const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel;
   const paneAcceptsFiles = !pageMode && Boolean(active || activeGroup);
   function onPaneFileDrag(event: DragEvent<HTMLElement>) {
