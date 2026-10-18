@@ -274,7 +274,7 @@ export function InboxRow({
               >
                 <Ellipsis aria-hidden="true" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="min-w-44">
+              <DropdownMenuContent align="end" className="min-w-44 max-w-72">
                 {actions.map(({ name, Icon, run }) => (
                   <DropdownMenuItem key={name} onClick={run}>
                     <Icon aria-hidden="true" />
@@ -291,7 +291,7 @@ export function InboxRow({
                     {/* No tooltip on touch, so the menu says the mark covers the whole sender. */}
                     <span className="flex min-w-0 flex-col">
                       <span>{name}</span>
-                      <span className="truncate text-xs text-muted-foreground">
+                      <span className="text-xs break-words text-muted-foreground">
                         {t`All mail from ${row.from}`}
                       </span>
                     </span>

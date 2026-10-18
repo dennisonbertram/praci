@@ -71,7 +71,8 @@ let rememberedTab: string | undefined;
 
 type Status =
   | { kind: "marked"; messageId: string; mark: InboxMark; sender: string }
-  | { kind: "archived"; messageId: string; subject: string };
+  | { kind: "archived"; messageId: string; subject: string }
+  | { kind: "moved"; messageId: string; subject: string };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
 type InboxViewCategory = (typeof InboxViewCategorySchema.options)[number];
@@ -588,20 +589,26 @@ export function InboxPage({
             <Trans>Archived</Trans>
           )}
         </span>
+      ) : status.kind === "moved" ? (
+        <span className="min-w-0 truncate py-1 pe-2" dir="auto">
+          <Trans>Moved "{maskCurrencyWhenHidden(status.subject)}" to Inbox</Trans>
+        </span>
       ) : status.mark === "noise" ? (
         <Trans>Mail from {status.sender} is now marked as noise</Trans>
       ) : (
         <Trans>Mail from {status.sender} is now marked important</Trans>
       )}
-      <Button
-        variant="secondary"
-        size="sm"
-        onClick={() =>
-          status.kind === "archived" ? unarchive(status.messageId) : mark(status.messageId, null)
-        }
-      >
-        <Trans>Undo</Trans>
-      </Button>
+      {status.kind === "moved" ? null : (
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={() =>
+            status.kind === "archived" ? unarchive(status.messageId) : mark(status.messageId, null)
+          }
+        >
+          <Trans>Undo</Trans>
+        </Button>
+      )}
     </div>
   ) : null;
 
@@ -618,7 +625,13 @@ export function InboxPage({
             <Trans>Inbox</Trans>
           </h1>
           {spaceName ? (
-            <span className="truncate text-xs text-muted-foreground @md:max-w-72">{spaceName}</span>
+            // Wraps rather than truncating: the end of the name is often what tells spaces apart.
+            <span
+              title={spaceName}
+              className="line-clamp-2 text-xs break-words text-muted-foreground @md:max-w-72"
+            >
+              {spaceName}
+            </span>
           ) : null}
         </div>
         <form
@@ -643,7 +656,9 @@ export function InboxPage({
                 setDraft("");
                 if (query) setParam("q", "");
               }}
-              placeholder={t`Search mail, e.g. from:sam has:attachment`}
+              // Short enough to fit beside the agent panel; the hover title keeps the example.
+              placeholder={t`Search mail`}
+              title={t`Search mail, e.g. from:sam has:attachment`}
               aria-label={t`Search mail`}
               // Nothing to search or filter before mail is connected.
               disabled={Boolean(data) && accounts.length === 0}
@@ -996,10 +1011,11 @@ export function InboxPage({
         onMoveToInbox={
           openRow && !openRow.inInbox
             ? () => {
-                const { id } = openRow;
+                const { id, subject } = openRow;
                 patchRows((list) =>
                   list.map((row) => (row.id === id ? { ...row, inInbox: true } : row)),
                 );
+                setStatus({ kind: "moved", messageId: id, subject });
                 setError("");
                 rpc.inbox
                   .unarchive({ messageId: id })

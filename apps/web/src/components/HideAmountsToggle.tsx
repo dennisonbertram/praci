@@ -41,7 +41,7 @@ export function HideAmountsMenuItem({ onDone }: { onDone?: () => void }) {
   return (
     <Button
       variant="ghost"
-      className="h-auto w-full justify-start py-1.5 font-normal"
+      className="h-auto w-full justify-start py-1.5 font-normal whitespace-normal"
       aria-pressed={hidden}
       data-testid="hide-amounts-menu-item"
       onClick={() => {
@@ -54,9 +54,12 @@ export function HideAmountsMenuItem({ onDone }: { onDone?: () => void }) {
       ) : (
         <Eye className="text-muted-foreground" strokeWidth={1.75} />
       )}
-      <span className="flex flex-col items-start text-start">
+      <span className="flex min-w-0 flex-col items-start text-start">
         <span>{hidden ? t`Show amounts` : t`Hide amounts`}</span>
-        <span className="text-xs text-muted-foreground">{helper()}</span>
+        {/* The menu is narrow; the header button's tooltip carries the full caveats. */}
+        <span className="text-xs text-muted-foreground">
+          {t`Hides money amounts in finance, chat and email.`}
+        </span>
       </span>
     </Button>
   );

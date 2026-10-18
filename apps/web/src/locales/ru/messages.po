@@ -2683,10 +2683,6 @@ msgstr ""
 msgid "Couldn't save. Try again."
 msgstr ""
 
-#: src/components/ComposeEmail.tsx
-msgid "Couldn't send. Try again."
-msgstr ""
-
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr "Не удалось обновить аватары"
@@ -3700,8 +3696,20 @@ msgstr "Git-событие"
 msgid "Gmail"
 msgstr ""
 
+#: src/components/ComposeEmail.tsx
+msgid "Gmail didn't accept it. Check the addresses."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Gmail didn't respond. Try again."
+msgstr ""
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now. Try again in a minute."
+msgstr ""
+
+#: src/components/ComposeEmail.tsx
+msgid "Gmail is limiting requests. Try again in a minute."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -3810,6 +3818,10 @@ msgstr "Скрыть расшифровку"
 
 #: src/components/HideAmountsToggle.tsx
 msgid "Hides amounts on finance screens and masks currency amounts in chat and email. Plain numbers in agent replies may still show. A reply you write keeps the original amounts."
+msgstr ""
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Hides money amounts in finance, chat and email."
 msgstr ""
 
 #: src/lib/ticket-priority.ts
@@ -4694,6 +4706,11 @@ msgstr "Переместить в"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Move to Inbox"
+msgstr ""
+
+#. placeholder {0}: maskCurrencyWhenHidden(status.subject)
+#: src/pages/Inbox.tsx
+msgid "Moved \"{0}\" to Inbox"
 msgstr ""
 
 #: src/components/call/CallCard.tsx

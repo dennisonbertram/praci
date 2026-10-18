@@ -63,11 +63,13 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
     messageId,
     onClose,
     onArchive,
+    onMoveToInbox,
     notice,
   }: {
     messageId: string | null;
     onClose: () => void;
     onArchive?: () => void;
+    onMoveToInbox?: () => void;
     notice?: ReactNode;
   }) =>
     messageId ? (
@@ -79,6 +81,11 @@ vi.mock("../components/inbox/InboxMessageDialog", async (importActual) => {
         {onArchive ? (
           <button type="button" onClick={onArchive}>
             dialog archive
+          </button>
+        ) : null}
+        {onMoveToInbox ? (
+          <button type="button" onClick={onMoveToInbox}>
+            dialog move
           </button>
         ) : null}
         <div data-testid="notice">{notice}</div>
@@ -529,6 +536,16 @@ it("offers no archive for mail that is not in the inbox", async () => {
   expect(rpcMock.archive).not.toHaveBeenCalled();
   await click(c.querySelector('[data-row-id="a"]'));
   expect(byText(c, "dialog archive")).toBeUndefined();
+});
+
+it("moving an archived search result to the Inbox confirms it and offers Archive", async () => {
+  rpcMock.list.mockResolvedValue(list([row("a", { inInbox: false })]));
+  const c = await render(["/app/inbox?q=old&mail=a"]);
+  rpcMock.list.mockResolvedValue(list([row("a")]));
+  await click(byText(c, "dialog move"));
+  expect(rpcMock.unarchive).toHaveBeenCalledWith({ messageId: "a" });
+  expect(c.querySelector('[data-testid="notice"]')?.textContent).toContain("to Inbox");
+  expect(byText(c, "dialog archive")).toBeDefined();
 });
 
 it("does not say No results while loaded pages still have rows", async () => {

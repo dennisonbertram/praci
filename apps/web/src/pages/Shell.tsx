@@ -1721,8 +1721,13 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, query);
+    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId);
   }, [bootstrapMe, botSections, bots, groups, spaces, query]);
+  // After a space switch its header may sit below the fold; bring it into view.
+  useEffect(() => {
+    if (!bootstrapMe?.spaceId) return;
+    document.querySelector("[data-sidebar-current]")?.scrollIntoView?.({ block: "nearest" });
+  }, [bootstrapMe?.spaceId]);
 
   const openSpaceChat = useCallback(
     (spaceId: string, path: string) => {
@@ -3631,7 +3636,11 @@ export function ShellPage() {
                   );
                 const hasSpaceActions = group.canRenameSpace || group.canDeleteSpace;
                 return (
-                  <div key={group.key} data-sidebar-group={group.key}>
+                  <div
+                    key={group.key}
+                    data-sidebar-group={group.key}
+                    data-sidebar-current={group.current ? "" : undefined}
+                  >
                     {group.title || hasSpaceActions ? (
                       <div
                         className={
@@ -3643,7 +3652,8 @@ export function ShellPage() {
                         {group.title ? (
                           <button
                             type="button"
-                            className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase text-muted-foreground/60 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
+                            aria-current={group.current ? "true" : undefined}
+                            className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-muted-foreground/60"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                             onClick={() => {
                               if (group.emptySpaceId) {
                                 openSpaceChat(group.emptySpaceId, "/onboarding");
@@ -3694,6 +3704,12 @@ export function ShellPage() {
                             }
                           >
                             <span className="flex min-w-0 items-center gap-1.5">
+                              {group.current ? (
+                                <span
+                                  className="size-1.5 shrink-0 rounded-full bg-primary"
+                                  aria-hidden="true"
+                                />
+                              ) : null}
                               {group.showLock ? (
                                 <Lock size={11} strokeWidth={2} aria-hidden="true" />
                               ) : null}

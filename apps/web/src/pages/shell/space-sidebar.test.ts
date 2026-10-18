@@ -61,6 +61,17 @@ describe("sidebarGroupsForSpaces", () => {
     });
   });
 
+  it("marks the space being shown, including an empty one, only when several are listed", () => {
+    const spaces = [space("space-1", "Personal"), space("space-2", "Empty", { bots: [] })];
+    expect(sidebarGroupsForSpaces(spaces, "", "space-2").map((g) => g.current)).toEqual([
+      false,
+      true,
+    ]);
+    expect(sidebarGroupsForSpaces([space("space-1", "Personal")], "", "space-1")[0]?.current).toBe(
+      false,
+    );
+  });
+
   it("hides space actions while a search removes every chat from the only space", () => {
     expect(
       sidebarGroupsForSpaces([space("space-1", "Personal", { canRename: true })], "missing"),

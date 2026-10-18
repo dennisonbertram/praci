@@ -434,7 +434,7 @@ it("drops the quoted 'On … wrote:' header from a reply's preview", async () =>
   expect(withoutQuoteHeader("Plain note")).toBe("Plain note");
 });
 
-it("offers Move to Inbox for an archived message", async () => {
+it("offers Move to Inbox for an archived message, then Archive once it is back", async () => {
   get.mockResolvedValue({ ...message("m1"), inInbox: false });
   const onMoveToInbox = vi.fn();
   act(() =>
@@ -453,7 +453,7 @@ it("offers Move to Inbox for an archived message", async () => {
   );
   await act(async () => move?.click());
   expect(onMoveToInbox).toHaveBeenCalledTimes(1);
-  expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Archive")).toBe(
-    false,
-  );
+  const labels = [...document.querySelectorAll("button")].map((b) => b.textContent);
+  expect(labels).toContain("Archive");
+  expect(labels).not.toContain("Move to Inbox");
 });

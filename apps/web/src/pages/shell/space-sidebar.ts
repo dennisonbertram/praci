@@ -40,6 +40,8 @@ export async function commitSpaceRename(input: {
 export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends SidebarChat>(
   spaces: readonly SidebarSpace<TBot, TGroup>[],
   query: string,
+  /** The space the app is showing; its headers are marked when several spaces are listed. */
+  currentSpaceId?: string,
 ) {
   const needle = query.toLowerCase();
   const showSpaceNames = spaces.length > 1;
@@ -73,6 +75,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         : group.title,
       showLock: showSpaceNames,
       emptySpaceId: undefined as string | undefined,
+      current: showSpaceNames && space.id === currentSpaceId,
       spaceId: space.id,
       spaceName: space.name,
       ...spaceHeaderMenu(space, index === 0),
@@ -89,6 +92,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         sectionId: null,
         showLock: showSpaceNames,
         emptySpaceId: showSpaceNames ? space.id : undefined,
+        current: showSpaceNames && space.id === currentSpaceId,
         spaceId: space.id,
         spaceName: space.name,
         ...spaceHeaderMenu(space, true),

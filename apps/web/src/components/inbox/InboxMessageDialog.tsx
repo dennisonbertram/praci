@@ -189,7 +189,10 @@ function InboxMessage({
   // Read on every render: closing the composer re-renders, so a kept draft shows at once.
   const draft = recallClosed({ kind: "reply", messageId });
   const shownUnread = unread ?? message?.unread;
-  const canArchive = onArchive && message?.inInbox !== false ? onArchive : undefined;
+  // Moving it back here makes it an Inbox message again, though the loaded copy still says archived.
+  const [movedIn, setMovedIn] = useState<string | null>(null);
+  const inInbox = message?.inInbox !== false || movedIn === messageId;
+  const canArchive = onArchive && inInbox ? onArchive : undefined;
   useEffect(() => {
     if (!onNavigate || composing) return;
     const onKeyDown = (event: KeyboardEvent) => {
@@ -305,14 +308,18 @@ function InboxMessage({
           {canArchive ? (
             <Button variant="outline" size="sm" onClick={canArchive}>
               <Archive aria-hidden="true" />
-              {/* Icons only on phones, so the actions stay on one line. */}
-              <span className="max-sm:sr-only">
-                <Trans>Archive</Trans>
-              </span>
+              <Trans>Archive</Trans>
             </Button>
           ) : null}
-          {onMoveToInbox && message.inInbox === false ? (
-            <Button variant="outline" size="sm" onClick={onMoveToInbox}>
+          {onMoveToInbox && !inInbox ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onMoveToInbox();
+                setMovedIn(messageId);
+              }}
+            >
               <Inbox aria-hidden="true" />
               <Trans>Move to Inbox</Trans>
             </Button>
@@ -320,9 +327,7 @@ function InboxMessage({
           {onRead && shownUnread !== undefined ? (
             <Button variant="outline" size="sm" onClick={() => onRead(shownUnread)}>
               {shownUnread ? <MailOpen aria-hidden="true" /> : <Mail aria-hidden="true" />}
-              <span className="max-sm:sr-only">
-                {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
-              </span>
+              {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
             </Button>
           ) : null}
         </div>

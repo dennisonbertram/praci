@@ -2683,10 +2683,6 @@ msgstr "Couldn't save the draft"
 msgid "Couldn't save. Try again."
 msgstr "Couldn't save. Try again."
 
-#: src/components/ComposeEmail.tsx
-msgid "Couldn't send. Try again."
-msgstr "Couldn't send. Try again."
-
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
 msgstr "Couldn't update avatars"
@@ -3700,9 +3696,21 @@ msgstr "Git event"
 msgid "Gmail"
 msgstr "Gmail"
 
+#: src/components/ComposeEmail.tsx
+msgid "Gmail didn't accept it. Check the addresses."
+msgstr "Gmail didn't accept it. Check the addresses."
+
+#: src/components/ComposeEmail.tsx
+msgid "Gmail didn't respond. Try again."
+msgstr "Gmail didn't respond. Try again."
+
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now. Try again in a minute."
 msgstr "Gmail is limiting requests right now. Try again in a minute."
+
+#: src/components/ComposeEmail.tsx
+msgid "Gmail is limiting requests. Try again in a minute."
+msgstr "Gmail is limiting requests. Try again in a minute."
 
 #: src/components/ComposeEmail.tsx
 #: src/lib/inbox-sync-error.ts
@@ -3811,6 +3819,10 @@ msgstr "Hide transcript"
 #: src/components/HideAmountsToggle.tsx
 msgid "Hides amounts on finance screens and masks currency amounts in chat and email. Plain numbers in agent replies may still show. A reply you write keeps the original amounts."
 msgstr "Hides amounts on finance screens and masks currency amounts in chat and email. Plain numbers in agent replies may still show. A reply you write keeps the original amounts."
+
+#: src/components/HideAmountsToggle.tsx
+msgid "Hides money amounts in finance, chat and email."
+msgstr "Hides money amounts in finance, chat and email."
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4695,6 +4707,11 @@ msgstr "Move to"
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Move to Inbox"
 msgstr "Move to Inbox"
+
+#. placeholder {0}: maskCurrencyWhenHidden(status.subject)
+#: src/pages/Inbox.tsx
+msgid "Moved \"{0}\" to Inbox"
+msgstr "Moved \"{0}\" to Inbox"
 
 #: src/components/call/CallCard.tsx
 msgid "Mute"
