@@ -314,6 +314,34 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await prisma.connection.delete({ where: { id: second } });
     });
 
+    it("reports a rate limit only while its backoff is active", async () => {
+      await wipe();
+      const stale = await connect(a, "box-a-stale");
+      const active = await connect(a, "box-a-active");
+      const hour = new Date(Date.now() - 3_600_000);
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: stale,
+          lastErrorAt: hour,
+          lastErrorKind: "rate_limited",
+          backoffUntil: new Date(hour.getTime() + 30_000),
+        },
+      });
+      await prisma.mailSyncState.create({
+        data: {
+          connectionId: active,
+          lastErrorAt: new Date(),
+          lastErrorKind: "rate_limited",
+          backoffUntil: new Date(Date.now() + 30_000),
+        },
+      });
+
+      const out = await inboxList(deps, a, {});
+      expect(out.rateLimitedAccounts).toEqual([active]);
+      expect(out.failedAccounts).toEqual([active]);
+      await prisma.connection.deleteMany({ where: { id: { in: [stale, active] } } });
+    });
+
     it("answers with an empty account list when no mail account is connected", async () => {
       const out = await inboxList(deps, actor(userA, spaceB), {});
       expect(out).toMatchObject({ accounts: [], rows: [], agent: null, syncedAt: null });

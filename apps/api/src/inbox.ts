@@ -400,18 +400,24 @@ export async function inboxList(
   ]);
 
   const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled, marks));
+  // A rate limit is a pause, not a lasting fault: it is reported only while its backoff runs.
+  // After that the next sync decides, so an old one must not claim Gmail is limiting requests now.
+  const nowMs = Date.now();
+  const current = states.filter(
+    (s) =>
+      s.lastErrorAt &&
+      (s.lastErrorKind !== "rate_limited" || (s.backoffUntil && s.backoffUntil.getTime() > nowMs)),
+  );
   const synced = states.flatMap((s) => (s.lastSyncedAt ? [s.lastSyncedAt.getTime()] : []));
   return {
     accounts,
     agent: agentOut,
     rows,
     syncedAt: synced.length ? new Date(Math.max(...synced)).toISOString() : null,
-    failedAccounts: states.filter((s) => s.lastErrorAt).map((s) => s.connectionId),
-    reconnectAccounts: states
-      .filter((s) => s.lastErrorAt && s.needsReconnect)
-      .map((s) => s.connectionId),
-    rateLimitedAccounts: states
-      .filter((s) => s.lastErrorAt && s.lastErrorKind === "rate_limited")
+    failedAccounts: current.map((s) => s.connectionId),
+    reconnectAccounts: current.filter((s) => s.needsReconnect).map((s) => s.connectionId),
+    rateLimitedAccounts: current
+      .filter((s) => s.lastErrorKind === "rate_limited")
       .map((s) => s.connectionId),
     enabled,
     triageBlocked,
