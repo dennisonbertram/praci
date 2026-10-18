@@ -280,6 +280,7 @@ import { type MissingBotSeen, resolveRouteBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { sharedInflight } from "../lib/shared-inflight";
+import { PANEL_DOCKED_QUERY, SIDEBAR_DOCKED_QUERY } from "../lib/shell-layout";
 import { slashSkillOptions as pickSlashSkills, slashSkillLabel } from "../lib/slash-skills";
 import {
   activeThreadRuns,
@@ -419,7 +420,7 @@ const COMPOSER_ONE_LINE_GAP_PX = 14;
 const COMPOSER_COLLAPSE_SLACK_PX = 16;
 
 /** Phones get page agents collapsed by default: there the side panel covers the page. */
-const wideScreen = () => window.matchMedia("(min-width: 768px)").matches;
+const wideScreen = () => window.matchMedia(PANEL_DOCKED_QUERY).matches;
 /** How long "Sent to <group> · Open" stays under the composer after an @group message. */
 const FORWARDED_NOTICE_MS = 8000;
 
@@ -541,9 +542,7 @@ export function ShellPage() {
   const [legalAgentError, setLegalAgentError] = useState("");
   // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
   // would cover the page.
-  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(
-    () => !window.matchMedia("(min-width: 768px)").matches,
-  );
+  const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(() => !wideScreen());
   const [creatingCartaAgent, setCreatingCartaAgent] = useState(false);
   // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
   const [cartaConnected, setCartaConnected] = useState(false);
@@ -753,7 +752,7 @@ export function ShellPage() {
   const [namingBotId, setNamingBotId] = useState<string | null>(null);
 
   useEffect(() => {
-    const desktop = window.matchMedia("(min-width: 768px)");
+    const desktop = window.matchMedia(SIDEBAR_DOCKED_QUERY);
     function closeMobileSidebar() {
       if (desktop.matches) setMobileSidebarOpen(false);
     }
@@ -3147,7 +3146,8 @@ export function ShellPage() {
         setRestoredPanelKey(null);
         return;
       }
-      pendingPanelRestore.current = readRightPanelState(panelStorageKey);
+      // Below the docked breakpoint the panel would overlay the chat, so it starts closed.
+      pendingPanelRestore.current = wideScreen() ? readRightPanelState(panelStorageKey) : null;
     }
     const saved = pendingPanelRestore.current;
     if (!saved) return;
@@ -3584,7 +3584,7 @@ export function ShellPage() {
         if (
           mobileSidebarOpen ||
           event.touches.length !== 1 ||
-          window.matchMedia("(min-width: 768px)").matches
+          window.matchMedia(SIDEBAR_DOCKED_QUERY).matches
         ) {
           mobileSidebarSwipeRef.current = null;
           return;
@@ -3607,7 +3607,7 @@ export function ShellPage() {
           !swipe ||
           !touch ||
           mobileSidebarOpen ||
-          window.matchMedia("(min-width: 768px)").matches
+          window.matchMedia(SIDEBAR_DOCKED_QUERY).matches
         ) {
           return;
         }
@@ -3636,7 +3636,7 @@ export function ShellPage() {
           type="button"
           aria-label={t`Close navigation`}
           onClick={() => setMobileSidebarOpen(false)}
-          className="absolute inset-y-0 end-0 start-[min(calc(100%-48px),316px)] z-30 bg-overlay md:hidden"
+          className="absolute inset-y-0 end-0 start-[min(calc(100%-48px),316px)] z-30 bg-overlay lg:hidden"
         />
       ) : null}
       <aside
@@ -3644,12 +3644,12 @@ export function ShellPage() {
         data-bots-sidebar-density={botsSidebarDensity}
         data-collapsed={botsSidebarCollapsed ? "true" : "false"}
         inert={botsSidebarCollapsed && !mobileSidebarOpen ? true : undefined}
-        className={`absolute inset-y-0 start-0 z-40 flex w-[calc(100%-48px)] max-w-[316px] shrink-0 flex-col border-e border-sidebar-border bg-sidebar transition-[transform,width,opacity] md:static md:z-auto md:translate-x-0 ${
+        className={`absolute inset-y-0 start-0 z-40 flex w-[calc(100%-48px)] max-w-[316px] shrink-0 flex-col border-e border-sidebar-border bg-sidebar transition-[transform,width,opacity] lg:static lg:z-auto lg:translate-x-0 ${
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
         } ${
           botsSidebarCollapsed
-            ? "md:w-0 md:max-w-0 md:overflow-hidden md:border-e-0 md:opacity-0 md:pointer-events-none"
-            : "md:w-[316px]"
+            ? "lg:w-0 lg:max-w-0 lg:overflow-hidden lg:border-e-0 lg:opacity-0 lg:pointer-events-none"
+            : "lg:w-[316px]"
         }`}
       >
         <SidebarHeaderRow
@@ -3708,7 +3708,7 @@ export function ShellPage() {
               </button>
               <button
                 type="button"
-                className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:inline-flex"
+                className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 lg:inline-flex"
                 aria-label={t`Hide sidebar`}
                 title={t`Hide sidebar`}
                 data-testid="minimize-bots-sidebar"
@@ -3719,7 +3719,7 @@ export function ShellPage() {
               <Button
                 variant="ghost"
                 size="icon"
-                className="app-no-drag md:hidden"
+                className="app-no-drag lg:hidden"
                 aria-label={t`Close menu`}
                 title={t`Close menu`}
                 data-testid="close-mobile-sidebar"
@@ -4516,7 +4516,7 @@ export function ShellPage() {
           data-testid="bots-sidebar-edge"
           aria-label={botsSidebarCollapsed ? t`Show sidebar` : t`Hide sidebar`}
           aria-pressed={!botsSidebarCollapsed}
-          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 md:block ${
+          className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
             botsSidebarCollapsed ? "start-0" : "start-[308px]"
           }`}
           onPointerDown={(event) => {
@@ -4585,14 +4585,14 @@ export function ShellPage() {
           <div
             data-testid="mobile-sidebar-swipe-edge"
             aria-hidden="true"
-            className="absolute bottom-20 start-0 top-16 z-20 w-3 touch-none md:hidden"
+            className="absolute bottom-20 start-0 top-16 z-20 w-3 touch-none lg:hidden"
           />
         ) : null}
         {/* Page modes keep only the navigation controls, so phones can still open the sidebar. */}
         <div
-          className={`app-drag flex items-center justify-between px-3 md:px-[22px] ${
+          className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
             pageMode
-              ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " md:hidden"}`
+              ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " lg:hidden"}`
               : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
           }`}
         >
@@ -4603,7 +4603,7 @@ export function ShellPage() {
               type="button"
               aria-label={t`Open navigation`}
               onClick={() => setMobileSidebarOpen(true)}
-              className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:hidden"
+              className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:hidden"
             >
               <Menu size={19} strokeWidth={1.7} />
             </button>
@@ -4614,7 +4614,7 @@ export function ShellPage() {
                 aria-label={t`Show sidebar`}
                 title={t`Show sidebar`}
                 onClick={() => setBotsSidebarCollapsedPref(false)}
-                className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent md:grid"
+                className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:grid"
               >
                 <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
               </button>
