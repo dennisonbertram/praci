@@ -207,3 +207,16 @@ export async function addGmailAccount(page: Page, secondName = "Work") {
   await renamed;
   await expect(page.getByText(secondName, { exact: true })).toBeVisible();
 }
+
+/**
+ * Records the AI data sharing consent the Inbox agent's mail tools need. The e2e stack's scripted
+ * runtime lists no consent recipients, so the Inbox banner's Allow cannot grant it there; the
+ * harness writes the same consent row instead. Call it before the agent reads mail.
+ */
+export async function allowInboxAgentMail(page: Page) {
+  const { userId } = await rpc<{ userId: string }>(page, "me", {});
+  const api = process.env.API_URL ?? "http://127.0.0.1:3110";
+  const response = await page.request.post(`${api}/__e2e/ai-consent?userId=${userId}`);
+  expect(response.ok()).toBe(true);
+  expect(((await response.json()) as { granted: number }).granted).toBeGreaterThan(0);
+}

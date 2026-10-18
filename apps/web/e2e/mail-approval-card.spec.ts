@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
 import {
+  allowInboxAgentMail,
   captureScreenshot,
   completeOnboarding,
-  connectTwoGmailAccounts,
+  connectMailFromInbox,
   rpc,
   signup,
 } from "./helpers";
@@ -15,14 +16,15 @@ test("a mail send waits in the chat as an editable card and approving it runs th
   await completeOnboarding(page);
 
   await page.goto("/app/inbox");
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   // Actions run without asking by default; the card appears once the person asks to review email.
   await rpc(page, "approvalRules/set", {
     effect: "require_approval",
     matchKind: "category",
     matchValue: "email",
   });
+  // The Inbox agent reads mail only with the AI data sharing consent the Inbox sorting needs.
+  await allowInboxAgentMail(page);
   await page.getByTestId("sidebar-inbox").click();
   const panel = page.getByTestId("side-panel");
   await page.getByRole("main").getByRole("button", { name: "Ask Inbox agent" }).click();
