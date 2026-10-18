@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { captureScreenshot, completeOnboarding, connectTwoGmailAccounts, signup } from "./helpers";
+import { captureScreenshot, completeOnboarding, connectMailFromInbox, signup } from "./helpers";
 
 test("the Inbox agent cites mail as urgency-grouped cards that open the message", async ({
   page,
@@ -9,8 +9,7 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
   await completeOnboarding(page);
 
   await page.goto("/app/inbox");
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();

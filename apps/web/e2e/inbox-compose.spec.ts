@@ -2,7 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   captureScreenshot,
   completeOnboarding,
-  connectTwoGmailAccounts,
+  connectMailFromInbox,
   rpc,
   signup,
 } from "./helpers";
@@ -46,8 +46,7 @@ const htmlOf = (raw: string) => partOf(raw, "html");
 
 async function connectGmail(page: Page) {
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 }
 

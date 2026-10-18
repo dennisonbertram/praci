@@ -3,7 +3,7 @@ import {
   addGmailAccount,
   captureScreenshot,
   completeOnboarding,
-  connectTwoGmailAccounts,
+  connectMailFromInbox,
   finishConnectDialog,
   signup,
 } from "./helpers";
@@ -127,8 +127,7 @@ test("an opened message covers the whole screen on a phone and fills it with the
   await signup(page, `inbox-phone-${Date.now()}@rakazo.test`, "password12", "Inbox Phone");
   await completeOnboarding(page);
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 
   // The Inbox agent panel starts collapsed, so nothing covers the page on a phone.
@@ -153,8 +152,7 @@ test("an opened message lists its attachments and downloads one", async ({ page 
   await signup(page, `inbox-attach-${Date.now()}@rakazo.test`, "password12", "Inbox Attach");
   await completeOnboarding(page);
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
@@ -185,8 +183,7 @@ test("Inbox filters and searches the whole mailbox through Gmail", async ({ page
   await signup(page, `inbox-filter-${Date.now()}@rakazo.test`, "password12", "Inbox Filter");
   await completeOnboarding(page);
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
@@ -351,8 +348,7 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
   });
 
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
@@ -475,8 +471,7 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   });
 
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
@@ -643,8 +638,7 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
   );
 
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
@@ -682,8 +676,7 @@ test("Inbox offers no consent prompt while there is no model to allow", async ({
   });
 
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
@@ -727,8 +720,7 @@ test("Inbox says what failed when an account's sync failed, and nothing when it 
   });
 
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");
@@ -791,8 +783,7 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
   });
 
   await page.getByTestId("sidebar-inbox").click();
-  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
-  await connectTwoGmailAccounts(page);
+  await connectMailFromInbox(page);
   await page.getByTestId("sidebar-inbox").click();
 
   const main = page.getByRole("main");

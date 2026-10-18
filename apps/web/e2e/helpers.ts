@@ -168,6 +168,20 @@ export async function finishConnectDialog(page: Page, appName: string) {
 }
 
 /**
+ * From an Inbox with no mail connected: Connect mail opens Gmail's connect dialog and returns to
+ * the Inbox once connected. Then adds a second account (named `secondName`) on Gmail's page.
+ */
+export async function connectMailFromInbox(page: Page, secondName = "Work") {
+  await page.getByRole("button", { name: "Connect mail", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Connect", exact: true }).click();
+  await finishConnectDialog(page, "Gmail");
+  await expect(page).toHaveURL(/\/app\/inbox$/);
+  await page.getByTestId("sidebar-integrations").click();
+  await page.getByRole("link", { name: "Gmail", exact: true }).click();
+  await addGmailAccount(page, secondName);
+}
+
+/**
  * From the Integrations page, connects two Gmail accounts through the connect dialog and the
  * app's detail page, and names the second one. Leaves the browser on Gmail's detail page.
  */
