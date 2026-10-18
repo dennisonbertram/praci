@@ -75,6 +75,12 @@ describe("status badges", () => {
     expect(appStatus([row("revoked")])).toBeNull();
   });
 
+  it("needs a reconnect when every connected account's sign-in was refused", () => {
+    const lapsed = { ...row("connected"), needsReconnect: true };
+    expect(appStatus([lapsed])).toBe("reconnect");
+    expect(appStatus([lapsed, row("connected")])).toBe("connected");
+  });
+
   const server = (extra: Partial<McpServer>): McpServer => ({
     id: "s",
     spaceId: "w",

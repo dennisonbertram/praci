@@ -37,8 +37,13 @@ export function filterCatalog(
 export type StatusKind = "connected" | "reconnect" | "failed" | "connecting";
 
 /** Status of one managed app, from all of its account rows. A working account wins. */
-export function appStatus(rows: readonly Pick<Connection, "status">[]): StatusKind | null {
-  if (rows.some((row) => row.status === "connected")) return "connected";
+export function appStatus(
+  rows: readonly Pick<Connection, "status" | "needsReconnect">[],
+): StatusKind | null {
+  const live = rows.filter((row) => row.status === "connected");
+  if (live.some((row) => !row.needsReconnect)) return "connected";
+  // Every account is connected on paper, but its provider refuses the sign-in.
+  if (live.length > 0) return "reconnect";
   if (rows.some((row) => row.status === "pending")) return "connecting";
   if (rows.some((row) => row.status === "error")) return "failed";
   return null;

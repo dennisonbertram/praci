@@ -5772,6 +5772,7 @@ msgid "Recently added"
 msgstr "Recently added"
 
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -6777,6 +6778,10 @@ msgstr "Sign-in was cancelled or did not finish. Try again."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Sign-in was denied or failed."
 msgstr "Sign-in was denied or failed."
+
+#: src/components/integrations/AppDetail.tsx
+msgid "Signed out. Reconnect to keep reading this account's mail."
+msgstr "Signed out. Reconnect to keep reading this account's mail."
 
 #. placeholder {0}: shortDay(card.from)
 #: src/components/FinanceCards.tsx
@@ -8043,6 +8048,11 @@ msgstr "You have an unsent reply to this email."
 #: src/pages/Shell.tsx
 msgid "You have control"
 msgstr "You have control"
+
+#. placeholder {0}: item.name
+#: src/components/integrations/ConnectAppDialog.tsx
+msgid "You'll sign in to {0} in a new window. Then you choose which bots can use it."
+msgstr "You'll sign in to {0} in a new window. Then you choose which bots can use it."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"

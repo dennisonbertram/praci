@@ -434,8 +434,7 @@ export function IntegrationsHome({
     if (entry) return connectFirstParty(entry);
     // A catalog app (?connect=gmail from the Inbox) opens its own page's connect flow.
     const app = data.catalog.find((item) => item.slug.toLowerCase() === wanted.toLowerCase());
-    if (app)
-      navigate(appPath(app, connect ? { connect: true, next: returnTo.current ?? undefined } : {}));
+    if (app) navigate(appPath(app, { connect, next: returnTo.current ?? undefined }));
     else setQuery(wanted);
     returnTo.current = null;
   }, [data.loaded, data.catalog, firstPartyMcp, navigate]);

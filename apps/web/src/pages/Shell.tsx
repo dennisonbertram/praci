@@ -4418,7 +4418,7 @@ export function ShellPage() {
             }
             onRefreshed={refreshInboxUnread}
             onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
-            onReconnectMail={() => navigate("/app/integrations?open=gmail")}
+            onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
             spaceName={
               spaces.length > 1
                 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name

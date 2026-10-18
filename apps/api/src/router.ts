@@ -5040,6 +5040,7 @@ export function createRouter(deps: RouterDeps) {
           // Without an order Postgres returns rows in storage order, which changes when a row is
           // updated, so the accounts of one app swapped places between loads.
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+          include: { mailSyncState: { select: { needsReconnect: true, lastErrorAt: true } } },
         });
         return rows.map((row) => ({
           id: row.id,
@@ -5048,6 +5049,10 @@ export function createRouter(deps: RouterDeps) {
           displayName: row.displayName,
           status: row.status as "pending" | "connected" | "revoked" | "error",
           error: connectionError(row),
+          // Same test as the Inbox's Reconnect line, so both pages agree.
+          ...(row.mailSyncState?.needsReconnect && row.mailSyncState.lastErrorAt
+            ? { needsReconnect: true }
+            : {}),
           capabilities: [],
           createdAt: row.createdAt.toISOString(),
         }));
