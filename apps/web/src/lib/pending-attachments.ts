@@ -10,6 +10,14 @@ export function isFileDrag(dataTransfer: Pick<DataTransfer, "types" | "items"> |
   );
 }
 
+/** A file drag that no inner drop target (the composer) has claimed yet. */
+export function isUnclaimedFileDrag(event: {
+  dataTransfer: Pick<DataTransfer, "types" | "items"> | null;
+  defaultPrevented: boolean;
+}): boolean {
+  return !event.defaultPrevented && isFileDrag(event.dataTransfer);
+}
+
 export function isFilePaste(
   clipboardData: Pick<DataTransfer, "files" | "items"> | null | undefined,
 ): boolean {

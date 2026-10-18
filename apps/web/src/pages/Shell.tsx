@@ -262,6 +262,7 @@ import { createAgentSendWatch } from "../lib/outbox";
 import {
   isFileDrag,
   isFilePaste,
+  isUnclaimedFileDrag,
   readFileAsBase64,
   revokePendingAttachmentPreviews,
 } from "../lib/pending-attachments";
@@ -723,6 +724,9 @@ export function ShellPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const mobileSidebarSwipeRef = useRef<{ startX: number; startY: number } | null>(null);
   const [draggedBotId, setDraggedBotId] = useState<string | null>(null);
+  const [paneDraggingFiles, setPaneDraggingFiles] = useState(false);
+  const [fileDropBotId, setFileDropBotId] = useState<string | null>(null);
+  const [focusComposerBotId, setFocusComposerBotId] = useState<string | null>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [botsSidebarCollapsed, setBotsSidebarCollapsed] = useState(false);
   const botsSidebarEdgeDragRef = useRef<{ startX: number; mode: "expand" | "collapse" } | null>(
@@ -2390,8 +2394,8 @@ export function ShellPage() {
     [t],
   );
   const onAttachmentPick = useCallback(
-    (files: FileList | null) => {
-      const threadKey = activeGroupId.current ?? activeBotId.current;
+    (files: FileList | null, targetThreadKey?: string) => {
+      const threadKey = targetThreadKey ?? activeGroupId.current ?? activeBotId.current;
       if (!threadKey || !files?.length) return false;
       const existing = attachmentsForThread(pendingAttachments, threadKey);
       const next: PendingAttachment[] = [];
@@ -3241,6 +3245,19 @@ export function ShellPage() {
       !transcriptRunning &&
       !sending,
   );
+  const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel;
+  const paneAcceptsFiles = !pageMode && Boolean(active || activeGroup);
+  function onPaneFileDrag(event: DragEvent<HTMLElement>) {
+    if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return setPaneDraggingFiles(false);
+    event.preventDefault();
+    event.dataTransfer.dropEffect = composerDisabled ? "none" : "copy";
+    setPaneDraggingFiles(!composerDisabled);
+  }
+  useEffect(() => {
+    if (!focusComposerBotId || active?.id !== focusComposerBotId) return;
+    document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']")?.focus();
+    setFocusComposerBotId(null);
+  }, [active?.id, focusComposerBotId]);
   const threadView = (
     <>
       {cartaAgentPage ? (
@@ -3408,7 +3425,7 @@ export function ShellPage() {
               draftKey={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
               running={composerShowsStop(currentRuns)}
-              disabled={Boolean(recordingSkill) || pageAgentNeedsModel}
+              disabled={composerDisabled}
               pendingAttachments={activePendingAttachments}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
@@ -4004,6 +4021,7 @@ export function ShellPage() {
                               draggable={item.kind === "bot"}
                               data-roster-bot-id={item.kind === "bot" ? item.chat.id : undefined}
                               data-roster-unread={item.chat.unread ? "true" : undefined}
+                              data-file-drop={fileDropBotId === item.chat.id ? "" : undefined}
                               data-roster-error={rowError && compact ? "true" : undefined}
                               data-roster-depth={
                                 item.kind === "bot" && treeActive ? depth : undefined
@@ -4021,6 +4039,18 @@ export function ShellPage() {
                               onDragOver={(event) => {
                                 if (
                                   item.kind === "bot" &&
+                                  item.chat.spaceId === bootstrapMe?.spaceId &&
+                                  isUnclaimedFileDrag(event)
+                                ) {
+                                  event.preventDefault();
+                                  event.dataTransfer.dropEffect = composerDisabled
+                                    ? "none"
+                                    : "copy";
+                                  setFileDropBotId(composerDisabled ? null : item.chat.id);
+                                  return;
+                                }
+                                if (
+                                  item.kind === "bot" &&
                                   draggedBotId &&
                                   groupBotIds.includes(draggedBotId) &&
                                   rosterParent.get(draggedBotId) === parentId
@@ -4029,7 +4059,26 @@ export function ShellPage() {
                                   event.dataTransfer.dropEffect = "move";
                                 }
                               }}
+                              onDragLeave={(event) => {
+                                if (
+                                  !event.currentTarget.contains(event.relatedTarget as Node | null)
+                                )
+                                  setFileDropBotId(null);
+                              }}
                               onDrop={(event) => {
+                                if (
+                                  item.kind === "bot" &&
+                                  item.chat.spaceId === bootstrapMe?.spaceId &&
+                                  isUnclaimedFileDrag(event)
+                                ) {
+                                  event.preventDefault();
+                                  setFileDropBotId(null);
+                                  if (composerDisabled) return;
+                                  onAttachmentPick(event.dataTransfer.files, item.chat.id);
+                                  setFocusComposerBotId(item.chat.id);
+                                  openBot(item.chat.id);
+                                  return;
+                                }
                                 if (
                                   item.kind !== "bot" ||
                                   !draggedBotId ||
@@ -4081,7 +4130,7 @@ export function ShellPage() {
                                 item.kind === "bot" ? "cursor-grab active:cursor-grabbing" : ""
                               } ${
                                 selected ? "bg-sidebar-accent" : "group-hover/row:bg-sidebar-accent"
-                              }`}
+                              } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
                               style={
                                 treeActive
                                   ? { paddingInlineStart: `${24 + depth * 14}px` }
@@ -4446,7 +4495,22 @@ export function ShellPage() {
         tabIndex={-1}
         aria-hidden={mobileSidebarOpen || undefined}
         inert={mobileSidebarOpen}
-        className="isolate flex min-w-0 flex-1 flex-col bg-background outline-none"
+        data-dragging={paneDraggingFiles ? "files" : undefined}
+        onDragEnter={onPaneFileDrag}
+        onDragOver={onPaneFileDrag}
+        onDragLeave={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+            setPaneDraggingFiles(false);
+        }}
+        onDrop={(event) => {
+          if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return;
+          event.preventDefault();
+          setPaneDraggingFiles(false);
+          if (!composerDisabled) onAttachmentPick(event.dataTransfer.files);
+        }}
+        className={`isolate flex min-w-0 flex-1 flex-col bg-background outline-none ${
+          paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
+        }`}
       >
         {/* Inside main so the composer and its menus stay above it. As wide as the
             12px phone gutter only, so it never covers a tappable control; the swipe
