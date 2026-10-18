@@ -16,7 +16,12 @@ import {
   screenLeaseIdForRun,
 } from "@rakazo/adapters";
 import type { Actor, Bot, ProductEvent } from "@rakazo/contracts";
-import { CARTA_MCP_ENDPOINT, REPLY_QUOTE_MAX_LENGTH } from "@rakazo/contracts";
+import {
+  CARTA_MCP_ENDPOINT,
+  cartaAgentSpawnKey,
+  integrationAgentSpawnKey,
+  REPLY_QUOTE_MAX_LENGTH,
+} from "@rakazo/contracts";
 import { openScreenCapability } from "@rakazo/core/node/screen-capability";
 import type { PrismaClient } from "@rakazo/db";
 import { createLogger, createTestSink, installLogger } from "@rakazo/logging";
@@ -4251,7 +4256,7 @@ describe("MCP server rename", () => {
 });
 
 describe("MCP server writes switch", () => {
-  function writesDeps(found: { endpoint: string } | null) {
+  function writesDeps(found: { endpoint: string } | null, linked = Boolean(found)) {
     const row = {
       id: "server-1",
       spaceId: "workspace-1",
@@ -4268,24 +4273,62 @@ describe("MCP server writes switch", () => {
       secretId: null,
       enabled: true,
       writesEnabled: false,
+      agentBotId: linked ? "agent-1" : null,
+      agentExclusive: true,
       revision: 1,
       createdAt: new Date(0),
       updatedAt: new Date(0),
     };
     const findFirst = vi.fn().mockResolvedValue(found ? row : null);
-    const update = vi.fn(async ({ data }: { data: object }) => {
-      Object.assign(row, data);
-      return { count: 1 };
-    });
+    const update = vi.fn(
+      async ({ where, data }: { where: Record<string, unknown>; data: object }) => {
+        if (
+          ("agentBotId" in where && where.agentBotId !== row.agentBotId) ||
+          ("endpoint" in where && where.endpoint !== row.endpoint)
+        )
+          return { count: 0 };
+        Object.assign(row, data);
+        return { count: 1 };
+      },
+    );
+    const bot = {
+      id: "agent-1",
+      spaceId: "workspace-1",
+      userId: "user-1",
+      spawnKey:
+        found?.endpoint === CARTA_MCP_ENDPOINT
+          ? cartaAgentSpawnKey("user-1")
+          : integrationAgentSpawnKey("server-1"),
+      archivedAt: null,
+    };
+    const botFindFirst = vi.fn().mockResolvedValue(linked ? bot : null);
+    const botUpdateMany = vi.fn().mockResolvedValue({ count: linked ? 1 : 0 });
+    const mcpFindMany = vi.fn().mockResolvedValue(found ? [{ ...row }] : []);
+    const botMcpUpsert = vi.fn().mockResolvedValue({});
+    const tx = {
+      mcpServer: {
+        findFirst,
+        findFirstOrThrow: vi.fn(async () => row),
+        findMany: mcpFindMany,
+        updateMany: update,
+      },
+      bot: { findFirst: botFindFirst, updateMany: botUpdateMany },
+      botMcpServer: { upsert: botMcpUpsert },
+    };
+    const transaction = vi.fn(async (callback: (tx: typeof tx) => unknown) => callback(tx));
     const prisma = {
       mcpServer: {
         findFirst,
         findFirstOrThrow: vi.fn(async () => row),
         updateMany: update,
-        findMany: vi.fn().mockResolvedValue([]),
+        findMany: mcpFindMany,
       },
-      bot: { findFirst: vi.fn().mockResolvedValue(null) },
-      botMcpServer: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      bot: { findFirst: botFindFirst, updateMany: botUpdateMany },
+      botMcpServer: {
+        deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
+        upsert: botMcpUpsert,
+      },
+      $transaction: transaction,
       secret: { findFirst: vi.fn().mockResolvedValue(null) },
     } as unknown as PrismaClient;
     const deps = {
@@ -4309,6 +4352,9 @@ describe("MCP server writes switch", () => {
     return {
       findFirst,
       update,
+      row,
+      botFindFirst,
+      transaction,
       client: createRouterClient(createRouter(deps), { context: { actor } as never }),
     };
   }
@@ -4321,21 +4367,22 @@ describe("MCP server writes switch", () => {
       where: { id: "server-1", spaceId: "workspace-1", userId: "user-1" },
     });
     expect(update).toHaveBeenCalledWith({
-      where: {
+      where: expect.objectContaining({
         id: "server-1",
         spaceId: "workspace-1",
         userId: "user-1",
         endpoint: CARTA_MCP_ENDPOINT,
-      },
+        agentBotId: "agent-1",
+      }),
       data: { writesEnabled: true },
     });
   });
 
-  it("refuses a server that is not Carta's, and one the caller does not own", async () => {
-    const other = writesDeps({ endpoint: "https://mcp.example.test/mcp" });
+  it("requires a linked agent for non-Carta servers, and the caller's ownership", async () => {
+    const other = writesDeps({ endpoint: "https://mcp.example.test/mcp" }, false);
     await expect(
       other.client.mcp.servers.setWrites({ id: "server-1", enabled: true }),
-    ).rejects.toThrow("Carta");
+    ).rejects.toThrow("agent");
     expect(other.update).not.toHaveBeenCalled();
     const missing = writesDeps(null);
     await expect(
@@ -4444,6 +4491,7 @@ describe("Carta server guards", () => {
     const tx = {
       bot: { findFirst: vi.fn().mockResolvedValue({ id: "bot-2", spawnKey: null }) },
       mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) },
+      botMcpServer: { findMany: vi.fn().mockResolvedValue([]) },
     };
     const client = clientFor({ $transaction: (fn: (t: unknown) => unknown) => fn(tx) });
     await expect(
@@ -4451,6 +4499,6 @@ describe("Carta server guards", () => {
         botId: "bot-2",
         assignments: [{ serverId: "server-1", allowAllTools: true, allowedTools: [] }],
       }),
-    ).rejects.toThrow("Carta is used only by the Carta agent.");
+    ).rejects.toThrow("This integration is used only by its agent.");
   });
 });

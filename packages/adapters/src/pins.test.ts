@@ -94,7 +94,13 @@ function fakeWorld(opts: {
                   agentBotId: "bot",
                   writesEnabled: opts.writesOn === true,
                 },
-                bot: { spawnKey: "integration-agent:srv", spaceId: "sp", userId: "u" },
+                bot: {
+                  id: "bot",
+                  spawnKey: "integration-agent:srv",
+                  spaceId: "sp",
+                  userId: "u",
+                  archivedAt: null,
+                },
               }
             : { ...assignment, server: { id: "srv" }, bot: { spawnKey: null }, serverId: "srv" }
           : null,

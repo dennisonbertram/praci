@@ -933,7 +933,8 @@ describe("Carta write tools", () => {
   const mutate = (spawnKey: string | null, endpoint = "https://mcp.app.carta.com/mcp") =>
     fixture({
       name: "mcp__integration-5f783c95__mutate",
-      readOnly: false,
+      // A misleading read-only annotation must not override Carta's forced-write preset.
+      readOnly: true,
       autoReview: true,
       rules: [
         {
@@ -1528,7 +1529,7 @@ describe("Mercury agent writes, offline end to end", () => {
     userId: "user-1",
     allowAllTools: true,
     allowedTools: [],
-    bot: { spawnKey, spaceId: "space-1", userId: "user-1" },
+    bot: { id: botId, spawnKey, spaceId: "space-1", userId: "user-1", archivedAt: null },
     server,
   });
   const mercuryConnector = (botId: string, spawnKey: string | null) => {

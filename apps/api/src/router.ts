@@ -160,7 +160,6 @@ import {
   appContract,
   BotSecretAuth,
   ComputerCommandSchema,
-  cartaAgentSpawnKey,
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
@@ -354,6 +353,7 @@ import {
   ensureIntegrationAgent,
   setConnectedAppExclusive,
   setConnectedAppWrites,
+  setIntegrationAgentWrites,
   setIntegrationExclusive,
 } from "./integration-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
@@ -566,7 +566,6 @@ function computerContext(actor: Actor, botId: string, operationId: string): Adap
   };
 }
 
-const CARTA_ONLY_MESSAGE = "Carta is used only by the Carta agent.";
 const EXCLUSIVE_SERVER_MESSAGE = "This integration is used only by its agent.";
 
 function mcpServerDto(
@@ -4751,33 +4750,14 @@ export function createRouter(deps: RouterDeps) {
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         setWrites: authed.mcp.servers.setWrites.handler(async ({ context, input }) => {
-          const where = {
-            id: input.id,
-            spaceId: context.actor.spaceId,
-            userId: context.actor.userId,
-          };
-          const server = await deps.prisma.mcpServer.findFirst({ where });
-          if (!server) throw new IsolationError();
-          if (!isCartaEndpoint(server.endpoint) && !server.agentBotId)
-            throw new ORPCError("BAD_REQUEST", {
-              message: "Writes can only be turned on for a Carta server or a server with an agent",
-            });
-          // Archiving the agent can release the server after the check above: the update only applies
-          // while the server still has the agent (or is still the Carta server) that was checked.
-          const { count } = await deps.prisma.mcpServer.updateMany({
-            where: {
-              ...where,
-              ...(isCartaEndpoint(server.endpoint)
-                ? { endpoint: server.endpoint }
-                : { agentBotId: server.agentBotId }),
-            },
-            data: { writesEnabled: input.enabled },
-          });
-          if (!count)
-            throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });
-          const row = await deps.prisma.mcpServer.findFirstOrThrow({ where });
+          const row = await setIntegrationAgentWrites(
+            deps.prisma,
+            context.actor,
+            input.id,
+            input.enabled,
+          );
           // The Carta agent's tool list follows the switch; the call-time check already does.
-          if (isCartaEndpoint(server.endpoint))
+          if (isCartaEndpoint(row.endpoint))
             await assignToExistingCartaAgent(deps.prisma, context.actor);
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
@@ -4882,11 +4862,6 @@ export function createRouter(deps: RouterDeps) {
               if (!bot || !server) throw new IsolationError();
               if (server.agentExclusive && server.agentBotId !== bot.id)
                 throw new ORPCError("BAD_REQUEST", { message: EXCLUSIVE_SERVER_MESSAGE });
-              if (
-                bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
-                isCartaEndpoint(server.endpoint)
-              )
-                throw new ORPCError("BAD_REQUEST", { message: CARTA_ONLY_MESSAGE });
               return tx.botMcpServer.upsert({
                 where: { botId_serverId: { botId: bot.id, serverId: server.id } },
                 create: {
@@ -4949,11 +4924,6 @@ export function createRouter(deps: RouterDeps) {
                 select: { id: true },
               })
             ).map((server) => server.id);
-            if (
-              bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
-              servers.some((server) => isCartaEndpoint(server.endpoint))
-            )
-              throw new ORPCError("BAD_REQUEST", { message: CARTA_ONLY_MESSAGE });
             const previous = await tx.botMcpServer.findMany({
               where: {
                 botId: bot.id,

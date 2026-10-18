@@ -9,15 +9,12 @@ import type {
 } from "@rakazo/adapter-kit";
 import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
 import {
-  CARTA_READ_TOOLS,
-  CARTA_WRITE_TOOLS,
   FINANCE_READ_TOOLS,
   financeProviderForEndpoint,
-  integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
-  isCartaEndpoint,
   isFinanceAgentSpawnKey,
+  isIntegrationAgentForServer,
   isIntegrationAgentSpawnKey,
   isLocalMcpHost,
   isReadTool,
@@ -93,28 +90,34 @@ type GateAssignment = {
   allowAllTools: boolean;
   allowedTools: unknown;
   server: {
-    id?: string;
+    id: string;
     name?: string;
-    spaceId?: string;
-    userId?: string;
+    spaceId: string;
+    userId: string;
     endpoint?: string | null;
     writesEnabled?: boolean;
     agentBotId?: string | null;
     agentExclusive?: boolean;
+    agentBot?: {
+      id: string;
+      spaceId: string;
+      userId: string;
+      spawnKey: string | null;
+      archivedAt: Date | null;
+    } | null;
   };
-  bot?: { spawnKey: string | null; spaceId?: string; userId?: string } | null;
+  bot?: {
+    id: string;
+    spawnKey: string | null;
+    spaceId: string;
+    userId: string;
+    archivedAt: Date | null;
+  } | null;
 };
 
 /** Whether the assignment's bot is the server's integration agent. Never trusts agentBotId alone. */
 export function isServerAgent(assignment: GateAssignment): boolean {
-  const { server, bot } = assignment;
-  return (
-    Boolean(server.agentBotId) &&
-    server.agentBotId === assignment.botId &&
-    bot?.spawnKey === integrationAgentSpawnKey(server.id ?? "") &&
-    bot?.spaceId === server.spaceId &&
-    bot?.userId === server.userId
-  );
+  return isIntegrationAgentForServer(assignment.server, assignment.bot);
 }
 
 /**
@@ -128,19 +131,21 @@ export function integrationAgentDenial(
   tool: { name: string; annotations?: ToolAnnotations },
 ): "belongs-to-agent" | "writes-off" | null {
   const { server, bot } = assignment;
-  const botIsIntegrationAgent = isIntegrationAgentSpawnKey(bot?.spawnKey);
+  const preset = integrationPresetForEndpoint(server.endpoint);
+  const botIsIntegrationAgent =
+    isIntegrationAgentSpawnKey(bot?.spawnKey) ||
+    isCartaAgentSpawnKey(bot?.spawnKey) ||
+    isServerAgent(assignment);
+  if (preset?.requiresAgent && !isIntegrationAgentForServer(server, server.agentBot))
+    return "belongs-to-agent";
   if (!server.agentBotId && !botIsIntegrationAgent) return null;
   if (isServerAgent(assignment)) {
-    const preset = integrationPresetForEndpoint(server.endpoint);
     return isReadTool(tool, preset) || server.writesEnabled === true ? null : "writes-off";
   }
   // exclusive without an agent is off; a stranded agent bot (released or forged) gets reads only.
   if (server.agentBotId && server.agentExclusive) return "belongs-to-agent";
-  if (botIsIntegrationAgent && bot?.spawnKey !== integrationAgentSpawnKey(server.id ?? ""))
-    return "belongs-to-agent";
-  return isReadTool(tool, integrationPresetForEndpoint(server.endpoint))
-    ? null
-    : "belongs-to-agent";
+  if (botIsIntegrationAgent && !isIntegrationAgentForServer(server, bot)) return "belongs-to-agent";
+  return isReadTool(tool, preset) ? null : "belongs-to-agent";
 }
 
 const denialMessage = (
@@ -161,24 +166,12 @@ export function assignmentAllowsTool(
   annotations?: ToolAnnotations,
 ): boolean {
   if (integrationAgentDenial(assignment, { name: toolName, annotations })) return false;
-  const cartaServer = isCartaEndpoint(assignment.server.endpoint);
-  const cartaAgent = isCartaAgentSpawnKey(assignment.bot?.spawnKey);
-  // Carta belongs to the Carta agent; other bots ask it through message_bot.
-  if (cartaServer && !cartaAgent) return false;
+  const preset = integrationPresetForEndpoint(assignment.server.endpoint);
+  if (preset?.allowedTools && !preset.allowedTools.includes(toolName)) return false;
   if (isFinanceAgentSpawnKey(assignment.bot?.spawnKey)) {
     const provider = financeProviderForEndpoint(assignment.server.endpoint);
     if (provider && !(FINANCE_READ_TOOLS[provider] as readonly string[]).includes(toolName))
       return false;
-  }
-  if (cartaAgent) {
-    // Only Carta's own tools: another server (say, email) would send mail without the mail_send approval.
-    if (!cartaServer) return false;
-    // Write tools need the server's switch, checked on every call so turning it off takes effect at once.
-    const allowed =
-      (CARTA_READ_TOOLS as readonly string[]).includes(toolName) ||
-      (assignment.server.writesEnabled === true &&
-        (CARTA_WRITE_TOOLS as readonly string[]).includes(toolName));
-    if (!allowed) return false;
   }
   return assignment.allowAllTools || (assignment.allowedTools as unknown[]).includes(toolName);
 }
@@ -270,7 +263,18 @@ export class McpConnector implements ConnectorProvider {
         userId: context.userId,
         server: { enabled: true },
       },
-      include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
+      include: {
+        server: {
+          include: {
+            agentBot: {
+              select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+            },
+          },
+        },
+        bot: {
+          select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+        },
+      },
     });
     const groups = await Promise.all(
       assignments.map(async (assignment): Promise<ConnectorTool[]> => {
@@ -409,7 +413,18 @@ export class McpConnector implements ConnectorProvider {
           userId: context.userId,
           server: { enabled: true },
         },
-        include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
+        include: {
+          server: {
+            include: {
+              agentBot: {
+                select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+              },
+            },
+          },
+          bot: {
+            select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+          },
+        },
       });
     let assignment = await loadAssignment();
     if (!assignment) {

@@ -1,7 +1,7 @@
 import type { McpServer } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { mockAssignments, mockIntegrations, mockServer } from "../../stories/fixtures";
+import { makeBot, mockAssignments, mockIntegrations, mockServer } from "../../stories/fixtures";
 import { McpDetail } from "./McpDetail";
 
 const meta = {
@@ -31,16 +31,36 @@ export const Connected: Story = {
 };
 
 const cartaServer = (writesEnabled: boolean) =>
-  mockServer("srv_1", "Carta", { endpoint: "https://mcp.app.carta.com/mcp", writesEnabled });
+  mockServer("srv_1", "Carta", {
+    endpoint: "https://mcp.app.carta.com/mcp",
+    writesEnabled,
+    agentBotId: "bot_carta",
+    agentExclusive: true,
+  });
+
+const cartaBot = makeBot({
+  id: "bot_carta",
+  name: "Carta agent",
+  spawnKey: "carta-agent:user_demo",
+});
+
+export const CartaCanCreateAgent: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: {
+    data: mockIntegrations({
+      servers: [{ ...cartaServer(false), agentBotId: null, agentExclusive: false }],
+    }),
+  },
+};
 
 export const CartaWritesOff: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
-  args: { data: mockIntegrations({ servers: [cartaServer(false)] }) },
+  args: { data: mockIntegrations({ servers: [cartaServer(false)], bots: [cartaBot] }) },
 };
 
 export const CartaWritesOn: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
-  args: { data: mockIntegrations({ servers: [cartaServer(true)] }) },
+  args: { data: mockIntegrations({ servers: [cartaServer(true)], bots: [cartaBot] }) },
 };
 
 const mercury = (extra: Partial<McpServer> = {}) =>

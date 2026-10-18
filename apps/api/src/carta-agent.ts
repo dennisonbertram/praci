@@ -24,44 +24,73 @@ const CARTA_SYNC_PROMPT =
 /**
  * Gives the bot each of the user's enabled Carta MCP servers: the read tools, plus the write tools
  * when the server's writes are on. The list is written on every call, so an older or wider list is
- * corrected. Carta belongs to this agent alone, so the user's other bots lose their Carta assignments.
+ * corrected without removing assignments belonging to other bots.
  */
 export async function assignCartaServers(
-  prisma: Pick<PrismaClient, "mcpServer" | "botMcpServer">,
+  prisma: Pick<PrismaClient, "bot" | "mcpServer" | "botMcpServer" | "$transaction">,
   actor: Actor,
   botId: string | null,
 ): Promise<void> {
-  const servers = (
-    await prisma.mcpServer.findMany({
-      where: { spaceId: actor.spaceId, userId: actor.userId },
-      select: { id: true, endpoint: true, enabled: true, writesEnabled: true },
-    })
-  ).filter((server) => isCartaEndpoint(server.endpoint));
-  await prisma.botMcpServer.deleteMany({
-    where: {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      serverId: { in: servers.map((server) => server.id) },
-      ...(botId ? { botId: { not: botId } } : {}),
-    },
-  });
   if (!botId) return;
-  for (const server of servers) {
-    if (!server.enabled) continue;
-    const allowedTools = [...CARTA_READ_TOOLS, ...(server.writesEnabled ? CARTA_WRITE_TOOLS : [])];
-    await prisma.botMcpServer.upsert({
-      where: { botId_serverId: { botId, serverId: server.id } },
-      create: {
-        spaceId: actor.spaceId,
-        userId: actor.userId,
-        botId,
-        serverId: server.id,
-        allowAllTools: false,
-        allowedTools,
+  await prisma.$transaction(async (tx) => {
+    const activeBot = await tx.bot.updateMany({
+      where: {
+        id: botId,
+        ...actorScope(actor),
+        spawnKey: cartaAgentSpawnKey(actor.userId),
+        archivedAt: null,
       },
-      update: { allowAllTools: false, allowedTools },
+      data: { updatedAt: new Date() },
     });
-  }
+    if (!activeBot.count) return;
+    const servers = (
+      await tx.mcpServer.findMany({
+        where: { ...actorScope(actor) },
+        select: {
+          id: true,
+          endpoint: true,
+          enabled: true,
+          writesEnabled: true,
+          agentBotId: true,
+        },
+      })
+    ).filter((server) => isCartaEndpoint(server.endpoint));
+    for (const server of servers) {
+      const newLink = server.agentBotId !== botId;
+      const linked = await tx.mcpServer.updateMany({
+        where: {
+          id: server.id,
+          ...actorScope(actor),
+          endpoint: server.endpoint,
+          enabled: server.enabled,
+          writesEnabled: server.writesEnabled,
+          agentBotId: server.agentBotId,
+        },
+        data: {
+          agentBotId: botId,
+          ...(newLink ? { agentExclusive: true, writesEnabled: false } : {}),
+          updatedAt: new Date(),
+        },
+      });
+      if (!linked.count || !server.enabled) continue;
+      const allowedTools = [
+        ...CARTA_READ_TOOLS,
+        ...(!newLink && server.writesEnabled ? CARTA_WRITE_TOOLS : []),
+      ];
+      await tx.botMcpServer.upsert({
+        where: { botId_serverId: { botId, serverId: server.id } },
+        create: {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          botId,
+          serverId: server.id,
+          allowAllTools: false,
+          allowedTools,
+        },
+        update: { allowAllTools: false, allowedTools },
+      });
+    }
+  });
 }
 
 /** Matches the user's live Carta agent, found by its spawn key. */
@@ -71,9 +100,9 @@ export const cartaAgentWhere = (actor: Actor) => ({
   archivedAt: null,
 });
 
-/** Gives the Carta servers to the user's Carta agent when one exists, and takes them from other bots. */
+/** Gives the Carta servers to the user's Carta agent without changing other bots' assignments. */
 export async function assignToExistingCartaAgent(
-  prisma: Pick<PrismaClient, "bot" | "mcpServer" | "botMcpServer">,
+  prisma: Pick<PrismaClient, "bot" | "mcpServer" | "botMcpServer" | "$transaction">,
   actor: Actor,
 ): Promise<void> {
   const bot = await prisma.bot.findFirst({ where: cartaAgentWhere(actor), select: { id: true } });
@@ -83,7 +112,7 @@ export async function assignToExistingCartaAgent(
 /** The only way a Carta agent is created; idempotent through the unique (spaceId, spawnKey) index. */
 export async function ensureCartaAgent(
   deps: {
-    prisma: Pick<PrismaClient, "mcpServer" | "botMcpServer">;
+    prisma: Pick<PrismaClient, "bot" | "mcpServer" | "botMcpServer" | "$transaction">;
     repos: Pick<ReturnType<typeof createRepos>, "createBot">;
   },
   actor: Actor,
@@ -122,7 +151,7 @@ export async function isCartaSyncing(
 }
 
 export type CartaSyncDeps = {
-  prisma: Pick<PrismaClient, "mcpServer" | "botMcpServer" | "run" | "$transaction">;
+  prisma: Pick<PrismaClient, "bot" | "mcpServer" | "botMcpServer" | "run" | "$transaction">;
   repos: Pick<ReturnType<typeof createRepos>, "createBot">;
   /** False when no model is set up, so a run would only fail. */
   hasModel: (actor: Actor) => Promise<boolean>;

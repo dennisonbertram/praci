@@ -148,7 +148,6 @@ import {
   cartaMailSendIsComplete,
   describeApprovalAction,
   isCartaMailSend,
-  isCartaWrite,
   isIntegrationAgentWrite,
 } from "./approval-ask.js";
 import {
@@ -4777,20 +4776,21 @@ export function createRunExecutor(deps: ExecutorDeps) {
             requiresUnattendedApproval ||
             toolRequiresApproval(name, viaConnector, declaredReadOnly);
           const callRoute = (resolvedTool ?? connectorTools.get(name))?.route;
-          // Carta's write tools and an integration agent's non-read MCP tools (the connector marks
-          // the agent's reads `readOnly`): same card with the full call, no saved rule, no Auto Review.
-          const cartaWriteTool =
-            isCartaWrite(bot.spawnKey, callRoute) ||
-            isIntegrationAgentWrite(bot.spawnKey, callRoute, declaredReadOnly)
-              ? callRoute?.toolName
-              : undefined;
+          // Integration-agent writes use the shared preset classification and always show the full call.
+          const integrationWriteTool = isIntegrationAgentWrite(
+            bot.spawnKey,
+            callRoute,
+            declaredReadOnly,
+          )
+            ? callRoute?.toolName
+            : undefined;
           const requiresMandatoryApproval =
             requiresUnattendedApproval ||
             toolRequiresExplicitApproval(name) ||
             // No saved rule or Auto Review may send mail for the Carta agent (investor email).
             isCartaMailSend(bot.spawnKey, name) ||
-            // Same for Carta's write tools, which exist only when the user turns writes on.
-            cartaWriteTool !== undefined;
+            // Integration-agent writes require approval for every call.
+            integrationWriteTool !== undefined;
           const connectorKind = connectorKindFromToolName(
             name,
             connectedPlugins.map((plugin) => plugin.provider),
@@ -5081,7 +5081,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
                   reviewReason,
                   fullMail: isCartaMailSend(bot.spawnKey, name),
-                  cartaWriteTool,
+                  integrationWriteTool,
                   mailAccount: await approvalMailAccount(),
                 }),
               ],
