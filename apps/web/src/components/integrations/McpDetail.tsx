@@ -1,6 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { isCartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
-import { Button, Input, Label, Switch } from "@rakazo/ui-web";
+import { Button, Input } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -10,6 +10,7 @@ import { errorText } from "../../lib/user-error";
 import { ConfirmDialog, Heading } from "./AppDetail";
 import { AppLogo } from "./AppLogo";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
+import { IntegrationAgentSection, WritesSwitch } from "./IntegrationAgentSection";
 import { AgentToggleList, StatusBadge } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
@@ -103,6 +104,21 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
 
   const host = server.endpoint ? new URL(server.endpoint).host : (server.command ?? "");
   const carta = isCartaEndpoint(server.endpoint);
+  const service = carta ? "Carta" : server.name;
+  const agent = data.bots.find((bot) => bot.id === server.agentBotId);
+  const hasAgent = !carta && server.agentBotId !== null;
+  const setWrites = (on: boolean) =>
+    on
+      ? setConfirmingWrites(true)
+      : void run(
+          () => rpc.mcp.servers.setWrites({ id: server.id, enabled: false }).then(() => undefined),
+          t`Could not update changes`,
+        );
+  const usedBy = carta
+    ? data.bots.filter((bot) => isCartaAgentSpawnKey(bot.spawnKey))
+    : hasAgent && server.agentExclusive
+      ? data.bots.filter((bot) => bot.id === server.agentBotId)
+      : data.bots;
   return (
     <div className="rk-scroll h-full overflow-y-auto px-4 py-6 md:px-9 md:py-7">
       <div className="mx-auto max-w-[1040px]">
@@ -177,47 +193,67 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
               <Trans>Disconnect sign-in</Trans>
             </Button>
           ) : null}
+          {!carta && !hasAgent ? (
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() =>
+                void run(async () => {
+                  const { botId } = await rpc.integrationAgents.create({ serverId: server.id });
+                  navigate(`/app/${botId}`);
+                }, t`Could not create agent`)
+              }
+            >
+              <Trans>Create agent</Trans>
+            </Button>
+          ) : null}
           <Button variant="outline" onClick={() => setDraft(server.name)}>
             <Trans>Rename</Trans>
           </Button>
         </div>
 
         {carta ? (
-          <div className="mt-4 grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
-            <Switch
-              id="carta-writes"
-              aria-describedby="carta-writes-hint"
+          <div className="mt-4">
+            <WritesSwitch
+              service="Carta"
               checked={server.writesEnabled}
               disabled={busy}
-              onCheckedChange={(on) =>
-                on
-                  ? setConfirmingWrites(true)
-                  : void run(
-                      () =>
-                        rpc.mcp.servers
-                          .setWrites({ id: server.id, enabled: false })
-                          .then(() => undefined),
-                      t`Could not update changes`,
-                    )
+              onChange={setWrites}
+              hint={
+                <Trans>
+                  Off: the Carta agent only reads Carta. On: it can also make changes, such as
+                  option grants, and asks you before each one.
+                </Trans>
               }
             />
-            <Label htmlFor="carta-writes">
-              <Trans>Allow changes in Carta</Trans>
-            </Label>
-            <p id="carta-writes-hint" className="col-start-2 text-sm text-muted-foreground">
-              <Trans>
-                Off: the Carta agent only reads Carta. On: it can also make changes, such as option
-                grants, and asks you before each one.
-              </Trans>
-            </p>
           </div>
+        ) : null}
+        {hasAgent && server.agentBotId ? (
+          <IntegrationAgentSection
+            service={server.name}
+            agentName={agent?.name ?? t`${server.name} agent`}
+            agentHref={`/app/${server.agentBotId}`}
+            writesEnabled={server.writesEnabled}
+            exclusive={server.agentExclusive}
+            disabled={busy}
+            onWrites={setWrites}
+            onExclusive={(exclusive) =>
+              void run(
+                () =>
+                  rpc.integrationAgents
+                    .setExclusive({ serverId: server.id, exclusive })
+                    .then(() => undefined),
+                t`Could not update access`,
+              )
+            }
+          />
         ) : null}
 
         <Heading>
           <Trans>Used by</Trans>
         </Heading>
         <AgentToggleList
-          bots={carta ? data.bots.filter((bot) => isCartaAgentSpawnKey(bot.spawnKey)) : data.bots}
+          bots={usedBy}
           appName={server.name}
           disabled={busy}
           isOn={assigned}
@@ -265,7 +301,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
       <ConfirmDialog
         open={confirmingWrites}
         busy={busy}
-        title={t`Allow changes in Carta?`}
+        title={t`Allow changes in ${service}?`}
         confirm={t`Allow changes`}
         onCancel={() => setConfirmingWrites(false)}
         onConfirm={() =>
@@ -276,9 +312,15 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
         }
       >
         <li>
-          <Trans>
-            The Carta agent will be able to change your Carta data. It asks before each change.
-          </Trans>
+          {carta ? (
+            <Trans>
+              The Carta agent will be able to change your Carta data. It asks before each change.
+            </Trans>
+          ) : (
+            <Trans>
+              The agent will be able to change your {service} data. It asks before each change.
+            </Trans>
+          )}
         </li>
       </ConfirmDialog>
       {reconnect.needsClient ? (

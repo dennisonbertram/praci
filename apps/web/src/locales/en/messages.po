@@ -130,6 +130,11 @@ msgstr "{0} (overdue)"
 msgid "{0} {unitLabel}"
 msgstr "{0} {unitLabel}"
 
+#. placeholder {0}: server.name
+#: src/components/integrations/McpDetail.tsx
+msgid "{0} agent"
+msgstr "{0} agent"
+
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -781,6 +786,10 @@ msgstr "Advanced..."
 msgid "after fees"
 msgstr "after fees"
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Agent"
+msgstr "Agent"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Agent connections"
 msgstr "Agent connections"
@@ -880,13 +889,13 @@ msgstr "Allow access below first."
 msgid "Allow changes"
 msgstr "Allow changes"
 
-#: src/components/integrations/McpDetail.tsx
-msgid "Allow changes in Carta"
-msgstr "Allow changes in Carta"
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Allow changes in {service}"
+msgstr "Allow changes in {service}"
 
 #: src/components/integrations/McpDetail.tsx
-msgid "Allow changes in Carta?"
-msgstr "Allow changes in Carta?"
+msgid "Allow changes in {service}?"
+msgstr "Allow changes in {service}?"
 
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Allow email actions without asking"
@@ -2415,6 +2424,10 @@ msgstr "Could not connect to the computer screen"
 msgid "Could not continue"
 msgstr "Could not continue"
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Could not create agent"
+msgstr "Could not create agent"
+
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "Could not create group"
@@ -2816,6 +2829,10 @@ msgstr "Could not take control"
 msgid "Could not update"
 msgstr "Could not update"
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Could not update access"
+msgstr "Could not update access"
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update bot access"
@@ -2929,6 +2946,10 @@ msgstr "Create a section and move {0} into it."
 #: src/pages/Auth.tsx
 msgid "Create account"
 msgstr "Create account"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Create agent"
+msgstr "Create agent"
 
 #: src/pages/Shell.tsx
 msgid "Create Finance agent"
@@ -5649,6 +5670,10 @@ msgstr "OAuth connection failed"
 msgid "Obligation"
 msgstr "Obligation"
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
+msgstr "Off: the agent only reads. On: it can also make changes, and asks you before each one."
+
 #: src/components/integrations/McpDetail.tsx
 msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
 msgstr "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
@@ -5674,6 +5699,10 @@ msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Only if the server does not use sign-in"
 msgstr "Only if the server does not use sign-in"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Only this agent"
+msgstr "Only this agent"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/inbox/InboxShortcuts.tsx
@@ -5876,6 +5905,10 @@ msgstr "Original message unavailable"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
 msgstr "Other"
+
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Other agents ask the {service} agent instead of using {service} themselves."
+msgstr "Other agents ask the {service} agent instead of using {service} themselves."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Other connection types"
@@ -7832,6 +7865,10 @@ msgstr "That folder no longer exists"
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the {month} statement"
 msgstr "the {month} statement"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "The agent will be able to change your {service} data. It asks before each change."
+msgstr "The agent will be able to change your {service} data. It asks before each change."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "The AI your bots think with. They already have one, so change this only to use another AI company or your own key."
