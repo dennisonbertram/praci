@@ -38,6 +38,9 @@ test("onboarding uses compact model selects without misleading latest labels", a
 
   const models = page.getByRole("combobox", { name: "Model", exact: true });
   await models.click();
+  // Wait for the Anthropic list to render before reading it; reading right after the click can
+  // race the popup and return no options.
+  await expect(page.getByRole("option", { name: "Claude Opus 4.5", exact: true })).toBeVisible();
   const labels = await page.getByRole("option").allTextContents();
   // "latest" is an upstream alias marker, so it lands on families like Claude Opus 4.5 while
   // newer models carry no marker. Rendered as-is it tells the user the opposite of the truth.

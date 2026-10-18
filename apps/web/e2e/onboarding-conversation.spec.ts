@@ -50,19 +50,20 @@ test("focus choice suggests apps and preserves a completed connection", async ({
   const restingBackground = await authorizeButton.evaluate(
     (button) => getComputedStyle(button).backgroundColor,
   );
-  const accentBackground = await authorizeButton.evaluate((button) => {
+  // The Authorize button is the shared outline Button variant, whose hover fill is bg-muted.
+  const hoverBackground = await authorizeButton.evaluate((button) => {
     const probe = document.createElement("span");
-    probe.style.backgroundColor = "var(--accent)";
+    probe.style.backgroundColor = "var(--muted)";
     button.append(probe);
     const backgroundColor = getComputedStyle(probe).backgroundColor;
     probe.remove();
     return backgroundColor;
   });
-  expect(accentBackground).not.toBe(restingBackground);
+  expect(hoverBackground).not.toBe(restingBackground);
   await authorizeButton.hover();
   await expect
     .poll(() => authorizeButton.evaluate((button) => getComputedStyle(button).backgroundColor))
-    .toBe(accentBackground);
+    .toBe(hoverBackground);
   await captureScreenshot(page, testInfo, "02-app-suggestions-authorize-hover");
 
   await authorizeButton.click();
