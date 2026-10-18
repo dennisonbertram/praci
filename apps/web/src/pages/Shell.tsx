@@ -92,6 +92,7 @@ import {
 } from "@rakazo/ui-web";
 import {
   ArrowDown,
+  ArrowLeft,
   ArrowUp,
   Bell,
   Box,
@@ -148,7 +149,14 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createPortal } from "react-dom";
-import { useLocation, useMatch, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useMatch,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { AgentPanelIntro } from "../components/AgentPanelIntro";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
@@ -294,7 +302,7 @@ import {
 import { speaker } from "../lib/tts";
 import { errorText } from "../lib/user-error";
 import type { WorkingActivity } from "../lib/working-activity";
-import { workingActivity } from "../lib/working-activity";
+import { type ToolAction, workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CapTablePage } from "./CapTable";
@@ -1808,7 +1816,13 @@ export function ShellPage() {
     return [
       { id: "inbox", label: t`Inbox`, icon: <Mail {...icon} /> },
       { id: "finance", label: t`Finance`, icon: <ChartColumn {...icon} /> },
-      { id: "cap-table", label: t`Cap table`, icon: <PieChart {...icon} /> },
+      {
+        id: "cap-table",
+        label: t`Cap table`,
+        // Words a founder may type for this page; matched along with the label.
+        keywords: t`equity, ownership, shares, options, Carta`,
+        icon: <PieChart {...icon} />,
+      },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
@@ -1818,7 +1832,13 @@ export function ShellPage() {
   // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
   const searchPages = useMemo(() => {
     const needle = spaceQuery.toLocaleLowerCase();
-    return needle ? appPages.filter((page) => page.label.toLocaleLowerCase().includes(needle)) : [];
+    return needle
+      ? appPages.filter((page) =>
+          `${page.label} ${"keywords" in page ? page.keywords : ""}`
+            .toLocaleLowerCase()
+            .includes(needle),
+        )
+      : [];
   }, [appPages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
 
@@ -2714,12 +2734,20 @@ export function ShellPage() {
     error: cartaAgentError,
   });
   // A window dragged down to phone width would leave a remembered-open panel covering the page.
-  // Only the view collapses; the saved preference stays for the desktop.
-  useOnPhoneWidth(() => {
-    setCartaAgentCollapsed(true);
-    setInboxAgentCollapsed(true);
-  });
+  // Only the view collapses; the saved preference comes back when the window is wide again.
+  useOnPhoneWidth(
+    () => {
+      setCartaAgentCollapsed(true);
+      setInboxAgentCollapsed(true);
+    },
+    () => {
+      setCartaAgentCollapsed(readCartaAgentCollapsed(userId));
+      setInboxAgentCollapsed(readInboxAgentCollapsed(userId));
+    },
+  );
 
+  const cartaSuggestions = [t`Who are our investors?`, t`Draft this month's investor update`];
+  const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
     ? {
@@ -2776,9 +2804,15 @@ export function ShellPage() {
               createLabel: t`Try again`,
               creating: creatingCartaAgent,
               error: cartaAgentError,
-              suggestions: [t`Who are our investors?`, t`Draft this month's investor update`],
+              suggestions: cartaSuggestions,
             }
           : null;
+  // The Carta agent opened full screen from its panel: same intro, and a way back to Cap table.
+  const cartaAgentPage =
+    !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
+  // Without a model a page agent cannot answer, so its panel offers Add a model, not questions.
+  const pageAgentNeedsModel =
+    bootstrapMe?.needsModel === true && (agentPanel !== null || cartaAgentPage);
 
   function setBotsSidebarCollapsedPref(collapsed: boolean) {
     setBotsSidebarCollapsed(collapsed);
@@ -3138,6 +3172,26 @@ export function ShellPage() {
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
   const threadView = (
     <>
+      {cartaAgentPage ? (
+        <div className="shrink-0 px-4 pt-2 md:px-7">
+          <Link
+            to="/app/cap-table"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="size-4" aria-hidden="true" />
+            <Trans>Back to Cap table</Trans>
+          </Link>
+        </div>
+      ) : null}
+      {cartaAgentPage && transcriptMessages.length === 0 && !transcriptRunning && activeSnapshot ? (
+        <AgentPanelIntro
+          description={cartaAgentIntro}
+          suggestions={cartaSuggestions}
+          onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
+          disabled={sending}
+          onPick={(text) => void sendMessage(text, [], newClientId())}
+        />
+      ) : null}
       {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
       <div className="flex min-h-0 flex-1">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -3254,7 +3308,7 @@ export function ShellPage() {
               key={inGroup ? `group:${groupId}` : `bot:${active?.id}`}
               activeName={inGroup ? (activeGroup?.name ?? activeSnapshot?.groupName) : active?.name}
               running={composerRunning}
-              disabled={Boolean(recordingSkill)}
+              disabled={Boolean(recordingSkill) || pageAgentNeedsModel}
               pendingAttachments={activePendingAttachments}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
@@ -3499,8 +3553,8 @@ export function ShellPage() {
                 setQuery("");
               }
             }}
-            // Chats, files and links; the Inbox has its own mail search.
-            placeholder={t`Search chats`}
+            // Chats, pages, files and links; the Inbox has its own mail search.
+            placeholder={t`Search`}
             autoComplete="off"
             name="sidebar-search"
           />
@@ -4406,6 +4460,9 @@ export function ShellPage() {
           <CapTablePage
             onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
             onCartaStatus={setCartaConnected}
+            onOpenModelSettings={() => openSettings("models")}
+            needsModel={bootstrapMe?.needsModel === true}
+            agentBusy={transcriptRunning}
           />
         ) : inboxMode ? (
           <InboxPage
@@ -4447,9 +4504,10 @@ export function ShellPage() {
                 {active ? (
                   <button
                     type="button"
-                    aria-label={active.name}
+                    aria-label={t`Open ${active.name} full screen`}
+                    title={t`Open full screen`}
                     onClick={() => openBot(active.id)}
-                    className="flex min-w-0 items-center gap-2 rounded-lg"
+                    className="-mx-1.5 flex min-w-0 items-center gap-2 rounded-lg px-1.5 py-1 hover:bg-accent focus-visible:bg-accent focus-visible:outline-none"
                   >
                     <BotAvatar
                       color={active.color}
@@ -4479,12 +4537,9 @@ export function ShellPage() {
                   !transcriptRunning &&
                   (!capTableMode || activeSnapshot) ? (
                     <AgentPanelIntro
-                      description={
-                        capTableMode
-                          ? t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`
-                          : active.description
-                      }
+                      description={capTableMode ? cartaAgentIntro : active.description}
                       suggestions={agentPanel.suggestions ?? []}
+                      onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
                       disabled={sending}
                       onPick={(text) => void sendMessage(text, [], newClientId())}
                     />
@@ -5354,6 +5409,11 @@ export function ShellPage() {
             onClose={() => {
               setSettingsOpen(false);
               setSettingsSection("general");
+              // A model may have been added or removed, which pages and agent panels show.
+              rpc
+                .me()
+                .then(setBootstrapMe)
+                .catch(() => {});
             }}
           />
         ) : null}
@@ -5655,10 +5715,42 @@ export const Transcript = memo(function Transcript({
         : activity?.kind === "writing"
           ? t`Writing`
           : activity?.kind === "tool"
-            ? t`Using ${activity.label}`
+            ? (toolActionLabel(activity.action) ?? t`Using ${activity.label}`)
             : workingBotName
               ? t`${workingBotName} is working`
               : t`Bots are working`;
+  function toolActionLabel(action: ToolAction | undefined): string | undefined {
+    switch (action) {
+      case "contact-add":
+        return t`Adding a contact`;
+      case "contact-save":
+        return t`Saving a contact`;
+      case "contacts-read":
+        return t`Reading your contacts`;
+      case "cap-table-read":
+        return t`Reading the cap table`;
+      case "cap-table-update":
+        return t`Updating the cap table`;
+      case "carta-cap-table":
+        return t`Reading your cap table from Carta`;
+      case "carta-company":
+        return t`Choosing your company in Carta`;
+      case "connected-app":
+        return t`Reading a connected app`;
+      case "mail-search":
+        return t`Searching your mail`;
+      case "mail-open":
+        return t`Opening an email`;
+      case "mail-draft":
+        return t`Writing a draft email`;
+      case "mail-show":
+        return t`Showing the emails it found`;
+      case "finance":
+        return t`Reading your finances`;
+      default:
+        return undefined;
+    }
+  }
   const [quoteDraft, setQuoteDraft] = useState<{
     message: ThreadMessage;
     text: string;
@@ -5885,7 +5977,7 @@ export const Transcript = memo(function Transcript({
   );
 
   return (
-    <div className="relative flex min-h-0 flex-1">
+    <div className="@container relative flex min-h-0 flex-1">
       <div
         ref={scrollRef}
         data-testid="transcript"
@@ -6004,7 +6096,7 @@ export const Transcript = memo(function Transcript({
                     ? "relative py-0.5"
                     : // A narrow transcript (the Inbox agent panel) has no gutter beside the bubbles, so the
                       // hover time above and the actions below need room of their own.
-                      "group/message relative hover:z-20 @max-sm:[@media(hover:hover)]:pt-3 @max-sm:[@media(hover:hover)]:pb-5"
+                      "group/message relative hover:z-20 @max-md:[@media(hover:hover)]:pt-4 @max-sm:[@media(hover:hover)]:pb-5"
                 }
               >
                 <div
@@ -6083,6 +6175,9 @@ export const Transcript = memo(function Transcript({
                           message.role === "user"
                             ? "end-full bottom-8 pe-3"
                             : "start-full bottom-8 ps-3",
+                          // A narrow transcript (a side panel on a phone) has no room beside the
+                          // bubble, so the time sits above its end edge instead of being cut off.
+                          "@max-md:start-auto @max-md:end-0 @max-md:bottom-full @max-md:ps-0 @max-md:pe-0",
                           // Touch has no hover margin: drop the revealed time in-flow under the bubble.
                           "[@media(hover:none)]:hidden [@media(hover:none)]:group-hover/message:static [@media(hover:none)]:group-focus-within/message:static [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:static",
                           "[@media(hover:none)]:group-hover/message:block [@media(hover:none)]:group-focus-within/message:block [@media(hover:none)]:group-has-[[aria-expanded=true]]/message:block",
@@ -6150,12 +6245,15 @@ export const Transcript = memo(function Transcript({
         tabIndex={atEnd ? -1 : 0}
         onClick={jumpToLatest}
         // A labeled, opaque pill: an unlabeled see-through circle read as part of the text under it.
-        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-popover px-3 text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent motion-reduce:transition-none ${
+        // In a narrow panel it shrinks to a round button at the right edge, so it covers less text.
+        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center justify-center gap-1.5 rounded-full border border-border bg-popover px-3 @max-md:left-auto @max-md:right-3 @max-md:w-8 @max-md:translate-x-0 @max-md:px-0 text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent motion-reduce:transition-none ${
           atEnd ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
         }`}
       >
         <ArrowDown size={15} strokeWidth={1.8} aria-hidden="true" />
-        <Trans>Jump to latest</Trans>
+        <span className="@max-md:sr-only">
+          <Trans>Jump to latest</Trans>
+        </span>
       </button>
     </div>
   );

@@ -104,6 +104,13 @@ afterEach(() => {
   container.remove();
 });
 
+it("shows placeholders, not false 'Not connected' tiles, until the page has loaded", async () => {
+  await show({ ...data(true, true), loaded: false });
+  expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
+  expect(container.textContent).not.toContain("Connect Carta");
+  expect(container.textContent).not.toContain("Not connected");
+});
+
 it("tells the owner to connect a provider when only native Google is configured", async () => {
   await show(data(true, false));
   expect(container.querySelector('[data-testid="catalog-not-set-up"]')?.textContent).toContain(

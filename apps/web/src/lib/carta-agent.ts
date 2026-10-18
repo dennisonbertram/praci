@@ -87,14 +87,18 @@ export function cartaPanelState(input: {
   };
 }
 
-/** Calls `onPhone` when the window shrinks below the desktop breakpoint, where a panel covers the page. */
-export function useOnPhoneWidth(onPhone: () => void) {
-  const callback = useRef(onPhone);
-  callback.current = onPhone;
+/**
+ * Calls `onPhone` when the window shrinks below the desktop breakpoint, where a panel covers the
+ * page, and `onWide` when it grows back, so a view-only collapse can return to the saved choice.
+ */
+export function useOnPhoneWidth(onPhone: () => void, onWide?: () => void) {
+  const callback = useRef({ onPhone, onWide });
+  callback.current = { onPhone, onWide };
   useEffect(() => {
     const query = window.matchMedia("(min-width: 768px)");
     const onChange = () => {
-      if (!query.matches) callback.current();
+      if (query.matches) callback.current.onWide?.();
+      else callback.current.onPhone();
     };
     query.addEventListener("change", onChange);
     return () => query.removeEventListener("change", onChange);

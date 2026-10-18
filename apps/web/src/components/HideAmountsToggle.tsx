@@ -4,7 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { setHideAmounts, useHideAmounts } from "../lib/hide-amounts-preference";
 
 const helper = () =>
-  t`Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show.`;
+  t`Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show.`;
 
 /** Icon button for page headers. Pressed while amounts are hidden. */
 export function HideAmountsButton() {

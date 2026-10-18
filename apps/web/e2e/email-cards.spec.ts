@@ -31,7 +31,7 @@ test("the Inbox agent cites mail as urgency-grouped cards that open the message"
     "Today",
     "Within 3 days",
     "This week",
-    "Later",
+    "No rush",
   ]);
   await expect(cards.getByTestId("email-card")).toHaveCount(3);
   await expect(cards.getByTestId("email-row")).toHaveCount(2);

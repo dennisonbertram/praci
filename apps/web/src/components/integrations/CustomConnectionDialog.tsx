@@ -476,7 +476,9 @@ export function CustomConnectionDialog({
             </DialogTitle>
             <DialogDescription>
               {service ? (
-                <Trans>Sign in with {service} in the window that opens.</Trans>
+                <Trans>
+                  Click Sign in with {service}. A {service} window opens for you to approve access.
+                </Trans>
               ) : (
                 <Trans>Paste the MCP server URL from the app's documentation.</Trans>
               )}

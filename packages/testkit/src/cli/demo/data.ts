@@ -284,6 +284,42 @@ const MAIL: Mail[] = [
     subject: "SAFE countersigned",
     text: "Alex, the countersigned SAFE for $250,000 is filed. Wire should arrive within two business days.\n\nPriya",
   },
+  // For the Carta agent's audit-response skill: an auditor's confirmation request and its DocuSign.
+  {
+    thread: "audit-confirmation",
+    agoMs: 2.5 * DAY_MS,
+    from: "Quinn Auditwell <quinn@auditwell.example.test>",
+    subject: "Audit confirmation: Quill Capital Fund I holdings as of Sep 30",
+    text: "Hi Alex,\n\nAs part of the annual audit of Quill Capital Fund I (Mock), please confirm the fund's holdings in Northwind Robotics as of Sep 30, 2026:\n\n- SAFE, purchase amount $250,000, unconverted\n- No other securities\n\nA DocuSign envelope with this confirmation follows. Please reply with any differences by Oct 24.\n\nQuinn Auditwell\nAuditwell LLP (Mock)",
+    unread: true,
+  },
+  {
+    thread: "audit-docusign",
+    agoMs: 2.4 * DAY_MS,
+    from: "DocuSign via Auditwell LLP <dse@docusign.example.test>",
+    subject: "Please DocuSign: Investment confirmation for Quill Capital Fund I",
+    text: "Quinn Auditwell sent you a document to review and sign: Investment confirmation for Quill Capital Fund I (Mock), as of Sep 30, 2026.\n\nREVIEW DOCUMENT (mock link, does nothing)\n\nDue Oct 24.",
+    unread: true,
+  },
+  // Past monthly investor updates in Sent, so a new one can match their sections and voice.
+  {
+    thread: "investor-update-august",
+    agoMs: 47 * DAY_MS,
+    from: ME,
+    to: ME,
+    sent: true,
+    subject: "Northwind Robotics: August investor update",
+    text: "Hi all,\n\nHighlights\n- Signed our second pilot customer (Beacon Retail).\n- Shipped firmware 2.3 with 18% faster picking.\n\nLowlights\n- A sensor supplier slipped two weeks.\n\nMetrics\n- Cash: $1.42M. Monthly burn: $72k. Runway: 19 months.\n\nAsks\n- Intros to warehouse operators in the Midwest.\n\nThanks,\nAlex",
+  },
+  {
+    thread: "investor-update-july",
+    agoMs: 78 * DAY_MS,
+    from: ME,
+    to: ME,
+    sent: true,
+    subject: "Northwind Robotics: July investor update",
+    text: "Hi all,\n\nHighlights\n- Closed the $250,000 Quill Capital SAFE.\n- Hired our first firmware engineer.\n\nLowlights\n- Pilot install took a week longer than planned.\n\nMetrics\n- Cash: $1.55M. Monthly burn: $68k. Runway: 22 months.\n\nAsks\n- Candidates for a senior firmware role.\n\nThanks,\nAlex",
+  },
   {
     thread: "partner-intro",
     agoMs: 11 * DAY_MS,

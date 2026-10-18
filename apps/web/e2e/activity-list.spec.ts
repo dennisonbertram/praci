@@ -94,7 +94,7 @@ test("sidebar Working and Finished surface active and terminal runs", async ({
 
   const sidebarSearch = page
     .getByTestId("sidebar-search")
-    .getByPlaceholder("Search chats", { exact: true });
+    .getByPlaceholder("Search", { exact: true });
   await sidebarSearch.fill("Chief");
   await expect(aside.getByText("Finished", { exact: true })).toHaveCount(0);
   await expect(activityRow(page, "Chief")).toHaveCount(0);

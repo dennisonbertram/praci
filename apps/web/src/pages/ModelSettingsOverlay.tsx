@@ -1167,15 +1167,29 @@ export function ModelSettingsOverlay({
           <span className="shrink-0 text-[12.5px] uppercase tracking-[0.08em] text-muted-foreground/80">
             <Trans>Active model</Trans>
           </span>
-          <span className="min-w-0 truncate text-[15px] text-foreground">
-            {currentEntry?.label ?? me?.defaultModel ?? t`Deployment default`}
-          </span>
-          <span className="truncate text-[13px] text-muted-foreground">
-            {currentEntry?.providerName ?? me?.defaultProvider ?? (
-              <Trans>Configured by deployment</Trans>
-            )}
-          </span>
-          {activeThinkingLabel ? (
+          {/* The saved default names a model, but with no provider connected nothing can run it. */}
+          {me?.needsModel ? (
+            <>
+              <span className="min-w-0 truncate text-[15px] text-foreground">
+                <Trans>None yet</Trans>
+              </span>
+              <span className="text-[13px] text-muted-foreground">
+                <Trans>Pick a provider below and connect it.</Trans>
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="min-w-0 truncate text-[15px] text-foreground">
+                {currentEntry?.label ?? me?.defaultModel ?? t`Deployment default`}
+              </span>
+              <span className="truncate text-[13px] text-muted-foreground">
+                {currentEntry?.providerName ?? me?.defaultProvider ?? (
+                  <Trans>Configured by deployment</Trans>
+                )}
+              </span>
+            </>
+          )}
+          {!me?.needsModel && activeThinkingLabel ? (
             <span className="shrink-0 text-[13px] text-muted-foreground">
               <Trans>Thinking: {activeThinkingLabel}</Trans>
             </span>
@@ -1458,7 +1472,7 @@ export function ModelSettingsOverlay({
               ) : (
                 <>
                   <p className="text-sm leading-[1.5] text-muted-foreground">
-                    <Trans>Connect this provider to use it as your personal model.</Trans>
+                    <Trans>Connect {selectedProviderName} to use it as your personal model.</Trans>
                   </p>
                   {connectionControls}
                   <div className="mt-6">{catalogModelConfig}</div>

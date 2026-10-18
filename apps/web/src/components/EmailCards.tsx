@@ -32,7 +32,7 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
     today: t`Today`,
     within_3_days: t`Within 3 days`,
     this_week: t`This week`,
-    later: t`Later`,
+    later: t`No rush`,
   };
   const attachments = (email: EmailCard) =>
     email.attachments ? (
@@ -46,11 +46,18 @@ export function EmailCards({ block }: { block: Extract<MessageBlock, { kind: "em
       </span>
     ) : null;
 
+  const groups = groupEmailCards(block.emails);
+  // "No rush" only means something next to more urgent mail; alone, such as past updates the bot
+  // looked up, it reads as a stray label.
+  const onlyLater = groups.length === 1 && groups[0]?.urgency === "later";
+
   return (
     <div data-testid="email-cards" className="flex w-80 max-w-full flex-col gap-3 py-1">
-      {groupEmailCards(block.emails).map((group) => (
+      {groups.map((group) => (
         <section key={group.urgency} className="flex flex-col gap-1.5">
-          <h3 className="text-xs font-semibold text-muted-foreground">{titles[group.urgency]}</h3>
+          {onlyLater ? null : (
+            <h3 className="text-xs font-semibold text-muted-foreground">{titles[group.urgency]}</h3>
+          )}
           {group.urgency === "later" ? (
             <Card size="sm" className="gap-0 py-1">
               {group.emails.map((email) => (

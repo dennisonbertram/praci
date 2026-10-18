@@ -1160,6 +1160,11 @@ describe("MCP OAuth", () => {
       data: { secretId: "secret-next", revision: { increment: 1 } },
     });
     expect(tx.secret.deleteMany).toHaveBeenCalledWith({ where: { id: "secret-current" } });
+    // The tokens go but the OAuth state stays, so the server reads "needs sign-in", not "connected".
+    const stored = JSON.parse(String((secrets.put.mock.calls[0] as unknown[])[0]));
+    expect(stored).toEqual({ secret: "static-token", oauth: {} });
+    secrets.load.mockReturnValueOnce(JSON.stringify(stored));
+    expect(await broker.statusForCiphertext("encrypted-next", "secret-next")).toBe("reconnect");
   });
 
   it("merges OAuth state into the latest static credential after acquiring the lock", async () => {

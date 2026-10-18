@@ -4,7 +4,7 @@ import type { Contact } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
@@ -79,11 +79,11 @@ const button = (label: string) =>
     | undefined;
 const click = (el: HTMLElement | undefined) => act(async () => el?.click());
 
-async function show(url = "/app/cap-table") {
+async function show(url = "/app/cap-table", props: Parameters<typeof CapTablePage>[0] = {}) {
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={[url]}>
-        <CapTablePage />
+        <CapTablePage {...props} />
       </MemoryRouter>,
     ),
   );
@@ -286,9 +286,10 @@ it("shows Ownership in the same font as the other figures", async () => {
 it("offers Add email for a holder without a contact and prefills the dialog", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
   await show();
-  const add = [...container.querySelectorAll("button")].filter(
+  // The Email column; on a phone the same action also shows under the name.
+  const add = [...container.querySelectorAll("tbody td:nth-child(2) button")].filter(
     (b) => b.textContent === "Add email",
-  );
+  ) as HTMLElement[];
   expect(add).toHaveLength(1);
   await click(add[0]);
   expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Dee Newcomer");
@@ -416,6 +417,19 @@ it("deletes a contact with an Undo that restores it", async () => {
   expect(document.body.textContent).not.toContain("Deleted Bo");
 });
 
+it("keeps the Deleted notice with Undo until it is dismissed", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  rpcMock.remove.mockResolvedValue({ ok: true });
+  await show();
+  await click(button("Bo"));
+  await click(button("Delete"));
+  await act(async () => vi.advanceTimersByTimeAsync(60_000));
+  expect(document.body.textContent).toContain("Deleted Bo");
+  expect(button("Undo")).toBeDefined();
+  await click(button("Dismiss"));
+  expect(document.body.textContent).not.toContain("Deleted Bo");
+});
+
 it("keeps the contact restorable when Undo fails, and restores it on Try again", async () => {
   rpcMock.remove.mockResolvedValue({ ok: true });
   rpcMock.save.mockRejectedValueOnce(new Error("offline")).mockResolvedValue({});
@@ -424,6 +438,9 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
   await click(button("Delete"));
   await click(button("Undo"));
   expect(document.body.textContent).toContain("offline");
+  // The failure names the contact and says that dismissing loses it.
+  expect(document.body.textContent).toContain("Could not restore Bo");
+  expect(document.body.textContent).toContain("Bo stays deleted");
   expect(button("Undo")).toBeUndefined();
   await click(button("Try again"));
   expect(rpcMock.save).toHaveBeenCalledTimes(2);
@@ -435,10 +452,11 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
     notes: null,
   });
   expect(document.body.textContent).not.toContain("offline");
+  expect(document.body.textContent).toContain("Restored Bo");
 });
 
 it("confirms a save and closes the dialog with Cancel", async () => {
-  rpcMock.save.mockResolvedValue({});
+  rpcMock.save.mockResolvedValue(contact("c3", "Cy", "investor"));
   await show();
   await click(button("Add contact"));
   await click(button("Cancel"));
@@ -447,7 +465,34 @@ it("confirms a save and closes the dialog with Cancel", async () => {
   await click(button("Add contact"));
   await typeInto("contact-name", "Cy");
   await click(button("Save"));
-  expect(document.body.textContent).toContain("Contact saved");
+  // The notice names the contact and sits after the table, so showing it never moves the rows.
+  const status = container.querySelector("[role=status]") as HTMLElement;
+  expect(status.textContent).toContain("Saved Cy");
+  expect(status.closest(".fixed")).toBeNull();
+  const table = container.querySelector("table") as HTMLElement;
+  expect(table.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("scrolls the saved contact into view and marks its row", async () => {
+  const saved = contact("c3", "Cy", "investor");
+  rpcMock.save.mockResolvedValue(saved);
+  const scrolled: Element[] = [];
+  Element.prototype.scrollIntoView = function (this: Element) {
+    scrolled.push(this);
+  };
+  await show();
+  rpcMock.list.mockResolvedValue([
+    contact("c1", "Ada", "investor"),
+    contact("c2", "Bo", "auditor"),
+    saved,
+  ]);
+  await click(button("Add contact"));
+  await typeInto("contact-name", "Cy");
+  await click(button("Save"));
+  await flush();
+  const row = container.querySelector('[data-contact-id="c3"]') as HTMLElement;
+  expect(scrolled).toContain(row);
+  expect(row.className).toContain("bg-muted");
 });
 
 it("reads the kind filter from the URL and names the kind when it is empty", async () => {
@@ -464,7 +509,9 @@ it("explains where ownership comes from when Carta is not connected", async () =
   rpcMock.servers.mockResolvedValue([]);
   await show();
   expect(container.textContent).toContain("See who owns your company");
-  expect(container.textContent).toContain("Ownership comes from Carta.");
+  // A founder new to Carta learns what it is, and that the page works without it.
+  expect(container.textContent).toContain("Carta is the service many startups use");
+  expect(container.textContent).toContain("Not on Carta?");
   await act(async () => root.unmount());
   root = createRoot(container);
   rpcMock.servers.mockResolvedValue([{ ...cartaServer, oauthStatus: "reconnect" }]);
@@ -511,7 +558,7 @@ it("lists only investors on the Investors tab and offers Add email only to inves
   expect(text).not.toContain("Granted options");
   await click(button("All"));
   expect(container.textContent).toContain("Founder Person");
-  const adds = [...container.querySelectorAll("button")].filter(
+  const adds = [...container.querySelectorAll("tbody td:nth-child(2) button")].filter(
     (b) => b.textContent === "Add email",
   );
   expect(adds).toHaveLength(1);
@@ -586,4 +633,177 @@ it("hides shares, ownership, 409A and amounts while amounts are hidden, and flip
       (document.querySelector("[data-testid=hide-amounts-toggle]") as HTMLElement),
   );
   expect(container.textContent).toContain("10,000,000");
+});
+
+it("reloads contacts and the cap table when the agent finishes a chat turn", async () => {
+  const render = (agentBusy: boolean) =>
+    act(async () =>
+      root.render(
+        <MemoryRouter initialEntries={["/app/cap-table"]}>
+          <CapTablePage agentBusy={agentBusy} />
+        </MemoryRouter>,
+      ),
+    );
+  await render(true);
+  await flush();
+  expect(container.textContent).not.toContain("Dana");
+  rpcMock.list.mockResolvedValue([contact("c3", "Dana", "investor")]);
+  const capReads = rpcMock.capTable.mock.calls.length;
+  await render(false);
+  await flush();
+  expect(container.textContent).toContain("Dana");
+  expect(rpcMock.capTable.mock.calls.length).toBeGreaterThan(capReads);
+});
+
+it("shows an error with Try again when the Carta connection check fails", async () => {
+  rpcMock.servers.mockRejectedValueOnce(new Error("offline"));
+  await show();
+  const text = container.textContent ?? "";
+  expect(text).toContain("Could not check whether Carta is connected.");
+  // Not assumed connected, and not offered a new connection either.
+  expect(container.querySelector('[aria-label="Refresh from Carta"]')).toBeNull();
+  expect(text).not.toContain("Connect Carta");
+  await click(button("Try again"));
+  await flush();
+  expect(container.textContent).not.toContain("Could not check");
+  expect(container.querySelector('[aria-label="Refresh from Carta"]')).not.toBeNull();
+});
+
+it("offers to read the cap table when Carta is connected but nothing was read", async () => {
+  rpcMock.refresh.mockRejectedValueOnce(new Error("Add a model before refreshing"));
+  await show();
+  expect(container.textContent).toContain("has not read your cap table yet");
+  await click(button("Read cap table"));
+  await flush();
+  expect(rpcMock.refresh).toHaveBeenCalled();
+  expect(container.textContent).toContain("Add a model before refreshing");
+});
+
+it("says a model is needed and opens Models settings when none is set up", async () => {
+  const onOpenModelSettings = vi.fn();
+  await show("/app/cap-table", { onOpenModelSettings, needsModel: true });
+  await flush();
+  expect(container.textContent).toContain("needs a model before it can read your cap table");
+  expect(button("Read cap table")).toBeUndefined();
+  // Refresh cannot start without a model, so the header does not offer it.
+  expect(container.querySelector('[aria-label="Refresh from Carta"]')).toBeNull();
+  await click(button("Add a model"));
+  expect(onOpenModelSettings).toHaveBeenCalled();
+});
+
+it("offers Add a model, not Try again, when a refresh fails for want of a model", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  rpcMock.refresh.mockRejectedValue(new Error("Add a model before refreshing"));
+  const onOpenModelSettings = vi.fn();
+  await show("/app/cap-table", { onOpenModelSettings, needsModel: true });
+  await click(container.querySelector('[aria-label="Refresh from Carta"]') as HTMLElement);
+  await flush();
+  expect(container.textContent).toContain("Add a model before refreshing");
+  expect(button("Try again")).toBeUndefined();
+  await click(button("Add a model"));
+  expect(onOpenModelSettings).toHaveBeenCalled();
+});
+
+it("says Reading Carta instead of an update time while a refresh runs", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: true });
+  await show();
+  expect(container.textContent).toContain("Example Co· Reading Carta…");
+  expect(container.textContent).not.toContain("Updated");
+});
+
+it("filters Carta's shareholders and option grants on their own tabs", async () => {
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: {
+      ...snapshot,
+      holders: [
+        holder("Founder Person", "Common", 4_000_000, 40),
+        holder("Granted options", "Options", 900_000, 9),
+        holder("Angel Person", "SAFE", null, null),
+      ],
+    },
+    syncing: false,
+  });
+  await show("/app/cap-table?kind=shareholder");
+  expect(container.textContent).toContain("Founder Person");
+  expect(container.textContent).not.toContain("Granted options");
+  expect(container.textContent).not.toContain("Angel Person");
+  await click(button("Options"));
+  expect(container.textContent).toContain("Granted options");
+  expect(container.textContent).not.toContain("Founder Person");
+});
+
+it("keeps an option grant on Options when a contact with the holder's email is Other", async () => {
+  const granted = { ...holder("Granted options", "Options", 900_000, 9), email: "bo@example.test" };
+  rpcMock.list.mockResolvedValue([contact("c2", "Bo", "other")]);
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: { ...snapshot, holders: [granted] },
+    syncing: false,
+  });
+  await show("/app/cap-table?kind=options");
+  expect(container.textContent).not.toContain("No option grants in Carta");
+  expect(container.querySelector("tbody")?.textContent).toContain("Bo");
+});
+
+it("shows All and drops ?kind when its tab is missing without a cap table", async () => {
+  let search = "";
+  const Where = () => {
+    search = useLocation().search;
+    return null;
+  };
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/cap-table?kind=options"]}>
+        <CapTablePage />
+        <Where />
+      </MemoryRouter>,
+    ),
+  );
+  await flush();
+  expect(search).toBe("");
+  expect(container.textContent).not.toContain("No option grants in Carta");
+  expect(container.textContent).toContain("Ada");
+});
+
+it("colors the ownership bar in ink steps, not status colors", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  await show();
+  const classes = container.querySelector("[data-testid=ownership-bar]")?.innerHTML ?? "";
+  expect(classes).not.toMatch(/bg-(link|warning|success|destructive)/);
+});
+
+it("has no Shareholders or Options tab without a cap table", async () => {
+  await show();
+  expect(button("Shareholders")).toBeUndefined();
+  expect(button("Options")).toBeUndefined();
+});
+
+it("shows a holder's Carta email and offers Save as contact instead of Add email", async () => {
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: {
+      ...snapshot,
+      holders: [{ ...holder("Priya Holder", "SAFE", null, null), email: "priya@fund.test" }],
+    },
+    syncing: false,
+  });
+  await show();
+  const row = [...container.querySelectorAll("tbody tr")].find((r) =>
+    r.textContent?.includes("Priya Holder"),
+  );
+  expect(row?.textContent).toContain("priya@fund.test");
+  expect(row?.textContent).toContain("Save as contact");
+  expect(row?.textContent).not.toContain("Add email");
+  await click(button("Save as contact"));
+  expect(document.body.textContent).toContain("Save Priya Holder as a contact");
+});
+
+it("draws the ownership bar with equal segments while amounts are hidden", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  await show();
+  const widths = () =>
+    [...(container.querySelector("[data-testid=ownership-bar]")?.children ?? [])].map(
+      (el) => (el as HTMLElement).style.width,
+    );
+  expect(widths()).toEqual(["70%", "30%"]);
+  await act(async () => setHideAmounts(true));
+  expect(widths()).toEqual(["50%", "50%"]);
 });

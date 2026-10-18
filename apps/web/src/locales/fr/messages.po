@@ -566,6 +566,11 @@ msgstr ""
 msgid "Add a local command"
 msgstr ""
 
+#: src/components/AgentPanelIntro.tsx
+#: src/pages/CapTable.tsx
+msgid "Add a model"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Add a model in Settings to use this."
 msgstr "Ajoutez un modèle dans les Paramètres pour utiliser cette fonctionnalité."
@@ -637,6 +642,11 @@ msgstr ""
 msgid "Add email"
 msgstr ""
 
+#. placeholder {0}: prefill.name
+#: src/pages/CapTable.tsx
+msgid "Add email for {0}"
+msgstr ""
+
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr ""
@@ -677,6 +687,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Add your investors, auditors and counsel here. Contacts are your address book."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Adding a contact"
 msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
@@ -1170,6 +1184,10 @@ msgstr "Avatars"
 msgid "Back"
 msgstr "Retour"
 
+#: src/pages/Shell.tsx
+msgid "Back to Cap table"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Back to sign in"
 msgstr "Retour à la connexion"
@@ -1320,6 +1338,11 @@ msgstr "Les bots sont en cours d'exécution"
 msgid "Bots lose access to its tools."
 msgstr ""
 
+#. placeholder {0}: server.name
+#: src/components/integrations/McpDetail.tsx
+msgid "Bots lose access to the tools of {0}."
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Bots lose access to this account."
 msgstr ""
@@ -1468,6 +1491,14 @@ msgstr "Vue en cartes"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Cardholder"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Carta is connected"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Carta is the service many startups use to record who owns shares, options and SAFEs. Connect it to see them here and to ask the Carta agent about them."
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -1655,6 +1686,10 @@ msgstr ""
 msgid "Choose which connected model Rakazo uses."
 msgstr "Choisissez le modèle connecté utilisé par Rakazo."
 
+#: src/pages/Shell.tsx
+msgid "Choosing your company in Carta"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Clear"
@@ -1703,6 +1738,10 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
 msgstr "Effacement en cours…"
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Click Sign in with {service}. A {service} window opens for you to approve access."
+msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1941,6 +1980,10 @@ msgstr ""
 msgid "Connect {name}"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Connect {selectedProviderName} to use it as your personal model."
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect {service}"
 msgstr ""
@@ -2011,10 +2054,6 @@ msgstr "Connecter le serveur MCP « {name} »"
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Connect this provider to use it as your personal model."
-msgstr "Connectez ce fournisseur pour l'utiliser comme modèle personnel."
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Connect Treg"
 msgstr "Connecter Treg"
@@ -2071,10 +2110,6 @@ msgstr "Connexion en cours…"
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "Le test de connexion a échoué."
-
-#: src/pages/CapTable.tsx
-msgid "Contact saved"
-msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Contacts are your address book. They do not change Carta."
@@ -2168,6 +2203,10 @@ msgstr "Impossible de vérifier les identifiants enregistrés."
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Could not check teaching status. Refresh the view to continue."
 msgstr "Impossible de vérifier l'état de l'enseignement. Actualisez la vue pour continuer."
+
+#: src/pages/CapTable.tsx
+msgid "Could not check whether Carta is connected."
+msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not clear conversation"
@@ -2389,7 +2428,7 @@ msgid "Could not load the app list. Reload to try again."
 msgstr ""
 
 #: src/pages/CapTable.tsx
-msgid "Could not load the cap table"
+msgid "Could not load the cap table, so holdings are missing."
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -2504,7 +2543,7 @@ msgid "Could not reset password"
 msgstr "Impossible de réinitialiser le mot de passe"
 
 #: src/pages/CapTable.tsx
-msgid "Could not restore {name}"
+msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3349,6 +3388,10 @@ msgstr ""
 msgid "Equity"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "equity, ownership, shares, options, Carta"
+msgstr ""
+
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
 msgid "Error"
@@ -3365,10 +3408,6 @@ msgstr "tous les {intervalAmountSelect} {intervalUnitSelect}"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Every bot loses access to {name}."
-msgstr ""
-
-#: src/components/integrations/McpDetail.tsx
-msgid "Every bot loses access to its tools."
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -3798,7 +3837,7 @@ msgid "Hide transcript"
 msgstr "Masquer la transcription"
 
 #: src/components/HideAmountsToggle.tsx
-msgid "Hides amounts on finance screens and masks currency amounts in chat text. Plain numbers in agent replies may still show."
+msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show."
 msgstr ""
 
 #: src/lib/ticket-priority.ts
@@ -4088,7 +4127,6 @@ msgid "Last scan failed: {0}"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
-#: src/components/EmailCards.tsx
 msgid "Later"
 msgstr "Plus tard"
 
@@ -4961,6 +4999,10 @@ msgid "No open deadlines."
 msgstr ""
 
 #: src/pages/CapTable.tsx
+msgid "No option grants in Carta"
+msgstr ""
+
+#: src/pages/CapTable.tsx
 msgid "No other contacts yet"
 msgstr ""
 
@@ -5003,6 +5045,14 @@ msgstr ""
 msgid "No runs yet"
 msgstr "Aucune exécution pour le moment"
 
+#: src/components/EmailCards.tsx
+msgid "No rush"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "No shareholders in Carta"
+msgstr ""
+
 #: src/pages/KnowledgeSection.tsx
 msgid "No skills yet"
 msgstr "Aucune compétence pour le moment"
@@ -5043,6 +5093,7 @@ msgstr ""
 msgid "None"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
 msgstr "Aucun pour le moment"
@@ -5101,6 +5152,10 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Pas maintenant"
+
+#: src/pages/CapTable.tsx
+msgid "Not on Carta? You can still keep your investors and advisors below."
+msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Not scanned yet"
@@ -5162,6 +5217,10 @@ msgstr "Échec de la connexion OAuth"
 msgid "Obligation"
 msgstr ""
 
+#: src/components/integrations/McpDetail.tsx
+msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
+msgstr ""
+
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -5204,6 +5263,11 @@ msgstr "Ouvrir"
 msgid "Open {0}"
 msgstr "Ouvrir {0}"
 
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "Open {0} full screen"
+msgstr ""
+
 #. placeholder {0}: oauth.verificationUri.replace(/^https:\/\//, "")
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5221,6 +5285,7 @@ msgid "Open again"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/McpDetail.tsx
 msgid "Open Cap table"
 msgstr ""
 
@@ -5242,6 +5307,10 @@ msgstr "Ouvrir le lien externe ?"
 
 #: src/components/integrations/FinanceSection.tsx
 msgid "Open Finance"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Open full screen"
 msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
@@ -5304,6 +5373,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Opened its thread."
 msgstr "Fil ouvert."
+
+#: src/pages/Shell.tsx
+msgid "Opening an email"
+msgstr ""
 
 #: src/pages/Onboarding.tsx
 msgid "Opening chat…"
@@ -5400,10 +5473,6 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Ownership"
-msgstr ""
-
-#: src/pages/CapTable.tsx
-msgid "Ownership comes from Carta. Connect it to see holders, the option pool and SAFEs here. The Carta agent can answer questions about them only while Carta is connected."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -5543,6 +5612,10 @@ msgstr "Choisissez un modèle dans le catalogue."
 msgid "Pick a model from the list or enter a model id served by this endpoint."
 msgstr "Choisissez un modèle dans la liste ou saisissez un identifiant de modèle servi par ce point de terminaison."
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Pick a provider below and connect it."
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
 msgstr "Épingler"
@@ -5681,6 +5754,10 @@ msgstr ""
 msgid "Read balances and transactions"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Read cap table"
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Read cards, expenses and bills"
@@ -5706,8 +5783,28 @@ msgstr ""
 msgid "Reading"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Reading a connected app"
+msgstr ""
+
 #: src/pages/CapTable.tsx
 msgid "Reading Carta…"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Reading the cap table"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Reading your cap table from Carta"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Reading your contacts"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Reading your finances"
 msgstr ""
 
 #: src/components/finance/StatementImport.tsx
@@ -5843,6 +5940,10 @@ msgstr "Actualiser"
 
 #: src/pages/CapTable.tsx
 msgid "Refresh from Carta"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Refresh from Carta. The Carta agent reads your cap table again."
 msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
@@ -6118,6 +6219,10 @@ msgstr "Restaurer le dernier espace de travail enregistré."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr "Restaurez le dernier espace de travail enregistré. Les travaux non enregistrés sur l'ordinateur seront perdus."
 
+#: src/pages/CapTable.tsx
+msgid "Restored {name}"
+msgstr ""
+
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Restoring your workspace"
 msgstr "Restauration de votre espace de travail"
@@ -6273,6 +6378,15 @@ msgstr ""
 msgid "Save"
 msgstr "Enregistrer"
 
+#. placeholder {0}: prefill.name
+#: src/pages/CapTable.tsx
+msgid "Save {0} as a contact"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Save as contact"
+msgstr ""
+
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Save backups"
 msgstr "Enregistrer les modèles de secours"
@@ -6304,6 +6418,11 @@ msgstr "Enregistrer l’espace de travail et installer les logiciels actuels."
 msgid "Saved"
 msgstr "Enregistré"
 
+#. placeholder {0}: saved.name
+#: src/pages/CapTable.tsx
+msgid "Saved {0}"
+msgstr ""
+
 #: src/pages/ScratchpadSection.tsx
 msgid "Saved, but list refresh failed"
 msgstr "Enregistré, mais l'actualisation de la liste a échoué"
@@ -6315,6 +6434,10 @@ msgstr "Enregistré."
 #: src/pages/RoutineEditor.tsx
 msgid "Saved. Rotate to reveal."
 msgstr "Enregistré. Tournez pour révéler."
+
+#: src/pages/Shell.tsx
+msgid "Saving a contact"
+msgstr ""
 
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Saving your workspace"
@@ -6356,6 +6479,7 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
 msgid "Search"
@@ -6378,10 +6502,6 @@ msgstr "Rechercher des artefacts…"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search by domain"
 msgstr "Rechercher par domaine"
-
-#: src/pages/Shell.tsx
-msgid "Search chats"
-msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
@@ -6447,6 +6567,10 @@ msgstr ""
 #. placeholder {0}: filters.query.trim()
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Searching your mail"
 msgstr ""
 
 #: src/pages/SpaceSearch.tsx
@@ -6605,6 +6729,10 @@ msgid "Shareholder"
 msgstr ""
 
 #: src/pages/CapTable.tsx
+msgid "Shareholders"
+msgstr ""
+
+#: src/pages/CapTable.tsx
 msgid "Shares"
 msgstr ""
 
@@ -6667,6 +6795,10 @@ msgstr "Afficher la transcription"
 msgid "Showing the {shown} most connected of {total} items."
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Showing the emails it found"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Sidebar density"
 msgstr ""
@@ -6703,10 +6835,6 @@ msgstr "Connectez-vous à votre compte existant pour associer SSO"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Sign in with {service}"
-msgstr ""
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Sign in with {service} in the window that opens."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -7142,6 +7270,18 @@ msgstr ""
 msgid "The Carta agent can now read your cap table."
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "The Carta agent has not read your cap table yet."
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "The Carta agent loses access to Carta."
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "The Carta agent needs a model before it can read your cap table."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "The Carta agent reads your cap table from Carta and answers questions about it. Try one:"
 msgstr ""
@@ -7200,6 +7340,10 @@ msgstr "Réflexion"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Thinking: {activeThinkingLabel}"
+msgstr ""
+
+#: src/components/AgentPanelIntro.tsx
+msgid "This agent needs a model before it can answer. Add one in Settings, Models."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7626,6 +7770,10 @@ msgstr "Mise à jour de l'ordinateur de {0}"
 msgid "Updating Team Computer"
 msgstr "Mise à jour de l'ordinateur d'équipe"
 
+#: src/pages/Shell.tsx
+msgid "Updating the cap table"
+msgstr ""
+
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Updating…"
@@ -7956,6 +8104,10 @@ msgstr ""
 msgid "Writing"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Writing a draft email"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Wrote {path}"
 msgstr ""
@@ -8014,6 +8166,10 @@ msgstr "Vous avez le contrôle"
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Your Carta sign-in ended. Sign in again to see holders here."
 msgstr ""
 
 #. placeholder {0}: server.name
