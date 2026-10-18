@@ -8,7 +8,11 @@ import { dateLocaleForUi, t } from "./i18n";
 export const listMailInbox = (connectionId?: string) =>
   rpc<InboxListOutput>("inbox/list", connectionId ? { connectionId } : {});
 
-export const refreshMailInbox = () => rpc<{ ok: true }>("inbox/refresh", {});
+// Refresh can wait out a rate-limit backoff (up to 30 s) and then sync (24 s seen), over the 8 s default.
+const REFRESH_TIMEOUT_MS = 90_000;
+
+export const refreshMailInbox = () =>
+  rpc<{ ok: true }>("inbox/refresh", {}, { timeoutMs: REFRESH_TIMEOUT_MS });
 
 export const getMailMessage = (messageId: string) => rpc<InboxMessage>("inbox/get", { messageId });
 

@@ -400,18 +400,24 @@ export async function inboxList(
   ]);
 
   const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled, marks));
+  // A rate limit is a pause, not a lasting fault: it is reported only while its backoff runs.
+  // After that the next sync decides, so an old one must not claim Gmail is limiting requests now.
+  const nowMs = Date.now();
+  const current = states.filter(
+    (s) =>
+      s.lastErrorAt &&
+      (s.lastErrorKind !== "rate_limited" || (s.backoffUntil && s.backoffUntil.getTime() > nowMs)),
+  );
   const synced = states.flatMap((s) => (s.lastSyncedAt ? [s.lastSyncedAt.getTime()] : []));
   return {
     accounts,
     agent: agentOut,
     rows,
     syncedAt: synced.length ? new Date(Math.max(...synced)).toISOString() : null,
-    failedAccounts: states.filter((s) => s.lastErrorAt).map((s) => s.connectionId),
-    reconnectAccounts: states
-      .filter((s) => s.lastErrorAt && s.needsReconnect)
-      .map((s) => s.connectionId),
-    rateLimitedAccounts: states
-      .filter((s) => s.lastErrorAt && s.lastErrorKind === "rate_limited")
+    failedAccounts: current.map((s) => s.connectionId),
+    reconnectAccounts: current.filter((s) => s.needsReconnect).map((s) => s.connectionId),
+    rateLimitedAccounts: current
+      .filter((s) => s.lastErrorKind === "rate_limited")
       .map((s) => s.connectionId),
     enabled,
     triageBlocked,
@@ -450,6 +456,26 @@ export async function inboxFeedbackSet(
   return { mark: input.mark };
 }
 
+/** A sync inside a rate-limit backoff is skipped, so "Try again" would do nothing: wait it out (at most 30 s). */
+async function waitOutBackoff(prisma: PrismaClient, connectionId: string, signal?: AbortSignal) {
+  if (signal?.aborted) return;
+  // The remaining time comes from Postgres' clock, the one that set backoffUntil and that sync compares it to.
+  const [row] = await prisma.$queryRaw<Array<{ waitMs: number | null }>>`
+    SELECT EXTRACT(EPOCH FROM ("backoffUntil" - timezone('utc', now()))) * 1000 AS "waitMs"
+    FROM mail_sync_states WHERE "connectionId" = ${connectionId}`;
+  const wait = Number(row?.waitMs ?? 0);
+  if (!(wait > 0) || wait > 30_000 || signal?.aborted) return;
+  await new Promise<void>((resolve) => {
+    const done = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", done);
+      resolve();
+    };
+    const timer = setTimeout(done, wait + 50);
+    signal?.addEventListener("abort", done, { once: true });
+  });
+}
+
 export async function inboxRefresh(
   deps: InboxDeps,
   actor: Actor,
@@ -467,7 +493,9 @@ export async function inboxRefresh(
   // At most four accounts at a time; syncMailbox records provider errors instead of throwing.
   const queue = [...accounts];
   const worker = async () => {
-    for (let account = queue.shift(); account; account = queue.shift()) {
+    for (let account = queue.shift(); account && !signal?.aborted; account = queue.shift()) {
+      await waitOutBackoff(deps.prisma, account.id, signal);
+      if (signal?.aborted) return;
       await syncMailbox(deps, account, context);
     }
   };
