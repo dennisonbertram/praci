@@ -102,9 +102,12 @@ export const isCartaWrite = (
  */
 export const isIntegrationAgentWrite = (
   botSpawnKey: string | null | undefined,
-  route: { connectorId?: string } | undefined,
+  route: { connectorId?: string; connectionId?: string } | undefined,
   readOnly: boolean | undefined,
-) => isIntegrationAgentSpawnKey(botSpawnKey) && route?.connectorId === "mcp" && readOnly !== true;
+) =>
+  isIntegrationAgentSpawnKey(botSpawnKey) &&
+  readOnly !== true &&
+  (route?.connectorId === "mcp" || (Boolean(route?.connectionId) && route?.connectorId !== "mcp"));
 
 /** Whether a mail_send call carries the whole message (no draftId shortcut). */
 export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean {

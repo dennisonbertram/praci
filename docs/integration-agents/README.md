@@ -290,17 +290,23 @@ approval otherwise just waits). The native server screen
 (`apps/mobile/app/server.tsx`) is a follow-up using native switches and an alert for
 the confirmation.
 
-## Connected apps (after v1)
+## Connected apps
 
-Notion-style apps use `Connection`. Create agent makes the same kind of bot
-(spawn key `integration-agent:<connectionId>`), "Only this agent" sets
-`allAgents = false` plus one `BotConnectionAccess` row (already enforced by
-`deniedConnectionIds`, and `AppDetail` already has the "Used by" list for it), and the
-write gate marks the agent's non-read app tools as mandatory approval using the
-`readOnly` flag the tool list already carries (`AppDetail` already groups tools
-into Read and Write). The writes switch needs a home on `Connection` (a field, or
-`metadata`; TBD) because there is no `writesEnabled` there. Left out of v1 because
-that classification path and the Composio tool filter are separate code from MCP.
+Notion-style apps use `Connection`. Each connected account offers Create agent
+in `AppDetail`, with spawn key `integration-agent:<connectionId>`. The typed
+`Connection.agentBotId` relation identifies the agent and `writesEnabled` defaults
+to false. "Only this agent" sets `allAgents = false` plus one
+`BotConnectionAccess` row; disabling it restores shared access. Archiving or
+deleting the agent releases the link and resets the connection to shared,
+read-only defaults.
+
+The agent sees only its own account's app tools and plain built-ins, including
+when another bot starts a same-owner peer run. A tool is read-only only when its
+`readOnly` flag is explicitly true; absent classification is a write. Each write
+requires approval even when saved rules or Auto Review would otherwise allow it.
+Dispatch rechecks the connection's durable state, so turning changes off while
+an approval is pending prevents that call. No real provider account is needed
+for the offline emulator tests.
 
 ## Carta later
 

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ConnectionCatalogItem } from "@rakazo/contracts";
+import type { Connection, ConnectionCatalogItem } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -15,11 +15,17 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 const revoke = vi.fn().mockResolvedValue({});
+const createAgent = vi.fn().mockResolvedValue({ botId: "bot_app" });
+const setWrites = vi.fn().mockResolvedValue({});
+const setExclusive = vi.fn().mockResolvedValue({});
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     connections: {
       tools: vi.fn().mockResolvedValue([]),
       revoke: (...a: unknown[]) => revoke(...a),
+      createAgent: (...a: unknown[]) => createAgent(...a),
+      setWrites: (...a: unknown[]) => setWrites(...a),
+      setExclusive: (...a: unknown[]) => setExclusive(...a),
     },
   },
 }));
@@ -121,11 +127,129 @@ async function show(url: string, value: IntegrationsData) {
 afterEach(() => {
   act(() => root.unmount());
   container.remove();
+  createAgent.mockClear();
+  setWrites.mockClear();
+  setExclusive.mockClear();
 });
 
 const PAGE = "/app/integrations/app/google/gmail";
 const dialog = () => container.querySelector('[data-testid="connect-dialog"]');
 const where = () => container.querySelector('[data-testid="where"]')?.textContent;
+
+window.matchMedia ??= () =>
+  ({ matches: true, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList;
+
+const appConnection = (extra: Partial<Connection> = {}): Connection => ({
+  id: "conn_app",
+  connectorId: "composio",
+  provider: "notion",
+  displayName: "Sample workspace",
+  status: "connected",
+  error: null,
+  capabilities: [],
+  createdAt: "2026-01-01T00:00:00.000Z",
+  ...extra,
+});
+const APP_PAGE = "/app/integrations/app/composio/notion";
+const press = async (label: string) => {
+  const button = [...document.querySelectorAll<HTMLButtonElement>("button")].find(
+    (element) => element.textContent === label,
+  );
+  expect(button, label).toBeTruthy();
+  await act(async () => button!.click());
+};
+const switches = () => [...container.querySelectorAll<HTMLElement>('[role="switch"]')];
+
+it("creates an agent for the selected connected account and opens its chat", async () => {
+  await show(APP_PAGE, data({ connections: [appConnection()] }));
+  expect(switches()).toHaveLength(0);
+  await press("Create agent");
+  expect(createAgent).toHaveBeenCalledWith({ connectionId: "conn_app" });
+  expect(where()).toBe("/app/bot_app");
+});
+
+it("hides the ordinary access list once every account has an agent", async () => {
+  await show(APP_PAGE, data({ connections: [appConnection({ agentBotId: "bot_app" })] }));
+  expect(container.textContent).not.toContain("Used by");
+});
+
+it("reveals agent controls only after creation and confirms enabling changes", async () => {
+  const refresh = vi.fn();
+  await show(
+    APP_PAGE,
+    data({
+      connections: [appConnection({ agentBotId: "bot_app", writesEnabled: false })],
+      refresh,
+    }),
+  );
+  expect(container.querySelector('a[href="/app/bot_app"]')).toBeTruthy();
+  expect(switches()).toHaveLength(2);
+  expect(switches()[0]?.getAttribute("aria-checked")).toBe("false");
+  await act(async () => switches()[0]!.click());
+  expect(setWrites).not.toHaveBeenCalled();
+  await press("Cancel");
+  expect(setWrites).not.toHaveBeenCalled();
+  await act(async () => switches()[0]!.click());
+  await press("Allow changes");
+  expect(setWrites).toHaveBeenCalledWith({ connectionId: "conn_app", enabled: true });
+  expect(refresh).toHaveBeenCalled();
+});
+
+it("turns changes off immediately and saves exclusivity for the account", async () => {
+  await show(
+    APP_PAGE,
+    data({
+      connections: [appConnection({ agentBotId: "bot_app", writesEnabled: true })],
+      access: { conn_app: { allAgents: false, botIds: ["bot_app"] } },
+    }),
+  );
+  expect(switches()[1]?.getAttribute("aria-checked")).toBe("true");
+  await act(async () => switches()[0]!.click());
+  expect(setWrites).toHaveBeenCalledWith({ connectionId: "conn_app", enabled: false });
+  expect(document.querySelector('[role="alertdialog"]')).toBeNull();
+  await act(async () => switches()[1]!.click());
+  expect(setExclusive).toHaveBeenCalledWith({ connectionId: "conn_app", exclusive: false });
+});
+
+it("keeps account switches uniquely labelled and targets the selected connection", async () => {
+  await show(
+    APP_PAGE,
+    data({
+      connections: [
+        appConnection({ agentBotId: "bot_app", writesEnabled: true }),
+        appConnection({
+          id: "conn_second",
+          displayName: "Second workspace",
+          agentBotId: "bot_second",
+          writesEnabled: true,
+        }),
+      ],
+    }),
+  );
+  const ids = switches().map((element) => element.id);
+  expect(ids).toHaveLength(4);
+  expect(new Set(ids).size).toBe(4);
+  const labels = switches().map((element) => element.getAttribute("aria-labelledby"));
+  expect(new Set(labels).size).toBe(4);
+  for (const id of labels) expect(container.querySelector(`[id="${id}"]`)?.tagName).toBe("LABEL");
+  await act(async () => switches()[2]!.click());
+  expect(setWrites).toHaveBeenCalledWith({ connectionId: "conn_second", enabled: false });
+});
+
+it("shows creation failure without navigating or hiding the retry action", async () => {
+  createAgent.mockRejectedValueOnce(new Error("Could not create agent"));
+  await show(APP_PAGE, data({ connections: [appConnection()] }));
+  await press("Create agent");
+  expect(container.querySelector('[role="alert"]')?.textContent).toBe("Could not create agent");
+  expect(where()).toBe(APP_PAGE);
+  expect(container.textContent).toContain("Create agent");
+});
+
+it("does not offer creation for a pending connection", async () => {
+  await show(APP_PAGE, data({ connections: [appConnection({ status: "pending" })] }));
+  expect(container.textContent).not.toContain("Create agent");
+  expect(switches()).toHaveLength(0);
+});
 
 it("waits for a click when it is opened without ?connect=1", async () => {
   await show(PAGE, data());

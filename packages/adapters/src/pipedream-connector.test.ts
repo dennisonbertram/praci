@@ -30,6 +30,7 @@ const TEST_NETWORK = { resolveHostname: async () => [{ address: "203.0.113.10", 
 function pipedreamMcpFetch(
   toolsByApp: Record<string, string[]>,
   calls: Array<{ app: string | null; name: string; args: unknown }> = [],
+  accountIds: string[] = [],
 ) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const request = input instanceof Request ? input : new Request(input, init);
@@ -37,6 +38,8 @@ function pipedreamMcpFetch(
       return Response.json({ access_token: "fake-access-token", expires_in: 3_600 });
     }
     const app = request.headers.get("x-pd-app-slug");
+    const accountId = request.headers.get("x-pd-account-id");
+    if (accountId) accountIds.push(accountId);
     const message = JSON.parse(await request.text()) as {
       id?: number;
       method?: string;
@@ -569,6 +572,51 @@ describe("PipedreamConnector", () => {
       }),
     ]);
     expect(calls).toEqual([{ app: "gmail", name: "send_email", args: { text: "hello" } }]);
+  });
+
+  it("rejects a catalog route for a different connected-app agent account", async () => {
+    const accountIds: string[] = [];
+    const connector = new PipedreamConnector(FAKE_CONFIG, {
+      ...TEST_NETWORK,
+      fetch: pipedreamMcpFetch(appTools("gmail", 21), [], accountIds),
+    });
+    const appAgentContext = {
+      ...context,
+      connectedConnections: [
+        {
+          id: "connection-gmail",
+          connectorId: "pipedream",
+          externalId: "gmail",
+          displayName: "gmail",
+          providerRef: "apn-gmail",
+        },
+      ],
+      connectedAppAgentConnectionId: "connection-gmail",
+    };
+    const execute = (await connector.discoverTools(appAgentContext)).at(-1)!;
+    const call = {
+      tool: execute.name,
+      args: { id: "gmail:gmail_tool_0", arguments: { text: "hello" } },
+      executionId: "execute",
+      route: { ...execute.route!, connectionId: "connection-other" },
+    };
+
+    await expect(connector.resolveCall(call, appAgentContext)).resolves.toBeUndefined();
+
+    const pinned = await connector.resolveCall(
+      { ...call, route: { ...execute.route!, connectionId: "connection-gmail" } },
+      appAgentContext,
+    );
+    expect(pinned?.call.route?.connectionId).toBe("connection-gmail");
+    const events = [];
+    for await (const event of connector.execute(pinned!.call, appAgentContext)) events.push(event);
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "result",
+        data: expect.objectContaining({ isError: false }),
+      }),
+    ]);
+    expect(accountIds).toContain("apn-gmail");
   });
 
   it("leaves a direct app route to the normal execute path", async () => {

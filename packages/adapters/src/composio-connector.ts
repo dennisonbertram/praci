@@ -19,6 +19,7 @@ import {
   type ToolkitDirectoryEntry,
 } from "./composio-catalog-cache.js";
 import { DestinationEmulator } from "./destination-emulator.js";
+import { CATALOG_EXECUTE, catalogEntries, resolveCatalogCall } from "./lazy-tool-catalog.js";
 import { isVitestRuntime } from "./test-runtime.js";
 
 type ComposioSession = Awaited<ReturnType<Composio["create"]>>;
@@ -52,6 +53,7 @@ function mapOneTool(item: unknown): ConnectorTool | undefined {
       name,
       description: String(fn.description ?? name),
       inputSchema: asObject(fn.parameters) ?? { type: "object", properties: {} },
+      readOnly: explicitReadOnly(fn, raw),
       route: { connectorId: "composio", toolName: name },
     };
   }
@@ -63,8 +65,18 @@ function mapOneTool(item: unknown): ConnectorTool | undefined {
     inputSchema: asObject(raw.inputParameters) ??
       asObject(raw.inputSchema) ??
       asObject(raw.parameters) ?? { type: "object", properties: {} },
+    readOnly: explicitReadOnly(raw),
     route: { connectorId: "composio", toolName: name },
   };
+}
+
+function explicitReadOnly(...items: Record<string, unknown>[]): boolean | undefined {
+  for (const item of items) {
+    if (typeof item.readOnly === "boolean") return item.readOnly;
+    const annotations = asObject(item.annotations);
+    if (typeof annotations?.readOnlyHint === "boolean") return annotations.readOnlyHint;
+  }
+  return undefined;
 }
 
 function asObject(value: unknown): Record<string, unknown> | undefined {
@@ -340,6 +352,7 @@ export class ComposioConnector implements ComposioProvider {
   async sessionForExecute(
     userId: string,
     connections: ReturnType<typeof connectedComposioConnections>,
+    requireConnectedAccount = false,
   ): Promise<ComposioSession> {
     const canonicalToolkits = await this.canonicalizeToolkits(
       connections.map((connection) => connection.externalId),
@@ -368,8 +381,14 @@ export class ComposioConnector implements ComposioProvider {
     for (const [toolkit, ids] of accountIdsByToolkit) {
       connectedAccounts[toolkit] = [...ids].sort();
     }
+    if (requireConnectedAccount && Object.keys(connectedAccounts).length === 0) {
+      throw new Error("The connected account is no longer active");
+    }
     const key = executeSessionKey(canonicalToolkits, connectedAccounts);
-    if (!key) return this.sessionFor(userId);
+    if (!key) {
+      if (requireConnectedAccount) throw new Error("The connected account is unavailable");
+      return this.sessionFor(userId);
+    }
     const composio = this.sdk();
     const existing = this.executeSessions.get(userId);
     if (existing?.key === key) {
@@ -460,24 +479,116 @@ export class ComposioConnector implements ComposioProvider {
   async discoverTools(context: AdapterContext): Promise<ConnectorTool[]> {
     const connections = connectedComposioConnections(context);
     if (connections.length === 0) return [];
-    const session = await this.sessionForExecute(context.userId, connections);
+    const session = await this.sessionForExecute(
+      context.userId,
+      connections,
+      Boolean(context.connectedAppAgentConnectionId),
+    );
     const raw = await session.tools();
     return asConnectorTools(raw);
+  }
+
+  async resolveCall(
+    call: ConnectorCall,
+    context: AdapterContext,
+  ): Promise<{ call: ConnectorCall; tool: ConnectorTool } | undefined> {
+    if (call.route?.connectorId !== "composio" || call.route.toolName !== CATALOG_EXECUTE) {
+      return undefined;
+    }
+    const connections = connectedComposioConnections(context);
+    const session = await this.sessionForExecute(
+      context.userId,
+      connections,
+      Boolean(call.route.connectionId),
+    );
+    if (
+      call.route.connectionId &&
+      connections.length === 1 &&
+      call.route.connectionId !== connections[0]!.id
+    ) {
+      return undefined;
+    }
+    const resolved = resolveCatalogCall(
+      call,
+      catalogEntries(asConnectorTools(await session.tools())),
+    );
+    if (!resolved) return undefined;
+    if (connections.length !== 1) return resolved;
+    const connectionId = connections[0]!.id;
+    return {
+      call: {
+        ...resolved.call,
+        route: { ...resolved.call.route!, connectionId },
+      },
+      tool: {
+        ...resolved.tool,
+        route: { ...resolved.tool.route!, connectionId },
+      },
+    };
   }
 
   async *execute(call: ConnectorCall, context: AdapterContext): AsyncIterable<ConnectorEvent> {
     const executed = [];
     try {
+      let connections = connectedComposioConnections(context);
+      if (call.route?.connectionId) {
+        const pinned = connections.find((connection) => connection.id === call.route?.connectionId);
+        if (
+          !pinned?.providerRef?.trim() ||
+          composioSlugKey(pinned.providerRef) === composioSlugKey(pinned.externalId)
+        ) {
+          yield { type: "error", message: "Connected account route is unavailable" };
+          return;
+        }
+        connections = [pinned];
+      }
+      const planned = expandComposioMultiExecute(call.tool, call.args ?? {});
+      const nestedCalls = Array.isArray(call.args?.tools) ? call.args.tools : [];
+      const nestedAccountOverride = nestedCalls.some(
+        (item) => item && typeof item === "object" && "account" in item,
+      );
+      if (
+        call.route?.connectionId &&
+        (planned.some((item) => item.account !== undefined) || nestedAccountOverride)
+      ) {
+        yield { type: "error", message: "Account selection is not allowed for this connection" };
+        return;
+      }
       const session = await this.sessionForExecute(
         context.userId,
-        connectedComposioConnections(context),
+        connections,
+        Boolean(call.route?.connectionId),
       );
-      const planned = expandComposioMultiExecute(call.tool, call.args ?? {});
+      if (call.route?.connectionId) {
+        const offered = new Set(asConnectorTools(await session.tools()).map((tool) => tool.name));
+        const requested =
+          call.tool !== COMPOSIO_MULTI_EXECUTE_TOOL
+            ? [call.route.toolName ?? planned[0]?.tool ?? ""]
+            : planned.flatMap((item) =>
+                item.tool === COMPOSIO_MULTI_EXECUTE_TOOL
+                  ? Array.isArray(item.args.tools)
+                    ? item.args.tools.map((nested) =>
+                        nested && typeof nested === "object" && "tool_slug" in nested
+                          ? String((nested as { tool_slug: unknown }).tool_slug)
+                          : "",
+                      )
+                    : []
+                  : [item.tool],
+              );
+        if (requested.some((tool) => !tool || !offered.has(tool))) {
+          yield { type: "error", message: "Tool is not available for this connected account" };
+          return;
+        }
+      }
       for (const item of planned) {
         const result = await session.execute(
           item.tool,
           item.args,
-          item.account ? { account: item.account } : undefined,
+          call.route?.connectionId
+            ? undefined
+            : item.account
+              ? { account: item.account }
+              : undefined,
         );
         if (result.error) {
           const logIds = collectLogIds(executed);

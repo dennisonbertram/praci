@@ -11,26 +11,28 @@ export function WritesSwitch({
   disabled,
   hint,
   onChange,
+  idPrefix = "server",
 }: {
   service: string;
   checked: boolean;
   disabled: boolean;
   hint: ReactNode;
   onChange: (on: boolean) => void;
+  idPrefix?: string;
 }) {
   return (
     <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
       <Switch
-        id="server-writes"
-        aria-describedby="server-writes-hint"
+        id={`${idPrefix}-writes`}
+        aria-describedby={`${idPrefix}-writes-hint`}
         checked={checked}
         disabled={disabled}
         onCheckedChange={onChange}
       />
-      <Label htmlFor="server-writes">
+      <Label htmlFor={`${idPrefix}-writes`}>
         <Trans>Allow changes in {service}</Trans>
       </Label>
-      <p id="server-writes-hint" className="col-start-2 text-sm text-muted-foreground">
+      <p id={`${idPrefix}-writes-hint`} className="col-start-2 text-sm text-muted-foreground">
         {hint}
       </p>
     </div>
@@ -46,6 +48,7 @@ export function IntegrationAgentSection({
   disabled,
   onWrites,
   onExclusive,
+  idPrefix = "server",
 }: {
   service: string;
   agentName: string;
@@ -55,6 +58,7 @@ export function IntegrationAgentSection({
   disabled: boolean;
   onWrites: (on: boolean) => void;
   onExclusive: (on: boolean) => void;
+  idPrefix?: string;
 }) {
   const { t } = useLingui();
   return (
@@ -71,6 +75,7 @@ export function IntegrationAgentSection({
           checked={writesEnabled}
           disabled={disabled}
           onChange={onWrites}
+          idPrefix={idPrefix}
           hint={
             <Trans>
               Off: the agent only reads. On: it can also make changes, and asks you before each one.
@@ -79,16 +84,19 @@ export function IntegrationAgentSection({
         />
         <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
           <Switch
-            id="server-exclusive"
-            aria-describedby="server-exclusive-hint"
+            id={`${idPrefix}-exclusive`}
+            aria-describedby={`${idPrefix}-exclusive-hint`}
             checked={exclusive}
             disabled={disabled}
             onCheckedChange={onExclusive}
           />
-          <Label htmlFor="server-exclusive">
+          <Label htmlFor={`${idPrefix}-exclusive`}>
             <Trans>Only this agent</Trans>
           </Label>
-          <p id="server-exclusive-hint" className="col-start-2 text-sm text-muted-foreground">
+          <p
+            id={`${idPrefix}-exclusive-hint`}
+            className="col-start-2 text-sm text-muted-foreground"
+          >
             <Trans>
               Other agents ask the {service} agent instead of using {service} themselves.
             </Trans>

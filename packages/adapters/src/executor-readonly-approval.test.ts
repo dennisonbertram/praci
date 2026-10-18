@@ -1,4 +1,5 @@
 import type {
+  AdapterContext,
   AgentRunRequest,
   AutoReviewProvider,
   ConnectorCall,
@@ -15,7 +16,10 @@ import { approvalEffectKey, toolEffectIdempotencyKey } from "@rakazo/core/node/a
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { isApprovalPausedResult } from "./approval-effect.js";
 import { MAX_SHARED_MEMORY_CHARS } from "./builtin-tools.js";
+import { ConnectorRegistry } from "./composio-connector.js";
+import { ComposioEmulator } from "./composio-emulator.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
+import { DestinationEmulator } from "./destination-emulator.js";
 import { createRunExecutor, MAIL_CONSENT_OFF } from "./executor.js";
 import { fakeMercury, fakeMercuryMcpFetch } from "./finance-fake-tools.js";
 import type * as InboxTriageModule from "./inbox-triage.js";
@@ -60,6 +64,15 @@ type Effect = {
   runId?: string;
 };
 
+function matchesWhere(row: Record<string, unknown>, where: Record<string, unknown> = {}) {
+  return Object.entries(where).every(([key, expected]) => {
+    if (expected && typeof expected === "object" && "in" in expected) {
+      return (expected as { in: unknown[] }).in.includes(row[key]);
+    }
+    return row[key] === expected;
+  });
+}
+
 function fixture({
   name = "demo_get_item",
   catalog = false,
@@ -82,12 +95,18 @@ function fixture({
   spawnKey = null,
   mail,
   afterCall,
+  beforeToolCall,
   route,
   connector: realConnector,
   peer,
+  connectionRows = [],
+  availableTools,
 }: {
   /** A bot_message run started by bot `peer-1`: whether that bot is in the run's space and user, and whether the bot is its server's agent. */
   peer?: { senderInScope: boolean; linked: boolean };
+  connectionRows?: Record<string, unknown>[];
+  availableTools?: ConnectorTool[];
+  beforeToolCall?: (index: number) => void;
   /** Replaces the stub connector, for runs against a real McpConnector. */
   connector?: unknown;
   route?: ConnectorTool["route"];
@@ -210,6 +229,7 @@ function fixture({
       findUniqueOrThrow: vi.fn(async () => ({
         id: run.botId,
         userId: run.userId,
+        spaceId: run.spaceId,
         spawnKey,
         name: bot.name,
         title: bot.title,
@@ -247,7 +267,15 @@ function fixture({
       })),
     },
     task: { findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt })) },
-    connection: { findMany: vi.fn(async () => []) },
+    connection: {
+      findMany: vi.fn(async ({ where }: { where?: Record<string, unknown> } = {}) =>
+        connectionRows.filter((row) => matchesWhere(row, where)),
+      ),
+      findFirst: vi.fn(
+        async ({ where }: { where?: Record<string, unknown> } = {}) =>
+          connectionRows.find((row) => matchesWhere(row, where)) ?? null,
+      ),
+    },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
     userModelCredential: { findFirst: vi.fn(async () => null) },
     deploymentSettings: {
@@ -279,7 +307,8 @@ function fixture({
   const offeredTools: string[] = [];
   const runtimeRun = vi.fn(async function* (request: AgentRunRequest) {
     offeredTools.push(...(request.tools ?? []).map((t) => t.name));
-    for (const call of calls) {
+    for (const [index, call] of calls.entries()) {
+      beforeToolCall?.(index);
       const result = await request.executeTool!(
         catalog ? "demo_execute_tool" : name,
         catalog ? { id: name, arguments: call.args } : call.args,
@@ -296,7 +325,8 @@ function fixture({
     runtime: { describe: () => ({ capabilities: { scripted: false } }), run: runtimeRun },
     connector: realConnector ?? {
       discoverTools: async () =>
-        builtin
+        availableTools ??
+        (builtin
           ? []
           : catalog
             ? [
@@ -310,7 +340,7 @@ function fixture({
                   },
                 },
               ]
-            : [tool],
+            : [tool]),
       resolveCall: async (call: ConnectorCall) =>
         catalog ? resolveCatalogCall(call, catalogEntries([tool])) : undefined,
       execute,
@@ -976,6 +1006,436 @@ describe("integration agent write tools", () => {
     await f.run();
     expect(f.pauseRunForInput).not.toHaveBeenCalled();
     expect(f.execute).toHaveBeenCalledOnce();
+  });
+});
+
+describe("connected app integration agent tools", () => {
+  const connection = (extra: Record<string, unknown> = {}) => ({
+    id: "connection-1",
+    spaceId: "space-1",
+    userId: "user-1",
+    connectorId: "composio",
+    provider: "GMAIL",
+    providerRef: "account-1",
+    displayName: "Work Gmail",
+    status: "connected",
+    allAgents: true,
+    botAccess: [],
+    agentBotId: "bot-1",
+    writesEnabled: true,
+    ...extra,
+  });
+  const agentKey = integrationAgentSpawnKey("connection-1");
+  const ownTool: ConnectorTool = {
+    name: "GMAIL_SEND_EMAIL",
+    description: "Send mail",
+    inputSchema: { type: "object", properties: { recipient_email: { type: "string" } } },
+    readOnly: false,
+    route: { connectorId: "composio", toolName: "GMAIL_SEND_EMAIL" },
+  };
+  const ownReadTool: ConnectorTool = {
+    name: "GMAIL_FETCH_EMAILS",
+    description: "Fetch mail",
+    inputSchema: { type: "object", properties: {} },
+    readOnly: true,
+    route: { connectorId: "composio", toolName: "GMAIL_FETCH_EMAILS" },
+  };
+
+  beforeEach(() => {
+    reviewMock.mockReset();
+  });
+
+  it("offers only its linked app account, excludes MCP and other apps, and asks before writes", async () => {
+    const sibling = connection({
+      id: "connection-2",
+      allAgents: false,
+      agentBotId: null,
+      botAccess: [],
+    });
+    const f = fixture({
+      name: ownTool.name,
+      spawnKey: agentKey,
+      autoReview: true,
+      rules: [{ effect: "always_allow", matchKind: "tool", matchValue: ownTool.name }],
+      route: ownTool.route,
+      connectionRows: [connection({ allAgents: false, botAccess: [{ botId: "bot-1" }] }), sibling],
+      availableTools: [
+        ownTool,
+        {
+          ...ownTool,
+          name: "SLACK_POST_MESSAGE",
+          route: { connectorId: "pipedream", toolName: "SLACK_POST_MESSAGE" },
+        },
+        {
+          ...ownTool,
+          name: "mcp__other__write",
+          route: { connectorId: "mcp", resourceId: "other-server", toolName: "write" },
+        },
+      ],
+    });
+    const callArgs = {
+      recipient_email: "person@example.test",
+      subject: "Project update",
+      body: "The complete message body.",
+      options: { include_signature: false },
+    };
+    f.setCalls([{ args: callArgs, executionId: "write-1" }]);
+    await f.run();
+
+    expect(f.offeredTools).toContain(ownTool.name);
+    expect(f.offeredTools).not.toContain("SLACK_POST_MESSAGE");
+    expect(f.offeredTools).not.toContain("mcp__other__write");
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(reviewMock).not.toHaveBeenCalled();
+    expect(f.execute).not.toHaveBeenCalled();
+    const [{ blocks }] = f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }];
+    const card = blocks[0] as { detail: string; actions: Array<{ id: string }> };
+    expect(card.detail).toContain('"recipient_email": "person@example.test"');
+    expect(card.detail).toContain('"The complete message body."');
+    expect(card.detail).toContain('"include_signature": false');
+    expect(card.actions.map((action) => action.id)).toEqual(["allow", "deny"]);
+    f.effects[0]!.status = "approved";
+    await f.run();
+    expect(f.execute).toHaveBeenCalledOnce();
+    expect(f.execute.mock.calls[0]?.[0]).toMatchObject({
+      route: { connectorId: "composio", connectionId: "connection-1" },
+    });
+  });
+
+  it("does not expose an account that is not linked to this agent", async () => {
+    const f = fixture({
+      name: ownTool.name,
+      spawnKey: agentKey,
+      route: ownTool.route,
+      connectionRows: [connection({ agentBotId: "another-bot" })],
+      availableTools: [ownTool],
+    });
+    await f.run();
+    expect(f.offeredTools).not.toContain(ownTool.name);
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("does not expose a foreign user's or space's account", async () => {
+    const f = fixture({
+      name: ownTool.name,
+      spawnKey: agentKey,
+      route: ownTool.route,
+      connectionRows: [
+        connection({ userId: "other-user", spaceId: "other-space", agentBotId: "bot-1" }),
+      ],
+      availableTools: [ownTool],
+    });
+    await f.run();
+    expect(f.offeredTools).not.toContain(ownTool.name);
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("lets a same-owner peer use the target agent's app tools but not a foreign peer", async () => {
+    const sameOwnerRead = fixture({
+      name: ownReadTool.name,
+      trigger: "bot_message",
+      peer: { senderInScope: true, linked: true },
+      spawnKey: agentKey,
+      route: ownReadTool.route,
+      connectionRows: [connection()],
+      availableTools: [ownReadTool],
+    });
+    await sameOwnerRead.run();
+    expect(sameOwnerRead.offeredTools).toContain(ownReadTool.name);
+    expect(sameOwnerRead.execute).toHaveBeenCalledOnce();
+
+    const sameOwner = fixture({
+      name: ownTool.name,
+      trigger: "bot_message",
+      peer: { senderInScope: true, linked: true },
+      spawnKey: agentKey,
+      route: ownTool.route,
+      connectionRows: [connection()],
+      availableTools: [ownTool],
+    });
+    await sameOwner.run();
+    expect(sameOwner.offeredTools).toContain(ownTool.name);
+    expect(sameOwner.pauseRunForInput).toHaveBeenCalledOnce();
+    sameOwner.effects[0]!.status = "approved";
+    await sameOwner.run();
+    expect(sameOwner.execute).toHaveBeenCalledOnce();
+
+    const foreign = fixture({
+      name: ownTool.name,
+      trigger: "bot_message",
+      peer: { senderInScope: false, linked: true },
+      spawnKey: agentKey,
+      route: ownTool.route,
+      connectionRows: [connection()],
+      availableTools: [ownTool],
+    });
+    await foreign.run();
+    expect(foreign.offeredTools).not.toContain(ownTool.name);
+    expect(foreign.execute).not.toHaveBeenCalled();
+  });
+
+  it("hides writes when the connection switch is off", async () => {
+    const f = fixture({
+      name: ownTool.name,
+      spawnKey: agentKey,
+      route: ownTool.route,
+      connectionRows: [connection({ writesEnabled: false })],
+      availableTools: [ownTool],
+    });
+    await f.run();
+    expect(f.offeredTools).not.toContain(ownTool.name);
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("hides linked-account writes from ordinary bots but leaves no-agent behavior unchanged", async () => {
+    const write = { ...ownTool, name: "GMAIL_SEND_EMAIL", route: ownTool.route };
+    const read: ConnectorTool = {
+      ...ownTool,
+      name: "GMAIL_FETCH_EMAILS",
+      readOnly: true,
+      route: { connectorId: "composio", toolName: "GMAIL_FETCH_EMAILS" },
+    };
+    const linked = fixture({
+      name: write.name,
+      spawnKey: null,
+      connectionRows: [connection({ allAgents: true, writesEnabled: true })],
+      availableTools: [read, write],
+    });
+    await linked.run();
+    expect(linked.offeredTools).toContain(read.name);
+    expect(linked.offeredTools).not.toContain(write.name);
+
+    const ordinary = fixture({
+      name: write.name,
+      spawnKey: null,
+      connectionRows: [connection({ agentBotId: null, writesEnabled: false })],
+      availableTools: [read, write],
+    });
+    await ordinary.run();
+    expect(ordinary.offeredTools).toContain(write.name);
+    expect(ordinary.execute).toHaveBeenCalledOnce();
+  });
+
+  it("blocks an ordinary bot write if the account becomes agent-linked after discovery", async () => {
+    const ordinary = connection({ agentBotId: null });
+    const f = fixture({
+      name: ownTool.name,
+      spawnKey: null,
+      connectionRows: [ordinary],
+      availableTools: [ownTool],
+      beforeToolCall: () => {
+        ordinary.agentBotId = "another-agent";
+      },
+    });
+
+    await f.run();
+
+    expect(f.offeredTools).toContain(ownTool.name);
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("blocks an ordinary bot read if the account becomes exclusive after discovery", async () => {
+    const ordinary = connection({
+      agentBotId: null,
+      allAgents: true,
+      botAccess: [],
+    });
+    const f = fixture({
+      name: ownReadTool.name,
+      spawnKey: null,
+      route: ownReadTool.route,
+      connectionRows: [ordinary],
+      availableTools: [ownReadTool],
+      beforeToolCall: () => {
+        ordinary.allAgents = false;
+      },
+    });
+
+    await f.run();
+
+    expect(f.offeredTools).toContain(ownReadTool.name);
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("rechecks durable write state after approval and discovery before dispatch", async () => {
+    const linked = connection();
+    let discoveries = 0;
+    const execute = vi.fn(async function* (call: ConnectorCall) {
+      yield { type: "result" as const, data: { ok: true, args: call.args } };
+    });
+    const connector = {
+      discoverTools: async () => {
+        discoveries += 1;
+        if (discoveries === 2) linked.writesEnabled = false;
+        return [ownTool];
+      },
+      execute,
+    };
+    const f = fixture({
+      name: ownTool.name,
+      spawnKey: agentKey,
+      route: ownTool.route,
+      connectionRows: [linked],
+      connector,
+    });
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    f.effects[0]!.status = "approved";
+    await f.run({ expectFailure: true });
+    expect(execute).not.toHaveBeenCalled();
+    expect(f.results.at(-1)).toMatchObject({ error: expect.stringContaining("Changes are off") });
+  });
+
+  it.each([
+    ["link", { agentBotId: "another-bot" }],
+    ["connected status", { status: "revoked" }],
+    ["access", { allAgents: false, botAccess: [] }],
+  ])("rechecks the app connection %s before dispatch", async (_label, change) => {
+    const linked = connection();
+    let discoveries = 0;
+    const execute = vi.fn(async function* () {
+      yield { type: "result" as const, data: { ok: true } };
+    });
+    const connector = {
+      discoverTools: async () => {
+        discoveries += 1;
+        if (discoveries === 2) Object.assign(linked, change);
+        return [ownTool];
+      },
+      execute,
+    };
+    const f = fixture({
+      name: ownTool.name,
+      spawnKey: agentKey,
+      route: ownTool.route,
+      connectionRows: [linked],
+      connector,
+    });
+    await f.run();
+    f.effects[0]!.status = "approved";
+    await f.run({ expectFailure: true });
+    expect(execute).not.toHaveBeenCalled();
+  });
+});
+
+class TrackingComposioEmulator extends ComposioEmulator {
+  readonly executionContexts: AdapterContext[] = [];
+
+  override async *execute(call: ConnectorCall, context: AdapterContext) {
+    this.executionContexts.push(context);
+    yield* super.execute(call, context);
+  }
+}
+
+describe("connected app writes through the Composio emulator", () => {
+  const connection = (extra: Record<string, unknown> = {}) => ({
+    id: "connection-1",
+    spaceId: "space-1",
+    userId: "user-1",
+    connectorId: "composio",
+    provider: "GMAIL",
+    providerRef: "account-1",
+    displayName: "Work Gmail",
+    status: "connected",
+    allAgents: true,
+    botAccess: [],
+    agentBotId: "bot-1",
+    writesEnabled: true,
+    ...extra,
+  });
+
+  beforeEach(() => {
+    reviewMock.mockReset();
+  });
+
+  it("does not execute an emulator write after denial", async () => {
+    const emulator = new TrackingComposioEmulator();
+    const f = fixture({
+      name: "GMAIL_SEND_EMAIL",
+      spawnKey: integrationAgentSpawnKey("connection-1"),
+      connectionRows: [connection()],
+      connector: new ConnectorRegistry(new DestinationEmulator(), [emulator]),
+    });
+
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(emulator.executions).toEqual([]);
+    expect(reviewMock).not.toHaveBeenCalled();
+    f.effects[0]!.status = "denied";
+    await f.run();
+    expect(emulator.executions).toEqual([]);
+  });
+
+  it("executes approved writes once, asks again, and rejects a write disabled after approval", async () => {
+    const linked = connection();
+    const emulator = new TrackingComposioEmulator();
+    const firstArgs = {
+      recipient_email: "person@example.test",
+      subject: "Project update",
+      body: "The complete message body.",
+      cc: ["copy@example.test"],
+      is_html: false,
+    };
+    const secondArgs = { ...firstArgs, subject: "Second update" };
+    let disableBeforeCall = false;
+    const f = fixture({
+      name: "GMAIL_SEND_EMAIL",
+      spawnKey: integrationAgentSpawnKey("connection-1"),
+      autoReview: true,
+      rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "GMAIL_SEND_EMAIL" }],
+      connectionRows: [
+        linked,
+        connection({
+          id: "connection-2",
+          providerRef: "account-2",
+          displayName: "Personal Gmail",
+          agentBotId: null,
+        }),
+      ],
+      connector: new ConnectorRegistry(new DestinationEmulator(), [emulator]),
+      beforeToolCall: () => {
+        if (disableBeforeCall) linked.writesEnabled = false;
+      },
+    });
+    f.setCalls([{ args: firstArgs, executionId: "send-1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(emulator.executions).toEqual([]);
+    expect(f.offeredTools).toContain("save_shared_memory");
+
+    f.effects[0]!.status = "approved";
+    await f.run();
+    expect(emulator.executions).toHaveLength(1);
+    expect(emulator.executions[0]).toEqual({
+      userId: "user-1",
+      tool: "GMAIL_SEND_EMAIL",
+      args: firstArgs,
+    });
+    expect(reviewMock).not.toHaveBeenCalled();
+
+    f.setCalls([{ args: secondArgs, executionId: "send-2" }]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledTimes(2);
+    expect(emulator.executions).toHaveLength(1);
+    expect(reviewMock).not.toHaveBeenCalled();
+
+    f.effects[1]!.status = "approved";
+    disableBeforeCall = true;
+    await f.run({ expectFailure: true });
+    expect(emulator.executions).toHaveLength(1);
+    expect(f.results.at(-1)).toMatchObject({
+      error: expect.stringContaining("Changes are off"),
+    });
+    expect(reviewMock).not.toHaveBeenCalled();
+    expect(emulator.executionContexts[0]?.connectedAppAgentConnectionId).toBe("connection-1");
+    expect(emulator.executionContexts[0]?.connectedConnections).toEqual([
+      expect.objectContaining({
+        id: "connection-1",
+        connectorId: "composio",
+        externalId: "GMAIL",
+        providerRef: "account-1",
+      }),
+    ]);
   });
 });
 

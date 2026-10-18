@@ -99,6 +99,8 @@ export async function completeNativeOAuth(options: {
       displayName: row.displayName,
       status: row.status as "pending" | "connected" | "revoked" | "error",
       error: connectionError(row),
+      writesEnabled: row.writesEnabled,
+      agentBotId: row.agentBotId,
       capabilities: [],
       createdAt: row.createdAt.toISOString(),
     };

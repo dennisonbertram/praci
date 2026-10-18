@@ -3018,16 +3018,17 @@ export function buildApprovalContinuation(
         // Name collision uniquify can rename the direct tool while the catalog is still
         // small — prefer that exposed name over a catalog wrapper that does not exist yet.
         const uniquified =
-          bound.route.connectorId === "installed"
+          bound.route.connectorId === "installed" && bound.route.resourceId
             ? uniquifyInstalledToolName(bound.route.resourceId, bound.route.toolName)
             : undefined;
         if (uniquified && exposed.has(uniquified)) {
           return `${uniquified}: ${formatRequest(bound.args)}`;
         }
         const wrapper = catalogExecuteToolName(bound.route.connectorId);
-        if (exposed.has(wrapper)) {
+        if (exposed.has(wrapper) && bound.route.resourceId) {
+          const route = { ...bound.route, resourceId: bound.route.resourceId };
           return `${wrapper}: ${formatRequest({
-            id: catalogIdForRoute(bound.route),
+            id: catalogIdForRoute(route),
             arguments: bound.args,
           })}`;
         }
@@ -3519,6 +3520,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
               displayName: true,
               status: true,
               allAgents: true,
+              writesEnabled: true,
+              agentBotId: true,
               botAccess: { where: { botId: run.botId }, select: { botId: true } },
             },
           }),
@@ -3590,22 +3593,49 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // finance tools.
         const cartaAgent = isCartaAgentSpawnKey(bot.spawnKey);
         // An integration agent works with its one MCP server and the plain built-ins only.
-        const integrationAgent = isIntegrationAgentSpawnKey(bot.spawnKey);
+        const integrationSpawnKey = isIntegrationAgentSpawnKey(bot.spawnKey);
+        const integrationServerId = integrationSpawnKey
+          ? bot.spawnKey!.slice(integrationAgentSpawnKey("").length)
+          : undefined;
+        const linkedAppAgentConnection = integrationSpawnKey
+          ? storedConnections.find(
+              (connection) =>
+                connection.id === integrationServerId &&
+                connection.agentBotId === bot.id &&
+                bot.userId === run.userId &&
+                bot.spaceId === run.spaceId,
+            )
+          : undefined;
+        const appAgentIdentity = Boolean(linkedAppAgentConnection);
+        const appAgentConnection =
+          linkedAppAgentConnection?.status === "connected" &&
+          botMayUseConnection(linkedAppAgentConnection)
+            ? linkedAppAgentConnection
+            : undefined;
+        const integrationAgent = integrationSpawnKey && !appAgentIdentity;
         const financeOnly = isFinanceAgentSpawnKey(bot.spawnKey) || cartaAgent || integrationAgent;
         // The Legal agent works from the Data Room, mail and Drive through its own tools only: no
         // Composio, MCP or other connector tools, and a fixed list of built-ins (read-only mail).
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
         // Connections limited to chosen agents stay out of this run unless the bot was granted access.
         const deniedIds = deniedConnectionIds(storedConnections);
-        const composioRows =
-          mailOnly || financeOnly || legalOnly
+        const ordinaryAllowedConnections = storedConnections.filter(
+          (connection) => !deniedIds.has(connection.id),
+        );
+        const runConnections = appAgentIdentity
+          ? appAgentConnection
+            ? [appAgentConnection]
+            : []
+          : ordinaryAllowedConnections;
+        const composioRows = appAgentIdentity
+          ? appAgentConnection?.connectorId === "composio"
+            ? [appAgentConnection]
+            : []
+          : mailOnly || financeOnly || legalOnly
             ? []
-            : storedConnections.filter(
-                (connection) =>
-                  connection.connectorId === "composio" && !deniedIds.has(connection.id),
-              );
+            : runConnections.filter((connection) => connection.connectorId === "composio");
         let liveSlugs: string[] = [];
-        if (needsLivePluginSync(composioRows)) {
+        if (!appAgentIdentity && needsLivePluginSync(composioRows)) {
           const listing = await loadLivePluginSlugs(deps.listConnectedPluginSlugs, run.userId);
           if (listing.ok) {
             liveSlugs = listing.slugs;
@@ -3615,11 +3645,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
         }
         const connectedComposio = mergeConnectedPlugins(composioRows, liveSlugs);
-        const connectedPlugins =
-          mailOnly || financeOnly || legalOnly
+        const connectedPlugins = appAgentIdentity
+          ? appAgentConnection
+            ? [appAgentConnection]
+            : []
+          : mailOnly || financeOnly || legalOnly
             ? []
             : selectRunConnections(
-                storedConnections.filter((row) => !deniedIds.has(row.id)),
+                runConnections,
                 connectedComposio.map((connection) => connection.provider),
               );
         const context = {
@@ -3628,6 +3661,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           spaceId: run.spaceId,
           userId: run.userId,
           botId: bot.id,
+          ...(appAgentConnection ? { connectedAppAgentConnectionId: appAgentConnection.id } : {}),
           runId,
           screenLeaseId: screenLeaseIdForRun(computerLease, runId, fence),
           signal: runAbortController.signal,
@@ -3656,11 +3690,84 @@ export function createRunExecutor(deps: ExecutorDeps) {
 
         const discoveredPromise =
           deps.connector && !mailOnly && !legalOnly
-            ? deps.connector
-                .discoverTools(context, financeOnly ? ["mcp"] : undefined)
-                .then((tools) =>
-                  financeOnly ? tools.filter((tool) => tool.route?.connectorId === "mcp") : tools,
-                )
+            ? (async () => {
+                if (appAgentIdentity) {
+                  const current = await deps.prisma.connection.findFirst({
+                    where: {
+                      id: linkedAppAgentConnection!.id,
+                      spaceId: run.spaceId,
+                      userId: run.userId,
+                      status: "connected",
+                      agentBotId: bot.id,
+                    },
+                    select: {
+                      id: true,
+                      connectorId: true,
+                      provider: true,
+                      providerRef: true,
+                      displayName: true,
+                      status: true,
+                      allAgents: true,
+                      writesEnabled: true,
+                      botAccess: {
+                        where: {
+                          botId: bot.id,
+                          spaceId: run.spaceId,
+                          userId: run.userId,
+                        },
+                        select: { botId: true },
+                      },
+                    },
+                  });
+                  if (!current || !botMayUseConnection(current)) return [];
+                  const scopedContext = {
+                    ...context,
+                    connectedAppAgentConnectionId: current.id,
+                    connectedConnections: [
+                      {
+                        id: current.id,
+                        connectorId: current.connectorId,
+                        externalId: current.provider,
+                        displayName: current.displayName,
+                        providerRef: current.providerRef ?? undefined,
+                      },
+                    ],
+                    connectedProviders:
+                      current.connectorId === "composio" ? [current.provider] : [],
+                  };
+                  const tools = await deps.connector!.discoverTools(scopedContext, [
+                    current.connectorId,
+                  ]);
+                  return tools
+                    .filter((tool) => tool.route?.connectorId === current.connectorId)
+                    .filter((tool) => tool.readOnly === true || current.writesEnabled)
+                    .map((tool) => ({
+                      ...tool,
+                      route: {
+                        ...tool.route!,
+                        connectionId: current.id,
+                        discoveredReadOnly: tool.readOnly === true,
+                      },
+                    }));
+                }
+                const tools = await deps.connector!.discoverTools(
+                  context,
+                  financeOnly ? ["mcp"] : undefined,
+                );
+                const visible = financeOnly
+                  ? tools.filter((tool) => tool.route?.connectorId === "mcp")
+                  : tools;
+                return visible.filter((tool) => {
+                  if (tool.readOnly === true) return true;
+                  const linked = storedConnections.some(
+                    (connection) =>
+                      connection.agentBotId &&
+                      connection.connectorId === tool.route?.connectorId &&
+                      (!tool.route?.connectionId || connection.id === tool.route.connectionId),
+                  );
+                  return !linked;
+                });
+              })()
             : Promise.resolve([]);
         const threadContext = threadContextForRun(
           run.trigger,
@@ -4147,7 +4254,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             contactsEnabled,
             messagingChannelRun,
             cartaAgent,
-            integrationAgent,
+            integrationAgent: integrationAgent || appAgentIdentity,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
           }),
@@ -4155,6 +4262,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ...(hasMessagingIdentity &&
           !cartaAgent &&
           !integrationAgent &&
+          !appAgentIdentity &&
           !isBackgroundRunTrigger(run.trigger)
             ? agentConnectionTools.filter((tool) => !disabledBuiltinTools.has(tool.name))
             : []),
@@ -4165,8 +4273,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The one exception: an integration agent asked by another bot of the same space and user
         // works with its own server's MCP tools (writes still ask). A peer from another account
         // or space is not found in this scope, so it gets nothing.
-        const integrationServerId = bot.spawnKey?.slice(integrationAgentSpawnKey("").length);
         let integrationPeerRun = false;
+        let connectedAppPeerRun = false;
         if (integrationAgent && run.trigger === "bot_message" && peerMessage?.fromBotId) {
           const [sender, linked] = await Promise.all([
             deps.prisma.bot.findFirst({
@@ -4190,12 +4298,25 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ]);
           integrationPeerRun = Boolean(sender && linked);
         }
+        if (appAgentIdentity && run.trigger === "bot_message" && peerMessage?.fromBotId) {
+          const sender = await deps.prisma.bot.findFirst({
+            where: {
+              id: peerMessage.fromBotId,
+              spaceId: run.spaceId,
+              userId: run.userId,
+              archivedAt: null,
+            },
+            select: { id: true },
+          });
+          connectedAppPeerRun = Boolean(sender && appAgentConnection);
+        }
         const exposedConnectorTools =
-          run.trigger !== "bot_message" || integrationPeerRun
+          run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun
             ? discovered.filter(
                 (tool) =>
                   !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
-                  (!integrationPeerRun || tool.route?.connectorId === "mcp"),
+                  (!integrationPeerRun || tool.route?.connectorId === "mcp") &&
+                  (!connectedAppPeerRun || tool.route?.connectionId === appAgentConnection?.id),
               )
             : [];
         const connectorTools = new Map(
@@ -4426,6 +4547,28 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (IMAGE_RETURNING_COMPUTER_TOOLS.has(name) && !acceptsImages) {
             return { error: MODEL_CANNOT_SEE_MESSAGE };
           }
+          if (
+            (integrationAgent || appAgentIdentity) &&
+            !BUILTIN_AGENT_TOOL_NAMES.has(name) &&
+            !connectorTools.has(name)
+          ) {
+            if (appAgentIdentity) {
+              const current = await deps.prisma.connection.findFirst({
+                where: {
+                  id: linkedAppAgentConnection!.id,
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  status: "connected",
+                  agentBotId: bot.id,
+                },
+                select: { writesEnabled: true },
+              });
+              if (current && !current.writesEnabled) {
+                return { error: "Changes are off for this connected account." };
+              }
+            }
+            return { error: `unknown tool ${name}` };
+          }
           let connectorCall: ConnectorCall = {
             tool: name,
             args,
@@ -4471,12 +4614,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   connectorCall.tool,
                   connectorCall.args,
                   CATALOG_APPROVAL_TOOL,
-                  resolved.tool.route?.resourceId &&
-                    resolved.tool.route.connectorId &&
-                    resolved.tool.route.toolName
+                  resolved.tool.route?.connectorId &&
+                    resolved.tool.route.toolName &&
+                    (resolved.tool.route.resourceId || resolved.tool.route.connectionId)
                     ? {
                         connectorId: resolved.tool.route.connectorId,
                         resourceId: resolved.tool.route.resourceId,
+                        connectionId: resolved.tool.route.connectionId,
                         resourceRevision: resolved.tool.route.resourceRevision,
                         toolName: resolved.tool.route.toolName,
                       }
@@ -4496,14 +4640,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (
             !catalogRemapped &&
-            connectorCall.route?.resourceId &&
-            connectorCall.route.connectorId &&
-            connectorCall.route.toolName
+            connectorCall.route?.connectorId &&
+            connectorCall.route.toolName &&
+            (connectorCall.route.resourceId || connectorCall.route.connectionId)
           ) {
             effectRequest = boundDirectApprovalRequest(
               {
                 connectorId: connectorCall.route.connectorId,
                 resourceId: connectorCall.route.resourceId,
+                connectionId: connectorCall.route.connectionId,
                 resourceRevision: connectorCall.route.resourceRevision,
                 toolName: connectorCall.route.toolName,
               },
@@ -4517,12 +4662,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
           const nextApprovedTool = approvedEffectReplays.nextToolName();
           const nextApprovedRequest = approvedEffectReplays.nextRequest();
           const liveRoute =
-            connectorCall.route?.resourceId &&
-            connectorCall.route.connectorId &&
-            connectorCall.route.toolName
+            connectorCall.route?.connectorId &&
+            connectorCall.route.toolName &&
+            (connectorCall.route.resourceId || connectorCall.route.connectionId)
               ? {
                   connectorId: connectorCall.route.connectorId,
                   resourceId: connectorCall.route.resourceId,
+                  connectionId: connectorCall.route.connectionId,
                   resourceRevision: connectorCall.route.resourceRevision,
                   toolName: connectorCall.route.toolName,
                 }
@@ -6863,23 +7009,119 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return archived;
           }
           if (deps.connector) {
+            const dispatchRoute = catalogRemapped ? resolvedTool?.route : connectorCall.route;
             // A model can call a name it was never offered; refuse connector calls on a peer-started run.
             if (
               run.trigger === "bot_message" &&
               !BUILTIN_AGENT_TOOL_NAMES.has(name) &&
               // A peer call on a catalog wrapper resolves to the underlying tool; that tool must be
-              // one of the agent's own server (writes still ask, further up).
+              // one of the agent's own resource (writes still ask, further up).
               !(
-                integrationPeerRun &&
-                connectorTools.has(requestedName) &&
-                (!resolvedTool ||
-                  (resolvedTool.route?.connectorId === "mcp" &&
-                    resolvedTool.route.resourceId === integrationServerId))
+                (integrationPeerRun &&
+                  connectorTools.has(requestedName) &&
+                  (!resolvedTool ||
+                    (resolvedTool.route?.connectorId === "mcp" &&
+                      resolvedTool.route.resourceId === integrationServerId))) ||
+                (connectedAppPeerRun &&
+                  connectorTools.has(requestedName) &&
+                  dispatchRoute?.connectorId === appAgentConnection?.connectorId &&
+                  dispatchRoute?.connectionId === appAgentConnection?.id)
               )
             ) {
               return { error: `unknown tool ${name}` };
             }
             let result: unknown = { error: `unknown tool ${name}` };
+            if (!appAgentIdentity && dispatchRoute?.connectorId) {
+              const availableIds = context.connectedConnections
+                .filter((connection) => connection.connectorId === dispatchRoute.connectorId)
+                .map((connection) => connection.id);
+              if (availableIds.length > 0) {
+                const currentConnections = await deps.prisma.connection.findMany({
+                  where: {
+                    id: { in: availableIds },
+                    spaceId: run.spaceId,
+                    userId: run.userId,
+                    connectorId: dispatchRoute.connectorId,
+                  },
+                  select: {
+                    id: true,
+                    connectorId: true,
+                    provider: true,
+                    status: true,
+                    allAgents: true,
+                    agentBotId: true,
+                    botAccess: {
+                      where: { botId: bot.id, spaceId: run.spaceId, userId: run.userId },
+                      select: { botId: true },
+                    },
+                  },
+                });
+                const deniedCurrentIds = deniedConnectionIds(currentConnections);
+                if (dispatchRoute.connectionId) {
+                  const current = currentConnections.find(
+                    (connection) => connection.id === dispatchRoute.connectionId,
+                  );
+                  if (
+                    current?.status !== "connected" ||
+                    deniedCurrentIds.has(current.id) ||
+                    (declaredReadOnly !== true && current.agentBotId !== null)
+                  ) {
+                    return finish({
+                      error: "This connected account is no longer available to this bot.",
+                    });
+                  }
+                } else {
+                  const connected = currentConnections.filter(
+                    (connection) => connection.status === "connected",
+                  );
+                  if (
+                    currentConnections.length !== availableIds.length ||
+                    connected.length !== currentConnections.length ||
+                    deniedCurrentIds.size > 0 ||
+                    (declaredReadOnly !== true &&
+                      connected.some((connection) => connection.agentBotId !== null))
+                  ) {
+                    return finish({
+                      error: "This connected account is no longer available to this bot.",
+                    });
+                  }
+                }
+              }
+            }
+            if (appAgentIdentity) {
+              const current = await deps.prisma.connection.findFirst({
+                where: {
+                  id: linkedAppAgentConnection!.id,
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  status: "connected",
+                  agentBotId: bot.id,
+                },
+                select: {
+                  id: true,
+                  connectorId: true,
+                  allAgents: true,
+                  writesEnabled: true,
+                  botAccess: {
+                    where: { botId: bot.id, spaceId: run.spaceId, userId: run.userId },
+                    select: { botId: true },
+                  },
+                },
+              });
+              if (
+                !current ||
+                !botMayUseConnection(current) ||
+                current.connectorId !== dispatchRoute?.connectorId ||
+                dispatchRoute?.connectionId !== current.id
+              ) {
+                return finish({
+                  error: "This connected account is no longer available to the agent.",
+                });
+              }
+              if (declaredReadOnly !== true && !current.writesEnabled) {
+                return finish({ error: "Changes are off for this connected account." });
+              }
+            }
             for await (const event of deps.connector.execute(
               { ...connectorCall, tool: name, args, executionId: effectKey },
               context,

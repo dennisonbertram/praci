@@ -945,6 +945,13 @@ export const appContract = {
     setAccess: oc
       .input(z.object({ connectionId: Id, allAgents: z.boolean(), botIds: z.array(Id).max(500) }))
       .output(ConnectionAccessSchema),
+    createAgent: oc.input(z.object({ connectionId: Id })).output(z.object({ botId: Id })),
+    setWrites: oc
+      .input(z.object({ connectionId: Id, enabled: z.boolean() }))
+      .output(ConnectionSchema),
+    setExclusive: oc
+      .input(z.object({ connectionId: Id, exclusive: z.boolean() }))
+      .output(ConnectionSchema),
     /** Tools the connected provider exposes. Read-only; no per-tool allowlist yet. */
     tools: oc.input(z.object({ connectorId: z.string(), provider: z.string() })).output(
       z.array(

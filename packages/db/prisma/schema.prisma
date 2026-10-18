@@ -466,6 +466,7 @@ model Bot {
   steeringMessages       SteeringMessage[]
   mcpServers             BotMcpServer[]
   agentForServers        McpServer[]           @relation("McpServerAgent")
+  agentForConnections    Connection[]          @relation("ConnectionAgent")
   connectionAccess       BotConnectionAccess[]
   groupMembers           ChatGroupMember[]
   botSecrets             BotSecret[]
@@ -948,8 +949,12 @@ model Connection {
   /// false: only bots with a BotConnectionAccess row may use this connection's tools.
   allAgents          Boolean               @default(true)
   botAccess          BotConnectionAccess[]
+  writesEnabled      Boolean               @default(false)
+  agentBotId         String?
+  agentBot           Bot?                  @relation("ConnectionAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
 
   @@index([spaceId, userId, connectorId])
+  @@index([agentBotId])
   @@map("connections")
 }
 
