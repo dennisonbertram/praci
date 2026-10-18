@@ -2618,6 +2618,10 @@ msgstr "Не удалось связаться с сервером"
 msgid "Could not read this file"
 msgstr ""
 
+#: src/components/data-room/ItemRows.tsx
+msgid "Could not read this file. Delete it and upload it again."
+msgstr ""
+
 #: src/components/integrations/useMcpReconnect.ts
 msgid "Could not reconnect"
 msgstr ""

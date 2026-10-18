@@ -1,6 +1,6 @@
 import type { EmulatedMcpServer, EmulatedMessage } from "@rakazo/adapters";
-import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import { FINANCE_MCP_ENDPOINTS } from "@rakazo/contracts";
+import { makePdf } from "../../../../adapters/src/data-room-test-fakes.js";
 import {
   brexAccountsResponse,
   brexExpense,

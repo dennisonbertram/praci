@@ -206,6 +206,15 @@ function ItemRow({
             >
               {label || <TypeAndDate item={item} />}
             </span>
+          ) : item.status === "failed" ? (
+            // Shown at every width: without facets there is no Type column to say why.
+            <span
+              data-testid="data-room-failed-reason"
+              className="text-xs font-normal text-destructive"
+              title={item.error ?? undefined}
+            >
+              <Trans>Could not read this file. Delete it and upload it again.</Trans>
+            </span>
           ) : null}
         </span>
       </span>
