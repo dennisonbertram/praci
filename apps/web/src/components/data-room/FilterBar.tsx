@@ -43,7 +43,7 @@ const sortLabels = (): Record<SortField | "relevance", string> => ({
   date: t`Document date`,
   name: t`Name`,
   type: t`Type`,
-  createdAt: t`Recently added`,
+  createdAt: t`Added`,
 });
 
 /** A hover and focus label for an icon-only control. */

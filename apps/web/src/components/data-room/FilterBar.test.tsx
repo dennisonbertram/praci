@@ -130,6 +130,6 @@ it("has a visible New folder button beside the folder picker that opens the dial
 
 it("labels the date sort Document date, so it is not mistaken for when a file was added", () => {
   renderSorted({ field: "createdAt", direction: "desc" });
-  expect(container.textContent).toContain("Recently added");
+  expect(container.textContent).toContain("Sort: Added");
   expect(container.textContent).not.toMatch(/Sort: Date\b/);
 });
