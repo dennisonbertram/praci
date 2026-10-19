@@ -54,6 +54,13 @@ export function notificationOpenTarget(data: unknown): NotificationRoute | null 
   if (groupId) return { pathname: "/group-thread", params: { groupId, ...shared } };
   const botId = notificationField(record, "botId");
   if (botId) return { pathname: "/thread", params: { botId, ...shared } };
+  // Unified pushes may carry only an in-app link: /app/g/<groupId> or /app/<botId>.
+  const match = link?.split(/[?#]/)[0]?.match(/^\/app\/(?:(g)\/)?([^/]+)\/?$/);
+  if (match?.[2]) {
+    return match[1]
+      ? { pathname: "/group-thread", params: { groupId: match[2], ...shared } }
+      : { pathname: "/thread", params: { botId: match[2], ...shared } };
+  }
   return null;
 }
 

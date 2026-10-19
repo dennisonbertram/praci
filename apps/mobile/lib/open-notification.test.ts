@@ -274,4 +274,32 @@ describe("opening a notification by surface", () => {
     });
     expect(markSurfaceSeen).not.toHaveBeenCalled();
   });
+
+  it("falls back to the link when the unified push has no botId or groupId", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(
+      tap("n-glink", {
+        kind: "notification",
+        surface: "thread",
+        threadId: "t-1",
+        link: "/app/g/grp-1",
+      }),
+    );
+    await openNotificationResponse(
+      tap("n-blink", {
+        kind: "notification",
+        surface: "thread",
+        threadId: "t-2",
+        link: "/app/bot-9",
+      }),
+    );
+    expect(router.push).toHaveBeenNthCalledWith(1, {
+      pathname: "/group-thread",
+      params: { groupId: "grp-1", threadId: "t-1" },
+    });
+    expect(router.push).toHaveBeenNthCalledWith(2, {
+      pathname: "/thread",
+      params: { botId: "bot-9", threadId: "t-2" },
+    });
+  });
 });
