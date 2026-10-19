@@ -1,7 +1,9 @@
 import type { NotificationDto } from "@rakazo/contracts";
-import { NotificationToaster } from "@rakazo/ui-web";
-import { useEffect } from "react";
+import { BotAvatar, NotificationToaster } from "@rakazo/ui-web";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { lookupAgentApp } from "../lib/agent-app";
+import { authClient } from "../lib/auth";
 import { i18n } from "../lib/i18n";
 import {
   attentionFromDto,
@@ -9,7 +11,9 @@ import {
   NOTIFICATION_SETTINGS_CHANGED,
 } from "../lib/notification-delivery";
 import { followNotifications } from "../lib/notification-stream";
+import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { AgentAvatar } from "./integrations/AgentAvatar";
 
 const announceChange = () => window.dispatchEvent(new CustomEvent("rakazo:notifications-changed"));
 
@@ -29,9 +33,25 @@ const markOpened = (n: NotificationDto) =>
     )
     .then(announceChange, () => undefined);
 
+/** The sending bot's avatar; a failed lookup just means a toast without one. */
+async function avatarFor(n: NotificationDto, userId: string | undefined) {
+  if (!n.botId || !userId) return undefined;
+  try {
+    const bot = (await rpc.bots.list()).find((b) => b.id === n.botId);
+    if (!bot) return undefined;
+    const app = await lookupAgentApp(userId, bot);
+    return <AgentAvatar app={app} color={bot.color} identity={bot.id} size={32} />;
+  } catch {
+    return undefined;
+  }
+}
+
 /** Mounted once at the app root; the single path from server notifications to toasts and OS alerts. */
 export function AppToaster() {
   const navigate = useNavigate();
+  const userId = authClient.useSession().data?.user.id;
+  const userIdRef = useRef(userId);
+  userIdRef.current = userId;
   useEffect(() => {
     const controller = new AbortController();
     // The browser switch, loaded once and reloaded when the settings change.
@@ -51,9 +71,13 @@ export function AppToaster() {
         list: (args) => rpc.notifications.list(args),
         changed: announceChange,
         sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
-        deliver: (n) =>
+        deliver: async (n) =>
           deliverNotification(
-            { ...attentionFromDto(n), onSeen: () => void markOpened(n) },
+            {
+              ...attentionFromDto(n),
+              avatar: await avatarFor(n, userIdRef.current),
+              onSeen: () => void markOpened(n),
+            },
             {
               onShown: async (id) => {
                 await rpc.notifications.markShown({ id });
@@ -77,6 +101,7 @@ export function AppToaster() {
   return (
     <NotificationToaster
       onOpen={navigate}
+      formatTime={formatRelativeTime}
       dismissLabel={i18n._({ id: "Dismiss", message: "Dismiss" })}
     />
   );

@@ -100,3 +100,31 @@ it("closes through the manager it was given", async () => {
   await clickToast();
   await expectClosed();
 });
+
+it("shows the avatar, the time and a three-line body clamp on a neutral card", async () => {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () =>
+    root.render(<NotificationToaster onOpen={vi.fn()} formatTime={(iso) => `at ${iso}`} />),
+  );
+  unmount = () => act(async () => root.unmount());
+  await add(1, {
+    body: "Long body",
+    avatar: <i data-testid="avatar" />,
+    createdAt: "2026-01-01T00:00:00Z",
+  });
+  const card = cards()[0] as HTMLElement;
+  expect(card.querySelector('[data-testid="avatar"]')).not.toBeNull();
+  expect(card.textContent).toContain("at 2026-01-01T00:00:00Z");
+  expect(card.className).toContain("border-border");
+  expect(card.className).not.toContain("border-warning");
+  expect(card.querySelector(".line-clamp-3")?.textContent).toBe("Long body");
+});
+
+it("renders no avatar or time when the notification has none", async () => {
+  await mount();
+  await add(1);
+  expect(cards()[0]?.querySelector("[data-testid]")).toBeNull();
+  expect(cards()[0]?.querySelector("button")?.textContent).toBe("Title 1");
+});
