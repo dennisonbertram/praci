@@ -849,6 +849,107 @@ describe("mail_send for the Carta agent", () => {
   });
 });
 
+describe("built-in mail on a connection with an integration agent", () => {
+  beforeEach(() => {
+    reviewMock.mockReset();
+  });
+  const gmail = (extra: Record<string, unknown> = {}) => ({
+    id: "acct-1",
+    userId: "user-1",
+    spaceId: "space-1",
+    connectorId: "google",
+    provider: "gmail",
+    displayName: "Gmail",
+    status: "connected",
+    allAgents: true,
+    botAccess: [],
+    agentBotId: null,
+    writesEnabled: false,
+    ...extra,
+  });
+  const draft = { to: ["a@example.test"], subject: "Hi", body: "Hello" };
+  const draftRun = (
+    spawnKey: string | null,
+    connectionRows: Record<string, unknown>[],
+    options: { beforeToolCall?: (index: number) => void; name?: string } = {},
+  ) => {
+    const mail = {
+      listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+      createDraft: vi.fn(async () => ({ id: "draft-1" })),
+    };
+    const f = fixture({
+      name: options.name ?? "mail_draft",
+      builtin: true,
+      autoReview: true,
+      rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "mail_draft" }],
+      spawnKey,
+      mail,
+      connectionRows,
+      beforeToolCall: options.beforeToolCall,
+    });
+    f.setCalls([{ args: draft, executionId: "call-1" }]);
+    return { f, mail };
+  };
+
+  it("refuses a Carta draft when the connection's agent has changes off", async () => {
+    const { f, mail } = draftRun(cartaAgentSpawnKey("user-1"), [
+      gmail({ agentBotId: "agent-x", writesEnabled: false }),
+    ]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("agent") });
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a draft from any bot but the connection's agent, even with changes on", async () => {
+    const { f, mail } = draftRun(null, [gmail({ agentBotId: "agent-x", writesEnabled: true })]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("agent") });
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("asks before every write by the connection's own agent, despite an allow rule", async () => {
+    const { f, mail } = draftRun(null, [gmail({ agentBotId: "bot-1", writesEnabled: true })]);
+    await f.run();
+    expect(isApprovalPausedResult(f.results[0])).toBe(true);
+    expect(reviewMock).not.toHaveBeenCalled();
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a draft once the connection becomes exclusive to another agent mid-run", async () => {
+    const rows = [gmail()];
+    const { f, mail } = draftRun(null, rows, {
+      beforeToolCall: () => {
+        rows[0]!.allAgents = false;
+      },
+    });
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("no longer available") });
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("keeps the Carta mail_send approval on a connection without an agent", async () => {
+    const { f } = draftRun(cartaAgentSpawnKey("user-1"), [gmail()], { name: "mail_send" });
+    f.setCalls([
+      {
+        args: { to: ["a@example.test"], subject: "Hi", body: "Hello" },
+        executionId: "call-1",
+      },
+    ]);
+    await f.run();
+    expect(isApprovalPausedResult(f.results[0])).toBe(true);
+  });
+
+  it("refuses a built-in the run was not offered", async () => {
+    const f = fixture({ name: "mail_draft", builtin: true });
+    f.setCalls([{ args: draft, executionId: "call-1" }]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("not available") });
+    expect(f.effects).toEqual([]);
+  });
+});
+
 describe("Inbox agent mail without AI data sharing consent", () => {
   const mailFixture = () => {
     const f = fixture({
