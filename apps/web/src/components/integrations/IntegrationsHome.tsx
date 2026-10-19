@@ -242,6 +242,7 @@ function AppCard({
             data.bots,
             working ? data.access[working.id] : undefined,
             app.rows.map((row) => row.agentBotId),
+            app.connectorId === "google",
           )}
         />
       )}

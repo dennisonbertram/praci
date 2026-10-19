@@ -377,13 +377,13 @@ it("offers Remove account per row only when there is more than one account", asy
   expect(labels().filter((label) => label === "Remove account")).toHaveLength(2);
 });
 
-it("saves only the agents it shows: Carta stays, other integration agents never get a hidden grant", async () => {
+it("saves only the agents it shows: no integration agent gets a hidden grant, Carta only on Google", async () => {
   const bot = (id: string, name: string, spawnKey: string | null) =>
     ({ id, name, spawnKey }) as IntegrationsData["bots"][number];
   await show(
-    APP_PAGE,
+    PAGE,
     data({
-      connections: [appConnection()],
+      connections: [appConnection({ connectorId: "google", provider: "gmail" })],
       bots: [
         bot("chief", "Chief", null),
         bot("carta", "Carta", "carta-agent:u1"),
@@ -401,4 +401,22 @@ it("saves only the agents it shows: Carta stays, other integration agents never 
     allAgents: false,
     botIds: ["carta"],
   });
+});
+
+it("hides Carta on a non-Google connection", async () => {
+  const bot = (id: string, name: string, spawnKey: string | null) =>
+    ({ id, name, spawnKey }) as IntegrationsData["bots"][number];
+  await show(
+    APP_PAGE,
+    data({
+      connections: [appConnection()],
+      bots: [bot("chief", "Chief", null), bot("carta", "Carta", "carta-agent:u1")],
+      access: { conn_app: { allAgents: true, botIds: [] } },
+    }),
+  );
+  expect(
+    switches()
+      .map((element) => element.getAttribute("aria-label"))
+      .join(),
+  ).not.toContain("Carta");
 });

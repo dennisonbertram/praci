@@ -20,25 +20,34 @@ it("leaves another connection's integration agent out of the list", () => {
 
 it("does not show a foreign integration agent as using an account shared with all agents", () => {
   const shared = { allAgents: true, botIds: [] };
-  expect(agentsFor(bots, shared, "mine").map((b) => b.id)).toEqual(["chief", "mine", "carta"]);
+  expect(agentsFor(bots, shared, "mine", true).map((b) => b.id)).toEqual([
+    "chief",
+    "mine",
+    "carta",
+  ]);
 });
 
 it("keeps the Carta agent on connections, where its built-in mail and Drive tools reach them", () => {
   const shared = { allAgents: true, botIds: [] };
-  expect(agentsFor(bots, shared, "mine").map((b) => b.id)).toContain("carta");
-  expect(agentsFor(bots, { allAgents: false, botIds: ["carta"] }).map((b) => b.id)).toEqual([
-    "carta",
-  ]);
+  expect(agentsFor(bots, shared, "mine", true).map((b) => b.id)).toContain("carta");
+  expect(
+    agentsFor(bots, { allAgents: false, botIds: ["carta"] }, undefined, true).map((b) => b.id),
+  ).toEqual(["carta"]);
   // An MCP server is still out of reach for it.
   expect(withoutOtherIntegrationAgents(bots, "mine").map((b) => b.id)).not.toContain("carta");
 });
 
 it("treats every account of an app card as the agent's own", () => {
   const shared = { allAgents: true, botIds: [] };
-  expect(agentsFor(bots, shared, ["mine", "other"]).map((b) => b.id)).toEqual([
+  expect(agentsFor(bots, shared, ["mine", "other"], true).map((b) => b.id)).toEqual([
     "chief",
     "mine",
     "other",
     "carta",
   ]);
+});
+
+it("hides Carta on a connection its built-in tools cannot use", () => {
+  const shared = { allAgents: true, botIds: [] };
+  expect(agentsFor(bots, shared, "mine").map((b) => b.id)).toEqual(["chief", "mine"]);
 });

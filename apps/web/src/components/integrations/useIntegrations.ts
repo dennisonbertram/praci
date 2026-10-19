@@ -146,7 +146,8 @@ type OwnBotIds = string | null | undefined | readonly (string | null | undefined
  * An integration agent works only with its own connection or server, so it is not offered on any
  * other, even when that account is shared with all agents. `own` is the agent(s) that belong here.
  * The Carta agent is the same for MCP servers, but its built-in mail, calendar and Drive tools do
- * reach shared Google connections, so connection lists pass `keepCarta` and still show it.
+ * reach shared Google connections, so lists for a native Google connection (`connectorId === "google"`, as the executor's account lists
+ * select) pass `keepCarta`. Every other connection hides it.
  */
 export function withoutOtherIntegrationAgents(
   bots: Bot[],
@@ -169,8 +170,9 @@ export function agentsFor(
   bots: Bot[],
   access: ConnectionAccess | undefined,
   own?: OwnBotIds,
+  keepCarta = false,
 ): Bot[] {
   if (!access) return [];
-  const usable = withoutOtherIntegrationAgents(bots, own, { keepCarta: true });
+  const usable = withoutOtherIntegrationAgents(bots, own, { keepCarta });
   return access.allAgents ? usable : usable.filter((bot) => access.botIds.includes(bot.id));
 }
