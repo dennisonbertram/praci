@@ -42,11 +42,9 @@ import {
   createSecretStore,
   createTicketChangeNotifier,
   createWebProvider,
-  deletePushToken,
   destroyBot,
   EmailEmulator,
   ExpoPushProvider,
-  endSessionPushToken,
   GraphileJobPublisher,
   InMemoryJobQueue,
   InMemoryRealtimeFanout,
@@ -90,6 +88,7 @@ import {
   createDb,
   createPool,
   createThreadEvents,
+  endSessionPushTokens,
   IsolationError,
   parsePositiveInteger,
   provisionMessagingIdentity,
@@ -415,7 +414,7 @@ export async function createApp(
       : new PiAgentRuntime({
           sessionRoot: env.piSessionRecording ? piSessionsRoot(env.dataDir) : undefined,
         }));
-  const notifications = new ExpoPushProvider(env.dataDir, (sessionId) =>
+  const notifications = new ExpoPushProvider(prisma, (sessionId) =>
     pushSessionExpiresAt(prisma, sessionId),
   );
   const auth = createAuth(prisma, {
@@ -454,9 +453,6 @@ export async function createApp(
         ),
       );
       await removePiUserSessions(env.dataDir, userId);
-      await deletePushToken(env.dataDir, userId).catch((error) =>
-        getLogger().error("push token removal failed", error),
-      );
     },
     afterDeleteUserData: async (blobs) => {
       for (const { spaceId, storageKey } of blobs) {
@@ -465,15 +461,15 @@ export async function createApp(
           .catch((error) => getLogger().error("data room blob cleanup", error));
       }
     },
-    // The session change already happened, so a token file failure must not fail sign-out.
+    // The session change already happened, so a push token failure must not fail sign-out.
     afterDeleteSession: async (session) => {
-      await endSessionPushToken(env.dataDir, session.userId, session.id).catch((error) =>
+      await endSessionPushTokens(prisma, session.userId, session.id).catch((error) =>
         getLogger().error("push token removal failed", error),
       );
     },
     afterReplaceSession: async (previous, session) => {
-      await endSessionPushToken(env.dataDir, session.userId, previous.id, session.id).catch(
-        (error) => getLogger().error("push token session update failed", error),
+      await endSessionPushTokens(prisma, session.userId, previous.id, session.id).catch((error) =>
+        getLogger().error("push token session update failed", error),
       );
     },
   });

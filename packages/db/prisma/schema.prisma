@@ -27,6 +27,8 @@ model User {
   contacts                    Contact[]
   capTableSnapshots           CapTableSnapshot[]
   sidebarPages                SidebarPage[]
+  notifications               Notification[]
+  notificationEndpoints       NotificationEndpoint[]
   id                          String                       @id
   name                        String
   email                       String
@@ -203,6 +205,8 @@ model Member {
 }
 
 model Space {
+  notifications Notification[]
+  notificationEndpoints NotificationEndpoint[]
   aiDataConsents              AiDataConsent[]
   id                          String                       @id
   organizationId              String
@@ -1260,9 +1264,89 @@ model NotificationPreference {
   finish   Boolean @default(true)
   help     Boolean @default(true)
   takeover Boolean @default(true)
+  // Per external channel switches, for example {"push": false}. A missing key means enabled.
+  channels Json    @default("{}")
 
   @@unique([spaceId, userId])
   @@map("notification_preferences")
+}
+
+enum NotificationImportance {
+  info
+  attention
+}
+
+enum NotificationDeliveryStatus {
+  pending
+  sent
+  failed
+  skipped
+}
+
+// Something an agent tells the user. Scoped to space and user. botId, routineId and runId are
+// plain ids so a deleted agent does not delete the history; the 30 day retention removes the rows.
+model Notification {
+  id         String                 @id @default(cuid())
+  spaceId    String
+  space      Space                  @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  botId      String?
+  routineId  String?
+  runId      String?
+  surface    String
+  threadId   String?
+  title      String
+  body       String?
+  link       String?
+  importance NotificationImportance @default(info)
+  dedupeKey  String
+  createdAt  DateTime               @default(now())
+  seenAt     DateTime?
+  shownAt    DateTime?
+  deliveries NotificationDelivery[]
+
+  @@index([spaceId, userId, botId, dedupeKey, createdAt])
+  @@index([spaceId, userId, seenAt])
+  @@index([spaceId, userId, createdAt])
+  @@map("notifications")
+}
+
+model NotificationDelivery {
+  id             String                     @id @default(cuid())
+  notificationId String
+  notification   Notification               @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  channel        String
+  status         NotificationDeliveryStatus @default(pending)
+  attempts       Int                        @default(0)
+  nextAttemptAt  DateTime
+  lastError      String?
+  createdAt      DateTime                   @default(now())
+
+  @@unique([notificationId, channel])
+  @@index([status, nextAttemptAt])
+  @@map("notification_deliveries")
+}
+
+// Where a channel reaches a user: an Expo push token per device today. spaceId is null for
+// account-wide addresses.
+model NotificationEndpoint {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  spaceId   String?
+  space     Space?   @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  channel   String
+  address   String
+  deviceId  String
+  sessionId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, channel, deviceId])
+  @@index([channel, address])
+  @@index([sessionId])
+  @@map("notification_endpoints")
 }
 
 model SpaceMemoryConfig {
