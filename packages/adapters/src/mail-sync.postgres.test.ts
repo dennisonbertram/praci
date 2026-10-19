@@ -55,6 +55,8 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
   const holds = new Map<string, Promise<void>>();
   /** Makes every message fetch slow, to run a sync into its deadline. */
   let getDelayMs = 0;
+  /** Requests whose URL contains this text wait for the signal to abort, then are still answered. */
+  let answerLateUrl: string | undefined;
   const listCalls = () => gmail.requests.filter((r) => /\/messages\?/.test(r.url)).length;
   const getCalls = () => gmail.requests.filter((r) => /\/messages\/[^?]/.test(r.url)).length;
 
@@ -63,6 +65,13 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       request: ConnectorProxyRequest,
       context: AdapterContext,
     ): Promise<ConnectorProxyResponse> => {
+      if (answerLateUrl && request.url.includes(answerLateUrl)) {
+        await new Promise<void>((resolve) => {
+          if (context.signal.aborted) resolve();
+          context.signal.addEventListener("abort", () => resolve(), { once: true });
+        });
+        return gmail.handle(request.accountRef, request.url);
+      }
       const hold = holds.get(context.operationId);
       if (hold) {
         await Promise.race([
@@ -565,7 +574,12 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       );
     afterEach(() => {
       getDelayMs = 0;
+      answerLateUrl = undefined;
     });
+    const byUnread = async (connectionId: string) =>
+      new Map((await rows(connectionId)).map((r) => [r.providerMessageId, r.unread]));
+    const nextRun = (connectionId: string) =>
+      prisma.mailSyncState.updateMany({ where: { connectionId }, data: { backoffUntil: null } });
 
     it("does not list sent mail or record a failure when the deadline hits during the inbox", async () => {
       seed("deadline-inbox", bulk(150, "in"));
@@ -581,6 +595,96 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       expect(after.claimToken).toBeNull();
       expect(gmail.requests.some((r) => /messages\?.*sent/.test(r.url))).toBe(false);
       expect((await rows(account.id)).length).toBeGreaterThan(0);
+    });
+
+    it("is not complete when the deadline stops paging after a fully cached page", async () => {
+      seed("cached-page", [...bulk(5, "in"), ...bulk(150, "sent")]);
+      const account = await connect("cached-page");
+      expect(await sync(account)).toBe("synced");
+      // Pretend that was the first run of an interrupted re-list: its mail is reusable.
+      await prisma.mailSyncState.update({
+        where: { connectionId: account.id },
+        data: {
+          lastSyncedAt: null,
+          changeCursor: null,
+          resumeCursor: "1000",
+          resumeStartedAt: new Date(Date.now() - 5 * 60_000),
+        },
+      });
+      answerLateUrl = "in%3Asent";
+
+      expect(await sync(account, "op", { deadlineMs: 150 })).toBe("failed");
+
+      const after = await state(account.id);
+      expect(after.lastSyncedAt).toBeNull();
+      expect(after.changeCursor).toBeNull();
+      expect(after.resumeCursor).toBe("1000");
+    });
+
+    it("repairs the labels of mail reused from an interrupted run once the sync completes", async () => {
+      seed(
+        "stale",
+        Array.from({ length: 150 }, (_, i) =>
+          message(`in-${i}`, 1 + i / 1000, ["INBOX", "UNREAD"]),
+        ),
+      );
+      const account = await connect("stale");
+      getDelayMs = 10;
+      expect(await sync(account, "op", { deadlineMs: 300 })).toBe("failed");
+      expect((await state(account.id)).resumeCursor).not.toBeNull();
+      expect((await byUnread(account.id)).get("in-0")).toBe(true);
+
+      // The newest message is read in Gmail between two runs.
+      gmail.handle(
+        "stale",
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/in-0/modify",
+        "POST",
+        { removeLabelIds: ["UNREAD"] },
+      );
+      let runs = 0;
+      while (!(await state(account.id)).lastSyncedAt && runs++ < 10) {
+        await nextRun(account.id);
+        await sync(account, "op", { deadlineMs: 300 });
+      }
+      expect((await state(account.id)).lastSyncedAt).not.toBeNull();
+
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+      expect((await byUnread(account.id)).get("in-0")).toBe(false);
+    });
+
+    it("records an auth failure that arrives after the deadline", async () => {
+      seed("late-401", [message("a", 1, ["INBOX"])]);
+      const account = await connect("late-401");
+      answerLateUrl = "/profile";
+      gmail.failNext(401, { times: 1000 });
+
+      expect(await sync(account, "op", { deadlineMs: 50 })).toBe("failed");
+
+      const after = await state(account.id);
+      expect(after.lastErrorKind).toBe("auth");
+      expect(after.needsReconnect).toBe(true);
+    });
+
+    it("leaves the state alone when the caller cancels during hydration", async () => {
+      seed("cancel", bulk(150, "in"));
+      const account = await connect("cancel");
+      getDelayMs = 10;
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), 100);
+
+      const outcome = await syncMailbox(
+        { prisma, mail, jobs },
+        account,
+        ctx("op", controller.signal),
+      );
+
+      expect(outcome).toBe("skipped");
+      const after = await state(account.id);
+      expect(after.lastErrorAt).toBeNull();
+      expect(after.backoffUntil).toBeNull();
+      expect(after.resumeCursor).toBeNull();
+      expect(after.claimToken).toBeNull();
     });
 
     it("finishes within a few runs, fetching each message about once", async () => {

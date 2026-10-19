@@ -1787,6 +1787,11 @@ model MailSyncState {
   /// Provider change cursor (Gmail historyId) as of the last complete sync. Null until the first
   /// one; a sync that finds it expired lists the 14-day window again and replaces it.
   changeCursor   String?
+  /// While a window re-list is still being resumed over several runs: the change cursor taken when
+  /// the first run started, and that run's start time. The completed sync saves this cursor, so the
+  /// incremental sync replays every change since then. Only mail stored since resumeStartedAt is reused.
+  resumeCursor    String?
+  resumeStartedAt DateTime?
 
   @@map("mail_sync_states")
 }

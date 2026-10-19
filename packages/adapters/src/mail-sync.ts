@@ -6,7 +6,7 @@ import type {
   MailMessageSummary,
   MailProvider,
 } from "@rakazo/adapter-kit";
-import { inboxTriageJob, MailProviderError } from "@rakazo/adapter-kit";
+import { inboxTriageJob, MAIL_REQUEST_ABORTED, MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -16,12 +16,8 @@ const PAGE_SIZE = 100;
 /** Most messages kept from one list; Gmail pages are 100, so this is two pages. */
 const MAX_MESSAGES = 200;
 const DEADLINE_MS = 90_000;
-/**
- * A window list reuses mail stored by an earlier, interrupted run this recently instead of fetching
- * it again, so repeated runs converge. ponytail: labels changed in this span stay stale until the
- * message changes again; a stored first cursor would close that gap.
- */
-const RESUME_REUSE_MS = 10 * 60_000;
+/** A re-list chain older than this starts over, since its cursor may no longer be replayable. */
+const CHAIN_MAX_MS = 60 * 60_000;
 const TEXT_CAP = 500;
 const UPSERT_CHUNK = 200;
 /** Most changes applied one by one; more than this is cheaper to take from the window lists. */
@@ -81,7 +77,12 @@ export async function syncMailbox(
       AND status = 'connected'
     ON CONFLICT DO NOTHING`;
   const claimed = await prisma.$queryRaw<
-    Array<{ connectionId: string; changeCursor?: string | null }>
+    Array<{
+      connectionId: string;
+      changeCursor?: string | null;
+      resumeCursor?: string | null;
+      resumeStartedAt?: Date | null;
+    }>
   >`
     UPDATE mail_sync_states s
     SET "syncStartedAt" = ${DB_NOW}, "claimToken" = ${token}
@@ -91,9 +92,11 @@ export async function syncMailbox(
       AND (s."lastSyncedAt" IS NULL OR s."lastSyncedAt" < ${DB_NOW} - interval '60 seconds')
       AND (s."backoffUntil" IS NULL OR s."backoffUntil" < ${DB_NOW})
       AND (s."syncStartedAt" IS NULL OR s."syncStartedAt" < ${DB_NOW} - interval '2 minutes')
-    RETURNING s."connectionId", s."changeCursor"`;
+    RETURNING s."connectionId", s."changeCursor", s."resumeCursor", s."resumeStartedAt"`;
   if (claimed.length === 0) return "skipped";
   const previousCursor = claimed[0]?.changeCursor ?? null;
+  const resumeCursor = claimed[0]?.resumeCursor ?? null;
+  const resumeStartedAt = claimed[0]?.resumeStartedAt ?? null;
 
   const fail = async (error: unknown): Promise<"failed" | "skipped"> => {
     // The token check keeps a sync that lost its claim from clearing its replacement's.
@@ -149,6 +152,8 @@ export async function syncMailbox(
   /** Set when the window was listed, also to refill a full inbox: clears messages no longer in it. */
   let inbox: Listed | undefined;
   let partial = false;
+  /** The change cursor and start time of the window re-list chain this run belongs to. */
+  let chain: { cursor: string; startedAt: Date } | undefined;
   /** True when the labels of the fetched messages are the truth, as in a change sync. */
   let incremental = false;
   try {
@@ -212,13 +217,28 @@ export async function syncMailbox(
       // Taken before the lists, so mail that arrives while they run is replayed next time.
       // Deletions the changes already name are not lost when the window is listed instead.
       if (changes) deletedIds.push(...changes.deletedIds);
-      nextCursor = await deps.mail.getCursor(account, timed);
-      inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
+      // An interrupted re-list resumes under the cursor its first run took, so the incremental sync
+      // that follows replays every change since mail was first stored, and that mail can be reused.
+      chain =
+        resumeCursor && resumeStartedAt && now.getTime() - resumeStartedAt.getTime() < CHAIN_MAX_MS
+          ? { cursor: resumeCursor, startedAt: resumeStartedAt }
+          : { cursor: await deps.mail.getCursor(account, timed), startedAt: now };
+      nextCursor = chain.cursor;
+      const reuseSince = chain.startedAt;
+      inbox = await listWindow(
+        deps.mail,
+        account,
+        timed,
+        "in:inbox",
+        after,
+        windowStart,
+        reuseSince,
+      );
       // Out of time: keep what loaded and list sent mail on a later run.
       const sent: Listed =
         inbox.partial || timed.signal.aborted
           ? { messages: [], capped: false, partial: true }
-          : await listWindow(deps.mail, account, timed, "in:sent", after, windowStart);
+          : await listWindow(deps.mail, account, timed, "in:sent", after, windowStart, reuseSince);
       partial = inbox.partial || sent.partial;
       for (const [listed, flag] of [
         [inbox, "inInbox"],
@@ -233,9 +253,17 @@ export async function syncMailbox(
     }
   } catch (error) {
     // Running out of our own time is an incomplete sync, not a provider failure: store what loaded.
-    if (!deadline.aborted || context.signal.aborted) return fail(error);
+    // Any other error, even one that arrives after the deadline, is a failure.
+    const ranOutOfTime =
+      deadline.aborted &&
+      error instanceof MailProviderError &&
+      error.kind === "unavailable" &&
+      error.message === MAIL_REQUEST_ABORTED;
+    if (!ranOutOfTime || context.signal.aborted) return fail(error);
     partial = true;
   }
+  // The caller left, wherever that landed (a hydrate returns a partial page instead of throwing).
+  if (context.signal.aborted) return fail(undefined);
 
   try {
     const outcome = await prisma.$transaction(
@@ -319,6 +347,8 @@ export async function syncMailbox(
             UPDATE mail_sync_states
             SET "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL,
                 "backoffUntil" = ${DB_NOW} + ${RATE_LIMIT_BACKOFF},
+                "resumeCursor" = COALESCE(${chain?.cursor ?? null}::text, "resumeCursor"),
+                "resumeStartedAt" = COALESCE(${chain?.startedAt ?? null}, "resumeStartedAt"),
                 "syncStartedAt" = NULL, "claimToken" = NULL
             WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
           return "failed" as const;
@@ -327,6 +357,7 @@ export async function syncMailbox(
           UPDATE mail_sync_states
           SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL, "backoffUntil" = NULL,
               "changeCursor" = COALESCE(${nextCursor ?? null}::text, "changeCursor"),
+              "resumeCursor" = NULL, "resumeStartedAt" = NULL,
               "syncStartedAt" = NULL, "claimToken" = NULL
           WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
         return "synced" as const;
@@ -367,6 +398,7 @@ async function listWindow(
   query: string,
   after: string,
   windowStart: Date,
+  reuseSince?: Date,
 ): Promise<Listed> {
   const messages: MailMessageSummary[] = [];
   let pageToken: string | undefined;
@@ -380,7 +412,7 @@ async function listWindow(
         pageSize: PAGE_SIZE,
         pageToken,
         useCache: false,
-        reuseCachedWithinMs: RESUME_REUSE_MS,
+        ...(reuseSince ? { reuseCachedSince: reuseSince } : {}),
       },
       context,
     );
@@ -388,6 +420,8 @@ async function listWindow(
     partial = (page.unhydratedIds?.length ?? 0) > 0;
     pageToken = page.nextPageToken;
   } while (pageToken && !partial && !context.signal.aborted && messages.length < MAX_MESSAGES);
+  // Stopped by the deadline with pages left, which the provider cannot report as unhydrated.
+  if (pageToken && context.signal.aborted && messages.length < MAX_MESSAGES) partial = true;
 
   const capped = messages.length > MAX_MESSAGES || (messages.length >= MAX_MESSAGES && !!pageToken);
   const inWindow = messages

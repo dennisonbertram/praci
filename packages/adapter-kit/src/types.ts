@@ -880,8 +880,8 @@ export interface MailListRequest {
   ids?: string[];
   /** Default true: reuse metadata already cached by the Inbox. Not used by the Gmail provider yet. */
   useCache?: boolean;
-  /** With `useCache: false`, still reuse cached metadata seen within this many milliseconds, so a resumed sync does not fetch it again. */
-  reuseCachedWithinMs?: number;
+  /** With `useCache: false`, still reuse cached metadata stored at or after this time, so a resumed sync does not fetch it again. */
+  reuseCachedSince?: Date;
 }
 
 export interface MailMessageSummary {
@@ -1008,6 +1008,9 @@ export type MailErrorKind =
   | "too_large"
   | "invalid"
   | "unknown";
+
+/** Message of the `unavailable` error a provider throws when the request's signal aborted. */
+export const MAIL_REQUEST_ABORTED = "Mail request aborted";
 
 export class MailProviderError extends Error {
   constructor(
