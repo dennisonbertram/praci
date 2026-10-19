@@ -11,6 +11,13 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
+const thumbnailUrl = vi.hoisted(() => vi.fn());
+vi.mock("../../lib/data-room", async (original) => ({
+  ...(await original<typeof import("../../lib/data-room")>()),
+  dataRoomThumbnailUrl: thumbnailUrl,
+}));
+
+import { resetHideAmountsMemory, setHideAmounts } from "../../lib/hide-amounts-preference";
 import { GridView, ListView, type RowInteraction, SubfolderList } from "./ItemRows";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -44,6 +51,9 @@ beforeEach(() => {
   root = createRoot(container);
 });
 afterEach(() => {
+  setHideAmounts(false);
+  resetHideAmountsMemory();
+  thumbnailUrl.mockReset();
   act(() => root.unmount());
   container.remove();
 });
@@ -332,4 +342,63 @@ it("puts a sub-folder's menu in the same column as a file's at every list width"
     expect(folders.reduce((a, b) => a + b, 0)).toBe(files.reduce((a, b) => a + b, 0));
     expect(folders.at(-1)).toBe(1);
   }
+});
+
+const tile = (over: Partial<DataRoomApiItem>) => [
+  {
+    item: { ...item("tile", null), hasThumbnail: false, previewText: null, ...over },
+    snippets: [],
+  },
+];
+const showGrid = async (over: Partial<DataRoomApiItem>) => {
+  await act(async () => root.render(<GridView rows={tile(over)} o={o()} />));
+};
+
+it("shows the drawn thumbnail of a PDF in its tile", async () => {
+  thumbnailUrl.mockResolvedValue("blob:thumb");
+  await showGrid({ hasThumbnail: true });
+  const img = container.querySelector("img");
+  expect(img?.getAttribute("src")).toBe("blob:thumb");
+  expect(img?.className).toContain("object-contain");
+  expect(thumbnailUrl).toHaveBeenCalledWith({ id: "tile" });
+});
+
+it("keeps the file icon when the thumbnail cannot be read", async () => {
+  thumbnailUrl.mockRejectedValue(new Error("404"));
+  await showGrid({ hasThumbnail: true });
+  expect(container.querySelector("img")).toBeNull();
+  expect(container.querySelector("svg")).not.toBeNull();
+});
+
+it("shows no thumbnail while amounts are hidden", async () => {
+  setHideAmounts(true);
+  await showGrid({ hasThumbnail: true });
+  expect(container.querySelector("img")).toBeNull();
+  expect(thumbnailUrl).not.toHaveBeenCalled();
+});
+
+const sheet = {
+  name: "budget.xlsx",
+  mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  previewText: "Item\tCost\nWidget\t$1,250,000.00",
+};
+
+it("shows the start of a spreadsheet's text as a small page", async () => {
+  await showGrid(sheet);
+  expect(container.querySelector("img")).toBeNull();
+  expect(container.textContent).toContain("Item | Cost");
+  expect(container.textContent).toContain("$1,250,000.00");
+});
+
+it("masks amounts in the text preview while they are hidden", async () => {
+  setHideAmounts(true);
+  await showGrid(sheet);
+  expect(container.textContent).toContain("Item | Cost");
+  expect(container.textContent).not.toContain("1,250,000");
+});
+
+it("shows only the file icon when there is nothing to preview", async () => {
+  await showGrid({});
+  expect(container.querySelector("img")).toBeNull();
+  expect(container.querySelector("li svg")).not.toBeNull();
 });

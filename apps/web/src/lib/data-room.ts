@@ -141,9 +141,9 @@ export function uploadToDataRoom(
   });
 }
 
-/** The stored bytes, fetched with the session and space header. */
-async function fetchDataRoomBlob(item: Pick<DataRoomApiItem, "id">) {
-  const response = await fetch(`/api/data-room/items/${encodeURIComponent(item.id)}/content`, {
+/** The stored bytes (or, for "thumbnail", the small preview), fetched with the session and space header. */
+async function fetchDataRoomBlob(item: Pick<DataRoomApiItem, "id">, part = "content") {
+  const response = await fetch(`/api/data-room/items/${encodeURIComponent(item.id)}/${part}`, {
     headers: withSpaceHeaders(),
     credentials: "include",
   });
@@ -179,6 +179,12 @@ export const canPreviewPdf = (item: Pick<DataRoomApiItem, "mimeType" | "size">) 
 export async function dataRoomFileUrl(item: Pick<DataRoomApiItem, "id" | "mimeType">) {
   const blob = await fetchDataRoomBlob(item);
   return URL.createObjectURL(new Blob([blob], { type: item.mimeType }));
+}
+
+/** An object URL of the item's thumbnail, which the grid cards show; revoke it when done. */
+export async function dataRoomThumbnailUrl(item: Pick<DataRoomApiItem, "id">) {
+  const blob = await fetchDataRoomBlob(item, "thumbnail");
+  return URL.createObjectURL(new Blob([blob], { type: "image/webp" }));
 }
 
 /** PDFs and raster images, which the browser shows by itself; anything else only downloads. */

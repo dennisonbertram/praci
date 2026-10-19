@@ -37,6 +37,7 @@ const payloadSchemas = {
   "dataroom.ingest": dataRoomStepPayload,
   "dataroom.classify": dataRoomStepPayload,
   "dataroom.index": dataRoomStepPayload,
+  "dataroom.thumbnail": dataRoomStepPayload,
   "dataroom.drive.import": z.object({
     spaceId: z.string().min(1),
     userId: z.string().min(1),
@@ -289,7 +290,7 @@ export const DATA_ROOM_JOB_ATTEMPTS = 3;
 
 /** One queued job per item and step: a double enqueue replaces the first. */
 export function dataRoomStepJob(
-  name: "dataroom.ingest" | "dataroom.classify" | "dataroom.index",
+  name: "dataroom.ingest" | "dataroom.classify" | "dataroom.index" | "dataroom.thumbnail",
   scope: { spaceId: string; userId: string },
   itemId: string,
 ): BackgroundJob {

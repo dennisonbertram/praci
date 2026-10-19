@@ -3,7 +3,7 @@ import type { Actor } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
-import { createDataRoomRepos, DataRoomConflictError } from "./data-room.js";
+import { createDataRoomRepos, DataRoomConflictError, dataRoomPreviewText } from "./data-room.js";
 import { IsolationError } from "./scope.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -722,5 +722,28 @@ describePostgres("data room repository (PostgreSQL)", () => {
       );
       expect((await dr.getItem(a, item.id)).leaseUntil).toBeNull();
     });
+  });
+
+  it("keeps the first 400 characters of the extracted text for the grid", async () => {
+    const { item } = await upload(a, `prev-${run}.txt`, `prev-${run}`);
+    const long = `  Item\tCost\n${"x".repeat(900)}`;
+    await dr.finishExtraction(a, item.id, (await dr.getItem(a, item.id)).revision, long);
+    const saved = await dr.getItem(a, item.id);
+    expect(saved.previewText).toBe(long.trim().slice(0, 400));
+    expect(saved.previewText).toHaveLength(400);
+    expect(dataRoomPreviewText("   ")).toBeNull();
+    // A cut inside a surrogate pair drops the half character.
+    expect(dataRoomPreviewText(`${"a".repeat(399)}\u{1F600}`)).toBe("a".repeat(399));
+  });
+
+  it("claims a thumbnail once per item and only for its owner", async () => {
+    const { item } = await upload(a, `thumb-${run}.pdf`, `thumb-${run}`);
+    expect(await dr.claimThumbnails(b, [item.id])).toEqual([]);
+    expect(await dr.claimThumbnails(a, [item.id])).toEqual([item.id]);
+    expect(await dr.claimThumbnails(a, [item.id])).toEqual([]);
+    expect((await dr.getItem(a, item.id)).thumbnailTriedAt).not.toBeNull();
+    expect(await dr.setThumbnail(b, item.id, "t1")).toBe(false);
+    expect(await dr.setThumbnail(a, item.id, "t1")).toBe(true);
+    expect((await dr.getItem(a, item.id)).thumbnailKey).toBe("t1");
   });
 });

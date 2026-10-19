@@ -477,10 +477,13 @@ export async function deleteEmptySpaceForMember(
         // The cascade removes the rows but not their blobs; the caller queues the blob deletes.
         const dataRoomStorageKeys = (
           await tx.dataRoomItem.findMany({
-            where: { spaceId: input.spaceId, storageKey: { not: null } },
-            select: { storageKey: true },
+            where: {
+              spaceId: input.spaceId,
+              OR: [{ storageKey: { not: null } }, { thumbnailKey: { not: null } }],
+            },
+            select: { storageKey: true, thumbnailKey: true },
           })
-        ).flatMap((item) => (item.storageKey ? [item.storageKey] : []));
+        ).flatMap((item) => [item.storageKey, item.thumbnailKey].filter((key) => key !== null));
         await tx.space.delete({ where: { id: input.spaceId } });
         if (input.spaceId !== input.currentSpaceId) {
           return { id: input.currentSpaceId, dataRoomStorageKeys };
