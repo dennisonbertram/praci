@@ -123,7 +123,7 @@ function fixture({
   /** The catalog wrapper the model calls when `catalog` is set. */
   executeToolName?: string;
   /** A bot_message run started by bot `peer-1`: whether that bot is in the run's space and user, and whether the bot is its server's agent. */
-  peer?: { senderInScope: boolean; linked: boolean };
+  peer?: { senderInScope: boolean; linked: boolean; serverIds?: string[] };
   connectionRows?: Record<string, unknown>[];
   availableTools?: ConnectorTool[];
   beforeToolCall?: (index: number) => void;
@@ -261,7 +261,11 @@ function fixture({
       findMany: vi.fn(async () => []),
       findFirst: vi.fn(async () => (peer?.senderInScope ? { id: "peer-1" } : null)),
     },
-    mcpServer: { findFirst: vi.fn(async () => (peer?.linked ? { id: "server-1" } : null)) },
+    mcpServer: {
+      findMany: vi.fn(async () =>
+        peer?.linked ? (peer.serverIds ?? ["server-1"]).map((id) => ({ id })) : [],
+      ),
+    },
     attempt: {
       create: vi.fn(async () => ({ id: "attempt-1" })),
       update: vi.fn(),
@@ -2016,6 +2020,52 @@ describe("integration agent asked by another bot", () => {
     expect(f.offeredTools).toContain("mcp__integration-5f783c95__mutate");
     expect(f.pauseRunForInput).toHaveBeenCalledOnce();
     expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("offers every Carta server linked to the agent to a peer, and still asks before a write", async () => {
+    const carta = "https://mcp.app.carta.com/mcp";
+    const toolFor = (id: string): ConnectorTool => ({
+      name: `mcp__${id}__mutate`,
+      description: "Change Carta",
+      readOnly: true,
+      inputSchema: { type: "object", properties: { id: { type: "string" } } },
+      route: { connectorId: "mcp", resourceId: id, toolName: "mutate", endpoint: carta },
+    });
+    const tools = [toolFor("server-1"), toolFor("server-2")];
+    for (const tool of tools) {
+      const f = fixture({
+        name: tool.name,
+        trigger: "bot_message",
+        spawnKey: cartaAgentSpawnKey("user-1"),
+        peer: { senderInScope: true, linked: true, serverIds: ["server-1", "server-2"] },
+        availableTools: tools,
+        route: tool.route,
+      });
+      await f.run();
+      expect(f.offeredTools).toEqual(expect.arrayContaining(tools.map((t) => t.name)));
+      expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+      expect(f.execute).not.toHaveBeenCalled();
+    }
+  });
+
+  it("offers a peer only the Carta servers linked to the agent", async () => {
+    const tool = (id: string): ConnectorTool => ({
+      name: `mcp__${id}__getCompany`,
+      description: "Read Carta",
+      readOnly: true,
+      inputSchema: { type: "object" },
+      route: { connectorId: "mcp", resourceId: id, toolName: "getCompany" },
+    });
+    const f = fixture({
+      name: "mcp__server-1__getCompany",
+      trigger: "bot_message",
+      spawnKey: cartaAgentSpawnKey("user-1"),
+      peer: { senderInScope: true, linked: true, serverIds: ["server-1"] },
+      availableTools: [tool("server-1"), tool("server-9")],
+    });
+    await f.run();
+    expect(f.offeredTools).toContain("mcp__server-1__getCompany");
+    expect(f.offeredTools).not.toContain("mcp__server-9__getCompany");
   });
 
   it("gives the Carta agent nothing for a peer outside its space and user or an unlinked server", async () => {
