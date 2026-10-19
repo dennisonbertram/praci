@@ -250,8 +250,9 @@ it("offers Create agent for Carta without a linked agent, with no writes switch"
   expect(navigate).toHaveBeenCalledWith("/app/bot_carta");
 });
 
-it("turning Share on assigns every agent first, and off returns to the owner alone", async () => {
+it("turning Share on lifts exclusivity before assigning every agent, and off returns to the owner alone", async () => {
   setExclusive.mockResolvedValue({});
+  replaceAssignments.mockClear();
   replaceAssignments.mockResolvedValue([]);
   listAssignments.mockResolvedValue([]);
   await show(false, OTHER, { ...withAgent, agentExclusive: true });
@@ -259,6 +260,10 @@ it("turning Share on assigns every agent first, and off returns to the owner alo
   const assigned = replaceAssignments.mock.calls.map(([call]) => call.botId);
   expect(assigned.length).toBeGreaterThan(1);
   expect(setExclusive).toHaveBeenLastCalledWith({ serverId: "s1", exclusive: false });
+  // The server refuses to grant an exclusive server to other agents, so this must come first.
+  expect(setExclusive.mock.invocationCallOrder[0]).toBeLessThan(
+    replaceAssignments.mock.invocationCallOrder[0] ?? 0,
+  );
 
   replaceAssignments.mockClear();
   setExclusive.mockClear();
