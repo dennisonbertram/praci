@@ -375,7 +375,7 @@ import {
   resolveMcpApprovalCards,
   revertConnectedMcpApprovals,
 } from "./mcp-approval.js";
-import { buildMcpUpdateMaterial } from "./mcp-material.js";
+import { buildMcpUpdateMaterial, mcpOrigin } from "./mcp-material.js";
 import {
   disconnectMemoryProvider,
   persistMemoryProviderConfig,
@@ -4637,6 +4637,8 @@ export function createRouter(deps: RouterDeps) {
             }
             const update = buildMcpUpdateMaterial(existingMaterial, config, {
               clearOAuth: existing.endpoint !== nextEndpoint,
+              // A stored key belongs to one host: a new origin gets only credentials sent with it.
+              clearStatic: mcpOrigin(existing.endpoint) !== mcpOrigin(nextEndpoint),
             });
             const stored =
               update.action === "store" && Object.keys(update.material).length > 0
