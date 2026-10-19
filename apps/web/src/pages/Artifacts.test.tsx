@@ -251,7 +251,9 @@ it("shows artifacts as a table in list view and as cards in grid view, and remem
     expect(page.container.querySelector("tr a")?.getAttribute("href")).toBe(
       "/app/artifacts/artifact-1",
     );
-    expect(page.container.textContent).toContain("128 bytes");
+    expect(page.container.querySelector("[data-testid='artifact-meta']")?.textContent).toContain(
+      "128 bytes",
+    );
     expect(window.localStorage.getItem("rakazo:artifacts-view-mode")).toBe("list");
     await act(async () => button("Grid view")?.click());
     expect(page.container.querySelector("table")).toBeNull();

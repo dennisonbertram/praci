@@ -468,8 +468,8 @@ function BrowsingPane({
 }
 
 /** Hidden until the list pane is wide enough, then shown as a table cell. */
-const MID_COL = "hidden @min-[500px]/list:table-cell";
-const MID_COLUMN = "hidden @min-[500px]/list:table-column";
+const MID_COL = "hidden @min-[720px]/list:table-cell";
+const MID_COLUMN = "hidden @min-[720px]/list:table-column";
 
 /** The list view: one row per artifact, in the same table the Data room and Cap table use. */
 function ArtifactTable({
@@ -495,7 +495,7 @@ function ArtifactTable({
         </colgroup>
         <TableHeader
           data-testid="artifacts-head"
-          className="sticky top-0 z-10 hidden bg-background @min-[500px]/list:table-header-group"
+          className="sticky top-0 z-10 hidden bg-background @min-[720px]/list:table-header-group"
         >
           <TableHeadRow>
             <TableHead>
@@ -537,9 +537,16 @@ function ArtifactTable({
                       >
                         {artifact.name}
                       </Link>
-                      {/* Where the Bot, Added and Size columns are hidden (a phone), they go under the name. */}
-                      <span className="truncate text-xs text-muted-foreground @min-[500px]/list:hidden">
-                        {[bot?.name, formatRelativeTime(artifact.createdAt)]
+                      {/* Where the Bot, Added and Size columns are hidden (a narrow pane), they go under the name. */}
+                      <span
+                        data-testid="artifact-meta"
+                        className="truncate text-xs text-muted-foreground @min-[720px]/list:hidden"
+                      >
+                        {[
+                          bot?.name,
+                          formatRelativeTime(artifact.createdAt),
+                          sizeText(artifact.size),
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
                       </span>
