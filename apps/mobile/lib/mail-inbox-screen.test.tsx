@@ -20,6 +20,7 @@ vi.mock("expo-router", () => ({
   useRouter: () => ({ push: state.push }),
 }));
 vi.mock("./api", () => ({ rpc: state.rpc }));
+vi.mock("./unseen-notifications", () => ({ markSurfaceSeen: vi.fn() }));
 vi.mock("./appearance", () => ({
   mobileTokens: () => ({ destructive: "red", warning: "amber", card: "white", primary: "black" }),
 }));

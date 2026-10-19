@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 192 of 192
-- Web and shared components: 553
+- Web and shared component files with stories: 193 of 193
+- Web and shared components: 554
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -86,6 +86,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | MarkdownLinkPrompt | [apps/web/src/components/markdown-link-prompt.tsx](../../apps/web/src/components/markdown-link-prompt.tsx) | [markdown-link-prompt.stories.tsx](../../apps/web/src/components/markdown-link-prompt.stories.tsx) | web |
 | MessageHoverMetadata | [apps/web/src/components/MessageHoverMetadata.tsx](../../apps/web/src/components/MessageHoverMetadata.tsx) | [MessageHoverMetadata.stories.tsx](../../apps/web/src/components/MessageHoverMetadata.stories.tsx) | web |
 | ModelPreflightFeedback | [apps/web/src/components/ModelConnectionPreflightNotice.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.tsx) | [ModelConnectionPreflightNotice.stories.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.stories.tsx) | web |
+| NotificationSettingsSection | [apps/web/src/components/NotificationSettings.tsx](../../apps/web/src/components/NotificationSettings.tsx) | [NotificationSettings.stories.tsx](../../apps/web/src/components/NotificationSettings.stories.tsx) | web |
 | PageAgentIntro | [apps/web/src/components/PageAgentIntro.tsx](../../apps/web/src/components/PageAgentIntro.tsx) | [PageAgentIntro.stories.tsx](../../apps/web/src/components/PageAgentIntro.stories.tsx) | web |
 | PageEmptyState | [apps/web/src/components/PageEmptyState.tsx](../../apps/web/src/components/PageEmptyState.tsx) | [PageEmptyState.stories.tsx](../../apps/web/src/components/PageEmptyState.stories.tsx) | web |
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |

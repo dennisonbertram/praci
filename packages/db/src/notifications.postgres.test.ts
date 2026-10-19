@@ -4,11 +4,13 @@ import { createDb } from "./client.js";
 import {
   createNotification,
   deleteExpiredNotifications,
+  getNotificationPreferences,
   listNotifications,
   markSeen,
   markShown,
   NotificationValidationError,
   unseenCounts,
+  updateNotificationPreferences,
 } from "./notifications.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -337,5 +339,16 @@ describePostgres("notifications (PostgreSQL)", () => {
       where: { notificationId: { in: [midN.id, fresh.id] } },
     });
     expect(deliveries.map((d) => d.notificationId)).toEqual([fresh.id]);
+  });
+
+  it("applies simultaneous channel updates without losing one", async () => {
+    for (let round = 0; round < 10; round++) {
+      await Promise.all([
+        updateNotificationPreferences(prisma, mine, { channels: { push: round % 2 === 0 } }),
+        updateNotificationPreferences(prisma, mine, { channels: { browser: round % 2 === 0 } }),
+      ]);
+      const { channels } = await getNotificationPreferences(prisma, mine);
+      expect(channels).toEqual({ push: round % 2 === 0, browser: round % 2 === 0 });
+    }
   });
 });
