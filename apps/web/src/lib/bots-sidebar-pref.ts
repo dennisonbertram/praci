@@ -1,3 +1,4 @@
+const RAIL_VALUE = "rail";
 const STORAGE_PREFIX = "rakazo:bots-sidebar-collapsed:";
 
 /** The Inbox agent panel starts closed, like every page's agent; this remembers an explicit open. */
@@ -20,7 +21,9 @@ export function readBotsSidebarCollapsed(
   const storageKey = botsSidebarCollapsedStorageKey(userId, prefix);
   if (!storageKey) return false;
   try {
-    return window.localStorage.getItem(storageKey) === "1";
+    // "1" is the value from when collapsing hid the sidebar; it now means the icon rail.
+    const value = window.localStorage.getItem(storageKey);
+    return value === "1" || value === RAIL_VALUE;
   } catch {
     return false;
   }
@@ -34,7 +37,8 @@ export function writeBotsSidebarCollapsed(
   const storageKey = botsSidebarCollapsedStorageKey(userId, prefix);
   if (!storageKey) return;
   try {
-    if (collapsed) window.localStorage.setItem(storageKey, "1");
+    if (collapsed)
+      window.localStorage.setItem(storageKey, prefix === STORAGE_PREFIX ? RAIL_VALUE : "1");
     else window.localStorage.removeItem(storageKey);
   } catch {
     // Ignore quota / private-mode failures; in-memory state still applies.

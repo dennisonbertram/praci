@@ -81,6 +81,7 @@ import {
   currentSessionGeneration,
   subscribeSessionGeneration,
 } from "../lib/session";
+import { refreshUnseenCounts, useUnseenCount } from "../lib/unseen-notifications";
 import { useInboxDay } from "../lib/use-inbox-day";
 import { errorText } from "../lib/user-error";
 
@@ -256,7 +257,10 @@ function Home() {
       let cancelled = false;
       let timer: ReturnType<typeof setTimeout> | undefined;
       const tick = async () => {
-        if (AppState.currentState === "active") await loadBots();
+        if (AppState.currentState === "active") {
+          void refreshUnseenCounts();
+          await loadBots();
+        }
         if (!cancelled) timer = setTimeout(() => void tick(), 5_000);
       };
       void tick();
@@ -953,9 +957,11 @@ function ActivityRow({
 function MailInboxRow({ onPress }: { onPress: () => void }) {
   const styles = useThemedStyles(createHomeStyles);
   const { t } = useI18n();
+  const unseen = useUnseenCount("inbox") > 0;
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={unseen ? `${t("Inbox")}, ${t("unread")}` : t("Inbox")}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
     >
@@ -963,6 +969,7 @@ function MailInboxRow({ onPress }: { onPress: () => void }) {
         <NativeSymbol ios="tray" android="file-tray-outline" size={22} />
       </View>
       <Text style={styles.name}>{t("Inbox")}</Text>
+      {unseen ? <View accessibilityElementsHidden style={styles.unreadDot} /> : null}
     </Pressable>
   );
 }
