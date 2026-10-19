@@ -71,12 +71,14 @@ import {
   applyJudgeDecision,
   assertTransition,
   blocksToAgentHistoryText,
+  botMayUseConnection,
   botMessageAllowsSilence,
   CALL_CLIENT_NONCE_PREFIX,
   callIdFromClientNonce,
   connectorKindFromToolName,
   containsSecret,
   createStreamingRedactor,
+  deniedConnectionIds,
   endsSentence,
   expandSkillReferencesInPrompt,
   findSkillByName,
@@ -9854,35 +9856,6 @@ function cloudflareRunFields(resolved: { accountId?: string; gatewayId?: string 
     ...(resolved.accountId ? { accountId: resolved.accountId } : {}),
     ...(resolved.gatewayId ? { gatewayId: resolved.gatewayId } : {}),
   };
-}
-
-/** A connection limited to chosen agents is usable only by a bot with an access row. */
-export function botMayUseConnection(row: {
-  allAgents: boolean;
-  botAccess: { botId: string }[];
-}): boolean {
-  return row.allAgents || row.botAccess.length > 0;
-}
-
-/**
- * Agent access is per app: if any live account of an app (connected, pending or error) is limited
- * to other agents, every account of that app is denied, so no sibling can stand in for it.
- */
-export function deniedConnectionIds(
-  rows: {
-    id: string;
-    connectorId: string;
-    provider: string;
-    status: string;
-    allAgents: boolean;
-    botAccess: { botId: string }[];
-  }[],
-): Set<string> {
-  const appKey = (row: { connectorId: string; provider: string }) =>
-    `${row.connectorId}\u0000${row.provider}`;
-  const live = rows.filter((row) => row.status !== "revoked");
-  const deniedApps = new Set(live.filter((row) => !botMayUseConnection(row)).map(appKey));
-  return new Set(live.filter((row) => deniedApps.has(appKey(row))).map((row) => row.id));
 }
 
 export function selectRunConnections<

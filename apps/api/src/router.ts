@@ -185,6 +185,7 @@ import {
   clampCatalogThinkingLevel,
   containsSecret,
   dedupeCatalogBySlug,
+  effectiveAccessByConnection,
   expandSkillReferencesInPrompt,
   hasMixedOneShotSchedule,
   isOneShotRoutineCrons,
@@ -632,19 +633,37 @@ function mcpServerDto(
 }
 
 async function connectionAccess(prisma: PrismaClient, actor: Actor, connectionId: string) {
-  const row = await prisma.connection.findFirst({
-    where: { id: connectionId, spaceId: actor.spaceId, userId: actor.userId },
-    select: {
-      allAgents: true,
-      botAccess: {
-        where: { spaceId: actor.spaceId, userId: actor.userId },
-        select: { botId: true },
-        orderBy: { createdAt: "asc" },
-      },
+  const select = {
+    id: true,
+    connectorId: true,
+    provider: true,
+    status: true,
+    allAgents: true,
+    agentBotId: true,
+    botAccess: {
+      where: { spaceId: actor.spaceId, userId: actor.userId },
+      select: { botId: true },
+      orderBy: { createdAt: "asc" },
     },
-  });
+  } as const;
+  const scope = { spaceId: actor.spaceId, userId: actor.userId };
+  const [rows, bots] = await Promise.all([
+    prisma.connection.findMany({ where: scope, select }),
+    prisma.bot.findMany({
+      where: { ...scope, archivedAt: null },
+      select: { id: true, spawnKey: true, archivedAt: true },
+    }),
+  ]);
+  const row = rows.find((candidate) => candidate.id === connectionId);
   if (!row) throw new IsolationError();
-  return { allAgents: row.allAgents, botIds: row.botAccess.map((entry) => entry.botId) };
+  return {
+    allAgents: row.allAgents,
+    botIds: row.botAccess.map((entry) => entry.botId),
+    effectiveAccess: effectiveAccessByConnection(rows, bots)[row.id] ?? {
+      shared: "none" as const,
+      botIds: [],
+    },
+  };
 }
 
 function connectionDto(row: {

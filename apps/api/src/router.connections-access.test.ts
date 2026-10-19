@@ -69,6 +69,12 @@ function harness(connections: Row[], bots: Row[], access: Row[] = []) {
     },
     $executeRaw: vi.fn(async () => 0),
     bot: {
+      findMany: vi.fn(async ({ where }: { where: Row }) => {
+        const { archivedAt: _archived, ...scope } = where;
+        return bots
+          .filter((r) => matches(r, scope) && (r.archivedAt ?? null) === null)
+          .map((r) => ({ id: r.id, spawnKey: r.spawnKey ?? null, archivedAt: null }));
+      }),
       count: vi.fn(
         async ({ where }: { where: Row }) => bots.filter((r) => matches(r, where)).length,
       ),
@@ -164,7 +170,39 @@ describe("connections.access and setAccess", () => {
     expect((await h.call("connections/access", { connectionId: "a" })).json).toEqual({
       allAgents: true,
       botIds: [],
+      effectiveAccess: { shared: "none", botIds: [] },
     });
+  });
+
+  it("reports the bots that can really use a connection, within the caller's own bots", async () => {
+    const h = harness(
+      [
+        conn("a", "connected"),
+        conn("b", "connected", { allAgents: false, provider: "github" }),
+        conn("p", "pending", { provider: "notion" }),
+        conn("own", "connected", { allAgents: false, agentBotId: "agent" }),
+        conn("sibling", "connected", { allAgents: true }),
+      ],
+      [
+        bot("b1"),
+        bot("b2", "u1", { archivedAt: new Date() }),
+        bot("theirs", "u2"),
+        bot("agent", "u1", { spawnKey: integrationAgentSpawnKey("own") }),
+      ],
+      [{ connectionId: "own", botId: "agent", userId: "u1", spaceId: "s1" }],
+    );
+    const effective = async (connectionId: string, actor: Actor = owner) =>
+      (await h.call("connections/access", { connectionId }, actor)).json.effectiveAccess;
+    // Shared row: every active bot of this user, not archived or another user's; not the linked agent.
+    expect(await effective("a")).toEqual({ shared: "all", botIds: ["b1"] });
+    // Restricted with no grants, and a pending row, have no users.
+    expect(await effective("b")).toEqual({ shared: "none", botIds: [] });
+    expect(await effective("p")).toEqual({ shared: "none", botIds: [] });
+    // A linked account is its agent's alone and does not deny the shared sibling above.
+    expect(await effective("own")).toEqual({ shared: "some", botIds: ["agent"] });
+    expect(
+      (await h.call("connections/access", { connectionId: "a" }, stranger)).status,
+    ).toBeGreaterThanOrEqual(400);
   });
 
   it("round-trips a restricted list", async () => {
@@ -174,14 +212,22 @@ describe("connections.access and setAccess", () => {
       allAgents: false,
       botIds: ["b1", "b2", "b1"],
     });
-    expect(set.json).toEqual({ allAgents: false, botIds: ["b1", "b2"] });
+    expect(set.json).toEqual({
+      allAgents: false,
+      botIds: ["b1", "b2"],
+      effectiveAccess: { shared: "some", botIds: ["b1", "b2"] },
+    });
     expect((await h.call("connections/access", { connectionId: "a" })).json).toEqual(set.json);
     const reset = await h.call("connections/setAccess", {
       connectionId: "a",
       allAgents: true,
       botIds: [],
     });
-    expect(reset.json).toEqual({ allAgents: true, botIds: [] });
+    expect(reset.json).toEqual({
+      allAgents: true,
+      botIds: [],
+      effectiveAccess: { shared: "all", botIds: ["b1", "b2"] },
+    });
   });
 
   it("rejects another user's connection and another user's bot", async () => {

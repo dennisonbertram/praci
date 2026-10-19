@@ -274,7 +274,12 @@ const threadSendInput = threadTarget
     }
   });
 
-const ConnectionAccessSchema = z.object({ allAgents: z.boolean(), botIds: z.array(Id) });
+const ConnectionAccessSchema = z.object({
+  allAgents: z.boolean(),
+  botIds: z.array(Id),
+  /** Who can really use the connection, computed by the server with the executor's rules. */
+  effectiveAccess: z.object({ shared: z.enum(["all", "some", "none"]), botIds: z.array(Id) }),
+});
 
 const spaceName = z.string().trim().min(1).max(60);
 

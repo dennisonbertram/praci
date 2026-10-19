@@ -1629,14 +1629,14 @@ describe("MCP connector integration agents", () => {
     await connector.close();
   });
 
-  it("leaves a server without an agent unchanged, and ignores exclusive without an agent", async () => {
+  it("leaves a server without an agent unchanged, but an exclusive one without an agent denies every bot", async () => {
     const { connector, call, names } = await setup(
       "other",
       { spawnKey: null },
       { agentBotId: null, agentExclusive: true },
     );
-    expect(await names()).toEqual(["getAccounts", "requestSendMoney", "mystery", "annotatedRead"]);
-    expect(await call("requestSendMoney")).toMatchObject([{ type: "result" }]);
+    expect(await names()).toEqual([]);
+    expect(await call("getAccounts")).toMatchObject([{ type: "error" }]);
     await connector.close();
   });
 
