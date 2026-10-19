@@ -175,6 +175,68 @@ async function externalChannels(
   return endpoints.map((e) => e.channel).filter((channel) => switches[channel] !== false);
 }
 
+export const NOTIFICATION_CHANNELS = ["push", "browser"] as const;
+export type NotificationChannelSwitches = Partial<
+  Record<(typeof NOTIFICATION_CHANNELS)[number], boolean>
+>;
+export type NotificationPreferences = {
+  finish: boolean;
+  help: boolean;
+  takeover: boolean;
+  channels: NotificationChannelSwitches;
+};
+type PreferenceDb = Pick<PrismaClient, "notificationPreference" | "$transaction">;
+
+const switchesOf = (value: unknown): NotificationChannelSwitches => {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  return Object.fromEntries(
+    NOTIFICATION_CHANNELS.filter((c) => typeof raw[c] === "boolean").map((c) => [c, raw[c]]),
+  );
+};
+
+/** The user's notification preferences in this space; defaults when never saved. */
+export async function getNotificationPreferences(
+  prisma: Pick<PrismaClient, "notificationPreference">,
+  actor: Scope,
+): Promise<NotificationPreferences> {
+  const row = await prisma.notificationPreference.findUnique({
+    where: { spaceId_userId: ownerOf(actor) },
+  });
+  return {
+    finish: row?.finish ?? true,
+    help: row?.help ?? true,
+    takeover: row?.takeover ?? true,
+    channels: switchesOf(row?.channels),
+  };
+}
+
+/** Updates the given preferences; channel switches merge into the saved ones. */
+export async function updateNotificationPreferences(
+  prisma: PreferenceDb,
+  actor: Scope,
+  patch: Partial<Omit<NotificationPreferences, "channels">> & {
+    channels?: NotificationChannelSwitches;
+  },
+): Promise<NotificationPreferences> {
+  const scope = ownerOf(actor);
+  const where = { spaceId_userId: scope };
+  // ponytail: read-merge-write; two simultaneous channel edits can drop one, which is acceptable here.
+  await prisma.$transaction(async (tx) => {
+    const current = await tx.notificationPreference.findUnique({
+      where,
+      select: { channels: true },
+    });
+    const { channels, ...booleans } = patch;
+    const merged = { ...switchesOf(current?.channels), ...switchesOf(channels) };
+    await tx.notificationPreference.upsert({
+      where,
+      create: { ...scope, ...booleans, channels: merged },
+      update: { ...booleans, ...(channels ? { channels: merged } : {}) },
+    });
+  });
+  return getNotificationPreferences(prisma, actor);
+}
+
 /** The user's notifications, newest first, optionally only those created after `since`. */
 export async function listNotifications(
   prisma: Pick<PrismaClient, "notification">,

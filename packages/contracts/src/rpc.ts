@@ -281,6 +281,21 @@ const EffectiveAccessSchema = z.record(
   z.object({ shared: z.enum(["all", "some", "none"]), botIds: z.array(Id) }),
 );
 
+/** "browser" is the client's own permission; "push" is the phone. A missing key means on. */
+const NotificationChannelsSchema = z
+  .object({ push: z.boolean().optional(), browser: z.boolean().optional() })
+  .strict();
+export const NotificationPreferencesSchema = z.object({
+  finish: z.boolean(),
+  help: z.boolean(),
+  takeover: z.boolean(),
+  channels: NotificationChannelsSchema,
+  /** The user has at least one registered phone push endpoint. */
+  hasPhone: z.boolean(),
+});
+
+export type NotificationPreferences = z.infer<typeof NotificationPreferencesSchema>;
+
 const spaceName = z.string().trim().min(1).max(60);
 
 export const appContract = {
@@ -1081,6 +1096,17 @@ export const appContract = {
       )
       .output(z.object({ ok: z.literal(true) })),
     unregisterPush: oc.output(z.object({ ok: z.literal(true) })),
+    preferences: oc.output(NotificationPreferencesSchema),
+    updatePreferences: oc
+      .input(
+        z.object({
+          finish: z.boolean().optional(),
+          help: z.boolean().optional(),
+          takeover: z.boolean().optional(),
+          channels: NotificationChannelsSchema.optional(),
+        }),
+      )
+      .output(NotificationPreferencesSchema),
   },
   search: {
     query: oc.input(z.object({ q: z.string().max(200) })).output(SearchQueryOutputSchema),

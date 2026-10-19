@@ -220,6 +220,7 @@ import {
   findTicket,
   formatMessagingLinkCode,
   getCapTableSnapshot,
+  getNotificationPreferences,
   InvalidSpaceNameError,
   IsolationError,
   isRecordNotFound,
@@ -227,6 +228,7 @@ import {
   isUniqueViolation,
   listBoards,
   listContacts,
+  listPushEndpoints,
   listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
@@ -257,6 +259,7 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  updateNotificationPreferences,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { deleteAgentSecret, listAgentSecrets, putAgentSecret } from "./agent-secrets.js";
@@ -7147,6 +7150,24 @@ export function createRouter(deps: RouterDeps) {
         }
         return { ok: true as const };
       }),
+      preferences: authed.notifications.preferences.handler(async ({ context }) => {
+        const { actor } = context;
+        const [preferences, endpoints] = await Promise.all([
+          getNotificationPreferences(deps.prisma, actor),
+          listPushEndpoints(deps.prisma, actor.userId),
+        ]);
+        return { ...preferences, hasPhone: endpoints.length > 0 };
+      }),
+      updatePreferences: authed.notifications.updatePreferences.handler(
+        async ({ context, input }) => {
+          const { actor } = context;
+          const [preferences, endpoints] = await Promise.all([
+            updateNotificationPreferences(deps.prisma, actor, input),
+            listPushEndpoints(deps.prisma, actor.userId),
+          ]);
+          return { ...preferences, hasPhone: endpoints.length > 0 };
+        },
+      ),
       unregisterPush: authed.notifications.unregisterPush.handler(async ({ context }) => {
         await deletePushTokens(deps.prisma, context.actor.userId, context.sessionId);
         return { ok: true as const };
