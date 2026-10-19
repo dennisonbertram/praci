@@ -2276,7 +2276,7 @@ model DataRoomItem {
   userId             String
   folderId           String?
   folder             DataRoomFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  /// "upload", "drive", "gmail", "chat" or "finance".
+  /// "upload", "drive", "box", "gmail", "chat" or "finance".
   source             String
   sourceConnectionId String?
   sourceConnection   Connection?       @relation(fields: [sourceConnectionId], references: [id], onDelete: SetNull)

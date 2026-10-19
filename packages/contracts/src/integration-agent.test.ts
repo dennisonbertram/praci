@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { BOX_MCP_ENDPOINT, BOX_READ_TOOLS, BOX_WRITE_TOOLS } from "./box.js";
 import {
   CARTA_MCP_ENDPOINT,
   CARTA_READ_TOOLS,
@@ -167,5 +168,43 @@ describe("Devin integration-agent preset", () => {
       expect(integrationPresetForEndpoint(endpoint)).toBe(devin);
     for (const endpoint of ["http://mcp.devin.ai/mcp", "https://api.devin.ai/mcp", "nonsense"])
       expect(integrationPresetForEndpoint(endpoint)).toBeUndefined();
+  });
+});
+
+describe("Box integration-agent preset", () => {
+  const box = INTEGRATION_PRESETS.box;
+
+  it("treats every listed read as a read and every listed write as a write", () => {
+    for (const name of BOX_READ_TOOLS) expect(isReadTool({ name }, box)).toBe(true);
+    for (const name of BOX_WRITE_TOOLS) {
+      expect(isReadTool({ name }, box)).toBe(false);
+      expect(isReadTool({ name, annotations: { readOnlyHint: true } }, box)).toBe(false);
+    }
+  });
+
+  it("gates every Enhanced Extract Agent tool as a write", () => {
+    for (const name of [
+      "ai_extract_structured",
+      "ai_extract_structured_from_fields_enhanced",
+      "ai_extract_structured_from_metadata_template_enhanced",
+    ])
+      expect(isReadTool({ name }, box)).toBe(false);
+  });
+
+  it("lists no tool as both a read and a write", () => {
+    const reads = new Set<string>(BOX_READ_TOOLS);
+    expect(BOX_WRITE_TOOLS.filter((name) => reads.has(name))).toEqual([]);
+  });
+
+  it("hides tools Box adds later, even annotated reads", () => {
+    expect(isReadTool({ name: "box_new", annotations: { readOnlyHint: true } }, box)).toBe(false);
+  });
+
+  it("matches by https host and does not require an agent before sign-in", () => {
+    expect(integrationPresetForEndpoint(BOX_MCP_ENDPOINT)).toBe(box);
+    expect(integrationPresetForEndpoint(`${BOX_MCP_ENDPOINT}/`)).toBe(box);
+    expect(integrationPresetForEndpoint("http://mcp.box.com")).toBeUndefined();
+    expect(integrationPresetForEndpoint("https://api.box.com/mcp")).toBeUndefined();
+    expect("requiresAgent" in box).toBe(false);
   });
 });

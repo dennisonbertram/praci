@@ -1260,7 +1260,7 @@ export const builtinAgentTools: ConnectorTool[] = [
             docDateFrom: { type: "string", description: "ISO 8601 date-time." },
             docDateTo: { type: "string", description: "ISO 8601 date-time." },
             status: { type: "string" },
-            source: { type: "string", description: "upload, gmail, drive, chat or finance." },
+            source: { type: "string", description: "upload, gmail, drive, box, chat or finance." },
           },
         },
         limit: { type: "number", description: "Default 10, max 20." },
