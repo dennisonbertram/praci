@@ -316,3 +316,21 @@ it("connects Alchemy only after the server accepts the key, and shows its error 
   });
   expect(alchemy().textContent).toContain("Connected");
 });
+
+it("gives every finance tile the shared hover and a visible focus ring on the name link", async () => {
+  cryptoRpc.crypto.mockResolvedValue({ connected: true, hasApiKey: true });
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  for (const p of ["mercury", "brex", "crypto"]) {
+    expect(tile(p)?.className).toContain("hover:bg-muted/40");
+  }
+  for (const p of ["mercury", "brex"]) {
+    expect(tile(p)?.querySelector("a")?.className).toContain("focus-visible:after:ring-3");
+  }
+});
+
+it("keeps a connected tile's status row under its name, not pushed to the bottom", async () => {
+  cryptoRpc.exchanges.mockResolvedValue([{ provider: "coinbase", connected: true }]);
+  await show([source("mercury", "ok"), source("brex", "ok")]);
+  const row = (p: string) => tile(p)?.querySelector(".flex.items-center.gap-2");
+  expect(row("coinbase")?.className).not.toContain("mt-auto");
+});

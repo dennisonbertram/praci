@@ -38,10 +38,13 @@ function useMounted() {
   return mounted;
 }
 
+/** Same hover as the other integration tiles; `relative` anchors the stretched name link. */
+const TILE = "relative transition-colors hover:bg-muted/40";
+
 /** A tile's name; when the connection has an MCP server it links to that page, covering the tile. */
 function TileName({ name, to }: { name: string; to?: string }) {
   return to ? (
-    <Link to={to} className="block truncate font-semibold after:absolute after:inset-0">
+    <Link to={to} className="block truncate font-semibold outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-3 focus-visible:after:ring-ring/50">
       {name}
     </Link>
   ) : (
@@ -72,7 +75,7 @@ function CryptoTile({
   const [dialog, setDialog] = useState(false);
 
   return (
-    <IntegrationTile data-testid="finance-tile-crypto" className="relative">
+    <IntegrationTile data-testid="finance-tile-crypto" className={TILE}>
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Blockscout" logo="/logos/blockscout.svg" />
         <div className="min-w-0">
@@ -87,7 +90,7 @@ function CryptoTile({
           </div>
         </div>
       </div>
-      <div className="mt-auto flex items-center gap-2">
+      <div className={`${hasKey || hasServer ? "" : "mt-auto "}flex items-center gap-2`}>
         {hasKey === null ? null : (
           <>
             {hasKey || hasServer ? (
@@ -147,7 +150,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
   const [dialog, setDialog] = useState(false);
 
   return (
-    <IntegrationTile data-testid="finance-tile-alchemy">
+    <IntegrationTile data-testid="finance-tile-alchemy" className={TILE}>
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Alchemy" logo="/logos/alchemy.svg" />
         <div className="min-w-0">
@@ -157,7 +160,7 @@ function AlchemyTile({ state, reload }: { state: AlchemyState | null; reload: ()
           </div>
         </div>
       </div>
-      <div className="mt-auto flex items-center gap-2">
+      <div className={`${state?.connected ? "" : "mt-auto "}flex items-center gap-2`}>
         {state?.connected ? (
           <>
             <StatusBadge status="connected" />
@@ -226,7 +229,7 @@ function ExchangeTile({
 
   const connected = found?.connected === true;
   return (
-    <IntegrationTile data-testid={`finance-tile-${provider}`}>
+    <IntegrationTile data-testid={`finance-tile-${provider}`} className={TILE}>
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name={exchange.name} logo={exchange.logo} />
         <div className="min-w-0">
@@ -236,7 +239,7 @@ function ExchangeTile({
           </div>
         </div>
       </div>
-      <div className="mt-auto flex items-center gap-2">
+      <div className={`${connected ? "" : "mt-auto "}flex items-center gap-2`}>
         {connected ? (
           <>
             <StatusBadge status="connected" />
@@ -423,7 +426,7 @@ export function FinanceSection({
             <IntegrationTile
               key={provider}
               data-testid={`finance-tile-${provider}`}
-              className="relative"
+              className={TILE}
             >
               <div className="flex min-w-0 items-center gap-3">
                 <AppLogo name={name} logo={logo} />
