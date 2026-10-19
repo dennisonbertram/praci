@@ -3336,6 +3336,11 @@ msgstr "Verbindung wird getrennt…"
 msgid "Dismiss"
 msgstr ""
 
+#. js-lingui-explicit-id
+#: src/components/AppToaster.tsx
+msgid "Dismiss"
+msgstr ""
+
 #. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismiss {0}"

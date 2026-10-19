@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 190 of 190
-- Web and shared components: 549
+- Web and shared component files with stories: 192 of 192
+- Web and shared components: 552
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -33,6 +33,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Kbd, KbdGroup | [packages/ui-web/src/components/ui/kbd.tsx](../../packages/ui-web/src/components/ui/kbd.tsx) | [kbd.stories.tsx](../../packages/ui-web/src/components/ui/kbd.stories.tsx) | shared |
 | Label | [packages/ui-web/src/components/ui/label.tsx](../../packages/ui-web/src/components/ui/label.tsx) | [label.stories.tsx](../../packages/ui-web/src/components/ui/label.stories.tsx) | shared |
 | NativeSelect, NativeSelectOption, NativeSelectOptGroup | [packages/ui-web/src/components/ui/native-select.tsx](../../packages/ui-web/src/components/ui/native-select.tsx) | [native-select.stories.tsx](../../packages/ui-web/src/components/ui/native-select.stories.tsx) | shared |
+| ToastList, NotificationToaster | [packages/ui-web/src/components/ui/notification-toaster.tsx](../../packages/ui-web/src/components/ui/notification-toaster.tsx) | [notification-toaster.stories.tsx](../../packages/ui-web/src/components/ui/notification-toaster.stories.tsx) | shared |
 | Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription | [packages/ui-web/src/components/ui/popover.tsx](../../packages/ui-web/src/components/ui/popover.tsx) | [popover.stories.tsx](../../packages/ui-web/src/components/ui/popover.stories.tsx) | shared |
 | ScrollArea, ScrollBar | [packages/ui-web/src/components/ui/scroll-area.tsx](../../packages/ui-web/src/components/ui/scroll-area.tsx) | [scroll-area.stories.tsx](../../packages/ui-web/src/components/ui/scroll-area.stories.tsx) | shared |
 | SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator, SelectScrollUpButton, SelectScrollDownButton | [packages/ui-web/src/components/ui/select.tsx](../../packages/ui-web/src/components/ui/select.tsx) | [select.stories.tsx](../../packages/ui-web/src/components/ui/select.stories.tsx) | shared |
@@ -64,6 +65,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | AgentPanelIntro | [apps/web/src/components/AgentPanelIntro.tsx](../../apps/web/src/components/AgentPanelIntro.tsx) | [AgentPanelIntro.stories.tsx](../../apps/web/src/components/AgentPanelIntro.stories.tsx) | web |
 | ConsentCard, InboxConsentPrompt, AiDataSharingSection | [apps/web/src/components/AiDataSharing.tsx](../../apps/web/src/components/AiDataSharing.tsx) | [AiDataSharing.stories.tsx](../../apps/web/src/components/AiDataSharing.stories.tsx) | web |
 | ApprovalRulesSettings | [apps/web/src/components/ApprovalRulesSettings.tsx](../../apps/web/src/components/ApprovalRulesSettings.tsx) | [ApprovalRulesSettings.stories.tsx](../../apps/web/src/components/ApprovalRulesSettings.stories.tsx) | web |
+| AppToaster | [apps/web/src/components/AppToaster.tsx](../../apps/web/src/components/AppToaster.tsx) | [AppToaster.stories.tsx](../../apps/web/src/components/AppToaster.stories.tsx) | web |
 | ArtifactFileCard, FilePreview, DownloadError | [apps/web/src/components/ArtifactFileCard.tsx](../../apps/web/src/components/ArtifactFileCard.tsx) | [ArtifactFileCard.stories.tsx](../../apps/web/src/components/ArtifactFileCard.stories.tsx) | web |
 | AskBotButton | [apps/web/src/components/AskBotButton.tsx](../../apps/web/src/components/AskBotButton.tsx) | [AskBotButton.stories.tsx](../../apps/web/src/components/AskBotButton.stories.tsx) | web |
 | AskCard | [apps/web/src/components/AskCard.tsx](../../apps/web/src/components/AskCard.tsx) | [AskCard.stories.tsx](../../apps/web/src/components/AskCard.stories.tsx) | web |

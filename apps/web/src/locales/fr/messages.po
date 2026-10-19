@@ -3336,6 +3336,11 @@ msgstr "Déconnexion en cours…"
 msgid "Dismiss"
 msgstr "Fermer"
 
+#. js-lingui-explicit-id
+#: src/components/AppToaster.tsx
+msgid "Dismiss"
+msgstr ""
+
 #. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismiss {0}"
