@@ -217,6 +217,23 @@ describe("downloadBoxFile", () => {
     });
   });
 
+  it("fails, storing nothing, when Box is still preparing the file after the retries", async () => {
+    const { deps, box } = setup([file("20", "a.pdf", "0")]);
+    const real = box.fetch;
+    let contentCalls = 0;
+    deps.fetch = async (input, init) => {
+      if (String(input).endsWith("/files/20/content")) {
+        contentCalls += 1;
+        return new Response("preparing", { status: 202, headers: { "retry-after": "1" } });
+      }
+      return real(input, init);
+    };
+    await expect(downloadBoxFile(deps, scope, "20", { maxBytes: 1000 })).rejects.toMatchObject({
+      code: "failed",
+    });
+    expect(contentCalls).toBe(4);
+  });
+
   it("does not follow a download link outside Box", async () => {
     const { deps, box } = setup([
       file("20", "a.pdf", "0", { downloadUrl: "https://evil.example/steal" }),

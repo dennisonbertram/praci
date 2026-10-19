@@ -182,6 +182,15 @@ describe("Box integration-agent preset", () => {
     }
   });
 
+  it("gates every Enhanced Extract Agent tool as a write", () => {
+    for (const name of [
+      "ai_extract_structured",
+      "ai_extract_structured_from_fields_enhanced",
+      "ai_extract_structured_from_metadata_template_enhanced",
+    ])
+      expect(isReadTool({ name }, box)).toBe(false);
+  });
+
   it("lists no tool as both a read and a write", () => {
     const reads = new Set<string>(BOX_READ_TOOLS);
     expect(BOX_WRITE_TOOLS.filter((name) => reads.has(name))).toEqual([]);

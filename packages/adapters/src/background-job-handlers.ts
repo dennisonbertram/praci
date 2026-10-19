@@ -60,7 +60,7 @@ export function createBackgroundJobHandlers(deps: {
   artifacts?: ArtifactStore;
   /** Needed only to import Google Drive folders. */
   connectors?: DriveFilesDeps["connectors"];
-  /** Needed only to import Box folders: reads the signed-in token of the user's Box connection. */
+  /** Needed to import Box folders: every process that runs jobs must pass it, or queued Box files fail. */
   boxAccessToken?: BoxFilesDeps["accessToken"];
   /** External notification channels the outbox can send through; none means none are sent. */
   notificationChannels?: NotificationChannel[];

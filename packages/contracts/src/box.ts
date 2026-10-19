@@ -42,14 +42,13 @@ export const BOX_READ_TOOLS = [
   "ai_qa_multi_file",
   "ai_qa_hub",
   "ai_extract_freeform",
-  "ai_extract_structured",
   "ai_extract_structured_from_fields",
   "ai_extract_structured_from_metadata_template",
 ] as const;
 
 /**
- * Every Box tool that writes or spends money. The "enhanced" extract tools read, but Box says they
- * cost more, so each call asks first.
+ * Every Box tool that writes or spends money. `ai_extract_structured` and the "enhanced" extract tools read, but Box says they use the Enhanced
+ * Extract Agent and cost more, so each call asks first.
  */
 export const BOX_WRITE_TOOLS = [
   "copy_file",
@@ -77,6 +76,7 @@ export const BOX_WRITE_TOOLS = [
   "update_hub",
   "create_docgen_template",
   "create_docgen_batch",
+  "ai_extract_structured",
   "ai_extract_structured_from_fields_enhanced",
   "ai_extract_structured_from_metadata_template_enhanced",
 ] as const;

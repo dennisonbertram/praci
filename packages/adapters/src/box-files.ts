@@ -300,7 +300,8 @@ export async function downloadBoxFile(
       throw new BoxFileError("failed", "Box download failed");
     });
   }
-  if (!response.ok) {
+  // 202 is a 2xx but carries no file: Box is still preparing it. Store nothing; the job retries.
+  if (!response.ok || response.status === 202) {
     await response.body?.cancel().catch(() => undefined);
     throw response.status === 202
       ? new BoxFileError("failed", "Box is not ready to send this file")
