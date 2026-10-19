@@ -698,13 +698,40 @@ export async function financeMonth(
 /** The Finance page's runway in months (null without a cash account or burn), without the rest of the overview. */
 export async function financeRunwayMonths(deps: FinanceDeps, actor: Actor): Promise<number | null> {
   const now = nowOf(deps);
-  const [accounts, txns, crypto, scope] = await Promise.all([
+  // monthlyBurn averages the three calendar months before this one, so only those rows are read.
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, 1));
+  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const inWindow = { gte: from, lt: to };
+  const [accounts, rows, crypto, scope] = await Promise.all([
     loadAccounts(deps, actor),
-    loadTransactions(deps, actor),
+    deps.prisma.financeTransaction.findMany({
+      where: {
+        ...actorScope(actor),
+        classification: { in: ["spend", "revenue"] },
+        OR: [{ purchasedAt: inWindow }, { purchasedAt: null, postedAt: inWindow }],
+      },
+      select: {
+        postedAt: true,
+        purchasedAt: true,
+        amountCents: true,
+        currency: true,
+        status: true,
+        classification: true,
+      },
+    }),
     loadCryptoSummary(deps, actor),
     loadRunwayCrypto(deps.prisma, actor),
   ]);
   if (!accounts.some((a) => a.kind !== "card")) return null;
+  // Only the fields the burn calculation reads.
+  const txns = rows.map((row) => ({
+    postedAt: row.postedAt.toISOString(),
+    purchasedAt: row.purchasedAt?.toISOString() ?? null,
+    amountCents: Number(row.amountCents),
+    currency: row.currency,
+    status: row.status,
+    classification: row.classification,
+  })) as FinanceTransaction[];
   const cashCents = countedCash(cashParts(accounts, crypto), scope);
   return runway(cashCents, monthlyBurn(txns, now).monthlyCents, now).months;
 }

@@ -1,7 +1,7 @@
 import { createRouterClient } from "@orpc/server";
 import type { Actor } from "@rakazo/contracts";
 import { createDb, type PrismaClient } from "@rakazo/db";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
 
@@ -134,7 +134,7 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
     expect((await glance(aliceElsewhere)).urgentBotIds).toEqual([]);
   });
 
-  it("reports runway months from the caller's cash and spend", async () => {
+  it("reports runway from the three full months before this one, reading only those rows", async () => {
     await prisma.financeAccount.create({
       data: {
         spaceId: alice.spaceId,
@@ -143,29 +143,46 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
         externalId: `acct-${suffix}`,
         name: "Checking",
         kind: "checking",
-        balanceCents: 120_000_00n,
+        balanceCents: 1_200_000n,
         currency: "USD",
       },
     });
-    await prisma.financeTransaction.createMany({
-      data: [30, 60, 90].map((age) => ({
-        spaceId: alice.spaceId,
-        userId: alice.userId,
-        provider: "mercury",
-        externalId: `tx-${suffix}-${age}`,
-        accountExternalId: `acct-${suffix}`,
-        postedAt: day(-age),
-        amountCents: -10_000_00n,
-        currency: "USD",
-        counterparty: "Vendor",
-        vendorKey: "vendor",
-        status: "sent",
-        kind: "other",
-        classification: "spend",
-      })),
+    const now = new Date();
+    const monthDay = (monthsAgo: number) =>
+      new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsAgo, 15));
+    const tx = (key: string, postedAt: Date, cents: bigint) => ({
+      spaceId: alice.spaceId,
+      userId: alice.userId,
+      provider: "mercury",
+      externalId: `tx-${suffix}-${key}`,
+      accountExternalId: `acct-${suffix}`,
+      postedAt,
+      amountCents: cents,
+      currency: "USD",
+      counterparty: "Vendor",
+      vendorKey: "vendor",
+      status: "sent",
+      kind: "other",
+      classification: "spend",
     });
+    await prisma.financeTransaction.createMany({
+      data: [
+        // 1,000.00 a month for the three full months before this one: burn 1,000.00.
+        tx("m1", monthDay(1), -100_000n),
+        tx("m2", monthDay(2), -100_000n),
+        tx("m3", monthDay(3), -100_000n),
+        // Outside the window: this month and everything older.
+        tx("now", now, -900_000n),
+        ...Array.from({ length: 30 }, (_, n) => tx(`old${n}`, monthDay(4 + n), -900_000n)),
+      ],
+    });
+    const spy = vi.spyOn(prisma.financeTransaction, "findMany");
     const months = (await glance(alice)).financeRunwayMonths;
-    expect(months).toBeGreaterThan(0);
+    const read = await spy.mock.results[0]?.value;
+    spy.mockRestore();
+    // 12,000.00 of cash at 1,000.00 a month.
+    expect(months).toBe(12);
+    expect(read).toHaveLength(3);
     expect((await glance(bob)).financeRunwayMonths).toBeNull();
   });
 });

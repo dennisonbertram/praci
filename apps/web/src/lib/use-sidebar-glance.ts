@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { rpc } from "./rpc";
 
 /** Dispatched on `window` when a notification arrives or is seen (see the app-root subscription). */
@@ -12,6 +12,18 @@ export function surfaceOfPath(pathname: string): string | null {
   return key ?? null;
 }
 
+const subscribeAttention = (notify: () => void) => {
+  window.addEventListener("focus", notify);
+  window.addEventListener("blur", notify);
+  document.addEventListener("visibilitychange", notify);
+  return () => {
+    window.removeEventListener("focus", notify);
+    window.removeEventListener("blur", notify);
+    document.removeEventListener("visibilitychange", notify);
+  };
+};
+const isAttended = () => document.visibilityState === "visible" && document.hasFocus();
+
 type Glance = Awaited<ReturnType<typeof rpc.notifications.glance>>;
 const EMPTY: Glance = {
   financeRunwayMonths: null,
@@ -22,11 +34,17 @@ const EMPTY: Glance = {
 
 /**
  * Unseen notification counts and glance values for the sidebar. Refreshes on mount, on every page
- * change and on `rakazo:notifications-changed`. Opening a page marks its surface seen.
+ * change and on `rakazo:notifications-changed`. A page or agent thread is marked seen only while the
+ * tab is visible and focused, so a background tab never suppresses a push; it is marked when the
+ * user comes back.
  */
-export function useSidebarGlance(pathname: string) {
+export function useSidebarGlance(
+  pathname: string,
+  thread?: { botId: string | null; threadId: string } | null,
+) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [glance, setGlance] = useState<Glance>(EMPTY);
+  const attended = useSyncExternalStore(subscribeAttention, isAttended, () => false);
 
   const refresh = useCallback(() => {
     void Promise.all([rpc.notifications.unseenCounts(), rpc.notifications.glance()])
@@ -43,16 +61,26 @@ export function useSidebarGlance(pathname: string) {
     return () => window.removeEventListener(NOTIFICATIONS_CHANGED_EVENT, refresh);
   }, [refresh]);
 
-  // The page on screen is being looked at, so its notifications count as seen, including new ones.
   const surface = surfaceOfPath(pathname);
   const unseenHere = surface ? (counts[surface] ?? 0) : 0;
   useEffect(() => {
-    if (!surface || unseenHere === 0) return;
+    if (!attended || !surface || unseenHere === 0) return;
     void rpc.notifications
       .markSeen({ surface })
       .then(refresh)
       .catch(() => undefined);
-  }, [surface, unseenHere, refresh]);
+  }, [attended, surface, unseenHere, refresh]);
+
+  // Opening an agent's thread clears that agent's urgent mark.
+  const threadId = thread?.threadId;
+  const urgentHere = Boolean(thread?.botId && glance.urgentBotIds.includes(thread.botId));
+  useEffect(() => {
+    if (!attended || !threadId || !urgentHere) return;
+    void rpc.notifications
+      .markSeen({ surface: "thread", threadId })
+      .then(refresh)
+      .catch(() => undefined);
+  }, [attended, threadId, urgentHere, refresh]);
 
   return { counts, glance };
 }

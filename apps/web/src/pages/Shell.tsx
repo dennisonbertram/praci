@@ -709,7 +709,10 @@ export function ShellPage() {
   useEffect(refreshInboxUnread, [refreshInboxUnread]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { pathname } = useLocation();
-  const { counts: unseen, glance } = useSidebarGlance(pathname);
+  const { counts: unseen, glance } = useSidebarGlance(
+    pathname,
+    snapshot ? { botId: snapshot.botId ?? null, threadId: snapshot.threadId } : null,
+  );
   const hideAmounts = useHideAmounts();
   const [missingPath, setMissingPath] = useState<string | null>(null);
   const missingPathRef = useRef<string | null>(null);
