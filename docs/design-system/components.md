@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 185 of 185
-- Web and shared components: 532
+- Web and shared components: 533
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -174,7 +174,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ConnectionDialog | [apps/web/src/components/integrations/ConnectionDialog.tsx](../../apps/web/src/components/integrations/ConnectionDialog.tsx) | [ConnectionDialog.stories.tsx](../../apps/web/src/components/integrations/ConnectionDialog.stories.tsx) | web |
 | CustomConnectionDialog | [apps/web/src/components/integrations/CustomConnectionDialog.tsx](../../apps/web/src/components/integrations/CustomConnectionDialog.tsx) | [CustomConnectionDialog.stories.tsx](../../apps/web/src/components/integrations/CustomConnectionDialog.stories.tsx) | web |
 | ExchangeConnectDialog | [apps/web/src/components/integrations/ExchangeConnectDialog.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.tsx) | [ExchangeConnectDialog.stories.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.stories.tsx) | web |
-| CryptoTile, AlchemyTile, ExchangeTile, FinanceSection | [apps/web/src/components/integrations/FinanceSection.tsx](../../apps/web/src/components/integrations/FinanceSection.tsx) | [FinanceSection.stories.tsx](../../apps/web/src/components/integrations/FinanceSection.stories.tsx) | web |
+| TileName, CryptoTile, AlchemyTile, ExchangeTile, FinanceSection | [apps/web/src/components/integrations/FinanceSection.tsx](../../apps/web/src/components/integrations/FinanceSection.tsx) | [FinanceSection.stories.tsx](../../apps/web/src/components/integrations/FinanceSection.stories.tsx) | web |
 | WritesSwitch, IntegrationAgentSection | [apps/web/src/components/integrations/IntegrationAgentSection.tsx](../../apps/web/src/components/integrations/IntegrationAgentSection.tsx) | [IntegrationAgentSection.stories.tsx](../../apps/web/src/components/integrations/IntegrationAgentSection.stories.tsx) | web |
 | IntegrationSetup | [apps/web/src/components/integrations/IntegrationSetup.tsx](../../apps/web/src/components/integrations/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/components/integrations/IntegrationSetup.stories.tsx) | web |
 | Card, CardHead, OpenPageLink, UsedBy, McpCard, AppCard, SourceCard, AppTile, IntegrationsHome, SectionTitle | [apps/web/src/components/integrations/IntegrationsHome.tsx](../../apps/web/src/components/integrations/IntegrationsHome.tsx) | [IntegrationsHome.stories.tsx](../../apps/web/src/components/integrations/IntegrationsHome.stories.tsx) | web |

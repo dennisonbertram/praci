@@ -636,7 +636,7 @@ export function ConfirmDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription render={<div />}>
-            <ul className="list-disc space-y-1.5 ps-5 text-foreground">{children}</ul>
+            <ul className="list-disc space-y-1.5 ps-5 text-start text-foreground">{children}</ul>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
