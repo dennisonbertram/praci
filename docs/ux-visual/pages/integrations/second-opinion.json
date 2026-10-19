@@ -1,0 +1,356 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440-home.png",
+    "1440-mercury-agent.png",
+    "1440-brex-agent.png",
+    "1440-gmail.png",
+    "1440-allow-changes-dialog.png",
+    "768-home.png",
+    "768-mercury-agent.png",
+    "375-mercury-agent.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 70,
+      "costUsd": 0.170252,
+      "result": {
+        "verdict": "Not shippable for a non-technical founder: the surfaces look consistent, but the core permission question — which bot can use an app and whether it can change things, and whether it must ask first — is ambiguous, split across inconsistent controls, and obscured by 'MCP'/'agent' jargon. Connected tiles do not clearly lead to their settings, 'Used by' is unreadable on the home page, and the safety-critical 'Allow changes' toggle is not scoped per bot.",
+        "findings": [
+          {
+            "level": "page",
+            "element": "'via MCP · mcp.mercury.com' / 'via MCP · api.brex.com' under the Connected pill",
+            "problem": "The persona is explicitly stated not to know 'MCP'. The most technical string on the page is placed in the header with no plain-language explanation, tooltip, or 'what is this?' affordance, so it reads as an error/status she must understand.",
+            "norm": "Progressive disclosure: hide protocol/endpoint details behind an advanced/details affordance; lead with user-meaningful state ('Connected to your Mercury bank account').",
+            "severity": "P1",
+            "screenshot": "1440-mercury-agent.png",
+            "fix": "Replace with 'Connected to Mercury' and move 'via MCP · mcp.mercury.com' into a collapsed 'Connection details' row. Same change on 1440-brex-agent.png ('via MCP · api.brex.com')."
+          },
+          {
+            "level": "group",
+            "element": "'AGENT' card ('Allow changes in Mercury', 'Only this agent') vs 'USED BY' switch list",
+            "problem": "Safety model is incoherent: 'Allow changes' is scoped only to the Mercury agent, yet 'USED BY' independently grants Finance agent and Mercury agent direct Mercury access, and 'Only this agent' is OFF. A founder cannot tell whether Finance agent can also make changes, or whether it bypasses the 'asks you before each one' promise. This is the exact question the brief says she wants answered.",
+            "norm": "Permission models must be legible as one matrix: per-bot, per-capability (read vs change), with the approval rule stated where the grant is made.",
+            "severity": "P0",
+            "screenshot": "1440-mercury-agent.png",
+            "fix": "Merge into one per-bot table: Bot | Can read | Can make changes (always asks first). Remove the separate AGENT card, or make 'Allow changes' a column-level rule that visibly applies to every enabled bot."
+          },
+          {
+            "level": "component",
+            "element": "'Only this agent' switch and helper 'Other agents ask the Mercury agent instead of using Mercury themselves.'",
+            "problem": "The label is a sentence fragment (only this agent… what? can use Mercury? is asked?) and the helper introduces a bot-to-bot delegation concept the persona has never been given. Turning it on/off has no visible effect on the USED BY list below, so cause and effect is unverifiable.",
+            "norm": "Toggle labels must be complete, outcome-named statements ('Only the Mercury bot can use Mercury'); dependent controls must visibly enable/disable when a master toggle changes.",
+            "severity": "P0",
+            "screenshot": "1440-mercury-agent.png",
+            "fix": "Rename to 'Only the Mercury bot can use Mercury' and, when ON, disable/grey the other USED BY switches with a note 'Off — handled by Mercury bot'. When OFF, delete the delegation sentence."
+          },
+          {
+            "level": "component",
+            "element": "Switches in 'USED BY' list (e.g. Finance agent ON, Chief OFF)",
+            "problem": "ON is a black knob on a white pill, OFF is a white knob on dark grey — no text label, no colour, no 'On/Off' word. State must be inferred from knob position alone at ~32×18px, well under 44px touch targets, for controls that grant bank/email access. On 375 the same switches sit hard against the right edge.",
+            "norm": "Binary permission controls need redundant state encoding (label + position + contrast/colour) and ≥44px targets (WCAG target size / Apple HIG).",
+            "severity": "P1",
+            "screenshot": "375-mercury-agent.png",
+            "fix": "Use ≥44×26px switches with an adjacent 'On/Off' (or 'Can use / Can't use') text label and a distinct accent colour for ON; make the whole row tappable."
+          },
+          {
+            "level": "component",
+            "element": "'Allow changes in Mercury' switch state",
+            "problem": "The toggle appears ON (knob right, lighter track) while the helper text is written as an explanation of both states ('Off: the agent only reads. On: it can also make changes…'). Nothing on the row states the current effective state in words, so a founder skimming cannot answer 'can it change things right now?' without decoding knob position. Identical on Brex.",
+            "norm": "Safety-critical settings must read as a sentence in their current state ('Currently: read-only' / 'Currently: can make changes, asking first').",
+            "severity": "P1",
+            "screenshot": "1440-brex-agent.png",
+            "fix": "Add a live status line under the switch that flips with state, e.g. 'Now: Brex bot can only read.' / 'Now: Brex bot can make changes and will ask you first.'"
+          },
+          {
+            "level": "group",
+            "element": "Connected tile actions 'Open Inbox', 'Open Cap table', 'Open Finance', 'Replace key' + 'Open'",
+            "problem": "Every connected tile's only visible button opens the destination app/module, not the integration settings. There is no 'Manage', 'Settings', gear, or chevron, and the tile itself has no hover/affordance signal, so the path from 1440-home to the Mercury/Brex/Gmail detail pages is undiscoverable. Coinbase breaks the pattern entirely with 'Replace key' + 'Open' and unexplained API-key jargon.",
+            "norm": "A management index must expose an explicit manage/configure action per item; primary tile action must match the page's purpose (here: choose which bots get access).",
+            "severity": "P0",
+            "screenshot": "1440-home.png",
+            "fix": "Make the tile click target obvious (chevron + 'Manage access' text button) and demote 'Open Finance/Inbox' to a secondary icon action. Explain or remove Coinbase 'Replace key' ('Update API key' with helper text)."
+          },
+          {
+            "level": "component",
+            "element": "'Used by' avatar cluster on Connected tiles (Gmail cluster of 5–6 overlapping coloured glyphs; Mercury 2 glyphs)",
+            "problem": "Avatars are ~16px, overlapping, unlabelled, and colour-only. Gmail's cluster does not match its detail page (1440-gmail shows 8 bots all ON), Mercury's 2 glyphs cannot be resolved to Finance + Mercury without memorising sidebar icon colours. The one piece of information the page promises ('You choose which bots get access') is unreadable where it is summarised.",
+            "norm": "Summaries of identity-based permissions must name the identities or give an accessible count + names on hover/tap.",
+            "severity": "P1",
+            "screenshot": "1440-home.png",
+            "fix": "Replace clusters with text: 'Used by Finance bot, Mercury bot +6 more' or labelled chips; reconcile counts with the detail pages (Gmail home cluster vs 8 switches ON)."
+          },
+          {
+            "level": "component",
+            "element": "Coinbase Connected tile (no 'Used by' row) vs Gmail/Carta/Mercury/Brex/Blockscout tiles (all have 'Used by')",
+            "problem": "One of six connected tiles omits the Used-by row entirely, breaking the grid's scannability and implying — falsely or truly, the user cannot know — that no bot can use Coinbase or that key-based apps work differently. Blockscout also uniquely adds a '…' overflow button no other tile has.",
+            "norm": "Repeated cards in a grid must expose the same data fields and actions; exceptions must be explained in place.",
+            "severity": "P2",
+            "screenshot": "1440-home.png",
+            "fix": "Show 'Used by: No bots yet' (with an 'Add a bot' action) on Coinbase, and either give every tile the '…' menu or remove Blockscout's."
+          },
+          {
+            "level": "group",
+            "element": "Header buttons 'Reconnect' / 'Disconnect sign-in' / 'Rename' (Mercury, Brex)",
+            "problem": "Three equal-weight, equal-style pill buttons compete at the top with no primary action, and 'Disconnect sign-in' vs the 'Remove Mercury' button at the bottom vs 'Reconnect' are three overlapping connection-ending/repairing verbs with no explanation of how they differ. A founder cannot predict which one removes bot access (only the bottom one's helper says so).",
+            "norm": "One primary action per view; destructive/connection actions must be differentiated by label + consequence text, with destructive actions visually demoted/separated.",
+            "severity": "P1",
+            "screenshot": "1440-mercury-agent.png",
+            "fix": "Keep 'Reconnect' only if the connection is unhealthy (it is 'Connected', so hide it), rename 'Disconnect sign-in' to plain 'Disconnect', and consolidate removal into one clearly-labelled danger zone explaining sign-in vs bot access."
+          },
+          {
+            "level": "page",
+            "element": "Terminology: home subtitle 'your bots', section header 'AGENT', 'Create agent', sidebar 'Finance agent / Mercury agent', brief-level 'bots (agents)'",
+            "problem": "The same entity is called 'bot' in the home page's only explanatory sentence and 'agent' everywhere decisions are made. The persona 'has not thought about agents as separate from the chat bots', so 'Create agent' (Gmail accounts) and 'Mercury agent' read as creating a new unknown thing rather than letting an existing bot use an app.",
+            "norm": "One user-facing noun for one concept, introduced once and used consistently across index, detail, and dialogs.",
+            "severity": "P1",
+            "screenshot": "1440-gmail.png",
+            "fix": "Standardise on 'bot': 'Create bot', 'Mercury bot', section header 'MERCURY BOT'. If 'agent' is kept, define it inline on first use on the home page."
+          },
+          {
+            "level": "page",
+            "element": "Gmail detail: 'ACCOUNTS' (Founder mail (Mock), Sales mail (Mock)) with no email address shown",
+            "problem": "Accounts are identified only by editable display nicknames and 'Connected 10/19/2026'. The founder cannot verify which real mailbox (founder@? sales@?) is connected before granting 8 bots access or hitting 'Remove account'. Mock labels hide, rather than demonstrate, the identifying field.",
+            "norm": "Account pickers/managers must show the immutable identifier (email address) alongside any nickname.",
+            "severity": "P1",
+            "screenshot": "1440-gmail.png",
+            "fix": "Add the address under each account name, e.g. 'maya@northwindrobotics.com', and show it again in the Remove account confirmation."
+          },
+          {
+            "level": "group",
+            "element": "Gmail 'USED BY' list — all 8 bots switched ON (Chief, Inbox, Finance, Carta, Legal, Investor Relations, Finance helper, Mercury)",
+            "problem": "Every bot, including Legal agent and Carta agent, has Gmail access by default with no read/change distinction and, unlike Mercury/Brex, Gmail has no 'Allow changes' control at all despite the header promising 'Read, search and draft email' (drafting is a write). The permission model silently changes between detail pages.",
+            "norm": "Consistent permission primitives across integrations; least-privilege defaults with sensible scoping (Inbox/Chief for email, not cap-table bot).",
+            "severity": "P0",
+            "screenshot": "1440-gmail.png",
+            "fix": "Apply the same read/change model as Mercury/Brex to Gmail (draft/send as 'changes'), default non-mail bots OFF, and add a summary '8 bots can read your email' warning above the list."
+          },
+          {
+            "level": "component",
+            "element": "'Create agent' button per Gmail account (Founder mail / Sales mail rows)",
+            "problem": "Two identical 'Create agent' buttons imply one agent per account, but Mercury/Brex pages show a single pre-existing named agent with no visible Create button, and the sidebar already contains a 'Mercury agent'. What creating a Gmail agent does, what it is named, and whether it then appears in USED BY is nowhere explained — the brief's promised 'Create agent button' flow is semantically empty.",
+            "norm": "Create actions must preview the resulting object's name/identity and consequence before commitment.",
+            "severity": "P1",
+            "screenshot": "1440-gmail.png",
+            "fix": "Label it 'Create a bot for this mailbox' with a sub-caption of what it will be called and do, and align Mercury/Brex to the same create-or-manage pattern."
+          },
+          {
+            "level": "component",
+            "element": "'Allow changes' confirmation dialog: 'Allow changes in Brex?' with red 'Allow changes' button and focus-outlined 'Cancel'",
+            "problem": "The affirmative action is styled like a destructive delete (red text on dark-red fill, low contrast) while 'Cancel' carries the blue focus ring and reads as the primary action — the hierarchy argues against the button the user came to press. Content is one generic bullet ('change your Brex data') with no examples (pay a bill? freeze a card? limits?), no scope, and no reversibility info for a banking-adjacent permission.",
+            "norm": "Confirmation dialogs for capability grants: neutral/positive styling for the grant, specific enumeration of new capabilities, safe action as default focus but not as the visual primary CTA.",
+            "severity": "P1",
+            "screenshot": "1440-allow-changes-dialog.png",
+            "fix": "Restyle 'Allow changes' as the primary (filled, neutral/accent) button, list concrete Brex actions it unlocks and restate 'You approve each change before it happens', keep Cancel as text button with focus ring."
+          },
+          {
+            "level": "page",
+            "element": "'TOOLS · 6' section on Gmail detail, cut off after 'Fetch emails'",
+            "problem": "The only place that concretely answers 'what can bots actually do' is below accounts + 8 switches, starts at the very bottom of the 1440×900 viewport, and is truncated mid-list ('Fetch em…' second row). On Mercury/Brex there is no tools list at all, so the capability story exists for one integration only.",
+            "norm": "Key explanatory content must not be buried below two long control groups or clipped by the fold; capability inventories should be consistent across integrations.",
+            "severity": "P2",
+            "screenshot": "1440-gmail.png",
+            "fix": "Move a condensed 'What bots can do' summary directly under the Gmail header (grouped Read / Draft as in the existing 'Never changes your account' pattern) and add the same Tools section to Mercury/Brex, or link to it consistently."
+          },
+          {
+            "level": "layout",
+            "element": "768px home: left bot sidebar still occupies ~45% of width beside a single-column Connected list",
+            "problem": "At tablet width the sidebar list (Chief, Inbox agent… with truncated previews 'at the L…') keeps desktop proportions, squeezing integration cards into the remaining ~55% and forcing a very long single-column scroll through 6 Connected + Popular cards. No reflow (2-col grid) or sidebar collapse is attempted until phone size.",
+            "norm": "Tablet breakpoints should collapse secondary navigation to icons or overlay and use the reclaimed width for a 2-column card grid.",
+            "severity": "P1",
+            "screenshot": "768-home.png",
+            "fix": "At ≤900px collapse the bot list to an icon rail or top bar and render Connected as 2 columns; truncate sidebar previews only after content gets ≥60% width."
+          },
+          {
+            "level": "layout",
+            "element": "375px Mercury page: header stack ('M' icon, 'Mercury', Reconnect/Disconnect sign-in/Rename pill row)",
+            "problem": "The three header pills shrink to ~36px-high targets with tight 8px gaps, 'Remove Mercury' and its explanation fall entirely below the fold, and USED BY is clipped at 'Legal agent' — the destructive/exit action and 3 of 8 permission switches require blind scrolling on the smallest viewport, with only a hamburger glyph to explain the vanished sidebar.",
+            "norm": "Mobile: ≥44px targets, key/destructive actions reachable or sticky, no clipped interactive lists without scroll indication.",
+            "severity": "P2",
+            "screenshot": "375-mercury-agent.png",
+            "fix": "Wrap header actions into a single '⋯ More' menu at 375px, add a bottom safe-area fade/scroll cue on USED BY, and keep a compact 'Remove Mercury' link visible in the header menu."
+          },
+          {
+            "level": "group",
+            "element": "'Remove Mercury' / 'Remove Brex' row: red-text pill + inline helper 'Removes the connection and bot access.'",
+            "problem": "On desktop the helper sits inline right of the button; on 768 it wraps underneath ('Remove Mercury' button alone, text below-left), so the danger zone's alignment changes per breakpoint. No confirmation behaviour is indicated on the button itself, and red-on-dark text contrast is the only danger signal for an irreversible-looking action.",
+            "norm": "Danger zones: consistent stacked layout (button, then consequence text) at all breakpoints, with explicit confirmation stated or shown.",
+            "severity": "P2",
+            "screenshot": "768-mercury-agent.png",
+            "fix": "Fix the danger zone as a bordered section with stacked button + consequence at all widths and label it 'Remove Mercury…' to signal a confirmation step follows."
+          },
+          {
+            "level": "component",
+            "element": "App icons: generic letter tiles 'G' for Gmail/Google Calendar/Google Drive, 'C' Carta, 'M' Mercury, 'B' Brex vs real logos for Mercury (home), Blockscout, Coinbase",
+            "problem": "Three different Google apps share an identical grey 'G' tile on the same home page, and Mercury appears as a fingerprint logo on home but a plain 'M' on its own detail page. Founders scanning by brand (the way they know these tools) must read every label, and home↔detail identity breaks.",
+            "norm": "Use real, consistent brand marks per app across index and detail; letter monograms only as a deliberate, differentiated fallback.",
+            "severity": "P2",
+            "screenshot": "1440-home.png",
+            "fix": "Use the same Mercury logo on 1440-home and 1440-mercury-agent, and give Google Calendar/Drive/Gmail distinct brand icons/colours."
+          },
+          {
+            "level": "group",
+            "element": "Two search fields: sidebar 'Search' above 'Data room' and page 'Search apps' under 'FIND AN APP', plus filter pills 'All / Email & calendar / Chat / Docs & files / Finance / Developer / Sales & CRM'",
+            "problem": "A first-time user must guess which search searches integrations; the global sidebar search visually dominates (filled, top-left). Category pills also don't match the page's own section structure (sections below are headed only 'POPULAR' with Finance/Social/Tools promised in the brief nowhere visible), so filtering vs scrolling behaviour is unpredictable.",
+            "norm": "One search per scope, labelled by scope; filter taxonomy must map 1:1 onto the sections it filters.",
+            "severity": "P3",
+            "screenshot": "1440-home.png",
+            "fix": "Rename sidebar field 'Search chats' (or icon-only) and keep 'Search apps' as the sole text search; align pills to the actual section headings or remove section headings when a filter is active."
+          },
+          {
+            "level": "component",
+            "element": "Connected green 'Connected' pill repeated identically on every tile and detail header",
+            "problem": "This is done well — but it is the only status ever shown: no 'last synced', no health/error state, no per-account status on Gmail despite two accounts. When 'Reconnect' is offered on a page that simultaneously says 'Connected', the contradiction (see header-buttons finding) is created by this absence of nuance.",
+            "norm": "Status pills should support at least healthy / needs-attention states so repair actions only appear when the status justifies them.",
+            "severity": "P3",
+            "screenshot": "1440-mercury-agent.png",
+            "fix": "Add status variants ('Connected · Synced 2m ago', 'Action needed') and conditionally show Reconnect only in the latter."
+          }
+        ],
+        "excellent": [
+          "1440-home.png page header: 'Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one.' — plain-language, persona-perfect framing of the whole feature in two sentences; the tragedy is the rest of the UI then switches to 'agent/MCP'.",
+          "1440-mercury-agent.png 'Allow changes in Mercury' helper: 'Off: the agent only reads. On: it can also make changes, and asks you before each one.' — directly answers 'can it change things without asking me?' in founder language; this sentence should be the model for every permission control.",
+          "1440-allow-changes-dialog.png: enabling changes requires an explicit modal confirmation rather than a bare toggle flip — the right friction level for write access to Brex/Mercury, even though its button styling needs fixing.",
+          "Detail-page consistency between 1440-mercury-agent.png and 1440-brex-agent.png: identical AGENT / USED BY / Remove structure means learning one integration teaches the other (Gmail breaking the pattern is the exception, noted above).",
+          "1440-gmail.png TOOLS section header pattern 'Read — Never changes your account' (right-aligned guarantee) is an excellent scannable way to group capabilities by risk; it should be promoted up the page and copied to Mercury/Brex."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 112,
+      "costUsd": 0.105036,
+      "result": {
+        "verdict": "The visual foundation is calm and dark-mode native, but the Integrations flows fail the target persona on several core UX dimensions: toggle switches lack a high-contrast active fill (and an unfocused/focused border makes OFF switches look ON), 'bots' and 'agents' are conflated alongside raw 'via MCP' protocol jargon, permission scope between global bots and app-specific agents is ambiguous, and the left sidebar suffers from vertical scroll-clipping across desktop and tablet viewports.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Toggle switches in AGENT ('Allow changes in Mercury', 'Only this agent') and USED BY rows",
+            "problem": "Toggle switches have no distinct fill color when ON—both ON and OFF tracks are dark grey/black, differentiated only by thumb position and a thin 1px light border. Worse, in 1440-mercury-agent.png, 768-mercury-agent.png, and 375-mercury-agent.png, 'Allow changes in Mercury' has its thumb on the LEFT (OFF) but displays the same bright white outline ring as the ON switches in USED BY ('Finance agent', 'Mercury agent'), making it nearly impossible to tell at a glance whether write access to a live bank account is enabled.",
+            "norm": "Binary switches controlling high-stakes permissions must use an unmistakable high-contrast track fill (e.g., green or high-contrast accent/white fill) when ON, and focus rings must be visually distinct from the active state border.",
+            "severity": "P0",
+            "screenshot": "1440-mercury-agent.png",
+            "fix": "Give ON switches a solid, high-contrast track fill (such as brand green or solid white with a dark thumb), remove the white border from OFF switches, and use an offset outer focus ring (like the blue ring used in dialogs) exclusively for keyboard focus."
+          },
+          {
+            "level": "layout",
+            "element": "Left sidebar navigation list above 'MOCK DEMO DATA — NORTHWIND ROBOTICS'",
+            "problem": "The upper navigation list in the left sidebar is broken and clipped across viewports: in 768-home.png and 768-mercury-agent.png, the 'Finance' row is sliced in half horizontally right underneath the 'Search' bar; in 1440-home.png and 1440-mercury-agent.png, 'Inbox', 'Finance', 'Legal', and 'Cap table' are completely scrolled out of view; and in 1440-brex-agent.png, even 'Data room' disappears, leaving only 'Artifacts'.",
+            "norm": "Primary app navigation in a persistent sidebar must remain consistently visible and never clip mid-row beneath a sticky search input without scroll indicators or proper container padding.",
+            "severity": "P0",
+            "screenshot": "768-home.png",
+            "fix": "Fix the sidebar flex/scroll container so top-level workspace links ('Inbox', 'Finance', 'Legal', 'Cap table', 'Data room', 'Artifacts') stay fixed or scroll only within the bot list section below the workspace header."
+          },
+          {
+            "level": "page",
+            "element": "AGENT section ('Mercury agent' / 'Brex agent') vs. USED BY bot list",
+            "problem": "The mental model between 'AGENT' and 'USED BY' is contradictory for a founder who views bots and agents as the same thing. 'Mercury agent' appears both as its own card under AGENT and as a toggleable row at the bottom of USED BY. Furthermore, 'Allow changes in Mercury' sits inside the 'Mercury agent' box while 'Finance agent' is also toggled ON in USED BY—leaving the founder unable to tell whether 'Finance agent' can also make changes or if the read/write switch only governs 'Mercury agent'.",
+            "norm": "Permission hierarchy must unambiguously separate connection-level capabilities (Read-only vs. Read/Write for the integration) from bot-level access (which bots may use the connection).",
+            "severity": "P0",
+            "screenshot": "1440-mercury-agent.png",
+            "fix": "Move 'Allow changes in Mercury' to a connection-level permission setting that clearly applies to any bot granted access, eliminate the duplicate 'Mercury agent' row in USED BY, and clarify why a dedicated app agent is needed when 'Finance agent' already exists."
+          },
+          {
+            "level": "page",
+            "element": "ACCOUNTS section ('Founder mail (Mock)', 'Sales mail (Mock)') and USED BY list",
+            "problem": "Gmail has two separate connected accounts ('Founder mail' and 'Sales mail'), but the 'USED BY' section below is global and defaults all 8 bots—including 'Investor Relations', 'Carta agent', and 'Mercury agent'—to ON. The founder cannot restrict her personal 'Founder mail' to 'Chief' and 'Inbox agent' while sharing 'Sales mail' more broadly. Additionally, unlike Mercury and Brex, Gmail lacks an 'Allow changes / Allow sending or drafting' switch above the fold, burying tool capabilities in a clipped 'TOOLS · 6' table at the bottom.",
+            "norm": "Multi-account integrations must either scope bot access per account or clearly warn that enabling a bot grants access to all connected accounts, and write/draft controls must be surfaced consistently across all app detail pages.",
+            "severity": "P1",
+            "screenshot": "1440-gmail.png",
+            "fix": "Surface a top-level 'Allow changes / drafts in Gmail' toggle consistent with Mercury/Brex, default non-inbox bots (like 'Mercury agent' and 'Carta agent') to OFF, and allow per-account bot scoping or display which accounts each bot can access."
+          },
+          {
+            "level": "component",
+            "element": "Header subtitle 'via MCP · mcp.mercury.com' and 'Create agent' / 'AGENT' labels",
+            "problem": "The header prominently displays 'via MCP · mcp.mercury.com' (and 'via MCP · api.brex.com' in 1440-brex-agent.png) right next to the 'Connected' badge, exposing raw protocol jargon ('MCP') that the founder persona does not understand. Meanwhile, the UI switches between 'bots' (Integrations subtitle, 'Removes the connection and bot access') and 'agents' ('Create agent', 'AGENT', 'Only this agent') without explanation.",
+            "norm": "User-facing surfaces should use a single domain vocabulary matching the user's mental model ('bots' or 'assistants') and hide underlying transport protocols like MCP unless inspected in advanced/developer details.",
+            "severity": "P1",
+            "screenshot": "1440-mercury-agent.png",
+            "fix": "Remove 'via MCP' from the primary header (keep only 'mcp.mercury.com' in muted text or a tooltip), and standardize terminology across the product to either 'bots' or 'agents' everywhere."
+          },
+          {
+            "level": "group",
+            "element": "CONNECTED app cards ('Gmail', 'Carta', 'Mercury', 'Brex', 'Blockscout', 'Coinbase')",
+            "problem": "There is no clear primary action to configure integration permissions on the home tiles. Each card displays a non-interactive green '• Connected' pill that looks like a button alongside an action button ('Open Inbox', 'Open Cap table', 'Open Finance') that navigates away from Integrations into a workspace. Users have no visual cue that clicking the card background opens integration settings. Additionally, 'Coinbase' lacks a 'Used by' row entirely, causing its bottom action row ('• Connected', 'Replace key', 'Open') to misalign with 'Blockscout' next to it.",
+            "norm": "Cards with dual click destinations (card body vs. inner button) must clearly communicate how to manage settings, and grid cards in the same row must maintain consistent internal row alignment.",
+            "severity": "P1",
+            "screenshot": "1440-home.png",
+            "fix": "Replace or supplement the card action with an explicit 'Manage' or settings affordance (or make the card CTA open the integration detail page), style '• Connected' as borderless status text rather than a button pill, and keep the 'Used by' footer row consistent across all connected cards including Coinbase."
+          },
+          {
+            "level": "component",
+            "element": "'Used by' avatar row on the Gmail card in CONNECTED vs. 1440-gmail.png",
+            "problem": "On 1440-home.png, the Gmail card's 'Used by' row shows 5 overlapping bot avatars with no overflow badge (e.g., '+3'), even though 1440-gmail.png shows 8 bots enabled for Gmail. Furthermore, the tiny abstract blob icons have no text labels on the card, forcing the founder to cross-reference colors and shapes against the left sidebar to know which bots can read her email.",
+            "norm": "Avatar stacks representing permissions must accurately reflect the total count with an overflow indicator (+N) and provide immediate recognizability.",
+            "severity": "P1",
+            "screenshot": "1440-home.png",
+            "fix": "Add a '+3' overflow pill when more than 4–5 bots have access, and include bot names for the first 1–2 bots (e.g., 'Chief, Inbox +6') so the founder can verify access without memorizing avatar blobs."
+          },
+          {
+            "level": "component",
+            "element": "App icon badges on 1440-home.png vs. 1440-mercury-agent.png",
+            "problem": "Visual representation of apps is inconsistent both within the home grid and between home and detail views. On 1440-home.png, 'Mercury', 'Blockscout', and 'Coinbase' display real brand logos inside white square tiles, whereas 'Gmail', 'Carta', 'Brex', 'Slack', 'Notion', and 'GitHub' show dark grey boxes with plain single letters ('G', 'C', 'B', 'S', 'N', 'G'). Worse, clicking 'Mercury' (which has a white brand logo on 1440-home.png) opens 1440-mercury-agent.png where the Mercury icon degrades into a dark grey box with the letter 'M'.",
+            "norm": "App integrations must use consistent, recognizable brand logos across both directory cards and detail headers.",
+            "severity": "P1",
+            "screenshot": "1440-home.png",
+            "fix": "Use authentic brand icons consistently across all app cards (Gmail, Brex, Carta, Slack, etc.) and preserve the exact same Mercury logo badge on the Mercury detail page header."
+          },
+          {
+            "level": "group",
+            "element": "Header action buttons ('Reconnect', 'Disconnect sign-in', 'Rename') and footer button ('Remove Mercury')",
+            "problem": "Four connection-management actions are split between the top header ('Reconnect', 'Disconnect sign-in', 'Rename') and the bottom footer ('Remove Mercury') with equal visual weight in the top row. For a non-technical founder, the distinction between 'Disconnect sign-in' at the top and 'Remove Mercury' at the bottom is unclear, and neither location establishes a single primary action.",
+            "norm": "Secondary administrative actions (Rename, Reconnect, Disconnect/Remove) should be consolidated or tucked into an overflow menu so they do not compete with the core permission toggles.",
+            "severity": "P2",
+            "screenshot": "1440-mercury-agent.png",
+            "fix": "Consolidate 'Disconnect sign-in' and 'Remove Mercury' into a single clearly explained destructive action at the bottom or inside a '...' overflow menu Alongside 'Rename' and 'Reconnect'."
+          },
+          {
+            "level": "group",
+            "element": "ACCOUNTS rows ('Founder mail (Mock)', 'Sales mail (Mock)') action buttons ('Rename', 'Create agent', 'Remove account')",
+            "problem": "Each connected Gmail account row presents three inline pill buttons ('Rename', 'Create agent', 'Remove account'), repeating 'Create agent' per email address without explaining why an account-specific agent would be created when 'Inbox agent' already exists in the sidebar.",
+            "norm": "Repeated row actions should prioritize common management tasks and avoid prompting users to spawn duplicate agents without context.",
+            "severity": "P2",
+            "screenshot": "1440-gmail.png",
+            "fix": "Remove the per-account 'Create agent' button on Gmail accounts (or explain its relationship to 'Inbox agent') and move 'Rename' and 'Remove account' into a compact row menu."
+          },
+          {
+            "level": "component",
+            "element": "Confirmation modal 'Allow changes in Brex?'",
+            "problem": "The modal body uses a bullet point ('• The agent will be able to change your Brex data. It asks before each change.') for a single sentence of text, and fails to specify what kinds of changes are possible in Brex (e.g., initiating transfers, issuing cards). Additionally, the action buttons ('Cancel', 'Allow changes') are center-aligned while the title and body are left-aligned, and 'Cancel' carries an oversized double-ring blue focus border.",
+            "norm": "Confirmation modals should never use a bullet list for a single item, should right-align action buttons to match left-aligned copy, and should name specific financial actions being authorized.",
+            "severity": "P2",
+            "screenshot": "1440-allow-changes-dialog.png",
+            "fix": "Remove the bullet character, specify concrete examples of Brex write actions, right-align the 'Cancel' and 'Allow changes' buttons, and refine the focus ring thickness."
+          },
+          {
+            "level": "layout",
+            "element": "Mobile header and action row ('M' icon, 'Mercury', 'Reconnect', 'Disconnect sign-in', 'Rename')",
+            "problem": "On the 375x812 mobile viewport, the 48x48 'M' icon is stacked on its own line above the 'Mercury' title instead of sitting inline, wasting vertical space and pushing the 'USED BY' list below the fold (cutting off after 'Legal agent'). Additionally, the three horizontal buttons ('Reconnect', 'Disconnect sign-in', 'Rename') are ~32px tall, falling short of the 44px minimum mobile touch target height.",
+            "norm": "Mobile headers should stay compact by placing the icon and title inline, and all interactive buttons on touch viewports must meet a 44x44px minimum hit target.",
+            "severity": "P2",
+            "screenshot": "375-mercury-agent.png",
+            "fix": "Place the 'M' icon inline with the 'Mercury' title and status badge, collapse 'Reconnect', 'Disconnect sign-in', and 'Rename' into a single '...' menu button with a 44x44px touch target, and bring the full 'USED BY' list above the fold."
+          },
+          {
+            "level": "layout",
+            "element": "Two-column split layout on tablet (768x1024)",
+            "problem": "On 768-home.png, the persistent left sidebar consumes nearly 40% of the viewport width, forcing the 6 connected app cards into a single vertical column that fills the entire 1024px height and pushes the entire 'FIND AN APP' section below the fold.",
+            "norm": "At 768px tablet portrait width, either the sidebar should collapse into a drawer or the main content grid should use a compact 2-column card layout so both connected apps and app discovery remain visible on one screen.",
+            "severity": "P2",
+            "screenshot": "768-home.png",
+            "fix": "Collapse the sidebar by default on 768px portrait viewports (as done on 375px) or use a 2-column grid for Connected cards so 'FIND AN APP' is visible above the fold."
+          }
+        ],
+        "excellent": [
+          "Restrained dark-mode surface hierarchy: card backgrounds, subtle 1px borders, and muted secondary typography create a calm, low-glare reading environment across 1440-home.png and detail views.",
+          "Clear, reassuring helper copy under 'Allow changes in Mercury' ('Off: the agent only reads. On: it can also make changes, and asks you before each one.') directly addresses the founder's anxiety around autonomous actions in plain English.",
+          "The Integrations page header copy ('Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one.') sets an immediate, jargon-free mental model for the page.",
+          "The 'FIND AN APP' search bar and category filter pills ('All', 'Email & calendar', 'Chat', 'Docs & files', 'Finance', 'Developer', 'Sales & CRM') on 1440-home.png are well-spaced and easy to scan."
+        ]
+      }
+    }
+  ]
+}

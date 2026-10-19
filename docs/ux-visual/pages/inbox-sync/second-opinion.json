@@ -1,0 +1,248 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440x900-rate-limited.png",
+    "1440x900-retrying.png",
+    "1440x900-reconnect.png",
+    "1440x900-banner-cached.png",
+    "375x812-retrying-carryover.png",
+    "375x812-banner-cached.png",
+    "375x812-reconnect.png",
+    "768x1024-rate-limited.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 52,
+      "costUsd": 0.129124,
+      "result": {
+        "verdict": "Do not ship as-is: the cached state can be mistaken for live mail (P0), the most serious state (reconnect) gets the weakest status signal while a transient cached warning gets red (inverse severity), and the 11s retry gives almost no usable feedback. The underlying empty-state pattern is clean and consistent, but signalling, staleness, and retry feedback need rework.",
+        "findings": [
+          {
+            "level": "group",
+            "element": "Red one-line banner 'Gmail is limiting requests right now. Try again in a few seconds.' + 'Try again' above the fully populated 'Today 4 / Earlier 27' list",
+            "problem": "Nothing marks the rows as cached/stale: no 'Showing saved mail', no last-synced time, no dimming or lock on rows. A first-time user will read Priya Placeholder 8:03 AM etc. as live, current mail and may act on it. The empty state says mail 'didn't load' while this state silently presents old mail as if it loaded.",
+            "norm": "Empty vs cached distinction; do not mislead about data freshness; error states must disclose degraded data provenance and age.",
+            "severity": "P0",
+            "screenshot": "1440x900-banner-cached.png",
+            "fix": "Add explicit staleness to the banner: 'Showing saved mail from [time]. Gmail is limiting requests — new mail may be missing.' Visually mute/badge the list as cached until a successful sync."
+          },
+          {
+            "level": "group",
+            "element": "Reconnect empty state (grey mail-! icon, white headline, white 'Reconnect Gmail' button) vs cached rate-limit banner (red text/red-outlined button)",
+            "problem": "Severity signalling is inverted and inconsistent: the transient, self-healing rate-limit gets destructive red in the cached view, while the hard blocker requiring user re-authentication gets no status colour at all — the identical grey icon, headline and white CTA as the rate-limit empty state. Two different problems are indistinguishable at a glance in empty form, and the worse one looks calmer in banner comparison.",
+            "norm": "Colour semantics and consistency between notices: use the brief's destructive/warning colours by severity, identically for the same problem across empty and banner forms; distinct causes need distinct iconography.",
+            "severity": "P0",
+            "screenshot": "1440x900-reconnect.png",
+            "fix": "Give reconnect a destructive/warning treatment (coloured icon/eyebrow, e.g. warning-red mail icon) and use the same warning colour for rate-limit in both empty and banner states; differentiate icons (clock/pause for rate-limit, broken-link/key for reconnect)."
+          },
+          {
+            "level": "component",
+            "element": "'Try again' button replaced by a grey pill containing only a small spinner glyph",
+            "problem": "Per the brief the spinner runs ~11s, yet the button loses its label entirely: no 'Retrying…', no elapsed/expected time, no cancel, no page-level progress or skeleton, and the rest of the page is unchanged. In the screenshot the spinner glyph is small and low-contrast on the grey disabled pill — a first-time user cannot tell what is happening or whether it is stuck, and screen-reader users get nothing (cannot tell from pixels whether an aria-live label exists).",
+            "norm": "Feedback while retrying: labelled loading state, expected duration for waits >1s, progress/cancel for long operations, accessible status announcements.",
+            "severity": "P1",
+            "screenshot": "1440x900-retrying.png",
+            "fix": "Keep the label: disabled button reading 'Retrying…' with spinner, plus subtext or countdown ('Checking Gmail — this can take a few seconds'); add cancel after a few seconds and an aria-live status."
+          },
+          {
+            "level": "page",
+            "element": "Whole page after a failed retry (identical icon, 'Your mail didn't load', same copy, same 'Try again')",
+            "problem": "Per the brief the after-retry view is pixel-identical to the first failure; from the pixels I cannot tell whether this is attempt 1 or attempt 5. There is no 'Still limited — last tried 10:42', no changed advice, no backoff or escalation path, so the user's action produced zero acknowledged outcome and the rational response is to keep hammering the button.",
+            "norm": "Every action needs visible outcome feedback; repeated failure must change state (attempt count, timestamp, escalating guidance) rather than silently reset.",
+            "severity": "P1",
+            "screenshot": "1440x900-rate-limited.png",
+            "fix": "On failed retry, update the subcopy ('Still rate-limited. Last checked just now — we'll keep this page ready to retry.'), show progressive backoff before re-enabling, and after repeated failures offer auto-retry/notification instead of manual looping."
+          },
+          {
+            "level": "component",
+            "element": "Copy 'Try again in a few seconds.' directly above an immediately enabled high-contrast 'Try again' button",
+            "problem": "The copy instructs waiting while the UI's only and most prominent action invites clicking now — against the very rate limit being reported. No countdown, no temporarily disabled/cooldown state, so the design encourages the behaviour that prolongs the problem.",
+            "norm": "Copy clarity and internal consistency: instructions and affordances must not contradict; respect server backoff with enforced or guided delay.",
+            "severity": "P1",
+            "screenshot": "1440x900-rate-limited.png",
+            "fix": "Either drop 'in a few seconds' or enforce it: disable the button with a visible countdown ('Try again in 0:08') or auto-retry with backoff and remove the manual CTA until it can succeed."
+          },
+          {
+            "level": "group",
+            "element": "'Search mail' input in the header of the rate-limited, retrying and reconnect empty states",
+            "problem": "Search remains fully rendered and apparently functional (cannot tell from pixels if it is disabled) when there is no mail loaded or the account is disconnected. It implies a capability that cannot work, wastes the most prominent slot on a dead control, and a first-time user may type a query and get an unexplained empty result on top of an error.",
+            "norm": "Functionality implied by UI must exist in the current state; disable or remove controls that depend on unavailable data, with the reason discoverable.",
+            "severity": "P1",
+            "screenshot": "1440x900-reconnect.png",
+            "fix": "Disable 'Search mail' with reduced opacity and a tooltip/title ('Unavailable until Gmail reconnects'), or hide it in full-page error states; same for the filter/compose icon buttons if they depend on mail."
+          },
+          {
+            "level": "component",
+            "element": "Small red 'Try again' pill in the cached banner",
+            "problem": "The banner button is roughly 28-32px tall on desktop and similarly short on mobile — below the 44px touch-target norm — and the red text on near-black is small and thin; I cannot tell the exact contrast ratio from pixels, but it reads as low-luminance next to the high-contrast white CTAs elsewhere. On mobile the two-line wrapped red message plus right-aligned pill is cramped.",
+            "norm": "Touch targets ≥44px on touch breakpoints; text contrast ≥4.5:1; destructive text must remain legible, not just coloured.",
+            "severity": "P1",
+            "screenshot": "375x812-banner-cached.png",
+            "fix": "Make the banner action ≥44px tall on mobile (or make the whole banner tappable), bump banner text to a lighter warning tone/weight, and verify contrast programmatically."
+          },
+          {
+            "level": "group",
+            "element": "Stack of red rate-limit banner immediately above the 'Let Rakazo sort your mail' Allow/Not now card on the cached page",
+            "problem": "Two competing notifications stack with no hierarchy cues: a destructive service problem and an optional AI-consent upsell get similar vertical weight, and the consent card's larger box and white 'Allow' button actually dominate the urgent red line. First-time users may resolve the upsell and miss that mail is stale, or read the stack as one message.",
+            "norm": "Visual hierarchy and alert stacking: one primary notice at a time; blocking/degraded-service notices outrank optional consent/upsell, which should be deferred during an incident.",
+            "severity": "P2",
+            "screenshot": "1440x900-banner-cached.png",
+            "fix": "Suppress or collapse the 'Let Rakazo sort your mail' card while sync is degraded, or demote it below the list; give the sync banner a filled warning background so it clearly outranks passive cards."
+          },
+          {
+            "level": "component",
+            "element": "Reconnect subcopy 'Gmail signed this account out. Sign in again to see your mail here.'",
+            "problem": "The phrasing is awkward and agency is unclear ('Gmail signed this account out' reads as if Gmail acted deliberately); it also never says which account — the sidebar only shows 'Maya Chen (Mock)' — nor what happens to existing data. Compared with the crisp rate-limit copy, tone and specificity are inconsistent between the two notices.",
+            "norm": "Copy clarity: plain-language cause, name the affected account, state the exact next step and consequence; consistent voice across sibling error states.",
+            "severity": "P2",
+            "screenshot": "375x812-reconnect.png",
+            "fix": "Rewrite parallel to the rate-limit pattern, e.g. 'Your Gmail sign-in expired for maya@… Reconnect to see your mail here.' Keep headline-cause-action structure identical across both states."
+          },
+          {
+            "level": "component",
+            "element": "Empty-state body copy 'Gmail is limiting requests right now. Try again in a few seconds.' (mid-grey on black, small size)",
+            "problem": "The explanatory line is markedly lower contrast and smaller than the headline, and the grey mail-! icon above it is muted and generic; exact contrast cannot be measured from the screenshot, but the text sits at the edge of comfortable legibility, especially on the mobile render where it wraps to two lines. This is the only explanatory content on the page, so it carries the whole state.",
+            "norm": "Contrast and hierarchy: essential error explanation must meet body-text contrast (≥4.5:1) at all breakpoints; icons should reinforce, not dilute, status.",
+            "severity": "P2",
+            "screenshot": "375x812-retrying-carryover.png",
+            "fix": "Lighten the subcopy one to two steps, keep it ≥14px, and colour the icon with the state colour so icon, headline and body read as one signal."
+          },
+          {
+            "level": "page",
+            "element": "Full-page empty state occupying the top ~third of the viewport with ~60% empty black below, and no secondary content",
+            "problem": "Beyond the single CTA there is no recovery scaffolding: no last-successful-sync time, no 'open Gmail in a new tab', no status/help link, and the left sidebar (including 'Connect apps' with G G S) shows no indication that Gmail specifically is the broken connection. On a chief-of-staff tool the dead end gives the user nothing to do but wait and click.",
+            "norm": "Progressive disclosure and error recovery: a blocking empty state should offer a primary action plus at least one secondary path and contextual status where the connection is managed.",
+            "severity": "P2",
+            "screenshot": "1440x900-rate-limited.png",
+            "fix": "Add a quiet secondary row ('Last synced 09:41 · Open Gmail ↗') and surface a warning dot/label on the Gmail entry under 'Connect apps' in the sidebar while sync is broken."
+          },
+          {
+            "level": "layout",
+            "element": "Tablet layout: left sidebar (~45% of width) retained beside the rate-limited empty state",
+            "problem": "At 768px the sidebar keeps full desktop width proportion, squeezing the content column so the empty state sits in a narrow strip while the majority of the screen is navigation the user cannot act on. Mobile handles this better with a hamburger, making the tablet breakpoint the awkward middle child; on mobile the two-line 'MOCK DEMO DATA — Mail rate-limited' subtitle also pushes 'Search mail' down and crowds the header icons.",
+            "norm": "Responsive layout: content should reclaim space as width shrinks; primary content must not be subordinated to chrome at intermediate breakpoints.",
+            "severity": "P3",
+            "screenshot": "768x1024-rate-limited.png",
+            "fix": "Collapse the sidebar to icons (or overlay) below ~900px, centre the empty state in the true remaining space, and truncate the demo subtitle to one line on small screens."
+          }
+        ],
+        "excellent": [
+          "Consistent empty-state pattern (centred icon → headline → one-line cause → single white CTA) is applied identically across rate-limited and reconnect and across 1440/768/375 breakpoints — in 1440x900-rate-limited.png, 375x812-reconnect.png and 768x1024-rate-limited.png the state is instantly scannable for a first-time user.",
+          "Single high-contrast primary action per state ('Try again' / 'Reconnect Gmail' white pill on black in 1440x900-reconnect.png) — no competing buttons, exemplary minimal copy and progressive disclosure per the brief.",
+          "Retrying correctly disables the button in 1440x900-retrying.png, preventing duplicate requests against an already rate-limited API — the right behaviour, it just needs a label.",
+          "Cached path in 1440x900-banner-cached.png degrades gracefully instead of blocking: the mail list stays usable under a one-line notice rather than replacing everything with an empty state.",
+          "Headlines are honest and plain-spoken ('Your mail didn't load', 'Gmail needs to be reconnected') with the cause in the subcopy — no blame-the-user language and no fake success messaging.",
+          "Dark monochrome discipline is otherwise respected: no gratuitous colour anywhere except the single red cached banner, so when status colour is used consistently it will carry real meaning."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 124,
+      "costUsd": 0.11162,
+      "result": {
+        "verdict": "Rakazo’s dark monochrome aesthetic and graceful fallback to cached mail rows are strong foundations, but the sync-error states suffer from critical feedback loops, inverted status-colour semantics, and ambiguous state communication. Most urgently, the 11-second retry state removes button text while leaving contradictory 'Try again in a few seconds' copy on screen, and post-retry failure gives zero updated feedback—making the app feel broken. Additionally, using destructive red for a temporary rate limit in the cached banner while using neutral grey for a hard OAuth disconnect inverts colour semantics, and the cached state never tells the user that the visible emails are stale.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Disabled grey spinner pill button and static body copy ('Gmail is limiting requests right now. Try again in a few seconds.')",
+            "problem": "When retrying (shown in 1440x900-retrying.png and also rendered in 375x812-retrying-carryover.png), the CTA loses its label and turns into an unlabeled mid-grey pill with a low-contrast dark spinner for ~11 seconds while the body copy above still tells the user to 'Try again in a few seconds.' Because the screen returns to the exact initial rate-limited view on failure (cannot tell from static pixels alone whether a retry already occurred), a first-time user has no indication that their retry is actively polling or that a completed retry just failed.",
+            "norm": "Feedback while retrying & Contrast",
+            "severity": "P0",
+            "screenshot": "1440x900-retrying.png, 375x812-retrying-carryover.png",
+            "fix": "Keep an explicit high-contrast text label alongside the spinner ('Retrying…'), dim the instructional subtext while the request is in flight, and update the subtext after a failed retry (e.g., 'Still rate-limited by Gmail (checked just now). Retrying automatically in 15s…')."
+          },
+          {
+            "level": "group",
+            "element": "Inline red rate-limit notice ('Gmail is limiting requests right now. Try again in a few seconds.') above cached mail rows ('Today 4', 'Earlier 27')",
+            "problem": "The cached banner repeats the exact subtext used in the uncached empty state without stating that the 31 email rows visible below are cached/stale or when mail was last synced. A first-time user sees a populated inbox alongside an error message and cannot tell whether new incoming mail is missing or how outdated the list is.",
+            "norm": "Empty vs cached distinction & Copy clarity",
+            "severity": "P1",
+            "screenshot": "1440x900-banner-cached.png, 375x812-banner-cached.png",
+            "fix": "Explicitly state that cached mail is being shown and include the last successful sync timestamp (e.g., 'Live sync paused — Gmail is limiting requests. Showing cached mail from 8:03 AM.')."
+          },
+          {
+            "level": "component",
+            "element": "Destructive red inline notice in *-banner-cached vs. monochrome grey notice in *-rate-limited and *-reconnect",
+            "problem": "A temporary, self-resolving rate limit is styled in destructive red text and a red-tinted button in 1440x900-banner-cached.png and 375x812-banner-cached.png, yet the exact same rate-limit error in 1440x900-rate-limited.png is completely monochrome grey, and a hard authentication failure in 1440x900-reconnect.png (which permanently stops sync until the user signs in) also uses zero status colour. This violates the brief's semantic colour system (destructive/warning/success) and treats a transient throttle as more severe than a broken OAuth connection.",
+            "norm": "Colour semantics & Consistency between rate-limit and reconnect notices",
+            "severity": "P1",
+            "screenshot": "1440x900-banner-cached.png, 1440x900-rate-limited.png, 1440x900-reconnect.png",
+            "fix": "Use warning amber/yellow for temporary rate-limiting across both cached and empty states, and reserve destructive red (such as a red status accent on the icon or banner) for 'Gmail needs to be reconnected' where sync is permanently blocked until user action."
+          },
+          {
+            "level": "page",
+            "element": "'Let Rakazo sort your mail' onboarding card ('Allow' / 'Not now') directly beneath the inline rate-limit banner",
+            "problem": "In the cached error state, the large bordered 'Let Rakazo sort your mail' card and its bright white primary 'Allow' button visually overpower the unboxed single line of red error text and its dim, low-contrast 'Try again' button. Prompting a user to kick off AI inbox sorting ('Allow') while Gmail is actively throttling requests misdirects visual hierarchy and risks triggering another failed API job.",
+            "norm": "Hierarchy & Progressive disclosure",
+            "severity": "P1",
+            "screenshot": "1440x900-banner-cached.png, 375x812-banner-cached.png",
+            "fix": "Hide or defer non-critical AI onboarding cards ('Let Rakazo sort your mail') while inbox sync is in an error state, and place the sync notice inside a subtle surface container with a leading status icon so it anchors the top of the list."
+          },
+          {
+            "level": "group",
+            "element": "Empty-state subtext ('Try again in a few seconds.') paired with an immediately active, high-contrast white 'Try again' CTA",
+            "problem": "The copy instructs the user to wait ('in a few seconds'), but the UI presents a bright white primary 'Try again' button that is immediately clickable. This contradiction encourages users to spam-click 'Try again' immediately, compounding rate-limit penalties rather than respecting the cooldown.",
+            "norm": "Copy clarity & Feedback while retrying",
+            "severity": "P1",
+            "screenshot": "1440x900-rate-limited.png, 768x1024-rate-limited.png",
+            "fix": "Auto-retry with a visible countdown on the button or subtext (e.g., 'Retrying in 5s…' or a briefly disabled cooldown state that unlocks once the backoff window passes)."
+          },
+          {
+            "level": "group",
+            "element": "Envelope-with-exclamation icon and body copy ('Gmail signed this account out. Sign in again to see your mail here.')",
+            "problem": "The reconnect empty state uses the exact same grey envelope-with-exclamation glyph and layout as the rate-limited state, failing to visually distinguish an authentication failure from a temporary throttle. Furthermore, 'Gmail signed this account out' does not identify which Gmail address needs reconnecting—vital context when multiple inboxes ('Founder mail', 'Sales mail' seen in 1440x900-banner-cached.png) are used.",
+            "norm": "Consistency between rate-limit and reconnect notices & Copy clarity",
+            "severity": "P2",
+            "screenshot": "1440x900-reconnect.png, 375x812-reconnect.png",
+            "fix": "Use a broken-link, key, or account-alert icon for the reconnect state, and specify the disconnected email address in the copy (e.g., 'Connection to maya@northwind.com expired. Sign in with Google to restore sync.')."
+          },
+          {
+            "level": "page",
+            "element": "Top Inbox toolbar ('Search mail' input, unread eye icon, filter button, compose button) during uncached empty states",
+            "problem": "When no mail is cached and sync has failed (both rate-limited and reconnect states), the 'Search mail' field, unread toggle, and filter buttons remain active and interactive-looking. Presenting search and filtering controls over an uncached empty inbox misleads first-time users into thinking local messages can still be searched.",
+            "norm": "Hierarchy & Empty vs cached distinction",
+            "severity": "P2",
+            "screenshot": "1440x900-rate-limited.png, 1440x900-reconnect.png, 375x812-reconnect.png, 768x1024-rate-limited.png",
+            "fix": "Disable or hide mail-list controls ('Search mail', unread eye toggle, and filter button) when the local cache is empty and no mail rows exist to query."
+          },
+          {
+            "level": "component",
+            "element": "Inline 'Try again' button in 375x812-banner-cached.png and unbordered eye icon in the mobile header",
+            "problem": "On mobile (375x812), the inline 'Try again' button is ~28–30px tall with low-contrast muted red text on a dark border, and the unbordered eye icon in the top header sits tightly next to the wrapping subtitle with a compact hit area well below the 44x44px mobile touch standard.",
+            "norm": "Touch targets & Contrast",
+            "severity": "P2",
+            "screenshot": "375x812-banner-cached.png, 375x812-reconnect.png",
+            "fix": "Enforce a minimum 44x44px tap area for all mobile header icons and the inline 'Try again' CTA, and increase the text/border contrast of the inline 'Try again' button."
+          },
+          {
+            "level": "layout",
+            "element": "Docked left sidebar and wrapping Inbox header ('MOCK DEMO DATA — Mail rate-limited') at 768x1024",
+            "problem": "On the 768x1024 portrait tablet view, keeping the ~280px sidebar permanently docked narrows the main panel enough that the subtitle wraps onto two lines while the four right-hand action icons float unevenly beside the first line, and 'Search mail' drops to a second row.",
+            "norm": "Hierarchy & Layout alignment",
+            "severity": "P2",
+            "screenshot": "768x1024-rate-limited.png",
+            "fix": "Collapse the left navigation sidebar into a toggleable drawer on portrait tablet widths (<900px) or truncate/align the subtitle on a single baseline with the action toolbar."
+          },
+          {
+            "level": "group",
+            "element": "Left sidebar 'Inbox' nav item and bottom 'Connect apps' ('G G S') pill",
+            "problem": "When Gmail needs to be reconnected or is rate-limited, neither the 'Inbox' sidebar link nor the 'G' badge in 'Connect apps' displays an error or warning indicator. If a founder is viewing 'Finance' or 'Cap table', they have zero visibility that their email integration is disconnected.",
+            "norm": "Colour semantics & Progressive disclosure",
+            "severity": "P3",
+            "screenshot": "1440x900-reconnect.png, 1440x900-rate-limited.png",
+            "fix": "Add a small semantic status dot (destructive red when disconnected, warning amber when persistently rate-limited) on the 'Connect apps' Gmail badge and beside 'Inbox' in the left navigation."
+          }
+        ],
+        "excellent": [
+          "Graceful degradation in 1440x900-banner-cached.png and 375x812-banner-cached.png: keeping previously synced email rows and inbox category tabs ('All', 'Founder mail', 'Sales mail') fully accessible below a single-line notice instead of blocking the entire workspace.",
+          "Human-readable, jargon-free error copy across all states ('Your mail didn't load', 'Gmail needs to be reconnected') that avoids exposing raw 429/401 API error codes to founders.",
+          "Calm, restrained dark monochrome surface hierarchy where every empty state and cached list view fits cleanly within a single viewport without horizontal overflow or layout shifts across 1440px, 768px, and 375px screens."
+        ]
+      }
+    }
+  ]
+}
