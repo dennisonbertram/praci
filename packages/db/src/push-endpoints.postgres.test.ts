@@ -46,9 +46,26 @@ describePostgres("push endpoints (PostgreSQL)", () => {
     // Registering the same token again keeps one row.
     await savePushToken(prisma, a, "ExponentPushToken[phone]", "s-phone");
     expect(await tokens(a)).toHaveLength(2);
-    // The phone's token rotated: its session's old token goes away.
-    await savePushToken(prisma, a, "ExponentPushToken[phone2]", "s-phone");
+    // Two devices sharing a session keep both tokens.
+    await savePushToken(prisma, a, "ExponentPushToken[phone-b]", "s-phone");
+    expect(await tokens(a)).toHaveLength(3);
+    await deletePushTokens(prisma, a, "s-phone");
+    await savePushToken(prisma, a, "ExponentPushToken[phone]", "s-phone");
+    // The phone's token rotated and the client says which token it replaces.
+    await savePushToken(prisma, a, "ExponentPushToken[phone2]", "s-phone", {
+      replacesToken: "ExponentPushToken[phone]",
+    });
     expect(await tokens(a)).toEqual(["ExponentPushToken[phone2]", "ExponentPushToken[tablet]"]);
+    // replacesToken only ever removes the caller's own token.
+    await savePushToken(prisma, b, "ExponentPushToken[b-dev]", "s-b");
+    await savePushToken(prisma, a, "ExponentPushToken[phone3]", "s-phone", {
+      replacesToken: "ExponentPushToken[b-dev]",
+    });
+    expect(await tokens(b)).toEqual(["ExponentPushToken[b-dev]"]);
+    await deletePushTokens(prisma, b);
+    await savePushToken(prisma, a, "ExponentPushToken[phone2]", "s-phone", {
+      replacesToken: "ExponentPushToken[phone3]",
+    });
     // Signing out of the tablet removes only its token.
     await deletePushTokens(prisma, a, "s-tablet");
     expect(await tokens(a)).toEqual(["ExponentPushToken[phone2]"]);
@@ -99,22 +116,37 @@ describePostgres("push endpoints (PostgreSQL)", () => {
     expect(await prisma.notificationEndpoint.count({ where: { userId: id } })).toBe(0);
   });
 
-  it("keeps one token when one session registers different tokens at once", async () => {
+  it("keeps one owner of an address when accounts race with other tokens in between", async () => {
     const other = createDb(databaseUrl!);
     try {
-      for (let round = 0; round < 10; round += 1) {
+      for (let round = 0; round < 15; round += 1) {
+        const shared = `ExponentPushToken[shared${round}]`;
         await Promise.all([
-          savePushToken(prisma, a, `ExponentPushToken[x${round}]`, "s-race"),
-          savePushToken(other.prisma, a, `ExponentPushToken[y${round}]`, "s-race"),
-          savePushToken(prisma, a, `ExponentPushToken[z${round}]`, "s-race"),
+          savePushToken(prisma, a, shared, "s-a", { replacesToken: "ExponentPushToken[old-a]" }),
+          savePushToken(other.prisma, b, shared, "s-b", {
+            replacesToken: "ExponentPushToken[old-b]",
+          }),
+          savePushToken(prisma, a, `ExponentPushToken[a-own${round}]`, "s-a"),
+          savePushToken(other.prisma, b, `ExponentPushToken[b-own${round}]`, "s-b"),
         ]);
-        expect(await tokens(a)).toHaveLength(1);
+        expect(await prisma.notificationEndpoint.count({ where: { address: shared } })).toBe(1);
       }
     } finally {
       await deletePushTokens(prisma, a);
+      await deletePushTokens(prisma, b);
       await other.prisma.$disconnect();
       await other.pool.end();
     }
+  });
+
+  it("refuses a second endpoint for an address at the database", async () => {
+    await savePushToken(prisma, a, "ExponentPushToken[unique]", "s1");
+    await expect(
+      prisma.notificationEndpoint.create({
+        data: { userId: b, channel: "push", address: "ExponentPushToken[unique]", deviceId: "d" },
+      }),
+    ).rejects.toThrow();
+    await deletePushTokens(prisma, a);
   });
 
   it("sign-out waits for a registration whose session check is in flight", async () => {

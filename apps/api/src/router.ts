@@ -7135,6 +7135,7 @@ export function createRouter(deps: RouterDeps) {
         if (!sessionId) throw new ORPCError("UNAUTHORIZED");
         try {
           await savePushToken(deps.prisma, context.actor.userId, input.token, sessionId, {
+            replacesToken: input.replacesToken,
             sessionActive: async () => {
               const expiresAt = await pushSessionExpiresAt(deps.prisma, sessionId);
               return expiresAt !== null && expiresAt.getTime() > Date.now();
