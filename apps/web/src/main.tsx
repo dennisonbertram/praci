@@ -2,6 +2,7 @@ import { lazy, StrictMode, Suspense, useEffect, useLayoutEffect } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./App";
+import { AppToaster } from "./components/AppToaster";
 import { DesktopUpdatesProvider } from "./components/DesktopUpdates";
 import { I18nBootstrap } from "./components/I18nBootstrap";
 import { applyUiDirection } from "./lib/apply-ui-direction";
@@ -60,6 +61,7 @@ createRoot(document.getElementById("root")!).render(
       <BrowserRouter useTransitions={false}>
         <DesktopUpdatesProvider>
           <App />
+          <AppToaster />
         </DesktopUpdatesProvider>
       </BrowserRouter>
     </I18nBootstrap>
