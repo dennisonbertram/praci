@@ -400,14 +400,9 @@ export async function inboxList(
   ]);
 
   const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled, marks));
-  // A rate limit stays reported until a sync clears it, so an expired pause never turns into "No mail".
-  // The one exception is a sync running now (its claim is under 2 minutes old, as in mail-sync), which will decide.
-  const nowMs = Date.now();
-  const syncing = (s: (typeof states)[number]) =>
-    Boolean(s.syncStartedAt && nowMs - s.syncStartedAt.getTime() < 120_000);
-  const current = states.filter(
-    (s) => s.lastErrorAt && (s.lastErrorKind !== "rate_limited" || !syncing(s)),
-  );
+  // A rate limit stays reported until a sync clears the stored error, even while another process holds the sync claim,
+  // so an expired pause or a refresh that skipped its own sync never turns into "No mail".
+  const current = states.filter((s) => s.lastErrorAt);
   const synced = states.flatMap((s) => (s.lastSyncedAt ? [s.lastSyncedAt.getTime()] : []));
   return {
     accounts,

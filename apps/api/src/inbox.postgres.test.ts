@@ -314,7 +314,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await prisma.connection.delete({ where: { id: second } });
     });
 
-    it("keeps reporting a rate limit after its backoff ends, until a sync clears it or runs", async () => {
+    it("keeps reporting a rate limit after its backoff ends, until a sync clears it, even while another process holds the claim", async () => {
       await wipe();
       const expired = await connect(a, "box-a-expired");
       const cleared = await connect(a, "box-a-cleared");
@@ -335,8 +335,16 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       });
 
       const out = await inboxList(deps, a, {});
-      expect(out.rateLimitedAccounts).toEqual([expired]);
-      expect(out.failedAccounts).toEqual([expired]);
+      expect(out.rateLimitedAccounts.sort()).toEqual([expired, syncing].sort());
+      expect(out.failedAccounts.sort()).toEqual([expired, syncing].sort());
+
+      // A successful sync clears the stored error; then the account is no longer reported.
+      await prisma.mailSyncState.update({
+        where: { connectionId: syncing },
+        data: { lastErrorAt: null, lastErrorKind: null, backoffUntil: null },
+      });
+      const after = await inboxList(deps, a, {});
+      expect(after.failedAccounts).toEqual([expired]);
       await prisma.connection.deleteMany({ where: { id: { in: [expired, cleared, syncing] } } });
     });
 
