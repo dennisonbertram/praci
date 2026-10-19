@@ -120,6 +120,7 @@ it("lists contacts and filters by kind", async () => {
   await show();
   expect(container.querySelectorAll("h1")).toHaveLength(1);
   expect(container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
+  expect(container.querySelector('table[data-slot="table"]')).not.toBeNull();
   expect(container.textContent).toContain("Ada");
   expect(container.textContent).toContain("Bo");
   await click(button("Auditors"));

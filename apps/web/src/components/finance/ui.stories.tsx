@@ -1,4 +1,13 @@
 import type { BreakdownRow, FinanceTransaction } from "@rakazo/contracts";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
+} from "@rakazo/ui-web";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import {
@@ -17,7 +26,6 @@ import {
   NotFoundNotice,
   PeriodTabs,
   Section,
-  Th,
   TransactionsSection,
   TransactionTable,
   ValueLink,
@@ -234,24 +242,24 @@ export const TransactionsEmptyCustomText: Story = {
 };
 
 export const TableParts: Story = {
-  name: "Th and Chevron",
+  name: "Chevron",
   render: () => (
-    <table className="w-full">
-      <thead>
-        <tr>
-          <Th>Name</Th>
-          <Th right>Amount</Th>
-          <Th />
-        </tr>
-      </thead>
-      <tbody>
-        <tr className="group/row">
-          <td>Row</td>
-          <td className="text-end">$1.00</td>
+    <Table compact>
+      <TableHeader>
+        <TableHeadRow>
+          <TableHead>Name</TableHead>
+          <TableHead className="text-end">Amount</TableHead>
+          <TableHead className="w-5" />
+        </TableHeadRow>
+      </TableHeader>
+      <TableBody>
+        <TableRow className="group/row cursor-pointer">
+          <TableCell>Row</TableCell>
+          <TableCell className="text-end">$1.00</TableCell>
           <Chevron />
-        </tr>
-      </tbody>
-    </table>
+        </TableRow>
+      </TableBody>
+    </Table>
   ),
 };
 

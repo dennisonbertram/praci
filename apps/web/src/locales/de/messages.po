@@ -760,6 +760,7 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
+#: src/pages/Artifacts.tsx
 msgid "Added"
 msgstr ""
 
@@ -1422,6 +1423,7 @@ msgstr "Computer von {0} wird gestartet"
 msgid "bot"
 msgstr "Bot"
 
+#: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bot"
@@ -1622,10 +1624,6 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "Card payment · not spend"
-msgstr ""
-
-#: src/pages/Artifacts.tsx
-msgid "Card view"
 msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
@@ -3338,6 +3336,11 @@ msgstr "Verbindung wird getrennt…"
 msgid "Dismiss"
 msgstr ""
 
+#. js-lingui-explicit-id
+#: src/components/AppToaster.tsx
+msgid "Dismiss"
+msgstr ""
+
 #. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Dismiss {0}"
@@ -4053,6 +4056,7 @@ msgstr ""
 msgid "Graph"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 msgid "Grid view"
 msgstr ""
@@ -5140,6 +5144,7 @@ msgstr "Stummschalten"
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/GroupPanel.tsx
@@ -7498,6 +7503,7 @@ msgid "Site"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
+#: src/pages/Artifacts.tsx
 msgid "Size"
 msgstr ""
 
@@ -8643,6 +8649,7 @@ msgid "via MCP · {host}"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Legal.tsx
 msgid "View"

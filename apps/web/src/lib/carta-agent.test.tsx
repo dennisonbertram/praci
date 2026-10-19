@@ -100,7 +100,8 @@ it("calls onPhone when the window shrinks below the desktop width, and onWide wh
     },
     removeEventListener: () => {},
   };
-  vi.stubGlobal("matchMedia", () => query);
+  const matchMedia = vi.fn(() => query);
+  vi.stubGlobal("matchMedia", matchMedia);
   const onPhone = vi.fn();
   const onWide = vi.fn();
   function Phone() {
@@ -108,6 +109,8 @@ it("calls onPhone when the window shrinks below the desktop width, and onWide wh
     return null;
   }
   act(() => root.render(<Phone />));
+  // Same threshold as the docked agent panel, so a panel never overlays the page undocked.
+  expect(matchMedia).toHaveBeenCalledWith("(min-width: 1280px)");
   query.matches = true;
   listener?.();
   expect(onPhone).not.toHaveBeenCalled();

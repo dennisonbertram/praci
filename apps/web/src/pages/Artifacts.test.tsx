@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
-import type { ComponentProps, ReactElement, ReactNode } from "react";
-import { act, cloneElement } from "react";
+import type { ReactNode } from "react";
+import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { expect, it, vi } from "vitest";
@@ -27,27 +27,6 @@ vi.mock("@lingui/react/macro", () => {
 vi.mock("@rakazo/chat-ui/web", () => ({
   ChatMarkdown: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
 }));
-vi.mock("@rakazo/ui-web", () => {
-  const Container = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
-  return {
-    AlertDialog: Container,
-    AlertDialogAction: Container,
-    AlertDialogCancel: Container,
-    AlertDialogContent: Container,
-    AlertDialogDescription: Container,
-    AlertDialogFooter: Container,
-    AlertDialogHeader: Container,
-    AlertDialogTitle: Container,
-    BotAvatar: () => <span />,
-    Button: ({ render, ...props }: ComponentProps<"button"> & { render?: ReactElement }) =>
-      render ? cloneElement(render, props as object) : <button {...props} />,
-    Skeleton: () => <span />,
-    NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
-    NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
-    parseBotAvatar: () => ({ color: undefined }),
-    resolvePersonaColorDef: () => ({ hex: "#000000" }),
-  };
-});
 
 import { ArtifactsPage } from "./Artifacts";
 
@@ -248,6 +227,40 @@ it("keeps Filters to the list: phones hide it beside an open document, and maxim
     expect(filters()).toBeNull();
   } finally {
     await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("shows artifacts as a table in list view and as cards in grid view, and remembers the choice", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  window.localStorage.removeItem("rakazo:artifacts-view-mode");
+  api.listSpace.mockResolvedValue({
+    items: [artifact("Alpha notes", "artifact-1"), artifact("Beta report", "artifact-2")],
+    nextCursor: null,
+  });
+  const page = await renderArtifacts();
+  try {
+    const button = (label: string) =>
+      page.container.querySelector<HTMLButtonElement>(`button[aria-label='${label}']`);
+    expect(page.container.querySelector("table")).toBeNull();
+    expect(button("Grid view")?.getAttribute("aria-pressed")).toBe("true");
+    await act(async () => button("List view")?.click());
+    expect(page.container.querySelectorAll("[data-testid='artifact-row']")).toHaveLength(2);
+    const headings = [...page.container.querySelectorAll("th")].map((th) => th.textContent);
+    expect(headings).toEqual(expect.arrayContaining(["Name", "Bot", "Added", "Size"]));
+    expect(page.container.querySelector("tr a")?.getAttribute("href")).toBe(
+      "/app/artifacts/artifact-1",
+    );
+    expect(page.container.querySelector("[data-testid='artifact-meta']")?.textContent).toContain(
+      "128 bytes",
+    );
+    expect(window.localStorage.getItem("rakazo:artifacts-view-mode")).toBe("list");
+    await act(async () => button("Grid view")?.click());
+    expect(page.container.querySelector("table")).toBeNull();
+    expect(page.container.textContent).toContain("Beta report");
+  } finally {
+    await page.cleanup();
+    window.localStorage.removeItem("rakazo:artifacts-view-mode");
     vi.unstubAllGlobals();
   }
 });

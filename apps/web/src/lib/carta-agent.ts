@@ -3,6 +3,7 @@ import { cartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
 import { useEffect, useRef, useState } from "react";
 import { mcpStatus } from "./integrations";
 import { rpc } from "./rpc";
+import { PANEL_DOCKED_QUERY } from "./shell-layout";
 
 /** The signed-in user's own Carta agent; another member's agent in the same space does not match. */
 export function findCartaAgent<T extends { spawnKey: string | null }>(
@@ -95,7 +96,7 @@ export function useOnPhoneWidth(onPhone: () => void, onWide?: () => void) {
   const callback = useRef({ onPhone, onWide });
   callback.current = { onPhone, onWide };
   useEffect(() => {
-    const query = window.matchMedia("(min-width: 768px)");
+    const query = window.matchMedia(PANEL_DOCKED_QUERY);
     const onChange = () => {
       if (query.matches) callback.current.onWide?.();
       else callback.current.onPhone();

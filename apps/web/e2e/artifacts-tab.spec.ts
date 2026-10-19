@@ -34,16 +34,16 @@ test("opens Artifacts from the sidebar and lists created files", async ({ page }
 
   await page.setViewportSize({ width: 360, height: 700 });
   const narrowHeading = page.getByRole("heading", { name: "Artifacts", exact: true });
-  const narrowCardView = page.getByRole("button", { name: "Card view" });
+  const narrowGridView = page.getByRole("button", { name: "Grid view" });
   await expect(narrowHeading).toBeVisible();
-  await expect(narrowCardView).toBeVisible();
+  await expect(narrowGridView).toBeVisible();
   const headingBox = await narrowHeading.boundingBox();
-  const cardViewBox = await narrowCardView.boundingBox();
+  const gridViewBox = await narrowGridView.boundingBox();
   expect(headingBox?.width).toBeGreaterThan(40);
   expect(headingBox?.x).toBeGreaterThanOrEqual(0);
   expect((headingBox?.x ?? 0) + (headingBox?.width ?? 0)).toBeLessThanOrEqual(360);
-  expect(cardViewBox?.x).toBeGreaterThanOrEqual(0);
-  expect((cardViewBox?.x ?? 0) + (cardViewBox?.width ?? 0)).toBeLessThanOrEqual(360);
+  expect(gridViewBox?.x).toBeGreaterThanOrEqual(0);
+  expect((gridViewBox?.x ?? 0) + (gridViewBox?.width ?? 0)).toBeLessThanOrEqual(360);
   await page.setViewportSize({ width: 1280, height: 720 });
 
   await rpc(page, "artifacts/create", {
@@ -56,6 +56,9 @@ test("opens Artifacts from the sidebar and lists created files", async ({ page }
   await expect(page.getByRole("heading", { name: "Artifacts", exact: true })).toBeVisible();
   await expect(page.getByText("notes/artifacts-tab.md")).toBeVisible();
   await captureScreenshot(page, testInfo, "artifacts-list");
+  await page.getByRole("button", { name: "List view" }).click();
+  await expect(page.getByTestId("artifact-row")).toHaveCount(1);
+  await page.getByRole("button", { name: "Grid view" }).click();
 
   await page.getByRole("link", { name: /notes\/artifacts-tab\.md/ }).click();
   await expect(page).toHaveURL(/\/app\/artifacts\/[^/]+$/);

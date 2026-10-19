@@ -185,6 +185,7 @@ it("creates a ticket without a status picker", async () => {
     expect(page.container.textContent).toContain("No tickets yet");
     expect(page.container.textContent).toContain("Tickets track work for your bots.");
     expect(page.container.querySelector("h1")?.textContent).toBe("Task board");
+    expect(page.container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
     await act(async () =>
       Array.from(page.container.querySelectorAll("button"))
         .find((button) => button.textContent === "New ticket")!

@@ -82,6 +82,7 @@ it("shows counts and contracts, with the value formatted from the decimal string
   const page = container.textContent ?? "";
   expect(container.querySelectorAll("h1")).toHaveLength(1);
   expect(container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
+  expect(container.querySelector('table[data-slot="table"]')).not.toBeNull();
   expect(page).toContain("Master Services Agreement");
   expect(page).toContain("$50,000");
   expect(page).toContain("Auto-renews, 60 days notice");
