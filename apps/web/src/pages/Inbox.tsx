@@ -633,8 +633,13 @@ export function InboxPage({
       size={failedEmpty ? "default" : "sm"}
       onClick={retry}
       disabled={retrying}
+      aria-busy={retrying}
+      className="relative"
     >
-      {retrying ? <Trans>Trying again…</Trans> : <Trans>Try again</Trans>}
+      <span className={retrying ? "opacity-0" : undefined}>
+        <Trans>Try again</Trans>
+      </span>
+      {retrying ? <Spinner className="absolute" aria-hidden="true" /> : null}
     </Button>
   );
 

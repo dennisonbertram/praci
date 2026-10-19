@@ -314,32 +314,38 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await prisma.connection.delete({ where: { id: second } });
     });
 
-    it("reports a rate limit only while its backoff is active", async () => {
+    it("keeps reporting a rate limit after its backoff ends, until a sync clears it, even while another process holds the claim", async () => {
       await wipe();
-      const stale = await connect(a, "box-a-stale");
-      const active = await connect(a, "box-a-active");
+      const expired = await connect(a, "box-a-expired");
+      const cleared = await connect(a, "box-a-cleared");
+      const syncing = await connect(a, "box-a-syncing");
       const hour = new Date(Date.now() - 3_600_000);
+      const limited = {
+        lastErrorAt: hour,
+        lastErrorKind: "rate_limited",
+        backoffUntil: new Date(hour.getTime() + 30_000),
+      };
+      await prisma.mailSyncState.create({ data: { connectionId: expired, ...limited } });
+      // A successful sync clears the error fields, so this account has nothing to report.
       await prisma.mailSyncState.create({
-        data: {
-          connectionId: stale,
-          lastErrorAt: hour,
-          lastErrorKind: "rate_limited",
-          backoffUntil: new Date(hour.getTime() + 30_000),
-        },
+        data: { connectionId: cleared, lastSyncedAt: new Date() },
       });
       await prisma.mailSyncState.create({
-        data: {
-          connectionId: active,
-          lastErrorAt: new Date(),
-          lastErrorKind: "rate_limited",
-          backoffUntil: new Date(Date.now() + 30_000),
-        },
+        data: { connectionId: syncing, ...limited, syncStartedAt: new Date() },
       });
 
       const out = await inboxList(deps, a, {});
-      expect(out.rateLimitedAccounts).toEqual([active]);
-      expect(out.failedAccounts).toEqual([active]);
-      await prisma.connection.deleteMany({ where: { id: { in: [stale, active] } } });
+      expect(out.rateLimitedAccounts.sort()).toEqual([expired, syncing].sort());
+      expect(out.failedAccounts.sort()).toEqual([expired, syncing].sort());
+
+      // A successful sync clears the stored error; then the account is no longer reported.
+      await prisma.mailSyncState.update({
+        where: { connectionId: syncing },
+        data: { lastErrorAt: null, lastErrorKind: null, backoffUntil: null },
+      });
+      const after = await inboxList(deps, a, {});
+      expect(after.failedAccounts).toEqual([expired]);
+      await prisma.connection.deleteMany({ where: { id: { in: [expired, cleared, syncing] } } });
     });
 
     it("answers with an empty account list when no mail account is connected", async () => {
