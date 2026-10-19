@@ -280,7 +280,14 @@ import { type MissingBotSeen, resolveRouteBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { sharedInflight } from "../lib/shared-inflight";
-import { PANEL_DOCKED_QUERY, SIDEBAR_DOCKED_QUERY } from "../lib/shell-layout";
+import {
+  PANEL_DOCKED_QUERY,
+  SIDEBAR_DOCKED_QUERY,
+  showHeaderWindowChrome,
+  sidebarInert,
+  useDrawerFocus,
+  useSidebarDocked,
+} from "../lib/shell-layout";
 import { slashSkillOptions as pickSlashSkills, slashSkillLabel } from "../lib/slash-skills";
 import {
   activeThreadRuns,
@@ -734,6 +741,10 @@ export function ShellPage() {
     useState<ReadonlySet<string>>(readSeenRunErrorIds);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const sidebarDocked = useSidebarDocked();
+  const sidebarRef = useRef<HTMLElement>(null);
+  const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
+  useDrawerFocus(mobileSidebarOpen, closeMobileSidebar, sidebarRef);
   const mobileSidebarSwipeRef = useRef<{ startX: number; startY: number } | null>(null);
   const [draggedBotId, setDraggedBotId] = useState<string | null>(null);
   const [paneDraggingFiles, setPaneDraggingFiles] = useState(false);
@@ -3640,10 +3651,13 @@ export function ShellPage() {
         />
       ) : null}
       <aside
+        ref={sidebarRef}
         data-testid="bots-sidebar"
         data-bots-sidebar-density={botsSidebarDensity}
         data-collapsed={botsSidebarCollapsed ? "true" : "false"}
-        inert={botsSidebarCollapsed && !mobileSidebarOpen ? true : undefined}
+        inert={
+          sidebarInert(botsSidebarCollapsed, sidebarDocked, mobileSidebarOpen) ? true : undefined
+        }
         className={`absolute inset-y-0 start-0 z-40 flex w-[calc(100%-48px)] max-w-[316px] shrink-0 flex-col border-e border-sidebar-border bg-sidebar transition-[transform,width,opacity] lg:static lg:z-auto lg:translate-x-0 ${
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
         } ${
@@ -4598,7 +4612,9 @@ export function ShellPage() {
         >
           <div className="flex min-w-0 items-center gap-2">
             {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
-            {botsSidebarCollapsed && desktopBridge() ? <WindowChrome /> : null}
+            {showHeaderWindowChrome(botsSidebarCollapsed, sidebarDocked) && desktopBridge() ? (
+              <WindowChrome />
+            ) : null}
             <button
               type="button"
               aria-label={t`Open navigation`}
