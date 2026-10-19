@@ -75,14 +75,15 @@ function ToastList({
           key={toast.id}
           toast={toast}
           data-slot="notification-toast"
+          data-behind={i > 0 ? "" : undefined}
           className={cn(
             // Sheets of paper: every toast is pinned to the bottom edge and moved up and
             // scaled down by its index; hover or focus fans them into a column.
             "group pointer-events-auto absolute right-0 bottom-0 left-0 z-[calc(100-var(--toast-index))] origin-bottom rounded-xl border border-border bg-card text-left text-card-foreground shadow-lg",
-            "[--gap:0.5rem] [--peek:0.75rem] [--height:var(--toast-frontmost-height,var(--toast-height))]",
+            "[--gap:0.5rem] [--peek:1rem] [--height:var(--toast-frontmost-height,var(--toast-height))]",
             "h-[var(--height)] translate-y-[calc(var(--toast-index)*var(--peek)*-1)] scale-[calc(1-var(--toast-index)*0.05)]",
             "data-[expanded]:h-[var(--toast-height)] data-[expanded]:translate-y-[calc(var(--toast-offset-y)*-1-var(--toast-index)*var(--gap))] data-[expanded]:scale-100",
-            "[&[data-behind]:not([data-expanded])]:brightness-90 [&[data-behind]:not([data-expanded])]:dark:brightness-75 [&[data-behind]:not([data-expanded])>*]:opacity-0",
+            "[&[data-behind]:not([data-expanded])]:border-foreground/25! [&[data-behind]:not([data-expanded])]:bg-muted! [&[data-behind]:not([data-expanded])>*]:opacity-0",
             "transition-[opacity,transform,height] duration-300 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-opacity motion-reduce:duration-150",
             "data-[starting-style]:translate-y-[150%] data-[starting-style]:opacity-0 motion-reduce:data-[starting-style]:translate-y-[calc(var(--toast-index)*var(--peek)*-1)]",
             "data-[ending-style]:opacity-0",

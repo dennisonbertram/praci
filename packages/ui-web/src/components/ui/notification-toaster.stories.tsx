@@ -97,7 +97,10 @@ export const Deck: Story = { args: { onOpen: () => {} }, render: render(samples.
 /** Hover or focus fans the deck out so every toast can be read. */
 export const Expanded: Story = {
   args: { onOpen: () => {} },
-  render: render(samples, true),
+  render: render(
+    samples.map((s) => ({ ...s, withBot: true })),
+    true,
+  ),
 };
 /** The two oldest collapse into "+2". */
 export const Five: Story = { args: { onOpen: () => {} }, render: render(samples) };
