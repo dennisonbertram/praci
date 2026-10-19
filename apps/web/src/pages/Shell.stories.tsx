@@ -99,6 +99,7 @@ const loadedWith = (bot: ReturnType<typeof makeBot>) => () =>
     "threads.get": { ...snapshot, botId: bot.id },
     "threads.head": { threadId: "thread_demo", cursor: 4 },
     "threads.messages": { threadId: "thread_demo", messages: [], olderCursor: null },
+    "threads.remembered": { messageIds: ["msg_2"] },
     "routines.list": [],
     "skills.list": [],
     "connections.list": [],

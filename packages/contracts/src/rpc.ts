@@ -514,6 +514,10 @@ export const appContract = {
         }),
       )
       .output(z.object({ ok: z.literal(true) })),
+    remember: oc
+      .input(threadTarget.safeExtend({ messageId: Id }))
+      .output(z.object({ ok: z.literal(true) })),
+    remembered: oc.input(threadTarget).output(z.object({ messageIds: z.array(Id) })),
     stop: oc.input(threadTarget).output(z.object({ ok: z.literal(true) })),
     followUp: oc
       .input(
