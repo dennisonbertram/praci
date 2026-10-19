@@ -10,14 +10,12 @@ import {
   DialogTitle,
   Input,
 } from "@rakazo/ui-web";
-import { ArrowLeft, Box, HardDrive } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { dataRoomImportStarted } from "../../lib/data-room";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { DriveRow } from "./DriveRow";
-import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
 import { failedText, importedText, importingText } from "./format";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -31,7 +29,7 @@ const EXPORTABLE = ["document", "spreadsheet", "presentation", "drawing"].map(
 const importable = (file: DataRoomApiDriveFile) =>
   !file.mimeType.startsWith(GOOGLE_APPS) || EXPORTABLE.includes(file.mimeType);
 
-function DrivePicker({
+export function DrivePicker({
   box = false,
   folderId,
   onClose,
@@ -216,75 +214,5 @@ function DrivePicker({
         </DialogFooter>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/**
- * The Drive import button. With no Drive account connected it leads to the connection page instead.
- * The server uses the first connected Drive account.
- */
-export function DriveImportButton({
-  connected,
-  compact,
-  folderId,
-  onDone,
-}: {
-  connected: boolean;
-  compact: boolean;
-  folderId: string | null;
-  onDone: (message: string, changed: boolean) => void;
-}) {
-  const navigate = useNavigate();
-  const [open, setOpen] = useState(false);
-  const label = connected ? t`Import from Google Drive` : t`Connect Google Drive`;
-  return (
-    <>
-      <ToolbarTip label={label} compact={compact}>
-        <Button
-          variant="outline"
-          className={compact ? TOOLBAR_BUTTON : undefined}
-          onClick={() =>
-            connected ? setOpen(true) : navigate("/app/integrations/app/google/googledrive")
-          }
-        >
-          <HardDrive aria-hidden="true" />
-          <span className={compact ? TOOLBAR_LABEL : undefined}>{label}</span>
-        </Button>
-      </ToolbarTip>
-      {open ? (
-        <DrivePicker folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
-      ) : null}
-    </>
-  );
-}
-
-/** The Box import button. Shown only once a Box account is connected; the server uses that account. */
-export function BoxImportButton({
-  compact,
-  folderId,
-  onDone,
-}: {
-  compact: boolean;
-  folderId: string | null;
-  onDone: (message: string, changed: boolean) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const label = t`Import from Box`;
-  return (
-    <>
-      <ToolbarTip label={label} compact={compact}>
-        <Button
-          variant="outline"
-          className={compact ? TOOLBAR_BUTTON : undefined}
-          onClick={() => setOpen(true)}
-        >
-          <Box aria-hidden="true" />
-          <span className={compact ? TOOLBAR_LABEL : undefined}>{label}</span>
-        </Button>
-      </ToolbarTip>
-      {open ? (
-        <DrivePicker box folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
-      ) : null}
-    </>
   );
 }
