@@ -11,6 +11,7 @@ export * from "./contacts.js";
 export * from "./data-room.js";
 export * from "./data-room-api.js";
 export * from "./desktop.js";
+export * from "./devin.js";
 export * from "./domain.js";
 export * from "./events.js";
 export * from "./finance.js";

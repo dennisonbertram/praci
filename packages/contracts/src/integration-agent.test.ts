@@ -5,6 +5,7 @@ import {
   CARTA_WRITE_TOOLS,
   cartaAgentSpawnKey,
 } from "./carta.js";
+import { DEVIN_MCP_ENDPOINT, DEVIN_READ_TOOLS, DEVIN_WRITE_TOOLS } from "./devin.js";
 import { FINANCE_READ_TOOLS } from "./finance.js";
 import {
   INTEGRATION_PRESETS,
@@ -132,5 +133,35 @@ describe("preset instructions", () => {
     expect(mercury.instructions).toContain("TBD");
     expect(brex.instructions).toContain("Brex is");
     expect(brex.instructions).toContain("TBD");
+  });
+});
+
+describe("Devin integration-agent preset", () => {
+  const devin = INTEGRATION_PRESETS.devin;
+
+  it("treats every listed read as a read and every listed write as a write", () => {
+    for (const name of DEVIN_READ_TOOLS) expect(isReadTool({ name }, devin)).toBe(true);
+    for (const name of DEVIN_WRITE_TOOLS) {
+      expect(isReadTool({ name }, devin)).toBe(false);
+      expect(isReadTool({ name, annotations: { readOnlyHint: true } }, devin)).toBe(false);
+    }
+  });
+
+  it("hides tools Devin adds later, even annotated reads", () => {
+    expect(devin.allowedTools).toEqual([...DEVIN_READ_TOOLS, ...DEVIN_WRITE_TOOLS]);
+    expect(isReadTool({ name: "devin_new", annotations: { readOnlyHint: true } }, devin)).toBe(
+      false,
+    );
+  });
+
+  it("matches by https host, so path variants match and other hosts do not", () => {
+    for (const endpoint of [
+      DEVIN_MCP_ENDPOINT,
+      `${DEVIN_MCP_ENDPOINT}/`,
+      "https://mcp.devin.ai/sse",
+    ])
+      expect(integrationPresetForEndpoint(endpoint)).toBe(devin);
+    for (const endpoint of ["http://mcp.devin.ai/mcp", "https://api.devin.ai/mcp", "nonsense"])
+      expect(integrationPresetForEndpoint(endpoint)).toBeUndefined();
   });
 });
