@@ -1134,6 +1134,16 @@ export const appContract = {
       .output(z.object({ count: z.number() })),
     markShown: oc.input(z.object({ id: z.string().min(1) })).output(z.object({ ok: z.boolean() })),
     unseenCounts: oc.output(z.object({ counts: z.record(z.string(), z.number()) })),
+    /** What each sidebar row shows beside its name; null when not available. One call for the space. */
+    glance: oc.output(
+      z.object({
+        financeRunwayMonths: z.number().nullable(),
+        legalDueSoon: z.number().int(),
+        dataRoomWaiting: z.number().int(),
+        /** Agents with an unseen attention notification. */
+        urgentBotIds: z.array(z.string()),
+      }),
+    ),
     subscribe: oc.output(eventIterator(NotificationSignalSchema)),
   },
   search: {
