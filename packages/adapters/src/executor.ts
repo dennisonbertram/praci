@@ -9091,6 +9091,9 @@ export function directoryDescription(peer: {
   return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it, and end your reply with the link ${page}, where its page and chat live. This applies to this agent only, not to a Mercury, Brex, Carta or other integration agent, which you message with message_bot.`.trim();
 }
 
+export const PLAIN_CAPABILITY_GUIDANCE =
+  'When you tell the user what you can do, describe it in plain words (for example "check bank transactions"), never as raw tool names.';
+
 export function userTurnInstructions(parts: {
   botInstructions: string;
   voiceAgent?: boolean;
@@ -9129,6 +9132,7 @@ export function userTurnInstructions(parts: {
     parts.workspaceInstruction,
     parts.agentEnvironmentInstruction,
     "A bot and a subagent are different. Never use both for the same request.",
+    PLAIN_CAPABILITY_GUIDANCE,
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "create_space",

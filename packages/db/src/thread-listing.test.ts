@@ -30,6 +30,60 @@ describe("previewFromBlocks", () => {
     );
   });
 
+  it("reads one phrase for the latest call when a turn ended in tool calls only", () => {
+    expect(
+      previewFromBlocks([
+        { kind: "steps", steps: [{ label: "Get banking transactions", count: 1 }] },
+      ]),
+    ).toBe("Checked banking transactions");
+  });
+
+  it("counts several tool calls instead of listing them", () => {
+    expect(
+      previewFromBlocks([
+        {
+          kind: "steps",
+          steps: [
+            { label: "Get active integration", count: 1 },
+            { label: "Get banking transactions", count: 1 },
+          ],
+        },
+      ]),
+    ).toBe("Used 2 tools");
+  });
+
+  it("prefers the reply over the tool calls that came before it", () => {
+    expect(
+      previewFromBlocks([
+        { kind: "steps", steps: [{ label: "Get banking transactions", count: 1 }] },
+        { kind: "text", text: "You spent less than last month." },
+      ]),
+    ).toBe("You spent less than last month.");
+  });
+
+  it("ignores live tool activity and lists of tool ids", () => {
+    expect(
+      previewFromBlocks([
+        { kind: "progress", text: "Using brex: get_banking_transactions", activity: true },
+        { kind: "steps", steps: [{ label: "Get banking transactions", count: 1 }] },
+      ]),
+    ).toBe("Checked banking transactions");
+    expect(
+      previewFromBlocks([{ kind: "text", text: "get_active_integration get_banking_tr…" }]),
+    ).toBe("");
+  });
+
+  it("reads a leading run of tool ids as words", () => {
+    expect(
+      previewFromBlocks([
+        {
+          kind: "text",
+          text: "get_active_integration get_banking_transactions list_cards and more",
+        },
+      ]),
+    ).toBe("Get active integration, Get banking transactions, List cards, and more");
+  });
+
   it("returns empty when there is no text block", () => {
     expect(previewFromBlocks([{ kind: "steps", steps: [] }])).toBe("");
     expect(previewFromBlocks(undefined)).toBe("");

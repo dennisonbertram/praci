@@ -354,17 +354,90 @@ const CARTA_TOOL_LABELS: Record<string, string> = {
   list_accounts: "Carta company",
 };
 
-export function humanizeToolName(name: string): string {
-  // MCP tools are named mcp__<server slug>__<tool>; the slug can be an opaque id, so show the tool only.
-  const mcp = /^mcp__.+?__(.+)$/.exec(name);
-  if (mcp?.[1]) return CARTA_TOOL_LABELS[mcp[1]] ?? humanizeToolName(mcp[1]);
-  const spaced = name
+/** Leading verbs of tool ids, as [activity text, finished text]. Anything else keeps its own words. */
+const TOOL_VERBS: Record<string, readonly [string, string]> = {
+  get: ["checking", "checked"],
+  list: ["checking", "checked"],
+  query: ["checking", "checked"],
+  search: ["searching", "searched"],
+  find: ["searching", "searched"],
+  read: ["reading", "read"],
+  fetch: ["reading", "read"],
+  create: ["creating", "created"],
+  add: ["adding", "added"],
+  update: ["updating", "updated"],
+  edit: ["updating", "updated"],
+  replace: ["updating", "updated"],
+  send: ["sending", "sent"],
+  delete: ["deleting", "deleted"],
+  cancel: ["cancelling", "cancelled"],
+  upload: ["uploading", "uploaded"],
+};
+
+const TOOL_NAME_MAX_CHARS = 60;
+
+/** The plain lowercase words of any tool id: no `mcp__server__` prefix, no case or separator style. */
+function toolWords(name: string, service?: string): string[] {
+  let id = name;
+  if (id.startsWith("mcp__")) {
+    // mcp__<server slug>__<tool>; the slug can be an opaque id, so keep the tool only.
+    const carta = CARTA_TOOL_LABELS[/^mcp__.+?__(.+)$/.exec(id)?.[1] ?? ""];
+    if (carta) return carta.toLowerCase().split(" ");
+    id = id.split("__").filter(Boolean).slice(2).join(" ");
+  }
+  let words = id
     .replace(/([a-z\d])([A-Z])/g, "$1 $2")
-    .replace(/_+/g, " ")
-    .trim();
-  if (!spaced) return name;
-  const lower = spaced.toLowerCase();
-  return lower.charAt(0).toUpperCase() + lower.slice(1);
+    .split(/[^A-Za-z\d]+/)
+    .filter(Boolean)
+    .map((word) => word.toLowerCase());
+  // "Get card by id" is "Get card" to a person.
+  if (words.length > 2 && words.at(-2) === "by" && words.at(-1) === "id")
+    words = words.slice(0, -2);
+  const own = new Set(
+    (service ?? "")
+      .toLowerCase()
+      .split(/[^a-z\d]+/)
+      .filter(Boolean),
+  );
+  const rest = words.filter((word) => !own.has(word));
+  return (rest.length > 0 ? rest : words).slice(0, 8);
+}
+
+function capitalized(text: string): string {
+  const clipped =
+    text.length > TOOL_NAME_MAX_CHARS
+      ? `${text.slice(0, TOOL_NAME_MAX_CHARS - 1).trimEnd()}…`
+      : text;
+  return clipped.charAt(0).toUpperCase() + clipped.slice(1);
+}
+
+/** A short plain label for a tool id or an earlier label: "Get banking transactions". Empty when there is nothing to say. */
+export function humanizeToolName(name: string, service?: string): string {
+  return capitalized(toolWords(name, service).join(" "));
+}
+
+/** A saved step label as shown: labels saved before tool names were humanized are raw ids. */
+export function toolStepLabel(label: string): string {
+  return /^mcp__|_/.test(label) ? humanizeToolName(label) : label;
+}
+
+/**
+ * A tool as a verb phrase: "Checking banking transactions" while it runs, "Checked banking
+ * transactions" after. `service` drops the agent's own service name ("Brex") from the words.
+ */
+export function toolPhrase(name: string, tense: "activity" | "done", service?: string): string {
+  const [first, ...rest] = toolWords(name, service);
+  if (!first) return "";
+  const verb = TOOL_VERBS[first]?.[tense === "activity" ? 0 : 1] ?? first;
+  return capitalized([verb, ...rest].join(" "));
+}
+
+/** One line for a run that ended in tool calls: the latest call, or a count when there were several. */
+export function toolStepsSummary(steps: readonly ToolStep[], service?: string): string {
+  const last = steps.at(-1);
+  if (!last) return "";
+  const total = steps.reduce((sum, step) => sum + step.count, 0);
+  return total > 1 ? `Used ${total} tools` : toolPhrase(last.label, "done", service);
 }
 
 export function progressMessageText(

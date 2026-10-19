@@ -8,13 +8,13 @@ import {
 } from "./ToolActivityDisclosure";
 
 const steps = [
-  { label: "Read sample-notes.md", count: 1 },
-  { label: "Search the web for sample pricing", count: 3 },
-  { label: "Write summary.md", count: 1 },
+  { label: "mcp__finance-brex__get_active_integration", count: 1 },
+  { label: "mcp__finance-brex__get_banking_transactions", count: 3 },
+  { label: "mail_search", count: 1 },
 ];
 
 const manySteps = Array.from({ length: 10 }, (_, i) => ({
-  label: `Step ${i + 1}: run a sample tool`,
+  label: `sample_tool_${i + 1}`,
   count: 1,
 }));
 
@@ -65,7 +65,7 @@ export const StepWithLongLabel: Story = {
         steps={[
           {
             label:
-              "Fetch https://docs.example.com/a/very/long/path/that/keeps/going/and/going/and/going",
+              "mcp__docs__fetch_a_very_long_tool_name_that_keeps_going_and_going_and_going_and_going",
             count: 2,
           },
         ]}

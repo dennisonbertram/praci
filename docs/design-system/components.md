@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 196 of 196
-- Web and shared components: 558
-- Mobile components: 125 in 86 files, mobile — native story pending
+- Web and shared component files with stories: 197 of 197
+- Web and shared components: 559
+- Mobile components: 126 in 87 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -106,6 +106,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | --- | --- | --- | --- |
 | CollaborationMarker, ActiveBotGlyph | [apps/web/src/components/ai/CollaborationMarker.tsx](../../apps/web/src/components/ai/CollaborationMarker.tsx) | [CollaborationMarker.stories.tsx](../../apps/web/src/components/ai/CollaborationMarker.stories.tsx) | web |
 | Shimmer, DefaultLoadingState, LoadingState, SuccessPop, BuiCard | [apps/web/src/components/ai/primitives.tsx](../../apps/web/src/components/ai/primitives.tsx) | [primitives.stories.tsx](../../apps/web/src/components/ai/primitives.stories.tsx) | web |
+| ToolCallLabel | [apps/web/src/components/ai/ToolCallLabel.tsx](../../apps/web/src/components/ai/ToolCallLabel.tsx) | [ToolCallLabel.stories.tsx](../../apps/web/src/components/ai/ToolCallLabel.stories.tsx) | web |
 
 ## Web components/call
 
@@ -375,6 +376,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | HeaderTextButton | [apps/mobile/components/sheet-header.tsx](../../apps/mobile/components/sheet-header.tsx) | mobile — native story pending | mobile |
 | ThreadComposer, MentionOptionIcon, MentionChipIcon | [apps/mobile/components/thread-composer.tsx](../../apps/mobile/components/thread-composer.tsx) | mobile — native story pending | mobile |
 | TimeSeparator | [apps/mobile/components/time-separator.tsx](../../apps/mobile/components/time-separator.tsx) | mobile — native story pending | mobile |
+| ToolCallLabel | [apps/mobile/components/tool-call-label.tsx](../../apps/mobile/components/tool-call-label.tsx) | mobile — native story pending | mobile |
 | VoicePlayerBar, VoiceControlButton | [apps/mobile/components/voice-player-bar.tsx](../../apps/mobile/components/voice-player-bar.tsx) | mobile — native story pending | mobile |
 | VoiceChatCard | [apps/mobile/components/VoiceChatCard.tsx](../../apps/mobile/components/VoiceChatCard.tsx) | mobile — native story pending | mobile |
 | Dot, WorkingIndicator | [apps/mobile/components/WorkingIndicator.tsx](../../apps/mobile/components/WorkingIndicator.tsx) | mobile — native story pending | mobile |

@@ -79,6 +79,6 @@ describe("describeToolActivity", () => {
   });
 
   it("falls back to the tool name", () => {
-    expect(describeToolActivity("destination_write", undefined)).toBe("Using destination_write");
+    expect(describeToolActivity("destination_write", undefined)).toBe("Destination write");
   });
 });
