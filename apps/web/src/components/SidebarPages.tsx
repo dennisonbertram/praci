@@ -21,9 +21,11 @@ import { SidebarPageLink } from "./SidebarPageLink";
 export function SidebarPages({
   templates = SIDEBAR_PAGE_TEMPLATES,
   onOpen,
+  rail = false,
 }: {
   templates?: readonly SidebarPageTemplate[];
   onOpen?: () => void;
+  rail?: boolean;
 }) {
   const { t } = useLingui();
   const navigate = useNavigate();
@@ -95,28 +97,31 @@ export function SidebarPages({
             current={matchPath({ path: template.route, end: false }, pathname) != null}
             icon={<LayoutDashboard size={15} strokeWidth={1.8} aria-hidden="true" />}
             label={t(sidebarPageCopy(template.key).label)}
+            rail={rail}
             onOpen={() => {
               onOpen?.();
               navigate(template.route);
             }}
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              aria-label={t`Page options`}
-              className="absolute end-4 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground opacity-0 pointer-coarse:opacity-100 hover:bg-accent focus-visible:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100"
-            >
-              <Ellipsis size={15} strokeWidth={1.8} aria-hidden="true" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => void remove(template)}>
-                <Trans>Remove from sidebar</Trans>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {rail ? null : (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label={t`Page options`}
+                className="absolute end-4 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground opacity-0 pointer-coarse:opacity-100 hover:bg-accent focus-visible:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100"
+              >
+                <Ellipsis size={15} strokeWidth={1.8} aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => void remove(template)}>
+                  <Trans>Remove from sidebar</Trans>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </div>
       ))}
       <AddSidebarPage
-        templates={addable}
+        templates={rail ? [] : addable}
         onAdd={(key) => {
           const template = templates.find((candidate) => candidate.key === key);
           if (template) void add(template);

@@ -94,6 +94,63 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+it("skips the bot step when the API already made the server's agent", async () => {
+  api.create.mockResolvedValue({
+    id: "srv-1",
+    name: "Custom",
+    endpoint: "https://mcp.example.test/mcp",
+    agentBotId: "bot-1",
+  });
+  await mount();
+  await type("Token", "tok");
+  await click("Connect");
+  expect(document.body.textContent).toContain("connected");
+  expect(document.body.textContent).not.toContain("Continue");
+});
+
+it("skips the bot step after sign-in when the API already made the agent", async () => {
+  api.create.mockResolvedValue({ ...server, agentBotId: "bot-1" });
+  api.begin.mockResolvedValue({
+    status: "authorization_required",
+    authorizationUrl: "https://a/x",
+  });
+  api.open.mockReturnValue({ close: vi.fn(), closed: false });
+  api.wait.mockResolvedValue("connected");
+  await mount();
+  await click("Connect");
+  expect(api.begin).toHaveBeenCalledWith("srv-1", expect.anything());
+  expect(api.open).toHaveBeenCalled();
+  expect(api.wait).toHaveBeenCalled();
+  expect(document.body.textContent).toContain("connected");
+  expect(document.body.textContent).not.toContain("Continue");
+});
+
+it("does not finish before sign-in when the server already has an agent", async () => {
+  api.create.mockResolvedValue({ ...server, agentBotId: "bot-1" });
+  api.begin.mockResolvedValue({
+    status: "authorization_required",
+    authorizationUrl: "https://a/x",
+  });
+  api.open.mockReturnValue({ close: vi.fn(), closed: false });
+  api.wait.mockReturnValue(new Promise(() => undefined));
+  await mount();
+  await click("Connect");
+  expect(api.begin).toHaveBeenCalled();
+  expect(document.body.textContent).not.toContain("connected");
+});
+
+it("asks for bots after sign-in when no agent was made", async () => {
+  api.begin.mockResolvedValue({
+    status: "authorization_required",
+    authorizationUrl: "https://a/x",
+  });
+  api.open.mockReturnValue({ close: vi.fn(), closed: false });
+  api.wait.mockResolvedValue("connected");
+  await mount();
+  await click("Connect");
+  expect(document.body.textContent).toContain("Continue");
+});
+
 it("adds an SSE-only server when SSE is chosen", async () => {
   await mount();
   await type("Transport", "sse");
@@ -236,7 +293,12 @@ it("does not submit or start sign-in when Enter is pressed without an API key", 
 });
 
 it("skips the bot step for Devin because the API creates its agent", async () => {
-  api.create.mockResolvedValue({ id: "srv-d", name: "Devin", endpoint: DEVIN_MCP_ENDPOINT });
+  api.create.mockResolvedValue({
+    id: "srv-d",
+    name: "Devin",
+    endpoint: DEVIN_MCP_ENDPOINT,
+    agentBotId: "bot-d",
+  });
   await mount(devinProps);
   await type("API key", "cog_placeholder");
   await click("Connect");

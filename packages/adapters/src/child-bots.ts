@@ -269,7 +269,10 @@ export async function archiveSpawnedBot(
   return { ok: true as const, botId: target.id, name: target.name };
 }
 
-/** Deleting or archiving an integration agent frees its servers: no agent, shared, read-only. */
+/**
+ * Deleting or archiving an integration agent frees its servers: no agent, read-only. A server
+ * that was exclusive to it stays exclusive, so with no agent no bot can use it.
+ */
 async function releaseAgentServers(
   tx: Pick<PrismaClient, "mcpServer" | "connection" | "botConnectionAccess">,
   bot: Pick<LifecycleBot, "id" | "spaceId" | "userId">,
@@ -280,10 +283,17 @@ async function releaseAgentServers(
     ...(bot.userId ? { userId: bot.userId } : {}),
   };
   const [servers, connections] = await Promise.all([
-    tx.mcpServer.updateMany({
-      where: scope,
-      data: { agentBotId: null, agentExclusive: false, writesEnabled: false },
-    }),
+    // Servers made by provisioning stay exclusive; ones set exclusive by hand are shared again.
+    (async () => {
+      await tx.mcpServer.updateMany({
+        where: { ...scope, agentProvisionedAt: null },
+        data: { agentBotId: null, agentExclusive: false, writesEnabled: false },
+      });
+      return tx.mcpServer.updateMany({
+        where: { ...scope, agentProvisionedAt: { not: null } },
+        data: { agentBotId: null, writesEnabled: false },
+      });
+    })(),
     (async () => {
       const linked = await tx.connection.findMany({
         where: scope,
