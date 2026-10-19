@@ -271,6 +271,7 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  unseenAttentionBotIds,
   unseenCounts,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -321,6 +322,7 @@ import {
   financeRecurring,
   financeRefresh,
   financeRunway,
+  financeRunwayMonths,
   financeSetPreferences,
   financeSpend,
   financeTransaction,
@@ -380,6 +382,7 @@ import {
   legalAgent,
   legalConsent,
   legalConsentGrant,
+  legalDueSoonCount,
   legalGraph,
   legalItemLinks,
   legalOverview,
@@ -7249,6 +7252,22 @@ export function createRouter(deps: RouterDeps) {
       unseenCounts: authed.notifications.unseenCounts.handler(async ({ context }) => ({
         counts: await unseenCounts(deps.prisma, context.actor),
       })),
+      glance: authed.notifications.glance.handler(async ({ context }) => {
+        const [runwayMonths, legalDueSoon, dataRoomWaiting, urgentBotIds] = await Promise.all([
+          financeRunwayMonths(financeDeps, context.actor),
+          legalDueSoonCount(legalDeps, context.actor, 7),
+          // Failed items are the only ones the user can act on (retry or remove).
+          deps.prisma.dataRoomItem.count({
+            where: {
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              status: "failed",
+            },
+          }),
+          unseenAttentionBotIds(deps.prisma, context.actor),
+        ]);
+        return { financeRunwayMonths: runwayMonths, legalDueSoon, dataRoomWaiting, urgentBotIds };
+      }),
       subscribe: authed.notifications.subscribe.handler(async function* ({ context }) {
         const follow = deps.notificationEvents.follow(context.actor, context.signal);
         let pending: Promise<IteratorResult<NotificationSignal>> | undefined;

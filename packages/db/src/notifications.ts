@@ -264,6 +264,19 @@ export async function unseenCounts(
   return Object.fromEntries(rows.map((row) => [row.surface, row._count._all]));
 }
 
+/** Agents with an unseen `attention` notification for this user. */
+export async function unseenAttentionBotIds(
+  prisma: Pick<PrismaClient, "notification">,
+  actor: Scope,
+): Promise<string[]> {
+  const rows = await prisma.notification.findMany({
+    where: { ...ownerOf(actor), seenAt: null, importance: "attention", botId: { not: null } },
+    distinct: ["botId"],
+    select: { botId: true },
+  });
+  return rows.flatMap((row) => (row.botId ? [row.botId] : []));
+}
+
 /** Deletes notifications older than 30 days and deliveries older than 7 days. */
 export async function deleteExpiredNotifications(
   prisma: Pick<PrismaClient, "notification" | "notificationDelivery">,

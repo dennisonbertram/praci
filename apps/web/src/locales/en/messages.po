@@ -18,6 +18,10 @@ msgstr ""
 msgid " (unread)"
 msgstr " (unread)"
 
+#: src/components/sidebar-glance.tsx
+msgid " (urgent)"
+msgstr " (urgent)"
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "— tokens of AI text"
 msgstr "— tokens of AI text"
@@ -180,8 +184,10 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
+#. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
+#: src/components/sidebar-glance.tsx
 msgid "{0} mo"
 msgstr "{0} mo"
 
@@ -5226,6 +5232,10 @@ msgstr "Net {0}"
 #: src/components/integrations/AppDetail.tsx
 msgid "Never changes your account"
 msgstr "Never changes your account"
+
+#: src/components/sidebar-glance.tsx
+msgid "new"
+msgstr "new"
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "New account"

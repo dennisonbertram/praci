@@ -695,6 +695,20 @@ export async function financeMonth(
   };
 }
 
+/** The Finance page's runway in months (null without a cash account or burn), without the rest of the overview. */
+export async function financeRunwayMonths(deps: FinanceDeps, actor: Actor): Promise<number | null> {
+  const now = nowOf(deps);
+  const [accounts, txns, crypto, scope] = await Promise.all([
+    loadAccounts(deps, actor),
+    loadTransactions(deps, actor),
+    loadCryptoSummary(deps, actor),
+    loadRunwayCrypto(deps.prisma, actor),
+  ]);
+  if (!accounts.some((a) => a.kind !== "card")) return null;
+  const cashCents = countedCash(cashParts(accounts, crypto), scope);
+  return runway(cashCents, monthlyBurn(txns, now).monthlyCents, now).months;
+}
+
 export async function financeRunway(deps: FinanceDeps, actor: Actor): Promise<FinanceRunwayOutput> {
   const now = nowOf(deps);
   const [accounts, txns, crypto, scope, snapshots] = await Promise.all([
