@@ -442,6 +442,8 @@ export async function destroyBot(
   await removePiBotSessions(deps.dataDir, bot.userId, bot.id);
   const deletion = await withTransactionRetry(() =>
     deps.prisma.$transaction(async (tx) => {
+      // Connection rows before the bot row, the order every other path uses.
+      await lockAgentConnections(tx, bot.id);
       const locked = await tx.$queryRaw<Array<{ id: string; webhookSecretId: string | null }>>`
         SELECT id, "webhookSecretId"
         FROM bots
@@ -485,7 +487,6 @@ export async function destroyBot(
           memoriesPreserved: !options.deleteMemories,
         },
       });
-      await lockAgentConnections(tx, bot.id);
       await releaseAgentServers(tx, bot);
       await tx.bot.delete({ where: { id: bot.id } });
       if (webhookSecretId) {

@@ -64,8 +64,7 @@ export function botCanReachConnection(
  * denies anything, so an abandoned second account cannot block a shared one.
  * - Ordinary rows (no linked agent) keep the app-wide rule: if any connected account of an app is
  *   limited to other agents, every live account of that app is denied, so no sibling stands in.
- * - Connections created private (privateByDefault) are denied one by one too.
- * - Agent-linked native Google rows are denied one by one: an exclusive account never denies its
+ * - Agent-linked or private native Google rows are denied one by one: an exclusive account never denies its
  *   siblings, because the Google built-in tools check the account id of every call. Every other
  *   connector keeps the app-wide rule, because Composio and Pipedream can resolve an account the
  *   run did not pick.
@@ -74,10 +73,11 @@ export function deniedConnectionIds(rows: ConnectionAccessRow[]): Set<string> {
   const appKey = (row: { connectorId: string; provider: string }) =>
     `${row.connectorId}\u0000${row.provider}`;
   const live = rows.filter((row) => row.status !== "revoked");
+  // Only native Google dispatch is pinned to one account. Composio and Pipedream can resolve an
+  // account the run did not pick (Pipedream's ordinary routes send no account id), so a limited
+  // or private account there keeps denying the whole app, as it always has.
   const perConnection = (row: ConnectionAccessRow) =>
-    (row.connectorId === "google" && row.agentBotId !== null) ||
-    // A connection created private stands alone: it never denies, or is shared with, its siblings.
-    row.privateByDefault === true;
+    row.connectorId === "google" && (row.agentBotId !== null || row.privateByDefault === true);
   const deniedApps = new Set(
     live
       .filter(

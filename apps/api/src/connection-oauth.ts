@@ -20,7 +20,7 @@ export async function completeNativeOAuth(options: {
   context: AdapterContext;
   /** The same per-provider advisory lock `connections.begin` and `connections.revoke` take. */
   lock: (tx: Prisma.TransactionClient, connectorId: string, provider: string) => Promise<void>;
-  /** Gives a newly connected account its agent. Not called when the account replaces an old one. */
+  /** Gives a newly connected private account its agent; a no-op when it has one or is not private. */
   provision?: (connectionId: string) => Promise<void>;
 }) {
   const { prisma, actor, connectorId, state } = options;
@@ -52,7 +52,6 @@ export async function completeNativeOAuth(options: {
   if (!secretId)
     throw new ORPCError("BAD_REQUEST", { message: "Connection did not return a credential" });
 
-  let replaced = false;
   let row: Awaited<ReturnType<typeof prisma.connection.update>>;
   try {
     row = await prisma.$transaction(
@@ -79,7 +78,6 @@ export async function completeNativeOAuth(options: {
         const replaces = (current.metadata as { replacesConnectionId?: unknown } | null)
           ?.replacesConnectionId;
         if (taken && taken.id === replaces) {
-          replaced = true;
           // Lock both rows first (the order every access change uses: connection, then bot, then
           // grants), then read the old row's settings, so a concurrent change to them is not lost.
           await tx.$queryRaw`SELECT id FROM connections WHERE id IN (${taken.id}, ${current.id}) ORDER BY id FOR UPDATE`;
@@ -136,11 +134,12 @@ export async function completeNativeOAuth(options: {
     throw error;
   }
 
-  if (!replaced) await options.provision?.(row.id).catch(() => undefined);
-  const final = replaced
-    ? row
-    : ((await prisma.connection.findFirst({ where: { id: row.id, ...owner } }).catch(() => null)) ??
-      row);
+  // A replacement of a private connection that had no agent gets one too; the provisioner does
+  // nothing for a row that is not private or already has one.
+  await options.provision?.(row.id).catch(() => undefined);
+  const final =
+    (await prisma.connection.findFirst({ where: { id: row.id, ...owner } }).catch(() => null)) ??
+    row;
   return {
     id: final.id,
     connectorId: row.connectorId,

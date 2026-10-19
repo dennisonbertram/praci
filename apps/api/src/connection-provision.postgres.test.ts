@@ -286,7 +286,8 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
           provisionCalls += 1;
         },
       });
-      expect(provisionCalls).toBe(0);
+      // A replacement that already has its agent is left to the provisioner, which does nothing.
+      expect(provisionCalls).toBe(provider === "gmail" ? 2 : 1);
       expect(done.agentBotId).toBe(oldDone.agentBotId);
       expect(await row(next.id)).toMatchObject({
         allAgents: false,
@@ -440,7 +441,10 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
         { userId, spaceId } as never,
       );
       const legacy = await create({ connectorId, provider, status: "connected", allAgents: true });
-      expect((await client(owner).connections.effectiveAccess())[legacy.id]?.shared).toBe("all");
+      // Native Google is pinned per account; Composio and Pipedream keep denying the whole app.
+      expect((await client(owner).connections.effectiveAccess())[legacy.id]?.shared).toBe(
+        connectorId === "google" ? "all" : "none",
+      );
       await client(owner).connections.setAccess({
         connectionId: legacy.id,
         allAgents: false,
@@ -692,6 +696,73 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
       if (exclusive.status === "fulfilled") expect(current.allAgents).toBe(false);
       expect(current.agentBotId).toBe(botId);
     }
+  });
+
+  it("a Google replacement of a private connection without an agent provisions one", async () => {
+    const provider = "googlecalendar";
+    const ref = `noagent-acct-${suffix}`;
+    const state = `noagent-state-${suffix}`;
+    const old = await create({
+      connectorId: "google",
+      provider,
+      status: "connected",
+      privateByDefault: true,
+    });
+    await prisma.connection.update({ where: { id: old.id }, data: { providerRef: ref } });
+    const next = await create({ connectorId: "google", provider });
+    await prisma.connection.update({
+      where: { id: next.id },
+      data: { providerRef: state, metadata: { replacesConnectionId: old.id } },
+    });
+    const done = await completeNativeOAuth({
+      prisma,
+      actor: owner,
+      connector: {
+        complete: async () => ({ connectionRef: ref, secretId: `noagent-secret-${suffix}` }),
+      } as never,
+      connectorId: "google",
+      state,
+      code: "c",
+      context: {} as never,
+      lock: async () => undefined,
+      provision: (connectionId) =>
+        provisionConnectionAgent(
+          { prisma, repos: createRepos(prisma), archiveBot: async () => undefined },
+          owner,
+          connectionId,
+        ),
+    });
+    expect(done.agentBotId).toBeTruthy();
+    expect(await row(next.id)).toMatchObject({ privateByDefault: true, allAgents: false });
+    expect((await access(next.id)).map((a) => a.botId)).toEqual([done.agentBotId]);
+  });
+
+  it("revoke recovery does not put back an agent archived in the meantime", async () => {
+    const pending = await create({ provider: "archivedmid" });
+    const done = await complete(pending.id);
+    const original = connector.revoke;
+    connector.revoke = async () => {
+      await archiveBot(
+        lifecycle(),
+        await prisma.bot.findUniqueOrThrow({ where: { id: done.agentBotId as string } }),
+        { userId, spaceId } as never,
+      );
+      throw new Error("provider unavailable");
+    };
+    try {
+      await expect(
+        client(owner).connections.revoke({ connectionId: pending.id }),
+      ).rejects.toBeTruthy();
+    } finally {
+      connector.revoke = original;
+    }
+    expect(await row(pending.id)).toMatchObject({
+      status: "connected",
+      agentBotId: null,
+      allAgents: false,
+      privateByDefault: true,
+    });
+    expect(await access(pending.id)).toEqual([]);
   });
 
   it("does not provision for another owner's connection", async () => {

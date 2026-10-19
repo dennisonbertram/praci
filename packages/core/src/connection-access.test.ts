@@ -222,15 +222,31 @@ describe("effectiveAccessByConnection for Google agents", () => {
   });
 });
 
-describe("provisioned connections that lost their agent", () => {
-  it.each(["composio", "google"])("do not deny shared siblings (%s)", (connectorId) => {
-    const rows = [
-      row("private", "connected", false, {
-        connectorId,
-        privateByDefault: true,
-      }),
-      row("legacy", "connected", true, { connectorId }),
-    ];
-    expect([...deniedConnectionIds(rows)]).toEqual(["private"]);
+describe("connections created private", () => {
+  it("native Google is denied one account at a time, with or without its agent", () => {
+    for (const agentBotId of [null, "agent"]) {
+      const rows = [
+        row("private", "connected", false, {
+          connectorId: "google",
+          privateByDefault: true,
+          agentBotId,
+        }),
+        row("legacy", "connected", true, { connectorId: "google" }),
+      ];
+      expect([...deniedConnectionIds(rows)]).toEqual(["private"]);
+    }
   });
+
+  it.each(["composio", "pipedream"])(
+    "%s keeps denying the whole app, because dispatch does not pin the account",
+    (connectorId) => {
+      for (const agentBotId of [null, "agent"]) {
+        const rows = [
+          row("private", "connected", false, { connectorId, privateByDefault: true, agentBotId }),
+          row("legacy", "connected", true, { connectorId }),
+        ];
+        expect([...deniedConnectionIds(rows)].sort()).toEqual(["legacy", "private"]);
+      }
+    },
+  );
 });

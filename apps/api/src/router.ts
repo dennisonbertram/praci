@@ -6274,32 +6274,53 @@ export function createRouter(deps: RouterDeps) {
             // Local row was marked revoked inside the transaction; restore it so a
             // failed remote disconnect remains retryable instead of orphaned.
             if (!outcome.previousStatus) return;
-            const restored = await deps.prisma.connection.updateMany({
-              where: {
-                id: input.connectionId,
-                spaceId: context.actor.spaceId,
-                userId: context.actor.userId,
-                status: "revoked",
-              },
-              data: {
-                status: outcome.previousStatus,
-                ...(undo.ownership
-                  ? {
-                      agentBotId: undo.ownership.agentBotId,
-                      writesEnabled: undo.ownership.writesEnabled,
-                    }
-                  : {}),
-              },
-            });
-            // Put the agent and its grants back, so the connection does not turn shareable.
-            if (undo.ownership && restored.count > 0)
-              await deps.prisma.botConnectionAccess.createMany({
-                data: undo.ownership.grants.map((grant) => ({
-                  ...grant,
-                  connectionId: input.connectionId,
-                })),
-                skipDuplicates: true,
+            const previous = outcome.previousStatus;
+            const owned = undo.ownership;
+            await deps.prisma.$transaction(async (tx) => {
+              // Connection row first, then bots and grants, like every other path.
+              await tx.$queryRaw`SELECT id FROM connections WHERE id = ${input.connectionId} FOR UPDATE`;
+              // An agent archived or deleted since the revoke is not put back: the row stays
+              // private and agentless, as release leaves it.
+              const ids = owned
+                ? [...new Set([...owned.grants.map((g) => g.botId), owned.agentBotId ?? ""])]
+                : [];
+              const active = new Set(
+                (
+                  await tx.bot.findMany({
+                    where: {
+                      id: { in: ids },
+                      spaceId: context.actor.spaceId,
+                      userId: context.actor.userId,
+                      archivedAt: null,
+                    },
+                    select: { id: true },
+                  })
+                ).map((b) => b.id),
+              );
+              const agentActive = Boolean(owned?.agentBotId && active.has(owned.agentBotId));
+              const restored = await tx.connection.updateMany({
+                where: {
+                  id: input.connectionId,
+                  spaceId: context.actor.spaceId,
+                  userId: context.actor.userId,
+                  status: "revoked",
+                },
+                data: {
+                  status: previous,
+                  ...(owned && agentActive
+                    ? { agentBotId: owned.agentBotId, writesEnabled: owned.writesEnabled }
+                    : {}),
+                },
               });
+              // Put the grants back, so the connection does not turn shareable.
+              if (owned && restored.count > 0)
+                await tx.botConnectionAccess.createMany({
+                  data: owned.grants
+                    .filter((grant) => active.has(grant.botId))
+                    .map((grant) => ({ ...grant, connectionId: input.connectionId })),
+                  skipDuplicates: true,
+                });
+            });
           };
           try {
             const connector = deps.connectors.managed(outcome.remote.connectorId);
