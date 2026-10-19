@@ -1,7 +1,7 @@
 import { createRouterClient } from "@orpc/server";
 import { archiveBot, destroyBot } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
-import { integrationAgentSpawnKey } from "@rakazo/contracts";
+import { inboxAgentSpawnKey, integrationAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -188,27 +188,71 @@ describePostgres("connected app agents (PostgreSQL)", () => {
     });
   });
 
-  it("rejects an agent for a native Google connection, which has no scoped tools", async () => {
-    const google = await prisma.connection.create({
+  const googleConnection = (provider: string, who = owner) =>
+    prisma.connection.create({
       data: {
-        spaceId,
-        userId,
+        spaceId: who.spaceId,
+        userId: who.userId,
         connectorId: "google",
-        provider: "gmail",
-        displayName: `Google ${id("native")}`,
+        provider,
+        providerRef: `ref-${provider}-${Math.random().toString(36).slice(2)}`,
+        displayName: provider,
         status: "connected",
+        allAgents: false,
       },
     });
-    await expect(connections().createAgent({ connectionId: google.id })).rejects.toMatchObject({
-      code: "BAD_REQUEST",
+
+  it("links every Gmail account to the one Inbox agent, with changes on, idempotently", async () => {
+    const first = await googleConnection("gmail");
+    const second = await googleConnection("gmail");
+    const a = await connections().createAgent({ connectionId: first.id });
+    const again = await connections().createAgent({ connectionId: first.id });
+    const b = await connections().createAgent({ connectionId: second.id });
+    expect(new Set([a.botId, again.botId, b.botId]).size).toBe(1);
+    expect(await prisma.bot.findUniqueOrThrow({ where: { id: a.botId } })).toMatchObject({
+      spawnKey: inboxAgentSpawnKey(userId),
     });
-    expect(await prisma.connection.findUniqueOrThrow({ where: { id: google.id } })).toMatchObject({
-      agentBotId: null,
+    expect(await prisma.connection.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({
+      agentBotId: a.botId,
+      writesEnabled: true,
     });
     expect(
-      await prisma.bot.count({ where: { spawnKey: integrationAgentSpawnKey(google.id) } }),
+      await prisma.botConnectionAccess.count({ where: { connectionId: first.id, botId: a.botId } }),
+    ).toBe(1);
+    expect(
+      await prisma.bot.count({ where: { spawnKey: integrationAgentSpawnKey(first.id) } }),
     ).toBe(0);
+    // The user's own switch survives a repeated Create agent and exclusive stays allowed.
+    await connections().setWrites({ connectionId: first.id, enabled: false });
+    await connections().createAgent({ connectionId: first.id });
+    await connections().setExclusive({ connectionId: first.id, exclusive: true });
+    await client(owner).connections.setAccess({
+      connectionId: first.id,
+      allAgents: true,
+      botIds: [],
+    });
+    expect(await prisma.connection.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({
+      writesEnabled: false,
+    });
   });
+
+  it.each(["googlecalendar", "googledrive"])(
+    "creates a %s agent with changes off",
+    async (provider) => {
+      const google = await googleConnection(provider);
+      const { botId } = await connections().createAgent({ connectionId: google.id });
+      expect(await prisma.bot.findUniqueOrThrow({ where: { id: botId } })).toMatchObject({
+        spawnKey: integrationAgentSpawnKey(google.id),
+        name: `${provider} agent`,
+      });
+      expect(await prisma.connection.findUniqueOrThrow({ where: { id: google.id } })).toMatchObject(
+        {
+          agentBotId: botId,
+          writesEnabled: false,
+        },
+      );
+    },
+  );
 
   it.each(["archive", "delete"] as const)("releases the app connection on bot %s", async (mode) => {
     const connection = await createConnection();
