@@ -5,6 +5,7 @@ import {
   isNetworkFailure,
   isServerUnreachable,
   isTechnicalErrorMessage,
+  providerErrorMessage,
   userErrorMessage,
 } from "./user-error.js";
 
@@ -158,5 +159,33 @@ describe("authErrorMessage", () => {
     ).toBe("Invalid email or password");
     expect(authErrorMessage({ message: '{"detail":"x"}' }, authCopy)).toBe(authCopy.fallback);
     expect(authErrorMessage(undefined, authCopy)).toBe(authCopy.fallback);
+  });
+});
+
+describe("providerErrorMessage", () => {
+  const fallback = "The app could not be connected.";
+  it("extracts the message from Composio 400 and 404 bodies", () => {
+    expect(
+      providerErrorMessage(
+        '400 {"error":{"message":"Composio does not manage auth for toolkit box_mcp","code":601,"request_id":"abc"}}',
+        fallback,
+      ),
+    ).toBe("Composio does not manage auth for toolkit box_mcp");
+    expect(
+      providerErrorMessage(
+        '404 {"error":{"message":"Connected account \\"box_mcp\\" not found","code":606,"slug":"ConnectedAccount_ResourceNotFound","status":404}}',
+        fallback,
+      ),
+    ).toBe('Connected account "box_mcp" not found');
+  });
+  it("passes plain text through and falls back on garbage", () => {
+    expect(providerErrorMessage("provider unavailable", fallback)).toBe("provider unavailable");
+    expect(providerErrorMessage('400 {"oops', fallback)).toBe(fallback);
+    expect(providerErrorMessage("   ", fallback)).toBe(fallback);
+  });
+  it("userErrorMessage cleans a raw stored provider error", () => {
+    expect(userErrorMessage(new Error('400 {"error":{"message":"Not allowed here"}}'), copy)).toBe(
+      "Not allowed here",
+    );
   });
 });

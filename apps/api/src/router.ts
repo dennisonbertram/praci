@@ -309,7 +309,11 @@ import {
   resolveBusyBotName,
   toComputerStatus,
 } from "./computer-status.js";
-import { completeNativeOAuth, connectionError } from "./connection-oauth.js";
+import {
+  completeNativeOAuth,
+  connectionError,
+  connectionFailureMessage,
+} from "./connection-oauth.js";
 import { createDataRoomService } from "./data-room.js";
 import { ensureDataRoomAgent } from "./data-room-agent.js";
 import {
@@ -528,6 +532,15 @@ async function reconcilePendingConnections(
 }
 
 /** Serialize begin/revoke for one user+provider so slug-wide remote deletes cannot race a new connect. */
+
+/** A provider saying the remote account does not exist: it is already gone, so revoke is done. */
+function isRemoteAccountGone(error: unknown): boolean {
+  if (!error || typeof error !== "object") return false;
+  const status = error as { status?: unknown; statusCode?: unknown };
+  if (status.status === 404 || status.statusCode === 404) return true;
+  const message = error instanceof Error ? error.message : "";
+  return /^404\b|HTTP 404\b|ResourceNotFound/.test(message.trim());
+}
 
 function isAmbiguousRemoteRevokeFailure(error: unknown): boolean {
   if (!error || typeof error !== "object") return false;
@@ -5584,7 +5597,7 @@ export function createRouter(deps: RouterDeps) {
             },
             data: { status: "error" },
           });
-          throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
+          throw new ORPCError("BAD_REQUEST", { message: connectionFailureMessage(error) });
         }
       }),
       complete: authed.connections.complete.handler(async ({ context, input }) => {
@@ -5778,7 +5791,7 @@ export function createRouter(deps: RouterDeps) {
                 try {
                   await transactionConnector.complete({ state, code: input.code }, adapterContext);
                 } catch (error) {
-                  throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
+                  throw new ORPCError("BAD_REQUEST", { message: connectionFailureMessage(error) });
                 }
               }
               const ready = await transactionConnector.connectionReady(
@@ -6094,7 +6107,7 @@ export function createRouter(deps: RouterDeps) {
         });
         const needsProvider =
           snapshot &&
-          ["connected", "pending", "error"].includes(snapshot.status) &&
+          snapshot.status === "connected" &&
           (!snapshot.providerRef || snapshot.providerRef === snapshot.provider) &&
           (await deps.prisma.connection.count({
             where: {
@@ -6224,6 +6237,13 @@ export function createRouter(deps: RouterDeps) {
               // Slug-only remote delete is provider-wide. Run it before commit while
               // still holding the begin/revoke lock so a new authorization cannot be
               // created and then wiped by Pipedream's slug-scoped DELETE.
+              // A pending or failed row with no account id never created a remote account.
+              if (!accountSpecific && row.status !== "connected") {
+                return {
+                  remote: null as null | RemoteRevoke,
+                  previousStatus: null as string | null,
+                };
+              }
               if (!accountSpecific) {
                 if (
                   !needsProvider ||
@@ -6255,7 +6275,10 @@ export function createRouter(deps: RouterDeps) {
                   );
                 } catch (error) {
                   if (error instanceof ORPCError) throw error;
-                  throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
+                  if (!isRemoteAccountGone(error))
+                    throw new ORPCError("BAD_REQUEST", {
+                      message: connectionFailureMessage(error),
+                    });
                 }
                 return {
                   remote: null as null | RemoteRevoke,
@@ -6351,22 +6374,24 @@ export function createRouter(deps: RouterDeps) {
               { provider: outcome.remote.provider },
             );
           } catch (error) {
-            // Restore when DELETE clearly did not run (including pre-delete list
-            // timeouts). Post-delete timeouts stay ambiguous — leave revoked.
-            if (shouldRestoreLocalAfterRemoteRevokeFailure(error)) {
-              await restoreLocalStatus();
-            } else {
-              getLogger().error(
-                "connections.revoke remote outcome uncertain; leaving local revoked",
-                error,
-                {
-                  connectionId: input.connectionId,
-                  connectorId: outcome.remote.connectorId,
-                },
-              );
+            if (!isRemoteAccountGone(error)) {
+              // Restore when DELETE clearly did not run (including pre-delete list
+              // timeouts). Post-delete timeouts stay ambiguous — leave revoked.
+              if (shouldRestoreLocalAfterRemoteRevokeFailure(error)) {
+                await restoreLocalStatus();
+              } else {
+                getLogger().error(
+                  "connections.revoke remote outcome uncertain; leaving local revoked",
+                  error,
+                  {
+                    connectionId: input.connectionId,
+                    connectorId: outcome.remote.connectorId,
+                  },
+                );
+              }
+              if (error instanceof ORPCError) throw error;
+              throw new ORPCError("BAD_REQUEST", { message: connectionFailureMessage(error) });
             }
-            if (error instanceof ORPCError) throw error;
-            throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
           }
         }
         // The connection's own agent goes with it, archived after the revoke committed. The Inbox

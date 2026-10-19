@@ -1,6 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Connection } from "@rakazo/contracts";
-import { matchFeaturedConnectorId } from "@rakazo/core";
+import { matchFeaturedConnectorId, providerErrorMessage } from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -104,7 +104,7 @@ function AccountRow({
           ) : row.status === "connected" ? (
             <Trans>Connected {new Date(row.createdAt).toLocaleDateString()}</Trans>
           ) : row.status === "error" ? (
-            (row.error ?? t`Sign-in failed`)
+            providerErrorMessage(row.error ?? "", t`Sign-in failed`)
           ) : (
             <Trans>Waiting for sign-in</Trans>
           )}
