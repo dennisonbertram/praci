@@ -39,3 +39,10 @@ describe("PixelIcon", () => {
     }
   });
 });
+
+describe("PixelIcon movement", () => {
+  it("only sprites with a drive time get the mover; the flame flickers in place", () => {
+    expect(renderToString(<PixelIcon sprite={PIXEL_ICONS.fireTruck} />)).toContain("pixel-mover");
+    expect(renderToString(<FireIcon />)).not.toContain("pixel-mover");
+  });
+});

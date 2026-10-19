@@ -298,8 +298,7 @@
 }
 
 .pixel-flip {
-  transform-box: fill-box;
-  transform-origin: center;
+  transform-box: view-box;
   animation: pixel-flip calc(var(--drive-dur) * 2) linear infinite;
 }
 

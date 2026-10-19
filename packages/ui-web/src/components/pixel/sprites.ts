@@ -12,7 +12,7 @@ export type PixelSprite = {
   /** Time for one pass through all frames. */
   frameMs?: number;
   box?: { w: number; h: number };
-  /** Time to drive across the box once (box wider than the grid). */
+  /** Set to make the sprite drive back and forth across its box; otherwise it stays put. */
   driveMs?: number;
 };
 

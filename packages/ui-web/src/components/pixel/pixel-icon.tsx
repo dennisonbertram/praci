@@ -19,13 +19,13 @@ export function PixelIcon({ sprite, size = 16, label, animate = true, className 
   const box = sprite.box ?? { w, h };
   const scale = Math.max(1, Math.floor(size / box.h));
   const travel = box.w - w;
-  const x = travel > 0 ? 0 : Math.floor(travel / 2);
+  const x = sprite.driveMs !== undefined ? 0 : Math.floor(travel / 2);
   const y = box.h - h;
   const n = sprite.frames.length;
   const frameMs = sprite.frameMs ?? 500;
-  const driveMs = sprite.driveMs ?? 2000;
   const run = animate && n > 1;
-  const drive = animate && travel > 0;
+  const driveMs = sprite.driveMs;
+  const drive = animate && driveMs !== undefined && travel > 0;
 
   const sprites = (
     <svg x={x} y={y} width={w} height={h} viewBox={`0 0 ${w} ${h}`} overflow="hidden">
@@ -36,7 +36,6 @@ export function PixelIcon({ sprite, size = 16, label, animate = true, className 
         }
       >
         {sprite.frames.map((frame, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: frames are static and ordered
           <g key={i} transform={`translate(${i * w} 0)`}>
             {frame.flatMap((row, py) =>
               [...row].map((c, px) =>
@@ -80,7 +79,9 @@ export function PixelIcon({ sprite, size = 16, label, animate = true, className 
             } as CSSProperties
           }
         >
-          <g className="pixel-flip">{sprites}</g>
+          <g className="pixel-flip" style={{ transformOrigin: `${x + w / 2}px 0` }}>
+            {sprites}
+          </g>
         </g>
       ) : (
         sprites
