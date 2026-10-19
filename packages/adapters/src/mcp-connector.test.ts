@@ -1735,6 +1735,30 @@ describe("MCP connector integration agents", () => {
     }
   });
 
+  it("refuses the call when the session was replaced after the tools were listed", async () => {
+    const { connector, state, call } = await setup("agent-1", agentBot, { writesEnabled: true });
+    const inner = connector as never as {
+      sessionFor: (...a: unknown[]) => Promise<unknown>;
+      sessions: Map<string, unknown>;
+    };
+    const real = inner.sessionFor.bind(connector);
+    let sessions = 0;
+    // A rotated secret under the same id evicts the session; the next one is a different session,
+    // and on it the tool is a write.
+    inner.sessionFor = async (...args) => {
+      if (++sessions === 2) {
+        inner.sessions.clear();
+        state.tools = state.tools.map((tool) => ({ ...tool, annotations: undefined }));
+      }
+      return real(...args);
+    };
+    expect(await call("annotatedRead", true)).toMatchObject([
+      { type: "error", message: expect.stringContaining("changed while") },
+    ]);
+    expect(state.calls).toEqual([]);
+    await connector.close();
+  });
+
   it("denies an integration agent every tool of an unrelated server without an agent", async () => {
     const { connector, state, call, names } = await setup(
       "agent-9",
