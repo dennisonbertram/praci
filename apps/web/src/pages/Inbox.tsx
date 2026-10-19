@@ -163,6 +163,8 @@ export function InboxPage({
   const [synced, setSynced] = useState(false);
   // "Try again" is busy until its sync answers, so the click visibly does something.
   const [retrying, setRetrying] = useState(false);
+  // A retry was made since the notice appeared; if the notice is back, it says so.
+  const [retried, setRetried] = useState(false);
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
@@ -382,7 +384,12 @@ export function InboxPage({
     [groups],
   );
   const accounts = data?.accounts ?? [];
-  const failed = error || (shown ? syncErrorText(shown) : "");
+  const failed = error || (shown ? syncErrorText(shown, retried && !retrying) : "");
+  const limited =
+    !error && Boolean(shown?.rateLimitedAccounts?.length) && !shown?.reconnectAccounts.length;
+  useEffect(() => {
+    if (!failed) setRetried(false);
+  }, [failed]);
   const todos = todosByTab[tabKey];
   // A lapsed sign-in is fixed by signing in again; trying again would fail the same way.
   const reconnect = !error && Boolean(shown?.reconnectAccounts.length);
@@ -390,6 +397,8 @@ export function InboxPage({
   const failedEmpty =
     Boolean(failed) && (!shown || rows.length === 0) && !(data && accounts.length === 0);
   const retry = () => {
+    if (retrying) return;
+    setRetried(true);
     setError("");
     setRetrying(true);
     setAttempt((n) => n + 1);
@@ -632,7 +641,7 @@ export function InboxPage({
       variant={fixVariant}
       size={failedEmpty ? "default" : "sm"}
       onClick={retry}
-      disabled={retrying}
+      aria-disabled={retrying}
       aria-busy={retrying}
       className="relative"
     >
@@ -878,7 +887,10 @@ export function InboxPage({
       ) : null}
 
       {failed && !failedEmpty ? (
-        <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
+        <div
+          role="alert"
+          className={`mb-4 flex items-center gap-3 text-sm ${limited ? "text-warning" : "text-destructive"}`}
+        >
           <span>{failed}</span>
           {fixButton}
         </div>
@@ -895,7 +907,7 @@ export function InboxPage({
             )
           }
           description={
-            <span role="alert">
+            <span role="alert" className={limited ? "text-warning" : undefined}>
               {reconnect ? (
                 <Trans>Gmail signed this account out. Sign in again to see your mail here.</Trans>
               ) : (
