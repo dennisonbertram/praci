@@ -14,7 +14,7 @@ const imageUrl = vi.hoisted(() => vi.fn());
 const openItem = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/data-room", async (original) => ({
   ...(await original<typeof import("../../lib/data-room")>()),
-  dataRoomImageUrl: imageUrl,
+  dataRoomFileUrl: imageUrl,
   openDataRoomItem: openItem,
 }));
 
@@ -178,4 +178,76 @@ it("says a file still being read can be left to finish", async () => {
     );
   });
   expect(container.textContent).toContain("You can keep working while it finishes.");
+});
+
+const show = (item: DataRoomApiItem) =>
+  act(async () => {
+    root.render(
+      <Preview item={item} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
+    );
+  });
+
+it("frames a PDF with the browser viewer, and hides it while amounts are hidden", async () => {
+  const pdf = { ...receipt, name: "nda.pdf", mimeType: "application/pdf" };
+  await show(pdf);
+  expect(imageUrl).toHaveBeenCalledWith({ id: "r1", mimeType: "application/pdf" });
+  expect(container.querySelector("iframe")?.getAttribute("src")).toBe("blob:receipt");
+  await act(async () => setHideAmounts(true));
+  expect(container.querySelector("iframe")).toBeNull();
+});
+
+it("shows a skeleton while loading, and the file icon for other types or a failed read", async () => {
+  imageUrl.mockReturnValue(new Promise(() => undefined));
+  await show(receipt);
+  expect(container.querySelector("[data-testid=preview-skeleton]")).not.toBeNull();
+  imageUrl.mockRejectedValue(new Error("nope"));
+  await show({ ...receipt, id: "r2" });
+  expect(container.querySelector("img, iframe")).toBeNull();
+  expect(container.querySelector("[data-testid=preview-skeleton]")).toBeNull();
+  imageUrl.mockClear();
+  await show({ ...receipt, id: "r3", mimeType: "text/csv" });
+  expect(imageUrl).not.toHaveBeenCalled();
+  expect(container.querySelector("img, iframe, [data-testid=preview-skeleton]")).toBeNull();
+});
+
+it("truncates a long party at the end and shows it whole on hover", async () => {
+  const name = "The Guardian Life Insurance Company of America";
+  await show({ ...receipt, facets: { ...receipt.facets, parties: [name] } });
+  const chip = container.querySelector(`[title="${name}"]`);
+  expect(chip?.querySelector(".truncate")?.textContent).toBe(name);
+});
+
+it("resizes from its left edge by keyboard and drag, within limits, and remembers the width", async () => {
+  localStorage.clear();
+  window.innerWidth = 1000;
+  await show(receipt);
+  const handle = () => container.querySelector("hr[aria-label='Resize panel']") as HTMLElement;
+  const width = () => (container.querySelector("aside") as HTMLElement).style.width;
+  expect(width()).toBe("360px");
+  const key = (name: string) =>
+    act(async () => {
+      handle().dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true }));
+    });
+  await key("ArrowLeft");
+  expect(width()).toBe("392px");
+  await key("Home");
+  expect(width()).toBe("320px");
+  await key("End");
+  expect(width()).toBe("600px");
+  expect(localStorage.getItem("rakazo:data-room-preview-width")).toBe("600");
+  // Dragging left grows the pane.
+  handle().setPointerCapture = () => undefined;
+  await key("Home");
+  await act(async () => {
+    handle().dispatchEvent(new MouseEvent("pointerdown", { clientX: 700, bubbles: true }));
+  });
+  await act(async () => {
+    handle().dispatchEvent(new MouseEvent("pointermove", { clientX: 600, bubbles: true }));
+  });
+  expect(width()).toBe("420px");
+  // A fresh mount reads the saved width.
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  await show(receipt);
+  expect(width()).toBe("420px");
 });
