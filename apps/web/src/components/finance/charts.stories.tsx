@@ -1,13 +1,13 @@
 import type { CashPoint } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { BurnBars, Chart, LineChart, MonthBars, StackBar } from "./charts";
+import { BurnLines, Chart, LineChart, MonthBars, StackBar } from "./charts";
 
 const meta = {
   title: "Finance/Charts",
   parameters: {
     docs: {
       description: {
-        component: "Also shows: Grid (axis lines inside LineChart, BurnBars, MonthBars)",
+        component: "Also shows: Grid (axis lines inside LineChart, BurnLines, MonthBars)",
       },
     },
   },
@@ -75,26 +75,31 @@ export const LineEmpty: Story = {
 };
 
 export const Burn: Story = {
-  render: () => <BurnBars series={burn} label="Cash out by month" onOpen={() => undefined} />,
+  render: () => <BurnLines series={burn} label="Cash out by month" onOpen={() => undefined} />,
 };
 
 export const BurnEmpty: Story = {
-  render: () => <BurnBars series={[]} label="Cash out by month" onOpen={() => undefined} />,
+  render: () => <BurnLines series={[]} label="Cash out by month" onOpen={() => undefined} />,
 };
+
+const dayCents = [
+  12_000, 8_500, 0, 21_000, 6_000, 14_500, 9_000, 18_000, 7_500, 700_000, 11_000, 5_000, 16_500,
+  9_500, 0, 13_000, 8_000, 22_000, 6_500,
+];
 
 export const BurnDays: Story = {
   render: () => (
-    <BurnBars
+    <BurnLines
       granularity="day"
       label="Cash out by day"
       onOpen={() => undefined}
-      series={Array.from({ length: 7 }, (_, i) => ({
-        start: `2026-06-0${i + 1}`,
-        end: `2026-06-0${i + 1}`,
-        outCents: 20_000 + i * 15_000,
-        revenueCents: 0,
-        financingCents: 0,
-        partial: i === 6,
+      series={dayCents.map((outCents, i) => ({
+        start: `2026-10-${String(i + 1).padStart(2, "0")}`,
+        end: `2026-10-${String(i + 1).padStart(2, "0")}`,
+        outCents,
+        revenueCents: i === 4 || i === 12 ? 40_000 : 0,
+        financingCents: i === 6 ? 300_000 : 0,
+        partial: i === dayCents.length - 1,
       }))}
     />
   ),
@@ -102,7 +107,7 @@ export const BurnDays: Story = {
 
 export const BurnWeeks: Story = {
   render: () => (
-    <BurnBars
+    <BurnLines
       granularity="week"
       label="Cash out by week"
       onOpen={() => undefined}

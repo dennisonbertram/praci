@@ -160,7 +160,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | Option, AddAccountDialog | [apps/web/src/components/finance/AddAccountDialog.tsx](../../apps/web/src/components/finance/AddAccountDialog.tsx) | [AddAccountDialog.stories.tsx](../../apps/web/src/components/finance/AddAccountDialog.stories.tsx) | web |
-| Chart, Grid, LineChart, BurnBars, MonthBars, StackBar | [apps/web/src/components/finance/charts.tsx](../../apps/web/src/components/finance/charts.tsx) | [charts.stories.tsx](../../apps/web/src/components/finance/charts.stories.tsx) | web |
+| Chart, Grid, LineChart, BurnLines, MonthBars, StackBar | [apps/web/src/components/finance/charts.tsx](../../apps/web/src/components/finance/charts.tsx) | [charts.stories.tsx](../../apps/web/src/components/finance/charts.stories.tsx) | web |
 | CountCryptoButton | [apps/web/src/components/finance/CountCryptoButton.tsx](../../apps/web/src/components/finance/CountCryptoButton.tsx) | [CountCryptoButton.stories.tsx](../../apps/web/src/components/finance/CountCryptoButton.stories.tsx) | web |
 | ExchangeGroup | [apps/web/src/components/finance/ExchangeGroup.tsx](../../apps/web/src/components/finance/ExchangeGroup.tsx) | [ExchangeGroup.stories.tsx](../../apps/web/src/components/finance/ExchangeGroup.stories.tsx) | web |
 | RenameAccountDialog | [apps/web/src/components/finance/RenameAccountDialog.tsx](../../apps/web/src/components/finance/RenameAccountDialog.tsx) | [RenameAccountDialog.stories.tsx](../../apps/web/src/components/finance/RenameAccountDialog.stories.tsx) | web |
