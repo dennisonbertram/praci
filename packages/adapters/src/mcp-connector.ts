@@ -535,12 +535,28 @@ export class McpConnector implements ConnectorProvider {
     context: AdapterContext,
     toolName: string,
     args: Record<string, unknown>,
+    options: {
+      /**
+       * Runs after the session is ready and immediately before the call, with nothing awaited in
+       * between. A throw refuses the call. Callers that authorize outside the approval flow use
+       * it to re-read their authorization once setup is done.
+       */
+      beforeCall?: () => Promise<void>;
+    } = {},
   ): Promise<CallToolResult> {
     const sessionKey = this.sessionKey(server, context);
     let material: OAuthMaterial | undefined;
+    let session: McpSession;
     try {
-      const session = await this.sessionFor(server, context);
+      session = await this.sessionFor(server, context);
       material = this.sessions.get(sessionKey)?.material;
+    } catch (error) {
+      const secrets = material ? oauthMaterialSecrets(material) : [];
+      await this.evict(sessionKey);
+      throw new Error(sanitizeConnectorError(error, secrets));
+    }
+    await options.beforeCall?.();
+    try {
       return await session.callTool(toolName, args, { signal: context.signal });
     } catch (error) {
       const secrets = material ? oauthMaterialSecrets(material) : [];
@@ -549,12 +565,22 @@ export class McpConnector implements ConnectorProvider {
     }
   }
 
-  /** Lists a stored server's tools, with their annotations, outside a bot run. */
-  async listServerTools(server: McpServer, context: AdapterContext): Promise<Tool[]> {
+  /**
+   * Lists a stored server's tools, with their annotations, outside a bot run. The listing is
+   * cached for a short time; pass `fresh` when the answer authorizes a call.
+   */
+  async listServerTools(
+    server: McpServer,
+    context: AdapterContext,
+    options: { fresh?: boolean } = {},
+  ): Promise<Tool[]> {
     const sessionKey = this.sessionKey(server, context);
     try {
       const session = await this.sessionFor(server, context);
-      return structuredClone((await this.cachedTools(session, context.signal)).tools);
+      const listed = options.fresh
+        ? await session.listTools({ signal: context.signal })
+        : await this.cachedTools(session, context.signal);
+      return structuredClone(listed.tools);
     } catch (error) {
       await this.evict(sessionKey);
       throw new Error(sanitizeConnectorError(error));

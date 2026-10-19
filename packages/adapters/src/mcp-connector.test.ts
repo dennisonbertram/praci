@@ -1519,6 +1519,28 @@ describe("MCP connector integration agents", () => {
     }
   });
 
+  it("lists fresh metadata on request while the cached listing is still valid", async () => {
+    const { connector, state, assignment } = await setup("agent-1", agentBot, {});
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId: "agent-1",
+      signal: new AbortController().signal,
+    } as never;
+    try {
+      const names = async (fresh?: boolean) =>
+        (await connector.listServerTools(assignment.server as never, context, { fresh })).map(
+          (tool) => tool.name,
+        );
+      expect(await names()).toContain("annotatedRead");
+      state.tools = TOOLS.filter((tool) => tool.name !== "annotatedRead");
+      expect(await names()).toContain("annotatedRead");
+      expect(await names(true)).not.toContain("annotatedRead");
+    } finally {
+      await connector.close();
+    }
+  });
+
   it("denies a non-agent bot everything on an exclusive server, with the ask-the-agent message", async () => {
     const { connector, state, call, names } = await setup(
       "other",

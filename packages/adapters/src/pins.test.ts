@@ -59,6 +59,8 @@ const src = (tool = "get_balance", over: Row = {}) => ({
 function fakeWorld(opts: {
   assignment?: { allowAllTools: boolean; allowedTools: string[] } | null;
   tools?: { name: string; annotations?: Row }[];
+  /** What the server lists now; a cached listing (`tools`) answers unless the caller asks for fresh. */
+  liveTools?: { name: string; annotations?: Row }[];
   stats?: Row[];
   /** The bot is the integration agent of the server, whose writes are off. */
   agent?: boolean;
@@ -121,8 +123,12 @@ function fakeWorld(opts: {
     append: vi.fn(async () => ({}) as never),
     sendUserMessage: vi.fn(async () => ({ messageId: "m", seq: 1, taskId: null, runId: null })),
   };
+  let live = opts.liveTools;
   const mcp = {
-    listServerTools: vi.fn(async () => (opts.tools ?? [{ name: "get_balance" }]) as never),
+    listServerTools: vi.fn(
+      async (_server: unknown, _context: unknown, options?: { fresh?: boolean }) =>
+        ((options?.fresh ? live : undefined) ?? opts.tools ?? [{ name: "get_balance" }]) as never,
+    ),
     callServerTool: vi.fn(),
   };
   return {
@@ -133,6 +139,7 @@ function fakeWorld(opts: {
     stored: () => row,
     setStats: (stats: Row[]) => (row = { ...row, stats, revision: (row.revision as number) + 1 }),
     disable: () => (enabled = false),
+    setLive: (tools: typeof live) => (live = tools),
   };
 }
 const save = (w: ReturnType<typeof fakeWorld>, source: ReturnType<typeof src>) =>
@@ -194,6 +201,46 @@ describe("pins never reach an agent write", () => {
     const result = await refreshBotPins(w, scope);
     expect(w.mcp.callServerTool).not.toHaveBeenCalled();
     expect(result?.pins.stats[0]).toMatchObject({ error: expect.any(String) });
+  });
+});
+
+describe("a refresh cannot outrun a tool that became a write", () => {
+  const stats = [{ id: "a", label: "A", value: "1", source: src() }];
+  const asRead = [{ name: "get_balance", annotations: { readOnlyHint: true } }];
+  const asWrite = [{ name: "get_balance", annotations: { readOnlyHint: false } }];
+
+  it("judges the tool on fresh metadata, not the cached listing", async () => {
+    const w = fakeWorld({ stats, tools: asRead, liveTools: asWrite });
+    const result = await refreshBotPins(w, scope);
+    expect(w.mcp.callServerTool).not.toHaveBeenCalled();
+    expect(result?.pins.stats[0]).toMatchObject({
+      error: expect.stringContaining("not read-only"),
+    });
+  });
+
+  it.each([
+    ["the assignment is removed", (w: ReturnType<typeof fakeWorld>) => w.disable()],
+    ["the tool becomes a write", (w: ReturnType<typeof fakeWorld>) => w.setLive(asWrite)],
+  ])("dispatches nothing when %s while the call is being set up", async (_label, change) => {
+    const w = fakeWorld({ stats, tools: asRead, liveTools: asRead });
+    const dispatched = vi.fn();
+    w.mcp.callServerTool.mockImplementation(
+      async (
+        _server: unknown,
+        _context: unknown,
+        _tool: string,
+        _args: unknown,
+        options?: { beforeCall?: () => Promise<void> },
+      ) => {
+        change(w);
+        await options?.beforeCall?.();
+        dispatched();
+        return { content: [{ type: "text", text: JSON.stringify({ balance: 5 }) }] };
+      },
+    );
+    const result = await refreshBotPins(w, scope);
+    expect(dispatched).not.toHaveBeenCalled();
+    expect(result?.pins.stats[0]).toMatchObject({ value: "1", error: expect.any(String) });
   });
 });
 

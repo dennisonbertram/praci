@@ -166,30 +166,40 @@ function pinContext(scope: PinsScope): AdapterContext {
  */
 async function checkSource(deps: PinsDeps, scope: PinsScope, source: PinSource) {
   const { prisma } = deps;
-  const assignment = await prisma.botMcpServer.findFirst({
-    where: {
-      botId: scope.botId,
-      serverId: source.serverId,
-      spaceId: scope.spaceId,
-      userId: scope.userId,
-      server: { enabled: true, spaceId: scope.spaceId, userId: scope.userId },
-    },
-    include: {
-      server: {
-        include: {
-          agentBot: {
-            select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+  const loadAssignment = () =>
+    prisma.botMcpServer.findFirst({
+      where: {
+        botId: scope.botId,
+        serverId: source.serverId,
+        spaceId: scope.spaceId,
+        userId: scope.userId,
+        server: { enabled: true, spaceId: scope.spaceId, userId: scope.userId },
+      },
+      include: {
+        server: {
+          include: {
+            agentBot: {
+              select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+            },
           },
         },
+        bot: {
+          select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+        },
       },
-      bot: {
-        select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
-      },
-    },
-  });
+    });
+  let assignment = await loadAssignment();
   if (!assignment) throw new Error(`MCP tool ${source.tool} is not assigned to this bot`);
   if (!deps.mcp) throw new Error("MCP is not available");
-  const tools = await deps.mcp.listServerTools(assignment.server, pinContext(scope));
+  // Fresh, not cached: refresh calls the tool outside the approval flow, so a tool that has turned
+  // into a write since the last listing must not pass on old annotations.
+  const tools = await deps.mcp.listServerTools(assignment.server, pinContext(scope), {
+    fresh: true,
+  });
+  // The listing took time: authorize on the row as it is now.
+  const current = await loadAssignment();
+  if (!current) throw new Error(`MCP tool ${source.tool} is not assigned to this bot`);
+  assignment = current;
   const meta = tools.find((tool) => tool.name === source.tool);
   // The gate needs the tool's annotations (an integration agent's reads) and the bot's owner.
   if (!assignmentAllowsTool(assignment, source.tool, meta?.annotations)) {
@@ -395,7 +405,12 @@ async function readSource(
       signal.addEventListener("abort", () => reject(new Error("Timed out")), { once: true }),
     );
     const result: CallToolResult = await Promise.race([
-      deps.mcp.callServerTool(server, context, source.tool, source.args),
+      // The server's session setup awaits; check again once it is done, right before the call.
+      deps.mcp.callServerTool(server, context, source.tool, source.args, {
+        beforeCall: async () => {
+          await checkSource(deps, scope, source);
+        },
+      }),
       timedOut,
     ]);
     return {
