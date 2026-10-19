@@ -5,6 +5,7 @@ import type { ThreadMessage } from "@rakazo/contracts";
 import { commandVariableName } from "@rakazo/contracts";
 import { isApprovalAskBlock, isSecretAskBlock, selectedAskActionLabel } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
+import { Check, X } from "lucide-react";
 import { useState } from "react";
 import { errorText } from "../lib/user-error";
 
@@ -26,6 +27,21 @@ function formatAnsweredState(
   if (answer === "always") return t`Always allowed`;
   if (answer === "deny") return t`Denied`;
   return t`Answered: ${answer}`;
+}
+
+/** Success green is for completed actions; an approval answer only records the choice. */
+function answeredTone(
+  answer: string | undefined,
+  approval: boolean,
+  secret: boolean,
+  outcome?: "created" | "cancelled",
+): { className: string; Icon?: typeof Check } {
+  if (secret || outcome === "created") return { className: "text-success" };
+  if (!approval || outcome === "cancelled") return { className: "text-muted-foreground" };
+  if (answer === "deny") return { className: "text-destructive", Icon: X };
+  if (answer === "allow" || answer === "always")
+    return { className: "text-foreground", Icon: Check };
+  return { className: "text-muted-foreground" };
 }
 
 function approvalActionLabel(
@@ -119,17 +135,29 @@ export function AskCard({
         </pre>
       ) : null}
       {block.status === "answered" ? (
-        <div
-          className={`mt-3.5 text-[13.5px] font-medium ${block.answer === "deny" ? "text-destructive" : "text-success"}`}
-        >
-          {formatAnsweredState(
+        (() => {
+          const outcome = approvalActions?.find((action) => action.id === block.answer)?.outcome;
+          const { className, Icon } = answeredTone(
             block.answer,
             Boolean(approvalActions),
             secretInput,
-            approvalActions?.find((action) => action.id === block.answer)?.outcome,
-            askActions,
-          )}
-        </div>
+            outcome,
+          );
+          return (
+            <div
+              className={`mt-3.5 flex items-center gap-1.5 text-[13.5px] font-medium ${className}`}
+            >
+              {Icon ? <Icon aria-hidden className="size-4" /> : null}
+              {formatAnsweredState(
+                block.answer,
+                Boolean(approvalActions),
+                secretInput,
+                outcome,
+                askActions,
+              )}
+            </div>
+          );
+        })()
       ) : !canAnswer ? (
         <div className="mt-3.5 text-[13.5px] font-medium text-muted-foreground">
           <Trans>No longer active</Trans>

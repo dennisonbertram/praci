@@ -93,6 +93,11 @@ it("asks before turning Carta changes on, then saves", async () => {
   expect(document.body.textContent).toContain(
     "The Carta agent will be able to change your Carta data. It asks before each change.",
   );
+  const grant = [...document.querySelectorAll("button")].find(
+    (b) => b.textContent === "Allow changes",
+  );
+  expect(grant?.className).toContain("bg-primary");
+  expect(grant?.className).not.toContain("text-destructive");
   await press("Allow changes");
   expect(setWrites).toHaveBeenCalledWith({ id: "s1", enabled: true });
   expect(refresh).toHaveBeenCalled();
