@@ -414,6 +414,10 @@ msgstr "{name} isn't available on this server."
 msgid "{name}, paid with {paidWith}"
 msgstr "{name}, paid with {paidWith}"
 
+#: src/pages/Shell.tsx
+msgid "{newCount, plural, one {# new message} other {# new messages}}"
+msgstr "{newCount, plural, one {# new message} other {# new messages}}"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
 msgstr "{pct} yield"
@@ -5303,6 +5307,10 @@ msgstr "Never changes your account"
 #: src/components/sidebar-glance.tsx
 msgid "new"
 msgstr "new"
+
+#: src/pages/Shell.tsx
+msgid "New"
+msgstr "New"
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "New account"

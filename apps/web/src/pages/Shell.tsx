@@ -38,6 +38,7 @@ import {
   buildComposerMentionOptions,
   cronFromPreset,
   DEFAULT_BOT_COLOR,
+  firstUnreadMessageId,
   formatMessageTime,
   groupVoiceChats,
   inferAttachmentMimeType,
@@ -45,12 +46,16 @@ import {
   isApprovalAskBlock,
   isPeerReceiptBlocks,
   isRunTerminalEvent,
+  isStoredMessage,
   isToolActivityBlock,
+  lastReadMessageId,
+  laterMessageId,
   latestAnswerableAskMessageId,
   matchesArtifactQuery,
   mentionChipKey,
   nestRosterByParent,
   newClientId,
+  newMessagesAfter,
   plainTextFromMarkdown,
   projectMessageReactions,
   rankMentionOptions,
@@ -66,6 +71,7 @@ import {
   timeSeparatorIds,
   toolPhrase,
   truncateSlashDescription,
+  userRepliedAfter,
   userVisibleMessages,
   withLiveStreamingProgress,
 } from "@rakazo/core";
@@ -314,6 +320,7 @@ import {
   threadRunError,
   userHoldsComputerControl,
 } from "../lib/thread-events";
+import { threadReadInput } from "../lib/thread-read";
 import { getToolActivityEnabled, subscribeToolActivity } from "../lib/tool-activity-preference";
 import {
   isToolOnlyNarration,
@@ -331,7 +338,7 @@ import {
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
 import { type RememberControls, useRememberedMessages } from "../lib/use-remembered-messages";
-import { useSidebarGlance } from "../lib/use-sidebar-glance";
+import { useAttended, useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import type { WorkingActivity } from "../lib/working-activity";
 import { type ToolAction, workingActivity } from "../lib/working-activity";
@@ -980,7 +987,6 @@ export function ShellPage() {
     olderCursor: number | null;
   } | null>(null);
   const manuallyUnread = useRef(new Set<string>());
-  const readVisibleGroups = useRef(new Set<string>());
   const computerVisible = useRef(false);
   computerVisible.current = panel === "computer" || computerOpen;
   const autoSpoken = useRef<string | null>(null);
@@ -1109,17 +1115,6 @@ export function ShellPage() {
       updateBotUnread(id, true);
     },
     [updateBotUnread],
-  );
-  // A bot the user marked unread by hand stays unread until they open it again,
-  // otherwise the auto-read below would undo the action on the next window focus.
-  const markBotReadIfVisible = useCallback(
-    (id: string) => {
-      if (manuallyUnread.current.has(id)) return;
-      if (document.visibilityState === "visible" && document.hasFocus()) {
-        void markBotRead(id).catch(() => undefined);
-      }
-    },
-    [markBotRead],
   );
 
   const refreshBots = useCallback(
@@ -1544,17 +1539,7 @@ export function ShellPage() {
     if (!active) return;
     // Opening a bot clears the manual unread flag so it can auto-read again.
     manuallyUnread.current.delete(active.id);
-    const markVisibleBotRead = () => {
-      markBotReadIfVisible(active.id);
-    };
-    markVisibleBotRead();
-    window.addEventListener("focus", markVisibleBotRead);
-    document.addEventListener("visibilitychange", markVisibleBotRead);
-    return () => {
-      window.removeEventListener("focus", markVisibleBotRead);
-      document.removeEventListener("visibilitychange", markVisibleBotRead);
-    };
-  }, [active?.id, markBotReadIfVisible]);
+  }, [active?.id]);
 
   useEffect(() => {
     if (!active) return;
@@ -1635,7 +1620,6 @@ export function ShellPage() {
           if (blocks.some((block) => block.kind === "child_bot")) {
             void refreshBots().catch(() => undefined);
           }
-          if (event.payload.role === "bot") markBotReadIfVisible(active.id);
         }
         if (
           isRunTerminalEvent(event) ||
@@ -1652,7 +1636,7 @@ export function ShellPage() {
     return () => {
       abort.abort();
     };
-  }, [active?.id, markBotReadIfVisible]);
+  }, [active?.id]);
 
   useEffect(() => {
     setPageBotId(null);
@@ -1672,33 +1656,6 @@ export function ShellPage() {
   useEffect(() => {
     if (!groupId || !activeGroup) return;
     manuallyUnread.current.delete(activeGroup.id);
-    readVisibleGroups.current.delete(groupId);
-    const markVisibleGroupRead = () => {
-      if (
-        document.visibilityState !== "visible" ||
-        !document.hasFocus() ||
-        readVisibleGroups.current.has(groupId)
-      )
-        return;
-      readVisibleGroups.current.add(groupId);
-      void rpc.threads
-        .markRead({ groupId })
-        .then(() => {
-          setGroups((current) => {
-            const group = current.find((candidate) => candidate.id === groupId);
-            if (!group?.unread) return current;
-            return current.map((candidate) =>
-              candidate.id === groupId ? { ...candidate, unread: false } : candidate,
-            );
-          });
-        })
-        .catch(() => {
-          readVisibleGroups.current.delete(groupId);
-        });
-    };
-    markVisibleGroupRead();
-    window.addEventListener("focus", markVisibleGroupRead);
-    document.addEventListener("visibilitychange", markVisibleGroupRead);
     const pendingJump = searchParamsRef.current.get("m");
     if (!pendingJump) {
       pinnedAroundRef.current = null;
@@ -1728,10 +1685,6 @@ export function ShellPage() {
           computerRef,
         ),
       onEvent: (event, initial) => {
-        if (event.type === "thread.message.created" && event.payload.role === "bot") {
-          readVisibleGroups.current.delete(groupId);
-          markVisibleGroupRead();
-        }
         if (
           event.type === "run.started" ||
           event.type === "bot.updated" ||
@@ -1746,8 +1699,6 @@ export function ShellPage() {
       },
     });
     return () => {
-      window.removeEventListener("focus", markVisibleGroupRead);
-      document.removeEventListener("visibilitychange", markVisibleGroupRead);
       abort.abort();
     };
   }, [activeGroup?.id, groupId]);
@@ -2090,6 +2041,30 @@ export function ShellPage() {
     : snapshot?.botId === active?.id
       ? snapshot
       : null;
+  // The transcript reports the last message the reader saw. Rows built from live events carry
+  // event seqs, so the boundary is named by message id and resolved on the server.
+  const readThreadUpTo = (messageId: string, toEnd: boolean) => {
+    const id = inGroup ? groupId : active?.id;
+    if (!id) return;
+    const input = threadReadInput({
+      target: inGroup ? { groupId: id } : { botId: id },
+      pinned: pinnedAroundRef.current != null,
+      manuallyUnread: manuallyUnread.current.has(id),
+      messageId,
+      toEnd,
+    });
+    if (!input) return;
+    return rpc.threads.markRead(input).then(() => {
+      if (!toEnd) return;
+      if (!inGroup) {
+        updateBotUnread(id, false);
+        return;
+      }
+      setGroups((current) =>
+        current.map((group) => (group.id === id ? { ...group, unread: false } : group)),
+      );
+    });
+  };
   const sentHistory = useMemo(
     () =>
       (activeSnapshot?.messages ?? [])
@@ -3436,6 +3411,8 @@ export function ShellPage() {
                 speakingMessageId={speakingMessageId}
                 onSpeak={speakMessage}
                 onOpenComputer={onOpenComputer}
+                lastReadSeq={activeSnapshot?.lastReadSeq}
+                onRead={readThreadUpTo}
               />
             )}
           </BotToolControlsContext.Provider>
@@ -6027,6 +6004,20 @@ export function ShellPage() {
   );
 }
 
+/** A thin line in the bot's accent (neutral without one) marking where unread messages start. */
+export function UnreadDivider() {
+  return (
+    <div
+      data-unread-divider=""
+      data-testid="unread-divider"
+      className="flex items-center gap-2 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground in-data-bot-accent:text-bot-accent"
+    >
+      <span aria-hidden="true" className="h-px flex-1 bg-border in-data-bot-accent:bg-bot-accent" />
+      <Trans>New</Trans>
+    </div>
+  );
+}
+
 export const Transcript = memo(function Transcript({
   scrollRef,
   sentHere,
@@ -6062,6 +6053,8 @@ export const Transcript = memo(function Transcript({
   speakingMessageId,
   onSpeak,
   onOpenComputer,
+  lastReadSeq,
+  onRead,
 }: {
   scrollRef: RefObject<HTMLDivElement | null>;
   /** Set by the composer while its own message is on the way in. */
@@ -6105,6 +6098,10 @@ export const Transcript = memo(function Transcript({
   speakingMessageId: string | null;
   onSpeak: (message: ThreadMessage) => void;
   onOpenComputer: (botId?: string) => void;
+  /** The reader's read boundary when the thread opened; the "New" divider and pill count start there. */
+  lastReadSeq?: number;
+  /** Called, debounced, once the reader is attending to messages up to `upTo`; `toEnd` when at the latest. */
+  onRead?: (messageId: string, toEnd: boolean) => Promise<void> | void;
 }) {
   const { t } = useLingui();
   const [atEnd, setAtEnd] = useState(true);
@@ -6123,6 +6120,37 @@ export const Transcript = memo(function Transcript({
       messageHasVisibleBlocks(message.blocks, showToolActivity),
     ),
   );
+  // The divider is placed once, when the thread opens, and stays put while the reader reads on.
+  const readable = useMemo(() => messages.filter(isStoredMessage), [messages]);
+  const countable = useMemo(
+    () => readable.filter((message) => messageHasVisibleBlocks(message.blocks, showToolActivity)),
+    [readable, showToolActivity],
+  );
+  const [openedLastReadSeq] = useState(lastReadSeq);
+  const [dividerId] = useState(() => firstUnreadMessageId(countable, openedLastReadSeq));
+  // Live rows carry event seqs, so everything after open is compared by id and list order.
+  const [openedLatestId] = useState(() => countable.at(-1)?.id ?? null);
+  const showDividerId =
+    dividerId && messageById.has(dividerId) && !userRepliedAfter(messages, openedLatestId)
+      ? dividerId
+      : null;
+  const attended = useAttended();
+  const latestId = readable.at(-1)?.id ?? null;
+  const latestIdRef = useRef(latestId);
+  latestIdRef.current = latestId;
+  // The newest message the reader has had in view, and the newest already reported as read.
+  const [seenId, setSeenId] = useState(() => lastReadMessageId(readable, openedLastReadSeq));
+  const [viewId, setViewId] = useState<string | null>(null);
+  const reportedId = useRef<string | null>(null);
+  const onReadRef = useRef(onRead);
+  onReadRef.current = onRead;
+  const [dismissedCount, setDismissedCount] = useState(0);
+  const newCount = atEnd
+    ? 0
+    : newMessagesAfter(readable, seenId, (message) =>
+        messageHasVisibleBlocks(message.blocks, showToolActivity),
+      );
+  const showNewCount = newCount > dismissedCount;
   const workingBotName = workingBots.length === 1 ? workingBots[0]?.name : undefined;
   const workingLabel =
     activity?.kind === "starting"
@@ -6386,6 +6414,73 @@ export const Transcript = memo(function Transcript({
     }
   }, [atEnd]);
 
+  // The newest message the reader has in view: all of them at the bottom, else the last row on screen.
+  const measureView = useCallback(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    if (transcriptIsNearEnd(element)) {
+      setViewId(latestIdRef.current);
+      return;
+    }
+    const bottom = element.getBoundingClientRect().bottom - 16;
+    let id: string | null = null;
+    for (const row of element.querySelectorAll<HTMLElement>("[data-stored-message]")) {
+      if (row.getBoundingClientRect().top >= bottom) break;
+      id = row.dataset.messageId ?? id;
+    }
+    setViewId(id);
+  }, [scrollRef]);
+  useLayoutEffect(() => {
+    measureView();
+  }, [messages, atEnd, measureView]);
+
+  // Opening on unread messages scrolls to the divider when the usual snap to the end left it
+  // above the viewport; otherwise the thread opens where it always did.
+  const [dividerSettled, setDividerSettled] = useState(false);
+  const waitingForDivider = showDividerId != null && !dividerSettled;
+  useLayoutEffect(() => {
+    if (!showDividerId || dividerSettled) return;
+    // The shell scrolls a freshly loaded thread to its end in its own layout effect, which runs
+    // after this one, so wait for the next frame.
+    const frame = window.requestAnimationFrame(() => {
+      const element = scrollRef.current;
+      const row = element?.querySelector("[data-unread-divider]");
+      const offset =
+        element && row ? row.getBoundingClientRect().top - element.getBoundingClientRect().top : 0;
+      if (element && offset < 0) {
+        following.current = false;
+        autoScrolling.current = false;
+        element.scrollTop += offset - 24;
+        setAtEnd(transcriptIsNearEnd(element));
+        measureView();
+      }
+      setDividerSettled(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [showDividerId, dividerSettled, scrollRef, measureView]);
+
+  useEffect(() => {
+    if (atEnd) setDismissedCount(0);
+  }, [atEnd]);
+
+  useEffect(() => {
+    if (attended && !waitingForDivider) setSeenId((seen) => laterMessageId(readable, seen, viewId));
+  }, [attended, waitingForDivider, viewId, readable]);
+
+  // Report what the reader has seen, only while attending and after the view settles.
+  useEffect(() => {
+    if (!attended || waitingForDivider || !viewId || viewId === reportedId.current) return;
+    if (laterMessageId(readable, reportedId.current, viewId) !== viewId) return;
+    const timer = window.setTimeout(() => {
+      const previous = reportedId.current;
+      reportedId.current = viewId;
+      Promise.resolve(onReadRef.current?.(viewId, atEnd)).catch(() => {
+        reportedId.current = previous;
+      });
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [attended, waitingForDivider, viewId, atEnd, readable]);
+
   const loadOlder = useCallback(() => {
     const wasFollowing = following.current;
     // Prepend must not race the messages-driven snap-to-end follow path.
@@ -6441,6 +6536,7 @@ export const Transcript = memo(function Transcript({
           lastScrollTop.current = event.currentTarget.scrollTop;
           const nearEnd = transcriptIsNearEnd(event.currentTarget);
           setAtEnd(nearEnd);
+          measureView();
           // A jump scroll owns the viewport until its animation settles; its
           // own near-end crossings must not re-arm tail-following.
           if (jumpScrolling.current) return;
@@ -6478,6 +6574,7 @@ export const Transcript = memo(function Transcript({
                 {separatorIds.has(first.id) ? (
                   <TimeSeparator createdAt={first.createdAt} locale={i18n.locale || "en"} />
                 ) : null}
+                {item.messages.some((m) => m.id === showDividerId) ? <UnreadDivider /> : null}
                 {speaker ? (
                   <SpeakerHeader
                     botId={first.botId}
@@ -6511,6 +6608,7 @@ export const Transcript = memo(function Transcript({
                     locale={i18n.locale || "en"}
                   />
                 ) : null}
+                {item.messages.some((m) => m.id === showDividerId) ? <UnreadDivider /> : null}
                 <VoiceChatCard group={item} revealMessageId={scrollRequest?.messageId} />
               </div>
             );
@@ -6524,8 +6622,10 @@ export const Transcript = memo(function Transcript({
               {separatorIds.has(message.id) ? (
                 <TimeSeparator createdAt={message.createdAt} locale={i18n.locale || "en"} />
               ) : null}
+              {showDividerId === message.id ? <UnreadDivider /> : null}
               <div
                 data-message-id={message.id}
+                data-stored-message={isStoredMessage(message) ? "" : undefined}
                 className={
                   peerReceipt
                     ? "relative py-0.5"
@@ -6691,23 +6791,45 @@ export const Transcript = memo(function Transcript({
           }}
         />
       ) : null}
-      <button
-        ref={jumpButtonRef}
-        type="button"
-        aria-hidden={atEnd}
-        tabIndex={atEnd ? -1 : 0}
-        onClick={jumpToLatest}
+      <div
         // A labeled, opaque pill: an unlabeled see-through circle read as part of the text under it.
         // In a narrow panel it shrinks to a round button at the right edge, so it covers less text.
-        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center justify-center gap-1.5 rounded-full border border-border bg-popover px-3 @max-md:left-auto @max-md:right-3 @max-md:w-8 @max-md:translate-x-0 @max-md:px-0 text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent in-data-bot-accent:border-transparent in-data-bot-accent:bg-bot-accent in-data-bot-accent:text-bot-accent-foreground in-data-bot-accent:hover:bg-bot-accent/90 motion-reduce:transition-none ${
+        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center rounded-full border border-border bg-popover text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent in-data-bot-accent:border-transparent in-data-bot-accent:bg-bot-accent in-data-bot-accent:text-bot-accent-foreground in-data-bot-accent:ring-2 in-data-bot-accent:ring-background in-data-bot-accent:hover:bg-bot-accent/90 motion-reduce:transition-none @max-md:left-auto @max-md:right-3 @max-md:translate-x-0 ${
           atEnd ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
         }`}
       >
-        <ArrowDown size={15} strokeWidth={1.8} aria-hidden="true" />
-        <span className="@max-md:sr-only">
-          <Trans>Jump to latest</Trans>
-        </span>
-      </button>
+        <button
+          ref={jumpButtonRef}
+          type="button"
+          aria-hidden={atEnd}
+          tabIndex={atEnd ? -1 : 0}
+          onClick={jumpToLatest}
+          className={`flex h-8 items-center justify-center gap-1.5 rounded-full ps-3 ${
+            showNewCount ? "pe-1.5" : "pe-3"
+          } ${showNewCount ? "" : "@max-md:w-8 @max-md:px-0"}`}
+        >
+          <ArrowDown size={15} strokeWidth={1.8} aria-hidden="true" />
+          {showNewCount ? (
+            <span data-testid="new-messages-count">
+              {plural(newCount, { one: "# new message", other: "# new messages" })}
+            </span>
+          ) : (
+            <span className="@max-md:sr-only">
+              <Trans>Jump to latest</Trans>
+            </span>
+          )}
+        </button>
+        {showNewCount && !atEnd ? (
+          <button
+            type="button"
+            aria-label={t`Dismiss`}
+            onClick={() => setDismissedCount(newCount)}
+            className="me-1 grid size-6 place-items-center rounded-full hover:bg-current/10"
+          >
+            <X size={13} strokeWidth={1.8} aria-hidden="true" />
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 });

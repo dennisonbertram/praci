@@ -414,6 +414,10 @@ msgstr ""
 msgid "{name}, paid with {paidWith}"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "{newCount, plural, one {# new message} other {# new messages}}"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
 msgstr ""
@@ -5302,6 +5306,10 @@ msgstr ""
 
 #: src/components/sidebar-glance.tsx
 msgid "new"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "New"
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx

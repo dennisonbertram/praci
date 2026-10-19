@@ -366,6 +366,9 @@ export const RU_MESSAGES: Record<string, string> = {
     "Его диалог, файлы и задачи будут удалены навсегда. Что сделать с его памятью?",
   "It could not be opened. Try again from the sidebar.":
     "Не удалось открыть. Повторите попытку из боковой панели.",
+  New: "Новое",
+  "{count} new message": "Новых сообщений: {count}",
+  "{count} new messages": "Новых сообщений: {count}",
   "Jump to latest": "Перейти к последнему",
   "Jump to latest, new messages": "Перейти к последнему, новые сообщения",
   "just now": "только что",

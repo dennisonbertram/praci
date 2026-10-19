@@ -24,6 +24,11 @@ const subscribeAttention = (notify: () => void) => {
 };
 const isAttended = () => document.visibilityState === "visible" && document.hasFocus();
 
+/** True while the tab is visible and focused: the only time anything may be marked seen or read. */
+export function useAttended() {
+  return useSyncExternalStore(subscribeAttention, isAttended, () => false);
+}
+
 type Glance = Awaited<ReturnType<typeof rpc.notifications.glance>>;
 const EMPTY: Glance = {
   financeRunwayMonths: null,
@@ -44,7 +49,7 @@ export function useSidebarGlance(
 ) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [glance, setGlance] = useState<Glance>(EMPTY);
-  const attended = useSyncExternalStore(subscribeAttention, isAttended, () => false);
+  const attended = useAttended();
 
   const refresh = useCallback(() => {
     void Promise.all([rpc.notifications.unseenCounts(), rpc.notifications.glance()])

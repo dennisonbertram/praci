@@ -25,10 +25,12 @@ import {
   isPeerReceiptBlocks,
   isRunTerminalEvent,
   isSecretAskBlock,
+  isStoredMessage,
   isThreadSnapshotEvent,
   latestAnswerableAskMessageId,
   messageProviderLabel,
   newClientId,
+  newMessagesAfter,
   plainTextFromMarkdown,
   projectMessageReactions,
   reconcileThreadScrollState,
@@ -114,8 +116,10 @@ import { trailingHeaderOptions } from "../components/sheet-header";
 import type { ThreadComposerHandle } from "../components/thread-composer";
 import { ThreadComposer } from "../components/thread-composer";
 import { TimeSeparator } from "../components/time-separator";
+import { UnreadDivider } from "../components/unread-divider";
 import { VoiceChatCard } from "../components/VoiceChatCard";
 import { WorkingIndicator } from "../components/WorkingIndicator";
+import { accentTokens } from "../lib/accent-tokens";
 import type {
   MobileBot,
   MobileGroup,
@@ -211,6 +215,7 @@ import { ThreadJumpAnchor } from "../lib/thread-jump";
 import { ThreadReadOnlyContext } from "../lib/thread-read-only";
 import type { ThreadScrollAction, ThreadScrollState } from "../lib/thread-scroll";
 import { ThreadScrollBehavior } from "../lib/thread-scroll";
+import { openUnreadAnchor, type UnreadAnchor, unreadDividerId } from "../lib/thread-unread";
 import { prepareUnsentSends } from "../lib/unsent-sends";
 import { errorText } from "../lib/user-error";
 import { speakQueue, speakText } from "../lib/voice";
@@ -412,6 +417,22 @@ function createThreadHeaderStyles() {
       fontSize: 18,
       fontWeight: "600",
     },
+    newPillRow: {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 12,
+      alignItems: "center",
+    },
+    newPill: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      height: 36,
+      paddingHorizontal: 14,
+      borderRadius: 999,
+    },
+    newPillText: { fontSize: 14, fontWeight: "600" },
     circleButton: {
       flex: 1,
       borderRadius: 999,
@@ -620,6 +641,19 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   );
   const visibleMessages = reactionView.visibleMessages;
   const latestMessageId = visibleMessages.at(-1)?.id ?? null;
+  const storedMessages = useMemo(() => visibleMessages.filter(isStoredMessage), [visibleMessages]);
+  // The "New" divider is placed when the thread's first live snapshot arrives and stays put after.
+  const unreadAnchor = useRef<UnreadAnchor | null>(null);
+  if (snap && !showingSaved) {
+    unreadAnchor.current = openUnreadAnchor(
+      unreadAnchor.current,
+      snap.threadId,
+      snap.lastReadSeq,
+      storedMessages,
+    );
+  }
+  const unreadMessageId = unreadDividerId(unreadAnchor.current, storedMessages);
+  const countedId = useRef<string | null>(null);
   const activePendingAttachments = attachmentsForThread(pendingAttachments, threadKey);
   const composerRef = useRef<ThreadComposerHandle>(null);
   const composerMentionTargets = useMemo(
@@ -1336,24 +1370,44 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     }
   }
 
+  // Marks the newest stored message read once the live thread is on screen at its latest messages.
+  // A reader scrolled up, a saved copy and a search window leave the boundary where it is.
+  const showingSavedRef = useRef(showingSaved);
+  showingSavedRef.current = showingSaved;
+  const readTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(readTimer.current), []);
   const markReadIfVisible = useCallback(() => {
     if (readOnly || AppState.currentState !== "active" || !navigation.isFocused()) return;
     const target = groupId ?? botId;
-    if (!target || readVisibleTarget.current === target) return;
-    readVisibleTarget.current = target;
-    if (activeThreadId.current) {
-      void dismissThreadNotifications({ threadId: activeThreadId.current }).catch(() => undefined);
-    }
-    if (groupId) {
-      void rpc("threads/markRead", { groupId }).catch(() => {
-        if (readVisibleTarget.current === target) readVisibleTarget.current = null;
+    const current = snapRef.current;
+    if (!target || !current || showingSavedRef.current || pinnedAroundRef.current) return;
+    if (scrollBehavior.current.state().detached) return;
+    const upTo = current.messages.filter(isStoredMessage).at(-1)?.id;
+    if (upTo === undefined) return;
+    const marker = `${target}:${upTo}`;
+    if (readVisibleTarget.current === marker) return;
+    readVisibleTarget.current = marker;
+    clearTimeout(readTimer.current);
+    readTimer.current = setTimeout(() => {
+      if (activeThreadId.current) {
+        void dismissThreadNotifications({ threadId: activeThreadId.current }).catch(
+          () => undefined,
+        );
+      }
+      // The thread is at its latest messages here, so this reaches the end of the loaded page.
+      const input = { upToMessageId: upTo, toEnd: true };
+      void rpc(
+        "threads/markRead",
+        groupId ? { groupId, ...input } : { botId: botId!, ...input },
+      ).catch(() => {
+        if (readVisibleTarget.current === marker) readVisibleTarget.current = null;
       });
-      return;
-    }
-    void rpc("threads/markRead", { botId: botId! }).catch(() => {
-      if (readVisibleTarget.current === target) readVisibleTarget.current = null;
-    });
+    }, 300);
   }, [botId, groupId, navigation, readOnly]);
+  const latestStoredId = snap?.messages.filter(isStoredMessage).at(-1)?.id;
+  useEffect(() => {
+    if (snap && latestStoredId !== undefined) markReadIfVisible();
+  }, [snap, latestStoredId, threadScrollState.detached, showingSaved, markReadIfVisible]);
 
   useEffect(() => {
     if (!notificationThreadId || AppState.currentState !== "active" || !navigation.isFocused())
@@ -2196,6 +2250,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           canAnswer={!readOnly && message.id === answerableAskMessageId}
           highlighted={highlightedMessageId === message.id}
           separator={separatorIds.has(message.id)}
+          unreadDivider={unreadMessageId === message.id}
           replyAuthor={replyAuthor}
           replyFallbackText={parent ? previewMessageText(parent) : undefined}
           messageReactions={messageReactions}
@@ -2228,6 +2283,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       answerableAskMessageId,
       highlightedMessageId,
       separatorIds,
+      unreadMessageId,
       windowWidth,
       t,
       locale,
@@ -2240,12 +2296,13 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           {item.messages[0] && separatorIds.has(item.messages[0].id) ? (
             <TimeSeparator createdAt={item.messages[0].createdAt} />
           ) : null}
+          {item.messages.some((m) => m.id === unreadMessageId) ? <UnreadDivider /> : null}
           <VoiceChatCard group={item} />
         </View>
       ) : (
         renderMessageRow(item.message)
       ),
-    [renderMessageRow, separatorIds],
+    [renderMessageRow, separatorIds, unreadMessageId],
   );
   const listContentStyle = useMemo(
     () => ({
@@ -2254,6 +2311,12 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     }),
     [headerHeight, hasStats, readOnly, insets.bottom],
   );
+
+  const pillTokens = accentTokens(tokens, inGroup ? null : (currentBot?.color ?? null));
+  const newMessagesLabel =
+    threadScrollState.newCount === 1
+      ? t("{count} new message", { count: 1 })
+      : t("{count} new messages", { count: threadScrollState.newCount });
 
   const workingFooter =
     !inGroup && currentBot && isWorkingStatus(currentBotStatus) && !hasLiveProgress ? (
@@ -2463,7 +2526,13 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                           pinnedAroundRef.current.groupId === groupId))) ||
                     expandedHistoryThread.current === snap?.threadId,
                 );
-                performScroll(scrollBehavior.current.onContentChanged(blocked, latestMessageId));
+                // Stored messages only, by list order: live rows carry event seqs, and a progress
+                // row is not a message.
+                const incoming = newMessagesAfter(storedMessages, countedId.current);
+                countedId.current = storedMessages.at(-1)?.id ?? null;
+                performScroll(
+                  scrollBehavior.current.onContentChanged(blocked, latestMessageId, incoming),
+                );
                 publishThreadScrollState(scrollBehavior.current.state());
               }}
               ListFooterComponent={loadEarlierControl}
@@ -2477,58 +2546,67 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
             />
           )}
           {showPinnedPage || threadScrollState.detached ? (
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={
-                threadScrollState.unread ? t("Jump to latest, new messages") : t("Jump to latest")
-              }
-              onPress={() => {
-                if (showPinnedPage) {
-                  showLatest();
-                  return;
-                }
-                performScroll(scrollBehavior.current.jumpToLatest());
-                publishThreadScrollState(scrollBehavior.current.state());
-              }}
-              style={{
-                position: "absolute",
-                left: "50%",
-                marginLeft: -21,
-                bottom: 12,
-                width: 42,
-                height: 42,
-              }}
-            >
-              <GlassSurface
-                shape="circle"
-                style={styles.circleButton}
-                fallbackStyle={{
-                  borderWidth: 1,
-                  borderColor: native.fillPressed,
-                  backgroundColor: native.fill,
+            threadScrollState.newCount > 0 && !showPinnedPage ? (
+              <View pointerEvents="box-none" style={styles.newPillRow}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={newMessagesLabel}
+                  onPress={() => {
+                    performScroll(scrollBehavior.current.jumpToLatest());
+                    publishThreadScrollState(scrollBehavior.current.state());
+                  }}
+                  style={[styles.newPill, { backgroundColor: pillTokens.primary }]}
+                >
+                  <NativeSymbol
+                    ios="arrow.down"
+                    android="arrow-down"
+                    size={14}
+                    color={pillTokens.primaryForeground}
+                  />
+                  <Text style={[styles.newPillText, { color: pillTokens.primaryForeground }]}>
+                    {newMessagesLabel}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("Jump to latest")}
+                onPress={() => {
+                  if (showPinnedPage) {
+                    showLatest();
+                    return;
+                  }
+                  performScroll(scrollBehavior.current.jumpToLatest());
+                  publishThreadScrollState(scrollBehavior.current.state());
+                }}
+                style={{
+                  position: "absolute",
+                  left: "50%",
+                  marginLeft: -21,
+                  bottom: 12,
+                  width: 42,
+                  height: 42,
                 }}
               >
-                <NativeSymbol
-                  ios="arrow.down"
-                  android="arrow-down"
-                  size={18}
-                  color={tokens.foreground}
-                />
-                {threadScrollState.unread ? (
-                  <View
-                    style={{
-                      position: "absolute",
-                      top: 3,
-                      right: 3,
-                      width: 8,
-                      height: 8,
-                      borderRadius: 4,
-                      backgroundColor: tokens.primary,
-                    }}
+                <GlassSurface
+                  shape="circle"
+                  style={styles.circleButton}
+                  fallbackStyle={{
+                    borderWidth: 1,
+                    borderColor: native.fillPressed,
+                    backgroundColor: native.fill,
+                  }}
+                >
+                  <NativeSymbol
+                    ios="arrow.down"
+                    android="arrow-down"
+                    size={18}
+                    color={tokens.foreground}
                   />
-                ) : null}
-              </GlassSurface>
-            </Pressable>
+                </GlassSurface>
+              </Pressable>
+            )
           ) : null}
         </View>
         {/* Fades messages out under the transparent header; the alpha stop keeps the page hue. */}
@@ -2918,6 +2996,7 @@ type MessageRowProps = {
   canAnswer: boolean;
   highlighted: boolean;
   separator: boolean;
+  unreadDivider: boolean;
   replyAuthor: string;
   replyFallbackText?: string;
   messageReactions?: ReadonlyMap<MessageReaction, number>;
@@ -2944,6 +3023,7 @@ const MessageRow = memo(function MessageRow({
   canAnswer,
   highlighted,
   separator,
+  unreadDivider,
   replyAuthor,
   replyFallbackText,
   messageReactions,
@@ -3100,6 +3180,7 @@ const MessageRow = memo(function MessageRow({
       }}
     >
       {separator ? <TimeSeparator createdAt={message.createdAt} /> : null}
+      {unreadDivider ? <UnreadDivider /> : null}
       <View
         style={{
           width: "100%",
