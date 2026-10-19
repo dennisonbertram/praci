@@ -44,7 +44,7 @@ import {
 } from "../components/data-room/use-data-room-list";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { PageEmptyState } from "../components/PageEmptyState";
-import { PageHeader } from "../components/PageHeader";
+import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -427,7 +427,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="px-4 pt-2 md:px-7 md:pt-5">
+      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
           title={<Trans>Data room</Trans>}
           meta={
@@ -496,7 +496,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
         </div>
       ) : (
         <>
-          <div className="px-4 pb-2.5 empty:hidden md:px-7">
+          <div className={`${PAGE_GUTTER_X} pb-2.5 empty:hidden`}>
             <DataRoomConsentPrompt onAllowed={reload} />
           </div>
           <FilterBar

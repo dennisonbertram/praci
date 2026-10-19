@@ -1,6 +1,10 @@
 import { cn } from "@rakazo/ui-web/lib/utils";
 import type { ReactNode } from "react";
 
+/** The page's side padding. Page rows and panels that must line up with the title share it. */
+export const PAGE_GUTTER_X = "px-4 md:px-7";
+export const PAGE_GUTTER_START = "ps-4 md:ps-7";
+
 /** The one height and spacing every page title row uses, so titles sit at the same place. */
 export const PAGE_HEADER_ROW = "mb-4 flex h-10 shrink-0 items-center gap-x-3";
 
