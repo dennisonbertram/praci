@@ -11,12 +11,6 @@ import { FINANCE_READ_TOOLS, financeProviderForEndpoint } from "./finance.js";
 /** The one place an integration agent's spawn key is built. The key encodes the MCP server id. */
 export const integrationAgentSpawnKey = (serverId: string) => `integration-agent:${serverId}`;
 
-/**
- * Native Google connections (mail, Calendar, Drive) are used through built-in tools that an
- * integration agent does not get, so an agent there would have nothing to work with.
- */
-export const connectorSupportsIntegrationAgent = (connectorId: string) => connectorId !== "google";
-
 export const isIntegrationAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(integrationAgentSpawnKey("")));
 

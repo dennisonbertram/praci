@@ -127,14 +127,14 @@ describe("effectiveAccessByConnection", () => {
       [
         row("a", "connected", false, {
           ...google,
-          agentBotId: "agent-a",
-          botAccess: grant("agent-a"),
+          agentBotId: "agent-g",
+          botAccess: grant("agent-g"),
         }),
         row("b", "connected", true, google),
       ],
       [...bots, { id: "agent-g", spawnKey: "integration-agent:a", archivedAt: null }],
     );
-    expect(result.a?.botIds).toEqual([]);
+    expect(result.a?.botIds).toEqual(["agent-g"]);
     expect(result.b?.botIds).toEqual(["chief", "other"]);
   });
 
@@ -185,5 +185,39 @@ describe("effectiveAccessByConnection", () => {
       shared: "none",
       botIds: [],
     });
+  });
+});
+
+describe("effectiveAccessByConnection for Google agents", () => {
+  const bots = [
+    { id: "chief", spawnKey: null, archivedAt: null },
+    { id: "inbox", spawnKey: "inbox-agent:u1", archivedAt: null },
+    { id: "cal", spawnKey: "integration-agent:cal-1", archivedAt: null },
+  ];
+  const rows = [
+    row("gm", "connected", false, {
+      connectorId: "google",
+      provider: "gmail",
+      agentBotId: "inbox",
+      botAccess: grant("inbox"),
+    }),
+    row("cal-1", "connected", false, {
+      connectorId: "google",
+      provider: "googlecalendar",
+      agentBotId: "cal",
+      botAccess: grant("cal"),
+    }),
+  ];
+
+  it("keeps a linked private account to its own agent", () => {
+    const result = effectiveAccessByConnection(rows, bots);
+    expect(result.gm?.botIds).toEqual(["inbox"]);
+    expect(result["cal-1"]?.botIds).toEqual(["cal"]);
+  });
+
+  it("adds the other bots once the account is shared with all agents", () => {
+    const shared = rows.map((r) => ({ ...r, allAgents: true }));
+    const result = effectiveAccessByConnection(shared, bots);
+    expect(result["cal-1"]?.botIds).toEqual(["chief", "inbox", "cal"]);
   });
 });
