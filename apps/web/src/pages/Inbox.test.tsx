@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
   () =>
@@ -846,6 +846,33 @@ it("explains a rate-limited Inbox with no mail, and shows Try again working", as
   expect(c.textContent).not.toContain("few seconds");
   expect(c.querySelector('[role="alert"]')?.textContent).toBe("Gmail is still limiting requests.");
   expect(c.querySelector('[role="alert"]')?.className).toContain("text-warning");
+});
+
+describe("Try again notice", () => {
+  const limitedList = () =>
+    list([], { failedAccounts: ["Me"], reconnectAccounts: [], rateLimitedAccounts: ["Me"] });
+  const retryWith = async (after: () => Promise<unknown> | unknown) => {
+    rpcMock.list.mockResolvedValue(limitedList());
+    const c = await render();
+    rpcMock.refresh.mockResolvedValue({});
+    let finishList: (value: unknown) => void = () => {};
+    rpcMock.list.mockImplementation(() => new Promise((r) => (finishList = r)));
+    await click(byText(c, "Try again"));
+    // The refresh settled; the list reload after it is still pending.
+    expect(c.querySelector('[role="alert"]')?.textContent ?? "").not.toContain("still limiting");
+    await act(async () => finishList(await after()));
+    return c;
+  };
+
+  it("shows no still-limited text while the reload after the sync is pending, then none when clear", async () => {
+    const c = await retryWith(() => list([row("a")]));
+    expect(c.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("says Gmail is still limiting requests when the reload after the sync is limited", async () => {
+    const c = await retryWith(() => limitedList());
+    expect(c.querySelector('[role="alert"]')?.textContent).toContain("still limiting");
+  });
 });
 
 it("shows the rate-limit notice in the warning colour above cached mail", async () => {

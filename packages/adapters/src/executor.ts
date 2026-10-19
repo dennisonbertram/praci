@@ -9085,15 +9085,15 @@ export function runIdentityInstruction(
 ): string {
   if (isVoiceAgentSpawnKey(spawnKey)) return VOICE_AGENT_INSTRUCTIONS;
   // Stored instructions are fixed at creation; this keeps older agents on the one-approval rule.
-  const guided =
-    (isIntegrationAgentSpawnKey(spawnKey) || isCartaAgentSpawnKey(spawnKey)) &&
-    !bot.instructions?.includes(ONE_APPROVAL_GUIDANCE)
-      ? { ...bot, instructions: `${bot.instructions ?? ""} ${ONE_APPROVAL_GUIDANCE}`.trim() }
-      : bot;
+  const guide = isIntegrationAgentSpawnKey(spawnKey) || isCartaAgentSpawnKey(spawnKey);
+  const withGuide = (text: string) =>
+    guide && !text.includes(ONE_APPROVAL_GUIDANCE)
+      ? `${text} ${ONE_APPROVAL_GUIDANCE}`.trim()
+      : text;
   if (trigger !== "created") {
-    return guided.instructions || `${bot.name}: ${bot.title}\n${bot.description}`;
+    return withGuide(bot.instructions || `${bot.name}: ${bot.title}\n${bot.description}`);
   }
-  const instructions = guided.instructions.trim();
+  const instructions = withGuide(bot.instructions ?? "").trim();
   return [
     `Name: ${bot.name.trim() || "(none)"}`,
     `Title: ${bot.title.trim() || "(none)"}`,

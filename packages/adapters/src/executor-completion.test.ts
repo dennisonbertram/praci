@@ -472,6 +472,17 @@ describe("runReplyGuidance", () => {
     expect(runIdentityInstruction(bot, "user", null)).toBe("Old text.");
   });
 
+  it("keeps the name, title and description identity when an integration agent has no instructions", () => {
+    const bot = {
+      name: "Mercury agent",
+      title: "Banker",
+      description: "Reads accounts.",
+      instructions: "",
+    };
+    const prompt = runIdentityInstruction(bot, "user", integrationAgentSpawnKey("srv-1"));
+    expect(prompt).toBe(`Mercury agent: Banker\nReads accounts. ${ONE_APPROVAL_GUIDANCE}`);
+  });
+
   it("does not send a finish notification for the creation intro", () => {
     expect(runSendsFinishNotification("created")).toBe(false);
     expect(runSendsFinishNotification("user")).toBe(true);

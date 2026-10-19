@@ -143,6 +143,8 @@ export function InboxPage({
   const keyRef = useRef(listKey);
   keyRef.current = listKey;
   const listRequest = useRef(0);
+  // Set when a retry's sync settled: the next list answer is the first one after it, and ends "retrying".
+  const awaitRetryList = useRef(false);
   const listApplied = useRef(0);
   // Pages after the first of a filtered or searched list, which Gmail pages for us.
   const [more, setMore] = useState<{ rows: MailRow[]; token?: string; busy: boolean }>({
@@ -217,6 +219,12 @@ export function InboxPage({
     if (paused) return;
     const key = listKey;
     const request = ++listRequest.current;
+    const afterRetry = awaitRetryList.current;
+    const endRetry = () => {
+      if (!afterRetry) return;
+      awaitRetryList.current = false;
+      setRetrying(false);
+    };
     // A reload (a triage poll, a sync) must not throw away an answer for the list still on screen:
     // a slow search would otherwise never land while polls keep restarting it. Only a newer answer
     // for the same list, or a different list, replaces it.
@@ -229,6 +237,7 @@ export function InboxPage({
         cache.current.set(key, next);
         setData(next);
         setDataKey(key);
+        endRetry();
         // A refresh of the same list keeps the pages already loaded (minus rows the fresh first
         // page now holds); only a different list starts over.
         const same = appliedKey.current === key;
@@ -245,6 +254,7 @@ export function InboxPage({
         // A removed account leaves its tab behind; fall back to All.
         if (tab) setTab(undefined);
         else setError(errorText(cause));
+        endRetry();
       });
   }, [tab, filter, query, view, category, reload, paused]);
 
@@ -319,8 +329,9 @@ export function InboxPage({
         if (live) setError(errorText(cause));
       })
       .then(() => {
-        setRetrying(false);
-        if (!live) return;
+        if (!live) return setRetrying(false);
+        // "Try again" stays busy until the list reloaded after this sync answers.
+        awaitRetryList.current = true;
         setSynced(true);
         setReload((n) => n + 1);
         onRefreshed();
