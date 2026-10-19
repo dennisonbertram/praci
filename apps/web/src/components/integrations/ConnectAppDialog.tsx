@@ -1,6 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Connection, ConnectionCatalogItem } from "@rakazo/contracts";
-import { abortableDelay } from "@rakazo/core";
+import { abortableDelay, providerErrorMessage } from "@rakazo/core";
 import { Button, Dialog, DialogContent, DialogDescription, DialogTitle } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { desktopBridge, signInWithSystemBrowser } from "../../lib/desktop";
@@ -173,7 +173,9 @@ export function ConnectAppDialog({
         if (attempt.signal.aborted) return;
         if (done?.status === "connected") return succeed(done);
         if (done?.status === "error") {
-          return fail(done.error ?? t`${item.name} did not accept the sign-in.`);
+          return fail(
+            providerErrorMessage(done.error ?? "", t`${item.name} did not accept the sign-in.`),
+          );
         }
         await abortableDelay(2_000, attempt.signal);
       }

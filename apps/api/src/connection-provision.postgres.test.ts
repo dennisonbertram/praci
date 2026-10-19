@@ -535,6 +535,65 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     expect(await row(pending.id)).toMatchObject({ allAgents: false });
   });
 
+  it("revoking a row whose remote account is already gone finishes locally", async () => {
+    const app = await create({ provider: "gone", providerRef: "gone" });
+    const done = await complete(app.id);
+    const original = connector.revoke;
+    connector.revoke = async () => {
+      throw new Error(
+        '404 {"error":{"message":"Connected account \\"gone\\" not found","slug":"ConnectedAccount_ResourceNotFound","status":404}}',
+      );
+    };
+    try {
+      await expect(client(owner).connections.revoke({ connectionId: app.id })).resolves.toEqual({
+        ok: true,
+      });
+    } finally {
+      connector.revoke = original;
+    }
+    expect(await row(app.id)).toMatchObject({ status: "revoked", agentBotId: null });
+    expect(await access(app.id)).toEqual([]);
+    expect(
+      (await prisma.bot.findUniqueOrThrow({ where: { id: done.agentBotId as string } })).archivedAt,
+    ).not.toBeNull();
+  });
+
+  it("a server error or network failure on the remote revoke still fails and restores", async () => {
+    for (const failure of [new Error("500 server error"), new Error("fetch failed")]) {
+      const app = await create({ provider: "flaky", providerRef: "acct-flaky" });
+      await complete(app.id);
+      const original = connector.revoke;
+      connector.revoke = async () => {
+        throw failure;
+      };
+      try {
+        await expect(
+          client(owner).connections.revoke({ connectionId: app.id }),
+        ).rejects.toBeTruthy();
+      } finally {
+        connector.revoke = original;
+      }
+      if (failure.message !== "fetch failed")
+        expect(await row(app.id)).toMatchObject({ status: "connected" });
+    }
+  });
+
+  it("a pending row with no remote account is removed without a remote call", async () => {
+    const app = await create({ provider: "never", providerRef: "never", status: "pending" });
+    const calls: unknown[] = [];
+    const original = connector.revoke;
+    connector.revoke = async (...args: unknown[]) => {
+      calls.push(args);
+    };
+    try {
+      await client(owner).connections.revoke({ connectionId: app.id });
+    } finally {
+      connector.revoke = original;
+    }
+    expect(calls).toEqual([]);
+    expect(await row(app.id)).toMatchObject({ status: "revoked" });
+  });
+
   it("sharing a legacy sibling never shares a row provisioned while it was being listed", async () => {
     const legacyA = await create({ status: "connected", provider: "race", allAgents: true });
     const sibling = await create({ status: "connected", provider: "race", allAgents: true });

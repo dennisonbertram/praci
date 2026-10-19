@@ -65,6 +65,36 @@ export function isTechnicalErrorMessage(message: string): boolean {
   return TECHNICAL_MESSAGE.some((pattern) => pattern.test(message));
 }
 
+/** The `message` inside a provider's JSON error body (`400 {"error":{"message":"..."}}`), or null. */
+export function jsonErrorMessage(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+  try {
+    const body: unknown = JSON.parse(text.slice(start));
+    const field = (value: unknown, key: string): unknown =>
+      value && typeof value === "object" ? (value as Record<string, unknown>)[key] : undefined;
+    const found = [
+      field(field(body, "error"), "message"),
+      field(body, "message"),
+      field(body, "error"),
+    ].find((value) => typeof value === "string" && value.trim());
+    return typeof found === "string" ? found.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * A provider error as a person reads it: the JSON body's message without status prefix, ids or
+ * JSON; plain text unchanged; the fallback when the text is JSON-like but has no message.
+ */
+export function providerErrorMessage(text: string, fallback: string): string {
+  const message = jsonErrorMessage(text);
+  if (message) return message;
+  const plain = text.trim();
+  return plain && !/^(?:\d{3}\s+)?[[{]/.test(plain) ? plain : fallback;
+}
+
 /**
  * The text to show for a failure: messages written for people (server copy, client copy) pass
  * through; transport failures and implementation detail become the caller's copy.
@@ -74,7 +104,8 @@ export function userErrorMessage(error: unknown, copy: UserErrorCopy): string {
   const message = (
     error instanceof Error ? error.message : typeof error === "string" ? error : ""
   ).trim();
-  return message && !isTechnicalErrorMessage(message) ? message : copy.fallback;
+  const readable = jsonErrorMessage(message) ?? message;
+  return readable && !isTechnicalErrorMessage(readable) ? readable : copy.fallback;
 }
 
 export type CredentialField = "email" | "password";

@@ -3,7 +3,9 @@ import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-k
 import { prepareManagedConnectorForTransaction, sanitizeComposioError } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { integrationAgentSpawnKey } from "@rakazo/contracts";
+import { providerErrorMessage } from "@rakazo/core";
 import type { Prisma, PrismaClient } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 
 /**
  * Finish a native OAuth connect (Google) from the callback page. The pending row is found by
@@ -46,7 +48,7 @@ export async function completeNativeOAuth(options: {
       options.context,
     );
   } catch (error) {
-    throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
+    throw new ORPCError("BAD_REQUEST", { message: connectionFailureMessage(error) });
   }
   const { connectionRef, secretId } = completed;
   if (!secretId)
@@ -157,4 +159,11 @@ export async function completeNativeOAuth(options: {
 /** Short user-safe reason for a failed connection; never provider internals. */
 export function connectionError(row: { status: string }): string | null {
   return row.status === "error" ? "Connection failed. Reconnect to try again." : null;
+}
+
+/** Readable text for a provider failure; the full raw error goes to the server log. */
+export function connectionFailureMessage(error: unknown): string {
+  const raw = sanitizeComposioError(error);
+  getLogger().error("connection provider error", raw);
+  return providerErrorMessage(raw, "The app could not be connected.");
 }
