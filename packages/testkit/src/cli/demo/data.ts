@@ -860,6 +860,7 @@ const DEMO_FINANCE_TOOLS = {
   mercury: {
     getAccounts: obj({}),
     getTreasury: obj({}),
+    getRecipients: obj({ limit: { type: "number" } }),
     listTransactions: obj(
       {
         accountId: { type: "array", items: str },

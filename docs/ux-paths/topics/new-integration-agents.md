@@ -7,7 +7,7 @@ Sources: `docs/integration-agents/README.md`, `apps/web/src/components/integrati
 ## Demo preconditions (read first)
 
 - **Mercury and Brex are seeded** in the mock demo (`seed.ts:203-228`): two connected MCP servers named "Mercury" and "Brex" with a fake stored login, plus the Finance agent. Neither has an agent yet, so the Integrations page shows **Create agent** for each.
-- **Payment stories (IA-3, IA-4, IA-6 write part).** The demo's emulated Mercury serves `requestSendMoney` (`DEMO_FINANCE_TOOLS` in `data.ts`). It records the call and returns a fake pending request (`fake-request-1`, status `pendingApproval`); no money moves. Brex has no write tool in the demo (its four demo tools are all reads), so there is no Brex write walk.
+- **Payment stories (IA-3, IA-4, IA-6 write part).** The demo's emulated Mercury serves `requestSendMoney` (`DEMO_FINANCE_TOOLS` in `data.ts`). It can also list recipients (`getRecipients`, one mock payee, "Acme (Mock)"), so a payment can name one. It records the call and returns a fake pending request (`fake-request-1`, status `pendingApproval`); no money moves. Brex has no write tool in the demo (its four demo tools are all reads), so there is no Brex write walk.
 - **Chat model.** The agent answers through the demo's configured model. A scripted or mock model must be told to call `requestSendMoney` for the payment stories. UNVERIFIED: whether the demo model does so on request. If it only chats, IA-3/IA-4 stop at the dialog.
 - **Other agents.** Chief and the Finance agent (created on first use) exist. The Finance agent already has read-only access to Mercury and Brex.
 - **Reset note.** IA-5, IA-6 and IA-7 change shared server state (exclusive flag, archived agent). Re-seed between walks.

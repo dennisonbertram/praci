@@ -107,6 +107,8 @@ export interface MercuryOptions {
   /** Return the cursor like the vendor documents it; the live server leaves `page` out. */
   withNextPage?: boolean;
   attachments?: Array<Record<string, unknown>>;
+  /** Payees `getRecipients` lists, so a payment request can name one. */
+  recipients?: Array<Record<string, unknown>>;
 }
 
 /**
@@ -126,6 +128,12 @@ export function fakeMercury(
       return { requestId: `fake-request-${sendMoneyRequests.length}`, status: "pendingApproval" };
     }
     if (name === "getAccounts") return options.accounts ?? mercuryAccountsResponse();
+    if (name === "getRecipients")
+      return {
+        recipients: options.recipients ?? [
+          { id: "recipient_mock_acme", name: "Acme (Mock)", status: "active" },
+        ],
+      };
     if (name === "getTreasury") return options.treasury ?? mercuryTreasuryResponse;
     if (name === "getTransactionById")
       return { transaction: { id: args.transactionId, attachments: options.attachments } };
