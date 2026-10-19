@@ -45,7 +45,7 @@ let host: HTMLElement;
 const flush = () => act(async () => void (await new Promise((r) => setTimeout(r, 0))));
 function serve(allAgents: boolean, setAccess: () => Promise<unknown> = async () => ({})) {
   m.rpc.mockImplementation(async (path: string) => {
-    if (path === "connections/access") return { allAgents, botIds: [] };
+    if (path === "connections/access") return { allAgents, botIds: ["botA"] };
     if (path === "bots/list") return [{ id: "bot1", name: "Calendar agent" }];
     return setAccess();
   });
@@ -87,7 +87,7 @@ it("saves the switch, disabled while saving", async () => {
   expect(m.rpc).toHaveBeenCalledWith("connections/setAccess", {
     connectionId: "c1",
     allAgents: true,
-    botIds: [],
+    botIds: ["botA"],
   });
   expect(sw().disabled).toBe(true);
   expect(sw().checked).toBe(true);

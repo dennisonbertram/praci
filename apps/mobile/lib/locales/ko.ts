@@ -1,4 +1,5 @@
 export const KO_MESSAGES: Record<string, string> = {
+  "Phone notifications": "휴대폰 알림",
   "Share with all agents": "모든 에이전트와 공유",
   "Couldn't refresh — showing the last loaded messages.":
     "새로고침하지 못했습니다 — 마지막으로 불러온 메시지를 표시합니다.",

@@ -1,4 +1,5 @@
 export const ZH_MESSAGES: Record<string, string> = {
+  "Phone notifications": "手机通知",
   "Share with all agents": "与所有代理共享",
   "Couldn't refresh — showing the last loaded messages.": "无法刷新——显示最近加载的消息。",
   "Try Again": "重试",

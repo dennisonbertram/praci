@@ -18,13 +18,18 @@ export function ConnectionAgent({ connectionId, botId }: { connectionId: string;
   const router = useRouter();
   const [name, setName] = useState("");
   const [shared, setShared] = useState<boolean | null>(null);
+  const [botIds, setBotIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
-    void rpc<{ allAgents: boolean }>("connections/access", { connectionId })
-      .then((access) => live && setShared(access.allAgents))
+    void rpc<{ allAgents: boolean; botIds: string[] }>("connections/access", { connectionId })
+      .then((access) => {
+        if (!live) return;
+        setShared(access.allAgents);
+        setBotIds(access.botIds);
+      })
       .catch(() => undefined);
     void rpc<MobileBot[]>("bots/list")
       .then((bots) => live && setName(bots.find((bot) => bot.id === botId)?.name ?? ""))
@@ -40,7 +45,7 @@ export function ConnectionAgent({ connectionId, botId }: { connectionId: string;
     setSaving(true);
     setError(null);
     try {
-      await rpc("connections/setAccess", { connectionId, allAgents: next, botIds: [] });
+      await rpc("connections/setAccess", { connectionId, allAgents: next, botIds });
     } catch (cause) {
       setShared(previous);
       setError(errorText(cause, t("Try again.")));

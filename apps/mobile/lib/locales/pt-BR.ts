@@ -1,4 +1,5 @@
 export const PT_BR_MESSAGES: Record<string, string> = {
+  "Phone notifications": "Notificações do celular",
   "Share with all agents": "Compartilhar com todos os agentes",
   "Couldn't refresh — showing the last loaded messages.":
     "Não foi possível atualizar: exibindo as últimas mensagens carregadas.",
