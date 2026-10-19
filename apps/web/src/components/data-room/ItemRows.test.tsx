@@ -39,6 +39,8 @@ const o = (openFolderId?: string): RowInteraction => ({
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
+  // The agent avatars read the reduced-motion preference.
+  window.matchMedia ??= (() => ({ matches: false })) as unknown as typeof window.matchMedia;
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -332,4 +334,76 @@ it("puts a sub-folder's menu in the same column as a file's at every list width"
     expect(folders.reduce((a, b) => a + b, 0)).toBe(files.reduce((a, b) => a + b, 0));
     expect(folders.at(-1)).toBe(1);
   }
+});
+
+const agents = [
+  { id: "bot_ada", name: "Ada", color: "#6366f1" },
+  { id: "bot_ben", name: "Ben", color: "#10b981" },
+];
+
+const withAgents = (pick: (item: DataRoomApiItem, agent: { id: string }) => void) => ({
+  ...o(),
+  agents,
+  onSendToAgent: pick,
+});
+
+const flush = () => act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+const menuItem = (name: string) =>
+  Array.from(document.body.querySelectorAll('[role="menuitem"]')).find(
+    (element) => element.textContent?.trim() === name,
+  ) as HTMLElement | undefined;
+
+async function sendFrom(target: Element, pick: ReturnType<typeof vi.fn>) {
+  await act(async () => {
+    target.dispatchEvent(
+      new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 10, clientY: 10 }),
+    );
+  });
+  await flush();
+  const sub = menuItem("Send to agent");
+  expect(sub).toBeDefined();
+  await act(async () => sub?.click());
+  await flush();
+  expect(menuItem("Ada")).toBeDefined();
+  expect(menuItem("Ben")).toBeDefined();
+  await act(async () => menuItem("Ben")?.click());
+  expect(pick).toHaveBeenCalledTimes(1);
+}
+
+it("sends a list row to an agent from its right-click menu", async () => {
+  const pick = vi.fn();
+  const file = item("lease", null);
+  act(() => root.render(<ListView rows={[{ item: file, snippets: [] }]} o={withAgents(pick)} />));
+  await sendFrom(container.querySelector("[data-row]") as Element, pick);
+  expect(pick).toHaveBeenCalledWith(file, expect.objectContaining({ id: "bot_ben" }));
+});
+
+it("sends a grid tile to an agent from its right-click menu", async () => {
+  const pick = vi.fn();
+  const file = item("lease", null);
+  act(() => root.render(<GridView rows={[{ item: file, snippets: [] }]} o={withAgents(pick)} />));
+  await sendFrom(container.querySelector("[data-row]") as Element, pick);
+  expect(pick).toHaveBeenCalledWith(file, expect.objectContaining({ id: "bot_ben" }));
+});
+
+it("offers no right-click menu when there is no agent to send to", async () => {
+  act(() => root.render(<ListView rows={[{ item: item("lease", null), snippets: [] }]} o={o()} />));
+  const row = container.querySelector("[data-row]") as Element;
+  const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
+  await act(async () => row.dispatchEvent(event));
+  expect(event.defaultPrevented).toBe(false);
+  expect(menuItem("Send to agent")).toBeUndefined();
+});
+
+it("offers Send to agent in the row's More actions menu too", async () => {
+  const pick = vi.fn();
+  act(() =>
+    root.render(
+      <ListView rows={[{ item: item("lease", null), snippets: [] }]} o={withAgents(pick)} />,
+    ),
+  );
+  const button = container.querySelector('button[aria-label^="More actions for"]') as HTMLElement;
+  await act(async () => button.click());
+  await flush();
+  expect(menuItem("Send to agent")).toBeDefined();
 });

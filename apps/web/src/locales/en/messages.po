@@ -5851,7 +5851,9 @@ msgid "Open"
 msgstr "Open"
 
 #. placeholder {0}: group.title
+#. placeholder {0}: ref.name
 #. placeholder {0}: sameEmail.name
+#: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0}"
@@ -7358,6 +7360,10 @@ msgstr "Send reset link"
 msgid "Send saved draft"
 msgstr "Send saved draft"
 
+#: src/components/data-room/SendToAgent.tsx
+msgid "Send to agent"
+msgstr "Send to agent"
+
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr "Sending is off for {botName}. Turn it back on in its tools."
@@ -7646,6 +7652,7 @@ msgstr "Skip or deploy key"
 msgid "Skip to content"
 msgstr "Skip to content"
 
+#. placeholder {0}: failed.join(", ")
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"

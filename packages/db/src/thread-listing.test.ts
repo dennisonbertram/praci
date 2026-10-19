@@ -2,6 +2,14 @@ import { describe, expect, it } from "vitest";
 import { previewFromBlocks } from "./thread-listing.js";
 
 describe("previewFromBlocks", () => {
+  it("shows a Data room file by its name, without the raw id line", () => {
+    const line = "Data room item itm_9: Sample agreement.pdf";
+    expect(previewFromBlocks([{ kind: "text", text: `Summarise this\n\n${line}` }])).toBe(
+      "Summarise this",
+    );
+    expect(previewFromBlocks([{ kind: "text", text: line }])).toBe("Sample agreement.pdf");
+  });
+
   it("preserves literal URL paths in autolinks", () => {
     expect(previewFromBlocks([{ kind: "text", text: "Open <https://example.test/_draft_>" }])).toBe(
       "Open https://example.test/_draft_",

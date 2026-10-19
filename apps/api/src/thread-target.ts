@@ -11,11 +11,16 @@ import type {
   RunStatus,
   ThreadSnapshot,
 } from "@rakazo/contracts";
-import { GROUP_MEMBER_MIN, MessageBlock as MessageBlockSchema } from "@rakazo/contracts";
+import {
+  botCanReadDataRoom,
+  GROUP_MEMBER_MIN,
+  MessageBlock as MessageBlockSchema,
+} from "@rakazo/contracts";
 import {
   ACTIVE_RUN_STATUSES,
   BACKGROUND_RUN_TRIGGERS,
   callIdFromClientNonce,
+  dataRoomReferenceLine,
   isActive,
   isConversationalRun,
   projectMessages,
@@ -27,6 +32,7 @@ import type { Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
   answerWaitingRunWithTextInTransaction,
   appendEventInTransaction,
+  createDataRoomRepos,
   createGroupRepos,
   createRepos,
   createThreadMessageInTransaction,
@@ -601,6 +607,40 @@ function mapRun(run: {
   };
 }
 
+/**
+ * The lines that tell an agent which Data room files a message carries, so it can open them with
+ * read_data_room_item. Each file must be the sender's own (a foreign or unknown id is refused as
+ * not found), and the bot must be one that can read the Data room: others get a copy as an
+ * attachment instead.
+ */
+export async function dataRoomReferenceLines(
+  prisma: PrismaClient,
+  actor: Actor,
+  target: ThreadTarget,
+  itemIds: string[] | undefined,
+) {
+  const ids = [...new Set(itemIds ?? [])];
+  if (!ids.length) return [];
+  if (target.kind !== "bot") {
+    throw new ORPCError("BAD_REQUEST", { message: "Data room files go to one agent." });
+  }
+  const bot = await prisma.bot.findFirst({
+    where: { id: target.botId, spaceId: actor.spaceId, userId: actor.userId },
+    select: { spawnKey: true, disabledBuiltinTools: true },
+  });
+  if (!bot) throw new IsolationError();
+  if (!botCanReadDataRoom(bot)) {
+    throw new ORPCError("BAD_REQUEST", { message: "This agent cannot open the Data room." });
+  }
+  const repo = createDataRoomRepos(prisma);
+  const lines: string[] = [];
+  for (const id of ids) {
+    const item = await repo.getItem(actor, id);
+    lines.push(dataRoomReferenceLine(item));
+  }
+  return lines;
+}
+
 export async function sendThreadMessage(
   deps: {
     prisma: PrismaClient;
@@ -612,6 +652,7 @@ export async function sendThreadMessage(
   input: {
     text?: string;
     artifactIds?: string[];
+    dataRoomItemIds?: string[];
     mentions?: MentionTargetInput[];
     replyToMessageId?: string;
     replyQuote?: string;
@@ -627,6 +668,15 @@ export async function sendThreadMessage(
   if (requestedReplyQuote && !input.replyToMessageId) {
     throw new ORPCError("BAD_REQUEST", { message: "replyQuote requires replyToMessageId." });
   }
+
+  const references = await dataRoomReferenceLines(
+    deps.prisma,
+    actor,
+    target,
+    input.dataRoomItemIds,
+  );
+  // The references ride in the text, so the message, the run's prompt and later history all carry them.
+  const sendText = [input.text?.trim(), references.join("\n")].filter(Boolean).join("\n\n");
 
   const commit = () =>
     deps.prisma.$transaction(async (tx) => {
@@ -689,7 +739,7 @@ export async function sendThreadMessage(
           actor,
           mentionTargets.connectorMentionIds,
         );
-        const blocks = buildUserMessageBlocks(input.text, attachmentBlocks);
+        const blocks = buildUserMessageBlocks(sendText, attachmentBlocks);
         const message = await createThreadMessageInTransaction(tx, {
           threadId: target.threadId,
           role: "user",
@@ -795,7 +845,7 @@ export async function sendThreadMessage(
             botId: target.botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(sendText, artifacts, connectorNames),
             status: "queued",
           },
         });
