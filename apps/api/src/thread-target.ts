@@ -20,6 +20,7 @@ import {
   ACTIVE_RUN_STATUSES,
   BACKGROUND_RUN_TRIGGERS,
   callIdFromClientNonce,
+  dataRoomReferenceLine,
   isActive,
   isConversationalRun,
   projectMessages,
@@ -635,7 +636,7 @@ export async function dataRoomReferenceLines(
   const lines: string[] = [];
   for (const id of ids) {
     const item = await repo.getItem(actor, id);
-    lines.push(`Data room item ${item.id}: ${item.name.replace(/\s+/g, " ")}`);
+    lines.push(dataRoomReferenceLine(item));
   }
   return lines;
 }

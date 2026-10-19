@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 203 of 203
-- Web and shared components: 581
+- Web and shared component files with stories: 205 of 205
+- Web and shared components: 583
 - Mobile components: 127 in 88 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -101,6 +101,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | SoftwareUpdatePanel, SoftwareUpdateSection, CheckSummary | [apps/web/src/components/SoftwareUpdateSection.tsx](../../apps/web/src/components/SoftwareUpdateSection.tsx) | [SoftwareUpdateSection.stories.tsx](../../apps/web/src/components/SoftwareUpdateSection.stories.tsx) | web |
 | SubscriptionGate | [apps/web/src/components/SubscriptionGate.tsx](../../apps/web/src/components/SubscriptionGate.tsx) | [SubscriptionGate.stories.tsx](../../apps/web/src/components/SubscriptionGate.stories.tsx) | web |
 | ToolSteps, ToolActivityDisclosure, StandaloneToolActivity, ToolOnlyNarration | [apps/web/src/components/ToolActivityDisclosure.tsx](../../apps/web/src/components/ToolActivityDisclosure.tsx) | [ToolActivityDisclosure.stories.tsx](../../apps/web/src/components/ToolActivityDisclosure.stories.tsx) | web |
+| UserTextBubble | [apps/web/src/components/UserTextBubble.tsx](../../apps/web/src/components/UserTextBubble.tsx) | [UserTextBubble.stories.tsx](../../apps/web/src/components/UserTextBubble.stories.tsx) | web |
 
 ## Web components/ai
 
@@ -139,6 +140,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Row, AutoSortDialog | [apps/web/src/components/data-room/AutoSortDialog.tsx](../../apps/web/src/components/data-room/AutoSortDialog.tsx) | [AutoSortDialog.stories.tsx](../../apps/web/src/components/data-room/AutoSortDialog.stories.tsx) | web |
 | DataRoomConsentPrompt | [apps/web/src/components/data-room/ConsentPrompt.tsx](../../apps/web/src/components/data-room/ConsentPrompt.tsx) | [ConsentPrompt.stories.tsx](../../apps/web/src/components/data-room/ConsentPrompt.stories.tsx) | web |
 | DataRoomImportMenu | [apps/web/src/components/data-room/DataRoomImportMenu.tsx](../../apps/web/src/components/data-room/DataRoomImportMenu.tsx) | [DataRoomImportMenu.stories.tsx](../../apps/web/src/components/data-room/DataRoomImportMenu.stories.tsx) | web |
+| DataRoomRefChips | [apps/web/src/components/data-room/DataRoomRefChips.tsx](../../apps/web/src/components/data-room/DataRoomRefChips.tsx) | [DataRoomRefChips.stories.tsx](../../apps/web/src/components/data-room/DataRoomRefChips.stories.tsx) | web |
 | DriveRow | [apps/web/src/components/data-room/DriveRow.tsx](../../apps/web/src/components/data-room/DriveRow.tsx) | [DriveRow.stories.tsx](../../apps/web/src/components/data-room/DriveRow.stories.tsx) | web |
 | DataRoomDropZone | [apps/web/src/components/data-room/DropZone.tsx](../../apps/web/src/components/data-room/DropZone.tsx) | [DropZone.stories.tsx](../../apps/web/src/components/data-room/DropZone.stories.tsx) | web |
 | Tip, ToolbarTip, Chip, DateFilter, PickFilter, FilterBar | [apps/web/src/components/data-room/FilterBar.tsx](../../apps/web/src/components/data-room/FilterBar.tsx) | [FilterBar.stories.tsx](../../apps/web/src/components/data-room/FilterBar.stories.tsx) | web |
