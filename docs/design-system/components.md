@@ -129,6 +129,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | DataRoomConsentPrompt | [apps/web/src/components/data-room/ConsentPrompt.tsx](../../apps/web/src/components/data-room/ConsentPrompt.tsx) | [ConsentPrompt.stories.tsx](../../apps/web/src/components/data-room/ConsentPrompt.stories.tsx) | web |
+| DriveRow | [apps/web/src/components/data-room/DriveRow.tsx](../../apps/web/src/components/data-room/DriveRow.tsx) | [DriveRow.stories.tsx](../../apps/web/src/components/data-room/DriveRow.stories.tsx) | web |
 | DataRoomDropZone | [apps/web/src/components/data-room/DropZone.tsx](../../apps/web/src/components/data-room/DropZone.tsx) | [DropZone.stories.tsx](../../apps/web/src/components/data-room/DropZone.stories.tsx) | web |
 | Tip, ToolbarTip, Chip, DateFilter, PickFilter, FilterBar | [apps/web/src/components/data-room/FilterBar.tsx](../../apps/web/src/components/data-room/FilterBar.tsx) | [FilterBar.stories.tsx](../../apps/web/src/components/data-room/FilterBar.stories.tsx) | web |
 | FolderTree | [apps/web/src/components/data-room/FolderTree.tsx](../../apps/web/src/components/data-room/FolderTree.tsx) | [FolderTree.stories.tsx](../../apps/web/src/components/data-room/FolderTree.stories.tsx) | web |

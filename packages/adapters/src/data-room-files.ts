@@ -44,6 +44,10 @@ export function dataRoomBlobContext(actor: Actor, operation: string, signal?: Ab
   };
 }
 
+/** A name safe for a Data room file or folder: no separators or control characters, at most 255 characters. */
+export const dataRoomSafeName = (name: string, fallback: string) =>
+  name.replace(PATH_OR_CONTROL, "_").trim().slice(0, 255) || fallback;
+
 /** The name, type and hash every import files: a safe name and a well-formed MIME type. */
 export function dataRoomFileFields(
   file: { name: string; mimeType: string; bytes: Uint8Array },
@@ -53,7 +57,7 @@ export function dataRoomFileFields(
   return {
     bytes: file.bytes,
     sha256: createHash("sha256").update(file.bytes).digest("hex"),
-    name: file.name.replace(PATH_OR_CONTROL, "_").trim().slice(0, 255) || fallbackName,
+    name: dataRoomSafeName(file.name, fallbackName),
     mimeType: DATA_ROOM_MIME.test(mimeType) ? mimeType : "application/octet-stream",
   };
 }

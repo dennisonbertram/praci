@@ -4239,6 +4239,11 @@ msgstr "Área de carga de imagen"
 msgid "Import"
 msgstr ""
 
+#. placeholder {0}: picks.size
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Import {0}"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Import an OpenAPI description"
 msgstr ""
@@ -7182,6 +7187,11 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "See who owns your company"
+msgstr ""
+
+#. placeholder {0}: file.name
+#: src/components/data-room/DriveRow.tsx
+msgid "Select {0}"
 msgstr ""
 
 #: src/pages/Shell.tsx
