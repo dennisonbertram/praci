@@ -16,7 +16,7 @@ import { pollCloudAgent } from "./cloud-agent-poll.js";
 import { expireComputerControl } from "./computer-control.js";
 import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
-import { runDriveFileImport } from "./data-room-drive-import.js";
+import { runDriveFileImport, runDriveImport } from "./data-room-drive-import.js";
 import type { DataRoomJobDeps } from "./data-room-jobs.js";
 import { runDataRoomClassify, runDataRoomIndex, runDataRoomIngest } from "./data-room-jobs.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
@@ -157,6 +157,8 @@ export function createBackgroundJobHandlers(deps: {
     "dataroom.ingest": (payload) => runDataRoomIngest(dataRoomDeps(), payload),
     "dataroom.classify": (payload) => runDataRoomClassify(dataRoomDeps(), payload),
     "dataroom.index": (payload) => runDataRoomIndex(dataRoomDeps(), payload),
+    "dataroom.drive.import": (payload) =>
+      runDriveImport({ prisma: deps.prisma, jobs: deps.jobs }, payload),
     "dataroom.drive.file": async (payload) => {
       if (!deps.artifacts || !deps.connectors) throw new Error("Drive import is not configured");
       await runDriveFileImport(

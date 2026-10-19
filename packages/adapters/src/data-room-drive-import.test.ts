@@ -113,27 +113,22 @@ describe("planDriveFolders", () => {
     expect(result.skipped).toBe(3);
   });
 
-  it("puts folders deeper than the limit in the deepest allowed ancestor, with the rest of the path in the name", async () => {
+  it("never nests deeper than the limit: a 10-level chain keeps the rest in the name", async () => {
     const chain: EmulatedDriveFile[] = [folder("d1", "L1")];
-    for (let i = 2; i <= DRIVE_IMPORT_MAX_DEPTH + 2; i++)
-      chain.push(folder(`d${i}`, `L${i}`, `d${i - 1}`));
-    const deepest = `d${DRIVE_IMPORT_MAX_DEPTH + 2}`;
-    const result = await plan(setup([...chain, pdf("f", "f.pdf", deepest)]), ["d1"]);
-    const last = result.folders.length - 1;
-    expect(result.folders).toHaveLength(DRIVE_IMPORT_MAX_DEPTH + 2);
-    expect(result.folders[DRIVE_IMPORT_MAX_DEPTH - 1]).toEqual({
-      name: `L${DRIVE_IMPORT_MAX_DEPTH}`,
-      parent: DRIVE_IMPORT_MAX_DEPTH - 2,
-    });
-    expect(result.folders[DRIVE_IMPORT_MAX_DEPTH]).toEqual({
-      name: `L${DRIVE_IMPORT_MAX_DEPTH + 1}`,
-      parent: DRIVE_IMPORT_MAX_DEPTH - 1,
-    });
-    expect(result.folders[last]).toEqual({
-      name: `L${DRIVE_IMPORT_MAX_DEPTH + 1} > L${DRIVE_IMPORT_MAX_DEPTH + 2}`,
-      parent: DRIVE_IMPORT_MAX_DEPTH - 1,
-    });
-    expect(result.files).toEqual([{ id: "f", folder: last }]);
+    for (let i = 2; i <= 10; i++) chain.push(folder(`d${i}`, `L${i}`, `d${i - 1}`));
+    const result = await plan(setup([...chain, pdf("f", "f.pdf", "d10")]), ["d1"]);
+    const depth = (index: number): number => {
+      const parent = result.folders[index]?.parent;
+      return parent === null || parent === undefined ? 1 : depth(parent) + 1;
+    };
+    expect(result.folders).toHaveLength(10);
+    expect(Math.max(...result.folders.map((_, i) => depth(i)))).toBe(DRIVE_IMPORT_MAX_DEPTH);
+    expect(result.folders.slice(0, DRIVE_IMPORT_MAX_DEPTH).map((f) => f.name)).toEqual(
+      Array.from({ length: DRIVE_IMPORT_MAX_DEPTH }, (_, i) => `L${i + 1}`),
+    );
+    expect(result.folders[8]).toEqual({ name: "L8 > L9", parent: 6 });
+    expect(result.folders[9]).toEqual({ name: "L8 > L9 > L10", parent: 6 });
+    expect(result.files).toEqual([{ id: "f", folder: 9 }]);
   });
 
   it("replaces path separators in folder names", async () => {
@@ -158,5 +153,43 @@ describe("planDriveFolders", () => {
     const result = await plan(deps, ["top", "x", "top"]);
     expect(result.files.map((f) => f.id).sort()).toEqual(["solo", "x"]);
     expect(result.skipped).toBe(1);
+  });
+
+  it("counts a direct pick with the folder files against the limit, once per file", async () => {
+    const files = Array.from({ length: DRIVE_IMPORT_MAX_FILES }, (_, i) =>
+      pdf(`f${i}`, `f${i}.pdf`, "top"),
+    );
+    const deps = setup([folder("top", "Big"), ...files, { ...pdf("extra", "e.pdf", "other") }]);
+    const run = (directFileIds: string[]) =>
+      planDriveFolders(deps, context, {
+        connectionId: "conn-a",
+        folderIds: ["top"],
+        directFileIds,
+        maxBytes: 1000,
+      });
+    await expect(run(["extra"])).rejects.toMatchObject({ code: "too_many" });
+    // A direct pick that is also in the folder is one file.
+    const result = await run(["f0"]);
+    expect(result.files).toHaveLength(DRIVE_IMPORT_MAX_FILES - 1);
+  });
+
+  it("bounds how many entries it scans, even when none can be imported", async () => {
+    const forms = Array.from({ length: 120 }, (_, i) => ({
+      id: `frm${i}`,
+      name: `Form ${i}`,
+      mimeType: "application/vnd.google-apps.form",
+      parents: ["top"],
+    }));
+    const deps = setup([folder("top", "Forms"), ...forms]);
+    const error = await planDriveFolders(deps, context, {
+      connectionId: "conn-a",
+      folderIds: ["top"],
+      maxBytes: 1000,
+      maxScanned: 60,
+    }).catch((e) => e);
+    expect(error).toMatchObject({
+      code: "too_many",
+      message: "Folder imports are limited to 60 items.",
+    });
   });
 });

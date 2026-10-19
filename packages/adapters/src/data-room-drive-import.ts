@@ -1,8 +1,9 @@
 import type { AdapterContext, ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
+import { dataRoomDriveFileJob } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
 import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, IsolationError } from "@rakazo/db";
+import { createDataRoomRepos, DataRoomConflictError, IsolationError } from "@rakazo/db";
 import { createFileDataRoomItem, dataRoomFileFields, dataRoomSafeName } from "./data-room-files.js";
 import {
   DriveFileError,
@@ -12,11 +13,14 @@ import {
   isImportableDriveFile,
   listDriveFiles,
 } from "./drive-files.js";
+import { listDriveAccounts } from "./drive-tools.js";
 
 /** The most files, and the most folders, one folder import takes. */
 export const DRIVE_IMPORT_MAX_FILES = 500;
 /** Data room folders are nested at most this deep under the import target; deeper Drive folders are flattened. */
 export const DRIVE_IMPORT_MAX_DEPTH = 8;
+/** The most Drive entries one plan looks at, importable or not, so a folder of Forms still stops. */
+export const DRIVE_IMPORT_MAX_SCANNED = 5000;
 const FLATTEN = " > ";
 
 export type DrivePlan = {
@@ -36,7 +40,14 @@ export type DrivePlan = {
 export async function planDriveFolders(
   deps: DriveFilesDeps,
   context: AdapterContext,
-  input: { connectionId: string; folderIds: string[]; maxBytes: number },
+  input: {
+    connectionId: string;
+    folderIds: string[];
+    /** Files picked directly; they count toward the limit with the folders' files. */
+    directFileIds?: string[];
+    maxBytes: number;
+    maxScanned?: number;
+  },
 ): Promise<DrivePlan> {
   const target = { connectionId: input.connectionId };
   const plan: DrivePlan = { folders: [], files: [], skipped: 0 };
@@ -47,6 +58,11 @@ export async function planDriveFolders(
       "too_many",
       `Folder imports are limited to ${DRIVE_IMPORT_MAX_FILES} files.`,
     );
+  const direct = new Set(input.directFileIds);
+  const maxScanned = input.maxScanned ?? DRIVE_IMPORT_MAX_SCANNED;
+  let scanned = 0;
+  const tooManyScanned = (max: number) =>
+    new DriveFileError("too_many", `Folder imports are limited to ${max} items.`);
   const queue: { id: string; index: number }[] = [];
   const depths: number[] = [];
 
@@ -55,14 +71,12 @@ export async function planDriveFolders(
     if (plan.folders.length >= DRIVE_IMPORT_MAX_FILES) throw tooMany();
     const own = dataRoomSafeName(name, "Folder");
     const above = parent === null ? undefined : plan.folders[parent];
-    // Past the limit a folder goes into the depth-limit ancestor; deeper ones extend its name.
+    // The last level and everything below it sit in the depth-limit ancestor, the path in the name.
     const flat = depth > DRIVE_IMPORT_MAX_DEPTH && above;
     plan.folders.push(
-      !flat
-        ? { name: own, parent }
-        : depth === DRIVE_IMPORT_MAX_DEPTH + 1
-          ? { name: own, parent }
-          : { name: dataRoomSafeName(`${above.name}${FLATTEN}${own}`, own), parent: above.parent },
+      flat
+        ? { name: dataRoomSafeName(`${above.name}${FLATTEN}${own}`, own), parent: above.parent }
+        : { name: own, parent },
     );
     depths.push(depth);
     queue.push({ id, index: plan.folders.length - 1 });
@@ -85,17 +99,21 @@ export async function planDriveFolders(
     if (!current) break;
     let pageToken: string | undefined;
     do {
+      // An empty folder still costs a request, so a request counts as an entry.
+      if (++scanned > maxScanned) throw tooManyScanned(maxScanned);
       const page = await listDriveFiles(deps, context, {
         ...target,
         folderId: current.id,
         ...(pageToken ? { pageToken } : {}),
       });
+      scanned += page.files.length;
+      if (scanned > maxScanned) throw tooManyScanned(maxScanned);
       for (const child of page.files) {
         if (child.isFolder) {
           if (seenFolders.has(child.id)) continue;
           seenFolders.add(child.id);
           add(child.id, child.name, current.index);
-        } else if (!seenFiles.has(child.id)) {
+        } else if (!seenFiles.has(child.id) && !direct.has(child.id)) {
           seenFiles.add(child.id);
           const tooBig = child.size !== undefined && child.size > input.maxBytes;
           if (
@@ -104,7 +122,7 @@ export async function planDriveFolders(
           ) {
             plan.skipped += 1;
           } else {
-            if (plan.files.length >= DRIVE_IMPORT_MAX_FILES) throw tooMany();
+            if (plan.files.length + direct.size >= DRIVE_IMPORT_MAX_FILES) throw tooMany();
             plan.files.push({ id: child.id, folder: current.index });
           }
         }
@@ -114,6 +132,29 @@ export async function planDriveFolders(
   }
   return plan;
 }
+
+type Scope = { spaceId: string; userId: string; connectionId: string };
+
+/**
+ * Queued jobs outlive the request that made them, so each re-checks, when it runs, that the user
+ * is still a member of the space and still owns the Drive connection.
+ */
+async function stillAuthorized(deps: { prisma: PrismaClient }, scope: Scope): Promise<boolean> {
+  const member = await deps.prisma.spaceMember.findUnique({
+    where: { spaceId_userId: { spaceId: scope.spaceId, userId: scope.userId } },
+    select: { id: true },
+  });
+  if (!member) return false;
+  const accounts = await listDriveAccounts(deps.prisma, scope);
+  return accounts.some((account) => account.id === scope.connectionId);
+}
+
+const actorFor = (scope: { spaceId: string; userId: string }): Actor => ({
+  spaceId: scope.spaceId,
+  userId: scope.userId,
+  email: "",
+  isDeploymentOwner: false,
+});
 
 export interface DriveFileImportDeps {
   prisma: PrismaClient;
@@ -139,12 +180,8 @@ export async function runDriveFileImport(
   },
   signal: AbortSignal = new AbortController().signal,
 ): Promise<void> {
-  const actor: Actor = {
-    spaceId: payload.spaceId,
-    userId: payload.userId,
-    email: "",
-    isDeploymentOwner: false,
-  };
+  if (!(await stillAuthorized(deps, payload))) return;
+  const actor = actorFor(payload);
   const { fileItem, known } = createFileDataRoomItem(deps, createDataRoomRepos(deps.prisma));
   if (await known(actor, payload.externalId, payload.connectionId)) return;
   const operationId = `data-room.drive-folder:${payload.externalId}`;
@@ -176,5 +213,61 @@ export async function runDriveFileImport(
   } catch (error) {
     // The Data room folder was deleted while the import was queued.
     if (!(error instanceof IsolationError)) throw error;
+  }
+}
+
+/** The caller's folder of that name under `parentId`, created when missing. */
+async function ensureFolder(
+  prisma: PrismaClient,
+  actor: Actor,
+  parentId: string | null,
+  name: string,
+): Promise<string> {
+  const find = () =>
+    prisma.dataRoomFolder.findFirst({
+      where: { spaceId: actor.spaceId, userId: actor.userId, parentId, name },
+      select: { id: true },
+    });
+  const existing = await find();
+  if (existing) return existing.id;
+  try {
+    return (await createDataRoomRepos(prisma).createFolder(actor, { name, parentId })).id;
+  } catch (error) {
+    // A concurrent import made it first.
+    const raced = error instanceof DataRoomConflictError && (await find());
+    if (raced) return raced.id;
+    throw error;
+  }
+}
+
+/**
+ * Writes a planned import: the Data room folders (a same-named folder is reused), then one file
+ * job per file. Every step is repeatable, so a failure part-way is finished by the retry.
+ */
+export async function runDriveImport(
+  deps: { prisma: PrismaClient; jobs: JobPublisher },
+  payload: Scope & {
+    folderId: string | null;
+    folders: { name: string; parent: number | null }[];
+    files: { id: string; folder: number }[];
+  },
+): Promise<void> {
+  if (!(await stillAuthorized(deps, payload))) return;
+  const actor = actorFor(payload);
+  const roomFolders: string[] = [];
+  try {
+    for (const node of payload.folders) {
+      const parent = node.parent === null ? payload.folderId : (roomFolders[node.parent] ?? null);
+      roomFolders.push(await ensureFolder(deps.prisma, actor, parent, node.name));
+    }
+  } catch (error) {
+    // The target folder is not the user's (any more).
+    if (error instanceof IsolationError) return;
+    throw error;
+  }
+  for (const file of payload.files) {
+    await deps.jobs.enqueue(
+      dataRoomDriveFileJob(actor, payload.connectionId, file.id, roomFolders[file.folder] ?? null),
+    );
   }
 }

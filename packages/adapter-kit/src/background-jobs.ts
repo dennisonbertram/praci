@@ -35,6 +35,20 @@ const payloadSchemas = {
   "dataroom.ingest": dataRoomStepPayload,
   "dataroom.classify": dataRoomStepPayload,
   "dataroom.index": dataRoomStepPayload,
+  "dataroom.drive.import": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    connectionId: z.string().min(1),
+    folderId: z.string().min(1).nullable(),
+    folders: z
+      .array(
+        z.object({ name: z.string().min(1).max(255), parent: z.number().int().min(0).nullable() }),
+      )
+      .max(500),
+    files: z
+      .array(z.object({ id: z.string().min(1).max(200), folder: z.number().int().min(0) }))
+      .max(500),
+  }),
   "dataroom.drive.file": z.object({
     spaceId: z.string().min(1),
     userId: z.string().min(1),
@@ -269,4 +283,11 @@ export function dataRoomDriveFileJob(
     replaceKey: `dataroom.drive.file:${scope.spaceId}:${scope.userId}:${connectionId}:${externalId}`,
     maxAttempts: DATA_ROOM_JOB_ATTEMPTS,
   };
+}
+
+/** A planned Drive folder import, held in the queue until its folders and file jobs are written. */
+export function dataRoomDriveImportJob(
+  payload: BackgroundJobPayloads["dataroom.drive.import"],
+): BackgroundJob {
+  return { name: "dataroom.drive.import", payload, maxAttempts: DATA_ROOM_JOB_ATTEMPTS };
 }

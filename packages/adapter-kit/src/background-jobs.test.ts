@@ -31,6 +31,7 @@ function handlers(): BackgroundJobHandlers {
     "dataroom.ingest": vi.fn(async () => undefined),
     "dataroom.classify": vi.fn(async () => undefined),
     "dataroom.index": vi.fn(async () => undefined),
+    "dataroom.drive.import": vi.fn(async () => undefined),
     "dataroom.drive.file": vi.fn(async () => undefined),
   };
 }

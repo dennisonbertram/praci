@@ -13,6 +13,7 @@ import {
 import { ArrowLeft, HardDrive } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { refreshDataRoomWhileImporting } from "../../lib/data-room";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { DriveRow } from "./DriveRow";
@@ -116,15 +117,17 @@ function DrivePicker({
     setError("");
     try {
       const ids = [...picks];
-      const { imported, duplicates, failed, queued } = await rpc.dataRoom.importDrive({
+      const { imported, duplicates, failed, queued, folders } = await rpc.dataRoom.importDrive({
         fileIds: ids.filter(([, isFolder]) => !isFolder).map(([id]) => id),
         driveFolderIds: ids.filter(([, isFolder]) => isFolder).map(([id]) => id),
         folderId,
       });
       onDone(
         imported > 0 || (duplicates > 0 && failed === 0) ? importedText(imported, duplicates) : "",
-        imported > 0 || duplicates > 0 || (queued ?? 0) > 0,
+        imported > 0 || duplicates > 0 || (queued ?? 0) > 0 || (folders ?? 0) > 0,
       );
+      // The folders and files of a folder import are written by background jobs.
+      if ((queued ?? 0) > 0 || (folders ?? 0) > 0) refreshDataRoomWhileImporting();
       if (failed === 0) onClose();
       else setError(failedText(failed));
     } catch (cause) {

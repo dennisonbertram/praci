@@ -192,4 +192,6 @@ export const DataRoomApiImportDriveOutputSchema = z.object({
   failed: z.number().int(),
   /** Files of picked folders handed to the background import. */
   queued: z.number().int().optional(),
+  /** Data room folders the picked Drive folders will become (created in the background). */
+  folders: z.number().int().optional(),
 });

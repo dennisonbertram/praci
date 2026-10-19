@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
 import type { ArtifactStore, JobPublisher, MailProvider } from "@rakazo/adapter-kit";
-import { dataRoomBlobDeleteJob, dataRoomDriveFileJob, dataRoomStepJob } from "@rakazo/adapter-kit";
+import {
+  dataRoomBlobDeleteJob,
+  dataRoomDriveImportJob,
+  dataRoomStepJob,
+} from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
 import {
   createFileDataRoomItem as createFileItem,
@@ -207,25 +211,6 @@ const REINDEX_BATCH = 200;
 export function createDataRoomService(deps: DataRoomDeps) {
   const repo = createDataRoomRepos(deps.prisma);
   const { fileItem, known } = createFileDataRoomItem(deps, repo);
-
-  /** The caller's folder of that name under `parentId`, created when missing. */
-  const ensureFolder = async (actor: Actor, parentId: string | null | undefined, name: string) => {
-    const find = () =>
-      deps.prisma.dataRoomFolder.findFirst({
-        where: { spaceId: actor.spaceId, userId: actor.userId, parentId: parentId ?? null, name },
-        select: { id: true },
-      });
-    const existing = await find();
-    if (existing) return existing.id;
-    try {
-      return (await repo.createFolder(actor, { name, parentId: parentId ?? null })).id;
-    } catch (error) {
-      // A concurrent import made it first.
-      const raced = error instanceof DataRoomConflictError && (await find());
-      if (raced) return raced.id;
-      throw error;
-    }
-  };
 
   /** The name and folder path live in the item's metadata chunk, so a change re-indexes it. */
   const enqueueIndex = async (actor: Actor, ids: string[]) => {
@@ -511,6 +496,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
           ? await planDriveFolders(drive, context, {
               connectionId: sourceConnectionId,
               folderIds: input.driveFolderIds,
+              directFileIds: input.fileIds,
               maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
             })
           : undefined;
@@ -549,30 +535,25 @@ export function createDataRoomService(deps: DataRoomDeps) {
           else duplicates += 1;
         }
         if (!plan) return { imported, duplicates, failed };
-        // Same-named folders are reused, so repeating an import fills in the same tree.
-        const roomFolders: string[] = [];
-        for (const node of plan.folders) {
-          roomFolders.push(
-            await ensureFolder(
-              actor,
-              node.parent === null ? folderId : roomFolders[node.parent],
-              node.name,
-            ),
-          );
-        }
-        const direct = new Set(input.fileIds);
-        const files = plan.files.filter((file) => !direct.has(file.id));
-        for (const file of files) {
+        // One queued job holds the whole plan: it either exists, or nothing was written.
+        if (plan.folders.length > 0)
           await deps.jobs.enqueue(
-            dataRoomDriveFileJob(
-              actor,
-              sourceConnectionId,
-              file.id,
-              roomFolders[file.folder] ?? null,
-            ),
+            dataRoomDriveImportJob({
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              connectionId: sourceConnectionId,
+              folderId,
+              folders: plan.folders,
+              files: plan.files,
+            }),
           );
-        }
-        return { imported, duplicates, failed: failed + plan.skipped, queued: files.length };
+        return {
+          imported,
+          duplicates,
+          failed: failed + plan.skipped,
+          queued: plan.files.length,
+          folders: plan.folders.length,
+        };
       });
     },
 
