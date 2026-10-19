@@ -217,9 +217,13 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       botIds: [],
     };
   // The agents shown in the lists below; toggling saves exactly these, so no hidden grant survives.
-  const shownBots = withoutOtherIntegrationAgents(data.bots, undefined, {
-    keepCarta: connectorId === "google",
-  });
+  const shownBots = withoutOtherIntegrationAgents(
+    data.bots,
+    rows.map((row) => row.agentBotId),
+    {
+      keepCarta: connectorId === "google",
+    },
+  );
   const allBotIds = shownBots.map((bot) => bot.id);
 
   async function updateAgent(action: () => Promise<void>, fallback: string) {

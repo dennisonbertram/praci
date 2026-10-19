@@ -420,3 +420,36 @@ it("hides Carta on a non-Google connection", async () => {
       .join(),
   ).not.toContain("Carta");
 });
+
+it("keeps this page's own integration agent visible and granted when another agent is toggled", async () => {
+  const bot = (id: string, name: string, spawnKey: string | null) =>
+    ({ id, name, spawnKey }) as IntegrationsData["bots"][number];
+  await show(
+    APP_PAGE,
+    data({
+      connections: [
+        appConnection(),
+        appConnection({ id: "conn_agent", agentBotId: "own", displayName: "Second" }),
+      ],
+      bots: [
+        bot("chief", "Chief", null),
+        bot("other", "Helper", null),
+        bot("own", "Own agent", "integration-agent:s1"),
+      ],
+      access: {
+        conn_app: { allAgents: false, botIds: ["chief", "own"] },
+        conn_agent: { allAgents: false, botIds: ["own"] },
+      },
+    }),
+  );
+  const labels = switches().map((element) => element.getAttribute("aria-label") ?? "");
+  const own = labels.findIndex((label) => label.includes("Own agent"));
+  expect(own).toBeGreaterThan(-1);
+  const helper = labels.findIndex((label) => label.includes("Helper"));
+  await act(async () => switches()[helper]!.click());
+  expect(setAccess).toHaveBeenCalledWith({
+    connectionId: "conn_app",
+    allAgents: false,
+    botIds: expect.arrayContaining(["chief", "own", "other"]),
+  });
+});
