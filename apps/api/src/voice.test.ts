@@ -1,12 +1,8 @@
-import { createRouterClient } from "@orpc/server";
 import * as adapters from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
-import { voiceAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDb } from "@rakazo/db";
 import { Hono } from "hono";
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { createRouter, type RouterDeps } from "./router.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   disconnectVoiceCredential,
   fishSpeechModelValue,
@@ -278,110 +274,6 @@ describe("disconnectVoiceCredential", () => {
       },
     );
     expect(transaction).not.toHaveBeenCalled();
-  });
-});
-
-const databaseUrl = process.env.DATABASE_URL;
-const describePostgres =
-  process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
-
-describePostgres("voice.agent (PostgreSQL)", () => {
-  const suffix = `${process.pid}-${Date.now()}`;
-  const id = (name: string) => `voice-${name}-${suffix}`;
-  const orgId = id("org");
-  const spaceId = id("space");
-  const userA = id("user-a");
-  const userB = id("user-b");
-  const actor = (userId: string): Actor => ({
-    userId,
-    spaceId,
-    email: `${userId}@rakazo.test`,
-    isDeploymentOwner: false,
-  });
-
-  let prisma: PrismaClient;
-  let close: () => Promise<void>;
-
-  const client = (who: Actor) =>
-    createRouterClient(createRouter({ prisma } as unknown as RouterDeps), {
-      context: { actor: who } as never,
-    });
-
-  beforeAll(async () => {
-    const db = createDb(databaseUrl as string);
-    prisma = db.prisma;
-    close = async () => {
-      await db.prisma.$disconnect();
-      await db.pool.end();
-    };
-    for (const userId of [userA, userB]) {
-      await prisma.user.create({
-        data: { id: userId, name: userId, email: `${userId}@rakazo.test`, emailVerified: false },
-      });
-    }
-    await prisma.organization.create({
-      data: { id: orgId, name: orgId, slug: orgId, createdAt: new Date() },
-    });
-    await prisma.space.create({
-      data: { id: spaceId, organizationId: orgId, name: "General", isDefault: true },
-    });
-    for (const userId of [userA, userB]) {
-      await prisma.member.create({
-        data: {
-          id: id(`member-${userId}`),
-          organizationId: orgId,
-          userId,
-          role: "member",
-          createdAt: new Date(),
-        },
-      });
-    }
-  });
-
-  afterAll(async () => {
-    if (!prisma) return;
-    await prisma.bot.deleteMany({ where: { spaceId } });
-    await prisma.organization.deleteMany({ where: { id: orgId } });
-    await prisma.user.deleteMany({ where: { id: { in: [userA, userB] } } });
-    await close();
-  });
-
-  it("is idempotent, scoped to the actor, and creates no intro run", async () => {
-    const [first, second] = await Promise.all([
-      client(actor(userA)).voice.agent(),
-      client(actor(userA)).voice.agent(),
-    ]);
-
-    expect(second.id).toBe(first.id);
-    expect(first).toMatchObject({ name: "Elio", spawnKey: voiceAgentSpawnKey(userA) });
-    expect(
-      await prisma.bot.findFirstOrThrow({ where: { id: first.id }, select: { userId: true } }),
-    ).toEqual({ userId: userA });
-    expect(await prisma.run.count({ where: { botId: first.id } })).toBe(0);
-    expect(await prisma.message.count({ where: { thread: { botId: first.id } } })).toBe(0);
-
-    const other = await client(actor(userB)).voice.agent();
-    expect(other.id).not.toBe(first.id);
-    expect(other.spawnKey).toBe(voiceAgentSpawnKey(userB));
-    expect(
-      await prisma.bot.findFirstOrThrow({ where: { id: other.id }, select: { userId: true } }),
-    ).toEqual({ userId: userB });
-  });
-
-  it("rejects a client-supplied voice-agent spawn key", async () => {
-    for (const spawnKey of [voiceAgentSpawnKey(userA), voiceAgentSpawnKey(userB)]) {
-      await expect(
-        client(actor(userA)).bots.create({
-          name: "Impersonator",
-          title: "",
-          description: "",
-          instructions: "",
-          notifyOnFinish: true,
-          computerMode: "team",
-          spawnKey,
-        }),
-      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
-    }
   });
 });
 

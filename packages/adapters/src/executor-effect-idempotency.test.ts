@@ -6,6 +6,8 @@ import {
 } from "@rakazo/core/node/approval-effect-key";
 import { describe, expect, it, vi } from "vitest";
 import type * as AutoReviewModule from "./auto-review.js";
+import type * as BotMessagesModule from "./bot-messages.js";
+import * as botMessages from "./bot-messages.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { createRunExecutor } from "./executor.js";
 
@@ -20,6 +22,17 @@ vi.mock("./auto-review.js", async (importOriginal) => ({
   resolveAutoReviewChecker: () => ({ provider: "scripted", model: "checker" }),
   isAutoReviewCheckerConfigured: () => true,
   runAutoReviewJudge: vi.fn(),
+}));
+
+vi.mock("./bot-messages.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof BotMessagesModule>()),
+  messageBot: vi.fn(async () => ({
+    ok: true as const,
+    botId: "specialist-1",
+    name: "Analyst",
+    delivered: "Verify the export label.",
+    note: "Sent to Analyst.",
+  })),
 }));
 
 type Effect = {
@@ -40,7 +53,7 @@ type ToolCall = {
   executionId: string;
 };
 
-function fixture(runId = "run-1", voiceAgent = false) {
+function fixture(runId = "run-1", voiceAgent = false, options: { trigger?: string } = {}) {
   const effects: Effect[] = [];
   const results: unknown[] = [];
   const scratchpadRows: Array<{
@@ -62,7 +75,7 @@ function fixture(runId = "run-1", voiceAgent = false) {
     spaceId: "space-1",
     userId: "user-1",
     status: "queued",
-    trigger: "user",
+    trigger: options.trigger ?? "user",
     leaseFence: 0,
   };
   const memoryCommit = vi.fn(async () => ({ revision: "rev-1" }));
@@ -248,6 +261,58 @@ function fixture(runId = "run-1", voiceAgent = false) {
 }
 
 describe("mutating tool effect idempotency keys", () => {
+  it("dispatches Elio's allowed delegation without connector discovery", async () => {
+    const f = fixture("voice-delegate-run", true);
+    f.setCalls([
+      {
+        name: "message_bot",
+        args: {
+          bot_id: "specialist-1",
+          message: "Verify the export label.",
+          intent: "request",
+        },
+        executionId: "delegate-call",
+      },
+    ]);
+
+    await f.run();
+
+    expect(f.results).toEqual([
+      {
+        ok: true,
+        botId: "specialist-1",
+        name: "Analyst",
+        note: "Sent to Analyst.",
+      },
+    ]);
+    expect(botMessages.messageBot).toHaveBeenCalledOnce();
+    expect(f.connectorDiscoverTools).not.toHaveBeenCalled();
+    expect(f.connectorExecute).not.toHaveBeenCalled();
+    expect(f.externalEffect.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        kind: "message_bot",
+        status: "intended",
+      }),
+    });
+  });
+
+  it("refuses workspace reads on an actual peer-result dispatch", async () => {
+    const f = fixture("voice-peer-run", true, { trigger: "bot_message" });
+    f.setCalls([
+      {
+        name: "workspace_agents",
+        args: { limit: 10 },
+        executionId: "workspace-read-call",
+      },
+    ]);
+
+    await f.run();
+
+    expect(f.runtimeRequest?.tools.map((tool) => tool.name)).not.toContain("workspace_agents");
+    expect(f.results).toEqual([{ error: "Tool workspace_agents is not available to Elio." }]);
+    expect(f.connectorDiscoverTools).not.toHaveBeenCalled();
+  });
+
   it("rejects forged privileged calls for Elio before connector or effect work", async () => {
     const f = fixture("voice-run", true);
     f.setCalls(

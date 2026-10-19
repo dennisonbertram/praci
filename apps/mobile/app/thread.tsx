@@ -1835,7 +1835,6 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       : t("Hello, {bot} here.", { bot: botName });
   }
 
-  /** `switchedHere`: the caller asked another bot to put them through, so this bot answers. */
   async function startVoiceCall() {
     if (readOnly) return;
     const targetBotId = botId;

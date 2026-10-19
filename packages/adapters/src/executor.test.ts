@@ -97,14 +97,14 @@ describe("voice agent permissions", () => {
     const ordinary = selectBuiltinToolsForRun({ ...options, voiceAgent: false }).map(
       (tool) => tool.name,
     );
-    expect(ordinary).not.toEqual(
-      expect.arrayContaining([
-        "workspace_agents",
-        "agent_context",
-        "search_agent_history",
-        "read_agent_history",
-      ]),
-    );
+    for (const name of [
+      "workspace_agents",
+      "agent_context",
+      "search_agent_history",
+      "read_agent_history",
+    ]) {
+      expect(ordinary).not.toContain(name);
+    }
   });
 
   it("withholds private workspace, Data Room, and board reads outside the owner's private chat", () => {
@@ -113,18 +113,18 @@ describe("voice agent permissions", () => {
       voiceWorkspaceReadAllowed: false,
       disabledBuiltinTools: ["shell", "spawn_bot"],
     }).map((tool) => tool.name);
-    expect(names).not.toEqual(
-      expect.arrayContaining([
-        "workspace_agents",
-        "agent_context",
-        "search_agent_history",
-        "read_agent_history",
-        "search_data_room",
-        "read_data_room_item",
-        "board_tickets",
-        "ticket_get",
-      ]),
-    );
+    for (const name of [
+      "workspace_agents",
+      "agent_context",
+      "search_agent_history",
+      "read_agent_history",
+      "search_data_room",
+      "read_data_room_item",
+      "board_tickets",
+      "ticket_get",
+    ]) {
+      expect(names).not.toContain(name);
+    }
     expect(names).not.toContain("shell");
     expect(names).toEqual(expect.arrayContaining(["message_bot", "message_user", "ask_user"]));
   });
