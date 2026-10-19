@@ -1773,6 +1773,71 @@ describe("MCP connector integration agents", () => {
   });
 });
 
+describe("MCP connector scoped to chosen servers", () => {
+  const endpoint = "https://mcp.example.test/mcp";
+  const tools = Array.from({ length: 25 }, (_, index) => ({
+    name: `tool${index}`,
+    inputSchema: { type: "object" },
+    annotations: { readOnlyHint: true },
+  }));
+  const assignmentFor = (id: string) => ({
+    ...ASSIGNMENT,
+    serverId: id,
+    server: { ...SERVER, id, slug: id, endpoint },
+  });
+
+  async function setup() {
+    const state = { failNext: false, initializations: 0, calls: [] as string[], tools };
+    vi.stubGlobal("fetch", mcpFetch(state, endpoint));
+    const assignments = [assignmentFor("linked"), assignmentFor("unlinked")];
+    const connector = new McpConnector(
+      {
+        botMcpServer: {
+          findMany: vi.fn().mockImplementation(async ({ where }) =>
+            assignments.filter((row) => {
+              const ids = where.serverId?.in as string[] | undefined;
+              return !ids || ids.includes(row.serverId);
+            }),
+          ),
+          findFirst: vi.fn(),
+        },
+      } as never,
+      {} as never,
+      { network: TEST_NETWORK },
+    );
+    return { connector, state };
+  }
+  const context = (mcpServerIds?: string[]) =>
+    ({
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+      ...(mcpServerIds ? { mcpServerIds } : {}),
+    }) as never;
+
+  it("lists and resolves only the chosen servers' tools, even above the lazy-catalog limit", async () => {
+    const { connector } = await setup();
+    const call = (id: string) => ({
+      tool: "mcp_catalog_execute",
+      args: { id, arguments: {} },
+      executionId: "e1",
+      route: { connectorId: "mcp", toolName: "__catalog_execute" },
+    });
+    // Both servers together are above the limit, so the model sees search and execute wrappers.
+    const all = await connector.discoverTools(context());
+    expect(all.every((tool) => !tool.route?.resourceId)).toBe(true);
+    const unscoped = await connector.resolveCall(call("mcp__unlinked__tool0"), context());
+    expect(unscoped?.tool.route?.resourceId).toBe("unlinked");
+    // Scoped to the linked server: its tools are reachable, the other server's are not.
+    const scoped = context(["linked"]);
+    const linked = await connector.resolveCall(call("mcp__linked__tool0"), scoped);
+    expect(linked?.tool.route?.resourceId).toBe("linked");
+    await expect(connector.resolveCall(call("mcp__unlinked__tool0"), scoped)).rejects.toThrow();
+    await connector.close();
+  });
+});
+
 describe("MCP connector Carta integration-agent policy", () => {
   const tools = [
     ...CARTA_READ_TOOLS.map((name) => ({ name, inputSchema: { type: "object" } })),

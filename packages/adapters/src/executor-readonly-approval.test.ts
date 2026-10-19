@@ -2107,6 +2107,33 @@ describe("integration agent asked by another bot", () => {
     expect(f.offeredTools).not.toContain("mcp__server-9__getCompany");
   });
 
+  it("scopes the peer's MCP discovery to the agent's linked servers", async () => {
+    const seen: unknown[] = [];
+    const wrapper: ConnectorTool = {
+      name: "mcp_catalog_execute",
+      description: "Execute",
+      inputSchema: { type: "object" },
+      route: { connectorId: "mcp", toolName: "__catalog_execute" },
+    };
+    const f = fixture({
+      name: "mcp_catalog_execute",
+      trigger: "bot_message",
+      spawnKey: integrationAgentSpawnKey("server-1"),
+      peer: { senderInScope: true, linked: true, serverIds: ["server-1"] },
+      connector: {
+        discoverTools: async (context: { mcpServerIds?: string[] }) => {
+          seen.push(context.mcpServerIds);
+          return [wrapper];
+        },
+        resolveCall: async () => undefined,
+        execute: vi.fn(),
+      },
+    });
+    await f.run();
+    expect(f.offeredTools).toContain("mcp_catalog_execute");
+    expect(seen.at(-1)).toEqual(["server-1"]);
+  });
+
   it("gives the Carta agent nothing for a peer outside its space and user or an unlinked server", async () => {
     for (const peer of [
       { senderInScope: false, linked: true },

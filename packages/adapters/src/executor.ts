@@ -3706,6 +3706,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
             providerRef: row.providerRef ?? undefined,
           })),
           connectedProviders: connectedComposio.map((row) => row.provider),
+          // Set for a peer run on an agent: the MCP catalog then covers only the agent's servers.
+          mcpServerIds: undefined as string[] | undefined,
         };
         const memoryScope = configuredMemory
           ? effectiveMemoryScope(bot.memoryScope, configuredMemory.defaultScope)
@@ -4429,6 +4431,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // or space is not found in this scope, so it gets nothing.
         let integrationPeerRun = false;
         const peerServerIds = new Set<string>();
+        let peerDiscovered: ConnectorTool[] | undefined;
         let connectedAppPeerRun = false;
         // The Carta agent keeps its own spawn key; its link is the server whose agentBotId is the bot.
         if (
@@ -4458,6 +4461,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ]);
           integrationPeerRun = Boolean(sender && linked.length > 0);
           if (sender) for (const server of linked) peerServerIds.add(server.id);
+          if (integrationPeerRun) {
+            // Lazy-catalog search and execute list every assigned server, so scope the connector.
+            context.mcpServerIds = [...peerServerIds];
+            peerDiscovered = await deps.connector!.discoverTools(context, ["mcp"]);
+          }
         }
         if (appAgentIdentity && run.trigger === "bot_message" && peerMessage?.fromBotId) {
           const sender = await deps.prisma.bot.findFirst({
@@ -4474,7 +4482,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const exposedConnectorTools =
           !voiceAgent &&
           (run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun)
-            ? discovered.filter(
+            ? (peerDiscovered ?? discovered).filter(
                 (tool) =>
                   !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
                   (!integrationPeerRun ||

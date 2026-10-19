@@ -262,6 +262,7 @@ export class McpConnector implements ConnectorProvider {
         spaceId: context.spaceId,
         userId: context.userId,
         server: { enabled: true },
+        ...(context.mcpServerIds ? { serverId: { in: context.mcpServerIds } } : {}),
       },
       include: {
         server: {

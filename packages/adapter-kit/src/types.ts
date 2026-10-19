@@ -23,6 +23,8 @@ export interface AdapterContext {
    * nothing awaited between it and the request. A throw refuses the attempt and is not retried.
    */
   beforeWrite?: () => Promise<void>;
+  /** When set, the MCP connector sees only these servers, whatever else the bot is assigned. */
+  mcpServerIds?: string[];
   /** Connected external accounts available to this run, including their owning connector. */
   connectedConnections?: ConnectedConnector[];
   connectedAppAgentConnectionId?: string;
