@@ -147,6 +147,8 @@ import type {
   ExportManifest,
   McpServer,
   Me,
+  NotificationDto,
+  NotificationSignal,
   ProductEvent,
   Routine,
   SpaceNavigation,
@@ -170,6 +172,7 @@ import {
   isLegalAgentSpawnKey,
   isRetiredVoiceAgentSpawnKey,
   isVoiceAgentSpawnKey,
+  NOTIFICATION_HEARTBEAT_ID,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
   usableModelId,
@@ -191,7 +194,14 @@ import {
   splitPage,
   withAppDirectory,
 } from "@rakazo/core";
-import type { BoardEvents, Board as BoardRow, PrismaClient, ThreadEvents } from "@rakazo/db";
+import type {
+  BoardEvents,
+  Board as BoardRow,
+  Notification,
+  NotificationEvents,
+  PrismaClient,
+  ThreadEvents,
+} from "@rakazo/db";
 import {
   addSidebarPage,
   appendEventInTransaction,
@@ -228,10 +238,14 @@ import {
   isUniqueViolation,
   listBoards,
   listContacts,
+  listNotifications,
   listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
+  markSeen,
+  markShown,
+  NotificationValidationError,
   newestModelCredentialOrder,
   newestVoiceCredentialOrder,
   Prisma,
@@ -258,6 +272,7 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  unseenCounts,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { deleteAgentSecret, listAgentSecrets, putAgentSecret } from "./agent-secrets.js";
@@ -760,11 +775,28 @@ function mcpAssignmentDto(row: {
   };
 }
 
+function toNotificationDto(row: Notification): NotificationDto {
+  return {
+    id: row.id,
+    botId: row.botId,
+    surface: row.surface,
+    threadId: row.threadId,
+    title: row.title,
+    body: row.body,
+    link: row.link,
+    importance: row.importance,
+    createdAt: row.createdAt.toISOString(),
+    seenAt: row.seenAt?.toISOString() ?? null,
+    shownAt: row.shownAt?.toISOString() ?? null,
+  };
+}
+
 export interface RouterDeps {
   cloudAgent?: CloudAgentConnection | null;
   prisma: PrismaClient;
   events: ThreadEvents;
   boardEvents: BoardEvents;
+  notificationEvents: NotificationEvents;
   ticketChanges: TicketChangeNotifier;
   auth: Auth;
   jobs: JobPublisher;
@@ -4615,12 +4647,9 @@ export function createRouter(deps: RouterDeps) {
             await assignToExistingCartaAgent(deps.prisma, context.actor);
           // A service only its own agent may use (Devin) gets that agent now, after its key is
           // checked, so the first tool call already works and a rejected key leaves nothing behind.
-          if (
-            !isCartaEndpoint(row.endpoint) &&
-            integrationPresetForEndpoint(row.endpoint)?.requiresAgent
-          ) {
-            const preset = integrationPresetForEndpoint(row.endpoint)!;
-            if (deps.mcp) {
+          if (!isCartaEndpoint(row.endpoint)) {
+            const preset = integrationPresetForEndpoint(row.endpoint);
+            if (preset?.requiresAgent && deps.mcp) {
               try {
                 await deps.mcp.listServerTools(
                   row,
@@ -4640,17 +4669,47 @@ export function createRouter(deps: RouterDeps) {
                 });
               }
             }
-            await ensureIntegrationAgent(
-              {
-                prisma: deps.prisma,
-                repos,
-                archiveBot: (botId) => archiveActorBot(context.actor, botId),
-              },
-              context.actor,
-              row.id,
-            );
-            const linked = await setIntegrationExclusive(deps.prisma, context.actor, row.id, true);
-            return mcpServerDto(linked, await mcpOAuth.statusFor(linked, context.actor));
+            // Every other new server gets its agent too, best-effort: a failure keeps the server
+            // and Create agent stays the repair path. Only Devin must have one.
+            try {
+              const { bot } = await ensureIntegrationAgent(
+                {
+                  prisma: deps.prisma,
+                  repos,
+                  archiveBot: (botId) => archiveActorBot(context.actor, botId),
+                },
+                context.actor,
+                row.id,
+              );
+              // Exclusive, marked and read-only in one step, and only while the agent is active: an
+              // archive in between would otherwise leave a marked server shared. Writes stay off
+              // for every new server; the owner turns them on, and each call then needs its card.
+              const linked = await deps.prisma.$transaction(async (tx) => {
+                const active = await tx.bot.updateMany({
+                  where: { id: bot.id, ...actorScope(context.actor), archivedAt: null },
+                  data: { updatedAt: new Date() },
+                });
+                const marked = active.count
+                  ? await tx.mcpServer.updateMany({
+                      where: { id: row.id, ...actorScope(context.actor), agentBotId: bot.id },
+                      data: {
+                        agentExclusive: true,
+                        agentProvisionedAt: new Date(),
+                        writesEnabled: false,
+                      },
+                    })
+                  : { count: 0 };
+                if (!marked.count)
+                  throw new ORPCError("CONFLICT", { message: "The agent changed; retry" });
+                return tx.mcpServer.findFirstOrThrow({
+                  where: { id: row.id, ...actorScope(context.actor) },
+                });
+              });
+              return mcpServerDto(linked, await mcpOAuth.statusFor(linked, context.actor));
+            } catch (error) {
+              if (preset?.requiresAgent) throw error;
+              getLogger().error("mcp.servers.create: agent not provisioned", error);
+            }
           }
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
@@ -4855,6 +4914,7 @@ export function createRouter(deps: RouterDeps) {
           if (!server) throw new IsolationError();
           // Assignments cascade; the encrypted credential must go with the server.
           // Cards are closed first, including ones that were never assigned.
+          let agentToArchive: string | null = null;
           const seqs = await deps.prisma.$transaction(async (tx) => {
             const painted = await dismissMcpServerApprovals(
               onboardingDeps,
@@ -4862,7 +4922,16 @@ export function createRouter(deps: RouterDeps) {
               server.id,
               tx,
             );
-            await tx.mcpServer.delete({ where: { id: server.id } });
+            // The deleted row says which agent it had at that moment, so a concurrent relink is seen.
+            const deleted = await tx.mcpServer.delete({ where: { id: server.id } });
+            agentToArchive =
+              deleted.agentBotId && !isCartaEndpoint(deleted.endpoint) ? deleted.agentBotId : null;
+            // Archived with the server, so the agent is never left active without it.
+            if (agentToArchive)
+              await tx.bot.updateMany({
+                where: { id: agentToArchive, ...actorScope(context.actor), archivedAt: null },
+                data: { archivedAt: new Date(), pinned: false },
+              });
             if (server.secretId) {
               await tx.secret.deleteMany({
                 where: {
@@ -4874,6 +4943,11 @@ export function createRouter(deps: RouterDeps) {
             }
             return painted;
           });
+          // Runs and the computer of the archived agent are cleaned up now; the archive itself is done.
+          if (agentToArchive)
+            await archiveActorBot(context.actor, agentToArchive).catch((error) =>
+              getLogger().error("mcp.servers.remove: agent not archived", error),
+            );
           for (const event of seqs) await deps.events.notify(event.threadId, event.seq);
           return { ok: true as const };
         }),
@@ -7180,6 +7254,60 @@ export function createRouter(deps: RouterDeps) {
       unregisterPush: authed.notifications.unregisterPush.handler(async ({ context }) => {
         await deletePushTokens(deps.prisma, context.actor.userId, context.sessionId);
         return { ok: true as const };
+      }),
+      list: authed.notifications.list.handler(async ({ context, input }) => {
+        try {
+          const page = await listNotifications(deps.prisma, {
+            ...context.actor,
+            since: input.since ? new Date(input.since) : undefined,
+            cursor: input.cursor,
+          });
+          return { notifications: page.items.map(toNotificationDto), nextCursor: page.nextCursor };
+        } catch (error) {
+          if (error instanceof NotificationValidationError) {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw error;
+        }
+      }),
+      markSeen: authed.notifications.markSeen.handler(async ({ context, input }) => ({
+        count: await markSeen(deps.prisma, { ...context.actor, surface: input.surface }),
+      })),
+      markShown: authed.notifications.markShown.handler(async ({ context, input }) => ({
+        ok: await markShown(deps.prisma, context.actor, input.id),
+      })),
+      unseenCounts: authed.notifications.unseenCounts.handler(async ({ context }) => ({
+        counts: await unseenCounts(deps.prisma, context.actor),
+      })),
+      subscribe: authed.notifications.subscribe.handler(async function* ({ context }) {
+        const follow = deps.notificationEvents.follow(context.actor, context.signal);
+        let pending: Promise<IteratorResult<NotificationSignal>> | undefined;
+        let authorizedAt = Date.now();
+        try {
+          while (!context.signal?.aborted) {
+            pending ??= follow.next();
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const next = await Promise.race([
+              pending,
+              new Promise<"silent">((resolve) => {
+                timer = setTimeout(() => resolve("silent"), HEARTBEAT_MS);
+              }),
+            ]).finally(() => clearTimeout(timer));
+            if (context.stillAuthorized && Date.now() - authorizedAt >= SESSION_RECHECK_MS) {
+              if (!(await context.stillAuthorized())) throw new ORPCError("UNAUTHORIZED");
+              authorizedAt = Date.now();
+            }
+            if (next === "silent") {
+              yield { id: NOTIFICATION_HEARTBEAT_ID, surface: "", importance: "info" as const };
+              continue;
+            }
+            pending = undefined;
+            if (next.done) return;
+            yield next.value;
+          }
+        } finally {
+          void follow.return(undefined).catch(() => {});
+        }
       }),
     },
     search: {

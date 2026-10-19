@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import { beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
+  useLingui: () => ({ t: (s: TemplateStringsArray) => s.join("") }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 const connections = vi.hoisted(() => ({ catalog: vi.fn(), featured: vi.fn(), list: vi.fn() }));

@@ -86,6 +86,7 @@ import type { Pool, PrismaClient } from "@rakazo/db";
 import {
   createBoardEvents,
   createDb,
+  createNotificationEvents,
   createPool,
   createThreadEvents,
   endSessionPushTokens,
@@ -231,6 +232,7 @@ export async function createApp(
   });
   const ticketBoardEnabled = env.ticketBoardEnabled;
   const boardEvents = createBoardEvents(realtime);
+  const notificationEvents = createNotificationEvents(realtime);
   const environmentSignupPolicy = signupPolicyFromEnv(env);
   const deploymentSettings = await prisma.deploymentSettings.upsert({
     where: { id: "default" },
@@ -484,6 +486,7 @@ export async function createApp(
   // resolution alike, so a list call warms the run path in this process.
   const codexCatalog = new CodexCatalogCache();
   const executor = createRunExecutor({
+    notificationEvents,
     contextStrategy,
     prisma,
     runtime,
@@ -573,6 +576,7 @@ export async function createApp(
     events,
     ticketChanges,
     boardEvents,
+    notificationEvents,
     auth,
     jobs,
     sandbox,

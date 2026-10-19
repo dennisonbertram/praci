@@ -1,8 +1,12 @@
 import { randomUUID } from "node:crypto";
 import type {
   AdapterContext,
+  NotificationChannel,
+  NotificationEndpointRef,
+  NotificationEnvelope,
   NotificationMessage,
   NotificationProvider,
+  NotificationSendResult,
 } from "@rakazo/adapter-kit";
 import type { PrismaClient, PushEndpoint } from "@rakazo/db";
 import { deletePushEndpoint, listPushEndpoints } from "@rakazo/db";
@@ -64,7 +68,23 @@ export function expoPushErrorMessage(body: unknown, status: number): string | un
   return undefined;
 }
 
-export class ExpoPushProvider implements NotificationProvider {
+/** Data a notification tap uses to open the notification's page or thread. */
+export function expoNotificationData(envelope: NotificationEnvelope, spaceId: string) {
+  return {
+    kind: "notification",
+    notificationId: envelope.id,
+    surface: envelope.surface,
+    ...(envelope.link ? { link: envelope.link } : {}),
+    ...(envelope.botId ? { botId: envelope.botId } : {}),
+    ...(envelope.threadId ? { threadId: envelope.threadId } : {}),
+    spaceId,
+  };
+}
+
+/** Also the "push" notification channel; the outbox worker calls `send` per endpoint. */
+export class ExpoPushProvider implements NotificationProvider, NotificationChannel {
+  readonly channel = "push";
+
   constructor(
     private readonly prisma: Pick<PrismaClient, "notificationEndpoint">,
     private readonly sessionExpiresAt?: PushSessionExpiresAt,
@@ -83,8 +103,69 @@ export class ExpoPushProvider implements NotificationProvider {
     return (await this.deliverableEndpoints(userId)).length > 0;
   }
 
-  async send(message: NotificationMessage, context: AdapterContext): Promise<void> {
-    await this.deliver(message, context);
+  async send(message: NotificationMessage, context: AdapterContext): Promise<undefined>;
+  async send(
+    envelope: NotificationEnvelope,
+    endpoint: NotificationEndpointRef,
+    context: AdapterContext,
+  ): Promise<NotificationSendResult>;
+  async send(
+    message: NotificationMessage | NotificationEnvelope,
+    endpointOrContext: NotificationEndpointRef | AdapterContext,
+    maybeContext?: AdapterContext,
+  ): Promise<NotificationSendResult | undefined> {
+    if (!maybeContext) {
+      await this.deliver(message as NotificationMessage, endpointOrContext as AdapterContext);
+      return undefined;
+    }
+    return this.sendEnvelope(
+      message as NotificationEnvelope,
+      endpointOrContext as NotificationEndpointRef,
+      maybeContext,
+    );
+  }
+
+  /**
+   * Pushes one notification to one device. The id is the collapse id and tag, so a repeat of the
+   * same notification replaces the earlier one on the device instead of stacking. An endpoint that
+   * was removed, claimed by another account, or whose session ended is reported gone.
+   */
+  private async sendEnvelope(
+    envelope: NotificationEnvelope,
+    endpoint: NotificationEndpointRef,
+    context: AdapterContext,
+  ): Promise<NotificationSendResult> {
+    const current = (await listPushEndpoints(this.prisma, context.userId)).find((e) =>
+      sameEndpoint(e, endpoint),
+    );
+    if (!current) return "endpointGone";
+    if (current.sessionId) {
+      const expiresAt = await this.sessionExpiresAt?.(current.sessionId);
+      if (!expiresAt || expiresAt.getTime() <= Date.now()) return "endpointGone";
+    }
+    // Re-read after every await: the device may have moved to another account or session meanwhile.
+    const latest = (await listPushEndpoints(this.prisma, context.userId)).find((e) =>
+      sameEndpoint(e, endpoint),
+    );
+    if (!latest) return "endpointGone";
+    const signal = combineSignals(context.signal, AbortSignal.timeout(EXPO_PUSH_TIMEOUT_MS));
+    try {
+      await this.post(
+        endpoint.address,
+        {
+          title: envelope.title,
+          body: envelope.body ?? "",
+          collapseId: envelope.id,
+          tag: envelope.id,
+          data: expoNotificationData(envelope, context.spaceId),
+        },
+        signal,
+      );
+      return "sent";
+    } catch (error) {
+      if (error instanceof Error && error.name === DEVICE_NOT_REGISTERED) return "endpointGone";
+      throw error;
+    }
   }
 
   /**
@@ -103,7 +184,17 @@ export class ExpoPushProvider implements NotificationProvider {
         // Another account may have claimed this device, or its session ended, during an earlier send.
         const current = await this.deliverableEndpoints(context.userId);
         if (!current.some((e) => sameEndpoint(e, endpoint))) continue;
-        await this.post(endpoint.address, message, context, signal);
+        await this.post(
+          endpoint.address,
+          {
+            title: message.title,
+            body: message.body,
+            collapseId: message.threadId,
+            tag: message.threadId,
+            data: expoPushData(message, context.spaceId, randomUUID()),
+          },
+          signal,
+        );
         delivered = true;
       } catch (error) {
         failures.push(error);
@@ -125,8 +216,7 @@ export class ExpoPushProvider implements NotificationProvider {
 
   private async post(
     token: string,
-    message: NotificationMessage,
-    context: AdapterContext,
+    payload: { title: string; body: string; collapseId: string; tag: string; data: object },
     signal: AbortSignal,
   ): Promise<void> {
     let response: Response;
@@ -136,11 +226,7 @@ export class ExpoPushProvider implements NotificationProvider {
         headers: { "content-type": "application/json", accept: "application/json" },
         body: JSON.stringify({
           to: token,
-          title: message.title,
-          body: message.body,
-          collapseId: message.threadId,
-          tag: message.threadId,
-          data: expoPushData(message, context.spaceId, randomUUID()),
+          ...payload,
         }),
         signal,
       });

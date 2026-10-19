@@ -1410,6 +1410,8 @@ model McpServer {
   agentBot              Bot?                   @relation("McpServerAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
   /// While true, only agentBotId may use the server's tools.
   agentExclusive        Boolean                @default(false)
+  /// Set when creating the server made its agent; only such servers stay exclusive after the agent is released.
+  agentProvisionedAt    DateTime?
   revision              Int                    @default(1)
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt

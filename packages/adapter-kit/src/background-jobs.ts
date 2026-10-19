@@ -27,6 +27,8 @@ const payloadSchemas = {
   "skill.teaching-expire": z.object({ skillId: z.string().min(1) }),
   "history.compact": z.object({ threadId: z.string().min(1) }),
   "messaging.deliver": z.object({ runId: z.string().min(1).optional() }),
+  "notifications.deliver": z.object({}),
+  "notifications.retention": z.object({}),
   "cloud_agent.poll": z.object({ agentId: z.string().min(1) }),
   "mail.search.expire": z.object({ searchId: z.string().min(1) }),
   "inbox.triage": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),

@@ -21,6 +21,7 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos, createThreadEvents } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { isIntegrationAgentWrite } from "../../../packages/adapters/src/approval-ask.js";
 import { isApprovalPausedResult } from "../../../packages/adapters/src/approval-effect.js";
 import type * as ComputerLifecycleModule from "../../../packages/adapters/src/computer-lifecycle.js";
 import {
@@ -29,6 +30,7 @@ import {
   MERCURY_CHECKING,
   mercuryRow,
 } from "../../../packages/adapters/src/finance-fake-tools.js";
+import { integrationAgentDenial } from "../../../packages/adapters/src/mcp-connector.js";
 import { type FinanceDeps, financeReceiptUrl } from "./finance.js";
 import { ensureIntegrationAgent } from "./integration-agent.js";
 import { createRouter, type RouterDeps } from "./router.js";
@@ -868,6 +870,139 @@ describePostgres("integration agents (PostgreSQL)", () => {
       expect(created).toMatchObject({ agentExclusive: true, writesEnabled: false });
       const again = await client(a).integrationAgents.create({ serverId: created.id });
       expect(again.botId).toBe(created.agentBotId);
+    });
+
+    describe("other new servers", () => {
+      const other = (slug: string, endpoint = "https://mcp.example.test/mcp") => ({
+        ...input(slug),
+        name: slug,
+        endpoint,
+        secret: "fake-key",
+      });
+      const denied = async (id: string) => {
+        const row = await prisma.mcpServer.findUniqueOrThrow({
+          where: { id },
+          include: { agentBot: true },
+        });
+        return integrationAgentDenial({ server: row, bot: { spawnKey: null } } as never, {
+          name: "read_thing",
+          annotations: { readOnlyHint: true },
+        });
+      };
+
+      it("provisions an exclusive agent with writes off, once per server", async () => {
+        const created = await devinClient(async () => []).mcp.servers.create(
+          other(`gen-ok-${suffix}`),
+        );
+        expect(created.agentBotId).toBeTruthy();
+        // Writes start off, generic or not: a tool's read-only hint is not trusted until the owner allows changes.
+        expect(created).toMatchObject({ agentExclusive: true, writesEnabled: false });
+        const row = await prisma.mcpServer.findUniqueOrThrow({
+          where: { id: created.id },
+          include: { agentBot: true },
+        });
+        expect(row.agentProvisionedAt).not.toBeNull();
+        const write = { name: "do_thing" };
+        expect(integrationAgentDenial({ server: row, bot: row.agentBot } as never, write)).toBe(
+          "writes-off",
+        );
+        expect(
+          isIntegrationAgentWrite(
+            row.agentBot?.spawnKey,
+            { connectorId: "mcp", endpoint: row.endpoint ?? undefined, toolName: "do_thing" },
+            undefined,
+          ),
+        ).toBe(true);
+        const again = await client(a).integrationAgents.create({ serverId: created.id });
+        expect(again.botId).toBe(created.agentBotId);
+      });
+
+      it("keeps the server without an agent when provisioning fails", async () => {
+        const broken = new Proxy(prisma, {
+          get: (target, key) =>
+            key === "bot"
+              ? {
+                  ...target.bot,
+                  findFirst: async () => {
+                    throw new Error("boom");
+                  },
+                }
+              : Reflect.get(target, key),
+        }) as PrismaClient;
+        const slug = `gen-fail-${suffix}`;
+        const created = await createRouterClient(
+          createRouter({
+            prisma: broken,
+            env: {},
+            remoteConnectors: {
+              resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+            },
+            secrets: {
+              put: async (plaintext: string) => ({
+                id: `gen-${suffix}-${Math.random()}`,
+                ciphertext: plaintext,
+              }),
+            },
+            sandbox: {},
+            home: {},
+            jobs: { cancel: async () => undefined },
+          } as unknown as RouterDeps),
+          { context: { actor: a } as never },
+        ).mcp.servers.create(other(slug));
+        expect(created.agentBotId).toBeNull();
+        expect(created.agentExclusive).toBe(false);
+        expect(await prisma.mcpServer.count({ where: { spaceId, slug } })).toBe(1);
+      });
+
+      it("leaves Carta on its single shared agent", async () => {
+        const created = await devinClient(async () => []).mcp.servers.create(
+          other(`gen-carta-${suffix}`, CARTA_MCP_ENDPOINT),
+        );
+        expect(created.agentBotId).toBeNull();
+        expect(created.agentExclusive).toBe(false);
+      });
+
+      it("archives the server's agent when the server is removed", async () => {
+        const created = await devinClient(async () => []).mcp.servers.create(
+          other(`gen-rm-${suffix}`),
+        );
+        await editorClient().mcp.servers.remove({ id: created.id });
+        const bot = await prisma.bot.findUniqueOrThrow({ where: { id: created.agentBotId! } });
+        expect(bot.archivedAt).not.toBeNull();
+      });
+
+      it("keeps an exclusive server exclusive, and closed to every bot, once its agent is archived", async () => {
+        const created = await devinClient(async () => []).mcp.servers.create(
+          other(`gen-rel-${suffix}`),
+        );
+        expect(await denied(created.id)).toBe("belongs-to-agent");
+        await archiveById(created.agentBotId!);
+        const row = await prisma.mcpServer.findUniqueOrThrow({ where: { id: created.id } });
+        expect(row).toMatchObject({
+          agentBotId: null,
+          agentExclusive: true,
+          writesEnabled: false,
+        });
+        expect(await denied(created.id)).toBe("belongs-to-agent");
+      });
+
+      it("frees a server that was made exclusive by hand", async () => {
+        const hand = await mkServer(userA, `gen-hand-${suffix}`, "https://mcp.example.test/h");
+        const { botId } = await client(a).integrationAgents.create({ serverId: hand.id });
+        await client(a).integrationAgents.setExclusive({ serverId: hand.id, exclusive: true });
+        await archiveById(botId);
+        const row = await prisma.mcpServer.findUniqueOrThrow({ where: { id: hand.id } });
+        expect(row).toMatchObject({ agentBotId: null, agentExclusive: false });
+      });
+
+      it("still frees a shared server when its agent is archived", async () => {
+        const shared = await mkServer(userA, `gen-shared-${suffix}`, "https://mcp.example.test/s");
+        const { botId } = await client(a).integrationAgents.create({ serverId: shared.id });
+        await archiveById(botId);
+        const row = await prisma.mcpServer.findUniqueOrThrow({ where: { id: shared.id } });
+        expect(row).toMatchObject({ agentBotId: null, agentExclusive: false });
+        expect(await denied(shared.id)).toBeNull();
+      });
     });
 
     it("stores nothing when Devin rejects the key", async () => {

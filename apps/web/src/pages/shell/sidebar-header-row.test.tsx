@@ -17,12 +17,13 @@ afterEach(() => {
   delete (window as { rakazoDesktop?: RakazoDesktop }).rakazoDesktop;
 });
 
-async function render() {
+async function render(rail = false) {
   const container = document.createElement("div");
   document.body.append(container);
   await act(async () =>
     createRoot(container).render(
       <SidebarHeaderRow
+        rail={rail}
         search={<input data-testid="sidebar-search" />}
         actions={<button type="button" data-testid="create-menu-trigger" />}
       />,
@@ -49,5 +50,17 @@ describe("SidebarHeaderRow", () => {
     const container = await render();
     expect(container.querySelector("[data-testid=sidebar-window-chrome]")).toBeNull();
     expect(container.querySelector("[data-testid=sidebar-search]")).toBeTruthy();
+  });
+
+  it("reserves the native window controls' area above the rail on desktop only", async () => {
+    (window as { rakazoDesktop?: unknown }).rakazoDesktop = { platform: "darwin" };
+    expect(
+      (await render(true)).querySelector("[data-testid=sidebar-rail-chrome-spacer]"),
+    ).toBeTruthy();
+    document.body.innerHTML = "";
+    delete (window as { rakazoDesktop?: RakazoDesktop }).rakazoDesktop;
+    expect(
+      (await render(true)).querySelector("[data-testid=sidebar-rail-chrome-spacer]"),
+    ).toBeNull();
   });
 });

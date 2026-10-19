@@ -101,6 +101,8 @@ export class GraphileJobWorkerHost implements JobWorkerHost {
     private readonly options: {
       concurrency?: number;
       pollInterval?: number;
+      /** graphile-worker crontab text for recurring tasks, e.g. "* * * * * task". */
+      crontab?: string;
       noHandleSignals?: boolean;
       /** Test seam: delay between 53300 restart attempts. */
       sleep?: (ms: number) => Promise<void>;
@@ -154,6 +156,7 @@ export class GraphileJobWorkerHost implements JobWorkerHost {
       pollInterval: this.options.pollInterval ?? 500,
       noHandleSignals: this.options.noHandleSignals,
       taskList,
+      ...(this.options.crontab ? { crontab: this.options.crontab } : {}),
     });
     runner.events.on("job:failed", ({ job, error }) => {
       recordHistoryCompactAttemptsExhausted(job, error);
