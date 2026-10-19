@@ -130,11 +130,6 @@ msgstr "{0} (overdue)"
 msgid "{0} {unitLabel}"
 msgstr "{0} {unitLabel}"
 
-#. placeholder {0}: server.name
-#: src/components/integrations/McpDetail.tsx
-msgid "{0} agent"
-msgstr "{0} agent"
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -367,6 +362,10 @@ msgstr "{monthlyTotal}/mo"
 msgid "{name} accounts"
 msgstr "{name} accounts"
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} agent"
+msgstr "{name} agent"
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -421,6 +420,10 @@ msgstr "{seats, plural, one {# seat} other {# seats}}"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "{serverName} connected"
 msgstr "{serverName} connected"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "{service} agent"
+msgstr "{service} agent"
 
 #: src/lib/format-bytes.ts
 msgid "{size} B"
@@ -885,9 +888,15 @@ msgstr "Allow access above to start. The Legal agent then reads your Data room f
 msgid "Allow access below first."
 msgstr "Allow access below first."
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
 msgstr "Allow changes"
+
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "Allow changes in {0}?"
+msgstr "Allow changes in {0}?"
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Allow changes in {service}"
@@ -1977,11 +1986,14 @@ msgstr "Cloud"
 msgid "Code"
 msgstr "Code"
 
-#. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
 msgstr "Collapse {0}"
+
+#: src/pages/Shell.tsx
+msgid "Collapse {sidebarTitleName}"
+msgstr "Collapse {sidebarTitleName}"
 
 #: src/pages/Shell.tsx
 msgid "Collapse Carta agent"
@@ -2432,6 +2444,7 @@ msgstr "Could not connect to the computer screen"
 msgid "Could not continue"
 msgstr "Could not continue"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not create agent"
 msgstr "Could not create agent"
@@ -2841,6 +2854,7 @@ msgstr "Could not take control"
 msgid "Could not update"
 msgstr "Could not update"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update access"
 msgstr "Could not update access"
@@ -2850,6 +2864,7 @@ msgstr "Could not update access"
 msgid "Could not update bot access"
 msgstr "Could not update bot access"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update changes"
 msgstr "Could not update changes"
@@ -2959,6 +2974,7 @@ msgstr "Create a section and move {0} into it."
 msgid "Create account"
 msgstr "Create account"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr "Create agent"
@@ -3678,11 +3694,14 @@ msgstr "Exchange"
 msgid "Expand"
 msgstr "Expand"
 
-#. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "Expand {0}"
+
+#: src/pages/Shell.tsx
+msgid "Expand {sidebarTitleName}"
+msgstr "Expand {sidebarTitleName}"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
@@ -5687,10 +5706,6 @@ msgstr "Obligation"
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 
-#: src/components/integrations/McpDetail.tsx
-msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
-msgstr "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -6092,6 +6107,10 @@ msgstr "Person"
 #: src/pages/Inbox.tsx
 msgid "Personal"
 msgstr "Personal"
+
+#: src/pages/Shell.tsx
+msgid "Personnel"
+msgstr "Personnel"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
@@ -7879,6 +7898,11 @@ msgstr "That folder no longer exists"
 msgid "the {month} statement"
 msgstr "the {month} statement"
 
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "The agent will be able to change your {0} data. It asks before each change."
+msgstr "The agent will be able to change your {0} data. It asks before each change."
+
 #: src/components/integrations/McpDetail.tsx
 msgid "The agent will be able to change your {service} data. It asks before each change."
 msgstr "The agent will be able to change your {service} data. It asks before each change."
@@ -8270,10 +8294,6 @@ msgstr "Try sorting again"
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "Try the test again."
-
-#: src/pages/Inbox.tsx
-msgid "Trying again…"
-msgstr "Trying again…"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"

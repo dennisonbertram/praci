@@ -43,6 +43,16 @@ describe("sidebarGroupsForSpaces", () => {
     expect(group?.bots).toHaveLength(1);
   });
 
+  it("heads the only space with the given label and keeps its name", () => {
+    const [group] = sidebarGroupsForSpaces(
+      [space("space-1", "Personal", { canRename: true })],
+      "",
+      undefined,
+      "Personnel",
+    );
+    expect(group).toMatchObject({ title: "Personnel", spaceName: "Personal", relabeled: true });
+  });
+
   it("still names each space once there is more than one", () => {
     const groups = sidebarGroupsForSpaces(
       [
@@ -50,6 +60,8 @@ describe("sidebarGroupsForSpaces", () => {
         space("space-2", "Support", { canRename: true, canDelete: true, bots: [] }),
       ],
       "",
+      undefined,
+      "Personnel",
     );
 
     expect(groups.map((group) => group.title)).toEqual(["Personal", "Support"]);

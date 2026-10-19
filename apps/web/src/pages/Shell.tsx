@@ -1820,8 +1820,8 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId);
-  }, [bootstrapMe, botSections, bots, groups, spaces, query]);
+    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId, t`Personnel`);
+  }, [bootstrapMe, botSections, bots, groups, spaces, query, t]);
   // After a space switch its header may sit below the fold; bring it into view.
   useEffect(() => {
     if (!bootstrapMe?.spaceId) return;
@@ -3907,6 +3907,10 @@ export function ShellPage() {
                     row.item.kind === "bot" && row.parentId === parentId ? [row.item.chat.id] : [],
                   );
                 const hasSpaceActions = group.canRenameSpace || group.canDeleteSpace;
+                // "Personnel" replaces the lone space's name, so the name stays in the label.
+                const sidebarTitleName = group.relabeled
+                  ? `${group.title} (${group.spaceName})`
+                  : group.title;
                 return (
                   <div
                     key={group.key}
@@ -3925,6 +3929,7 @@ export function ShellPage() {
                           <button
                             type="button"
                             aria-current={group.current ? "true" : undefined}
+                            title={group.relabeled ? group.spaceName : undefined}
                             className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-muted-foreground/60"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                             onClick={() => {
                               if (group.emptySpaceId) {
@@ -3971,8 +3976,8 @@ export function ShellPage() {
                               group.emptySpaceId
                                 ? t`Open ${group.title}`
                                 : collapsed
-                                  ? t`Expand ${group.title}`
-                                  : t`Collapse ${group.title}`
+                                  ? t`Expand ${sidebarTitleName}`
+                                  : t`Collapse ${sidebarTitleName}`
                             }
                           >
                             <span className="flex min-w-0 items-center gap-1.5">

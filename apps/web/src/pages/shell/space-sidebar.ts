@@ -54,6 +54,8 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
   query: string,
   /** The space the app is showing; its headers are marked when several spaces are listed. */
   currentSpaceId?: string,
+  /** Header label for the only space, which needs no name to tell it from others. */
+  soleSpaceTitle?: string,
 ) {
   const needle = query.toLowerCase();
   const showSpaceNames = spaces.length > 1;
@@ -80,13 +82,14 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       ...group,
       sectionId: group.key.startsWith("section:") ? group.key.slice("section:".length) : null,
       key: showSpaceNames ? `space:${space.id}:${group.key}` : group.key,
-      // The only space is named on its first, untitled header too, so its actions button is
+      // The only space is labelled on its first, untitled header too, so its actions button is
       // not left floating beside an empty label.
       title: showSpaceNames
         ? group.title
           ? `${space.name} · ${group.title}`
           : space.name
-        : group.title || (index === 0 ? space.name : group.title),
+        : group.title || (index === 0 ? (soleSpaceTitle ?? space.name) : group.title),
+      relabeled: !showSpaceNames && !group.title && index === 0 && soleSpaceTitle !== undefined,
       showLock: showSpaceNames,
       emptySpaceId: undefined as string | undefined,
       current: showSpaceNames && space.id === currentSpaceId,
@@ -102,6 +105,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       {
         key: showSpaceNames ? `space:${space.id}:empty` : `space:${space.id}:actions`,
         title: showSpaceNames ? space.name : null,
+        relabeled: false,
         bots: [],
         sectionId: null,
         showLock: showSpaceNames,
