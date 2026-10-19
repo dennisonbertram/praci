@@ -302,6 +302,7 @@ import { triageStatus } from "./inbox-triage.js";
 import {
   assertConnectorToolArgs,
   CATALOG_EXECUTE,
+  isLazyCatalogControlRoute,
   uniquifyInstalledToolName,
 } from "./lazy-tool-catalog.js";
 import {
@@ -3758,6 +3759,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   : tools;
                 return visible.filter((tool) => {
                   if (tool.readOnly === true) return true;
+                  // The catalog's execute wrapper has no effect of its own. It resolves to an
+                  // underlying tool, and the per-tool rules are enforced at dispatch on that tool.
+                  if (isLazyCatalogControlRoute(tool.route)) return true;
                   const linked = storedConnections.some(
                     (connection) =>
                       connection.agentBotId &&
@@ -7031,99 +7035,106 @@ export function createRunExecutor(deps: ExecutorDeps) {
               return { error: `unknown tool ${name}` };
             }
             let result: unknown = { error: `unknown tool ${name}` };
-            if (!appAgentIdentity && dispatchRoute?.connectorId) {
-              const availableIds = context.connectedConnections
-                .filter((connection) => connection.connectorId === dispatchRoute.connectorId)
-                .map((connection) => connection.id);
-              if (availableIds.length > 0) {
-                const currentConnections = await deps.prisma.connection.findMany({
+            // Reads the connection's switch, agent link and exclusivity from the database. It runs
+            // here and again from the connector right before the provider call, after its setup.
+            const connectionDenial = async (): Promise<string | null> => {
+              if (!appAgentIdentity && dispatchRoute?.connectorId) {
+                const availableIds = context.connectedConnections
+                  .filter((connection) => connection.connectorId === dispatchRoute.connectorId)
+                  .map((connection) => connection.id);
+                if (availableIds.length > 0) {
+                  const currentConnections = await deps.prisma.connection.findMany({
+                    where: {
+                      id: { in: availableIds },
+                      spaceId: run.spaceId,
+                      userId: run.userId,
+                      connectorId: dispatchRoute.connectorId,
+                    },
+                    select: {
+                      id: true,
+                      connectorId: true,
+                      provider: true,
+                      status: true,
+                      allAgents: true,
+                      agentBotId: true,
+                      botAccess: {
+                        where: { botId: bot.id, spaceId: run.spaceId, userId: run.userId },
+                        select: { botId: true },
+                      },
+                    },
+                  });
+                  const deniedCurrentIds = deniedConnectionIds(currentConnections);
+                  if (dispatchRoute.connectionId) {
+                    const current = currentConnections.find(
+                      (connection) => connection.id === dispatchRoute.connectionId,
+                    );
+                    if (
+                      current?.status !== "connected" ||
+                      deniedCurrentIds.has(current.id) ||
+                      (declaredReadOnly !== true && current.agentBotId !== null)
+                    ) {
+                      return "This connected account is no longer available to this bot.";
+                    }
+                  } else {
+                    const connected = currentConnections.filter(
+                      (connection) => connection.status === "connected",
+                    );
+                    if (
+                      currentConnections.length !== availableIds.length ||
+                      connected.length !== currentConnections.length ||
+                      deniedCurrentIds.size > 0 ||
+                      (declaredReadOnly !== true &&
+                        connected.some((connection) => connection.agentBotId !== null))
+                    ) {
+                      return "This connected account is no longer available to this bot.";
+                    }
+                  }
+                }
+              }
+              if (appAgentIdentity) {
+                const current = await deps.prisma.connection.findFirst({
                   where: {
-                    id: { in: availableIds },
+                    id: linkedAppAgentConnection!.id,
                     spaceId: run.spaceId,
                     userId: run.userId,
-                    connectorId: dispatchRoute.connectorId,
+                    status: "connected",
+                    agentBotId: bot.id,
                   },
                   select: {
                     id: true,
                     connectorId: true,
-                    provider: true,
-                    status: true,
                     allAgents: true,
-                    agentBotId: true,
+                    writesEnabled: true,
                     botAccess: {
                       where: { botId: bot.id, spaceId: run.spaceId, userId: run.userId },
                       select: { botId: true },
                     },
                   },
                 });
-                const deniedCurrentIds = deniedConnectionIds(currentConnections);
-                if (dispatchRoute.connectionId) {
-                  const current = currentConnections.find(
-                    (connection) => connection.id === dispatchRoute.connectionId,
-                  );
-                  if (
-                    current?.status !== "connected" ||
-                    deniedCurrentIds.has(current.id) ||
-                    (declaredReadOnly !== true && current.agentBotId !== null)
-                  ) {
-                    return finish({
-                      error: "This connected account is no longer available to this bot.",
-                    });
-                  }
-                } else {
-                  const connected = currentConnections.filter(
-                    (connection) => connection.status === "connected",
-                  );
-                  if (
-                    currentConnections.length !== availableIds.length ||
-                    connected.length !== currentConnections.length ||
-                    deniedCurrentIds.size > 0 ||
-                    (declaredReadOnly !== true &&
-                      connected.some((connection) => connection.agentBotId !== null))
-                  ) {
-                    return finish({
-                      error: "This connected account is no longer available to this bot.",
-                    });
-                  }
+                if (
+                  !current ||
+                  !botMayUseConnection(current) ||
+                  current.connectorId !== dispatchRoute?.connectorId ||
+                  dispatchRoute?.connectionId !== current.id
+                ) {
+                  return "This connected account is no longer available to the agent.";
+                }
+                if (declaredReadOnly !== true && !current.writesEnabled) {
+                  return "Changes are off for this connected account.";
                 }
               }
-            }
-            if (appAgentIdentity) {
-              const current = await deps.prisma.connection.findFirst({
-                where: {
-                  id: linkedAppAgentConnection!.id,
-                  spaceId: run.spaceId,
-                  userId: run.userId,
-                  status: "connected",
-                  agentBotId: bot.id,
-                },
-                select: {
-                  id: true,
-                  connectorId: true,
-                  allAgents: true,
-                  writesEnabled: true,
-                  botAccess: {
-                    where: { botId: bot.id, spaceId: run.spaceId, userId: run.userId },
-                    select: { botId: true },
-                  },
-                },
-              });
-              if (
-                !current ||
-                !botMayUseConnection(current) ||
-                current.connectorId !== dispatchRoute?.connectorId ||
-                dispatchRoute?.connectionId !== current.id
-              ) {
-                return finish({
-                  error: "This connected account is no longer available to the agent.",
-                });
-              }
-              if (declaredReadOnly !== true && !current.writesEnabled) {
-                return finish({ error: "Changes are off for this connected account." });
-              }
-            }
+              return null;
+            };
+            const earlyDenial = await connectionDenial();
+            if (earlyDenial) return finish({ error: earlyDenial });
             for await (const event of deps.connector.execute(
-              { ...connectorCall, tool: name, args, executionId: effectKey },
+              {
+                ...connectorCall,
+                tool: name,
+                args,
+                executionId: effectKey,
+                beforeDispatch: connectionDenial,
+              },
               context,
             )) {
               if (event.type === "result") {

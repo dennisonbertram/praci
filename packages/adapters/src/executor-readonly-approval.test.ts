@@ -103,7 +103,10 @@ function fixture({
   peer,
   connectionRows = [],
   availableTools,
+  executeToolName = "demo_execute_tool",
 }: {
+  /** The catalog wrapper the model calls when `catalog` is set. */
+  executeToolName?: string;
   /** A bot_message run started by bot `peer-1`: whether that bot is in the run's space and user, and whether the bot is its server's agent. */
   peer?: { senderInScope: boolean; linked: boolean };
   connectionRows?: Record<string, unknown>[];
@@ -312,7 +315,7 @@ function fixture({
     for (const [index, call] of calls.entries()) {
       beforeToolCall?.(index);
       const result = await request.executeTool!(
-        catalog ? "demo_execute_tool" : name,
+        catalog ? executeToolName : name,
         catalog ? { id: name, arguments: call.args } : call.args,
         call.executionId,
       );
@@ -1345,6 +1348,109 @@ describe("connected app integration agent tools", () => {
     await f.run({ expectFailure: true });
     expect(execute).not.toHaveBeenCalled();
     expect(f.results.at(-1)).toMatchObject({ error: expect.stringContaining("Changes are off") });
+  });
+
+  it("refuses a write when the writes switch flips during the connector's setup", async () => {
+    const linked = connection();
+    const dispatched: string[] = [];
+    const connector = {
+      discoverTools: async () => [ownTool],
+      execute: async function* (call: ConnectorCall) {
+        // Provider setup (sessions, credentials, tokens) happens here, after the executor's check.
+        linked.writesEnabled = false;
+        const denied = await call.beforeDispatch?.();
+        if (denied) {
+          yield { type: "error" as const, message: denied };
+          return;
+        }
+        dispatched.push(call.tool);
+        yield { type: "result" as const, data: { ok: true } };
+      },
+    };
+    const f = fixture({
+      name: ownTool.name,
+      spawnKey: agentKey,
+      route: ownTool.route,
+      connectionRows: [linked],
+      connector,
+    });
+    await f.run();
+    f.effects[0]!.status = "approved";
+    linked.writesEnabled = true;
+    await f.run({ expectFailure: true });
+    expect(dispatched).toEqual([]);
+    expect(f.results.at(-1)).toMatchObject({ error: expect.stringContaining("Changes are off") });
+  });
+
+  describe("Pipedream catalog above the direct tool limit", () => {
+    const names = Array.from({ length: DIRECT_TOOL_LIMIT + 1 }, (_, index) => `read_item_${index}`);
+    async function runCatalog(id: string, extra: Record<string, unknown>) {
+      const call = vi.fn(() => ({ item: "synthetic item" }));
+      const emulator = new ThirdPartyConnectorEmulator({
+        "remote.mcp.pipedream.net": {
+          tools: [
+            ...names.map((name) => ({
+              name,
+              description: "Read a synthetic item",
+              inputSchema: { type: "object", properties: { id: { type: "string" } } },
+              annotations: { readOnlyHint: true },
+            })),
+            {
+              name: "write_item",
+              description: "Change a synthetic item",
+              inputSchema: { type: "object", properties: { id: { type: "string" } } },
+              annotations: { readOnlyHint: false },
+            },
+          ],
+          call,
+        },
+      });
+      const pipedream = new PipedreamConnector(
+        {
+          clientId: "fake-client-id",
+          clientSecret: "fake-client-secret",
+          projectId: "fake-project-id",
+          environment: "development",
+          identitySecret: "fake-identity-secret",
+        },
+        { resolveHostname: emulator.resolveHostname, fetch: emulator.fetch },
+      );
+      const f = fixture({
+        name: id,
+        catalog: true,
+        executeToolName: "pipedream_execute_tool",
+        spawnKey: null,
+        route: { connectorId: "pipedream", resourceId: "gmail", toolName: id },
+        connectionRows: [
+          connection({
+            connectorId: "pipedream",
+            provider: "gmail",
+            providerRef: "apn-gmail",
+            ...extra,
+          }),
+        ],
+        connector: new ConnectorRegistry(new DestinationEmulator(), [pipedream]),
+      });
+      await f.run({ expectFailure: true });
+      return { f, call };
+    }
+
+    it("lets an ordinary bot run a read on a shared agent account", async () => {
+      const { f, call } = await runCatalog(`gmail:${names[0]}`, {});
+      expect(f.offeredTools).toContain("pipedream_execute_tool");
+      expect(call).toHaveBeenCalledExactlyOnceWith(names[0], { id: "item-1" });
+    });
+
+    it("refuses a read on an exclusive agent account", async () => {
+      const { call } = await runCatalog(`gmail:${names[0]}`, { allAgents: false, botAccess: [] });
+      expect(call).not.toHaveBeenCalled();
+    });
+
+    it("refuses a write on a shared agent account", async () => {
+      const { f, call } = await runCatalog("gmail:write_item", {});
+      expect(f.offeredTools).toContain("pipedream_execute_tool");
+      expect(call).not.toHaveBeenCalled();
+    });
   });
 
   it.each([
