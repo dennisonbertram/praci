@@ -145,7 +145,10 @@ function isUniqueViolation(error: unknown): boolean {
 
 // V1: each item is visible only to the person who added or connected it. Shared or per-agent
 // visibility (V2) is added here, once, for every function below.
-function eligibleWhere(actor: Actor, filters: DataRoomFilters = {}): Prisma.DataRoomItemWhereInput {
+export function eligibleWhere(
+  actor: Actor,
+  filters: DataRoomFilters = {},
+): Prisma.DataRoomItemWhereInput {
   return {
     spaceId: actor.spaceId,
     userId: actor.userId,
@@ -211,6 +214,11 @@ const SORT_COLUMN = {
 /** docDate and docType may be null; those rows sort after the others in both directions. */
 const SORT_NULLABLE = { date: true, name: false, type: true, createdAt: false } as const;
 
+/** One lock per (space, user) folder tree: folder creates, moves, merges and deletes take it. */
+export async function lockFolderTree(tx: Prisma.TransactionClient, actor: Actor) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`data-room-folders:${actor.spaceId}:${actor.userId}`}, 0))`;
+}
+
 /** Where `getItem`-style lookups, lists and search all start, so visibility is defined once. */
 export function createDataRoomRepos(prisma: PrismaClient) {
   async function requireFolder(
@@ -248,7 +256,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     fn: (tx: Prisma.TransactionClient) => Promise<T>,
   ): Promise<T> {
     return prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`data-room-folders:${actor.spaceId}:${actor.userId}`}, 0))`;
+      await lockFolderTree(tx, actor);
       return fn(tx);
     });
   }
@@ -386,6 +394,24 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         });
       });
     },
+
+    /** What a tidy-up looks at: classified items only, with the facets that say where they belong. */
+    listForSort: (actor: Actor, limit: number) =>
+      prisma.dataRoomItem.findMany({
+        where: { ...eligibleWhere(actor), classifiedAt: { not: null } },
+        select: {
+          id: true,
+          name: true,
+          folderId: true,
+          docType: true,
+          docDate: true,
+          parties: true,
+          tags: true,
+          summary: true,
+        },
+        orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+        take: limit,
+      }),
 
     /** A repeated upload (same bytes) or import (same connection and external id) returns the existing item with created=false. */
     async createItem(

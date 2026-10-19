@@ -6,6 +6,7 @@ import { LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
+import { AutoSortDialog } from "../components/data-room/AutoSortDialog";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
 import {
   FilterBar,
@@ -37,6 +38,7 @@ import {
   showDeletedToast,
   showNoticeToast,
   showRenamedToast,
+  showSortedToast,
   uploadFilesToDataRoom,
 } from "../components/data-room/upload-toasts";
 import { useDataRoomImports } from "../components/data-room/use-data-room-imports";
@@ -368,6 +370,7 @@ export function DataRoomPage({
 
   const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
   const [creatingFolder, setCreatingFolder] = useState(false);
+  const [autoSorting, setAutoSorting] = useState(false);
 
   /** Reads a failed file again; the list shows it as Reading until it settles. */
   function retry(item: DataRoomApiItem) {
@@ -537,6 +540,7 @@ export function DataRoomPage({
             folderId={filters.folderId}
             onFolder={(folderId) => setFilters({ ...filters, folderId })}
             onNewFolder={() => setCreatingFolder(true)}
+            onAutoSort={() => setAutoSorting(true)}
           />
           <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
             <div className="hidden self-stretch border-e border-border @min-[800px]/bd:flex">
@@ -546,6 +550,7 @@ export function DataRoomPage({
                 onSelect={(folderId) => setFilters({ ...filters, folderId })}
                 onAction={(kind, folder) => setAction({ kind, item: folder })}
                 onNewFolder={() => setCreatingFolder(true)}
+                onAutoSort={() => setAutoSorting(true)}
               />
             </div>
             <div
@@ -665,6 +670,16 @@ export function DataRoomPage({
             />
           </DialogContent>
         </Dialog>
+      ) : null}
+      {autoSorting ? (
+        <AutoSortDialog
+          onClose={() => setAutoSorting(false)}
+          onApplied={({ batchId, items }) => {
+            showSortedToast(items, batchId);
+            reload();
+            reloadFolders();
+          }}
+        />
       ) : null}
       {creatingFolder ? (
         <NewFolderDialog

@@ -1,6 +1,7 @@
 import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
 import { DATA_ROOM_CHANGED, DataRoomUploadError, uploadToDataRoom } from "../../lib/data-room";
 import { rpc, selectedSpaceId } from "../../lib/rpc";
+import { errorText } from "../../lib/user-error";
 import { folderNodes } from "./folders";
 
 export type UploadFailure = "too-large" | "invalid" | "folder-gone" | "failed";
@@ -19,7 +20,9 @@ export type UploadToast = {
     | { kind: "deleted" }
     | { kind: "renamed" }
     /** A one-line message; the toast's `name` is the text. */
-    | { kind: "notice" };
+    | { kind: "notice" }
+    /** An Auto-sort was applied; `undo` reverses that batch. */
+    | { kind: "sorted"; count: number; undo: () => void };
 };
 
 const DONE_TOAST_MS = 10_000;
@@ -171,3 +174,19 @@ export const showDeletedToast = (name: string) => showShortToast(name, { kind: "
 export const showRenamedToast = (name: string) => showShortToast(name, { kind: "renamed" });
 /** A short message, such as a link to a folder that no longer exists. */
 export const showNoticeToast = (text: string) => showShortToast(text, { kind: "notice" });
+
+/** A toast saying how many items an Auto-sort touched, with Undo for that batch. */
+export function showSortedToast(count: number, batchId: string) {
+  sync();
+  const id = nextId++;
+  const undo = () => {
+    dismissUploadToast(id);
+    rpc.dataRoom.autoSort
+      .undo({ batchId })
+      .then(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)))
+      .catch((error: unknown) => showNoticeToast(errorText(error)));
+  };
+  toasts = [...toasts, { id, name: "", state: { kind: "sorted", count, undo } }];
+  notify();
+  dismissLater(id, DONE_TOAST_MS);
+}
