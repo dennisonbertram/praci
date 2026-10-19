@@ -531,6 +531,34 @@ describe("mail write tools", () => {
   const run = (deps: MailToolDeps, name: string, args: Record<string, unknown>) =>
     mailToolFromTool(name, deps, context(), args);
 
+  it("gives the provider a write check to run before each attempt, which can refuse a retry", async () => {
+    const { deps } = withCache();
+    let allowed = true;
+    let attempts = 0;
+    const createDraft = vi.fn(
+      async (_account: MailAccount, _draft: unknown, ctx: AdapterContext) => {
+        // The provider's client asks before each attempt; the first is rate limited.
+        await ctx.beforeWrite?.();
+        attempts++;
+        allowed = false;
+        await ctx.beforeWrite?.();
+        attempts++;
+        return { draftId: "d1" };
+      },
+    );
+    const result = await run(
+      {
+        ...deps,
+        mail: { createDraft } as never,
+        beforeWrite: async () => (allowed ? null : "No longer available."),
+      },
+      "mail_draft",
+      { to: ["a@example.test"], subject: "Hi", body: "Hello" },
+    );
+    expect(result).toEqual({ error: "No longer available." });
+    expect(attempts).toBe(1);
+  });
+
   it("saves a draft, never sends it, and replaces it when given its id", async () => {
     const { deps, gmail } = withCache();
     const created = (await run(deps, "mail_draft", {

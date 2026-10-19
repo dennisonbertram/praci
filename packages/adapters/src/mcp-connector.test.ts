@@ -1709,6 +1709,56 @@ describe("MCP connector integration agents", () => {
     }
   });
 
+  it("refuses the call when the server changed during the live tool listing", async () => {
+    for (const edit of [
+      (server: Record<string, unknown>) => (server.revision = 2),
+      (server: Record<string, unknown>) => (server.secretId = "secret-2"),
+      (server: Record<string, unknown>) => (server.endpoint = "https://mcp.brex.com/mcp"),
+    ]) {
+      const { connector, state, call, assignment } = await setup("agent-1", agentBot, {
+        writesEnabled: true,
+      });
+      const inner = connector as never as { sessionFor: (...a: unknown[]) => Promise<unknown> };
+      const real = inner.sessionFor.bind(connector);
+      let sessions = 0;
+      // The annotations come from the first session; the edit lands while it is listing.
+      inner.sessionFor = async (...args) => {
+        const session = await real(...args);
+        if (++sessions === 1) edit(assignment.server);
+        return session;
+      };
+      expect(await call("annotatedRead", true)).toMatchObject([
+        { type: "error", message: expect.stringContaining("changed while") },
+      ]);
+      expect(state.calls).toEqual([]);
+      await connector.close();
+    }
+  });
+
+  it("refuses the call when the session was replaced after the tools were listed", async () => {
+    const { connector, state, call } = await setup("agent-1", agentBot, { writesEnabled: true });
+    const inner = connector as never as {
+      sessionFor: (...a: unknown[]) => Promise<unknown>;
+      sessions: Map<string, unknown>;
+    };
+    const real = inner.sessionFor.bind(connector);
+    let sessions = 0;
+    // A rotated secret under the same id evicts the session; the next one is a different session,
+    // and on it the tool is a write.
+    inner.sessionFor = async (...args) => {
+      if (++sessions === 2) {
+        inner.sessions.clear();
+        state.tools = state.tools.map((tool) => ({ ...tool, annotations: undefined }));
+      }
+      return real(...args);
+    };
+    expect(await call("annotatedRead", true)).toMatchObject([
+      { type: "error", message: expect.stringContaining("changed while") },
+    ]);
+    expect(state.calls).toEqual([]);
+    await connector.close();
+  });
+
   it("denies an integration agent every tool of an unrelated server without an agent", async () => {
     const { connector, state, call, names } = await setup(
       "agent-9",
@@ -1719,6 +1769,71 @@ describe("MCP connector integration agents", () => {
     for (const tool of ["getAccounts", "annotatedRead", "requestSendMoney"])
       expect(await call(tool)).toMatchObject([{ type: "error" }]);
     expect(state.calls).toEqual([]);
+    await connector.close();
+  });
+});
+
+describe("MCP connector scoped to chosen servers", () => {
+  const endpoint = "https://mcp.example.test/mcp";
+  const tools = Array.from({ length: 25 }, (_, index) => ({
+    name: `tool${index}`,
+    inputSchema: { type: "object" },
+    annotations: { readOnlyHint: true },
+  }));
+  const assignmentFor = (id: string) => ({
+    ...ASSIGNMENT,
+    serverId: id,
+    server: { ...SERVER, id, slug: id, endpoint },
+  });
+
+  async function setup() {
+    const state = { failNext: false, initializations: 0, calls: [] as string[], tools };
+    vi.stubGlobal("fetch", mcpFetch(state, endpoint));
+    const assignments = [assignmentFor("linked"), assignmentFor("unlinked")];
+    const connector = new McpConnector(
+      {
+        botMcpServer: {
+          findMany: vi.fn().mockImplementation(async ({ where }) =>
+            assignments.filter((row) => {
+              const ids = where.serverId?.in as string[] | undefined;
+              return !ids || ids.includes(row.serverId);
+            }),
+          ),
+          findFirst: vi.fn(),
+        },
+      } as never,
+      {} as never,
+      { network: TEST_NETWORK },
+    );
+    return { connector, state };
+  }
+  const context = (mcpServerIds?: string[]) =>
+    ({
+      spaceId: "w1",
+      userId: "u1",
+      botId: "bot-1",
+      signal: new AbortController().signal,
+      ...(mcpServerIds ? { mcpServerIds } : {}),
+    }) as never;
+
+  it("lists and resolves only the chosen servers' tools, even above the lazy-catalog limit", async () => {
+    const { connector } = await setup();
+    const call = (id: string) => ({
+      tool: "mcp_catalog_execute",
+      args: { id, arguments: {} },
+      executionId: "e1",
+      route: { connectorId: "mcp", toolName: "__catalog_execute" },
+    });
+    // Both servers together are above the limit, so the model sees search and execute wrappers.
+    const all = await connector.discoverTools(context());
+    expect(all.every((tool) => !tool.route?.resourceId)).toBe(true);
+    const unscoped = await connector.resolveCall(call("mcp__unlinked__tool0"), context());
+    expect(unscoped?.tool.route?.resourceId).toBe("unlinked");
+    // Scoped to the linked server: its tools are reachable, the other server's are not.
+    const scoped = context(["linked"]);
+    const linked = await connector.resolveCall(call("mcp__linked__tool0"), scoped);
+    expect(linked?.tool.route?.resourceId).toBe("linked");
+    await expect(connector.resolveCall(call("mcp__unlinked__tool0"), scoped)).rejects.toThrow();
     await connector.close();
   });
 });

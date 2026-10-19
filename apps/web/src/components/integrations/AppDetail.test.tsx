@@ -168,6 +168,16 @@ it("creates an agent for the selected connected account and opens its chat", asy
   expect(where()).toBe("/app/bot_app");
 });
 
+it("does not offer Create agent for a native Google account, which has no scoped tools", async () => {
+  await show(
+    PAGE,
+    data({
+      connections: [appConnection({ id: "conn_google", connectorId: "google", provider: "gmail" })],
+    }),
+  );
+  expect(container.textContent).not.toContain("Create agent");
+});
+
 it("hides the ordinary access list once every account has an agent", async () => {
   await show(APP_PAGE, data({ connections: [appConnection({ agentBotId: "bot_app" })] }));
   expect(container.textContent).not.toContain("Used by");

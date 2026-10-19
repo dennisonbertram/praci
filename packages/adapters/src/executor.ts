@@ -3706,6 +3706,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
             providerRef: row.providerRef ?? undefined,
           })),
           connectedProviders: connectedComposio.map((row) => row.provider),
+          // Set for a peer run on an agent: the MCP catalog then covers only the agent's servers.
+          mcpServerIds: undefined as string[] | undefined,
         };
         const memoryScope = configuredMemory
           ? effectiveMemoryScope(bot.memoryScope, configuredMemory.defaultScope)
@@ -4222,6 +4224,114 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }).then((accounts) => accounts.filter((a) => !deniedIds.has(a.id)));
           return driveAccountsPromise;
         };
+        // The built-in Google tools act on a specific connection, so they follow the same rules as
+        // connector tools. A connection with an integration agent takes changes only from that
+        // agent while its switch is on, and "Only this agent" stops every other bot. These read the
+        // connection now, not as it was at run start, so a switch changed mid-run applies.
+        const GOOGLE_BUILTIN_WRITES = new Set([
+          "mail_draft",
+          "mail_modify",
+          "mail_send",
+          "calendar_create_event",
+          "calendar_update_event",
+          "calendar_delete_event",
+          "drive_create_file",
+          "drive_update_file",
+        ]);
+        const googleBuiltinAccounts = (toolName: string): Promise<{ id: string }[]> | undefined =>
+          MAIL_TOOL_NAMES.has(toolName)
+            ? mailAccounts()
+            : CALENDAR_TOOL_NAMES.has(toolName)
+              ? calendarAccounts()
+              : DRIVE_TOOL_NAMES.has(toolName)
+                ? driveAccounts()
+                : undefined;
+        const connectionRowsNow = () =>
+          deps.prisma.connection.findMany({
+            where: { userId: run.userId, spaceId: run.spaceId },
+            select: {
+              id: true,
+              connectorId: true,
+              provider: true,
+              status: true,
+              allAgents: true,
+              writesEnabled: true,
+              agentBotId: true,
+              botAccess: { where: { botId: bot.id }, select: { botId: true } },
+            },
+          });
+        // The account must exist in this space and user, be connected, be open to this bot, and for
+        // a write follow the agent rule.
+        const accountAllowedIn = (
+          rows: Awaited<ReturnType<typeof connectionRowsNow>>,
+          accountId: string,
+          toolName: string,
+        ): boolean => {
+          const row = rows.find((candidate) => candidate.id === accountId);
+          if (!row || row.status !== "connected" || deniedConnectionIds(rows).has(row.id))
+            return false;
+          if (!GOOGLE_BUILTIN_WRITES.has(toolName) || row.agentBotId === null) return true;
+          return row.agentBotId === bot.id && row.writesEnabled;
+        };
+        const accountsAllowedNow = async <T extends { id: string }>(
+          accounts: Promise<T[]> | T[],
+          toolName: string,
+        ): Promise<T[]> => {
+          const list = await accounts;
+          if (list.length === 0) return list;
+          const rows = await connectionRowsNow();
+          return list.filter((account) => accountAllowedIn(rows, account.id, toolName));
+        };
+        // Runs right before a provider write; the caller awaits nothing between this and the write.
+        const writeDenialNow = async (account: { id: string }, toolName: string) =>
+          accountAllowedIn(await connectionRowsNow(), account.id, toolName)
+            ? null
+            : "This connected account is no longer available for changes by this bot.";
+        const googleBuiltinDenial = async (toolName: string): Promise<string | null> => {
+          const accounts = googleBuiltinAccounts(toolName);
+          if (!accounts) return null;
+          const all = await accounts.catch(() => [] as { id: string }[]);
+          if (all.length === 0 || (await accountsAllowedNow(all, toolName)).length > 0) return null;
+          const linked = (await connectionRowsNow()).some(
+            (row) => row.agentBotId !== null && all.some((account) => account.id === row.id),
+          );
+          return GOOGLE_BUILTIN_WRITES.has(toolName) && linked
+            ? "Only this connected account's agent can make changes to it, and only while changes are on."
+            : "This connected account is no longer available to this bot.";
+        };
+        // The account this call writes to: the one named, the only one, or the one a mail id is in.
+        // When it cannot be told, every account is a possible target.
+        const googleWriteOnAgentConnection = async (
+          toolName: string,
+          callArgs: Record<string, unknown>,
+        ): Promise<boolean> => {
+          const pending = GOOGLE_BUILTIN_WRITES.has(toolName)
+            ? googleBuiltinAccounts(toolName)
+            : undefined;
+          if (!pending) return false;
+          const accounts = await pending.catch(() => [] as { id: string }[]);
+          const wanted = typeof callArgs.account === "string" ? callArgs.account.trim() : "";
+          let targets = accounts;
+          if (wanted) {
+            targets = accounts.filter((account) =>
+              Object.values(account).some(
+                (value) =>
+                  typeof value === "string" && value.toLowerCase() === wanted.toLowerCase(),
+              ),
+            );
+          } else if (accounts.length > 1 && MAIL_TOOL_NAMES.has(toolName)) {
+            const inferred = await inferMailAccount(
+              deps.prisma,
+              { spaceId: run.spaceId, userId: bot.userId },
+              accounts as MailAccount[],
+              callArgs,
+            ).catch(() => undefined);
+            if (inferred) targets = [inferred];
+          }
+          const ids = new Set(targets.map((account) => account.id));
+          const rows = await connectionRowsNow();
+          return rows.some((row) => ids.has(row.id) && row.agentBotId !== null);
+        };
         const driveEnabled =
           driveToolsAllowed({
             hasProvider: Boolean(deps.connectors),
@@ -4320,8 +4430,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // works with its own server's MCP tools (writes still ask). A peer from another account
         // or space is not found in this scope, so it gets nothing.
         let integrationPeerRun = false;
+        const peerServerIds = new Set<string>();
+        let peerDiscovered: ConnectorTool[] | undefined;
         let connectedAppPeerRun = false;
-        if (integrationAgent && run.trigger === "bot_message" && peerMessage?.fromBotId) {
+        // The Carta agent keeps its own spawn key; its link is the server whose agentBotId is the bot.
+        if (
+          (integrationAgent || cartaAgent) &&
+          run.trigger === "bot_message" &&
+          peerMessage?.fromBotId
+        ) {
           const [sender, linked] = await Promise.all([
             deps.prisma.bot.findFirst({
               where: {
@@ -4332,9 +4449,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
               select: { id: true },
             }),
-            deps.prisma.mcpServer.findFirst({
+            deps.prisma.mcpServer.findMany({
               where: {
-                id: integrationServerId,
+                ...(integrationAgent ? { id: integrationServerId } : {}),
                 spaceId: run.spaceId,
                 userId: run.userId,
                 agentBotId: bot.id,
@@ -4342,7 +4459,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               select: { id: true },
             }),
           ]);
-          integrationPeerRun = Boolean(sender && linked);
+          integrationPeerRun = Boolean(sender && linked.length > 0);
+          if (sender) for (const server of linked) peerServerIds.add(server.id);
+          if (integrationPeerRun) {
+            // Lazy-catalog search and execute list every assigned server, so scope the connector.
+            context.mcpServerIds = [...peerServerIds];
+            peerDiscovered = await deps.connector!.discoverTools(context, ["mcp"]);
+          }
         }
         if (appAgentIdentity && run.trigger === "bot_message" && peerMessage?.fromBotId) {
           const sender = await deps.prisma.bot.findFirst({
@@ -4359,10 +4482,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const exposedConnectorTools =
           !voiceAgent &&
           (run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun)
-            ? discovered.filter(
+            ? (peerDiscovered ?? discovered).filter(
                 (tool) =>
                   !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
-                  (!integrationPeerRun || tool.route?.connectorId === "mcp") &&
+                  (!integrationPeerRun ||
+                    (tool.route?.connectorId === "mcp" &&
+                      (!tool.route.resourceId || peerServerIds.has(tool.route.resourceId)))) &&
                   (!connectedAppPeerRun || tool.route?.connectionId === appAgentConnection?.id),
               )
             : [];
@@ -4597,6 +4722,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (disabledBuiltinTools.has(name)) {
             return { error: "This tool is disabled for this bot." };
           }
+          // A model can call a built-in it was never offered; the offer is the run's tool list.
+          if (BUILTIN_AGENT_TOOL_NAMES.has(name) && !offeredToolNames.has(name)) {
+            return { error: `Tool ${name} is not available to this bot.` };
+          }
           if (PAGE_BROWSER_TOOL_NAMES.has(name) && !pageBrowserAllowed) {
             return { error: "Page browser is unavailable on this computer." };
           }
@@ -4817,6 +4946,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
             };
           }
           const viaConnector = !BUILTIN_AGENT_TOOL_NAMES.has(name);
+          const builtinDenial = viaConnector ? null : await googleBuiltinDenial(name);
+          if (builtinDenial) return { error: builtinDenial };
+          const writeOnAgentConnection = viaConnector
+            ? false
+            : await googleWriteOnAgentConnection(name, args);
           // Declared effect of the operation this call dispatches (installed API method and
           // flag). Install config is immutable per route resource, so it cannot drift before
           // execute; a catalog call uses the tool it was just resolved to.
@@ -4847,7 +4981,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
             // No saved rule or Auto Review may send mail for the Carta agent (investor email).
             isCartaMailSend(bot.spawnKey, name) ||
             // Integration-agent writes require approval for every call.
-            integrationWriteTool !== undefined;
+            integrationWriteTool !== undefined ||
+            writeOnAgentConnection;
           const connectorKind = connectorKindFromToolName(
             name,
             connectedPlugins.map((plugin) => plugin.provider),
@@ -5847,7 +5982,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
               await calendarToolFromTool(
                 name,
                 {
-                  accounts: calendarAccounts,
+                  accounts: () => accountsAllowedNow(calendarAccounts(), name),
+                  beforeWrite: (account) => writeDenialNow(account, name),
                   connectors: deps.connectors,
                   idempotencyKey: effectKey,
                 },
@@ -5872,7 +6008,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 mail: deps.mail,
                 prisma: deps.prisma,
                 jobs: deps.jobs,
-                accounts: mailAccounts,
+                accounts: () => accountsAllowedNow(mailAccounts(), name),
+                beforeWrite: (account) => writeDenialNow(account, name),
                 publish: (blocks) => publishMessage(deps, run, "bot", blocks),
                 writesDisabled: deps.mailWritesDisabled,
                 idempotencyKey: effectKey,
@@ -5966,7 +6103,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 {
                   prisma: deps.prisma,
                   connectors: deps.connectors,
-                  accounts: driveAccounts,
+                  accounts: () => accountsAllowedNow(driveAccounts(), name),
+                  beforeWrite: (account) => writeDenialNow(account, name),
                   scope: { spaceId: run.spaceId, userId: bot.userId },
                 },
                 context,
@@ -7100,7 +7238,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   connectorTools.has(requestedName) &&
                   (!resolvedTool ||
                     (resolvedTool.route?.connectorId === "mcp" &&
-                      resolvedTool.route.resourceId === integrationServerId))) ||
+                      peerServerIds.has(resolvedTool.route.resourceId ?? "")))) ||
                 (connectedAppPeerRun &&
                   connectorTools.has(requestedName) &&
                   dispatchRoute?.connectorId === appAgentConnection?.connectorId &&

@@ -160,9 +160,19 @@ export class GoogleApiClient {
     for (let attempt = 1; ; attempt++) {
       if (context.signal.aborted) throw new GoogleApiError("aborted");
       let failure: { error: GoogleApiError; retry: boolean; retryAfterMs?: number };
+      let refused: unknown;
       try {
-        const response = await this.limit(key, () =>
-          proxy(
+        const response = await this.limit(key, async () => {
+          // Checked again on every attempt, after the slot and pacing wait, just before the request.
+          if (method !== "GET" && context.beforeWrite) {
+            try {
+              await context.beforeWrite();
+            } catch (error) {
+              refused = error;
+              throw error;
+            }
+          }
+          return proxy(
             {
               app: account.app,
               accountRef: account.providerRef,
@@ -174,8 +184,8 @@ export class GoogleApiClient {
               ...(maxBytes ? { maxBytes } : {}),
             },
             context,
-          ),
-        );
+          );
+        });
         if (response.status >= 200 && response.status < 300) return response;
         failure = {
           error: new GoogleApiError("response", response),
@@ -185,6 +195,7 @@ export class GoogleApiClient {
             (repeatable && (response.status >= 500 || response.status === 408)),
         };
       } catch (cause) {
+        if (refused !== undefined && cause === refused) throw cause;
         failure = context.signal.aborted
           ? { error: new GoogleApiError("aborted"), retry: false }
           : {

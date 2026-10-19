@@ -140,6 +140,55 @@ describe("calendar tools", () => {
     },
   );
 
+  it("refuses a write when the check right before it denies, and still reads", async () => {
+    const methods: string[] = [];
+    const connector = {
+      proxy: async (request: { method: string }) => {
+        methods.push(request.method);
+        return { status: 200, data: { items: [] } };
+      },
+    } as unknown as ManagedConnectorProvider;
+    const deps = {
+      accounts: async () => accounts,
+      connectors: { managed: () => connector },
+      google: new GoogleApiClient({ sleep: async () => undefined }),
+      beforeWrite: async () => "No longer available.",
+      now: () => new Date("2026-10-01T12:00:00Z"),
+    };
+    const written = await calendarToolFromTool("calendar_create_event", deps, context, {
+      summary: "x",
+      start: timed("2026-10-03T12:00:00Z"),
+      end: timed("2026-10-03T13:00:00Z"),
+    });
+    expect(written).toEqual({ error: "No longer available." });
+    await calendarToolFromTool("calendar_list_events", deps, context, {});
+    expect(methods).toEqual(["GET"]);
+  });
+
+  it("refuses the retry of a write when access changed after a rate limit", async () => {
+    let posts = 0;
+    const connector = {
+      proxy: async () => {
+        posts++;
+        return { status: 429, data: {} };
+      },
+    } as unknown as ManagedConnectorProvider;
+    const result = await calendarToolFromTool(
+      "calendar_create_event",
+      {
+        accounts: async () => accounts,
+        connectors: { managed: () => connector },
+        google: new GoogleApiClient({ sleep: async () => undefined }),
+        beforeWrite: async () => (posts >= 1 ? "No longer available." : null),
+        now: () => new Date("2026-10-01T12:00:00Z"),
+      },
+      context,
+      { summary: "x", start: timed("2026-10-03T12:00:00Z"), end: timed("2026-10-03T13:00:00Z") },
+    );
+    expect(result).toEqual({ error: "No longer available." });
+    expect(posts).toBe(1);
+  });
+
   it("rejects a client event id outside base32hex", async () => {
     const { calendar } = setup();
     expect(

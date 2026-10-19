@@ -75,6 +75,21 @@ function matchesWhere(row: Record<string, unknown>, where: Record<string, unknow
   });
 }
 
+/** The connection row behind the mail account `acct-1` that the mail stubs list. */
+const mailConnectionRow = () => ({
+  id: "acct-1",
+  userId: "user-1",
+  spaceId: "space-1",
+  connectorId: "google",
+  provider: "gmail",
+  displayName: "Gmail",
+  status: "connected",
+  allAgents: true,
+  botAccess: [],
+  agentBotId: null,
+  writesEnabled: false,
+});
+
 function fixture({
   name = "demo_get_item",
   catalog = false,
@@ -101,14 +116,14 @@ function fixture({
   route,
   connector: realConnector,
   peer,
-  connectionRows = [],
+  connectionRows = mail ? [mailConnectionRow()] : [],
   availableTools,
   executeToolName = "demo_execute_tool",
 }: {
   /** The catalog wrapper the model calls when `catalog` is set. */
   executeToolName?: string;
   /** A bot_message run started by bot `peer-1`: whether that bot is in the run's space and user, and whether the bot is its server's agent. */
-  peer?: { senderInScope: boolean; linked: boolean };
+  peer?: { senderInScope: boolean; linked: boolean; serverIds?: string[] };
   connectionRows?: Record<string, unknown>[];
   availableTools?: ConnectorTool[];
   beforeToolCall?: (index: number) => void;
@@ -246,7 +261,11 @@ function fixture({
       findMany: vi.fn(async () => []),
       findFirst: vi.fn(async () => (peer?.senderInScope ? { id: "peer-1" } : null)),
     },
-    mcpServer: { findFirst: vi.fn(async () => (peer?.linked ? { id: "server-1" } : null)) },
+    mcpServer: {
+      findMany: vi.fn(async () =>
+        peer?.linked ? (peer.serverIds ?? ["server-1"]).map((id) => ({ id })) : [],
+      ),
+    },
     attempt: {
       create: vi.fn(async () => ({ id: "attempt-1" })),
       update: vi.fn(),
@@ -280,6 +299,11 @@ function fixture({
         async ({ where }: { where?: Record<string, unknown> } = {}) =>
           connectionRows.find((row) => matchesWhere(row, where)) ?? null,
       ),
+    },
+    cachedMailMessage: {
+      findFirst: vi.fn(async () => ({ id: "cached-1", threadId: "thread-x" })),
+      findMany: vi.fn(async () => [{ id: "cached-1" }]),
+      updateMany: vi.fn(async () => ({ count: 1 })),
     },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
     userModelCredential: { findFirst: vi.fn(async () => null) },
@@ -845,6 +869,174 @@ describe("mail_send for the Carta agent", () => {
     await f.run();
     expect(f.results[0]).toEqual({ error: expect.stringContaining("full message") });
     expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(f.effects).toEqual([]);
+  });
+});
+
+describe("built-in mail on a connection with an integration agent", () => {
+  beforeEach(() => {
+    reviewMock.mockReset();
+  });
+  const gmail = (extra: Record<string, unknown> = {}) => ({ ...mailConnectionRow(), ...extra });
+  const draft = { to: ["a@example.test"], subject: "Hi", body: "Hello" };
+  const draftRun = (
+    spawnKey: string | null,
+    connectionRows: Record<string, unknown>[],
+    options: { beforeToolCall?: (index: number) => void; name?: string } = {},
+  ) => {
+    const mail = {
+      listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+      createDraft: vi.fn(async () => ({ id: "draft-1" })),
+    };
+    const f = fixture({
+      name: options.name ?? "mail_draft",
+      builtin: true,
+      autoReview: true,
+      rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "mail_draft" }],
+      spawnKey,
+      mail,
+      connectionRows,
+      beforeToolCall: options.beforeToolCall,
+    });
+    f.setCalls([{ args: draft, executionId: "call-1" }]);
+    return { f, mail };
+  };
+
+  it("refuses a Carta draft when the connection's agent has changes off", async () => {
+    const { f, mail } = draftRun(cartaAgentSpawnKey("user-1"), [
+      gmail({ agentBotId: "agent-x", writesEnabled: false }),
+    ]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("agent") });
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a draft from any bot but the connection's agent, even with changes on", async () => {
+    const { f, mail } = draftRun(null, [gmail({ agentBotId: "agent-x", writesEnabled: true })]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("agent") });
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("asks before every write by the connection's own agent, despite an allow rule", async () => {
+    const { f, mail } = draftRun(null, [gmail({ agentBotId: "bot-1", writesEnabled: true })]);
+    await f.run();
+    expect(isApprovalPausedResult(f.results[0])).toBe(true);
+    expect(reviewMock).not.toHaveBeenCalled();
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a draft once the connection becomes exclusive to another agent mid-run", async () => {
+    const rows = [gmail()];
+    const { f, mail } = draftRun(null, rows, {
+      beforeToolCall: () => {
+        rows[0]!.allAgents = false;
+      },
+    });
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("no longer available") });
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  describe("with two accounts, only one of which has an agent", () => {
+    const twoAccounts = (account: string, spawnKey: string | null = null) => {
+      const mail = {
+        listAccounts: vi.fn(async () => [
+          { id: "acct-1", address: "plain@example.test" },
+          { id: "acct-2", address: "agent@example.test" },
+        ]),
+        createDraft: vi.fn(async () => ({ draftId: "d1" })),
+      };
+      const f = fixture({
+        name: "mail_draft",
+        builtin: true,
+        spawnKey,
+        rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "mail_draft" }],
+        mail,
+        connectionRows: [
+          gmail(),
+          gmail({ id: "acct-2", agentBotId: "bot-1", writesEnabled: true }),
+        ],
+      });
+      f.setCalls([{ args: { ...draft, account }, executionId: "call-1" }]);
+      return { f, mail };
+    };
+
+    it("does not force approval for a write to the account without an agent", async () => {
+      const { f, mail } = twoAccounts("plain@example.test");
+      await f.run();
+      expect(f.pauseRunForInput).not.toHaveBeenCalled();
+      expect(mail.createDraft).toHaveBeenCalledOnce();
+    });
+
+    it("still asks for a write to the account the agent owns", async () => {
+      const { f, mail } = twoAccounts("agent@example.test");
+      await f.run();
+      expect(isApprovalPausedResult(f.results[0])).toBe(true);
+      expect(mail.createDraft).not.toHaveBeenCalled();
+    });
+  });
+
+  it("refuses a draft on a revoked connection", async () => {
+    const { f, mail } = draftRun(null, [gmail({ status: "revoked" })]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.any(String) });
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a draft when the account has no connection row", async () => {
+    const { f, mail } = draftRun(null, []);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.any(String) });
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("checks again right before the provider write, after the label lookup", async () => {
+    const rows = [gmail()];
+    const modifyThread = vi.fn(async () => undefined);
+    const mail = {
+      listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+      // Exclusivity is switched on while the labels are being looked up.
+      listLabels: vi.fn(async () => {
+        rows[0]!.allAgents = false;
+        return [{ id: "Label_1", name: "Todo" }];
+      }),
+      modifyThread,
+      modifyMessage: vi.fn(async () => undefined),
+    };
+    const f = fixture({
+      name: "mail_modify",
+      builtin: true,
+      rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "mail_modify" }],
+      mail,
+      connectionRows: rows,
+    });
+    f.setCalls([{ args: { id: "m1", addLabels: ["Todo"] }, executionId: "call-1" }]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("no longer available") });
+    expect(modifyThread).not.toHaveBeenCalled();
+    expect(mail.modifyMessage).not.toHaveBeenCalled();
+  });
+
+  it("keeps the Carta mail_send approval on a connection without an agent", async () => {
+    const { f } = draftRun(cartaAgentSpawnKey("user-1"), [gmail()], { name: "mail_send" });
+    f.setCalls([
+      {
+        args: { to: ["a@example.test"], subject: "Hi", body: "Hello" },
+        executionId: "call-1",
+      },
+    ]);
+    await f.run();
+    expect(isApprovalPausedResult(f.results[0])).toBe(true);
+  });
+
+  it("refuses a built-in the run was not offered", async () => {
+    const f = fixture({ name: "mail_draft", builtin: true });
+    f.setCalls([{ args: draft, executionId: "call-1" }]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("not available") });
     expect(f.effects).toEqual([]);
   });
 });
@@ -1847,6 +2039,122 @@ describe("integration agent asked by another bot", () => {
     await f.run();
     expect(f.offeredTools).not.toContain("mcp__demo__requestSendMoney");
     expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("offers the migrated Carta agent its server's tools to a same-owner peer, and still asks before a write", async () => {
+    const f = fixture({
+      name: "mcp__integration-5f783c95__mutate",
+      readOnly: true,
+      trigger: "bot_message",
+      spawnKey: cartaAgentSpawnKey("user-1"),
+      peer: { senderInScope: true, linked: true },
+      route: {
+        connectorId: "mcp",
+        resourceId: "server-1",
+        toolName: "mutate",
+        endpoint: "https://mcp.app.carta.com/mcp",
+      },
+    });
+    await f.run();
+    expect(f.offeredTools).toContain("mcp__integration-5f783c95__mutate");
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("offers every Carta server linked to the agent to a peer, and still asks before a write", async () => {
+    const carta = "https://mcp.app.carta.com/mcp";
+    const toolFor = (id: string): ConnectorTool => ({
+      name: `mcp__${id}__mutate`,
+      description: "Change Carta",
+      readOnly: true,
+      inputSchema: { type: "object", properties: { id: { type: "string" } } },
+      route: { connectorId: "mcp", resourceId: id, toolName: "mutate", endpoint: carta },
+    });
+    const tools = [toolFor("server-1"), toolFor("server-2")];
+    for (const tool of tools) {
+      const f = fixture({
+        name: tool.name,
+        trigger: "bot_message",
+        spawnKey: cartaAgentSpawnKey("user-1"),
+        peer: { senderInScope: true, linked: true, serverIds: ["server-1", "server-2"] },
+        availableTools: tools,
+        route: tool.route,
+      });
+      await f.run();
+      expect(f.offeredTools).toEqual(expect.arrayContaining(tools.map((t) => t.name)));
+      expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+      expect(f.execute).not.toHaveBeenCalled();
+    }
+  });
+
+  it("offers a peer only the Carta servers linked to the agent", async () => {
+    const tool = (id: string): ConnectorTool => ({
+      name: `mcp__${id}__getCompany`,
+      description: "Read Carta",
+      readOnly: true,
+      inputSchema: { type: "object" },
+      route: { connectorId: "mcp", resourceId: id, toolName: "getCompany" },
+    });
+    const f = fixture({
+      name: "mcp__server-1__getCompany",
+      trigger: "bot_message",
+      spawnKey: cartaAgentSpawnKey("user-1"),
+      peer: { senderInScope: true, linked: true, serverIds: ["server-1"] },
+      availableTools: [tool("server-1"), tool("server-9")],
+    });
+    await f.run();
+    expect(f.offeredTools).toContain("mcp__server-1__getCompany");
+    expect(f.offeredTools).not.toContain("mcp__server-9__getCompany");
+  });
+
+  it("scopes the peer's MCP discovery to the agent's linked servers", async () => {
+    const seen: unknown[] = [];
+    const wrapper: ConnectorTool = {
+      name: "mcp_catalog_execute",
+      description: "Execute",
+      inputSchema: { type: "object" },
+      route: { connectorId: "mcp", toolName: "__catalog_execute" },
+    };
+    const f = fixture({
+      name: "mcp_catalog_execute",
+      trigger: "bot_message",
+      spawnKey: integrationAgentSpawnKey("server-1"),
+      peer: { senderInScope: true, linked: true, serverIds: ["server-1"] },
+      connector: {
+        discoverTools: async (context: { mcpServerIds?: string[] }) => {
+          seen.push(context.mcpServerIds);
+          return [wrapper];
+        },
+        resolveCall: async () => undefined,
+        execute: vi.fn(),
+      },
+    });
+    await f.run();
+    expect(f.offeredTools).toContain("mcp_catalog_execute");
+    expect(seen.at(-1)).toEqual(["server-1"]);
+  });
+
+  it("gives the Carta agent nothing for a peer outside its space and user or an unlinked server", async () => {
+    for (const peer of [
+      { senderInScope: false, linked: true },
+      { senderInScope: true, linked: false },
+    ]) {
+      const f = fixture({
+        name: "mcp__integration-5f783c95__getCompany",
+        trigger: "bot_message",
+        spawnKey: cartaAgentSpawnKey("user-1"),
+        peer,
+        route: {
+          connectorId: "mcp",
+          resourceId: "server-1",
+          toolName: "getCompany",
+          endpoint: "https://mcp.app.carta.com/mcp",
+        },
+      });
+      await f.run();
+      expect(f.offeredTools).not.toContain("mcp__integration-5f783c95__getCompany");
+      expect(f.execute).not.toHaveBeenCalled();
+    }
   });
 
   it("changes nothing for an ordinary bot", async () => {

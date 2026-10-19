@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import type { Actor, Bot } from "@rakazo/contracts";
 import {
   cartaAgentSpawnKey,
+  connectorSupportsIntegrationAgent,
   integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isCartaEndpoint,
@@ -50,6 +51,8 @@ export async function ensureConnectedAppAgent(
   connectionId: string,
 ): Promise<{ connection: Awaited<ReturnType<typeof loadConnectedApp>>; bot: Bot }> {
   const initial = await loadConnectedApp(deps.prisma, actor, connectionId);
+  if (!connectorSupportsIntegrationAgent(initial.connectorId))
+    throw new ORPCError("BAD_REQUEST", { message: "This connection cannot have an agent" });
   const service = initial.displayName || initial.provider;
   const spawnKey = integrationAgentSpawnKey(connectionId);
   const link = (bot: Bot) =>

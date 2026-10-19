@@ -30,3 +30,36 @@ it("spaces request starts per account, and paces accounts independently", async 
   await Promise.all([get("B"), get("B")]);
   expect(pauses).toEqual([250, 500, 250]);
 });
+
+it("asks the write check before every attempt, so a retry after a rate limit can be refused", async () => {
+  let proxied = 0;
+  const connector = {
+    proxy: async () => {
+      proxied++;
+      return { status: 429, data: {} };
+    },
+  } as unknown as ManagedConnectorProvider;
+  const client = new GoogleApiClient({ sleep: async () => undefined, random: () => 0 });
+  const refusal = new Error("no longer allowed");
+  const context = {
+    signal: new AbortController().signal,
+    // Allowed for the first attempt only.
+    beforeWrite: async () => {
+      if (proxied >= 1) throw refusal;
+    },
+  } as AdapterContext;
+  const call = (method: "GET" | "POST") =>
+    client.request({
+      connector,
+      account: { connectorId: "c", providerRef: "A", app: "gmail" },
+      method,
+      url: "https://example.test/x",
+      context,
+    });
+  await expect(call("POST")).rejects.toBe(refusal);
+  expect(proxied).toBe(1);
+  // A read is not a write: it keeps retrying without the check.
+  proxied = 0;
+  await expect(call("GET")).rejects.toMatchObject({ kind: "response" });
+  expect(proxied).toBe(3);
+});

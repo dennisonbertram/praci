@@ -262,6 +262,7 @@ export class McpConnector implements ConnectorProvider {
         spaceId: context.spaceId,
         userId: context.userId,
         server: { enabled: true },
+        ...(context.mcpServerIds ? { serverId: { in: context.mcpServerIds } } : {}),
       },
       include: {
         server: {
@@ -434,9 +435,13 @@ export class McpConnector implements ConnectorProvider {
     // Preset classifications cannot change with annotations. Other tools still need a live list:
     // cached read hints must never authorize a tool that has become a write since discovery.
     let annotations: ToolAnnotations;
+    let listedSession: McpSession | undefined;
     if (assignment.server.agentBotId) {
+      const { endpoint, secretId, revision } = assignment.server;
+      const listedFor = { endpoint, secretId, revision };
       try {
         const session = await this.sessionFor(assignment.server, context);
+        listedSession = session;
         const preset = integrationPresetForEndpoint(assignment.server.endpoint);
         const fixedClassification =
           preset?.reads.includes(route.toolName) || preset?.forcedWrites.includes(route.toolName);
@@ -452,6 +457,20 @@ export class McpConnector implements ConnectorProvider {
       assignment = await loadAssignment();
       if (!assignment) {
         yield { type: "error", message: "MCP tool is not assigned to this bot" };
+        return;
+      }
+      // The annotations belong to the session that listed them. If the server moved meanwhile,
+      // dispatch would open a different session with the old classification.
+      if (
+        assignment.server.endpoint !== listedFor.endpoint ||
+        assignment.server.secretId !== listedFor.secretId ||
+        assignment.server.revision !== listedFor.revision
+      ) {
+        yield {
+          type: "error",
+          message:
+            "The integration changed while the call was starting, so it was not run. Try again in a new message.",
+        };
         return;
       }
     }
@@ -494,6 +513,16 @@ export class McpConnector implements ConnectorProvider {
         revision: opened.revision,
       };
       const session = await this.sessionFor(opened, context);
+      // A reconnect (for example a rotated secret under the same id) makes a new session; the
+      // annotations came from the old one.
+      if (listedSession && session !== listedSession) {
+        yield {
+          type: "error",
+          message:
+            "The integration changed while the call was starting, so it was not run. Try again in a new message.",
+        };
+        return;
+      }
       material = this.sessions.get(sessionKey)?.material;
       const fresh = await loadAssignment();
       // An edit while the session was being set up (new endpoint or credentials) leaves this session
