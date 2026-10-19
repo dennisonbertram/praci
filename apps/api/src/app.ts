@@ -113,6 +113,7 @@ import { cors } from "hono/cors";
 import { createBillingService } from "./billing.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
 import { mountDataRoomRoutes } from "./data-room.js";
+import { mountEmailImageProxy } from "./email-image-proxy.js";
 import type { AppEnv } from "./env.js";
 import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
@@ -594,6 +595,7 @@ export async function createApp(
     remoteConnectors,
     artifacts,
     mail,
+    imageProxySecret: env.authSecret,
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     mcp,
     // The same offline fake serves exchange reads (Coinbase, Kraken) and their prices.
@@ -766,6 +768,7 @@ export async function createApp(
     if (matched) return c.newResponse(response.body, response);
     await next();
   });
+  mountEmailImageProxy(app, { secret: env.authSecret }, async (request) => sessionActor(request));
   mountInboxAttachment(app, { prisma, mail }, async (request) => {
     const actor = await sessionActor(request);
     if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });

@@ -33,11 +33,17 @@ const previewCsp = (scripts: boolean, email: boolean) => {
   const csp = scripts
     ? PREVIEW_CSP
     : PREVIEW_CSP.replace("script-src 'unsafe-inline'", "script-src 'none'");
-  return email ? csp.replace("img-src data:", "img-src data: https:") : csp;
+  return email ? csp.replace("img-src data:", `img-src data: ${proxyOrigin()}`) : csp;
 };
 
+// Remote images reach an email only through the server's image proxy, so the sender never sees the reader's
+// address. The frame may load images from the app's own origin, never from the open web.
+const IMAGE_PROXY_PREFIX = "/api/inbox/image?";
+const proxyOrigin = () => window.location.origin;
+
 // A srcdoc frame inherits the shell's policy too, so email mode lifts the image block here as well.
-const shellCsp = (email: boolean) => (email ? `${SHELL_CSP}; img-src data: https:` : SHELL_CSP);
+const shellCsp = (email: boolean) =>
+  email ? `${SHELL_CSP}; img-src data: ${proxyOrigin()}` : SHELL_CSP;
 
 // New-tab navigations are not covered by the shell's frame-src; the popup is not sandboxed.
 const POPUP_FLAGS = "allow-popups allow-popups-to-escape-sandbox";
@@ -62,10 +68,10 @@ function openLinksInNewTab(html: string): string {
 }
 
 /**
- * Images the frame can never load (http:, cid: that was not embedded, relative or empty src) and tracking pixels
- * would show as a broken icon or an empty box. They are removed; real alt text stays as muted text. An https
- * image that fails at load time cannot be detected without a script, so it keeps the browser's own fallback,
- * which the base style turns muted.
+ * The server has already pointed remote images at its proxy. Those get an absolute address, since the frame has no
+ * base URL. Any other image the frame cannot load (a direct http(s) link, a cid: that was not embedded, an empty
+ * src) and tracking pixels would show as a broken icon or an empty box, so they are removed; real alt text stays
+ * as muted text.
  */
 function tidyImages(doc: Document): void {
   for (const img of doc.querySelectorAll("img")) {
@@ -73,7 +79,12 @@ function tidyImages(doc: Document): void {
     const tiny = [img.getAttribute("width"), img.getAttribute("height")].some(
       (v) => v !== null && Number.parseInt(v, 10) <= 2,
     );
-    if (/^(https:|data:)/i.test(src) && !tiny) continue;
+    img.removeAttribute("srcset");
+    if (!tiny && src.startsWith(IMAGE_PROXY_PREFIX)) {
+      img.setAttribute("src", proxyOrigin() + src);
+      continue;
+    }
+    if (!tiny && /^data:/i.test(src)) continue;
     const alt = (img.getAttribute("alt") ?? "").trim();
     if (!tiny && /[\p{L}\p{N}]{2,}/u.test(alt)) {
       const note = doc.createElement("span");

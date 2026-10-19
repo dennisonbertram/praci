@@ -30,7 +30,8 @@ window.fetch = (input, init) => {
 // Swap remote image URLs (logo CDNs) for an empty data URI. The image fails to decode, so
 // components show their letter fallback and no request leaves the browser.
 const blank = "data:,";
-const remote = (value: unknown) => typeof value === "string" && /^https?:\/\//.test(value);
+const remote = (value: unknown) =>
+  typeof value === "string" && /^https?:\/\//.test(value) && !value.startsWith(location.origin);
 const setAttribute = Element.prototype.setAttribute;
 Element.prototype.setAttribute = function (name: string, value: string) {
   const image = this instanceof HTMLImageElement && name === "src";

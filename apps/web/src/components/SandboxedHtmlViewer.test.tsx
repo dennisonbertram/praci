@@ -87,17 +87,18 @@ it("lets the shell load the nested srcdoc preview and rejects http(s) navigation
   await view.cleanup();
 });
 
-it("email mode loads https and data images, opens links in new tabs, and still runs no script in the message", async () => {
+it("email mode loads data and proxied images, opens links in new tabs, and still runs no script in the message", async () => {
   const view = await render('<img src="https://example.invalid/pixel.png">', true, true);
   const shell = view.srcDoc.split("srcdoc=")[0] ?? "";
 
   // Even when the caller asks for scripts, an email never gets them.
   expect(shell).toMatch(/csp="[^"]*script-src 'none'/);
-  expect(shell).toMatch(/csp="[^"]*img-src data: https:/);
+  expect(shell).toContain(`img-src data: ${window.location.origin}`);
+  expect(shell).not.toMatch(/img-src[^;]*https:/);
   // The message frame inherits the shell's policy, so the shell must not block images either.
   expect(directiveSources(shellContentSecurityPolicy(view.srcDoc), "img-src")).toEqual([
     "data:",
-    "https:",
+    window.location.origin,
   ]);
   const innerSandbox = /<iframe id="preview" sandbox="([^"]*)"/.exec(shell)?.[1] ?? "";
   expect(innerSandbox.split(" ").sort()).toEqual([
@@ -297,20 +298,25 @@ it("masks amounts in email HTML while Hide amounts is on, and not otherwise", as
   await shown.cleanup();
 });
 
-it("email mode drops images that cannot load and tracking pixels, keeping real alt text muted", async () => {
+it("email mode keeps proxied and data images, drops images that cannot load and tracking pixels", async () => {
+  const proxied = "/api/inbox/image?u=https%3A%2F%2Fa.example.test%2Fa.png&t=sig";
   const view = await render(
-    '<img id="ok" src="https://example.invalid/a.png" alt="Photo">' +
+    `<img id="ok" src="${proxied}" srcset="https://a.example.test/a2.png 2x" alt="Photo">` +
+      '<img id="data" src="data:image/png;base64,AA">' +
+      '<img id="direct" src="https://example.invalid/a.png" alt="">' +
       '<img id="cid" src="cid:logo" alt="">' +
       '<img id="http" src="http://example.invalid/b.png" alt="Orchard sale banner">' +
-      '<img id="px" src="https://example.invalid/t.gif" width="1" height="1" alt="Orchard pixel">' +
+      `<img id="px" src="${proxied}" width="1" height="1" alt="Orchard pixel">` +
       '<img id="junk" src="cid:x" alt="  - ">',
     false,
     true,
   );
   const doc = embeddedMessage(view.srcDoc);
-  expect(doc.getElementById("ok")).not.toBeNull();
-  for (const id of ["cid", "px", "junk"]) expect(doc.getElementById(id)).toBeNull();
-  expect(doc.getElementById("http")).toBeNull();
+  expect(doc.getElementById("ok")?.getAttribute("src")).toBe(window.location.origin + proxied);
+  expect(doc.getElementById("ok")?.hasAttribute("srcset")).toBe(false);
+  expect(doc.getElementById("data")).not.toBeNull();
+  for (const id of ["direct", "cid", "px", "junk", "http"])
+    expect(doc.getElementById(id)).toBeNull();
   expect(doc.body.textContent).toContain("Orchard sale banner");
   expect(doc.body.textContent).not.toContain("Orchard pixel");
   await view.cleanup();
