@@ -160,12 +160,16 @@ Each phase is one or a few PRs. Web first; each phase lists its mobile part.
 6. **Newsletter digest and learned sender decisions.** Digest reading view; promote
    repeated model decisions to sender decisions.
 
+## Decisions
+
+- Piles and categories stay Rakazo-only. A `Rakazo/…` label mirror may come later as
+  a setting.
+- `gmail.settings.basic` is requested only when a user first chooses "always skip the
+  inbox", through a reconnect. It is a restricted scope, so it affects Google's
+  verification and security assessment for the hosted app.
+
 ## Open decisions
 
-- Mirror piles as Gmail labels or keep them Rakazo-only (proposal: Rakazo-only, mirror
-  later as a setting).
-- Request `gmail.settings.basic` for filters (restricted scope; affects Google's
-  verification and security assessment for the hosted app).
 - Automatic actions: phase 1–4 only act on a user's click. Whether to add scheduled
   automatic cleanup (archive and label only, capped, logged) is decided after phase 3.
 - Cache window and storage cost for 90 days of headers per user.
