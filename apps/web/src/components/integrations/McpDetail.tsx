@@ -109,8 +109,9 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
       const exclusive = (value: boolean) =>
         rpc.integrationAgents.setExclusive({ serverId: server.id, exclusive: value });
       if (shared) {
-        for (const bot of data.bots) if (!assigned(bot.id)) await assign(bot.id, true);
+        // Exclusivity must be off first: the server refuses to grant an exclusive server to other agents.
         await exclusive(false);
+        for (const bot of data.bots) if (!assigned(bot.id)) await assign(bot.id, true);
         return;
       }
       await exclusive(true);
