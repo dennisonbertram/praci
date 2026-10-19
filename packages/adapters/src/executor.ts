@@ -57,10 +57,12 @@ import {
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
+  isVoiceAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
   LEGAL_AGENT_MODEL,
   LEGAL_MODEL_REQUIRED_MESSAGE,
   OPENAI_COMPATIBLE_PROVIDER_ID,
+  VOICE_AGENT_BUILTIN_TOOLS,
 } from "@rakazo/contracts";
 import type { ActionApprovalRule, ToolCallStreak } from "@rakazo/core";
 import {
@@ -104,6 +106,7 @@ import {
   truncatedPlainText,
   unattendedTriggerToolRequiresApproval,
   userTurnMessageForRun,
+  VOICE_AGENT_INSTRUCTIONS,
 } from "@rakazo/core";
 import {
   approvalEffectKey,
@@ -455,6 +458,7 @@ import {
   isUserProgressClientNonce,
   userProgressClientNonce,
 } from "./user-progress.js";
+import { VOICE_WORKSPACE_TOOL_NAMES, voiceAgentToolFromTool } from "./voice-agent-tools.js";
 import { createWebProvider } from "./web-provider-factory.js";
 import { webFetchFromTool, webSearchFromTool } from "./web-tools.js";
 
@@ -464,6 +468,10 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "read_file",
   "read_history",
   "search_history",
+  "workspace_agents",
+  "agent_context",
+  "search_agent_history",
+  "read_agent_history",
   "request_takeover",
   "run_subagent",
   "task_catalog",
@@ -499,6 +507,14 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "list_secrets",
   "cloud_agent_status",
 ]);
+const VOICE_PRIVATE_READ_TOOL_NAMES = new Set([
+  ...VOICE_WORKSPACE_TOOL_NAMES,
+  "search_data_room",
+  "read_data_room_item",
+  "board_tickets",
+  "ticket_get",
+]);
+const VOICE_AGENT_TOOL_NAMES: ReadonlySet<string> = new Set(VOICE_AGENT_BUILTIN_TOOLS);
 /** Added to the turn prompt when the user spoke this message on a live voice call. */
 const VOICE_CALL_BASE_INSTRUCTION =
   "You are on a live voice call. Reply in one to three short spoken sentences. No markdown, lists, links, or option cards; do not use ask_user unless you truly cannot proceed. Answer directly from what you already know when you can; use tools or subagents only when the answer requires them.";
@@ -3485,10 +3501,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
             : undefined;
         const channelId = messagingChannelId(sourceBlocks);
         const messagingChannelRun = isMessagingChannelRun(run.trigger, sourceBlocks);
+        const bot = await deps.prisma.bot.findUniqueOrThrow({
+          where: { id: run.botId },
+          include: { computer: true },
+        });
+        const voiceAgent = isVoiceAgentSpawnKey(bot.spawnKey);
         const [
-          bot,
           thread,
-          messages,
+          loadedMessages,
           peerMessage,
           task,
           storedConnections,
@@ -3500,16 +3520,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
           agentSecretRows,
           initialBotCommandEnvironment,
         ] = await Promise.all([
-          deps.prisma.bot.findUniqueOrThrow({
-            where: { id: run.botId },
-            include: { computer: true },
-          }),
           deps.prisma.thread.findUniqueOrThrow({ where: { id: run.threadId } }),
           loadRunHistoryMessages(deps.prisma, run, LEGACY_HISTORY_WINDOW_SIZE, channelId),
           run.trigger === "bot_message"
             ? loadBotMessageContext(deps.prisma, run.sourceMessageId)
             : Promise.resolve(undefined),
           deps.prisma.task.findUniqueOrThrow({ where: { id: run.taskId } }),
+          // Elio gets no connector tools, but Data Room reads still need the denied ids.
           deps.prisma.connection.findMany({
             where: { userId: run.userId, spaceId: run.spaceId },
             select: {
@@ -3537,15 +3554,31 @@ export function createRunExecutor(deps: ExecutorDeps) {
             spaceId: run.spaceId,
             userId: run.userId,
           }),
-          deps.prisma.agentSecret.findMany({
-            where: { spaceId: run.spaceId },
-            select: {
-              name: true,
-              secret: { select: { id: true, ciphertext: true } },
-            },
-          }),
-          loadBotCommandEnvironment(deps.prisma, deps.secretStore, run),
+          voiceAgent
+            ? Promise.resolve([])
+            : deps.prisma.agentSecret.findMany({
+                where: { spaceId: run.spaceId },
+                select: {
+                  name: true,
+                  secret: { select: { id: true, ciphertext: true } },
+                },
+              }),
+          voiceAgent
+            ? Promise.resolve({})
+            : loadBotCommandEnvironment(deps.prisma, deps.secretStore, run),
         ]);
+        const voiceWorkspaceReadAllowed =
+          voiceAgent &&
+          run.userId === bot.userId &&
+          !thread.groupId &&
+          !messagingChannelRun &&
+          ["user", "follow_up", "call_end"].includes(run.trigger);
+        // Outside the owner's private chat Elio may not see its private history or summaries,
+        // the same boundary its private-read tools have: keep only the triggering message.
+        const hidePrivateVoiceHistory = voiceAgent && !voiceWorkspaceReadAllowed;
+        const messages = hidePrivateVoiceHistory
+          ? loadedMessages.filter((message) => message.id === run.sourceMessageId)
+          : loadedMessages;
         const historySearchBeforeSeq =
           contextStrategy !== "current" && run.sourceMessageId
             ? (messages.find((message) => message.id === run.sourceMessageId)?.seq ??
@@ -3631,11 +3664,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ? appAgentConnection?.connectorId === "composio"
             ? [appAgentConnection]
             : []
-          : mailOnly || financeOnly || legalOnly
+          : mailOnly || financeOnly || legalOnly || voiceAgent
             ? []
             : runConnections.filter((connection) => connection.connectorId === "composio");
         let liveSlugs: string[] = [];
-        if (!appAgentIdentity && needsLivePluginSync(composioRows)) {
+        if (!voiceAgent && !appAgentIdentity && needsLivePluginSync(composioRows)) {
           const listing = await loadLivePluginSlugs(deps.listConnectedPluginSlugs, run.userId);
           if (listing.ok) {
             liveSlugs = listing.slugs;
@@ -3649,7 +3682,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ? appAgentConnection
             ? [appAgentConnection]
             : []
-          : mailOnly || financeOnly || legalOnly
+          : mailOnly || financeOnly || legalOnly || voiceAgent
             ? []
             : selectRunConnections(
                 runConnections,
@@ -3689,7 +3722,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
 
         const discoveredPromise =
-          deps.connector && !mailOnly && !legalOnly
+          deps.connector && !mailOnly && !legalOnly && !voiceAgent
             ? (async () => {
                 if (appAgentIdentity) {
                   const current = await deps.prisma.connection.findFirst({
@@ -3788,7 +3821,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             summary: thread.historyCompactionSummary,
             historyCompactedUpToSeq: thread.historyCompactedUpToSeq,
           },
-          messagingChannelRun,
+          messagingChannelRun || hidePrivateVoiceHistory,
         );
         const compactedHistory = selectCompactedHistory({
           messages: threadContext.messages,
@@ -3829,6 +3862,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             : DELEGATED_EMPTY_NOTICE
           : undefined;
         const recallPromise =
+          !voiceAgent &&
           threadContext.includeSemanticRecall &&
           semanticMemory &&
           memoryScope &&
@@ -3854,16 +3888,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ] = await Promise.all([
           discoveredPromise,
           loadCurrentTurnImages(deps, turnBlocks, context),
-          messagingChannelRun
+          messagingChannelRun || voiceAgent
             ? Promise.resolve("")
             : loadAgentMemoryContext(deps.memory, bot.id, context),
-          messagingChannelRun
+          messagingChannelRun || voiceAgent
             ? Promise.resolve("")
             : loadAgentScratchpadContext(deps, {
                 spaceId: run.spaceId,
                 botId: bot.id,
               }),
-          messagingChannelRun || !deps.ticketBoardEnabled
+          messagingChannelRun ||
+          !deps.ticketBoardEnabled ||
+          (voiceAgent && !voiceWorkspaceReadAllowed)
             ? Promise.resolve(undefined)
             : loadAgentTicketContext(deps, {
                 spaceId: run.spaceId,
@@ -3871,7 +3907,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }),
           recallPromise,
         ]);
-        const semanticMemoryEnabled = Boolean(semanticMemory) && !messagingChannelRun;
+        const semanticMemoryEnabled =
+          Boolean(semanticMemory) && !messagingChannelRun && !voiceAgent;
         let recalledMemory = "";
         let recallSucceeded = false;
         if (recalled) {
@@ -4080,12 +4117,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
           resolved.acceptsImages,
         );
         const acceptsImages = deps.runtime.describe().capabilities.scripted || modelSeesImages;
-        const groupContext = thread.groupId
-          ? await loadGroupContext(deps.prisma, thread.groupId, {
-              id: bot.id,
-              name: bot.name,
-            })
-          : undefined;
+        const groupContext =
+          thread.groupId && !voiceAgent
+            ? await loadGroupContext(deps.prisma, thread.groupId, {
+                id: bot.id,
+                name: bot.name,
+              })
+            : undefined;
         const hasMessagingIdentity = deps.messaging
           ? await deps.messaging.hasIdentity(bot.id)
           : false;
@@ -4197,6 +4235,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // person who has not accepted the Data room still gets the tools and a clear "off" answer.
         const dataRoomEnabled =
           Boolean(deps.artifacts) &&
+          (!voiceAgent || voiceWorkspaceReadAllowed) &&
           dataRoomToolsAllowed({
             hasProvider: true,
             groupId: thread.groupId,
@@ -4240,7 +4279,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
         const builtins = [
           ...selectBuiltinToolsForRun({
-            ticketBoardEnabled: deps.ticketBoardEnabled,
+            ticketBoardEnabled:
+              Boolean(deps.ticketBoardEnabled) && (!voiceAgent || voiceWorkspaceReadAllowed),
             historyRetrievalEnabled: contextStrategy !== "current",
             graphicalToolsAllowed,
             pageBrowserAllowed,
@@ -4258,11 +4298,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
             messagingChannelRun,
             cartaAgent,
             integrationAgent: integrationAgent || appAgentIdentity,
+            voiceAgent,
+            voiceWorkspaceReadAllowed,
             voiceCall,
             disabledBuiltinTools: bot.disabledBuiltinTools,
           }),
           // Cross-owner agent connections only exist for chat-linked bots.
           ...(hasMessagingIdentity &&
+          !voiceAgent &&
           !cartaAgent &&
           !integrationAgent &&
           !appAgentIdentity &&
@@ -4314,7 +4357,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           connectedAppPeerRun = Boolean(sender && appAgentConnection);
         }
         const exposedConnectorTools =
-          run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun
+          !voiceAgent &&
+          (run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun)
             ? discovered.filter(
                 (tool) =>
                   !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
@@ -4353,7 +4397,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The intro turn confirms how a bot read its own role before anyone hands it
         // real work — it must not be able to act on that reading (shell, computer,
         // scheduling, spawning another bot, ...) before the user has assigned any task.
-        const tools = run.trigger === "created" ? [] : [...builtins, ...exposedConnectorTools];
+        const tools =
+          run.trigger === "created"
+            ? []
+            : voiceAgent
+              ? builtins
+              : [...builtins, ...exposedConnectorTools];
+        const offeredToolNames = new Set(tools.map((tool) => tool.name));
         const taskCatalogInstruction = tools.some((tool) => tool.name === "task_catalog")
           ? TASK_CATALOG_GUIDANCE
           : undefined;
@@ -4535,6 +4585,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
           _route?: unknown,
           observer?: AgentToolExecutionObserver,
         ) => {
+          if (voiceAgent && !offeredToolNames.has(name)) {
+            return { error: `Tool ${name} is not available to Elio.` };
+          }
           context.signal.throwIfAborted();
           if (handedOff) {
             return {
@@ -6324,6 +6377,28 @@ export function createRunExecutor(deps: ExecutorDeps) {
               context,
             );
           }
+          if (VOICE_WORKSPACE_TOOL_NAMES.has(name)) {
+            if (!voiceWorkspaceReadAllowed) {
+              return finish({
+                error: "Workspace reads are available only in the owner's private chat.",
+              });
+            }
+            const response = await voiceAgentToolFromTool(
+              deps.prisma,
+              { spaceId: run.spaceId, userId: run.userId },
+              name,
+              args,
+            );
+            const redacted = redactConnectorPayload(response, runSecrets);
+            if (Buffer.byteLength(JSON.stringify(redacted) ?? "null", "utf8") > 11_000) {
+              return finish({
+                untrusted: true,
+                error:
+                  "Redacted workspace response exceeds the response budget. Retry with a smaller limit or narrower query.",
+              });
+            }
+            return finish(redacted);
+          }
           if (name === "search_history" || name === "read_history") {
             const scope = {
               spaceId: run.spaceId,
@@ -7176,19 +7251,21 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return finish({ error: `unknown tool ${name}` });
         };
 
-        const pluginLine = mailOnly
+        const pluginLine = voiceAgent
           ? undefined
-          : legalOnly
-            ? legalEnabled
-              ? "Start with legal_unreviewed_documents, read each with read_data_room_item, and record what you find with the legal_* tools. Use mail_search and drive_search for legal documents that are not in the Data Room yet."
-              : undefined
-            : integrationAgent
-              ? undefined
-              : financeOnly
-                ? financeAgentRunLine(financeEnabled, run.trigger)
-                : connectedPlugins.length > 0
-                  ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
-                  : "No plugins are connected yet.";
+          : mailOnly
+            ? undefined
+            : legalOnly
+              ? legalEnabled
+                ? "Start with legal_unreviewed_documents, read each with read_data_room_item, and record what you find with the legal_* tools. Use mail_search and drive_search for legal documents that are not in the Data Room yet."
+                : undefined
+              : integrationAgent
+                ? undefined
+                : financeOnly
+                  ? financeAgentRunLine(financeEnabled, run.trigger)
+                  : connectedPlugins.length > 0
+                    ? `Connected plugins: ${connectedPlugins.map((row) => `${row.displayName} (${row.connectorId}:${row.provider})`).join(", ")}. Prefer those plugin tools over the computer browser or web search when reading app data (repos, releases, mail, calendar, and similar).`
+                    : "No plugins are connected yet.";
         const taughtSkillIndex = savedSkills.slice(0, 20);
         const taughtSkillsLine =
           taughtSkillIndex.length > 0
@@ -7208,13 +7285,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
           turnBlocks,
           currentTurnImages,
         );
-        const taskPrompt = expandSkillReferencesInPrompt(
-          [task.prompt, attachedFilesPrompt, missingImagesInstruction].filter(Boolean).join("\n\n"),
-          agentSkills,
-        );
-        const invokedSkill = savedSkills.find((skill) =>
-          promptInvokesSkill(taskPrompt, skill.name || skill.goal),
-        );
+        const taskPrompt = voiceAgent
+          ? [task.prompt, attachedFilesPrompt, missingImagesInstruction]
+              .filter(Boolean)
+              .join("\n\n")
+          : expandSkillReferencesInPrompt(
+              [task.prompt, attachedFilesPrompt, missingImagesInstruction]
+                .filter(Boolean)
+                .join("\n\n"),
+              agentSkills,
+            );
+        const invokedSkill = voiceAgent
+          ? undefined
+          : savedSkills.find((skill) => promptInvokesSkill(taskPrompt, skill.name || skill.goal));
         const basePrompt = invokedSkill
           ? `${formatSkillRunPrompt(
               invokedSkill.name || invokedSkill.goal.slice(0, 80),
@@ -7269,35 +7352,36 @@ export function createRunExecutor(deps: ExecutorDeps) {
           : history;
         const runtimeHistory = [...historicalContext, ...historyWithImages];
         // Without a roster a bot only knows the bots it spawned itself.
-        const botDirectory = thread.groupId
-          ? undefined
-          : renderBotDirectory(
-              (
-                await deps.prisma.bot.findMany({
-                  where: {
-                    spaceId: run.spaceId,
-                    userId: run.userId,
-                    archivedAt: null,
-                    id: { not: bot.id },
-                    thread: { isNot: null },
-                  },
-                  select: {
-                    id: true,
-                    name: true,
-                    title: true,
-                    description: true,
-                    spawnKey: true,
-                  },
-                  orderBy: { createdAt: "asc" },
-                  take: BOT_DIRECTORY_LIMIT,
-                })
-              ).map((peer) => ({
-                id: peer.id,
-                name: peer.name,
-                title: peer.title,
-                description: directoryDescription(peer),
-              })),
-            );
+        const botDirectory =
+          thread.groupId || voiceAgent
+            ? undefined
+            : renderBotDirectory(
+                (
+                  await deps.prisma.bot.findMany({
+                    where: {
+                      spaceId: run.spaceId,
+                      userId: run.userId,
+                      archivedAt: null,
+                      id: { not: bot.id },
+                      thread: { isNot: null },
+                    },
+                    select: {
+                      id: true,
+                      name: true,
+                      title: true,
+                      description: true,
+                      spawnKey: true,
+                    },
+                    orderBy: { createdAt: "asc" },
+                    take: BOT_DIRECTORY_LIMIT,
+                  })
+                ).map((peer) => ({
+                  id: peer.id,
+                  name: peer.name,
+                  title: peer.title,
+                  description: directoryDescription(peer),
+                })),
+              );
 
         if (heldForTakeover) {
           const releasedCheckpoint = takeoverCheckpointOf(
@@ -7375,7 +7459,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
               prompt,
               contextStrategy,
               instructions: userTurnInstructions({
-                botInstructions: runIdentityInstruction(bot, run.trigger),
+                botInstructions: runIdentityInstruction(bot, run.trigger, bot.spawnKey),
+                voiceAgent,
                 groupContext,
                 messagingContext,
                 redactedMemoryContext: memoryContext
@@ -7488,60 +7573,63 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   completion,
                   runSecrets,
                 ),
-              claimSteering: scripted
-                ? undefined
-                : async (seenIds) => {
-                    const steering = await deps.events.claimSteering({
-                      threadId: thread.id,
-                      botId: bot.id,
-                      runId,
-                      leaseOwner: workerId,
-                      leaseFence: fence,
-                      seenIds,
-                    });
-                    return Promise.all(
-                      steering.map(async (item) => {
-                        const { images, files, unavailableInstruction } =
-                          await settleSteeringAttachmentLoads(
-                            loadCurrentTurnImages(deps, item.blocks, context),
-                            deps.artifacts
-                              ? materializeCurrentTurnFiles(
-                                  {
-                                    prisma: deps.prisma,
-                                    artifacts: deps.artifacts,
-                                    sandbox: deps.sandbox,
-                                  },
-                                  item.blocks,
-                                  {
-                                    context,
-                                    computer,
-                                    computerMode,
-                                    markWorkspaceDirty: workspaceCheckpoint.markDirty,
-                                  },
-                                )
-                              : Promise.resolve([]),
-                            item.blocks,
-                            context.signal,
-                          );
-                        workspaceCheckpoint.markFiles(files);
-                        const filesInstruction = currentTurnFilesInstruction(files);
-                        return {
-                          id: item.id,
-                          messageId: item.messageId,
-                          historyText: item.text,
-                          text: [
-                            await loadReplyContext(deps.prisma, thread.id, item.messageId),
-                            item.text,
-                            filesInstruction,
-                            unavailableInstruction,
-                          ]
-                            .filter(Boolean)
-                            .join("\n\n"),
-                          images,
-                        };
-                      }),
-                    );
-                  },
+              // An owner's private message must not steer an Elio peer run: it stays unclaimed and
+              // the owner run that starts when this one finishes answers it.
+              claimSteering:
+                scripted || hidePrivateVoiceHistory
+                  ? undefined
+                  : async (seenIds) => {
+                      const steering = await deps.events.claimSteering({
+                        threadId: thread.id,
+                        botId: bot.id,
+                        runId,
+                        leaseOwner: workerId,
+                        leaseFence: fence,
+                        seenIds,
+                      });
+                      return Promise.all(
+                        steering.map(async (item) => {
+                          const { images, files, unavailableInstruction } =
+                            await settleSteeringAttachmentLoads(
+                              loadCurrentTurnImages(deps, item.blocks, context),
+                              deps.artifacts
+                                ? materializeCurrentTurnFiles(
+                                    {
+                                      prisma: deps.prisma,
+                                      artifacts: deps.artifacts,
+                                      sandbox: deps.sandbox,
+                                    },
+                                    item.blocks,
+                                    {
+                                      context,
+                                      computer,
+                                      computerMode,
+                                      markWorkspaceDirty: workspaceCheckpoint.markDirty,
+                                    },
+                                  )
+                                : Promise.resolve([]),
+                              item.blocks,
+                              context.signal,
+                            );
+                          workspaceCheckpoint.markFiles(files);
+                          const filesInstruction = currentTurnFilesInstruction(files);
+                          return {
+                            id: item.id,
+                            messageId: item.messageId,
+                            historyText: item.text,
+                            text: [
+                              await loadReplyContext(deps.prisma, thread.id, item.messageId),
+                              item.text,
+                              filesInstruction,
+                              unavailableInstruction,
+                            ]
+                              .filter(Boolean)
+                              .join("\n\n"),
+                            images,
+                          };
+                        }),
+                      );
+                    },
             },
             context,
           );
@@ -8365,6 +8453,8 @@ export function selectBuiltinToolsForRun(options: {
   cartaAgent?: boolean;
   /** An integration agent: no mail, calendar, Drive, Data room, finance or contact tools. */
   integrationAgent?: boolean;
+  voiceAgent?: boolean;
+  voiceWorkspaceReadAllowed?: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
   voiceCall?: boolean;
   /** Built-in names this bot turned off. Unknown names are ignored. */
@@ -8419,6 +8509,10 @@ export function selectBuiltinToolsForRun(options: {
       (options.voiceCall || tool.name !== "end_call") &&
       (options.historyRetrievalEnabled ||
         !["search_history", "read_history"].includes(tool.name)) &&
+      (options.voiceAgent
+        ? VOICE_AGENT_TOOL_NAMES.has(tool.name) &&
+          (options.voiceWorkspaceReadAllowed || !VOICE_PRIVATE_READ_TOOL_NAMES.has(tool.name))
+        : !VOICE_WORKSPACE_TOOL_NAMES.has(tool.name)) &&
       (!options.messagingChannelRun ||
         (![
           "remember",
@@ -8711,6 +8805,7 @@ export function directoryDescription(peer: {
 
 export function userTurnInstructions(parts: {
   botInstructions: string;
+  voiceAgent?: boolean;
   groupContext: string | undefined;
   messagingContext: string | undefined;
   redactedMemoryContext: string | undefined;
@@ -8733,6 +8828,7 @@ export function userTurnInstructions(parts: {
   replyGuidance: string;
   disabledBuiltinTools?: ReadonlySet<string>;
 }): (string | undefined)[] {
+  if (parts.voiceAgent) return [parts.botInstructions];
   return [
     parts.botInstructions,
     parts.historyRetrievalEnabled &&
@@ -8838,7 +8934,9 @@ export function threadContextForRun<T>(
 export function runIdentityInstruction(
   bot: { name: string; title: string; description: string; instructions: string },
   trigger: string,
+  spawnKey?: string | null,
 ): string {
+  if (isVoiceAgentSpawnKey(spawnKey)) return VOICE_AGENT_INSTRUCTIONS;
   if (trigger !== "created") {
     return bot.instructions || `${bot.name}: ${bot.title}\n${bot.description}`;
   }

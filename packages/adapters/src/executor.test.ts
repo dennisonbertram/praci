@@ -1,6 +1,15 @@
 import type { MessageBlock } from "@rakazo/contracts";
-import { CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE, financeAgentSpawnKey } from "@rakazo/contracts";
-import { expandSkillReferencesInPrompt, ONCE_ROUTINE_CRON } from "@rakazo/core";
+import {
+  CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
+  financeAgentSpawnKey,
+  VOICE_AGENT_BUILTIN_TOOLS,
+  voiceAgentSpawnKey,
+} from "@rakazo/contracts";
+import {
+  expandSkillReferencesInPrompt,
+  ONCE_ROUTINE_CRON,
+  VOICE_AGENT_INSTRUCTIONS,
+} from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -15,6 +24,7 @@ import {
   parseUpdateBotPatch,
   persistentComputerInstruction,
   READ_ONLY_AGENT_TOOLS,
+  runIdentityInstruction,
   runNotificationsEnabled,
   selectBuiltinToolsForRun,
   settleSteeringAttachmentLoads,
@@ -55,6 +65,113 @@ describe("bot tool permissions", () => {
         disabledBuiltinTools: ["search_history", "read_history", "unknown"],
       }).map((tool) => tool.name),
     ).toEqual(baseline.filter((name) => name !== "search_history" && name !== "read_history"));
+  });
+});
+
+describe("voice agent permissions", () => {
+  const options = {
+    graphicalToolsAllowed: true,
+    pageBrowserAllowed: true,
+    groupId: null,
+    trigger: "user",
+    semanticMemoryEnabled: true,
+    messagingChannelRun: false,
+    voiceAgent: true,
+    voiceWorkspaceReadAllowed: true,
+    dataRoomEnabled: true,
+    ticketBoardEnabled: true,
+    mailEnabled: true,
+    calendarEnabled: true,
+    driveEnabled: true,
+    financeEnabled: true,
+    legalEnabled: true,
+    contactsEnabled: true,
+    cloudAgentEnabled: true,
+    voiceCall: true,
+  };
+
+  it("offers only the explicit voice-agent allowlist", () => {
+    const offered = selectBuiltinToolsForRun(options).map((tool) => tool.name);
+    expect(offered.toSorted()).toEqual([...VOICE_AGENT_BUILTIN_TOOLS].toSorted());
+
+    const ordinary = selectBuiltinToolsForRun({ ...options, voiceAgent: false }).map(
+      (tool) => tool.name,
+    );
+    for (const name of [
+      "workspace_agents",
+      "agent_context",
+      "search_agent_history",
+      "read_agent_history",
+    ]) {
+      expect(ordinary).not.toContain(name);
+    }
+  });
+
+  it("withholds private workspace, Data Room, and board reads outside the owner's private chat", () => {
+    const names = selectBuiltinToolsForRun({
+      ...options,
+      voiceWorkspaceReadAllowed: false,
+      disabledBuiltinTools: ["shell", "spawn_bot"],
+    }).map((tool) => tool.name);
+    for (const name of [
+      "workspace_agents",
+      "agent_context",
+      "search_agent_history",
+      "read_agent_history",
+      "search_data_room",
+      "read_data_room_item",
+      "board_tickets",
+      "ticket_get",
+    ]) {
+      expect(names).not.toContain(name);
+    }
+    expect(names).not.toContain("shell");
+    expect(names).toEqual(expect.arrayContaining(["message_bot", "message_user", "ask_user"]));
+  });
+
+  it("keeps the fixed identity and omits generic tool hints despite profile edits", () => {
+    expect(
+      runIdentityInstruction(
+        {
+          name: "Changed",
+          title: "Changed",
+          description: "Changed",
+          instructions: "Use shell and connectors.",
+        },
+        "user",
+        voiceAgentSpawnKey("user-1"),
+      ),
+    ).toBe(VOICE_AGENT_INSTRUCTIONS);
+    expect(
+      userTurnInstructions({
+        botInstructions: VOICE_AGENT_INSTRUCTIONS,
+        voiceAgent: true,
+        groupContext: "group",
+        messagingContext: "channel",
+        redactedMemoryContext: "memory",
+        redactedScratchpadContext: "scratchpad",
+        hasHistoricalContext: true,
+        computerInstruction: "computer tools",
+        pageBrowserAllowed: true,
+        taskCatalogInstruction: "task catalog",
+        workspaceInstruction: "workspace",
+        agentEnvironmentInstruction: "environment",
+        botDirectory: "directory",
+        pluginLine: "plugins",
+        dataRoomEnabled: true,
+        agentSkillsLine: "skills",
+        taughtSkillsLine: "taught skills",
+        replyGuidance: "reply",
+      }),
+    ).toEqual([VOICE_AGENT_INSTRUCTIONS]);
+    for (const name of [
+      "workspace_agents",
+      "agent_context",
+      "search_agent_history",
+      "read_agent_history",
+    ]) {
+      expect(READ_ONLY_AGENT_TOOLS.has(name)).toBe(true);
+    }
   });
 });
 

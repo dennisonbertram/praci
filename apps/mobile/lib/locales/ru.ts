@@ -816,4 +816,6 @@ export const RU_MESSAGES: Record<string, string> = {
     "Бот изменил этот список. Ваша последняя правка не сохранена.",
   "Could not load this list.": "Не удалось загрузить список.",
   "Could not save this list.": "Не удалось сохранить список.",
+  "Call Elio": "Позвонить Elio",
+  "Could not start the call": "Не удалось начать звонок",
 };

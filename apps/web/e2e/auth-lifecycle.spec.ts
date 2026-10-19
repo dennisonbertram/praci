@@ -118,7 +118,7 @@ test("logout protects bot deep links and sign-in restores the session", async ({
   await expect(
     page
       .locator('[data-slot="popover-content"]')
-      .getByRole("button", { name: "Voice", exact: true }),
+      .getByRole("button", { name: "Call Elio", exact: true }),
   ).toHaveCount(0);
   await captureScreenshot(page, testInfo, "36-account-menu");
 

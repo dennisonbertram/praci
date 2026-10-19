@@ -761,4 +761,6 @@ export const KO_MESSAGES: Record<string, string> = {
     "Bot이 이 목록을 변경했습니다. 마지막 수정 사항이 저장되지 않았습니다.",
   "Could not load this list.": "이 목록을 불러올 수 없습니다.",
   "Could not save this list.": "이 목록을 저장할 수 없습니다.",
+  "Call Elio": "Elio에게 전화",
+  "Could not start the call": "통화를 시작할 수 없습니다",
 };

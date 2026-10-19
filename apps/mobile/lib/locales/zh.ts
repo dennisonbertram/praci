@@ -791,4 +791,6 @@ export const ZH_MESSAGES: Record<string, string> = {
     "Bot 修改了此列表，你的上次编辑未保存。",
   "Could not load this list.": "无法加载此列表。",
   "Could not save this list.": "无法保存此列表。",
+  "Call Elio": "呼叫 Elio",
+  "Could not start the call": "无法发起通话",
 };

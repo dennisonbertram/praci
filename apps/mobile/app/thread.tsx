@@ -480,6 +480,13 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const call = useCallSession();
   const onCall = Boolean(botId) && call?.botId === botId;
   const voiceCallStarting = useRef(false);
+  const voiceCallMounted = useRef(true);
+  useEffect(() => {
+    voiceCallMounted.current = true;
+    return () => {
+      voiceCallMounted.current = false;
+    };
+  }, []);
   const scroll = useRef<FlatList<ThreadItem<MobileMessage>>>(null);
   const pinnedScroll = useRef<ScrollView>(null);
   const scrollBehavior = useRef(new ThreadScrollBehavior());
@@ -1828,10 +1835,10 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       : t("Hello, {bot} here.", { bot: botName });
   }
 
-  /** `switchedHere`: the caller asked another bot to put them through, so this bot answers. */
-  async function startVoiceCall(switchedHere = false) {
+  async function startVoiceCall() {
     if (readOnly) return;
     const targetBotId = botId;
+    const originSpaceId = selectedSpaceId();
     if (!targetBotId || voiceCallStarting.current) return;
     voiceCallStarting.current = true;
     const loadVoiceStatus = () => rpc<{ ready: boolean; transcribe: boolean }>("voice/status");
@@ -1844,7 +1851,12 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
         }),
         loadCallCallerName(() => rpc<MobileMe>("me")),
       ]);
-      if (activeBotId.current !== targetBotId) return;
+      if (
+        !voiceCallMounted.current ||
+        activeBotId.current !== targetBotId ||
+        selectedSpaceId() !== originSpaceId
+      )
+        return;
       if (plan.kind === "settings") {
         router.push("/voice");
         return;
@@ -1860,19 +1872,22 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
         );
         return;
       }
-      const botName = displayName ?? t("Bot");
+      const elio = await rpc<MobileBot>("voice/agent");
+      if (
+        !voiceCallMounted.current ||
+        activeBotId.current !== targetBotId ||
+        selectedSpaceId() !== originSpaceId
+      )
+        return;
+      const botName = elio.name;
       const startedCallId = startCall({
-        botId: targetBotId,
+        botId: elio.id,
         botName,
-        botColor: mentionBots.find((bot) => bot.id === targetBotId)?.color,
+        botColor: elio.color,
         transcribe: plan.transcribe,
-        greeting: callGreeting(botName, callerName, switchedHere),
-        switchBot: (text) => {
-          const target = findSwitchTarget(text, mentionBotsRef.current);
-          if (!target || target.id === targetBotId) return undefined;
-          return { name: target.name, ring: () => openBotChat(target, true) };
-        },
+        greeting: callGreeting(botName, callerName, false),
       });
+      if (elio.id !== targetBotId) openBotChat(elio, false);
       if (plan.kind === "device") {
         void probeProviderTranscribe(loadVoiceStatus)
           .then((enabled) => {
@@ -1880,8 +1895,14 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           })
           .catch(() => undefined);
       }
-    } catch {
-      if (activeBotId.current === targetBotId) router.push("/voice");
+    } catch (error) {
+      if (
+        voiceCallMounted.current &&
+        activeBotId.current === targetBotId &&
+        selectedSpaceId() === originSpaceId
+      ) {
+        Alert.alert(t("Could not start the call"), errorText(error));
+      }
     } finally {
       voiceCallStarting.current = false;
     }
@@ -1894,7 +1915,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   }
 
   useEffect(() => {
-    if (botId && takeRingOnArrival(botId)) void startVoiceCall(true);
+    if (botId && takeRingOnArrival(botId)) void startVoiceCall();
   }, [botId]);
 
   const attachActions: MenuAction[] = [

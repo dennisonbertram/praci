@@ -8,7 +8,8 @@ import type {
   SandboxProvider,
 } from "@rakazo/adapter-kit";
 import { routineJobKey, runContinueJob, runJobKey } from "@rakazo/adapter-kit";
-import { type Actor, type Bot, type ComputerMode, GROUP_MEMBER_MIN } from "@rakazo/contracts";
+import type { Actor, Bot, ComputerMode } from "@rakazo/contracts";
+import { GROUP_MEMBER_MIN, isVoiceAgentSpawnKey } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
 import {
   cancelRunsInTransaction,
@@ -64,6 +65,7 @@ export async function spawnBot(
     computerMode?: ComputerMode;
   },
 ) {
+  if (isVoiceAgentSpawnKey(input.spawnKey)) return { error: "Reserved spawn key." };
   const name = input.name.trim();
   if (!name) return { error: "Bot name is required." };
 

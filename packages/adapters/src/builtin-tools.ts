@@ -12,6 +12,7 @@ import {
 import { z } from "zod";
 import { allowPrivateHttpSecretOrigins } from "./bot-secrets.js";
 import { calendarToolDefinitions } from "./calendar-tools.js";
+import { voiceAgentTools } from "./voice-agent-tools.js";
 
 // The owner flag can land in process.env after static imports run (loadRootEnv
 // parses .env once the entry module is already executing), so the model-facing
@@ -1865,6 +1866,7 @@ export const builtinAgentTools: ConnectorTool[] = [
       required: ["message"],
     },
   },
+  ...voiceAgentTools,
   ...calendarToolDefinitions,
 ];
 

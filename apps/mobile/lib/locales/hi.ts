@@ -756,4 +756,6 @@ export const HI_MESSAGES: Record<string, string> = {
     "बॉट ने यह सूची बदल दी। आपका आख़िरी बदलाव सहेजा नहीं गया।",
   "Could not load this list.": "यह सूची लोड नहीं हो सकी।",
   "Could not save this list.": "यह सूची सहेजी नहीं जा सकी।",
+  "Call Elio": "Elio को कॉल करें",
+  "Could not start the call": "कॉल शुरू नहीं हो सकी",
 };

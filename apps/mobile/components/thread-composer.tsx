@@ -467,7 +467,7 @@ export function ThreadComposer({
           {!canSend && botId && !onCall ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={t("Call")}
+              accessibilityLabel={t("Call Elio")}
               hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
               onPress={() => void startVoiceCall()}
               style={{ marginBottom: 8 }}

@@ -1,5 +1,5 @@
 import type { Actor, Bot, BotSection, MessageBlock, SpaceBot } from "@rakazo/contracts";
-import { BOT_COLORS } from "@rakazo/contracts";
+import { BOT_COLORS, isVoiceAgentSpawnKey, retiredVoiceAgentSpawnKey } from "@rakazo/contracts";
 import {
   BACKGROUND_RUN_TRIGGERS,
   isBackgroundRunTrigger,
@@ -577,7 +577,12 @@ export function createRepos(prisma: PrismaClient) {
           // creates a fresh first bot (stale thread/runtime must not return).
           await prisma.bot.update({
             where: { id: existing.id },
-            data: { spawnKey: null },
+            // A retired Elio keeps an Elio-restricted key, unique through its own id.
+            data: {
+              spawnKey: isVoiceAgentSpawnKey(input.spawnKey)
+                ? retiredVoiceAgentSpawnKey(existing.id)
+                : null,
+            },
           });
           try {
             bot = await insertBot();
