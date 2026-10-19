@@ -2713,6 +2713,10 @@ msgstr ""
 msgid "Could not refresh: {0}"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Could not remember"
+msgstr ""
+
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
@@ -6565,6 +6569,14 @@ msgstr "Libérer l'ordinateur interrompu ?"
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Relevance"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Remember"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Remembered"
 msgstr ""
 
 #: src/components/ApprovalRulesSettings.tsx
