@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Connection } from "@rakazo/contracts";
+import { connectorSupportsIntegrationAgent } from "@rakazo/contracts";
 import { matchFeaturedConnectorId } from "@rakazo/core";
 import {
   AlertDialog,
@@ -390,7 +391,10 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                 onChanged={() => void data.refresh()}
                 busy={busy}
                 onCreateAgent={
-                  row.status === "connected" && !row.needsReconnect && !row.agentBotId
+                  row.status === "connected" &&
+                  !row.needsReconnect &&
+                  !row.agentBotId &&
+                  connectorSupportsIntegrationAgent(row.connectorId)
                     ? () =>
                         void updateAgent(async () => {
                           const { botId } = await rpc.connections.createAgent({

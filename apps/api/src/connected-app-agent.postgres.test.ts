@@ -188,6 +188,28 @@ describePostgres("connected app agents (PostgreSQL)", () => {
     });
   });
 
+  it("rejects an agent for a native Google connection, which has no scoped tools", async () => {
+    const google = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "google",
+        provider: "gmail",
+        displayName: `Google ${id("native")}`,
+        status: "connected",
+      },
+    });
+    await expect(connections().createAgent({ connectionId: google.id })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(await prisma.connection.findUniqueOrThrow({ where: { id: google.id } })).toMatchObject({
+      agentBotId: null,
+    });
+    expect(
+      await prisma.bot.count({ where: { spawnKey: integrationAgentSpawnKey(google.id) } }),
+    ).toBe(0);
+  });
+
   it.each(["archive", "delete"] as const)("releases the app connection on bot %s", async (mode) => {
     const connection = await createConnection();
     const { botId } = await connections().createAgent({ connectionId: connection.id });
