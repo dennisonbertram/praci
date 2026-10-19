@@ -230,7 +230,7 @@ describe("thread composer isolation", () => {
     expect(props.onSlashAction).toHaveBeenCalledWith("chat-settings");
     expect(container.querySelector("input")!.value).toBe("");
     expect(container.querySelector('[data-testid="slash-picker"]')).toBeNull();
-    press("Call");
+    press("Call Elio");
     expect(props.startVoiceCall).toHaveBeenCalledOnce();
   });
 });

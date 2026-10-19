@@ -141,6 +141,10 @@ const composer = (over: Partial<Parameters<typeof Composer>[0]> = {}) => (
 );
 
 export const ComposerDefault: Story = { render: () => composer(), beforeEach: loaded };
+export const ComposerVoiceAgent: Story = {
+  render: () => composer({ onVoice: () => undefined }),
+  beforeEach: loaded,
+};
 export const ComposerRunning: Story = {
   render: () => composer({ running: true }),
   beforeEach: loaded,

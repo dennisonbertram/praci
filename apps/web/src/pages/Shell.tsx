@@ -505,6 +505,14 @@ export function ShellPage() {
   const [bots, setBots] = useState<Bot[]>([]);
   const botsRef = useRef(bots);
   botsRef.current = bots;
+  const voiceCallStarting = useRef(false);
+  const voiceCallMounted = useRef(true);
+  useEffect(() => {
+    voiceCallMounted.current = true;
+    return () => {
+      voiceCallMounted.current = false;
+    };
+  }, []);
   const botOrderEpochRef = useRef(0);
   const pendingBotOrderRef = useRef<string[] | null>(null);
   const savingBotOrderRef = useRef(false);
@@ -2354,6 +2362,46 @@ export function ShellPage() {
   }, [active, groupId, inGroup, snapshot?.botId, snapshot?.groupId, snapshot?.threadId]);
 
   const openBot = useCallback((id: string) => navigate(`/app/${id}`), [navigate]);
+
+  async function startElioCall() {
+    if (voiceCallStarting.current) return;
+    if (!voiceStatus?.ready) {
+      openSettings("voice");
+      return;
+    }
+    const originBotId = activeBotId.current;
+    const originSpaceId = selectedSpaceId();
+    voiceCallStarting.current = true;
+    try {
+      const elio = await rpc.voice.agent();
+      if (
+        !voiceCallMounted.current ||
+        activeBotId.current !== originBotId ||
+        selectedSpaceId() !== originSpaceId
+      )
+        return;
+      setBots((current) =>
+        current.some((bot) => bot.id === elio.id) ? current : [...current, elio],
+      );
+      openBot(elio.id);
+      startCall({
+        botId: elio.id,
+        botName: elio.name,
+        botColor: elio.color,
+        transcribe: Boolean(voiceStatus.transcribe),
+      });
+    } catch (error) {
+      if (
+        voiceCallMounted.current &&
+        activeBotId.current === originBotId &&
+        selectedSpaceId() === originSpaceId
+      ) {
+        setSendError(errorText(error, t`Could not start the call`));
+      }
+    } finally {
+      voiceCallStarting.current = false;
+    }
+  }
   const loadOlder = useCallback(() => loadOlderMessagesRef.current(), []);
   const jumpToReplyMessage = useCallback((messageId: string) => {
     const existing = document.querySelector(`[data-message-id="${CSS.escape(messageId)}"]`);
@@ -3500,22 +3548,7 @@ export function ShellPage() {
               onRemoveAttachment={removeAttachment}
               onSend={sendMessage}
               onStop={stopRun}
-              onVoice={
-                !inGroup && active
-                  ? () => {
-                      if (!voiceStatus?.ready) {
-                        openSettings("voice");
-                        return;
-                      }
-                      startCall({
-                        botId: active.id,
-                        botName: active.name,
-                        botColor: active.color,
-                        transcribe: voiceStatus ? Boolean(voiceStatus.transcribe) : undefined,
-                      });
-                    }
-                  : undefined
-              }
+              onVoice={!inGroup && active ? () => void startElioCall() : undefined}
               artifactTarget={transcriptArtifactTarget}
               replyTarget={activeReplyTarget}
               replyQuote={activeReplyQuote}
@@ -7683,8 +7716,8 @@ export const Composer = memo(function Composer({
             <Button
               variant="outline"
               size="icon"
-              aria-label={t`Voice`}
-              title={t`Voice`}
+              aria-label={t`Call Elio`}
+              title={t`Call Elio`}
               disabled={disabled}
               onClick={onVoice}
               className="size-8 shrink-0 rounded-full text-foreground/75"

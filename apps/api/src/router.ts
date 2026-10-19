@@ -170,6 +170,7 @@ import {
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
+  isVoiceAgentSpawnKey,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
   usableModelId,
@@ -422,6 +423,7 @@ import {
   updateVoiceSpeechModel,
   voiceContext,
 } from "./voice.js";
+import { ensureVoiceAgent } from "./voice-agent.js";
 
 const MAX_COMPUTER_TEXT_FILE_BYTES = 2 * 1024 * 1024;
 /** Each command writes a running and a done event, so this keeps about 100 commands. */
@@ -1856,7 +1858,8 @@ export function createRouter(deps: RouterDeps) {
           isFinanceAgentSpawnKey(input.spawnKey) ||
           isLegalAgentSpawnKey(input.spawnKey) ||
           isCartaAgentSpawnKey(input.spawnKey) ||
-          isIntegrationAgentSpawnKey(input.spawnKey)
+          isIntegrationAgentSpawnKey(input.spawnKey) ||
+          isVoiceAgentSpawnKey(input.spawnKey)
         ) {
           throw new ORPCError("BAD_REQUEST", { message: "Reserved spawn key" });
         }
@@ -7015,6 +7018,13 @@ export function createRouter(deps: RouterDeps) {
       })),
     },
     voice: {
+      agent: authed.voice.agent.handler(async ({ context }) => {
+        try {
+          return await ensureVoiceAgent(repos, context.actor);
+        } catch (error) {
+          throw mapSpaceLifecycleError(error);
+        }
+      }),
       catalog: authed.voice.catalog.handler(async () => listVoiceCatalog()),
       status: authed.voice.status.handler(async ({ context }) => {
         const cred = await findDefaultVoiceCredential(deps.prisma, context.actor);

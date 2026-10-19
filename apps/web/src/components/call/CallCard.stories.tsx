@@ -20,6 +20,13 @@ type Story = StoryObj<typeof meta>;
 
 export const Listening: Story = {};
 
+export const Elio: Story = {
+  beforeEach: () => {
+    startCall({ botId: "bot_elio", botName: "Elio" });
+    return () => endCall();
+  },
+};
+
 export const Muted: Story = {
   beforeEach: () => {
     startCall({ botId: "bot_ada", botName: "Ada" });

@@ -35,3 +35,4 @@ export * from "./runs.js";
 export * from "./search.js";
 export * from "./sidebar-pages.js";
 export * from "./terminal.js";
+export * from "./voice-agent.js";

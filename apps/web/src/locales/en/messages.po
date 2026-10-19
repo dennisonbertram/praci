@@ -1521,6 +1521,10 @@ msgstr "By vendor"
 msgid "Cadence"
 msgstr "Cadence"
 
+#: src/pages/Shell.tsx
+msgid "Call Elio"
+msgstr "Call Elio"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Callback URL"
 msgstr "Callback URL"
@@ -2819,6 +2823,10 @@ msgstr "Could not start sign-in."
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Could not start teaching"
 msgstr "Could not start teaching"
+
+#: src/pages/Shell.tsx
+msgid "Could not start the call"
+msgstr "Could not start the call"
 
 #: src/components/AskCard.tsx
 #: src/components/MailApprovalCard.tsx
@@ -8610,7 +8618,6 @@ msgid "View chat"
 msgstr "View chat"
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Voice"

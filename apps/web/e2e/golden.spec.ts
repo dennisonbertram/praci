@@ -322,7 +322,7 @@ test("sign-in, spawn, and stop work in the shell", async ({ page }, testInfo) =>
   await expect(page.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
   const voiceButton = page
     .getByTestId("composer-bar")
-    .getByRole("button", { name: "Voice", exact: true });
+    .getByRole("button", { name: "Call Elio", exact: true });
   await expect(voiceButton).toBeVisible();
   await composer.fill("Use the newer report and keep the answer short.");
   await expect(voiceButton).toHaveCount(0);

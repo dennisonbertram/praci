@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, openUserSettings, rpc, signup } from "./helpers";
 
-test("voice settings connect a key, speak a reply, and open a call", async ({ page }, testInfo) => {
+test("voice settings connect a key, speak a reply, and call the dedicated Elio agent", async ({
+  page,
+}, testInfo) => {
   const stamp = Date.now();
   const userName = `Voice ${stamp}`;
   await signup(page, `voice-${stamp}@rakazo.test`, "password12", userName);
@@ -9,12 +11,12 @@ test("voice settings connect a key, speak a reply, and open a call", async ({ pa
 
   await expect(page.getByRole("button", { name: "Call", exact: true })).toHaveCount(0);
   await expect(
-    page.getByTestId("composer-bar").getByRole("button", { name: "Voice", exact: true }),
+    page.getByTestId("composer-bar").getByRole("button", { name: "Call Elio", exact: true }),
   ).toHaveCount(1);
   await captureScreenshot(page, testInfo, "voice-composer");
   await page
     .getByTestId("composer-bar")
-    .getByRole("button", { name: "Voice", exact: true })
+    .getByRole("button", { name: "Call Elio", exact: true })
     .click();
   await expect(page.getByTestId("voice-settings")).toBeVisible();
   await expect(page.getByLabel("API key", { exact: true })).toBeVisible();
@@ -77,15 +79,26 @@ test("voice settings connect a key, speak a reply, and open a call", async ({ pa
   await expect(page.getByRole("button", { name: "Disconnect", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Close voice settings" }).click();
 
+  const originalThreadUrl = page.url();
+  const agentResponse = page.waitForResponse(
+    (response) => response.url().includes("/rpc/voice/agent") && response.ok(),
+  );
   await page
     .getByTestId("composer-bar")
-    .getByRole("button", { name: "Voice", exact: true })
+    .getByRole("button", { name: "Call Elio", exact: true })
     .click();
+  await agentResponse;
+  const elio = await rpc<{ id: string; name: string }>(page, "voice/agent", {});
+  expect(elio.name).toBe("Elio");
+  await expect(page).toHaveURL(new RegExp(`/app/${elio.id}$`));
+  expect(page.url()).not.toBe(originalThreadUrl);
   await expect(page.getByTestId("call-view")).toBeVisible();
+  await expect(page.getByTestId("call-view").getByText("Elio", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Hang up" })).toBeVisible();
   await captureScreenshot(page, testInfo, "voice-call");
   await page.getByRole("button", { name: "Hang up" }).click();
   await expect(page.getByTestId("call-view")).toHaveCount(0);
+  expect(await rpc(page, "voice/agent", {})).toMatchObject({ id: elio.id });
 
   await openUserSettings(page, "voice");
   const settings = page.getByTestId("voice-settings");
