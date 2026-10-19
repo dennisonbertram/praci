@@ -82,6 +82,7 @@ const snapshot = {
       provider: "example",
       displayName: "Example",
       status: "connected" as const,
+      writesEnabled: false,
       error: null,
       capabilities: [],
       createdAt: "2026-01-01",
