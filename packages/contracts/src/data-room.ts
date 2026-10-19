@@ -1,5 +1,25 @@
 import * as z from "zod";
 
+/** The one place the Data room agent's spawn key is built. */
+export const dataRoomAgentSpawnKey = (userId: string) => `data-room-agent:${userId}`;
+
+export const isDataRoomAgentSpawnKey = (spawnKey: string | null | undefined) =>
+  Boolean(spawnKey?.startsWith(dataRoomAgentSpawnKey("")));
+
+/** The only built-in tools the Data room agent is offered. None of them deletes. */
+export const DATA_ROOM_AGENT_BUILTIN_TOOLS = [
+  "search_data_room",
+  "read_data_room_item",
+  "add_to_data_room",
+  "remember",
+  "save_memory",
+  "recall_memory",
+  "forget_memory",
+  "save_shared_memory",
+  "ask_user",
+  "notify_user",
+] as const;
+
 export const DataRoomDocTypeSchema = z.enum([
   "contract",
   "invoice",
