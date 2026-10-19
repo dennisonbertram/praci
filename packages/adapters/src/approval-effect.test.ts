@@ -4,8 +4,10 @@ import {
   approvalPausedToolResult,
   approvalReplayPathError,
   approvalReplayResourceError,
+  approvalRoutesMatch,
   approvedCatalogReplay,
   approvedReplayArgs,
+  boundDirectApprovalDetails,
   boundDirectApprovalRequest,
   catalogApprovalConnectorId,
   catalogApprovalDetails,
@@ -25,6 +27,35 @@ import {
 } from "./approval-effect.js";
 
 describe("approved effect replay", () => {
+  it("binds approval replay to the trusted connected-account route", () => {
+    const route = {
+      connectorId: "composio",
+      resourceId: "provider-resource",
+      connectionId: "connection-a",
+      toolName: "GMAIL_SEND_EMAIL",
+    };
+    const request = boundDirectApprovalRequest(route, { to: "person@example.test" }, "marker");
+    const details = boundDirectApprovalDetails(request, "marker");
+
+    expect(details?.route.connectionId).toBe("connection-a");
+    expect(approvalRoutesMatch(route, details?.route)).toBe(true);
+    expect(approvalRoutesMatch(route, { ...route, connectionId: "connection-b" })).toBe(false);
+  });
+
+  it("binds app-agent approval when the route has no provider resource id", () => {
+    const route = {
+      connectorId: "composio",
+      connectionId: "connection-a",
+      toolName: "GMAIL_SEND_EMAIL",
+    };
+    const request = boundDirectApprovalRequest(route, { to: "person@example.test" }, "marker");
+    const details = boundDirectApprovalDetails(request, "marker");
+
+    expect(details?.route).toEqual(route);
+    expect(approvalRoutesMatch(route, details?.route)).toBe(true);
+    expect(approvalRoutesMatch(route, { ...route, connectionId: "connection-b" })).toBe(false);
+  });
+
   it("replays persisted arguments instead of a changed model reconstruction", () => {
     const approved = { title: "Approved title", body: "Approved body" };
     const queue = createApprovedEffectReplayQueue([

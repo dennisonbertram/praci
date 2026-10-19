@@ -143,6 +143,7 @@ describe.skipIf(!databaseAvailable)("offline Pi product journey", () => {
       expect(messages).not.toContain(fixtureKey);
       const tools = await handles.prisma.event.findMany({
         where: { botId: bot.id, type: "agent.tool.called" },
+        orderBy: { seq: "asc" },
         select: { payload: true },
       });
       expect(tools).toHaveLength(2);

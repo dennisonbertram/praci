@@ -28,6 +28,7 @@ const composioSdkState = vi.hoisted(() => ({
   executions: [] as Array<{ tool: string; args: Record<string, unknown> }>,
   executeResult: null as null | { data: Record<string, unknown>; error: string | null },
   failTools: null as null | string[],
+  githubReadOnlyHint: undefined as boolean | undefined,
   logIds: null as null | string[],
   connectedAccounts: {
     list: async (_query?: Record<string, unknown>) => ({ items: [] as Array<{ id: string }> }),
@@ -117,6 +118,9 @@ vi.mock("@composio/core", () => ({
                     name: "GITHUB_GET_REPOS",
                     description: "List GitHub repositories",
                     parameters: { type: "object", properties: {} },
+                    ...(composioSdkState.githubReadOnlyHint === undefined
+                      ? {}
+                      : { annotations: { readOnlyHint: composioSdkState.githubReadOnlyHint } }),
                   },
                 },
               ]
@@ -160,6 +164,18 @@ describe("composio tool mapping", () => {
       "HACKERNEWS_GET_USER",
     ]);
     expect(tools[1]?.inputSchema).toMatchObject({ properties: { username: { type: "string" } } });
+  });
+
+  it("preserves only explicit read-only metadata from Composio tools", () => {
+    const [read, write, unknown] = asConnectorTools([
+      { slug: "GMAIL_FETCH_EMAILS", readOnly: true },
+      { slug: "GMAIL_SEND_EMAIL", annotations: { readOnlyHint: false } },
+      { slug: "GMAIL_OTHER" },
+    ]);
+
+    expect(read?.readOnly).toBe(true);
+    expect(write?.readOnly).toBe(false);
+    expect(unknown?.readOnly).toBeUndefined();
   });
 
   it("retains provider route metadata independently of the tool name", async () => {
@@ -346,6 +362,33 @@ describe("composio tool mapping", () => {
       composioSdkState.connectedAccounts.list = previous;
     };
   }
+
+  it("returns directory metadata without opening an actor session", async () => {
+    const previous = composioSdkState.connectedAccounts.list;
+    const list = vi.fn(previous);
+    composioSdkState.connectedAccounts.list = list;
+    composioSdkState.created.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    try {
+      const connector = new ComposioConnector();
+      await expect(connector.catalogDirectory()).resolves.toEqual([
+        {
+          slug: "GITHUB",
+          name: "GitHub",
+          logo: null,
+          noAuth: false,
+          connectorId: "composio",
+        },
+      ]);
+      expect(composioSdkState.created.map(({ userId }) => userId)).toEqual(["__rakazo_catalog__"]);
+      expect(list).not.toHaveBeenCalled();
+    } finally {
+      composioSdkState.connectedAccounts.list = previous;
+      composioSdkState.sessions.clear();
+      composioToolkitDirectory.invalidate();
+    }
+  });
 
   it("pins every connected account into multi-account execute sessions", async () => {
     composioSdkState.created.length = 0;
@@ -631,6 +674,98 @@ describe("composio tool mapping", () => {
     ]);
     await expect(connector.connectionReady(context, "github")).resolves.toBe(true);
     await expect(connector.connectedAccountId("user-1", "github")).resolves.toBe("ca-github");
+  });
+
+  it("pins app-agent discovery and execution to the linked concrete account", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const previousList = composioSdkState.connectedAccounts.list;
+    composioSdkState.connectedAccounts.list = async () => ({ items: [{ id: "ca-github" }] });
+
+    try {
+      const connector = new ComposioConnector();
+      const context: AdapterContext = {
+        operationId: "app-agent-github",
+        traceId: "app-agent-github",
+        spaceId: "workspace",
+        userId: "user-1",
+        signal: new AbortController().signal,
+        connectedAppAgentConnectionId: "connection-agent",
+        connectedConnections: [
+          {
+            id: "connection-agent",
+            connectorId: "composio",
+            externalId: "github",
+            displayName: "GitHub",
+            providerRef: "ca-github",
+          },
+        ],
+      };
+
+      await expect(connector.discoverTools(context)).resolves.toContainEqual(
+        expect.objectContaining({ name: "GITHUB_GET_REPOS" }),
+      );
+      expect(composioSdkState.created.at(-1)?.config).toMatchObject({
+        connectedAccounts: { GITHUB: ["ca-github"] },
+      });
+
+      const events: ConnectorEvent[] = [];
+      for await (const event of connector.execute(
+        {
+          tool: "GITHUB_GET_REPOS",
+          args: { owner: "composio" },
+          executionId: "app-agent-github-execution",
+          route: {
+            connectorId: "composio",
+            connectionId: "connection-agent",
+            toolName: "GITHUB_GET_REPOS",
+          },
+        },
+        context,
+      )) {
+        events.push(event);
+      }
+      expect(events).toContainEqual(expect.objectContaining({ type: "result" }));
+      expect(composioSdkState.executions).toEqual([
+        { tool: "GITHUB_GET_REPOS", args: { owner: "composio" } },
+      ]);
+
+      const rejected: ConnectorEvent[] = [];
+      for await (const event of connector.execute(
+        {
+          tool: "COMPOSIO_MULTI_EXECUTE_TOOL",
+          args: {
+            tools: [
+              {
+                tool_slug: "GITHUB_GET_REPOS",
+                arguments: { owner: "composio" },
+                account: "sibling-account",
+              },
+            ],
+          },
+          executionId: "app-agent-github-account-override",
+          route: {
+            connectorId: "composio",
+            connectionId: "connection-agent",
+            toolName: "COMPOSIO_MULTI_EXECUTE_TOOL",
+          },
+        },
+        context,
+      )) {
+        rejected.push(event);
+      }
+      expect(rejected).toContainEqual(
+        expect.objectContaining({
+          type: "error",
+          message: expect.stringContaining("Account selection"),
+        }),
+      );
+      expect(composioSdkState.executions).toHaveLength(1);
+    } finally {
+      composioSdkState.connectedAccounts.list = previousList;
+    }
   });
 
   it.each([
@@ -1303,5 +1438,104 @@ describe("Composio during pnpm test", () => {
     vi.stubEnv("VITEST", value);
     expect(isComposioEnabled("ck_configured")).toBe(true);
     vi.unstubAllEnvs();
+  });
+});
+
+describe("composio connected-app agent dispatch gates", () => {
+  const appAgentContext: AdapterContext = {
+    operationId: "gate",
+    traceId: "gate",
+    spaceId: "workspace",
+    userId: "user-1",
+    signal: new AbortController().signal,
+    connectedAppAgentConnectionId: "connection-agent",
+    connectedConnections: [
+      {
+        id: "connection-agent",
+        connectorId: "composio",
+        externalId: "github",
+        displayName: "GitHub",
+        providerRef: "ca-github",
+      },
+    ],
+  };
+  const route = {
+    connectorId: "composio",
+    connectionId: "connection-agent",
+    toolName: "GITHUB_GET_REPOS",
+  };
+
+  async function run(
+    extra: Partial<Parameters<ComposioConnector["execute"]>[0]> & { readOnlyNow?: boolean },
+  ) {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const previousList = composioSdkState.connectedAccounts.list;
+    composioSdkState.connectedAccounts.list = async () => ({ items: [{ id: "ca-github" }] });
+    composioSdkState.githubReadOnlyHint = extra.readOnlyNow;
+    try {
+      const events: ConnectorEvent[] = [];
+      const { readOnlyNow: _ignored, ...call } = extra;
+      for await (const event of new ComposioConnector().execute(
+        {
+          tool: "GITHUB_GET_REPOS",
+          args: {},
+          executionId: "gate",
+          route,
+          ...call,
+        },
+        appAgentContext,
+      )) {
+        events.push(event);
+      }
+      return events;
+    } finally {
+      composioSdkState.connectedAccounts.list = previousList;
+      composioSdkState.githubReadOnlyHint = undefined;
+    }
+  }
+
+  it("refuses a tool that was a read at discovery and is a write now", async () => {
+    const events = await run({
+      route: { ...route, discoveredReadOnly: true },
+      readOnlyNow: false,
+    });
+    expect(events).toEqual([
+      expect.objectContaining({ type: "error", message: expect.stringContaining("changed") }),
+    ]);
+    expect(composioSdkState.executions).toEqual([]);
+  });
+
+  it("refuses a discovered read that became a write on a route without a connection id", async () => {
+    const events = await run({
+      route: { connectorId: "composio", toolName: "GITHUB_GET_REPOS", discoveredReadOnly: true },
+      readOnlyNow: false,
+    });
+    expect(events).toEqual([expect.objectContaining({ type: "error" })]);
+    expect(composioSdkState.executions).toEqual([]);
+  });
+
+  it("dispatches a discovered read that is still a read", async () => {
+    const events = await run({
+      route: { ...route, discoveredReadOnly: true },
+      readOnlyNow: true,
+    });
+    expect(events).toContainEqual(expect.objectContaining({ type: "result" }));
+    expect(composioSdkState.executions).toHaveLength(1);
+  });
+
+  it("dispatches nothing when the last database check denies after setup", async () => {
+    const beforeDispatch = vi.fn(async () => "Changes are off for this connected account.");
+    const events = await run({ beforeDispatch });
+    expect(beforeDispatch).toHaveBeenCalledOnce();
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining("Changes are off"),
+      }),
+    ]);
+    expect(composioSdkState.executions).toEqual([]);
   });
 });

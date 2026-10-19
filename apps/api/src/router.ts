@@ -160,10 +160,10 @@ import {
   appContract,
   BotSecretAuth,
   ComputerCommandSchema,
-  cartaAgentSpawnKey,
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
+  integrationAgentSpawnKey,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
   isFinanceAgentSpawnKey,
@@ -187,6 +187,7 @@ import {
   expandSkillReferencesInPrompt,
   hasMixedOneShotSchedule,
   isOneShotRoutineCrons,
+  matchFeaturedConnectorId,
   nextCronDateAcrossStrict,
   splitPage,
   withAppDirectory,
@@ -349,7 +350,14 @@ import {
   inboxComposeSend,
 } from "./inbox-compose.js";
 import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
-import { ensureIntegrationAgent, setIntegrationExclusive } from "./integration-agent.js";
+import {
+  ensureConnectedAppAgent,
+  ensureIntegrationAgent,
+  setConnectedAppExclusive,
+  setConnectedAppWrites,
+  setIntegrationAgentWrites,
+  setIntegrationExclusive,
+} from "./integration-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import {
   legalAgent,
@@ -561,7 +569,6 @@ function computerContext(actor: Actor, botId: string, operationId: string): Adap
   };
 }
 
-const CARTA_ONLY_MESSAGE = "Carta is used only by the Carta agent.";
 const EXCLUSIVE_SERVER_MESSAGE = "This integration is used only by its agent.";
 
 function mcpServerDto(
@@ -637,6 +644,34 @@ async function connectionAccess(prisma: PrismaClient, actor: Actor, connectionId
   });
   if (!row) throw new IsolationError();
   return { allAgents: row.allAgents, botIds: row.botAccess.map((entry) => entry.botId) };
+}
+
+function connectionDto(row: {
+  id: string;
+  connectorId: string;
+  provider: string;
+  displayName: string;
+  status: string;
+  createdAt: Date;
+  writesEnabled: boolean;
+  agentBotId: string | null;
+  mailSyncState?: { needsReconnect: boolean; lastErrorAt: Date | null } | null;
+}) {
+  return {
+    id: row.id,
+    connectorId: row.connectorId,
+    provider: row.provider,
+    displayName: row.displayName,
+    status: row.status as "pending" | "connected" | "revoked" | "error",
+    error: connectionError(row),
+    ...(row.mailSyncState?.needsReconnect && row.mailSyncState.lastErrorAt
+      ? { needsReconnect: true }
+      : {}),
+    writesEnabled: row.writesEnabled,
+    agentBotId: row.agentBotId,
+    capabilities: [],
+    createdAt: row.createdAt.toISOString(),
+  };
 }
 
 function connectionContext(
@@ -4722,33 +4757,14 @@ export function createRouter(deps: RouterDeps) {
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         setWrites: authed.mcp.servers.setWrites.handler(async ({ context, input }) => {
-          const where = {
-            id: input.id,
-            spaceId: context.actor.spaceId,
-            userId: context.actor.userId,
-          };
-          const server = await deps.prisma.mcpServer.findFirst({ where });
-          if (!server) throw new IsolationError();
-          if (!isCartaEndpoint(server.endpoint) && !server.agentBotId)
-            throw new ORPCError("BAD_REQUEST", {
-              message: "Writes can only be turned on for a Carta server or a server with an agent",
-            });
-          // Archiving the agent can release the server after the check above: the update only applies
-          // while the server still has the agent (or is still the Carta server) that was checked.
-          const { count } = await deps.prisma.mcpServer.updateMany({
-            where: {
-              ...where,
-              ...(isCartaEndpoint(server.endpoint)
-                ? { endpoint: server.endpoint }
-                : { agentBotId: server.agentBotId }),
-            },
-            data: { writesEnabled: input.enabled },
-          });
-          if (!count)
-            throw new ORPCError("CONFLICT", { message: "The integration changed; retry" });
-          const row = await deps.prisma.mcpServer.findFirstOrThrow({ where });
+          const row = await setIntegrationAgentWrites(
+            deps.prisma,
+            context.actor,
+            input.id,
+            input.enabled,
+          );
           // The Carta agent's tool list follows the switch; the call-time check already does.
-          if (isCartaEndpoint(server.endpoint))
+          if (isCartaEndpoint(row.endpoint))
             await assignToExistingCartaAgent(deps.prisma, context.actor);
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
@@ -4853,11 +4869,6 @@ export function createRouter(deps: RouterDeps) {
               if (!bot || !server) throw new IsolationError();
               if (server.agentExclusive && server.agentBotId !== bot.id)
                 throw new ORPCError("BAD_REQUEST", { message: EXCLUSIVE_SERVER_MESSAGE });
-              if (
-                bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
-                isCartaEndpoint(server.endpoint)
-              )
-                throw new ORPCError("BAD_REQUEST", { message: CARTA_ONLY_MESSAGE });
               return tx.botMcpServer.upsert({
                 where: { botId_serverId: { botId: bot.id, serverId: server.id } },
                 create: {
@@ -4920,11 +4931,6 @@ export function createRouter(deps: RouterDeps) {
                 select: { id: true },
               })
             ).map((server) => server.id);
-            if (
-              bot.spawnKey !== cartaAgentSpawnKey(context.actor.userId) &&
-              servers.some((server) => isCartaEndpoint(server.endpoint))
-            )
-              throw new ORPCError("BAD_REQUEST", { message: CARTA_ONLY_MESSAGE });
             const previous = await tx.botMcpServer.findMany({
               where: {
                 botId: bot.id,
@@ -5142,6 +5148,27 @@ export function createRouter(deps: RouterDeps) {
         );
         return dedupeCatalogBySlug(withAppDirectory(catalogs.flat()));
       }),
+      featured: authed.connections.featured.handler(async () => {
+        const catalogs = await Promise.all(
+          deps.connectors
+            .managedProviders()
+            .map(async (provider): Promise<ConnectorCatalogItem[]> => {
+              try {
+                const items = (await provider.catalogDirectory?.()) ?? [];
+                return items
+                  .filter(
+                    (item) =>
+                      matchFeaturedConnectorId(item.slug) !== null ||
+                      matchFeaturedConnectorId(item.name) !== null,
+                  )
+                  .map((item) => ({ ...item, connected: false }));
+              } catch {
+                return [];
+              }
+            }),
+        );
+        return dedupeCatalogBySlug(withAppDirectory(catalogs.flat()));
+      }),
       list: authed.connections.list.handler(async ({ context }) => {
         const rows = await deps.prisma.connection.findMany({
           where: {
@@ -5154,20 +5181,7 @@ export function createRouter(deps: RouterDeps) {
           orderBy: [{ createdAt: "asc" }, { id: "asc" }],
           include: { mailSyncState: { select: { needsReconnect: true, lastErrorAt: true } } },
         });
-        return rows.map((row) => ({
-          id: row.id,
-          connectorId: row.connectorId,
-          provider: row.provider,
-          displayName: row.displayName,
-          status: row.status as "pending" | "connected" | "revoked" | "error",
-          error: connectionError(row),
-          // Same test as the Inbox's Reconnect line, so both pages agree.
-          ...(row.mailSyncState?.needsReconnect && row.mailSyncState.lastErrorAt
-            ? { needsReconnect: true }
-            : {}),
-          capabilities: [],
-          createdAt: row.createdAt.toISOString(),
-        }));
+        return rows.map(connectionDto);
       }),
       begin: authed.connections.begin.handler(async ({ context, input }) => {
         if (input.redirect === "desktop" && input.connectorId !== "google") {
@@ -5201,8 +5215,12 @@ export function createRouter(deps: RouterDeps) {
             select: {
               id: true,
               status: true,
+              agentBotId: true,
               allAgents: true,
-              botAccess: { select: { botId: true } },
+              botAccess: {
+                where: { spaceId: context.actor.spaceId, userId: context.actor.userId },
+                select: { botId: true },
+              },
             },
             orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
           });
@@ -5218,8 +5236,8 @@ export function createRouter(deps: RouterDeps) {
               },
             });
           }
-          // A new account of an app inherits the app's agent access.
-          const inherited = existing[0];
+          // Linked accounts are private to their agent; ordinary accounts share app access.
+          const inherited = existing.find((row) => row.agentBotId === null);
           const created = await tx.connection.create({
             data: {
               spaceId: context.actor.spaceId,
@@ -5727,16 +5745,7 @@ export function createRouter(deps: RouterDeps) {
             { timeout: 60_000 },
           );
         }
-        return {
-          id: row.id,
-          connectorId: row.connectorId,
-          provider: row.provider,
-          displayName: row.displayName,
-          status: row.status as "pending" | "connected" | "revoked" | "error",
-          error: connectionError(row),
-          capabilities: [],
-          createdAt: row.createdAt.toISOString(),
-        };
+        return connectionDto(row);
       }),
       rename: authed.connections.rename.handler(async ({ context, input }) => {
         const existing = await deps.prisma.connection.findFirst({
@@ -5751,50 +5760,82 @@ export function createRouter(deps: RouterDeps) {
           where: { id: existing.id },
           data: { displayName: input.displayName },
         });
-        return {
-          id: row.id,
-          connectorId: row.connectorId,
-          provider: row.provider,
-          displayName: row.displayName,
-          status: row.status as "pending" | "connected" | "revoked" | "error",
-          error: connectionError(row),
-          capabilities: [],
-          createdAt: row.createdAt.toISOString(),
-        };
+        return connectionDto(row);
       }),
       access: authed.connections.access.handler(async ({ context, input }) => {
         return connectionAccess(deps.prisma, context.actor, input.connectionId);
       }),
       setAccess: authed.connections.setAccess.handler(async ({ context, input }) => {
         const { actor } = context;
-        const botIds = [...new Set(input.botIds)];
+        let botIds = [...new Set(input.botIds)];
         await deps.prisma.$transaction(async (tx) => {
           const connection = await tx.connection.findFirst({
             where: { id: input.connectionId, spaceId: actor.spaceId, userId: actor.userId },
-            select: { id: true, connectorId: true, provider: true },
+            select: { id: true, connectorId: true, provider: true, agentBotId: true },
           });
           if (!connection) throw new IsolationError();
+          if (connection.agentBotId) {
+            const activeAgent = await tx.bot.updateMany({
+              where: {
+                id: connection.agentBotId,
+                spaceId: actor.spaceId,
+                userId: actor.userId,
+                spawnKey: integrationAgentSpawnKey(connection.id),
+                archivedAt: null,
+              },
+              data: { updatedAt: new Date() },
+            });
+            if (!activeAgent.count)
+              throw new ORPCError("CONFLICT", {
+                message: "The connection agent is no longer active",
+              });
+          }
+          if (
+            connection.agentBotId &&
+            !input.allAgents &&
+            botIds.some((botId) => botId !== connection.agentBotId)
+          ) {
+            throw new ORPCError("BAD_REQUEST", {
+              message: "Exclusive access is limited to the connection's agent",
+            });
+          }
+          if (connection.agentBotId) botIds = [...new Set([...botIds, connection.agentBotId])];
           const bots = await tx.bot.count({
             where: { id: { in: botIds }, spaceId: actor.spaceId, userId: actor.userId },
           });
           if (bots !== botIds.length) throw new IsolationError();
-          // Agent access belongs to the app, so every account of it gets the same setting.
-          const siblings = await tx.connection.findMany({
+          const siblings = connection.agentBotId
+            ? [{ id: connection.id }]
+            : await tx.connection.findMany({
+                where: {
+                  spaceId: actor.spaceId,
+                  userId: actor.userId,
+                  connectorId: connection.connectorId,
+                  provider: connection.provider,
+                  agentBotId: null,
+                },
+                select: { id: true },
+              });
+          const ids = siblings.map((row) => row.id);
+          if (ids.length === 0)
+            throw new ORPCError("CONFLICT", { message: "The connection changed; retry" });
+          const updated = await tx.connection.updateMany({
             where: {
+              id: { in: ids },
               spaceId: actor.spaceId,
               userId: actor.userId,
-              connectorId: connection.connectorId,
-              provider: connection.provider,
+              agentBotId: connection.agentBotId,
             },
-            select: { id: true },
-          });
-          const ids = siblings.map((row) => row.id);
-          await tx.connection.updateMany({
-            where: { id: { in: ids }, spaceId: actor.spaceId, userId: actor.userId },
             data: { allAgents: input.allAgents },
           });
+          if (updated.count !== ids.length)
+            throw new ORPCError("CONFLICT", { message: "The connection changed; retry" });
           await tx.botConnectionAccess.deleteMany({
-            where: { connectionId: { in: ids }, spaceId: actor.spaceId, userId: actor.userId },
+            where: {
+              connectionId: { in: ids },
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+            },
           });
           if (botIds.length > 0) {
             await tx.botConnectionAccess.createMany({
@@ -5811,6 +5852,38 @@ export function createRouter(deps: RouterDeps) {
         });
         return connectionAccess(deps.prisma, actor, input.connectionId);
       }),
+      createAgent: authed.connections.createAgent.handler(async ({ context, input }) => {
+        const { bot } = await ensureConnectedAppAgent(
+          {
+            prisma: deps.prisma,
+            repos,
+            archiveBot: (botId) => archiveActorBot(context.actor, botId),
+          },
+          context.actor,
+          input.connectionId,
+        );
+        return { botId: bot.id };
+      }),
+      setWrites: authed.connections.setWrites.handler(async ({ context, input }) =>
+        connectionDto(
+          await setConnectedAppWrites(
+            deps.prisma,
+            context.actor,
+            input.connectionId,
+            input.enabled,
+          ),
+        ),
+      ),
+      setExclusive: authed.connections.setExclusive.handler(async ({ context, input }) =>
+        connectionDto(
+          await setConnectedAppExclusive(
+            deps.prisma,
+            context.actor,
+            input.connectionId,
+            input.exclusive,
+          ),
+        ),
+      ),
       revoke: authed.connections.revoke.handler(async ({ context, input }) => {
         type RemoteRevoke = {
           connectorId: string;

@@ -87,6 +87,26 @@ describe("configured provider wrapper", () => {
     expect(resolve).toHaveBeenCalledWith("user", "gmail", "gmail", ["x"], "space");
   });
 
+  it("forwards directory metadata from the configured adapter", async () => {
+    const metadata = [
+      {
+        connectorId: "composio",
+        slug: "gmail",
+        name: "Gmail",
+        logo: null,
+        noAuth: false,
+      },
+    ];
+    const catalogDirectory = vi.fn(async () => metadata);
+    const provider = await wrapper({
+      listConnectedExternalIds: async () => [],
+      catalogDirectory,
+    });
+
+    await expect(provider.catalogDirectory?.()).resolves.toEqual(metadata);
+    expect(catalogDirectory).toHaveBeenCalledOnce();
+  });
+
   it("rejects proxy and keeps the current ref when the adapter lacks those methods", async () => {
     const provider = await wrapper({ listConnectedExternalIds: async () => [] });
     await expect(provider.proxy?.(ref, context)).rejects.toThrow(/proxy/i);
@@ -138,6 +158,7 @@ describe("integration provider settings", () => {
     const f = fixture();
     for (const provider of f.settings.providers()) {
       expect(await provider.catalog(context)).toEqual([]);
+      expect(await provider.catalogDirectory?.()).toEqual([]);
       expect(await provider.discoverTools(context)).toEqual([]);
       await expect(
         provider.begin({ provider: "slack", redirectUrl: "https://example.test" }, context),

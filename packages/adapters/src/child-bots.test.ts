@@ -71,6 +71,16 @@ function noGroupMemberships() {
   };
 }
 
+function noConnectionRelease() {
+  return {
+    connection: {
+      findMany: vi.fn().mockResolvedValue([]),
+      updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+    },
+    botConnectionAccess: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
+  };
+}
+
 describe("spawned bot creation", () => {
   it("returns the existing child when a spawn is retried", async () => {
     const findUnique = vi.fn().mockResolvedValue({
@@ -215,6 +225,7 @@ describe("spawned bot archival", () => {
           routine: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
           computerExecutionLease: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
           computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+          ...noConnectionRelease(),
           mcpServer: { updateMany: vi.fn() },
           bot: { update: vi.fn().mockResolvedValue({}) },
         }),
@@ -263,6 +274,7 @@ describe("destroyBot", () => {
         computer: { updateMany: releaseComputers },
         $executeRaw: executeRaw,
         botDeletion: { create: createDeletion },
+        ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
         bot: { delete: deleteBot },
       }),
@@ -406,6 +418,7 @@ describe("destroyBot", () => {
         computer: { updateMany: clearExecution },
         $executeRaw: vi.fn(),
         botDeletion: { create: vi.fn() },
+        ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
         bot: { delete: vi.fn() },
       }),
@@ -1608,6 +1621,7 @@ describe("archiveBot", () => {
         routine: { updateMany: disableRoutines },
         computerExecutionLease: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
         computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
         bot: { update: updateBot },
       }),
@@ -1663,6 +1677,7 @@ describe("archiveBot", () => {
         routine: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
         computerExecutionLease: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
         computer: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+        ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
         bot: { update: vi.fn().mockResolvedValue({}) },
       }),
@@ -1729,6 +1744,7 @@ describe("archiveBot", () => {
         routine: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
         computerExecutionLease: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
         computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+        ...noConnectionRelease(),
         mcpServer: { updateMany: vi.fn() },
         bot: { update: vi.fn().mockResolvedValue({}) },
       }),
@@ -1792,6 +1808,7 @@ describe("archiveBot", () => {
           routine: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
           computerExecutionLease: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
           computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+          ...noConnectionRelease(),
           mcpServer: { updateMany: vi.fn() },
           bot: { update: vi.fn().mockResolvedValue({}) },
         }),
@@ -1892,6 +1909,7 @@ function deletionPrisma(team: { id: string }) {
       },
       computerExecutionLease: { deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
       computer: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      ...noConnectionRelease(),
       mcpServer: { updateMany: vi.fn() },
       botDeletion: { create: vi.fn().mockResolvedValue({}) },
       bot: { delete: vi.fn().mockResolvedValue({}) },

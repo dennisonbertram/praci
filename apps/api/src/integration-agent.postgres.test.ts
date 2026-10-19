@@ -1,17 +1,31 @@
 import { createRouterClient } from "@orpc/server";
+import type { AgentRunRequest } from "@rakazo/adapter-kit";
 import {
   archiveBot,
   createFinanceCallToolFor,
+  createRunExecutor,
   destroyBot,
+  FakeSandboxProvider,
+  McpConnector,
+  ScriptedAgentRuntime,
   syncFinanceForUser,
 } from "@rakazo/adapters";
-import type { Actor } from "@rakazo/contracts";
-import { integrationAgentSpawnKey } from "@rakazo/contracts";
+import type { Actor, MessageBlock } from "@rakazo/contracts";
+import {
+  CARTA_MCP_ENDPOINT,
+  CARTA_READ_TOOLS,
+  CARTA_WRITE_TOOLS,
+  cartaAgentSpawnKey,
+  integrationAgentSpawnKey,
+} from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDb, createRepos } from "@rakazo/db";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createDb, createRepos, createThreadEvents } from "@rakazo/db";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { isApprovalPausedResult } from "../../../packages/adapters/src/approval-effect.js";
+import type * as ComputerLifecycleModule from "../../../packages/adapters/src/computer-lifecycle.js";
 import {
   fakeMercury,
+  fakeMercuryMcpFetch,
   MERCURY_CHECKING,
   mercuryRow,
 } from "../../../packages/adapters/src/finance-fake-tools.js";
@@ -19,6 +33,12 @@ import { type FinanceDeps, financeReceiptUrl } from "./finance.js";
 import { ensureIntegrationAgent } from "./integration-agent.js";
 import { createRouter, type RouterDeps } from "./router.js";
 import { listSpaceRuns } from "./runs.js";
+
+vi.mock("../../../packages/adapters/src/computer-lifecycle.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof ComputerLifecycleModule>()),
+  acquireComputerExecutionLease: async () => null,
+  provisionComputer: async () => ({ id: "synthetic-computer", kind: "desktop" }),
+}));
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -171,14 +191,44 @@ describePostgres("integration agents (PostgreSQL)", () => {
     );
   });
 
-  it("rejects a Carta server", async () => {
-    const carta = await mkServer(userA, "carta-ia", "https://mcp.app.carta.com/mcp");
-    await expect(client(a).integrationAgents.create({ serverId: carta.id })).rejects.toMatchObject({
-      code: "BAD_REQUEST",
+  it("creates Carta through its specialized agent and preserves switches across idempotent create", async () => {
+    const carta = await mkServer(userA, "carta-ia", CARTA_MCP_ENDPOINT);
+    const first = await client(a).integrationAgents.create({ serverId: carta.id });
+    const again = await client(a).integrationAgents.create({ serverId: carta.id });
+    expect(again.botId).toBe(first.botId);
+    const bot = await prisma.bot.findUniqueOrThrow({ where: { id: first.botId } });
+    expect(bot).toMatchObject({
+      name: "Carta agent",
+      spawnKey: cartaAgentSpawnKey(userA),
+      userId: userA,
+      spaceId,
+    });
+    expect(bot.instructions).toContain("carta-investor-update");
+    expect(first.server).toMatchObject({
+      agentBotId: first.botId,
+      agentExclusive: true,
+      writesEnabled: false,
+    });
+    await client(a).integrationAgents.setExclusive({ serverId: carta.id, exclusive: false });
+    await client(a).mcp.servers.setWrites({ id: carta.id, enabled: true });
+    const preserved = await client(a).integrationAgents.create({ serverId: carta.id });
+    expect(preserved.botId).toBe(first.botId);
+    expect(preserved.server).toMatchObject({
+      agentBotId: first.botId,
+      agentExclusive: false,
+      writesEnabled: true,
     });
     expect(
-      (await prisma.mcpServer.findUniqueOrThrow({ where: { id: carta.id } })).agentBotId,
-    ).toBeNull();
+      await prisma.bot.count({ where: { spaceId, spawnKey: cartaAgentSpawnKey(userA) } }),
+    ).toBe(1);
+    expect(
+      await prisma.botMcpServer.findUniqueOrThrow({
+        where: { botId_serverId: { botId: first.botId, serverId: carta.id } },
+      }),
+    ).toMatchObject({
+      allowAllTools: false,
+      allowedTools: [...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS],
+    });
   });
 
   it("never links an agent that was archived while it was being created", async () => {
@@ -211,20 +261,34 @@ describePostgres("integration agents (PostgreSQL)", () => {
     const s = await mkServer(userA, "race-writes", "https://api.brex.com/mcp");
     const created = await client(a).integrationAgents.create({ serverId: s.id });
     const bot = await prisma.bot.findUniqueOrThrow({ where: { id: created.botId } });
-    // Release the server between the handler's read and its update.
+    // Archive after the server read but before its linked agent is locked.
+    let fired = false;
     const racing = new Proxy(prisma, {
       get(target, prop, receiver) {
         const value = Reflect.get(target, prop, receiver);
-        if (prop !== "mcpServer") return value;
-        return new Proxy(value, {
-          get(model, method, r) {
-            if (method !== "updateMany") return Reflect.get(model, method, r);
-            return async (args: never) => {
-              await archiveBot(lifecycleDeps(), bot, ctx(a));
-              return model.updateMany(args);
-            };
-          },
-        });
+        if (prop !== "$transaction") return value;
+        return (callback: (tx: PrismaClient) => unknown) =>
+          target.$transaction(((tx: PrismaClient) =>
+            callback(
+              new Proxy(tx, {
+                get(transaction, modelName, transactionReceiver) {
+                  const model = Reflect.get(transaction, modelName, transactionReceiver);
+                  if (modelName !== "bot") return model;
+                  return new Proxy(model, {
+                    get(botModel, method, botReceiver) {
+                      if (method !== "findFirst") return Reflect.get(botModel, method, botReceiver);
+                      return async (args: never) => {
+                        if (!fired) {
+                          fired = true;
+                          await archiveBot(lifecycleDeps(), bot, ctx(a));
+                        }
+                        return botModel.findFirst(args);
+                      };
+                    },
+                  });
+                },
+              }),
+            )) as never);
       },
     });
     const racer = createRouterClient(createRouter({ prisma: racing } as unknown as RouterDeps), {
@@ -233,6 +297,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
     await expect(racer.mcp.servers.setWrites({ id: s.id, enabled: true })).rejects.toMatchObject({
       code: "CONFLICT",
     });
+    expect(fired).toBe(true);
     expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
       agentBotId: null,
       writesEnabled: false,
@@ -419,7 +484,9 @@ describePostgres("integration agents (PostgreSQL)", () => {
     expect(await prisma.botMcpServer.count({ where: { botId: other.id, serverId: s.id } })).toBe(1);
   });
 
-  it("editing a server's endpoint releases its agent", async () => {
+  it("editing a server's endpoint to Carta links its specialized agent", async () => {
+    const cartaServer = await mkServer(userA, "existing-carta", CARTA_MCP_ENDPOINT);
+    const cartaAgent = await client(a).integrationAgents.create({ serverId: cartaServer.id });
     const s = await mkServer(userA, "edit-endpoint", "https://api.brex.com/mcp");
     await client(a).integrationAgents.create({ serverId: s.id });
     await client(a).integrationAgents.setExclusive({ serverId: s.id, exclusive: true });
@@ -437,11 +504,15 @@ describePostgres("integration agents (PostgreSQL)", () => {
         headers: {},
       },
     } as never);
-    expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
-      agentBotId: null,
-      agentExclusive: false,
+    const updated = await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } });
+    expect(updated).toMatchObject({
+      agentBotId: cartaAgent.botId,
+      agentExclusive: true,
       writesEnabled: false,
     });
+    expect(
+      await prisma.bot.findUniqueOrThrow({ where: { id: updated.agentBotId! } }),
+    ).toMatchObject({ spawnKey: cartaAgentSpawnKey(a.userId), archivedAt: null });
   });
 
   it("falls back to the server name for an unknown service", async () => {
@@ -571,42 +642,159 @@ describePostgres("integration agents (PostgreSQL)", () => {
     });
   }
 
-  it("a run started by message_bot shows in the user's active activity while it waits for approval", async () => {
-    const created = await client(a).integrationAgents.create({ serverId: plain.id });
+  it("a same-owner message_bot write persists approval in the recipient thread and owner's active runs", async () => {
+    const service = await mkServer(userA, "peer-mercury", "https://mcp.mercury.com/mcp");
+    const created = await client(a).integrationAgents.create({ serverId: service.id });
+    await client(a).mcp.servers.setWrites({ id: service.id, enabled: true });
     const bot = await prisma.bot.findUniqueOrThrow({
       where: { id: created.botId },
       include: { thread: true },
     });
+    const peer = await repos.createBot(a, {
+      name: "Requesting peer",
+      title: "",
+      description: "",
+      instructions: "",
+      notifyOnFinish: false,
+    });
+    const peerThread = await prisma.thread.findUniqueOrThrow({ where: { botId: peer.id } });
     const task = await prisma.task.create({
       data: {
         spaceId,
-        botId: bot.id,
-        threadId: bot.thread?.id as string,
+        botId: peer.id,
+        threadId: peerThread.id,
         userId: userA,
-        prompt: "wake",
-        status: "running",
+        prompt: "Ask the bank agent to pay the synthetic invoice",
+        status: "queued",
       },
     });
-    const run = await prisma.run.create({
+    const senderRun = await prisma.run.create({
       data: {
         spaceId,
-        botId: bot.id,
-        threadId: bot.thread?.id as string,
+        botId: peer.id,
+        threadId: peerThread.id,
         taskId: task.id,
         userId: userA,
-        status: "waiting_input",
-        trigger: "bot_message",
+        status: "queued",
+        trigger: "user",
       },
     });
-    const mine = await listSpaceRuns(prisma, a, "active");
-    expect(mine.find((row) => row.runId === run.id)).toMatchObject({
-      status: "waiting_input",
-      trigger: "bot_message",
-      botId: bot.id,
+    const mercury = fakeMercury({ txns: {} });
+    const connector = new McpConnector(prisma, {} as never, {
+      network: {
+        fetch: fakeMercuryMcpFetch(mercury),
+        resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+      },
     });
-    expect((await listSpaceRuns(prisma, b, "active")).some((row) => row.runId === run.id)).toBe(
-      false,
-    );
+    const writeTool = "mcp__peer-mercury__requestSendMoney";
+    const writeArgs = { amount: 12.5, recipientId: "rcp-1", note: "Synthetic invoice" };
+    const offeredTools: string[][] = [];
+    const results: unknown[] = [];
+    const runtime = new ScriptedAgentRuntime();
+    const runtimeDescriptor = runtime.describe();
+    runtime.describe = () => ({
+      ...runtimeDescriptor,
+      capabilities: { ...runtimeDescriptor.capabilities, scripted: false },
+    });
+    runtime.run = async function* (request: AgentRunRequest) {
+      offeredTools.push((request.tools ?? []).map((tool) => tool.name));
+      const sending = request.runId === senderRun.id;
+      const result = await request.executeTool!(
+        sending ? "message_bot" : writeTool,
+        sending
+          ? { bot_id: bot.id, message: "Pay the synthetic invoice", intent: "request" }
+          : writeArgs,
+        sending ? "peer-message" : "agent-write",
+      );
+      results.push(result);
+      if (isApprovalPausedResult(result)) return;
+      yield { type: "done", text: "Done" };
+    };
+    const executorPrisma = new Proxy(prisma, {
+      get(target, property, receiver) {
+        if (property === "deploymentSettings") {
+          return {
+            ...target.deploymentSettings,
+            findUnique: async () => ({
+              defaultModelProvider: "scripted",
+              defaultModelId: "scripted",
+            }),
+          };
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    const executor = createRunExecutor({
+      prisma: executorPrisma,
+      runtime,
+      connector,
+      events: createThreadEvents(prisma),
+      jobs: { enqueue: async () => undefined },
+      sandbox: new FakeSandboxProvider(),
+      memory: { read: async () => ({ documents: [] }) },
+      memoryProviders: { resolve: async () => null },
+      secrets: [],
+    } as unknown as Parameters<typeof createRunExecutor>[0]);
+    try {
+      await executor.continueRun(senderRun.id, "synthetic-worker");
+      expect(
+        await prisma.run.findUniqueOrThrow({
+          where: { id: senderRun.id },
+          select: { status: true, error: true },
+        }),
+      ).toMatchObject({ status: "completed", error: null });
+      expect(offeredTools[0]).toContain("message_bot");
+      expect(results[0]).toMatchObject({ ok: true, botId: bot.id });
+      const recipientRun = await prisma.run.findFirstOrThrow({
+        where: { botId: bot.id, trigger: "bot_message" },
+      });
+      expect(recipientRun).toMatchObject({ status: "queued", userId: userA, spaceId });
+      expect(
+        await prisma.message.findUniqueOrThrow({ where: { id: recipientRun.sourceMessageId! } }),
+      ).toMatchObject({
+        threadId: bot.thread!.id,
+        blocks: expect.arrayContaining([
+          expect.objectContaining({ kind: "bot_message_received", fromBotId: peer.id }),
+        ]),
+      });
+
+      await executor.continueRun(recipientRun.id, "synthetic-worker");
+      expect(offeredTools[1]).toContain(writeTool);
+      expect(isApprovalPausedResult(results[1])).toBe(true);
+      expect(await prisma.run.findUniqueOrThrow({ where: { id: recipientRun.id } })).toMatchObject({
+        status: "waiting_input",
+        error: null,
+      });
+      const effect = await prisma.externalEffect.findFirstOrThrow({
+        where: { runId: recipientRun.id, kind: writeTool },
+      });
+      expect(effect.status).toBe("intended");
+      const messages = await prisma.message.findMany({
+        where: { threadId: bot.thread!.id, runId: recipientRun.id },
+      });
+      const cards = messages
+        .flatMap((message) => message.blocks as MessageBlock[])
+        .filter((block) => block.kind === "ask");
+      expect(cards).toHaveLength(1);
+      expect(cards[0]).toMatchObject({
+        approvalEffectId: effect.id,
+        status: "pending",
+        detail: expect.stringContaining("requestSendMoney"),
+      });
+      expect(cards[0]!.actions!.map((action) => action.id)).toEqual(["allow", "deny"]);
+      expect(mercury.sendMoneyRequests).toHaveLength(0);
+      const mine = await listSpaceRuns(prisma, a, "active");
+      expect(mine.find((row) => row.runId === recipientRun.id)).toMatchObject({
+        status: "waiting_input",
+        trigger: "bot_message",
+        botId: bot.id,
+      });
+      expect(
+        (await listSpaceRuns(prisma, b, "active")).some((row) => row.runId === recipientRun.id),
+      ).toBe(false);
+    } finally {
+      await connector.close();
+    }
   });
   it("keeps Finance sync and receipt links working while the Mercury server is exclusive", async () => {
     // Sync and receipts run as the server's owner through callServerTool, outside any bot's gate.

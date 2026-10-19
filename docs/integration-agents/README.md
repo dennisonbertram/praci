@@ -290,30 +290,65 @@ approval otherwise just waits). The native server screen
 (`apps/mobile/app/server.tsx`) is a follow-up using native switches and an alert for
 the confirmation.
 
-## Connected apps (after v1)
+## Connected apps
 
-Notion-style apps use `Connection`. Create agent makes the same kind of bot
-(spawn key `integration-agent:<connectionId>`), "Only this agent" sets
-`allAgents = false` plus one `BotConnectionAccess` row (already enforced by
-`deniedConnectionIds`, and `AppDetail` already has the "Used by" list for it), and the
-write gate marks the agent's non-read app tools as mandatory approval using the
-`readOnly` flag the tool list already carries (`AppDetail` already groups tools
-into Read and Write). The writes switch needs a home on `Connection` (a field, or
-`metadata`; TBD) because there is no `writesEnabled` there. Left out of v1 because
-that classification path and the Composio tool filter are separate code from MCP.
+Notion-style apps use `Connection`. Each connected account offers Create agent
+in `AppDetail`, with spawn key `integration-agent:<connectionId>`. The typed
+`Connection.agentBotId` relation identifies the agent and `writesEnabled` defaults
+to false. "Only this agent" sets `allAgents = false` plus one
+`BotConnectionAccess` row; disabling it restores shared access. Archiving or
+deleting the agent releases the link and resets the connection to shared,
+read-only defaults.
 
-## Carta later
+The agent sees only its own account's app tools and plain built-ins, including
+when another bot starts a same-owner peer run. A tool is read-only only when its
+`readOnly` flag is explicitly true; absent classification is a write. Each write
+requires approval even when saved rules or Auto Review would otherwise allow it.
+Dispatch rechecks the connection's durable state, so turning changes off while
+an approval is pending prevents that call. No real provider account is needed
+for the offline emulator tests.
 
-Not in this build; `integrationAgents.create` rejects a Carta server until then, and editing a server's endpoint releases its agent (no agent, shared, read-only). Migration: a data migration sets `agentBotId` to the bot whose
-spawn key is `carta-agent:<userId>` for each user's Carta server and
-`agentExclusive = true`; `assignmentAllowsTool` drops its Carta branches in favor of
-the general ones, with `CARTA_READ_TOOLS` and `CARTA_WRITE_TOOLS` becoming Carta's
-preset (it has no useful annotations recorded); `assignCartaServers` stops deleting
-rows; `isCartaWrite` becomes the general check. Carta's mail rules (`mail_send`) and
-the cap table tools stay Carta-specific. It does not fall out trivially, because the
-Carta agent has its own tool set and sync run, so it waits.
+## Carta
+
+Carta uses the general Agent section and tool gate, while keeping its specialized
+`carta-agent:<userId>` bot, cap-table tools, populate run, and full-message mail approval.
+`integrationAgents.create` reuses that specialized agent rather than creating a generic bot.
+Editing a server's endpoint still releases its agent; removal does not introduce automatic
+archiving or a new avatar policy.
+
+The data migration links only an unarchived bot with the exact spawn key, **space and user**
+of its Carta server. Valid links start exclusive, and all migrated Carta servers have changes
+off, including servers whose old switch was on. Missing or invalid agents stay unlinked.
+Other bots' assignment rows are preserved rather than deleted. Creating or refreshing an
+already-linked Carta agent preserves the owner's current settings.
+
+Carta's preset is a closed allowlist: exactly `CARTA_READ_TOOLS` and, when changes are on,
+`CARTA_WRITE_TOOLS`. An unknown tool is not allowed even if annotated read-only or changes
+are on. The shared gate checks the current link, owner, space and write setting before each
+call. Each write asks again; saved rules and Auto Review cannot bypass approval. `mail_send`
+retains its independent requirement for approval of the complete message.
+
+Validation uses synthetic data and offline fakes. The [owner-only manual checklist](./carta-manual-checklist.md)
+lists the remaining live-account checks; none are run by automation.
 
 ## Tests
+
+### Tool metadata cache
+
+MCP discovery and server tool listings share a session-local 30-second cache. Concurrent
+cache misses share one fetch; expiry starts when the fetch succeeds. A new session (including
+a server revision or observed credential change), eviction, or connector close discards its metadata.
+Failed refreshes never fall back to expired data. The cache is only a transport optimization,
+not durable state or an authorization cache; assignments and switches still come from the database.
+
+Preset reads and forced writes have classifications independent of server annotations, so their
+dispatches can reuse this list. Other tools still fetch live annotations on every dispatch:
+one listing per TTL for those calls would hide read-to-write changes and is deliberately not
+promised. The final database gate remains after session preparation and all metadata awaits,
+immediately before `callTool`. Discovery can show stale names, schemas, descriptions and read
+hints until expiry, but a stale read hint cannot authorize an annotation-dependent write.
+New sessions and expired entries re-fetch; this does not guarantee metadata stays unchanged
+between the server's response and its tool execution.
 
 All deterministic and offline; no real vendor is called.
 

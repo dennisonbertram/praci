@@ -226,6 +226,8 @@ export interface ManagedConnectorProvider
   extends ConnectorProvider,
     Omit<ConnectionAuthProvider, "describe"> {
   catalog(context: AdapterContext, query?: string): Promise<ConnectorCatalogItem[]>;
+  /** Actor-independent directory metadata only; never reads per-account connection state. */
+  catalogDirectory?(): Promise<Omit<ConnectorCatalogItem, "connected">[]>;
   listConnectedExternalIds(context: AdapterContext): Promise<string[]>;
   connectionReady(context: AdapterContext, externalId: string): Promise<boolean>;
   warmDirectory?(): Promise<void>;

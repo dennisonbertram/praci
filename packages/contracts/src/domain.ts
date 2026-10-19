@@ -634,10 +634,14 @@ export const ConnectionSchema = z.object({
   error: z.string().nullable(),
   /** Mail accounts only: the provider refused the sign-in on the last sync, so it must be signed in again. */
   needsReconnect: z.boolean().optional(),
+  writesEnabled: z.boolean().optional().default(false),
+  agentBotId: Id.nullable().optional(),
   capabilities: z.array(z.string()),
   createdAt: z.string(),
 });
-export type Connection = z.infer<typeof ConnectionSchema>;
+export type Connection = Omit<z.infer<typeof ConnectionSchema>, "writesEnabled"> & {
+  writesEnabled?: boolean;
+};
 
 export const ConnectionCategorySchema = z.enum([
   "email_calendar",

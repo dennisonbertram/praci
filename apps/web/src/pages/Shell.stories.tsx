@@ -102,6 +102,7 @@ const loaded = () =>
     "skills.list": [],
     "connections.list": [],
     "connections.catalog": [],
+    "connections.featured": [],
     "agentSkills.list": [],
     "threads.subscribe": () =>
       (async function* () {

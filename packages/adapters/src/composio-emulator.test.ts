@@ -167,6 +167,10 @@ describe("ComposioEmulator", () => {
       }),
       required: ["subject"],
     });
+    expect(tools.find((tool) => tool.name === "GMAIL_FETCH_EMAILS")?.readOnly).toBe(true);
+    expect(tools.find((tool) => tool.name === "GMAIL_LIST_LABELS")?.readOnly).toBe(true);
+    expect(tools.find((tool) => tool.name === "GMAIL_SEND_EMAIL")?.readOnly).toBe(false);
+    expect(tools.find((tool) => tool.name === "GMAIL_CREATE_EMAIL_DRAFT")?.readOnly).toBe(false);
   });
 
   it("round-trips Gmail fetch and send against in-memory mailbox state", async () => {

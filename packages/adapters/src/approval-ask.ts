@@ -2,10 +2,12 @@ import { MailProviderError } from "@rakazo/adapter-kit";
 import type { MailApproval, MailEdits, MessageBlock } from "@rakazo/contracts";
 import {
   CARTA_WRITE_TOOLS,
+  integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
+  isReadTool,
   MAX_COMPOSE_BODY,
 } from "@rakazo/contracts";
 import { redactSecrets } from "@rakazo/core";
@@ -22,17 +24,17 @@ export function buildApprovalAskBlock(
   options?: {
     reviewReason?: string;
     fullMail?: boolean;
-    cartaWriteTool?: string;
+    integrationWriteTool?: string;
     /** The From account the mail call will use when it named none (see inferMailAccount). */
     mailAccount?: string;
   },
 ): MessageBlock {
   const summary = describeApprovalAction(toolName, args);
-  const fullDetail = options?.fullMail || options?.cartaWriteTool !== undefined;
+  const fullDetail = options?.fullMail || options?.integrationWriteTool !== undefined;
   const detail = options?.fullMail
     ? fullMailDetail(args, options.reviewReason)
-    : options?.cartaWriteTool !== undefined
-      ? cartaWriteDetail(options.cartaWriteTool, args, options.reviewReason)
+    : options?.integrationWriteTool !== undefined
+      ? integrationWriteDetail(options.integrationWriteTool, args, options.reviewReason)
       : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
@@ -67,7 +69,7 @@ export function buildApprovalAskBlock(
           ]
         : [
             { id: "allow", label: "Allow once" },
-            ...(options?.fullMail || options?.cartaWriteTool !== undefined
+            ...(options?.fullMail || options?.integrationWriteTool !== undefined
               ? []
               : [{ id: "always", label: "Always allow this tool" }]),
             { id: "deny", label: "Deny" },
@@ -96,15 +98,34 @@ export const isCartaWrite = (
   isCartaEndpoint(route?.endpoint) &&
   (CARTA_WRITE_TOOLS as readonly string[]).includes(route?.toolName ?? "");
 
-/**
- * An integration agent's write tool on its MCP server: every call asks, whatever the saved rules say.
- * MCP tools the connector listed to the agent carry `readOnly`; anything not marked a read is a write.
- */
+/** Whether an integration-agent write requires approval, using the shared preset classification. */
 export const isIntegrationAgentWrite = (
   botSpawnKey: string | null | undefined,
-  route: { connectorId?: string } | undefined,
+  route:
+    | {
+        connectorId?: string;
+        connectionId?: string;
+        endpoint?: string;
+        toolName?: string;
+      }
+    | undefined,
   readOnly: boolean | undefined,
-) => isIntegrationAgentSpawnKey(botSpawnKey) && route?.connectorId === "mcp" && readOnly !== true;
+): boolean => {
+  if (isCartaAgentSpawnKey(botSpawnKey)) {
+    if (route?.connectorId !== "mcp" || !isCartaEndpoint(route.endpoint)) return false;
+    return !isReadTool(
+      { name: route.toolName ?? "", annotations: { readOnlyHint: readOnly } },
+      integrationPresetForEndpoint(route.endpoint),
+    );
+  }
+  if (!isIntegrationAgentSpawnKey(botSpawnKey)) return false;
+  if (route?.connectorId === "mcp")
+    return !isReadTool(
+      { name: route.toolName ?? "", annotations: { readOnlyHint: readOnly } },
+      integrationPresetForEndpoint(route.endpoint),
+    );
+  return Boolean(route?.connectionId) && route?.connectorId !== "mcp" && readOnly !== true;
+};
 
 /** Whether a mail_send call carries the whole message (no draftId shortcut). */
 export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean {
@@ -118,7 +139,7 @@ export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean 
 }
 
 /** The raw tool name and every argument, nested ones included, so the user sees the operation. */
-function cartaWriteDetail(
+function integrationWriteDetail(
   rawTool: string,
   args: Record<string, unknown>,
   reviewReason?: string,

@@ -81,8 +81,9 @@ export const DIRECT_APPROVAL_TAG = "direct";
 
 export type BoundApprovalRoute = {
   connectorId: string;
-  resourceId: string;
+  resourceId?: string;
   toolName: string;
+  connectionId?: string;
   resourceRevision?: string | number;
 };
 
@@ -120,8 +121,12 @@ export function catalogApprovalDetails(
     typeof route !== "object" ||
     Array.isArray(route) ||
     typeof (route as BoundApprovalRoute).connectorId !== "string" ||
-    typeof (route as BoundApprovalRoute).resourceId !== "string" ||
+    ((route as BoundApprovalRoute).resourceId !== undefined &&
+      typeof (route as BoundApprovalRoute).resourceId !== "string") ||
+    (!(route as BoundApprovalRoute).resourceId && !(route as BoundApprovalRoute).connectionId) ||
     typeof (route as BoundApprovalRoute).toolName !== "string" ||
+    ((route as BoundApprovalRoute).connectionId !== undefined &&
+      typeof (route as BoundApprovalRoute).connectionId !== "string") ||
     ((route as BoundApprovalRoute).resourceRevision !== undefined &&
       typeof (route as BoundApprovalRoute).resourceRevision !== "string" &&
       typeof (route as BoundApprovalRoute).resourceRevision !== "number")
@@ -165,8 +170,12 @@ export function boundDirectApprovalDetails(
     typeof route !== "object" ||
     Array.isArray(route) ||
     typeof (route as BoundApprovalRoute).connectorId !== "string" ||
-    typeof (route as BoundApprovalRoute).resourceId !== "string" ||
+    ((route as BoundApprovalRoute).resourceId !== undefined &&
+      typeof (route as BoundApprovalRoute).resourceId !== "string") ||
+    (!(route as BoundApprovalRoute).resourceId && !(route as BoundApprovalRoute).connectionId) ||
     typeof (route as BoundApprovalRoute).toolName !== "string" ||
+    ((route as BoundApprovalRoute).connectionId !== undefined &&
+      typeof (route as BoundApprovalRoute).connectionId !== "string") ||
     ((route as BoundApprovalRoute).resourceRevision !== undefined &&
       typeof (route as BoundApprovalRoute).resourceRevision !== "string" &&
       typeof (route as BoundApprovalRoute).resourceRevision !== "number") ||
@@ -195,6 +204,7 @@ export function approvalRoutesMatch(
       left.connectorId === right.connectorId &&
       left.resourceId === right.resourceId &&
       left.toolName === right.toolName &&
+      left.connectionId === right.connectionId &&
       left.resourceRevision === right.resourceRevision,
   );
 }
@@ -258,7 +268,7 @@ export function catalogExecuteToolName(connectorId: string): string {
   return `${catalogToolPrefix(connectorId)}_execute_tool`;
 }
 
-export function catalogIdForRoute(route: BoundApprovalRoute): string {
+export function catalogIdForRoute(route: BoundApprovalRoute & { resourceId: string }): string {
   return `${route.resourceId}:${encodeURIComponent(route.toolName)}`;
 }
 

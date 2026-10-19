@@ -9,7 +9,7 @@ import { beforeEach, expect, it, vi } from "vitest";
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
-const connections = vi.hoisted(() => ({ catalog: vi.fn(), list: vi.fn() }));
+const connections = vi.hoisted(() => ({ catalog: vi.fn(), featured: vi.fn(), list: vi.fn() }));
 vi.mock("../lib/rpc", () => ({ rpc: { connections } }));
 
 import { ConnectAppsButton } from "./ConnectAppsButton";
@@ -43,8 +43,18 @@ const row = (c: HTMLElement) =>
 
 beforeEach(() => {
   document.body.innerHTML = "";
+  vi.clearAllMocks();
   connections.catalog.mockResolvedValue(catalog);
+  connections.featured.mockResolvedValue(catalog);
   connections.list.mockResolvedValue([]);
+});
+
+it("shows the pill without waiting for the slow full catalog", async () => {
+  connections.catalog.mockReturnValue(new Promise(() => {}));
+  const { container } = await render();
+  expect(row(container)?.textContent).toBe("Connect apps");
+  expect(connections.featured).toHaveBeenCalledOnce();
+  expect(connections.catalog).not.toHaveBeenCalled();
 });
 
 it("shows the pill with three featured logos and navigates on click", async () => {
@@ -68,19 +78,19 @@ it("shows the plain row when every featured app is connected", async () => {
 });
 
 it("shows the plain row on RPC failure", async () => {
-  connections.catalog.mockRejectedValue(new Error("down"));
+  connections.featured.mockRejectedValue(new Error("down"));
   const { container } = await render();
   expect(row(container)?.textContent).toBe("Integrations");
 });
 
 it("shows the plain row while loading", async () => {
-  connections.catalog.mockReturnValue(new Promise(() => {}));
+  connections.featured.mockReturnValue(new Promise(() => {}));
   const { container } = await render();
   expect(row(container)?.textContent).toBe("Integrations");
 });
 
 it("leaves out Gmail when native Google Gmail is connected", async () => {
-  connections.catalog.mockResolvedValue([app("gmail", "google"), ...catalog]);
+  connections.featured.mockResolvedValue([app("gmail", "google"), ...catalog]);
   connections.list.mockResolvedValue([
     { connectorId: "google", provider: "gmail", status: "connected" },
   ]);
@@ -116,13 +126,13 @@ it("keeps apps with pending or failed connections in the pill", async () => {
 });
 
 it("shows one logo when Slack and its alias are both unconnected", async () => {
-  connections.catalog.mockResolvedValue([app("slack"), app("slackbot")]);
+  connections.featured.mockResolvedValue([app("slack"), app("slackbot")]);
   const { container } = await render();
   expect(container.querySelectorAll("[data-testid=app-logo]")).toHaveLength(1);
 });
 
 it("leaves out Slack's alias when Slack is connected", async () => {
-  connections.catalog.mockResolvedValue([app("slack"), app("slackbot")]);
+  connections.featured.mockResolvedValue([app("slack"), app("slackbot")]);
   connections.list.mockResolvedValue([
     { connectorId: "composio", provider: "slack", status: "connected" },
   ]);

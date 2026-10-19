@@ -77,6 +77,7 @@ const GMAIL_TOOLS: ConnectorTool[] = [
   {
     name: "GMAIL_FETCH_EMAILS",
     description: "Fetch email messages from the connected Gmail mailbox",
+    readOnly: true,
     inputSchema: {
       type: "object",
       properties: {
@@ -100,6 +101,7 @@ const GMAIL_TOOLS: ConnectorTool[] = [
   {
     name: "GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID",
     description: "Fetch a single Gmail message by message id",
+    readOnly: true,
     inputSchema: {
       type: "object",
       properties: {
@@ -115,6 +117,7 @@ const GMAIL_TOOLS: ConnectorTool[] = [
   {
     name: "GMAIL_FETCH_MESSAGE_BY_THREAD_ID",
     description: "Fetch messages belonging to a Gmail thread",
+    readOnly: true,
     inputSchema: {
       type: "object",
       properties: {
@@ -126,6 +129,7 @@ const GMAIL_TOOLS: ConnectorTool[] = [
   {
     name: "GMAIL_SEND_EMAIL",
     description: "Send an email through the connected Gmail account",
+    readOnly: false,
     inputSchema: {
       type: "object",
       properties: {
@@ -143,6 +147,7 @@ const GMAIL_TOOLS: ConnectorTool[] = [
   {
     name: "GMAIL_CREATE_EMAIL_DRAFT",
     description: "Create a Gmail draft, optionally as a reply in a thread",
+    readOnly: false,
     inputSchema: {
       type: "object",
       properties: {
@@ -160,6 +165,7 @@ const GMAIL_TOOLS: ConnectorTool[] = [
   {
     name: "GMAIL_LIST_LABELS",
     description: "List system and user labels for the connected Gmail account",
+    readOnly: true,
     inputSchema: {
       type: "object",
       properties: {
@@ -379,6 +385,10 @@ export class ComposioEmulator implements ComposioProvider {
       })),
       query ?? "",
     ).map((item) => ({ ...item, connectorId: "composio" }));
+  }
+
+  async catalogDirectory() {
+    return this.directory.map((item) => ({ ...item, connectorId: "composio" }));
   }
 
   async warmDirectory(): Promise<void> {}

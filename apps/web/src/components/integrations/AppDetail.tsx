@@ -14,7 +14,8 @@ import {
   Input,
 } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { appStatus, groupTools, toggleAccess, toolLabel } from "../../lib/integrations";
 import { appReturnPath } from "../../lib/return-to";
@@ -22,6 +23,7 @@ import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
+import { IntegrationAgentSection } from "./IntegrationAgentSection";
 import { AgentToggleList, StatusBadge } from "./parts";
 import type { ConnectionAccess, IntegrationsData } from "./useIntegrations";
 
@@ -40,6 +42,9 @@ function AccountRow({
   onChanged,
   onRemove,
   onReconnect,
+  onCreateAgent,
+  busy,
+  children,
 }: {
   row: Connection;
   onChanged: () => void;
@@ -47,6 +52,9 @@ function AccountRow({
   onRemove?: (row: Connection) => void;
   /** Offered when the provider refuses this account's sign-in. */
   onReconnect?: (row: Connection) => void;
+  onCreateAgent?: () => void;
+  busy?: boolean;
+  children?: ReactNode;
 }) {
   const lapsed = row.status === "connected" && row.needsReconnect === true;
   const { t } = useLingui();
@@ -111,6 +119,11 @@ function AccountRow({
       <Button size="sm" variant="outline" onClick={() => setDraft(row.displayName)}>
         <Trans>Rename</Trans>
       </Button>
+      {onCreateAgent ? (
+        <Button size="sm" variant="outline" disabled={busy} onClick={onCreateAgent}>
+          <Trans>Create agent</Trans>
+        </Button>
+      ) : null}
       {onRemove ? (
         <Button
           size="sm"
@@ -122,6 +135,7 @@ function AccountRow({
           <Trans>Remove account</Trans>
         </Button>
       ) : null}
+      {children ? <div className="w-full pb-1">{children}</div> : null}
     </div>
   );
 }
@@ -153,6 +167,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   /** The signed-out account a reconnect replaces once the new sign-in succeeds. */
   const [replacing, setReplacing] = useState<Connection | null>(null);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [confirmingWrites, setConfirmingWrites] = useState<Connection | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [override, setOverride] = useState<ConnectionAccess | null>(null);
@@ -189,17 +204,46 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
     };
   }, [connectorId, slug, connectedCount]);
 
+  const ordinaryAccount = rows.find((row) => !row.agentBotId);
+  const hasAgentAccount = rows.some((row) => row.agentBotId);
   const access: ConnectionAccess = override ??
-    (rows[0] ? data.access[rows[0].id] : undefined) ?? { allAgents: true, botIds: [] };
+    (ordinaryAccount ? data.access[ordinaryAccount.id] : undefined) ?? {
+      allAgents: true,
+      botIds: [],
+    };
   const allBotIds = data.bots.map((bot) => bot.id);
+
+  async function updateAgent(action: () => Promise<void>, fallback: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      await data.refresh();
+    } catch (err) {
+      setError(errorText(err, fallback));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function setWrites(row: Connection, enabled: boolean) {
+    if (enabled) {
+      setConfirmingWrites(row);
+      return;
+    }
+    void updateAgent(async () => {
+      await rpc.connections.setWrites({ connectionId: row.id, enabled: false });
+    }, t`Could not update changes`);
+  }
 
   async function setAgent(botId: string, on: boolean) {
     const next = toggleAccess(access, allBotIds, botId, on);
     setOverride(next);
     setError(null);
     try {
-      // Access is per app: the server applies it to every account of this app.
-      if (rows[0]) await rpc.connections.setAccess({ connectionId: rows[0].id, ...next });
+      // Linked agents have their own per-account controls.
+      if (ordinaryAccount)
+        await rpc.connections.setAccess({ connectionId: ordinaryAccount.id, ...next });
       await data.refresh();
     } catch (err) {
       setError(errorText(err, t`Could not update bot access`));
@@ -344,6 +388,18 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                 key={row.id}
                 row={row}
                 onChanged={() => void data.refresh()}
+                busy={busy}
+                onCreateAgent={
+                  row.status === "connected" && !row.needsReconnect && !row.agentBotId
+                    ? () =>
+                        void updateAgent(async () => {
+                          const { botId } = await rpc.connections.createAgent({
+                            connectionId: row.id,
+                          });
+                          navigate(`/app/${botId}`);
+                        }, t`Could not create agent`)
+                    : undefined
+                }
                 onRemove={accountCount > 1 ? setRemovingRow : undefined}
                 onReconnect={
                   item
@@ -353,7 +409,44 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                       }
                     : undefined
                 }
-              />
+              >
+                {row.agentBotId ? (
+                  <IntegrationAgentSection
+                    idPrefix={`connection-${row.id}`}
+                    service={accountCount > 1 ? row.displayName : name}
+                    agentName={
+                      data.bots.find((bot) => bot.id === row.agentBotId)?.name ?? t`${name} agent`
+                    }
+                    agentHref={`/app/${row.agentBotId}`}
+                    writesEnabled={row.writesEnabled ?? false}
+                    exclusive={
+                      data.access[row.id]?.allAgents === false &&
+                      data.access[row.id]?.botIds.length === 1 &&
+                      data.access[row.id]?.botIds[0] === row.agentBotId
+                    }
+                    disabled={busy || row.status !== "connected" || row.needsReconnect === true}
+                    onWrites={(enabled) => setWrites(row, enabled)}
+                    onExclusive={(exclusive) =>
+                      void updateAgent(async () => {
+                        await rpc.connections.setExclusive({ connectionId: row.id, exclusive });
+                      }, t`Could not update access`)
+                    }
+                  />
+                ) : hasAgentAccount && row.status === "connected" ? (
+                  <>
+                    <Heading>
+                      <Trans>Used by</Trans>
+                    </Heading>
+                    <AgentToggleList
+                      bots={data.bots}
+                      appName={row.displayName}
+                      disabled={busy}
+                      isOn={(botId) => access.allAgents || access.botIds.includes(botId)}
+                      onToggle={(botId, on) => void setAgent(botId, on)}
+                    />
+                  </>
+                ) : null}
+              </AccountRow>
             ))}
           </div>
           {item ? (
@@ -366,15 +459,20 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
 
           {connected.length > 0 ? (
             <>
-              <Heading>
-                <Trans>Used by</Trans>
-              </Heading>
-              <AgentToggleList
-                bots={data.bots}
-                appName={name}
-                isOn={(botId) => access.allAgents || access.botIds.includes(botId)}
-                onToggle={(botId, on) => void setAgent(botId, on)}
-              />
+              {!hasAgentAccount ? (
+                <>
+                  <Heading>
+                    <Trans>Used by</Trans>
+                  </Heading>
+                  <AgentToggleList
+                    bots={data.bots}
+                    appName={name}
+                    disabled={busy}
+                    isOn={(botId) => access.allAgents || access.botIds.includes(botId)}
+                    onToggle={(botId, on) => void setAgent(botId, on)}
+                  />
+                </>
+              ) : null}
 
               <Heading>
                 {tools ? <Trans>Tools · {tools.length}</Trans> : <Trans>Tools</Trans>}
@@ -484,6 +582,28 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
           </li>
         </ConfirmDialog>
       </div>
+      <ConfirmDialog
+        open={confirmingWrites !== null}
+        busy={busy}
+        title={t`Allow changes in ${confirmingWrites?.displayName ?? name}?`}
+        confirm={t`Allow changes`}
+        onCancel={() => setConfirmingWrites(null)}
+        onConfirm={() => {
+          if (!confirmingWrites) return;
+          const connectionId = confirmingWrites.id;
+          void updateAgent(async () => {
+            await rpc.connections.setWrites({ connectionId, enabled: true });
+            setConfirmingWrites(null);
+          }, t`Could not update changes`);
+        }}
+      >
+        <li>
+          <Trans>
+            The agent will be able to change your {confirmingWrites?.displayName ?? name} data. It
+            asks before each change.
+          </Trans>
+        </li>
+      </ConfirmDialog>
       {dialog}
     </>
   );

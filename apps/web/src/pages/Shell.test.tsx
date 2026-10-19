@@ -119,6 +119,20 @@ function pressEnter(textarea: HTMLTextAreaElement) {
 }
 
 describe("Composer", () => {
+  it("loads connector mentions only when opening the mention picker", () => {
+    const onMentionOpen = vi.fn();
+    const textarea = renderComposer(vi.fn(), { onMentionOpen });
+    type(textarea, "A normal message");
+    expect(onMentionOpen).not.toHaveBeenCalled();
+    type(textarea, "@");
+    expect(onMentionOpen).toHaveBeenCalledTimes(1);
+    type(textarea, "@Bo");
+    expect(onMentionOpen).toHaveBeenCalledTimes(1);
+    type(textarea, "");
+    type(textarea, "@");
+    expect(onMentionOpen).toHaveBeenCalledTimes(2);
+  });
+
   it("shows Call Elio and Stop while a run goes on with nothing typed, and Send and Stop once there is", () => {
     const textarea = renderComposer(async () => true, { running: true, onVoice: () => {} });
     const labels = () =>
