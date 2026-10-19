@@ -283,3 +283,49 @@ it("opens the file when its search snippet is clicked", () => {
   act(() => text?.click());
   expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ id: "lease" }));
 });
+
+it("shows the added date under the name of an untagged file on a phone", () => {
+  const rows = [{ item: item("loose", null), snippets: [] }];
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(container.querySelector('[data-testid="data-room-subline"]')?.textContent).toBe(
+    "Not tagged · Mar 4, 2026",
+  );
+});
+
+it("puts a sub-folder's menu in the same column as a file's at every list width", () => {
+  const invoices = { id: "f2", name: "Invoices", parentId: "f1", createdAt: "" };
+  act(() =>
+    root.render(
+      <ListView
+        rows={[{ item: item("a", null), snippets: [] }]}
+        o={o()}
+        lead={() => (
+          <SubfolderList
+            folders={[invoices]}
+            contents={() => "2 items"}
+            onOpen={vi.fn()}
+            onAction={vi.fn()}
+            tiles={false}
+          />
+        )}
+      />,
+    ),
+  );
+  const rowsOf = (label: string) =>
+    container.querySelector(`tbody[aria-label="${label}"] tr`) as HTMLTableRowElement;
+  // jsdom has no container queries: read each cell's `hidden @min-[Npx]/list:table-cell` class.
+  const visible = (cell: Element, width: number) => {
+    const min = /@min-\[(\d+)px\]\/list:table-cell/.exec(cell.className)?.[1];
+    return !cell.classList.contains("hidden") || (min !== undefined && width >= Number(min));
+  };
+  for (const width of [400, 560, 700]) {
+    const layout = (tr: HTMLTableRowElement) =>
+      Array.from(tr.children)
+        .filter((c) => visible(c, width))
+        .map((c) => (c as HTMLTableCellElement).colSpan);
+    const files = layout(rowsOf("Items"));
+    const folders = layout(rowsOf("Sub-folders"));
+    expect(folders.reduce((a, b) => a + b, 0)).toBe(files.reduce((a, b) => a + b, 0));
+    expect(folders.at(-1)).toBe(1);
+  }
+});

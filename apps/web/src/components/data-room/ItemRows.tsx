@@ -485,7 +485,14 @@ function TypeAndDate({
 }) {
   const type = typeLabel(item.facets.docType);
   const date = dateOf(item, sortField);
-  if (!type && isSettled(item.status)) return <NotTagged />;
+  if (!type && isSettled(item.status)) {
+    return (
+      <>
+        <NotTagged />
+        {date ? ` · ${date}` : null}
+      </>
+    );
+  }
   return <>{[type, date].filter(Boolean).join(" · ")}</>;
 }
 
