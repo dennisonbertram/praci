@@ -399,6 +399,8 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     hop: z.number().int().nonnegative().optional(),
     /** The chain began in a background run: every bot in it may message only owner agents. */
     backgroundOrigin: z.boolean().optional(),
+    /** Every hop of the chain began with the bot owner in a direct chat. Absent means unknown, so not trusted. */
+    ownerOrigin: z.boolean().optional(),
   }),
 ]);
 export type MessageBlock = z.infer<typeof MessageBlock>;

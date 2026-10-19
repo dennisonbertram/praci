@@ -229,6 +229,27 @@ describe("messaging another bot", () => {
     expect(received).toMatchObject({ backgroundOrigin: true });
   });
 
+  it("stamps ownerOrigin only when the sending run was owner-originated, and keeps it on the answer", async () => {
+    const received = (h: ReturnType<typeof deps>) =>
+      h.tx.message.create.mock.calls
+        .flatMap(([call]) => (call as { data: { blocks: unknown[] } }).data.blocks)
+        .find((b) => (b as { kind: string }).kind === "bot_message_received");
+    // A chain that began with a foreign bot or a channel is sent without the option.
+    const foreign = deps();
+    await messageBot(foreign.deps, run, sender, { bot_id: "bot-target", message: "x" });
+    expect(received(foreign)).not.toHaveProperty("ownerOrigin");
+    // The owner's own direct chat, or an owner-originated hop, sets it.
+    const owner = deps();
+    await messageBot(
+      owner.deps,
+      run,
+      sender,
+      { bot_id: "bot-target", message: "x" },
+      { ownerOrigin: true },
+    );
+    expect(received(owner)).toMatchObject({ ownerOrigin: true });
+  });
+
   it("marks a forced failure return unread on both sides", async () => {
     const harness = deps({
       hopBlocks: [

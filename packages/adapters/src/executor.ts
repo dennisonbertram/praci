@@ -330,6 +330,7 @@ import {
   MAIL_TOOL_NAMES,
   mailToolFromTool,
   mailToolsAllowed,
+  OWNER_INITIATED_TRIGGERS,
   selectMailTools,
 } from "./mail-tools.js";
 import type { McpConnector } from "./mcp-connector.js";
@@ -4195,11 +4196,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }).then((accounts) => accounts.filter((a) => visibleToIdentity(a.id)));
           return calendarAccountsPromise;
         };
-        // An owner agent answers a bot of the same owner with its own mail, Calendar or Drive tools.
-        // Approvals still ask the user on the agent's own chat; the peer approves nothing.
-        const ownerAgentPeer =
+        // The sender is a bot of this space and user. Not enough alone: a foreign bot or channel
+        // may have started the chain, so the message must also carry the owner's own origin.
+        const senderInScope =
           run.trigger === "bot_message" &&
-          (isInboxAgentSpawnKey(bot.spawnKey) || appAgentIdentity) &&
           Boolean(peerMessage?.fromBotId) &&
           Boolean(
             await deps.prisma.bot.findFirst({
@@ -4212,9 +4212,23 @@ export function createRunExecutor(deps: ExecutorDeps) {
               select: { id: true },
             }),
           );
+        // Whether what this run sends on is owner-originated: the owner in a direct chat, or a
+        // same-owner bot answering a message that was.
+        const ownerOriginRun =
+          !thread.groupId &&
+          !messagingChannelRun &&
+          run.userId === bot.userId &&
+          (OWNER_INITIATED_TRIGGERS.has(run.trigger) ||
+            (senderInScope && peerMessage?.ownerOrigin === true));
+        // An owner agent answers an owner-originated bot with its own service's tools only.
+        // Approvals still ask the user on the agent's own chat; the peer approves nothing.
+        const ownerAgentPeer =
+          senderInScope &&
+          peerMessage?.ownerOrigin === true &&
+          (isInboxAgentSpawnKey(bot.spawnKey) || appAgentIdentity);
         const calendarEnabled =
           mailToolsAllowed({
-            ownerAgentPeer,
+            ownerAgentPeer: ownerAgentPeer && appAgentIdentity,
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -4224,7 +4238,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }) && (await calendarAccounts().catch(() => [])).length > 0;
         const mailEnabled =
           mailToolsAllowed({
-            ownerAgentPeer,
+            ownerAgentPeer: ownerAgentPeer && isInboxAgentSpawnKey(bot.spawnKey),
             hasProvider: Boolean(deps.mail),
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -4363,7 +4377,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         };
         const driveEnabled =
           driveToolsAllowed({
-            ownerAgentPeer,
+            ownerAgentPeer: ownerAgentPeer && appAgentIdentity,
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -5016,7 +5030,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
             isCartaMailSend(bot.spawnKey, name) ||
             // Integration-agent writes require approval for every call.
             integrationWriteTool !== undefined ||
-            writeOnAgentConnection;
+            writeOnAgentConnection ||
+            // An owner agent's writes on a peer's request never pass on a saved rule or Auto Review.
+            (ownerAgentPeer && OWNER_PEER_WRITE_TOOLS.has(name));
           const connectorKind = connectorKindFromToolName(
             name,
             connectedPlugins.map((plugin) => plugin.provider),
@@ -7170,7 +7186,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 deliveryKey: effectKey,
               },
               // A background run may only ask an agent that owns an account.
-              { ownerAgentsOnly: isBackgroundRunTrigger(run.trigger) },
+              { ownerAgentsOnly: isBackgroundRunTrigger(run.trigger), ownerOrigin: ownerOriginRun },
             );
             if (!sent.ok) return finish({ error: sent.error });
             return finish({
@@ -8567,6 +8583,17 @@ async function renewRunLease(
 function computerRetryDelay(fence: number): number {
   return Math.min(10_000, 250 * 2 ** Math.min(Math.max(fence - 1, 0), 5));
 }
+
+const OWNER_PEER_WRITE_TOOLS = new Set([
+  "mail_draft",
+  "mail_modify",
+  "mail_send",
+  "calendar_create_event",
+  "calendar_update_event",
+  "calendar_delete_event",
+  "drive_create_file",
+  "drive_update_file",
+]);
 
 const CARTA_BLOCKED_DELEGATION_TOOLS = new Set([
   "spawn_bot",

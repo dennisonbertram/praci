@@ -82,7 +82,12 @@ export async function messageBot(
     intent?: BotMessageIntent;
     deliveryKey?: string;
   },
-  options?: { allowTerminalSource?: boolean; forceUnread?: boolean; ownerAgentsOnly?: boolean },
+  options?: {
+    allowTerminalSource?: boolean;
+    forceUnread?: boolean;
+    ownerAgentsOnly?: boolean;
+    ownerOrigin?: boolean;
+  },
 ) {
   const message = String(input.message ?? "").trim();
   if (!message) return { ok: false as const, error: "message is required" };
@@ -243,6 +248,10 @@ export async function messageBot(
           intent,
           returnToMessageId: outbound.id,
           ...(ownerAgentsOnly ? { backgroundOrigin: true } : {}),
+          // Answering the chain's caller keeps the chain's own origin.
+          ...((options?.ownerOrigin ?? (returnsToSender && sourceContext?.ownerOrigin === true))
+            ? { ownerOrigin: true }
+            : {}),
         };
         const inbound = await createThreadMessageInTransaction(tx, {
           threadId: targetThreadId,
