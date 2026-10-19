@@ -80,7 +80,14 @@ export function ConnectAppDialog({
         .appConnected({ botId: activeBotId, provider: item.slug, connectorId: item.connectorId })
         .catch(() => undefined);
     }
-    setPhase(data.bots.length > 0 ? { kind: "agents" } : { kind: "done", agents: "none" });
+    // A connection with its own agent is private to it; only agentless rows ask which bots get it.
+    setPhase(
+      connection.agentBotId
+        ? { kind: "done", agents: "skipped" }
+        : data.bots.length > 0
+          ? { kind: "agents" }
+          : { kind: "done", agents: "none" },
+    );
   }
 
   function fail(message: string) {
@@ -233,10 +240,7 @@ export function ConnectAppDialog({
             </div>
             <DialogTitle className="text-center">{t`Connect ${item.name}`}</DialogTitle>
             <DialogDescription className="mt-1.5 text-center">
-              <Trans>
-                You'll sign in to {item.name} in a new window. Then you choose which bots can use
-                it.
-              </Trans>
+              <Trans>You'll sign in to {item.name} in a new window.</Trans>
             </DialogDescription>
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="outline" onClick={close}>

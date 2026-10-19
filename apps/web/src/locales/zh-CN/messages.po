@@ -372,16 +372,6 @@ msgstr ""
 msgid "{name} agent"
 msgstr ""
 
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "{name} failed"
-msgstr "{name} 失败"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "{name} finished"
-msgstr "{name} 已完成"
-
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} is not connected."
 msgstr ""
@@ -389,11 +379,6 @@ msgstr ""
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} isn't available on this server."
 msgstr ""
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "{name} stopped"
-msgstr "{name} 已停止"
 
 #: src/pages/Finance.tsx
 msgid "{name}, paid with {paidWith}"
@@ -1433,11 +1418,6 @@ msgstr "Bot"
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
-msgid "Bot"
-msgstr "Bot"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
 msgid "Bot"
 msgstr "Bot"
 
@@ -3775,11 +3755,6 @@ msgstr "发送消息失败"
 msgid "Failed to stop"
 msgstr "停止失败"
 
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Failed."
-msgstr "失败。"
-
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Failure handling"
 msgstr "失败处理"
@@ -3884,11 +3859,6 @@ msgstr "已完成"
 #: src/pages/ActivityList.tsx
 msgid "Finished"
 msgstr ""
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Finished."
-msgstr "已完成。"
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "Finishing MCP connection…"
@@ -4925,11 +4895,6 @@ msgstr ""
 msgid "Message"
 msgstr "消息"
 
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Message"
-msgstr "消息"
-
 #: src/pages/Shell.tsx
 msgid "Message {activeName}"
 msgstr "给 {activeName} 发消息"
@@ -5763,10 +5728,6 @@ msgstr ""
 msgid "Only if the server does not use sign-in"
 msgstr ""
 
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Only this agent"
-msgstr ""
-
 #: src/components/data-room/Preview.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -5967,10 +5928,6 @@ msgstr "原消息不可用"
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Other agents ask the {service} agent instead of using {service} themselves."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -7337,6 +7294,10 @@ msgstr "设置帮助"
 msgid "Shape"
 msgstr "形状"
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Share with all agents"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "共享"
@@ -7755,11 +7716,6 @@ msgstr "停止朗读"
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Stop teaching"
 msgstr "停止示范"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Stopped."
-msgstr "已停止。"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Stored securely. Never shown here."
@@ -8607,6 +8563,7 @@ msgid "Use your own key"
 msgstr "使用自己的密钥"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationAgentSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Used by"
@@ -8944,7 +8901,7 @@ msgstr "你已接管"
 
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
-msgid "You'll sign in to {0} in a new window. Then you choose which bots can use it."
+msgid "You'll sign in to {0} in a new window."
 msgstr ""
 
 #: src/components/AiDataSharing.tsx

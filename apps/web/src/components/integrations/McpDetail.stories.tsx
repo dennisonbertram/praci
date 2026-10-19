@@ -75,17 +75,17 @@ export const WithAgent: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
   args: {
     data: mockIntegrations({
-      servers: [mercury({ agentBotId: "bot_ada" })],
+      servers: [mercury({ agentBotId: "bot_ada", agentExclusive: true })],
       mcpAssignments: mockAssignments,
     }),
   },
 };
 
-export const WithAgentOnlyThisAgent: Story = {
+export const WithAgentShared: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
   args: {
     data: mockIntegrations({
-      servers: [mercury({ agentBotId: "bot_ada", agentExclusive: true, writesEnabled: true })],
+      servers: [mercury({ agentBotId: "bot_ada", agentExclusive: false, writesEnabled: true })],
       mcpAssignments: mockAssignments,
     }),
   },

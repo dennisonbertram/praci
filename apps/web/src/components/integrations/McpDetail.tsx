@@ -114,10 +114,17 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           () => rpc.mcp.servers.setWrites({ id: server.id, enabled: false }).then(() => undefined),
           t`Could not update changes`,
         );
-  const usedBy =
-    hasAgent && server.agentExclusive
-      ? data.bots.filter((bot) => bot.id === server.agentBotId)
-      : data.bots;
+  const usedBy = (
+    <AgentToggleList
+      bots={[...data.bots].sort(
+        (a, b) => Number(b.id === server.agentBotId) - Number(a.id === server.agentBotId),
+      )}
+      appName={server.name}
+      disabled={busy}
+      isOn={assigned}
+      onToggle={(botId, on) => void toggle(botId, on)}
+    />
+  );
   return (
     <div className="rk-scroll h-full overflow-y-auto px-4 py-6 md:px-9 md:py-7">
       <div className="mx-auto max-w-[1040px]">
@@ -217,14 +224,15 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
             agentName={agent?.name ?? t`${service} agent`}
             agentHref={`/app/${server.agentBotId}`}
             writesEnabled={server.writesEnabled}
-            exclusive={server.agentExclusive}
+            shared={!server.agentExclusive}
             disabled={busy}
             onWrites={setWrites}
-            onExclusive={(exclusive) =>
+            usedBy={usedBy}
+            onShared={(shared) =>
               void run(
                 () =>
                   rpc.integrationAgents
-                    .setExclusive({ serverId: server.id, exclusive })
+                    .setExclusive({ serverId: server.id, exclusive: !shared })
                     .then(() => undefined),
                 t`Could not update access`,
               )
@@ -232,16 +240,14 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           />
         ) : null}
 
-        <Heading>
-          <Trans>Used by</Trans>
-        </Heading>
-        <AgentToggleList
-          bots={usedBy}
-          appName={server.name}
-          disabled={busy}
-          isOn={assigned}
-          onToggle={(botId, on) => void toggle(botId, on)}
-        />
+        {hasAgent ? null : (
+          <>
+            <Heading>
+              <Trans>Used by</Trans>
+            </Heading>
+            {usedBy}
+          </>
+        )}
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Button

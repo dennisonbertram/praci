@@ -170,7 +170,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   const [confirmingWrites, setConfirmingWrites] = useState<Connection | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [override, setOverride] = useState<ConnectionAccess | null>(null);
+  const [override, setOverride] = useState<(ConnectionAccess & { rowId: string }) | null>(null);
   const connectedCount = connected.length;
   const isGmail =
     matchFeaturedConnectorId(slug) === "gmail" || (connectorId === "google" && /mail/i.test(slug));
@@ -206,12 +206,19 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
 
   const ordinaryAccount = rows.find((row) => !row.agentBotId);
   const hasAgentAccount = rows.some((row) => row.agentBotId);
-  const access: ConnectionAccess = override ??
-    (ordinaryAccount ? data.access[ordinaryAccount.id] : undefined) ?? {
-      allAgents: true,
-      botIds: [],
-    };
   const allBotIds = data.bots.map((bot) => bot.id);
+  const storedAccess = (row?: Connection): ConnectionAccess =>
+    (row ? data.access[row.id] : undefined) ?? { allAgents: true, botIds: [] };
+  /** Who can use the row: the server's answer, except while a toggle is saving. */
+  const isOn = (row: Connection | undefined, botId: string) => {
+    if (override && override.rowId === row?.id)
+      return override.allAgents || override.botIds.includes(botId);
+    const state = row ? data.access[row.id] : undefined;
+    return state ? state.effectiveAccess.botIds.includes(botId) : true;
+  };
+  /** The owning agent first, then the rest. */
+  const ownerFirst = (ownerId: string | null | undefined) =>
+    [...data.bots].sort((a, b) => Number(b.id === ownerId) - Number(a.id === ownerId));
 
   async function updateAgent(action: () => Promise<void>, fallback: string) {
     setBusy(true);
@@ -236,14 +243,12 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
     }, t`Could not update changes`);
   }
 
-  async function setAgent(botId: string, on: boolean) {
-    const next = toggleAccess(access, allBotIds, botId, on);
-    setOverride(next);
+  async function setAgent(row: Connection | undefined, botId: string, on: boolean) {
+    const next = toggleAccess(storedAccess(row), allBotIds, botId, on);
+    setOverride(row ? { ...next, rowId: row.id } : null);
     setError(null);
     try {
-      // Linked agents have their own per-account controls.
-      if (ordinaryAccount)
-        await rpc.connections.setAccess({ connectionId: ordinaryAccount.id, ...next });
+      if (row) await rpc.connections.setAccess({ connectionId: row.id, ...next });
       await data.refresh();
     } catch (err) {
       setError(errorText(err, t`Could not update bot access`));
@@ -419,17 +424,32 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                     }
                     agentHref={`/app/${row.agentBotId}`}
                     writesEnabled={row.writesEnabled ?? false}
-                    exclusive={
-                      data.access[row.id]?.allAgents === false &&
-                      data.access[row.id]?.botIds.length === 1 &&
-                      data.access[row.id]?.botIds[0] === row.agentBotId
+                    shared={
+                      data.access[row.id]
+                        ? !(
+                            data.access[row.id]?.allAgents === false &&
+                            data.access[row.id]?.botIds.every((id) => id === row.agentBotId)
+                          )
+                        : false
                     }
                     disabled={busy || row.status !== "connected" || row.needsReconnect === true}
                     onWrites={(enabled) => setWrites(row, enabled)}
-                    onExclusive={(exclusive) =>
+                    onShared={(shared) =>
                       void updateAgent(async () => {
-                        await rpc.connections.setExclusive({ connectionId: row.id, exclusive });
+                        await rpc.connections.setExclusive({
+                          connectionId: row.id,
+                          exclusive: !shared,
+                        });
                       }, t`Could not update access`)
+                    }
+                    usedBy={
+                      <AgentToggleList
+                        bots={ownerFirst(row.agentBotId)}
+                        appName={row.displayName}
+                        disabled={busy}
+                        isOn={(botId) => isOn(row, botId)}
+                        onToggle={(botId, on) => void setAgent(row, botId, on)}
+                      />
                     }
                   />
                 ) : hasAgentAccount && row.status === "connected" ? (
@@ -441,8 +461,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                       bots={data.bots}
                       appName={row.displayName}
                       disabled={busy}
-                      isOn={(botId) => access.allAgents || access.botIds.includes(botId)}
-                      onToggle={(botId, on) => void setAgent(botId, on)}
+                      isOn={(botId) => isOn(row, botId)}
+                      onToggle={(botId, on) => void setAgent(row, botId, on)}
                     />
                   </>
                 ) : null}
@@ -468,8 +488,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                     bots={data.bots}
                     appName={name}
                     disabled={busy}
-                    isOn={(botId) => access.allAgents || access.botIds.includes(botId)}
-                    onToggle={(botId, on) => void setAgent(botId, on)}
+                    isOn={(botId) => isOn(ordinaryAccount, botId)}
+                    onToggle={(botId, on) => void setAgent(ordinaryAccount, botId, on)}
                   />
                 </>
               ) : null}

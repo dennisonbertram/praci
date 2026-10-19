@@ -10,10 +10,11 @@ const meta = {
     agentName: "Mercury agent",
     agentHref: "/app/bot_ada",
     writesEnabled: false,
-    exclusive: false,
+    shared: false,
     disabled: false,
     onWrites: fn(),
-    onExclusive: fn(),
+    onShared: fn(),
+    usedBy: <p className="text-sm">Per-agent list</p>,
   },
   decorators: [
     (Story) => (
@@ -29,5 +30,5 @@ type Story = StoryObj<typeof meta>;
 
 export const ReadOnly: Story = {};
 export const ChangesAllowed: Story = { args: { writesEnabled: true } };
-export const OnlyThisAgent: Story = { args: { writesEnabled: true, exclusive: true } };
+export const Shared: Story = { args: { writesEnabled: true, shared: true } };
 export const Saving: Story = { args: { disabled: true } };

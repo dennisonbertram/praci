@@ -372,16 +372,6 @@ msgstr ""
 msgid "{name} agent"
 msgstr ""
 
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "{name} failed"
-msgstr "{name} başarısız oldu"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "{name} finished"
-msgstr "{name} çalışmasını tamamladı"
-
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} is not connected."
 msgstr ""
@@ -389,11 +379,6 @@ msgstr ""
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} isn't available on this server."
 msgstr ""
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "{name} stopped"
-msgstr "{name} durduruldu"
 
 #: src/pages/Finance.tsx
 msgid "{name}, paid with {paidWith}"
@@ -1433,11 +1418,6 @@ msgstr "bot"
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
-msgid "Bot"
-msgstr "Bot"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
 msgid "Bot"
 msgstr "Bot"
 
@@ -3775,11 +3755,6 @@ msgstr "Mesaj gönderilemedi"
 msgid "Failed to stop"
 msgstr "Durdurulamadı"
 
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Failed."
-msgstr "Başarısız oldu."
-
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Failure handling"
 msgstr "Hata yönetimi"
@@ -3884,11 +3859,6 @@ msgstr "tamamlandı"
 #: src/pages/ActivityList.tsx
 msgid "Finished"
 msgstr ""
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Finished."
-msgstr "Tamamlandı."
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "Finishing MCP connection…"
@@ -4925,11 +4895,6 @@ msgstr ""
 msgid "Message"
 msgstr "Mesaj"
 
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Message"
-msgstr "Mesaj"
-
 #: src/pages/Shell.tsx
 msgid "Message {activeName}"
 msgstr "{activeName} sohbetine yaz"
@@ -5763,10 +5728,6 @@ msgstr ""
 msgid "Only if the server does not use sign-in"
 msgstr ""
 
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Only this agent"
-msgstr ""
-
 #: src/components/data-room/Preview.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -5967,10 +5928,6 @@ msgstr "Orijinal mesaj kullanılamıyor"
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
-msgstr ""
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Other agents ask the {service} agent instead of using {service} themselves."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -7337,6 +7294,10 @@ msgstr "Kurulum yardımı"
 msgid "Shape"
 msgstr "Şekil"
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Share with all agents"
+msgstr ""
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "Ortak"
@@ -7755,11 +7716,6 @@ msgstr "Seslendirmeyi durdur"
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Stop teaching"
 msgstr "Öğretmeyi durdur"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Stopped."
-msgstr "Durduruldu."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Stored securely. Never shown here."
@@ -8607,6 +8563,7 @@ msgid "Use your own key"
 msgstr "Kendi anahtarınızı kullanın"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationAgentSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Used by"
@@ -8944,7 +8901,7 @@ msgstr "Kontrol sende"
 
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
-msgid "You'll sign in to {0} in a new window. Then you choose which bots can use it."
+msgid "You'll sign in to {0} in a new window."
 msgstr ""
 
 #: src/components/AiDataSharing.tsx

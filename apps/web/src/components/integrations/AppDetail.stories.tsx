@@ -69,16 +69,16 @@ export const AgentChangesEnabled: Story = {
   ),
 };
 
-export const AgentExclusive: Story = {
+export const AgentShared: Story = {
   render: () => (
     <Page
       data={demoIntegrations({
         connections: [demoConnection({ agentBotId: "bot_ada", writesEnabled: false })],
         access: {
           conn_1: {
-            allAgents: false,
-            botIds: ["bot_ada"],
-            effectiveAccess: { shared: "some", botIds: ["bot_ada"] },
+            allAgents: true,
+            botIds: [],
+            effectiveAccess: { shared: "all", botIds: ["bot_ada", "bot_bram"] },
           },
         },
       })}

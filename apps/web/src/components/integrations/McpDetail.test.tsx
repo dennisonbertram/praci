@@ -182,7 +182,7 @@ it("has no Create agent button on Carta or once an agent exists", async () => {
   expect(container.textContent).not.toContain("Create agent");
   await show(false, OTHER, withAgent);
   expect(container.textContent).not.toContain("Create agent");
-  expect(container.textContent).toContain("Only this agent");
+  expect(container.textContent).toContain("Share with all agents");
   expect(container.querySelector<HTMLAnchorElement>('a[href="/app/bot_ada"]')?.textContent).toBe(
     "Ada",
   );
@@ -202,17 +202,20 @@ it("asks before the agent's changes switch turns on, not off", async () => {
   expect(setWrites).toHaveBeenLastCalledWith({ id: "s1", enabled: false });
 });
 
-it("Only this agent saves at once and, while on, Used by lists only the agent", async () => {
+it("Share with all agents saves at once and reveals Used by only while on", async () => {
   setExclusive.mockResolvedValue({});
-  await show(false, OTHER, withAgent);
-  expect(container.textContent).toContain("Bram");
-  await act(async () => container.querySelector<HTMLElement>("#server-exclusive")?.click());
-  expect(setExclusive).toHaveBeenCalledWith({ serverId: "s1", exclusive: true });
   await show(false, OTHER, { ...withAgent, agentExclusive: true });
-  expect(container.textContent).not.toContain("Bram can use");
+  expect(container.textContent).not.toContain("Used by");
   expect(container.querySelectorAll('[role="switch"][aria-label$="can use Carta"]')).toHaveLength(
-    1,
+    0,
   );
+  await act(async () => container.querySelector<HTMLElement>("#server-shared")?.click());
+  expect(setExclusive).toHaveBeenCalledWith({ serverId: "s1", exclusive: false });
+  await show(false, OTHER, { ...withAgent, agentExclusive: false });
+  expect(container.textContent).toContain("Used by");
+  expect(
+    container.querySelectorAll('[role="switch"][aria-label$="can use Carta"]').length,
+  ).toBeGreaterThan(1);
 });
 
 it("uses the general Agent section for a linked Carta agent", async () => {
@@ -220,9 +223,9 @@ it("uses the general Agent section for a linked Carta agent", async () => {
   await show(false);
   expect(container.querySelector('section[aria-label="Agent"]')).not.toBeNull();
   expect(container.querySelectorAll("#server-writes")).toHaveLength(1);
-  expect(container.textContent).toContain("Only this agent");
+  expect(container.textContent).toContain("Share with all agents");
   expect(container.querySelector('a[href="/app/bot_ada"]')).not.toBeNull();
-  await act(async () => container.querySelector<HTMLElement>("#server-exclusive")?.click());
+  await act(async () => container.querySelector<HTMLElement>("#server-shared")?.click());
   expect(setExclusive).toHaveBeenCalledWith({ serverId: "s1", exclusive: false });
 });
 

@@ -372,16 +372,6 @@ msgstr "{name} accounts"
 msgid "{name} agent"
 msgstr "{name} agent"
 
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "{name} failed"
-msgstr "{name} failed"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "{name} finished"
-msgstr "{name} finished"
-
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} is not connected."
 msgstr "{name} is not connected."
@@ -389,11 +379,6 @@ msgstr "{name} is not connected."
 #: src/components/integrations/AppDetail.tsx
 msgid "{name} isn't available on this server."
 msgstr "{name} isn't available on this server."
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "{name} stopped"
-msgstr "{name} stopped"
 
 #: src/pages/Finance.tsx
 msgid "{name}, paid with {paidWith}"
@@ -1433,11 +1418,6 @@ msgstr "bot"
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
-msgid "Bot"
-msgstr "Bot"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
 msgid "Bot"
 msgstr "Bot"
 
@@ -3775,11 +3755,6 @@ msgstr "Failed to send message"
 msgid "Failed to stop"
 msgstr "Failed to stop"
 
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Failed."
-msgstr "Failed."
-
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Failure handling"
 msgstr "Failure handling"
@@ -3884,11 +3859,6 @@ msgstr "finished"
 #: src/pages/ActivityList.tsx
 msgid "Finished"
 msgstr "Finished"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Finished."
-msgstr "Finished."
 
 #: src/pages/McpOAuthCallback.tsx
 msgid "Finishing MCP connection…"
@@ -4925,11 +4895,6 @@ msgstr "Merchant"
 msgid "Message"
 msgstr "Message"
 
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Message"
-msgstr "Message"
-
 #: src/pages/Shell.tsx
 msgid "Message {activeName}"
 msgstr "Message {activeName}"
@@ -5763,10 +5728,6 @@ msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
 msgid "Only if the server does not use sign-in"
 msgstr "Only if the server does not use sign-in"
 
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Only this agent"
-msgstr "Only this agent"
-
 #: src/components/data-room/Preview.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -5968,10 +5929,6 @@ msgstr "Original message unavailable"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
 msgstr "Other"
-
-#: src/components/integrations/IntegrationAgentSection.tsx
-msgid "Other agents ask the {service} agent instead of using {service} themselves."
-msgstr "Other agents ask the {service} agent instead of using {service} themselves."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Other connection types"
@@ -7337,6 +7294,10 @@ msgstr "Setup help"
 msgid "Shape"
 msgstr "Shape"
 
+#: src/components/integrations/IntegrationAgentSection.tsx
+msgid "Share with all agents"
+msgstr "Share with all agents"
+
 #: src/pages/shell/bot-panel.tsx
 msgid "Shared"
 msgstr "Shared"
@@ -7755,11 +7716,6 @@ msgstr "Stop speaking"
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "Stop teaching"
 msgstr "Stop teaching"
-
-#. js-lingui-explicit-id
-#: src/lib/browser-notifications.ts
-msgid "Stopped."
-msgstr "Stopped."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Stored securely. Never shown here."
@@ -8607,6 +8563,7 @@ msgid "Use your own key"
 msgstr "Use your own key"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/IntegrationAgentSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Used by"
@@ -8944,8 +8901,8 @@ msgstr "You have control"
 
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
-msgid "You'll sign in to {0} in a new window. Then you choose which bots can use it."
-msgstr "You'll sign in to {0} in a new window. Then you choose which bots can use it."
+msgid "You'll sign in to {0} in a new window."
+msgstr "You'll sign in to {0} in a new window."
 
 #: src/components/AiDataSharing.tsx
 msgid "Your bots always answer through the AI service chosen in Models. A switch below also lets that service read your mail and documents, so Rakazo can sort your Inbox and read Data room files."
