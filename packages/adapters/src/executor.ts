@@ -120,7 +120,7 @@ import {
   stableJsonValue,
   toolEffectIdempotencyKey,
 } from "@rakazo/core/node/approval-effect-key";
-import type { McpServer, Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
+import type { McpServer, NotificationEvents, Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
   appendEventInTransaction,
   createSpaceForMember,
@@ -358,6 +358,7 @@ import {
   modelAcceptsImageInput,
   modelIdSupportsImages,
 } from "./model-vision.js";
+import { runNotifyUser } from "./notify-user.js";
 import { pageToolFromTool } from "./pages.js";
 import type { CodexLiveCatalog } from "./pi-codex-catalog.js";
 import { codexLiveListsModel } from "./pi-codex-catalog.js";
@@ -2769,6 +2770,8 @@ export interface ExecutorDeps {
   deploymentModelConfigured?: boolean;
   dataDir?: string;
   notifications?: NotificationProvider;
+  /** Tells the user's open clients about a new notification; absent means no live signal. */
+  notificationEvents?: NotificationEvents;
   jobs: JobPublisher;
   /** Publishes board-change signals and wakes ticket owners; absent disables both. */
   onTicketChange?: TicketChangeNotifier;
@@ -7121,6 +7124,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     note: "This progress update was cut off at 500 characters and the user only saw the truncated version above — it did NOT deliver your full content. message_user is for short interim beats only, never the final answer. Put your complete answer in your normal final reply instead of relying on this truncated update.",
                   }
                 : { ok: true },
+            );
+          }
+          if (name === "notify_user") {
+            return finish(
+              await runNotifyUser(deps.prisma, deps.notificationEvents, run, bot, args),
             );
           }
           if (name === "message_bot") {

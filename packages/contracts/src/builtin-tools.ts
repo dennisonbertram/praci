@@ -17,6 +17,7 @@ export const BUILTIN_TOOL_NAMES = [
   "request_takeover",
   "ask_user",
   "message_user",
+  "notify_user",
   "request_secret",
   "list_secrets",
   "secret_request",
