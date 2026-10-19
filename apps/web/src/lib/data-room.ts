@@ -6,22 +6,10 @@ export const DATA_ROOM_PATH = "/app/data-room";
 /** Fired on `window` after an upload finishes, so an open Data room page reloads. */
 export const DATA_ROOM_CHANGED = "rakazo:data-room-changed";
 
-const IMPORT_REFRESH_MS = 3_000;
-const IMPORT_REFRESH_FOR_MS = 120_000;
-let importRefresh: ReturnType<typeof setInterval> | undefined;
-
-/**
- * A folder import fills the Data room from background jobs, so the page reads folders and items
- * again every few seconds for a couple of minutes. A newer import restarts the countdown.
- */
-export function refreshDataRoomWhileImporting() {
-  clearInterval(importRefresh);
-  const stopAt = Date.now() + IMPORT_REFRESH_FOR_MS;
-  importRefresh = setInterval(() => {
-    window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
-    if (Date.now() >= stopAt) clearInterval(importRefresh);
-  }, IMPORT_REFRESH_MS);
-}
+/** Fired on `window` when an import has just been accepted, so its progress is read at once. */
+export const DATA_ROOM_IMPORT_STARTED = "rakazo:data-room-import-started";
+export const dataRoomImportStarted = () =>
+  window.dispatchEvent(new Event(DATA_ROOM_IMPORT_STARTED));
 
 export const dataRoomItemPath = (id: string) => `${DATA_ROOM_PATH}?item=${encodeURIComponent(id)}`;
 

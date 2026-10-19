@@ -38,6 +38,7 @@ import {
   DataRoomApiImportDriveOutputSchema,
   DataRoomApiImportEmailInputSchema,
   DataRoomApiImportEmailOutputSchema,
+  DataRoomApiImportSchema,
   DataRoomApiItemListInputSchema,
   DataRoomApiItemListOutputSchema,
   DataRoomApiItemSchema,
@@ -1269,6 +1270,8 @@ export const appContract = {
     importDrive: oc
       .input(DataRoomApiImportDriveInputSchema)
       .output(DataRoomApiImportDriveOutputSchema),
+    /** The caller's imports that are running, or finished in the last few minutes. */
+    imports: oc.output(z.array(DataRoomApiImportSchema)),
     boxList: oc.input(DataRoomApiBoxListInputSchema).output(DataRoomApiBoxListOutputSchema),
     importBox: oc.input(DataRoomApiImportBoxInputSchema).output(DataRoomApiImportBoxOutputSchema),
     search: oc.input(DataRoomApiSearchInputSchema).output(DataRoomApiSearchOutputSchema),

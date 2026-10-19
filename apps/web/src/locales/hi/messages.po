@@ -316,6 +316,10 @@ msgstr ""
 msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
 msgstr ""
 
+#: src/components/data-room/format.ts
+msgid "{files, plural, one {Importing # file} other {Importing # files}}"
+msgstr ""
+
 #: src/pages/shell/GroupIntro.tsx
 msgid "{first} answers by default. Type @ and a name to ask one bot, or ask everyone to hear from each of them."
 msgstr ""
@@ -3331,6 +3335,7 @@ msgstr "डिस्कनेक्ट हो रहा है…"
 
 #: src/components/ComputerUpdateProgress.tsx
 #: src/components/data-room/DropZone.tsx
+#: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/CapTable.tsx
@@ -4276,6 +4281,10 @@ msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Imported"
+msgstr ""
+
+#: src/components/data-room/ImportActivity.tsx
+msgid "Importing {done} of {total}"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx

@@ -16,6 +16,7 @@ import {
 } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderContents, folderNodes } from "../components/data-room/folders";
+import { ImportActivity } from "../components/data-room/ImportActivity";
 import { ImportSources } from "../components/data-room/ImportFromEmail";
 import {
   type DataRoomEntry,
@@ -38,6 +39,7 @@ import {
   showRenamedToast,
   uploadFilesToDataRoom,
 } from "../components/data-room/upload-toasts";
+import { useDataRoomImports } from "../components/data-room/use-data-room-imports";
 import {
   type Filters,
   type Sort,
@@ -157,6 +159,16 @@ export function DataRoomPage({
   const searching = query !== "";
   const sort = searching ? searchSort : listSort;
   const list = useDataRoomList({ query, filters, sort });
+  const importActivity = useDataRoomImports();
+  const openImported = useCallback(
+    (id: string) =>
+      setParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.set("item", id);
+        return next;
+      }),
+    [setParams],
+  );
 
   const [folders, setFolders] = useState<DataRoomApiFolder[]>([]);
   const reloadFolders = useCallback(() => {
@@ -540,6 +552,11 @@ export function DataRoomPage({
               data-testid="data-room-list"
               className="@container/list rk-scroll min-w-0 flex-1 overflow-y-auto"
             >
+              <ImportActivity
+                imports={importActivity.imports}
+                onOpenItem={openImported}
+                onDismiss={importActivity.dismiss}
+              />
               {searching && openFolderPath ? (
                 // A search inside a folder says so, with a way to look everywhere.
                 <div className="flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">

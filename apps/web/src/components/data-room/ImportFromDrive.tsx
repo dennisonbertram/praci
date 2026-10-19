@@ -13,12 +13,12 @@ import {
 import { ArrowLeft, Box, HardDrive } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { refreshDataRoomWhileImporting } from "../../lib/data-room";
+import { dataRoomImportStarted } from "../../lib/data-room";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { DriveRow } from "./DriveRow";
 import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
-import { failedText, importedText } from "./format";
+import { failedText, importedText, importingText } from "./format";
 
 const SEARCH_DEBOUNCE_MS = 300;
 /** The most files, and the most folders, the server takes in one import. */
@@ -125,12 +125,17 @@ function DrivePicker({
       const { imported, duplicates, failed, queued, folders } = box
         ? await rpc.dataRoom.importBox({ fileIds, boxFolderIds: folderIds, folderId })
         : await rpc.dataRoom.importDrive({ fileIds, driveFolderIds: folderIds, folderId });
-      onDone(
-        imported > 0 || (duplicates > 0 && failed === 0) ? importedText(imported, duplicates) : "",
-        imported > 0 || duplicates > 0 || (queued ?? 0) > 0 || (folders ?? 0) > 0,
-      );
       // The folders and files of a folder import are written by background jobs.
-      if ((queued ?? 0) > 0 || (folders ?? 0) > 0) refreshDataRoomWhileImporting();
+      const waiting = queued ?? 0;
+      onDone(
+        waiting > 0
+          ? importingText(waiting)
+          : imported > 0 || (duplicates > 0 && failed === 0)
+            ? importedText(imported, duplicates)
+            : "",
+        imported > 0 || duplicates > 0 || waiting > 0 || (folders ?? 0) > 0,
+      );
+      dataRoomImportStarted();
       if (failed === 0) onClose();
       else setError(failedText(failed));
     } catch (cause) {

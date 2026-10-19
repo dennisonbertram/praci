@@ -2,7 +2,7 @@ import type { ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
 import { dataRoomBoxFileJob } from "@rakazo/adapter-kit";
 import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, IsolationError } from "@rakazo/db";
+import { createDataRoomRepos, IsolationError, recordImportSkips } from "@rakazo/db";
 import {
   BoxFileError,
   type BoxFilesDeps,
@@ -12,6 +12,7 @@ import {
   listBoxFiles,
 } from "./box-files.js";
 import {
+  abandonFolderImport,
   actorFor,
   type DrivePlan,
   planFolders,
@@ -99,13 +100,22 @@ export interface BoxFileImportDeps {
  */
 export async function runBoxFileImport(
   deps: BoxFileImportDeps,
-  payload: Scope & { externalId: string; folderId: string | null },
+  payload: Scope & { externalId: string; folderId: string | null; importId?: string },
   signal: AbortSignal = new AbortController().signal,
 ): Promise<void> {
-  if (!(await stillAuthorized(deps, payload))) return;
+  const { importId } = payload;
+  /** A file that ends here never becomes an item, so the import counts it itself. */
+  const skip = (skips: { duplicates?: number; rejected?: number }) =>
+    importId ? recordImportSkips(deps.prisma, importId, skips) : undefined;
+  if (!(await stillAuthorized(deps, payload))) return void (await skip({ rejected: 1 }));
   const actor = actorFor(payload);
   const { fileItem, known } = createFileDataRoomItem(deps, createDataRoomRepos(deps.prisma));
-  if (await known(actor, boxExternalId(payload.externalId))) return;
+  const existing = await known(actor, boxExternalId(payload.externalId));
+  if (existing) {
+    // A retry of a job that already filed this item must not count it twice.
+    if (existing.importId !== importId) await skip({ duplicates: 1 });
+    return;
+  }
   const file = await downloadBoxFile(
     { prisma: deps.prisma, ...deps.box },
     { spaceId: actor.spaceId, userId: actor.userId, signal },
@@ -119,20 +129,24 @@ export async function runBoxFileImport(
       return null;
     throw error;
   });
-  if (!file) return;
+  if (!file) return void (await skip({ rejected: 1 }));
   const modified = new Date(file.modifiedTime);
   try {
-    await fileItem(actor, {
+    const { created } = await fileItem(actor, {
       source: "box",
       ...dataRoomFileFields(file, "file"),
       folderId: payload.folderId,
+      ...(importId ? { importId } : {}),
       externalId: boxExternalId(payload.externalId),
       sourceUrl: file.webViewLink,
       ...(Number.isNaN(modified.getTime()) ? {} : { sourceUpdatedAt: modified }),
     });
+    // Lost a race with another import of the same file.
+    if (!created) await skip({ duplicates: 1 });
   } catch (error) {
     // The Data room folder was deleted while the import was queued.
     if (!(error instanceof IsolationError)) throw error;
+    await skip({ rejected: 1 });
   }
 }
 
@@ -141,8 +155,8 @@ export async function runBoxImport(
   deps: { prisma: PrismaClient; jobs: JobPublisher },
   payload: Parameters<typeof runFolderImport>[1],
 ): Promise<void> {
-  if (!(await stillAuthorized(deps, payload))) return;
+  if (!(await stillAuthorized(deps, payload))) return abandonFolderImport(deps, payload);
   await runFolderImport(deps, payload, (actor, id, folderId) =>
-    dataRoomBoxFileJob(actor, payload.connectionId, id, folderId),
+    dataRoomBoxFileJob(actor, payload.connectionId, id, folderId, payload.importId),
   );
 }

@@ -8,7 +8,12 @@ import { dataRoomDriveFileJob } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
 import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, DataRoomConflictError, IsolationError } from "@rakazo/db";
+import {
+  createDataRoomRepos,
+  DataRoomConflictError,
+  IsolationError,
+  recordImportSkips,
+} from "@rakazo/db";
 import { createFileDataRoomItem, dataRoomFileFields, dataRoomSafeName } from "./data-room-files.js";
 import {
   DriveFileError,
@@ -250,13 +255,23 @@ export async function runDriveFileImport(
     connectionId: string;
     externalId: string;
     folderId: string | null;
+    importId?: string;
   },
   signal: AbortSignal = new AbortController().signal,
 ): Promise<void> {
-  if (!(await stillAuthorized(deps, payload))) return;
+  const { importId } = payload;
+  /** A file that ends here never becomes an item, so the import counts it itself. */
+  const skip = (skips: { duplicates?: number; rejected?: number }) =>
+    importId ? recordImportSkips(deps.prisma, importId, skips) : undefined;
+  if (!(await stillAuthorized(deps, payload))) return void (await skip({ rejected: 1 }));
   const actor = actorFor(payload);
   const { fileItem, known } = createFileDataRoomItem(deps, createDataRoomRepos(deps.prisma));
-  if (await known(actor, payload.externalId, payload.connectionId)) return;
+  const existing = await known(actor, payload.externalId, payload.connectionId);
+  if (existing) {
+    // A retry of a job that already filed this item must not count it twice.
+    if (existing.importId !== importId) await skip({ duplicates: 1 });
+    return;
+  }
   const operationId = `data-room.drive-folder:${payload.externalId}`;
   const file = await downloadDriveFile(
     { prisma: deps.prisma, connectors: deps.connectors, google: deps.google },
@@ -271,21 +286,25 @@ export async function runDriveFileImport(
       return null;
     throw error;
   });
-  if (!file) return;
+  if (!file) return void (await skip({ rejected: 1 }));
   const modified = new Date(file.modifiedTime);
   try {
-    await fileItem(actor, {
+    const { created } = await fileItem(actor, {
       source: "drive",
       ...dataRoomFileFields(file, "file"),
       folderId: payload.folderId,
+      ...(importId ? { importId } : {}),
       sourceConnectionId: payload.connectionId,
       externalId: payload.externalId,
       ...(file.webViewLink ? { sourceUrl: file.webViewLink } : {}),
       ...(Number.isNaN(modified.getTime()) ? {} : { sourceUpdatedAt: modified }),
     });
+    // Lost a race with another import of the same file.
+    if (!created) await skip({ duplicates: 1 });
   } catch (error) {
     // The Data room folder was deleted while the import was queued.
     if (!(error instanceof IsolationError)) throw error;
+    await skip({ rejected: 1 });
   }
 }
 
@@ -313,6 +332,16 @@ async function ensureFolder(
   }
 }
 
+/** Nothing will be filed (the user lost access, or the target folder is gone), so every file of the import counts as failed. */
+export async function abandonFolderImport(
+  deps: { prisma: PrismaClient },
+  payload: { importId?: string; files: unknown[] },
+): Promise<void> {
+  if (payload.importId) {
+    await recordImportSkips(deps.prisma, payload.importId, { rejected: payload.files.length });
+  }
+}
+
 /**
  * Writes a planned import: the Data room folders (a same-named folder is reused), then one file
  * job per file. Every step is repeatable, so a failure part-way is finished by the retry.
@@ -321,6 +350,7 @@ export async function runFolderImport(
   deps: { prisma: PrismaClient; jobs: JobPublisher },
   payload: Scope & {
     folderId: string | null;
+    importId?: string;
     folders: { name: string; parent: number | null }[];
     files: { id: string; folder: number | null }[];
   },
@@ -335,7 +365,7 @@ export async function runFolderImport(
     }
   } catch (error) {
     // The target folder is not the user's (any more).
-    if (error instanceof IsolationError) return;
+    if (error instanceof IsolationError) return abandonFolderImport(deps, payload);
     throw error;
   }
   for (const file of payload.files) {
@@ -354,8 +384,8 @@ export async function runDriveImport(
   deps: { prisma: PrismaClient; jobs: JobPublisher },
   payload: Parameters<typeof runFolderImport>[1],
 ): Promise<void> {
-  if (!(await stillAuthorized(deps, payload))) return;
+  if (!(await stillAuthorized(deps, payload))) return abandonFolderImport(deps, payload);
   await runFolderImport(deps, payload, (actor, id, folderId) =>
-    dataRoomDriveFileJob(actor, payload.connectionId, id, folderId),
+    dataRoomDriveFileJob(actor, payload.connectionId, id, folderId, payload.importId),
   );
 }

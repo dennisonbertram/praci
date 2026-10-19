@@ -155,6 +155,8 @@ export const DataRoomApiImportEmailOutputSchema = z.object({
   duplicates: z.number().int(),
   /** Files that could not be fetched or stored; the rest of the picks are still filed. */
   failed: z.number().int(),
+  /** The import to follow with `dataRoom.imports`. */
+  importId: z.string(),
 });
 
 /** The caller's Google Drive for the import picker: a text search, or the children of a folder. */
@@ -190,12 +192,32 @@ export const DataRoomApiImportDriveOutputSchema = z.object({
   duplicates: z.number().int(),
   /** Files that could not be imported, including files in picked folders that were skipped. */
   failed: z.number().int(),
+  /** The import to follow with `dataRoom.imports`. */
+  importId: z.string(),
+  /** Files the import set out to file, including the ones skipped. */
+  total: z.number().int(),
   /** Files of picked folders handed to the background import. */
   queued: z.number().int().optional(),
   /** Data room folders the picked Drive folders will become (created in the background). */
   folders: z.number().int().optional(),
 });
 
+/** An import that is running, or finished in the last few minutes. */
+export const DataRoomApiImportSchema = z.object({
+  id: z.string(),
+  /** "drive", "box" or "gmail". */
+  source: z.string(),
+  total: z.number().int(),
+  /** Ready, plus files that were already in the Data room. */
+  done: z.number().int(),
+  /** Failed, plus files that could not be imported. */
+  failed: z.number().int(),
+  inProgress: z.number().int(),
+  finished: z.boolean(),
+  /** The newest files it filed, up to three. */
+  latest: z.array(z.object({ id: z.string(), name: z.string() })),
+});
+export type DataRoomApiImport = z.infer<typeof DataRoomApiImportSchema>;
 /** The caller's Box for the import picker. Lists and files have the same shape as Drive's. */
 export const DataRoomApiBoxListInputSchema = DataRoomApiDriveListInputSchema;
 export const DataRoomApiBoxListOutputSchema = DataRoomApiDriveListOutputSchema;

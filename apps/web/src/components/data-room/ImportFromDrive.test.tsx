@@ -227,64 +227,48 @@ it("keeps picks across folders, counts a folder as one, and sends files and fold
     driveFolderIds: ["d1"],
     folderId: "room1",
   });
-  // Folder files arrive in the background, so the list refreshes without a message.
-  expect(onDone).toHaveBeenCalledWith("", true);
+  // Folder files arrive in the background: the notice says how many, and the list refreshes.
+  expect(onDone).toHaveBeenCalledWith("Importing 2 files", true);
 });
 
-it("keeps refreshing the Data room for two minutes after a folder import, and counts an empty folder as a change", async () => {
-  vi.useFakeTimers();
+it("says how many files are importing, tells the page an import started, and counts an empty folder as a change", async () => {
+  rpcMock.driveList.mockResolvedValue({ files: driveRoot });
+  const started = vi.fn();
+  window.addEventListener("rakazo:data-room-import-started", started);
   try {
-    rpcMock.driveList.mockResolvedValue({ files: driveRoot });
+    rpcMock.importDrive.mockResolvedValue({
+      imported: 0,
+      duplicates: 0,
+      failed: 0,
+      queued: 5,
+      folders: 2,
+      importId: "imp1",
+      total: 5,
+    });
+    await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
+    await click(button("Import from Google Drive"));
+    await click(box("Contracts"));
+    await click(button("Import 1"));
+    expect(onDone).toHaveBeenCalledWith("Importing 5 files", true);
+    expect(started).toHaveBeenCalledTimes(1);
+
+    // A folder with no files still creates a folder, and says nothing.
+    onDone.mockClear();
     rpcMock.importDrive.mockResolvedValue({
       imported: 0,
       duplicates: 0,
       failed: 0,
       queued: 0,
       folders: 1,
+      importId: "imp2",
+      total: 0,
     });
-    const changed = vi.fn();
-    window.addEventListener("rakazo:data-room-changed", changed);
-    await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
     await click(button("Import from Google Drive"));
     await click(box("Contracts"));
     await click(button("Import 1"));
-    // An empty Drive folder queues no files but still creates a folder.
     expect(onDone).toHaveBeenCalledWith("", true);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(3_000);
-    });
-    expect(changed).toHaveBeenCalledTimes(1);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(117_000);
-    });
-    expect(changed).toHaveBeenCalledTimes(40);
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(30_000);
-    });
-    expect(changed).toHaveBeenCalledTimes(40);
-    window.removeEventListener("rakazo:data-room-changed", changed);
   } finally {
-    vi.useRealTimers();
-  }
-});
-
-it("does not keep refreshing after a plain file import", async () => {
-  vi.useFakeTimers();
-  try {
-    rpcMock.driveList.mockResolvedValue({ files: driveRoot });
-    const changed = vi.fn();
-    window.addEventListener("rakazo:data-room-changed", changed);
-    await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-    await click(button("Import from Google Drive"));
-    await click(box("Plan.pdf"));
-    await click(button("Import 1"));
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(10_000);
-    });
-    expect(changed).not.toHaveBeenCalled();
-    window.removeEventListener("rakazo:data-room-changed", changed);
-  } finally {
-    vi.useRealTimers();
+    window.removeEventListener("rakazo:data-room-import-started", started);
   }
 });
 
