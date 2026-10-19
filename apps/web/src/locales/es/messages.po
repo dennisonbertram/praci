@@ -4883,6 +4883,10 @@ msgstr "Medio"
 msgid "Medium"
 msgstr "Medio"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Meeting notes and transcripts"
+msgstr ""
+
 #: src/pages/shell/GroupIntro.tsx
 msgid "Members"
 msgstr ""
@@ -5688,6 +5692,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Notes"
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Notetaker meetings, notes and tasks"
 msgstr ""
 
 #: src/pages/Finance.tsx
