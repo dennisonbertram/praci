@@ -9,7 +9,6 @@ import {
 import { DEVIN_MCP_ENDPOINT, DEVIN_READ_TOOLS, DEVIN_WRITE_TOOLS } from "./devin.js";
 import { FINANCE_READ_TOOLS } from "./finance.js";
 import { GRANOLA_BLOCKED_TOOLS, GRANOLA_MCP_ENDPOINT, GRANOLA_READ_TOOLS } from "./granola.js";
-import { WISPR_FLOW_MCP_ENDPOINT } from "./wispr-flow.js";
 import {
   INTEGRATION_PRESETS,
   integrationAgentSpawnKey,
@@ -19,6 +18,7 @@ import {
   isIntegrationAgentSpawnKey,
   isReadTool,
 } from "./integration-agent.js";
+import { WISPR_FLOW_MCP_ENDPOINT } from "./wispr-flow.js";
 
 const mercury = INTEGRATION_PRESETS.mercury;
 const brex = INTEGRATION_PRESETS.brex;
