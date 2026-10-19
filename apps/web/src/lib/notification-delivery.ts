@@ -16,17 +16,20 @@ type Deps = {
   requestPermission: () => Promise<NotificationPermission> | undefined;
   show: (title: string, options: NotificationOptions) => void;
   locks?: Pick<LockManager, "request">;
-  storage?: Pick<Storage, "getItem" | "setItem">;
+  storage?: Pick<Storage, "getItem" | "setItem" | "removeItem" | "key" | "length">;
   state: () => { visible: boolean; focused: boolean };
   now: () => number;
   delay: (ms: number) => Promise<unknown>;
+  /** Unique per call; lets a tab confirm its claim won. */
+  token?: () => string;
+  reportError?: (error: unknown) => void;
   /** Called after a toast is shown, so the caller can tell the server (skips phone push). */
   onShown?: (id: string) => void;
 };
 
 /** Background tabs wait this long so a focused tab claims the notification first. */
 export const AWAY_DELAY_MS = 1500;
-const STORAGE_KEY = "rakazo-delivered-notifications";
+const KEY_PREFIX = "rakazo-delivered:";
 const RETAIN_MS = 24 * 60 * 60 * 1000;
 
 const defaultDeps = (): Deps => ({
@@ -40,60 +43,93 @@ const defaultDeps = (): Deps => ({
   storage: typeof localStorage === "undefined" ? undefined : localStorage,
   state: () => ({ visible: document.visibilityState === "visible", focused: document.hasFocus() }),
   now: () => Date.now(),
+  token: () => crypto.randomUUID(),
+  reportError: (error) => console.error(error),
   delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 });
 
-function readRecord(deps: Deps): Record<string, number> {
-  try {
-    const parsed = JSON.parse(deps.storage?.getItem(STORAGE_KEY) ?? "{}");
-    const cutoff = deps.now() - RETAIN_MS;
-    return Object.fromEntries(
-      Object.entries(parsed as Record<string, number>).filter(([, at]) => at > cutoff),
-    );
-  } catch {
-    return {};
-  }
-}
+const recordAge = (value: string | null, now: number) =>
+  value ? now - Number.parseInt(value, 10) : Number.POSITIVE_INFINITY;
 
-function writeRecord(deps: Deps, record: Record<string, number>) {
+/** One key per id, so concurrent writes for different ids never overwrite each other. */
+function pruneExpired(deps: Deps) {
   try {
-    deps.storage?.setItem(STORAGE_KEY, JSON.stringify(record));
+    const storage = deps.storage;
+    if (!storage) return;
+    for (let i = storage.length - 1; i >= 0; i--) {
+      const key = storage.key(i);
+      if (key?.startsWith(KEY_PREFIX) && recordAge(storage.getItem(key), deps.now()) > RETAIN_MS) {
+        storage.removeItem(key);
+      }
+    }
   } catch {
-    // Storage unavailable: the lock still serialises tabs, but a late tab may repeat it.
+    // Pruning is best effort.
   }
 }
 
 /**
- * Every delivery runs in one per-id critical section that checks and records a shared
- * "delivered" entry first, so exactly one tab shows a notification, even a late one.
+ * Claims the id for this tab. Without locks the read-then-write is not atomic, so the claim
+ * carries a unique token and is read back; the tab whose token survives wins.
+ */
+function claim(deps: Deps, id: string): boolean {
+  const key = KEY_PREFIX + id;
+  try {
+    if (recordAge(deps.storage?.getItem(key) ?? null, deps.now()) <= RETAIN_MS) return false;
+    pruneExpired(deps);
+    const mine = `${deps.now()}:${deps.token?.() ?? "t"}`;
+    deps.storage?.setItem(key, mine);
+    return deps.storage ? deps.storage.getItem(key) === mine : true;
+  } catch {
+    return true; // Storage unavailable: deliver rather than lose the notification.
+  }
+}
+
+function release(deps: Deps, id: string) {
+  try {
+    deps.storage?.removeItem(KEY_PREFIX + id);
+  } catch {
+    // Best effort.
+  }
+}
+
+/**
+ * Every delivery runs in one per-id critical section that claims a shared "delivered" entry
+ * first, so exactly one tab shows a notification, even a late one.
  */
 export async function deliverNotification(
   n: AttentionNotification,
   deps: Deps = defaultDeps(),
 ): Promise<DeliveryResult> {
   try {
-    const present = shouldToast(deps.state());
-    if (!present) {
+    const away = !shouldToast(deps.state());
+    let permission: NotificationPermission | undefined;
+    if (away) {
       await deps.delay(AWAY_DELAY_MS);
-      if ((await deps.requestPermission()) !== "granted") return "skipped";
+      permission = await deps.requestPermission();
+      if (permission !== "granted") return "skipped";
     }
     const critical = async (): Promise<DeliveryResult> => {
-      const record = readRecord(deps);
-      if (record[n.id]) return "skipped";
-      writeRecord(deps, { ...record, [n.id]: deps.now() });
+      // Decide now, not before the wait: the tab may have gained or lost focus.
+      const present = shouldToast(deps.state());
+      if (!present) {
+        permission ??= await deps.requestPermission();
+        if (permission !== "granted") return "skipped";
+      }
+      if (!claim(deps, n.id)) return "skipped";
       try {
-        if (present) {
-          deps.toast(n);
-          deps.onShown?.(n.id);
-          return "toast";
-        }
-        deps.show(n.title, { body: n.body, tag: n.id });
-        return "os";
+        if (present) deps.toast(n);
+        else deps.show(n.title, { body: n.body, tag: n.id });
       } catch {
-        const { [n.id]: _undo, ...rest } = readRecord(deps);
-        writeRecord(deps, rest);
+        release(deps, n.id);
         return "failed";
       }
+      if (!present) return "os";
+      try {
+        deps.onShown?.(n.id);
+      } catch (error) {
+        deps.reportError?.(error); // Already displayed: keep the claim so no tab repeats it.
+      }
+      return "toast";
     };
     return deps.locks
       ? await deps.locks.request(`rakazo-notification-${n.id}`, critical)

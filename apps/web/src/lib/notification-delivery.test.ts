@@ -15,11 +15,17 @@ describe("shouldToast", () => {
 const n = { id: "n1", title: "Title", body: "Body" };
 
 /** Shared by all simulated tabs: one localStorage and one lock manager that queues per name. */
+let tokens = 0;
 function browser() {
   const data = new Map<string, string>();
   const storage = {
     getItem: (k: string) => data.get(k) ?? null,
     setItem: (k: string, v: string) => void data.set(k, v),
+    removeItem: (k: string) => void data.delete(k),
+    key: (i: number) => [...data.keys()][i] ?? null,
+    get length() {
+      return data.size;
+    },
   };
   const queues = new Map<string, Promise<unknown>>();
   const locks = {
@@ -42,10 +48,12 @@ function browser() {
     locks,
     state: () => ({ visible: focused, focused }),
     now: () => 1_000_000,
+    token: () => `tok${++tokens}`,
+    reportError: () => {},
     delay: async () => {},
     ...over,
   });
-  return { tab, toast, show, data };
+  return { tab, toast, show, data, storage };
 }
 
 describe("deliverNotification", () => {
@@ -116,5 +124,69 @@ describe("deliverNotification", () => {
     };
     expect(await deliverNotification(n, b.tab(false, { show: boom }))).toBe("failed");
     expect(await deliverNotification(n, b.tab(false))).toBe("os");
+  });
+
+  it("two ids delivered concurrently are both recorded; a third tab skips both", async () => {
+    const b = browser();
+    const other = { ...n, id: "n2" };
+    await Promise.all([
+      deliverNotification(n, b.tab(false)),
+      deliverNotification(other, b.tab(false)),
+    ]);
+    expect(b.show).toHaveBeenCalledTimes(2);
+    expect(await deliverNotification(n, b.tab(false))).toBe("skipped");
+    expect(await deliverNotification(other, b.tab(false))).toBe("skipped");
+  });
+
+  it("without locks, a tab whose claim was overwritten by another tab skips", async () => {
+    const b = browser();
+    const racing = {
+      ...b.storage,
+      getItem: b.storage.getItem,
+      // Another tab claims right after this tab's write, before this tab reads it back.
+      setItem: (k: string, v: string) => {
+        b.storage.setItem(k, v);
+        b.storage.setItem(k, "1000000:other-tab");
+      },
+    };
+    expect(await deliverNotification(n, b.tab(false, { locks: undefined, storage: racing }))).toBe(
+      "skipped",
+    );
+    expect(b.show).not.toHaveBeenCalled();
+    expect(await deliverNotification(n, b.tab(false, { locks: undefined }))).toBe("skipped");
+  });
+
+  it("without locks, two sequential tabs still deliver once", async () => {
+    const b = browser();
+    const results = await Promise.all([
+      deliverNotification(n, b.tab(false, { locks: undefined })),
+      deliverNotification(n, b.tab(false, { locks: undefined })),
+    ]);
+    expect(results.sort()).toEqual(["os", "skipped"]);
+  });
+
+  it("toasts when the tab gains focus during the away wait", async () => {
+    const b = browser();
+    let focused = false;
+    const tab = b.tab(false, {
+      state: () => ({ visible: focused, focused }),
+      delay: async () => {
+        focused = true;
+      },
+    });
+    expect(await deliverNotification(n, tab)).toBe("toast");
+    expect(b.show).not.toHaveBeenCalled();
+  });
+
+  it("keeps the record when onShown throws, so no other tab repeats it", async () => {
+    const b = browser();
+    const reportError = vi.fn();
+    const onShown = () => {
+      throw new Error("server");
+    };
+    expect(await deliverNotification(n, b.tab(true, { onShown, reportError }))).toBe("toast");
+    expect(reportError).toHaveBeenCalledTimes(1);
+    expect(await deliverNotification(n, b.tab(false))).toBe("skipped");
+    expect(b.show).not.toHaveBeenCalled();
   });
 });
