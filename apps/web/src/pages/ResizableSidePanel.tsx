@@ -1,14 +1,14 @@
 import { t } from "@lingui/core/macro";
 import type { CSSProperties, PointerEvent, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
+import { MIN_CHAT_WIDTH } from "../lib/shell-layout";
 
 const STORAGE_KEY = "rakazo:right-panel-width";
 const MIN_WIDTH = 320;
 const DEFAULT_WIDTH = 384;
 const ABSOLUTE_MAX = 1000;
-/** Desktop bots sidebar width (`md:w-[316px]` in Shell). */
+/** Desktop bots sidebar width (`lg:w-[316px]` in Shell). */
 const BOTS_SIDEBAR_WIDTH = 316;
-const MIN_CHAT_WIDTH = 320;
 
 function maximumWidth(reservedLeadingPx: number) {
   return Math.max(
@@ -78,7 +78,7 @@ export function ResizableSidePanel({
       data-testid="side-panel"
       data-panel={panel}
       style={{ "--panel-width": `${width}px` } as CSSProperties}
-      className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background md:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} ${open ? "w-full max-w-[384px] border-s border-sidebar-border md:w-(--panel-width) md:max-w-none" : "pointer-events-none w-0"}`}
+      className={`absolute inset-y-0 end-0 z-20 flex min-h-0 shrink-0 flex-col overflow-hidden bg-background xl:relative ${dragging ? "" : "transition-[width] duration-150 ease-out"} ${open ? "w-full max-w-[384px] border-s border-sidebar-border shadow-xl xl:w-(--panel-width) xl:max-w-none xl:shadow-none" : "pointer-events-none w-0"}`}
     >
       {open ? (
         <hr
@@ -88,7 +88,7 @@ export function ResizableSidePanel({
           aria-valuemin={MIN_WIDTH}
           aria-valuemax={maxWidth}
           aria-valuenow={Math.round(width)}
-          className="absolute inset-y-0 start-0 z-30 m-0 hidden h-full w-2 touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-border focus-visible:outline-none md:block"
+          className="absolute inset-y-0 start-0 z-30 m-0 hidden h-full w-2 touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-border focus-visible:outline-none xl:block"
           onPointerDown={(event) => {
             if (event.button !== 0) return;
             event.preventDefault();

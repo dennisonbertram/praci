@@ -1225,8 +1225,8 @@ export function ModelSettingsOverlay({
 
       <EmbeddingModelField />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden px-6 py-6 sm:px-8 md:flex-row">
-        <div className="flex min-h-0 shrink-0 flex-col md:w-[310px]">
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden px-6 py-6 sm:px-8 min-[1040px]:flex-row">
+        <div className="flex min-h-0 shrink-0 flex-col min-[1040px]:w-[310px]">
           <div className="mb-3 text-[13.5px] text-muted-foreground">
             <Trans>Providers</Trans>
           </div>
@@ -1240,7 +1240,7 @@ export function ModelSettingsOverlay({
             placeholder={t`Search providers`}
             className="h-10 rounded-xl px-3.5"
           />
-          <div className="rk-scroll mt-3 max-h-[240px] overflow-y-auto rounded-xl border border-border md:min-h-0 md:max-h-none md:flex-1">
+          <div className="rk-scroll mt-3 max-h-[240px] overflow-y-auto rounded-xl border border-border min-[1040px]:min-h-0 min-[1040px]:max-h-none min-[1040px]:flex-1">
             {filteredGroups.length ? (
               <>
                 {connectedGroups.length ? (
@@ -1266,7 +1266,11 @@ export function ModelSettingsOverlay({
           </div>
         </div>
 
-        <div ref={detailScrollRef} className="rk-scroll min-h-0 min-w-0 flex-1 overflow-y-auto">
+        <div
+          ref={detailScrollRef}
+          data-testid="model-detail"
+          className="rk-scroll min-h-0 min-w-0 flex-1 overflow-y-auto"
+        >
           {error ? (
             <p className="mb-4 text-sm text-destructive" role="alert">
               {error}

@@ -13,6 +13,8 @@ export {
   useAvatarReaction,
   Wordmark,
 } from "./bot-avatar.js";
+export { FireIcon, FireTruckIcon, PixelIcon } from "./components/pixel/pixel-icon.js";
+export { PIXEL_ICONS, type PixelSprite } from "./components/pixel/sprites.js";
 export * from "./components/ui/alert-dialog.js";
 export * from "./components/ui/badge.js";
 export * from "./components/ui/button.js";
@@ -27,6 +29,7 @@ export * from "./components/ui/input-group.js";
 export * from "./components/ui/kbd.js";
 export * from "./components/ui/label.js";
 export * from "./components/ui/native-select.js";
+export * from "./components/ui/notification-toaster.js";
 export * from "./components/ui/popover.js";
 export * from "./components/ui/scroll-area.js";
 export * from "./components/ui/select.js";

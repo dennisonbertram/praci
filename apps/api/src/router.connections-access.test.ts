@@ -19,6 +19,8 @@ function matches(row: Row, where: Row): boolean {
   return Object.entries(where).every(([key, want]) => {
     if (want && typeof want === "object" && "in" in want)
       return (want as { in: unknown[] }).in.includes(row[key]);
+    if (want && typeof want === "object" && "not" in want)
+      return row[key] !== (want as { not: unknown }).not;
     return row[key] === want;
   });
 }
@@ -69,6 +71,12 @@ function harness(connections: Row[], bots: Row[], access: Row[] = []) {
     },
     $executeRaw: vi.fn(async () => 0),
     bot: {
+      findMany: vi.fn(async ({ where }: { where: Row }) => {
+        const { archivedAt: _archived, ...scope } = where;
+        return bots
+          .filter((r) => matches(r, scope) && (r.archivedAt ?? null) === null)
+          .map((r) => ({ id: r.id, spawnKey: r.spawnKey ?? null, archivedAt: null }));
+      }),
       count: vi.fn(
         async ({ where }: { where: Row }) => bots.filter((r) => matches(r, where)).length,
       ),
@@ -165,6 +173,50 @@ describe("connections.access and setAccess", () => {
       allAgents: true,
       botIds: [],
     });
+  });
+
+  it("reports the bots that can really use a connection, within the caller's own bots", async () => {
+    const h = harness(
+      [
+        conn("a", "connected"),
+        conn("b", "connected", { allAgents: false, provider: "github" }),
+        conn("p", "pending", { provider: "notion" }),
+        conn("own", "connected", {
+          connectorId: "google",
+          provider: "gmail",
+          allAgents: false,
+          agentBotId: "agent",
+        }),
+        conn("sibling", "connected", { connectorId: "google", provider: "gmail" }),
+        conn("cl", "connected", { provider: "linear", allAgents: false, agentBotId: "agent" }),
+        conn("cs", "connected", { provider: "linear" }),
+      ],
+      [
+        bot("b1"),
+        bot("b2", "u1", { archivedAt: new Date() }),
+        bot("theirs", "u2"),
+        bot("agent", "u1", { spawnKey: integrationAgentSpawnKey("cl") }),
+      ],
+      [{ connectionId: "cl", botId: "agent", userId: "u1", spaceId: "s1" }],
+    );
+    const all = (await h.call("connections/effectiveAccess", undefined)).json;
+    const effective = async (connectionId: string) => all[connectionId];
+    // Shared row: every active bot of this user, not archived or another user's; not the linked agent.
+    expect(await effective("a")).toEqual({ shared: "all", botIds: ["b1"] });
+    // Restricted with no grants, and a pending row, have no users.
+    expect(await effective("b")).toEqual({ shared: "none", botIds: [] });
+    expect(await effective("p")).toEqual({ shared: "none", botIds: [] });
+    // A linked Google account does not deny its shared sibling; an integration agent has no mail.
+    expect(await effective("own")).toEqual({ shared: "none", botIds: [] });
+    expect(await effective("sibling")).toEqual({ shared: "all", botIds: ["b1"] });
+    // Composio keeps the app-wide rule: the exclusive linked account hides its shared sibling.
+    expect(await effective("cl")).toEqual({ shared: "some", botIds: ["agent"] });
+    expect(await effective("cs")).toEqual({ shared: "none", botIds: [] });
+    // Another user sees none of these connections or bots.
+    expect((await h.call("connections/effectiveAccess", undefined, stranger)).json).toEqual({});
+    expect(
+      (await h.call("connections/access", { connectionId: "a" }, stranger)).status,
+    ).toBeGreaterThanOrEqual(400);
   });
 
   it("round-trips a restricted list", async () => {

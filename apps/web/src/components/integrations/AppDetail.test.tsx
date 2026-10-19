@@ -215,7 +215,13 @@ it("turns changes off immediately and saves exclusivity for the account", async 
     APP_PAGE,
     data({
       connections: [appConnection({ agentBotId: "bot_app", writesEnabled: true })],
-      access: { conn_app: { allAgents: false, botIds: ["bot_app"] } },
+      access: {
+        conn_app: {
+          allAgents: false,
+          botIds: ["bot_app"],
+          effectiveAccess: { shared: "some", botIds: ["bot_app"] },
+        },
+      },
     }),
   );
   expect(switches()[1]?.getAttribute("aria-checked")).toBe("true");

@@ -319,6 +319,15 @@ export class PipedreamConnector implements ManagedConnectorProvider {
     } else if (context.connectedAppAgentConnectionId) {
       yield { type: "error", message: "Connected app route is unavailable" };
       return;
+    } else if (
+      (context.connectedConnections ?? []).filter(
+        (candidate) => candidate.connectorId === "pipedream" && candidate.externalId === app,
+      ).length > 1
+    ) {
+      // Without an account id Pipedream picks one itself, which could be an account this run was
+      // not granted. Several accounts of the app means the call must name one.
+      yield { type: "error", message: "Connected app route is unavailable" };
+      return;
     }
     let token: string | undefined;
     try {

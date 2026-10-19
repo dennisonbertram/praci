@@ -1,0 +1,189 @@
+import { describe, expect, it } from "vitest";
+import {
+  botMayUseConnection,
+  type ConnectionAccessRow,
+  deniedConnectionIds,
+  effectiveAccessByConnection,
+} from "./connection-access.js";
+
+const row = (
+  id: string,
+  status: string,
+  allAgents: boolean,
+  extra: Partial<ConnectionAccessRow> = {},
+): ConnectionAccessRow => ({
+  id,
+  connectorId: "composio",
+  provider: "gmail",
+  status,
+  allAgents,
+  agentBotId: null,
+  botAccess: [],
+  ...extra,
+});
+const grant = (...botIds: string[]) => botIds.map((botId) => ({ botId }));
+
+describe("botMayUseConnection", () => {
+  it("lets every agent use a connection open to all agents", () => {
+    expect(botMayUseConnection({ allAgents: true, botAccess: [] })).toBe(true);
+  });
+  it("limits a restricted connection to bots with an access row", () => {
+    expect(botMayUseConnection({ allAgents: false, botAccess: [] })).toBe(false);
+    expect(botMayUseConnection({ allAgents: false, botAccess: grant("bot-1") })).toBe(true);
+  });
+});
+
+describe("deniedConnectionIds", () => {
+  it("denies every account of a restricted ordinary app, including a pending sibling", () => {
+    const denied = deniedConnectionIds([row("a", "connected", false), row("b", "pending", true)]);
+    expect([...denied].sort()).toEqual(["a", "b"]);
+  });
+
+  it("ignores pending and errored rows when deciding denial", () => {
+    expect(
+      deniedConnectionIds([row("a", "connected", true), row("b", "pending", false)]).size,
+    ).toBe(0);
+    expect(deniedConnectionIds([row("a", "connected", true), row("b", "error", false)]).size).toBe(
+      0,
+    );
+  });
+
+  it("allows every account once the bot is granted", () => {
+    const rows = [
+      row("a", "connected", false, { botAccess: grant("bot-1") }),
+      row("b", "error", false, { botAccess: grant("bot-1") }),
+    ];
+    expect(deniedConnectionIds(rows).size).toBe(0);
+  });
+
+  it("ignores revoked rows and leaves other apps alone", () => {
+    const other = { ...row("c", "connected", true), provider: "slack" };
+    expect(
+      deniedConnectionIds([row("a", "connected", true), row("r", "revoked", false), other]).size,
+    ).toBe(0);
+    expect([...deniedConnectionIds([row("a", "connected", false), other])]).toEqual(["a"]);
+  });
+
+  it("denies an agent-linked Google account on its own, not its siblings", () => {
+    const google = { connectorId: "google", provider: "gmail" };
+    const denied = deniedConnectionIds([
+      row("a", "connected", false, { ...google, agentBotId: "agent-a" }),
+      row("b", "connected", true, google),
+      row("c", "connected", false, { ...google, agentBotId: "agent-c", botAccess: grant("bot-1") }),
+    ]);
+    expect([...denied]).toEqual(["a"]);
+  });
+
+  it("keeps the app-wide rule for Composio and Pipedream, linked or not", () => {
+    for (const connectorId of ["composio", "pipedream"]) {
+      const denied = deniedConnectionIds([
+        row("a", "connected", false, { connectorId, agentBotId: "agent-a" }),
+        row("b", "connected", true, { connectorId }),
+      ]);
+      expect([...denied].sort()).toEqual(["a", "b"]);
+    }
+  });
+
+  it("keeps ordinary rows unchanged: shared rows are never denied", () => {
+    expect(
+      deniedConnectionIds([row("a", "connected", true), row("b", "connected", true)]).size,
+    ).toBe(0);
+  });
+});
+
+describe("effectiveAccessByConnection", () => {
+  const bots = [
+    { id: "chief", spawnKey: null, archivedAt: null },
+    { id: "other", spawnKey: null, archivedAt: null },
+    { id: "gone", spawnKey: null, archivedAt: new Date() },
+    { id: "agent-a", spawnKey: "integration-agent:a", archivedAt: null },
+    { id: "agent-b", spawnKey: "integration-agent:b", archivedAt: null },
+  ];
+
+  it("shared with all lists every active bot except other connections' integration agents", () => {
+    const result = effectiveAccessByConnection(
+      [row("a", "connected", true, { agentBotId: "agent-a" }), row("x", "connected", true)],
+      bots,
+    );
+    expect(result.a).toEqual({ shared: "all", botIds: ["chief", "other", "agent-a"] });
+    expect(result.x).toEqual({ shared: "all", botIds: ["chief", "other"] });
+  });
+
+  it("lists granted bots only, and none for a private connection with no grants", () => {
+    const result = effectiveAccessByConnection(
+      [
+        row("s", "connected", false, { botAccess: grant("chief", "gone") }),
+        { ...row("p", "connected", false), provider: "slack" },
+      ],
+      bots,
+    );
+    expect(result.s).toEqual({ shared: "some", botIds: ["chief"] });
+    expect(result.p).toEqual({ shared: "none", botIds: [] });
+  });
+
+  it("does not let an exclusive linked Google account hide its shared sibling", () => {
+    const google = { connectorId: "google", provider: "gmail" };
+    const result = effectiveAccessByConnection(
+      [
+        row("a", "connected", false, {
+          ...google,
+          agentBotId: "agent-a",
+          botAccess: grant("agent-a"),
+        }),
+        row("b", "connected", true, google),
+      ],
+      [...bots, { id: "agent-g", spawnKey: "integration-agent:a", archivedAt: null }],
+    );
+    expect(result.a?.botIds).toEqual([]);
+    expect(result.b?.botIds).toEqual(["chief", "other"]);
+  });
+
+  it("hides a shared Composio sibling while an exclusive linked account exists", () => {
+    const result = effectiveAccessByConnection(
+      [
+        row("a", "connected", false, { agentBotId: "agent-a", botAccess: grant("agent-a") }),
+        row("b", "connected", true),
+      ],
+      bots,
+    );
+    expect(result.a).toEqual({ shared: "some", botIds: ["agent-a"] });
+    expect(result.b).toEqual({ shared: "none", botIds: [] });
+  });
+
+  it("gives each of two private accounts of one app its own linked agent", () => {
+    const result = effectiveAccessByConnection(
+      [
+        row("a", "connected", false, { agentBotId: "agent-a", botAccess: grant("agent-a") }),
+        row("b", "connected", false, { agentBotId: "agent-b", botAccess: grant("agent-b") }),
+      ],
+      bots,
+    );
+    expect(result.a).toEqual({ shared: "some", botIds: ["agent-a"] });
+    expect(result.b).toEqual({ shared: "some", botIds: ["agent-b"] });
+  });
+
+  it("lists only agents whose identity can reach the connector", () => {
+    const special = [
+      "finance-agent:u1",
+      "inbox-agent:u1",
+      "legal-agent:u1",
+      "carta-agent:u1",
+      "voice-agent:u1",
+    ].map((spawnKey, i) => ({ id: `s${i}`, spawnKey, archivedAt: null }));
+    const all = [...bots, ...special];
+    const slack = effectiveAccessByConnection([row("x", "connected", true)], all).x;
+    expect(slack?.botIds).toEqual(["chief", "other"]);
+    const gmail = effectiveAccessByConnection(
+      [row("g", "connected", true, { connectorId: "google", provider: "gmail" })],
+      all,
+    ).g;
+    expect(gmail?.botIds).toEqual(["chief", "other", "s0", "s1", "s2", "s3"]);
+  });
+
+  it("gives a pending connection no users", () => {
+    expect(effectiveAccessByConnection([row("p", "pending", true)], bots).p).toEqual({
+      shared: "none",
+      botIds: [],
+    });
+  });
+});

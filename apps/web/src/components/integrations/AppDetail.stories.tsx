@@ -74,7 +74,13 @@ export const AgentExclusive: Story = {
     <Page
       data={demoIntegrations({
         connections: [demoConnection({ agentBotId: "bot_ada", writesEnabled: false })],
-        access: { conn_1: { allAgents: false, botIds: ["bot_ada"] } },
+        access: {
+          conn_1: {
+            allAgents: false,
+            botIds: ["bot_ada"],
+            effectiveAccess: { shared: "some", botIds: ["bot_ada"] },
+          },
+        },
       })}
     />
   ),

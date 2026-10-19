@@ -669,6 +669,37 @@ describe("PipedreamConnector", () => {
     expect(accountIds).toContain("apn-gmail");
   });
 
+  it("refuses a call with no account id when the user has several accounts of the app", async () => {
+    const calls: Array<{ app: string | null; name: string; args: unknown }> = [];
+    const connector = new PipedreamConnector(FAKE_CONFIG, {
+      ...TEST_NETWORK,
+      fetch: pipedreamMcpFetch({ gmail: ["send_email"] }, calls),
+    });
+    const two = {
+      ...context,
+      connectedConnections: ["a", "b"].map((id) => ({
+        id: `connection-${id}`,
+        connectorId: "pipedream",
+        externalId: "gmail",
+        displayName: id,
+        providerRef: `apn-${id}`,
+      })),
+    };
+    const events = [];
+    for await (const event of connector.execute(
+      {
+        tool: "send_email",
+        args: {},
+        executionId: "x",
+        route: { connectorId: "pipedream", resourceId: "gmail", toolName: "send_email" },
+      },
+      two,
+    ))
+      events.push(event);
+    expect(events).toEqual([expect.objectContaining({ type: "error" })]);
+    expect(calls).toEqual([]);
+  });
+
   it("leaves a direct app route to the normal execute path", async () => {
     const connector = new PipedreamConnector(FAKE_CONFIG, TEST_NETWORK);
 

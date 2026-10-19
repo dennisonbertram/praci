@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 189 of 189
-- Web and shared components: 547
+- Web and shared component files with stories: 192 of 192
+- Web and shared components: 552
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -33,6 +33,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Kbd, KbdGroup | [packages/ui-web/src/components/ui/kbd.tsx](../../packages/ui-web/src/components/ui/kbd.tsx) | [kbd.stories.tsx](../../packages/ui-web/src/components/ui/kbd.stories.tsx) | shared |
 | Label | [packages/ui-web/src/components/ui/label.tsx](../../packages/ui-web/src/components/ui/label.tsx) | [label.stories.tsx](../../packages/ui-web/src/components/ui/label.stories.tsx) | shared |
 | NativeSelect, NativeSelectOption, NativeSelectOptGroup | [packages/ui-web/src/components/ui/native-select.tsx](../../packages/ui-web/src/components/ui/native-select.tsx) | [native-select.stories.tsx](../../packages/ui-web/src/components/ui/native-select.stories.tsx) | shared |
+| ToastList, NotificationToaster | [packages/ui-web/src/components/ui/notification-toaster.tsx](../../packages/ui-web/src/components/ui/notification-toaster.tsx) | [notification-toaster.stories.tsx](../../packages/ui-web/src/components/ui/notification-toaster.stories.tsx) | shared |
 | Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle, PopoverDescription | [packages/ui-web/src/components/ui/popover.tsx](../../packages/ui-web/src/components/ui/popover.tsx) | [popover.stories.tsx](../../packages/ui-web/src/components/ui/popover.stories.tsx) | shared |
 | ScrollArea, ScrollBar | [packages/ui-web/src/components/ui/scroll-area.tsx](../../packages/ui-web/src/components/ui/scroll-area.tsx) | [scroll-area.stories.tsx](../../packages/ui-web/src/components/ui/scroll-area.stories.tsx) | shared |
 | SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem, SelectSeparator, SelectScrollUpButton, SelectScrollDownButton | [packages/ui-web/src/components/ui/select.tsx](../../packages/ui-web/src/components/ui/select.tsx) | [select.stories.tsx](../../packages/ui-web/src/components/ui/select.stories.tsx) | shared |
@@ -51,6 +52,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | WorkingRing, BotAvatar, ShapeAvatar, RobotAvatar, OrganicAvatar, GrokShapePreview, Wordmark | [packages/ui-web/src/bot-avatar.tsx](../../packages/ui-web/src/bot-avatar.tsx) | [bot-avatar.stories.tsx](../../packages/ui-web/src/bot-avatar.stories.tsx) | shared |
+| PixelIcon, FireTruckIcon, FireIcon | [packages/ui-web/src/components/pixel/pixel-icon.tsx](../../packages/ui-web/src/components/pixel/pixel-icon.tsx) | [pixel-icon.stories.tsx](../../packages/ui-web/src/components/pixel/pixel-icon.stories.tsx) | shared |
 | GroupAvatar | [packages/ui-web/src/group-avatar.tsx](../../packages/ui-web/src/group-avatar.tsx) | [group-avatar.stories.tsx](../../packages/ui-web/src/group-avatar.stories.tsx) | shared |
 | ModelThinkingOptions | [packages/ui-web/src/model-thinking-options.tsx](../../packages/ui-web/src/model-thinking-options.tsx) | [model-thinking-options.stories.tsx](../../packages/ui-web/src/model-thinking-options.stories.tsx) | shared |
 
@@ -63,6 +65,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | AgentPanelIntro | [apps/web/src/components/AgentPanelIntro.tsx](../../apps/web/src/components/AgentPanelIntro.tsx) | [AgentPanelIntro.stories.tsx](../../apps/web/src/components/AgentPanelIntro.stories.tsx) | web |
 | ConsentCard, InboxConsentPrompt, AiDataSharingSection | [apps/web/src/components/AiDataSharing.tsx](../../apps/web/src/components/AiDataSharing.tsx) | [AiDataSharing.stories.tsx](../../apps/web/src/components/AiDataSharing.stories.tsx) | web |
 | ApprovalRulesSettings | [apps/web/src/components/ApprovalRulesSettings.tsx](../../apps/web/src/components/ApprovalRulesSettings.tsx) | [ApprovalRulesSettings.stories.tsx](../../apps/web/src/components/ApprovalRulesSettings.stories.tsx) | web |
+| AppToaster | [apps/web/src/components/AppToaster.tsx](../../apps/web/src/components/AppToaster.tsx) | [AppToaster.stories.tsx](../../apps/web/src/components/AppToaster.stories.tsx) | web |
 | ArtifactFileCard, FilePreview, DownloadError | [apps/web/src/components/ArtifactFileCard.tsx](../../apps/web/src/components/ArtifactFileCard.tsx) | [ArtifactFileCard.stories.tsx](../../apps/web/src/components/ArtifactFileCard.stories.tsx) | web |
 | AskBotButton | [apps/web/src/components/AskBotButton.tsx](../../apps/web/src/components/AskBotButton.tsx) | [AskBotButton.stories.tsx](../../apps/web/src/components/AskBotButton.stories.tsx) | web |
 | AskCard | [apps/web/src/components/AskCard.tsx](../../apps/web/src/components/AskCard.tsx) | [AskCard.stories.tsx](../../apps/web/src/components/AskCard.stories.tsx) | web |
@@ -152,7 +155,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | StatementImport | [apps/web/src/components/finance/StatementImport.tsx](../../apps/web/src/components/finance/StatementImport.tsx) | [StatementImport.stories.tsx](../../apps/web/src/components/finance/StatementImport.stories.tsx) | web |
 | StatementReminderBanner | [apps/web/src/components/finance/StatementReminderBanner.tsx](../../apps/web/src/components/finance/StatementReminderBanner.tsx) | [StatementReminderBanner.stories.tsx](../../apps/web/src/components/finance/StatementReminderBanner.stories.tsx) | web |
 | CheckLine, Row, StatementGroup | [apps/web/src/components/finance/StatementReviewCard.tsx](../../apps/web/src/components/finance/StatementReviewCard.tsx) | [StatementReviewCard.stories.tsx](../../apps/web/src/components/finance/StatementReviewCard.stories.tsx) | web |
-| SpaceName, AskAgentButton, WithEndings, HereLink, DetailHead, CompanyAndEye, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Th, Chevron, TransactionRow, VendorGroupRows, TransactionTable, TransactionsSection, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
+| SpaceName, AskAgentButton, WithEndings, HereLink, DetailHead, CompanyAndEye, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Chevron, TransactionRow, VendorGroupRows, TransactionTable, TransactionsSection, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
 | WalletDialog | [apps/web/src/components/finance/WalletDialog.tsx](../../apps/web/src/components/finance/WalletDialog.tsx) | [WalletDialog.stories.tsx](../../apps/web/src/components/finance/WalletDialog.stories.tsx) | web |
 
 ## Web components/inbox
@@ -207,7 +210,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | --- | --- | --- | --- |
 | GeneralSettingsPanels, UsageSettingsPanel, ComputerSettingsPanel, UpdatesSettingsPanel, ChangePasswordSection, SettingsPasswordInput, AppearancePicker, UiLocalePicker | [apps/web/src/pages/AccountSettingsOverlay.tsx](../../apps/web/src/pages/AccountSettingsOverlay.tsx) | [AccountSettingsOverlay.stories.tsx](../../apps/web/src/pages/AccountSettingsOverlay.stories.tsx) | web |
 | ActivityList, ActivitySection, ActivityError, ActivityFilters, FilterChip, ActivityRow | [apps/web/src/pages/ActivityList.tsx](../../apps/web/src/pages/ActivityList.tsx) | [ActivityList.stories.tsx](../../apps/web/src/pages/ActivityList.stories.tsx) | web |
-| ArtifactsPage, BrowsingPane, LoadMoreButton, EmptyArtifacts, IndexPane, FilterChip, BotFilterChip, ViewModeButton, ArtifactCard, ArtifactRow, ArtifactMimeIcon, PreviewPane, ArtifactPreview, ImagePreview | [apps/web/src/pages/Artifacts.tsx](../../apps/web/src/pages/Artifacts.tsx) | [Artifacts.stories.tsx](../../apps/web/src/pages/Artifacts.stories.tsx) | web |
+| ArtifactsPage, BrowsingPane, ArtifactTable, LoadMoreButton, EmptyArtifacts, IndexPane, FilterChip, BotFilterChip, ArtifactCard, ArtifactRow, ArtifactMimeIcon, PreviewPane, ArtifactPreview, ImagePreview | [apps/web/src/pages/Artifacts.tsx](../../apps/web/src/pages/Artifacts.tsx) | [Artifacts.stories.tsx](../../apps/web/src/pages/Artifacts.stories.tsx) | web |
 | AuthPage, PasswordResetPage, AuthFrame, PasswordField | [apps/web/src/pages/Auth.tsx](../../apps/web/src/pages/Auth.tsx) | [Auth.stories.tsx](../../apps/web/src/pages/Auth.stories.tsx) | web |
 | BillingSettingsPanel | [apps/web/src/pages/BillingSettingsPanel.tsx](../../apps/web/src/pages/BillingSettingsPanel.tsx) | [BillingSettingsPanel.stories.tsx](../../apps/web/src/pages/BillingSettingsPanel.stories.tsx) | web |
 | BoardPage, TicketDialog | [apps/web/src/pages/Board.tsx](../../apps/web/src/pages/Board.tsx) | [Board.stories.tsx](../../apps/web/src/pages/Board.stories.tsx) | web |
