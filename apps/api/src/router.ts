@@ -422,6 +422,7 @@ import {
   seedBlankBotGreeting,
   startOnboarding,
 } from "./onboarding.js";
+import { rememberedMessageIds, rememberThreadMessage } from "./remember-message.js";
 import { listRoutineRuns } from "./routine-runs.js";
 import { listSpaceRuns } from "./runs.js";
 import { addScreenProxyCapability } from "./screen-proxy.js";
@@ -2627,6 +2628,15 @@ export function createRouter(deps: RouterDeps) {
           });
         }
         return { ok: true as const };
+      }),
+      remember: authed.threads.remember.handler(async ({ context, input }) => {
+        const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        await rememberThreadMessage(deps, context.actor, target, input.messageId);
+        return { ok: true as const };
+      }),
+      remembered: authed.threads.remembered.handler(async ({ context, input }) => {
+        const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        return { messageIds: await rememberedMessageIds(deps, context.actor, target) };
       }),
       stop: authed.threads.stop.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);

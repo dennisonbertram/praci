@@ -2717,6 +2717,10 @@ msgstr "Could not refresh from Carta"
 msgid "Could not refresh: {0}"
 msgstr "Could not refresh: {0}"
 
+#: src/pages/Shell.tsx
+msgid "Could not remember"
+msgstr "Could not remember"
+
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Could not remove"
@@ -6583,6 +6587,14 @@ msgstr "Release interrupted computer?"
 #: src/components/data-room/FilterBar.tsx
 msgid "Relevance"
 msgstr "Relevance"
+
+#: src/pages/Shell.tsx
+msgid "Remember"
+msgstr "Remember"
+
+#: src/pages/Shell.tsx
+msgid "Remembered"
+msgstr "Remembered"
 
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx

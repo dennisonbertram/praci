@@ -96,6 +96,8 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  BookmarkCheck,
+  BookmarkPlus,
   Box,
   ChartColumn,
   ChevronDown,
@@ -328,6 +330,7 @@ import {
   transcriptUserJustSent,
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
+import { type RememberControls, useRememberedMessages } from "../lib/use-remembered-messages";
 import { useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import type { WorkingActivity } from "../lib/working-activity";
@@ -2433,6 +2436,10 @@ export function ShellPage() {
     },
     [t],
   );
+  const remember = useRememberedMessages(
+    { botId: inGroup ? undefined : active?.id, groupId },
+    useCallback((error: unknown) => setSendError(errorText(error, t`Could not remember`)), [t]),
+  );
   const onAttachmentPick = useCallback(
     (files: FileList | null, targetThreadKey?: string) => {
       const threadKey = targetThreadKey ?? activeGroupId.current ?? activeBotId.current;
@@ -3415,6 +3422,7 @@ export function ShellPage() {
                   setReplyQuote(quote);
                 }}
                 onReact={reactToMessage}
+                remember={remember}
                 onJumpToMessage={jumpToReplyMessage}
                 onOpenPeerMessages={(peer) => {
                   setPeerConversation(peer);
@@ -6040,6 +6048,7 @@ export const Transcript = memo(function Transcript({
   onReply,
   onQuote,
   onReact,
+  remember,
   onJumpToMessage,
   onOpenPeerMessages,
   memberName,
@@ -6082,6 +6091,7 @@ export const Transcript = memo(function Transcript({
   onReply: (message: ThreadMessage) => void;
   onQuote: (message: ThreadMessage, quote: string) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
+  remember?: RememberControls;
   onJumpToMessage: (messageId: string) => void;
   onOpenPeerMessages: (peer: { peerBotId: string; peerBotName: string }) => void;
   memberName?: (botId: string | undefined) => string | undefined;
@@ -6583,6 +6593,7 @@ export const Transcript = memo(function Transcript({
                         side={message.role === "user" ? "start" : "end"}
                         onReply={onReply}
                         onReact={onReact}
+                        remember={remember}
                       />
                     )}
                     {peerReceipt ||
@@ -7940,12 +7951,14 @@ function MessageHoverActions({
   hasReactions = false,
   onReply,
   onReact,
+  remember,
 }: {
   message: ThreadMessage;
   side: "start" | "end";
   hasReactions?: boolean;
   onReply: (message: ThreadMessage) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
+  remember?: RememberControls;
 }) {
   const { t } = useLingui();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -7962,6 +7975,10 @@ function MessageHoverActions({
 
   const iconButtonClass =
     "grid h-7 w-7 place-items-center text-muted-foreground transition-colors hover:text-foreground";
+  const canRemember =
+    Boolean(remember) && message.role === "bot" && canReactToThreadMessage(message);
+  const remembered = remember?.ids.has(message.id) ?? false;
+  const RememberIcon = remembered ? BookmarkCheck : BookmarkPlus;
 
   return (
     <MessageHoverMetadata
@@ -8014,6 +8031,23 @@ function MessageHoverActions({
         >
           <Reply size={15} strokeWidth={1.7} />
         </button>
+        {canRemember ? (
+          <button
+            type="button"
+            aria-label={remembered ? t`Remembered` : t`Remember`}
+            title={remembered ? t`Remembered` : t`Remember`}
+            aria-pressed={remembered}
+            disabled={remembered}
+            onClick={() => remember?.onRemember(message.id)}
+            className={cn(
+              iconButtonClass,
+              "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7",
+              remembered && "text-foreground",
+            )}
+          >
+            <RememberIcon size={15} strokeWidth={1.7} />
+          </button>
+        ) : null}
         <DropdownMenu open={moreOpen} onOpenChange={setMoreOpen}>
           <DropdownMenuTrigger
             aria-label={t`More`}
@@ -8038,6 +8072,18 @@ function MessageHoverActions({
               <Copy size={14} strokeWidth={1.7} />
               <Trans>Copy</Trans>
             </DropdownMenuItem>
+            {canRemember ? (
+              <DropdownMenuItem
+                disabled={remembered}
+                onClick={() => {
+                  setMoreOpen(false);
+                  remember?.onRemember(message.id);
+                }}
+              >
+                <RememberIcon size={14} strokeWidth={1.7} />
+                {remembered ? <Trans>Remembered</Trans> : <Trans>Remember</Trans>}
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
