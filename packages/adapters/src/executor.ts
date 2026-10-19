@@ -4258,6 +4258,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
               botAccess: { where: { botId: bot.id }, select: { botId: true } },
             },
           });
+        // The account must exist in this space and user, be connected, be open to this bot, and for
+        // a write follow the agent rule.
+        const accountAllowedIn = (
+          rows: Awaited<ReturnType<typeof connectionRowsNow>>,
+          accountId: string,
+          toolName: string,
+        ): boolean => {
+          const row = rows.find((candidate) => candidate.id === accountId);
+          if (!row || row.status !== "connected" || deniedConnectionIds(rows).has(row.id))
+            return false;
+          if (!GOOGLE_BUILTIN_WRITES.has(toolName) || row.agentBotId === null) return true;
+          return row.agentBotId === bot.id && row.writesEnabled;
+        };
         const accountsAllowedNow = async <T extends { id: string }>(
           accounts: Promise<T[]> | T[],
           toolName: string,
@@ -4265,16 +4278,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
           const list = await accounts;
           if (list.length === 0) return list;
           const rows = await connectionRowsNow();
-          const denied = deniedConnectionIds(rows);
-          const write = GOOGLE_BUILTIN_WRITES.has(toolName);
-          return list.filter((account) => {
-            const row = rows.find((candidate) => candidate.id === account.id);
-            if (!row) return true;
-            if (denied.has(row.id)) return false;
-            if (!write || row.agentBotId === null) return true;
-            return row.agentBotId === bot.id && row.writesEnabled;
-          });
+          return list.filter((account) => accountAllowedIn(rows, account.id, toolName));
         };
+        // Runs right before a provider write; the caller awaits nothing between this and the write.
+        const writeDenialNow = async (account: { id: string }, toolName: string) =>
+          accountAllowedIn(await connectionRowsNow(), account.id, toolName)
+            ? null
+            : "This connected account is no longer available for changes by this bot.";
         const googleBuiltinDenial = async (toolName: string): Promise<string | null> => {
           const accounts = googleBuiltinAccounts(toolName);
           if (!accounts) return null;
@@ -5943,6 +5953,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 name,
                 {
                   accounts: () => accountsAllowedNow(calendarAccounts(), name),
+                  beforeWrite: (account) => writeDenialNow(account, name),
                   connectors: deps.connectors,
                   idempotencyKey: effectKey,
                 },
@@ -5968,6 +5979,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 prisma: deps.prisma,
                 jobs: deps.jobs,
                 accounts: () => accountsAllowedNow(mailAccounts(), name),
+                beforeWrite: (account) => writeDenialNow(account, name),
                 publish: (blocks) => publishMessage(deps, run, "bot", blocks),
                 writesDisabled: deps.mailWritesDisabled,
                 idempotencyKey: effectKey,
@@ -6062,6 +6074,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   prisma: deps.prisma,
                   connectors: deps.connectors,
                   accounts: () => accountsAllowedNow(driveAccounts(), name),
+                  beforeWrite: (account) => writeDenialNow(account, name),
                   scope: { spaceId: run.spaceId, userId: bot.userId },
                 },
                 context,

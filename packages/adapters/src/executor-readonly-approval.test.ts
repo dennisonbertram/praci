@@ -75,6 +75,21 @@ function matchesWhere(row: Record<string, unknown>, where: Record<string, unknow
   });
 }
 
+/** The connection row behind the mail account `acct-1` that the mail stubs list. */
+const mailConnectionRow = () => ({
+  id: "acct-1",
+  userId: "user-1",
+  spaceId: "space-1",
+  connectorId: "google",
+  provider: "gmail",
+  displayName: "Gmail",
+  status: "connected",
+  allAgents: true,
+  botAccess: [],
+  agentBotId: null,
+  writesEnabled: false,
+});
+
 function fixture({
   name = "demo_get_item",
   catalog = false,
@@ -101,7 +116,7 @@ function fixture({
   route,
   connector: realConnector,
   peer,
-  connectionRows = [],
+  connectionRows = mail ? [mailConnectionRow()] : [],
   availableTools,
   executeToolName = "demo_execute_tool",
 }: {
@@ -280,6 +295,11 @@ function fixture({
         async ({ where }: { where?: Record<string, unknown> } = {}) =>
           connectionRows.find((row) => matchesWhere(row, where)) ?? null,
       ),
+    },
+    cachedMailMessage: {
+      findFirst: vi.fn(async () => ({ id: "cached-1", threadId: "thread-x" })),
+      findMany: vi.fn(async () => [{ id: "cached-1" }]),
+      updateMany: vi.fn(async () => ({ count: 1 })),
     },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
     userModelCredential: { findFirst: vi.fn(async () => null) },
@@ -853,20 +873,7 @@ describe("built-in mail on a connection with an integration agent", () => {
   beforeEach(() => {
     reviewMock.mockReset();
   });
-  const gmail = (extra: Record<string, unknown> = {}) => ({
-    id: "acct-1",
-    userId: "user-1",
-    spaceId: "space-1",
-    connectorId: "google",
-    provider: "gmail",
-    displayName: "Gmail",
-    status: "connected",
-    allAgents: true,
-    botAccess: [],
-    agentBotId: null,
-    writesEnabled: false,
-    ...extra,
-  });
+  const gmail = (extra: Record<string, unknown> = {}) => ({ ...mailConnectionRow(), ...extra });
   const draft = { to: ["a@example.test"], subject: "Hi", body: "Hello" };
   const draftRun = (
     spawnKey: string | null,
@@ -927,6 +934,47 @@ describe("built-in mail on a connection with an integration agent", () => {
     expect(f.results[0]).toEqual({ error: expect.stringContaining("no longer available") });
     expect(f.pauseRunForInput).not.toHaveBeenCalled();
     expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a draft on a revoked connection", async () => {
+    const { f, mail } = draftRun(null, [gmail({ status: "revoked" })]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.any(String) });
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("refuses a draft when the account has no connection row", async () => {
+    const { f, mail } = draftRun(null, []);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.any(String) });
+    expect(mail.createDraft).not.toHaveBeenCalled();
+  });
+
+  it("checks again right before the provider write, after the label lookup", async () => {
+    const rows = [gmail()];
+    const modifyThread = vi.fn(async () => undefined);
+    const mail = {
+      listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+      // Exclusivity is switched on while the labels are being looked up.
+      listLabels: vi.fn(async () => {
+        rows[0]!.allAgents = false;
+        return [{ id: "Label_1", name: "Todo" }];
+      }),
+      modifyThread,
+      modifyMessage: vi.fn(async () => undefined),
+    };
+    const f = fixture({
+      name: "mail_modify",
+      builtin: true,
+      rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "mail_modify" }],
+      mail,
+      connectionRows: rows,
+    });
+    f.setCalls([{ args: { id: "m1", addLabels: ["Todo"] }, executionId: "call-1" }]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("no longer available") });
+    expect(modifyThread).not.toHaveBeenCalled();
+    expect(mail.modifyMessage).not.toHaveBeenCalled();
   });
 
   it("keeps the Carta mail_send approval on a connection without an agent", async () => {

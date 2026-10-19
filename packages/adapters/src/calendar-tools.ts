@@ -33,6 +33,8 @@ export type CalendarToolDeps = {
   accounts: () => Promise<CalendarAccount[]>;
   connectors: { managed(id: string): ManagedConnectorProvider | undefined };
   google?: GoogleApiClient;
+  /** Called right before each provider write, with nothing awaited between. Text refuses it. */
+  beforeWrite?: (account: CalendarAccount) => Promise<string | null>;
   /** Stable per tool call, from the run; calendar_create_event derives the event id from it. */
   idempotencyKey?: string;
   now?: () => Date;
@@ -353,6 +355,10 @@ async function request(
   const connector = deps.connectors.managed(account.connectorId);
   if (!connector?.proxy) throw new CalendarToolError("This calendar connection cannot be used");
   try {
+    if (method !== "GET") {
+      const denial = await deps.beforeWrite?.(account);
+      if (denial) throw new CalendarToolError(denial);
+    }
     const response = await (deps.google ?? defaultGoogle).request({
       connector,
       account: {

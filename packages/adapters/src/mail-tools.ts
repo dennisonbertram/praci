@@ -66,6 +66,11 @@ export type MailToolDeps = {
   scope: { spaceId: string; userId: string; botId: string };
   /** Puts blocks in the run's thread. Without it show_emails is unavailable. */
   publish?: (blocks: MessageBlock[]) => Promise<unknown>;
+  /**
+   * Called with the account right before each provider write, with nothing awaited between the
+   * call and the write. A returned text refuses the write.
+   */
+  beforeWrite?: (account: MailAccount) => Promise<string | null>;
   /** MAIL_WRITES_DISABLED: the write tools change nothing. */
   writesDisabled?: boolean;
   /** Stable per tool call, from the run; mail_send keys its send record on it so a replay never sends twice. */
@@ -73,6 +78,13 @@ export type MailToolDeps = {
   deadlineMs?: number;
   now?: () => Date;
 };
+
+class WriteDenied extends Error {}
+
+async function allowWrite(deps: MailToolDeps, account: MailAccount) {
+  const denial = await deps.beforeWrite?.(account);
+  if (denial) throw new WriteDenied(denial);
+}
 
 /** A query that stopped early, with what is needed to carry on where it left off. */
 type ResumeEntry = {
@@ -136,6 +148,7 @@ export async function mailToolFromTool(
     if (name === "mail_send") return await mailSend(deps, context, args);
     return { error: `Unknown mail tool ${name}` };
   } catch (error) {
+    if (error instanceof WriteDenied) return { error: error.message };
     // Provider errors carry sanitized text; anything else is not shown to the model.
     return { error: error instanceof MailProviderError ? error.message : "Mail tool failed" };
   }
@@ -717,6 +730,7 @@ async function mailDraft(
     ...(replyTo ? { inReplyTo: replyTo } : {}),
   };
   const draftId = typeof args.draftId === "string" ? args.draftId.trim() : "";
+  await allowWrite(deps, account);
   const saved = draftId
     ? await deps.mail.updateDraft(account, draftId, draft, context)
     : await deps.mail.createDraft(account, draft, context);
@@ -791,6 +805,7 @@ async function mailModify(
     if (wholeThread) {
       // One provider call reaches every message of the conversation, cached or not.
       const threadId = row?.threadId ?? (await deps.mail.getMessage(account, id, context)).threadId;
+      await allowWrite(deps, account);
       await deps.mail.modifyThread(account, threadId, change, context);
       const cached = await cache.findMany({
         where: { ...owner, connectionId: account.id, threadId },
@@ -799,6 +814,7 @@ async function mailModify(
       await update({ connectionId: account.id, threadId });
       return { ok: true, messages: Math.max(cached.length, 1) };
     }
+    await allowWrite(deps, account);
     await deps.mail.modifyMessage(account, id, change, context);
     if (row) await update({ id: row.id });
     return { ok: true, messages: 1 };
@@ -862,9 +878,13 @@ async function mailSend(
     table.update({ where: { id: row.id }, data }).catch(() => undefined);
   let sending = false;
   try {
-    const draftId =
-      given || row.draftId || (await deps.mail.createDraft(account, draft, context)).draftId;
+    let draftId = given || row.draftId;
+    if (!draftId) {
+      await allowWrite(deps, account);
+      draftId = (await deps.mail.createDraft(account, draft, context)).draftId;
+    }
     await table.update({ where: { id: row.id }, data: { draftId } });
+    await allowWrite(deps, account);
     sending = true;
     const sent = await deps.mail.sendDraft(account, draftId, context);
     sending = false;

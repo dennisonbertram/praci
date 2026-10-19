@@ -58,6 +58,8 @@ export type DriveToolDeps = {
   /** Connected Drive accounts of the bot owner. Memoized per run by the caller. */
   accounts: () => Promise<DriveAccount[]>;
   google?: GoogleApiClient;
+  /** Called right before each provider write, with nothing awaited between. Text refuses it. */
+  beforeWrite?: (account: DriveAccount) => Promise<string | null>;
 };
 
 class DriveToolError extends Error {}
@@ -196,6 +198,10 @@ class DriveCall {
     const connector = this.deps.connectors.managed(this.account.connectorId);
     if (!connector?.proxy) throw new DriveToolError("This Drive connection cannot be used");
     try {
+      if (method !== "GET") {
+        const denial = await this.deps.beforeWrite?.(this.account);
+        if (denial) throw new DriveToolError(denial);
+      }
       const response = await this.google.request({
         connector,
         account: {
