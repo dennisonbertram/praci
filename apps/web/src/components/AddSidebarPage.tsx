@@ -27,7 +27,7 @@ export function AddSidebarPage({
     <DropdownMenu defaultOpen={defaultOpen} onOpenChange={(open) => open && onOpenMenu?.()}>
       <DropdownMenuTrigger
         data-testid="sidebar-add-page"
-        className="mx-2.5 mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-start text-muted-foreground hover:bg-sidebar-accent"
+        className="mb-1 flex items-center gap-3 rounded-xl px-2.5 py-2 text-start text-muted-foreground hover:bg-sidebar-accent"
         aria-label={t`Add page`}
       >
         <span className="grid h-[30px] w-[30px] place-items-center rounded-lg">

@@ -3785,7 +3785,7 @@ export function ShellPage() {
           {/* While searching, matching pages are listed with the results instead. */}
           {showSpaceSearch ? null : (
             // Inside the scroll area, so on a short screen the chats are never squeezed out.
-            <div className="-mx-2.5 flex shrink-0 flex-col">
+            <div className="flex shrink-0 flex-col">
               <SidebarPageLink
                 testId="sidebar-inbox"
                 current={inboxMode}
