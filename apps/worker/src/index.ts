@@ -254,6 +254,7 @@ async function main() {
     cloudAgent,
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
     artifacts,
+    connectors: stack.connector,
   });
   // graphile-worker run() connects through the shared pool. createPool already
   // retries connect() on 53300 a finite number of times. Keep retrying start

@@ -553,6 +553,7 @@ export async function createApp(
     cloudAgent,
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     artifacts,
+    connectors: stack.connector,
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);

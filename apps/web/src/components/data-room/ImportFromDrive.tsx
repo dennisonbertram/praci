@@ -3,7 +3,6 @@ import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiDriveFile } from "@rakazo/contracts";
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -11,16 +10,17 @@ import {
   DialogTitle,
   Input,
 } from "@rakazo/ui-web";
-import { ArrowLeft, Folder, HardDrive } from "lucide-react";
+import { ArrowLeft, HardDrive } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { DriveRow } from "./DriveRow";
 import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
-import { failedText, importedText, sizeText } from "./format";
+import { failedText, importedText } from "./format";
 
 const SEARCH_DEBOUNCE_MS = 300;
-/** The most files the server takes in one import. */
+/** The most files, and the most folders, the server takes in one import. */
 const MAX_PICKS = 20;
 const GOOGLE_APPS = "application/vnd.google-apps.";
 // Drive exports these to PDF; other Google files (forms, shortcuts, ...) have nothing to download.
@@ -47,7 +47,8 @@ function DrivePicker({
   const [next, setNext] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [picks, setPicks] = useState<Set<string>>(new Set());
+  // Ticked files and folders by Drive id (true for a folder); kept across folders and searches.
+  const [picks, setPicks] = useState<Map<string, boolean>>(new Map());
   const [busy, setBusy] = useState(false);
   const here = path.at(-1)?.id;
   // Which listing is on screen; an answer for an earlier folder or search is dropped.
@@ -102,10 +103,10 @@ function DrivePicker({
     setPath((prev) => [...prev, { id: folder.id, name: folder.name }]);
   }
 
-  function toggle(id: string) {
+  function toggle(file: DataRoomApiDriveFile) {
     setPicks((prev) => {
-      const copy = new Set(prev);
-      if (!copy.delete(id)) copy.add(id);
+      const copy = new Map(prev);
+      if (!copy.delete(file.id)) copy.set(file.id, file.isFolder);
       return copy;
     });
   }
@@ -114,13 +115,15 @@ function DrivePicker({
     setBusy(true);
     setError("");
     try {
-      const { imported, duplicates, failed } = await rpc.dataRoom.importDrive({
-        fileIds: [...picks],
+      const ids = [...picks];
+      const { imported, duplicates, failed, queued } = await rpc.dataRoom.importDrive({
+        fileIds: ids.filter(([, isFolder]) => !isFolder).map(([id]) => id),
+        driveFolderIds: ids.filter(([, isFolder]) => isFolder).map(([id]) => id),
         folderId,
       });
       onDone(
         imported > 0 || (duplicates > 0 && failed === 0) ? importedText(imported, duplicates) : "",
-        imported > 0 || duplicates > 0,
+        imported > 0 || duplicates > 0 || (queued ?? 0) > 0,
       );
       if (failed === 0) onClose();
       else setError(failedText(failed));
@@ -168,31 +171,16 @@ function DrivePicker({
             <ul>
               {files.map((file) => (
                 <li key={file.id} className="border-b border-border">
-                  {file.isFolder ? (
-                    <button
-                      type="button"
-                      onClick={() => open(file)}
-                      className="flex w-full items-center gap-2 px-3 py-2 text-start text-sm hover:bg-muted"
-                    >
-                      <Folder className="size-4" aria-hidden="true" />
-                      <span className="min-w-0 flex-1 truncate">{file.name}</span>
-                    </button>
-                  ) : (
-                    <div className="flex items-center gap-2 px-3 py-2 text-sm">
-                      <Checkbox
-                        aria-label={file.name}
-                        disabled={
-                          !importable(file) || (!picks.has(file.id) && picks.size >= MAX_PICKS)
-                        }
-                        checked={picks.has(file.id)}
-                        onCheckedChange={() => toggle(file.id)}
-                      />
-                      <span className="min-w-0 flex-1 truncate">{file.name}</span>
-                      {file.size === undefined ? null : (
-                        <span className="text-xs text-muted-foreground">{sizeText(file.size)}</span>
-                      )}
-                    </div>
-                  )}
+                  <DriveRow
+                    file={file}
+                    checked={picks.has(file.id)}
+                    disabled={
+                      (!file.isFolder && !importable(file)) ||
+                      (!picks.has(file.id) && picks.size >= MAX_PICKS)
+                    }
+                    onToggle={() => toggle(file)}
+                    onOpen={() => open(file)}
+                  />
                 </li>
               ))}
             </ul>
@@ -212,7 +200,7 @@ function DrivePicker({
         </div>
         <DialogFooter>
           <Button disabled={busy || picks.size === 0} onClick={() => void submit()}>
-            <Trans>Import</Trans>
+            {picks.size > 0 ? t`Import ${picks.size}` : t`Import`}
           </Button>
         </DialogFooter>
       </DialogContent>

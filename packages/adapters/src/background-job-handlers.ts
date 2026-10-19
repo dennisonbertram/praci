@@ -16,9 +16,11 @@ import { pollCloudAgent } from "./cloud-agent-poll.js";
 import { expireComputerControl } from "./computer-control.js";
 import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
+import { runDriveFileImport } from "./data-room-drive-import.js";
 import type { DataRoomJobDeps } from "./data-room-jobs.js";
 import { runDataRoomClassify, runDataRoomIndex, runDataRoomIngest } from "./data-room-jobs.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
+import type { DriveFilesDeps } from "./drive-files.js";
 import { syncExchanges } from "./exchange-sync.js";
 import type { createRunExecutor } from "./executor.js";
 import type { FinanceSyncDeps } from "./finance-sync.js";
@@ -51,6 +53,8 @@ export function createBackgroundJobHandlers(deps: {
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
   /** Deletes the blobs of removed Data room items and reads them for ingest. */
   artifacts?: ArtifactStore;
+  /** Needed only to import Google Drive folders. */
+  connectors?: DriveFilesDeps["connectors"];
 }): BackgroundJobHandlers {
   const deliverMessaging = async (runId?: string) => {
     if (!deps.messaging) return;
@@ -153,6 +157,19 @@ export function createBackgroundJobHandlers(deps: {
     "dataroom.ingest": (payload) => runDataRoomIngest(dataRoomDeps(), payload),
     "dataroom.classify": (payload) => runDataRoomClassify(dataRoomDeps(), payload),
     "dataroom.index": (payload) => runDataRoomIndex(dataRoomDeps(), payload),
+    "dataroom.drive.file": async (payload) => {
+      if (!deps.artifacts || !deps.connectors) throw new Error("Drive import is not configured");
+      await runDriveFileImport(
+        {
+          prisma: deps.prisma,
+          jobs: deps.jobs,
+          artifacts: deps.artifacts,
+          connectors: deps.connectors,
+        },
+        payload,
+        AbortSignal.timeout(120_000),
+      );
+    },
     "finance.sync": async (payload) => {
       if (!deps.financeCallToolFor) throw new Error("Finance sync is not configured");
       await syncFinanceForUser(

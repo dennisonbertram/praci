@@ -6,8 +6,10 @@ import { createRouterClient } from "@orpc/server";
 import type { BackgroundJob } from "@rakazo/adapter-kit";
 import {
   createBackgroundJobHandlers,
+  DRIVE_IMPORT_MAX_FILES,
   DriveApiEmulator,
   LocalArtifactStore,
+  runDriveFileImport,
 } from "@rakazo/adapters";
 import type { Actor, DataRoomApiItem } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
@@ -89,6 +91,45 @@ describePostgres("Data room API (PostgreSQL)", () => {
             pdf: PDF,
           },
           { id: "dir1", name: "Folder", mimeType: "application/vnd.google-apps.folder" },
+          { id: "p1", name: "top.pdf", mimeType: "application/pdf", bytes: PDF, parents: ["dir1"] },
+          {
+            id: "sub1",
+            name: "Sub",
+            mimeType: "application/vnd.google-apps.folder",
+            parents: ["dir1"],
+          },
+          {
+            id: "p2",
+            name: "deep.pdf",
+            mimeType: "application/pdf",
+            bytes: PDF,
+            parents: ["sub1"],
+          },
+          {
+            id: "emp",
+            name: "Empty",
+            mimeType: "application/vnd.google-apps.folder",
+            parents: ["sub1"],
+          },
+          {
+            id: "frm",
+            name: "Survey",
+            mimeType: "application/vnd.google-apps.form",
+            parents: ["sub1"],
+          },
+        ],
+      },
+      "acct-d": {
+        email: "d@example.test",
+        files: [
+          { id: "big", name: "Big", mimeType: "application/vnd.google-apps.folder" },
+          ...Array.from({ length: DRIVE_IMPORT_MAX_FILES + 1 }, (_, i) => ({
+            id: `bf${i}`,
+            name: `bf${i}.pdf`,
+            mimeType: "application/pdf",
+            size: "10",
+            parents: ["big"],
+          })),
         ],
       },
     },
@@ -149,6 +190,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await make("a2", "A"); // second member of space A
     await make("b", "B");
     await make("s", "S");
+    await make("d", "B"); // a second user with their own Drive
     app = new Hono();
     mountDataRoomRoutes(
       app,
@@ -851,5 +893,117 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await expect(
       client(actors.a).dataRoom.importDrive({ fileIds: ["dir1", "missing", "doc1"] }),
     ).resolves.toEqual({ imported: 0, duplicates: 1, failed: 2 });
+  });
+
+  it("imports Drive folders as Data room folders, once, only through the caller's own Drive", async () => {
+    const a = client(actors.a);
+    const target = await a.dataRoom.folderCreate({ name: `Drive target ${run}` });
+    const connection = await prisma.connection.findFirstOrThrow({
+      where: { spaceId: actors.A.spaceId, userId: actors.a.userId, provider: "googledrive" },
+    });
+    const start = enqueued.length;
+    const jobs = () => enqueued.slice(start).filter((j) => j.name === "dataroom.drive.file");
+    const drain = async () => {
+      for (const job of jobs()) {
+        await runDriveFileImport(
+          {
+            prisma,
+            artifacts: new LocalArtifactStore(root),
+            jobs: { enqueue: async () => {} },
+            connectors: { managed: () => driveConnector },
+          } as never,
+          job.payload as never,
+        );
+      }
+    };
+
+    // The form is skipped and counted; the files are queued, not downloaded in the request.
+    const downloads = driveDownloads;
+    const result = await a.dataRoom.importDrive({ driveFolderIds: ["dir1"], folderId: target.id });
+    expect(result).toEqual({ imported: 0, duplicates: 0, failed: 1, queued: 2 });
+    expect(jobs()).toHaveLength(2);
+    const folders = (await a.dataRoom.folders()).filter((f) => f.parentId !== undefined);
+    const byName = (name: string) => folders.find((f) => f.name === name);
+    const top = byName("Folder");
+    const sub = byName("Sub");
+    expect(top?.parentId).toBe(target.id);
+    expect(sub?.parentId).toBe(top?.id);
+    // An empty Drive folder still appears.
+    expect(byName("Empty")?.parentId).toBe(sub?.id);
+
+    // The queued jobs file each item in its folder, and a retry or second run adds nothing.
+    await drain();
+    await drain();
+    const items = await prisma.dataRoomItem.findMany({
+      where: {
+        spaceId: actors.A.spaceId,
+        externalId: { in: ["p1", "p2"] },
+        sourceConnectionId: connection.id,
+      },
+    });
+    expect(items.map((i) => [i.externalId, i.folderId]).sort()).toEqual([
+      ["p1", top?.id],
+      ["p2", sub?.id],
+    ]);
+
+    // Importing again reuses the folders and files nothing new.
+    await a.dataRoom.importDrive({ driveFolderIds: ["dir1"], folderId: target.id });
+    await drain();
+    expect((await a.dataRoom.folders()).filter((f) => f.name === "Sub")).toHaveLength(1);
+    expect(
+      await prisma.dataRoomItem.count({
+        where: { spaceId: actors.A.spaceId, externalId: { in: ["p1", "p2"] } },
+      }),
+    ).toBe(2);
+    expect(driveDownloads).toBe(downloads);
+
+    // Another user cannot import through this connection: it is not in their accounts.
+    await expect(
+      runDriveFileImport(
+        {
+          prisma,
+          artifacts: new LocalArtifactStore(root),
+          jobs: { enqueue: async () => {} },
+          connectors: { managed: () => driveConnector },
+        } as never,
+        {
+          spaceId: actors.B.spaceId,
+          userId: actors.d.userId,
+          connectionId: connection.id,
+          externalId: "p1",
+          folderId: null,
+        },
+      ),
+    ).rejects.toMatchObject({ code: "not_connected" });
+    expect(await prisma.dataRoomItem.count({ where: { userId: actors.d.userId } })).toBe(0);
+  });
+
+  it("refuses a folder import over the file limit before creating anything", async () => {
+    const connection = await prisma.connection.create({
+      data: {
+        spaceId: actors.B.spaceId,
+        userId: actors.d.userId,
+        connectorId: "google",
+        provider: "googledrive",
+        providerRef: "acct-d",
+        displayName: "Big drive",
+        status: "connected",
+      },
+    });
+    accounts.push({ id: connection.id, userId: actors.d.userId });
+    const before = enqueued.length;
+    await expect(
+      client(actors.d).dataRoom.importDrive({ driveFolderIds: ["big"] }),
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      message: `Folder imports are limited to ${DRIVE_IMPORT_MAX_FILES} files.`,
+    });
+    expect(enqueued.length).toBe(before);
+    expect(await prisma.dataRoomFolder.count({ where: { userId: actors.d.userId } })).toBe(0);
+
+    // A folder id from someone else's Drive is just not found there: skipped, nothing queued.
+    await expect(
+      client(actors.d).dataRoom.importDrive({ driveFolderIds: ["dir1"] }),
+    ).resolves.toEqual({ imported: 0, duplicates: 0, failed: 1, queued: 0 });
   });
 });

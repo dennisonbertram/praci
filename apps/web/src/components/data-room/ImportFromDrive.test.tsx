@@ -98,6 +98,8 @@ const click = (el: Element | null | undefined) =>
   act(async () => {
     (el as HTMLElement).click();
   });
+const box = (name: string) =>
+  document.body.querySelector(`[role="checkbox"][aria-label="Select ${name}"]`);
 const button = (name: string) =>
   Array.from(document.body.querySelectorAll("button")).find(
     (b) => b.textContent === name || b.getAttribute("aria-label") === name,
@@ -117,14 +119,16 @@ it("opens a folder, imports its file into the open folder, and can go back", asy
   await click(button("Import from Google Drive"));
   expect(rpcMock.driveList).toHaveBeenCalledWith({});
   // A Google Form cannot be imported.
-  expect(document.body.querySelector('[role="checkbox"]')?.hasAttribute("data-disabled")).toBe(
-    true,
-  );
+  expect(box("Survey")?.hasAttribute("data-disabled")).toBe(true);
   await click(button("Contracts"));
   expect(rpcMock.driveList).toHaveBeenLastCalledWith({ folderId: "d1" });
-  await click(document.body.querySelector('[role="checkbox"]'));
-  await click(button("Import"));
-  expect(rpcMock.importDrive).toHaveBeenCalledWith({ fileIds: ["f2"], folderId: "room1" });
+  await click(box("inside.pdf"));
+  await click(button("Import 1"));
+  expect(rpcMock.importDrive).toHaveBeenCalledWith({
+    fileIds: ["f2"],
+    driveFolderIds: [],
+    folderId: "room1",
+  });
   expect(onDone).toHaveBeenCalledWith("Imported 1 file", true);
 });
 
@@ -141,8 +145,8 @@ it("shows the error when the import fails", async () => {
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
   await click(button("Import from Google Drive"));
   await click(button("Contracts"));
-  await click(document.body.querySelector('[role="checkbox"]'));
-  await click(button("Import"));
+  await click(box("inside.pdf"));
+  await click(button("Import 1"));
   expect(onDone).not.toHaveBeenCalled();
   expect(document.body.querySelector("[role=dialog]")).not.toBeNull();
 });
@@ -152,8 +156,8 @@ it("reports files that failed, refreshes for the ones that arrived, and stays op
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
   await click(button("Import from Google Drive"));
   await click(button("Contracts"));
-  await click(document.body.querySelector('[role="checkbox"]'));
-  await click(button("Import"));
+  await click(box("inside.pdf"));
+  await click(button("Import 1"));
   expect(onDone).toHaveBeenCalledWith("Imported 1 file", true);
   expect(document.body.textContent).toContain("Couldn't import 2 files");
 });
@@ -167,6 +171,66 @@ it("stops offering more files after 20 are ticked", async () => {
   const boxes = () => Array.from(document.body.querySelectorAll('[role="checkbox"]'));
   for (const box of boxes().slice(0, 20)) await click(box);
   expect(boxes()[20]?.hasAttribute("data-disabled")).toBe(true);
+});
+
+const driveRoot = [
+  { id: "d1", name: "Contracts", mimeType: "application/vnd.google-apps.folder", isFolder: true },
+  file("f1", "Plan.pdf"),
+];
+
+it("shows a checkbox on hover and focus only, and keeps it visible once ticked", async () => {
+  rpcMock.driveList.mockResolvedValue({ files: driveRoot });
+  await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
+  await click(button("Import from Google Drive"));
+  const hidden = (name: string) => box(name)?.className.includes("opacity-0");
+  expect(hidden("Plan.pdf")).toBe(true);
+  expect(box("Plan.pdf")?.className).toContain("group-hover:opacity-100");
+  expect(box("Plan.pdf")?.className).toContain("focus-visible:opacity-100");
+  expect(box("Plan.pdf")?.className).toContain("data-checked:opacity-100");
+  expect(box("Plan.pdf")?.className).toContain("hover:none");
+  await click(box("Plan.pdf"));
+  expect(box("Plan.pdf")?.hasAttribute("data-checked")).toBe(true);
+});
+
+it("keeps picks across folders, counts a folder as one, and sends files and folders apart", async () => {
+  rpcMock.driveList.mockImplementation(async (input: { folderId?: string }) => ({
+    files: input.folderId ? [file("f2", "inside.pdf")] : driveRoot,
+  }));
+  rpcMock.importDrive.mockResolvedValue({ imported: 0, duplicates: 0, failed: 0, queued: 2 });
+  await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
+  await click(button("Import from Google Drive"));
+  expect(button("Import")?.hasAttribute("disabled")).toBe(true);
+  await click(box("Plan.pdf"));
+  // Ticking the folder's box does not open it.
+  await click(box("Contracts"));
+  expect(rpcMock.driveList).toHaveBeenCalledTimes(1);
+  // Clicking the folder row does.
+  await click(button("Contracts"));
+  expect(rpcMock.driveList).toHaveBeenLastCalledWith({ folderId: "d1" });
+  await click(box("inside.pdf"));
+  expect(button("Import 3")).toBeDefined();
+  await click(button("Back"));
+  expect(box("Contracts")?.hasAttribute("data-checked")).toBe(true);
+  await click(button("Import 3"));
+  expect(rpcMock.importDrive).toHaveBeenCalledWith({
+    fileIds: ["f1", "f2"],
+    driveFolderIds: ["d1"],
+    folderId: "room1",
+  });
+  // Folder files arrive in the background, so the list refreshes without a message.
+  expect(onDone).toHaveBeenCalledWith("", true);
+});
+
+it("shows the server's over-limit error and stays open", async () => {
+  rpcMock.driveList.mockResolvedValue({ files: driveRoot });
+  rpcMock.importDrive.mockRejectedValue(
+    Object.assign(new Error("Folder imports are limited to 500 files."), { code: "BAD_REQUEST" }),
+  );
+  await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
+  await click(button("Import from Google Drive"));
+  await click(box("Contracts"));
+  await click(button("Import 1"));
+  expect(document.body.textContent).toContain("Folder imports are limited to 500 files.");
 });
 
 it("shows no Drive button when the server does not offer Drive and it is not connected", async () => {

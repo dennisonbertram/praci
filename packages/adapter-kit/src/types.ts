@@ -678,6 +678,14 @@ export interface BackgroundJobPayloads {
   "dataroom.ingest": { spaceId: string; userId: string; itemId: string };
   "dataroom.classify": { spaceId: string; userId: string; itemId: string };
   "dataroom.index": { spaceId: string; userId: string; itemId: string };
+  /** Downloads one Drive file of a folder import and files it; a repeat files nothing. */
+  "dataroom.drive.file": {
+    spaceId: string;
+    userId: string;
+    connectionId: string;
+    externalId: string;
+    folderId: string | null;
+  };
 }
 
 export type BackgroundJobName = keyof BackgroundJobPayloads;

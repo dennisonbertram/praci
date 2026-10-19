@@ -35,6 +35,13 @@ const payloadSchemas = {
   "dataroom.ingest": dataRoomStepPayload,
   "dataroom.classify": dataRoomStepPayload,
   "dataroom.index": dataRoomStepPayload,
+  "dataroom.drive.file": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    connectionId: z.string().min(1),
+    externalId: z.string().min(1),
+    folderId: z.string().min(1).nullable(),
+  }),
 } satisfies { [Name in BackgroundJobName]: z.ZodType<BackgroundJobPayloads[Name]> };
 
 export function parseBackgroundJob(name: string, payload: unknown): BackgroundJob {
@@ -245,6 +252,21 @@ export function dataRoomStepJob(
     name,
     payload: { spaceId: scope.spaceId, userId: scope.userId, itemId },
     replaceKey: `${name}:${itemId}`,
+    maxAttempts: DATA_ROOM_JOB_ATTEMPTS,
+  };
+}
+
+/** One queued job per Drive file and connection: queueing an import again replaces the first. */
+export function dataRoomDriveFileJob(
+  scope: { spaceId: string; userId: string },
+  connectionId: string,
+  externalId: string,
+  folderId: string | null,
+): BackgroundJob {
+  return {
+    name: "dataroom.drive.file",
+    payload: { spaceId: scope.spaceId, userId: scope.userId, connectionId, externalId, folderId },
+    replaceKey: `dataroom.drive.file:${scope.spaceId}:${scope.userId}:${connectionId}:${externalId}`,
     maxAttempts: DATA_ROOM_JOB_ATTEMPTS,
   };
 }

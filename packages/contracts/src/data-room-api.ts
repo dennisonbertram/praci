@@ -175,12 +175,21 @@ export const DataRoomApiDriveListOutputSchema = z.object({
   files: z.array(DataRoomApiDriveFileSchema),
   nextPageToken: z.string().optional(),
 });
-export const DataRoomApiImportDriveInputSchema = z.object({
-  fileIds: z.array(z.string().min(1).max(200)).min(1).max(20),
-  folderId: NullableId.optional(),
-});
+export const DataRoomApiImportDriveInputSchema = z
+  .object({
+    fileIds: z.array(z.string().min(1).max(200)).max(20).default([]),
+    /** Drive folders, imported with all their subfolders in the background. */
+    driveFolderIds: z.array(z.string().min(1).max(200)).max(20).default([]),
+    folderId: NullableId.optional(),
+  })
+  .refine((input) => input.fileIds.length + input.driveFolderIds.length > 0, {
+    message: "Pick at least one file or folder",
+  });
 export const DataRoomApiImportDriveOutputSchema = z.object({
   imported: z.number().int(),
   duplicates: z.number().int(),
+  /** Files that could not be imported, including files in picked folders that were skipped. */
   failed: z.number().int(),
+  /** Files of picked folders handed to the background import. */
+  queued: z.number().int().optional(),
 });

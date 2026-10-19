@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
 import type { ArtifactStore, JobPublisher, MailProvider } from "@rakazo/adapter-kit";
-import { dataRoomBlobDeleteJob, dataRoomStepJob } from "@rakazo/adapter-kit";
+import { dataRoomBlobDeleteJob, dataRoomDriveFileJob, dataRoomStepJob } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
 import {
   createFileDataRoomItem as createFileItem,
@@ -15,6 +15,7 @@ import {
   listDriveAccounts,
   listDriveFiles,
   modelAcceptsImageInput,
+  planDriveFolders,
 } from "@rakazo/adapters";
 import type {
   Actor,
@@ -161,6 +162,7 @@ const DRIVE_ERRORS = {
   unsupported: "BAD_REQUEST",
   too_large: "PAYLOAD_TOO_LARGE",
   rate_limited: "TOO_MANY_REQUESTS",
+  too_many: "BAD_REQUEST",
   failed: "INTERNAL_SERVER_ERROR",
 } as const;
 
@@ -205,6 +207,25 @@ const REINDEX_BATCH = 200;
 export function createDataRoomService(deps: DataRoomDeps) {
   const repo = createDataRoomRepos(deps.prisma);
   const { fileItem, known } = createFileDataRoomItem(deps, repo);
+
+  /** The caller's folder of that name under `parentId`, created when missing. */
+  const ensureFolder = async (actor: Actor, parentId: string | null | undefined, name: string) => {
+    const find = () =>
+      deps.prisma.dataRoomFolder.findFirst({
+        where: { spaceId: actor.spaceId, userId: actor.userId, parentId: parentId ?? null, name },
+        select: { id: true },
+      });
+    const existing = await find();
+    if (existing) return existing.id;
+    try {
+      return (await repo.createFolder(actor, { name, parentId: parentId ?? null })).id;
+    } catch (error) {
+      // A concurrent import made it first.
+      const raced = error instanceof DataRoomConflictError && (await find());
+      if (raced) return raced.id;
+      throw error;
+    }
+  };
 
   /** The name and folder path live in the item's metadata chunk, so a change re-indexes it. */
   const enqueueIndex = async (actor: Actor, ids: string[]) => {
@@ -469,7 +490,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
     /** Copies files of the caller's own Drive into the Data room; a Drive file id names a repeat. */
     importDrive: async (
       actor: Actor,
-      input: { fileIds: string[]; folderId?: string | null },
+      input: { fileIds: string[]; driveFolderIds?: string[]; folderId?: string | null },
       signal?: AbortSignal,
     ) => {
       const folderId = input.folderId ?? null;
@@ -485,6 +506,14 @@ export function createDataRoomService(deps: DataRoomDeps) {
         let imported = 0;
         let duplicates = 0;
         let failed = 0;
+        // Listing is read-only, so an over-limit selection is refused before anything is written.
+        const plan = input.driveFolderIds?.length
+          ? await planDriveFolders(drive, context, {
+              connectionId: sourceConnectionId,
+              folderIds: input.driveFolderIds,
+              maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
+            })
+          : undefined;
         for (const externalId of new Set(input.fileIds)) {
           if (await known(actor, externalId, sourceConnectionId)) {
             duplicates += 1;
@@ -519,7 +548,31 @@ export function createDataRoomService(deps: DataRoomDeps) {
           if (created) imported += 1;
           else duplicates += 1;
         }
-        return { imported, duplicates, failed };
+        if (!plan) return { imported, duplicates, failed };
+        // Same-named folders are reused, so repeating an import fills in the same tree.
+        const roomFolders: string[] = [];
+        for (const node of plan.folders) {
+          roomFolders.push(
+            await ensureFolder(
+              actor,
+              node.parent === null ? folderId : roomFolders[node.parent],
+              node.name,
+            ),
+          );
+        }
+        const direct = new Set(input.fileIds);
+        const files = plan.files.filter((file) => !direct.has(file.id));
+        for (const file of files) {
+          await deps.jobs.enqueue(
+            dataRoomDriveFileJob(
+              actor,
+              sourceConnectionId,
+              file.id,
+              roomFolders[file.folder] ?? null,
+            ),
+          );
+        }
+        return { imported, duplicates, failed: failed + plan.skipped, queued: files.length };
       });
     },
 
