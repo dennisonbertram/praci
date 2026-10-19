@@ -56,7 +56,45 @@ function openLinksInNewTab(html: string): string {
     } else link.removeAttribute("href");
   }
   maskAmounts(doc);
+  collapseQuotes(doc);
+  tidyImages(doc);
   return doc.documentElement.outerHTML;
+}
+
+/**
+ * Images the frame can never load (http:, cid: that was not embedded, relative or empty src) and tracking pixels
+ * would show as a broken icon or an empty box. They are removed; real alt text stays as muted text. An https
+ * image that fails at load time cannot be detected without a script, so it keeps the browser's own fallback,
+ * which the base style turns muted.
+ */
+function tidyImages(doc: Document): void {
+  for (const img of doc.querySelectorAll("img")) {
+    const src = (img.getAttribute("src") ?? "").trim();
+    const tiny = [img.getAttribute("width"), img.getAttribute("height")].some(
+      (v) => v !== null && Number.parseInt(v, 10) <= 2,
+    );
+    if (/^(https:|data:)/i.test(src) && !tiny) continue;
+    const alt = (img.getAttribute("alt") ?? "").trim();
+    if (!tiny && /[\p{L}\p{N}]{2,}/u.test(alt)) {
+      const note = doc.createElement("span");
+      note.setAttribute("style", "color:#777");
+      note.textContent = alt;
+      img.replaceWith(note);
+    } else img.remove();
+  }
+}
+
+/** Folds quoted replies behind a native "…" toggle, as Gmail does. <details> needs no script. */
+function collapseQuotes(doc: Document): void {
+  for (const quote of doc.querySelectorAll(".gmail_quote, blockquote[type=cite]")) {
+    if (quote.parentElement?.closest(".gmail_quote, blockquote[type=cite]")) continue;
+    const details = doc.createElement("details");
+    const summary = doc.createElement("summary");
+    summary.textContent = "\u2026";
+    details.append(summary);
+    quote.replaceWith(details);
+    details.append(quote);
+  }
 }
 
 /** While amounts are hidden, masks currency in the visible text and in title/alt attributes. */
@@ -73,9 +111,10 @@ function maskAmounts(doc: Document): void {
     }
 }
 
-// Email is laid out for a narrow frame: cap media and tables at the frame width, wrap long words, and scroll
-// sideways (never clip) when a fixed-width table is still wider than the frame.
-const EMAIL_FIT = `<meta name="viewport" content="width=device-width,initial-scale=1"><style>img,video,table{max-width:100%!important;height:auto}body{overflow-x:auto;overflow-wrap:anywhere}</style>`;
+// Email is designed for white paper, so it is shown on white in both themes and never recoloured. The base style
+// only sets defaults the message can override; media and tables are capped at the frame width, long words wrap,
+// and a fixed-width table scrolls sideways (never clips). The frame is as tall as its content, so the page scrolls.
+const EMAIL_FIT = `<meta name="viewport" content="width=device-width,initial-scale=1"><style>html{overflow-x:auto}html,body{margin:0;background:#fff;color:#1f1f1f}body{padding:20px 24px;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow-wrap:anywhere}@media(max-width:480px){body{padding:12px}}img,video,table{max-width:100%!important;height:auto}img{color:#777;font-size:13px}details>summary{cursor:pointer;display:inline-block;padding:0 6px;border-radius:4px;background:#eee;color:#555;line-height:1.2}</style>`;
 
 function withPreviewDocument(html: string, scripts: boolean, email: boolean): string {
   const meta = `<meta http-equiv="Content-Security-Policy" content="${previewCsp(scripts, email)}">`;
@@ -127,7 +166,7 @@ export function SandboxedHtmlViewer({
       srcDoc={shellDocument(withPreviewDocument(html, runScripts, email), runScripts, email)}
       sandbox={email ? `allow-scripts ${POPUP_FLAGS}` : "allow-scripts"}
       referrerPolicy="no-referrer"
-      className={`h-full w-full border-0 bg-white${email ? " dark:brightness-85" : ""}`}
+      className="h-full w-full border-0 bg-white"
     />
   );
 }

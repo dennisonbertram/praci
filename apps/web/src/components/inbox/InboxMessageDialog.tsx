@@ -390,11 +390,11 @@ function InboxMessage({
         ) : message.html &&
           hasVisibleContent(message.html) &&
           !(message.text && isPlainHtml(message.html)) ? (
-          <div className="min-h-64 flex-1 overflow-hidden rounded-lg border border-border">
+          <div className="mt-3 min-h-64 flex-1 overflow-hidden rounded-lg border border-border bg-white">
             <SandboxedHtmlViewer html={message.html} title={message.subject} email />
           </div>
         ) : (
-          <p dir="auto" className="whitespace-pre-wrap wrap-anywhere text-sm">
+          <p dir="auto" className="whitespace-pre-wrap p-4 wrap-anywhere text-sm">
             {maskCurrencyWhenHidden(message.text ?? "")}
           </p>
         )}
@@ -620,7 +620,7 @@ function ThreadMessage({ item }: { item: InboxThreadMessage }) {
               {error}
             </p>
           ) : body ? (
-            <p dir="auto" className="whitespace-pre-wrap wrap-anywhere text-sm">
+            <p dir="auto" className="whitespace-pre-wrap p-4 wrap-anywhere text-sm">
               {maskCurrencyWhenHidden(body.text || item.snippet)}
             </p>
           ) : (

@@ -254,13 +254,32 @@ it("moves focus from an email frame to the surrounding dialog when the window re
   await view.cleanup();
 });
 
-it("dims the frame in dark mode for email only", async () => {
+it("email mode shows white paper with base styles, not dimmed in dark mode", async () => {
   const email = await render("<p>hi</p>", false, true);
-  expect(email.iframe?.classList.contains("dark:brightness-85")).toBe(true);
+  const css = embeddedMessage(email.srcDoc).head.innerHTML;
+  expect(css).toContain("html,body{margin:0;background:#fff;color:#1f1f1f}");
+  expect(css).toContain("padding:20px 24px");
+  expect(css).toContain("system-ui");
+  expect(css).toContain("max-width:100%!important;height:auto");
+  expect(css).toContain("overflow-wrap:anywhere");
+  expect(email.iframe?.className).not.toContain("brightness");
   await email.cleanup();
   const plain = await render("<p>hi</p>");
-  expect(plain.iframe?.classList.contains("dark:brightness-85")).toBe(false);
+  expect(plain.srcDoc).not.toContain("margin:0;background:#fff");
   await plain.cleanup();
+});
+
+it("email mode folds quoted replies behind a script-free toggle", async () => {
+  const view = await render(
+    '<p>New</p><div class="gmail_quote"><blockquote>old<blockquote>older</blockquote></blockquote></div>',
+    false,
+    true,
+  );
+  const doc = embeddedMessage(view.srcDoc);
+  expect(doc.querySelectorAll("details")).toHaveLength(1);
+  expect(doc.querySelector("details > summary")?.textContent).toBe("\u2026");
+  expect(doc.querySelector("details > .gmail_quote")).not.toBeNull();
+  await view.cleanup();
 });
 
 it("masks amounts in email HTML while Hide amounts is on, and not otherwise", async () => {
@@ -276,4 +295,23 @@ it("masks amounts in email HTML while Hide amounts is on, and not otherwise", as
   const shown = await render(html, false, true);
   expect(embeddedMessage(shown.srcDoc).body.textContent).toContain("$1,234.56");
   await shown.cleanup();
+});
+
+it("email mode drops images that cannot load and tracking pixels, keeping real alt text muted", async () => {
+  const view = await render(
+    '<img id="ok" src="https://example.invalid/a.png" alt="Photo">' +
+      '<img id="cid" src="cid:logo" alt="">' +
+      '<img id="http" src="http://example.invalid/b.png" alt="Orchard sale banner">' +
+      '<img id="px" src="https://example.invalid/t.gif" width="1" height="1" alt="Orchard pixel">' +
+      '<img id="junk" src="cid:x" alt="  - ">',
+    false,
+    true,
+  );
+  const doc = embeddedMessage(view.srcDoc);
+  expect(doc.getElementById("ok")).not.toBeNull();
+  for (const id of ["cid", "px", "junk"]) expect(doc.getElementById(id)).toBeNull();
+  expect(doc.getElementById("http")).toBeNull();
+  expect(doc.body.textContent).toContain("Orchard sale banner");
+  expect(doc.body.textContent).not.toContain("Orchard pixel");
+  await view.cleanup();
 });
