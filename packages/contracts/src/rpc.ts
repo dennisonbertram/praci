@@ -29,6 +29,8 @@ import {
   DataRoomApiBoxListOutputSchema,
   DataRoomApiDriveListInputSchema,
   DataRoomApiDriveListOutputSchema,
+  DataRoomApiEmailImportedInputSchema,
+  DataRoomApiEmailImportedOutputSchema,
   DataRoomApiFacetValuesSchema,
   DataRoomApiFiltersSchema,
   DataRoomApiFolderSchema,
@@ -1270,6 +1272,9 @@ export const appContract = {
     importEmail: oc
       .input(DataRoomApiImportEmailInputSchema)
       .output(DataRoomApiImportEmailOutputSchema),
+    emailImported: oc
+      .input(DataRoomApiEmailImportedInputSchema)
+      .output(DataRoomApiEmailImportedOutputSchema),
     driveList: oc.input(DataRoomApiDriveListInputSchema).output(DataRoomApiDriveListOutputSchema),
     importDrive: oc
       .input(DataRoomApiImportDriveInputSchema)

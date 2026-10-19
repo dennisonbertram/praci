@@ -1,12 +1,13 @@
 import { t } from "@lingui/core/macro";
 import type { DataRoomApiDriveFile } from "@rakazo/contracts";
 import { Checkbox } from "@rakazo/ui-web";
-import { Folder } from "lucide-react";
+import { File, Folder, Image } from "lucide-react";
 import { sizeText } from "./format";
 
 /**
  * One Drive file or folder in the import picker. The checkbox shows on hover and keyboard focus,
- * and always once ticked or on touch screens. The rest of a folder row opens the folder.
+ * and always once ticked or on touch screens, or always with `showCheckbox`. The rest of a folder
+ * row opens the folder. `note` is a small marker after the size.
  */
 export function DriveRow({
   file,
@@ -14,20 +15,26 @@ export function DriveRow({
   disabled,
   onToggle,
   onOpen,
+  showCheckbox = false,
+  note,
 }: {
   file: DataRoomApiDriveFile;
   checked: boolean;
   disabled: boolean;
   onToggle: () => void;
   onOpen: () => void;
+  showCheckbox?: boolean;
+  note?: string;
 }) {
+  const Icon = file.isFolder ? Folder : file.mimeType.startsWith("image/") ? Image : File;
   const label = (
     <>
-      {file.isFolder ? <Folder className="size-4 shrink-0" aria-hidden="true" /> : null}
+      <Icon className="size-4 shrink-0" aria-hidden="true" />
       <span className="min-w-0 flex-1 truncate">{file.name}</span>
       {file.size === undefined ? null : (
         <span className="text-xs text-muted-foreground">{sizeText(file.size)}</span>
       )}
+      {note ? <span className="text-xs text-muted-foreground">{note}</span> : null}
     </>
   );
   return (
@@ -37,7 +44,11 @@ export function DriveRow({
         disabled={disabled}
         checked={checked}
         onCheckedChange={onToggle}
-        className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-checked:opacity-100 [@media(hover:none)]:opacity-100"
+        className={
+          showCheckbox
+            ? undefined
+            : "opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-checked:opacity-100 [@media(hover:none)]:opacity-100"
+        }
       />
       {file.isFolder ? (
         <button
