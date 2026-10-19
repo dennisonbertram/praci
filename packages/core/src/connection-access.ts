@@ -49,9 +49,9 @@ export function botCanReachConnection(
   bot: { id: string; spawnKey: string | null },
   row: { id: string; connectorId: string; agentBotId: string | null },
 ): boolean {
-  // A connected-app agent works on its own linked connection only.
-  if (row.agentBotId === bot.id && bot.spawnKey === integrationAgentSpawnKey(row.id))
-    return row.connectorId !== "google";
+  // A connected-app agent works on its own linked connection only; a Calendar or Drive agent
+  // uses the built-in tools of that one native Google account.
+  if (row.agentBotId === bot.id && bot.spawnKey === integrationAgentSpawnKey(row.id)) return true;
   return row.connectorId === "google"
     ? botUsesNativeGoogle(bot.spawnKey)
     : botUsesConnectorTools(bot.spawnKey);

@@ -68,6 +68,9 @@ type Effect = {
 
 function matchesWhere(row: Record<string, unknown>, where: Record<string, unknown> = {}) {
   return Object.entries(where).every(([key, expected]) => {
+    if (expected && typeof expected === "object" && "not" in expected) {
+      return row[key] !== (expected as { not: unknown }).not;
+    }
     if (expected && typeof expected === "object" && "in" in expected) {
       return (expected as { in: unknown[] }).in.includes(row[key]);
     }
@@ -117,6 +120,7 @@ function fixture({
   connector: realConnector,
   peer,
   connectionRows = mail ? [mailConnectionRow()] : [],
+  googleConnectors = false,
   availableTools,
   executeToolName = "demo_execute_tool",
 }: {
@@ -125,6 +129,8 @@ function fixture({
   /** A bot_message run started by bot `peer-1`: whether that bot is in the run's space and user, and whether the bot is its server's agent. */
   peer?: { senderInScope: boolean; linked: boolean; serverIds?: string[] };
   connectionRows?: Record<string, unknown>[];
+  /** Offers the native Google Calendar and Drive tools. */
+  googleConnectors?: boolean;
   availableTools?: ConnectorTool[];
   beforeToolCall?: (index: number) => void;
   /** Replaces the stub connector, for runs against a real McpConnector. */
@@ -406,6 +412,7 @@ function fixture({
     autoReview: autoReviewProvider,
     shutdownSignal,
     mail,
+    ...(googleConnectors ? { connectors: {} } : {}),
   } as unknown as Parameters<typeof createRunExecutor>[0]);
   return {
     offeredTools,
@@ -1117,6 +1124,128 @@ describe("Inbox agent mail without AI data sharing consent", () => {
     } finally {
       triage.needsConsent = false;
     }
+  });
+});
+
+describe("Google agents and linked accounts", () => {
+  beforeEach(() => {
+    reviewMock.mockReset();
+  });
+  const account = (extra: Record<string, unknown> = {}) => ({
+    ...mailConnectionRow(),
+    providerRef: "ref",
+    ...extra,
+  });
+  const mailStub = () => ({
+    listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+  });
+  const mailSend = { to: ["sam@example.test"], subject: "Hi", body: "Hello" };
+
+  it("asks for approval when the Inbox agent sends from a Gmail linked to it", async () => {
+    const f = fixture({
+      name: "mail_send",
+      builtin: true,
+      spawnKey: inboxAgentSpawnKey("user-1"),
+      mail: mailStub(),
+      connectionRows: [
+        account({
+          allAgents: false,
+          agentBotId: "bot-1",
+          writesEnabled: true,
+          botAccess: [{ botId: "bot-1" }],
+        }),
+      ],
+    });
+    f.setCalls([{ args: mailSend, executionId: "call-1" }]);
+    await f.run();
+    expect(isApprovalPausedResult(f.results[0])).toBe(true);
+  });
+
+  it("refuses the same send once changes are off on the linked Gmail", async () => {
+    const f = fixture({
+      name: "mail_send",
+      builtin: true,
+      spawnKey: inboxAgentSpawnKey("user-1"),
+      mail: mailStub(),
+      connectionRows: [
+        account({
+          allAgents: false,
+          agentBotId: "bot-1",
+          writesEnabled: false,
+          botAccess: [{ botId: "bot-1" }],
+        }),
+      ],
+    });
+    f.setCalls([{ args: mailSend, executionId: "call-1" }]);
+    await f.run();
+    expect(f.results[0]).toEqual({ error: expect.stringContaining("agent") });
+  });
+
+  it("does not offer another bot a Gmail linked to the Inbox agent, but does once shared", async () => {
+    const run = (row: Record<string, unknown>) => {
+      const f = fixture({
+        name: "mail_search",
+        builtin: true,
+        mail: mailStub(),
+        connectionRows: [account({ agentBotId: "inbox-bot", ...row })],
+      });
+      f.setCalls([{ args: { queries: ["from:priya"] }, executionId: "call-1" }]);
+      return f;
+    };
+    const hidden = run({ allAgents: false });
+    await hidden.run();
+    expect(hidden.offeredTools).not.toContain("mail_search");
+    const shared = run({ allAgents: true });
+    await shared.run();
+    expect(shared.offeredTools).toContain("mail_search");
+  });
+
+  it("refuses mail to any agent once AI data consent is off", async () => {
+    triage.needsConsent = true;
+    try {
+      const f = fixture({
+        name: "mail_search",
+        builtin: true,
+        mail: mailStub(),
+      });
+      f.setCalls([{ args: { queries: ["from:priya"] }, executionId: "call-1" }]);
+      await f.run();
+      expect(f.results[0]).toEqual({ error: MAIL_CONSENT_OFF });
+    } finally {
+      triage.needsConsent = false;
+    }
+  });
+
+  const googleAgent = (provider: string) =>
+    fixture({
+      name: "calendar_list_events",
+      builtin: true,
+      spawnKey: integrationAgentSpawnKey("own-1"),
+      mail: mailStub(),
+      googleConnectors: true,
+      connectionRows: [
+        account({
+          id: "own-1",
+          provider,
+          agentBotId: "bot-1",
+          allAgents: false,
+          botAccess: [{ botId: "bot-1" }],
+        }),
+        account({ id: "acct-1", provider: "gmail" }),
+        account({ id: "cal-2", provider: "googlecalendar" }),
+        account({ id: "drive-2", provider: "googledrive" }),
+      ],
+    });
+
+  it.each([
+    ["googlecalendar", /^calendar_/, /^(mail_|drive_)/],
+    ["googledrive", /^drive_/, /^(mail_|calendar_)/],
+  ])("offers a %s agent only its own service", async (provider, own, others) => {
+    const f = googleAgent(provider);
+    await f.run();
+    expect(f.offeredTools.some((n) => own.test(n))).toBe(true);
+    expect(f.offeredTools.filter((n) => others.test(n))).toEqual([]);
+    expect(f.offeredTools.filter((n) => /^(data_room|finance_|contact)/.test(n))).toEqual([]);
   });
 });
 
