@@ -1091,7 +1091,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       });
     });
 
-    it("lists open to-dos and those finished in the last day, for connected accounts only", async () => {
+    it("lists only open to-dos, for connected accounts only", async () => {
       await wipe();
       await wipeConsent();
       await allow(a);
@@ -1102,10 +1102,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         detail: "DocuSign request",
         dueOn: new Date("2026-10-14T00:00:00Z"),
       });
-      const recent = await todo(a, connA, {
-        text: "Paid",
-        doneAt: new Date(Date.now() - 3_600_000),
-      });
+      await todo(a, connA, { text: "Paid", doneAt: new Date(Date.now() - 3_600_000) });
       await todo(a, connA, { text: "Long ago", doneAt: new Date(Date.now() - 2 * DAY) });
       await todo(a, revokedA, { text: "Revoked account" });
       await todo(b, connB, { text: "Theirs" });
@@ -1114,7 +1111,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       const out = await inboxTodosList({ ...deps, ...ready }, a, {});
 
       expect(out.enabled).toBe(true);
-      expect(out.todos.map((t) => t.text).sort()).toEqual(["Paid", "Sign it"]);
+      expect(out.todos.map((t) => t.text).sort()).toEqual(["Sign it"]);
       expect(out.todos.find((t) => t.id === open.id)).toMatchObject({
         connectionId: connA,
         messageId: m1.id,
@@ -1125,7 +1122,6 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         priority: "critical",
         from: "Ann Sender",
       });
-      expect(out.todos.find((t) => t.id === recent.id)?.doneAt).toEqual(expect.any(String));
       await wipeConsent();
     });
 
