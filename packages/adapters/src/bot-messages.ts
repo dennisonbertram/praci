@@ -1,5 +1,6 @@
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type { BotMessageIntent, MessageBlock } from "@rakazo/contracts";
+import { isOwnerAgentSpawnKey } from "@rakazo/contracts";
 import {
   BOT_MESSAGE_MAX_LENGTH,
   botMessageContext,
@@ -81,7 +82,12 @@ export async function messageBot(
     intent?: BotMessageIntent;
     deliveryKey?: string;
   },
-  options?: { allowTerminalSource?: boolean; forceUnread?: boolean },
+  options?: {
+    allowTerminalSource?: boolean;
+    forceUnread?: boolean;
+    ownerAgentsOnly?: boolean;
+    ownerOrigin?: boolean;
+  },
 ) {
   const message = String(input.message ?? "").trim();
   if (!message) return { ok: false as const, error: "message is required" };
@@ -98,7 +104,13 @@ export async function messageBot(
 
   const candidates = await deps.prisma.bot.findMany({
     where: { spaceId: run.spaceId, userId: run.userId, archivedAt: null },
-    select: { id: true, name: true, title: true, thread: { select: { id: true } } },
+    select: {
+      id: true,
+      name: true,
+      title: true,
+      spawnKey: true,
+      thread: { select: { id: true } },
+    },
   });
   const target = resolveBotAddress(candidates, {
     botId: input.bot_id,
@@ -115,6 +127,14 @@ export async function messageBot(
       sourceContext.intent === "request" ||
       sourceContext.intent === "question") &&
     sourceContext?.fromBotId === target.id;
+  // A chain that began in a background run stays limited to owner agents, except answering its caller.
+  const ownerAgentsOnly =
+    options?.ownerAgentsOnly === true || sourceContext?.backgroundOrigin === true;
+  if (ownerAgentsOnly && !returnsToSender && !isOwnerAgentSpawnKey(target.spawnKey))
+    return {
+      ok: false as const,
+      error: "a background run can only message an agent that owns an account",
+    };
   if (botMessageHopExhausted(hop) && !returnsToSender) {
     return {
       ok: false as const,
@@ -227,6 +247,11 @@ export async function messageBot(
           hop,
           intent,
           returnToMessageId: outbound.id,
+          ...(ownerAgentsOnly ? { backgroundOrigin: true } : {}),
+          // Answering the chain's caller keeps the chain's own origin.
+          ...((options?.ownerOrigin ?? (returnsToSender && sourceContext?.ownerOrigin === true))
+            ? { ownerOrigin: true }
+            : {}),
         };
         const inbound = await createThreadMessageInTransaction(tx, {
           threadId: targetThreadId,

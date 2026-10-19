@@ -36,13 +36,14 @@ describe("integration agent built-in tools", () => {
   };
   const names = (integrationAgent: boolean) =>
     selectBuiltinToolsForRun({ ...base, integrationAgent }).map((tool) => tool.name);
-  it("drops mail, Drive, Data room, finance and contact tools but keeps messaging", () => {
+  it("drops mail, Drive, Data room, finance and contact tools and delegation tools", () => {
     expect(names(false)).toContain("mail_send");
     expect(names(false)).toContain("drive_search");
     const own = names(true);
     expect(own).not.toContain("mail_send");
     expect(own).not.toContain("drive_search");
     expect(own.some((n) => n.startsWith("finance_"))).toBe(false);
-    expect(own).toContain("message_bot");
+    expect(own).not.toContain("message_bot");
+    expect(own).not.toContain("handoff_to_bot");
   });
 });

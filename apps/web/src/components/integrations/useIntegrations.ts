@@ -11,6 +11,7 @@ import type {
 } from "@rakazo/contracts";
 import { preferNativeGoogle } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { INTEGRATIONS_CHANGED_EVENT } from "../../lib/agent-app";
 import { desktopBridge, nativeGoogleAvailable } from "../../lib/desktop";
 import { optionalCatalogFeedProbe } from "../../lib/optional-catalog-feed";
 import { rpc } from "../../lib/rpc";
@@ -109,6 +110,7 @@ export function useIntegrations(): IntegrationsData {
           ),
         ),
       );
+      window.dispatchEvent(new Event(INTEGRATIONS_CHANGED_EVENT));
       if (!mounted.current) return;
       setData({
         loaded: true,

@@ -184,6 +184,7 @@ import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
+import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
@@ -203,6 +204,7 @@ import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
+import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
 import { takeInitialBootstrap } from "../lib/bootstrap";
@@ -840,6 +842,11 @@ export function ShellPage() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [initialBotsLoaded, setInitialBotsLoaded] = useState(false);
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
+  const activeSpaceId = bootstrapMe?.spaceId;
+  const agentAppFor = useAgentApp(
+    userId,
+    spaces.length > 0 ? spaces.map((space) => space.id) : activeSpaceId ? [activeSpaceId] : [],
+  );
   const [keepComputerRecovery, setKeepComputerRecovery] = useState(false);
   const recoveryHoldTimer = useRef<number | undefined>(undefined);
   const showComputerRecoveryHint =
@@ -4194,7 +4201,8 @@ export function ShellPage() {
                                 }
                               >
                                 {item.kind === "bot" ? (
-                                  <BotAvatar
+                                  <AgentAvatar
+                                    app={agentAppFor(item.chat.id, item.chat.spaceId)}
                                     color={item.chat.color}
                                     identity={item.chat.id}
                                     size={36}
@@ -4494,6 +4502,7 @@ export function ShellPage() {
                 className="w-full justify-start font-normal"
                 onClick={() =>
                   void authClient.signOut().then(() => {
+                    clearAgentAppCache();
                     clearSpaceSelection();
                     navigate("/");
                   })
