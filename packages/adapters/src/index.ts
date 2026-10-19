@@ -96,6 +96,7 @@ export * from "./gmail-mail-provider.js";
 export * from "./graphql-connectors.js";
 export * from "./group-handoff.js";
 export * from "./home.js";
+export * from "./object-home.js";
 export * from "./host-aware-sandbox.js";
 export * from "./inbox-classifier-factory.js";
 export * from "./inbox-triage.js";

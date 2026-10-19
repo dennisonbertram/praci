@@ -43,3 +43,15 @@ describe("LocalArtifactStore", () => {
     await expect(store.get(stored.id, context)).rejects.toThrow();
   });
 });
+
+describe("LocalArtifactStore hash", () => {
+  it("returns the SHA-256 of the bytes, like the S3 store", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "rakazo-artifacts-"));
+    dirs.push(root);
+    const stored = await new LocalArtifactStore(root).put(
+      { name: "a.txt", mimeType: "text/plain", bytes: new TextEncoder().encode("abc") },
+      context,
+    );
+    expect(stored.hash).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  });
+});

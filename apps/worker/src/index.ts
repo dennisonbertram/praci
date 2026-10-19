@@ -35,7 +35,7 @@ import {
   isComposioEnabled,
   isMessagingSurfaceEnabled,
   isPipedreamEnabled,
-  LocalAgentHomeStore,
+  createAgentHomeStore,
   McpConnector,
   McpOAuthBroker,
   messagingEnvFromProcess,
@@ -173,8 +173,8 @@ async function main() {
   await connector.start();
   integrationSettings.warmDirectories();
   const memoryProviders = new SpaceMemoryProviderResolver(prisma, secrets);
-  const home = new LocalAgentHomeStore(dataDir);
   const artifacts = createArtifactStore(process.env, dataDir);
+  const home = createAgentHomeStore(process.env, prisma, artifacts, dataDir);
   const inMemoryJobs = process.env.WAKEUP_DRIVER === "memory" ? new InMemoryJobQueue() : undefined;
   const jobs: JobPublisher = inMemoryJobs ?? new GraphileJobPublisher(pool);
   const ticketChanges = createTicketChangeNotifier({

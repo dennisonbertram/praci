@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { mkdir, open, rm } from "node:fs/promises";
 import path from "node:path";
@@ -33,7 +33,7 @@ export class LocalArtifactStore implements ArtifactStore {
     } finally {
       await handle.close();
     }
-    return { id, hash: String(artifact.bytes.byteLength) };
+    return { id, hash: createHash("sha256").update(artifact.bytes).digest("hex") };
   }
 
   async get(id: string, context: AdapterContext) {

@@ -31,7 +31,6 @@ import {
   teamBrowserProfileName,
   withCleanupDeadline,
 } from "./computer-workspace.js";
-import { resolveAgentHomePath } from "./home.js";
 import { removePiBotSessions } from "./pi-session.js";
 
 export function confirmSpawnedBotName(confirmName: string, botName: string) {
@@ -528,10 +527,9 @@ export async function destroyBot(
     }),
   );
   if (dedicated) {
-    await rm(resolveAgentHomePath(deps.home, dedicated.homeKey, deps.dataDir ?? "./data"), {
-      recursive: true,
-      force: true,
-    }).catch(() => undefined);
+    await deps.home
+      .remove(dedicated.homeKey, context, { snapshotId: dedicated.homeSnapshotId })
+      .catch(() => undefined);
   }
   await removeTeamBrowserProfile(deps, bot.id, sharedComputer, context);
   await removeTeamBotWorkspace(deps, bot, context).catch((error) => {
@@ -738,10 +736,11 @@ async function removeTeamBrowserProfile(
     });
   }
   if (!REMOTE_TEAM_SANDBOX_KINDS.has(computer.kind)) return;
-  const homeDir = resolveAgentHomePath(deps.home, computer.homeKey, deps.dataDir ?? "./data");
-  await removeContainedDirectory(homeDir, ".browser-profiles", name).catch((error) => {
-    getLogger().error("team browser profile cleanup", error);
-  });
+  await deps.home
+    .removeEntry(computer.homeKey, ".browser-profiles", name, context)
+    .catch((error) => {
+      getLogger().error("team browser profile cleanup", error);
+    });
 }
 
 /** A Team Computer that is not running removes the folder when it next boots. */
@@ -760,8 +759,7 @@ async function removeTeamBotWorkspace(
   // restore from it. Any other home may be mounted by a running computer, where a bot could
   // swap bots/ for a symlink between the checks and rm, so it is only cleaned inside the computer.
   if (REMOTE_TEAM_SANDBOX_KINDS.has(computer.kind)) {
-    const homeDir = resolveAgentHomePath(deps.home, computer.homeKey, deps.dataDir ?? "./data");
-    await removeContainedDirectory(homeDir, "bots", bot.id).catch((error) => {
+    await deps.home.removeEntry(computer.homeKey, "bots", bot.id, context).catch((error) => {
       getLogger().error("team bot folder cleanup", error);
     });
   }
@@ -778,40 +776,6 @@ async function removeTeamBotWorkspace(
   ).catch((error) => {
     getLogger().error("team bot folder cleanup", error);
   });
-}
-
-/** Delete one folder in the team home. A symlinked parent is refused; a final symlink is unlinked. */
-async function removeContainedDirectory(root: string, parent: string, name: string) {
-  const target = path.join(root, parent, name);
-  const info = await lstat(target).catch((error: unknown) => {
-    if (isMissing(error)) return null;
-    throw error;
-  });
-  if (!info) return;
-  const parentInfo = await lstat(path.dirname(target)).catch((error: unknown) => {
-    if (isMissing(error)) return null;
-    throw error;
-  });
-  if (!parentInfo || parentInfo.isSymbolicLink() || !parentInfo.isDirectory()) {
-    throw new Error("folder escapes the team home");
-  }
-  if (info.isSymbolicLink()) {
-    await unlink(target);
-    return;
-  }
-  const resolvedRoot = await realpath(root);
-  const resolvedTarget = await realpath(target);
-  const relative = path.relative(resolvedRoot, resolvedTarget);
-  if (
-    path.dirname(resolvedTarget) !== path.join(resolvedRoot, parent) ||
-    path.basename(resolvedTarget) !== name ||
-    relative === "" ||
-    relative.startsWith("..") ||
-    path.isAbsolute(relative)
-  ) {
-    throw new Error("folder escapes the team home");
-  }
-  await rm(resolvedTarget, { recursive: true, force: true });
 }
 
 function isMissing(error: unknown): error is NodeJS.ErrnoException {

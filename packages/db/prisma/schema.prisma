@@ -1143,6 +1143,7 @@ model Computer {
   scopeKey                String                   @unique
   homeKey                 String                   @unique
   homeRevision            String                   @default("empty")
+  homeSnapshotId          String?
   kind                    String
   providerRef             String?
   state                   String                   @default("stopped")

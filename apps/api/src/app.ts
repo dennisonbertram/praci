@@ -54,7 +54,7 @@ import {
   isComposioEnabled,
   isMessagingSurfaceEnabled,
   isPipedreamEnabled,
-  LocalAgentHomeStore,
+  createAgentHomeStore,
   McpConnector,
   McpOAuthBroker,
   messagingPlatformsFromEnv,
@@ -324,8 +324,8 @@ export async function createApp(
   );
   const memoryProviders = new SpaceMemoryProviderResolver(prisma, secrets);
   const oauthLogins = new PiOAuthLogins();
-  const home = new LocalAgentHomeStore(env.dataDir);
   const artifacts = createArtifactStore(process.env, env.dataDir);
+  const home = createAgentHomeStore(process.env, prisma, artifacts, env.dataDir);
   const memory = new MarkdownMemoryStore(prisma);
   const mcp = new McpConnector(
     prisma,

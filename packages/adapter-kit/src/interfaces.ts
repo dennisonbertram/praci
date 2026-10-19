@@ -407,6 +407,27 @@ export interface AgentHomeStore {
     path: string,
     context: AdapterContext,
   ): Promise<Array<{ path: string; kind: "file" | "dir"; size: number }>>;
+  /**
+   * Deletes the whole home, including any stored copy. Missing homes are not an error. Pass the
+   * stored snapshot id when the Computer row is already gone, so the stored copy can still go.
+   */
+  remove(
+    botId: string,
+    context: AdapterContext,
+    stored?: { snapshotId?: string | null },
+  ): Promise<void>;
+  /**
+   * Deletes `parent/name` inside the home and persists the change. A linked parent is refused;
+   * a linked final entry is unlinked. Missing entries are not an error.
+   */
+  removeEntry(botId: string, parent: string, name: string, context: AdapterContext): Promise<void>;
+  /**
+   * Present when a sandbox on this host (Docker) may use the home as its live working directory.
+   * The store makes the directory current before returning it.
+   */
+  liveDirectory?(botId: string, context: AdapterContext): Promise<string>;
+  /** Records the live directory's current contents as a new revision. */
+  revise?(botId: string, context: AdapterContext): Promise<string>;
 }
 
 export interface ArtifactStore {

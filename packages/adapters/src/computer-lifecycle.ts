@@ -32,7 +32,7 @@ import {
   restoreComputerWorkspace,
 } from "./computer-workspace.js";
 import { isSandboxGoneError } from "./e2b-sandbox.js";
-import { resolveAgentHomePath } from "./home.js";
+import { liveHomeDirectory } from "./home.js";
 
 type ComputerUpdateProgress = (
   stage: Exclude<ComputerUpdate["stage"], "preparing">,
@@ -173,7 +173,12 @@ export async function provisionComputer(
       throw new Error("computer control revocation is still in progress");
     }
   }
-  const homePath = resolveAgentHomePath(deps.home, existing.homeKey, deps.dataDir ?? "./data");
+  const homePath = await liveHomeDirectory(
+    deps.home,
+    existing.homeKey,
+    context,
+    deps.dataDir ?? "./data",
+  );
   await mkdir(homePath, { recursive: true });
 
   // Re-provisioning a live computer enters booting and revokes its screen URLs.
