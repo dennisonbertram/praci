@@ -22,11 +22,11 @@ Follow these in order. Steps 1 and 2 are the normal install; steps 3 to 8 turn t
 3. **File storage.** Without settings, uploads go to the local `data/` directory, which is fine for one process. For several processes, or to keep files off the app host, set the `RAKAZO_S3_*` variables for S3, R2 or MinIO ([object storage](../self-host.md#object-storage-for-artifacts)). For MinIO set `RAKAZO_S3_FORCE_PATH_STYLE=true` and create the bucket first.
 4. **Chat model.** Connect a model in Settings, Models. Classification and filing use the default model.
 5. **Vision model (OCR for images and scanned PDFs).** Use a default model that accepts images. For an OpenAI-compatible connection, turn on **Supports images** under Advanced when connecting. Without it, images and scans are stored but not read.
-6. **Embedding model.** Use an OpenAI-compatible connection and set the **Data room search model**. See [search and embeddings](./search-and-embeddings.md).
+6. **Embedding model.** Use the built-in OpenRouter or OpenAI connection (or an OpenAI-compatible one, such as Ollama) and set the **Data room search model**. See [search and embeddings](./search-and-embeddings.md).
 7. **Consent.** Open the Data room and accept the AI data sharing prompt. It lists the chat and embedding models that will receive document text. Accept it again after changing either model; accepting queues reading, classification and indexing for existing items.
 8. **Google Drive and Gmail.** Connect Google in Integrations: through Composio or Pipedream (set their keys in `.env`), or with your own Google OAuth client (enter its Client ID and secret in Integrations, no environment variables).
 
-Hosted route: OpenRouter or OpenAI as an OpenAI-compatible connection (needs `RAKAZO_OPENAI_COMPAT_ALLOW_PUBLIC=1`), a vision-capable chat model, and `text-embedding-3-small` or `-large` for search. Document text goes to those providers.
+Hosted route: The built-in OpenRouter or OpenAI connection (no extra flags), a vision-capable chat model, and `text-embedding-3-small` or `-large` for search. Document text goes to those providers.
 
 Fully local route: Ollama on the host with a chat model, a vision model such as `qwen3-vl`, and `mxbai-embed-large`. Connect it as an OpenAI-compatible connection at `http://127.0.0.1:11434/v1`, MinIO or local disk for files, and nothing leaves your machine. Google sources still need Google's API.
 
