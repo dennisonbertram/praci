@@ -24,11 +24,24 @@ const botAvatar = (
   </span>
 );
 
-function Demo({ items }: { items: Item[] }) {
+function Demo({ items, expanded = false }: { items: Item[]; expanded?: boolean }) {
+  useEffect(() => {
+    if (!expanded) return;
+    // Stands in for the pointer hovering the stack.
+    const timer = setTimeout(
+      () =>
+        document
+          .querySelector("[role=status]")
+          ?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })),
+      400,
+    );
+    return () => clearTimeout(timer);
+  }, [expanded]);
   useEffect(() => {
     for (const { withBot, ...item } of items)
       enqueueNotificationToast({
         ...item,
+        timeout: 0,
         href: "/demo",
         avatar: withBot ? botAvatar : undefined,
         createdAt: withBot ? ago(2) : undefined,
@@ -47,7 +60,9 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const render = (items: Item[]) => () => <Demo items={items} />;
+const render =
+  (items: Item[], expanded = false) =>
+  () => <Demo items={items} expanded={expanded} />;
 
 export const One: Story = { args: { onOpen: () => {} }, render: render(samples.slice(0, 1)) };
 export const Finished: Story = {
@@ -77,6 +92,13 @@ export const WithBotStacked: Story = {
   render: render(samples.map((s) => ({ ...s, withBot: true }))),
 };
 export const Three: Story = { args: { onOpen: () => {} }, render: render(samples.slice(0, 3)) };
+/** The newest sheet is in front; older ones peek out behind it. */
+export const Deck: Story = { args: { onOpen: () => {} }, render: render(samples.slice(0, 3)) };
+/** Hover or focus fans the deck out so every toast can be read. */
+export const Expanded: Story = {
+  args: { onOpen: () => {} },
+  render: render(samples, true),
+};
 /** The two oldest collapse into "+2". */
 export const Five: Story = { args: { onOpen: () => {} }, render: render(samples) };
 export const LongText: Story = {

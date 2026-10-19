@@ -42,20 +42,89 @@ it("shows three toasts and collapses the rest into +N", async () => {
   );
 });
 
-it("keeps attention toasts until dismissed", async () => {
+const viewport = () =>
+  document.querySelector<HTMLElement>("[data-base-ui-toast-viewport], [role=status]");
+const advance = (ms: number) => act(async () => vi.advanceTimersByTime(ms));
+const SLOW = 7_000;
+
+async function withFakeTimers(run: () => Promise<void>) {
   vi.useFakeTimers();
   try {
-    await mount();
-    await add(1);
-    await act(async () => vi.advanceTimersByTime(60_000));
-    expect(cards()).toHaveLength(1);
-    const dismiss = document.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
-    await act(async () => dismiss?.click());
-    await act(async () => vi.advanceTimersByTime(1_000));
-    expect(cards()).toHaveLength(0);
+    await run();
   } finally {
     vi.useRealTimers();
   }
+}
+
+it("fades out after the delay without marking seen", () =>
+  withFakeTimers(async () => {
+    const onSeen = vi.fn();
+    await mount();
+    await add(1, { onSeen });
+    await advance(5_000);
+    expect(cards()).toHaveLength(1);
+    await advance(SLOW);
+    expect(cards()).toHaveLength(0);
+    expect(onSeen).not.toHaveBeenCalled();
+  }));
+
+it("pauses while the pointer is over the stack and resumes on leave", () =>
+  withFakeTimers(async () => {
+    await mount();
+    await add(1);
+    await act(async () => {
+      viewport()?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+      viewport()?.dispatchEvent(new MouseEvent("mouseenter"));
+    });
+    await advance(30_000);
+    expect(cards()).toHaveLength(1);
+    await act(async () => {
+      viewport()?.dispatchEvent(new MouseEvent("mouseout", { bubbles: true }));
+      viewport()?.dispatchEvent(new MouseEvent("mouseleave"));
+    });
+    await advance(SLOW);
+    expect(cards()).toHaveLength(0);
+  }));
+
+it("pauses while a toast has keyboard focus", () =>
+  withFakeTimers(async () => {
+    await mount();
+    await add(1);
+    const open = document.querySelector<HTMLButtonElement>(
+      '[data-slot="notification-toast"] button',
+    );
+    await act(async () => open?.focus());
+    await advance(30_000);
+    expect(cards()).toHaveLength(1);
+    await act(async () => open?.blur());
+    await advance(SLOW);
+    expect(cards()).toHaveLength(0);
+  }));
+
+it("announces politely and stacks newest first", async () => {
+  await mount();
+  await add(5);
+  expect(viewport()?.getAttribute("role")).toBe("status");
+  expect(viewport()?.getAttribute("aria-live")).toBe("polite");
+  const front = document.querySelector('[data-slot="notification-toast"]');
+  expect(front?.textContent).toContain("Title 5");
+  expect(front?.querySelector('[data-slot="notification-toast-overflow"]')?.textContent).toBe("+2");
+});
+
+it("uses no slide under reduced motion", async () => {
+  await mount();
+  await add(1);
+  const cls = (cards()[0] as HTMLElement).className;
+  expect(cls).toContain("motion-reduce:transition-opacity");
+  expect(cls).toContain("motion-reduce:data-[starting-style]:translate-y-");
+});
+
+it("dismisses with the close button", async () => {
+  await mount();
+  await add(1);
+  const dismiss = document.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
+  await act(async () => dismiss?.click());
+  await expectClosed();
 });
 
 async function clickToast() {
