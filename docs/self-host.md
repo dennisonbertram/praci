@@ -420,9 +420,12 @@ The Compose stacks (`docker-compose.yml`, `docker-compose.images.yml` and `docke
 include a MinIO service and a one-shot `minio-init` service that creates the bucket on first start.
 API and worker get `RAKAZO_S3_*` preset to that service, so a default install stores uploaded and
 generated files and agent homes in object storage with no extra setup. MinIO is not published on the
-host. Its default credentials are placeholders; set `RAKAZO_S3_ACCESS_KEY_ID` and
-`RAKAZO_S3_SECRET_ACCESS_KEY` in `.env` before the first start of any stack others can reach (MinIO
-keeps the credentials it was first started with). Back up the `miniodata` volume with the database.
+host. `docker-compose.prod.yml` and `docker-compose.images.yml` refuse to start unless
+`RAKAZO_S3_ACCESS_KEY_ID` and `RAKAZO_S3_SECRET_ACCESS_KEY` are set in `.env` (`install-images.sh`
+generates them). They are also MinIO's root login, and MinIO keeps the credentials it was first started
+with. Use letters and digits only, with at least 8 characters in the secret. The source-checkout
+`docker-compose.yml` falls back to placeholder credentials, which are for local development only. Back
+up the `miniodata` volume with the database.
 
 To use another S3-compatible store (AWS S3, Cloudflare R2, a MinIO you run yourself), set the
 variables below in `.env`; they replace the presets. Files are stored under

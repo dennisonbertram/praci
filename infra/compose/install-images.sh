@@ -231,6 +231,12 @@ create_env() {
       "SANDBOX_SUPERVISOR_TOKEN=")
         printf 'SANDBOX_SUPERVISOR_TOKEN=%s\n' "$(openssl rand -hex 32)"
         ;;
+      "RAKAZO_S3_ACCESS_KEY_ID=")
+        printf 'RAKAZO_S3_ACCESS_KEY_ID=%s\n' "$(openssl rand -hex 10)"
+        ;;
+      "RAKAZO_S3_SECRET_ACCESS_KEY=")
+        printf 'RAKAZO_S3_SECRET_ACCESS_KEY=%s\n' "$(openssl rand -hex 20)"
+        ;;
       *)
         printf '%s\n' "$line"
         ;;
@@ -251,6 +257,8 @@ validate_required_secrets() {
       required["ENCRYPTION_KEY"] = 1
       required["SCREEN_PROXY_SECRET"] = 1
       required["SANDBOX_SUPERVISOR_TOKEN"] = 1
+      required["RAKAZO_S3_ACCESS_KEY_ID"] = 1
+      required["RAKAZO_S3_SECRET_ACCESS_KEY"] = 1
     }
     {
       name = $0
@@ -277,6 +285,8 @@ services:
       _RAKAZO_VALIDATE_ENCRYPTION_KEY: ${ENCRYPTION_KEY:?Set ENCRYPTION_KEY in .env}
       _RAKAZO_VALIDATE_SCREEN_PROXY_SECRET: ${SCREEN_PROXY_SECRET:?Set SCREEN_PROXY_SECRET in .env}
       _RAKAZO_VALIDATE_SANDBOX_SUPERVISOR_TOKEN: ${SANDBOX_SUPERVISOR_TOKEN:?Set SANDBOX_SUPERVISOR_TOKEN in .env}
+      _RAKAZO_VALIDATE_RAKAZO_S3_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:?Set RAKAZO_S3_ACCESS_KEY_ID in .env}
+      _RAKAZO_VALIDATE_RAKAZO_S3_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:?Set RAKAZO_S3_SECRET_ACCESS_KEY in .env}
 YAML
   then
     fail "set every required secret in .env to a non-empty value."

@@ -77,6 +77,15 @@ describe("the images compose file", () => {
 
   it("bundles MinIO, creates its bucket once, and presets the S3 settings without a host port", () => {
     expect(compose.services.minio?.ports).toBeUndefined();
+    expect(compose.services.minio?.image).toMatch(/:\d{4}\.\d+\.\d+-debian-12-r\d+\}$/);
+    // The published stack has no default credentials, so a placeholder cannot reach production.
+    for (const name of ["minio", "minio-init", "api", "worker"] as const) {
+      for (const [key, value] of Object.entries(compose.services[name]?.environment ?? {})) {
+        if (/ACCESS_KEY_ID|SECRET_ACCESS_KEY|MINIO_ROOT/.test(key)) {
+          expect(value, `${name}.${key}`).toMatch(/^\$\{RAKAZO_S3_[A-Z_]+:\?/);
+        }
+      }
+    }
     expect(compose.services["minio-init"]?.restart).toBe("no");
     for (const name of ["api", "worker"] as const) {
       const environment = compose.services[name]?.environment ?? {};

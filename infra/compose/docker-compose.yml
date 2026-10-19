@@ -63,25 +63,24 @@ services:
 
   # Object storage for artifacts and agent homes. Not published on the host. The default
   # credentials are placeholders: set RAKAZO_S3_ACCESS_KEY_ID and RAKAZO_S3_SECRET_ACCESS_KEY
-  # in .env before the first start of any stack that is reachable by others.
+  # in .env for anything beyond local development.
   minio:
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-04-22T22-12-26Z}
-    command: ["server", "/data"]
+    image: ${MINIO_IMAGE:-bitnamilegacy/minio:2025.7.23-debian-12-r3}
     restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${RAKAZO_S3_ACCESS_KEY_ID:-rakazo-dev-access-key}
       MINIO_ROOT_PASSWORD: ${RAKAZO_S3_SECRET_ACCESS_KEY:-rakazo-dev-secret-key-change-me}
     volumes:
-      - miniodata:/data
+      - miniodata:/bitnami/minio/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
       retries: 20
 
   # Creates the bucket on first start and does nothing afterwards.
   minio-init:
-    image: ${MINIO_MC_IMAGE:-minio/mc:RELEASE.2025-04-16T18-13-26Z}
+    image: ${MINIO_MC_IMAGE:-bitnamilegacy/minio-client:2025.7.21-debian-12-r2}
     restart: "no"
     entrypoint:
       - sh

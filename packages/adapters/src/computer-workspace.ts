@@ -279,16 +279,18 @@ export async function checkpointComputerWorkspace(
   homeKey: string,
   computer: ComputerRef,
   context: AdapterContext,
+  /** The revision this caller read before it started; a newer stored revision rejects the save. */
+  expectedRevision?: string,
 ): Promise<string> {
   if (computer.kind === "docker" && home.liveDirectory && home.revise) {
-    return home.revise(homeKey, context);
+    return home.revise(homeKey, context, expectedRevision);
   }
   const staging = await mkdtemp(path.join(tmpdir(), "rakazo-workspace-"));
   try {
     for await (const file of sandbox.exportWorkspace(computer, context)) {
       await writePortableFile(staging, file);
     }
-    return await home.commit(homeKey, staging, context);
+    return await home.commit(homeKey, staging, context, expectedRevision);
   } finally {
     await rm(staging, { recursive: true, force: true });
   }

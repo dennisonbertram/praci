@@ -384,7 +384,13 @@ export interface JobWorkerHost {
 export interface AgentHomeStore {
   describe(): AdapterDescriptor<{ revisions: boolean }>;
   checkout(botId: string, dest: string, context: AdapterContext): Promise<string>;
-  commit(botId: string, src: string, context: AdapterContext): Promise<string>;
+  /** `expectedRevision`, when given, makes the save fail if the stored revision has moved on. */
+  commit(
+    botId: string,
+    src: string,
+    context: AdapterContext,
+    expectedRevision?: string,
+  ): Promise<string>;
   restore(botId: string, revision: string, dest: string, context: AdapterContext): Promise<void>;
   /**
    * Paths are relative to `directory`; a missing or linked directory exports nothing.
@@ -427,7 +433,7 @@ export interface AgentHomeStore {
    */
   liveDirectory?(botId: string, context: AdapterContext): Promise<string>;
   /** Records the live directory's current contents as a new revision. */
-  revise?(botId: string, context: AdapterContext): Promise<string>;
+  revise?(botId: string, context: AdapterContext, expectedRevision?: string): Promise<string>;
 }
 
 export interface ArtifactStore {

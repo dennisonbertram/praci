@@ -1144,6 +1144,7 @@ model Computer {
   homeKey                 String                   @unique
   homeRevision            String                   @default("empty")
   homeSnapshotId          String?
+  homePreviousSnapshotId  String?
   kind                    String
   providerRef             String?
   state                   String                   @default("stopped")

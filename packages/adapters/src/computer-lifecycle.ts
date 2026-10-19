@@ -844,6 +844,7 @@ export async function replaceComputer(
           existing.homeKey,
           oldRef,
           context,
+          existing.homeRevision,
         );
         const recorded = await deps.prisma.computer.updateMany({
           where: { id: computerId, state: "suspending", updatedAt: claimStamp },

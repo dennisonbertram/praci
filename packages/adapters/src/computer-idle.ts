@@ -260,6 +260,7 @@ export async function sleepComputerIfIdle(
       computer.homeKey,
       ref,
       ctx,
+      computer.homeRevision,
     );
     const saved = await deps.prisma.computer.updateMany({
       where: suspensionClaim,
@@ -354,6 +355,7 @@ function loadComputer(prisma: PrismaClient, computerId: string) {
     select: {
       id: true,
       homeKey: true,
+      homeRevision: true,
       providerRef: true,
       kind: true,
       state: true,

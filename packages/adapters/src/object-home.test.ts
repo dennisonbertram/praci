@@ -26,6 +26,7 @@ type Row = {
   homeKey: string;
   homeRevision: string;
   homeSnapshotId: string | null;
+  homePreviousSnapshotId: string | null;
 };
 
 /** In-memory stand-ins for Postgres and the object store; no network or containers. */
@@ -37,6 +38,7 @@ function fakes() {
       homeKey: "team-a",
       homeRevision: "empty",
       homeSnapshotId: null,
+      homePreviousSnapshotId: null,
     },
     {
       id: "c2",
@@ -44,6 +46,7 @@ function fakes() {
       homeKey: "team-b",
       homeRevision: "empty",
       homeSnapshotId: null,
+      homePreviousSnapshotId: null,
     },
   ];
   const matches = (row: Row, where: Record<string, unknown>) =>
@@ -142,8 +145,23 @@ describe("ObjectAgentHomeStore", () => {
     await a.commit("team-a", await source({ "f.txt": "one" }), ctx("space-a"));
     expect(await b.readFile("team-a", "f.txt", ctx("space-a"))).toBe("one");
     await a.commit("team-a", await source({ "f.txt": "two" }), ctx("space-a"));
-    expect(f.objects.size).toBe(1);
     expect(await b.readFile("team-a", "f.txt", ctx("space-a"))).toBe("two");
+    // The snapshot just replaced stays for one more save; the one from two saves ago goes.
+    expect(f.objects.size).toBe(2);
+    await a.commit("team-a", await source({ "f.txt": "three" }), ctx("space-a"));
+    expect(f.objects.size).toBe(2);
+    expect(f.objects.has(f.rows[0]!.homePreviousSnapshotId!)).toBe(true);
+  });
+
+  it("rejects a stale checkout that tries to save the live directory", async () => {
+    const f = fakes();
+    const a = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
+    const b = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
+    await a.commit("team-a", await source({ "f.txt": "one" }), ctx("space-a"));
+    await b.liveDirectory("team-a", ctx("space-a")); // b checks out revision one
+    await a.commit("team-a", await source({ "f.txt": "two" }), ctx("space-a"));
+    await expect(b.revise("team-a", ctx("space-a"))).rejects.toBeInstanceOf(AgentHomeConflictError);
+    expect(await a.readFile("team-a", "f.txt", ctx("space-a"))).toBe("two");
   });
 
   it("rejects a commit based on a stale revision", async () => {
@@ -154,7 +172,7 @@ describe("ObjectAgentHomeStore", () => {
     await expect(
       store.commit("team-a", await source({ "f.txt": "three" }), ctx("space-a"), base),
     ).rejects.toBeInstanceOf(AgentHomeConflictError);
-    expect(f.objects.size).toBe(1);
+    expect(f.objects.size).toBe(2);
   });
 
   it("rejects a save when another writer publishes while it uploads, and keeps no orphan", async () => {
@@ -235,7 +253,11 @@ describe("ObjectAgentHomeStore", () => {
     expect(await other.list("team-a", "bots", ctx("space-a"))).toEqual([]);
     await store.remove("team-a", ctx("space-a"));
     expect(f.objects.size).toBe(0);
-    expect(f.rows[0]).toMatchObject({ homeRevision: "empty", homeSnapshotId: null });
+    expect(f.rows[0]).toMatchObject({
+      homeRevision: "empty",
+      homeSnapshotId: null,
+      homePreviousSnapshotId: null,
+    });
   });
 
   it("uses object storage unless the development opt-out is set", async () => {
@@ -265,6 +287,22 @@ describe("workspace checkpoints use the store interface", () => {
     );
     await restoreComputerWorkspace(home, sandbox, "k", computer, ctx("space-a"));
     expect(home.exportHome).not.toHaveBeenCalled();
+  });
+
+  it("passes the revision read before the checkpoint to the store", async () => {
+    const commit = vi.fn().mockResolvedValue("rev-2");
+    const home = { commit } as unknown as AgentHomeStore;
+    const remote = { id: "c", botId: "b", kind: "e2b", providerRef: "p" } as never;
+    const exportWorkspace = async function* () {};
+    await checkpointComputerWorkspace(
+      home,
+      { exportWorkspace } as never,
+      "k",
+      remote,
+      ctx("space-a"),
+      "rev-1",
+    );
+    expect(commit).toHaveBeenCalledWith("k", expect.any(String), expect.anything(), "rev-1");
   });
 
   it("restores through exportHome when the store has no live directory", async () => {

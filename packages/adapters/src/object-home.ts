@@ -46,7 +46,18 @@ export function unpackHome(bytes: Uint8Array): PortableFile[] {
     .map(([name, content]) => ({ path: name, content, executable: executable.has(name) }));
 }
 
-type HomeRow = { id: string; homeRevision: string; homeSnapshotId: string | null };
+type HomeRow = {
+  id: string;
+  homeRevision: string;
+  homeSnapshotId: string | null;
+  homePreviousSnapshotId: string | null;
+};
+const HOME_COLUMNS = {
+  id: true,
+  homeRevision: true,
+  homeSnapshotId: true,
+  homePreviousSnapshotId: true,
+} as const;
 
 /**
  * Keeps each Computer's home as one zip snapshot in the artifact store, with the current
@@ -96,10 +107,22 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
     });
   }
 
-  async revise(botId: string, context: AdapterContext) {
-    return this.exclusive(botId, async () =>
-      this.publish(botId, await this.row(botId, context), context),
-    );
+  /**
+   * Saves the live directory. It is rejected when the stored revision is not the one this working
+   * copy last synced (another worker saved since) or not `expectedRevision`.
+   */
+  async revise(botId: string, context: AdapterContext, expectedRevision?: string) {
+    return this.exclusive(botId, async () => {
+      const row = await this.row(botId, context);
+      const synced = await this.synced(botId);
+      if (
+        (expectedRevision !== undefined && expectedRevision !== row.homeRevision) ||
+        (synced !== undefined && synced !== row.homeRevision)
+      ) {
+        throw new AgentHomeConflictError(botId);
+      }
+      return this.publish(botId, row, context);
+    });
   }
 
   async liveDirectory(botId: string, context: AdapterContext) {
@@ -155,14 +178,15 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
     await this.exclusive(botId, async () => {
       const row = await this.prisma.computer.findFirst({
         where: { homeKey: botId, spaceId: context.spaceId },
-        select: { id: true, homeSnapshotId: true },
+        select: HOME_COLUMNS,
       });
-      const snapshotId = row?.homeSnapshotId ?? stored?.snapshotId;
-      if (snapshotId) await this.artifacts.remove(snapshotId, context);
+      for (const id of [row?.homeSnapshotId ?? stored?.snapshotId, row?.homePreviousSnapshotId]) {
+        if (id) await this.artifacts.remove(id, context);
+      }
       if (row) {
         await this.prisma.computer.updateMany({
           where: { id: row.id, spaceId: context.spaceId },
-          data: { homeSnapshotId: null, homeRevision: "empty" },
+          data: { homeSnapshotId: null, homePreviousSnapshotId: null, homeRevision: "empty" },
         });
       }
       await this.working.remove(botId);
@@ -174,7 +198,7 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
     this.working.pathFor(botId); // validates the key before it reaches a path
     const row = await this.prisma.computer.findFirst({
       where: { homeKey: botId, spaceId: context.spaceId },
-      select: { id: true, homeRevision: true, homeSnapshotId: true },
+      select: HOME_COLUMNS,
     });
     if (!row) throw new Error("Agent home not found");
     return row;
@@ -231,14 +255,20 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
     const revision = `rev-${Date.now()}-${randomUUID().slice(0, 8)}`;
     const won = await this.prisma.computer.updateMany({
       where: { id: row.id, spaceId: context.spaceId, homeRevision: row.homeRevision },
-      data: { homeRevision: revision, homeSnapshotId: stored.id },
+      data: {
+        homeRevision: revision,
+        homeSnapshotId: stored.id,
+        homePreviousSnapshotId: row.homeSnapshotId,
+      },
     });
     if (won.count !== 1) {
       await this.artifacts.remove(stored.id, context).catch(() => undefined);
       throw new AgentHomeConflictError(botId);
     }
-    if (row.homeSnapshotId)
-      await this.artifacts.remove(row.homeSnapshotId, context).catch(() => undefined);
+    // Keep the snapshot just replaced for one more save, so a reader holding its id can finish.
+    if (row.homePreviousSnapshotId) {
+      await this.artifacts.remove(row.homePreviousSnapshotId, context).catch(() => undefined);
+    }
     await this.mark(botId, revision);
     return revision;
   }

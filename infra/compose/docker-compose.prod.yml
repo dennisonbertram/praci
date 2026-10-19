@@ -31,37 +31,36 @@ services:
       timeout: 5s
       retries: 20
 
-  # Object storage for artifacts and agent homes. Not published on the host. The default
-  # credentials are placeholders: set RAKAZO_S3_ACCESS_KEY_ID and RAKAZO_S3_SECRET_ACCESS_KEY
-  # in .env before the first start of any stack that is reachable by others.
+  # Object storage for artifacts and agent homes. Not published on the host. There are no default
+  # credentials: set RAKAZO_S3_ACCESS_KEY_ID and RAKAZO_S3_SECRET_ACCESS_KEY (8+ characters, letters
+  # and digits) in .env. MinIO keeps the credentials it was first started with.
   minio:
-    image: ${MINIO_IMAGE:-minio/minio:RELEASE.2025-04-22T22-12-26Z}
-    command: ["server", "/data"]
+    image: ${MINIO_IMAGE:-bitnamilegacy/minio:2025.7.23-debian-12-r3}
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${RAKAZO_S3_ACCESS_KEY_ID:-rakazo-dev-access-key}
-      MINIO_ROOT_PASSWORD: ${RAKAZO_S3_SECRET_ACCESS_KEY:-rakazo-dev-secret-key-change-me}
+      MINIO_ROOT_USER: ${RAKAZO_S3_ACCESS_KEY_ID:?Set RAKAZO_S3_ACCESS_KEY_ID in .env}
+      MINIO_ROOT_PASSWORD: ${RAKAZO_S3_SECRET_ACCESS_KEY:?Set RAKAZO_S3_SECRET_ACCESS_KEY in .env}
     volumes:
-      - miniodata:/data
+      - miniodata:/bitnami/minio/data
     networks:
       - data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
       interval: 5s
       timeout: 5s
       retries: 20
 
   # Creates the bucket on first start and does nothing afterwards.
   minio-init:
-    image: ${MINIO_MC_IMAGE:-minio/mc:RELEASE.2025-04-16T18-13-26Z}
+    image: ${MINIO_MC_IMAGE:-bitnamilegacy/minio-client:2025.7.21-debian-12-r2}
     restart: "no"
     entrypoint:
       - sh
       - -c
       - mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" && mc mb --ignore-existing "local/$$RAKAZO_S3_BUCKET"
     environment:
-      MINIO_ROOT_USER: ${RAKAZO_S3_ACCESS_KEY_ID:-rakazo-dev-access-key}
-      MINIO_ROOT_PASSWORD: ${RAKAZO_S3_SECRET_ACCESS_KEY:-rakazo-dev-secret-key-change-me}
+      MINIO_ROOT_USER: ${RAKAZO_S3_ACCESS_KEY_ID:?Set RAKAZO_S3_ACCESS_KEY_ID in .env}
+      MINIO_ROOT_PASSWORD: ${RAKAZO_S3_SECRET_ACCESS_KEY:?Set RAKAZO_S3_SECRET_ACCESS_KEY in .env}
       RAKAZO_S3_BUCKET: ${RAKAZO_S3_BUCKET:-rakazo}
     networks:
       - data
@@ -117,12 +116,12 @@ services:
       AUTH_PASSWORD_ENABLED: ${AUTH_PASSWORD_ENABLED:-true}
       DATABASE_URL: postgres://${POSTGRES_USER:-rakazo}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
       DATA_DIR: /data
-      # Bundled MinIO by default. Set RAKAZO_S3_* in .env to use another S3-compatible store.
+      # Bundled MinIO by default. Set RAKAZO_S3_ENDPOINT and the other RAKAZO_S3_* in .env to use another store.
       RAKAZO_S3_ENDPOINT: ${RAKAZO_S3_ENDPOINT:-http://minio:9000}
       RAKAZO_S3_BUCKET: ${RAKAZO_S3_BUCKET:-rakazo}
       RAKAZO_S3_REGION: ${RAKAZO_S3_REGION:-us-east-1}
-      RAKAZO_S3_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:-rakazo-dev-access-key}
-      RAKAZO_S3_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:-rakazo-dev-secret-key-change-me}
+      RAKAZO_S3_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:?Set RAKAZO_S3_ACCESS_KEY_ID in .env}
+      RAKAZO_S3_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:?Set RAKAZO_S3_SECRET_ACCESS_KEY in .env}
       RAKAZO_S3_FORCE_PATH_STYLE: ${RAKAZO_S3_FORCE_PATH_STYLE:-true}
       RAKAZO_S3_PREFIX: ${RAKAZO_S3_PREFIX:-}
       SANDBOX_PROVIDER: ${SANDBOX_PROVIDER:-e2b}
@@ -198,12 +197,12 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-rakazo}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
       DATA_DIR: /data
-      # Bundled MinIO by default. Set RAKAZO_S3_* in .env to use another S3-compatible store.
+      # Bundled MinIO by default. Set RAKAZO_S3_ENDPOINT and the other RAKAZO_S3_* in .env to use another store.
       RAKAZO_S3_ENDPOINT: ${RAKAZO_S3_ENDPOINT:-http://minio:9000}
       RAKAZO_S3_BUCKET: ${RAKAZO_S3_BUCKET:-rakazo}
       RAKAZO_S3_REGION: ${RAKAZO_S3_REGION:-us-east-1}
-      RAKAZO_S3_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:-rakazo-dev-access-key}
-      RAKAZO_S3_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:-rakazo-dev-secret-key-change-me}
+      RAKAZO_S3_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:?Set RAKAZO_S3_ACCESS_KEY_ID in .env}
+      RAKAZO_S3_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:?Set RAKAZO_S3_SECRET_ACCESS_KEY in .env}
       RAKAZO_S3_FORCE_PATH_STYLE: ${RAKAZO_S3_FORCE_PATH_STYLE:-true}
       RAKAZO_S3_PREFIX: ${RAKAZO_S3_PREFIX:-}
       SANDBOX_PROVIDER: ${SANDBOX_PROVIDER:-e2b}
