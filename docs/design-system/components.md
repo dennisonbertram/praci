@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 193 of 193
-- Web and shared components: 553
+- Web and shared components: 554
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -92,7 +92,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
 | SandboxedHtmlViewer | [apps/web/src/components/SandboxedHtmlViewer.tsx](../../apps/web/src/components/SandboxedHtmlViewer.tsx) | [SandboxedHtmlViewer.stories.tsx](../../apps/web/src/components/SandboxedHtmlViewer.stories.tsx) | web |
-| SidebarPageLink | [apps/web/src/components/SidebarPageLink.tsx](../../apps/web/src/components/SidebarPageLink.tsx) | [SidebarPageLink.stories.tsx](../../apps/web/src/components/SidebarPageLink.stories.tsx) | web |
+| RailTip, SidebarPageLink | [apps/web/src/components/SidebarPageLink.tsx](../../apps/web/src/components/SidebarPageLink.tsx) | [SidebarPageLink.stories.tsx](../../apps/web/src/components/SidebarPageLink.stories.tsx) | web |
 | SidebarPages | [apps/web/src/components/SidebarPages.tsx](../../apps/web/src/components/SidebarPages.tsx) | [SidebarPages.stories.tsx](../../apps/web/src/components/SidebarPages.stories.tsx) | web |
 | SkipToContent | [apps/web/src/components/SkipToContent.tsx](../../apps/web/src/components/SkipToContent.tsx) | [SkipToContent.stories.tsx](../../apps/web/src/components/SkipToContent.stories.tsx) | web |
 | SoftwareUpdatePanel, SoftwareUpdateSection, CheckSummary | [apps/web/src/components/SoftwareUpdateSection.tsx](../../apps/web/src/components/SoftwareUpdateSection.tsx) | [SoftwareUpdateSection.stories.tsx](../../apps/web/src/components/SoftwareUpdateSection.stories.tsx) | web |

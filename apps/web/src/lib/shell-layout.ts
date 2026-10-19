@@ -25,14 +25,19 @@ export function useSidebarDocked(): boolean {
   );
 }
 
-/** The leading window controls move into the page header whenever the sidebar header is not on screen. */
+/** The leading window controls move into the page header whenever the sidebar header has no room for them (rail or drawer). */
 export function showHeaderWindowChrome(sidebarCollapsed: boolean, sidebarDocked: boolean): boolean {
   return sidebarCollapsed || !sidebarDocked;
 }
 
-/** The sidebar is out of the tab order and screen reader tree unless it is visible. */
-export function sidebarInert(collapsed: boolean, docked: boolean, drawerOpen: boolean): boolean {
-  return drawerOpen ? false : collapsed || !docked;
+/** Docked and collapsed: the sidebar shows as an icon rail. */
+export function sidebarRail(collapsed: boolean, docked: boolean): boolean {
+  return collapsed && docked;
+}
+
+/** Below the dock width the sidebar is out of the tab order and screen reader tree unless the drawer is open. */
+export function sidebarInert(docked: boolean, drawerOpen: boolean): boolean {
+  return drawerOpen ? false : !docked;
 }
 
 /**
