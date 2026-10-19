@@ -49,6 +49,7 @@ export const LEGAL_AGENT_BUILTIN_TOOLS = [
   "forget_memory",
   "save_shared_memory",
   "ask_user",
+  "notify_user",
 ] as const;
 
 export const LegalContractStatusSchema = z.enum([

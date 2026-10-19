@@ -536,6 +536,40 @@ describe("expo push", () => {
   });
 });
 
+describe("ExpoPushProvider as a notification channel", () => {
+  const envelope = {
+    id: "n1",
+    title: "t",
+    body: null,
+    link: null,
+    surface: "finance",
+    importance: "attention" as const,
+    botId: null,
+    threadId: null,
+  };
+
+  it("does not send when the device changes accounts during the session lookup", async () => {
+    const store = fakeStore();
+    store.add("user-1", "ExponentPushToken[dev]", "s1");
+    const [endpoint] = (await (
+      store.prisma as never as {
+        notificationEndpoint: { findMany: (a: unknown) => Promise<Row[]> };
+      }
+    ).notificationEndpoint.findMany({ where: { userId: "user-1" } })) as Row[];
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const provider = new ExpoPushProvider(store.prisma, async () => {
+      // The device is handed to another account while the lookup is in flight.
+      store.add("user-2", "ExponentPushToken[dev]", "s2");
+      return new Date(Date.now() + 60_000);
+    });
+    await expect(provider.send(envelope, endpoint as never, notifyContext)).resolves.toBe(
+      "endpointGone",
+    );
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
 describe("expo push prune", () => {
   it("keeps other devices when one endpoint is DeviceNotRegistered", async () => {
     const store = fakeStore();

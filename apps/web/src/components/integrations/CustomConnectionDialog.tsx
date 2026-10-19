@@ -223,10 +223,12 @@ export function CustomConnectionDialog({
     }
   }
 
-  /** Carta belongs to the Carta agent alone and the API gives it the new server, so there is no
-   * agent to choose. */
+  /** Carta belongs to the Carta agent alone and the API gives every new server its own agent, so
+   * there is no agent to choose. Only a server whose agent could not be made asks. */
   function afterSignIn(target: McpServer): View {
-    return isCartaEndpoint(target.endpoint) ? { kind: "done", hint: null } : { kind: "agents" };
+    return isCartaEndpoint(target.endpoint) || target.agentBotId
+      ? { kind: "done", hint: null }
+      : { kind: "agents" };
   }
 
   function openWindow(target: string) {
@@ -278,10 +280,11 @@ export function CustomConnectionDialog({
       const created = await createServer();
       setServer(created);
       void refresh();
-      // The API creates the agent of a service that requires one, so there is no agent to choose.
-      if (integrationPresetForEndpoint(created.endpoint)?.requiresAgent)
+      // The API creates the agent of a new server, so there is no agent to choose. A server that
+      // signs in still does so first; afterSignIn then skips the bot step.
+      if (token.trim() || headerValue.trim()) setView(afterSignIn(created));
+      else if (integrationPresetForEndpoint(created.endpoint)?.requiresAgent)
         setView({ kind: "done", hint: null });
-      else if (token.trim() || headerValue.trim()) setView({ kind: "agents" });
       else await signIn(created);
     }, t`Could not add the connection`);
   }
@@ -303,7 +306,7 @@ export function CustomConnectionDialog({
       });
       setServer(created);
       void refresh();
-      setView({ kind: "agents" });
+      setView(afterSignIn(created));
     }, t`Could not add the connection`);
   }
 

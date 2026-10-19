@@ -58,6 +58,7 @@ import { resolveEncryptionKey, resolveSupervisorToken } from "@rakazo/core";
 import {
   createBoardEvents,
   createDb,
+  createNotificationEvents,
   createThreadEvents,
   isTooManyDatabaseConnections,
   parsePositiveInteger,
@@ -96,6 +97,7 @@ async function main() {
   });
   const ticketBoardEnabled = process.env.TICKET_BOARD_ENABLED === "true";
   const boardEvents = createBoardEvents(realtime);
+  const notificationEvents = createNotificationEvents(realtime);
   const dataDir = process.env.DATA_DIR ?? "./data";
   const runtime =
     process.env.AGENT_RUNTIME === "scripted"
@@ -183,6 +185,8 @@ async function main() {
     inMemoryJobs ??
     new GraphileJobWorkerHost(pool, {
       concurrency: parsePositiveInteger(process.env.GRAPHILE_WORKER_CONCURRENCY, 4),
+      // Outbox every minute (deliveries are due 30 seconds after creation); retention at 03:17.
+      crontab: "* * * * * notifications.deliver\n17 3 * * * notifications.retention",
     });
   // One provider instance so emulator launches and polls share the same Map.
   const cloudAgent = createCloudAgentConnection();
@@ -226,6 +230,7 @@ async function main() {
     deploymentModelConfigured,
     dataDir,
     notifications,
+    notificationEvents,
     jobs,
     events,
     onTicketChange: ticketChanges,
@@ -255,6 +260,7 @@ async function main() {
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
     artifacts,
     connectors: stack.connector,
+    notificationChannels: [notifications],
   });
   // graphile-worker run() connects through the shared pool. createPool already
   // retries connect() on 53300 a finite number of times. Keep retrying start

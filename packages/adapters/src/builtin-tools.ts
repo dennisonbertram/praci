@@ -383,6 +383,27 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "notify_user",
+    description:
+      "Notify the user that something genuinely new needs their attention. Do not notify for routine runs, unchanged results, or things already reported. Use attention only when the user should act soon.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        title: { type: "string", maxLength: 80 },
+        body: { type: "string", maxLength: 200 },
+        surface: {
+          type: "string",
+          maxLength: 64,
+          description: "Page to mark. Defaults to your own page, else this chat.",
+        },
+        importance: { type: "string", enum: ["info", "attention"] },
+        dedupeKey: { type: "string", maxLength: 200 },
+        link: { type: "string", maxLength: 500, description: "In-app path such as /app/finance." },
+      },
+      required: ["title"],
+    },
+  },
+  {
     name: "request_secret",
     get description() {
       return secretAskToolSurface().description;
