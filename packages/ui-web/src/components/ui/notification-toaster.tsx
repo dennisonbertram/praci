@@ -37,10 +37,10 @@ function ToastList({
   onOpen,
   dismissLabel,
 }: {
-  onOpen: (href: string) => void;
+  onOpen: (href: string) => void | Promise<void>;
   dismissLabel: string;
 }) {
-  const { toasts } = Toast.useToastManager<NotificationToastData>();
+  const { toasts, close } = Toast.useToastManager<NotificationToastData>();
   const hidden = toasts.filter((t) => t.limited).length;
   return (
     <>
@@ -62,11 +62,16 @@ function ToastList({
             <button
               type="button"
               className="min-w-0 flex-1 cursor-pointer rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => {
+              onClick={async () => {
                 const { href, onSeen } = toast.data ?? {};
-                if (href) onOpen(href);
-                onSeen?.();
-                notificationToastManager.close(toast.id);
+                try {
+                  if (href) await onOpen(href);
+                } catch {
+                  // A failed navigation must not leave the toast open or unseen.
+                } finally {
+                  onSeen?.();
+                  close(toast.id);
+                }
               }}
             >
               <Toast.Title render={<span />} className="block text-sm font-medium break-words" />
@@ -101,7 +106,7 @@ export function NotificationToaster({
   dismissLabel = "Dismiss",
   manager = notificationToastManager,
 }: {
-  onOpen: (href: string) => void;
+  onOpen: (href: string) => void | Promise<void>;
   dismissLabel?: string;
   manager?: typeof notificationToastManager;
 }) {
