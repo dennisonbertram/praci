@@ -22,7 +22,9 @@ export async function renderPdfPages(bytes: Uint8Array, maxPages: number): Promi
   } catch (error) {
     if (!warned) {
       warned = true;
-      getLogger().warn("scanned PDF rendering is unavailable", error);
+      getLogger().warn("scanned PDF rendering is unavailable", {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
     return [];
   }
