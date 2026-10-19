@@ -4,7 +4,7 @@ Status: plan, approved direction; no code yet. Built after agent per connection 
 
 ## Goal
 
-Agents, especially when running routines, can tell the user that something is genuinely new. It shows as a dot on the sidebar item, a toast from the top while the user is in the app, and a browser, desktop or phone notification when they're away. Delivery goes through one channel interface so Slack, iMessage and email can be added later. The sidebar collapses to an icon rail that keeps the dots, and each page item shows a small glance value on the right.
+Agents, especially when running routines, can tell the user that something is genuinely new. It shows as a dot on the sidebar item, a toast in the bottom-right corner while the user is in the app, and a browser, desktop or phone notification when they're away. Delivery goes through one channel interface so Slack, iMessage and email can be added later. The sidebar collapses to an icon rail that keeps the dots, and each page item shows a small glance value on the right.
 
 Owner answers:
 
@@ -55,7 +55,7 @@ Owner answers:
 
 ## UI
 
-- **Toast**: one `NotificationToaster` in `packages/ui-web`, story first. Use Base UI Toast if the installed version has it, otherwise shadcn `sonner` from the official registry. Slides down from the top, at most 3 stacked (the rest collapse to "+N"), `attention` only (per the importance answer), stays until dismissed, click opens the link and marks it seen. Monochrome, with the warning colour for `attention`.
+- **Toast**: one `NotificationToaster` in `packages/ui-web`, story first. Use Base UI Toast if the installed version has it, otherwise shadcn `sonner` from the official registry. Bottom-right (centred on phones), a deck of at most 3 stacked sheets that fans out on hover or focus (the rest collapse to "+N"), `attention` only (per the importance answer), each fades out after 6 seconds unless hovered or focused (fading does not mark it seen), click opens the link and marks it seen. Monochrome, with the warning colour for `attention`.
 - **Away vs present**: one `shouldToast()` rule. If the app is visible and focused, show a toast. Otherwise send an OS notification (web Notification API, which also covers Electron), tagged with the notification id so several tabs don't duplicate it. Permission is requested the first time an `attention` notification arrives.
 - **Sidebar right side**: one slot per page item. It shows a dot for unseen notifications on that surface, otherwise the page's glance value: Inbox unread count; Finance runway (for example "24 mo"), hidden when Hide money is on, with revenue as an alternative setting later; Legal deadlines due within 7 days; Data room items waiting on the user; nothing for Cap table and Artifacts. Glance values come from one server query per space, not from each page's full load.
 - **Rail**: on widths from 1024 px (after VIS-01), collapsing gives an icon rail with avatars and dots; labels become tooltips. The drawer stays below 1024 px. The stored preference migrates from hidden to rail. A keyboard shortcut is left open (no shortcut convention exists yet).
