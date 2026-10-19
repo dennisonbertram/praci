@@ -17,6 +17,16 @@ describe("renderPdfPages", () => {
     },
   );
 
+  it.skipIf(!canvas)("caps the rendered size of a huge page", async () => {
+    const huge = new TextDecoder("latin1")
+      .decode(makePdf("Hello"))
+      .replace("[0 0 612 792]", "[0 0 20000 30000]");
+    const [png] = await renderPdfPages(new Uint8Array([...huge].map((c) => c.charCodeAt(0))), 20);
+    const view = new DataView(png!.buffer, png!.byteOffset);
+    // PNG IHDR: width and height at bytes 16 and 20.
+    expect(Math.max(view.getUint32(16), view.getUint32(20))).toBeLessThanOrEqual(2_000);
+  });
+
   it("returns no pages for bytes that are not a PDF", async () => {
     expect(await renderPdfPages(new Uint8Array([1, 2, 3]), 20)).toEqual([]);
   });

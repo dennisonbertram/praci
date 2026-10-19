@@ -18,6 +18,7 @@ import { DATA_ROOM_METADATA_ORDINAL } from "@rakazo/contracts";
 import type { DataRoomItemRecord, PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, DataRoomStaleError, IsolationError, recordUsage } from "@rakazo/db";
 import type { DataRoomAi } from "./data-room-models.js";
+import { dataRoomVisionKey } from "./data-room-models.js";
 import { LlmDataRoomClassifier } from "./llm-data-room-classifier.js";
 import { modelAcceptsImageInput } from "./model-vision.js";
 import { extractOfficeText, OFFICE_TYPES } from "./office-text.js";
@@ -290,14 +291,17 @@ async function readScannedPdf(
   ) {
     return "";
   }
+  // Consent is re-read before rendering, before every page and before the result is kept, so a
+  // revoke at any point discards the output. The `ai` passed in only picks the model.
+  const consented = async () => (await deps.resolveAi(ctx)).allowed;
+  if (!(await consented())) return "";
   const pages: string[] = [];
   let total = 0;
   const images = await deps.renderPdfPages(bytes, PDF_SCAN_MAX_PAGES).catch(() => []);
   for (const [i, png] of images.slice(0, PDF_SCAN_MAX_PAGES).entries()) {
     total += png.byteLength;
     if (total > PDF_SCAN_MAX_BYTES) break;
-    // Consent can be revoked between pages.
-    if (i > 0 && !(await deps.resolveAi(ctx)).allowed) return "";
+    if (!(await consented())) return "";
     const page = await readImageText(
       deps,
       ai,
@@ -308,7 +312,7 @@ async function readScannedPdf(
     );
     if (page.trim()) pages.push(page.trim());
   }
-  return pages.join("\n\n");
+  return (await consented()) ? pages.join("\n\n") : "";
 }
 
 /**
@@ -341,7 +345,8 @@ export async function extractItemText(
     if (text.trim().length < PDF_SCAN_MIN_CHARS_PER_PAGE * 400 && deps.renderPdfPages) {
       const pageCount = await pdfPageCount(bytes).catch(() => 1);
       if (text.trim().length < PDF_SCAN_MIN_CHARS_PER_PAGE * pageCount) {
-        text = await readScannedPdf(deps, ai, item, bytes, ctx);
+        // Keep the sparse text layer when vision gives nothing (no consent, model or renderer).
+        text = (await readScannedPdf(deps, ai, item, bytes, ctx)) || text;
       }
     }
   } else if (type in OFFICE_TYPES) {
@@ -359,19 +364,23 @@ export async function runDataRoomIngest(deps: DataRoomJobDeps, payload: Payload)
   await runStep(deps, "ingest", payload, async (item, revision) => {
     const ctx = context(payload, "ingest");
     let text = "";
+    let extractKey = "local";
     if (item.storageKey) {
       const bytes = await deps.artifacts.get(item.storageKey, ctx);
       const type = effectiveType(item.mimeType, item.name);
       // Only images and PDFs (which may be scans) need the model, so only they need the lookup.
-      const ai =
-        IMAGE_TYPES.has(type) || type === "application/pdf"
-          ? await deps.resolveAi(payload)
-          : ({ model: null, allowed: false } as DataRoomAi);
+      const usesVision = IMAGE_TYPES.has(type) || type === "application/pdf";
+      const ai = usesVision
+        ? await deps.resolveAi(payload)
+        : ({ model: null, allowed: false } as DataRoomAi);
+      // Vision types remember what the read depended on, so an empty result is retried only when
+      // it changes; other types are read the same way every time.
+      extractKey = usesVision ? dataRoomVisionKey(ai) : "local";
       text = await extractItemText(deps, ai, item, bytes, ctx);
       // The vision call can take a while: if consent was revoked meanwhile, discard the output.
       if (text && IMAGE_TYPES.has(type) && !(await deps.resolveAi(payload)).allowed) text = "";
     }
-    return repo.finishExtraction(actorOf(payload), item.id, revision, text);
+    return repo.finishExtraction(actorOf(payload), item.id, revision, text, extractKey);
   });
 }
 

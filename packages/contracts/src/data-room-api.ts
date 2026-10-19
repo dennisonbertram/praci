@@ -195,3 +195,18 @@ export const DataRoomApiImportDriveOutputSchema = z.object({
   /** Data room folders the picked Drive folders will become (created in the background). */
   folders: z.number().int().optional(),
 });
+
+/** The caller's Box for the import picker. Lists and files have the same shape as Drive's. */
+export const DataRoomApiBoxListInputSchema = DataRoomApiDriveListInputSchema;
+export const DataRoomApiBoxListOutputSchema = DataRoomApiDriveListOutputSchema;
+export const DataRoomApiImportBoxInputSchema = z
+  .object({
+    fileIds: z.array(z.string().min(1).max(200)).max(20).default([]),
+    /** Box folders, imported with all their subfolders in the background. */
+    boxFolderIds: z.array(z.string().min(1).max(200)).max(20).default([]),
+    folderId: NullableId.optional(),
+  })
+  .refine((input) => input.fileIds.length + input.boxFolderIds.length > 0, {
+    message: "Pick at least one file or folder",
+  });
+export const DataRoomApiImportBoxOutputSchema = DataRoomApiImportDriveOutputSchema;

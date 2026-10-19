@@ -10,6 +10,7 @@ import { createWorkerSecretStore } from "./secret-store.js";
 loadRootEnv();
 
 import {
+  boxAccessToken,
   ChatSdkMessagingSurface,
   CodexCatalogCache,
   createArtifactStore,
@@ -259,6 +260,7 @@ async function main() {
     financeCallToolFor: createFinanceCallToolFor(prisma, mcp),
     artifacts,
     connectors: stack.connector,
+    boxAccessToken: boxAccessToken(mcpOAuth),
     notificationChannels: [notifications],
   });
   // graphile-worker run() connects through the shared pool. createPool already

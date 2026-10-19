@@ -22,6 +22,7 @@ import type {
 } from "@rakazo/adapters";
 import {
   applyMessagingOutboundStatus,
+  boxAccessToken,
   ChatSdkMessagingSurface,
   CodexCatalogCache,
   ComposioConnector,
@@ -552,6 +553,7 @@ export async function createApp(
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     artifacts,
     connectors: stack.connector,
+    boxAccessToken: boxAccessToken(mcpOAuth),
     notificationChannels: [notifications],
   });
   if (inMemoryJobs) {

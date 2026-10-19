@@ -21,11 +21,20 @@ const rpcMock = vi.hoisted(() => ({
   catalog: vi.fn(),
   driveList: vi.fn(),
   importDrive: vi.fn(),
+  servers: vi.fn(),
+  boxList: vi.fn(),
+  importBox: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     connections: { list: rpcMock.connections, catalog: rpcMock.catalog },
-    dataRoom: { driveList: rpcMock.driveList, importDrive: rpcMock.importDrive },
+    mcp: { servers: { list: rpcMock.servers } },
+    dataRoom: {
+      driveList: rpcMock.driveList,
+      importDrive: rpcMock.importDrive,
+      boxList: rpcMock.boxList,
+      importBox: rpcMock.importBox,
+    },
   },
 }));
 
@@ -50,6 +59,7 @@ const file = (id: string, name: string, extra = {}) => ({
 });
 
 beforeEach(() => {
+  rpcMock.servers.mockResolvedValue([]);
   rpcMock.driveList.mockImplementation(async (input: { folderId?: string }) => ({
     files: input.folderId
       ? [file("f2", "inside.pdf", { size: 2000 })]
@@ -304,4 +314,51 @@ it("shows no Drive button when the server does not offer Drive and it is not con
 it("shows no Drive button when the catalog cannot be read", async () => {
   await render([], new Error("no catalog"));
   expect(button("Connect Google Drive")).toBeUndefined();
+});
+
+const boxServer = { id: "s1", name: "Box", endpoint: "https://mcp.box.com" };
+
+it("shows no Box button until a Box connection exists", async () => {
+  await render([]);
+  expect(button("Import from Box")).toBeUndefined();
+});
+
+it("imports ticked Box files and folders through the Box endpoints, into the open folder", async () => {
+  rpcMock.servers.mockResolvedValue([
+    boxServer,
+    { id: "s2", name: "Other", endpoint: "https://x.test/mcp" },
+  ]);
+  rpcMock.boxList.mockResolvedValue({
+    files: [
+      { id: "10", name: "Deals", mimeType: "", isFolder: true },
+      { id: "20", name: "memo.pdf", mimeType: "", isFolder: false, size: 10 },
+    ],
+  });
+  rpcMock.importBox.mockResolvedValue({
+    imported: 1,
+    duplicates: 0,
+    failed: 0,
+    queued: 3,
+    folders: 2,
+  });
+  await render([]);
+  await click(button("Import from Box"));
+  expect(document.body.textContent).toContain("Import from Box");
+  await click(box("Deals"));
+  await click(box("memo.pdf"));
+  await click(button("Import 2"));
+  expect(rpcMock.importBox).toHaveBeenCalledWith({
+    fileIds: ["20"],
+    boxFolderIds: ["10"],
+    folderId: "room1",
+  });
+  expect(rpcMock.importDrive).not.toHaveBeenCalled();
+});
+
+it("shows the reconnect error when Box refuses the sign-in", async () => {
+  rpcMock.servers.mockResolvedValue([boxServer]);
+  rpcMock.boxList.mockRejectedValue(new Error("The Box account needs to be reconnected"));
+  await render([]);
+  await click(button("Import from Box"));
+  expect(document.body.textContent).toContain("reconnected");
 });

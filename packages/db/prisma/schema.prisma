@@ -2276,7 +2276,7 @@ model DataRoomItem {
   userId             String
   folderId           String?
   folder             DataRoomFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
-  /// "upload", "drive", "gmail", "chat" or "finance".
+  /// "upload", "drive", "box", "gmail", "chat" or "finance".
   source             String
   sourceConnectionId String?
   sourceConnection   Connection?       @relation(fields: [sourceConnectionId], references: [id], onDelete: SetNull)
@@ -2334,6 +2334,8 @@ model DataRoomItemText {
   space   Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId  String
   text    String
+  /// What the read depended on (vision model, consent); see `dataRoomVisionKey`. Null: saved before this was recorded.
+  extractKey String?
 
   @@index([spaceId, userId])
   @@map("data_room_item_texts")

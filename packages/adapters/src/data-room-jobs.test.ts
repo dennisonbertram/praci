@@ -157,6 +157,32 @@ describe("extractItemText", () => {
     expect(await extract("a.docx", `${OFFICE}.wordprocessingml.document`, bomb)).toBe("");
   });
 
+  it("reads hostile XML in linear time", async () => {
+    const docx = `${OFFICE}.wordprocessingml.document`;
+    const hostile = `<w:p><w:t>ok</w:t>${"<w:t ".repeat(200_000)}`;
+    expect(hostile.length).toBeGreaterThan(1_000_000);
+    const sheet = `<row>${"<c t=".repeat(200_000)}`;
+    const files = zip({ "word/document.xml": hostile });
+    const sheets = zip({ "xl/worksheets/sheet1.xml": sheet });
+    const started = performance.now();
+    expect(await extract("a.docx", docx, files)).toBe("ok");
+    expect(await extract("a.xlsx", `${OFFICE}.spreadsheetml.sheet`, sheets)).toBe("");
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+
+  it("stops a sheet whose cells all reference one huge shared string at the character cap", async () => {
+    const big = "x".repeat(900_000);
+    const cells = '<c t="s"><v>0</v></c>'.repeat(5_000);
+    const bytes = zip({
+      "xl/sharedStrings.xml": `<sst><si><t>${big}</t></si></sst>`,
+      "xl/worksheets/sheet1.xml": `<worksheet><row>${cells}</row><row>${cells}</row></worksheet>`,
+    });
+    const started = performance.now();
+    const text = await extract("a.xlsx", `${OFFICE}.spreadsheetml.sheet`, bytes);
+    expect(text.length).toBeLessThanOrEqual(1_000_000);
+    expect(performance.now() - started).toBeLessThan(2_000);
+  });
+
   it("gives no text for legacy Office files, corrupt zips and unknown types", async () => {
     expect(await extract("a.doc", "application/msword", "ÐÏ\u0011à")).toBe("");
     expect(
@@ -195,6 +221,56 @@ describe("extractItemText", () => {
       expect(await scan(seeing)).toBe("page 1\n\npage 2\n\npage 3");
       expect(seen).toEqual(["1", "2", "3"]);
       expect(rendered).toEqual([20]);
+    });
+
+    it("re-reads consent before rendering and before every page, and drops output if revoked", async () => {
+      const calls = { render: 0, vision: 0 };
+      let allowed = true;
+      let revokeAtVision = 0;
+      const countingDeps = {
+        ...scanDeps,
+        resolveAi: async () => ({ ...seeing, allowed }),
+        renderPdfPages: async () => {
+          calls.render += 1;
+          return [new Uint8Array([1]), new Uint8Array([2])];
+        },
+        runtime: {
+          run: async function* () {
+            calls.vision += 1;
+            if (calls.vision === revokeAtVision) allowed = false;
+            yield { type: "done", text: "page" };
+          },
+        },
+      } as unknown as DataRoomJobDeps;
+      const read = () =>
+        extractItemText(countingDeps, seeing, item("s.pdf", "application/pdf"), makePdf(""), ctx);
+      // Revoked before the read starts, though the `ai` passed in is stale: no render, no call.
+      allowed = false;
+      expect(await read()).toBe("");
+      expect(calls).toEqual({ render: 0, vision: 0 });
+      // Revoked during the second (last) OCR call: nothing is kept.
+      allowed = true;
+      revokeAtVision = 2;
+      expect(await read()).toBe("");
+      expect(calls.vision).toBe(2);
+      // Revoked during the first call: the second page is never sent.
+      allowed = true;
+      calls.vision = 0;
+      revokeAtVision = 1;
+      expect(await read()).toBe("");
+      expect(calls.vision).toBe(1);
+    });
+
+    it("keeps a sparse text layer when vision gives nothing", async () => {
+      const sparse = makePdf("Invoice 12");
+      expect(await scan({ ...seeing, allowed: false }, sparse)).toBe("Invoice 12");
+      const noCanvas = {
+        ...scanDeps,
+        renderPdfPages: async () => [],
+      } as unknown as DataRoomJobDeps;
+      expect(
+        await extractItemText(noCanvas, seeing, item("s.pdf", "application/pdf"), sparse, ctx),
+      ).toBe("Invoice 12");
     });
 
     it("makes no vision call when consent is off or the PDF has a text layer", async () => {

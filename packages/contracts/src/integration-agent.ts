@@ -1,3 +1,4 @@
+import { BOX_READ_TOOLS, BOX_WRITE_TOOLS, isBoxEndpoint } from "./box.js";
 import {
   CARTA_READ_TOOLS,
   CARTA_WRITE_TOOLS,
@@ -232,7 +233,16 @@ export const INTEGRATION_PRESETS = {
     // Without its agent no bot may use Devin: only the agent's writes always ask on the card.
     requiresAgent: true,
   },
-} as const satisfies Record<FinanceProvider | "carta" | "devin", IntegrationPreset>;
+  box: {
+    service: "Box",
+    instructions:
+      "Box holds the user's files and folders. Search and read first, and cite the file name and folder. Any change (upload, move, copy, rename, sharing, collaborators, comments) is a request the user approves here: say exactly what will change. Use the box-files skill to find and read files. Never share a link or add a collaborator the user did not ask for.",
+    reads: BOX_READ_TOOLS,
+    forcedWrites: BOX_WRITE_TOOLS,
+    // Tools Box adds later stay hidden until they are classified here.
+    allowedTools: [...BOX_READ_TOOLS, ...BOX_WRITE_TOOLS],
+  },
+} as const satisfies Record<FinanceProvider | "carta" | "devin" | "box", IntegrationPreset>;
 
 /** The preset for an MCP server, matched by its endpoint like the Finance agent. */
 export function integrationPresetForEndpoint(
@@ -240,6 +250,7 @@ export function integrationPresetForEndpoint(
 ): IntegrationPreset | undefined {
   if (isCartaEndpoint(endpoint)) return INTEGRATION_PRESETS.carta;
   if (isDevinEndpoint(endpoint)) return INTEGRATION_PRESETS.devin;
+  if (isBoxEndpoint(endpoint)) return INTEGRATION_PRESETS.box;
   const provider = financeProviderForEndpoint(endpoint);
   return provider ? INTEGRATION_PRESETS[provider] : undefined;
 }

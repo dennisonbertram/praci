@@ -629,6 +629,39 @@ describePostgres("data room repository (PostgreSQL)", () => {
       expect(made.map(({ item }) => ids.includes(item.id))).toEqual([true, true, true, false]);
     });
 
+    it("re-ingests an empty read only when its recorded vision prerequisites changed", async () => {
+      const made = [
+        await upload(a, `k-scan-${run}.pdf`, `k1-${run}`, { mimeType: "application/pdf" }),
+        await upload(a, `k-memo-${run}.docx`, `k2-${run}`, {
+          mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        }),
+      ];
+      for (const { item } of made) {
+        await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "ready" } });
+        await prisma.dataRoomItemText.create({
+          data: { itemId: item.id, spaceId: a.spaceId, userId: a.userId, text: "" },
+        });
+      }
+      const [scan, memo] = made.map(({ item }) => item.id) as [string, string];
+      const row = (id: string) => prisma.dataRoomItem.findUniqueOrThrow({ where: { id } });
+      const reset = async () => {
+        for (const id of [scan, memo]) {
+          await prisma.dataRoomItem.update({ where: { id }, data: { status: "ready" } });
+        }
+      };
+      // Read with key "k1" (scan) and locally (memo): not retried under the same key.
+      await dr.finishExtraction(a, scan, (await row(scan)).revision, "", "k1");
+      await dr.finishExtraction(a, memo, (await row(memo)).revision, "", "local");
+      await reset();
+      expect(await dr.requeueReady(a, "ingest", undefined, "k1")).not.toEqual(
+        expect.arrayContaining([scan]),
+      );
+      await reset();
+      const again = await dr.requeueReady(a, "ingest", undefined, "k2");
+      expect(again).toContain(scan);
+      expect(again).not.toContain(memo);
+    });
+
     it("refuses a cursor from the other search mode or another embedding model", async () => {
       const q = `mode${run}`;
       for (let i = 0; i < 3; i++) await put(a, `mode${i}`, `${q} text ${i}`, unit(80 + i));

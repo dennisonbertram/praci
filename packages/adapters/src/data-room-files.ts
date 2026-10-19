@@ -26,7 +26,7 @@ export interface FileDataRoomInput {
   name: string;
   mimeType: string;
   folderId: string | null;
-  source: "upload" | "gmail" | "drive" | "chat";
+  source: "upload" | "gmail" | "drive" | "box" | "chat";
   sourceConnectionId?: string;
   externalId?: string;
   sourceUrl?: string;

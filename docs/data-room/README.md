@@ -152,7 +152,7 @@ All tables carry `spaceId` (cascade on space delete) and `userId`.
   Folders belong to their owner like items do. Unique on (`spaceId`, `userId`,
   `parentId`, `name`), so one member's folder names never collide with, or
   reveal, another member's.
-- `DataRoomItem`: `id`, `folderId`, `source` (`upload`, `drive`, `gmail`, `chat`,
+- `DataRoomItem`: `id`, `folderId`, `source` (`upload`, `drive`, `box`, `gmail`, `chat`,
   `finance`), `sourceConnectionId`, `externalId`, `sha256`, `storageKey` (null when
   the source keeps the bytes), `name`, `mimeType`, `size`, `sourceUrl`,
   `sourceUpdatedAt`, `status` (`pending`, `extracting`, `classifying`, `indexing`,
@@ -286,3 +286,21 @@ a space.
 - Which Drive files to index: everything the account can read, or only chosen
   folders.
 - Retention for Gmail bodies once indexed.
+
+## Box import
+
+Import from Box works like the Drive import (browse, tick files and folders, folders keep
+their structure) but reads Box through the user's own Box MCP connection, so one Box app
+serves both the agent and the import.
+
+- Connect Box on the Integrations page: paste the Client ID and secret of a Box app, and
+  register the callback URL the dialog shows. The scope is `root_readwrite`.
+- The picker lists and downloads with the REST API (`/2.0/folders/{id}/items`,
+  `/2.0/files/{id}/content`) using that connection's access token. The token is read from
+  the encrypted MCP sign-in on each call and refreshed there; nothing is stored in the
+  Data room.
+- A Box connection is an MCP server, not a `Connection` row, so an imported item has no
+  `sourceConnectionId`. Its `externalId` is `box:<file id>`, which the unique key uses to
+  skip repeats per user.
+- Only numeric Box ids are accepted, no shared-link header is ever sent, web links are
+  skipped, and the file download follows only Box's own download host.

@@ -391,7 +391,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     async createItem(
       actor: Actor,
       input: {
-        source: "upload" | "drive" | "gmail" | "chat" | "finance";
+        source: "upload" | "drive" | "box" | "gmail" | "chat" | "finance";
         sha256: string;
         name: string;
         mimeType: string;
@@ -789,7 +789,13 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     },
 
     /** Saves the extracted text and moves the item on to classification. */
-    async finishExtraction(actor: Actor, id: string, revision: number, text: string) {
+    async finishExtraction(
+      actor: Actor,
+      id: string,
+      revision: number,
+      text: string,
+      extractKey: string | null = null,
+    ) {
       return prisma.$transaction(async (tx) => {
         const { count } = await tx.dataRoomItem.updateMany({
           where: { id, ...eligibleWhere(actor), revision },
@@ -804,8 +810,8 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         if (count !== 1) return false;
         await tx.dataRoomItemText.upsert({
           where: { itemId: id },
-          create: { itemId: id, spaceId: actor.spaceId, userId: actor.userId, text },
-          update: { text },
+          create: { itemId: id, spaceId: actor.spaceId, userId: actor.userId, text, extractKey },
+          update: { text, extractKey },
         });
         return true;
       });
@@ -920,8 +926,9 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     },
 
     /**
-     * Sends ready items back to a pipeline step and returns their ids. "ingest": image, PDF and
-     * Office items with no text (vision was skipped, or the type was not readable before). "classify": items whose
+     * Sends ready items back to a pipeline step and returns their ids. "ingest": image and PDF
+     * items with no text, unless that read already happened with the current `visionKey`; Office
+     * items with no text and no recorded read. "classify": items whose
      * classification was skipped and that have no type, date or parties (facets already there are
      * never replaced). "index": items with a chunk that has no embedding, or (when
      * `embeddingModel` is given) one embedded by another model.
@@ -930,18 +937,27 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       actor: Actor,
       step: "ingest" | "classify" | "index",
       embeddingModel?: string,
+      visionKey?: string,
     ): Promise<string[]> {
       const rows =
         step === "ingest"
           ? await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i
-              WHERE ${eligibleSql(actor, { status: "ready" })} AND (i."mimeType" LIKE 'image/%'
-                  OR i."mimeType" = 'application/pdf'
-                  OR i."mimeType" LIKE 'application/vnd.openxmlformats-officedocument.%'
-                  OR (lower(i."mimeType") IN ('', 'application/octet-stream')
-                    AND lower(i.name) ~ '\.(jpe?g|png|webp|gif|pdf|docx|xlsx|pptx)$'))
-                AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
-                  AND t.text = '')`
+              WHERE ${eligibleSql(actor, { status: "ready" })}
+                AND ((i."mimeType" LIKE 'image/%'
+                    OR i."mimeType" = 'application/pdf'
+                    OR (lower(i."mimeType") IN ('', 'application/octet-stream')
+                      AND lower(i.name) ~ '\.(jpe?g|png|webp|gif|pdf)$'))
+                  -- Read by a vision model: again when its prerequisites changed.
+                  AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
+                    AND t.text = '' AND (t."extractKey" IS NULL
+                      OR t."extractKey" <> ${visionKey ?? ""}))
+                  OR (i."mimeType" LIKE 'application/vnd.openxmlformats-officedocument.%'
+                    OR (lower(i."mimeType") IN ('', 'application/octet-stream')
+                      AND lower(i.name) ~ '\.(docx|xlsx|pptx)$'))
+                  -- Read locally: only items stored before extraction was recorded.
+                  AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
+                    AND t.text = '' AND t."extractKey" IS NULL))`
           : step === "classify"
             ? await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i

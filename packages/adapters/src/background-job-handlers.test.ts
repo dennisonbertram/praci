@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -326,5 +327,38 @@ describe("dataroom.blob.delete", () => {
       createBackgroundJobHandlers(base)["dataroom.blob.delete"](payload),
     ).rejects.toThrow("not configured");
     await rm(root, { recursive: true, force: true });
+  });
+});
+
+describe("Box import wiring", () => {
+  it("the Box file job needs the Box token reader, and the worker and API both pass it", async () => {
+    const base = {
+      executor: {} as unknown as ReturnType<typeof createRunExecutor>,
+      prisma: {} as unknown as PrismaClient,
+      sandbox: {} as unknown as SandboxProvider,
+      home: {} as unknown as AgentHomeStore,
+      jobs: {} as unknown as JobPublisher,
+      events: {} as unknown as ThreadEvents,
+      workerId: "worker-1",
+      runtime: {} as unknown as AgentRuntime,
+      secretStore: {} as unknown as EncryptedSecretStore,
+      memoryProviders: { resolve: vi.fn(async () => null) },
+      artifacts: {} as never,
+    };
+    const payload = {
+      spaceId: "s",
+      userId: "u",
+      connectionId: "c",
+      externalId: "1",
+      folderId: null,
+    };
+    await expect(createBackgroundJobHandlers(base)["dataroom.box.file"](payload)).rejects.toThrow(
+      "Box import is not configured",
+    );
+    // Every process that runs jobs builds its own handlers: a missing argument fails queued files.
+    for (const entry of ["../../../apps/api/src/app.ts", "../../../apps/worker/src/index.ts"]) {
+      const source = readFileSync(new URL(entry, import.meta.url), "utf8");
+      expect(source, entry).toMatch(/createBackgroundJobHandlers\([\s\S]*?boxAccessToken\(/);
+    }
   });
 });

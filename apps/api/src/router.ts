@@ -45,6 +45,7 @@ import {
   applyTeachingDesktopInput,
   archiveBot,
   assertSafeRemoteUrl,
+  boxAccessToken,
   buildMcpCredentialBlob,
   buildModelConnectPlaintext,
   CHATGPT_OAUTH_PROVIDER,
@@ -844,6 +845,8 @@ export interface RouterDeps {
   integrationSettings?: IntegrationProviderSettings;
   composio?: ComposioProvider;
   mcpOAuth?: McpOAuthBroker;
+  /** Replaces the network for Box calls; tests point it at the Box emulator. */
+  boxFetch?: typeof fetch;
   /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
   /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
@@ -1158,6 +1161,10 @@ export function createRouter(deps: RouterDeps) {
     jobs: deps.jobs,
     mail: deps.mail,
     connectors: deps.connectors,
+    box: {
+      accessToken: boxAccessToken(mcpOAuth),
+      ...(deps.boxFetch ? { fetch: deps.boxFetch } : {}),
+    },
     resolveAi: (scope) =>
       resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.resolveModel }, scope),
   });
@@ -6861,6 +6868,12 @@ export function createRouter(deps: RouterDeps) {
       ),
       driveList: authed.dataRoom.driveList.handler(({ context, input }) =>
         dataRoom.driveList(context.actor, input, context.signal),
+      ),
+      boxList: authed.dataRoom.boxList.handler(({ context, input }) =>
+        dataRoom.boxList(context.actor, input, context.signal),
+      ),
+      importBox: authed.dataRoom.importBox.handler(({ context, input }) =>
+        dataRoom.importBox(context.actor, input, context.signal),
       ),
       importDrive: authed.dataRoom.importDrive.handler(({ context, input }) =>
         dataRoom.importDrive(context.actor, input, context.signal),

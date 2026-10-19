@@ -13,11 +13,13 @@ import { messagingDeliverJob } from "@rakazo/adapter-kit";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { deleteExpiredNotifications } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import type { BoxFilesDeps } from "./box-files.js";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
 import { pollCloudAgent } from "./cloud-agent-poll.js";
 import { expireComputerControl } from "./computer-control.js";
 import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
+import { runBoxFileImport, runBoxImport } from "./data-room-box-import.js";
 import { runDriveFileImport, runDriveImport } from "./data-room-drive-import.js";
 import type { DataRoomJobDeps } from "./data-room-jobs.js";
 import { runDataRoomClassify, runDataRoomIndex, runDataRoomIngest } from "./data-room-jobs.js";
@@ -59,6 +61,8 @@ export function createBackgroundJobHandlers(deps: {
   artifacts?: ArtifactStore;
   /** Needed only to import Google Drive folders. */
   connectors?: DriveFilesDeps["connectors"];
+  /** Needed to import Box folders: every process that runs jobs must pass it, or queued Box files fail. */
+  boxAccessToken?: BoxFilesDeps["accessToken"];
   /** External notification channels the outbox can send through; none means none are sent. */
   notificationChannels?: NotificationChannel[];
 }): BackgroundJobHandlers {
@@ -183,6 +187,21 @@ export function createBackgroundJobHandlers(deps: {
           jobs: deps.jobs,
           artifacts: deps.artifacts,
           connectors: deps.connectors,
+        },
+        payload,
+        AbortSignal.timeout(120_000),
+      );
+    },
+    "dataroom.box.import": (payload) =>
+      runBoxImport({ prisma: deps.prisma, jobs: deps.jobs }, payload),
+    "dataroom.box.file": async (payload) => {
+      if (!deps.artifacts || !deps.boxAccessToken) throw new Error("Box import is not configured");
+      await runBoxFileImport(
+        {
+          prisma: deps.prisma,
+          jobs: deps.jobs,
+          artifacts: deps.artifacts,
+          box: { accessToken: deps.boxAccessToken },
         },
         payload,
         AbortSignal.timeout(120_000),
