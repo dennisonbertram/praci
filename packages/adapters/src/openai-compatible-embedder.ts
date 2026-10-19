@@ -21,6 +21,11 @@ export interface OpenAICompatibleEmbedderConfig {
   apiKey?: string;
   model: string;
   fetch?: typeof globalThis.fetch;
+  /**
+   * The base URL is fixed in code (a built-in provider), not entered by a user, so the public-host
+   * gate does not apply. Metadata, link-local, credentials-in-URL and HTTPS-with-key rules still do.
+   */
+  allowPublic?: boolean;
 }
 
 interface EmbeddingsResponse {
@@ -34,10 +39,14 @@ export class OpenAICompatibleEmbedder implements Embedder {
   private readonly fetchFn: typeof globalThis.fetch;
 
   constructor(private readonly config: OpenAICompatibleEmbedderConfig) {
-    const url = assertAllowedOpenAiCompatibleUrl(config.baseUrl);
+    const url = assertAllowedOpenAiCompatibleUrl(config.baseUrl, {
+      allowPublic: config.allowPublic,
+    });
     assertHttpsForKeyedOpenAiCompatibleUrl(url, config.apiKey);
     this.url = `${normalizeOpenAiCompatibleBaseUrl(config.baseUrl)}/embeddings`;
-    this.fetchFn = createOpenAiCompatibleFetch(config.fetch);
+    this.fetchFn = createOpenAiCompatibleFetch(config.fetch, undefined, {
+      allowPublic: config.allowPublic,
+    });
   }
 
   describe(): AdapterDescriptor<{ dimensions: number; maxBatch: number }> {

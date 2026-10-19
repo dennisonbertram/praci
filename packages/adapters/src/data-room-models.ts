@@ -2,8 +2,10 @@ import { createHash } from "node:crypto";
 import type { AgentRunModel, Embedder } from "@rakazo/adapter-kit";
 import { DATA_ROOM_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 import { aiRecipient } from "./ai-consent.js";
 import { OpenAICompatibleEmbedder } from "./openai-compatible-embedder.js";
+import { builtinEmbeddingsBaseUrl } from "./pi-runtime.js";
 
 type Scope = { userId: string; spaceId: string };
 
@@ -65,15 +67,19 @@ export async function resolveDataRoomAi(deps: DataRoomAiDeps, scope: Scope): Pro
   });
   const embeddingModel = preference?.embeddingModel?.trim() || null;
   let embedder: Embedder | null = null;
-  if (embeddingModel && model.baseUrl && !model.oauth) {
+  // A user-entered connection keeps the public-host gate; a built-in provider's URL comes from code.
+  const builtinBaseUrl = model.baseUrl ? undefined : builtinEmbeddingsBaseUrl(model.provider);
+  const baseUrl = model.baseUrl ?? builtinBaseUrl;
+  if (embeddingModel && baseUrl && !model.oauth) {
     try {
       embedder = new OpenAICompatibleEmbedder({
-        baseUrl: model.baseUrl,
+        baseUrl,
         apiKey: model.apiKey,
         model: embeddingModel,
+        allowPublic: builtinBaseUrl ? true : undefined,
       });
-    } catch {
-      // A base URL the embedder refuses (for example a private address): keyword search only.
+    } catch (error) {
+      warnKeywordOnce(model.provider, error instanceof Error ? error.message : "refused");
     }
   }
   const recipients = [{ key: chat.key, name: chat.name, detail: chat.detail }];
@@ -106,6 +112,15 @@ export async function resolveDataRoomAi(deps: DataRoomAiDeps, scope: Scope): Pro
     consentKey: key,
     allowed: Boolean(granted),
   };
+}
+
+const warned = new Set<string>();
+/** One warning per process and reason, so "keyword search only" is diagnosable without log spam. */
+function warnKeywordOnce(provider: string, reason: string) {
+  const key = `${provider}:${reason}`;
+  if (warned.has(key)) return;
+  warned.add(key);
+  getLogger().warn("Data room embeddings disabled; keyword search only", { provider, reason });
 }
 
 function consentKey(recipientKeys: string[]): string {
