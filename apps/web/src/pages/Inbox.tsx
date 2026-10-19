@@ -636,10 +636,10 @@ export function InboxPage({
       aria-busy={retrying}
       className="relative"
     >
-      <span className={retrying ? "invisible" : undefined}>
+      <span className={retrying ? "opacity-0" : undefined}>
         <Trans>Try again</Trans>
       </span>
-      {retrying ? <Spinner className="absolute" /> : null}
+      {retrying ? <Spinner className="absolute" aria-hidden="true" /> : null}
     </Button>
   );
 

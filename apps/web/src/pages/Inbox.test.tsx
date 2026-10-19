@@ -820,6 +820,14 @@ it("explains a rate-limited Inbox with no mail, and shows Try again working", as
   await click(byText(c, "Try again"));
   expect(byText(c, "Try again")?.disabled).toBe(true);
   expect(c.querySelector('[data-slot="spinner"]')).not.toBeNull();
+  // The label stays in the accessibility tree (not display/visibility hidden) and the spinner
+  // is decorative, so the busy button is still announced as "Try again".
+  const retryButton = byText(c, "Try again");
+  expect(retryButton?.getAttribute("aria-busy")).toBe("true");
+  expect(retryButton?.querySelector('[data-slot="spinner"]')?.getAttribute("aria-hidden")).toBe(
+    "true",
+  );
+  expect(retryButton?.querySelector("span")?.className).not.toContain("invisible");
   await act(async () => finish({}));
   expect(byText(c, "Try again")?.disabled).toBe(false);
 });
