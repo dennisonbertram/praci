@@ -26,6 +26,9 @@ it("renders the title as h1 with meta and actions in a fixed-height row", () => 
   expect(host.textContent).toContain("Updated now");
   expect(host.querySelector("button")?.textContent).toBe("Go");
   const row = host.querySelector("[data-page-header]");
-  expect(row?.className).toContain("h-10");
+  expect(host.querySelector("h1")?.className).toContain("h-10");
+  // jsdom cannot measure layout; the wrapping rules are checked in Storybook at 375px.
+  expect(host.querySelector("[data-page-header-meta]")?.className).toContain("flex-wrap");
+  expect(row?.className).toContain("flex-wrap");
   expect(PAGE_HEADER_ROW).toContain("h-10");
 });

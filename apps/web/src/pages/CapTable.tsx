@@ -689,7 +689,7 @@ export function CapTablePage({
               <span className="truncate" title={snapshot.companyName}>
                 {snapshot.companyName}
               </span>
-              <span className="shrink-0">
+              <span>
                 ·{" "}
                 {syncing ? (
                   <Trans>Reading Carta…</Trans>

@@ -61,3 +61,24 @@ export const NarrowWidth: Story = {
     ),
   ],
 };
+
+export const Phone375: Story = {
+  args: {
+    meta: (
+      <span className="truncate">An example company with a very long name · Updated just now</span>
+    ),
+    actions: (
+      <>
+        <Button variant="outline">Refresh</Button>
+        <Button>Add contact</Button>
+      </>
+    ),
+  },
+  decorators: [
+    (Story) => (
+      <div className="w-[343px]">
+        <Story />
+      </div>
+    ),
+  ],
+};

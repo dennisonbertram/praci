@@ -711,13 +711,13 @@ export function InboxPage({
           <>
             {spaceName ? (
               // The full name is in the hover title when the row is too short for it.
-              <span title={spaceName} className="hidden truncate @md:inline @md:max-w-72">
+              <span title={spaceName} className="truncate @2xl/ph:max-w-72">
                 {spaceName}
               </span>
             ) : null}
             <form
               ref={searchRef}
-              className="min-w-0 flex-1"
+              className="min-w-40 flex-1 basis-full @2xl/ph:basis-0"
               onSubmit={(event) => {
                 event.preventDefault();
                 setParam("q", draft.trim());
