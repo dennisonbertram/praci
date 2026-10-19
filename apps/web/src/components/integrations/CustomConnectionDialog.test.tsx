@@ -94,6 +94,20 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+it("skips the bot step when the API already made the server's agent", async () => {
+  api.create.mockResolvedValue({
+    id: "srv-1",
+    name: "Custom",
+    endpoint: "https://mcp.example.test/mcp",
+    agentBotId: "bot-1",
+  });
+  await mount();
+  await type("Token", "tok");
+  await click("Connect");
+  expect(document.body.textContent).toContain("connected");
+  expect(document.body.textContent).not.toContain("Continue");
+});
+
 it("adds an SSE-only server when SSE is chosen", async () => {
   await mount();
   await type("Transport", "sse");

@@ -4607,12 +4607,9 @@ export function createRouter(deps: RouterDeps) {
             await assignToExistingCartaAgent(deps.prisma, context.actor);
           // A service only its own agent may use (Devin) gets that agent now, after its key is
           // checked, so the first tool call already works and a rejected key leaves nothing behind.
-          if (
-            !isCartaEndpoint(row.endpoint) &&
-            integrationPresetForEndpoint(row.endpoint)?.requiresAgent
-          ) {
-            const preset = integrationPresetForEndpoint(row.endpoint)!;
-            if (deps.mcp) {
+          if (!isCartaEndpoint(row.endpoint)) {
+            const preset = integrationPresetForEndpoint(row.endpoint);
+            if (preset?.requiresAgent && deps.mcp) {
               try {
                 await deps.mcp.listServerTools(
                   row,
@@ -4632,17 +4629,29 @@ export function createRouter(deps: RouterDeps) {
                 });
               }
             }
-            await ensureIntegrationAgent(
-              {
-                prisma: deps.prisma,
-                repos,
-                archiveBot: (botId) => archiveActorBot(context.actor, botId),
-              },
-              context.actor,
-              row.id,
-            );
-            const linked = await setIntegrationExclusive(deps.prisma, context.actor, row.id, true);
-            return mcpServerDto(linked, await mcpOAuth.statusFor(linked, context.actor));
+            // Every other new server gets its agent too, best-effort: a failure keeps the server
+            // and Create agent stays the repair path. Only Devin must have one.
+            try {
+              await ensureIntegrationAgent(
+                {
+                  prisma: deps.prisma,
+                  repos,
+                  archiveBot: (botId) => archiveActorBot(context.actor, botId),
+                },
+                context.actor,
+                row.id,
+              );
+              const linked = await setIntegrationExclusive(
+                deps.prisma,
+                context.actor,
+                row.id,
+                true,
+              );
+              return mcpServerDto(linked, await mcpOAuth.statusFor(linked, context.actor));
+            } catch (error) {
+              if (preset?.requiresAgent) throw error;
+              getLogger().error("mcp.servers.create: agent not provisioned", error);
+            }
           }
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
@@ -4842,7 +4851,7 @@ export function createRouter(deps: RouterDeps) {
               spaceId: context.actor.spaceId,
               userId: context.actor.userId,
             },
-            select: { id: true, secretId: true },
+            select: { id: true, secretId: true, endpoint: true, agentBotId: true },
           });
           if (!server) throw new IsolationError();
           // Assignments cascade; the encrypted credential must go with the server.
@@ -4867,6 +4876,11 @@ export function createRouter(deps: RouterDeps) {
             return painted;
           });
           for (const event of seqs) await deps.events.notify(event.threadId, event.seq);
+          // The server's own agent goes with it; Carta's agent is shared and stays.
+          if (server.agentBotId && !isCartaEndpoint(server.endpoint))
+            await archiveActorBot(context.actor, server.agentBotId).catch((error) =>
+              getLogger().error("mcp.servers.remove: agent not archived", error),
+            );
           return { ok: true as const };
         }),
       },
