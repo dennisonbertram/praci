@@ -1390,7 +1390,12 @@ describe("connected app integration agent tools", () => {
       afterResolve?: (tools: { annotations: { readOnlyHint: boolean } }[]) => void,
     ) {
       const call = vi.fn(() => ({ item: "synthetic item" }));
-      const served: { name: string; annotations: { readOnlyHint: boolean } }[] = [];
+      const served: {
+        name: string;
+        description: string;
+        inputSchema: Record<string, unknown>;
+        annotations: { readOnlyHint: boolean };
+      }[] = [];
       const emulator = new ThirdPartyConnectorEmulator({
         "remote.mcp.pipedream.net": {
           tools: served,
