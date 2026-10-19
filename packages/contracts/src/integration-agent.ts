@@ -227,6 +227,8 @@ export const INTEGRATION_PRESETS = {
     forcedWrites: DEVIN_WRITE_TOOLS,
     // Tools Devin adds later stay hidden until they are classified here.
     allowedTools: [...DEVIN_READ_TOOLS, ...DEVIN_WRITE_TOOLS],
+    // Without its agent no bot may use Devin: only the agent's writes always ask on the card.
+    requiresAgent: true,
   },
 } as const satisfies Record<FinanceProvider | "carta" | "devin", IntegrationPreset>;
 

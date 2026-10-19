@@ -147,6 +147,10 @@ describe("Devin integration-agent preset", () => {
     }
   });
 
+  it("requires its agent, so no ordinary bot can reach a Devin write", () => {
+    expect(devin.requiresAgent).toBe(true);
+  });
+
   it("hides tools Devin adds later, even annotated reads", () => {
     expect(devin.allowedTools).toEqual([...DEVIN_READ_TOOLS, ...DEVIN_WRITE_TOOLS]);
     expect(isReadTool({ name: "devin_new", annotations: { readOnlyHint: true } }, devin)).toBe(

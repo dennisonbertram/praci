@@ -2061,12 +2061,22 @@ describe("MCP connector Devin agent", () => {
   const tool = (name: string) => ({ name, inputSchema: { type: "object" } });
   const TOOLS = [...DEVIN_READ_TOOLS, ...DEVIN_WRITE_TOOLS, "devin_added_later"].map(tool);
 
-  async function setup(writesEnabled: boolean) {
+  /** `linked`: the server has its agent; `asBot`: who is calling (the agent or an ordinary bot). */
+  async function setup(
+    writesEnabled: boolean,
+    { linked = true, asAgent = true }: { linked?: boolean; asAgent?: boolean } = {},
+  ) {
+    const bot = asAgent ? agentBot : { ...agentBot, id: "other", spawnKey: null };
     const assignment = {
       ...ASSIGNMENT,
-      botId: "agent-1",
-      bot: agentBot,
-      server: { ...server, writesEnabled },
+      botId: bot.id,
+      bot,
+      server: {
+        ...server,
+        writesEnabled,
+        agentBotId: linked ? agentBot.id : null,
+        agentBot: linked ? agentBot : null,
+      },
     };
     const state = { failNext: false, initializations: 0, calls: [] as string[], tools: TOOLS };
     vi.stubGlobal("fetch", mcpFetch(state, endpoint));
@@ -2083,7 +2093,7 @@ describe("MCP connector Devin agent", () => {
     const context = {
       spaceId: "w1",
       userId: "u1",
-      botId: "agent-1",
+      botId: bot.id,
       signal: new AbortController().signal,
     } as never;
     const call = async (toolName: string, discoveredReadOnly: boolean) => {
@@ -2126,6 +2136,28 @@ describe("MCP connector Devin agent", () => {
     expect(await call("devin_added_later", false)).toMatchObject([{ type: "error" }]);
     expect(await call("devin_session_search", true)).toMatchObject([{ type: "result" }]);
     expect(state.calls).toEqual(["devin_session_search"]);
+    await connector.close();
+  });
+
+  it("gives an ordinary bot no Devin tool when the server has no agent, even with changes on", async () => {
+    for (const asAgent of [false, true]) {
+      const { connector, context, state, call } = await setup(true, { linked: false, asAgent });
+      expect(await connector.discoverTools(context)).toEqual([]);
+      for (const name of DEVIN_WRITE_TOOLS)
+        expect(await call(name, false)).toMatchObject([{ type: "error" }]);
+      expect(await call("devin_session_search", true)).toMatchObject([{ type: "error" }]);
+      expect(state.calls).toEqual([]);
+      await connector.close();
+    }
+  });
+
+  it("gives an ordinary bot only reads once the server has its agent", async () => {
+    const { connector, context, state, call } = await setup(true, { asAgent: false });
+    const names = (await connector.discoverTools(context)).map((t) => t.route?.toolName);
+    expect(names).toEqual([...DEVIN_READ_TOOLS]);
+    for (const name of DEVIN_WRITE_TOOLS)
+      expect(await call(name, false)).toMatchObject([{ type: "error" }]);
+    expect(state.calls).toEqual([]);
     await connector.close();
   });
 
