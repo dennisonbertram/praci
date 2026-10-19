@@ -8,6 +8,8 @@ import {
 } from "./carta.js";
 import { DEVIN_MCP_ENDPOINT, DEVIN_READ_TOOLS, DEVIN_WRITE_TOOLS } from "./devin.js";
 import { FINANCE_READ_TOOLS } from "./finance.js";
+import { GRANOLA_BLOCKED_TOOLS, GRANOLA_MCP_ENDPOINT, GRANOLA_READ_TOOLS } from "./granola.js";
+import { WISPR_FLOW_MCP_ENDPOINT } from "./wispr-flow.js";
 import {
   INTEGRATION_PRESETS,
   integrationAgentSpawnKey,
@@ -206,5 +208,39 @@ describe("Box integration-agent preset", () => {
     expect(integrationPresetForEndpoint("http://mcp.box.com")).toBeUndefined();
     expect(integrationPresetForEndpoint("https://api.box.com/mcp")).toBeUndefined();
     expect("requiresAgent" in box).toBe(false);
+  });
+});
+
+describe("Granola integration-agent preset", () => {
+  const granola = INTEGRATION_PRESETS.granola;
+
+  it("reads its read tools and blocks switch_workspace and sign_out, even if annotated read-only", () => {
+    for (const name of GRANOLA_READ_TOOLS) expect(isReadTool({ name }, granola)).toBe(true);
+    for (const name of GRANOLA_BLOCKED_TOOLS) {
+      expect(granola.allowedTools).not.toContain(name);
+      expect(isReadTool({ name, annotations: { readOnlyHint: true } }, granola)).toBe(false);
+    }
+  });
+
+  it("matches only Granola's endpoint", () => {
+    expect(integrationPresetForEndpoint(GRANOLA_MCP_ENDPOINT)).toBe(granola);
+    expect(integrationPresetForEndpoint("http://mcp.granola.ai/mcp")).toBeUndefined();
+  });
+});
+
+describe("Wispr Flow integration-agent preset", () => {
+  const wispr = INTEGRATION_PRESETS.wisprflow;
+
+  it("treats read-verb names and read-only hints as reads, everything else as a write", () => {
+    expect(isReadTool({ name: "get_meeting_summary" }, wispr)).toBe(true);
+    expect(isReadTool({ name: "list_tasks" }, wispr)).toBe(true);
+    expect(isReadTool({ name: "anything", annotations: { readOnlyHint: true } }, wispr)).toBe(true);
+    expect(isReadTool({ name: "create_task" }, wispr)).toBe(false);
+  });
+
+  it("matches only its endpoint", () => {
+    expect(integrationPresetForEndpoint(WISPR_FLOW_MCP_ENDPOINT)).toBe(wispr);
+    expect(integrationPresetForEndpoint(`${WISPR_FLOW_MCP_ENDPOINT}/`)).toBe(wispr);
+    expect(integrationPresetForEndpoint("https://api.wisprflow.ai/other")).toBeUndefined();
   });
 });

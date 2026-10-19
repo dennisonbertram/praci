@@ -4,7 +4,13 @@ import type {
   ConnectionCategory,
   McpServer,
 } from "@rakazo/contracts";
-import { BOX_MCP_ENDPOINT, BOX_OAUTH_SCOPE, DEVIN_MCP_ENDPOINT } from "@rakazo/contracts";
+import {
+  BOX_MCP_ENDPOINT,
+  BOX_OAUTH_SCOPE,
+  DEVIN_MCP_ENDPOINT,
+  GRANOLA_MCP_ENDPOINT,
+  WISPR_FLOW_MCP_ENDPOINT,
+} from "@rakazo/contracts";
 import { matchFeaturedConnectorId } from "@rakazo/core";
 
 export type CategoryFilter = "all" | Exclude<ConnectionCategory, "other">;
@@ -164,6 +170,25 @@ export const FIRST_PARTY_MCP = [
     // Box does not register clients on the fly: the user brings the Client ID and secret of a Box app.
     oauthClient: true,
     scope: BOX_OAUTH_SCOPE,
+  },
+  {
+    // Both register their own client on the fly (browser sign-in only): no key, no client ID.
+    id: "granola",
+    name: "Granola",
+    // No Simple Icons mark exists for Granola: the tile shows the AppLogo letter fallback.
+    logo: null,
+    endpoint: GRANOLA_MCP_ENDPOINT,
+    section: "tools",
+    category: "docs_files",
+  },
+  {
+    // Id has no hyphen so a catalog toolkit "wispr_flow" or "wispr-flow" matches it.
+    id: "wisprflow",
+    name: "Wispr Flow",
+    logo: null,
+    endpoint: WISPR_FLOW_MCP_ENDPOINT,
+    section: "tools",
+    category: "docs_files",
   },
 ] as const satisfies readonly {
   id: string;

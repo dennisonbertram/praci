@@ -210,6 +210,19 @@ it("offers Box and asks for the Box app's client ID, secret and callback URL", a
   expect(document.querySelector('input[aria-label="Server URL"]')).toBeNull();
 });
 
+it("offers Granola and Wispr Flow with their descriptions and no key or client fields", async () => {
+  await show(data(true, false));
+  for (const name of ["Granola", "Wispr Flow"]) {
+    expect(container.querySelector(`[aria-label="Connect ${name}"]`)).not.toBeNull();
+  }
+  expect(container.textContent).toContain("Meeting notes and transcripts");
+  expect(container.textContent).toContain("Notetaker meetings, notes and tasks");
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Granola"]');
+  await act(async () => connect?.click());
+  expect(document.querySelector('input[aria-label="Client ID"]')).toBeNull();
+  expect(document.querySelector('[aria-label="API key"]')).toBeNull();
+});
+
 it("shows Carta but not Zernio under the Finance chip", async () => {
   await show(data(true, true));
   const chip = [...container.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")].find(

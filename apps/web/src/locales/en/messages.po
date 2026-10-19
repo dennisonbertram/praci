@@ -4883,6 +4883,10 @@ msgstr "Medium"
 msgid "Medium"
 msgstr "Medium"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Meeting notes and transcripts"
+msgstr "Meeting notes and transcripts"
+
 #: src/pages/shell/GroupIntro.tsx
 msgid "Members"
 msgstr "Members"
@@ -5689,6 +5693,10 @@ msgstr "Not waiting for approval"
 #: src/pages/CapTable.tsx
 msgid "Notes"
 msgstr "Notes"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Notetaker meetings, notes and tasks"
+msgstr "Notetaker meetings, notes and tasks"
 
 #: src/pages/Finance.tsx
 msgid "Nothing due in the next 30 days"
