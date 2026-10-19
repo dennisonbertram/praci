@@ -4632,7 +4632,7 @@ export function createRouter(deps: RouterDeps) {
             // Every other new server gets its agent too, best-effort: a failure keeps the server
             // and Create agent stays the repair path. Only Devin must have one.
             try {
-              await ensureIntegrationAgent(
+              const { bot } = await ensureIntegrationAgent(
                 {
                   prisma: deps.prisma,
                   repos,
@@ -4641,12 +4641,29 @@ export function createRouter(deps: RouterDeps) {
                 context.actor,
                 row.id,
               );
-              await setIntegrationExclusive(deps.prisma, context.actor, row.id, true);
-              // Marks the agent as auto-made. A generic server's tools rarely declare read-only, so
-              // its writes start on; the agent's approval card is still mandatory for each one.
-              const linked = await deps.prisma.mcpServer.update({
-                where: { id: row.id },
-                data: { agentProvisionedAt: new Date(), writesEnabled: !preset },
+              // Exclusive, marked and read-only in one step, and only while the agent is active: an
+              // archive in between would otherwise leave a marked server shared. Writes stay off
+              // for every new server; the owner turns them on, and each call then needs its card.
+              const linked = await deps.prisma.$transaction(async (tx) => {
+                const active = await tx.bot.updateMany({
+                  where: { id: bot.id, ...actorScope(context.actor), archivedAt: null },
+                  data: { updatedAt: new Date() },
+                });
+                const marked = active.count
+                  ? await tx.mcpServer.updateMany({
+                      where: { id: row.id, ...actorScope(context.actor), agentBotId: bot.id },
+                      data: {
+                        agentExclusive: true,
+                        agentProvisionedAt: new Date(),
+                        writesEnabled: false,
+                      },
+                    })
+                  : { count: 0 };
+                if (!marked.count)
+                  throw new ORPCError("CONFLICT", { message: "The agent changed; retry" });
+                return tx.mcpServer.findFirstOrThrow({
+                  where: { id: row.id, ...actorScope(context.actor) },
+                });
               });
               return mcpServerDto(linked, await mcpOAuth.statusFor(linked, context.actor));
             } catch (error) {
@@ -4869,6 +4886,12 @@ export function createRouter(deps: RouterDeps) {
             const deleted = await tx.mcpServer.delete({ where: { id: server.id } });
             agentToArchive =
               deleted.agentBotId && !isCartaEndpoint(deleted.endpoint) ? deleted.agentBotId : null;
+            // Archived with the server, so the agent is never left active without it.
+            if (agentToArchive)
+              await tx.bot.updateMany({
+                where: { id: agentToArchive, ...actorScope(context.actor), archivedAt: null },
+                data: { archivedAt: new Date(), pinned: false },
+              });
             if (server.secretId) {
               await tx.secret.deleteMany({
                 where: {
@@ -4880,7 +4903,7 @@ export function createRouter(deps: RouterDeps) {
             }
             return painted;
           });
-          // The server's own agent goes with it, whether or not notifications succeed; Carta's is shared.
+          // Runs and the computer of the archived agent are cleaned up now; the archive itself is done.
           if (agentToArchive)
             await archiveActorBot(context.actor, agentToArchive).catch((error) =>
               getLogger().error("mcp.servers.remove: agent not archived", error),

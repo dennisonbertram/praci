@@ -895,17 +895,17 @@ describePostgres("integration agents (PostgreSQL)", () => {
           other(`gen-ok-${suffix}`),
         );
         expect(created.agentBotId).toBeTruthy();
-        // No preset: writes start on because tools rarely declare read-only; each call still asks.
-        expect(created).toMatchObject({ agentExclusive: true, writesEnabled: true });
+        // Writes start off, generic or not: a tool's read-only hint is not trusted until the owner allows changes.
+        expect(created).toMatchObject({ agentExclusive: true, writesEnabled: false });
         const row = await prisma.mcpServer.findUniqueOrThrow({
           where: { id: created.id },
           include: { agentBot: true },
         });
         expect(row.agentProvisionedAt).not.toBeNull();
         const write = { name: "do_thing" };
-        expect(
-          integrationAgentDenial({ server: row, bot: row.agentBot } as never, write),
-        ).toBeNull();
+        expect(integrationAgentDenial({ server: row, bot: row.agentBot } as never, write)).toBe(
+          "writes-off",
+        );
         expect(
           isIntegrationAgentWrite(
             row.agentBot?.spawnKey,

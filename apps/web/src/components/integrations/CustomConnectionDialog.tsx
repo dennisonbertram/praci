@@ -280,11 +280,11 @@ export function CustomConnectionDialog({
       const created = await createServer();
       setServer(created);
       void refresh();
-      // The API creates the agent of a new server, so there is no agent to choose.
-      if (created.agentBotId) setView({ kind: "done", hint: null });
+      // The API creates the agent of a new server, so there is no agent to choose. A server that
+      // signs in still does so first; afterSignIn then skips the bot step.
+      if (token.trim() || headerValue.trim()) setView(afterSignIn(created));
       else if (integrationPresetForEndpoint(created.endpoint)?.requiresAgent)
         setView({ kind: "done", hint: null });
-      else if (token.trim() || headerValue.trim()) setView({ kind: "agents" });
       else await signIn(created);
     }, t`Could not add the connection`);
   }
