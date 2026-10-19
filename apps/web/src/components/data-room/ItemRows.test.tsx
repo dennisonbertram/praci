@@ -59,9 +59,9 @@ it("names each row's folder in All items, and not inside that folder", () => {
     snippets: [],
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
-  expect(names()).toEqual(["lease.pdfLegalNot tagged", "loose.pdfNot tagged"]);
+  expect(names()).toEqual(["lease.pdfLegalNot tagged · Mar 4, 2026", "loose.pdfNot tagged · Mar 4, 2026"]);
   act(() => root.render(<ListView rows={rows.slice(0, 1)} o={o("f-legal")} />));
-  expect(names()).toEqual(["lease.pdfNot tagged"]);
+  expect(names()).toEqual(["lease.pdfNot tagged · Mar 4, 2026"]);
 });
 
 it("renders a native table in the Cap table style, with the header hidden on a phone", () => {
