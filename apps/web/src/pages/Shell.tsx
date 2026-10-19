@@ -4184,80 +4184,6 @@ export function ShellPage() {
                                 data-roster-depth={
                                   item.kind === "bot" && treeActive ? depth : undefined
                                 }
-<<<<<<< HEAD
-                                if (
-                                  item.kind !== "bot" ||
-                                  !draggedBotId ||
-                                  rosterParent.get(draggedBotId) !== parentId
-                                )
-                                  return;
-                                event.preventDefault();
-                                reorderRosterBot(draggedBotId, item.chat.id, groupBotIds);
-                                setDraggedBotId(null);
-                              }}
-                              onDragEnd={() => setDraggedBotId(null)}
-                              onKeyDown={(event) => {
-                                if (
-                                  item.kind !== "bot" ||
-                                  !event.altKey ||
-                                  (event.key !== "ArrowUp" && event.key !== "ArrowDown")
-                                )
-                                  return;
-                                const siblings = siblingBotIds(parentId);
-                                const index = siblings.indexOf(item.chat.id);
-                                const target = siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
-                                if (!target) return;
-                                event.preventDefault();
-                                reorderRosterBot(item.chat.id, target, groupBotIds);
-                              }}
-                              onClick={() => {
-                                openSpaceChat(
-                                  item.chat.spaceId,
-                                  item.kind === "bot"
-                                    ? `/app/${item.chat.id}`
-                                    : `/app/g/${item.chat.id}`,
-                                );
-                              }}
-                              onContextMenu={(event) => {
-                                if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
-                                event.preventDefault();
-                                botMenuAnchor.current = event.currentTarget;
-                                setBotMenu({
-                                  kind: item.kind,
-                                  id: item.chat.id,
-                                  position: { x: event.clientX, y: event.clientY },
-                                });
-                              }}
-                              className={`flex w-full items-center ${
-                                compact
-                                  ? "gap-2.5 rounded-xl px-2.5 py-1"
-                                  : "gap-3 rounded-xl px-2.5 py-2"
-                              } text-start ${
-                                item.kind === "bot" ? "cursor-grab active:cursor-grabbing" : ""
-                              } ${
-                                selected ? "bg-sidebar-accent" : "group-hover/row:bg-sidebar-accent"
-                              } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
-                              style={
-                                treeActive
-                                  ? { paddingInlineStart: `${24 + depth * 14}px` }
-                                  : undefined
-                              }
-                            >
-                              {item.kind === "bot" ? (
-                                <AgentAvatar
-                                  app={agentAppFor(item.chat.id, item.chat.spaceId)}
-                                  color={item.chat.color}
-                                  identity={item.chat.id}
-                                  size={36}
-                                  status={item.chat.status}
-                                />
-                              ) : (
-                                <GroupAvatar
-                                  members={
-                                    item.chat.id === activeSnapshot?.groupId
-                                      ? (activeSnapshot.members ?? item.chat.members)
-                                      : item.chat.members
-=======
                                 aria-current={selected ? "page" : undefined}
                                 aria-keyshortcuts={
                                   item.kind === "bot" ? "Alt+ArrowUp Alt+ArrowDown" : undefined
@@ -4281,7 +4207,6 @@ export function ShellPage() {
                                   ) {
                                     event.preventDefault();
                                     event.dataTransfer.dropEffect = "move";
->>>>>>> origin/main
                                   }
                                 }}
                                 onDragLeave={(event) => {
@@ -4370,7 +4295,8 @@ export function ShellPage() {
                                 }
                               >
                                 {item.kind === "bot" ? (
-                                  <BotAvatar
+                                  <AgentAvatar
+                                    app={agentAppFor(item.chat.id, item.chat.spaceId)}
                                     color={item.chat.color}
                                     identity={item.chat.id}
                                     size={36}
