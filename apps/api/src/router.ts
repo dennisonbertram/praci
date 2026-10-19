@@ -633,37 +633,43 @@ function mcpServerDto(
 }
 
 async function connectionAccess(prisma: PrismaClient, actor: Actor, connectionId: string) {
-  const select = {
-    id: true,
-    connectorId: true,
-    provider: true,
-    status: true,
-    allAgents: true,
-    agentBotId: true,
-    botAccess: {
-      where: { spaceId: actor.spaceId, userId: actor.userId },
-      select: { botId: true },
-      orderBy: { createdAt: "asc" },
+  const row = await prisma.connection.findFirst({
+    where: { id: connectionId, spaceId: actor.spaceId, userId: actor.userId },
+    select: {
+      allAgents: true,
+      botAccess: {
+        where: { spaceId: actor.spaceId, userId: actor.userId },
+        select: { botId: true },
+        orderBy: { createdAt: "asc" },
+      },
     },
-  } as const;
+  });
+  if (!row) throw new IsolationError();
+  return { allAgents: row.allAgents, botIds: row.botAccess.map((entry) => entry.botId) };
+}
+
+/** Every connection of the caller with the agents that can really use it, in one pass. */
+async function allEffectiveAccess(prisma: PrismaClient, actor: Actor) {
   const scope = { spaceId: actor.spaceId, userId: actor.userId };
   const [rows, bots] = await Promise.all([
-    prisma.connection.findMany({ where: scope, select }),
+    prisma.connection.findMany({
+      where: { ...scope, status: { not: "revoked" } },
+      select: {
+        id: true,
+        connectorId: true,
+        provider: true,
+        status: true,
+        allAgents: true,
+        agentBotId: true,
+        botAccess: { where: scope, select: { botId: true } },
+      },
+    }),
     prisma.bot.findMany({
       where: { ...scope, archivedAt: null },
       select: { id: true, spawnKey: true, archivedAt: true },
     }),
   ]);
-  const row = rows.find((candidate) => candidate.id === connectionId);
-  if (!row) throw new IsolationError();
-  return {
-    allAgents: row.allAgents,
-    botIds: row.botAccess.map((entry) => entry.botId),
-    effectiveAccess: effectiveAccessByConnection(rows, bots)[row.id] ?? {
-      shared: "none" as const,
-      botIds: [],
-    },
-  };
+  return effectiveAccessByConnection(rows, bots);
 }
 
 function connectionDto(row: {
@@ -5823,6 +5829,9 @@ export function createRouter(deps: RouterDeps) {
         });
         return connectionDto(row);
       }),
+      effectiveAccess: authed.connections.effectiveAccess.handler(({ context }) =>
+        allEffectiveAccess(deps.prisma, context.actor),
+      ),
       access: authed.connections.access.handler(async ({ context, input }) => {
         return connectionAccess(deps.prisma, context.actor, input.connectionId);
       }),

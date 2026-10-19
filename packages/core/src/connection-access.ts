@@ -1,4 +1,12 @@
-import { isIntegrationAgentSpawnKey } from "@rakazo/contracts";
+import {
+  integrationAgentSpawnKey,
+  isCartaAgentSpawnKey,
+  isFinanceAgentSpawnKey,
+  isInboxAgentSpawnKey,
+  isIntegrationAgentSpawnKey,
+  isLegalAgentSpawnKey,
+  isVoiceAgentSpawnKey,
+} from "@rakazo/contracts";
 
 /** A connection row as the access rules read it. `botAccess` lists the grants being considered. */
 export type ConnectionAccessRow = {
@@ -19,26 +27,63 @@ export function botMayUseConnection(row: {
   return row.allAgents || row.botAccess.length > 0;
 }
 
+/** Whether the bot works with Composio, Pipedream and other connector tools at all. */
+export function botUsesConnectorTools(spawnKey: string | null | undefined): boolean {
+  return !(
+    isInboxAgentSpawnKey(spawnKey) ||
+    isFinanceAgentSpawnKey(spawnKey) ||
+    isLegalAgentSpawnKey(spawnKey) ||
+    isVoiceAgentSpawnKey(spawnKey) ||
+    isCartaAgentSpawnKey(spawnKey) ||
+    isIntegrationAgentSpawnKey(spawnKey)
+  );
+}
+
+/** Whether the bot is offered the built-in mail, calendar and Drive tools of native Google. */
+export function botUsesNativeGoogle(spawnKey: string | null | undefined): boolean {
+  return !(isIntegrationAgentSpawnKey(spawnKey) || isVoiceAgentSpawnKey(spawnKey));
+}
+
+/** The rule the executor applies before access rows: can this bot's identity reach the connection. */
+export function botCanReachConnection(
+  bot: { id: string; spawnKey: string | null },
+  row: { id: string; connectorId: string; agentBotId: string | null },
+): boolean {
+  // A connected-app agent works on its own linked connection only.
+  if (row.agentBotId === bot.id && bot.spawnKey === integrationAgentSpawnKey(row.id))
+    return row.connectorId !== "google";
+  return row.connectorId === "google"
+    ? botUsesNativeGoogle(bot.spawnKey)
+    : botUsesConnectorTools(bot.spawnKey);
+}
+
 /**
  * Connections the bot may not use. Only connected rows count: a pending or errored row never
  * denies anything, so an abandoned second account cannot block a shared one.
  * - Ordinary rows (no linked agent) keep the app-wide rule: if any connected account of an app is
  *   limited to other agents, every live account of that app is denied, so no sibling stands in.
- * - Agent-linked rows are denied one by one: an exclusive account never denies its siblings.
+ * - Agent-linked native Google rows are denied one by one: an exclusive account never denies its
+ *   siblings, because the Google built-in tools check the account id of every call. Every other
+ *   connector keeps the app-wide rule, because Composio and Pipedream can resolve an account the
+ *   run did not pick.
  */
 export function deniedConnectionIds(rows: ConnectionAccessRow[]): Set<string> {
   const appKey = (row: { connectorId: string; provider: string }) =>
     `${row.connectorId}\u0000${row.provider}`;
   const live = rows.filter((row) => row.status !== "revoked");
+  const perConnection = (row: ConnectionAccessRow) =>
+    row.connectorId === "google" && row.agentBotId !== null;
   const deniedApps = new Set(
     live
-      .filter((row) => row.status === "connected" && !row.agentBotId && !botMayUseConnection(row))
+      .filter(
+        (row) => row.status === "connected" && !perConnection(row) && !botMayUseConnection(row),
+      )
       .map(appKey),
   );
   return new Set(
     live
       .filter((row) =>
-        row.agentBotId
+        perConnection(row)
           ? row.status === "connected" && !botMayUseConnection(row)
           : deniedApps.has(appKey(row)),
       )
@@ -66,8 +111,7 @@ export function effectiveAccessByConnection(
     const denied = deniedConnectionIds(own);
     for (const row of own) {
       if (row.status !== "connected" || denied.has(row.id)) continue;
-      // An integration agent works only on its own connection.
-      if (isIntegrationAgentSpawnKey(bot.spawnKey) && row.agentBotId !== bot.id) continue;
+      if (!botCanReachConnection(bot, row)) continue;
       usable.get(row.id)?.push(bot.id);
     }
   }

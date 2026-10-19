@@ -541,6 +541,44 @@ describe("composio tool mapping", () => {
     }
   });
 
+  it("refuses to dispatch, not go unpinned, when every account of an authenticated toolkit is stale", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const restore = stubActiveAccounts([]);
+    try {
+      const connector = new ComposioConnector();
+      const stale: AdapterContext = {
+        operationId: "composio-stale",
+        traceId: "composio-stale",
+        spaceId: "workspace",
+        userId: "user-1",
+        signal: new AbortController().signal,
+        connectedConnections: [
+          {
+            id: "connection-shared",
+            connectorId: "composio",
+            externalId: "github",
+            displayName: "GitHub",
+            providerRef: "ca_stale",
+          },
+        ],
+      };
+      const events: ConnectorEvent[] = [];
+      for await (const event of connector.execute(
+        { tool: "GITHUB_GET_REPOS", args: {}, executionId: "stale" },
+        stale,
+      ))
+        events.push(event);
+      expect(events).toEqual([expect.objectContaining({ type: "error" })]);
+      expect(composioSdkState.executions).toEqual([]);
+      expect(composioSdkState.created.filter((entry) => entry.userId === "user-1")).toEqual([]);
+    } finally {
+      restore();
+    }
+  });
+
   it("pins a single concrete account without enabling multi-account mode", async () => {
     composioSdkState.created.length = 0;
     composioSdkState.sessions.clear();

@@ -90,19 +90,21 @@ export function useIntegrations(): IntegrationsData {
           rpc.finance.overview().catch(() => null),
         ]);
       const live = connections.filter((row) => row.status !== "revoked");
+      const effective = await rpc.connections
+        .effectiveAccess()
+        .catch((): Record<string, ConnectionAccessState["effectiveAccess"]> => ({}));
       const access = Object.fromEntries(
         await Promise.all(
           live.map(
             async (row) =>
               [
                 row.id,
-                await rpc.connections.access({ connectionId: row.id }).catch(
-                  (): ConnectionAccessState => ({
-                    allAgents: true,
-                    botIds: [],
-                    effectiveAccess: { shared: "none", botIds: [] },
-                  }),
-                ),
+                {
+                  ...(await rpc.connections
+                    .access({ connectionId: row.id })
+                    .catch((): ConnectionAccess => ({ allAgents: true, botIds: [] }))),
+                  effectiveAccess: effective[row.id] ?? { shared: "none", botIds: [] },
+                },
               ] as const,
           ),
         ),

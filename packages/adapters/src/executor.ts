@@ -72,6 +72,7 @@ import {
   assertTransition,
   blocksToAgentHistoryText,
   botMayUseConnection,
+  botUsesConnectorTools,
   botMessageAllowsSilence,
   CALL_CLIENT_NONCE_PREFIX,
   callIdFromClientNonce,
@@ -3666,7 +3667,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ? appAgentConnection?.connectorId === "composio"
             ? [appAgentConnection]
             : []
-          : mailOnly || financeOnly || legalOnly || voiceAgent
+          : !botUsesConnectorTools(bot.spawnKey)
             ? []
             : runConnections.filter((connection) => connection.connectorId === "composio");
         let liveSlugs: string[] = [];
@@ -3684,7 +3685,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ? appAgentConnection
             ? [appAgentConnection]
             : []
-          : mailOnly || financeOnly || legalOnly || voiceAgent
+          : !botUsesConnectorTools(bot.spawnKey)
             ? []
             : selectRunConnections(
                 runConnections,

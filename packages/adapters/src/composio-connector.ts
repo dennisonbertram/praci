@@ -356,6 +356,8 @@ export class ComposioConnector implements ComposioProvider {
     userId: string,
     connections: ReturnType<typeof connectedComposioConnections>,
     requireConnectedAccount = false,
+    /** Dispatch must pin an authorized account; discovery only lists tools and may go unpinned. */
+    refuseStaleToolkits = false,
   ): Promise<ComposioSession> {
     const canonicalToolkits = await this.canonicalizeToolkits(
       connections.map((connection) => connection.externalId),
@@ -365,12 +367,15 @@ export class ComposioConnector implements ComposioProvider {
     );
     const liveAccountIds = await this.listActiveAccountIds(userId, canonicalToolkits);
     const accountIdsByToolkit = new Map<string, Set<string>>();
+    const authenticatedToolkits = new Set<string>();
     for (const connection of connections) {
       const accountId = connection.providerRef?.trim();
       if (!accountId) continue;
       // No-auth and legacy rows store the toolkit slug rather than a remote
       // connected-account id. Only concrete account ids can scope a session.
       if (composioSlugKey(accountId) === composioSlugKey(connection.externalId)) continue;
+      const authenticated = canonicalByKey.get(composioSlugKey(connection.externalId));
+      if (authenticated) authenticatedToolkits.add(authenticated);
       // Drop refs the provider no longer lists as ACTIVE so a revoked sibling
       // with a deleted account cannot fail the whole tool-router session.
       if (liveAccountIds && !liveAccountIds.has(accountId)) continue;
@@ -379,6 +384,14 @@ export class ComposioConnector implements ComposioProvider {
       const ids = accountIdsByToolkit.get(toolkit) ?? new Set<string>();
       ids.add(accountId);
       accountIdsByToolkit.set(toolkit, ids);
+    }
+    // An authenticated toolkit whose accounts are all stale has nothing authorized to pin. An
+    // unpinned session would resolve the user's other accounts, including ones this run was denied.
+    if (refuseStaleToolkits) {
+      for (const toolkit of authenticatedToolkits) {
+        if (!accountIdsByToolkit.has(toolkit))
+          throw new Error("The connected account is no longer active");
+      }
     }
     const connectedAccounts: Record<string, string[]> = {};
     for (const [toolkit, ids] of accountIdsByToolkit) {
@@ -507,6 +520,7 @@ export class ComposioConnector implements ComposioProvider {
       context.userId,
       connections,
       Boolean(call.route.connectionId),
+      true,
     );
     if (
       call.route.connectionId &&
@@ -565,6 +579,7 @@ export class ComposioConnector implements ComposioProvider {
         context.userId,
         connections,
         Boolean(call.route?.connectionId),
+        true,
       );
       if (call.route && (call.route.connectionId || call.route.discoveredReadOnly === true)) {
         // Fetched now, not at discovery: a read that has become a write must not run unasked.

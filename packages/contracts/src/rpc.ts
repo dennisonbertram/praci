@@ -274,12 +274,12 @@ const threadSendInput = threadTarget
     }
   });
 
-const ConnectionAccessSchema = z.object({
-  allAgents: z.boolean(),
-  botIds: z.array(Id),
-  /** Who can really use the connection, computed by the server with the executor's rules. */
-  effectiveAccess: z.object({ shared: z.enum(["all", "some", "none"]), botIds: z.array(Id) }),
-});
+const ConnectionAccessSchema = z.object({ allAgents: z.boolean(), botIds: z.array(Id) });
+/** Who can really use each connection, computed by the server with the executor's rules. */
+const EffectiveAccessSchema = z.record(
+  Id,
+  z.object({ shared: z.enum(["all", "some", "none"]), botIds: z.array(Id) }),
+);
 
 const spaceName = z.string().trim().min(1).max(60);
 
@@ -948,6 +948,8 @@ export const appContract = {
     revoke: oc.input(z.object({ connectionId: Id })).output(z.object({ ok: z.literal(true) })),
     /** Which agents may use this connection's tools. */
     access: oc.input(z.object({ connectionId: Id })).output(ConnectionAccessSchema),
+    /** The agents that can really use each of the caller's connections, in one call. */
+    effectiveAccess: oc.output(EffectiveAccessSchema),
     setAccess: oc
       .input(z.object({ connectionId: Id, allAgents: z.boolean(), botIds: z.array(Id).max(500) }))
       .output(ConnectionAccessSchema),
