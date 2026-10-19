@@ -38,6 +38,14 @@ export function agentApp(
 
 type SpaceData = AgentAppData & { bots: { id: string; spawnKey: string | null }[] };
 
+/** The app behind one integration agent, or undefined for an ordinary bot. */
+export async function lookupAgentApp(
+  userId: string,
+  bot: { id: string; spaceId: string; spawnKey: string | null },
+) {
+  return agentApp(bot, await loadSpace(userId, bot.spaceId));
+}
+
 /** Fired after the integrations or their agents change, so cached logos are looked up again. */
 export const INTEGRATIONS_CHANGED_EVENT = "rakazo:integrations-changed";
 

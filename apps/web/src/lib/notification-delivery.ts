@@ -13,6 +13,7 @@ export function attentionFromDto(n: NotificationDto): AttentionNotification {
     title: maskCurrencyWhenHidden(n.title),
     body: n.body ? maskCurrencyWhenHidden(n.body) : undefined,
     href: n.link ?? undefined,
+    createdAt: n.createdAt,
   };
 }
 
