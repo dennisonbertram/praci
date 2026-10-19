@@ -20,6 +20,7 @@ vi.mock("@lingui/core/macro", () => ({
     (n === 1 ? forms.one : forms.other).replace("#", String(n)),
 }));
 vi.mock("@lingui/react/macro", () => ({
+  useLingui: () => ({ t: text }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
@@ -1010,4 +1011,30 @@ it("confirms Try again at once, so the click visibly did something", async () =>
   await act(async () => again?.click());
   await settle();
   expect(getUploadToasts().map((toast) => toast.name)).toContain("Reading junk.pdf again");
+});
+
+it("shows Ask only when the page can open the agent, and clicking it asks for the agent", async () => {
+  const onAskAgent = vi.fn();
+  await act(async () => {
+    root.render(
+      <MemoryRouter>
+        <DataRoomPage onAskAgent={onAskAgent} />
+      </MemoryRouter>,
+    );
+  });
+  const ask = container.querySelector<HTMLButtonElement>(
+    'button[aria-label="Ask Data room agent"]',
+  );
+  expect(ask).not.toBeNull();
+  await act(async () => ask?.click());
+  expect(onAskAgent).toHaveBeenCalledOnce();
+
+  await act(async () => {
+    root.render(
+      <MemoryRouter>
+        <DataRoomPage />
+      </MemoryRouter>,
+    );
+  });
+  expect(container.querySelector('button[aria-label="Ask Data room agent"]')).toBeNull();
 });

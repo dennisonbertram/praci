@@ -23,3 +23,5 @@ export const Inbox: Story = {};
 export const Finance: Story = { args: { kind: "finance" } };
 /** The Carta agent before the first message. */
 export const Carta: Story = { args: { kind: "carta" } };
+/** The Data room agent before the first message. */
+export const DataRoom: Story = { args: { kind: "data-room" } };
