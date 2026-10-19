@@ -101,6 +101,7 @@ export default function Account() {
     DEFAULT_LIVE_NOTIFICATION_SETTINGS,
   );
   const [phonePush, setPhonePush] = useState<boolean | null>(null);
+  const [phonePushPending, setPhonePushPending] = useState(false);
   const [notificationsReady, setNotificationsReady] = useState(Platform.OS !== "android");
   const [notificationPending, setNotificationPending] = useState(false);
   const [notificationError, setNotificationError] = useState<string | null>(null);
@@ -235,7 +236,9 @@ export default function Account() {
   }
 
   async function updatePhonePush(push: boolean) {
+    if (phonePushPending) return;
     const previous = phonePush;
+    setPhonePushPending(true);
     setPhonePush(push);
     setNotificationError(null);
     try {
@@ -243,6 +246,8 @@ export default function Account() {
     } catch (cause) {
       setPhonePush(previous);
       setNotificationError(errorText(cause, t("Could not update notifications")));
+    } finally {
+      setPhonePushPending(false);
     }
   }
 
@@ -472,6 +477,7 @@ export default function Account() {
             <SettingsSwitch
               label={t("Phone notifications")}
               value={phonePush}
+              disabled={phonePushPending}
               onChange={(push) => void updatePhonePush(push)}
             />
             {notificationError ? <Text style={styles.error}>{notificationError}</Text> : null}
@@ -484,6 +490,7 @@ export default function Account() {
               <SettingsSwitch
                 label={t("Phone notifications")}
                 value={phonePush}
+                disabled={phonePushPending}
                 onChange={(push) => void updatePhonePush(push)}
               />
             ) : null}

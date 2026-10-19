@@ -220,8 +220,9 @@ export async function updateNotificationPreferences(
 ): Promise<NotificationPreferences> {
   const scope = ownerOf(actor);
   const where = { spaceId_userId: scope };
-  // ponytail: read-merge-write; two simultaneous channel edits can drop one, which is acceptable here.
   await prisma.$transaction(async (tx) => {
+    // One writer per space and user, so read-merge-write cannot lose a concurrent channel change.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`notif-pref:${scope.spaceId}:${scope.userId}`}, 0))`;
     const current = await tx.notificationPreference.findUnique({
       where,
       select: { channels: true },
