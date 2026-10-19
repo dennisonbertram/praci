@@ -63,7 +63,7 @@ vi.mock("react-native", () => ({
   }: {
     children?: ReactNode;
     accessibilityLabel?: string;
-  }) => <div aria-label={accessibilityLabel}>{children}</div>,
+  }) => <div data-label={accessibilityLabel}>{children}</div>,
   ScrollView: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   ActivityIndicator: () => <div data-testid="spinner" />,
   Text: ({ children, selectable }: { children: ReactNode; selectable?: boolean }) => (
@@ -196,7 +196,7 @@ it("opens the Inbox agent thread from the header item", async () => {
 it("marks a message you sent with a success check and Sent", async () => {
   getReply = async () => message({ fromSelf: true });
   await render();
-  expect(container.querySelector('[aria-label="Sent"]')?.textContent).toBe("Sent");
+  expect(container.querySelector('[data-label="Sent"]')?.textContent).toBe("Sent");
   expect(container.querySelector('[data-testid="check"]')?.getAttribute("data-color")).toBe(
     "#228B3B",
   );
@@ -204,6 +204,6 @@ it("marks a message you sent with a success check and Sent", async () => {
 
 it("does not mark an incoming message as sent", async () => {
   await render();
-  expect(container.querySelector('[aria-label="Sent"]')).toBeNull();
+  expect(container.querySelector('[data-label="Sent"]')).toBeNull();
   expect(container.textContent).not.toContain("Sent");
 });
