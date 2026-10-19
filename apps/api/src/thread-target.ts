@@ -11,11 +11,16 @@ import type {
   RunStatus,
   ThreadSnapshot,
 } from "@rakazo/contracts";
-import { GROUP_MEMBER_MIN, MessageBlock as MessageBlockSchema } from "@rakazo/contracts";
+import {
+  botCanReadDataRoom,
+  GROUP_MEMBER_MIN,
+  MessageBlock as MessageBlockSchema,
+} from "@rakazo/contracts";
 import {
   ACTIVE_RUN_STATUSES,
   BACKGROUND_RUN_TRIGGERS,
   callIdFromClientNonce,
+  dataRoomReferenceLine,
   isActive,
   isConversationalRun,
   projectMessages,
@@ -27,6 +32,7 @@ import type { Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import {
   answerWaitingRunWithTextInTransaction,
   appendEventInTransaction,
+  createDataRoomRepos,
   createGroupRepos,
   createRepos,
   createThreadMessageInTransaction,
@@ -601,6 +607,40 @@ function mapRun(run: {
   };
 }
 
+/**
+ * The lines that tell an agent which Data room files a message carries, so it can open them with
+ * read_data_room_item. Each file must be the sender's own (a foreign or unknown id is refused as
+ * not found), and the bot must be one that can read the Data room: others get a copy as an
+ * attachment instead.
+ */
+export async function dataRoomReferenceLines(
+  prisma: PrismaClient,
+  actor: Actor,
+  target: ThreadTarget,
+  itemIds: string[] | undefined,
+) {
+  const ids = [...new Set(itemIds ?? [])];
+  if (!ids.length) return [];
+  if (target.kind !== "bot") {
+    throw new ORPCError("BAD_REQUEST", { message: "Data room files go to one agent." });
+  }
+  const bot = await prisma.bot.findFirst({
+    where: { id: target.botId, spaceId: actor.spaceId, userId: actor.userId },
+    select: { spawnKey: true, disabledBuiltinTools: true },
+  });
+  if (!bot) throw new IsolationError();
+  if (!botCanReadDataRoom(bot)) {
+    throw new ORPCError("BAD_REQUEST", { message: "This agent cannot open the Data room." });
+  }
+  const repo = createDataRoomRepos(prisma);
+  const lines: string[] = [];
+  for (const id of ids) {
+    const item = await repo.getItem(actor, id);
+    lines.push(dataRoomReferenceLine(item));
+  }
+  return lines;
+}
+
 export async function sendThreadMessage(
   deps: {
     prisma: PrismaClient;
@@ -612,6 +652,7 @@ export async function sendThreadMessage(
   input: {
     text?: string;
     artifactIds?: string[];
+    dataRoomItemIds?: string[];
     mentions?: MentionTargetInput[];
     replyToMessageId?: string;
     replyQuote?: string;
@@ -627,6 +668,15 @@ export async function sendThreadMessage(
   if (requestedReplyQuote && !input.replyToMessageId) {
     throw new ORPCError("BAD_REQUEST", { message: "replyQuote requires replyToMessageId." });
   }
+
+  const references = await dataRoomReferenceLines(
+    deps.prisma,
+    actor,
+    target,
+    input.dataRoomItemIds,
+  );
+  // The references ride in the text, so the message, the run's prompt and later history all carry them.
+  const sendText = [input.text?.trim(), references.join("\n")].filter(Boolean).join("\n\n");
 
   const commit = () =>
     deps.prisma.$transaction(async (tx) => {
@@ -689,7 +739,7 @@ export async function sendThreadMessage(
           actor,
           mentionTargets.connectorMentionIds,
         );
-        const blocks = buildUserMessageBlocks(input.text, attachmentBlocks);
+        const blocks = buildUserMessageBlocks(sendText, attachmentBlocks);
         const message = await createThreadMessageInTransaction(tx, {
           threadId: target.threadId,
           role: "user",
@@ -795,7 +845,7 @@ export async function sendThreadMessage(
             botId: target.botId,
             threadId: target.threadId,
             userId: actor.userId,
-            prompt: buildSendPrompt(input.text, artifacts, connectorNames),
+            prompt: buildSendPrompt(sendText, artifacts, connectorNames),
             status: "queued",
           },
         });
@@ -1222,20 +1272,60 @@ export async function stopThreadRuns(
   });
 }
 
+/** A snapshot plus the caller's read boundary, for the "New" divider. Scoped to the caller's space and user. */
+export async function threadSnapshotForReader(
+  deps: { prisma: PrismaClient },
+  actor: Actor,
+  target: ThreadTarget,
+): Promise<ThreadSnapshot> {
+  const [snapshot, read] = await Promise.all([
+    threadSnapshot(deps, target),
+    deps.prisma.thread.findFirst({
+      where: { id: target.threadId, spaceId: actor.spaceId, userId: actor.userId },
+      select: { lastReadSeq: true },
+    }),
+  ]);
+  return read ? { ...snapshot, lastReadSeq: read.lastReadSeq } : snapshot;
+}
+
+/**
+ * Marking read moves the read boundary forward to the message `upToMessageId` (the newest when
+ * omitted), never backward, and clears `unread` at the newest message or when the reader reports
+ * `toEnd`. An id that is not in this thread changes nothing. Marking unread moves the boundary back
+ * so the newest other-party message is unread again. Each is one statement scoped to the caller.
+ */
 export async function setThreadUnreadState(
   prisma: PrismaClient,
   actor: Actor,
   target: ThreadTarget,
   unread: boolean,
+  read: { upToMessageId?: string; toEnd?: boolean } = {},
 ) {
-  const result = await prisma.thread.updateMany({
-    where: {
-      id: target.threadId,
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      unread: { not: unread },
-    },
-    data: { unread },
-  });
-  if (result.count > 1) throw new IsolationError();
+  if (unread) {
+    const count = await prisma.$executeRaw`
+      UPDATE threads SET
+        "unread" = true,
+        "lastReadSeq" = LEAST("lastReadSeq", COALESCE(
+          (SELECT MAX(m."seq") - 1 FROM messages m WHERE m."threadId" = threads.id AND m."role" <> 'user'),
+          "lastReadSeq"))
+      WHERE id = ${target.threadId} AND "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId}`;
+    if (count > 1) throw new IsolationError();
+    return;
+  }
+  const upTo = read.upToMessageId ?? null;
+  // GREATEST keeps the boundary monotonic under concurrent tabs; the WHERE keeps it the caller's.
+  const rows = await prisma.$queryRaw<{ id: string }[]>`
+    UPDATE threads SET
+      "lastReadSeq" = GREATEST("lastReadSeq", LEAST(r.seq, "nextMessageSeq" - 1)),
+      "unread" = CASE
+        WHEN ${read.toEnd ?? false}::boolean
+          OR GREATEST("lastReadSeq", LEAST(r.seq, "nextMessageSeq" - 1)) >= "nextMessageSeq" - 1
+        THEN false ELSE "unread" END
+    FROM (SELECT COALESCE(
+      (SELECT m."seq" FROM messages m WHERE m."id" = ${upTo}::text AND m."threadId" = ${target.threadId}),
+      CASE WHEN ${upTo}::text IS NULL THEN 2147483647 END) AS seq) r
+    WHERE threads.id = ${target.threadId} AND threads."spaceId" = ${actor.spaceId}
+      AND threads."userId" = ${actor.userId} AND r.seq IS NOT NULL
+    RETURNING threads.id`;
+  if (rows.length > 1) throw new IsolationError();
 }

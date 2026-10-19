@@ -4,6 +4,7 @@ import {
   BACKGROUND_RUN_TRIGGERS,
   isToolActivityBlock,
   plainTextFromMarkdown,
+  splitDataRoomReferences,
   toolStepLabel,
   toolStepsSummary,
 } from "@rakazo/core";
@@ -59,7 +60,9 @@ export function previewFromBlocks(blocks: unknown): string {
       typeof (block as { text?: unknown }).text === "string" &&
       !isToolActivityBlock(block as MessageBlock)
     ) {
-      const text = previewText((block as { text: string }).text);
+      // A Data room file sent with the message is shown by its name, never as its raw line.
+      const { body, refs } = splitDataRoomReferences((block as { text: string }).text);
+      const text = previewText(body || refs.map((ref) => ref.name).join(", "));
       if (!TOOL_ID_LIST.test(text)) return humanizedIdRun(text);
     }
   }

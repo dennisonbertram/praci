@@ -11,6 +11,7 @@ export const DATA_ROOM_AGENT_BUILTIN_TOOLS = [
   "search_data_room",
   "read_data_room_item",
   "add_to_data_room",
+  "read_spreadsheet",
   "remember",
   "save_memory",
   "recall_memory",

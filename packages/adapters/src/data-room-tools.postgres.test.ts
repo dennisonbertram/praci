@@ -10,6 +10,8 @@ import { DriveApiEmulator } from "./drive-api-emulator.js";
 import type { DriveAccount } from "./drive-tools.js";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
+import { buildXlsx } from "./spreadsheet.js";
+import { readSpreadsheetTool } from "./spreadsheet-tools.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -451,5 +453,68 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
         error: "Item not found",
       });
     }
+  });
+
+  it("reads spreadsheets only from the run user's artifacts and Data room items", async () => {
+    const xlsx = buildXlsx([
+      {
+        name: "Sheet1",
+        rows: [
+          ["a", "b"],
+          [1, 2],
+        ],
+      },
+    ]);
+    const stored = await artifacts.put({ bytes: xlsx });
+    const mime = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+    const artifact = (who: Actor) =>
+      prisma.artifact.create({
+        data: {
+          spaceId: who.spaceId,
+          userId: who.userId,
+          name: "t.xlsx",
+          mimeType: mime,
+          size: xlsx.byteLength,
+          hash: stored.hash,
+          storageKey: stored.id,
+        },
+      });
+    const item = async (who: Actor) =>
+      (
+        await repo.createItem(who, {
+          source: "upload",
+          sha256: randomUUID(),
+          name: "t.xlsx",
+          mimeType: mime,
+          size: xlsx.byteLength,
+          storageKey: stored.id,
+        })
+      ).item;
+    const a = users.a as Actor;
+    const read = (args: Record<string, unknown>, who = a, dataRoomEnabled = true) =>
+      readSpreadsheetTool(
+        {
+          prisma,
+          artifacts,
+          scope: { spaceId: who.spaceId, userId: who.userId },
+          dataRoomEnabled,
+        },
+        context(who),
+        args,
+      );
+
+    expect(await read({ artifact_id: (await artifact(a)).id })).toMatchObject({
+      header: ["a", "b"],
+    });
+    expect(await read({ item_id: (await item(a)).id })).toMatchObject({ header: ["a", "b"] });
+    for (const foreign of [users.b as Actor, users.c as Actor]) {
+      expect(await read({ artifact_id: (await artifact(foreign)).id })).toEqual({
+        error: "File not found",
+      });
+      expect(await read({ item_id: (await item(foreign)).id })).toEqual({
+        error: "File not found",
+      });
+    }
+    expect(await read({ item_id: (await item(a)).id }, a, false)).toHaveProperty("error");
   });
 });

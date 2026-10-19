@@ -15,6 +15,13 @@ const CATEGORY = {
   takeover: "takeover",
 } as const;
 
+const KIND = {
+  completion: "done",
+  failure: "failed",
+  help: "needs_input",
+  takeover: "urgent",
+} as const;
+
 /**
  * Finish, failure, help and takeover events become `attention` notifications on the run's thread.
  * The outbox sends the phone push; the web client shows the toast or OS notification. A category
@@ -43,6 +50,7 @@ export async function notifyThreadEvent(
     body: message.body.slice(0, NOTIFICATION_BODY_MAX) || null,
     link: message.groupId ? `/app/g/${message.groupId}` : `/app/${message.botId}`,
     importance: "attention",
+    kind: KIND[message.kind],
     dedupeKey: createHash("sha256").update(`${message.kind}\n${key}`).digest("hex").slice(0, 32),
     skipRateLimits: true,
   });

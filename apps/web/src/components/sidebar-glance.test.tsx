@@ -12,7 +12,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: unknown }) => children,
 }));
 
-import { glanceBadge, runwayGlance, UrgentMark } from "./sidebar-glance";
+import { glanceBadge, runwayGlance, StatusMark } from "./sidebar-glance";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -50,8 +50,23 @@ it("writes runway as months and hides it with Hide money or without a figure", (
   expect(runwayGlance(null, false)).toBeUndefined();
 });
 
-it("names the urgent mark for screen readers", () => {
-  html(<UrgentMark />);
+it.each([
+  ["urgent", "(urgent)"],
+  ["needs_input", "(needs input)"],
+  ["failed", "(failed)"],
+  ["done", "(done)"],
+  ["new", "(new)"],
+] as const)("names the %s mark for screen readers", (kind, label) => {
+  html(<StatusMark kind={kind} botId="bot-1" />);
   expect(container.querySelector("svg")?.getAttribute("aria-hidden")).toBe("true");
-  expect(container.textContent).toContain("(urgent)");
+  expect(container.textContent).toContain(label);
+});
+
+it("gives each agent its own animation phase", () => {
+  const phase = (botId: string) => {
+    html(<StatusMark kind="urgent" botId={botId} />);
+    return container.querySelector("svg")?.getAttribute("style");
+  };
+  expect(phase("bot-1")).not.toEqual(phase("bot-2"));
+  expect(phase("bot-1")).toEqual(phase("bot-1"));
 });

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import type { NotificationKind } from "@rakazo/contracts";
+import { NOTIFICATION_KINDS, notificationKindOf } from "@rakazo/contracts";
 import type { Notification, PrismaClient } from "./client.js";
 
 type Scope = { spaceId: string; userId: string };
@@ -33,6 +35,8 @@ export type CreateNotificationInput = Scope & {
   body?: string | null;
   link?: string | null;
   importance?: "info" | "attention";
+  /** Sidebar status icon; omitted falls back to importance (attention is urgent, info is new). */
+  kind?: NotificationKind;
   dedupeKey?: string;
   /** Platform events (run finished, help, takeover) are not agent chatter: skip the per-agent rate limits. */
   skipRateLimits?: boolean;
@@ -138,6 +142,7 @@ export async function createNotification(
         body,
         link: input.link ?? null,
         importance,
+        kind: input.kind ?? null,
         dedupeKey,
         createdAt: now,
       },
@@ -291,18 +296,24 @@ export async function listNotifications(
 }
 
 /**
- * Marks the surface's unseen notifications seen, returning how many changed. `id` or `threadId`
- * limits it to one notification or one thread, so opening one toast leaves the rest unseen.
+ * Marks unseen notifications seen, returning how many changed. `surface` limits it to one surface;
+ * `id` or `threadId` to one notification or thread, so opening one toast leaves the rest unseen.
+ * `botId` limits it to one agent across all its surfaces (viewing the agent's thread). At least
+ * `surface` or `botId` is required, so a call can never clear everything by omission.
  */
 export async function markSeen(
   prisma: Pick<PrismaClient, "notification">,
-  actor: Scope & { surface: string; id?: string; threadId?: string },
+  actor: Scope & { surface?: string; botId?: string; id?: string; threadId?: string },
   now = new Date(),
 ): Promise<number> {
+  if (!actor.surface && !actor.botId) {
+    throw new NotificationValidationError("markSeen needs a surface or an agent.");
+  }
   const { count } = await prisma.notification.updateMany({
     where: {
       ...ownerOf(actor),
-      surface: actor.surface,
+      ...(actor.surface ? { surface: actor.surface } : {}),
+      ...(actor.botId ? { botId: actor.botId } : {}),
       seenAt: null,
       ...(actor.id ? { id: actor.id } : {}),
       ...(actor.threadId ? { threadId: actor.threadId } : {}),
@@ -339,17 +350,25 @@ export async function unseenCounts(
   return Object.fromEntries(rows.map((row) => [row.surface, row._count._all]));
 }
 
-/** Agents with an unseen `attention` notification for this user. */
-export async function unseenAttentionBotIds(
+/** For each agent with unseen notifications, the highest-priority kind among them. */
+export async function unseenBotKinds(
   prisma: Pick<PrismaClient, "notification">,
   actor: Scope,
-): Promise<string[]> {
+): Promise<Record<string, NotificationKind>> {
   const rows = await prisma.notification.findMany({
-    where: { ...ownerOf(actor), seenAt: null, importance: "attention", botId: { not: null } },
-    distinct: ["botId"],
-    select: { botId: true },
+    where: { ...ownerOf(actor), seenAt: null, botId: { not: null } },
+    distinct: ["botId", "kind", "importance"],
+    select: { botId: true, kind: true, importance: true },
   });
-  return rows.flatMap((row) => (row.botId ? [row.botId] : []));
+  const rank = (kind: NotificationKind) => NOTIFICATION_KINDS.indexOf(kind);
+  const top: Record<string, NotificationKind> = {};
+  for (const row of rows) {
+    if (!row.botId) continue;
+    const kind = notificationKindOf(row);
+    const current = top[row.botId];
+    if (!current || rank(kind) < rank(current)) top[row.botId] = kind;
+  }
+  return top;
 }
 
 /** Deletes notifications older than 30 days and deliveries older than 7 days. */

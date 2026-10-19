@@ -996,6 +996,8 @@ export const ThreadSnapshotSchema = z.object({
   cursor: z.number().int().min(-1),
   messages: z.array(ThreadMessageSchema),
   olderCursor: z.number().int().nonnegative().nullable(),
+  /** Highest message seq the caller had read when the snapshot was taken; -1 before any. */
+  lastReadSeq: z.number().int().min(-1).optional(),
   botId: Id.optional(),
   groupId: Id.optional(),
   groupName: z.string().optional(),

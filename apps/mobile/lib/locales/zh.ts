@@ -347,6 +347,9 @@ export const ZH_MESSAGES: Record<string, string> = {
   "Its conversation, files, and routines will be permanently deleted. What should happen to its memories?":
     "它的对话、文件和例行任务将被永久删除。记忆要如何处理？",
   "It could not be opened. Try again from the sidebar.": "无法打开。请从侧边栏重试。",
+  New: "新消息",
+  "{count} new message": "{count} 条新消息",
+  "{count} new messages": "{count} 条新消息",
   "Jump to latest": "跳到最新",
   "Jump to latest, new messages": "跳到最新，有新消息",
   "just now": "刚刚",

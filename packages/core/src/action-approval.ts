@@ -64,6 +64,7 @@ const UNATTENDED_SAFE_BUILTIN_TOOLS = new Set([
   "search_data_room",
   "read_data_room_item",
   "add_to_data_room",
+  "read_spreadsheet",
   "skill_read",
   "web_fetch",
   "web_search",

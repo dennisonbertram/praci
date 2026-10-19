@@ -1,7 +1,8 @@
+import type { NotificationKind } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ChartColumn, Mail, Scale } from "lucide-react";
 import { SidebarPageLink } from "./SidebarPageLink";
-import { glanceBadge, runwayGlance, UrgentMark } from "./sidebar-glance";
+import { glanceBadge, runwayGlance, StatusMark } from "./sidebar-glance";
 
 const meta = {
   title: "Shell/Sidebar glance",
@@ -67,12 +68,25 @@ export const RunwayHidden: Story = {
     ),
 };
 
-/** Beside an agent's timestamp while it has an unseen attention notification. */
-export const Urgent: Story = {
+const agents: [string, string, NotificationKind][] = [
+  ["Carta agent", "2m", "urgent"],
+  ["Legal agent", "9m", "needs_input"],
+  ["Finance agent", "14m", "failed"],
+  ["Research agent", "1h", "done"],
+  ["Inbox agent", "3h", "new"],
+];
+
+/** Beside an agent's timestamp: the highest-priority unseen kind. Each row animates out of step. */
+export const AgentStatusKinds: Story = {
   render: () => (
-    <div className="flex items-center gap-1.5 text-[12px] text-muted-foreground">
-      <UrgentMark />
-      <span>2m</span>
-    </div>
+    <ul className="flex flex-col gap-1.5 text-[14.5px] text-foreground">
+      {agents.map(([name, time, kind]) => (
+        <li key={name} className="flex items-center gap-1.5">
+          <span className="min-w-0 flex-1 truncate">{name}</span>
+          <StatusMark kind={kind} botId={name} />
+          <span className="text-[12px] text-muted-foreground tabular-nums">{time}</span>
+        </li>
+      ))}
+    </ul>
   ),
 };

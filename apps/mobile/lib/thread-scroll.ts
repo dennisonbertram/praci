@@ -9,7 +9,7 @@ export class ThreadScrollBehavior {
   private laidOut = false;
   private contentReady = false;
   private latestMessageId: string | null = null;
-  private currentState: ThreadScrollState = { detached: false, unread: false };
+  private currentState: ThreadScrollState = { detached: false, unread: false, newCount: 0 };
 
   openThread(threadKey: string): void {
     if (this.threadKey === threadKey) return;
@@ -17,7 +17,7 @@ export class ThreadScrollBehavior {
     this.laidOut = false;
     this.contentReady = false;
     this.latestMessageId = null;
-    this.currentState = { detached: false, unread: false };
+    this.currentState = { detached: false, unread: false, newCount: 0 };
   }
 
   onLayout(): ThreadScrollAction {
@@ -25,7 +25,12 @@ export class ThreadScrollBehavior {
     return this.contentReady && !this.currentState.detached ? "jump" : null;
   }
 
-  onContentChanged(blocked: boolean, latestMessageId: string | null): ThreadScrollAction {
+  /** `incoming` is how many stored messages from the other party the change added. */
+  onContentChanged(
+    blocked: boolean,
+    latestMessageId: string | null,
+    incoming = 0,
+  ): ThreadScrollAction {
     if (blocked) return null;
     this.contentReady = true;
     if (latestMessageId === null || latestMessageId === this.latestMessageId) return null;
@@ -33,7 +38,12 @@ export class ThreadScrollBehavior {
     this.latestMessageId = latestMessageId;
     if (initial) return this.laidOut ? "jump" : null;
     if (this.currentState.detached) {
-      this.currentState = { detached: true, unread: true };
+      // A live progress row changes the latest id without adding a message, so it adds no count.
+      this.currentState = {
+        detached: true,
+        unread: this.currentState.unread || incoming > 0,
+        newCount: this.currentState.newCount + incoming,
+      };
       return null;
     }
     return "smooth";
@@ -44,12 +54,13 @@ export class ThreadScrollBehavior {
     this.currentState = {
       detached,
       unread: detached ? this.currentState.unread : false,
+      newCount: detached ? this.currentState.newCount : 0,
     };
     return this.state();
   }
 
   jumpToLatest(): ThreadScrollAction {
-    this.currentState = { detached: false, unread: false };
+    this.currentState = { detached: false, unread: false, newCount: 0 };
     return "smooth";
   }
 

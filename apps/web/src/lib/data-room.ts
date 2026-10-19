@@ -1,6 +1,6 @@
-import type { DataRoomApiItem } from "@rakazo/contracts";
+import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
 import { DataRoomApiUploadResponseSchema } from "@rakazo/contracts";
-import { withSpaceHeaders } from "./rpc";
+import { rpc, withSpaceHeaders } from "./rpc";
 
 export const DATA_ROOM_PATH = "/app/data-room";
 /** Fired on `window` after an upload finishes, so an open Data room page reloads. */
@@ -12,6 +12,31 @@ export const dataRoomImportStarted = () =>
   window.dispatchEvent(new Event(DATA_ROOM_IMPORT_STARTED));
 
 export const dataRoomItemPath = (id: string) => `${DATA_ROOM_PATH}?item=${encodeURIComponent(id)}`;
+
+/** The id of the folder at `path` (names from the top level down), or null when it is missing. */
+export function findDataRoomFolder(folders: DataRoomApiFolder[], path: string[]): string | null {
+  let parentId: string | null = null;
+  for (const name of path) {
+    const next: DataRoomApiFolder | undefined = folders.find(
+      (folder) => folder.parentId === parentId && folder.name === name,
+    );
+    if (!next) return null;
+    parentId = next.id;
+  }
+  return parentId;
+}
+
+/** The id of the folder at `path`, creating whichever folders along it are missing. */
+export async function ensureDataRoomFolder(path: string[]): Promise<string> {
+  const folders = await rpc.dataRoom.folders();
+  let parentId: string | null = null;
+  for (const [depth, name] of path.entries()) {
+    const known = findDataRoomFolder(folders, path.slice(0, depth + 1));
+    parentId = known ?? (await rpc.dataRoom.folderCreate({ name, parentId })).id;
+  }
+  if (!parentId) throw new Error("A folder path needs at least one name");
+  return parentId;
+}
 
 type DataRoomView = {
   view: "list" | "grid";
@@ -117,7 +142,7 @@ export function uploadToDataRoom(
 }
 
 /** The stored bytes, fetched with the session and space header. */
-async function fetchDataRoomBlob(item: Pick<DataRoomApiItem, "id">) {
+export async function fetchDataRoomBlob(item: Pick<DataRoomApiItem, "id">) {
   const response = await fetch(`/api/data-room/items/${encodeURIComponent(item.id)}/content`, {
     headers: withSpaceHeaders(),
     credentials: "include",

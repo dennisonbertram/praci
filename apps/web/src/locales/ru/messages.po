@@ -13,6 +13,22 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
+#: src/components/sidebar-glance.tsx
+msgid " (done)"
+msgstr ""
+
+#: src/components/sidebar-glance.tsx
+msgid " (failed)"
+msgstr ""
+
+#: src/components/sidebar-glance.tsx
+msgid " (needs input)"
+msgstr ""
+
+#: src/components/sidebar-glance.tsx
+msgid " (new)"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
@@ -398,6 +414,10 @@ msgstr ""
 msgid "{name}, paid with {paidWith}"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "{newCount, plural, one {# new message} other {# new messages}}"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
 msgstr ""
@@ -716,6 +736,7 @@ msgstr ""
 msgid "Add email for {0}"
 msgstr ""
 
+#: src/components/data-room/DataRoomImportMenu.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr ""
@@ -764,6 +785,7 @@ msgid "Add your OpenRouter key above to start. The Legal agent then reads your D
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/pages/Artifacts.tsx
 msgid "Added"
@@ -1496,6 +1518,7 @@ msgid "Bots with their own computer and browser"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
 msgstr ""
 
@@ -2251,16 +2274,8 @@ msgstr ""
 msgid "Connect Executor"
 msgstr "Подключить Executor"
 
-#: src/components/data-room/ImportFromEmail.tsx
-msgid "Connect Gmail"
-msgstr ""
-
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
-msgstr ""
-
-#: src/components/data-room/ImportFromDrive.tsx
-msgid "Connect Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3427,6 +3442,7 @@ msgstr ""
 msgid "Document date"
 msgstr ""
 
+#: src/components/data-room/FolderDocuments.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr ""
@@ -3587,6 +3603,7 @@ msgstr ""
 msgid "Edit wallet"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 msgid "Email"
@@ -4086,6 +4103,7 @@ msgid "Google apps"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr ""
 
@@ -5198,6 +5216,7 @@ msgid "Mute"
 msgstr "Выключить микрофон"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -5287,6 +5306,10 @@ msgstr ""
 
 #: src/components/sidebar-glance.tsx
 msgid "new"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "New"
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
@@ -5828,7 +5851,9 @@ msgid "Open"
 msgstr "Открыть"
 
 #. placeholder {0}: group.title
+#. placeholder {0}: ref.name
 #. placeholder {0}: sameEmail.name
+#: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0}"
@@ -7335,6 +7360,10 @@ msgstr "Отправить ссылку для сброса"
 msgid "Send saved draft"
 msgstr ""
 
+#: src/components/data-room/SendToAgent.tsx
+msgid "Send to agent"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr ""
@@ -7623,6 +7652,7 @@ msgstr "Пропустить или добавить ключ"
 msgid "Skip to content"
 msgstr ""
 
+#. placeholder {0}: failed.join(", ")
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"
@@ -8426,6 +8456,7 @@ msgid "Turn on a model and allow AI access to sort files."
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx

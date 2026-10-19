@@ -11,9 +11,31 @@ type PixelIconProps = {
   /** False renders the first frame, still. Reduced-motion users get the same via CSS. */
   animate?: boolean;
   className?: string;
+  /** Gives this instance its own animation phase and speed (e.g. an agent id), so a list does not move in lockstep. Same seed, same phase on every render. */
+  seed?: string;
 };
 
-export function PixelIcon({ sprite, size = 16, label, animate = true, className }: PixelIconProps) {
+/** FNV-1a: a stable 32-bit hash of the seed. */
+function hash(seed: string) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < seed.length; i++) h = Math.imul(h ^ seed.charCodeAt(i), 0x01000193);
+  return h >>> 0;
+}
+
+/** Where in its cycle (0 to 1) and how fast (0.9 to 1.1x) a seeded icon animates. */
+export function pixelPhase(seed: string) {
+  const h = hash(seed);
+  return { phase: (h % 1000) / 1000, speed: 0.9 + ((h >>> 10) % 201) / 1000 };
+}
+
+export function PixelIcon({
+  sprite,
+  size = 16,
+  label,
+  animate = true,
+  className,
+  seed,
+}: PixelIconProps) {
   const first = sprite.frames[0] ?? [];
   const w = first[0]?.length ?? 0;
   const h = first.length;
@@ -65,6 +87,14 @@ export function PixelIcon({ sprite, size = 16, label, animate = true, className 
       height={box.h * scale}
       viewBox={`0 0 ${box.w} ${box.h}`}
       shapeRendering="crispEdges"
+      style={
+        seed
+          ? ({
+              "--pixel-phase": pixelPhase(seed).phase,
+              "--pixel-speed": pixelPhase(seed).speed,
+            } as CSSProperties)
+          : undefined
+      }
       role={label ? "img" : undefined}
       aria-label={label}
       aria-hidden={label ? undefined : true}
@@ -93,7 +123,22 @@ export function PixelIcon({ sprite, size = 16, label, animate = true, className 
 
 type IconProps = Omit<PixelIconProps, "sprite">;
 
+/** The sprite for each notification kind, in the order of priority. */
+export const STATUS_SPRITE = {
+  urgent: PIXEL_ICONS.fireTruck,
+  needs_input: PIXEL_ICONS.needsInput,
+  failed: PIXEL_ICONS.failed,
+  done: PIXEL_ICONS.done,
+  new: PIXEL_ICONS.sparkle,
+} as const;
+
 export const FireTruckIcon = (props: IconProps) => (
   <PixelIcon sprite={PIXEL_ICONS.fireTruck} {...props} />
+);
+export const StatusIcon = ({
+  kind,
+  ...props
+}: IconProps & { kind: keyof typeof STATUS_SPRITE }) => (
+  <PixelIcon sprite={STATUS_SPRITE[kind]} {...props} />
 );
 export const FireIcon = (props: IconProps) => <PixelIcon sprite={PIXEL_ICONS.fire} {...props} />;

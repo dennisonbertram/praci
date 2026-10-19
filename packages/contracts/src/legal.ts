@@ -28,6 +28,7 @@ export const LEGAL_SCAN_ROUTINE_NAME = "Daily legal scan";
 export const LEGAL_AGENT_BUILTIN_TOOLS = [
   "search_data_room",
   "read_data_room_item",
+  "read_spreadsheet",
   "legal_unreviewed_documents",
   "legal_upsert_contract",
   "legal_upsert_deadline",

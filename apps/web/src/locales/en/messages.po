@@ -13,6 +13,22 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/components/sidebar-glance.tsx
+msgid " (done)"
+msgstr " (done)"
+
+#: src/components/sidebar-glance.tsx
+msgid " (failed)"
+msgstr " (failed)"
+
+#: src/components/sidebar-glance.tsx
+msgid " (needs input)"
+msgstr " (needs input)"
+
+#: src/components/sidebar-glance.tsx
+msgid " (new)"
+msgstr " (new)"
+
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
@@ -398,6 +414,10 @@ msgstr "{name} isn't available on this server."
 msgid "{name}, paid with {paidWith}"
 msgstr "{name}, paid with {paidWith}"
 
+#: src/pages/Shell.tsx
+msgid "{newCount, plural, one {# new message} other {# new messages}}"
+msgstr "{newCount, plural, one {# new message} other {# new messages}}"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
 msgstr "{pct} yield"
@@ -716,6 +736,7 @@ msgstr "Add email"
 msgid "Add email for {0}"
 msgstr "Add email for {0}"
 
+#: src/components/data-room/DataRoomImportMenu.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr "Add files"
@@ -764,6 +785,7 @@ msgid "Add your OpenRouter key above to start. The Legal agent then reads your D
 msgstr "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/pages/Artifacts.tsx
 msgid "Added"
@@ -1496,6 +1518,7 @@ msgid "Bots with their own computer and browser"
 msgstr "Bots with their own computer and browser"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
 msgstr "Box"
 
@@ -2251,17 +2274,9 @@ msgstr "Connect Carta"
 msgid "Connect Executor"
 msgstr "Connect Executor"
 
-#: src/components/data-room/ImportFromEmail.tsx
-msgid "Connect Gmail"
-msgstr "Connect Gmail"
-
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr "Connect Gmail to read, sort and answer your mail here."
-
-#: src/components/data-room/ImportFromDrive.tsx
-msgid "Connect Google Drive"
-msgstr "Connect Google Drive"
 
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
@@ -3427,6 +3442,7 @@ msgstr "Docs & files"
 msgid "Document date"
 msgstr "Document date"
 
+#: src/components/data-room/FolderDocuments.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr "Documents"
@@ -3587,6 +3603,7 @@ msgstr "Edit profile"
 msgid "Edit wallet"
 msgstr "Edit wallet"
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 msgid "Email"
@@ -4086,6 +4103,7 @@ msgid "Google apps"
 msgstr "Google apps"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr "Google Drive"
 
@@ -5198,6 +5216,7 @@ msgid "Mute"
 msgstr "Mute"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -5288,6 +5307,10 @@ msgstr "Never changes your account"
 #: src/components/sidebar-glance.tsx
 msgid "new"
 msgstr "new"
+
+#: src/pages/Shell.tsx
+msgid "New"
+msgstr "New"
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "New account"
@@ -5828,7 +5851,9 @@ msgid "Open"
 msgstr "Open"
 
 #. placeholder {0}: group.title
+#. placeholder {0}: ref.name
 #. placeholder {0}: sameEmail.name
+#: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0}"
@@ -7335,6 +7360,10 @@ msgstr "Send reset link"
 msgid "Send saved draft"
 msgstr "Send saved draft"
 
+#: src/components/data-room/SendToAgent.tsx
+msgid "Send to agent"
+msgstr "Send to agent"
+
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr "Sending is off for {botName}. Turn it back on in its tools."
@@ -7623,6 +7652,7 @@ msgstr "Skip or deploy key"
 msgid "Skip to content"
 msgstr "Skip to content"
 
+#. placeholder {0}: failed.join(", ")
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"
@@ -8426,6 +8456,7 @@ msgid "Turn on a model and allow AI access to sort files."
 msgstr "Turn on a model and allow AI access to sort files."
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx

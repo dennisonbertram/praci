@@ -76,8 +76,13 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+const openSource = async (name: string) => {
+  await userEvent.click(await screen.findByRole("button", { name: "Import" }));
+  await userEvent.click(await screen.findByRole("menuitem", { name }));
+};
+
 const openPicker = async () => {
-  await userEvent.click(await screen.findByRole("button", { name: "Import from email" }));
+  await openSource("Email");
 };
 
 export const Connected: Story = {};
@@ -133,15 +138,30 @@ export const NeedsReconnect: Story = {
   play: openPicker,
 };
 
+/** Nothing is connected: every item stays in the menu and leads to its connect page. */
 export const NotConnected: Story = {
   beforeEach: () => mockRpc({ "connections.list": [] }),
+  play: async () => {
+    await userEvent.click(await screen.findByRole("button", { name: "Import" }));
+  },
+};
+
+/** The menu open with Gmail, Drive and Box connected. */
+export const MenuOpen: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "mcp.servers.list": [{ id: "s1", name: "Box", endpoint: "https://mcp.box.com" }],
+    }),
+  play: async () => {
+    await userEvent.click(await screen.findByRole("button", { name: "Import" }));
+  },
 };
 
 /** The server offers neither app: no button leads to a page that says "isn't available". */
 export const NotOffered: Story = {
   render: (args) => (
     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <span>No import buttons:</span>
+      <span>Only Box:</span>
       <ImportSources {...args} />
     </div>
   ),

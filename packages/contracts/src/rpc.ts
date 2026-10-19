@@ -209,7 +209,11 @@ import {
   LegalUpdateDeadlineInputSchema,
 } from "./legal.js";
 import { McpOauthClientSchema } from "./mcp.js";
-import { NotificationSchema, NotificationSignalSchema } from "./notification.js";
+import {
+  NotificationKindSchema,
+  NotificationSchema,
+  NotificationSignalSchema,
+} from "./notification.js";
 import {
   BotPageGetInputSchema,
   BotPageSaveInputSchema,
@@ -260,6 +264,8 @@ const threadSendInput = threadTarget
   .safeExtend({
     text: z.string().optional(),
     artifactIds: z.array(Id).max(ATTACHMENT_MAX_COUNT).optional(),
+    /** Data room files sent by reference, to a bot thread only; the agent opens them by id. */
+    dataRoomItemIds: z.array(Id).max(ATTACHMENT_MAX_COUNT).optional(),
     /** Bare bot ids (legacy) or typed mention chips from the composer. */
     mentions: z
       .array(z.union([Id, structuredMentionTarget]))
@@ -272,7 +278,7 @@ const threadSendInput = threadTarget
   .superRefine((input, ctx) => {
     const text = input.text?.trim() ?? "";
     const artifactIds = input.artifactIds ?? [];
-    if (!text && artifactIds.length === 0) {
+    if (!text && artifactIds.length === 0 && !input.dataRoomItemIds?.length) {
       ctx.addIssue({
         code: "custom",
         message: "Provide text or at least one attachment",
@@ -563,7 +569,16 @@ export const appContract = {
         }),
       )
       .output(z.object({ ok: z.literal(true) })),
-    markRead: oc.input(threadTarget).output(z.object({ ok: z.literal(true) })),
+    /**
+     * Moves the read boundary forward to the message `upToMessageId` (the newest when omitted);
+     * never backward, and an unknown id changes nothing. `toEnd` says the reader reached the end of
+     * the latest page, which clears the unread flag even when newer stored messages are hidden.
+     */
+    markRead: oc
+      .input(
+        threadTarget.safeExtend({ upToMessageId: Id.optional(), toEnd: z.boolean().optional() }),
+      )
+      .output(z.object({ ok: z.literal(true) })),
     markUnread: oc.input(threadTarget).output(z.object({ ok: z.literal(true) })),
   },
   computer: {
@@ -1140,13 +1155,17 @@ export const appContract = {
         }),
       ),
     markSeen: oc
-      // `id` or `threadId` narrows it to one notification or one thread on the surface.
+      // `id` or `threadId` narrows it to one notification or one thread on the surface. `botId`
+      // alone marks everything from that agent seen, whatever its surface.
       .input(
-        z.object({
-          surface: z.string().min(1).max(64),
-          id: z.string().min(1).optional(),
-          threadId: z.string().min(1).optional(),
-        }),
+        z
+          .object({
+            surface: z.string().min(1).max(64).optional(),
+            botId: z.string().min(1).optional(),
+            id: z.string().min(1).optional(),
+            threadId: z.string().min(1).optional(),
+          })
+          .refine((v) => v.surface || v.botId, "surface or botId is required"),
       )
       .output(z.object({ count: z.number() })),
     markShown: oc.input(z.object({ id: z.string().min(1) })).output(z.object({ ok: z.boolean() })),
@@ -1157,8 +1176,8 @@ export const appContract = {
         financeRunwayMonths: z.number().nullable(),
         legalDueSoon: z.number().int(),
         dataRoomWaiting: z.number().int(),
-        /** Agents with an unseen attention notification. */
-        urgentBotIds: z.array(z.string()),
+        /** Per agent with unseen notifications, the highest-priority kind. */
+        botKinds: z.record(z.string(), NotificationKindSchema),
       }),
     ),
     subscribe: oc.output(eventIterator(NotificationSignalSchema)),
