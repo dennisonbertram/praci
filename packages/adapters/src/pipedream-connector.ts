@@ -321,17 +321,34 @@ export class PipedreamConnector implements ManagedConnectorProvider {
     let token: string | undefined;
     try {
       token = await this.token();
-      const result = await callRemoteMcpTool(
-        {
-          endpoint: MCP_ENDPOINT,
-          headers: this.mcpHeaders(context, app, token, accountId),
-          signal: context.signal,
-          fetch: this.dependencies.fetch,
-          resolveHostname: this.dependencies.resolveHostname,
-        },
-        call.route?.toolName ?? call.tool,
-        call.args,
-      );
+      const remote = {
+        endpoint: MCP_ENDPOINT,
+        headers: this.mcpHeaders(context, app, token, accountId),
+        signal: context.signal,
+        fetch: this.dependencies.fetch,
+        resolveHostname: this.dependencies.resolveHostname,
+      };
+      if (call.route?.discoveredReadOnly === true) {
+        // Classified now, not at discovery: a read that became a write must not run unasked.
+        const live = (await listRemoteMcpTools(remote)).find(
+          (tool) => tool.name === (call.route?.toolName ?? call.tool),
+        );
+        if (live?.readOnly !== true) {
+          yield {
+            type: "error",
+            message:
+              "This tool changed from a read to a change since it was listed, so it was not run. Try again in a new message.",
+          };
+          return;
+        }
+      }
+      // Last await before the provider call: re-read the connection after all setup above.
+      const denied = await call.beforeDispatch?.();
+      if (denied) {
+        yield { type: "error", message: denied };
+        return;
+      }
+      const result = await callRemoteMcpTool(remote, call.route?.toolName ?? call.tool, call.args);
       yield {
         type: "result",
         data: redactConnectorPayload(result, [token, this.config.clientSecret]),

@@ -31,6 +31,7 @@ function pipedreamMcpFetch(
   toolsByApp: Record<string, string[]>,
   calls: Array<{ app: string | null; name: string; args: unknown }> = [],
   accountIds: string[] = [],
+  annotations: { readOnlyNow?: () => boolean } = {},
 ) {
   return vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
     const request = input instanceof Request ? input : new Request(input, init);
@@ -64,6 +65,9 @@ function pipedreamMcpFetch(
           tools: (toolsByApp[app ?? ""] ?? []).map((name) => ({
             name,
             description: `Run ${name}`,
+            ...(annotations.readOnlyNow
+              ? { annotations: { readOnlyHint: annotations.readOnlyNow() } }
+              : {}),
             inputSchema: {
               type: "object",
               properties: { text: { type: "string", description: `schema-marker-${app}-${name}` } },
@@ -754,5 +758,78 @@ describe("PipedreamConnector", () => {
 
     await connector.revoke("linear", context);
     await expect(connector.connectionReady(context, "linear")).resolves.toBe(false);
+  });
+});
+
+describe("PipedreamConnector connected-app agent dispatch gates", () => {
+  const appAgentContext: AdapterContext = {
+    ...context,
+    connectedConnections: [
+      {
+        id: "connection-gmail",
+        connectorId: "pipedream",
+        externalId: "gmail",
+        displayName: "gmail",
+        providerRef: "apn-gmail",
+      },
+    ],
+    connectedAppAgentConnectionId: "connection-gmail",
+  };
+  const route = {
+    connectorId: "pipedream",
+    resourceId: "gmail",
+    connectionId: "connection-gmail",
+    toolName: "gmail_tool_0",
+  };
+  async function run(
+    call: Partial<Parameters<PipedreamConnector["execute"]>[0]>,
+    readOnlyNow?: () => boolean,
+  ) {
+    const calls: Array<{ app: string | null; name: string; args: unknown }> = [];
+    const connector = new PipedreamConnector(FAKE_CONFIG, {
+      ...TEST_NETWORK,
+      fetch: pipedreamMcpFetch(appTools("gmail", 1), calls, [], { readOnlyNow }),
+    });
+    const events = [];
+    for await (const event of connector.execute(
+      { tool: "gmail_tool_0", args: { text: "hi" }, executionId: "gate", route, ...call },
+      appAgentContext,
+    )) {
+      events.push(event);
+    }
+    return { events, calls };
+  }
+
+  it("refuses a tool that was a read at discovery and is a write now", async () => {
+    const { events, calls } = await run(
+      { route: { ...route, discoveredReadOnly: true } },
+      () => false,
+    );
+    expect(events).toEqual([
+      expect.objectContaining({ type: "error", message: expect.stringContaining("changed") }),
+    ]);
+    expect(calls).toEqual([]);
+  });
+
+  it("dispatches a discovered read that is still a read", async () => {
+    const { events, calls } = await run(
+      { route: { ...route, discoveredReadOnly: true } },
+      () => true,
+    );
+    expect(events).toContainEqual(expect.objectContaining({ type: "result" }));
+    expect(calls).toHaveLength(1);
+  });
+
+  it("dispatches nothing when the last database check denies after setup", async () => {
+    const beforeDispatch = vi.fn(async () => "Changes are off for this connected account.");
+    const { events, calls } = await run({ beforeDispatch });
+    expect(beforeDispatch).toHaveBeenCalledOnce();
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining("Changes are off"),
+      }),
+    ]);
+    expect(calls).toEqual([]);
   });
 });

@@ -28,6 +28,7 @@ const composioSdkState = vi.hoisted(() => ({
   executions: [] as Array<{ tool: string; args: Record<string, unknown> }>,
   executeResult: null as null | { data: Record<string, unknown>; error: string | null },
   failTools: null as null | string[],
+  githubReadOnlyHint: undefined as boolean | undefined,
   logIds: null as null | string[],
   connectedAccounts: {
     list: async (_query?: Record<string, unknown>) => ({ items: [] as Array<{ id: string }> }),
@@ -117,6 +118,9 @@ vi.mock("@composio/core", () => ({
                     name: "GITHUB_GET_REPOS",
                     description: "List GitHub repositories",
                     parameters: { type: "object", properties: {} },
+                    ...(composioSdkState.githubReadOnlyHint === undefined
+                      ? {}
+                      : { annotations: { readOnlyHint: composioSdkState.githubReadOnlyHint } }),
                   },
                 },
               ]
@@ -1434,5 +1438,95 @@ describe("Composio during pnpm test", () => {
     vi.stubEnv("VITEST", value);
     expect(isComposioEnabled("ck_configured")).toBe(true);
     vi.unstubAllEnvs();
+  });
+});
+
+describe("composio connected-app agent dispatch gates", () => {
+  const appAgentContext: AdapterContext = {
+    operationId: "gate",
+    traceId: "gate",
+    spaceId: "workspace",
+    userId: "user-1",
+    signal: new AbortController().signal,
+    connectedAppAgentConnectionId: "connection-agent",
+    connectedConnections: [
+      {
+        id: "connection-agent",
+        connectorId: "composio",
+        externalId: "github",
+        displayName: "GitHub",
+        providerRef: "ca-github",
+      },
+    ],
+  };
+  const route = {
+    connectorId: "composio",
+    connectionId: "connection-agent",
+    toolName: "GITHUB_GET_REPOS",
+  };
+
+  async function run(
+    extra: Partial<Parameters<ComposioConnector["execute"]>[0]> & { readOnlyNow?: boolean },
+  ) {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const previousList = composioSdkState.connectedAccounts.list;
+    composioSdkState.connectedAccounts.list = async () => ({ items: [{ id: "ca-github" }] });
+    composioSdkState.githubReadOnlyHint = extra.readOnlyNow;
+    try {
+      const events: ConnectorEvent[] = [];
+      const { readOnlyNow: _ignored, ...call } = extra;
+      for await (const event of new ComposioConnector().execute(
+        {
+          tool: "GITHUB_GET_REPOS",
+          args: {},
+          executionId: "gate",
+          route,
+          ...call,
+        },
+        appAgentContext,
+      )) {
+        events.push(event);
+      }
+      return events;
+    } finally {
+      composioSdkState.connectedAccounts.list = previousList;
+      composioSdkState.githubReadOnlyHint = undefined;
+    }
+  }
+
+  it("refuses a tool that was a read at discovery and is a write now", async () => {
+    const events = await run({
+      route: { ...route, discoveredReadOnly: true },
+      readOnlyNow: false,
+    });
+    expect(events).toEqual([
+      expect.objectContaining({ type: "error", message: expect.stringContaining("changed") }),
+    ]);
+    expect(composioSdkState.executions).toEqual([]);
+  });
+
+  it("dispatches a discovered read that is still a read", async () => {
+    const events = await run({
+      route: { ...route, discoveredReadOnly: true },
+      readOnlyNow: true,
+    });
+    expect(events).toContainEqual(expect.objectContaining({ type: "result" }));
+    expect(composioSdkState.executions).toHaveLength(1);
+  });
+
+  it("dispatches nothing when the last database check denies after setup", async () => {
+    const beforeDispatch = vi.fn(async () => "Changes are off for this connected account.");
+    const events = await run({ beforeDispatch });
+    expect(beforeDispatch).toHaveBeenCalledOnce();
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining("Changes are off"),
+      }),
+    ]);
+    expect(composioSdkState.executions).toEqual([]);
   });
 });

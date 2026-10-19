@@ -259,6 +259,12 @@ export interface ConnectorCall {
   connectionId?: string;
   executionId: string;
   route?: ConnectorRoute;
+  /**
+   * Re-reads the durable state that authorizes this call (writes switch, agent link, exclusivity)
+   * and returns a message to refuse with, or null. A connector with provider setup (sessions,
+   * credentials, metadata) awaits it after that setup and dispatches with nothing awaited between.
+   */
+  beforeDispatch?: () => Promise<string | null>;
 }
 
 export type ConnectorEvent =

@@ -28,6 +28,9 @@ export function isComposioEnabled(apiKey: string | undefined): boolean {
   return Boolean(apiKey) && !isVitestRuntime();
 }
 
+const CHANGED_TO_WRITE_MESSAGE =
+  "This tool changed from a read to a change since it was listed, so it was not run. Try again in a new message.";
+
 export function asConnectorTools(input: unknown): ConnectorTool[] {
   const items = Array.isArray(input)
     ? input
@@ -564,7 +567,10 @@ export class ComposioConnector implements ComposioProvider {
         Boolean(call.route?.connectionId),
       );
       if (call.route?.connectionId) {
-        const offered = new Set(asConnectorTools(await session.tools()).map((tool) => tool.name));
+        // Fetched now, not at discovery: a read that has become a write must not run unasked.
+        const offered = new Map(
+          asConnectorTools(await session.tools()).map((tool) => [tool.name, tool.readOnly]),
+        );
         const requested =
           call.tool !== COMPOSIO_MULTI_EXECUTE_TOOL
             ? [call.route.toolName ?? planned[0]?.tool ?? ""]
@@ -583,8 +589,21 @@ export class ComposioConnector implements ComposioProvider {
           yield { type: "error", message: "Tool is not available for this connected account" };
           return;
         }
+        if (
+          call.route.discoveredReadOnly === true &&
+          requested.some((tool) => offered.get(tool) !== true)
+        ) {
+          yield { type: "error", message: CHANGED_TO_WRITE_MESSAGE };
+          return;
+        }
       }
       for (const item of planned) {
+        // Last await before the provider call: re-read the connection after all setup above.
+        const denied = await call.beforeDispatch?.();
+        if (denied) {
+          yield { type: "error", message: denied };
+          return;
+        }
         const result = await session.execute(
           item.tool,
           item.args,
