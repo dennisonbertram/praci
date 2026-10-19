@@ -81,7 +81,7 @@ describe("expo push", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const push = new ExpoPushProvider(store.prisma);
-    await push.send(
+    await push.deliver(
       { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
       {
         operationId: "n",
@@ -118,7 +118,7 @@ describe("expo push", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
     const push = new ExpoPushProvider(store.prisma);
-    await push.send(
+    await push.deliver(
       { kind: "takeover", title: "Need you", body: "on screen", botId: "bot-1", threadId: "th-1" },
       notifyContext,
     );
@@ -145,7 +145,7 @@ describe("expo push", () => {
     });
     expect(body.data.deliveryId.length).toBeGreaterThan(0);
 
-    await push.send(
+    await push.deliver(
       { kind: "takeover", title: "Need you", body: "on screen", botId: "bot-1", threadId: "th-1" },
       notifyContext,
     );
@@ -329,7 +329,7 @@ describe("expo push", () => {
     );
     const push = new ExpoPushProvider(store.prisma);
     await expect(
-      push.send(
+      push.deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -346,7 +346,7 @@ describe("expo push", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
 
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -377,7 +377,7 @@ describe("expo push", () => {
 
     const started = Date.now();
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         { ...notifyContext, signal: abort.signal },
       ),
@@ -395,7 +395,7 @@ describe("expo push", () => {
     );
 
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -408,7 +408,7 @@ describe("expo push", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not json")));
 
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -427,7 +427,7 @@ describe("expo push", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         { ...notifyContext, signal: controller.signal },
       ),
@@ -441,7 +441,7 @@ describe("expo push", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const push = new ExpoPushProvider(store.prisma);
     await expect(
-      push.send(
+      push.deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -462,7 +462,7 @@ describe("expo push", () => {
     );
     const push = new ExpoPushProvider(store.prisma);
     await expect(
-      push.send(
+      push.deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),

@@ -34,6 +34,8 @@ export type CreateNotificationInput = Scope & {
   link?: string | null;
   importance?: "info" | "attention";
   dedupeKey?: string;
+  /** Platform events (run finished, help, takeover) are not agent chatter: skip the per-agent rate limits. */
+  skipRateLimits?: boolean;
   /** For tests; defaults to the current time. */
   now?: Date;
 };
@@ -116,9 +118,10 @@ export async function createNotification(
         : 0,
     ]);
     if (
-      hour >= NOTIFICATION_LIMITS.perHour ||
-      day >= NOTIFICATION_LIMITS.perDay ||
-      attentionHour >= NOTIFICATION_LIMITS.attentionPerHour
+      !input.skipRateLimits &&
+      (hour >= NOTIFICATION_LIMITS.perHour ||
+        day >= NOTIFICATION_LIMITS.perDay ||
+        attentionHour >= NOTIFICATION_LIMITS.attentionPerHour)
     ) {
       return { status: "rateLimited" };
     }

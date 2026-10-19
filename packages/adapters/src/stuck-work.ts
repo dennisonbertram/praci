@@ -1,4 +1,4 @@
-import type { JobPublisher, NotificationMessage, NotificationProvider } from "@rakazo/adapter-kit";
+import type { JobPublisher, NotificationMessage } from "@rakazo/adapter-kit";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type { StuckWorkStatus } from "@rakazo/core";
 import {
@@ -11,10 +11,10 @@ import {
   stuckWorkReminder,
   stuckWorkStoppedNotification,
 } from "@rakazo/core";
-import type { Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
+import type { NotificationEvents, Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
 import { appendEventInTransaction, expireStuckRun, withTransactionRetry } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
-import { ExpoPushProvider } from "./expo-push.js";
+import { notifyThreadEvent } from "./run-notification.js";
 
 type StuckCursor = { at: Date; id: string };
 
@@ -51,7 +51,7 @@ export async function reconcileStuckWork(deps: {
   prisma: PrismaClient;
   jobs: JobPublisher;
   events?: ThreadEvents;
-  notifications?: NotificationProvider;
+  notificationEvents?: NotificationEvents;
   now: Date;
   batchSize: number;
   cursor?: StuckCursor;
@@ -192,21 +192,20 @@ function deliveredNotice(run: StuckCandidate): Prisma.InputJsonValue {
 async function remindStuckRun(
   deps: {
     prisma: PrismaClient;
-    notifications?: NotificationProvider;
+    notificationEvents?: NotificationEvents;
     now: Date;
   },
   run: StuckCandidate,
 ) {
   // A skipped push (notices off, no provider, or no push token yet) stays unmarked
   // so a later sweep can still remind during this same wait.
-  if (!deps.notifications || !noticesEnabled(run)) return;
-  if (!(await pushCanDeliver(deps.notifications, run.userId))) return;
+  if (!noticesEnabled(run)) return;
   const claimId = await withTransactionRetry(() =>
     deps.prisma.$transaction((tx) => claimStuckReminder(tx, run, deps.now)),
   );
   if (!claimId) return;
   const reminder = stuckWorkReminder(run.status, run.bot.name);
-  const delivery = await sendStuckNotice(deps.notifications, run, {
+  const delivery = await sendStuckNotice(deps, run, `${claimId}`, {
     kind: reminder.kind,
     title: reminder.title,
     body: reminder.body,
@@ -220,14 +219,6 @@ async function remindStuckRun(
     return;
   }
   await withTransactionRetry(() => deps.prisma.$transaction((tx) => clearStuckNotice(tx, claimId)));
-}
-
-async function pushCanDeliver(
-  notifications: NotificationProvider,
-  userId: string,
-): Promise<boolean> {
-  if (!(notifications instanceof ExpoPushProvider)) return true;
-  return notifications.hasPushRecipient(userId);
 }
 
 async function claimStuckReminder(
@@ -307,7 +298,7 @@ async function expireOne(
     prisma: PrismaClient;
     jobs: JobPublisher;
     events?: ThreadEvents;
-    notifications?: NotificationProvider;
+    notificationEvents?: NotificationEvents;
     now: Date;
   },
   run: StuckCandidate,
@@ -332,9 +323,9 @@ async function expireOne(
       getLogger().error("stuck work continuation", error);
     });
   }
-  if (!deps.notifications || !noticesEnabled(run)) return;
+  if (!noticesEnabled(run)) return;
   const stopped = stuckWorkStoppedNotification(run.status, run.bot.name);
-  await sendStuckNotice(deps.notifications, run, {
+  await sendStuckNotice(deps, run, `stopped:${run.id}:${run.updatedAt.toISOString()}`, {
     kind: stopped.kind,
     title: stopped.title,
     body: stopped.body,
@@ -346,25 +337,16 @@ async function expireOne(
 type StuckNoticeDelivery = "delivered" | "undeliverable" | "failed";
 
 async function sendStuckNotice(
-  notifications: NotificationProvider,
+  deps: { prisma: PrismaClient; notificationEvents?: NotificationEvents },
   run: StuckCandidate,
+  key: string,
   message: NotificationMessage,
 ): Promise<StuckNoticeDelivery> {
-  const context = {
-    operationId: "notify",
-    traceId: run.botId,
-    spaceId: run.spaceId,
-    userId: run.userId,
-    botId: run.botId,
-    signal: new AbortController().signal,
-  };
   const notice = run.thread.groupId ? { ...message, groupId: run.thread.groupId } : message;
   try {
-    if (notifications instanceof ExpoPushProvider) {
-      return await notifications.deliver(notice, context);
-    }
-    await notifications.send(notice, context);
-    return "delivered";
+    // "off" (category switched off) is not a reminder either; the claim is released.
+    const result = await notifyThreadEvent(deps.prisma, deps.notificationEvents, run, notice, key);
+    return result === "off" ? "undeliverable" : "delivered";
   } catch (error) {
     getLogger().error("stuck work notification", error);
     return "failed";
