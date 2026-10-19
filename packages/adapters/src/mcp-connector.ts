@@ -138,12 +138,12 @@ export function integrationAgentDenial(
     isServerAgent(assignment);
   if (preset?.requiresAgent && !isIntegrationAgentForServer(server, server.agentBot))
     return "belongs-to-agent";
-  if (!server.agentBotId && !botIsIntegrationAgent) return null;
+  if (!server.agentBotId && !server.agentExclusive && !botIsIntegrationAgent) return null;
   if (isServerAgent(assignment)) {
     return isReadTool(tool, preset) || server.writesEnabled === true ? null : "writes-off";
   }
-  // exclusive without an agent is off; a stranded agent bot (released or forged) gets reads only.
-  if (server.agentBotId && server.agentExclusive) return "belongs-to-agent";
+  // exclusive is off for every other bot, with or without an agent; a stranded agent bot (released or forged) gets reads only.
+  if (server.agentExclusive) return "belongs-to-agent";
   if (botIsIntegrationAgent && !isIntegrationAgentForServer(server, bot)) return "belongs-to-agent";
   return isReadTool(tool, preset) ? null : "belongs-to-agent";
 }

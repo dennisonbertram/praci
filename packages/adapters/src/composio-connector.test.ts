@@ -541,6 +541,93 @@ describe("composio tool mapping", () => {
     }
   });
 
+  it("refuses to dispatch, not go unpinned, when every account of an authenticated toolkit is stale", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const restore = stubActiveAccounts([]);
+    try {
+      const connector = new ComposioConnector();
+      const stale: AdapterContext = {
+        operationId: "composio-stale",
+        traceId: "composio-stale",
+        spaceId: "workspace",
+        userId: "user-1",
+        signal: new AbortController().signal,
+        connectedConnections: [
+          {
+            id: "connection-shared",
+            connectorId: "composio",
+            externalId: "github",
+            displayName: "GitHub",
+            providerRef: "ca_stale",
+          },
+        ],
+      };
+      const events: ConnectorEvent[] = [];
+      for await (const event of connector.execute(
+        { tool: "GITHUB_GET_REPOS", args: {}, executionId: "stale" },
+        stale,
+      ))
+        events.push(event);
+      expect(events).toEqual([expect.objectContaining({ type: "error" })]);
+      expect(composioSdkState.executions).toEqual([]);
+      expect(composioSdkState.created.filter((entry) => entry.userId === "user-1")).toEqual([]);
+    } finally {
+      restore();
+    }
+  });
+
+  it("refuses only the toolkit whose accounts are stale", async () => {
+    composioSdkState.created.length = 0;
+    composioSdkState.executions.length = 0;
+    composioSdkState.sessions.clear();
+    composioToolkitDirectory.invalidate();
+    const restore = stubActiveAccounts(["ca-slack"]);
+    try {
+      const connector = new ComposioConnector();
+      const mixed: AdapterContext = {
+        operationId: "composio-mixed",
+        traceId: "composio-mixed",
+        spaceId: "workspace",
+        userId: "user-1",
+        signal: new AbortController().signal,
+        connectedConnections: [
+          {
+            id: "connection-slack",
+            connectorId: "composio",
+            externalId: "slack",
+            displayName: "Slack",
+            providerRef: "ca-slack",
+          },
+          {
+            id: "connection-gmail",
+            connectorId: "composio",
+            externalId: "gmail",
+            displayName: "Gmail",
+            providerRef: "ca-gmail-stale",
+          },
+        ],
+      };
+      const run = async (tool: string) => {
+        const events: ConnectorEvent[] = [];
+        for await (const event of connector.execute({ tool, args: {}, executionId: tool }, mixed))
+          events.push(event);
+        return events;
+      };
+      expect(await run("SLACK_SEND_MESSAGE")).toContainEqual(
+        expect.objectContaining({ type: "result" }),
+      );
+      expect(await run("GMAIL_FETCH_EMAILS")).toEqual([expect.objectContaining({ type: "error" })]);
+      expect(composioSdkState.executions.map((entry) => entry.tool)).toEqual([
+        "SLACK_SEND_MESSAGE",
+      ]);
+    } finally {
+      restore();
+    }
+  });
+
   it("pins a single concrete account without enabling multi-account mode", async () => {
     composioSdkState.created.length = 0;
     composioSdkState.sessions.clear();

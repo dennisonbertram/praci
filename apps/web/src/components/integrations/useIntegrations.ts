@@ -16,7 +16,12 @@ import { optionalCatalogFeedProbe } from "../../lib/optional-catalog-feed";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
+/** The stored grant, which the access switches edit and save. */
 export type ConnectionAccess = { allAgents: boolean; botIds: string[] };
+/** The stored grant plus who can really use the connection, as computed by the server. */
+export type ConnectionAccessState = ConnectionAccess & {
+  effectiveAccess: { shared: "all" | "some" | "none"; botIds: string[] };
+};
 
 export type IntegrationsData = {
   loaded: boolean;
@@ -26,7 +31,7 @@ export type IntegrationsData = {
   servers: McpServer[];
   bots: Bot[];
   mcpAssignments: BotMcpServer[];
-  access: Record<string, ConnectionAccess>;
+  access: Record<string, ConnectionAccessState>;
   sources: CapabilityInstall[];
   /** Mercury and Brex, the first-party Finance integrations. */
   financeSources: FinanceSource[];
@@ -85,15 +90,21 @@ export function useIntegrations(): IntegrationsData {
           rpc.finance.overview().catch(() => null),
         ]);
       const live = connections.filter((row) => row.status !== "revoked");
+      const effective = await rpc.connections
+        .effectiveAccess()
+        .catch((): Record<string, ConnectionAccessState["effectiveAccess"]> => ({}));
       const access = Object.fromEntries(
         await Promise.all(
           live.map(
             async (row) =>
               [
                 row.id,
-                await rpc.connections
-                  .access({ connectionId: row.id })
-                  .catch((): ConnectionAccess => ({ allAgents: true, botIds: [] })),
+                {
+                  ...(await rpc.connections
+                    .access({ connectionId: row.id })
+                    .catch((): ConnectionAccess => ({ allAgents: true, botIds: [] }))),
+                  effectiveAccess: effective[row.id] ?? { shared: "none", botIds: [] },
+                },
               ] as const,
           ),
         ),
@@ -136,8 +147,9 @@ export function useIntegrations(): IntegrationsData {
   return { ...data, refresh };
 }
 
-/** Agents that can use a connection, for the avatar stack. */
-export function agentsFor(bots: Bot[], access: ConnectionAccess | undefined): Bot[] {
+/** Agents that can use a connection, for the avatar stack. The server decides; the web does not. */
+export function agentsFor(bots: Bot[], access: ConnectionAccessState | undefined): Bot[] {
   if (!access) return [];
-  return access.allAgents ? bots : bots.filter((bot) => access.botIds.includes(bot.id));
+  const ids = new Set(access.effectiveAccess.botIds);
+  return bots.filter((bot) => ids.has(bot.id));
 }

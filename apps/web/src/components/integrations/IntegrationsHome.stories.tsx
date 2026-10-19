@@ -46,7 +46,13 @@ export const WithConnections: Story = {
       ],
       mcpAssignments: mockAssignments,
       sources: [mockSource],
-      access: { conn_1: { allAgents: false, botIds: ["bot_ada", "bot_bram"] } },
+      access: {
+        conn_1: {
+          allAgents: false,
+          botIds: ["bot_ada", "bot_bram"],
+          effectiveAccess: { shared: "some", botIds: ["bot_ada", "bot_bram"] },
+        },
+      },
     }),
   },
 };
