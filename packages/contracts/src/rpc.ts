@@ -51,6 +51,12 @@ import {
   DataRoomConsentStatusSchema,
 } from "./data-room-api.js";
 import {
+  AutoSortApplyInputSchema,
+  AutoSortApplyOutputSchema,
+  AutoSortPlanSchema,
+  AutoSortUndoOutputSchema,
+} from "./data-room-autosort.js";
+import {
   ActionApprovalRuleSchema,
   ActionAutoReviewSettingsSchema,
   AgentSecretInputSchema,
@@ -1286,6 +1292,12 @@ export const appContract = {
     search: oc.input(DataRoomApiSearchInputSchema).output(DataRoomApiSearchOutputSchema),
     consent: oc.output(DataRoomConsentStatusSchema),
     consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
+    autoSort: {
+      /** A proposed tidy-up; changes nothing. */
+      plan: oc.output(AutoSortPlanSchema),
+      apply: oc.input(AutoSortApplyInputSchema).output(AutoSortApplyOutputSchema),
+      undo: oc.input(z.object({ batchId: Id })).output(AutoSortUndoOutputSchema),
+    },
   },
   legal: {
     /** Idempotent: creates the Legal agent and its daily scan routine; returns the bot to open in the side panel. */

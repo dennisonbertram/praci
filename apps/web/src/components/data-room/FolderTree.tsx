@@ -2,7 +2,7 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiFolder } from "@rakazo/contracts";
 import { Button, cn } from "@rakazo/ui-web";
-import { Folder, FolderPlus } from "lucide-react";
+import { Folder, FolderPlus, WandSparkles } from "lucide-react";
 import { type KeyboardEvent, useState } from "react";
 import { PAGE_GUTTER_START } from "../PageHeader";
 import type { FolderNode } from "./folders";
@@ -19,6 +19,7 @@ export function FolderTree({
   onSelect,
   onAction,
   onNewFolder,
+  onAutoSort,
 }: {
   nodes: FolderNode[];
   /** Undefined is every folder. */
@@ -26,6 +27,7 @@ export function FolderTree({
   onSelect: (id: string | undefined) => void;
   onAction?: (action: ItemAction, folder: DataRoomApiFolder) => void;
   onNewFolder?: () => void;
+  onAutoSort?: () => void;
 }) {
   const [menuFor, setMenuFor] = useState<string | null>(null);
   // The selected entry is the Tab stop; All items when the selection is not in the list.
@@ -109,17 +111,30 @@ export function FolderTree({
         {entry(undefined, 0)}
         {nodes.map(({ folder, depth }) => entry(folder, depth))}
       </div>
-      {onNewFolder ? (
-        <div className="pe-2 pb-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="min-h-8 w-full justify-start gap-2 ps-2 text-sm font-normal text-muted-foreground"
-            onClick={onNewFolder}
-          >
-            <FolderPlus aria-hidden="true" className="size-3.5" />
-            <Trans>New folder</Trans>
-          </Button>
+      {onNewFolder || onAutoSort ? (
+        <div className="flex flex-col pe-2 pb-2">
+          {onNewFolder ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-8 w-full justify-start gap-2 ps-2 text-sm font-normal text-muted-foreground"
+              onClick={onNewFolder}
+            >
+              <FolderPlus aria-hidden="true" className="size-3.5" />
+              <Trans>New folder</Trans>
+            </Button>
+          ) : null}
+          {onAutoSort ? (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="min-h-8 w-full justify-start gap-2 ps-2 text-sm font-normal text-muted-foreground"
+              onClick={onAutoSort}
+            >
+              <WandSparkles aria-hidden="true" className="size-3.5" />
+              <Trans>Auto-sort</Trans>
+            </Button>
+          ) : null}
         </div>
       ) : null}
     </div>

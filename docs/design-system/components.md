@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 198 of 198
-- Web and shared components: 560
+- Web and shared component files with stories: 199 of 199
+- Web and shared components: 562
 - Mobile components: 126 in 87 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -135,6 +135,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
+| Row, AutoSortDialog | [apps/web/src/components/data-room/AutoSortDialog.tsx](../../apps/web/src/components/data-room/AutoSortDialog.tsx) | [AutoSortDialog.stories.tsx](../../apps/web/src/components/data-room/AutoSortDialog.stories.tsx) | web |
 | DataRoomConsentPrompt | [apps/web/src/components/data-room/ConsentPrompt.tsx](../../apps/web/src/components/data-room/ConsentPrompt.tsx) | [ConsentPrompt.stories.tsx](../../apps/web/src/components/data-room/ConsentPrompt.stories.tsx) | web |
 | DriveRow | [apps/web/src/components/data-room/DriveRow.tsx](../../apps/web/src/components/data-room/DriveRow.tsx) | [DriveRow.stories.tsx](../../apps/web/src/components/data-room/DriveRow.stories.tsx) | web |
 | DataRoomDropZone | [apps/web/src/components/data-room/DropZone.tsx](../../apps/web/src/components/data-room/DropZone.tsx) | [DropZone.stories.tsx](../../apps/web/src/components/data-room/DropZone.stories.tsx) | web |

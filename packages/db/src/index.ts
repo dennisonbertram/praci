@@ -10,6 +10,7 @@ export * from "./computers.js";
 export * from "./contacts.js";
 export * from "./credential-secrets.js";
 export * from "./data-room.js";
+export * from "./data-room-autosort.js";
 export * from "./data-room-imports.js";
 export * from "./events.js";
 export * from "./expire-stuck-run.js";

@@ -101,6 +101,11 @@ msgstr "{0, plural, one {Show all # open deadline} other {Show all # open deadli
 msgid "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
 msgstr "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
 
+#. placeholder {0}: state.count
+#: src/components/data-room/DropZone.tsx
+msgid "{0, plural, one {Sorted # item} other {Sorted # items}}"
+msgstr "{0, plural, one {Sorted # item} other {Sorted # items}}"
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -960,6 +965,10 @@ msgstr "Already in your Data room"
 msgid "Already in your Data room as {name}"
 msgstr "Already in your Data room as {name}"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Already tidy."
+msgstr "Already tidy."
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr "Always act"
@@ -1058,6 +1067,7 @@ msgid "Appearance"
 msgstr "Appearance"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr "Apply"
@@ -1275,6 +1285,12 @@ msgstr "Auto-renews"
 #: src/pages/legal/LegalContracts.tsx
 msgid "Auto-renews, {notice} days notice"
 msgstr "Auto-renews, {notice} days notice"
+
+#: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderTree.tsx
+msgid "Auto-sort"
+msgstr "Auto-sort"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders"
@@ -1558,6 +1574,7 @@ msgstr "Can't reach the server."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
@@ -4951,6 +4968,10 @@ msgstr "Mentions only"
 msgid "Merchant"
 msgstr "Merchant"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Merge"
+msgstr "Merge"
+
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -5133,6 +5154,7 @@ msgstr "More Blockscout actions"
 msgid "More computer actions"
 msgstr "More computer actions"
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
 msgstr "Move"
@@ -6727,6 +6749,7 @@ msgstr "Removes the account and bot access."
 msgid "Removes the connection and bot access."
 msgstr "Removes the connection and bot access."
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -6873,6 +6896,7 @@ msgid "Restoring your workspace"
 msgstr "Restoring your workspace"
 
 #: src/components/AccountAccess.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -8062,6 +8086,10 @@ msgstr "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: ch
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 msgstr "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model could not sort your files."
+msgstr "The model could not sort your files."
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr "The model provider did not accept your API key. Check it in Settings > Models."
@@ -8393,6 +8421,10 @@ msgstr "Turn off drafts for {botName}?"
 msgid "Turn off sending for {botName}?"
 msgstr "Turn off sending for {botName}?"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Turn on a model and allow AI access to sort files."
+msgstr "Turn on a model and allow AI access to sort files."
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -8429,6 +8461,15 @@ msgstr "Uncategorized"
 msgid "Underline"
 msgstr "Underline"
 
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}"
+msgstr "Undid {restored}"
+
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}, skipped {skipped}"
+msgstr "Undid {restored}, skipped {skipped}"
+
+#: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
 #: src/pages/CapTable.tsx

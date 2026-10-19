@@ -16,6 +16,7 @@ const meta = {
         onSelect={setSelected}
         onAction={() => undefined}
         onNewFolder={() => undefined}
+        onAutoSort={() => undefined}
       />
     );
   },

@@ -101,6 +101,11 @@ msgstr ""
 msgid "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
 msgstr ""
 
+#. placeholder {0}: state.count
+#: src/components/data-room/DropZone.tsx
+msgid "{0, plural, one {Sorted # item} other {Sorted # items}}"
+msgstr ""
+
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -960,6 +965,10 @@ msgstr ""
 msgid "Already in your Data room as {name}"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Already tidy."
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -1058,6 +1067,7 @@ msgid "Appearance"
 msgstr "Görünüm"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -1274,6 +1284,12 @@ msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
 msgid "Auto-renews, {notice} days notice"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderTree.tsx
+msgid "Auto-sort"
 msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
@@ -1558,6 +1574,7 @@ msgstr "Sunucuya ulaşılamıyor."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
@@ -4951,6 +4968,10 @@ msgstr ""
 msgid "Merchant"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Merge"
+msgstr ""
+
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -5133,6 +5154,7 @@ msgstr ""
 msgid "More computer actions"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
 msgstr ""
@@ -6727,6 +6749,7 @@ msgstr ""
 msgid "Removes the connection and bot access."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -6873,6 +6896,7 @@ msgid "Restoring your workspace"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -8062,6 +8086,10 @@ msgstr ""
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model could not sort your files."
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr ""
@@ -8393,6 +8421,10 @@ msgstr ""
 msgid "Turn off sending for {botName}?"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Turn on a model and allow AI access to sort files."
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -8429,6 +8461,15 @@ msgstr ""
 msgid "Underline"
 msgstr ""
 
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}"
+msgstr ""
+
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}, skipped {skipped}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
 #: src/pages/CapTable.tsx
