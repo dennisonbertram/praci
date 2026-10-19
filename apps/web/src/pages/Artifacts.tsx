@@ -19,6 +19,14 @@ import {
   parseBotAvatar,
   resolvePersonaColorDef,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
+  Toggle,
 } from "@rakazo/ui-web";
 import {
   ArrowLeft,
@@ -35,8 +43,10 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
+import { Tip } from "../components/data-room/FilterBar";
+import { sizeText } from "../components/data-room/format";
 import { PageEmptyState } from "../components/PageEmptyState";
-import { PageHeader } from "../components/PageHeader";
+import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { PdfViewer } from "../components/PdfViewer";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
@@ -211,95 +221,96 @@ export function ArtifactsPage() {
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground/90">
-      {/* Same padding and title style as the other pages in the app shell. */}
-      <header className="border-b border-border px-4 pt-2 pb-3 md:px-7 md:pt-5">
+      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
-          className="mb-0"
           title={<Trans>Artifacts</Trans>}
           actions={
-            <div className="app-no-drag flex shrink-0 items-center gap-2">
+            <>
               {/* Filters act on the list, so they go when an open document hides it (phone, maximized). */}
               {artifactId && maximized ? null : (
-                <button
-                  type="button"
-                  aria-pressed={filtersOpen}
+                <Toggle
+                  variant="outline"
+                  size="sm"
+                  pressed={filtersOpen}
+                  onPressedChange={setFiltersOpen}
                   data-testid="artifacts-filters"
-                  onClick={() => setFiltersOpen((open) => !open)}
-                  className={`${artifactId ? "hidden md:flex" : "flex"} items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                    filtersOpen
-                      ? "border-transparent bg-primary text-primary-foreground"
-                      : "border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  }`}
+                  className={artifactId ? "hidden md:flex" : undefined}
                 >
-                  <Filter size={14} strokeWidth={1.9} />
+                  <Filter aria-hidden="true" />
                   <Trans>Filters</Trans>
-                </button>
+                </Toggle>
               )}
               {!artifactId ? (
-                <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-                  <ViewModeButton
-                    active={viewMode === "grid"}
-                    label={t`Card view`}
-                    onClick={() => setMode("grid")}
-                  >
-                    <LayoutGrid size={15} strokeWidth={1.9} />
-                  </ViewModeButton>
-                  <ViewModeButton
-                    active={viewMode === "list"}
-                    label={t`List view`}
-                    onClick={() => setMode("list")}
-                  >
-                    <List size={15} strokeWidth={1.9} />
-                  </ViewModeButton>
-                </div>
+                <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
+                  <legend className="sr-only">{t`View`}</legend>
+                  <Tip label={t`List view`}>
+                    <Toggle
+                      size="sm"
+                      pressed={viewMode === "list"}
+                      onPressedChange={() => setMode("list")}
+                      aria-label={t`List view`}
+                    >
+                      <List aria-hidden="true" />
+                    </Toggle>
+                  </Tip>
+                  <Tip label={t`Grid view`}>
+                    <Toggle
+                      size="sm"
+                      pressed={viewMode === "grid"}
+                      onPressedChange={() => setMode("grid")}
+                      aria-label={t`Grid view`}
+                    >
+                      <LayoutGrid aria-hidden="true" />
+                    </Toggle>
+                  </Tip>
+                </fieldset>
               ) : null}
-            </div>
+            </>
           }
         />
-
-        {filtersOpen && !(artifactId && maximized) ? (
-          <div className="app-no-drag mt-3 flex flex-wrap items-center gap-2">
-            <div className="relative w-full max-w-[260px]">
-              <Search
-                size={14}
-                strokeWidth={1.9}
-                className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-              />
-              <input
-                type="search"
-                value={searchQuery}
-                onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder={t`Search artifacts…`}
-                className="w-full rounded-lg border border-border bg-background py-1.5 ps-8 pe-3 text-[13px] outline-none focus:border-ring"
-              />
-            </div>
-            <NativeSelect
-              aria-label={t`Filter by date`}
-              className="w-auto text-[13px]"
-              value={dateFilter}
-              onChange={(event) => setDateFilter(event.target.value as DateFilter)}
-            >
-              <NativeSelectOption value="all">{t`All time`}</NativeSelectOption>
-              <NativeSelectOption value="today">{t`Today`}</NativeSelectOption>
-              <NativeSelectOption value="week">{t`This week`}</NativeSelectOption>
-              <NativeSelectOption value="month">{t`This month`}</NativeSelectOption>
-            </NativeSelect>
-            <FilterChip active={activeBotId === null} onClick={() => setActiveBotId(null)}>
-              <Trans>All bots</Trans>
-            </FilterChip>
-            {bots.map((bot) => (
-              <BotFilterChip
-                key={bot.id}
-                bot={bot}
-                active={activeBotId === bot.id}
-                onClick={() => setActiveBotId(bot.id)}
-              />
-            ))}
+      </div>
+      {filtersOpen && !(artifactId && maximized) ? (
+        <div className={`${PAGE_GUTTER_X} flex flex-wrap items-center gap-1.5 pb-2.5`}>
+          <div className="relative w-full max-w-[260px]">
+            <Search
+              size={14}
+              strokeWidth={1.9}
+              className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder={t`Search artifacts…`}
+              className="w-full rounded-lg border border-border bg-background py-1.5 ps-8 pe-3 text-[13px] outline-none focus:border-ring"
+            />
           </div>
-        ) : null}
-      </header>
+          <NativeSelect
+            aria-label={t`Filter by date`}
+            className="w-auto text-[13px]"
+            value={dateFilter}
+            onChange={(event) => setDateFilter(event.target.value as DateFilter)}
+          >
+            <NativeSelectOption value="all">{t`All time`}</NativeSelectOption>
+            <NativeSelectOption value="today">{t`Today`}</NativeSelectOption>
+            <NativeSelectOption value="week">{t`This week`}</NativeSelectOption>
+            <NativeSelectOption value="month">{t`This month`}</NativeSelectOption>
+          </NativeSelect>
+          <FilterChip active={activeBotId === null} onClick={() => setActiveBotId(null)}>
+            <Trans>All bots</Trans>
+          </FilterChip>
+          {bots.map((bot) => (
+            <BotFilterChip
+              key={bot.id}
+              bot={bot}
+              active={activeBotId === bot.id}
+              onClick={() => setActiveBotId(bot.id)}
+            />
+          ))}
+        </div>
+      ) : null}
 
-      <div className="flex min-h-0 flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden border-t border-border">
         {artifactId ? (
           <>
             {!maximized ? (
@@ -401,10 +412,20 @@ function BrowsingPane({
   loadingMore: boolean;
   onLoadMore: () => void;
 }) {
+  const { t } = useLingui();
   if (items === null) {
+    if (loadError) {
+      return (
+        <div className="grid flex-1 place-items-center text-sm text-muted-foreground/80">
+          {loadError}
+        </div>
+      );
+    }
     return (
-      <div className="grid flex-1 place-items-center text-sm text-muted-foreground/80">
-        {loadError ?? <Trans>Loading…</Trans>}
+      <div className="flex flex-1 flex-col gap-2 p-3" role="status" aria-label={t`Loading…`}>
+        {[0, 1, 2, 3].map((n) => (
+          <Skeleton key={n} className="h-8 w-full" />
+        ))}
       </div>
     );
   }
@@ -420,9 +441,11 @@ function BrowsingPane({
     );
   }
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+    <div className="@container/list rk-scroll min-h-0 flex-1 overflow-y-auto">
       {viewMode === "grid" ? (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4">
+        <div
+          className={`grid grid-cols-[repeat(auto-fill,minmax(260px,1fr))] gap-4 py-4 ${PAGE_GUTTER_X}`}
+        >
           {items.map((item) => (
             <ArtifactCard
               key={item.id}
@@ -433,18 +456,141 @@ function BrowsingPane({
           ))}
         </div>
       ) : (
-        <div className="flex flex-col divide-y divide-border overflow-hidden rounded-xl border border-border">
-          {items.map((item) => (
-            <ArtifactRow
-              key={item.id}
-              artifact={item}
-              bot={item.botId ? botsById.get(item.botId) : undefined}
-              onRequestDelete={onRequestDelete}
-            />
-          ))}
-        </div>
+        <ArtifactTable items={items} botsById={botsById} onRequestDelete={onRequestDelete} />
       )}
-      {nextCursor ? <LoadMoreButton loading={loadingMore} onClick={onLoadMore} /> : null}
+      {nextCursor ? (
+        <div className="pb-4">
+          <LoadMoreButton loading={loadingMore} onClick={onLoadMore} />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Hidden until the list pane is wide enough, then shown as a table cell. */
+const MID_COL = "hidden @min-[500px]/list:table-cell";
+const MID_COLUMN = "hidden @min-[500px]/list:table-column";
+
+/** The list view: one row per artifact, in the same table the Data room and Cap table use. */
+function ArtifactTable({
+  items,
+  botsById,
+  onRequestDelete,
+}: {
+  items: ArtifactSummary[];
+  botsById: Map<string, Bot>;
+  onRequestDelete: (artifact: ArtifactSummary) => void;
+}) {
+  const { t } = useLingui();
+  const navigate = useNavigate();
+  return (
+    <div className={PAGE_GUTTER_X}>
+      <Table>
+        <colgroup>
+          <col />
+          <col className={`${MID_COLUMN} w-40`} />
+          <col className={`${MID_COLUMN} w-28`} />
+          <col className={`${MID_COLUMN} w-24`} />
+          <col className="w-9" />
+        </colgroup>
+        <TableHeader
+          data-testid="artifacts-head"
+          className="sticky top-0 z-10 hidden bg-background @min-[500px]/list:table-header-group"
+        >
+          <TableHeadRow>
+            <TableHead>
+              <Trans>Name</Trans>
+            </TableHead>
+            <TableHead className={MID_COL}>
+              <Trans>Bot</Trans>
+            </TableHead>
+            <TableHead className={MID_COL}>
+              <Trans>Added</Trans>
+            </TableHead>
+            <TableHead className={MID_COL}>
+              <Trans>Size</Trans>
+            </TableHead>
+            <TableHead />
+          </TableHeadRow>
+        </TableHeader>
+        <TableBody aria-label={t`Artifacts`}>
+          {items.map((artifact) => {
+            const bot = artifact.botId ? botsById.get(artifact.botId) : undefined;
+            return (
+              <TableRow
+                key={artifact.id}
+                data-testid="artifact-row"
+                className="group/row cursor-pointer"
+                onClick={() => navigate(`/app/artifacts/${artifact.id}`)}
+              >
+                <TableCell>
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className="shrink-0 text-muted-foreground">
+                      <ArtifactMimeIcon mimeType={artifact.mimeType} small />
+                    </span>
+                    <div className="flex min-w-0 flex-col">
+                      <Link
+                        to={`/app/artifacts/${artifact.id}`}
+                        onClick={(event) => event.stopPropagation()}
+                        className="truncate font-medium"
+                        title={artifact.name}
+                      >
+                        {artifact.name}
+                      </Link>
+                      {/* Where the Bot, Added and Size columns are hidden (a phone), they go under the name. */}
+                      <span className="truncate text-xs text-muted-foreground @min-[500px]/list:hidden">
+                        {[bot?.name, formatRelativeTime(artifact.createdAt)]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </span>
+                    </div>
+                    {artifact.versionCount > 1 ? (
+                      <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground">
+                        {`v${artifact.version}`}
+                      </span>
+                    ) : null}
+                  </div>
+                </TableCell>
+                <TableCell className={`${MID_COL} text-muted-foreground`}>
+                  {bot ? (
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      <BotAvatar
+                        color={bot.color}
+                        identity={bot.id}
+                        size={16}
+                        status={bot.status}
+                      />
+                      <span className="truncate">{bot.name}</span>
+                    </span>
+                  ) : (
+                    "—"
+                  )}
+                </TableCell>
+                <TableCell className={`${MID_COL} truncate text-muted-foreground tabular-nums`}>
+                  {formatRelativeTime(artifact.createdAt)}
+                </TableCell>
+                <TableCell className={`${MID_COL} truncate text-muted-foreground tabular-nums`}>
+                  {sizeText(artifact.size)}
+                </TableCell>
+                <TableCell className="pe-0">
+                  <button
+                    type="button"
+                    aria-label={t`Delete ${artifact.name}`}
+                    title={t`Delete ${artifact.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRequestDelete(artifact);
+                    }}
+                    className="grid h-7 w-7 place-items-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"
+                  >
+                    <Trash2 size={14} strokeWidth={1.9} />
+                  </button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -628,33 +774,6 @@ function BotFilterChip({
     >
       <BotAvatar color={bot.color} identity={bot.id} size={16} status={bot.status} />
       <span className="max-w-[120px] truncate">{bot.name}</span>
-    </button>
-  );
-}
-
-function ViewModeButton({
-  active,
-  label,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  label: string;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-pressed={active}
-      title={label}
-      onClick={onClick}
-      className={`flex h-7 w-7 items-center justify-center rounded-md transition-colors ${
-        active ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:text-foreground"
-      }`}
-    >
-      {children}
     </button>
   );
 }

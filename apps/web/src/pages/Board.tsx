@@ -22,6 +22,7 @@ import {
 import { ChevronLeft } from "lucide-react";
 import { useCallback, useEffect, useId, useState } from "react";
 import { Link } from "react-router-dom";
+import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 import { useTicketPriorityLabels } from "../lib/ticket-priority";
@@ -110,25 +111,33 @@ export function BoardPage({ embedded = false }: { embedded?: boolean }) {
       }`}
     >
       {embedded ? null : <WindowChrome />}
-      {/* The same header spacing and title style as the other app pages. */}
-      <header className="flex items-center gap-3 px-4 pt-2 pb-3 md:px-7 md:pt-5">
+      <div className={`${PAGE_GUTTER_X} flex items-start gap-2 pt-2 md:pt-5`}>
         {embedded ? null : (
-          <Button variant="ghost" size="icon" render={<Link to="/app" />} aria-label={t`Back`}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="mt-1"
+            render={<Link to="/app" />}
+            aria-label={t`Back`}
+          >
             <ChevronLeft />
           </Button>
         )}
-        <h1 className="flex-1 text-lg font-semibold">
-          <Trans>Task board</Trans>
-        </h1>
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => setSelected("new")}
-          disabled={bots.length === 0}
-        >
-          <Trans>New ticket</Trans>
-        </Button>
-      </header>
+        <PageHeader
+          className="min-w-0 flex-1"
+          title={<Trans>Task board</Trans>}
+          actions={
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setSelected("new")}
+              disabled={bots.length === 0}
+            >
+              <Trans>New ticket</Trans>
+            </Button>
+          }
+        />
+      </div>
       {error ? (
         <p role="alert" className="px-4 py-2 text-sm text-destructive">
           {error}
