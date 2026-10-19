@@ -35,6 +35,8 @@ import { PieChart, Plus, RefreshCw } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
+import { DataRoomImportMenu } from "../components/data-room/DataRoomImportMenu";
+import { FolderDocuments } from "../components/data-room/FolderDocuments";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
@@ -48,6 +50,9 @@ import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
 type Filter = "all" | RowKind;
+/** The Data room folder the cap table's documents are filed into. */
+const CAP_TABLE_FOLDER = ["Finance", "Cap Table"];
+
 type Snapshot = NonNullable<CapTableState["snapshot"]>;
 type Holder = Snapshot["holders"][number];
 type Prefill = {
@@ -685,7 +690,7 @@ export function CapTablePage({
   return (
     <div
       ref={container}
-      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5"
+      className="@container/bd rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5"
     >
       <PageHeader
         title={<Trans>Cap table</Trans>}
@@ -733,6 +738,10 @@ export function CapTablePage({
                 </TooltipContent>
               </Tooltip>
             ) : null}
+            <DataRoomImportMenu
+              folderPath={CAP_TABLE_FOLDER}
+              onDone={(text) => text && setToast({ text })}
+            />
             <Button variant={cartaConnected ? "default" : "outline"} onClick={addContact}>
               <Plus aria-hidden="true" />
               {isContactKind(filter) ? addKindLabel[filter] : <Trans>Add contact</Trans>}
@@ -1027,6 +1036,8 @@ export function CapTablePage({
           </TableBody>
         </Table>
       )}
+
+      <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
 
       {/* Pinned to the bottom of the page column and after the table in the page flow: showing or
           hiding it never moves the rows, and scrolled to the end it sits below the last row. */}

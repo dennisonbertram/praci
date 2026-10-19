@@ -47,7 +47,13 @@ let root: ReturnType<typeof createRoot>;
 const onDone = vi.fn();
 
 function Where() {
-  return <span data-testid="where">{useLocation().pathname}</span>;
+  const { pathname, search } = useLocation();
+  return (
+    <>
+      <span data-testid="where">{pathname}</span>
+      <span data-testid="search">{search}</span>
+    </>
+  );
 }
 
 const file = (id: string, name: string, extra = {}) => ({
@@ -111,14 +117,30 @@ const click = (el: Element | null | undefined) =>
 const box = (name: string) =>
   document.body.querySelector(`[role="checkbox"][aria-label="Select ${name}"]`);
 const button = (name: string) =>
-  Array.from(document.body.querySelectorAll("button")).find(
+  Array.from(document.body.querySelectorAll("button:not([aria-haspopup])")).find(
     (b) => b.textContent === name || b.getAttribute("aria-label") === name,
   );
 
-it("offers Connect Google Drive, which opens the Drive page, when no account is connected", async () => {
+const item = (name: string) =>
+  Array.from(document.body.querySelectorAll('[role="menuitem"]')).find(
+    (el) => el.textContent === name,
+  );
+/** Opens the Import menu and lists its items. */
+const menuItems = async () => {
+  await click(document.querySelector('[aria-haspopup="menu"]'));
+  return Array.from(document.body.querySelectorAll('[role="menuitem"]')).map(
+    (el) => el.textContent,
+  );
+};
+/** Opens the Import menu, then picks one source. */
+const choose = async (name: string) => {
+  await click(document.querySelector('[aria-haspopup="menu"]'));
+  await click(item(name));
+};
+
+it("sends a not connected Google Drive item to the Drive page", async () => {
   await render([{ connectorId: "google", provider: "googledrive", status: "pending" }]);
-  expect(button("Import from Google Drive")).toBeUndefined();
-  await click(button("Connect Google Drive"));
+  await choose("Google Drive");
   expect(document.querySelector('[data-testid="where"]')?.textContent).toBe(
     "/app/integrations/app/google/googledrive",
   );
@@ -126,7 +148,7 @@ it("offers Connect Google Drive, which opens the Drive page, when no account is 
 
 it("opens a folder, imports its file into the open folder, and can go back", async () => {
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-  await click(button("Import from Google Drive"));
+  await choose("Google Drive");
   expect(rpcMock.driveList).toHaveBeenCalledWith({});
   // A Google Form cannot be imported.
   expect(box("Survey")?.hasAttribute("data-disabled")).toBe(true);
@@ -144,7 +166,7 @@ it("opens a folder, imports its file into the open folder, and can go back", asy
 
 it("goes back up from a folder", async () => {
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-  await click(button("Import from Google Drive"));
+  await choose("Google Drive");
   await click(button("Contracts"));
   await click(button("Back"));
   expect(rpcMock.driveList).toHaveBeenLastCalledWith({});
@@ -153,7 +175,7 @@ it("goes back up from a folder", async () => {
 it("shows the error when the import fails", async () => {
   rpcMock.importDrive.mockRejectedValue(new Error("Drive down"));
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-  await click(button("Import from Google Drive"));
+  await choose("Google Drive");
   await click(button("Contracts"));
   await click(box("inside.pdf"));
   await click(button("Import 1"));
@@ -164,7 +186,7 @@ it("shows the error when the import fails", async () => {
 it("reports files that failed, refreshes for the ones that arrived, and stays open", async () => {
   rpcMock.importDrive.mockResolvedValue({ imported: 1, duplicates: 0, failed: 2 });
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-  await click(button("Import from Google Drive"));
+  await choose("Google Drive");
   await click(button("Contracts"));
   await click(box("inside.pdf"));
   await click(button("Import 1"));
@@ -177,7 +199,7 @@ it("stops offering more files after 20 are ticked", async () => {
     files: Array.from({ length: 21 }, (_, i) => file(`f${i}`, `file${i}.pdf`)),
   });
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-  await click(button("Import from Google Drive"));
+  await choose("Google Drive");
   const boxes = () => Array.from(document.body.querySelectorAll('[role="checkbox"]'));
   for (const box of boxes().slice(0, 20)) await click(box);
   expect(boxes()[20]?.hasAttribute("data-disabled")).toBe(true);
@@ -191,7 +213,7 @@ const driveRoot = [
 it("shows a checkbox on hover and focus only, and keeps it visible once ticked", async () => {
   rpcMock.driveList.mockResolvedValue({ files: driveRoot });
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-  await click(button("Import from Google Drive"));
+  await choose("Google Drive");
   const hidden = (name: string) => box(name)?.className.includes("opacity-0");
   expect(hidden("Plan.pdf")).toBe(true);
   expect(box("Plan.pdf")?.className).toContain("group-hover:opacity-100");
@@ -208,7 +230,7 @@ it("keeps picks across folders, counts a folder as one, and sends files and fold
   }));
   rpcMock.importDrive.mockResolvedValue({ imported: 0, duplicates: 0, failed: 0, queued: 2 });
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-  await click(button("Import from Google Drive"));
+  await choose("Google Drive");
   expect(button("Import")?.hasAttribute("disabled")).toBe(true);
   await click(box("Plan.pdf"));
   // Ticking the folder's box does not open it.
@@ -246,7 +268,7 @@ it("says how many files are importing, tells the page an import started, and cou
       total: 5,
     });
     await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-    await click(button("Import from Google Drive"));
+    await choose("Google Drive");
     await click(box("Contracts"));
     await click(button("Import 1"));
     expect(onDone).toHaveBeenCalledWith("Importing 5 files", true);
@@ -263,7 +285,7 @@ it("says how many files are importing, tells the page an import started, and cou
       importId: "imp2",
       total: 0,
     });
-    await click(button("Import from Google Drive"));
+    await choose("Google Drive");
     await click(box("Contracts"));
     await click(button("Import 1"));
     expect(onDone).toHaveBeenCalledWith("", true);
@@ -278,33 +300,34 @@ it("shows the server's over-limit error and stays open", async () => {
     Object.assign(new Error("Folder imports are limited to 500 files."), { code: "BAD_REQUEST" }),
   );
   await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
-  await click(button("Import from Google Drive"));
+  await choose("Google Drive");
   await click(box("Contracts"));
   await click(button("Import 1"));
   expect(document.body.textContent).toContain("Folder imports are limited to 500 files.");
 });
 
-it("shows no Drive button when the server does not offer Drive and it is not connected", async () => {
+it("leaves Google Drive out of the menu when the server does not offer Drive and it is not connected", async () => {
   await render(
     [{ connectorId: "google", provider: "googledrive", status: "pending" }],
     offers("gmail"),
   );
-  expect(button("Connect Google Drive")).toBeUndefined();
-  expect(button("Import from Google Drive")).toBeUndefined();
-  // Gmail is still offered, so the other button stays.
-  expect(button("Connect Gmail")).toBeDefined();
+  // Email is still offered, so its item stays.
+  expect(await menuItems()).toEqual(["Email", "Box"]);
 });
 
-it("shows no Drive button when the catalog cannot be read", async () => {
+it("leaves Google Drive out of the menu when the catalog cannot be read", async () => {
   await render([], new Error("no catalog"));
-  expect(button("Connect Google Drive")).toBeUndefined();
+  expect(await menuItems()).toEqual(["Box"]);
 });
 
 const boxServer = { id: "s1", name: "Box", endpoint: "https://mcp.box.com" };
 
-it("shows no Box button until a Box connection exists", async () => {
+it("sends a not connected Box item to the Box connect dialog", async () => {
   await render([]);
-  expect(button("Import from Box")).toBeUndefined();
+  await choose("Box");
+  expect(rpcMock.boxList).not.toHaveBeenCalled();
+  expect(document.querySelector('[data-testid="where"]')?.textContent).toBe("/app/integrations");
+  expect(document.querySelector('[data-testid="search"]')?.textContent).toBe("?connect=box");
 });
 
 it("imports ticked Box files and folders through the Box endpoints, into the open folder", async () => {
@@ -326,7 +349,7 @@ it("imports ticked Box files and folders through the Box endpoints, into the ope
     folders: 2,
   });
   await render([]);
-  await click(button("Import from Box"));
+  await choose("Box");
   expect(document.body.textContent).toContain("Import from Box");
   await click(box("Deals"));
   await click(box("memo.pdf"));
@@ -343,6 +366,6 @@ it("shows the reconnect error when Box refuses the sign-in", async () => {
   rpcMock.servers.mockResolvedValue([boxServer]);
   rpcMock.boxList.mockRejectedValue(new Error("The Box account needs to be reconnected"));
   await render([]);
-  await click(button("Import from Box"));
+  await choose("Box");
   expect(document.body.textContent).toContain("reconnected");
 });

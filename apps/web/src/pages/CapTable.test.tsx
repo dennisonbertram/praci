@@ -25,12 +25,27 @@ const rpcMock = vi.hoisted(() => ({
   servers: vi.fn(),
   capTable: vi.fn(),
   refresh: vi.fn(),
+  folders: vi.fn(),
+  folderCreate: vi.fn(),
+  items: vi.fn(),
+  connections: vi.fn(),
+  catalog: vi.fn(),
+  driveList: vi.fn(),
+  importDrive: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
     contacts: { list: rpcMock.list, save: rpcMock.save, delete: rpcMock.remove },
     mcp: { servers: { list: rpcMock.servers } },
     carta: { capTable: rpcMock.capTable, refresh: rpcMock.refresh },
+    connections: { list: rpcMock.connections, catalog: rpcMock.catalog },
+    dataRoom: {
+      folders: rpcMock.folders,
+      folderCreate: rpcMock.folderCreate,
+      items: { list: rpcMock.items },
+      driveList: rpcMock.driveList,
+      importDrive: rpcMock.importDrive,
+    },
   },
 }));
 
@@ -107,6 +122,10 @@ beforeEach(() => {
   ]);
   rpcMock.servers.mockResolvedValue([cartaServer]);
   rpcMock.capTable.mockResolvedValue({ snapshot: null, syncing: false });
+  rpcMock.folders.mockResolvedValue([]);
+  rpcMock.items.mockResolvedValue({ items: [], nextCursor: null });
+  rpcMock.connections.mockResolvedValue([]);
+  rpcMock.catalog.mockResolvedValue([]);
 });
 afterEach(() => {
   setHideAmounts(false);
@@ -669,6 +688,8 @@ it("reloads contacts and the cap table when the agent finishes a chat turn", asy
 });
 
 it("shows an error with Try again when the Carta connection check fails", async () => {
+  // The page and the Import menu each read the servers once.
+  rpcMock.servers.mockRejectedValueOnce(new Error("offline"));
   rpcMock.servers.mockRejectedValueOnce(new Error("offline"));
   await show();
   const text = container.textContent ?? "";
@@ -819,4 +840,81 @@ it("draws the ownership bar with equal segments while amounts are hidden", async
   expect(widths()).toEqual(["70%", "30%"]);
   await act(async () => setHideAmounts(true));
   expect(widths()).toEqual(["50%", "50%"]);
+});
+
+const folder = (id: string, name: string, parentId: string | null) => ({
+  id,
+  name,
+  parentId,
+  createdAt: "2026-10-01T00:00:00.000Z",
+});
+const capFolders = [folder("fin", "Finance", null), folder("cap", "Cap Table", "fin")];
+const doc = (id: string, name: string) => ({
+  id,
+  name,
+  mimeType: "application/pdf",
+  size: 1000,
+  folderId: "cap",
+  source: "upload",
+  sourceUrl: null,
+  status: "ready",
+  error: null,
+  facets: {
+    docType: "contract",
+    docDate: null,
+    parties: [],
+    amountCents: null,
+    currency: null,
+    tags: [],
+    summary: null,
+  },
+  createdAt: "2026-10-10T00:00:00.000Z",
+});
+
+it("lists the Finance / Cap Table documents and opens one in the Data room preview", async () => {
+  rpcMock.folders.mockResolvedValue(capFolders);
+  rpcMock.items.mockResolvedValue({ items: [doc("d1", "Option plan.pdf")], nextCursor: null });
+  await show();
+  expect(rpcMock.items).toHaveBeenCalledWith(expect.objectContaining({ folderId: "cap" }));
+  const link = [...document.querySelectorAll("a")].find((a) => a.textContent === "Option plan.pdf");
+  expect(link?.getAttribute("href")).toBe("/app/data-room?item=d1");
+});
+
+it("shows no Documents section when the folder is missing or empty", async () => {
+  await show();
+  expect(container.textContent).not.toContain("Documents");
+  rpcMock.folders.mockResolvedValue(capFolders);
+  await show();
+  expect(container.textContent).not.toContain("Documents");
+});
+
+it("files an import into Finance / Cap Table, creating the folder when it is missing", async () => {
+  rpcMock.connections.mockResolvedValue([
+    { connectorId: "google", provider: "googledrive", status: "connected" },
+  ]);
+  rpcMock.catalog.mockResolvedValue([{ connectorId: "google", slug: "googledrive" }]);
+  rpcMock.folders.mockResolvedValue([folder("fin", "Finance", null)]);
+  rpcMock.folderCreate.mockResolvedValue(folder("cap", "Cap Table", "fin"));
+  rpcMock.driveList.mockResolvedValue({
+    files: [{ id: "g1", name: "Plan.pdf", mimeType: "application/pdf", isFolder: false, size: 10 }],
+  });
+  rpcMock.importDrive.mockResolvedValue({ imported: 1, duplicates: 0, failed: 0 });
+  await show();
+  await click(document.querySelector<HTMLElement>('[aria-haspopup="menu"]') ?? undefined);
+  await click(
+    [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find(
+      (el) => el.textContent === "Google Drive",
+    ),
+  );
+  expect(rpcMock.folderCreate).toHaveBeenCalledWith({ name: "Cap Table", parentId: "fin" });
+  await click(
+    document.querySelector<HTMLElement>('[role="checkbox"][aria-label="Select Plan.pdf"]') ??
+      undefined,
+  );
+  await click([...document.querySelectorAll("button")].find((b) => b.textContent === "Import 1"));
+  expect(rpcMock.importDrive).toHaveBeenCalledWith({
+    fileIds: ["g1"],
+    driveFolderIds: [],
+    folderId: "cap",
+  });
 });

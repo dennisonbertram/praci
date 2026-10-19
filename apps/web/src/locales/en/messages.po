@@ -732,6 +732,7 @@ msgstr "Add email"
 msgid "Add email for {0}"
 msgstr "Add email for {0}"
 
+#: src/components/data-room/DataRoomImportMenu.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr "Add files"
@@ -780,6 +781,7 @@ msgid "Add your OpenRouter key above to start. The Legal agent then reads your D
 msgstr "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/pages/Artifacts.tsx
 msgid "Added"
@@ -1512,6 +1514,7 @@ msgid "Bots with their own computer and browser"
 msgstr "Bots with their own computer and browser"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
 msgstr "Box"
 
@@ -2267,17 +2270,9 @@ msgstr "Connect Carta"
 msgid "Connect Executor"
 msgstr "Connect Executor"
 
-#: src/components/data-room/ImportFromEmail.tsx
-msgid "Connect Gmail"
-msgstr "Connect Gmail"
-
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr "Connect Gmail to read, sort and answer your mail here."
-
-#: src/components/data-room/ImportFromDrive.tsx
-msgid "Connect Google Drive"
-msgstr "Connect Google Drive"
 
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
@@ -3443,6 +3438,7 @@ msgstr "Docs & files"
 msgid "Document date"
 msgstr "Document date"
 
+#: src/components/data-room/FolderDocuments.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr "Documents"
@@ -3603,6 +3599,7 @@ msgstr "Edit profile"
 msgid "Edit wallet"
 msgstr "Edit wallet"
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 msgid "Email"
@@ -4102,6 +4099,7 @@ msgid "Google apps"
 msgstr "Google apps"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr "Google Drive"
 
@@ -5214,6 +5212,7 @@ msgid "Mute"
 msgstr "Mute"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -8442,6 +8441,7 @@ msgid "Turn on a model and allow AI access to sort files."
 msgstr "Turn on a model and allow AI access to sort files."
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx
