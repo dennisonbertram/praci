@@ -4,6 +4,7 @@ import {
   cartaAgentSpawnKey,
   isCartaEndpoint,
 } from "./carta.js";
+import { DEVIN_READ_TOOLS, DEVIN_WRITE_TOOLS, isDevinEndpoint } from "./devin.js";
 import type { FinanceProvider } from "./finance.js";
 import { FINANCE_READ_TOOLS, financeProviderForEndpoint } from "./finance.js";
 
@@ -218,13 +219,25 @@ export const INTEGRATION_PRESETS = {
     allowedTools: [...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS],
     requiresAgent: true,
   },
-} as const satisfies Record<FinanceProvider | "carta", IntegrationPreset>;
+  devin: {
+    service: "Devin",
+    instructions:
+      "Devin runs coding sessions that spend the team's Devin credits. Starting or messaging a session is a request the user approves here: say what the session will do, and never start one the user did not ask for. Use the devin-sessions skill to write the session prompt and to check on progress.",
+    reads: DEVIN_READ_TOOLS,
+    forcedWrites: DEVIN_WRITE_TOOLS,
+    // Tools Devin adds later stay hidden until they are classified here.
+    allowedTools: [...DEVIN_READ_TOOLS, ...DEVIN_WRITE_TOOLS],
+    // Without its agent no bot may use Devin: only the agent's writes always ask on the card.
+    requiresAgent: true,
+  },
+} as const satisfies Record<FinanceProvider | "carta" | "devin", IntegrationPreset>;
 
 /** The preset for an MCP server, matched by its endpoint like the Finance agent. */
 export function integrationPresetForEndpoint(
   endpoint: string | null | undefined,
 ): IntegrationPreset | undefined {
   if (isCartaEndpoint(endpoint)) return INTEGRATION_PRESETS.carta;
+  if (isDevinEndpoint(endpoint)) return INTEGRATION_PRESETS.devin;
   const provider = financeProviderForEndpoint(endpoint);
   return provider ? INTEGRATION_PRESETS[provider] : undefined;
 }
