@@ -512,10 +512,6 @@ msgstr ""
 msgid "A deposit address at an exchange."
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "A Devin service-user key (starts with cog_)."
-msgstr ""
-
 #: src/components/finance/WalletDialog.tsx
 msgid "A Safe multisig. Its owners and threshold are shown."
 msgstr ""
@@ -988,6 +984,10 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "이 서비스에는 구독 로그인이 아니라 API 키가 저장되어 있습니다."
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "An org-scoped Devin service-user key (starts with cog_)."
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Answer"

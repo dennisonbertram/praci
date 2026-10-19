@@ -51,7 +51,7 @@ export const FirstPartyApiKey: Story = {
     initialUrl: "https://mcp.devin.ai/mcp",
     service: "Devin",
     apiKey: true,
-    keyHint: "A Devin service-user key (starts with cog_).",
+    keyHint: "An org-scoped Devin service-user key (starts with cog_).",
   },
 };
 

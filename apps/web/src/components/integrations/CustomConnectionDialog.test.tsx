@@ -203,9 +203,11 @@ it("asks only for an API key and stores it as the bearer secret, with no sign-in
     apiKey: true,
     service: "Devin",
     initialUrl: DEVIN_MCP_ENDPOINT,
-    keyHint: "A Devin service-user key (starts with cog_).",
+    keyHint: "An org-scoped Devin service-user key (starts with cog_).",
   });
-  expect(document.body.textContent).toContain("A Devin service-user key (starts with cog_).");
+  expect(document.body.textContent).toContain(
+    "An org-scoped Devin service-user key (starts with cog_).",
+  );
   expect(field("Server URL")).toBeNull();
   expect(field("API key").type).toBe("password");
   const connect = [...document.querySelectorAll("button")].find((b) => b.textContent === "Connect");

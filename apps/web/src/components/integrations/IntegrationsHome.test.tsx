@@ -193,7 +193,9 @@ it("offers Devin and opens the API key form", async () => {
   const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Devin"]');
   expect(connect).not.toBeNull();
   await act(async () => connect?.click());
-  expect(document.body.textContent).toContain("A Devin service-user key (starts with cog_).");
+  expect(document.body.textContent).toContain(
+    "An org-scoped Devin service-user key (starts with cog_).",
+  );
   expect(document.querySelector('[aria-label="API key"]')).not.toBeNull();
   expect(document.body.textContent).not.toContain("Sign in with Devin");
 });

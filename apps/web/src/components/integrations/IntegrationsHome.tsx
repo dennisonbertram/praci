@@ -425,7 +425,7 @@ export function IntegrationsHome({
       // Treg takes an API token, not a sign-in.
       ...(entry.id === "treg" ? { token: true } : {}),
       ...("apiKey" in entry
-        ? { apiKey: true, keyHint: t`A Devin service-user key (starts with cog_).` }
+        ? { apiKey: true, keyHint: t`An org-scoped Devin service-user key (starts with cog_).` }
         : {}),
       ...("oauthClient" in entry ? { oauthClient: true, scope: entry.scope } : {}),
     });
