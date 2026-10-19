@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-kit";
 import { prepareManagedConnectorForTransaction, sanitizeComposioError } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
+import { integrationAgentSpawnKey } from "@rakazo/contracts";
 import type { Prisma, PrismaClient } from "@rakazo/db";
 
 /**
@@ -19,6 +20,8 @@ export async function completeNativeOAuth(options: {
   context: AdapterContext;
   /** The same per-provider advisory lock `connections.begin` and `connections.revoke` take. */
   lock: (tx: Prisma.TransactionClient, connectorId: string, provider: string) => Promise<void>;
+  /** Gives a newly connected private account its agent; a no-op when it has one or is not private. */
+  provision?: (connectionId: string) => Promise<void>;
 }) {
   const { prisma, actor, connectorId, state } = options;
   const owner = { spaceId: actor.spaceId, userId: actor.userId };
@@ -49,8 +52,9 @@ export async function completeNativeOAuth(options: {
   if (!secretId)
     throw new ORPCError("BAD_REQUEST", { message: "Connection did not return a credential" });
 
+  let row: Awaited<ReturnType<typeof prisma.connection.update>>;
   try {
-    const row = await prisma.$transaction(
+    row = await prisma.$transaction(
       async (tx) => {
         await options.lock(tx, connectorId, pending.provider);
         const current = await tx.connection.findFirst({
@@ -70,9 +74,15 @@ export async function completeNativeOAuth(options: {
           },
           select: { id: true, secretId: true },
         });
+        let carried: Prisma.ConnectionUncheckedUpdateInput = {};
         const replaces = (current.metadata as { replacesConnectionId?: unknown } | null)
           ?.replacesConnectionId;
         if (taken && taken.id === replaces) {
+          // Lock both rows first (the order every access change uses: connection, then bot, then
+          // grants), then read the old row's settings, so a concurrent change to them is not lost.
+          await tx.$queryRaw`SELECT id FROM connections WHERE id IN (${taken.id}, ${current.id}) ORDER BY id FOR UPDATE`;
+          const old = await tx.connection.findFirst({ where: { id: taken.id, ...owner } });
+          if (!old) throw new ORPCError("CONFLICT", { message: "The connection changed; retry" });
           // The same account signing in again replaces its old connection: the Inbox's to-dos and
           // cached mail move over, so reconnecting loses nothing. Not revoked remotely, since that
           // could invalidate the new token of the same grant.
@@ -80,6 +90,24 @@ export async function completeNativeOAuth(options: {
           await tx.cachedMailMessage.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.inboxTodo.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
+          // A Calendar or Drive agent is keyed by its connection, so it follows the new id; the
+          // Inbox agent keeps its per-user key.
+          await tx.bot.updateMany({
+            where: { ...owner, spawnKey: integrationAgentSpawnKey(taken.id), archivedAt: null },
+            data: { spawnKey: integrationAgentSpawnKey(current.id) },
+          });
+          // The new row takes exactly the old row's grants and settings.
+          await tx.botConnectionAccess.deleteMany({ where: { connectionId: current.id } });
+          await tx.botConnectionAccess.updateMany({
+            where: { connectionId: taken.id },
+            data: next,
+          });
+          carried = {
+            agentBotId: old.agentBotId,
+            writesEnabled: old.writesEnabled,
+            allAgents: old.allAgents,
+            privateByDefault: old.privateByDefault,
+          };
           await tx.connection.delete({ where: { id: taken.id } });
           if (taken.secretId)
             await tx.secret.deleteMany({ where: { id: taken.secretId, ...owner } });
@@ -87,23 +115,17 @@ export async function completeNativeOAuth(options: {
           throw new ORPCError("CONFLICT", { message: "This Google account is already connected." });
         return tx.connection.update({
           where: { id: current.id },
-          data: { status: "connected", providerRef: connectionRef, secretId, metadata: {} },
+          data: {
+            status: "connected",
+            providerRef: connectionRef,
+            secretId,
+            metadata: {},
+            ...carried,
+          },
         });
       },
       { timeout: 60_000 },
     );
-    return {
-      id: row.id,
-      connectorId: row.connectorId,
-      provider: row.provider,
-      displayName: row.displayName,
-      status: row.status as "pending" | "connected" | "revoked" | "error",
-      error: connectionError(row),
-      writesEnabled: row.writesEnabled,
-      agentBotId: row.agentBotId,
-      capabilities: [],
-      createdAt: row.createdAt.toISOString(),
-    };
   } catch (error) {
     // The transaction rolled back, so nothing references the new credential. Google keeps
     // the token valid; it is not revoked here because revoking one token of a grant can
@@ -111,6 +133,25 @@ export async function completeNativeOAuth(options: {
     await prisma.secret.deleteMany({ where: { id: secretId, ...owner } });
     throw error;
   }
+
+  // A replacement of a private connection that had no agent gets one too; the provisioner does
+  // nothing for a row that is not private or already has one.
+  await options.provision?.(row.id).catch(() => undefined);
+  const final =
+    (await prisma.connection.findFirst({ where: { id: row.id, ...owner } }).catch(() => null)) ??
+    row;
+  return {
+    id: final.id,
+    connectorId: row.connectorId,
+    provider: row.provider,
+    displayName: row.displayName,
+    status: row.status as "pending" | "connected" | "revoked" | "error",
+    error: connectionError(row),
+    writesEnabled: final.writesEnabled,
+    agentBotId: final.agentBotId,
+    capabilities: [],
+    createdAt: row.createdAt.toISOString(),
+  };
 }
 
 /** Short user-safe reason for a failed connection; never provider internals. */
