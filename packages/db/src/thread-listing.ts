@@ -4,6 +4,7 @@ import {
   BACKGROUND_RUN_TRIGGERS,
   isToolActivityBlock,
   plainTextFromMarkdown,
+  toolStepLabel,
   toolStepsSummary,
 } from "@rakazo/core";
 
@@ -37,6 +38,16 @@ export const latestBotRunSelection = {
 /** Tool ids run together ("get_active_integration get_banking_tr…") are not words a person wrote. */
 const TOOL_ID_LIST = /^\s*[a-z\d]+(?:_[a-z\d]+)+(?:\s+[a-z\d]+(?:_[a-z\d]+)+)*…?\s*$/;
 
+const LEADING_TOOL_IDS = /^(?:[a-z\d]+(?:_[a-z\d]+)+\s+){3,}/;
+
+/** A reply that opens with a run of three or more tool ids (a capability list) reads them as words. */
+function humanizedIdRun(text: string): string {
+  const run = LEADING_TOOL_IDS.exec(text)?.[0];
+  if (!run) return text;
+  const words = run.trim().split(/\s+/).map(toolStepLabel).join(", ");
+  return `${words}, ${text.slice(run.length)}`.replace(/,\s*$/, "");
+}
+
 /** The words of a message, else one line about its tool calls. Live tool activity never counts as words. */
 export function previewFromBlocks(blocks: unknown): string {
   const rows = Array.isArray(blocks) ? blocks : [];
@@ -49,7 +60,7 @@ export function previewFromBlocks(blocks: unknown): string {
       !isToolActivityBlock(block as MessageBlock)
     ) {
       const text = previewText((block as { text: string }).text);
-      if (!TOOL_ID_LIST.test(text)) return text;
+      if (!TOOL_ID_LIST.test(text)) return humanizedIdRun(text);
     }
   }
   const steps = rows.flatMap((block) =>

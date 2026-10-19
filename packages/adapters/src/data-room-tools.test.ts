@@ -8,6 +8,7 @@ import {
   isNotADocument,
 } from "./data-room-tools.js";
 import {
+  PLAIN_CAPABILITY_GUIDANCE,
   READ_ONLY_AGENT_TOOLS,
   selectBuiltinToolsForRun,
   userTurnInstructions,
@@ -103,6 +104,11 @@ describe("Data room guidance", () => {
       dataRoomEnabled: extra.dataRoomEnabled,
       disabledBuiltinTools: new Set(extra.disabled ?? []),
     });
+
+  it("tells every agent to describe its abilities in plain words", () => {
+    expect(instructions({})).toContain(PLAIN_CAPABILITY_GUIDANCE);
+    expect(PLAIN_CAPABILITY_GUIDANCE).toContain("never as raw tool names");
+  });
 
   it("appears only when add_to_data_room is offered", () => {
     expect(instructions({ dataRoomEnabled: true })).toContain(DATA_ROOM_GUIDANCE);

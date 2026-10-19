@@ -73,6 +73,17 @@ describe("previewFromBlocks", () => {
     ).toBe("");
   });
 
+  it("reads a leading run of tool ids as words", () => {
+    expect(
+      previewFromBlocks([
+        {
+          kind: "text",
+          text: "get_active_integration get_banking_transactions list_cards and more",
+        },
+      ]),
+    ).toBe("Get active integration, Get banking transactions, List cards, and more");
+  });
+
   it("returns empty when there is no text block", () => {
     expect(previewFromBlocks([{ kind: "steps", steps: [] }])).toBe("");
     expect(previewFromBlocks(undefined)).toBe("");
