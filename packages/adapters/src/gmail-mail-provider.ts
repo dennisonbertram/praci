@@ -159,7 +159,10 @@ export class GmailMailProvider implements MailProvider {
     const wanted = ids;
     const results: Array<MailMessageSummary | undefined> = [];
     const done = new Set<number>();
-    const cached = request.useCache === false ? new Map() : await this.readCache(account, wanted);
+    const cached =
+      request.useCache === false && request.reuseCachedWithinMs === undefined
+        ? new Map()
+        : await this.readCache(account, wanted, request.reuseCachedWithinMs);
     wanted.forEach((id, index) => {
       const hit = cached.get(id);
       if (!hit) return;
@@ -218,6 +221,7 @@ export class GmailMailProvider implements MailProvider {
   private async readCache(
     account: MailAccount,
     ids: string[],
+    freshMs?: number,
   ): Promise<Map<string, MailMessageSummary>> {
     const cache = this.deps.prisma?.cachedMailMessage;
     const hits = new Map<string, MailMessageSummary>();
@@ -229,6 +233,7 @@ export class GmailMailProvider implements MailProvider {
           spaceId: account.spaceId,
           userId: account.userId,
           providerMessageId: { in: ids },
+          ...(freshMs === undefined ? {} : { seenAt: { gte: new Date(Date.now() - freshMs) } }),
         },
       });
       for (const row of rows) {

@@ -10,7 +10,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import { deleteMailConnectionData, syncMailbox } from "./mail-sync.js";
@@ -53,6 +53,8 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
   // hold calls open per operation id to interleave two syncs.
   let gmail: GmailApiEmulator;
   const holds = new Map<string, Promise<void>>();
+  /** Makes every message fetch slow, to run a sync into its deadline. */
+  let getDelayMs = 0;
   const listCalls = () => gmail.requests.filter((r) => /\/messages\?/.test(r.url)).length;
   const getCalls = () => gmail.requests.filter((r) => /\/messages\/[^?]/.test(r.url)).length;
 
@@ -69,6 +71,20 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
             context.signal.addEventListener("abort", () => resolve(), { once: true }),
           ),
         ]);
+        if (context.signal.aborted) throw new Error("aborted");
+      }
+      if (getDelayMs && /\/messages\/[^?]/.test(request.url)) {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, getDelayMs);
+          context.signal.addEventListener(
+            "abort",
+            () => {
+              clearTimeout(timer);
+              resolve();
+            },
+            { once: true },
+          );
+        });
         if (context.signal.aborted) throw new Error("aborted");
       }
       return gmail.handle(request.accountRef, request.url);
@@ -527,7 +543,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(await sync(bad)).toBe("failed");
   });
 
-  it("gives up at the deadline, records the failure and releases the claim", async () => {
+  it("gives up at the deadline without recording a failure and releases the claim", async () => {
     seed("slow", [message("a", 1, ["INBOX"])]);
     const account = await connect("slow");
     holds.set("slow-op", new Promise<void>(() => {}));
@@ -535,9 +551,61 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(await sync(account, "slow-op", { deadlineMs: 50 })).toBe("failed");
 
     const after = await state(account.id);
-    expect(after.lastErrorAt).not.toBeNull();
+    expect(after.lastErrorAt).toBeNull();
+    expect(after.lastErrorKind).toBeNull();
+    expect(after.lastSyncedAt).toBeNull();
     expect(after.claimToken).toBeNull();
     expect(await rows(account.id)).toHaveLength(0);
+  });
+
+  describe("a window larger than one deadline", () => {
+    const bulk = (count: number, label: string) =>
+      Array.from({ length: count }, (_, i) =>
+        message(`${label}-${i}`, 1 + i / 1000, [label === "in" ? "INBOX" : "SENT"]),
+      );
+    afterEach(() => {
+      getDelayMs = 0;
+    });
+
+    it("does not list sent mail or record a failure when the deadline hits during the inbox", async () => {
+      seed("deadline-inbox", bulk(150, "in"));
+      const account = await connect("deadline-inbox");
+      getDelayMs = 10;
+
+      expect(await sync(account, "op", { deadlineMs: 200 })).toBe("failed");
+
+      const after = await state(account.id);
+      expect(after.lastErrorAt).toBeNull();
+      expect(after.lastErrorKind).toBeNull();
+      expect(after.lastSyncedAt).toBeNull();
+      expect(after.claimToken).toBeNull();
+      expect(gmail.requests.some((r) => /messages\?.*sent/.test(r.url))).toBe(false);
+      expect((await rows(account.id)).length).toBeGreaterThan(0);
+    });
+
+    it("finishes within a few runs, fetching each message about once", async () => {
+      seed("converge", [...bulk(200, "in"), ...bulk(200, "sent")]);
+      const account = await connect("converge");
+      getDelayMs = 10;
+
+      let runs = 0;
+      do {
+        runs++;
+        await prisma.mailSyncState.updateMany({
+          where: { connectionId: account.id },
+          data: { backoffUntil: null },
+        });
+        await sync(account, "op", { deadlineMs: 600 });
+        expect((await state(account.id)).lastErrorKind).toBeNull();
+      } while (!(await state(account.id)).lastSyncedAt && runs < 10);
+
+      expect((await state(account.id)).lastSyncedAt).not.toBeNull();
+      expect(runs).toBeGreaterThan(1);
+      expect(runs).toBeLessThan(10);
+      expect(await rows(account.id)).toHaveLength(400);
+      // Messages stored by an earlier run are not fetched again; only requests cut off mid-flight repeat.
+      expect(getCalls()).toBeLessThan(400 + runs * 4);
+    });
   });
 
   it("keeps what a rate-limited sync hydrated, clears nothing and reports a failure", async () => {
