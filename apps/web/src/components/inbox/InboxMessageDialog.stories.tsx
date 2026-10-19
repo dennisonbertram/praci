@@ -132,6 +132,34 @@ export const Conversation: Story = {
 };
 
 /** The user's own reply came after the open message: it is listed below the body, as You. */
+/** An earlier message the user sent shows the green Sent flag and edge; the other sender's does not. */
+export const ConversationWithOwnEarlierMessage: Story = {
+  args: { messageId: "msg_own_earlier", subject: "Re: Quarterly planning notes" },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.get": {
+        ...message,
+        subject: "Re: Quarterly planning notes",
+        text: "Thursday works.",
+        thread: [
+          {
+            id: "msg_own_earlier_1",
+            from: "Sample Sender",
+            receivedAt: "2026-03-02T09:00:00.000Z",
+            snippet: "Here are the planning notes for next quarter.",
+          },
+          {
+            id: "msg_own_earlier_2",
+            from: "me@example.test",
+            receivedAt: "2026-03-02T11:00:00.000Z",
+            snippet: "Can we meet Thursday?",
+            fromSelf: true,
+          },
+        ],
+      },
+    }),
+};
+
 export const ConversationWithLaterReply: Story = {
   name: "Conversation with a later reply",
   args: { messageId: "msg_later", subject: "Re: Quarterly planning notes" },

@@ -15,7 +15,7 @@ import { NativeSymbol } from "../components/native-symbol";
 import { SandboxedHtmlPreview } from "../components/sandboxed-html-preview";
 import { dateLocaleForUi, useI18n } from "../lib/i18n";
 import { ensureMailAgent, getMailMessage } from "../lib/mail-inbox";
-import { native, useThemedStyles } from "../lib/native";
+import { native, useMobileTokens, useThemedStyles } from "../lib/native";
 import { iosAtLeast } from "../lib/native-controls";
 import { errorText } from "../lib/user-error";
 
@@ -27,6 +27,7 @@ export default function InboxMessageScreen() {
   const router = useRouter();
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
+  const tokens = useMobileTokens();
   // The iOS 26 header floats over the content, so the message starts below it.
   const headerHeight = useHeaderHeight();
   const [message, setMessage] = useState<InboxMessage | null>(null);
@@ -118,7 +119,15 @@ export default function InboxMessageScreen() {
         <Text style={styles.metaLine} selectable>
           {message.to}
         </Text>
-        <Text style={styles.metaLine}>{date}</Text>
+        <View style={styles.dateRow}>
+          <Text style={styles.metaLine}>{date}</Text>
+          {message.fromSelf ? (
+            <View style={styles.sent} accessible accessibilityLabel={t("Sent")}>
+              <NativeSymbol ios="checkmark" android="checkmark" size={12} color={tokens.success} />
+              <Text style={styles.metaLine}>{t("Sent")}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
       {message.html ? (
         <SandboxedHtmlPreview html={message.html} email onOpenLink={openLink} />
@@ -141,6 +150,8 @@ function createStyles() {
     meta: { paddingHorizontal: 16, paddingVertical: 10, gap: 2 },
     from: { color: native.label, fontSize: 15, fontWeight: "600" },
     metaLine: { color: native.secondaryLabel, fontSize: 12.5 },
+    dateRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    sent: { flexDirection: "row", alignItems: "center", gap: 3 },
     text: { padding: 16 },
     body: { color: native.label, fontSize: 15, lineHeight: 21 },
     headerButton: { padding: 8 },

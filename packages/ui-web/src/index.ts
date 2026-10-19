@@ -34,6 +34,7 @@ export * from "./components/ui/separator.js";
 export * from "./components/ui/skeleton.js";
 export * from "./components/ui/spinner.js";
 export * from "./components/ui/switch.js";
+export * from "./components/ui/table.js";
 export * from "./components/ui/tabs.js";
 export * from "./components/ui/textarea.js";
 export * from "./components/ui/toggle.js";
