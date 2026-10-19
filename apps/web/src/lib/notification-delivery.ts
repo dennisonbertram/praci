@@ -19,8 +19,8 @@ export type DeliveryDeps = {
   delay: (ms: number) => Promise<unknown>;
   /** Server check: was this notification already shown or seen on another device or tab? */
   wasShown?: (id: string) => Promise<boolean> | boolean;
-  /** Called after a toast is shown, so the caller can tell the server (skips phone push). */
-  onShown?: (id: string) => void;
+  /** Called after a toast is shown, so the caller can tell the server (skips phone push). Failures are reported, not treated as delivery failures. */
+  onShown?: (id: string) => Promise<void> | void;
   reportError?: (error: unknown) => void;
 };
 
@@ -50,19 +50,20 @@ export async function deliverNotification(
 ): Promise<DeliveryResult> {
   try {
     const deps = { ...defaultDeps(), ...overrides };
-    const toast = (): DeliveryResult => {
+    // The toast is on screen, so the result is "toast" even if onShown fails; that is reported.
+    const toast = async (): Promise<DeliveryResult> => {
       deps.toast(n);
       try {
-        deps.onShown?.(n.id);
+        await deps.onShown?.(n.id);
       } catch (error) {
-        deps.reportError?.(error); // Already displayed; not undone.
+        deps.reportError?.(error);
       }
       return "toast";
     };
     if (shouldToast(deps.state())) return toast();
     await deps.delay(AWAY_DELAY_MS);
-    if (shouldToast(deps.state())) return toast();
     if (await deps.wasShown?.(n.id)) return "skipped";
+    if (shouldToast(deps.state())) return toast();
     if ((await deps.requestPermission()) !== "granted") return "skipped";
     deps.show(n.title, { body: n.body, tag: n.id });
     return "os";

@@ -64,13 +64,32 @@ describe("deliverNotification", () => {
     expect(t.requestPermission).not.toHaveBeenCalled();
   });
 
+  it("a tab that gains focus during the wait skips if the server says it was already shown", async () => {
+    let focused = false;
+    const t = tab(false, {
+      state: () => ({ visible: focused, focused }),
+      delay: async () => {
+        focused = true;
+      },
+      wasShown: async () => true,
+    });
+    expect(await deliverNotification(n, t)).toBe("skipped");
+    expect(t.toast).not.toHaveBeenCalled();
+  });
+
+  it("reports an async onShown rejection without failing", async () => {
+    const t = tab(true, { onShown: () => Promise.reject(new Error("server")) });
+    expect(await deliverNotification(n, t)).toBe("toast");
+    expect(t.reportError).toHaveBeenCalledTimes(1);
+  });
+
   it("skips when permission is denied", async () => {
     const t = tab(false, { requestPermission: async () => "denied" });
     expect(await deliverNotification(n, t)).toBe("skipped");
     expect(t.show).not.toHaveBeenCalled();
   });
 
-  it("two background tabs both show with the same tag; the browser collapses them", async () => {
+  it("two background tabs both show with the same tag", async () => {
     const a = tab(false);
     const b = tab(false);
     await Promise.all([deliverNotification(n, a), deliverNotification(n, b)]);
