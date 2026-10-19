@@ -1,10 +1,26 @@
 import { createHash } from "node:crypto";
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
+import {
+  chmod,
+  lstat,
+  mkdir,
+  mkdtemp,
+  readFile,
+  readlink,
+  rm,
+  stat,
+  symlink,
+  utimes,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { AdapterContext, AgentHomeStore, ArtifactStore } from "@rakazo/adapter-kit";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkpointComputerWorkspace, restoreComputerWorkspace } from "./computer-workspace.js";
+import {
+  checkpointAndRecordComputerWorkspace,
+  checkpointComputerWorkspace,
+  restoreComputerWorkspace,
+} from "./computer-workspace.js";
 import { LocalAgentHomeStore } from "./home.js";
 import {
   AgentHomeConflictError,
@@ -95,7 +111,12 @@ function fakes() {
     },
     remove: async (id) => void objects.delete(id),
   };
-  return { rows, prisma: prisma as never, objects, artifacts, hooks, calls };
+  const withTransaction = {
+    ...prisma,
+    $transaction: async (work: (tx: unknown) => Promise<unknown>) =>
+      work({ $executeRaw: async () => 0 }),
+  };
+  return { rows, prisma: withTransaction as never, objects, artifacts, hooks, calls };
 }
 
 const dirs: string[] = [];
@@ -272,6 +293,109 @@ describe("ObjectAgentHomeStore", () => {
   });
 });
 
+describe("ObjectAgentHomeStore working copy and snapshot fidelity", () => {
+  it("updates the live directory in place and never replaces the mounted directory", async () => {
+    const f = fakes();
+    const dataA = await tmp();
+    const a = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataA);
+    const b = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
+    await a.commit("team-a", await source({ "keep.txt": "one", "gone.txt": "x" }), ctx("space-a"));
+    const live = await a.liveDirectory("team-a", ctx("space-a"));
+    const before = (await stat(live)).ino;
+    await b.commit("team-a", await source({ "keep.txt": "two" }), ctx("space-a"));
+    expect(await a.liveDirectory("team-a", ctx("space-a"))).toBe(live);
+    expect((await stat(live)).ino).toBe(before);
+    expect(await readFile(path.join(live, "keep.txt"), "utf8")).toBe("two");
+    await expect(stat(path.join(live, "gone.txt"))).rejects.toThrow();
+  });
+
+  it("writes the sync marker before it deletes the previous snapshot", async () => {
+    const f = fakes();
+    const dataDir = await tmp();
+    const store = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
+    await store.commit("team-a", await source({ "f.txt": "one" }), ctx("space-a"));
+    await store.liveDirectory("team-a", ctx("space-a"));
+    await store.revise("team-a", ctx("space-a"));
+    let markerAtCleanup: string | undefined;
+    const remove = f.artifacts.remove;
+    f.artifacts.remove = async (id, context) => {
+      markerAtCleanup = await readFile(path.join(dataDir, "home-sync", "team-a.txt"), "utf8");
+      return remove(id, context);
+    };
+    const revision = await store.revise("team-a", ctx("space-a"));
+    expect(markerAtCleanup).toBe(revision);
+  });
+
+  it("leaves the working copy alone when a save loses the revision race, and keeps refusing until refreshed", async () => {
+    const f = fakes();
+    const store = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
+    await store.commit("team-a", await source({ "f.txt": "one" }), ctx("space-a"));
+    const live = await store.liveDirectory("team-a", ctx("space-a"));
+    await writeFile(path.join(live, "f.txt"), "edited in the container");
+    f.hooks.beforePut = () => {
+      f.rows[0]!.homeRevision = "rev-from-another-worker";
+    };
+    await expect(store.revise("team-a", ctx("space-a"))).rejects.toBeInstanceOf(
+      AgentHomeConflictError,
+    );
+    f.hooks.beforePut = undefined;
+    expect(await readFile(path.join(live, "f.txt"), "utf8")).toBe("edited in the container");
+    await expect(store.revise("team-a", ctx("space-a"))).rejects.toBeInstanceOf(
+      AgentHomeConflictError,
+    );
+  });
+
+  it("keeps symlinks, empty directories, modes, mtimes and a file named like a manifest", async () => {
+    const f = fakes();
+    const src = await source({
+      "a.txt": "A",
+      "b.txt": "B",
+      ".rakazo-snapshot.json": "user data",
+    });
+    await mkdir(path.join(src, "empty/inner"), { recursive: true });
+    await symlink("a.txt", path.join(src, "one"));
+    await symlink("a.txt", path.join(src, "two"));
+    await symlink("/outside/target", path.join(src, "dangling"));
+    await chmod(path.join(src, "a.txt"), 0o640);
+    const when = new Date("2024-03-04T05:06:07Z");
+    await utimes(path.join(src, "b.txt"), when, when);
+    const writer = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
+    await writer.commit("team-a", src, ctx("space-a"));
+
+    const reader = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
+    const live = await reader.liveDirectory("team-a", ctx("space-a"));
+    expect(await readlink(path.join(live, "one"))).toBe("a.txt");
+    expect(await readlink(path.join(live, "two"))).toBe("a.txt");
+    expect(await readlink(path.join(live, "dangling"))).toBe("/outside/target");
+    expect((await stat(path.join(live, "empty/inner"))).isDirectory()).toBe(true);
+    expect((await stat(path.join(live, "a.txt"))).mode & 0o777).toBe(0o640);
+    expect((await stat(path.join(live, "b.txt"))).mtime.getTime()).toBe(when.getTime());
+    expect(await readFile(path.join(live, ".rakazo-snapshot.json"), "utf8")).toBe("user data");
+    expect((await lstat(path.join(live, "one"))).isSymbolicLink()).toBe(true);
+  });
+
+  it("does not delete the working copy of a home that is not in this space", async () => {
+    const f = fakes();
+    const dataDir = await tmp();
+    const store = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
+    await store.commit("team-b", await source({ "secret.txt": "b-only" }), ctx("space-b"));
+    await store.liveDirectory("team-b", ctx("space-b"));
+    await store.remove("team-b", ctx("space-a"));
+    expect(await readFile(path.join(dataDir, "homes/team-b/secret.txt"), "utf8")).toBe("b-only");
+    expect(f.objects.size).toBe(1);
+  });
+
+  it("removes both stored snapshots", async () => {
+    const f = fakes();
+    const store = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
+    await store.commit("team-a", await source({ "f.txt": "1" }), ctx("space-a"));
+    await store.commit("team-a", await source({ "f.txt": "2" }), ctx("space-a"));
+    expect(f.objects.size).toBe(2);
+    await store.remove("team-a", ctx("space-a"));
+    expect(f.objects.size).toBe(0);
+  });
+});
+
 describe("workspace checkpoints use the store interface", () => {
   const computer = { id: "c", botId: "b", kind: "docker", providerRef: "p" } as never;
   const sandbox = { exportWorkspace: vi.fn(), importWorkspace: vi.fn() } as never;
@@ -303,6 +427,27 @@ describe("workspace checkpoints use the store interface", () => {
       "rev-1",
     );
     expect(commit).toHaveBeenCalledWith("k", expect.any(String), expect.anything(), "rev-1");
+  });
+
+  it("records a checkpoint only while the revision is still the one it started from", async () => {
+    const commit = vi.fn().mockResolvedValue("rev-2");
+    const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const prisma = {
+      computer: { findUnique: vi.fn().mockResolvedValue({ homeRevision: "rev-1" }), updateMany },
+    };
+    const remote = { id: "c", botId: "b", kind: "e2b", providerRef: "p" } as never;
+    const exportWorkspace = async function* () {};
+    await checkpointAndRecordComputerWorkspace(
+      { home: { commit } as never, sandbox: { exportWorkspace } as never, prisma: prisma as never },
+      { id: "c1", homeKey: "k" },
+      remote,
+      ctx("space-a"),
+    );
+    expect(commit).toHaveBeenCalledWith("k", expect.any(String), expect.anything(), "rev-1");
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: "c1", homeRevision: { in: ["rev-1", "rev-2"] } },
+      data: { homeRevision: "rev-2" },
+    });
   });
 
   it("restores through exportHome when the store has no live directory", async () => {

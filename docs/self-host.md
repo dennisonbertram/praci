@@ -417,40 +417,62 @@ For provider configuration and health checks, see the [provider setup guide](./s
 ## Object storage for artifacts and agent homes
 
 The Compose stacks (`docker-compose.yml`, `docker-compose.images.yml` and `docker-compose.prod.yml`)
-include a MinIO service and a one-shot `minio-init` service that creates the bucket on first start.
-API and worker get `RAKAZO_S3_*` preset to that service, so a default install stores uploaded and
-generated files and agent homes in object storage with no extra setup. MinIO is not published on the
-host. `docker-compose.prod.yml` and `docker-compose.images.yml` refuse to start unless
-`RAKAZO_S3_ACCESS_KEY_ID` and `RAKAZO_S3_SECRET_ACCESS_KEY` are set in `.env` (`install-images.sh`
-generates them). They are also MinIO's root login, and MinIO keeps the credentials it was first started
-with. Use letters and digits only, with at least 8 characters in the secret. The source-checkout
-`docker-compose.yml` falls back to placeholder credentials, which are for local development only. Back
-up the `miniodata` volume with the database.
+can run a bundled S3-compatible store, [SeaweedFS](https://github.com/seaweedfs/seaweedfs) (Apache-2.0),
+with a one-shot `seaweedfs-init` service that creates the bucket. Both belong to the Compose profile
+`bundled-s3` and are not published on the host.
 
-To use another S3-compatible store (AWS S3, Cloudflare R2, a MinIO you run yourself), set the
-variables below in `.env`; they replace the presets. Files are stored under
+- **New installs** of the published-image stack: `install-images.sh` writes `COMPOSE_PROFILES=bundled-s3`,
+  the matching `RAKAZO_S3_*` values and generated credentials into `.env`, so files and agent homes
+  are stored in object storage from the first start.
+- **Upgrades** keep their current behaviour: an existing `.env` has no `COMPOSE_PROFILES` and no
+  `RAKAZO_S3_*`, so nothing changes and files stay on local disk. To opt in, run
+  `bash install-images.sh --enable-bundled-storage`. It appends the profile and generated credentials to
+  `.env` (it refuses if `.env` already sets `RAKAZO_S3_*`). Files that were already stored under
+  `DATA_DIR/artifacts`, including Data room files, stay readable: when an object is not in the bucket,
+  Rakazo reads the old local file. They are not copied, so keep `DATA_DIR` in your backups.
+- **`docker-compose.prod.yml` and the source-checkout stack** do not edit `.env`. To use the bundled
+  store, add `COMPOSE_PROFILES=bundled-s3`, `RAKAZO_S3_ENDPOINT=http://seaweedfs:8333`,
+  `RAKAZO_S3_BUCKET=rakazo`, `RAKAZO_S3_FORCE_PATH_STYLE=true` and your own
+  `RAKAZO_S3_ACCESS_KEY_ID` and `RAKAZO_S3_SECRET_ACCESS_KEY` to `.env`.
+
+The credentials must be letters and digits, at least 8 characters each. The bundled store refuses to
+start with shorter or missing credentials (the production and published-image stacks have no
+default; the source-checkout stack falls back to placeholder credentials for development only). Do
+not change the credentials after the store has started. Back up the `seaweedfsdata` volume with the
+database.
+
+To use another S3-compatible store (AWS S3, Cloudflare R2, a store you run yourself), set the
+variables below in `.env` and leave the `bundled-s3` profile off. Files are stored under
 `<prefix>/artifacts/<space id>/<id>`, so one bucket can serve many spaces. Set the first four
 variables together; any `RAKAZO_S3_*` variable that is set turns object storage on, and a partial set stops startup and names the missing variable.
 
 - `RAKAZO_S3_ENDPOINT`: the store's URL, for example `https://s3.us-east-1.amazonaws.com`.
 - `RAKAZO_S3_BUCKET`: an existing bucket.
 - `RAKAZO_S3_ACCESS_KEY_ID` and `RAKAZO_S3_SECRET_ACCESS_KEY`: credentials with read, write and delete access to the bucket.
-- `RAKAZO_S3_REGION`: defaults to `us-east-1`, which AWS, R2 and MinIO all accept.
-- `RAKAZO_S3_FORCE_PATH_STYLE`: set to `true` for MinIO and other stores without bucket subdomains.
+- `RAKAZO_S3_REGION`: defaults to `us-east-1`, which AWS, R2 and SeaweedFS all accept.
+- `RAKAZO_S3_FORCE_PATH_STYLE`: set to `true` for SeaweedFS, MinIO and other stores without bucket subdomains.
 - `RAKAZO_S3_PREFIX`: optional key prefix.
 
-Plain `http` endpoints are accepted only for localhost, private network addresses and single-word hostnames such as `minio`; use `https` for anything else. Existing local files are not copied to the bucket.
+Plain `http` endpoints are accepted only for localhost, private network addresses and single-word hostnames such as `seaweedfs`; use `https` for anything else.
 
 Without any `RAKAZO_S3_*` variable (for example `pnpm dev` outside Compose), artifacts and home snapshots
 fall back to local disk under `DATA_DIR`, which is only safe for a single process.
 
 ### Agent homes
 
-Each Computer's persistent workspace (its home) is saved as one zip snapshot in the object store. The
-Computer row in Postgres holds the current revision and snapshot id, and a save succeeds only if that
-revision has not changed since it was read, so two workers cannot overwrite each other. Every lookup is
-scoped to the Computer's space. `DATA_DIR/homes/<key>` is a working copy: the Docker supervisor mounts
-it, and Rakazo refreshes it from the snapshot when another process saved a newer revision.
+Each Computer's persistent workspace (its home) is saved as one gzip tar snapshot in the object store,
+with symlinks, empty folders, file modes and times kept and browser and package caches left out. The
+archive is written to a temporary file and uploaded from it (multipart for large homes), so memory does
+not grow with the size of the home. The Computer row in Postgres holds the current revision and
+snapshot id, and a save succeeds only if that revision has not changed since it was read, so two
+workers cannot overwrite each other. A Postgres advisory lock serializes work on one home across
+processes. Every lookup is scoped to the Computer's space. The snapshot before the current one is kept
+until the next save, then deleted.
+
+`DATA_DIR/homes/<key>` is a working copy: the Docker supervisor mounts it, and Rakazo refreshes it from
+the snapshot when another process saved a newer revision. It is updated in place and never replaced,
+so a running Docker computer keeps seeing the same directory. Only Docker computers use it as their
+workspace; remote providers (E2B, Daytona and so on) restore from the snapshot.
 
 An existing deployment migrates on its own. The first time a Computer's home is used and it has no
 snapshot, Rakazo uploads the existing `DATA_DIR/homes/<key>` directory and uses the snapshot from then

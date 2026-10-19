@@ -1,4 +1,4 @@
-import { mkdir } from "node:fs/promises";
+import path from "node:path";
 import type {
   AdapterContext,
   AgentHomeStore,
@@ -33,6 +33,7 @@ import {
 } from "./computer-workspace.js";
 import { isSandboxGoneError } from "./e2b-sandbox.js";
 import { liveHomeDirectory } from "./home.js";
+import { AgentHomeConflictError } from "./object-home.js";
 
 type ComputerUpdateProgress = (
   stage: Exclude<ComputerUpdate["stage"], "preparing">,
@@ -173,13 +174,12 @@ export async function provisionComputer(
       throw new Error("computer control revocation is still in progress");
     }
   }
-  const homePath = await liveHomeDirectory(
-    deps.home,
-    existing.homeKey,
-    context,
-    deps.dataDir ?? "./data",
-  );
-  await mkdir(homePath, { recursive: true });
+  // Only a computer that mounts a host path (Docker) uses the store's live directory; remote
+  // providers ignore the path and restore from the store.
+  const homePath =
+    existing.kind === "docker"
+      ? await liveHomeDirectory(deps.home, existing.homeKey, context, deps.dataDir ?? "./data")
+      : path.resolve(deps.dataDir ?? "./data", "homes", existing.homeKey);
 
   // Re-provisioning a live computer enters booting and revokes its screen URLs.
   // A provider-confirmed live reference needs setup, not a new lifecycle claim.
@@ -856,7 +856,9 @@ export async function replaceComputer(
         // the last recorded revision instead of failing the whole replacement.
         if (
           !isSandboxGoneError(error) &&
-          (mode !== "recover" || error instanceof ComputerBusyError)
+          (mode !== "recover" ||
+            error instanceof ComputerBusyError ||
+            error instanceof AgentHomeConflictError)
         )
           throw error;
       }

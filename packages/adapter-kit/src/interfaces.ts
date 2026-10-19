@@ -414,14 +414,10 @@ export interface AgentHomeStore {
     context: AdapterContext,
   ): Promise<Array<{ path: string; kind: "file" | "dir"; size: number }>>;
   /**
-   * Deletes the whole home, including any stored copy. Missing homes are not an error. Pass the
-   * stored snapshot id when the Computer row is already gone, so the stored copy can still go.
+   * Deletes the whole home, including every stored snapshot. Does nothing when the Computer is not
+   * found for the caller's space.
    */
-  remove(
-    botId: string,
-    context: AdapterContext,
-    stored?: { snapshotId?: string | null },
-  ): Promise<void>;
+  remove(botId: string, context: AdapterContext): Promise<void>;
   /**
    * Deletes `parent/name` inside the home and persists the change. A linked parent is refused;
    * a linked final entry is unlinked. Missing entries are not an error.
@@ -441,6 +437,13 @@ export interface ArtifactStore {
   put(artifact: ArtifactPut, context: AdapterContext): Promise<{ id: string; hash: string }>;
   get(id: string, context: AdapterContext): Promise<Uint8Array>;
   remove(id: string, context: AdapterContext): Promise<void>;
+  /** Stores a local file without reading it whole into memory. */
+  putFile?(
+    file: { path: string; name: string; mimeType: string },
+    context: AdapterContext,
+  ): Promise<{ id: string; hash: string }>;
+  /** Writes an object to a new local file without holding it whole in memory. */
+  getFile?(id: string, destination: string, context: AdapterContext): Promise<void>;
 }
 
 export interface SecretStore {

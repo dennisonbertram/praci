@@ -100,41 +100,61 @@ services:
       timeout: 5s
       retries: 20
 
-  # Object storage for artifacts and agent homes. Not published on the host. There are no default
-  # credentials: set RAKAZO_S3_ACCESS_KEY_ID and RAKAZO_S3_SECRET_ACCESS_KEY (8+ characters, letters
-  # and digits) in .env. MinIO keeps the credentials it was first started with.
-  minio:
-    image: ${MINIO_IMAGE:-bitnamilegacy/minio:2025.7.23-debian-12-r3}
+  # Bundled S3-compatible object store (SeaweedFS, Apache-2.0) for artifacts and agent homes. It
+  # runs only when COMPOSE_PROFILES includes bundled-s3, which new installs set in .env. An
+  # upgraded install keeps local-disk artifacts until its admin opts in (docs/self-host.md).
+  # Not published on the host. There are no default credentials: the store refuses to start unless RAKAZO_S3_ACCESS_KEY_ID and RAKAZO_S3_SECRET_ACCESS_KEY are set (letters and digits, at least 8 characters).
+  seaweedfs:
+    image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.48}
+    profiles: ["bundled-s3"]
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ "$${#AWS_ACCESS_KEY_ID}" -lt 8 ] || [ "$${#AWS_SECRET_ACCESS_KEY}" -lt 8 ]; then
+          echo "Set RAKAZO_S3_ACCESS_KEY_ID and RAKAZO_S3_SECRET_ACCESS_KEY (at least 8 characters)" >&2
+          exit 1
+        fi
+        exec weed server -dir=/data -s3 -s3.port=8333 -ip.bind=0.0.0.0 -master.volumeSizeLimitMB=1024
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: ${RAKAZO_S3_ACCESS_KEY_ID:?Set RAKAZO_S3_ACCESS_KEY_ID in .env}
-      MINIO_ROOT_PASSWORD: ${RAKAZO_S3_SECRET_ACCESS_KEY:?Set RAKAZO_S3_SECRET_ACCESS_KEY in .env}
+      AWS_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:-}
     volumes:
-      - miniodata:/bitnami/minio/data
+      - seaweedfsdata:/data
     networks:
       - data
     healthcheck:
-      test: ["CMD", "curl", "-fsS", "http://localhost:9000/minio/health/live"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9333/cluster/healthz"]
       interval: 5s
       timeout: 5s
-      retries: 20
+      retries: 30
 
-  # Creates the bucket on first start and does nothing afterwards.
-  minio-init:
-    image: ${MINIO_MC_IMAGE:-bitnamilegacy/minio-client:2025.7.21-debian-12-r2}
+  # Creates the bucket (an S3 PUT; an existing bucket answers 409) and exits.
+  seaweedfs-init:
+    image: ${CURL_IMAGE:-curlimages/curl:8.22.0}
+    profiles: ["bundled-s3"]
     restart: "no"
     entrypoint:
       - sh
       - -c
-      - mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" && mc mb --ignore-existing "local/$$RAKAZO_S3_BUCKET"
+      - |
+        if [ "$${#RAKAZO_S3_SECRET_ACCESS_KEY}" -lt 8 ]; then exit 1; fi
+        for attempt in $$(seq 1 60); do
+          code=$$(curl -s -o /dev/null -w '%{http_code}' --aws-sigv4 aws:amz:$${RAKAZO_S3_REGION}:s3 --user "$$RAKAZO_S3_ACCESS_KEY_ID:$$RAKAZO_S3_SECRET_ACCESS_KEY" -X PUT "http://seaweedfs:8333/$$RAKAZO_S3_BUCKET")
+          if [ "$$code" = 200 ] || [ "$$code" = 409 ]; then exit 0; fi
+          sleep 2
+        done
+        exit 1
     environment:
-      MINIO_ROOT_USER: ${RAKAZO_S3_ACCESS_KEY_ID:?Set RAKAZO_S3_ACCESS_KEY_ID in .env}
-      MINIO_ROOT_PASSWORD: ${RAKAZO_S3_SECRET_ACCESS_KEY:?Set RAKAZO_S3_SECRET_ACCESS_KEY in .env}
+      RAKAZO_S3_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:-}
+      RAKAZO_S3_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:-}
       RAKAZO_S3_BUCKET: ${RAKAZO_S3_BUCKET:-rakazo}
+      RAKAZO_S3_REGION: ${RAKAZO_S3_REGION:-us-east-1}
     networks:
       - data
     depends_on:
-      minio:
+      seaweedfs:
         condition: service_healthy
 
   api:
@@ -177,14 +197,6 @@ services:
       API_URL: ${API_URL:-http://127.0.0.1:5173}
       DATABASE_URL: postgres://${POSTGRES_USER:-rakazo}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
       DATA_DIR: /data
-      # Bundled MinIO by default. Set RAKAZO_S3_ENDPOINT and the other RAKAZO_S3_* in .env to use another store.
-      RAKAZO_S3_ENDPOINT: ${RAKAZO_S3_ENDPOINT:-http://minio:9000}
-      RAKAZO_S3_BUCKET: ${RAKAZO_S3_BUCKET:-rakazo}
-      RAKAZO_S3_REGION: ${RAKAZO_S3_REGION:-us-east-1}
-      RAKAZO_S3_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:?Set RAKAZO_S3_ACCESS_KEY_ID in .env}
-      RAKAZO_S3_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:?Set RAKAZO_S3_SECRET_ACCESS_KEY in .env}
-      RAKAZO_S3_FORCE_PATH_STYLE: ${RAKAZO_S3_FORCE_PATH_STYLE:-true}
-      RAKAZO_S3_PREFIX: ${RAKAZO_S3_PREFIX:-}
       SANDBOX_PROVIDER: ${SANDBOX_PROVIDER:-docker}
       CLOUD_AGENT_PROVIDER: ${CLOUD_AGENT_PROVIDER:-none}
       CLOUD_AGENT_SPACE_ID: ${CLOUD_AGENT_SPACE_ID:-}
@@ -207,8 +219,9 @@ services:
       - app
       - data
     depends_on:
-      minio-init:
+      seaweedfs-init:
         condition: service_completed_successfully
+        required: false
       postgres:
         condition: service_healthy
       data-init:
@@ -255,14 +268,6 @@ services:
       NODE_ENV: production
       DATABASE_URL: postgres://${POSTGRES_USER:-rakazo}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@postgres:5432/${POSTGRES_DB:-rakazo}
       DATA_DIR: /data
-      # Bundled MinIO by default. Set RAKAZO_S3_ENDPOINT and the other RAKAZO_S3_* in .env to use another store.
-      RAKAZO_S3_ENDPOINT: ${RAKAZO_S3_ENDPOINT:-http://minio:9000}
-      RAKAZO_S3_BUCKET: ${RAKAZO_S3_BUCKET:-rakazo}
-      RAKAZO_S3_REGION: ${RAKAZO_S3_REGION:-us-east-1}
-      RAKAZO_S3_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:?Set RAKAZO_S3_ACCESS_KEY_ID in .env}
-      RAKAZO_S3_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:?Set RAKAZO_S3_SECRET_ACCESS_KEY in .env}
-      RAKAZO_S3_FORCE_PATH_STYLE: ${RAKAZO_S3_FORCE_PATH_STYLE:-true}
-      RAKAZO_S3_PREFIX: ${RAKAZO_S3_PREFIX:-}
       SANDBOX_PROVIDER: ${SANDBOX_PROVIDER:-docker}
       CLOUD_AGENT_PROVIDER: ${CLOUD_AGENT_PROVIDER:-none}
       CLOUD_AGENT_SPACE_ID: ${CLOUD_AGENT_SPACE_ID:-}
@@ -284,8 +289,9 @@ services:
       - app
       - data
     depends_on:
-      minio-init:
+      seaweedfs-init:
         condition: service_completed_successfully
+        required: false
       postgres:
         condition: service_healthy
       data-init:
@@ -325,7 +331,7 @@ services:
 
 volumes:
   pgdata:
-  miniodata:
+  seaweedfsdata:
   appdata:
 
 networks:

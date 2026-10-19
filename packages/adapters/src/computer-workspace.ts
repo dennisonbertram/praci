@@ -10,7 +10,10 @@ import type {
 } from "@rakazo/adapter-kit";
 import type { ComputerMode } from "@rakazo/contracts";
 import { parseScreenLeaseId } from "@rakazo/core";
-import { browserProfilePathForScreen } from "@rakazo/core/node/desktop-runtime";
+import {
+  browserProfilePathForScreen,
+  quiesceBrowserProfilesCommand,
+} from "@rakazo/core/node/desktop-runtime";
 import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { normalizeWorkspacePath, teamBotWorkspaceDirectory } from "./computer-support.js";
@@ -283,6 +286,9 @@ export async function checkpointComputerWorkspace(
   expectedRevision?: string,
 ): Promise<string> {
   if (computer.kind === "docker" && home.liveDirectory && home.revise) {
+    // The remote providers stop browsers before they export; do the same before archiving the
+    // live directory. A failure here is logged, not fatal: saving the files matters more.
+    await quiesceDockerBrowsers(sandbox, computer, context);
     return home.revise(homeKey, context, expectedRevision);
   }
   const staging = await mkdtemp(path.join(tmpdir(), "rakazo-workspace-"));
@@ -341,21 +347,49 @@ export async function checkpointRunComputerWorkspace(
   }
 }
 
+async function quiesceDockerBrowsers(
+  sandbox: SandboxProvider,
+  computer: ComputerRef,
+  context: AdapterContext,
+) {
+  try {
+    for await (const event of sandbox.execute(
+      computer,
+      { argv: ["bash", "-c", quiesceBrowserProfilesCommand()] },
+      context,
+    )) {
+      void event;
+    }
+  } catch (error) {
+    getLogger().error("browser quiesce before checkpoint failed", error);
+  }
+}
+
 export async function checkpointAndRecordComputerWorkspace(
   deps: { home: AgentHomeStore; sandbox: SandboxProvider; prisma: PrismaClient },
   computerRecord: { id: string; homeKey: string },
   computer: ComputerRef,
   context: AdapterContext,
 ): Promise<string> {
+  // Read the revision now, not from the caller's older copy of the row: the save is refused if
+  // another worker moves the revision first, and the record below only advances from it.
+  const before = await deps.prisma.computer.findUnique({
+    where: { id: computerRecord.id },
+    select: { homeRevision: true },
+  });
   const revision = await checkpointComputerWorkspace(
     deps.home,
     deps.sandbox,
     computerRecord.homeKey,
     computer,
     context,
+    before?.homeRevision,
   );
   await deps.prisma.computer.updateMany({
-    where: { id: computerRecord.id },
+    where: {
+      id: computerRecord.id,
+      ...(before ? { homeRevision: { in: [before.homeRevision, revision] } } : {}),
+    },
     data: { homeRevision: revision },
   });
   return revision;

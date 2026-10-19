@@ -439,6 +439,12 @@ export async function destroyBot(
   }
   // Keep the bot deletion transaction from committing if raw transcript cleanup fails.
   await removePiBotSessions(deps.dataDir, bot.userId, bot.id);
+  // Both stored snapshots go while the Computer row still proves this space owns them.
+  if (dedicated) {
+    await deps.home.remove(dedicated.homeKey, context).catch((error) => {
+      getLogger().error("dedicated home cleanup", error);
+    });
+  }
   const deletion = await withTransactionRetry(() =>
     deps.prisma.$transaction(async (tx) => {
       // Connection rows before the bot row, the order every other path uses.
@@ -526,11 +532,6 @@ export async function destroyBot(
         .catch(() => undefined);
     }),
   );
-  if (dedicated) {
-    await deps.home
-      .remove(dedicated.homeKey, context, { snapshotId: dedicated.homeSnapshotId })
-      .catch(() => undefined);
-  }
   await removeTeamBrowserProfile(deps, bot.id, sharedComputer, context);
   await removeTeamBotWorkspace(deps, bot, context).catch((error) => {
     getLogger().error("team bot folder cleanup", error);

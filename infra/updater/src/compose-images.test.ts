@@ -17,6 +17,8 @@ interface ComposeService {
   network_mode?: string;
   networks?: string[];
   depends_on?: Record<string, unknown>;
+  profiles?: string[];
+  entrypoint?: unknown;
 }
 
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
@@ -56,9 +58,9 @@ describe("the images compose file", () => {
       "api",
       "computer",
       "data-init",
-      "minio",
-      "minio-init",
       "postgres",
+      "seaweedfs",
+      "seaweedfs-init",
       "supervisor",
       "web",
       "worker",
@@ -75,23 +77,30 @@ describe("the images compose file", () => {
     expect(compose.services["data-init"]?.image).toMatch(/^\$\{BUSYBOX_IMAGE:-busybox:1\}$/);
   });
 
-  it("bundles MinIO, creates its bucket once, and presets the S3 settings without a host port", () => {
-    expect(compose.services.minio?.ports).toBeUndefined();
-    expect(compose.services.minio?.image).toMatch(/:\d{4}\.\d+\.\d+-debian-12-r\d+\}$/);
-    // The published stack has no default credentials, so a placeholder cannot reach production.
-    for (const name of ["minio", "minio-init", "api", "worker"] as const) {
+  it("bundles SeaweedFS behind a profile, with no default credentials and no host port", () => {
+    const store = compose.services.seaweedfs;
+    expect(store?.ports).toBeUndefined();
+    expect(store?.profiles).toEqual(["bundled-s3"]);
+    expect(store?.image).toMatch(/^\$\{SEAWEEDFS_IMAGE:-chrislusf\/seaweedfs:\d+\.\d+\}$/);
+    expect(compose.services["seaweedfs-init"]?.profiles).toEqual(["bundled-s3"]);
+    expect(compose.services["seaweedfs-init"]?.restart).toBe("no");
+    // The credentials are empty without them, and the store refuses to start on short values.
+    for (const name of ["seaweedfs", "seaweedfs-init"] as const) {
       for (const [key, value] of Object.entries(compose.services[name]?.environment ?? {})) {
-        if (/ACCESS_KEY_ID|SECRET_ACCESS_KEY|MINIO_ROOT/.test(key)) {
-          expect(value, `${name}.${key}`).toMatch(/^\$\{RAKAZO_S3_[A-Z_]+:\?/);
-        }
+        if (/ACCESS_KEY|SECRET/.test(key)) expect(value, `${name}.${key}`).toMatch(/:-\}$/);
       }
     }
-    expect(compose.services["minio-init"]?.restart).toBe("no");
+    expect(JSON.stringify(store?.entrypoint)).toContain("at least 8 characters");
+  });
+
+  it("does not make the app depend on object storage unless the profile runs", () => {
     for (const name of ["api", "worker"] as const) {
       const environment = compose.services[name]?.environment ?? {};
-      expect(environment.RAKAZO_S3_ENDPOINT).toBe("${RAKAZO_S3_ENDPOINT:-http://minio:9000}");
-      expect(environment.RAKAZO_S3_FORCE_PATH_STYLE).toBe("${RAKAZO_S3_FORCE_PATH_STYLE:-true}");
-      expect(compose.services[name]?.depends_on).toHaveProperty("minio-init");
+      expect(Object.keys(environment).filter((key) => key.startsWith("RAKAZO_S3_"))).toEqual([]);
+      expect(compose.services[name]?.depends_on?.["seaweedfs-init"]).toEqual({
+        condition: "service_completed_successfully",
+        required: false,
+      });
     }
   });
 
