@@ -533,8 +533,8 @@ function InboxAttachments({
 /** Shown on a message the user sent; the provider only reports a message as sent once it left. */
 function SentMark() {
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-success">
-      <Check aria-hidden="true" className="size-3" />
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <Check aria-hidden="true" className="size-3 text-success" />
       <Trans>Sent</Trans>
     </span>
   );

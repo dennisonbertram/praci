@@ -463,7 +463,7 @@ it("follows the caller's archived state over an older loaded copy", async () => 
 });
 
 const sentMarks = () =>
-  [...document.querySelectorAll(".text-success")].filter((e) => e.textContent === "Sent");
+  [...document.querySelectorAll("span")].filter((e) => e.textContent === "Sent");
 
 it("marks the opened message and thread rows the user sent with a green Sent flag", async () => {
   get.mockImplementation(async () => ({
@@ -484,6 +484,11 @@ it("marks the opened message and thread rows the user sent with a green Sent fla
   act(() => root.render(<InboxMessageDialog messageId="open" onClose={() => {}} />));
   await flush();
   expect(sentMarks()).toHaveLength(2);
+  for (const mark of sentMarks()) {
+    expect(mark.className).toContain("text-muted-foreground");
+    expect(mark.className).not.toContain("text-success");
+    expect(mark.querySelector("svg")?.getAttribute("class")).toContain("text-success");
+  }
   const rows = [...document.querySelectorAll("ol > li")];
   expect(rows[0]?.className).toContain("border-s-success");
   expect(rows[1]?.className).not.toContain("success");
