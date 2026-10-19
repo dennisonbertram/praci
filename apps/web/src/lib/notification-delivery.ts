@@ -21,6 +21,8 @@ export type DeliveryDeps = {
   wasShown?: (id: string) => Promise<boolean> | boolean;
   /** Called after a toast is shown, so the caller can tell the server (skips phone push). Failures are reported, not treated as delivery failures. */
   onShown?: (id: string) => Promise<void> | void;
+  /** The user's Browser switch; false skips the OS notification. Toasts are unaffected. */
+  browserEnabled?: () => Promise<boolean> | boolean;
   reportError?: (error: unknown) => void;
 };
 
@@ -64,6 +66,7 @@ export async function deliverNotification(
     await deps.delay(AWAY_DELAY_MS);
     if (await deps.wasShown?.(n.id)) return "skipped";
     if (shouldToast(deps.state())) return toast();
+    if ((await deps.browserEnabled?.()) === false) return "skipped";
     if ((await deps.requestPermission()) !== "granted") return "skipped";
     deps.show(n.title, { body: n.body, tag: n.id });
     return "os";
