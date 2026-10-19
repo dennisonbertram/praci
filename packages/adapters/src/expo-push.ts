@@ -76,6 +76,7 @@ export function expoNotificationData(envelope: NotificationEnvelope, spaceId: st
     ...(envelope.link ? { link: envelope.link } : {}),
     ...(envelope.botId ? { botId: envelope.botId } : {}),
     ...(envelope.threadId ? { threadId: envelope.threadId } : {}),
+    ...(envelope.groupId ? { groupId: envelope.groupId } : {}),
     spaceId,
   };
 }

@@ -7262,7 +7262,12 @@ export function createRouter(deps: RouterDeps) {
         }
       }),
       markSeen: authed.notifications.markSeen.handler(async ({ context, input }) => ({
-        count: await markSeen(deps.prisma, { ...context.actor, surface: input.surface }),
+        count: await markSeen(deps.prisma, {
+          ...context.actor,
+          surface: input.surface,
+          id: input.id,
+          threadId: input.threadId,
+        }),
       })),
       markShown: authed.notifications.markShown.handler(async ({ context, input }) => ({
         ok: await markShown(deps.prisma, context.actor, input.id),

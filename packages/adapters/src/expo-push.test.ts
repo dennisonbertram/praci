@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ExpoPushProvider,
+  expoNotificationData,
   expoPushData,
   expoPushErrorMessage,
   MAX_EXPO_PUSH_RESPONSE_BYTES,
@@ -533,6 +534,30 @@ describe("expo push", () => {
       ),
     ).resolves.toBe("undeliverable");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("expoNotificationData", () => {
+  it("carries the group so a tap opens the group thread", () => {
+    const envelope = {
+      id: "n1",
+      title: "t",
+      body: null,
+      link: "/app/g/g1",
+      surface: "thread",
+      importance: "attention" as const,
+      botId: "b1",
+      threadId: "t1",
+      groupId: "g1",
+    };
+    expect(expoNotificationData(envelope, "space-1")).toMatchObject({
+      threadId: "t1",
+      groupId: "g1",
+      link: "/app/g/g1",
+    });
+    expect(expoNotificationData({ ...envelope, groupId: null }, "space-1")).not.toHaveProperty(
+      "groupId",
+    );
   });
 });
 

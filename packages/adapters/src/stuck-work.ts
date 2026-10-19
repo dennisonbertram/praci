@@ -12,7 +12,12 @@ import {
   stuckWorkStoppedNotification,
 } from "@rakazo/core";
 import type { NotificationEvents, Prisma, PrismaClient, ThreadEvents } from "@rakazo/db";
-import { appendEventInTransaction, expireStuckRun, withTransactionRetry } from "@rakazo/db";
+import {
+  appendEventInTransaction,
+  expireStuckRun,
+  externalChannels,
+  withTransactionRetry,
+} from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { notifyThreadEvent } from "./run-notification.js";
 
@@ -200,6 +205,9 @@ async function remindStuckRun(
   // A skipped push (notices off, no provider, or no push token yet) stays unmarked
   // so a later sweep can still remind during this same wait.
   if (!noticesEnabled(run)) return;
+  // With no phone or other channel there is nothing to send. Leave the episode unmarked so a
+  // device registered later is still reminded during this wait.
+  if ((await externalChannels(deps.prisma, run)).length === 0) return;
   const claimId = await withTransactionRetry(() =>
     deps.prisma.$transaction((tx) => claimStuckReminder(tx, run, deps.now)),
   );

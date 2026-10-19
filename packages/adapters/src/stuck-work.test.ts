@@ -11,6 +11,7 @@ vi.mock("./run-notification.js", () => ({ notifyThreadEvent: vi.fn(async () => "
 const now = new Date("2026-09-28T16:00:00.000Z");
 
 afterEach(() => {
+  phone.registered = true;
   vi.unstubAllGlobals();
 });
 
@@ -156,6 +157,26 @@ describe("reconcileStuckWork", () => {
 
     expect(send).toHaveBeenCalledTimes(1);
     expect(stamps).toHaveLength(1);
+  });
+
+  it("does not stamp a reminder until a device can receive it, then still reminds", async () => {
+    phone.registered = false;
+    const run = candidate("waiting_takeover", 5);
+    const stamps: Array<{ runId: string | null; payload: unknown }> = [];
+    const prisma = noticePrisma(run, stamps);
+    const { jobs } = publisher();
+    const { send } = notifications();
+
+    await reconcileStuckWork({ prisma, jobs, now, batchSize: 100 });
+    expect(send).not.toHaveBeenCalled();
+    expect(stamps).toHaveLength(0);
+
+    phone.registered = true;
+    await reconcileStuckWork({ prisma, jobs, now, batchSize: 100 });
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(stamps).toEqual([
+      expect.objectContaining({ payload: expect.objectContaining({ state: "delivered" }) }),
+    ]);
   });
 
   it("retries a pending reminder left behind when the worker stops", async () => {
@@ -441,6 +462,9 @@ function stampMatchesDelete(stamp: NoticeStamp, where: NoticeDeleteWhere | undef
   });
 }
 
+/** Whether the fake user has a registered push endpoint. */
+const phone = { registered: true };
+
 function noticePrisma(run: ReturnType<typeof candidate>, stamps: NoticeStamp[]) {
   let nextId = 0;
   const prisma = {
@@ -480,6 +504,10 @@ function noticePrisma(run: ReturnType<typeof candidate>, stamps: NoticeStamp[]) 
         return { count: before - stamps.length };
       }),
     },
+    notificationEndpoint: {
+      findMany: vi.fn(async () => (phone.registered ? [{ channel: "push" }] : [])),
+    },
+    notificationPreference: { findUnique: vi.fn(async () => null) },
     thread: { update: vi.fn(async () => ({ nextEventSeq: stamps.length + 1 })) },
     $queryRaw: vi.fn(async () => []),
     $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),

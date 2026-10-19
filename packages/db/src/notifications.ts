@@ -159,7 +159,7 @@ export async function createNotification(
 }
 
 /** Channels the user has an endpoint for (account-wide or in this space) and has not disabled. */
-async function externalChannels(
+export async function externalChannels(
   tx: Pick<PrismaClient, "notificationEndpoint" | "notificationPreference">,
   { spaceId, userId }: Scope,
 ): Promise<string[]> {
@@ -290,14 +290,23 @@ export async function listNotifications(
   return { items, nextCursor: rows.length > limit && last ? encodeNotificationCursor(last) : null };
 }
 
-/** Marks the surface's unseen notifications seen, returning how many changed. */
+/**
+ * Marks the surface's unseen notifications seen, returning how many changed. `id` or `threadId`
+ * limits it to one notification or one thread, so opening one toast leaves the rest unseen.
+ */
 export async function markSeen(
   prisma: Pick<PrismaClient, "notification">,
-  actor: Scope & { surface: string },
+  actor: Scope & { surface: string; id?: string; threadId?: string },
   now = new Date(),
 ): Promise<number> {
   const { count } = await prisma.notification.updateMany({
-    where: { ...ownerOf(actor), surface: actor.surface, seenAt: null },
+    where: {
+      ...ownerOf(actor),
+      surface: actor.surface,
+      seenAt: null,
+      ...(actor.id ? { id: actor.id } : {}),
+      ...(actor.threadId ? { threadId: actor.threadId } : {}),
+    },
     data: { seenAt: now },
   });
   return count;

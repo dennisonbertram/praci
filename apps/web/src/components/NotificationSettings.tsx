@@ -4,6 +4,7 @@ import { Switch } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import type { BrowserNotificationPermission } from "../lib/browser-notifications";
 import { requestBrowserNotificationPermission } from "../lib/browser-notifications";
+import { NOTIFICATION_SETTINGS_CHANGED } from "../lib/notification-delivery";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -35,6 +36,7 @@ export function NotificationSettingsSection() {
     setError("");
     try {
       setPrefs(await rpc.notifications.updatePreferences({ channels }));
+      window.dispatchEvent(new CustomEvent(NOTIFICATION_SETTINGS_CHANGED));
     } catch (cause) {
       setError(errorText(cause));
     } finally {
