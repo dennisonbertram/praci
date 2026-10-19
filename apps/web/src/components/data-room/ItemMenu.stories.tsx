@@ -24,3 +24,24 @@ export const FailedOpen: StoryObj = {
     await userEvent.click(await within(canvasElement).findByRole("button"));
   },
 };
+
+/** A file's "⋯" menu with the agents it can be sent to. */
+export const SendToAgentOpen: StoryObj = {
+  render: () => (
+    <ItemMenu
+      item={readyItem}
+      onAction={() => undefined}
+      agents={[
+        { id: "bot_ada", name: "Ada", color: "#6366f1" },
+        { id: "bot_ben", name: "Ben", color: "#10b981" },
+      ]}
+      onSendToAgent={() => undefined}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole("button"));
+    await userEvent.click(
+      await within(document.body).findByRole("menuitem", { name: "Send to agent" }),
+    );
+  },
+};

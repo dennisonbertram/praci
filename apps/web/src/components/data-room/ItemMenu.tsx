@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
 import { FolderInput, MoreHorizontal, Pencil, RotateCw, Trash2 } from "lucide-react";
+import { type SendTarget, SendToAgentMenu } from "./SendToAgent";
 
 export type ItemAction = "move" | "rename" | "delete" | "retry";
 
@@ -17,6 +18,8 @@ export function ItemMenu<T extends { name: string }>({
   item,
   onAction,
   canRetry = false,
+  agents,
+  onSendToAgent,
   open,
   onOpenChange,
   triggerTabIndex,
@@ -25,6 +28,9 @@ export function ItemMenu<T extends { name: string }>({
   item: T;
   onAction: (action: ItemAction, item: T) => void;
   canRetry?: boolean;
+  /** Files only: the agents a file can be sent to. */
+  agents?: SendTarget[];
+  onSendToAgent?: (item: T, agent: SendTarget) => void;
   /** Controlled open state, so a right-click elsewhere can open the menu. */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -45,7 +51,7 @@ export function ItemMenu<T extends { name: string }>({
       {/* React events bubble out of the portal into the row, which would pin it. */}
       <DropdownMenuContent
         align="end"
-        className="min-w-36"
+        className="min-w-40"
         onClick={(event) => event.stopPropagation()}
       >
         {canRetry ? (
@@ -57,6 +63,11 @@ export function ItemMenu<T extends { name: string }>({
             <DropdownMenuSeparator />
           </>
         ) : null}
+        <SendToAgentMenu
+          menu="dropdown"
+          agents={onSendToAgent ? agents : undefined}
+          onPick={(agent) => onSendToAgent?.(item, agent)}
+        />
         <DropdownMenuItem onClick={() => onAction("move", item)}>
           <FolderInput aria-hidden="true" />
           <Trans>Move</Trans>

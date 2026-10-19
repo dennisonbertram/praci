@@ -8,6 +8,7 @@ import type {
   BotSection,
   ComputerReleaseReason,
   ComputerStatus,
+  DataRoomApiItem,
   Group,
   MailEdits,
   Me,
@@ -190,6 +191,8 @@ import { ConnectAppsButton } from "../components/ConnectAppsButton";
 import { CallCard } from "../components/call/CallCard";
 import { VoiceChatCard } from "../components/call/VoiceChatCard";
 import { ComputerWorkspace } from "../components/computer/ComputerWorkspace";
+import { fileIcon } from "../components/data-room/ItemRows";
+import type { SendTarget } from "../components/data-room/SendToAgent";
 import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
@@ -255,6 +258,7 @@ import {
   screenIframeSandbox,
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
+import { fetchDataRoomBlob } from "../lib/data-room";
 import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
@@ -290,6 +294,7 @@ import {
 import { type MissingBotSeen, resolveRouteBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
+import { type DataRoomRef, planSendToAgent, sendTargets } from "../lib/send-to-agent";
 import { sharedInflight } from "../lib/shared-inflight";
 import {
   PANEL_DOCKED_QUERY,
@@ -514,6 +519,7 @@ export function ShellPage() {
   const userId = session.data?.user.id;
   const [groups, setGroups] = useState<Group[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
+  const sendToAgentTargets = useMemo(() => sendTargets(bots), [bots]);
   const botsRef = useRef(bots);
   botsRef.current = bots;
   const voiceCallStarting = useRef(false);
@@ -594,6 +600,7 @@ export function ShellPage() {
     () => "comfortable",
   );
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
+  const [pendingItems, setPendingItems] = useState<DataRoomRef[]>([]);
   const [replyTarget, setReplyTarget] = useState<ThreadMessage | null>(null);
   const [replyQuote, setReplyQuote] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -1055,6 +1062,10 @@ export function ShellPage() {
   const forwardedName = forwarded
     ? (groups.find((group) => group.id === forwarded.groupId)?.name ?? t`the group`)
     : "";
+  const activeDataRoomItems = useMemo(
+    () => pendingItems.filter((ref) => ref.threadKey === (inGroup ? groupId : active?.id)),
+    [active?.id, groupId, inGroup, pendingItems],
+  );
   const activePendingAttachments = useMemo(
     () => attachmentsForThread(pendingAttachments, inGroup ? groupId : active?.id),
     [active?.id, groupId, inGroup, pendingAttachments],
@@ -2416,7 +2427,7 @@ export function ShellPage() {
     useCallback((error: unknown) => setSendError(errorText(error, t`Could not remember`)), [t]),
   );
   const onAttachmentPick = useCallback(
-    (files: FileList | null, targetThreadKey?: string) => {
+    (files: ArrayLike<File> | null, targetThreadKey?: string) => {
       const threadKey = targetThreadKey ?? activeGroupId.current ?? activeBotId.current;
       if (!threadKey || !files?.length) return false;
       const existing = attachmentsForThread(pendingAttachments, threadKey);
@@ -2454,6 +2465,40 @@ export function ShellPage() {
     revokePendingAttachmentPreviews([attachment]);
     setPendingAttachments((current) => current.filter((item) => item.id !== attachment.id));
   }, []);
+  const sendFilesToAgent = useCallback(
+    async (items: DataRoomApiItem[], agent: SendTarget) => {
+      const bot = botsRef.current.find((candidate) => candidate.id === agent.id);
+      if (!bot) return;
+      const { refs, copies } = planSendToAgent(bot, items);
+      if (refs.length) {
+        setPendingItems((current) => [
+          ...current.filter(
+            (ref) => ref.threadKey !== bot.id || !refs.some((item) => item.id === ref.id),
+          ),
+          ...refs.map(({ id, name, mimeType }) => ({ id, name, mimeType, threadKey: bot.id })),
+        ]);
+      }
+      // The attachment notice belongs to the thread that opens next.
+      keepNoticeFor.current = bot.id;
+      navigate(`/app/${bot.id}`);
+      if (!copies.length) return;
+      const files: File[] = [];
+      const failed: string[] = [];
+      for (const item of copies) {
+        try {
+          files.push(new File([await fetchDataRoomBlob(item)], item.name, { type: item.mimeType }));
+        } catch {
+          failed.push(item.name);
+        }
+      }
+      onAttachmentPick(files, bot.id);
+      if (failed.length) setAttachmentNotice(t`Skipped ${failed.join(", ")}`);
+    },
+    [navigate, onAttachmentPick, t],
+  );
+  const removeDataRoomItem = useCallback((ref: DataRoomRef) => {
+    setPendingItems((current) => current.filter((item) => item !== ref));
+  }, []);
   const sendMessage = useCallback(
     async (text: string, mentions: ComposerMention[], clientNonce: string) => {
       const initialBotTarget = activeBotId.current;
@@ -2461,10 +2506,11 @@ export function ShellPage() {
       if ((!initialBotTarget && !initialGroupTarget) || sending) return false;
       const originThreadKey = initialGroupTarget ?? initialBotTarget;
       const attachments = attachmentsForThread(pendingAttachments, originThreadKey);
+      const dataRoomItems = pendingItems.filter((ref) => ref.threadKey === originThreadKey);
       const plan = resolveComposerSendPlan({
         text,
         mentions,
-        hasAttachments: attachments.length > 0,
+        hasAttachments: attachments.length > 0 || dataRoomItems.length > 0,
       });
       if (plan.isNoOp) return false;
       const reroutedToGroup = Boolean(
@@ -2505,6 +2551,7 @@ export function ShellPage() {
           setPendingAttachments((current) =>
             current.filter((attachment) => attachment.threadKey !== originThreadKey),
           );
+          setPendingItems((current) => current.filter((ref) => ref.threadKey !== originThreadKey));
           setAttachmentNotice(null);
           if (reroutedToGroup && groupTarget) {
             showForwarded(groupTarget, originThreadKey);
@@ -2551,6 +2598,7 @@ export function ShellPage() {
             text: trimmed || undefined,
             mentions: plan.mentionPayload.length ? plan.mentionPayload : undefined,
             artifactIds: artifactIds.length ? artifactIds : undefined,
+            dataRoomItemIds: dataRoomItems.length ? dataRoomItems.map((ref) => ref.id) : undefined,
             replyToMessageId: activeReplyTarget?.id,
             replyQuote: activeReplyQuote ?? undefined,
           });
@@ -2574,6 +2622,7 @@ export function ShellPage() {
         setPendingAttachments((current) =>
           current.filter((attachment) => attachment.threadKey !== originThreadKey),
         );
+        setPendingItems((current) => current.filter((ref) => ref.threadKey !== originThreadKey));
         void refreshBots().catch(() => undefined);
         if (reroutedToGroup && groupTarget) {
           showForwarded(groupTarget, originThreadKey);
@@ -2599,7 +2648,16 @@ export function ShellPage() {
         setSending(false);
       }
     },
-    [activeReplyTarget?.id, activeReplyQuote, clearReply, navigate, pendingAttachments, sending, t],
+    [
+      activeReplyTarget?.id,
+      activeReplyQuote,
+      clearReply,
+      navigate,
+      pendingAttachments,
+      pendingItems,
+      sending,
+      t,
+    ],
   );
   const stopRun = useCallback(async () => {
     if (sending) return;
@@ -3141,6 +3199,7 @@ export function ShellPage() {
       revokePendingAttachmentPreviews(stale);
       return attachmentsForThread(current, threadKey);
     });
+    setPendingItems((current) => current.filter((ref) => ref.threadKey === threadKey));
     clearReply();
     if (keepNoticeFor.current === threadKey) keepNoticeFor.current = null;
     else setAttachmentNotice(null);
@@ -3479,6 +3538,8 @@ export function ShellPage() {
               running={composerShowsStop(currentRuns)}
               disabled={composerDisabled}
               pendingAttachments={activePendingAttachments}
+              dataRoomItems={activeDataRoomItems}
+              onRemoveDataRoomItem={removeDataRoomItem}
               attachmentNotice={attachmentNotice}
               onDismissAttachmentNotice={() => setAttachmentNotice(null)}
               sendError={sendError}
@@ -4772,6 +4833,8 @@ export function ShellPage() {
         ) : dataRoomMode ? (
           <DataRoomPage
             onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
+            agents={sendToAgentTargets}
+            onSendToAgent={(item, agent) => void sendFilesToAgent([item], agent)}
             spaceName={
               spaces.length > 1
                 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
@@ -6915,6 +6978,8 @@ export const Composer = memo(function Composer({
   running,
   disabled,
   pendingAttachments,
+  dataRoomItems = [],
+  onRemoveDataRoomItem,
   attachmentNotice,
   onDismissAttachmentNotice,
   sendError,
@@ -6945,6 +7010,9 @@ export const Composer = memo(function Composer({
   running: boolean;
   disabled?: boolean;
   pendingAttachments: PendingAttachment[];
+  /** Data room files sent by reference with the next message. */
+  dataRoomItems?: DataRoomRef[];
+  onRemoveDataRoomItem?: (item: DataRoomRef) => void;
   attachmentNotice: string | null;
   onDismissAttachmentNotice?: () => void;
   sendError: string | null;
@@ -7036,7 +7104,8 @@ export const Composer = memo(function Composer({
     draft.trim().length > 0 ||
     selectedSkill !== null ||
     selectedMentions.length > 0 ||
-    pendingAttachments.length > 0;
+    pendingAttachments.length > 0 ||
+    dataRoomItems.length > 0;
 
   useEffect(() => {
     if (!runError || !runErrorId) return;
@@ -7516,8 +7585,34 @@ export const Composer = memo(function Composer({
           ) : null}
         </div>
       ) : null}
-      {pendingAttachments.length ? (
+      {pendingAttachments.length || dataRoomItems.length ? (
         <div className="mb-3 flex flex-wrap gap-2">
+          {dataRoomItems.map((ref) => {
+            const Icon = fileIcon(ref);
+            return (
+              <div
+                key={ref.id}
+                data-testid="data-room-chip"
+                className="flex items-center gap-2 rounded-full border border-border bg-muted px-3 py-1.5 text-[13px] text-foreground/75"
+              >
+                <Icon aria-hidden="true" size={14} strokeWidth={1.8} />
+                <span className="max-w-[180px] truncate" dir="auto">
+                  {ref.name}
+                </span>
+                <button
+                  type="button"
+                  aria-label={t`Remove ${ref.name}`}
+                  onClick={() => {
+                    markEdited();
+                    onRemoveDataRoomItem?.(ref);
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <X size={13} strokeWidth={2} />
+                </button>
+              </div>
+            );
+          })}
           {pendingAttachments.map((attachment) => (
             <div
               key={attachment.id}
