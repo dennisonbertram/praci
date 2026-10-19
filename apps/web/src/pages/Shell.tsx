@@ -4427,7 +4427,7 @@ export function ShellPage() {
           ) : null}
         </div>
         {/* The top border shows that the list above scrolls under this row. */}
-        <div className="border-t border-sidebar-border pt-1">
+        <div className="border-t border-sidebar-border px-2.5 pt-1">
           <ConnectAppsButton
             active={integrationsMode}
             onClick={() => {
