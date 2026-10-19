@@ -94,6 +94,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
             pdf: PDF,
           },
           { id: "dir1", name: "Folder", mimeType: "application/vnd.google-apps.folder" },
+          { id: "solo", name: "solo.pdf", mimeType: "application/pdf", bytes: PDF },
           { id: "p1", name: "top.pdf", mimeType: "application/pdf", bytes: PDF, parents: ["dir1"] },
           {
             id: "sub1",
@@ -870,7 +871,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
       },
     });
     const listed = await client(actors.a).dataRoom.driveList({});
-    expect(listed.files.map((f) => f.id).sort()).toEqual(["dir1", "doc1"]);
+    expect(listed.files.map((f) => f.id).sort()).toEqual(["dir1", "doc1", "solo"]);
 
     const before = enqueued.length;
     await expect(client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] })).resolves.toEqual({
@@ -1080,6 +1081,30 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await runDriveImport({ prisma, jobs } as never, plan);
     expect(await prisma.dataRoomFolder.count({ where: { name: `Half ${run}` } })).toBe(1);
     expect(new Set(queued)).toEqual(new Set(["p1", "p2"]));
+  });
+
+  it("files direct picks with a folder import only through the one queued plan", async () => {
+    const a = client(actors.a);
+    const itemCount = () =>
+      prisma.dataRoomItem.count({ where: { userId: actors.a.userId, externalId: "solo" } });
+    failEnqueue = true;
+    await expect(
+      a.dataRoom.importDrive({ driveFolderIds: ["dir1"], fileIds: ["solo"] }),
+    ).rejects.toThrow();
+    failEnqueue = false;
+    expect(await itemCount()).toBe(0);
+
+    const start = enqueued.length;
+    const result = await a.dataRoom.importDrive({ driveFolderIds: ["dir1"], fileIds: ["solo"] });
+    expect(result).toMatchObject({ imported: 0, queued: 3 });
+    expect(await itemCount()).toBe(0);
+    const [job] = enqueued.slice(start).filter((j) => j.name === "dataroom.drive.import");
+    expect(
+      ((job as BackgroundJob).payload as unknown as { files: unknown[] }).files,
+    ).toContainEqual({
+      id: "solo",
+      folder: null,
+    });
   });
 
   it("refuses a folder import over the file limit before creating anything", async () => {

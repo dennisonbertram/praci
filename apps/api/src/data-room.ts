@@ -492,6 +492,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
         let duplicates = 0;
         let failed = 0;
         // Listing is read-only, so an over-limit selection is refused before anything is written.
+        // Direct picks join the plan, so a mixed import writes only the one queued job.
         const plan = input.driveFolderIds?.length
           ? await planDriveFolders(drive, context, {
               connectionId: sourceConnectionId,
@@ -500,7 +501,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
               maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
             })
           : undefined;
-        for (const externalId of new Set(input.fileIds)) {
+        for (const externalId of plan ? [] : new Set(input.fileIds)) {
           if (await known(actor, externalId, sourceConnectionId)) {
             duplicates += 1;
             continue;
@@ -536,7 +537,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
         }
         if (!plan) return { imported, duplicates, failed };
         // One queued job holds the whole plan: it either exists, or nothing was written.
-        if (plan.folders.length > 0)
+        if (plan.folders.length > 0 || plan.files.length > 0)
           await deps.jobs.enqueue(
             dataRoomDriveImportJob({
               spaceId: actor.spaceId,

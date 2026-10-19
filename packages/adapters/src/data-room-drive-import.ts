@@ -26,8 +26,8 @@ const FLATTEN = " > ";
 export type DrivePlan = {
   /** Data room folders to create. `parent` indexes an earlier entry; null is the import target. */
   folders: { name: string; parent: number | null }[];
-  /** Files to import; `folder` indexes `folders`. */
-  files: { id: string; folder: number }[];
+  /** Files to import; `folder` indexes `folders`, null is the import target (direct picks). */
+  files: { id: string; folder: number | null }[];
   /** Selected ids that are not folders, and files that cannot be imported (type or size). */
   skipped: number;
 };
@@ -35,7 +35,9 @@ export type DrivePlan = {
 /**
  * Walks the selected Drive folders and all their subfolders, read-only. Throws `too_many` before
  * anything is written when the selection is over the limit. Shortcuts and other Google files with
- * nothing to download are skipped and counted, never followed.
+ * nothing to download are skipped and counted, never followed. A selected folder inside another
+ * selected folder stays nested; a directly picked file inside a selected folder goes to that
+ * folder, and the other direct picks go to the import target.
  */
 export async function planDriveFolders(
   deps: DriveFilesDeps,
@@ -50,87 +52,108 @@ export async function planDriveFolders(
   },
 ): Promise<DrivePlan> {
   const target = { connectionId: input.connectionId };
-  const plan: DrivePlan = { folders: [], files: [], skipped: 0 };
-  const seenFolders = new Set<string>();
-  const seenFiles = new Set<string>();
   const tooMany = () =>
     new DriveFileError(
       "too_many",
       `Folder imports are limited to ${DRIVE_IMPORT_MAX_FILES} files.`,
     );
-  const direct = new Set(input.directFileIds);
   const maxScanned = input.maxScanned ?? DRIVE_IMPORT_MAX_SCANNED;
-  let scanned = 0;
   const tooManyScanned = (max: number) =>
     new DriveFileError("too_many", `Folder imports are limited to ${max} items.`);
-  const queue: { id: string; index: number }[] = [];
-  const depths: number[] = [];
-
-  const add = (id: string, name: string, parent: number | null) => {
-    const depth = parent === null ? 1 : (depths[parent] ?? 0) + 1;
-    if (plan.folders.length >= DRIVE_IMPORT_MAX_FILES) throw tooMany();
-    const own = dataRoomSafeName(name, "Folder");
-    const above = parent === null ? undefined : plan.folders[parent];
-    // The last level and everything below it sit in the depth-limit ancestor, the path in the name.
-    const flat = depth > DRIVE_IMPORT_MAX_DEPTH && above;
-    plan.folders.push(
-      flat
-        ? { name: dataRoomSafeName(`${above.name}${FLATTEN}${own}`, own), parent: above.parent }
-        : { name: own, parent },
-    );
-    depths.push(depth);
-    queue.push({ id, index: plan.folders.length - 1 });
-  };
-
+  let skippedSelected = 0;
+  const selected: { id: string; name: string }[] = [];
   for (const id of new Set(input.folderIds)) {
     const root = await getDriveFile(deps, context, id, target).catch((error: unknown) => {
       if (error instanceof DriveFileError && error.code === "not_found") return null;
       throw error;
     });
-    if (!root?.isFolder) plan.skipped += 1;
-    else if (!seenFolders.has(root.id)) {
-      seenFolders.add(root.id);
-      add(root.id, root.name, null);
-    }
+    if (root?.isFolder) selected.push({ id: root.id, name: root.name });
+    else skippedSelected += 1;
   }
 
-  for (let next = 0; next < queue.length; next++) {
-    const current = queue[next];
-    if (!current) break;
-    let pageToken: string | undefined;
-    do {
-      // An empty folder still costs a request, so a request counts as an entry.
-      if (++scanned > maxScanned) throw tooManyScanned(maxScanned);
-      const page = await listDriveFiles(deps, context, {
-        ...target,
-        folderId: current.id,
-        ...(pageToken ? { pageToken } : {}),
-      });
-      scanned += page.files.length;
-      if (scanned > maxScanned) throw tooManyScanned(maxScanned);
-      for (const child of page.files) {
-        if (child.isFolder) {
-          if (seenFolders.has(child.id)) continue;
-          seenFolders.add(child.id);
-          add(child.id, child.name, current.index);
-        } else if (!seenFiles.has(child.id) && !direct.has(child.id)) {
-          seenFiles.add(child.id);
-          const tooBig = child.size !== undefined && child.size > input.maxBytes;
-          if (
-            !isImportableDriveFile(child) ||
-            (tooBig && !child.mimeType.startsWith("application/vnd.google-apps."))
-          ) {
-            plan.skipped += 1;
-          } else {
-            if (plan.files.length + direct.size >= DRIVE_IMPORT_MAX_FILES) throw tooMany();
-            plan.files.push({ id: child.id, folder: current.index });
+  const walk = async (roots: { id: string; name: string }[]) => {
+    const plan: DrivePlan = { folders: [], files: [], skipped: skippedSelected };
+    const rootIds = new Set(roots.map((root) => root.id));
+    const covered = new Set<string>();
+    const seenFolders = new Set(rootIds);
+    const seenFiles = new Set<string>();
+    const names = new Map<number | null, Set<string>>();
+    let scanned = 0;
+    const queue: { id: string; index: number }[] = [];
+    const depths: number[] = [];
+
+    const add = (id: string, name: string, parent: number | null) => {
+      const depth = parent === null ? 1 : (depths[parent] ?? 0) + 1;
+      if (plan.folders.length >= DRIVE_IMPORT_MAX_FILES) throw tooMany();
+      const own = dataRoomSafeName(name, "Folder");
+      const above = parent === null ? undefined : plan.folders[parent];
+      // The last level and everything below it sit in the depth-limit ancestor, the path in the name.
+      const flat = depth > DRIVE_IMPORT_MAX_DEPTH && above;
+      const place = flat ? above.parent : parent;
+      const wanted = flat ? dataRoomSafeName(`${above.name}${FLATTEN}${own}`, own) : own;
+      // Distinct Drive folders never share a name, or the import would merge them.
+      const taken = names.get(place) ?? new Set<string>();
+      names.set(place, taken);
+      let unique = wanted;
+      for (let n = 2; taken.has(unique); n++) unique = dataRoomSafeName(`${wanted} (${n})`, wanted);
+      taken.add(unique);
+      plan.folders.push({ name: unique, parent: place });
+      depths.push(depth);
+      queue.push({ id, index: plan.folders.length - 1 });
+    };
+
+    for (const root of roots) add(root.id, root.name, null);
+
+    for (let next = 0; next < queue.length; next++) {
+      const current = queue[next];
+      if (!current) break;
+      let pageToken: string | undefined;
+      do {
+        // An empty folder still costs a request, so a request counts as an entry.
+        if (++scanned > maxScanned) throw tooManyScanned(maxScanned);
+        const page = await listDriveFiles(deps, context, {
+          ...target,
+          folderId: current.id,
+          ...(pageToken ? { pageToken } : {}),
+        });
+        scanned += page.files.length;
+        if (scanned > maxScanned) throw tooManyScanned(maxScanned);
+        for (const child of page.files) {
+          if (child.isFolder) {
+            if (rootIds.has(child.id)) covered.add(child.id);
+            if (seenFolders.has(child.id)) continue;
+            seenFolders.add(child.id);
+            add(child.id, child.name, current.index);
+          } else if (!seenFiles.has(child.id)) {
+            seenFiles.add(child.id);
+            const tooBig = child.size !== undefined && child.size > input.maxBytes;
+            if (
+              !isImportableDriveFile(child) ||
+              (tooBig && !child.mimeType.startsWith("application/vnd.google-apps."))
+            ) {
+              plan.skipped += 1;
+            } else {
+              if (plan.files.length >= DRIVE_IMPORT_MAX_FILES) throw tooMany();
+              plan.files.push({ id: child.id, folder: current.index });
+            }
           }
         }
-      }
-      pageToken = page.nextPageToken;
-    } while (pageToken);
-  }
-  return plan;
+        pageToken = page.nextPageToken;
+      } while (pageToken);
+    }
+    for (const id of new Set(input.directFileIds)) {
+      if (seenFiles.has(id)) continue;
+      if (plan.files.length >= DRIVE_IMPORT_MAX_FILES) throw tooMany();
+      plan.files.push({ id, folder: null });
+    }
+    return { plan, covered };
+  };
+
+  const first = await walk(selected);
+  if (first.covered.size === 0) return first.plan;
+  // A selected folder reached under another selected folder is already covered: walk again
+  // without it as a root so it stays nested.
+  return (await walk(selected.filter((root) => !first.covered.has(root.id)))).plan;
 }
 
 type Scope = { spaceId: string; userId: string; connectionId: string };
@@ -249,7 +272,7 @@ export async function runDriveImport(
   payload: Scope & {
     folderId: string | null;
     folders: { name: string; parent: number | null }[];
-    files: { id: string; folder: number }[];
+    files: { id: string; folder: number | null }[];
   },
 ): Promise<void> {
   if (!(await stillAuthorized(deps, payload))) return;
@@ -267,7 +290,12 @@ export async function runDriveImport(
   }
   for (const file of payload.files) {
     await deps.jobs.enqueue(
-      dataRoomDriveFileJob(actor, payload.connectionId, file.id, roomFolders[file.folder] ?? null),
+      dataRoomDriveFileJob(
+        actor,
+        payload.connectionId,
+        file.id,
+        file.folder === null ? payload.folderId : (roomFolders[file.folder] ?? null),
+      ),
     );
   }
 }

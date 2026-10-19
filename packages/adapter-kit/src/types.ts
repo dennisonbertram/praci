@@ -690,8 +690,8 @@ export interface BackgroundJobPayloads {
     folderId: string | null;
     /** `parent` indexes an earlier entry; null is `folderId`. */
     folders: { name: string; parent: number | null }[];
-    /** `folder` indexes `folders`. */
-    files: { id: string; folder: number }[];
+    /** `folder` indexes `folders`; null is `folderId`. */
+    files: { id: string; folder: number | null }[];
   };
   /** Downloads one Drive file of a folder import and files it; a repeat files nothing. */
   "dataroom.drive.file": {

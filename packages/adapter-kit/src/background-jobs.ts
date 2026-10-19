@@ -46,7 +46,9 @@ const payloadSchemas = {
       )
       .max(500),
     files: z
-      .array(z.object({ id: z.string().min(1).max(200), folder: z.number().int().min(0) }))
+      .array(
+        z.object({ id: z.string().min(1).max(200), folder: z.number().int().min(0).nullable() }),
+      )
       .max(500),
   }),
   "dataroom.drive.file": z.object({

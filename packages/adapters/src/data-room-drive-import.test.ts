@@ -155,6 +155,54 @@ describe("planDriveFolders", () => {
     expect(result.skipped).toBe(1);
   });
 
+  it("keeps a selected subfolder nested under its selected parent, imported once", async () => {
+    const deps = setup([
+      folder("top", "Top"),
+      folder("kid", "Kid", "top"),
+      pdf("a", "a.pdf", "kid"),
+    ]);
+    for (const order of [
+      ["top", "kid"],
+      ["kid", "top"],
+    ]) {
+      const result = await plan(deps, order);
+      expect(result.folders).toEqual([
+        { name: "Top", parent: null },
+        { name: "Kid", parent: 0 },
+      ]);
+      expect(result.files).toEqual([{ id: "a", folder: 1 }]);
+    }
+  });
+
+  it("never gives distinct sibling Drive folders one name", async () => {
+    const deps = setup([
+      folder("top", "Top"),
+      folder("x", "a/b", "top"),
+      folder("y", "a_b", "top"),
+      folder("z", "a_b (2)", "top"),
+      pdf("f", "f.pdf", "y"),
+    ]);
+    const result = await plan(deps, ["top"]);
+    const names = result.folders.map((f) => f.name);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names.slice(1).sort()).toEqual(["a_b", "a_b (2)", "a_b (2) (2)"].sort());
+    // Planning twice gives the same names, so a re-import reuses the same folders.
+    expect((await plan(deps, ["top"])).folders).toEqual(result.folders);
+    // Two selected roots with the same name stay separate too.
+    const roots = await plan(setup([folder("r1", "Same"), folder("r2", "Same")]), ["r1", "r2"]);
+    expect(roots.folders.map((f) => f.name)).toEqual(["Same", "Same (2)"]);
+  });
+
+  it("accepts exactly the limit and refuses one more", async () => {
+    const files = (n: number) =>
+      Array.from({ length: n }, (_, i) => pdf(`f${i}`, `f${i}.pdf`, "top"));
+    const ok = await plan(setup([folder("top", "Big"), ...files(DRIVE_IMPORT_MAX_FILES)]), ["top"]);
+    expect(ok.files).toHaveLength(DRIVE_IMPORT_MAX_FILES);
+    await expect(
+      plan(setup([folder("top", "Big"), ...files(DRIVE_IMPORT_MAX_FILES + 1)]), ["top"]),
+    ).rejects.toMatchObject({ code: "too_many" });
+  });
+
   it("counts a direct pick with the folder files against the limit, once per file", async () => {
     const files = Array.from({ length: DRIVE_IMPORT_MAX_FILES }, (_, i) =>
       pdf(`f${i}`, `f${i}.pdf`, "top"),
@@ -170,7 +218,26 @@ describe("planDriveFolders", () => {
     await expect(run(["extra"])).rejects.toMatchObject({ code: "too_many" });
     // A direct pick that is also in the folder is one file.
     const result = await run(["f0"]);
-    expect(result.files).toHaveLength(DRIVE_IMPORT_MAX_FILES - 1);
+    expect(result.files).toHaveLength(DRIVE_IMPORT_MAX_FILES);
+  });
+
+  it("files a direct pick inside a selected folder in that folder, and others in the target", async () => {
+    const deps = setup([
+      folder("top", "Top"),
+      folder("kid", "Kid", "top"),
+      pdf("in", "in.pdf", "kid"),
+      pdf("out", "out.pdf", "elsewhere"),
+    ]);
+    const result = await planDriveFolders(deps, context, {
+      connectionId: "conn-a",
+      folderIds: ["top"],
+      directFileIds: ["in", "out"],
+      maxBytes: 1000,
+    });
+    expect(result.files).toEqual([
+      { id: "in", folder: 1 },
+      { id: "out", folder: null },
+    ]);
   });
 
   it("bounds how many entries it scans, even when none can be imported", async () => {
