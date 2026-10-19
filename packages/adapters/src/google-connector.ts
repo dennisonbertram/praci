@@ -322,6 +322,8 @@ export class GoogleConnector implements ManagedConnectorProvider {
       const first = await this.gmailFetch(row, request, context, false);
       return first.status === 401 ? await this.gmailFetch(row, request, context, true) : first;
     } catch (error) {
+      // A cancellation is not an upstream failure; callers tell the two apart.
+      if (context.signal.aborted) throw context.signal.reason;
       if (error instanceof GoogleAuthError && error.invalidGrant) return { status: 401, data: {} };
       throw new Error(sanitizeConnectorError(error, [this.config.clientSecret]));
     }

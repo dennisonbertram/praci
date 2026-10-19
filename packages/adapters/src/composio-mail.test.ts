@@ -9,6 +9,7 @@ import { ComposioConnector } from "./composio-connector.js";
 import { ComposioEmulator } from "./composio-emulator.js";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
+import { GoogleApiClient } from "./google-api-request.js";
 import {
   assertMailChangesConformance,
   assertMailConformance,
@@ -453,5 +454,41 @@ describe("transient Composio failures during a mail listing", () => {
     expect(error.detail).toContain("502");
     expect(error.detail).not.toContain("ck_live_supersecret");
     expect(error.detail).not.toContain("abc.def");
+  });
+});
+
+describe("ComposioConnector cancellation", () => {
+  beforeEach(() => {
+    sdk.proxyExecute.mockReset();
+  });
+  const request = (signal: AbortSignal) =>
+    new GoogleApiClient({ sleep: async () => undefined, random: () => 0, startGapMs: 0 }).request({
+      connector: new ComposioConnector("test-key"),
+      account: { connectorId: "composio", providerRef: "ca-1", app: "GMAIL" },
+      method: "GET",
+      url: "https://gmail.googleapis.com/gmail/v1/users/me/profile",
+      context: { ...context, signal },
+    });
+
+  it("reports a deadline abort in flight as an abort, not a transport failure", async () => {
+    const controller = new AbortController();
+    sdk.proxyExecute.mockImplementation(
+      (_body, options) =>
+        new Promise((_, reject) =>
+          options?.signal?.addEventListener("abort", () => reject(new Error("Request failed")), {
+            once: true,
+          }),
+        ),
+    );
+    const pending = request(controller.signal);
+    setTimeout(() => controller.abort(), 10);
+    await expect(pending).rejects.toMatchObject({ kind: "aborted" });
+  });
+
+  it("still reports a genuine upstream error as a transport failure", async () => {
+    sdk.proxyExecute.mockRejectedValue(Object.assign(new Error("bad gateway"), { status: 503 }));
+    await expect(request(new AbortController().signal)).rejects.toMatchObject({
+      kind: "transport",
+    });
   });
 });

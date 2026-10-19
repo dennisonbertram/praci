@@ -239,12 +239,11 @@ export class GoogleApiClient {
   }
 }
 
-function isAbort(cause: unknown, signal: AbortSignal): boolean {
-  return (
-    cause === signal.reason ||
-    (typeof cause === "object" &&
-      cause !== null &&
-      "name" in cause &&
-      (cause.name === "AbortError" || cause.name === "TimeoutError"))
-  );
+function isAbort(cause: unknown, signal: AbortSignal, depth = 0): boolean {
+  if (cause === signal.reason) return true;
+  if (typeof cause !== "object" || cause === null) return false;
+  if ("name" in cause && (cause.name === "AbortError" || cause.name === "TimeoutError"))
+    return true;
+  // A connector may wrap the cancellation; the original stays on the cause chain.
+  return depth < 5 && "cause" in cause && isAbort(cause.cause, signal, depth + 1);
 }

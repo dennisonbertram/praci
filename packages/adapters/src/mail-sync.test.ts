@@ -2,7 +2,7 @@ import type { AdapterContext, JobPublisher, MailAccount, MailProvider } from "@r
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { createLogger, createTestSink, getLogger, installLogger } from "@rakazo/logging";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { syncMailbox } from "./mail-sync.js";
 
 const account: MailAccount = {
@@ -94,5 +94,35 @@ describe("syncMailbox provider failures", () => {
     expect(sink.events.find((e) => e.message === "mail sync cancelled")).toMatchObject({
       level: "info",
     });
+  });
+});
+
+describe("syncMailbox deadline timers", () => {
+  afterEach(() => vi.useRealTimers());
+  const outcomes = {
+    success: async () => ({ messages: [], unhydratedIds: [] }),
+    failure: async () => {
+      throw new MailProviderError("unavailable", "Mail request failed");
+    },
+  };
+
+  for (const [name, list] of Object.entries(outcomes)) {
+    it(`leaves no timer pending after a ${name}`, async () => {
+      vi.useFakeTimers();
+      const { run } = setup(list);
+      await run(new AbortController().signal);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  }
+
+  it("leaves no timer pending after the caller cancels", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const { run } = setup(async () => {
+      controller.abort();
+      throw new MailProviderError("unavailable", "Mail request aborted");
+    });
+    await run(controller.signal);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });
