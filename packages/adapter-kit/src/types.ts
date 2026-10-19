@@ -664,6 +664,10 @@ export interface BackgroundJobPayloads {
   "skill.teaching-expire": { skillId: string };
   "history.compact": { threadId: string };
   "messaging.deliver": { runId?: string };
+  /** Sends due external notification deliveries; run every minute by the worker's cron. */
+  "notifications.deliver": Record<string, never>;
+  /** Deletes expired notifications and deliveries; run daily by the worker's cron. */
+  "notifications.retention": Record<string, never>;
   /** Reconcile durable remote-agent intent; scope is loaded from the database. */
   "cloud_agent.poll": { agentId: string };
   /** Deletes a saved mail search (and its rows) once it has expired. */
@@ -756,6 +760,28 @@ export interface NotificationMessage {
   /** Group chat that owns threadId, so a tap does not open the bot's direct thread. */
   groupId?: string;
 }
+
+/** What a channel sends: one stored notification. The id doubles as the idempotency key. */
+export interface NotificationEnvelope {
+  id: string;
+  title: string;
+  body: string | null;
+  link: string | null;
+  surface: string;
+  importance: "info" | "attention";
+  botId: string | null;
+  threadId: string | null;
+}
+
+/** Where a channel reaches the user: a device token, a Slack user, an address. */
+export interface NotificationEndpointRef {
+  id: string;
+  address: string;
+  sessionId: string | null;
+}
+
+/** `endpointGone` means the address is permanently dead and should be deleted. */
+export type NotificationSendResult = "sent" | "endpointGone";
 
 /** A product-authored transactional email, independent of its delivery vendor. */
 export interface TransactionalEmail {

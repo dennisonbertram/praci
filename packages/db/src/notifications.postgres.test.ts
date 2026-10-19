@@ -248,10 +248,14 @@ describePostgres("notifications (PostgreSQL)", () => {
     await mk(sameSpace, "legal", "peer-legal");
     await mk(otherSpace, "legal", "other-space");
     await mk(ctx, "legal", "ctx-legal");
-    const own = (await listNotifications(prisma, { ...mine })).filter((x) => x.botId === botId);
+    const own = (await listNotifications(prisma, { ...mine })).items.filter(
+      (x) => x.botId === botId,
+    );
     expect(own.map((x) => x.title).sort()).toEqual(["mine-fin", "mine-legal", "mine-legal-2"]);
     const since = (ms: number) =>
-      listNotifications(prisma, { ...mine, since: new Date(t0.getTime() + ms) });
+      listNotifications(prisma, { ...mine, since: new Date(t0.getTime() + ms) }).then(
+        (page) => page.items,
+      );
     expect((await since(-1)).filter((x) => x.botId === botId)).toHaveLength(3);
     expect((await since(1)).filter((x) => x.botId === botId)).toEqual([]);
     expect((await unseenCounts(prisma, mine)).legal).toBe(2);
@@ -268,6 +272,40 @@ describePostgres("notifications (PostgreSQL)", () => {
     expect(
       (await prisma.notification.findUnique({ where: { id: a.notification.id } }))?.shownAt,
     ).not.toBeNull();
+  });
+
+  it("pages through 250 notifications after a time without losing or repeating any", async () => {
+    const owner = { spaceId: mine.spaceId, userId: sameSpace.userId };
+    const base = new Date("2031-01-01T00:00:00Z");
+    // Groups of five share a timestamp, so the id tiebreak is exercised.
+    await prisma.notification.createMany({
+      data: Array.from({ length: 250 }, (_, i) => ({
+        ...owner,
+        surface: "legal",
+        title: `bulk-${i}`,
+        dedupeKey: `bulk-${i}`,
+        createdAt: new Date(base.getTime() + Math.floor(i / 5) * 1000),
+      })),
+    });
+    const since = new Date(base.getTime() - 1);
+    const seen: string[] = [];
+    const sizes: number[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = await listNotifications(prisma, { ...owner, since, cursor });
+      sizes.push(page.items.length);
+      seen.push(...page.items.map((n) => n.title));
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+    expect(sizes).toEqual([100, 100, 50]);
+    expect(new Set(seen).size).toBe(250);
+    expect(seen.slice(0, 5).sort()).toEqual(["bulk-0", "bulk-1", "bulk-2", "bulk-3", "bulk-4"]);
+    await expect(listNotifications(prisma, { ...owner, cursor: "bad" })).rejects.toThrow(
+      "Invalid notification cursor",
+    );
+    await prisma.notification.deleteMany({
+      where: { ...owner, dedupeKey: { startsWith: "bulk-" } },
+    });
   });
 
   it("deletes notifications after 30 days and deliveries after 7", async () => {

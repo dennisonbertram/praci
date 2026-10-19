@@ -147,6 +147,8 @@ import type {
   ExportManifest,
   McpServer,
   Me,
+  NotificationDto,
+  NotificationSignal,
   ProductEvent,
   Routine,
   SpaceNavigation,
@@ -169,6 +171,7 @@ import {
   isLegalAgentSpawnKey,
   isRetiredVoiceAgentSpawnKey,
   isVoiceAgentSpawnKey,
+  NOTIFICATION_HEARTBEAT_ID,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
   usableModelId,
@@ -190,7 +193,14 @@ import {
   splitPage,
   withAppDirectory,
 } from "@rakazo/core";
-import type { BoardEvents, Board as BoardRow, PrismaClient, ThreadEvents } from "@rakazo/db";
+import type {
+  BoardEvents,
+  Board as BoardRow,
+  Notification,
+  NotificationEvents,
+  PrismaClient,
+  ThreadEvents,
+} from "@rakazo/db";
 import {
   addSidebarPage,
   appendEventInTransaction,
@@ -227,10 +237,14 @@ import {
   isUniqueViolation,
   listBoards,
   listContacts,
+  listNotifications,
   listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
   lockOwnedGroup,
+  markSeen,
+  markShown,
+  NotificationValidationError,
   newestModelCredentialOrder,
   newestVoiceCredentialOrder,
   Prisma,
@@ -257,6 +271,7 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  unseenCounts,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { deleteAgentSecret, listAgentSecrets, putAgentSecret } from "./agent-secrets.js";
@@ -758,11 +773,28 @@ function mcpAssignmentDto(row: {
   };
 }
 
+function toNotificationDto(row: Notification): NotificationDto {
+  return {
+    id: row.id,
+    botId: row.botId,
+    surface: row.surface,
+    threadId: row.threadId,
+    title: row.title,
+    body: row.body,
+    link: row.link,
+    importance: row.importance,
+    createdAt: row.createdAt.toISOString(),
+    seenAt: row.seenAt?.toISOString() ?? null,
+    shownAt: row.shownAt?.toISOString() ?? null,
+  };
+}
+
 export interface RouterDeps {
   cloudAgent?: CloudAgentConnection | null;
   prisma: PrismaClient;
   events: ThreadEvents;
   boardEvents: BoardEvents;
+  notificationEvents: NotificationEvents;
   ticketChanges: TicketChangeNotifier;
   auth: Auth;
   jobs: JobPublisher;
@@ -7150,6 +7182,60 @@ export function createRouter(deps: RouterDeps) {
       unregisterPush: authed.notifications.unregisterPush.handler(async ({ context }) => {
         await deletePushTokens(deps.prisma, context.actor.userId, context.sessionId);
         return { ok: true as const };
+      }),
+      list: authed.notifications.list.handler(async ({ context, input }) => {
+        try {
+          const page = await listNotifications(deps.prisma, {
+            ...context.actor,
+            since: input.since ? new Date(input.since) : undefined,
+            cursor: input.cursor,
+          });
+          return { notifications: page.items.map(toNotificationDto), nextCursor: page.nextCursor };
+        } catch (error) {
+          if (error instanceof NotificationValidationError) {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw error;
+        }
+      }),
+      markSeen: authed.notifications.markSeen.handler(async ({ context, input }) => ({
+        count: await markSeen(deps.prisma, { ...context.actor, surface: input.surface }),
+      })),
+      markShown: authed.notifications.markShown.handler(async ({ context, input }) => ({
+        ok: await markShown(deps.prisma, context.actor, input.id),
+      })),
+      unseenCounts: authed.notifications.unseenCounts.handler(async ({ context }) => ({
+        counts: await unseenCounts(deps.prisma, context.actor),
+      })),
+      subscribe: authed.notifications.subscribe.handler(async function* ({ context }) {
+        const follow = deps.notificationEvents.follow(context.actor, context.signal);
+        let pending: Promise<IteratorResult<NotificationSignal>> | undefined;
+        let authorizedAt = Date.now();
+        try {
+          while (!context.signal?.aborted) {
+            pending ??= follow.next();
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const next = await Promise.race([
+              pending,
+              new Promise<"silent">((resolve) => {
+                timer = setTimeout(() => resolve("silent"), HEARTBEAT_MS);
+              }),
+            ]).finally(() => clearTimeout(timer));
+            if (context.stillAuthorized && Date.now() - authorizedAt >= SESSION_RECHECK_MS) {
+              if (!(await context.stillAuthorized())) throw new ORPCError("UNAUTHORIZED");
+              authorizedAt = Date.now();
+            }
+            if (next === "silent") {
+              yield { id: NOTIFICATION_HEARTBEAT_ID, surface: "", importance: "info" as const };
+              continue;
+            }
+            pending = undefined;
+            if (next.done) return;
+            yield next.value;
+          }
+        } finally {
+          void follow.return(undefined).catch(() => {});
+        }
       }),
     },
     search: {
