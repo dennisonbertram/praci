@@ -18,6 +18,7 @@ function setup(
   upstream: Upstream,
   session: Actor | null = actorOf(user1),
   resolved = "93.184.216.34",
+  now?: () => number,
 ) {
   const calls: string[] = [];
   const app = new Hono();
