@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 192 of 192
-- Web and shared components: 553
-- Mobile components: 124 in 85 files, mobile — native story pending
+- Web and shared component files with stories: 195 of 195
+- Web and shared components: 556
+- Mobile components: 125 in 86 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -86,12 +86,14 @@ Every rendered React component, grouped by area. A web or shared component file 
 | MarkdownLinkPrompt | [apps/web/src/components/markdown-link-prompt.tsx](../../apps/web/src/components/markdown-link-prompt.tsx) | [markdown-link-prompt.stories.tsx](../../apps/web/src/components/markdown-link-prompt.stories.tsx) | web |
 | MessageHoverMetadata | [apps/web/src/components/MessageHoverMetadata.tsx](../../apps/web/src/components/MessageHoverMetadata.tsx) | [MessageHoverMetadata.stories.tsx](../../apps/web/src/components/MessageHoverMetadata.stories.tsx) | web |
 | ModelPreflightFeedback | [apps/web/src/components/ModelConnectionPreflightNotice.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.tsx) | [ModelConnectionPreflightNotice.stories.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.stories.tsx) | web |
+| NotificationSettingsSection | [apps/web/src/components/NotificationSettings.tsx](../../apps/web/src/components/NotificationSettings.tsx) | [NotificationSettings.stories.tsx](../../apps/web/src/components/NotificationSettings.stories.tsx) | web |
 | PageAgentIntro | [apps/web/src/components/PageAgentIntro.tsx](../../apps/web/src/components/PageAgentIntro.tsx) | [PageAgentIntro.stories.tsx](../../apps/web/src/components/PageAgentIntro.stories.tsx) | web |
 | PageEmptyState | [apps/web/src/components/PageEmptyState.tsx](../../apps/web/src/components/PageEmptyState.tsx) | [PageEmptyState.stories.tsx](../../apps/web/src/components/PageEmptyState.stories.tsx) | web |
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
 | SandboxedHtmlViewer | [apps/web/src/components/SandboxedHtmlViewer.tsx](../../apps/web/src/components/SandboxedHtmlViewer.tsx) | [SandboxedHtmlViewer.stories.tsx](../../apps/web/src/components/SandboxedHtmlViewer.stories.tsx) | web |
-| RailTip, SidebarPageLink | [apps/web/src/components/SidebarPageLink.tsx](../../apps/web/src/components/SidebarPageLink.tsx) | [SidebarPageLink.stories.tsx](../../apps/web/src/components/SidebarPageLink.stories.tsx) | web |
+| UrgentMark | [apps/web/src/components/sidebar-glance.tsx](../../apps/web/src/components/sidebar-glance.tsx) | [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
+| RailTip, SidebarPageLink | [apps/web/src/components/SidebarPageLink.tsx](../../apps/web/src/components/SidebarPageLink.tsx) | [SidebarPageLink.stories.tsx](../../apps/web/src/components/SidebarPageLink.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
 | SidebarPages | [apps/web/src/components/SidebarPages.tsx](../../apps/web/src/components/SidebarPages.tsx) | [SidebarPages.stories.tsx](../../apps/web/src/components/SidebarPages.stories.tsx) | web |
 | SkipToContent | [apps/web/src/components/SkipToContent.tsx](../../apps/web/src/components/SkipToContent.tsx) | [SkipToContent.stories.tsx](../../apps/web/src/components/SkipToContent.stories.tsx) | web |
 | SoftwareUpdatePanel, SoftwareUpdateSection, CheckSummary | [apps/web/src/components/SoftwareUpdateSection.tsx](../../apps/web/src/components/SoftwareUpdateSection.tsx) | [SoftwareUpdateSection.stories.tsx](../../apps/web/src/components/SoftwareUpdateSection.stories.tsx) | web |
@@ -171,6 +173,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
+| AgentAvatar | [apps/web/src/components/integrations/AgentAvatar.tsx](../../apps/web/src/components/integrations/AgentAvatar.tsx) | [AgentAvatar.stories.tsx](../../apps/web/src/components/integrations/AgentAvatar.stories.tsx) | web |
 | AgentStep | [apps/web/src/components/integrations/AgentStep.tsx](../../apps/web/src/components/integrations/AgentStep.tsx) | [AgentStep.stories.tsx](../../apps/web/src/components/integrations/AgentStep.stories.tsx) | web |
 | AlchemyConnectDialog | [apps/web/src/components/integrations/AlchemyConnectDialog.tsx](../../apps/web/src/components/integrations/AlchemyConnectDialog.tsx) | [AlchemyConnectDialog.stories.tsx](../../apps/web/src/components/integrations/AlchemyConnectDialog.stories.tsx) | web |
 | Heading, AccountRow, AppDetail, ConfirmDialog | [apps/web/src/components/integrations/AppDetail.tsx](../../apps/web/src/components/integrations/AppDetail.tsx) | [AppDetail.stories.tsx](../../apps/web/src/components/integrations/AppDetail.stories.tsx) | web |
@@ -333,6 +336,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ComputerModePicker | [apps/mobile/components/computer-mode-picker.tsx](../../apps/mobile/components/computer-mode-picker.tsx) | mobile — native story pending | mobile |
 | ComputerUpdateProgress | [apps/mobile/components/computer-update-progress.tsx](../../apps/mobile/components/computer-update-progress.tsx) | mobile — native story pending | mobile |
 | ComputerCard | [apps/mobile/components/ComputerCard.tsx](../../apps/mobile/components/ComputerCard.tsx) | mobile — native story pending | mobile |
+| ConnectionAgent | [apps/mobile/components/connection-agent.tsx](../../apps/mobile/components/connection-agent.tsx) | mobile — native story pending | mobile |
 | ConnectorIcon | [apps/mobile/components/connector-icon.tsx](../../apps/mobile/components/connector-icon.tsx) | mobile — native story pending | mobile |
 | ConversationRow | [apps/mobile/components/conversation-row.tsx](../../apps/mobile/components/conversation-row.tsx) | mobile — native story pending | mobile |
 | FailedSendBubble | [apps/mobile/components/failed-send-bubble.tsx](../../apps/mobile/components/failed-send-bubble.tsx) | mobile — native story pending | mobile |

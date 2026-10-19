@@ -231,6 +231,7 @@ import {
   findTicket,
   formatMessagingLinkCode,
   getCapTableSnapshot,
+  getNotificationPreferences,
   InvalidSpaceNameError,
   IsolationError,
   isRecordNotFound,
@@ -239,6 +240,7 @@ import {
   listBoards,
   listContacts,
   listNotifications,
+  listPushEndpoints,
   listSidebarPages,
   listSpaceBackupModels,
   listTicketComments,
@@ -272,7 +274,9 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
+  unseenAttentionBotIds,
   unseenCounts,
+  updateNotificationPreferences,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { deleteAgentSecret, listAgentSecrets, putAgentSecret } from "./agent-secrets.js";
@@ -322,6 +326,7 @@ import {
   financeRecurring,
   financeRefresh,
   financeRunway,
+  financeRunwayMonths,
   financeSetPreferences,
   financeSpend,
   financeTransaction,
@@ -382,6 +387,7 @@ import {
   legalAgent,
   legalConsent,
   legalConsentGrant,
+  legalDueSoonCount,
   legalGraph,
   legalItemLinks,
   legalOverview,
@@ -7338,6 +7344,24 @@ export function createRouter(deps: RouterDeps) {
         }
         return { ok: true as const };
       }),
+      preferences: authed.notifications.preferences.handler(async ({ context }) => {
+        const { actor } = context;
+        const [preferences, endpoints] = await Promise.all([
+          getNotificationPreferences(deps.prisma, actor),
+          listPushEndpoints(deps.prisma, actor.userId),
+        ]);
+        return { ...preferences, hasPhone: endpoints.length > 0 };
+      }),
+      updatePreferences: authed.notifications.updatePreferences.handler(
+        async ({ context, input }) => {
+          const { actor } = context;
+          const [preferences, endpoints] = await Promise.all([
+            updateNotificationPreferences(deps.prisma, actor, input),
+            listPushEndpoints(deps.prisma, actor.userId),
+          ]);
+          return { ...preferences, hasPhone: endpoints.length > 0 };
+        },
+      ),
       unregisterPush: authed.notifications.unregisterPush.handler(async ({ context }) => {
         await deletePushTokens(deps.prisma, context.actor.userId, context.sessionId);
         return { ok: true as const };
@@ -7358,7 +7382,12 @@ export function createRouter(deps: RouterDeps) {
         }
       }),
       markSeen: authed.notifications.markSeen.handler(async ({ context, input }) => ({
-        count: await markSeen(deps.prisma, { ...context.actor, surface: input.surface }),
+        count: await markSeen(deps.prisma, {
+          ...context.actor,
+          surface: input.surface,
+          id: input.id,
+          threadId: input.threadId,
+        }),
       })),
       markShown: authed.notifications.markShown.handler(async ({ context, input }) => ({
         ok: await markShown(deps.prisma, context.actor, input.id),
@@ -7366,6 +7395,22 @@ export function createRouter(deps: RouterDeps) {
       unseenCounts: authed.notifications.unseenCounts.handler(async ({ context }) => ({
         counts: await unseenCounts(deps.prisma, context.actor),
       })),
+      glance: authed.notifications.glance.handler(async ({ context }) => {
+        const [runwayMonths, legalDueSoon, dataRoomWaiting, urgentBotIds] = await Promise.all([
+          financeRunwayMonths(financeDeps, context.actor),
+          legalDueSoonCount(legalDeps, context.actor, 7),
+          // Failed items are the only ones the user can act on (retry or remove).
+          deps.prisma.dataRoomItem.count({
+            where: {
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              status: "failed",
+            },
+          }),
+          unseenAttentionBotIds(deps.prisma, context.actor),
+        ]);
+        return { financeRunwayMonths: runwayMonths, legalDueSoon, dataRoomWaiting, urgentBotIds };
+      }),
       subscribe: authed.notifications.subscribe.handler(async function* ({ context }) {
         const follow = deps.notificationEvents.follow(context.actor, context.signal);
         let pending: Promise<IteratorResult<NotificationSignal>> | undefined;

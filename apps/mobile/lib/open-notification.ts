@@ -1,9 +1,14 @@
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { useEffect } from "react";
-import { loadSessionToken } from "./api";
-import { notificationResponseRoute } from "./notification-open";
+import { loadSessionToken, selectedSpaceId, selectSpace } from "./api";
+import {
+  notificationResponseRoute,
+  notificationSpaceId,
+  notificationSurface,
+} from "./notification-open";
 import { closeSettingsSheet } from "./settings-sheet";
+import { markSurfaceSeen } from "./unseen-notifications";
 
 const openedResponses = new Set<string>();
 
@@ -31,11 +36,14 @@ function clearNotificationResponseIfCurrent(response: Notifications.Notification
 export async function openNotificationResponse(
   response: Notifications.NotificationResponse | null | undefined,
 ): Promise<boolean> {
-  if (!response) return false;
+  if (!response || response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
+    return false;
+  }
   const key = occurrenceKey(response);
   if (!key || openedResponses.has(key)) return false;
   const target = notificationResponseRoute(response, Notifications.DEFAULT_ACTION_IDENTIFIER);
-  if (!target) return false;
+  const surface = notificationSurface(response.notification.request.content.data);
+  if (!target && !surface) return false;
   // Claim before the session read so a cold-start hook and the tap listener
   // cannot both open the same response.
   openedResponses.add(key);
@@ -49,7 +57,17 @@ export async function openNotificationResponse(
       return false;
     }
     closeSettingsSheet();
-    router.push(target);
+    // Threads switch space themselves. Pages open in the current space, so move to the
+    // notification's space first; otherwise the wrong space's page opens and is cleared.
+    const spaceId = notificationSpaceId(response.notification.request.content.data);
+    if (spaceId && target?.pathname !== "/thread" && target?.pathname !== "/group-thread") {
+      if (spaceId !== selectedSpaceId() && !(await selectSpace(spaceId))) {
+        openedResponses.delete(key);
+        return false;
+      }
+    }
+    if (target) router.push(target);
+    if (surface) void markSurfaceSeen(surface);
     clearNotificationResponseIfCurrent(response);
     return true;
   } catch {

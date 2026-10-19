@@ -282,6 +282,21 @@ const EffectiveAccessSchema = z.record(
   z.object({ shared: z.enum(["all", "some", "none"]), botIds: z.array(Id) }),
 );
 
+/** "browser" is the client's own permission; "push" is the phone. A missing key means on. */
+const NotificationChannelsSchema = z
+  .object({ push: z.boolean().optional(), browser: z.boolean().optional() })
+  .strict();
+export const NotificationPreferencesSchema = z.object({
+  finish: z.boolean(),
+  help: z.boolean(),
+  takeover: z.boolean(),
+  channels: NotificationChannelsSchema,
+  /** The user has at least one registered phone push endpoint. */
+  hasPhone: z.boolean(),
+});
+
+export type NotificationPreferences = z.infer<typeof NotificationPreferencesSchema>;
+
 const spaceName = z.string().trim().min(1).max(60);
 
 export const appContract = {
@@ -1082,6 +1097,17 @@ export const appContract = {
       )
       .output(z.object({ ok: z.literal(true) })),
     unregisterPush: oc.output(z.object({ ok: z.literal(true) })),
+    preferences: oc.output(NotificationPreferencesSchema),
+    updatePreferences: oc
+      .input(
+        z.object({
+          finish: z.boolean().optional(),
+          help: z.boolean().optional(),
+          takeover: z.boolean().optional(),
+          channels: NotificationChannelsSchema.optional(),
+        }),
+      )
+      .output(NotificationPreferencesSchema),
     list: oc
       // Oldest first. Pass `nextCursor` back until it is null to catch up completely.
       .input(
@@ -1097,10 +1123,27 @@ export const appContract = {
         }),
       ),
     markSeen: oc
-      .input(z.object({ surface: z.string().min(1).max(64) }))
+      // `id` or `threadId` narrows it to one notification or one thread on the surface.
+      .input(
+        z.object({
+          surface: z.string().min(1).max(64),
+          id: z.string().min(1).optional(),
+          threadId: z.string().min(1).optional(),
+        }),
+      )
       .output(z.object({ count: z.number() })),
     markShown: oc.input(z.object({ id: z.string().min(1) })).output(z.object({ ok: z.boolean() })),
     unseenCounts: oc.output(z.object({ counts: z.record(z.string(), z.number()) })),
+    /** What each sidebar row shows beside its name; null when not available. One call for the space. */
+    glance: oc.output(
+      z.object({
+        financeRunwayMonths: z.number().nullable(),
+        legalDueSoon: z.number().int(),
+        dataRoomWaiting: z.number().int(),
+        /** Agents with an unseen attention notification. */
+        urgentBotIds: z.array(z.string()),
+      }),
+    ),
     subscribe: oc.output(eventIterator(NotificationSignalSchema)),
   },
   search: {

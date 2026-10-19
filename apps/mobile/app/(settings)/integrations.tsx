@@ -22,6 +22,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { ConnectionAgent } from "../../components/connection-agent";
 import { ConnectorIcon } from "../../components/connector-icon";
 import { NativeActionButton } from "../../components/native-action-button";
 import { Chevron } from "../../components/row-accessories";
@@ -648,24 +649,29 @@ export default function Integrations() {
         <View style={styles.card}>
           <Text style={styles.section}>{t("Accounts")}</Text>
           {accounts.map((row) => (
-            <View key={row.id} style={styles.accountRow}>
-              <TextInput
-                value={labelDrafts[row.id] ?? row.displayName}
-                onChangeText={(value) =>
-                  setLabelDrafts((current) => ({ ...current, [row.id]: value }))
-                }
-                onEndEditing={() => void renameAccount(row)}
-                accessibilityLabel={t("Account label")}
-                style={styles.accountLabel}
-              />
-              <NativeActionButton
-                accessibilityLabel={t("Remove {name}", { name: row.displayName })}
-                disabled={pending === row.id || uninstalling}
-                fill={false}
-                label={pending === row.id ? t("Working…") : t("Remove")}
-                onPress={() => void revokeAccount(row)}
-                prominence="destructive"
-              />
+            <View key={row.id} style={styles.accountBlock}>
+              <View style={styles.accountRow}>
+                <TextInput
+                  value={labelDrafts[row.id] ?? row.displayName}
+                  onChangeText={(value) =>
+                    setLabelDrafts((current) => ({ ...current, [row.id]: value }))
+                  }
+                  onEndEditing={() => void renameAccount(row)}
+                  accessibilityLabel={t("Account label")}
+                  style={styles.accountLabel}
+                />
+                <NativeActionButton
+                  accessibilityLabel={t("Remove {name}", { name: row.displayName })}
+                  disabled={pending === row.id || uninstalling}
+                  fill={false}
+                  label={pending === row.id ? t("Working…") : t("Remove")}
+                  onPress={() => void revokeAccount(row)}
+                  prominence="destructive"
+                />
+              </View>
+              {row.agentBotId ? (
+                <ConnectionAgent connectionId={row.id} botId={row.agentBotId} />
+              ) : null}
             </View>
           ))}
           <NativeActionButton
@@ -1036,6 +1042,7 @@ function createIntegrationsStyles() {
       alignItems: "center",
       gap: 8,
     },
+    accountBlock: { gap: 8 },
     accountRow: {
       flexDirection: "row",
       alignItems: "center",

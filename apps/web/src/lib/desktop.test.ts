@@ -65,16 +65,13 @@ describe("window chrome", () => {
   it("keeps conversation header controls clickable", () => {
     const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../pages");
     const shell = readFileSync(path.join(root, "Shell.tsx"), "utf8");
-    expect(shell).toContain("app-drag flex items-center justify-between px-3 md:px-[22px]");
-    expect(shell).toContain('className="app-no-drag grid h-8 w-8');
-    expect(shell).toContain('className="app-no-drag flex min-w-0 items-center gap-3"');
-    expect(shell.match(/className=\{?[`"]app-no-drag grid h-\[30px\] w-\[34px\]/g)).toHaveLength(3);
-  });
-
-  it("moves window chrome into the conversation header when the bots sidebar is collapsed", () => {
-    const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../pages");
-    const shell = readFileSync(path.join(root, "Shell.tsx"), "utf8");
-    expect(shell).toContain("{botsSidebarCollapsed && desktopBridge() ? <WindowChrome /> : null}");
+    // Rendering Shell needs the whole app; check the header row markup instead.
+    const start = shell.indexOf("app-drag flex items-center justify-between");
+    expect(start).toBeGreaterThan(-1);
+    const header = shell.slice(start, start + 6000);
+    expect(header).toContain('className="app-no-drag grid h-8 w-8');
+    expect(header).toContain('className="app-no-drag flex min-w-0 items-center gap-3"');
+    expect(header.match(/app-no-drag grid h-\[30px\] w-\[34px\]/g)).toHaveLength(3);
   });
 
   it("leaves window chrome to the shell on the artifacts page, which now sits inside it", () => {

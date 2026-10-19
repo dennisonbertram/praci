@@ -100,6 +100,8 @@ export default function Account() {
   const [notifications, setNotifications] = useState<LiveNotificationSettings>(
     DEFAULT_LIVE_NOTIFICATION_SETTINGS,
   );
+  const [phonePush, setPhonePush] = useState<boolean | null>(null);
+  const [phonePushPending, setPhonePushPending] = useState(false);
   const [notificationsReady, setNotificationsReady] = useState(Platform.OS !== "android");
   const [notificationPending, setNotificationPending] = useState(false);
   const [notificationError, setNotificationError] = useState<string | null>(null);
@@ -143,6 +145,9 @@ export default function Account() {
       totalTokens?: number | null;
     }>("usage/summary")
       .then(setUsage)
+      .catch(() => undefined);
+    void rpc<{ channels: { push?: boolean }; hasPhone: boolean }>("notifications/preferences")
+      .then((prefs) => setPhonePush(prefs.hasPhone ? prefs.channels.push !== false : null))
       .catch(() => undefined);
     if (Platform.OS === "android") {
       void getLiveNotificationSettings()
@@ -227,6 +232,22 @@ export default function Account() {
       setNotificationError(errorText(cause, t("Could not update notifications")));
     } finally {
       setNotificationPending(false);
+    }
+  }
+
+  async function updatePhonePush(push: boolean) {
+    if (phonePushPending) return;
+    const previous = phonePush;
+    setPhonePushPending(true);
+    setPhonePush(push);
+    setNotificationError(null);
+    try {
+      await rpc("notifications/updatePreferences", { channels: { push } });
+    } catch (cause) {
+      setPhonePush(previous);
+      setNotificationError(errorText(cause, t("Could not update notifications")));
+    } finally {
+      setPhonePushPending(false);
     }
   }
 
@@ -451,8 +472,28 @@ export default function Account() {
           {localeError ? <Text style={styles.error}>{localeError}</Text> : null}
         </SettingsGroup>
 
+        {phonePush !== null && Platform.OS !== "android" ? (
+          <SettingsGroup>
+            <SettingsSwitch
+              label={t("Phone notifications")}
+              value={phonePush}
+              disabled={phonePushPending}
+              onChange={(push) => void updatePhonePush(push)}
+            />
+            {notificationError ? <Text style={styles.error}>{notificationError}</Text> : null}
+          </SettingsGroup>
+        ) : null}
+
         {Platform.OS === "android" ? (
           <SettingsGroup accessibilityLabel={t("Notifications")} label={t("Notifications")}>
+            {phonePush !== null ? (
+              <SettingsSwitch
+                label={t("Phone notifications")}
+                value={phonePush}
+                disabled={phonePushPending}
+                onChange={(push) => void updatePhonePush(push)}
+              />
+            ) : null}
             <SettingsSwitch
               label={t("Live working status")}
               detail={t("While agents are working")}

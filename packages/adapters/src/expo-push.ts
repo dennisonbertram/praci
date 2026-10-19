@@ -5,7 +5,6 @@ import type {
   NotificationEndpointRef,
   NotificationEnvelope,
   NotificationMessage,
-  NotificationProvider,
   NotificationSendResult,
 } from "@rakazo/adapter-kit";
 import type { PrismaClient, PushEndpoint } from "@rakazo/db";
@@ -77,12 +76,13 @@ export function expoNotificationData(envelope: NotificationEnvelope, spaceId: st
     ...(envelope.link ? { link: envelope.link } : {}),
     ...(envelope.botId ? { botId: envelope.botId } : {}),
     ...(envelope.threadId ? { threadId: envelope.threadId } : {}),
+    ...(envelope.groupId ? { groupId: envelope.groupId } : {}),
     spaceId,
   };
 }
 
 /** Also the "push" notification channel; the outbox worker calls `send` per endpoint. */
-export class ExpoPushProvider implements NotificationProvider, NotificationChannel {
+export class ExpoPushProvider implements NotificationChannel {
   readonly channel = "push";
 
   constructor(
@@ -103,26 +103,12 @@ export class ExpoPushProvider implements NotificationProvider, NotificationChann
     return (await this.deliverableEndpoints(userId)).length > 0;
   }
 
-  async send(message: NotificationMessage, context: AdapterContext): Promise<undefined>;
   async send(
     envelope: NotificationEnvelope,
     endpoint: NotificationEndpointRef,
     context: AdapterContext,
-  ): Promise<NotificationSendResult>;
-  async send(
-    message: NotificationMessage | NotificationEnvelope,
-    endpointOrContext: NotificationEndpointRef | AdapterContext,
-    maybeContext?: AdapterContext,
-  ): Promise<NotificationSendResult | undefined> {
-    if (!maybeContext) {
-      await this.deliver(message as NotificationMessage, endpointOrContext as AdapterContext);
-      return undefined;
-    }
-    return this.sendEnvelope(
-      message as NotificationEnvelope,
-      endpointOrContext as NotificationEndpointRef,
-      maybeContext,
-    );
+  ): Promise<NotificationSendResult> {
+    return this.sendEnvelope(envelope, endpoint, context);
   }
 
   /**

@@ -4,6 +4,7 @@ import { Button } from "@rakazo/ui-web";
 import { Check } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { clearAgentAppCache } from "../lib/agent-app";
 import { authClient } from "../lib/auth";
 import { formatBillingPrice } from "../lib/billing";
 import { clearSpaceSelection, rpc } from "../lib/rpc";
@@ -97,6 +98,7 @@ export function PaywallPage({ status }: { status: BillingStatus }) {
           className="mt-6 text-muted-foreground"
           onClick={() =>
             void authClient.signOut().then(() => {
+              clearAgentAppCache();
               clearSpaceSelection();
               navigate("/");
             })

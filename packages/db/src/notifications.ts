@@ -34,6 +34,8 @@ export type CreateNotificationInput = Scope & {
   link?: string | null;
   importance?: "info" | "attention";
   dedupeKey?: string;
+  /** Platform events (run finished, help, takeover) are not agent chatter: skip the per-agent rate limits. */
+  skipRateLimits?: boolean;
   /** For tests; defaults to the current time. */
   now?: Date;
 };
@@ -116,9 +118,10 @@ export async function createNotification(
         : 0,
     ]);
     if (
-      hour >= NOTIFICATION_LIMITS.perHour ||
-      day >= NOTIFICATION_LIMITS.perDay ||
-      attentionHour >= NOTIFICATION_LIMITS.attentionPerHour
+      !input.skipRateLimits &&
+      (hour >= NOTIFICATION_LIMITS.perHour ||
+        day >= NOTIFICATION_LIMITS.perDay ||
+        attentionHour >= NOTIFICATION_LIMITS.attentionPerHour)
     ) {
       return { status: "rateLimited" };
     }
@@ -156,7 +159,7 @@ export async function createNotification(
 }
 
 /** Channels the user has an endpoint for (account-wide or in this space) and has not disabled. */
-async function externalChannels(
+export async function externalChannels(
   tx: Pick<PrismaClient, "notificationEndpoint" | "notificationPreference">,
   { spaceId, userId }: Scope,
 ): Promise<string[]> {
@@ -173,6 +176,69 @@ async function externalChannels(
   ]);
   const switches = (preference?.channels ?? {}) as Record<string, unknown>;
   return endpoints.map((e) => e.channel).filter((channel) => switches[channel] !== false);
+}
+
+export const NOTIFICATION_CHANNELS = ["push", "browser"] as const;
+export type NotificationChannelSwitches = Partial<
+  Record<(typeof NOTIFICATION_CHANNELS)[number], boolean>
+>;
+export type NotificationPreferences = {
+  finish: boolean;
+  help: boolean;
+  takeover: boolean;
+  channels: NotificationChannelSwitches;
+};
+type PreferenceDb = Pick<PrismaClient, "notificationPreference" | "$transaction">;
+
+const switchesOf = (value: unknown): NotificationChannelSwitches => {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  return Object.fromEntries(
+    NOTIFICATION_CHANNELS.filter((c) => typeof raw[c] === "boolean").map((c) => [c, raw[c]]),
+  );
+};
+
+/** The user's notification preferences in this space; defaults when never saved. */
+export async function getNotificationPreferences(
+  prisma: Pick<PrismaClient, "notificationPreference">,
+  actor: Scope,
+): Promise<NotificationPreferences> {
+  const row = await prisma.notificationPreference.findUnique({
+    where: { spaceId_userId: ownerOf(actor) },
+  });
+  return {
+    finish: row?.finish ?? true,
+    help: row?.help ?? true,
+    takeover: row?.takeover ?? true,
+    channels: switchesOf(row?.channels),
+  };
+}
+
+/** Updates the given preferences; channel switches merge into the saved ones. */
+export async function updateNotificationPreferences(
+  prisma: PreferenceDb,
+  actor: Scope,
+  patch: Partial<Omit<NotificationPreferences, "channels">> & {
+    channels?: NotificationChannelSwitches;
+  },
+): Promise<NotificationPreferences> {
+  const scope = ownerOf(actor);
+  const where = { spaceId_userId: scope };
+  await prisma.$transaction(async (tx) => {
+    // One writer per space and user, so read-merge-write cannot lose a concurrent channel change.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`notif-pref:${scope.spaceId}:${scope.userId}`}, 0))`;
+    const current = await tx.notificationPreference.findUnique({
+      where,
+      select: { channels: true },
+    });
+    const { channels, ...booleans } = patch;
+    const merged = { ...switchesOf(current?.channels), ...switchesOf(channels) };
+    await tx.notificationPreference.upsert({
+      where,
+      create: { ...scope, ...booleans, channels: merged },
+      update: { ...booleans, ...(channels ? { channels: merged } : {}) },
+    });
+  });
+  return getNotificationPreferences(prisma, actor);
 }
 
 export const NOTIFICATION_PAGE_SIZE = 100;
@@ -224,14 +290,23 @@ export async function listNotifications(
   return { items, nextCursor: rows.length > limit && last ? encodeNotificationCursor(last) : null };
 }
 
-/** Marks the surface's unseen notifications seen, returning how many changed. */
+/**
+ * Marks the surface's unseen notifications seen, returning how many changed. `id` or `threadId`
+ * limits it to one notification or one thread, so opening one toast leaves the rest unseen.
+ */
 export async function markSeen(
   prisma: Pick<PrismaClient, "notification">,
-  actor: Scope & { surface: string },
+  actor: Scope & { surface: string; id?: string; threadId?: string },
   now = new Date(),
 ): Promise<number> {
   const { count } = await prisma.notification.updateMany({
-    where: { ...ownerOf(actor), surface: actor.surface, seenAt: null },
+    where: {
+      ...ownerOf(actor),
+      surface: actor.surface,
+      seenAt: null,
+      ...(actor.id ? { id: actor.id } : {}),
+      ...(actor.threadId ? { threadId: actor.threadId } : {}),
+    },
     data: { seenAt: now },
   });
   return count;
@@ -262,6 +337,19 @@ export async function unseenCounts(
     _count: { _all: true },
   });
   return Object.fromEntries(rows.map((row) => [row.surface, row._count._all]));
+}
+
+/** Agents with an unseen `attention` notification for this user. */
+export async function unseenAttentionBotIds(
+  prisma: Pick<PrismaClient, "notification">,
+  actor: Scope,
+): Promise<string[]> {
+  const rows = await prisma.notification.findMany({
+    where: { ...ownerOf(actor), seenAt: null, importance: "attention", botId: { not: null } },
+    distinct: ["botId"],
+    select: { botId: true },
+  });
+  return rows.flatMap((row) => (row.botId ? [row.botId] : []));
 }
 
 /** Deletes notifications older than 30 days and deliveries older than 7 days. */

@@ -7,6 +7,7 @@ import {
   completionNotificationPreview,
   DELEGATED_EMPTY_NOTICE,
   emptyDelegatedToolTurnShouldFail,
+  INBOX_OWNER_GUIDANCE,
   isExactNoResponse,
   LONG_WORK_PROGRESS_GUIDANCE,
   mayOpenModelStream,
@@ -25,6 +26,15 @@ import {
 import { finalBlocksAfterMidTurnProgress } from "./user-progress.js";
 
 describe("completionMessageSegments", () => {
+  it("adds the Gmail ownership line to an existing Inbox agent once", () => {
+    const bot = { name: "Inbox", title: "", description: "", instructions: "Triage mail." };
+    const prompt = runIdentityInstruction(bot, "user", "inbox-agent:u1");
+    expect(prompt).toBe(`Triage mail. ${INBOX_OWNER_GUIDANCE}`);
+    expect(runIdentityInstruction({ ...bot, instructions: prompt }, "user", "inbox-agent:u1")).toBe(
+      prompt,
+    );
+  });
+
   it("keeps visible tool activity without appending a generic completion claim", () => {
     const steps = [{ kind: "steps" as const, steps: [{ label: "Message bot", count: 1 }] }];
     expect(completionMessageSegments(steps)).toEqual(steps);

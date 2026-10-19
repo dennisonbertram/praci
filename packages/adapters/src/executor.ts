@@ -23,7 +23,6 @@ import type {
   ModelCredentialFailedState,
   ModelCredentialRetireReason,
   NotificationMessage,
-  NotificationProvider,
   SandboxProvider,
   SecretStore,
   SemanticMemoryProvider,
@@ -51,6 +50,7 @@ import {
   HistoryReadInputSchema,
   HistorySearchInputSchema,
   integrationAgentSpawnKey,
+  integrationPresetForEndpoint,
   isAttachmentImageMimeType,
   isCartaAgentSpawnKey,
   isFinanceAgentSpawnKey,
@@ -97,6 +97,7 @@ import {
   messagingDmSurfaceNote,
   nextCronDateAcross,
   nextFence,
+  ownsLine,
   parseSkillMd,
   planActionGate,
   promptInvokesSkill,
@@ -328,6 +329,7 @@ import {
   MAIL_TOOL_NAMES,
   mailToolFromTool,
   mailToolsAllowed,
+  OWNER_INITIATED_TRIGGERS,
   selectMailTools,
 } from "./mail-tools.js";
 import type { McpConnector } from "./mcp-connector.js";
@@ -385,6 +387,7 @@ import { actorMayUsePrivateEndpoint } from "./private-endpoint.js";
 import type { RemoteTransportDependencies } from "./remote-mcp.js";
 import { assertSafeRemoteUrl } from "./remote-mcp.js";
 import { loadReplyContext, messageToAgentHistoryText } from "./reply-context.js";
+import { notifyThreadEvent } from "./run-notification.js";
 import {
   commitConsumedRunSecret,
   normalizeSecretAskPurpose,
@@ -2767,7 +2770,6 @@ export interface ExecutorDeps {
   /** The deployment default model can run; see resolveDeploymentModel. */
   deploymentModelConfigured?: boolean;
   dataDir?: string;
-  notifications?: NotificationProvider;
   /** Tells the user's open clients about a new notification; absent means no live signal. */
   notificationEvents?: NotificationEvents;
   jobs: JobPublisher;
@@ -4194,8 +4196,39 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }).then((accounts) => accounts.filter((a) => visibleToIdentity(a.id)));
           return calendarAccountsPromise;
         };
+        // The sender is a bot of this space and user. Not enough alone: a foreign bot or channel
+        // may have started the chain, so the message must also carry the owner's own origin.
+        const senderInScope =
+          run.trigger === "bot_message" &&
+          Boolean(peerMessage?.fromBotId) &&
+          Boolean(
+            await deps.prisma.bot.findFirst({
+              where: {
+                id: peerMessage!.fromBotId,
+                spaceId: run.spaceId,
+                userId: bot.userId,
+                archivedAt: null,
+              },
+              select: { id: true },
+            }),
+          );
+        // Whether what this run sends on is owner-originated: the owner in a direct chat, or a
+        // same-owner bot answering a message that was.
+        const ownerOriginRun =
+          !thread.groupId &&
+          !messagingChannelRun &&
+          run.userId === bot.userId &&
+          (OWNER_INITIATED_TRIGGERS.has(run.trigger) ||
+            (senderInScope && peerMessage?.ownerOrigin === true));
+        // An owner agent answers an owner-originated bot with its own service's tools only.
+        // Approvals still ask the user on the agent's own chat; the peer approves nothing.
+        const ownerAgentPeer =
+          senderInScope &&
+          peerMessage?.ownerOrigin === true &&
+          (isInboxAgentSpawnKey(bot.spawnKey) || appAgentIdentity);
         const calendarEnabled =
           mailToolsAllowed({
+            ownerAgentPeer: ownerAgentPeer && appAgentIdentity,
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -4205,6 +4238,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }) && (await calendarAccounts().catch(() => [])).length > 0;
         const mailEnabled =
           mailToolsAllowed({
+            ownerAgentPeer: ownerAgentPeer && isInboxAgentSpawnKey(bot.spawnKey),
             hasProvider: Boolean(deps.mail),
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -4344,6 +4378,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         };
         const driveEnabled =
           driveToolsAllowed({
+            ownerAgentPeer: ownerAgentPeer && appAgentIdentity,
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -4996,7 +5031,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
             isCartaMailSend(bot.spawnKey, name) ||
             // Integration-agent writes require approval for every call.
             integrationWriteTool !== undefined ||
-            writeOnAgentConnection;
+            writeOnAgentConnection ||
+            // An owner agent's writes on a peer's request never pass on a saved rule or Auto Review.
+            (ownerAgentPeer && OWNER_PEER_WRITE_TOOLS.has(name));
           const connectorKind = connectorKindFromToolName(
             name,
             connectedPlugins.map((plugin) => plugin.provider),
@@ -7149,6 +7186,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   | undefined,
                 deliveryKey: effectKey,
               },
+              // A background run may only ask an agent that owns an account.
+              { ownerAgentsOnly: isBackgroundRunTrigger(run.trigger), ownerOrigin: ownerOriginRun },
             );
             if (!sent.ok) return finish({ error: sent.error });
             return finish({
@@ -7510,37 +7549,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             })
           : history;
         const runtimeHistory = [...historicalContext, ...historyWithImages];
-        // Without a roster a bot only knows the bots it spawned itself.
         const botDirectory =
           thread.groupId || voiceAgent
             ? undefined
-            : renderBotDirectory(
-                (
-                  await deps.prisma.bot.findMany({
-                    where: {
-                      spaceId: run.spaceId,
-                      userId: run.userId,
-                      archivedAt: null,
-                      id: { not: bot.id },
-                      thread: { isNot: null },
-                    },
-                    select: {
-                      id: true,
-                      name: true,
-                      title: true,
-                      description: true,
-                      spawnKey: true,
-                    },
-                    orderBy: { createdAt: "asc" },
-                    take: BOT_DIRECTORY_LIMIT,
-                  })
-                ).map((peer) => ({
-                  id: peer.id,
-                  name: peer.name,
-                  title: peer.title,
-                  description: directoryDescription(peer),
-                })),
-              );
+            : await loadBotDirectory(deps.prisma, run, bot.id);
 
         if (heldForTakeover) {
           const releasedCheckpoint = takeoverCheckpointOf(
@@ -8523,31 +8535,31 @@ async function runNotice(
 
 async function notifyRun(
   deps: ExecutorDeps,
-  run: { spaceId: string; userId: string; botId: string; threadId: string; trigger: string },
+  run: {
+    id?: string;
+    spaceId: string;
+    userId: string;
+    botId: string;
+    threadId: string;
+    trigger: string;
+  },
   message: NotificationMessage,
 ) {
-  if (
-    !deps.notifications ||
-    (isBackgroundRunTrigger(run.trigger) && message.kind !== "help" && message.kind !== "takeover")
-  )
+  if (isBackgroundRunTrigger(run.trigger) && message.kind !== "help" && message.kind !== "takeover")
     return;
-  const notice = await runNotice(deps.prisma, run).catch((error) => {
-    getLogger().error("notification preference lookup", error);
-    return null;
-  });
-  if (!notice?.enabled) return;
-  await deps.notifications
-    .send(notice.groupId ? { ...message, groupId: notice.groupId } : message, {
-      operationId: "notify",
-      traceId: run.botId,
-      spaceId: run.spaceId,
-      userId: run.userId,
-      botId: run.botId,
-      signal: new AbortController().signal,
-    })
-    .catch((error) => {
-      getLogger().error("run notification", error);
-    });
+  try {
+    const notice = await runNotice(deps.prisma, run);
+    if (!notice.enabled) return;
+    await notifyThreadEvent(
+      deps.prisma,
+      deps.notificationEvents,
+      run,
+      notice.groupId ? { ...message, groupId: notice.groupId } : message,
+      `${run.id ?? run.threadId}\n${message.title}\n${message.body}`,
+    );
+  } catch (error) {
+    getLogger().error("run notification", error);
+  }
 }
 
 const RUN_LEASE_MS = 5 * 60_000;
@@ -8573,6 +8585,17 @@ async function renewRunLease(
 function computerRetryDelay(fence: number): number {
   return Math.min(10_000, 250 * 2 ** Math.min(Math.max(fence - 1, 0), 5));
 }
+
+const OWNER_PEER_WRITE_TOOLS = new Set([
+  "mail_draft",
+  "mail_modify",
+  "mail_send",
+  "calendar_create_event",
+  "calendar_update_event",
+  "calendar_delete_event",
+  "drive_create_file",
+  "drive_update_file",
+]);
 
 const CARTA_BLOCKED_DELEGATION_TOOLS = new Set([
   "spawn_bot",
@@ -8662,11 +8685,14 @@ export function selectBuiltinToolsForRun(options: {
       (options.legalEnabled || !LEGAL_GATED_TOOL_NAMES.has(tool.name)) &&
       (options.contactsEnabled || !CONTACT_TOOL_NAMES.has(tool.name)) &&
       (options.dataRoomEnabled || !DATA_ROOM_TOOL_NAMES.has(tool.name)) &&
-      !(options.cartaAgent && CARTA_BLOCKED_DELEGATION_TOOLS.has(tool.name)) &&
+      !(
+        (options.cartaAgent || options.integrationAgent) &&
+        CARTA_BLOCKED_DELEGATION_TOOLS.has(tool.name)
+      ) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
       (!isBackgroundRunTrigger(options.trigger) ||
-        !["message_user", "message_bot", "handoff_to_bot", "message_agent"].includes(tool.name)) &&
+        !["message_user", "handoff_to_bot", "message_agent"].includes(tool.name)) &&
       (options.voiceCall || tool.name !== "end_call") &&
       (options.historyRetrievalEnabled ||
         !["search_history", "read_history"].includes(tool.name)) &&
@@ -8947,6 +8973,93 @@ export function splitInboxSearchSkill<T extends { name: string; content: string 
 }
 
 // Ordering matters: stable blocks first, volatile ones last, so the prefix stays cacheable.
+/** The "Owns:" line per owner agent: its service, plus the account name when the user has several of that service. */
+async function ownerAgentLines(
+  prisma: PrismaClient,
+  scope: { spaceId: string; userId: string },
+  peerIds: string[],
+): Promise<Map<string, string>> {
+  const where = { spaceId: scope.spaceId, userId: scope.userId, agentBotId: { not: null } };
+  const [connections, servers] = await Promise.all([
+    prisma.connection.findMany({
+      where,
+      select: { agentBotId: true, provider: true, displayName: true },
+    }),
+    prisma.mcpServer.findMany({
+      where,
+      select: { agentBotId: true, name: true, endpoint: true },
+    }),
+  ]);
+  const owned = [
+    ...connections.map((c) => ({
+      botId: c.agentBotId,
+      service: GOOGLE_SERVICE_NAMES[c.provider] ?? c.provider,
+      account: c.displayName,
+    })),
+    ...servers.map((s) => ({
+      botId: s.agentBotId,
+      service: integrationPresetForEndpoint(s.endpoint)?.service ?? s.name,
+      account: s.name,
+    })),
+  ];
+  const perService = new Map<string, number>();
+  for (const { service } of owned) perService.set(service, (perService.get(service) ?? 0) + 1);
+  const lines = new Map<string, string>();
+  for (const { botId, service, account } of owned) {
+    if (botId && peerIds.includes(botId)) {
+      lines.set(botId, ownsLine(service, (perService.get(service) ?? 0) > 1 ? account : undefined));
+    }
+  }
+  return lines;
+}
+
+const GOOGLE_SERVICE_NAMES: Record<string, string> = {
+  googlecalendar: "Google Calendar",
+  googledrive: "Google Drive",
+  gmail: "Gmail",
+};
+
+/** Without a roster a bot only knows the bots it spawned itself. */
+async function loadBotDirectory(
+  prisma: PrismaClient,
+  run: { spaceId: string; userId: string },
+  selfBotId: string,
+): Promise<string | undefined> {
+  const peers = await prisma.bot.findMany({
+    where: {
+      spaceId: run.spaceId,
+      userId: run.userId,
+      archivedAt: null,
+      id: { not: selfBotId },
+      thread: { isNot: null },
+    },
+    select: { id: true, name: true, title: true, description: true, spawnKey: true },
+    orderBy: { createdAt: "asc" },
+    take: BOT_DIRECTORY_LIMIT,
+  });
+  const ownerIds = peers
+    .filter(
+      (peer) => isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey),
+    )
+    .map((peer) => peer.id);
+  const owns =
+    ownerIds.length > 0 ? await ownerAgentLines(prisma, run, ownerIds) : new Map<string, string>();
+  return renderBotDirectory(
+    peers.map((peer) => ({
+      id: peer.id,
+      name: peer.name,
+      title: peer.title,
+      spawnKey: peer.spawnKey,
+      description: [
+        directoryDescription(peer),
+        isInboxAgentSpawnKey(peer.spawnKey) ? ownsLine("Gmail") : owns.get(peer.id),
+      ]
+        .filter(Boolean)
+        .join(" "),
+    })),
+  );
+}
+
 /**
  * A teammate's description in the bot directory. The Finance and Carta agents read their data only
  * when the user asks them directly, so other bots send the user there instead of messaging them.
@@ -8957,16 +9070,16 @@ export function directoryDescription(peer: {
   description: string;
   spawnKey: string | null;
 }): string {
-  if (isIntegrationAgentSpawnKey(peer.spawnKey)) {
+  if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
     return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not tell the user to ask it themselves.`;
   }
-  if (!isFinanceAgentSpawnKey(peer.spawnKey) && !isCartaAgentSpawnKey(peer.spawnKey)) {
+  if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
   const page = isFinanceAgentSpawnKey(peer.spawnKey)
     ? "[Open Finance](/app/finance)"
     : "[Open Cap table](/app/cap-table)";
-  return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it, and end your reply with the link ${page}, where its page and chat live. This applies to this agent only, not to a Mercury, Brex or other integration agent, which you message with message_bot.`.trim();
+  return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it, and end your reply with the link ${page}, where its page and chat live. This applies to this agent only, not to a Mercury, Brex, Carta or other integration agent, which you message with message_bot.`.trim();
 }
 
 export function userTurnInstructions(parts: {
@@ -9096,6 +9209,9 @@ export function threadContextForRun<T>(
     : { ...context, includeSemanticRecall: true };
 }
 
+export const INBOX_OWNER_GUIDANCE =
+  "You own the user's Gmail. Other agents will ask you for mail; answer them with message_bot.";
+
 export const ONE_APPROVAL_GUIDANCE =
   "Do not ask for your own confirmation before a change; call the tool and the user approves on that card.";
 
@@ -9108,10 +9224,15 @@ export function runIdentityInstruction(
   if (isVoiceAgentSpawnKey(spawnKey)) return VOICE_AGENT_INSTRUCTIONS;
   // Stored instructions are fixed at creation; this keeps older agents on the one-approval rule.
   const guide = isIntegrationAgentSpawnKey(spawnKey) || isCartaAgentSpawnKey(spawnKey);
-  const withGuide = (text: string) =>
-    guide && !text.includes(ONE_APPROVAL_GUIDANCE)
-      ? `${text} ${ONE_APPROVAL_GUIDANCE}`.trim()
+  const inbox = isInboxAgentSpawnKey(spawnKey);
+  const withGuide = (text: string) => {
+    if (guide && !text.includes(ONE_APPROVAL_GUIDANCE)) {
+      text = `${text} ${ONE_APPROVAL_GUIDANCE}`.trim();
+    }
+    return inbox && !text.includes(INBOX_OWNER_GUIDANCE)
+      ? `${text} ${INBOX_OWNER_GUIDANCE}`.trim()
       : text;
+  };
   if (trigger !== "created") {
     return withGuide(bot.instructions || `${bot.name}: ${bot.title}\n${bot.description}`);
   }

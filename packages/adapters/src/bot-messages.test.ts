@@ -134,6 +134,122 @@ describe("messaging another bot", () => {
     expect(harness.enqueue).toHaveBeenCalledTimes(1);
   });
 
+  it("lets a background run reach only an owner agent", async () => {
+    const owner = deps({
+      bots: [
+        {
+          id: "bot-target",
+          name: "Mercury",
+          title: "",
+          spawnKey: "integration-agent:srv-1",
+          thread: { id: "thread-target" },
+        },
+      ],
+    });
+    const ok = await messageBot(
+      owner.deps,
+      run,
+      sender,
+      { bot_id: "bot-target", message: "balance?" },
+      { ownerAgentsOnly: true },
+    );
+    expect(ok.ok).toBe(true);
+    const ordinary = deps();
+    const blocked = await messageBot(
+      ordinary.deps,
+      run,
+      sender,
+      { bot_id: "bot-target", message: "hi" },
+      { ownerAgentsOnly: true },
+    );
+    expect(blocked).toMatchObject({ ok: false });
+    expect(ordinary.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("keeps a background chain limited to owner agents, but lets the answer reach the caller", async () => {
+    const inbox = {
+      id: "bot-inbox",
+      name: "Inbox",
+      title: "",
+      spawnKey: "inbox-agent:user-1",
+      thread: { id: "thread-inbox" },
+    };
+    const ordinary = {
+      id: "bot-target",
+      name: "Analyst",
+      title: "",
+      spawnKey: null,
+      thread: { id: "thread-target" },
+    };
+    const woken = { ...run, sourceMessageId: "m1" };
+    const fromBackground = [
+      {
+        kind: "bot_message_received",
+        fromBotId: "bot-ticket",
+        fromBotName: "Ticket bot",
+        text: "mail?",
+        hop: 1,
+        intent: "request",
+        backgroundOrigin: true,
+      },
+    ];
+    // The Inbox agent, woken by a background run, may not hand work to an ordinary bot.
+    const blocked = deps({ bots: [inbox, ordinary], hopBlocks: fromBackground });
+    expect(
+      await messageBot(blocked.deps, woken, sender, { bot_id: "bot-target", message: "x" }),
+    ).toMatchObject({ ok: false });
+    // Answering the bot that started the chain is still allowed, and the wake-up keeps the flag.
+    const caller = {
+      id: "bot-ticket",
+      name: "Ticket bot",
+      title: "",
+      spawnKey: null,
+      thread: { id: "thread-ticket" },
+    };
+    const back = deps({ bots: [inbox, caller], hopBlocks: fromBackground });
+    expect(
+      (
+        await messageBot(
+          back.deps,
+          woken,
+          sender,
+          { bot_id: "bot-ticket", message: "done", intent: "result" },
+          { allowTerminalSource: true },
+        )
+      ).ok,
+    ).toBe(true);
+    // It may ask another owner agent, and that delivery keeps the flag.
+    const next = deps({ bots: [inbox, ordinary], hopBlocks: fromBackground });
+    expect(
+      (await messageBot(next.deps, woken, sender, { bot_id: "bot-inbox", message: "x" })).ok,
+    ).toBe(true);
+    const received = next.tx.message.create.mock.calls
+      .flatMap(([call]) => (call as { data: { blocks: unknown[] } }).data.blocks)
+      .find((b) => (b as { kind: string }).kind === "bot_message_received");
+    expect(received).toMatchObject({ backgroundOrigin: true });
+  });
+
+  it("stamps ownerOrigin only when the sending run was owner-originated, and keeps it on the answer", async () => {
+    const received = (h: ReturnType<typeof deps>) =>
+      h.tx.message.create.mock.calls
+        .flatMap(([call]) => (call as { data: { blocks: unknown[] } }).data.blocks)
+        .find((b) => (b as { kind: string }).kind === "bot_message_received");
+    // A chain that began with a foreign bot or a channel is sent without the option.
+    const foreign = deps();
+    await messageBot(foreign.deps, run, sender, { bot_id: "bot-target", message: "x" });
+    expect(received(foreign)).not.toHaveProperty("ownerOrigin");
+    // The owner's own direct chat, or an owner-originated hop, sets it.
+    const owner = deps();
+    await messageBot(
+      owner.deps,
+      run,
+      sender,
+      { bot_id: "bot-target", message: "x" },
+      { ownerOrigin: true },
+    );
+    expect(received(owner)).toMatchObject({ ownerOrigin: true });
+  });
+
   it("marks a forced failure return unread on both sides", async () => {
     const harness = deps({
       hopBlocks: [

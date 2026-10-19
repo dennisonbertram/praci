@@ -1,4 +1,6 @@
 export const HI_MESSAGES: Record<string, string> = {
+  "Phone notifications": "फ़ोन सूचनाएँ",
+  "Share with all agents": "सभी एजेंटों के साथ साझा करें",
   "Couldn't refresh — showing the last loaded messages.":
     "ताज़ा नहीं हो सका — पिछले लोड किए गए संदेश दिखाए जा रहे हैं।",
   "Try Again": "फिर कोशिश करें",

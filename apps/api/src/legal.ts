@@ -27,6 +27,20 @@ const notFound = () => new ORPCError("NOT_FOUND", { message: "Not found" });
 export const legalAgent = (deps: LegalDeps, actor: Actor): Promise<Bot> =>
   ensureLegalAgent(deps, actor);
 
+/** Open deadlines due within `days` days, overdue ones included. */
+export const legalDueSoonCount = (
+  deps: Pick<LegalDeps, "prisma">,
+  actor: Actor,
+  days: number,
+): Promise<number> =>
+  deps.prisma.legalDeadline.count({
+    where: {
+      ...scope(actor),
+      status: "open",
+      dueDate: { lte: new Date(today().getTime() + days * 86_400_000) },
+    },
+  });
+
 export async function legalOverview(deps: LegalDeps, actor: Actor): Promise<LegalOverview> {
   const repo = createLegalRepos(deps.prisma);
   const now = today();

@@ -2,17 +2,25 @@ import {
   CARTA_READ_TOOLS,
   CARTA_WRITE_TOOLS,
   cartaAgentSpawnKey,
+  isCartaAgentSpawnKey,
   isCartaEndpoint,
 } from "./carta.js";
 import { DEVIN_READ_TOOLS, DEVIN_WRITE_TOOLS, isDevinEndpoint } from "./devin.js";
 import type { FinanceProvider } from "./finance.js";
 import { FINANCE_READ_TOOLS, financeProviderForEndpoint } from "./finance.js";
+import { isInboxAgentSpawnKey } from "./inbox.js";
 
 /** The one place an integration agent's spawn key is built. The key encodes the MCP server id. */
 export const integrationAgentSpawnKey = (serverId: string) => `integration-agent:${serverId}`;
 
 export const isIntegrationAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(integrationAgentSpawnKey("")));
+
+/** An agent that owns one account (Inbox, Carta, integration or Calendar/Drive): other bots ask it. */
+export const isOwnerAgentSpawnKey = (spawnKey: string | null | undefined) =>
+  isInboxAgentSpawnKey(spawnKey) ||
+  isCartaAgentSpawnKey(spawnKey) ||
+  isIntegrationAgentSpawnKey(spawnKey);
 
 /** The expected identity for a server's integration agent, including the specialized Carta agent. */
 export function integrationAgentSpawnKeyForServer(server: {

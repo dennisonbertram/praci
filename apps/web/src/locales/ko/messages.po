@@ -18,6 +18,10 @@ msgstr ""
 msgid " (unread)"
 msgstr " (읽지 않음)"
 
+#: src/components/sidebar-glance.tsx
+msgid " (urgent)"
+msgstr ""
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "— tokens of AI text"
 msgstr ""
@@ -180,8 +184,10 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
+#. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
+#: src/components/sidebar-glance.tsx
 msgid "{0} mo"
 msgstr ""
 
@@ -1402,6 +1408,7 @@ msgstr ""
 msgid "Bills"
 msgstr ""
 
+#: src/components/NotificationSettings.tsx
 #: src/lib/ticket-status.ts
 msgid "Blocked"
 msgstr ""
@@ -1505,6 +1512,7 @@ msgid "Brex does not share it"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
+#: src/components/NotificationSettings.tsx
 msgid "Browser"
 msgstr ""
 
@@ -5227,6 +5235,10 @@ msgstr ""
 msgid "Never changes your account"
 msgstr ""
 
+#: src/components/sidebar-glance.tsx
+msgid "new"
+msgstr ""
+
 #: src/components/finance/StatementReviewCard.tsx
 msgid "New account"
 msgstr ""
@@ -5696,6 +5708,7 @@ msgstr ""
 msgid "Nothing remembered yet"
 msgstr "아직 기억한 내용이 없습니다"
 
+#: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
@@ -6132,6 +6145,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Personnel"
+msgstr ""
+
+#: src/components/NotificationSettings.tsx
+msgid "Phone"
 msgstr ""
 
 #: src/pages/Shell.tsx

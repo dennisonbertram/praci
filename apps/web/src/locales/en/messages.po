@@ -18,6 +18,10 @@ msgstr ""
 msgid " (unread)"
 msgstr " (unread)"
 
+#: src/components/sidebar-glance.tsx
+msgid " (urgent)"
+msgstr " (urgent)"
+
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "— tokens of AI text"
 msgstr "— tokens of AI text"
@@ -180,8 +184,10 @@ msgstr "{0} KB"
 msgid "{0} MB"
 msgstr "{0} MB"
 
+#. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
+#: src/components/sidebar-glance.tsx
 msgid "{0} mo"
 msgstr "{0} mo"
 
@@ -1402,6 +1408,7 @@ msgstr "Billing"
 msgid "Bills"
 msgstr "Bills"
 
+#: src/components/NotificationSettings.tsx
 #: src/lib/ticket-status.ts
 msgid "Blocked"
 msgstr "Blocked"
@@ -1505,6 +1512,7 @@ msgid "Brex does not share it"
 msgstr "Brex does not share it"
 
 #: src/components/computer/ComputerWorkspace.tsx
+#: src/components/NotificationSettings.tsx
 msgid "Browser"
 msgstr "Browser"
 
@@ -5227,6 +5235,10 @@ msgstr "Net {0}"
 msgid "Never changes your account"
 msgstr "Never changes your account"
 
+#: src/components/sidebar-glance.tsx
+msgid "new"
+msgstr "new"
+
 #: src/components/finance/StatementReviewCard.tsx
 msgid "New account"
 msgstr "New account"
@@ -5696,6 +5708,7 @@ msgstr "Nothing needs you right now."
 msgid "Nothing remembered yet"
 msgstr "Nothing remembered yet"
 
+#: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
@@ -6133,6 +6146,10 @@ msgstr "Personal"
 #: src/pages/Shell.tsx
 msgid "Personnel"
 msgstr "Personnel"
+
+#: src/components/NotificationSettings.tsx
+msgid "Phone"
+msgstr "Phone"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
