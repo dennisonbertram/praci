@@ -1,5 +1,6 @@
 import type { InboxTodo } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { TodoCard } from "./TodoCard";
@@ -95,6 +96,34 @@ export const SaveFails: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(
       within(canvasElement).getByRole("checkbox", { name: "Confirm the demo meeting" }),
+    );
+  },
+};
+
+/** Tick a to-do: it keeps its strike-through, fades, collapses, and leaves. Untick during the fade to keep it. */
+export const TickToFade: Story = {
+  args: { todos },
+  beforeEach: () => {
+    mockRpc({
+      "inbox.todos.setDone": (input: unknown) => {
+        const { id, done } = input as { id: string; done: boolean };
+        return {
+          ...(todos.find((item) => item.id === id) as InboxTodo),
+          doneAt: done ? new Date().toISOString() : null,
+        };
+      },
+    });
+  },
+  render: (args) => {
+    const [items, setItems] = useState(args.todos);
+    return (
+      <TodoCard
+        {...args}
+        todos={items}
+        onChange={(next) =>
+          setItems((all) => all.map((item) => (item.id === next.id ? next : item)))
+        }
+      />
     );
   },
 };
