@@ -13,6 +13,22 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: src/components/sidebar-glance.tsx
+msgid " (done)"
+msgstr " (done)"
+
+#: src/components/sidebar-glance.tsx
+msgid " (failed)"
+msgstr " (failed)"
+
+#: src/components/sidebar-glance.tsx
+msgid " (needs input)"
+msgstr " (needs input)"
+
+#: src/components/sidebar-glance.tsx
+msgid " (new)"
+msgstr " (new)"
+
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"

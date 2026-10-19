@@ -1306,6 +1306,8 @@ model Notification {
   body       String?
   link       String?
   importance NotificationImportance @default(info)
+  /// Sidebar status icon: urgent, needs_input, failed, done or new. Null on older rows (falls back to importance).
+  kind       String?
   dedupeKey  String
   createdAt  DateTime               @default(now())
   seenAt     DateTime?
@@ -1314,6 +1316,7 @@ model Notification {
 
   @@index([spaceId, userId, botId, dedupeKey, createdAt])
   @@index([spaceId, userId, seenAt])
+  @@index([spaceId, userId, botId, seenAt])
   @@index([spaceId, userId, createdAt])
   @@map("notifications")
 }

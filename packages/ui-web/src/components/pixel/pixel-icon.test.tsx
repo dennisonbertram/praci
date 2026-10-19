@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { renderToString } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { FireIcon, PixelIcon } from "./pixel-icon";
+import { FireIcon, PixelIcon, pixelPhase, STATUS_SPRITE, StatusIcon } from "./pixel-icon";
 import { PIXEL_ICONS } from "./sprites";
 
 const dot = { frames: [["rr", ".y"]] };
@@ -51,5 +51,49 @@ describe("PixelIcon size", () => {
   it("renders the requested height, including below the box height", () => {
     expect(renderToString(<FireIcon size={8} />)).toContain('height="8"');
     expect(renderToString(<FireIcon size={32} />)).toContain('height="32"');
+  });
+});
+
+describe("PixelIcon desync", () => {
+  it("gives different seeds different phases, the same seed the same phase", () => {
+    const ids = ["bot-a", "bot-b", "bot-c", "bot-d", "bot-e"];
+    expect(new Set(ids.map((id) => pixelPhase(id).phase)).size).toBe(ids.length);
+    expect(pixelPhase("bot-a")).toEqual(pixelPhase("bot-a"));
+    for (const id of ids) {
+      const { phase, speed } = pixelPhase(id);
+      expect(phase).toBeGreaterThanOrEqual(0);
+      expect(phase).toBeLessThan(1);
+      expect(speed).toBeGreaterThanOrEqual(0.9);
+      expect(speed).toBeLessThanOrEqual(1.1);
+    }
+  });
+
+  it("renders the phase as CSS variables, stable across renders, and none without a seed", () => {
+    const a = renderToString(<FireIcon seed="bot-a" />);
+    expect(a).toContain("--pixel-phase");
+    expect(renderToString(<FireIcon seed="bot-a" />)).toBe(a);
+    expect(renderToString(<FireIcon seed="bot-b" />)).not.toBe(a);
+    expect(renderToString(<FireIcon />)).not.toContain("--pixel-phase");
+  });
+
+  it("delays every animation by a negative, phase-based amount", () => {
+    const css = readFileSync(new URL("../../styles.css", import.meta.url), "utf8");
+    for (const name of ["pixel-strip", "pixel-mover", "pixel-flip"]) {
+      const rule = new RegExp(`\\.${name} \\{[^}]*animation-delay: calc\\([^}]*\\* -1\\)`);
+      expect(css).toMatch(rule);
+    }
+  });
+});
+
+describe("status icons", () => {
+  it("has a sprite for every kind, and each one animates", () => {
+    expect(Object.keys(STATUS_SPRITE)).toEqual(["urgent", "needs_input", "failed", "done", "new"]);
+    for (const kind of Object.keys(STATUS_SPRITE) as (keyof typeof STATUS_SPRITE)[]) {
+      expect(renderToString(<StatusIcon kind={kind} />)).toContain("pixel-strip");
+      // Reduced motion removes the animation, which leaves the first frame showing.
+      expect(renderToString(<StatusIcon kind={kind} animate={false} />)).not.toContain(
+        "pixel-strip",
+      );
+    }
   });
 });

@@ -276,7 +276,7 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
-  unseenAttentionBotIds,
+  unseenBotKinds,
   unseenCounts,
   updateNotificationPreferences,
 } from "@rakazo/db";
@@ -7461,6 +7461,7 @@ export function createRouter(deps: RouterDeps) {
         count: await markSeen(deps.prisma, {
           ...context.actor,
           surface: input.surface,
+          botId: input.botId,
           id: input.id,
           threadId: input.threadId,
         }),
@@ -7472,7 +7473,7 @@ export function createRouter(deps: RouterDeps) {
         counts: await unseenCounts(deps.prisma, context.actor),
       })),
       glance: authed.notifications.glance.handler(async ({ context }) => {
-        const [runwayMonths, legalDueSoon, dataRoomWaiting, urgentBotIds] = await Promise.all([
+        const [runwayMonths, legalDueSoon, dataRoomWaiting, botKinds] = await Promise.all([
           financeRunwayMonths(financeDeps, context.actor),
           legalDueSoonCount(legalDeps, context.actor, 7),
           // Failed items are the only ones the user can act on (retry or remove).
@@ -7483,9 +7484,9 @@ export function createRouter(deps: RouterDeps) {
               status: "failed",
             },
           }),
-          unseenAttentionBotIds(deps.prisma, context.actor),
+          unseenBotKinds(deps.prisma, context.actor),
         ]);
-        return { financeRunwayMonths: runwayMonths, legalDueSoon, dataRoomWaiting, urgentBotIds };
+        return { financeRunwayMonths: runwayMonths, legalDueSoon, dataRoomWaiting, botKinds };
       }),
       subscribe: authed.notifications.subscribe.handler(async function* ({ context }) {
         const follow = deps.notificationEvents.follow(context.actor, context.signal);

@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 199 of 199
-- Web and shared components: 562
+- Web and shared components: 563
 - Mobile components: 126 in 87 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -52,7 +52,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | WorkingRing, BotAvatar, ShapeAvatar, RobotAvatar, OrganicAvatar, GrokShapePreview, Wordmark | [packages/ui-web/src/bot-avatar.tsx](../../packages/ui-web/src/bot-avatar.tsx) | [bot-avatar.stories.tsx](../../packages/ui-web/src/bot-avatar.stories.tsx) | shared |
-| PixelIcon, FireTruckIcon, FireIcon | [packages/ui-web/src/components/pixel/pixel-icon.tsx](../../packages/ui-web/src/components/pixel/pixel-icon.tsx) | [pixel-icon.stories.tsx](../../packages/ui-web/src/components/pixel/pixel-icon.stories.tsx) | shared |
+| PixelIcon, FireTruckIcon, StatusIcon, FireIcon | [packages/ui-web/src/components/pixel/pixel-icon.tsx](../../packages/ui-web/src/components/pixel/pixel-icon.tsx) | [pixel-icon.stories.tsx](../../packages/ui-web/src/components/pixel/pixel-icon.stories.tsx) | shared |
 | GroupAvatar | [packages/ui-web/src/group-avatar.tsx](../../packages/ui-web/src/group-avatar.tsx) | [group-avatar.stories.tsx](../../packages/ui-web/src/group-avatar.stories.tsx) | shared |
 | ModelThinkingOptions | [packages/ui-web/src/model-thinking-options.tsx](../../packages/ui-web/src/model-thinking-options.tsx) | [model-thinking-options.stories.tsx](../../packages/ui-web/src/model-thinking-options.stories.tsx) | shared |
 
@@ -92,7 +92,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
 | SandboxedHtmlViewer | [apps/web/src/components/SandboxedHtmlViewer.tsx](../../apps/web/src/components/SandboxedHtmlViewer.tsx) | [SandboxedHtmlViewer.stories.tsx](../../apps/web/src/components/SandboxedHtmlViewer.stories.tsx) | web |
-| UrgentMark | [apps/web/src/components/sidebar-glance.tsx](../../apps/web/src/components/sidebar-glance.tsx) | [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
+| StatusMark | [apps/web/src/components/sidebar-glance.tsx](../../apps/web/src/components/sidebar-glance.tsx) | [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
 | RailTip, SidebarPageLink | [apps/web/src/components/SidebarPageLink.tsx](../../apps/web/src/components/SidebarPageLink.tsx) | [SidebarPageLink.stories.tsx](../../apps/web/src/components/SidebarPageLink.stories.tsx), [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
 | SidebarPages | [apps/web/src/components/SidebarPages.tsx](../../apps/web/src/components/SidebarPages.tsx) | [SidebarPages.stories.tsx](../../apps/web/src/components/SidebarPages.stories.tsx) | web |
 | SidebarPagesGroup | [apps/web/src/components/SidebarPagesGroup.tsx](../../apps/web/src/components/SidebarPagesGroup.tsx) | [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx) | web |
