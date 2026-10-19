@@ -273,6 +273,43 @@ it("lists who can use a shared connection from the server, owner first, and save
   });
 });
 
+it("builds each quick toggle on the previous one and saves them in order", async () => {
+  const bots = ["bot_app", "b", "c"].map((id) => ({ id, name: id, color: "#000000" }));
+  const saved: unknown[] = [];
+  let release: () => void = () => undefined;
+  setAccess.mockImplementationOnce(async (input: unknown) => {
+    saved.push(input);
+    await new Promise<void>((resolve) => {
+      release = resolve;
+    });
+  });
+  setAccess.mockImplementation(async (input: unknown) => void saved.push(input));
+  await show(
+    APP_PAGE,
+    data({
+      bots: bots as IntegrationsData["bots"],
+      connections: [appConnection({ agentBotId: "bot_app" })],
+      access: {
+        conn_app: {
+          allAgents: true,
+          botIds: [],
+          effectiveAccess: { shared: "all", botIds: ["bot_app", "b", "c"] },
+        },
+      },
+    }),
+  );
+  const toggle = (name: string) =>
+    container.querySelector<HTMLElement>(`[aria-label="${name} can use Sample workspace"]`)!;
+  await act(async () => toggle("b").click());
+  await act(async () => toggle("c").click());
+  expect(saved).toHaveLength(1);
+  await act(async () => release());
+  expect(saved).toEqual([
+    { connectionId: "conn_app", allAgents: false, botIds: ["bot_app", "c"] },
+    { connectionId: "conn_app", allAgents: false, botIds: ["bot_app"] },
+  ]);
+});
+
 it("keeps account switches uniquely labelled and targets the selected connection", async () => {
   await show(
     APP_PAGE,

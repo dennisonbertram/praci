@@ -9,7 +9,7 @@ import {
   signup,
 } from "./helpers";
 
-test("connected app creates its agent and persists write and exclusive controls", async ({
+test("connected app creates its agent and persists write and sharing controls", async ({
   page,
 }, testInfo) => {
   await signup(page, `app-agent-${Date.now()}@rakazo.test`, "password12", "App Agent Test");
@@ -39,20 +39,20 @@ test("connected app creates its agent and persists write and exclusive controls"
   await page.goto(appPath);
   const section = page.getByRole("region", { name: "Agent", exact: true });
   const writes = section.getByRole("switch", { name: "Allow changes in Notion" });
-  const exclusive = section.getByRole("switch", { name: "Only this agent" });
+  const share = section.getByRole("switch", { name: "Share with all agents" });
   await expect(writes).not.toBeChecked();
-  await expect(exclusive).not.toBeChecked();
+  await expect(share).toBeChecked();
   await writes.click();
   const confirmation = page.getByRole("alertdialog");
   await expect(confirmation).toBeVisible();
   await captureScreenshot(page, testInfo, "connected-app-agent-confirm");
   await confirmation.getByRole("button", { name: "Allow changes", exact: true }).click();
   await expect(writes).toBeChecked();
-  await exclusive.click();
-  await expect(exclusive).toBeChecked();
+  await share.click();
+  await expect(share).not.toBeChecked();
   await page.reload();
   await expect(writes).toBeChecked();
-  await expect(exclusive).toBeChecked();
+  await expect(share).not.toBeChecked();
   await captureScreenshot(page, testInfo, "connected-app-agent-controls");
   await writes.click();
   await expect(writes).not.toBeChecked();

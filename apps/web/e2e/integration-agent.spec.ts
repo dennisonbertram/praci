@@ -66,9 +66,9 @@ test("creates an integration agent, opens its chat, and persists its permissions
     `/app/${agentBotId}`,
   );
   const writes = section.getByRole("switch", { name: "Allow changes in Demo Bank" });
-  const exclusive = section.getByRole("switch", { name: "Only this agent" });
+  const share = section.getByRole("switch", { name: "Share with all agents" });
   await expect(writes).toBeChecked();
-  await expect(exclusive).toBeChecked();
+  await expect(share).not.toBeChecked();
   await expect(page.getByRole("button", { name: "Create agent" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "integration-agent-section");
 
@@ -82,9 +82,9 @@ test("creates an integration agent, opens its chat, and persists its permissions
   await writes.click();
   await confirmation.getByRole("button", { name: "Allow changes", exact: true }).click();
   await expect(writes).toBeChecked();
-  await exclusive.click();
-  await expect(exclusive).not.toBeChecked();
+  await share.click();
+  await expect(share).toBeChecked();
   await page.reload();
   await expect(writes).toBeChecked();
-  await expect(exclusive).not.toBeChecked();
+  await expect(share).toBeChecked();
 });

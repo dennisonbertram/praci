@@ -5,7 +5,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 - Web and shared component files with stories: 195 of 195
 - Web and shared components: 556
-- Mobile components: 124 in 85 files, mobile — native story pending
+- Mobile components: 125 in 86 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -336,6 +336,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ComputerModePicker | [apps/mobile/components/computer-mode-picker.tsx](../../apps/mobile/components/computer-mode-picker.tsx) | mobile — native story pending | mobile |
 | ComputerUpdateProgress | [apps/mobile/components/computer-update-progress.tsx](../../apps/mobile/components/computer-update-progress.tsx) | mobile — native story pending | mobile |
 | ComputerCard | [apps/mobile/components/ComputerCard.tsx](../../apps/mobile/components/ComputerCard.tsx) | mobile — native story pending | mobile |
+| ConnectionAgent | [apps/mobile/components/connection-agent.tsx](../../apps/mobile/components/connection-agent.tsx) | mobile — native story pending | mobile |
 | ConnectorIcon | [apps/mobile/components/connector-icon.tsx](../../apps/mobile/components/connector-icon.tsx) | mobile — native story pending | mobile |
 | ConversationRow | [apps/mobile/components/conversation-row.tsx](../../apps/mobile/components/conversation-row.tsx) | mobile — native story pending | mobile |
 | FailedSendBubble | [apps/mobile/components/failed-send-bubble.tsx](../../apps/mobile/components/failed-send-bubble.tsx) | mobile — native story pending | mobile |

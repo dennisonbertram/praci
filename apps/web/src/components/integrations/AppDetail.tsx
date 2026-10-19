@@ -243,18 +243,37 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
     }, t`Could not update changes`);
   }
 
-  async function setAgent(row: Connection | undefined, botId: string, on: boolean) {
-    const next = toggleAccess(storedAccess(row), allBotIds, botId, on);
-    setOverride(row ? { ...next, rowId: row.id } : null);
+  /** Selections made while saves are in flight: each toggle builds on the last one, not on stored data. */
+  const pendingAccess = useRef(new Map<string, ConnectionAccess>());
+  const saveQueue = useRef<Promise<void>>(Promise.resolve());
+  const unsaved = useRef(0);
+
+  function setAgent(row: Connection | undefined, botId: string, on: boolean) {
+    if (!row || (row.agentBotId === botId && !on)) return; // the owning agent always keeps access
+    const next = toggleAccess(
+      pendingAccess.current.get(row.id) ?? storedAccess(row),
+      allBotIds,
+      botId,
+      on,
+    );
+    pendingAccess.current.set(row.id, next);
+    setOverride({ ...next, rowId: row.id });
     setError(null);
-    try {
-      if (row) await rpc.connections.setAccess({ connectionId: row.id, ...next });
-      await data.refresh();
-    } catch (err) {
-      setError(errorText(err, t`Could not update bot access`));
-    } finally {
-      setOverride(null);
-    }
+    unsaved.current += 1;
+    // One save at a time, in click order, so a slow earlier save cannot overwrite a later one.
+    saveQueue.current = saveQueue.current.then(async () => {
+      try {
+        await rpc.connections.setAccess({ connectionId: row.id, ...next });
+      } catch (err) {
+        setError(errorText(err, t`Could not update bot access`));
+      }
+      unsaved.current -= 1;
+      if (unsaved.current === 0) {
+        pendingAccess.current.clear();
+        await data.refresh();
+        setOverride(null);
+      }
+    });
   }
 
   async function revoke(targets: Connection[], afterRemovingAll: boolean) {
@@ -448,7 +467,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                         appName={row.displayName}
                         disabled={busy}
                         isOn={(botId) => isOn(row, botId)}
-                        onToggle={(botId, on) => void setAgent(row, botId, on)}
+                        onToggle={(botId, on) => setAgent(row, botId, on)}
                       />
                     }
                   />
@@ -462,7 +481,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                       appName={row.displayName}
                       disabled={busy}
                       isOn={(botId) => isOn(row, botId)}
-                      onToggle={(botId, on) => void setAgent(row, botId, on)}
+                      onToggle={(botId, on) => setAgent(row, botId, on)}
                     />
                   </>
                 ) : null}
@@ -489,7 +508,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                     appName={name}
                     disabled={busy}
                     isOn={(botId) => isOn(ordinaryAccount, botId)}
-                    onToggle={(botId, on) => void setAgent(ordinaryAccount, botId, on)}
+                    onToggle={(botId, on) => setAgent(ordinaryAccount, botId, on)}
                   />
                 </>
               ) : null}

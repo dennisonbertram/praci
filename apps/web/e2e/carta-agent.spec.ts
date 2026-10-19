@@ -32,9 +32,9 @@ test("Carta uses the general Agent controls while retaining its specialized agen
   await page.goto(path);
   const section = page.getByRole("region", { name: "Agent", exact: true });
   const writes = section.getByRole("switch", { name: "Allow changes in Carta" });
-  const exclusive = section.getByRole("switch", { name: "Only this agent" });
+  const share = section.getByRole("switch", { name: "Share with all agents" });
   await expect(writes).not.toBeChecked();
-  await expect(exclusive).toBeChecked();
+  await expect(share).not.toBeChecked();
   await expect(page.getByRole("link", { name: "Open Cap table" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Create agent", exact: true })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "carta-agent-defaults");
@@ -44,11 +44,11 @@ test("Carta uses the general Agent controls while retaining its specialized agen
   await captureScreenshot(page, testInfo, "carta-agent-confirmation");
   await confirmation.getByRole("button", { name: "Allow changes", exact: true }).click();
   await expect(writes).toBeChecked();
-  await exclusive.click();
-  await expect(exclusive).not.toBeChecked();
+  await share.click();
+  await expect(share).toBeChecked();
   await page.reload();
   await expect(writes).toBeChecked();
-  await expect(exclusive).not.toBeChecked();
+  await expect(share).toBeChecked();
   await captureScreenshot(page, testInfo, "carta-agent-saved-controls");
   await writes.click();
   await expect(writes).not.toBeChecked();

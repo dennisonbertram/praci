@@ -5943,10 +5943,10 @@ export function createRouter(deps: RouterDeps) {
           if (
             connection.agentBotId &&
             !input.allAgents &&
-            botIds.some((botId) => botId !== connection.agentBotId)
+            !botIds.includes(connection.agentBotId)
           ) {
             throw new ORPCError("BAD_REQUEST", {
-              message: "Exclusive access is limited to the connection's agent",
+              message: "The connection's agent must keep access",
             });
           }
           if (connection.agentBotId) botIds = [...new Set([...botIds, connection.agentBotId])];
