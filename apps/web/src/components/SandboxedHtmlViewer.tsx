@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 
 const PREVIEW_CSP =
@@ -28,12 +28,28 @@ function embedScriptString(value: string): string {
     .replace(/\u2029/g, "\\u2029");
 }
 
+/**
+ * The one script an email frame may run: it reports the message's height so the frame can fit it.
+ * It is pinned by hash, so no script or inline handler from the email itself can run, and the frame
+ * has no allow-same-origin, so even this script cannot reach the app. Change the text and the hash
+ * together (a test checks they match).
+ */
+export const EMAIL_HEIGHT_SCRIPT = `(()=>{let last=0;const send=()=>{const h=Math.ceil(document.documentElement.getBoundingClientRect().height);if(h!==last){last=h;parent.postMessage({type:"rakazo-email-height",height:h},"*")}};new ResizeObserver(send).observe(document.documentElement);addEventListener("load",send);send()})();`;
+export const EMAIL_HEIGHT_SCRIPT_HASH = "sha256-6RpnQvW9DYV8jCtQSnZW5rlzGspOpUNiizQnBvHvo0I=";
+const EMAIL_HEIGHT_MESSAGE = "rakazo-email-height";
+// ponytail: a cap so a hostile height cannot make a page millions of pixels tall; longer mail scrolls inside.
+const MAX_EMAIL_HEIGHT = 20_000;
+
 // Without scripts, links go nowhere: the shell's frame-src rejects the navigation.
 const previewCsp = (scripts: boolean, email: boolean) => {
-  const csp = scripts
+  if (email)
+    return PREVIEW_CSP.replace(
+      "script-src 'unsafe-inline'",
+      `script-src '${EMAIL_HEIGHT_SCRIPT_HASH}'`,
+    ).replace("img-src data:", `img-src data: ${proxyOrigin()}`);
+  return scripts
     ? PREVIEW_CSP
     : PREVIEW_CSP.replace("script-src 'unsafe-inline'", "script-src 'none'");
-  return email ? csp.replace("img-src data:", `img-src data: ${proxyOrigin()}`) : csp;
 };
 
 // Remote images reach an email only through the server's image proxy, so the sender never sees the reader's
@@ -55,6 +71,11 @@ const POPUP_FLAGS = "allow-popups allow-popups-to-escape-sandbox";
  */
 function openLinksInNewTab(html: string): string {
   const doc = new DOMParser().parseFromString(html, "text/html");
+  // The CSP already blocks these; removing them as well keeps the pinned height script the only one.
+  for (const script of doc.querySelectorAll("script")) script.remove();
+  for (const el of doc.querySelectorAll("*"))
+    for (const attr of [...el.attributes])
+      if (attr.name.toLowerCase().startsWith("on")) el.removeAttribute(attr.name);
   for (const link of doc.querySelectorAll("a[href], area[href]")) {
     if (/^https?:/i.test((link.getAttribute("href") ?? "").trim())) {
       link.setAttribute("target", "_blank");
@@ -130,13 +151,19 @@ const EMAIL_FIT = `<meta name="viewport" content="width=device-width,initial-sca
 function withPreviewDocument(html: string, scripts: boolean, email: boolean): string {
   const meta = `<meta http-equiv="Content-Security-Policy" content="${previewCsp(scripts, email)}">`;
   const referrer = `<meta name="referrer" content="no-referrer">`;
-  return `${meta}${referrer}${scripts ? PREVIEW_GUARD : ""}${email ? EMAIL_FIT + openLinksInNewTab(html) : html}`;
+  const body = email
+    ? `${EMAIL_FIT}<script>${EMAIL_HEIGHT_SCRIPT}</script>${openLinksInNewTab(html)}`
+    : html;
+  return `${meta}${referrer}${scripts ? PREVIEW_GUARD : ""}${body}`;
 }
+
+// The shell passes on height reports only from its own message frame, and only in the expected shape.
+const SHELL_HEIGHT_RELAY = `const preview=document.getElementById("preview");addEventListener("message",(e)=>{const d=e.data;if(e.source!==preview.contentWindow||!d||d.type!=="${EMAIL_HEIGHT_MESSAGE}"||typeof d.height!=="number")return;parent.postMessage({type:"${EMAIL_HEIGHT_MESSAGE}",height:d.height},"*")});`;
 
 function shellDocument(innerHtml: string, scripts: boolean, email: boolean): string {
   const payload = embedScriptString(innerHtml);
-  const sandbox = email ? POPUP_FLAGS : scripts ? "allow-scripts" : "";
-  return `<!DOCTYPE html><meta http-equiv="Content-Security-Policy" content="${shellCsp(email)}"><meta name="referrer" content="no-referrer"><style>html,body{height:100%;margin:0}iframe{width:100%;height:100%;border:0;background:#fff}</style><iframe id="preview" sandbox="${sandbox}" referrerpolicy="no-referrer" csp="${previewCsp(scripts, email)}"></iframe><script>document.getElementById("preview").srcdoc=${payload};</script>`;
+  const sandbox = email ? `allow-scripts ${POPUP_FLAGS}` : scripts ? "allow-scripts" : "";
+  return `<!DOCTYPE html><meta http-equiv="Content-Security-Policy" content="${shellCsp(email)}"><meta name="referrer" content="no-referrer"><style>html,body{height:100%;margin:0}iframe{width:100%;height:100%;border:0;background:#fff}</style><iframe id="preview" sandbox="${sandbox}" referrerpolicy="no-referrer" csp="${previewCsp(scripts, email)}"></iframe><script>${email ? SHELL_HEIGHT_RELAY : ""}document.getElementById("preview").srcdoc=${payload};</script>`;
 }
 
 /**
@@ -170,6 +197,21 @@ export function SandboxedHtmlViewer({
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
   }, [email]);
+  // An email frame is as tall as its message, so the dialog scrolls instead of the frame.
+  const [height, setHeight] = useState<number | null>(null);
+  useEffect(() => {
+    if (!email) return;
+    const onMessage = (event: MessageEvent) => {
+      const data = event.data as { type?: unknown; height?: unknown } | null;
+      if (event.source !== frame.current?.contentWindow || data?.type !== EMAIL_HEIGHT_MESSAGE)
+        return;
+      if (typeof data.height !== "number" || !Number.isFinite(data.height) || data.height <= 0)
+        return;
+      setHeight(Math.min(Math.ceil(data.height), MAX_EMAIL_HEIGHT));
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, [email]);
   return (
     <iframe
       ref={frame}
@@ -177,7 +219,10 @@ export function SandboxedHtmlViewer({
       srcDoc={shellDocument(withPreviewDocument(html, runScripts, email), runScripts, email)}
       sandbox={email ? `allow-scripts ${POPUP_FLAGS}` : "allow-scripts"}
       referrerPolicy="no-referrer"
-      className="h-full w-full border-0 bg-white"
+      style={email && height ? { height } : undefined}
+      className={
+        email ? "block min-h-32 w-full border-0 bg-white" : "h-full w-full border-0 bg-white"
+      }
     />
   );
 }

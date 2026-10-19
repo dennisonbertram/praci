@@ -100,7 +100,7 @@ export function InboxMessageDialog({
         tabIndex={-1}
         showCloseButton={false}
         className={cn(
-          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1 md:has-[iframe]:h-[min(85vh,820px)]",
+          "top-0 left-0 flex h-dvh max-h-none w-full max-w-none translate-x-0 translate-y-0 flex-col gap-2 rounded-none pt-[max(1rem,env(safe-area-inset-top))] pb-[max(1rem,env(safe-area-inset-bottom))] ring-0 sm:max-w-none md:top-[7.5vh] md:left-1/2 md:h-auto md:max-h-[85vh] md:w-[min(768px,94vw)] md:-translate-x-1/2 md:translate-y-0 md:rounded-xl md:ring-1",
           composing && "invisible",
         )}
       >
@@ -390,7 +390,7 @@ function InboxMessage({
         ) : message.html &&
           hasVisibleContent(message.html) &&
           !(message.text && isPlainHtml(message.html)) ? (
-          <div className="mt-3 min-h-64 flex-1 overflow-hidden rounded-lg border border-border bg-white">
+          <div className="mt-3 shrink-0 overflow-hidden rounded-lg border border-border bg-white">
             <SandboxedHtmlViewer html={message.html} title={message.subject} email />
           </div>
         ) : (

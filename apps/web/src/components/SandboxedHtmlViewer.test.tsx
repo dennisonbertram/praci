@@ -1,9 +1,14 @@
 // @vitest-environment jsdom
 
+import { createHash } from "node:crypto";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
-import { SandboxedHtmlViewer } from "./SandboxedHtmlViewer";
+import {
+  EMAIL_HEIGHT_SCRIPT,
+  EMAIL_HEIGHT_SCRIPT_HASH,
+  SandboxedHtmlViewer,
+} from "./SandboxedHtmlViewer";
 
 async function render(html: string, scripts?: boolean, email?: boolean) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -91,8 +96,11 @@ it("email mode loads data and proxied images, opens links in new tabs, and still
   const view = await render('<img src="https://example.invalid/pixel.png">', true, true);
   const shell = view.srcDoc.split("srcdoc=")[0] ?? "";
 
-  // Even when the caller asks for scripts, an email never gets them.
-  expect(shell).toMatch(/csp="[^"]*script-src 'none'/);
+  // Even when the caller asks for scripts, an email's own scripts never run: the message frame
+  // allows exactly one pinned script (the height reporter) and nothing inline.
+  const innerScriptSources = directiveSources(/csp="([^"]*)"/.exec(shell)?.[1] ?? "", "script-src");
+  expect(innerScriptSources).toEqual([`'${EMAIL_HEIGHT_SCRIPT_HASH}'`]);
+  expect(shell).not.toMatch(/csp="[^"]*unsafe-(inline|hashes)[^"]*script/);
   expect(shell).toContain(`img-src data: ${window.location.origin}`);
   expect(shell).not.toMatch(/img-src[^;]*https:/);
   // The message frame inherits the shell's policy, so the shell must not block images either.
@@ -101,9 +109,11 @@ it("email mode loads data and proxied images, opens links in new tabs, and still
     window.location.origin,
   ]);
   const innerSandbox = /<iframe id="preview" sandbox="([^"]*)"/.exec(shell)?.[1] ?? "";
+  // allow-scripts runs only the pinned height script; without allow-same-origin the frame stays opaque.
   expect(innerSandbox.split(" ").sort()).toEqual([
     "allow-popups",
     "allow-popups-to-escape-sandbox",
+    "allow-scripts",
   ]);
   const outer = view.iframe?.getAttribute("sandbox")?.split(" ").sort();
   expect(outer).toEqual(["allow-popups", "allow-popups-to-escape-sandbox", "allow-scripts"]);
@@ -168,11 +178,54 @@ it("email mode still embeds attacker markup safely and keeps the script policy",
 
   expect(view.srcDoc).not.toContain("</script><script>");
   expect(view.srcDoc).not.toContain("allow-same-origin");
-  expect(view.srcDoc).not.toContain("addEventListener");
+  // The only script left in the message is the pinned height reporter.
+  const scripts = [...embeddedMessage(view.srcDoc).querySelectorAll("script")];
+  expect(scripts.map((script) => script.textContent)).toEqual([EMAIL_HEIGHT_SCRIPT]);
   expect(shellContentSecurityPolicy(view.srcDoc)).toContain("frame-src about:");
   expect(shellContentSecurityPolicy(view.srcDoc)).toContain("child-src 'none'");
   expect(embeddedMessage(view.srcDoc).querySelector("a")?.getAttribute("target")).toBe("_blank");
 
+  await view.cleanup();
+});
+
+it("pins the height script by its exact SHA-256 hash", () => {
+  const digest = createHash("sha256").update(EMAIL_HEIGHT_SCRIPT, "utf8").digest("base64");
+  expect(EMAIL_HEIGHT_SCRIPT_HASH).toBe(`sha256-${digest}`);
+});
+
+it("email mode strips the message's own scripts and inline handlers", async () => {
+  const view = await render(
+    '<img src="data:image/png;base64,AA==" onload="alert(1)"><p onclick="alert(2)">x</p><script>alert(3)</script>',
+    false,
+    true,
+  );
+  const doc = embeddedMessage(view.srcDoc);
+  expect(doc.body.innerHTML).not.toMatch(/on(load|click)=|alert\(/);
+  expect([...doc.querySelectorAll("script")].map((s) => s.textContent)).toEqual([
+    EMAIL_HEIGHT_SCRIPT,
+  ]);
+  await view.cleanup();
+});
+
+it("email mode sizes the frame from height messages sent only by its own frame", async () => {
+  const view = await render("<p>Hi</p>", false, true);
+  const iframe = view.iframe as HTMLIFrameElement;
+  const post = async (data: unknown, source: MessageEventSource | null) =>
+    act(async () => {
+      window.dispatchEvent(new MessageEvent("message", { data, source }));
+    });
+
+  await post({ type: "rakazo-email-height", height: 480 }, iframe.contentWindow);
+  expect(iframe.style.height).toBe("480px");
+  // Another window, a wrong shape, or a bad number never changes the size.
+  await post({ type: "rakazo-email-height", height: 900 }, window);
+  await post({ type: "other", height: 900 }, iframe.contentWindow);
+  await post({ type: "rakazo-email-height", height: Number.NaN }, iframe.contentWindow);
+  await post({ type: "rakazo-email-height", height: -5 }, iframe.contentWindow);
+  expect(iframe.style.height).toBe("480px");
+  // Absurd heights are capped.
+  await post({ type: "rakazo-email-height", height: 10_000_000 }, iframe.contentWindow);
+  expect(Number.parseInt(iframe.style.height, 10)).toBeLessThanOrEqual(20_000);
   await view.cleanup();
 });
 
