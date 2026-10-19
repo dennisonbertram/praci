@@ -237,16 +237,53 @@ export async function updateNotificationPreferences(
   return getNotificationPreferences(prisma, actor);
 }
 
-/** The user's notifications, newest first, optionally only those created after `since`. */
+export const NOTIFICATION_PAGE_SIZE = 100;
+
+/** Opaque position after a notification: its creation time and id. */
+export const encodeNotificationCursor = (n: Pick<Notification, "createdAt" | "id">) =>
+  `${n.createdAt.toISOString()}|${n.id}`;
+
+function decodeNotificationCursor(cursor: string): { createdAt: Date; id: string } {
+  const [time, ...rest] = cursor.split("|");
+  const createdAt = new Date(time ?? "");
+  const id = rest.join("|");
+  if (Number.isNaN(createdAt.getTime()) || !id) {
+    throw new NotificationValidationError("Invalid notification cursor.");
+  }
+  return { createdAt, id };
+}
+
+/**
+ * One page of the user's notifications, oldest first, after `cursor` (or after `since` when there
+ * is no cursor). `nextCursor` is set while more remain; pass it back to continue, so a client
+ * that was offline can catch up completely. Ties on creation time are ordered by id.
+ */
 export async function listNotifications(
   prisma: Pick<PrismaClient, "notification">,
-  actor: Scope & { since?: Date },
-): Promise<Notification[]> {
-  return prisma.notification.findMany({
-    where: { ...ownerOf(actor), ...(actor.since ? { createdAt: { gt: actor.since } } : {}) },
-    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-    take: 100,
+  actor: Scope & { since?: Date; cursor?: string; limit?: number },
+): Promise<{ items: Notification[]; nextCursor: string | null }> {
+  const limit = Math.min(actor.limit ?? NOTIFICATION_PAGE_SIZE, NOTIFICATION_PAGE_SIZE);
+  const after = actor.cursor ? decodeNotificationCursor(actor.cursor) : undefined;
+  const rows = await prisma.notification.findMany({
+    where: {
+      ...ownerOf(actor),
+      ...(after
+        ? {
+            OR: [
+              { createdAt: { gt: after.createdAt } },
+              { createdAt: after.createdAt, id: { gt: after.id } },
+            ],
+          }
+        : actor.since
+          ? { createdAt: { gt: actor.since } }
+          : {}),
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take: limit + 1,
   });
+  const items = rows.slice(0, limit);
+  const last = items.at(-1);
+  return { items, nextCursor: rows.length > limit && last ? encodeNotificationCursor(last) : null };
 }
 
 /** Marks the surface's unseen notifications seen, returning how many changed. */

@@ -21,6 +21,7 @@ export * from "./messages.js";
 export * from "./messaging.js";
 export * from "./model-backups.js";
 export * from "./model-credentials.js";
+export * from "./notification-live.js";
 export * from "./notifications.js";
 export * from "./prisma-errors.js";
 export * from "./push-endpoints.js";

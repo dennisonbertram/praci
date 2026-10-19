@@ -196,6 +196,7 @@ import {
   LegalUpdateDeadlineInputSchema,
 } from "./legal.js";
 import { McpOauthClientSchema } from "./mcp.js";
+import { NotificationSchema, NotificationSignalSchema } from "./notification.js";
 import {
   BotPageGetInputSchema,
   BotPageSaveInputSchema,
@@ -1107,6 +1108,26 @@ export const appContract = {
         }),
       )
       .output(NotificationPreferencesSchema),
+    list: oc
+      // Oldest first. Pass `nextCursor` back until it is null to catch up completely.
+      .input(
+        z.object({
+          since: z.string().datetime().optional(),
+          cursor: z.string().max(200).optional(),
+        }),
+      )
+      .output(
+        z.object({
+          notifications: z.array(NotificationSchema),
+          nextCursor: z.string().nullable(),
+        }),
+      ),
+    markSeen: oc
+      .input(z.object({ surface: z.string().min(1).max(64) }))
+      .output(z.object({ count: z.number() })),
+    markShown: oc.input(z.object({ id: z.string().min(1) })).output(z.object({ ok: z.boolean() })),
+    unseenCounts: oc.output(z.object({ counts: z.record(z.string(), z.number()) })),
+    subscribe: oc.output(eventIterator(NotificationSignalSchema)),
   },
   search: {
     query: oc.input(z.object({ q: z.string().max(200) })).output(SearchQueryOutputSchema),
