@@ -818,7 +818,8 @@ it("explains a rate-limited Inbox with no mail, and shows Try again working", as
   let finish: (value: unknown) => void = () => {};
   rpcMock.refresh.mockReturnValue(new Promise((r) => (finish = r)));
   await click(byText(c, "Try again"));
-  expect(byText(c, "Trying again…")?.disabled).toBe(true);
+  expect(byText(c, "Try again")?.disabled).toBe(true);
+  expect(c.querySelector('[data-slot="spinner"]')).not.toBeNull();
   await act(async () => finish({}));
   expect(byText(c, "Try again")?.disabled).toBe(false);
 });

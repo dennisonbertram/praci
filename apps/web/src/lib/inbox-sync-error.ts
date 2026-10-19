@@ -9,7 +9,7 @@ export function syncErrorText(list: {
   if (list.failedAccounts.length === 0) return "";
   if (list.reconnectAccounts.length > 0) return t`Gmail needs to be reconnected.`;
   if (list.rateLimitedAccounts?.length) {
-    return t`Gmail is limiting requests right now. Try again in a minute.`;
+    return t`Gmail is limiting requests right now. Try again in a few seconds.`;
   }
   return t`Couldn't reach Gmail.`;
 }

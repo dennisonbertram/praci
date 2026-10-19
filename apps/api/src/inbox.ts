@@ -400,13 +400,13 @@ export async function inboxList(
   ]);
 
   const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled, marks));
-  // A rate limit is a pause, not a lasting fault: it is reported only while its backoff runs.
-  // After that the next sync decides, so an old one must not claim Gmail is limiting requests now.
+  // A rate limit stays reported until a sync clears it, so an expired pause never turns into "No mail".
+  // The one exception is a sync running now (its claim is under 2 minutes old, as in mail-sync), which will decide.
   const nowMs = Date.now();
+  const syncing = (s: (typeof states)[number]) =>
+    Boolean(s.syncStartedAt && nowMs - s.syncStartedAt.getTime() < 120_000);
   const current = states.filter(
-    (s) =>
-      s.lastErrorAt &&
-      (s.lastErrorKind !== "rate_limited" || (s.backoffUntil && s.backoffUntil.getTime() > nowMs)),
+    (s) => s.lastErrorAt && (s.lastErrorKind !== "rate_limited" || !syncing(s)),
   );
   const synced = states.flatMap((s) => (s.lastSyncedAt ? [s.lastSyncedAt.getTime()] : []));
   return {
