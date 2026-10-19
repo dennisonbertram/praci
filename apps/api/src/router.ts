@@ -160,7 +160,6 @@ import {
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
-  integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
@@ -353,6 +352,7 @@ import {
 } from "./inbox-compose.js";
 import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
 import {
+  connectionAgentSpawnKeys,
   ensureConnectedAppAgent,
   ensureIntegrationAgent,
   setConnectedAppExclusive,
@@ -5850,7 +5850,7 @@ export function createRouter(deps: RouterDeps) {
                 id: connection.agentBotId,
                 spaceId: actor.spaceId,
                 userId: actor.userId,
-                spawnKey: integrationAgentSpawnKey(connection.id),
+                spawnKey: { in: connectionAgentSpawnKeys(actor, connection) },
                 archivedAt: null,
               },
               data: { updatedAt: new Date() },
