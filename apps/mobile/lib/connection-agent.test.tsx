@@ -8,7 +8,13 @@ import { ConnectionAgent } from "../components/connection-agent";
 
 const m = vi.hoisted(() => ({ rpc: vi.fn(), push: vi.fn(), close: vi.fn() }));
 vi.mock("./api", () => ({ rpc: m.rpc }));
-vi.mock("expo-router", () => ({ useRouter: () => ({ push: m.push }) }));
+vi.mock("expo-router", async () => {
+  const { useEffect } = await import("react");
+  return {
+    useRouter: () => ({ push: m.push }),
+    useFocusEffect: (effect: () => (() => void) | undefined) => useEffect(effect, [effect]),
+  };
+});
 vi.mock("./settings-sheet", () => ({ closeSettingsSheet: m.close }));
 vi.mock("./appearance", () => ({ mobileTokens: () => ({ destructive: "red" }) }));
 vi.mock("./native", () => ({ native: {}, useThemedStyles: (f: () => unknown) => f() }));
@@ -104,4 +110,32 @@ it("restores the previous value on error", async () => {
   await flush();
   expect(sw().checked).toBe(false);
   expect(host.textContent).toContain("no");
+});
+
+it("shows Try again when loading fails and reloads on tap", async () => {
+  m.rpc.mockRejectedValue(new Error("down"));
+  await mount();
+  expect(host.textContent).toContain("Try again.");
+  serve(true);
+  await act(async () => host.querySelector("button")?.click());
+  await flush();
+  expect(host.textContent).toContain("Calendar agent");
+  expect(sw().checked).toBe(true);
+});
+
+it("ignores a stale load and saves with fresh botIds", async () => {
+  serve(false);
+  await mount();
+  let n = 0;
+  m.rpc.mockImplementation(async (path: string) => {
+    if (path === "connections/access") return { allAgents: false, botIds: [`fresh${++n}`] };
+    if (path === "bots/list") return [{ id: "bot1", name: "Calendar agent" }];
+    return {};
+  });
+  await act(async () => sw().click());
+  expect(m.rpc).toHaveBeenCalledWith("connections/setAccess", {
+    connectionId: "c1",
+    allAgents: true,
+    botIds: ["fresh1"],
+  });
 });

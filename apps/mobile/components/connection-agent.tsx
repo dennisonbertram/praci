@@ -1,5 +1,5 @@
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { MobileBot } from "../lib/api";
 import { rpc } from "../lib/api";
@@ -18,26 +18,37 @@ export function ConnectionAgent({ connectionId, botId }: { connectionId: string;
   const router = useRouter();
   const [name, setName] = useState("");
   const [shared, setShared] = useState<boolean | null>(null);
-  const [botIds, setBotIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let live = true;
-    void rpc<{ allAgents: boolean; botIds: string[] }>("connections/access", { connectionId })
-      .then((access) => {
-        if (!live) return;
+  const sequence = useRef(0);
+  const [loadFailed, setLoadFailed] = useState(false);
+
+  const load = useCallback(() => {
+    const mine = ++sequence.current;
+    setLoadFailed(false);
+    Promise.all([
+      rpc<{ allAgents: boolean; botIds: string[] }>("connections/access", { connectionId }),
+      rpc<MobileBot[]>("bots/list"),
+    ])
+      .then(([access, bots]) => {
+        if (mine !== sequence.current) return;
         setShared(access.allAgents);
-        setBotIds(access.botIds);
+        setName(bots.find((bot) => bot.id === botId)?.name ?? "");
       })
-      .catch(() => undefined);
-    void rpc<MobileBot[]>("bots/list")
-      .then((bots) => live && setName(bots.find((bot) => bot.id === botId)?.name ?? ""))
-      .catch(() => undefined);
-    return () => {
-      live = false;
-    };
+      .catch(() => {
+        if (mine === sequence.current) setLoadFailed(true);
+      });
   }, [connectionId, botId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      load();
+      return () => {
+        sequence.current++;
+      };
+    }, [load]),
+  );
 
   async function setAll(next: boolean) {
     const previous = shared;
@@ -45,7 +56,9 @@ export function ConnectionAgent({ connectionId, botId }: { connectionId: string;
     setSaving(true);
     setError(null);
     try {
-      await rpc("connections/setAccess", { connectionId, allAgents: next, botIds });
+      // Read the current selection right before saving so a change made elsewhere is kept.
+      const fresh = await rpc<{ botIds: string[] }>("connections/access", { connectionId });
+      await rpc("connections/setAccess", { connectionId, allAgents: next, botIds: fresh.botIds });
     } catch (cause) {
       setShared(previous);
       setError(errorText(cause, t("Try again.")));
@@ -54,6 +67,12 @@ export function ConnectionAgent({ connectionId, botId }: { connectionId: string;
     }
   }
 
+  if (loadFailed)
+    return (
+      <Pressable accessibilityRole="button" onPress={load} style={styles.row}>
+        <Text style={styles.error}>{t("Try again.")}</Text>
+      </Pressable>
+    );
   if (!name) return null;
   return (
     <View style={styles.box}>
