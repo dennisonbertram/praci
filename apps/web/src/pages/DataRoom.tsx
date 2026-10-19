@@ -33,6 +33,7 @@ import {
   SubfolderList,
 } from "../components/data-room/ItemRows";
 import { Preview } from "../components/data-room/Preview";
+import type { SendTarget } from "../components/data-room/SendToAgent";
 import {
   setOpenDataRoomFolder,
   showDeletedToast,
@@ -110,9 +111,14 @@ function FileInputButton({
 export function DataRoomPage({
   spaceName,
   onAskAgent,
+  agents,
+  onSendToAgent,
 }: {
   spaceName?: string;
   onAskAgent?: () => void;
+  /** The agents a file can be sent to; without them the menu item is not offered. */
+  agents?: SendTarget[];
+  onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
 } = {}) {
   const [params, setParams] = useSearchParams();
   const linkedItem = params.get("item");
@@ -364,6 +370,8 @@ export function DataRoomPage({
       }
     },
     onAction: (kind, item) => (kind === "retry" ? retry(item) : setAction({ kind, item })),
+    agents,
+    onSendToAgent,
     folderPath,
     openFolderId: filters.folderId,
   };
@@ -673,6 +681,7 @@ export function DataRoomPage({
       ) : null}
       {autoSorting ? (
         <AutoSortDialog
+          files={rows.map(({ item }) => ({ id: item.id, name: item.name }))}
           onClose={() => setAutoSorting(false)}
           onApplied={({ batchId, items }) => {
             showSortedToast(items, batchId);

@@ -19,6 +19,18 @@ export const integrationAgentSpawnKey = (serverId: string) => `integration-agent
 export const isIntegrationAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(integrationAgentSpawnKey("")));
 
+/**
+ * Whether a run of this bot is offered the Data room tools. Integration agents (Carta, Calendar,
+ * Drive and the connected apps) never are; any bot can also have the tool turned off.
+ */
+export const botCanReadDataRoom = (bot: {
+  spawnKey: string | null | undefined;
+  disabledBuiltinTools?: readonly string[];
+}) =>
+  !isIntegrationAgentSpawnKey(bot.spawnKey) &&
+  !isCartaAgentSpawnKey(bot.spawnKey) &&
+  !bot.disabledBuiltinTools?.includes("read_data_room_item");
+
 /** An agent that owns one account (Inbox, Carta, integration or Calendar/Drive): other bots ask it. */
 export const isOwnerAgentSpawnKey = (spawnKey: string | null | undefined) =>
   isInboxAgentSpawnKey(spawnKey) ||

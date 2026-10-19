@@ -27,6 +27,7 @@ export * from "./components/ui/button.js";
 export * from "./components/ui/card.js";
 export * from "./components/ui/checkbox.js";
 export * from "./components/ui/command.js";
+export * from "./components/ui/context-menu.js";
 export * from "./components/ui/dialog.js";
 export * from "./components/ui/dropdown-menu.js";
 export * from "./components/ui/field.js";

@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 202 of 202
-- Web and shared components: 566
+- Web and shared component files with stories: 206 of 206
+- Web and shared components: 585
 - Mobile components: 127 in 88 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -25,6 +25,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter | [packages/ui-web/src/components/ui/card.tsx](../../packages/ui-web/src/components/ui/card.tsx) | [card.stories.tsx](../../packages/ui-web/src/components/ui/card.stories.tsx) | shared |
 | Checkbox | [packages/ui-web/src/components/ui/checkbox.tsx](../../packages/ui-web/src/components/ui/checkbox.tsx) | [checkbox.stories.tsx](../../packages/ui-web/src/components/ui/checkbox.stories.tsx) | shared |
 | Command, CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandSeparator, CommandItem, CommandShortcut | [packages/ui-web/src/components/ui/command.tsx](../../packages/ui-web/src/components/ui/command.tsx) | [command.stories.tsx](../../packages/ui-web/src/components/ui/command.stories.tsx) | shared |
+| ContextMenu, ContextMenuPortal, ContextMenuTrigger, ContextMenuContent, ContextMenuGroup, ContextMenuLabel, ContextMenuItem, ContextMenuSub, ContextMenuSubTrigger, ContextMenuSubContent, ContextMenuCheckboxItem, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut | [packages/ui-web/src/components/ui/context-menu.tsx](../../packages/ui-web/src/components/ui/context-menu.tsx) | [context-menu.stories.tsx](../../packages/ui-web/src/components/ui/context-menu.stories.tsx) | shared |
 | Dialog, DialogTrigger, DialogPortal, DialogClose, DialogOverlay, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription | [packages/ui-web/src/components/ui/dialog.tsx](../../packages/ui-web/src/components/ui/dialog.tsx) | [dialog.stories.tsx](../../packages/ui-web/src/components/ui/dialog.stories.tsx) | shared |
 | DropdownMenu, DropdownMenuPortal, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuGroup, DropdownMenuLabel, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuCheckboxItem, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuShortcut | [packages/ui-web/src/components/ui/dropdown-menu.tsx](../../packages/ui-web/src/components/ui/dropdown-menu.tsx) | [dropdown-menu.stories.tsx](../../packages/ui-web/src/components/ui/dropdown-menu.stories.tsx) | shared |
 | FieldSet, FieldLegend, FieldGroup, Field, FieldContent, FieldLabel, FieldTitle, FieldDescription, FieldSeparator, FieldError | [packages/ui-web/src/components/ui/field.tsx](../../packages/ui-web/src/components/ui/field.tsx) | [field.stories.tsx](../../packages/ui-web/src/components/ui/field.stories.tsx) | shared |
@@ -101,6 +102,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | SoftwareUpdatePanel, SoftwareUpdateSection, CheckSummary | [apps/web/src/components/SoftwareUpdateSection.tsx](../../apps/web/src/components/SoftwareUpdateSection.tsx) | [SoftwareUpdateSection.stories.tsx](../../apps/web/src/components/SoftwareUpdateSection.stories.tsx) | web |
 | SubscriptionGate | [apps/web/src/components/SubscriptionGate.tsx](../../apps/web/src/components/SubscriptionGate.tsx) | [SubscriptionGate.stories.tsx](../../apps/web/src/components/SubscriptionGate.stories.tsx) | web |
 | ToolSteps, ToolActivityDisclosure, StandaloneToolActivity, ToolOnlyNarration | [apps/web/src/components/ToolActivityDisclosure.tsx](../../apps/web/src/components/ToolActivityDisclosure.tsx) | [ToolActivityDisclosure.stories.tsx](../../apps/web/src/components/ToolActivityDisclosure.stories.tsx) | web |
+| UserTextBubble | [apps/web/src/components/UserTextBubble.tsx](../../apps/web/src/components/UserTextBubble.tsx) | [UserTextBubble.stories.tsx](../../apps/web/src/components/UserTextBubble.stories.tsx) | web |
 
 ## Web components/ai
 
@@ -139,6 +141,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Row, AutoSortDialog | [apps/web/src/components/data-room/AutoSortDialog.tsx](../../apps/web/src/components/data-room/AutoSortDialog.tsx) | [AutoSortDialog.stories.tsx](../../apps/web/src/components/data-room/AutoSortDialog.stories.tsx) | web |
 | DataRoomConsentPrompt | [apps/web/src/components/data-room/ConsentPrompt.tsx](../../apps/web/src/components/data-room/ConsentPrompt.tsx) | [ConsentPrompt.stories.tsx](../../apps/web/src/components/data-room/ConsentPrompt.stories.tsx) | web |
 | DataRoomImportMenu | [apps/web/src/components/data-room/DataRoomImportMenu.tsx](../../apps/web/src/components/data-room/DataRoomImportMenu.tsx) | [DataRoomImportMenu.stories.tsx](../../apps/web/src/components/data-room/DataRoomImportMenu.stories.tsx) | web |
+| DataRoomRefChips | [apps/web/src/components/data-room/DataRoomRefChips.tsx](../../apps/web/src/components/data-room/DataRoomRefChips.tsx) | [DataRoomRefChips.stories.tsx](../../apps/web/src/components/data-room/DataRoomRefChips.stories.tsx) | web |
 | DriveRow | [apps/web/src/components/data-room/DriveRow.tsx](../../apps/web/src/components/data-room/DriveRow.tsx) | [DriveRow.stories.tsx](../../apps/web/src/components/data-room/DriveRow.stories.tsx) | web |
 | DataRoomDropZone | [apps/web/src/components/data-room/DropZone.tsx](../../apps/web/src/components/data-room/DropZone.tsx) | [DropZone.stories.tsx](../../apps/web/src/components/data-room/DropZone.stories.tsx) | web |
 | ToolbarTip, Chip, DateFilter, FilterBar | [apps/web/src/components/data-room/FilterBar.tsx](../../apps/web/src/components/data-room/FilterBar.tsx) | [FilterBar.stories.tsx](../../apps/web/src/components/data-room/FilterBar.stories.tsx) | web |
@@ -149,8 +152,9 @@ Every rendered React component, grouped by area. A web or shared component file 
 | MessageRow, EmailPicker, ImportSources | [apps/web/src/components/data-room/ImportFromEmail.tsx](../../apps/web/src/components/data-room/ImportFromEmail.tsx) | [ImportFromEmail.stories.tsx](../../apps/web/src/components/data-room/ImportFromEmail.stories.tsx) | web |
 | NameInput, FolderOptions, NewFolderDialog, ItemDialog, DeleteDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
 | ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx), [ItemMenu.stories.tsx](../../apps/web/src/components/data-room/ItemMenu.stories.tsx) | web |
-| Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
+| FileContext, Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
 | Field, Tag, FilePreview, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
+| SendToAgentMenu | [apps/web/src/components/data-room/SendToAgent.tsx](../../apps/web/src/components/data-room/SendToAgent.tsx) | [SendToAgent.stories.tsx](../../apps/web/src/components/data-room/SendToAgent.stories.tsx) | web |
 
 ## Web components/finance
 
