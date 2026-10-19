@@ -734,6 +734,7 @@ export const HI_MESSAGES: Record<string, string> = {
   "SSO is temporarily unavailable. Try again.": "SSO अस्थायी रूप से उपलब्ध नहीं है। फिर कोशिश करें।",
   Inbox: "इनबॉक्स",
   "Inbox agent": "इनबॉक्स एजेंट",
+  Sent: "भेजा गया",
   "Could not load mail.": "मेल लोड नहीं हो सके।",
   "Needs reply": "जवाब चाहिए",
   Earlier: "पहले का",

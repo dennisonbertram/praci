@@ -23,13 +23,16 @@ vi.mock("expo-web-browser", () => ({ openBrowserAsync: state.openBrowser }));
 vi.mock("./api", () => ({ rpc: state.rpc }));
 vi.mock("./native", () => ({
   native: {},
+  useMobileTokens: () => ({ success: "#228B3B" }),
   useThemedStyles: (factory: () => unknown) => factory(),
 }));
 vi.mock("./i18n", () => {
   const t = (text: string) => text;
   return { t, useI18n: () => ({ t }), dateLocaleForUi: () => "en-US" };
 });
-vi.mock("../components/native-symbol", () => ({ NativeSymbol: () => null }));
+vi.mock("../components/native-symbol", () => ({
+  NativeSymbol: ({ color }: { color?: string }) => <i data-testid="check" data-color={color} />,
+}));
 vi.mock("../components/sandboxed-html-preview", () => ({
   SandboxedHtmlPreview: ({
     html,
@@ -54,7 +57,13 @@ vi.mock("../components/sandboxed-html-preview", () => ({
   ),
 }));
 vi.mock("react-native", () => ({
-  View: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
+  View: ({
+    children,
+    accessibilityLabel,
+  }: {
+    children?: ReactNode;
+    accessibilityLabel?: string;
+  }) => <div data-label={accessibilityLabel}>{children}</div>,
   ScrollView: ({ children }: { children?: ReactNode }) => <div>{children}</div>,
   ActivityIndicator: () => <div data-testid="spinner" />,
   Text: ({ children, selectable }: { children: ReactNode; selectable?: boolean }) => (
@@ -182,4 +191,19 @@ it("opens the Inbox agent thread from the header item", async () => {
     pathname: "/thread",
     params: { botId: "bot-9", name: "Inbox agent" },
   });
+});
+
+it("marks a message you sent with a success check and Sent", async () => {
+  getReply = async () => message({ fromSelf: true });
+  await render();
+  expect(container.querySelector('[data-label="Sent"]')?.textContent).toBe("Sent");
+  expect(container.querySelector('[data-testid="check"]')?.getAttribute("data-color")).toBe(
+    "#228B3B",
+  );
+});
+
+it("does not mark an incoming message as sent", async () => {
+  await render();
+  expect(container.querySelector('[data-label="Sent"]')).toBeNull();
+  expect(container.textContent).not.toContain("Sent");
 });
