@@ -1849,6 +1849,49 @@ describe("integration agent asked by another bot", () => {
     expect(f.execute).not.toHaveBeenCalled();
   });
 
+  it("offers the migrated Carta agent its server's tools to a same-owner peer, and still asks before a write", async () => {
+    const f = fixture({
+      name: "mcp__integration-5f783c95__mutate",
+      readOnly: true,
+      trigger: "bot_message",
+      spawnKey: cartaAgentSpawnKey("user-1"),
+      peer: { senderInScope: true, linked: true },
+      route: {
+        connectorId: "mcp",
+        resourceId: "server-1",
+        toolName: "mutate",
+        endpoint: "https://mcp.app.carta.com/mcp",
+      },
+    });
+    await f.run();
+    expect(f.offeredTools).toContain("mcp__integration-5f783c95__mutate");
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(f.execute).not.toHaveBeenCalled();
+  });
+
+  it("gives the Carta agent nothing for a peer outside its space and user or an unlinked server", async () => {
+    for (const peer of [
+      { senderInScope: false, linked: true },
+      { senderInScope: true, linked: false },
+    ]) {
+      const f = fixture({
+        name: "mcp__integration-5f783c95__getCompany",
+        trigger: "bot_message",
+        spawnKey: cartaAgentSpawnKey("user-1"),
+        peer,
+        route: {
+          connectorId: "mcp",
+          resourceId: "server-1",
+          toolName: "getCompany",
+          endpoint: "https://mcp.app.carta.com/mcp",
+        },
+      });
+      await f.run();
+      expect(f.offeredTools).not.toContain("mcp__integration-5f783c95__getCompany");
+      expect(f.execute).not.toHaveBeenCalled();
+    }
+  });
+
   it("changes nothing for an ordinary bot", async () => {
     const f = peerRun({ senderInScope: true, linked: true }, null);
     await f.run();

@@ -4320,8 +4320,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // works with its own server's MCP tools (writes still ask). A peer from another account
         // or space is not found in this scope, so it gets nothing.
         let integrationPeerRun = false;
+        let peerServerId: string | undefined;
         let connectedAppPeerRun = false;
-        if (integrationAgent && run.trigger === "bot_message" && peerMessage?.fromBotId) {
+        // The Carta agent keeps its own spawn key; its link is the server whose agentBotId is the bot.
+        if (
+          (integrationAgent || cartaAgent) &&
+          run.trigger === "bot_message" &&
+          peerMessage?.fromBotId
+        ) {
           const [sender, linked] = await Promise.all([
             deps.prisma.bot.findFirst({
               where: {
@@ -4334,7 +4340,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             }),
             deps.prisma.mcpServer.findFirst({
               where: {
-                id: integrationServerId,
+                ...(integrationAgent ? { id: integrationServerId } : {}),
                 spaceId: run.spaceId,
                 userId: run.userId,
                 agentBotId: bot.id,
@@ -4343,6 +4349,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             }),
           ]);
           integrationPeerRun = Boolean(sender && linked);
+          peerServerId = linked?.id;
         }
         if (appAgentIdentity && run.trigger === "bot_message" && peerMessage?.fromBotId) {
           const sender = await deps.prisma.bot.findFirst({
@@ -4362,7 +4369,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ? discovered.filter(
                 (tool) =>
                   !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
-                  (!integrationPeerRun || tool.route?.connectorId === "mcp") &&
+                  (!integrationPeerRun ||
+                    (tool.route?.connectorId === "mcp" &&
+                      (!tool.route.resourceId || tool.route.resourceId === peerServerId))) &&
                   (!connectedAppPeerRun || tool.route?.connectionId === appAgentConnection?.id),
               )
             : [];
@@ -7100,7 +7109,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   connectorTools.has(requestedName) &&
                   (!resolvedTool ||
                     (resolvedTool.route?.connectorId === "mcp" &&
-                      resolvedTool.route.resourceId === integrationServerId))) ||
+                      resolvedTool.route.resourceId === peerServerId))) ||
                 (connectedAppPeerRun &&
                   connectorTools.has(requestedName) &&
                   dispatchRoute?.connectorId === appAgentConnection?.connectorId &&
