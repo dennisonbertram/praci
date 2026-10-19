@@ -763,4 +763,6 @@ export const TR_MESSAGES: Record<string, string> = {
     "Bot bu listeyi değiştirdi. Son düzenlemen kaydedilmedi.",
   "Could not load this list.": "Bu liste yüklenemedi.",
   "Could not save this list.": "Bu liste kaydedilemedi.",
+  "Call Elio": "Elio'yu ara",
+  "Could not start the call": "Arama başlatılamadı",
 };

@@ -772,4 +772,6 @@ export const FR_MESSAGES: Record<string, string> = {
     "Le bot a modifié cette liste. Votre dernière modification n’a pas été enregistrée.",
   "Could not load this list.": "Impossible de charger cette liste.",
   "Could not save this list.": "Impossible d’enregistrer cette liste.",
+  "Call Elio": "Appeler Elio",
+  "Could not start the call": "Impossible de démarrer l'appel",
 };
