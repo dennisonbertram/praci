@@ -22,13 +22,14 @@ const rpcMock = vi.hoisted(() => ({
   list: vi.fn(),
   get: vi.fn(),
   importEmail: vi.fn(),
+  imported: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     connections: { list: rpcMock.connections, catalog: rpcMock.catalog },
     mcp: { servers: { list: async () => [] } },
     inbox: { list: rpcMock.list, get: rpcMock.get },
-    dataRoom: { importEmail: rpcMock.importEmail },
+    dataRoom: { importEmail: rpcMock.importEmail, emailImported: rpcMock.imported },
   },
 }));
 
@@ -55,6 +56,7 @@ beforeEach(() => {
     attachments: [{ id: "a1", filename: "invoice.pdf", mimeType: "application/pdf", size: 2000 }],
   });
   rpcMock.importEmail.mockResolvedValue({ imported: 1, duplicates: 0, failed: 0 });
+  rpcMock.imported.mockResolvedValue({ files: [] });
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
@@ -85,6 +87,8 @@ const click = (el: Element | null | undefined) =>
   act(async () => {
     (el as HTMLElement).click();
   });
+const fileBox = (name: string) => document.body.querySelector(`[aria-label="Select ${name}"]`);
+const settle = () => act(async () => {});
 const button = (name: string) =>
   Array.from(document.body.querySelectorAll("button")).find((b) => b.textContent === name);
 
@@ -102,9 +106,10 @@ it("imports the ticked attachment into the open folder", async () => {
   await click(button("Import from email"));
   expect(rpcMock.list).toHaveBeenCalledWith({ filter: "attachment" });
   expect(button("Import")?.disabled).toBe(true);
-  await click(button("Invoicebilling@example.com"));
-  await click(document.body.querySelector('[role="checkbox"]'));
-  await click(button("Import"));
+  expect(button("Import 1 file")).toBeUndefined();
+  await click(fileBox("invoice.pdf"));
+  expect(button("Import 1 file")?.disabled).toBe(false);
+  await click(button("Import 1 file"));
   expect(rpcMock.importEmail).toHaveBeenCalledWith({
     picks: [{ messageId: "m1", attachmentId: "a1" }],
     folderId: "f1",
@@ -116,9 +121,8 @@ it("says so when everything picked was already imported", async () => {
   rpcMock.importEmail.mockResolvedValue({ imported: 0, duplicates: 1, failed: 0 });
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
   await click(button("Import from email"));
-  await click(button("Invoicebilling@example.com"));
-  await click(document.body.querySelector('[role="checkbox"]'));
-  await click(button("Import"));
+  await click(fileBox("invoice.pdf"));
+  await click(button("Import 1 file"));
   expect(onDone).toHaveBeenCalledWith("Already in the Data room", true);
 });
 
@@ -131,9 +135,8 @@ it("keeps the picker open and says how many files failed", async () => {
   rpcMock.importEmail.mockResolvedValue({ imported: 1, duplicates: 0, failed: 2 });
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
   await click(button("Import from email"));
-  await click(button("Invoicebilling@example.com"));
-  await click(document.body.querySelector('[role="checkbox"]'));
-  await click(button("Import"));
+  await click(fileBox("invoice.pdf"));
+  await click(button("Import 1 file"));
   expect(onDone).toHaveBeenCalledWith("Imported 1 file", true);
   expect(document.body.textContent).toContain("Couldn't import 2 files");
 });
@@ -165,8 +168,8 @@ it("stops offering unticked boxes once 20 files are picked", async () => {
   });
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }]);
   await click(button("Import from email"));
-  await click(button("Invoicebilling@example.com"));
-  const boxes = () => Array.from(document.body.querySelectorAll<HTMLElement>('[role="checkbox"]'));
+  const boxes = () =>
+    Array.from(document.body.querySelectorAll<HTMLElement>('[role="checkbox"]')).slice(1);
   for (const box of boxes().slice(0, 20)) await click(box);
   expect(
     boxes()[20]?.getAttribute("aria-disabled") ?? boxes()[20]?.hasAttribute("disabled"),
@@ -183,4 +186,100 @@ it("shows no Gmail button when the server does not offer Gmail and it is not con
 it("keeps the Gmail button for a connected account even if the catalog omits it", async () => {
   await render([{ connectorId: "google", provider: "gmail", status: "connected" }], []);
   expect(button("Import from email")).toBeDefined();
+});
+
+const gmailConnected = [{ connectorId: "google", provider: "gmail", status: "connected" }];
+const file = (id: string, filename: string, mimeType = "application/pdf", size = 20_000) => ({
+  id,
+  filename,
+  mimeType,
+  size,
+});
+
+it("lists only messages that carry real documents, leaving out signature pictures", async () => {
+  rpcMock.list.mockResolvedValue({
+    accounts: [{ id: "c1" }],
+    failedAccounts: [],
+    reconnectAccounts: [],
+    rows: [
+      { id: "m1", subject: "Invoice", from: "a@example.com", receivedAt: "2026-10-10T00:00:00Z" },
+      {
+        id: "m2",
+        subject: "Just a logo",
+        from: "b@example.com",
+        receivedAt: "2026-10-09T00:00:00Z",
+      },
+    ],
+  });
+  rpcMock.get.mockImplementation(async ({ messageId }: { messageId: string }) => ({
+    attachments:
+      messageId === "m1"
+        ? [file("a1", "invoice.pdf"), file("a2", "image001.png", "image/png", 50_000)]
+        : [file("b1", "tiny.png", "image/png", 800)],
+  }));
+  await render(gmailConnected);
+  await click(button("Import from email"));
+  expect(document.body.textContent).toContain("Invoice");
+  expect(document.body.textContent).not.toContain("Just a logo");
+  expect(fileBox("invoice.pdf")).not.toBeNull();
+  expect(fileBox("image001.png")).toBeNull();
+});
+
+it("selects every file of a message from the message checkbox", async () => {
+  rpcMock.get.mockResolvedValue({ attachments: [file("a1", "a.pdf"), file("a2", "b.pdf")] });
+  await render(gmailConnected);
+  await click(button("Import from email"));
+  await click(document.body.querySelector('[aria-label="Select Invoice"]'));
+  expect(button("Import 2 files")).toBeDefined();
+  await click(button("Import 2 files"));
+  expect(rpcMock.importEmail).toHaveBeenCalledWith({
+    picks: [
+      { messageId: "m1", attachmentId: "a1" },
+      { messageId: "m1", attachmentId: "a2" },
+    ],
+    folderId: "f1",
+  });
+});
+
+it("marks files already in the Data room as ticked and cannot be changed", async () => {
+  rpcMock.get.mockResolvedValue({ attachments: [file("a1", "a.pdf"), file("a2", "b.pdf")] });
+  rpcMock.imported.mockResolvedValue({ files: [{ messageId: "m1", attachmentId: "a1" }] });
+  await render(gmailConnected);
+  await click(button("Import from email"));
+  expect(rpcMock.imported).toHaveBeenCalledWith({ messageIds: ["m1"] });
+  expect(document.body.textContent).toContain("In Data room");
+  const done = fileBox("a.pdf") as HTMLElement;
+  expect(done.getAttribute("aria-checked")).toBe("true");
+  expect(done.hasAttribute("disabled") || done.getAttribute("aria-disabled") === "true").toBe(true);
+  await click(document.body.querySelector('[aria-label="Select Invoice"]'));
+  expect(button("Import 1 file")).toBeDefined();
+});
+
+it("shows the empty state when no message has documents", async () => {
+  rpcMock.list.mockResolvedValue({
+    accounts: [{ id: "c1" }],
+    failedAccounts: [],
+    reconnectAccounts: [],
+    rows: [],
+  });
+  await render(gmailConnected);
+  await click(button("Import from email"));
+  await settle();
+  expect(document.body.textContent).toContain("No files found");
+  expect(document.body.textContent).not.toContain("Loading…");
+});
+
+it("shows the loading text while mail loads", async () => {
+  rpcMock.list.mockReturnValue(new Promise(() => undefined));
+  await render(gmailConnected);
+  await click(button("Import from email"));
+  expect(document.body.textContent).toContain("Loading…");
+});
+
+it("shows an error when mail cannot be loaded", async () => {
+  rpcMock.list.mockRejectedValue(new Error("boom"));
+  await render(gmailConnected);
+  await click(button("Import from email"));
+  expect(document.body.querySelector(".text-destructive")).not.toBeNull();
+  expect(document.body.textContent).not.toContain("No files found");
 });

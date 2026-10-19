@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 197 of 197
-- Web and shared components: 559
+- Web and shared component files with stories: 198 of 198
+- Web and shared components: 560
 - Mobile components: 126 in 87 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -92,9 +92,10 @@ Every rendered React component, grouped by area. A web or shared component file 
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
 | SandboxedHtmlViewer | [apps/web/src/components/SandboxedHtmlViewer.tsx](../../apps/web/src/components/SandboxedHtmlViewer.tsx) | [SandboxedHtmlViewer.stories.tsx](../../apps/web/src/components/SandboxedHtmlViewer.stories.tsx) | web |
-| UrgentMark | [apps/web/src/components/sidebar-glance.tsx](../../apps/web/src/components/sidebar-glance.tsx) | [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
-| RailTip, SidebarPageLink | [apps/web/src/components/SidebarPageLink.tsx](../../apps/web/src/components/SidebarPageLink.tsx) | [SidebarPageLink.stories.tsx](../../apps/web/src/components/SidebarPageLink.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
+| UrgentMark | [apps/web/src/components/sidebar-glance.tsx](../../apps/web/src/components/sidebar-glance.tsx) | [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
+| RailTip, SidebarPageLink | [apps/web/src/components/SidebarPageLink.tsx](../../apps/web/src/components/SidebarPageLink.tsx) | [SidebarPageLink.stories.tsx](../../apps/web/src/components/SidebarPageLink.stories.tsx), [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
 | SidebarPages | [apps/web/src/components/SidebarPages.tsx](../../apps/web/src/components/SidebarPages.tsx) | [SidebarPages.stories.tsx](../../apps/web/src/components/SidebarPages.stories.tsx) | web |
+| SidebarPagesGroup | [apps/web/src/components/SidebarPagesGroup.tsx](../../apps/web/src/components/SidebarPagesGroup.tsx) | [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx) | web |
 | SkipToContent | [apps/web/src/components/SkipToContent.tsx](../../apps/web/src/components/SkipToContent.tsx) | [SkipToContent.stories.tsx](../../apps/web/src/components/SkipToContent.stories.tsx) | web |
 | SoftwareUpdatePanel, SoftwareUpdateSection, CheckSummary | [apps/web/src/components/SoftwareUpdateSection.tsx](../../apps/web/src/components/SoftwareUpdateSection.tsx) | [SoftwareUpdateSection.stories.tsx](../../apps/web/src/components/SoftwareUpdateSection.stories.tsx) | web |
 | SubscriptionGate | [apps/web/src/components/SubscriptionGate.tsx](../../apps/web/src/components/SubscriptionGate.tsx) | [SubscriptionGate.stories.tsx](../../apps/web/src/components/SubscriptionGate.stories.tsx) | web |

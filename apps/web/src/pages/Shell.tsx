@@ -96,6 +96,8 @@ import {
   ArrowDown,
   ArrowLeft,
   ArrowUp,
+  BookmarkCheck,
+  BookmarkPlus,
   Box,
   ChartColumn,
   ChevronDown,
@@ -192,6 +194,7 @@ import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
+import { SidebarPagesGroup } from "../components/SidebarPagesGroup";
 import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
 import { glanceBadge, runwayGlance, UrgentMark } from "../components/sidebar-glance";
 import {
@@ -327,6 +330,7 @@ import {
   transcriptUserJustSent,
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
+import { type RememberControls, useRememberedMessages } from "../lib/use-remembered-messages";
 import { useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import type { WorkingActivity } from "../lib/working-activity";
@@ -2432,6 +2436,10 @@ export function ShellPage() {
     },
     [t],
   );
+  const remember = useRememberedMessages(
+    { botId: inGroup ? undefined : active?.id, groupId },
+    useCallback((error: unknown) => setSendError(errorText(error, t`Could not remember`)), [t]),
+  );
   const onAttachmentPick = useCallback(
     (files: FileList | null, targetThreadKey?: string) => {
       const threadKey = targetThreadKey ?? activeGroupId.current ?? activeBotId.current;
@@ -3414,6 +3422,7 @@ export function ShellPage() {
                   setReplyQuote(quote);
                 }}
                 onReact={reactToMessage}
+                remember={remember}
                 onJumpToMessage={jumpToReplyMessage}
                 onOpenPeerMessages={(peer) => {
                   setPeerConversation(peer);
@@ -3777,97 +3786,104 @@ export function ShellPage() {
           {showSpaceSearch && !rail ? null : (
             // Inside the scroll area, so on a short screen the chats are never squeezed out.
             <div className="flex shrink-0 flex-col">
-              <SidebarPageLink
-                testId="sidebar-inbox"
-                current={inboxMode}
-                icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Inbox`}
+              <SidebarPagesGroup
+                title={t`Pages`}
+                collapsed={collapsedSidebarSections.has("pages")}
                 rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/inbox");
-                }}
-                {...glanceBadge({
-                  unseen: unseen.inbox ?? 0,
-                  value: inboxUnread > 0 ? String(inboxUnread) : undefined,
-                  valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
-                  rail,
-                })}
-              />
-              <SidebarPageLink
-                testId="sidebar-finance"
-                current={financeMode}
-                icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Finance`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/finance");
-                }}
-                {...glanceBadge({
-                  unseen: unseen.finance ?? 0,
-                  rail,
-                  value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
-                })}
-              />
-              <SidebarPageLink
-                testId="sidebar-legal"
-                current={legalMode}
-                icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Legal`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/legal");
-                }}
-                {...glanceBadge({
-                  unseen: unseen.legal ?? 0,
-                  rail,
-                  value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
-                })}
-              />
-              <SidebarPageLink
-                testId="sidebar-cap-table"
-                current={capTableMode}
-                icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Cap table`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/cap-table");
-                }}
-                {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
-              />
-              <SidebarPageLink
-                testId="sidebar-data-room"
-                current={dataRoomMode}
-                icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Data room`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/data-room");
-                }}
-                {...glanceBadge({
-                  unseen: unseen["data-room"] ?? 0,
-                  rail,
-                  value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
-                })}
-              />
-              <SidebarPageLink
-                testId="sidebar-artifacts"
-                current={artifactsMode}
-                // Not the Data room's folder icon: these are files bots made.
-                icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Artifacts`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/artifacts");
-                }}
-                {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
-              />
-              <SidebarPages rail={rail} onOpen={() => setMobileSidebarOpen(false)} />
+                onToggle={() => toggleSidebarSection("pages")}
+              >
+                <SidebarPageLink
+                  testId="sidebar-inbox"
+                  current={inboxMode}
+                  icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Inbox`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/inbox");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.inbox ?? 0,
+                    value: inboxUnread > 0 ? String(inboxUnread) : undefined,
+                    valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
+                    rail,
+                  })}
+                />
+                <SidebarPageLink
+                  testId="sidebar-finance"
+                  current={financeMode}
+                  icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Finance`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/finance");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.finance ?? 0,
+                    rail,
+                    value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
+                  })}
+                />
+                <SidebarPageLink
+                  testId="sidebar-legal"
+                  current={legalMode}
+                  icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Legal`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/legal");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.legal ?? 0,
+                    rail,
+                    value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+                  })}
+                />
+                <SidebarPageLink
+                  testId="sidebar-cap-table"
+                  current={capTableMode}
+                  icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Cap table`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/cap-table");
+                  }}
+                  {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
+                />
+                <SidebarPageLink
+                  testId="sidebar-data-room"
+                  current={dataRoomMode}
+                  icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Data room`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/data-room");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen["data-room"] ?? 0,
+                    rail,
+                    value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                  })}
+                />
+                <SidebarPageLink
+                  testId="sidebar-artifacts"
+                  current={artifactsMode}
+                  // Not the Data room's folder icon: these are files bots made.
+                  icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Artifacts`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/artifacts");
+                  }}
+                  {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
+                />
+                <SidebarPages rail={rail} onOpen={() => setMobileSidebarOpen(false)} />
+              </SidebarPagesGroup>
             </div>
           )}
           {showSpaceSearch && !rail ? (
@@ -6032,6 +6048,7 @@ export const Transcript = memo(function Transcript({
   onReply,
   onQuote,
   onReact,
+  remember,
   onJumpToMessage,
   onOpenPeerMessages,
   memberName,
@@ -6074,6 +6091,7 @@ export const Transcript = memo(function Transcript({
   onReply: (message: ThreadMessage) => void;
   onQuote: (message: ThreadMessage, quote: string) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
+  remember?: RememberControls;
   onJumpToMessage: (messageId: string) => void;
   onOpenPeerMessages: (peer: { peerBotId: string; peerBotName: string }) => void;
   memberName?: (botId: string | undefined) => string | undefined;
@@ -6575,6 +6593,7 @@ export const Transcript = memo(function Transcript({
                         side={message.role === "user" ? "start" : "end"}
                         onReply={onReply}
                         onReact={onReact}
+                        remember={remember}
                       />
                     )}
                     {peerReceipt ||
@@ -7932,12 +7951,14 @@ function MessageHoverActions({
   hasReactions = false,
   onReply,
   onReact,
+  remember,
 }: {
   message: ThreadMessage;
   side: "start" | "end";
   hasReactions?: boolean;
   onReply: (message: ThreadMessage) => void;
   onReact: (message: ThreadMessage, reaction: MessageReaction) => Promise<void>;
+  remember?: RememberControls;
 }) {
   const { t } = useLingui();
   const [moreOpen, setMoreOpen] = useState(false);
@@ -7954,6 +7975,10 @@ function MessageHoverActions({
 
   const iconButtonClass =
     "grid h-7 w-7 place-items-center text-muted-foreground transition-colors hover:text-foreground";
+  const canRemember =
+    Boolean(remember) && message.role === "bot" && canReactToThreadMessage(message);
+  const remembered = remember?.ids.has(message.id) ?? false;
+  const RememberIcon = remembered ? BookmarkCheck : BookmarkPlus;
 
   return (
     <MessageHoverMetadata
@@ -8006,6 +8031,23 @@ function MessageHoverActions({
         >
           <Reply size={15} strokeWidth={1.7} />
         </button>
+        {canRemember ? (
+          <button
+            type="button"
+            aria-label={remembered ? t`Remembered` : t`Remember`}
+            title={remembered ? t`Remembered` : t`Remember`}
+            aria-pressed={remembered}
+            disabled={remembered}
+            onClick={() => remember?.onRemember(message.id)}
+            className={cn(
+              iconButtonClass,
+              "h-11 w-11 [@media(hover:hover)_and_(pointer:fine)]:h-7 [@media(hover:hover)_and_(pointer:fine)]:w-7",
+              remembered && "text-foreground",
+            )}
+          >
+            <RememberIcon size={15} strokeWidth={1.7} />
+          </button>
+        ) : null}
         <DropdownMenu open={moreOpen} onOpenChange={setMoreOpen}>
           <DropdownMenuTrigger
             aria-label={t`More`}
@@ -8030,6 +8072,18 @@ function MessageHoverActions({
               <Copy size={14} strokeWidth={1.7} />
               <Trans>Copy</Trans>
             </DropdownMenuItem>
+            {canRemember ? (
+              <DropdownMenuItem
+                disabled={remembered}
+                onClick={() => {
+                  setMoreOpen(false);
+                  remember?.onRemember(message.id);
+                }}
+              >
+                <RememberIcon size={14} strokeWidth={1.7} />
+                {remembered ? <Trans>Remembered</Trans> : <Trans>Remember</Trans>}
+              </DropdownMenuItem>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

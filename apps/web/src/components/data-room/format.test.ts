@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({ t: (parts: TemplateStringsArray) => parts.join("") }));
 
-import { sizeText, statusLabel, typeLabel } from "./format";
+import { isNoiseImage, sizeText, statusLabel, typeLabel } from "./format";
 
 it("calls every working step Reading, never Filing, since filing waits for consent", () => {
   expect(["pending", "extracting", "classifying"].map(statusLabel)).toEqual([
@@ -33,4 +33,13 @@ it("names the classifier's short types clearly and capitalises the rest, for dis
       typeLabel(null),
     ),
   ).toEqual(["Investor document", "HR document", "Contract", "Board deck", ""]);
+});
+
+it("treats small and logo-named images as noise but keeps documents and large photos", () => {
+  const f = (filename: string, mimeType: string, size: number) => ({ filename, mimeType, size });
+  expect(isNoiseImage(f("a.png", "image/png", 900))).toBe(true);
+  expect(isNoiseImage(f("image001.png", "image/png", 80_000))).toBe(true);
+  expect(isNoiseImage(f("Logo.jpg", "image/jpeg", 80_000))).toBe(true);
+  expect(isNoiseImage(f("receipt-photo.jpg", "image/jpeg", 800_000))).toBe(false);
+  expect(isNoiseImage(f("logo-guidelines.pdf", "application/pdf", 900))).toBe(false);
 });

@@ -9,6 +9,7 @@ const labels: Record<MessageMenuSymbol, string> = {
   quote: "Quote",
   speak: "Speak message",
   select: "Select text",
+  remember: "Remember",
 };
 
 const reactions = ["👍", "👎", "❤️", "😂", "🎉", "😮"] as const;
@@ -65,5 +66,14 @@ describe("message context menu", () => {
   it("reads a reaction id back out of a menu event", () => {
     expect(messageMenuReaction("reaction:🎉")).toBe("🎉");
     expect(messageMenuReaction("reply")).toBeNull();
+  });
+
+  it("adds Remember to the inline group only when asked", () => {
+    const menu = buildMessageContextMenu({
+      labels,
+      reactions,
+      include: { quote: false, react: false, speak: false, select: false, remember: true },
+    });
+    expect(menu.at(-1)?.subactions?.map((entry) => entry.id)).toEqual(["remember"]);
   });
 });
