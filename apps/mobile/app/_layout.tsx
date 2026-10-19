@@ -47,6 +47,7 @@ import {
 import { loadResponseStreamingPreference } from "../lib/response-streaming";
 import { clearSavedChats } from "../lib/saved-chats";
 import { registerSessionDiskCache } from "../lib/session";
+import { useUnseenCountsRefresh } from "../lib/unseen-notifications";
 import { startUnsentSends } from "../lib/unsent-sends";
 
 configureForegroundNotifications();
@@ -97,6 +98,7 @@ export default function Layout() {
   const insets = useSafeAreaInsets();
   const [ready, setReady] = useState(false);
   useNotificationResponses(ready);
+  useUnseenCountsRefresh(ready);
   const [appearanceReady, setAppearanceReady] = useState(false);
   const resolved = useResolvedAppearance();
   const loadRemoteImages = useSyncExternalStore(

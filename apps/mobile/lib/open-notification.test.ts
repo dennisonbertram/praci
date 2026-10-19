@@ -12,16 +12,20 @@ vi.mock("expo-router", () => ({
 }));
 vi.mock("./api", () => ({
   loadSessionToken: vi.fn(),
+  selectedSpaceId: vi.fn(() => "space-a"),
+  selectSpace: vi.fn(async () => true),
 }));
+vi.mock("./unseen-notifications", () => ({ markSurfaceSeen: vi.fn() }));
 vi.mock("./settings-sheet", () => ({
   closeSettingsSheet: vi.fn(),
 }));
 
 import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
-import { loadSessionToken } from "./api";
+import { loadSessionToken, selectSpace } from "./api";
 import { openNotificationResponse } from "./open-notification";
 import { closeSettingsSheet } from "./settings-sheet";
+import { markSurfaceSeen } from "./unseen-notifications";
 
 const DEFAULT_ACTION = "expo.modules.notifications.actions.DEFAULT";
 
@@ -186,5 +190,116 @@ describe("opening a notification tap", () => {
     await expect(openNotificationResponse(tap("thread-shared-once", data))).resolves.toBe(true);
     await expect(openNotificationResponse(tap("thread-shared-once", data))).resolves.toBe(false);
     expect(router.push).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("opening a notification by surface", () => {
+  it("opens the inbox and marks it seen", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(tap("n-inbox", { notificationId: "n1", surface: "inbox" }));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/inbox" });
+    expect(markSurfaceSeen).toHaveBeenCalledWith("inbox");
+  });
+
+  it("opens the thread for a thread notification without marking a page seen", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(
+      tap("n-thread", { surface: "thread", botId: "bot-1", threadId: "t-1" }),
+    );
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/thread",
+      params: { botId: "bot-1", threadId: "t-1" },
+    });
+    expect(markSurfaceSeen).not.toHaveBeenCalled();
+  });
+
+  it("marks a page with no mobile screen seen and does not navigate", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(tap("n-fin", { surface: "finance", link: "/finance" }));
+    expect(router.push).not.toHaveBeenCalled();
+    expect(markSurfaceSeen).toHaveBeenCalledWith("finance");
+  });
+
+  it("switches to the notification's space before opening and clearing its inbox", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(tap("n-space", { surface: "inbox", spaceId: "space-b" }));
+    expect(selectSpace).toHaveBeenCalledWith("space-b");
+    expect(vi.mocked(selectSpace).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(router.push).mock.invocationCallOrder[0] ?? 0,
+    );
+    expect(markSurfaceSeen).toHaveBeenCalledWith("inbox");
+  });
+
+  it("does nothing when the space cannot be selected", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    vi.mocked(selectSpace).mockResolvedValueOnce(false);
+    await expect(
+      openNotificationResponse(tap("n-nospace", { surface: "inbox", spaceId: "space-c" })),
+    ).resolves.toBe(false);
+    expect(router.push).not.toHaveBeenCalled();
+    expect(markSurfaceSeen).not.toHaveBeenCalled();
+  });
+
+  it("ignores non-default actions", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    const response = tap("n-action", { surface: "finance" });
+    response.actionIdentifier = "dismiss";
+    await expect(openNotificationResponse(response)).resolves.toBe(false);
+    expect(markSurfaceSeen).not.toHaveBeenCalled();
+  });
+
+  it("opens a thread from the unified push shape and from the legacy shape", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(
+      tap("n-unified", {
+        kind: "notification",
+        notificationId: "n1",
+        surface: "thread",
+        botId: "bot-1",
+        threadId: "t-1",
+        link: "/bots/bot-1",
+        spaceId: "space-a",
+      }),
+    );
+    await openNotificationResponse(
+      tap("n-legacy", { kind: "completion", botId: "bot-2", threadId: "t-2" }),
+    );
+    expect(router.push).toHaveBeenNthCalledWith(1, {
+      pathname: "/thread",
+      params: { botId: "bot-1", threadId: "t-1", spaceId: "space-a" },
+    });
+    expect(router.push).toHaveBeenNthCalledWith(2, {
+      pathname: "/thread",
+      params: { botId: "bot-2", threadId: "t-2" },
+    });
+    expect(markSurfaceSeen).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the link when the unified push has no botId or groupId", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(
+      tap("n-glink", {
+        kind: "notification",
+        surface: "thread",
+        threadId: "t-1",
+        link: "/app/g/grp-1",
+      }),
+    );
+    await openNotificationResponse(
+      tap("n-blink", {
+        kind: "notification",
+        surface: "thread",
+        threadId: "t-2",
+        link: "/app/bot-9",
+      }),
+    );
+    expect(router.push).toHaveBeenNthCalledWith(1, {
+      pathname: "/group-thread",
+      params: { groupId: "grp-1", threadId: "t-1" },
+    });
+    expect(router.push).toHaveBeenNthCalledWith(2, {
+      pathname: "/thread",
+      params: { botId: "bot-9", threadId: "t-2" },
+    });
   });
 });
