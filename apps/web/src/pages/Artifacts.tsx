@@ -36,6 +36,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { PageEmptyState } from "../components/PageEmptyState";
+import { PageHeader } from "../components/PageHeader";
 import { PdfViewer } from "../components/PdfViewer";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
@@ -212,48 +213,49 @@ export function ArtifactsPage() {
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground/90">
       {/* Same padding and title style as the other pages in the app shell. */}
       <header className="border-b border-border px-4 pt-2 pb-3 md:px-7 md:pt-5">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <h1 className="text-lg font-semibold">
-            <Trans>Artifacts</Trans>
-          </h1>
-          <div className="app-no-drag flex shrink-0 items-center gap-2">
-            {/* Filters act on the list, so they go when an open document hides it (phone, maximized). */}
-            {artifactId && maximized ? null : (
-              <button
-                type="button"
-                aria-pressed={filtersOpen}
-                data-testid="artifacts-filters"
-                onClick={() => setFiltersOpen((open) => !open)}
-                className={`${artifactId ? "hidden md:flex" : "flex"} items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors ${
-                  filtersOpen
-                    ? "border-transparent bg-primary text-primary-foreground"
-                    : "border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                }`}
-              >
-                <Filter size={14} strokeWidth={1.9} />
-                <Trans>Filters</Trans>
-              </button>
-            )}
-            {!artifactId ? (
-              <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
-                <ViewModeButton
-                  active={viewMode === "grid"}
-                  label={t`Card view`}
-                  onClick={() => setMode("grid")}
+        <PageHeader
+          className="mb-0"
+          title={<Trans>Artifacts</Trans>}
+          actions={
+            <div className="app-no-drag flex shrink-0 items-center gap-2">
+              {/* Filters act on the list, so they go when an open document hides it (phone, maximized). */}
+              {artifactId && maximized ? null : (
+                <button
+                  type="button"
+                  aria-pressed={filtersOpen}
+                  data-testid="artifacts-filters"
+                  onClick={() => setFiltersOpen((open) => !open)}
+                  className={`${artifactId ? "hidden md:flex" : "flex"} items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[13px] font-medium transition-colors ${
+                    filtersOpen
+                      ? "border-transparent bg-primary text-primary-foreground"
+                      : "border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  }`}
                 >
-                  <LayoutGrid size={15} strokeWidth={1.9} />
-                </ViewModeButton>
-                <ViewModeButton
-                  active={viewMode === "list"}
-                  label={t`List view`}
-                  onClick={() => setMode("list")}
-                >
-                  <List size={15} strokeWidth={1.9} />
-                </ViewModeButton>
-              </div>
-            ) : null}
-          </div>
-        </div>
+                  <Filter size={14} strokeWidth={1.9} />
+                  <Trans>Filters</Trans>
+                </button>
+              )}
+              {!artifactId ? (
+                <div className="flex items-center gap-1 rounded-lg border border-border p-0.5">
+                  <ViewModeButton
+                    active={viewMode === "grid"}
+                    label={t`Card view`}
+                    onClick={() => setMode("grid")}
+                  >
+                    <LayoutGrid size={15} strokeWidth={1.9} />
+                  </ViewModeButton>
+                  <ViewModeButton
+                    active={viewMode === "list"}
+                    label={t`List view`}
+                    onClick={() => setMode("list")}
+                  >
+                    <List size={15} strokeWidth={1.9} />
+                  </ViewModeButton>
+                </div>
+              ) : null}
+            </div>
+          }
+        />
 
         {filtersOpen && !(artifactId && maximized) ? (
           <div className="app-no-drag mt-3 flex flex-wrap items-center gap-2">

@@ -54,6 +54,7 @@ import { WalletDialog } from "../components/finance/WalletDialog";
 import { AppLogo } from "../components/integrations/AppLogo";
 import { ExchangeConnectDialog } from "../components/integrations/ExchangeConnectDialog";
 import { PageEmptyState } from "../components/PageEmptyState";
+import { PageHeader } from "../components/PageHeader";
 import {
   changeText,
   dayRange,
@@ -240,12 +241,7 @@ function EmptyState({ cryptoCents, onAdd }: { cryptoCents: number | null; onAdd:
   return (
     <div>
       {/* The page title stays where every page has it, with the empty state under it. */}
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-semibold">
-          <Trans>Finance</Trans>
-        </h1>
-        <CompanyAndEye />
-      </div>
+      <PageHeader title={<Trans>Finance</Trans>} meta={<CompanyAndEye />} />
       <PageEmptyState
         icon={FINANCE_PROVIDERS.map(({ provider, name, logo }) => (
           <AppLogo key={provider} name={name} logo={logo} size="lg" />
@@ -395,79 +391,83 @@ function Overview({
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-semibold">
-          <Trans>Finance</Trans>
-        </h1>
-        <CompanyAndEye>
-          {/* Both labels share one cell, so the chips beside them do not move when it changes. */}
-          <span className={cn("grid", !syncing && !updated && "hidden")}>
-            <span
-              aria-hidden={!syncing}
-              className={cn("col-start-1 row-start-1", syncing ? "" : "invisible")}
-            >
-              <Trans>Syncing…</Trans>
-            </span>
-            {updated ? (
-              <span
-                aria-hidden={syncing}
-                className={cn("col-start-1 row-start-1", syncing ? "invisible" : "")}
-              >
-                <Trans>Updated {updated}</Trans>
+      <PageHeader
+        title={<Trans>Finance</Trans>}
+        meta={
+          <>
+            <CompanyAndEye>
+              {/* Both labels share one cell, so the chips beside them do not move when it changes. */}
+              <span className={cn("grid", !syncing && !updated && "hidden")}>
+                <span
+                  aria-hidden={!syncing}
+                  className={cn("col-start-1 row-start-1", syncing ? "" : "invisible")}
+                >
+                  <Trans>Syncing…</Trans>
+                </span>
+                {updated ? (
+                  <span
+                    aria-hidden={syncing}
+                    className={cn("col-start-1 row-start-1", syncing ? "invisible" : "")}
+                  >
+                    <Trans>Updated {updated}</Trans>
+                  </span>
+                ) : null}
+              </span>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-xs"
+                      aria-label={t`Refresh`}
+                      disabled={syncing}
+                      // Keeps keyboard focus on the button while it syncs instead of dropping it.
+                      focusableWhenDisabled
+                      onClick={onRefresh}
+                    />
+                  }
+                >
+                  <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <Trans>Refresh</Trans>
+                </TooltipContent>
+              </Tooltip>
+            </CompanyAndEye>
+            {data.excludedNonUsdCount > 0 ? (
+              <span className="text-[11px] text-muted-foreground">
+                {t`${data.excludedNonUsdCount} non-USD not counted`}
               </span>
             ) : null}
-          </span>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  aria-label={t`Refresh`}
-                  disabled={syncing}
-                  // Keeps keyboard focus on the button while it syncs instead of dropping it.
-                  focusableWhenDisabled
-                  onClick={onRefresh}
-                />
-              }
-            >
-              <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
-            </TooltipTrigger>
-            <TooltipContent>
-              <Trans>Refresh</Trans>
-            </TooltipContent>
-          </Tooltip>
-        </CompanyAndEye>
-        {data.excludedNonUsdCount > 0 ? (
-          <span className="text-[11px] text-muted-foreground">
-            {t`${data.excludedNonUsdCount} non-USD not counted`}
-          </span>
-        ) : null}
-        <div className="flex gap-1">
-          {data.sources
-            .filter((source) => source.status !== "not_connected")
-            .map((source) => (
-              <SourceChip key={source.provider} source={source} />
-            ))}
-        </div>
-        {missing.length > 0 ? (
-          // One way to connect: the same Add account dialog as the empty state.
-          <Button
-            variant="link"
-            size="xs"
-            className="text-muted-foreground"
-            onClick={() => onAdd("type")}
-          >
-            {onlyOne ? t`Add ${providerName(onlyOne.provider)}` : t`Add account`}
-          </Button>
-        ) : null}
-        <div className="ms-auto flex items-center gap-2">
-          <Button variant="outline" render={<Link to={financePath.accounts()} />}>
-            <Trans>Accounts</Trans>
-          </Button>
-          <AskAgentButton />
-        </div>
-      </div>
+            <div className="flex gap-1">
+              {data.sources
+                .filter((source) => source.status !== "not_connected")
+                .map((source) => (
+                  <SourceChip key={source.provider} source={source} />
+                ))}
+            </div>
+            {missing.length > 0 ? (
+              // One way to connect: the same Add account dialog as the empty state.
+              <Button
+                variant="link"
+                size="xs"
+                className="text-muted-foreground"
+                onClick={() => onAdd("type")}
+              >
+                {onlyOne ? t`Add ${providerName(onlyOne.provider)}` : t`Add account`}
+              </Button>
+            ) : null}
+          </>
+        }
+        actions={
+          <>
+            <Button variant="outline" render={<Link to={financePath.accounts()} />}>
+              <Trans>Accounts</Trans>
+            </Button>
+            <AskAgentButton />
+          </>
+        }
+      />
       {data.sources
         .filter((source) => source.status === "needs_reconnect")
         .map((source) => (

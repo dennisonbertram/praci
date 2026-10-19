@@ -40,6 +40,7 @@ import { InboxGroup } from "../components/inbox/InboxRow";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
 import { TodoCard } from "../components/inbox/TodoCard";
 import { PageEmptyState } from "../components/PageEmptyState";
+import { PageHeader } from "../components/PageHeader";
 import { maskCurrencyWhenHidden } from "../lib/hide-amounts-preference";
 import { useInboxKeyboard } from "../lib/inbox-keyboard";
 import {
@@ -702,178 +703,177 @@ export function InboxPage({
   return (
     <div
       data-inbox-page
-      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-6 xl:px-10"
+      className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5 xl:px-10"
     >
-      <div className="mb-5 flex flex-wrap items-center gap-2 @md:flex-nowrap">
-        {/* On phones the title takes the room the buttons leave, so a long space name truncates
-            instead of pushing the buttons to a second line. */}
-        <div className="me-auto flex min-w-0 grow basis-0 flex-col @md:me-1 @md:shrink-0 @md:grow-0 @md:basis-auto">
-          <h1 className="text-lg font-semibold">
-            <Trans>Inbox</Trans>
-          </h1>
-          {spaceName ? (
-            // Wraps rather than truncating: the end of the name is often what tells spaces apart.
-            <span
-              title={spaceName}
-              className="line-clamp-2 text-xs break-words text-muted-foreground @md:max-w-72"
-            >
-              {spaceName}
-            </span>
-          ) : null}
-        </div>
-        <form
-          ref={searchRef}
-          className="order-last min-w-0 basis-full @md:order-none @md:flex-1 @md:basis-auto"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setParam("q", draft.trim());
-          }}
-        >
-          <InputGroup className="w-full max-w-sm">
-            <InputGroupAddon>
-              <Search aria-hidden="true" />
-            </InputGroupAddon>
-            <InputGroupInput
-              type="search"
-              name="inbox-search"
-              value={draft}
-              onChange={(event) => setDraft(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key !== "Escape") return;
-                setDraft("");
-                if (query) setParam("q", "");
+      <PageHeader
+        title={<Trans>Inbox</Trans>}
+        meta={
+          <>
+            {spaceName ? (
+              // The full name is in the hover title when the row is too short for it.
+              <span title={spaceName} className="hidden truncate @md:inline @md:max-w-72">
+                {spaceName}
+              </span>
+            ) : null}
+            <form
+              ref={searchRef}
+              className="min-w-0 flex-1"
+              onSubmit={(event) => {
+                event.preventDefault();
+                setParam("q", draft.trim());
               }}
-              // Short enough to fit beside the agent panel; the hover title keeps the example.
-              placeholder={t`Search mail`}
-              title={t`Search mail, e.g. from:sam has:attachment`}
-              aria-label={t`Search mail`}
-              // Nothing to search or filter before mail is connected.
-              disabled={Boolean(data) && accounts.length === 0}
-              maxLength={MAX_QUERY}
-              className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
-              autoComplete="off"
-            />
-            {draft ? (
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  size="icon-xs"
-                  aria-label={t`Clear`}
-                  onClick={() => {
+            >
+              <InputGroup className="w-full max-w-sm">
+                <InputGroupAddon>
+                  <Search aria-hidden="true" />
+                </InputGroupAddon>
+                <InputGroupInput
+                  type="search"
+                  name="inbox-search"
+                  value={draft}
+                  onChange={(event) => setDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Escape") return;
                     setDraft("");
-                    setParam("q", "");
-                    searchRef.current?.querySelector("input")?.focus();
+                    if (query) setParam("q", "");
+                  }}
+                  // Short enough to fit beside the agent panel; the hover title keeps the example.
+                  placeholder={t`Search mail`}
+                  title={t`Search mail, e.g. from:sam has:attachment`}
+                  aria-label={t`Search mail`}
+                  // Nothing to search or filter before mail is connected.
+                  disabled={Boolean(data) && accounts.length === 0}
+                  maxLength={MAX_QUERY}
+                  className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
+                  autoComplete="off"
+                />
+                {draft ? (
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      size="icon-xs"
+                      aria-label={t`Clear`}
+                      onClick={() => {
+                        setDraft("");
+                        setParam("q", "");
+                        searchRef.current?.querySelector("input")?.focus();
+                      }}
+                    >
+                      <X aria-hidden="true" />
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                ) : null}
+              </InputGroup>
+            </form>
+          </>
+        }
+        actions={
+          <>
+            <HideAmountsButton />
+            {triage ? (
+              <Toggle
+                variant="outline"
+                size="sm"
+                className="pointer-coarse:h-10 aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90"
+                pressed={view === "important"}
+                onPressedChange={(pressed) => setParam("view", pressed ? "important" : "")}
+              >
+                <Trans>Important</Trans>
+              </Toggle>
+            ) : null}
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                data-testid="inbox-filter"
+                disabled={Boolean(data) && accounts.length === 0}
+                render={
+                  <Button
+                    variant={filter || (triage && category) ? "secondary" : "outline"}
+                    size="sm"
+                    className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                  />
+                }
+                aria-label={filter || (triage && category) ? undefined : t`Filter`}
+              >
+                <ListFilter aria-hidden="true" />
+                {filter
+                  ? filterLabels()[filter]
+                  : triage && category
+                    ? categoryLabels()[category]
+                    : null}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-48">
+                <DropdownMenuRadioGroup
+                  value={filter ?? (triage ? category : undefined) ?? ""}
+                  onValueChange={(value) => {
+                    const named = InboxFilterSchema.safeParse(value);
+                    setParam(named.success ? "filter" : "category", String(value));
                   }}
                 >
-                  <X aria-hidden="true" />
-                </InputGroupButton>
-              </InputGroupAddon>
-            ) : null}
-          </InputGroup>
-        </form>
-        <HideAmountsButton />
-        {triage ? (
-          <Toggle
-            variant="outline"
-            size="sm"
-            className="pointer-coarse:h-10 aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90"
-            pressed={view === "important"}
-            onPressedChange={(pressed) => setParam("view", pressed ? "important" : "")}
-          >
-            <Trans>Important</Trans>
-          </Toggle>
-        ) : null}
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            data-testid="inbox-filter"
-            disabled={Boolean(data) && accounts.length === 0}
-            render={
-              <Button
-                variant={filter || (triage && category) ? "secondary" : "outline"}
-                size="sm"
-                className="pointer-coarse:h-10 pointer-coarse:min-w-10"
-              />
-            }
-            aria-label={filter || (triage && category) ? undefined : t`Filter`}
-          >
-            <ListFilter aria-hidden="true" />
-            {filter
-              ? filterLabels()[filter]
-              : triage && category
-                ? categoryLabels()[category]
-                : null}
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-48">
-            <DropdownMenuRadioGroup
-              value={filter ?? (triage ? category : undefined) ?? ""}
-              onValueChange={(value) => {
-                const named = InboxFilterSchema.safeParse(value);
-                setParam(named.success ? "filter" : "category", String(value));
-              }}
-            >
-              {(triage
-                ? (["unread", "starred", "attachment"] as const)
-                : (["unread", "starred", "important", "attachment"] as const)
-              ).map((name) => (
-                <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                  {filterLabels()[name]}
-                </DropdownMenuRadioItem>
-              ))}
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuLabel>
-                  <Trans>Gmail tabs</Trans>
-                </DropdownMenuLabel>
-                {(["primary", "promotions", "social", "updates"] as const).map((name) => (
-                  <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                    {filterLabels()[name]}
-                  </DropdownMenuRadioItem>
-                ))}
-              </DropdownMenuGroup>
-              {triage ? (
-                <>
+                  {(triage
+                    ? (["unread", "starred", "attachment"] as const)
+                    : (["unread", "starred", "important", "attachment"] as const)
+                  ).map((name) => (
+                    <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                      {filterLabels()[name]}
+                    </DropdownMenuRadioItem>
+                  ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuGroup>
                     <DropdownMenuLabel>
-                      <Trans>Categories</Trans>
+                      <Trans>Gmail tabs</Trans>
                     </DropdownMenuLabel>
-                    {InboxViewCategorySchema.options.map((name) => (
+                    {(["primary", "promotions", "social", "updates"] as const).map((name) => (
                       <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                        {categoryLabels()[name]}
+                        {filterLabels()[name]}
                       </DropdownMenuRadioItem>
                     ))}
                   </DropdownMenuGroup>
-                </>
-              ) : null}
-            </DropdownMenuRadioGroup>
-            {filter || (triage && category) ? (
-              <>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setParam(filter ? "filter" : "category", "")}>
-                  <Trans>Clear</Trans>
-                </DropdownMenuItem>
-              </>
-            ) : null}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                variant="outline"
-                size="icon-sm"
-                className="pointer-coarse:size-10"
-                aria-label={t`Compose`}
-                disabled={accounts.length === 0}
-                onClick={() => setComposing(true)}
-              />
-            }
-          >
-            <SquarePen aria-hidden="true" />
-          </TooltipTrigger>
-          <TooltipContent>{t`Compose`}</TooltipContent>
-        </Tooltip>
-        {onShowAgent ? <AskBotButton botName="Inbox agent" onClick={onShowAgent} /> : null}
-      </div>
+                  {triage ? (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuGroup>
+                        <DropdownMenuLabel>
+                          <Trans>Categories</Trans>
+                        </DropdownMenuLabel>
+                        {InboxViewCategorySchema.options.map((name) => (
+                          <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                            {categoryLabels()[name]}
+                          </DropdownMenuRadioItem>
+                        ))}
+                      </DropdownMenuGroup>
+                    </>
+                  ) : null}
+                </DropdownMenuRadioGroup>
+                {filter || (triage && category) ? (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setParam(filter ? "filter" : "category", "")}>
+                      <Trans>Clear</Trans>
+                    </DropdownMenuItem>
+                  </>
+                ) : null}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="pointer-coarse:size-10"
+                    aria-label={t`Compose`}
+                    disabled={accounts.length === 0}
+                    onClick={() => setComposing(true)}
+                  />
+                }
+              >
+                <SquarePen aria-hidden="true" />
+              </TooltipTrigger>
+              <TooltipContent>{t`Compose`}</TooltipContent>
+            </Tooltip>
+            {onShowAgent ? <AskBotButton botName="Inbox agent" onClick={onShowAgent} /> : null}
+          </>
+        }
+      />
       {accounts.length > 1 ? (
         <Tabs
           className="-mt-2 mb-4"

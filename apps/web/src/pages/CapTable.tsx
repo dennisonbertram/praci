@@ -31,6 +31,7 @@ import { AskBotButton } from "../components/AskBotButton";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
+import { PageHeader } from "../components/PageHeader";
 import { hasConnectedCarta } from "../lib/carta-agent";
 import { percentFigure, shareCount, usdFigure } from "../lib/finance-format";
 import { useHideAmounts } from "../lib/hide-amounts-preference";
@@ -679,16 +680,12 @@ export function CapTablePage({
       ref={container}
       className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-6 pt-2 md:px-7 md:pt-5"
     >
-      {/* Title and subtitle stay together and never truncate; on a narrow screen the buttons wrap
-          onto their own row below them. */}
-      <div className="mb-4 flex flex-wrap items-center gap-x-2 gap-y-2">
-        <div className="me-auto min-w-0">
-          <h1 className="text-lg font-semibold">
-            <Trans>Cap table</Trans>
-          </h1>
-          {snapshot ? (
-            // The update time never truncates; a long company name gives way first.
-            <p className="mt-0.5 flex min-w-0 gap-1 text-xs text-muted-foreground">
+      <PageHeader
+        title={<Trans>Cap table</Trans>}
+        meta={
+          snapshot ? (
+            <>
+              {/* The update time never truncates; a long company name gives way first. */}
               <span className="truncate" title={snapshot.companyName}>
                 {snapshot.companyName}
               </span>
@@ -700,41 +697,43 @@ export function CapTablePage({
                   <Trans>Updated {formatRelativeTime(snapshot.updatedAt)}</Trans>
                 )}
               </span>
-            </p>
-          ) : null}
-        </div>
-        <div className="flex items-center gap-2">
-          {/* Only figures from Carta can be hidden. */}
-          {snapshot ? <HideAmountsButton /> : null}
-          {/* Without a model a refresh cannot start; the card below offers Add a model instead. */}
-          {cartaConnected && !(needsModel && neverRead) ? (
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    className="pointer-coarse:size-10"
-                    aria-label={t`Refresh from Carta`}
-                    disabled={syncing && !capFailed}
-                    onClick={() => void refresh()}
-                  />
-                }
-              >
-                <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
-              </TooltipTrigger>
-              <TooltipContent>
-                <Trans>Refresh from Carta. The Carta agent reads your cap table again.</Trans>
-              </TooltipContent>
-            </Tooltip>
-          ) : null}
-          <Button variant={cartaConnected ? "default" : "outline"} onClick={addContact}>
-            <Plus aria-hidden="true" />
-            {isContactKind(filter) ? addKindLabel[filter] : <Trans>Add contact</Trans>}
-          </Button>
-          {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
-        </div>
-      </div>
+            </>
+          ) : null
+        }
+        actions={
+          <>
+            {/* Only figures from Carta can be hidden. */}
+            {snapshot ? <HideAmountsButton /> : null}
+            {/* Without a model a refresh cannot start; the card below offers Add a model instead. */}
+            {cartaConnected && !(needsModel && neverRead) ? (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="pointer-coarse:size-10"
+                      aria-label={t`Refresh from Carta`}
+                      disabled={syncing && !capFailed}
+                      onClick={() => void refresh()}
+                    />
+                  }
+                >
+                  <RefreshCw aria-hidden="true" className={syncing ? "animate-spin" : undefined} />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <Trans>Refresh from Carta. The Carta agent reads your cap table again.</Trans>
+                </TooltipContent>
+              </Tooltip>
+            ) : null}
+            <Button variant={cartaConnected ? "default" : "outline"} onClick={addContact}>
+              <Plus aria-hidden="true" />
+              {isContactKind(filter) ? addKindLabel[filter] : <Trans>Add contact</Trans>}
+            </Button>
+            {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
+          </>
+        }
+      />
 
       {serversFailed ? (
         <div role="alert" className="mb-5 flex flex-wrap items-center gap-3 text-sm">
