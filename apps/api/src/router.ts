@@ -874,6 +874,8 @@ export interface RouterDeps {
   artifacts: ArtifactStore;
   /** Provider-neutral mail access; the Inbox handlers read and sync through it. */
   mail: MailProvider;
+  /** Signs email image links; the deployment auth secret. */
+  imageProxySecret?: string;
   /** The executor's model resolver; the Inbox `enabled` flag asks the same question as the triage job. */
   resolveModel?: TriageReadinessDeps["resolveModel"];
   dataDir: string;

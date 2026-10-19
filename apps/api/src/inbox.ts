@@ -24,11 +24,14 @@ import { applySenderMark, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { proxyEmailImages } from "./email-image-proxy.js";
 
 export interface InboxDeps {
   prisma: PrismaClient;
   mail: MailProvider;
   jobs: JobPublisher;
+  /** When set, remote images in a message are served through the signed image proxy. */
+  imageProxySecret?: string;
   /** The executor's resolver, for the same readiness check the triage job makes. */
   resolveModel?: TriageReadinessDeps["resolveModel"];
 }
@@ -599,7 +602,10 @@ export async function inboxGet(
       cc: message.cc.map(formatAddress).join(", "),
       date: message.date,
       subject: message.subject,
-      html: message.html ?? null,
+      html:
+        message.html && deps.imageProxySecret
+          ? proxyEmailImages(message.html, deps.imageProxySecret, actor)
+          : (message.html ?? null),
       text: message.text,
       attachments: message.attachments
         .filter((a) => !a.inline && a.id)
