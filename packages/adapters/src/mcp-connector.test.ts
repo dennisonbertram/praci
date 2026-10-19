@@ -1709,6 +1709,32 @@ describe("MCP connector integration agents", () => {
     }
   });
 
+  it("refuses the call when the server changed during the live tool listing", async () => {
+    for (const edit of [
+      (server: Record<string, unknown>) => (server.revision = 2),
+      (server: Record<string, unknown>) => (server.secretId = "secret-2"),
+      (server: Record<string, unknown>) => (server.endpoint = "https://mcp.brex.com/mcp"),
+    ]) {
+      const { connector, state, call, assignment } = await setup("agent-1", agentBot, {
+        writesEnabled: true,
+      });
+      const inner = connector as never as { sessionFor: (...a: unknown[]) => Promise<unknown> };
+      const real = inner.sessionFor.bind(connector);
+      let sessions = 0;
+      // The annotations come from the first session; the edit lands while it is listing.
+      inner.sessionFor = async (...args) => {
+        const session = await real(...args);
+        if (++sessions === 1) edit(assignment.server);
+        return session;
+      };
+      expect(await call("annotatedRead", true)).toMatchObject([
+        { type: "error", message: expect.stringContaining("changed while") },
+      ]);
+      expect(state.calls).toEqual([]);
+      await connector.close();
+    }
+  });
+
   it("denies an integration agent every tool of an unrelated server without an agent", async () => {
     const { connector, state, call, names } = await setup(
       "agent-9",

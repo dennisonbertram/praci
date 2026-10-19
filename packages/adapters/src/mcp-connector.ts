@@ -435,6 +435,8 @@ export class McpConnector implements ConnectorProvider {
     // cached read hints must never authorize a tool that has become a write since discovery.
     let annotations: ToolAnnotations;
     if (assignment.server.agentBotId) {
+      const { endpoint, secretId, revision } = assignment.server;
+      const listedFor = { endpoint, secretId, revision };
       try {
         const session = await this.sessionFor(assignment.server, context);
         const preset = integrationPresetForEndpoint(assignment.server.endpoint);
@@ -452,6 +454,20 @@ export class McpConnector implements ConnectorProvider {
       assignment = await loadAssignment();
       if (!assignment) {
         yield { type: "error", message: "MCP tool is not assigned to this bot" };
+        return;
+      }
+      // The annotations belong to the session that listed them. If the server moved meanwhile,
+      // dispatch would open a different session with the old classification.
+      if (
+        assignment.server.endpoint !== listedFor.endpoint ||
+        assignment.server.secretId !== listedFor.secretId ||
+        assignment.server.revision !== listedFor.revision
+      ) {
+        yield {
+          type: "error",
+          message:
+            "The integration changed while the call was starting, so it was not run. Try again in a new message.",
+        };
         return;
       }
     }
