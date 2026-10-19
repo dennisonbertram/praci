@@ -940,7 +940,7 @@ describe("transient transport errors", () => {
       connectors: connectors(async () => {
         calls++;
         controller.abort();
-        throw down();
+        throw controller.signal.reason;
       }),
       sleep: async () => {},
       random: () => 0,

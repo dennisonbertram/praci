@@ -57,6 +57,8 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
   let getDelayMs = 0;
   /** Requests whose URL contains this text wait for the signal to abort, then are still answered. */
   let answerLateUrl: string | undefined;
+  /** Requests whose URL contains this text wait for the signal to abort, then throw. */
+  let throwLate: { url: string; error: () => unknown } | undefined;
   const listCalls = () => gmail.requests.filter((r) => /\/messages\?/.test(r.url)).length;
   const getCalls = () => gmail.requests.filter((r) => /\/messages\/[^?]/.test(r.url)).length;
 
@@ -65,6 +67,13 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       request: ConnectorProxyRequest,
       context: AdapterContext,
     ): Promise<ConnectorProxyResponse> => {
+      if (throwLate && request.url.includes(throwLate.url)) {
+        await new Promise<void>((resolve) => {
+          if (context.signal.aborted) resolve();
+          context.signal.addEventListener("abort", () => resolve(), { once: true });
+        });
+        throw throwLate.error();
+      }
       if (answerLateUrl && request.url.includes(answerLateUrl)) {
         await new Promise<void>((resolve) => {
           if (context.signal.aborted) resolve();
@@ -80,7 +89,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
             context.signal.addEventListener("abort", () => resolve(), { once: true }),
           ),
         ]);
-        if (context.signal.aborted) throw new Error("aborted");
+        if (context.signal.aborted) throw context.signal.reason;
       }
       if (getDelayMs && /\/messages\/[^?]/.test(request.url)) {
         await new Promise<void>((resolve) => {
@@ -94,7 +103,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
             { once: true },
           );
         });
-        if (context.signal.aborted) throw new Error("aborted");
+        if (context.signal.aborted) throw context.signal.reason;
       }
       return gmail.handle(request.accountRef, request.url);
     },
@@ -575,6 +584,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     afterEach(() => {
       getDelayMs = 0;
       answerLateUrl = undefined;
+      throwLate = undefined;
     });
     const nextRun = (connectionId: string) =>
       prisma.mailSyncState.updateMany({ where: { connectionId }, data: { backoffUntil: null } });
@@ -626,6 +636,32 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       expect(after.lastErrorAt).toBeNull();
       expect(after.backoffUntil).toBeNull();
       expect(after.claimToken).toBeNull();
+    });
+
+    it("records a connector crash that happens after the deadline", async () => {
+      seed("late-crash", [message("a", 1, ["INBOX"])]);
+      const account = await connect("late-crash");
+      throwLate = { url: "/profile", error: () => new TypeError("connector bug") };
+
+      expect(await sync(account, "op", { deadlineMs: 50 })).toBe("failed");
+
+      const after = await state(account.id);
+      expect(after.lastErrorAt).not.toBeNull();
+      expect(after.lastErrorKind).toBe("unavailable");
+    });
+
+    it("keeps the inbox it listed when the deadline ends the sent list", async () => {
+      seed("late-sent", [...bulk(5, "in"), ...bulk(5, "sent")]);
+      const account = await connect("late-sent");
+      throwLate = { url: "in%3Asent", error: () => new DOMException("aborted", "AbortError") };
+
+      expect(await sync(account, "op", { deadlineMs: 300 })).toBe("failed");
+
+      const after = await state(account.id);
+      expect(after.lastErrorAt).toBeNull();
+      expect(after.lastSyncedAt).toBeNull();
+      expect(after.changeCursor).toBeNull();
+      expect(await rows(account.id)).toHaveLength(5);
     });
 
     it("records a 503 that arrives after the deadline while hydrating", async () => {

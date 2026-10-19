@@ -152,6 +152,13 @@ export async function syncMailbox(
     clearTimeout(deadlineTimer);
     deadlineTimer = startDeadline(RELIST_DEADLINE_MS - (Date.now() - started));
   };
+  /** Our own deadline ended the request; the caller leaving and every other error are not this. */
+  const ranOutOfTime = (error: unknown) =>
+    deadline.aborted &&
+    !context.signal.aborted &&
+    error instanceof MailProviderError &&
+    error.kind === "unavailable" &&
+    error.message === MAIL_REQUEST_ABORTED;
   const timed: AdapterContext = { ...context, signal: AbortSignal.any([context.signal, deadline]) };
 
   const merged = new Map<
@@ -209,7 +216,15 @@ export async function syncMailbox(
           where: { connectionId: account.id, spaceId, userId, inInbox: true },
         })) >= MAX_MESSAGES
       ) {
-        inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
+        inbox = await listWindow(
+          deps.mail,
+          account,
+          timed,
+          "in:inbox",
+          after,
+          windowStart,
+          ranOutOfTime,
+        );
         partial = partial || inbox.partial;
         for (const message of inbox.messages)
           merged.set(message.id, {
@@ -229,12 +244,28 @@ export async function syncMailbox(
       if (changes) deletedIds.push(...changes.deletedIds);
       lengthenDeadline();
       nextCursor = await deps.mail.getCursor(account, timed);
-      inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
+      inbox = await listWindow(
+        deps.mail,
+        account,
+        timed,
+        "in:inbox",
+        after,
+        windowStart,
+        ranOutOfTime,
+      );
       // Out of time: keep what loaded and list sent mail on a later run.
       const sent: Listed =
         inbox.partial || timed.signal.aborted
           ? { messages: [], capped: false, partial: true }
-          : await listWindow(deps.mail, account, timed, "in:sent", after, windowStart);
+          : await listWindow(
+              deps.mail,
+              account,
+              timed,
+              "in:sent",
+              after,
+              windowStart,
+              ranOutOfTime,
+            );
       partial = inbox.partial || sent.partial;
       for (const [listed, flag] of [
         [inbox, "inInbox"],
@@ -250,12 +281,7 @@ export async function syncMailbox(
   } catch (error) {
     // Running out of our own time is an incomplete sync, not a provider failure: store what loaded.
     // Any other error, even one that arrives after the deadline, is a failure.
-    const ranOutOfTime =
-      deadline.aborted &&
-      error instanceof MailProviderError &&
-      error.kind === "unavailable" &&
-      error.message === MAIL_REQUEST_ABORTED;
-    if (!ranOutOfTime || context.signal.aborted) return fail(error);
+    if (!ranOutOfTime(error)) return fail(error);
     partial = true;
   }
   // The caller left, wherever that landed (a hydrate returns a partial page instead of throwing).
@@ -391,22 +417,25 @@ async function listWindow(
   query: string,
   after: string,
   windowStart: Date,
+  ranOutOfTime: (error: unknown) => boolean,
 ): Promise<Listed> {
   const messages: MailMessageSummary[] = [];
   let pageToken: string | undefined;
   let partial = false;
   do {
-    const page = await mail.listMessages(
-      account,
-      {
-        query,
-        after,
-        pageSize: PAGE_SIZE,
-        pageToken,
-        useCache: false,
-      },
-      context,
-    );
+    let page: Awaited<ReturnType<MailProvider["listMessages"]>>;
+    try {
+      page = await mail.listMessages(
+        account,
+        { query, after, pageSize: PAGE_SIZE, pageToken, useCache: false },
+        context,
+      );
+    } catch (error) {
+      // Out of time: keep the pages already fetched and finish on a later run.
+      if (!ranOutOfTime(error)) throw error;
+      partial = true;
+      break;
+    }
     messages.push(...page.messages);
     partial = (page.unhydratedIds?.length ?? 0) > 0;
     pageToken = page.nextPageToken;
