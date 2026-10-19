@@ -4,12 +4,13 @@ import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
 import { Download, ExternalLink, FileText, RotateCw, Trash2, X } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type KeyboardEvent, type PointerEvent, type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   canOpenInBrowser,
   canPreviewImage,
-  dataRoomImageUrl,
+  canPreviewPdf,
+  dataRoomFileUrl,
   openDataRoomItem,
   saveDataRoomItem,
 } from "../../lib/data-room";
@@ -48,35 +49,125 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-const Tag = ({ children }: { children: ReactNode }) => (
-  <Badge variant="outline" className="max-w-full truncate">
-    {children}
+/** The text is truncated inside the chip (a chip's own centering would clip its start); hover shows it all. */
+const Tag = ({ children }: { children: string }) => (
+  <Badge variant="outline" className="max-w-full" title={children}>
+    <span className="truncate">{children}</span>
   </Badge>
 );
 
-/** The picture itself, for an image item; nothing while it loads or when it cannot be read. */
-function ImagePreview({ item }: { item: DataRoomApiItem }) {
+const WIDTH_KEY = "rakazo:data-room-preview-width";
+const MIN_WIDTH = 320;
+const DEFAULT_WIDTH = 360;
+const KEY_STEP = 32;
+const maxWidth = () => Math.max(MIN_WIDTH, Math.round(window.innerWidth * 0.6));
+const clampWidth = (width: number) => Math.max(MIN_WIDTH, Math.min(maxWidth(), width));
+
+function savedWidth() {
+  try {
+    const saved = Number(localStorage.getItem(WIDTH_KEY));
+    if (saved > 0) return clampWidth(saved);
+  } catch {
+    // Storage blocked: the default applies.
+  }
+  return DEFAULT_WIDTH;
+}
+
+/** The pane's width, dragged or keyed from its left edge, and remembered on this device. */
+function usePaneWidth() {
+  const [width, setWidth] = useState(savedWidth);
+  const [start, setStart] = useState<{ x: number; width: number } | null>(null);
+  const change = (next: number) => {
+    const value = clampWidth(next);
+    setWidth(value);
+    try {
+      localStorage.setItem(WIDTH_KEY, String(value));
+    } catch {
+      // Storage blocked: the width lasts until the page closes.
+    }
+  };
+  const rtl = document.documentElement.dir === "rtl" ? -1 : 1;
+  const handle = {
+    tabIndex: 0,
+    "aria-label": t`Resize panel`,
+    "aria-orientation": "vertical" as const,
+    "aria-valuemin": MIN_WIDTH,
+    "aria-valuemax": maxWidth(),
+    "aria-valuenow": width,
+    onPointerDown: (event: PointerEvent<HTMLHRElement>) => {
+      if (event.button !== 0) return;
+      event.preventDefault();
+      event.currentTarget.setPointerCapture(event.pointerId);
+      setStart({ x: event.clientX, width });
+    },
+    onPointerMove: (event: PointerEvent<HTMLHRElement>) => {
+      if (start) change(start.width + (start.x - event.clientX) * rtl);
+    },
+    onPointerUp: () => setStart(null),
+    onPointerCancel: () => setStart(null),
+    onKeyDown: (event: KeyboardEvent<HTMLHRElement>) => {
+      const keys: Record<string, number> = {
+        ArrowLeft: width + KEY_STEP * rtl,
+        ArrowRight: width - KEY_STEP * rtl,
+        Home: MIN_WIDTH,
+        End: maxWidth(),
+      };
+      const next = keys[event.key];
+      if (next === undefined) return;
+      event.preventDefault();
+      change(next);
+    },
+  };
+  return { width, handle };
+}
+
+/**
+ * The file itself: the picture, or the browser's PDF viewer in a frame. A skeleton shows while it
+ * loads; the file icon stands in when the type cannot be shown or the bytes cannot be read.
+ */
+function FilePreview({ item }: { item: DataRoomApiItem }) {
   const [url, setUrl] = useState("");
+  const [failed, setFailed] = useState(false);
   const { id, mimeType } = item;
+  const showable = canPreviewImage(item) || canPreviewPdf(item);
   useEffect(() => {
+    if (!showable) return;
     let live = true;
     let made = "";
     setUrl("");
-    dataRoomImageUrl({ id, mimeType })
+    setFailed(false);
+    dataRoomFileUrl({ id, mimeType })
       .then((next) => {
         made = next;
         if (live) setUrl(next);
         else URL.revokeObjectURL(next);
       })
-      .catch(() => undefined);
+      .catch(() => live && setFailed(true));
     return () => {
       live = false;
       if (made) URL.revokeObjectURL(made);
     };
-  }, [id, mimeType]);
-  return url ? (
+  }, [id, mimeType, showable]);
+  if (!showable || failed) {
+    return (
+      <div className="flex h-24 items-center justify-center rounded-md bg-muted">
+        <FileText aria-hidden="true" className="size-8 text-muted-foreground" />
+      </div>
+    );
+  }
+  if (!url)
+    return (
+      <div data-testid="preview-skeleton" className="h-48 animate-pulse rounded-md bg-muted" />
+    );
+  return mimeType === "application/pdf" ? (
+    <iframe
+      src={url}
+      title={item.name}
+      className="h-[60vh] w-full shrink-0 rounded-md border border-border bg-muted"
+    />
+  ) : (
     <img src={url} alt={item.name} className="max-h-64 w-full rounded-md bg-muted object-contain" />
-  ) : null;
+  );
 }
 
 /** The summary, facets and source of one item, with Download and the item menu. */
@@ -98,6 +189,7 @@ export function Preview({
   const { facets } = item;
   const hidden = useHideAmounts();
   const amount = amountText(item);
+  const { width, handle } = usePaneWidth();
   const download = () => {
     setError("");
     saveDataRoomItem(item).catch((cause) => setError(errorText(cause)));
@@ -113,9 +205,16 @@ export function Preview({
       className={
         inDialog
           ? "flex flex-col gap-3 p-4"
-          : "flex w-72 shrink-0 flex-col gap-3 overflow-y-auto border-s border-border bg-background p-3"
+          : "relative flex shrink-0 flex-col gap-3 overflow-y-auto border-s border-border bg-background p-3"
       }
+      style={inDialog ? undefined : { width }}
     >
+      {inDialog ? null : (
+        <hr
+          {...handle}
+          className="absolute inset-y-0 start-0 z-10 m-0 h-full w-2 touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-border focus-visible:outline-none"
+        />
+      )}
       {/* In a dialog, leave room for its close button. */}
       <div className={inDialog ? "flex items-center gap-1 pe-8" : "flex items-center gap-1"}>
         <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
@@ -136,13 +235,15 @@ export function Preview({
         )}
       </div>
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
-      {canPreviewImage(item) ? (
-        hidden ? (
-          <p className="text-sm text-muted-foreground">{t`Image hidden while amounts are hidden`}</p>
-        ) : (
-          <ImagePreview key={item.id} item={item} />
-        )
-      ) : null}
+      {hidden && (canPreviewImage(item) || canPreviewPdf(item)) ? (
+        <p className="text-sm text-muted-foreground">
+          {canPreviewImage(item)
+            ? t`Image hidden while amounts are hidden`
+            : t`Hidden while amounts are hidden`}
+        </p>
+      ) : (
+        <FilePreview key={item.id} item={item} />
+      )}
       {item.status === "failed" ? (
         <div className="flex flex-col gap-1 text-sm">
           <p className="font-medium text-destructive">
