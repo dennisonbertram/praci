@@ -264,3 +264,47 @@
     transition: none;
   }
 }
+
+/* Pixel icons: frames swap and sprites drive in whole-pixel steps. */
+@keyframes pixel-strip {
+  to {
+    transform: translateX(var(--end));
+  }
+}
+
+@keyframes pixel-drive {
+  to {
+    transform: translateX(var(--travel));
+  }
+}
+
+@keyframes pixel-flip {
+  0%,
+  49.99% {
+    scale: 1 1;
+  }
+  50%,
+  100% {
+    scale: -1 1;
+  }
+}
+
+.pixel-strip {
+  animation: pixel-strip var(--frame-dur) steps(var(--frames)) infinite;
+}
+
+.pixel-mover {
+  animation: pixel-drive var(--drive-dur) steps(var(--travel-steps)) infinite alternate;
+}
+
+.pixel-flip {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pixel-flip calc(var(--drive-dur) * 2) linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pixel-icon * {
+    animation: none;
+  }
+}
