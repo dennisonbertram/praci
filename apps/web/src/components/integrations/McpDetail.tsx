@@ -73,34 +73,51 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
       if (name && name !== server.name) await rpc.mcp.servers.rename({ id: server.id, name });
     }, t`Could not rename`);
 
+  const assign = async (botId: string, on: boolean) => {
+    // replace() overwrites the bot's whole list, so start from what it already has.
+    const current = await rpc.mcp.assignments.list({ botId });
+    const others = current
+      .filter((entry) => entry.serverId !== server.id)
+      .map(({ serverId: id, allowAllTools, allowedTools }) => ({
+        serverId: id,
+        allowAllTools,
+        allowedTools,
+      }));
+    const kept = current.find((entry) => entry.serverId === server.id);
+    await rpc.mcp.assignments.replace({
+      botId,
+      assignments: on
+        ? [
+            ...others,
+            kept
+              ? {
+                  serverId: server.id,
+                  allowAllTools: kept.allowAllTools,
+                  allowedTools: kept.allowedTools,
+                }
+              : { serverId: server.id, allowAllTools: true, allowedTools: [] },
+          ]
+        : others,
+    });
+  };
   const toggle = (botId: string, on: boolean) =>
+    run(() => assign(botId, on), t`Could not update bot access`);
+
+  /** On: every agent in the space gets the server. Off: back to the owning agent alone. */
+  const setShared = (shared: boolean) =>
     run(async () => {
-      // replace() overwrites the bot's whole list, so start from what it already has.
-      const current = await rpc.mcp.assignments.list({ botId });
-      const others = current
-        .filter((entry) => entry.serverId !== server.id)
-        .map(({ serverId: id, allowAllTools, allowedTools }) => ({
-          serverId: id,
-          allowAllTools,
-          allowedTools,
-        }));
-      const kept = current.find((entry) => entry.serverId === server.id);
-      await rpc.mcp.assignments.replace({
-        botId,
-        assignments: on
-          ? [
-              ...others,
-              kept
-                ? {
-                    serverId: server.id,
-                    allowAllTools: kept.allowAllTools,
-                    allowedTools: kept.allowedTools,
-                  }
-                : { serverId: server.id, allowAllTools: true, allowedTools: [] },
-            ]
-          : others,
-      });
-    }, t`Could not update bot access`);
+      const exclusive = (value: boolean) =>
+        rpc.integrationAgents.setExclusive({ serverId: server.id, exclusive: value });
+      if (shared) {
+        for (const bot of data.bots) if (!assigned(bot.id)) await assign(bot.id, true);
+        await exclusive(false);
+        return;
+      }
+      await exclusive(true);
+      if (server.agentBotId && !assigned(server.agentBotId)) await assign(server.agentBotId, true);
+      for (const bot of data.bots)
+        if (bot.id !== server.agentBotId && assigned(bot.id)) await assign(bot.id, false);
+    }, t`Could not update access`);
 
   const host = server.endpoint ? new URL(server.endpoint).host : (server.command ?? "");
   const carta = isCartaEndpoint(server.endpoint);
@@ -114,10 +131,17 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           () => rpc.mcp.servers.setWrites({ id: server.id, enabled: false }).then(() => undefined),
           t`Could not update changes`,
         );
-  const usedBy =
-    hasAgent && server.agentExclusive
-      ? data.bots.filter((bot) => bot.id === server.agentBotId)
-      : data.bots;
+  const usedBy = (
+    <AgentToggleList
+      bots={[...data.bots].sort(
+        (a, b) => Number(b.id === server.agentBotId) - Number(a.id === server.agentBotId),
+      )}
+      appName={server.name}
+      disabled={busy}
+      isOn={assigned}
+      onToggle={(botId, on) => void toggle(botId, on)}
+    />
+  );
   return (
     <div className="rk-scroll h-full overflow-y-auto px-4 py-6 md:px-9 md:py-7">
       <div className="mx-auto max-w-[1040px]">
@@ -217,31 +241,22 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
             agentName={agent?.name ?? t`${service} agent`}
             agentHref={`/app/${server.agentBotId}`}
             writesEnabled={server.writesEnabled}
-            exclusive={server.agentExclusive}
+            shared={!server.agentExclusive}
             disabled={busy}
             onWrites={setWrites}
-            onExclusive={(exclusive) =>
-              void run(
-                () =>
-                  rpc.integrationAgents
-                    .setExclusive({ serverId: server.id, exclusive })
-                    .then(() => undefined),
-                t`Could not update access`,
-              )
-            }
+            usedBy={usedBy}
+            onShared={(shared) => void setShared(shared)}
           />
         ) : null}
 
-        <Heading>
-          <Trans>Used by</Trans>
-        </Heading>
-        <AgentToggleList
-          bots={usedBy}
-          appName={server.name}
-          disabled={busy}
-          isOn={assigned}
-          onToggle={(botId, on) => void toggle(botId, on)}
-        />
+        {hasAgent ? null : (
+          <>
+            <Heading>
+              <Trans>Used by</Trans>
+            </Heading>
+            {usedBy}
+          </>
+        )}
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Button

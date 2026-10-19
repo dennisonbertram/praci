@@ -44,20 +44,23 @@ export function IntegrationAgentSection({
   agentName,
   agentHref,
   writesEnabled,
-  exclusive,
+  shared,
   disabled,
   onWrites,
-  onExclusive,
+  onShared,
+  usedBy,
   idPrefix = "server",
 }: {
   service: string;
   agentName: string;
   agentHref: string;
   writesEnabled: boolean;
-  exclusive: boolean;
+  shared: boolean;
   disabled: boolean;
   onWrites: (on: boolean) => void;
-  onExclusive: (on: boolean) => void;
+  onShared: (on: boolean) => void;
+  /** The per-agent list, shown while the connection is shared. */
+  usedBy: ReactNode;
   idPrefix?: string;
 }) {
   const { t } = useLingui();
@@ -82,27 +85,26 @@ export function IntegrationAgentSection({
             </Trans>
           }
         />
-        <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-0.5">
+        <div className="flex items-center gap-2">
           <Switch
-            id={`${idPrefix}-exclusive`}
-            aria-describedby={`${idPrefix}-exclusive-hint`}
-            checked={exclusive}
+            id={`${idPrefix}-shared`}
+            checked={shared}
             disabled={disabled}
-            onCheckedChange={onExclusive}
+            onCheckedChange={onShared}
           />
-          <Label htmlFor={`${idPrefix}-exclusive`}>
-            <Trans>Only this agent</Trans>
+          <Label htmlFor={`${idPrefix}-shared`}>
+            <Trans>Share with all agents</Trans>
           </Label>
-          <p
-            id={`${idPrefix}-exclusive-hint`}
-            className="col-start-2 text-sm text-muted-foreground"
-          >
-            <Trans>
-              Other agents ask the {service} agent instead of using {service} themselves.
-            </Trans>
-          </p>
         </div>
       </div>
+      {shared ? (
+        <>
+          <Heading>
+            <Trans>Used by</Trans>
+          </Heading>
+          {usedBy}
+        </>
+      ) : null}
     </section>
   );
 }

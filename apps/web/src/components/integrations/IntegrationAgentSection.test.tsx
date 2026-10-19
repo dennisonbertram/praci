@@ -24,7 +24,7 @@ it("shows the agent link and both switches, and reports changes", async () => {
   const container = document.createElement("div");
   document.body.append(container);
   const onWrites = vi.fn();
-  const onExclusive = vi.fn();
+  const onShared = vi.fn();
   await act(async () =>
     createRoot(container).render(
       <MemoryRouter>
@@ -33,21 +33,22 @@ it("shows the agent link and both switches, and reports changes", async () => {
           agentName="Mercury agent"
           agentHref="/app/bot_1"
           writesEnabled={false}
-          exclusive={false}
+          shared={false}
           disabled={false}
           onWrites={onWrites}
-          onExclusive={onExclusive}
+          onShared={onShared}
+          usedBy={<p>Per-agent list</p>}
         />
       </MemoryRouter>,
     ),
   );
   expect(container.querySelector("a")?.getAttribute("href")).toBe("/app/bot_1");
   expect(container.textContent).toContain("Allow changes in Mercury");
-  expect(container.textContent).toContain(
-    "Other agents ask the Mercury agent instead of using Mercury themselves.",
-  );
+  expect(container.textContent).toContain("Share with all agents");
+  expect(container.textContent).not.toContain("Other agents ask");
+  expect(container.textContent).not.toContain("Per-agent list");
   await act(async () => container.querySelector<HTMLElement>("#server-writes")?.click());
-  await act(async () => container.querySelector<HTMLElement>("#server-exclusive")?.click());
+  await act(async () => container.querySelector<HTMLElement>("#server-shared")?.click());
   expect(onWrites.mock.calls[0]?.[0]).toBe(true);
-  expect(onExclusive.mock.calls[0]?.[0]).toBe(true);
+  expect(onShared.mock.calls[0]?.[0]).toBe(true);
 });

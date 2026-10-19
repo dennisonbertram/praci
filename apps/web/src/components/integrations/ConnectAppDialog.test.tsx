@@ -30,6 +30,9 @@ vi.mock("@lingui/react/macro", () => ({
 
 import { ConnectAppDialog } from "./ConnectAppDialog";
 
+window.matchMedia ??= () =>
+  ({ matches: true, addEventListener() {}, removeEventListener() {} }) as unknown as MediaQueryList;
+
 const item: ConnectionCatalogItem = {
   connectorId: "composio",
   slug: "slack",
@@ -51,13 +54,14 @@ const pendingRow = (status: Connection["status"], extra: Partial<Connection> = {
   createdAt: "2026-10-01T00:00:00.000Z",
   ...extra,
 });
+const bot = { id: "bot_1", name: "Ada", color: "#000000" } as IntegrationsData["bots"][number];
 const data = (connections: Connection[] = []): IntegrationsData => ({
   loaded: true,
   error: null,
   catalog: [item],
   connections,
   servers: [],
-  bots: [],
+  bots: [bot],
   mcpAssignments: [],
   access: {},
   sources: [],
@@ -134,7 +138,7 @@ it("keeps waiting when the sign-in window reads as closed and Try again reuses t
   expect(api.begin).toHaveBeenCalledTimes(1);
   expect(api.revoke).not.toHaveBeenCalled();
   // Polling continues, so a late sign-in still completes.
-  api.complete.mockResolvedValue(pendingRow("connected"));
+  api.complete.mockResolvedValue(pendingRow("connected", { agentBotId: "bot_1" }));
   await act(async () => {
     await vi.advanceTimersByTimeAsync(2100);
   });
@@ -154,4 +158,33 @@ it("creates no connection until Connect is clicked when opened by a link", async
     connect?.click();
   });
   expect(api.begin).toHaveBeenCalledTimes(1);
+});
+
+async function connect(connected: Connection) {
+  vi.spyOn(window, "open").mockReturnValue(null);
+  api.complete.mockResolvedValue(connected);
+  await mount();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(2100);
+  });
+}
+
+it("ends at connected, with no bot step or access line, when the connection has an agent", async () => {
+  await connect(pendingRow("connected", { agentBotId: "bot_1" }));
+  expect(text()).toContain("Slack connected");
+  expect(text()).not.toContain("Which bots can use Slack?");
+  expect(text()).not.toContain("bots can use");
+  expect(text()).not.toContain("No bot uses");
+});
+
+it("still asks which bots get a connection that has no agent", async () => {
+  await connect(pendingRow("connected"));
+  expect(text()).toContain("Which bots can use Slack?");
+});
+
+it("does not promise a bot choice before sign-in", async () => {
+  vi.spyOn(window, "open").mockReturnValue(null);
+  await mount([], true);
+  expect(text()).toContain("You'll sign in to Slack in a new window.");
+  expect(text()).not.toContain("Then you choose");
 });
