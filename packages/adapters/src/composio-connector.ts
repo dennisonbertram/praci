@@ -159,6 +159,17 @@ export type ComposioExecutionCall = {
  * path passed beside `arguments` or as a JSON string never selects the folder.
  * Those listing tools run directly with the folder path on the listing call.
  */
+/** The tool slugs a call would dispatch, for the stale-account check. */
+function dispatchSlugs(call: ConnectorCall): string[] {
+  if (call.tool !== COMPOSIO_MULTI_EXECUTE_TOOL) return [call.route?.toolName ?? call.tool];
+  const nested = Array.isArray(call.args?.tools) ? call.args.tools : [];
+  return nested.map((item) =>
+    item && typeof item === "object" && "tool_slug" in item
+      ? String((item as { tool_slug: unknown }).tool_slug)
+      : "",
+  );
+}
+
 export function expandComposioMultiExecute(
   tool: string,
   args: Record<string, unknown>,
@@ -356,8 +367,11 @@ export class ComposioConnector implements ComposioProvider {
     userId: string,
     connections: ReturnType<typeof connectedComposioConnections>,
     requireConnectedAccount = false,
-    /** Dispatch must pin an authorized account; discovery only lists tools and may go unpinned. */
-    refuseStaleToolkits = false,
+    /**
+     * The tool slugs being dispatched. Dispatch must pin an authorized account for their toolkits;
+     * discovery and resolution only list tools and omit this.
+     */
+    dispatchSlugs?: string[],
   ): Promise<ComposioSession> {
     const canonicalToolkits = await this.canonicalizeToolkits(
       connections.map((connection) => connection.externalId),
@@ -387,11 +401,15 @@ export class ComposioConnector implements ComposioProvider {
     }
     // An authenticated toolkit whose accounts are all stale has nothing authorized to pin. An
     // unpinned session would resolve the user's other accounts, including ones this run was denied.
-    if (refuseStaleToolkits) {
-      for (const toolkit of authenticatedToolkits) {
-        if (!accountIdsByToolkit.has(toolkit))
-          throw new Error("The connected account is no longer active");
-      }
+    const stale = [...authenticatedToolkits].filter((toolkit) => !accountIdsByToolkit.has(toolkit));
+    if (dispatchSlugs && stale.length > 0) {
+      // Refuse unless every slug belongs to a toolkit that is not stale, so an unknown slug fails
+      // closed while a healthy toolkit's call is not blocked by another toolkit's stale ref.
+      const healthy = canonicalToolkits.filter((toolkit) => !stale.includes(toolkit));
+      const slugOk = (slug: string) =>
+        healthy.some((toolkit) => slug.toUpperCase().startsWith(`${toolkit.toUpperCase()}_`));
+      if (dispatchSlugs.length === 0 || !dispatchSlugs.every(slugOk))
+        throw new Error("The connected account is no longer active");
     }
     const connectedAccounts: Record<string, string[]> = {};
     for (const [toolkit, ids] of accountIdsByToolkit) {
@@ -520,7 +538,6 @@ export class ComposioConnector implements ComposioProvider {
       context.userId,
       connections,
       Boolean(call.route.connectionId),
-      true,
     );
     if (
       call.route.connectionId &&
@@ -579,7 +596,7 @@ export class ComposioConnector implements ComposioProvider {
         context.userId,
         connections,
         Boolean(call.route?.connectionId),
-        true,
+        dispatchSlugs(call),
       );
       if (call.route && (call.route.connectionId || call.route.discoveredReadOnly === true)) {
         // Fetched now, not at discovery: a read that has become a write must not run unasked.

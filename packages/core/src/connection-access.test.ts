@@ -150,6 +150,18 @@ describe("effectiveAccessByConnection", () => {
     expect(result.b).toEqual({ shared: "none", botIds: [] });
   });
 
+  it("gives each of two private accounts of one app its own linked agent", () => {
+    const result = effectiveAccessByConnection(
+      [
+        row("a", "connected", false, { agentBotId: "agent-a", botAccess: grant("agent-a") }),
+        row("b", "connected", false, { agentBotId: "agent-b", botAccess: grant("agent-b") }),
+      ],
+      bots,
+    );
+    expect(result.a).toEqual({ shared: "some", botIds: ["agent-a"] });
+    expect(result.b).toEqual({ shared: "some", botIds: ["agent-b"] });
+  });
+
   it("lists only agents whose identity can reach the connector", () => {
     const special = [
       "finance-agent:u1",

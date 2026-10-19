@@ -110,8 +110,11 @@ export function effectiveAccessByConnection(
     }));
     const denied = deniedConnectionIds(own);
     for (const row of own) {
-      if (row.status !== "connected" || denied.has(row.id)) continue;
-      if (!botCanReachConnection(bot, row)) continue;
+      if (row.status !== "connected" || !botCanReachConnection(bot, row)) continue;
+      // The executor hands a connected-app agent its own linked connection directly, so the
+      // app-wide denial of a sibling account does not apply to it.
+      const own = row.agentBotId === bot.id && row.connectorId !== "google";
+      if (own ? !botMayUseConnection(row) : denied.has(row.id)) continue;
       usable.get(row.id)?.push(bot.id);
     }
   }
