@@ -4,6 +4,7 @@ import { DATA_ROOM_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { aiRecipient } from "./ai-consent.js";
+import { modelAcceptsImageInput } from "./model-vision.js";
 import { OpenAICompatibleEmbedder } from "./openai-compatible-embedder.js";
 import { builtinEmbeddingsBaseUrl } from "./pi-runtime.js";
 
@@ -127,4 +128,18 @@ function consentKey(recipientKeys: string[]): string {
   return `data-room:${createHash("sha256")
     .update(JSON.stringify([...new Set(recipientKeys)].sort()))
     .digest("hex")}`;
+}
+
+/**
+ * What a vision read depended on: whether the model accepts images and which recipients were
+ * consented to. Saved with extracted text so an item that came out empty is read again only when
+ * this changes.
+ */
+export function dataRoomVisionKey(
+  ai: Pick<DataRoomAi, "model" | "consentKey" | "allowed">,
+): string {
+  const sees = ai.model
+    ? modelAcceptsImageInput(ai.model.provider, ai.model.id, ai.model.acceptsImages)
+    : false;
+  return `${sees ? "vision" : "novision"}:${ai.allowed ? ai.consentKey : "noconsent"}`;
 }

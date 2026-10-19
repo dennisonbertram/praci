@@ -176,8 +176,11 @@ Background jobs on the existing Graphile queue (extend the job union, the zod
 payload map and `background-job-handlers.ts`):
 
 1. `dataroom.ingest`: read the blob and extract text (PDF text layer; images and
-   scanned PDFs through a vision-capable model when one is configured; plain text,
-   Markdown, CSV, HTML, JSON, Office documents).
+   scanned PDFs (first 20 pages, rendered by the optional `renderPdfPages` dependency) through a
+   vision-capable model when one is configured; plain text, Markdown, CSV, HTML, JSON;
+   .docx, .xlsx and .pptx read locally from their XML with a 50 MB unzip cap; legacy
+   binary .doc, .xls and .ppt give no text). Items that were stored without text are
+   re-ingested when the user grants AI consent (`requeueReady("ingest")`).
 2. `dataroom.classify`: fill the facets and propose a folder. New items are filed
    automatically; the user can move them, and moves are kept as examples for the
    classifier.

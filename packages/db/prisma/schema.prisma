@@ -2363,6 +2363,8 @@ model DataRoomItemText {
   space   Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId  String
   text    String
+  /// What the read depended on (vision model, consent); see `dataRoomVisionKey`. Null: saved before this was recorded.
+  extractKey String?
 
   @@index([spaceId, userId])
   @@map("data_room_item_texts")

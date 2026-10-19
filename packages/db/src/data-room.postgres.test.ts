@@ -609,6 +609,59 @@ describePostgres("data room repository (PostgreSQL)", () => {
       expect(await dr.requeueReady(a, "ingest")).toContain(item.id);
     });
 
+    it("requeues PDF and Office items stored without text for ingest", async () => {
+      const docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      const made = [
+        await upload(a, `scan-${run}.pdf`, `pdf-${run}`, { mimeType: "application/pdf" }),
+        await upload(a, `memo-${run}.docx`, `docx-${run}`, { mimeType: docx }),
+        await upload(a, `sheet-${run}.XLSX`, `xlsx-${run}`, {
+          mimeType: "application/octet-stream",
+        }),
+        await upload(a, `has-text-${run}.pdf`, `pdft-${run}`, { mimeType: "application/pdf" }),
+      ];
+      for (const [i, { item }] of made.entries()) {
+        await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "ready" } });
+        await prisma.dataRoomItemText.create({
+          data: { itemId: item.id, spaceId: a.spaceId, userId: a.userId, text: i === 3 ? "x" : "" },
+        });
+      }
+      const ids = await dr.requeueReady(a, "ingest");
+      expect(made.map(({ item }) => ids.includes(item.id))).toEqual([true, true, true, false]);
+    });
+
+    it("re-ingests an empty read only when its recorded vision prerequisites changed", async () => {
+      const made = [
+        await upload(a, `k-scan-${run}.pdf`, `k1-${run}`, { mimeType: "application/pdf" }),
+        await upload(a, `k-memo-${run}.docx`, `k2-${run}`, {
+          mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        }),
+      ];
+      for (const { item } of made) {
+        await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "ready" } });
+        await prisma.dataRoomItemText.create({
+          data: { itemId: item.id, spaceId: a.spaceId, userId: a.userId, text: "" },
+        });
+      }
+      const [scan, memo] = made.map(({ item }) => item.id) as [string, string];
+      const row = (id: string) => prisma.dataRoomItem.findUniqueOrThrow({ where: { id } });
+      const reset = async () => {
+        for (const id of [scan, memo]) {
+          await prisma.dataRoomItem.update({ where: { id }, data: { status: "ready" } });
+        }
+      };
+      // Read with key "k1" (scan) and locally (memo): not retried under the same key.
+      await dr.finishExtraction(a, scan, (await row(scan)).revision, "", "k1");
+      await dr.finishExtraction(a, memo, (await row(memo)).revision, "", "local");
+      await reset();
+      expect(await dr.requeueReady(a, "ingest", undefined, "k1")).not.toEqual(
+        expect.arrayContaining([scan]),
+      );
+      await reset();
+      const again = await dr.requeueReady(a, "ingest", undefined, "k2");
+      expect(again).toContain(scan);
+      expect(again).not.toContain(memo);
+    });
+
     it("refuses a cursor from the other search mode or another embedding model", async () => {
       const q = `mode${run}`;
       for (let i = 0; i < 3; i++) await put(a, `mode${i}`, `${q} text ${i}`, unit(80 + i));
