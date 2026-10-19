@@ -758,6 +758,11 @@ msgstr "Add your OpenRouter key"
 msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+msgid "Added"
+msgstr "Added"
+
 #: src/pages/Shell.tsx
 msgid "Adding a contact"
 msgstr "Adding a contact"
@@ -1995,8 +2000,8 @@ msgstr "Code"
 msgid "Coding sessions and repo docs"
 msgstr "Coding sessions and repo docs"
 
-#. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
 msgstr "Collapse {0}"
@@ -3097,8 +3102,6 @@ msgstr "Data room"
 msgid "Data room search model"
 msgstr "Data room search model"
 
-#: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -3378,6 +3381,7 @@ msgid "Docs & files"
 msgstr "Docs & files"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
 msgid "Document date"
 msgstr "Document date"
 
@@ -3700,8 +3704,8 @@ msgstr "Exchange"
 msgid "Expand"
 msgstr "Expand"
 
-#. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "Expand {0}"
@@ -4001,12 +4005,16 @@ msgid "Gmail didn't respond. Try again."
 msgstr "Gmail didn't respond. Try again."
 
 #: src/lib/inbox-sync-error.ts
-msgid "Gmail is limiting requests right now. Try again in a few seconds."
-msgstr "Gmail is limiting requests right now. Try again in a few seconds."
+msgid "Gmail is limiting requests right now."
+msgstr "Gmail is limiting requests right now."
 
 #: src/components/ComposeEmail.tsx
 msgid "Gmail is limiting requests. Try again in a minute."
 msgstr "Gmail is limiting requests. Try again in a minute."
+
+#: src/lib/inbox-sync-error.ts
+msgid "Gmail is still limiting requests."
+msgstr "Gmail is still limiting requests."
 
 #: src/pages/Inbox.tsx
 msgid "Gmail needs to be reconnected"
@@ -5222,6 +5230,7 @@ msgstr "New bot"
 msgid "New Bot"
 msgstr "New Bot"
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
 msgid "New folder"
@@ -6112,6 +6121,10 @@ msgid "Personal"
 msgstr "Personal"
 
 #: src/pages/Shell.tsx
+msgid "Personnel"
+msgstr "Personnel"
+
+#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
 msgstr "Photo"
@@ -6393,10 +6406,6 @@ msgstr "Receipt hidden while amounts are hidden"
 #: src/pages/Inbox.tsx
 msgid "Receipts"
 msgstr "Receipts"
-
-#: src/components/data-room/FilterBar.tsx
-msgid "Recently added"
-msgstr "Recently added"
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/integrations/AppDetail.tsx
@@ -7240,6 +7249,7 @@ msgstr "Sending is turned off."
 msgid "Sending…"
 msgstr "Sending…"
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
@@ -8272,6 +8282,7 @@ msgstr "Try {name} again"
 
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -8580,11 +8591,6 @@ msgstr "Uses Carta figures and asks before sending."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
-
-#. placeholder {0}: activity.label
-#: src/pages/Shell.tsx
-msgid "Using {0}"
-msgstr "Using {0}"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx

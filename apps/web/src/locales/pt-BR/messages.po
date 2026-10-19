@@ -758,6 +758,11 @@ msgstr ""
 msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+msgid "Added"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Adding a contact"
 msgstr ""
@@ -1995,8 +2000,8 @@ msgstr "Código"
 msgid "Coding sessions and repo docs"
 msgstr ""
 
-#. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
 msgstr ""
@@ -3097,8 +3102,6 @@ msgstr ""
 msgid "Data room search model"
 msgstr ""
 
-#: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -3378,6 +3381,7 @@ msgid "Docs & files"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
 msgid "Document date"
 msgstr ""
 
@@ -3700,8 +3704,8 @@ msgstr ""
 msgid "Expand"
 msgstr "Expandir"
 
-#. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr ""
@@ -4001,11 +4005,15 @@ msgid "Gmail didn't respond. Try again."
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts
-msgid "Gmail is limiting requests right now. Try again in a few seconds."
+msgid "Gmail is limiting requests right now."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Gmail is limiting requests. Try again in a minute."
+msgstr ""
+
+#: src/lib/inbox-sync-error.ts
+msgid "Gmail is still limiting requests."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -5222,6 +5230,7 @@ msgstr ""
 msgid "New Bot"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
 msgid "New folder"
@@ -6112,6 +6121,10 @@ msgid "Personal"
 msgstr ""
 
 #: src/pages/Shell.tsx
+msgid "Personnel"
+msgstr ""
+
+#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
 msgstr "Foto"
@@ -6392,10 +6405,6 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Receipts"
-msgstr ""
-
-#: src/components/data-room/FilterBar.tsx
-msgid "Recently added"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -7240,6 +7249,7 @@ msgstr ""
 msgid "Sending…"
 msgstr "Enviando…"
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
@@ -8272,6 +8282,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -8580,11 +8591,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Usa as credenciais de {hostCredentialSource} próprias deste servidor para acessar {selectedProviderName}."
-
-#. placeholder {0}: activity.label
-#: src/pages/Shell.tsx
-msgid "Using {0}"
-msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx

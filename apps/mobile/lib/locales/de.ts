@@ -791,6 +791,7 @@ export const DE_MESSAGES: Record<string, string> = {
     "SSO ist vorübergehend nicht verfügbar. Versuche es erneut.",
   Inbox: "Posteingang",
   "Inbox agent": "Posteingang-Agent",
+  Sent: "Gesendet",
   "Could not load mail.": "E-Mails konnten nicht geladen werden.",
   "Needs reply": "Antwort nötig",
   Earlier: "Früher",

@@ -4,6 +4,7 @@ import type { DataRoomApiFolder } from "@rakazo/contracts";
 import { Button, cn } from "@rakazo/ui-web";
 import { Folder, FolderPlus } from "lucide-react";
 import { type KeyboardEvent, useState } from "react";
+import { PAGE_GUTTER_START } from "../PageHeader";
 import type { FolderNode } from "./folders";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
 
@@ -75,7 +76,7 @@ export function FolderTree({
         style={{ paddingInlineStart: `${8 + depth * 16}px` }}
         className={cn(
           "group flex min-h-8 cursor-pointer items-center gap-2 rounded-lg pe-1 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
-          selected === id && "bg-sidebar-accent font-semibold",
+          selected === id && "bg-sidebar-accent font-medium",
         )}
       >
         <Folder aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
@@ -97,26 +98,26 @@ export function FolderTree({
     );
   };
   return (
-    <div className="flex w-56 shrink-0 flex-col border-e border-border">
+    <div className={cn("flex w-61 shrink-0 flex-col", PAGE_GUTTER_START)}>
       <div
         role="tree"
         aria-label={t`Folders`}
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2"
+        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto py-2 pe-2"
       >
         {entry(undefined, 0)}
         {nodes.map(({ folder, depth }) => entry(folder, depth))}
       </div>
       {onNewFolder ? (
-        <div className="p-2 pt-0">
+        <div className="pe-2 pb-2">
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-muted-foreground"
+            className="min-h-8 w-full justify-start gap-2 ps-2 text-sm font-normal text-muted-foreground"
             onClick={onNewFolder}
           >
-            <FolderPlus aria-hidden="true" />
+            <FolderPlus aria-hidden="true" className="size-3.5" />
             <Trans>New folder</Trans>
           </Button>
         </div>

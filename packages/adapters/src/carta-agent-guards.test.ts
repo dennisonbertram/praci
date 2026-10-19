@@ -238,7 +238,8 @@ describe("Carta write approval", () => {
       integrationWriteTool: "call_tool",
     });
     if (block.kind !== "ask") throw new Error("expected ask block");
-    expect(block.detail).toContain("tool: call_tool");
+    expect(block.detail).toContain("tool: mcp__integration-1__call_tool");
+    expect(block.detail).toContain("server tool: call_tool");
     expect(block.detail).toContain('"name": "issue_draft"');
     expect(block.detail).toContain('"shares": 100');
     expect(block.detail).toContain("x".repeat(5000));

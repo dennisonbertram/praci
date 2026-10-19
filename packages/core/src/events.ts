@@ -358,7 +358,10 @@ export function humanizeToolName(name: string): string {
   // MCP tools are named mcp__<server slug>__<tool>; the slug can be an opaque id, so show the tool only.
   const mcp = /^mcp__.+?__(.+)$/.exec(name);
   if (mcp?.[1]) return CARTA_TOOL_LABELS[mcp[1]] ?? humanizeToolName(mcp[1]);
-  const spaced = name.replace(/_+/g, " ").trim();
+  const spaced = name
+    .replace(/([a-z\d])([A-Z])/g, "$1 $2")
+    .replace(/_+/g, " ")
+    .trim();
   if (!spaced) return name;
   const lower = spaced.toLowerCase();
   return lower.charAt(0).toUpperCase() + lower.slice(1);

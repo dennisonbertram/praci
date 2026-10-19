@@ -36,7 +36,7 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
-    connections: { list: rpcMock.connections },
+    connections: { list: rpcMock.connections, catalog: async () => [] },
     dataRoom: {
       folders: rpcMock.folders,
       items: { list: rpcMock.list },
@@ -148,11 +148,11 @@ const settle = () =>
 /** Clicks the nth row, as a user choosing a file to preview. */
 const clickRow = (n: number) =>
   act(async () => {
-    container.querySelectorAll<HTMLElement>("li[data-item-id]")[n]?.click();
+    container.querySelectorAll<HTMLElement>("[data-item-id]")[n]?.click();
   });
 
 const names = () =>
-  Array.from(container.querySelectorAll("li[data-item-id] span[title]"))
+  Array.from(container.querySelectorAll("[data-item-id] span[title]"))
     .map((el) => el.getAttribute("title"))
     .filter((title) => title?.endsWith(".txt"));
 
@@ -167,6 +167,8 @@ it("renders search highlights as text and <mark>, never as HTML", () => {
 
 it("waits for typing to pause, then searches on the server", async () => {
   await renderPage();
+  expect(container.querySelectorAll("h1")).toHaveLength(1);
+  expect(container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
   expect(rpcMock.list).toHaveBeenCalledTimes(1);
 
   const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');
@@ -283,7 +285,7 @@ it("marks only failed items as failed; a ready item with an error gets a muted p
   });
   await renderPage();
   await clickRow(0);
-  const row = container.querySelector("li[data-item-id]");
+  const row = container.querySelector("[data-item-id]");
   expect(row?.querySelector('[aria-label="Failed"]')).toBeNull();
   expect(row?.textContent).not.toContain("classifier timeout");
   expect(container.querySelector('[data-testid="data-room-preview"]')?.textContent).toContain(
@@ -387,7 +389,7 @@ it("offers a folder picker that chooses and clears a folder at any width", async
 it("on a narrow page opens the preview in a dialog only on click, not on hover", async () => {
   Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, value: 400 });
   await renderPage();
-  const row = container.querySelectorAll<HTMLElement>("li[data-item-id]")[1];
+  const row = container.querySelectorAll<HTMLElement>("[data-item-id]")[1];
   await act(async () => {
     row?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
     row?.dispatchEvent(new MouseEvent("mouseenter"));
@@ -413,7 +415,7 @@ it("shows the item menu on grid tiles", async () => {
   });
   expect(container.querySelector('[data-testid="data-room-head"]')).toBeNull();
   expect(
-    container.querySelector('ul[aria-label="Items"] button[aria-label="More actions for b.txt"]'),
+    container.querySelector('[aria-label="Items"] button[aria-label="More actions for b.txt"]'),
   ).not.toBeNull();
 });
 
@@ -455,7 +457,7 @@ const previewName = () =>
 
 it("changes the preview only on a click, so the highlight stays on the chosen row", async () => {
   await renderPage();
-  const rows = container.querySelectorAll<HTMLElement>("li[data-item-id]");
+  const rows = container.querySelectorAll<HTMLElement>("[data-item-id]");
   await clickRow(0);
   expect(previewName()).toBe("b.txt");
   await act(async () => {
@@ -503,7 +505,7 @@ it("keeps the chosen item through a narrow and back to wide resize, opening no d
   width(1000);
   await act(async () => resize());
   expect(previewName()).toBe("b.txt");
-  expect(container.querySelector('li[aria-current="true"]')?.getAttribute("data-item-id")).toBe(
+  expect(container.querySelector('[aria-current="true"]')?.getAttribute("data-item-id")).toBe(
     "id-b.txt",
   );
   delete (HTMLElement.prototype as { clientWidth?: number }).clientWidth;
@@ -558,7 +560,7 @@ it("offers Date and Type sorts only once some item has a date or type", async ()
   const options = Array.from(document.querySelectorAll('[role="menuitemradio"]')).map(
     (el) => el.textContent,
   );
-  expect(options).toEqual(["Name", "Recently added"]);
+  expect(options).toEqual(["Name", "Added"]);
 });
 
 it("previews nothing until a file is chosen, also after opening a folder", async () => {
@@ -570,7 +572,7 @@ it("previews nothing until a file is chosen, also after opening a folder", async
   const preview = () => container.querySelector('[data-testid="data-room-preview"]');
   expect(names()).toEqual(["b.txt", "a.txt"]);
   expect(preview()).toBeNull();
-  expect(container.querySelector('li[aria-current="true"]')).toBeNull();
+  expect(container.querySelector('[aria-current="true"]')).toBeNull();
   const legal = Array.from(container.querySelectorAll<HTMLElement>('[role="treeitem"]')).find(
     (el) => el.textContent === "Legal",
   );
@@ -637,7 +639,7 @@ it("says a failed file could not be read, with its reason and a Delete button", 
   expect(document.querySelector('[role="alertdialog"]')?.textContent).toContain("junk.pdf");
 });
 
-it("keeps the Type, Party and Date filters but hides their columns while no item has them", async () => {
+it("keeps the Type, Party and Date filters while no item has them, and keeps the same columns", async () => {
   const bare = (name: string) => ({
     ...item(name),
     facets: { ...item(name).facets, docType: null },
@@ -652,7 +654,10 @@ it("keeps the Type, Party and Date filters but hides their columns while no item
   expect(labels()).toContain("Filter by Document date");
   // One source filters nothing, and a source with no files would only lead to "No results".
   expect(labels()).not.toContain("Filter by Source");
-  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toBe("Name");
+  // The columns never come and go with the rows: the header is the same either way.
+  const head = () => container.querySelector('[data-testid="data-room-head"]')?.textContent;
+  const bareHead = head();
+  expect(bareHead).toBe("NameTypeAddedPartiesStatus");
 
   rpcMock.list.mockResolvedValue({
     items: [item("a.txt"), { ...bare("m.txt"), source: "gmail" }],
@@ -664,7 +669,7 @@ it("keeps the Type, Party and Date filters but hides their columns while no item
   await settle();
   expect(labels()).toContain("Filter by Type");
   expect(labels()).toContain("Filter by Source");
-  expect(container.querySelector('[data-testid="data-room-head"]')?.textContent).toContain("Type");
+  expect(head()).toBe(bareHead);
 });
 
 it("offers to clear filters when they leave no results, keeping the folder", async () => {
@@ -781,12 +786,17 @@ it("shows no snippet when only the name matched", async () => {
     await vi.advanceTimersByTimeAsync(500);
   });
   // Results are the list's own rows, with the matching text under the name.
-  const rows = container.querySelectorAll('ul[aria-label="Items"] > li');
+  const rows = container.querySelectorAll('tbody[aria-label="Items"] > tr[data-row]');
   expect(rows).toHaveLength(3);
-  expect(rows[0]?.querySelector("mark")).toBeNull();
-  expect(rows[1]?.querySelector("mark")?.textContent).toBe("lease");
+  // A snippet is the row after its file's row (no data-row of its own).
+  const mark = (row?: Element) => {
+    const next = row?.nextElementSibling;
+    return next && !next.hasAttribute("data-row") ? next.querySelector("mark") : null;
+  };
+  expect(mark(rows[0])).toBeNull();
+  expect(mark(rows[1])?.textContent).toBe("lease");
   // A metadata hit on the summary is not a name match, so its snippet stays.
-  expect(rows[2]?.querySelector("mark")?.textContent).toBe("lease");
+  expect(mark(rows[2])?.textContent).toBe("lease");
 });
 
 it("remembers the view and sort across visits", async () => {

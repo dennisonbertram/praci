@@ -7,6 +7,41 @@ import {
   normalizeMailEdits,
 } from "./approval-ask.js";
 
+describe("buildApprovalAskBlock tool identity", () => {
+  const ask = (id: string, serviceName?: string) => {
+    const block = buildApprovalAskBlock("e1", id, { amount: "5" }, [], { serviceName });
+    if (block.kind !== "ask") throw new Error("expected ask block");
+    return block;
+  };
+
+  it("names the service, so two servers with the same tool get different titles", () => {
+    const a = ask("mcp__finance-mercury__requestSendMoney", "Mercury");
+    const b = ask("mcp__finance-other__requestSendMoney", "Other Bank");
+    expect(a.text).toBe("Review before Mercury: Request send money → 5");
+    expect(b.text).toBe("Review before Other Bank: Request send money → 5");
+  });
+
+  it("always shows the exact fully qualified tool id in the detail", () => {
+    expect(ask("mcp__finance-mercury__requestSendMoney", "Mercury").detail).toContain(
+      "tool: mcp__finance-mercury__requestSendMoney",
+    );
+    expect(ask("mcp__finance-other__requestSendMoney", "Other Bank").detail).toContain(
+      "tool: mcp__finance-other__requestSendMoney",
+    );
+    expect(ask("gmail_send_email").detail).toContain("tool: gmail_send_email");
+  });
+
+  it("keeps hand-written built-in phrasing and the Always allow action", () => {
+    const space = buildApprovalAskBlock("e1", "create_space", { name: "Ops" }, []);
+    if (space.kind !== "ask") throw new Error("expected ask block");
+    expect(space.detail ?? "").not.toContain("tool:");
+    expect(ask("mcp__finance-mercury__requestSendMoney", "Mercury").actions).toContainEqual({
+      id: "always",
+      label: "Always allow this tool",
+    });
+  });
+});
+
 describe("buildApprovalAskBlock", () => {
   it("binds the approval to its effect and redacts secrets", () => {
     const block = buildApprovalAskBlock(
@@ -189,6 +224,9 @@ describe("mail approval payload", () => {
       return block.kind === "ask" ? block.text : "";
     };
     expect(text("mail_send")).toBe("Review before sending email to Jana <jana@example.test>");
+    expect(text("mcp__finance-mercury__requestSendMoney")).toBe(
+      "Review before Request send money → Jana <jana@example.test>",
+    );
     expect(text("mail_draft")).toBe("Review before saving a draft to Jana <jana@example.test>");
   });
 

@@ -30,7 +30,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import { DEFAULT_CONTEXT_STRATEGY } from "@rakazo/adapter-kit";
 import { usableModelId } from "@rakazo/contracts";
-import { abortableDelay } from "@rakazo/core";
+import { abortableDelay, humanizeToolName } from "@rakazo/core";
 import { getLogger } from "@rakazo/logging";
 import { isToolPauseResult } from "./approval-effect.js";
 import { connectionIdArgument, credentialArgument } from "./bot-secrets.js";
@@ -894,7 +894,7 @@ export function describeToolActivity(toolName: string, args: unknown): string {
   const dataRoom = describeDataRoomActivity(toolName);
   if (dataRoom) return dataRoom;
   const mcp = toolName.match(/^mcp__(.+?)__(.+)$/);
-  if (mcp) return `Using ${mcp[1]}: ${mcp[2]}`;
+  if (mcp) return humanizeToolName(toolName);
   return `Using ${toolName}`;
 }
 

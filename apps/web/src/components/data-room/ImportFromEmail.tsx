@@ -284,50 +284,65 @@ export function ImportSources({
   compact?: boolean;
 }) {
   const navigate = useNavigate();
-  const [connected, setConnected] = useState<{ gmail: boolean; drive: boolean } | null>(null);
+  // offered: the server's catalog has the app, so its connection page exists. A button never leads
+  // to the page's "isn't available on this server" dead end.
+  const [apps, setApps] = useState<{
+    gmail: { connected: boolean; offered: boolean };
+    drive: { connected: boolean; offered: boolean };
+  } | null>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
     let current = true;
-    rpc.connections
-      .list()
-      .then(
-        (rows) =>
-          current &&
-          setConnected({
-            gmail: rows.some(
-              (row) => row.status === "connected" && row.provider.trim().toLowerCase() === "gmail",
-            ),
-            drive: isConnected(rows, "googledrive"),
-          }),
-      )
-      .catch(() => current && setConnected({ gmail: false, drive: false }));
+    const none = { connected: false, offered: false };
+    Promise.all([
+      rpc.connections.list(),
+      rpc.connections.catalog({}).catch(() => [] as { connectorId: string; slug: string }[]),
+    ])
+      .then(([rows, catalog]) => {
+        if (!current) return;
+        const offered = (slug: string) =>
+          catalog.some((app) => app.connectorId === "google" && app.slug === slug);
+        const gmail = rows.some(
+          (row) => row.status === "connected" && row.provider.trim().toLowerCase() === "gmail",
+        );
+        const drive = isConnected(rows, "googledrive");
+        setApps({
+          gmail: { connected: gmail, offered: gmail || offered("gmail") },
+          drive: { connected: drive, offered: drive || offered("googledrive") },
+        });
+      })
+      .catch(() => current && setApps({ gmail: none, drive: none }));
     return () => {
       current = false;
     };
   }, []);
-  if (connected === null) return null;
-  const label = connected.gmail ? t`Import from email` : t`Connect Gmail`;
+  if (apps === null) return null;
+  const label = apps.gmail.connected ? t`Import from email` : t`Connect Gmail`;
   return (
     <>
-      <ToolbarTip label={label} compact={compact}>
-        <Button
-          variant="outline"
-          className={compact ? TOOLBAR_BUTTON : undefined}
-          onClick={() => (connected.gmail ? setOpen(true) : navigate(GMAIL_PAGE))}
-        >
-          <Mail aria-hidden="true" />
-          <span className={compact ? TOOLBAR_LABEL : undefined}>{label}</span>
-        </Button>
-      </ToolbarTip>
+      {apps.gmail.offered ? (
+        <ToolbarTip label={label} compact={compact}>
+          <Button
+            variant="outline"
+            className={compact ? TOOLBAR_BUTTON : undefined}
+            onClick={() => (apps.gmail.connected ? setOpen(true) : navigate(GMAIL_PAGE))}
+          >
+            <Mail aria-hidden="true" />
+            <span className={compact ? TOOLBAR_LABEL : undefined}>{label}</span>
+          </Button>
+        </ToolbarTip>
+      ) : null}
       {open ? (
         <EmailPicker folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
       ) : null}
-      <DriveImportButton
-        connected={connected.drive}
-        compact={compact}
-        folderId={folderId}
-        onDone={onDone}
-      />
+      {apps.drive.offered ? (
+        <DriveImportButton
+          connected={apps.drive.connected}
+          compact={compact}
+          folderId={folderId}
+          onDone={onDone}
+        />
+      ) : null}
     </>
   );
 }
