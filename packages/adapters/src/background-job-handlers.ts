@@ -5,11 +5,13 @@ import type {
   BackgroundJobHandlers,
   JobPublisher,
   MessagingSurface,
+  NotificationChannel,
   SandboxProvider,
   SecretStore,
 } from "@rakazo/adapter-kit";
 import { messagingDeliverJob } from "@rakazo/adapter-kit";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
+import { deleteExpiredNotifications } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
 import { pollCloudAgent } from "./cloud-agent-poll.js";
@@ -31,6 +33,7 @@ import { runInboxTriage } from "./inbox-triage.js";
 import { expireMailSearch } from "./mail-tools.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
+import { deliverDueNotifications } from "./notification-outbox.js";
 import { syncCryptoHoldings } from "./rpc-crypto-sync.js";
 import { expireTaughtSkillTeaching } from "./teaching-session.js";
 
@@ -55,6 +58,8 @@ export function createBackgroundJobHandlers(deps: {
   artifacts?: ArtifactStore;
   /** Needed only to import Google Drive folders. */
   connectors?: DriveFilesDeps["connectors"];
+  /** External notification channels the outbox can send through; none means none are sent. */
+  notificationChannels?: NotificationChannel[];
 }): BackgroundJobHandlers {
   const deliverMessaging = async (runId?: string) => {
     if (!deps.messaging) return;
@@ -118,6 +123,15 @@ export function createBackgroundJobHandlers(deps: {
     },
     "skill.teaching-expire": async (payload) => {
       await expireTaughtSkillTeaching(deps, payload.skillId);
+    },
+    "notifications.deliver": async () => {
+      await deliverDueNotifications({
+        prisma: deps.prisma,
+        channels: deps.notificationChannels ?? [],
+      });
+    },
+    "notifications.retention": async () => {
+      await deleteExpiredNotifications(deps.prisma);
     },
     "mail.search.expire": async (payload) => {
       await expireMailSearch(deps.prisma, payload.searchId);

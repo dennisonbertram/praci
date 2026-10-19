@@ -67,7 +67,10 @@ import type {
   MessagingPlatformDescriptor,
   MessagingSendRequest,
   MessagingSendResult,
+  NotificationEndpointRef,
+  NotificationEnvelope,
   NotificationMessage,
+  NotificationSendResult,
   PageBrowserCommand,
   PageBrowserResult,
   PortableFile,
@@ -439,6 +442,22 @@ export interface RealtimeFanout {
 export interface NotificationProvider {
   describe(): AdapterDescriptor<{ push: boolean; email: boolean }>;
   send(message: NotificationMessage, context: AdapterContext): Promise<void>;
+}
+
+/**
+ * One external way to reach a user (phone push now; Slack, email later). Resolves "sent" or
+ * "endpointGone"; throws on any failure the outbox should retry. `envelope.id` is the idempotency
+ * key: a channel must not show the same id twice to one endpoint when the vendor allows it.
+ */
+export interface NotificationChannel {
+  /** The `NotificationDelivery.channel` and `NotificationEndpoint.channel` value, e.g. "push". */
+  readonly channel: string;
+  describe(): AdapterDescriptor<{ push: boolean; email: boolean }>;
+  send(
+    envelope: NotificationEnvelope,
+    endpoint: NotificationEndpointRef,
+    context: AdapterContext,
+  ): Promise<NotificationSendResult>;
 }
 
 /** Outbound account and security email. Product code owns content; adapters own delivery. */
