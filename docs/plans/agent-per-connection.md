@@ -24,7 +24,8 @@ Owner answers to the open questions:
 - **MCP agents**: `ensureIntegrationAgent`; exclusivity is `McpServer.agentExclusive`, enforced by `integrationAgentDenial` (`packages/adapters/src/mcp-connector.ts:129-156`). The Carta agent (`apps/api/src/carta-agent.ts`) is the existing exclusive example. `mcp.servers.create` (`router.ts:4532`) creates no agent; `mcp.servers.remove` (`:4771`) strands the agent.
 - **Defaults to flip**: `connections.begin` creates rows with `allAgents: inherited?.allAgents ?? true` (`router.ts:5249`); `releaseAgentServers` (`packages/adapters/src/child-bots.ts:~285-295`) reverts a released connection to shared; the web connect dialog sets access after connect (`ConnectAppDialog.tsx:208-210`).
 - **Where a connection becomes connected**: `completeNativeOAuth` (`apps/api/src/connection-oauth.ts:90`) and `connections.complete` (`router.ts:~5740`). `persistLivePluginConnections` (`executor.ts:2942`) is a recovery path, not a user connect.
-- **Executor**: connected-app agents get only their own connection's tools and plain built-ins (`executor.ts:3633-3790`); `selectBuiltinTools` zeroes mail, calendar and drive for them (`:8601-8610`). Google writes are allowed only for the owning agent with writes on (`accountAllowedIn`, `:4265-4275`). `deniedConnectionIds` (`:9850-9870`) denies app-wide.
+- **Executor**: connected-app agents get only their own connection's tools and plain built-ins (`executor.ts:3633-3790`); `selectBuiltinToolsForRun` zeroes mail, calendar and drive for them (`:8601-8610`). For a Google account linked to an agent, writes are allowed only for that agent with writes on; an unlinked account the bot can access allows writes (`accountAllowedIn`, `:4265-4275`), and a denial there returns before any approval card is created (`:4948`). `deniedConnectionIds` (`:9850-9875`) denies app-wide and counts pending rows too.
+- **MCP gate**: `integrationAgentDenial` (`mcp-connector.ts:141`) only restricts other bots while the server has an agent; with `agentBotId` null it allows assigned bots regardless of `agentExclusive`.
 - **Native Google refuses Create agent today** (`connectorSupportsIntegrationAgent`, `packages/contracts/src/integration-agent.ts`): Google connections expose built-in tools, which the agent filter removes, so the agent could do nothing.
 - **Inbox**: the Inbox page, mail sync (`packages/adapters/src/mail-sync.ts`) and triage (`packages/adapters/src/inbox-triage.ts`) read the mail cache scoped by space and user and never check agent access, so they keep working when Gmail is private. The Inbox agent (`apps/api/src/inbox-agent.ts`) is `mailOnly` and gated on AI-data consent (`executor.ts:4207`).
 - **Peers**: `message_bot` (`packages/adapters/src/builtin-tools.ts:1831`), hop cap 6 (`packages/core/src/bot-messages.ts:12`), stripped from background runs (`executor.ts:~4640`). Directory text: `renderBotDirectory` plus `directoryDescription` (`executor.ts:8928-8944`).
@@ -37,19 +38,20 @@ Owner answers to the open questions:
 - One helper, `provisionConnectionAgent(actor, connectionId)`, in `apps/api/src/integration-agent.ts`: ensure the agent, make the connection private to it, writes off. Idempotent. Best-effort: a failure is logged and never fails the connection; Create agent stays as the repair path when no agent exists.
 - Call it on the transition to connected only: `completeNativeOAuth` and `connections.complete`, plus `mcp.servers.create` for non-Carta servers (`agentExclusive: true`). Never at `begin` (abandoned pending rows must not get agents) and never in recovery paths.
 - `connections.begin`: new rows start `allAgents: false` and no longer inherit a sibling's access.
-- **Gmail**: provisioning links the connection to the user's Inbox agent (spawn key `inbox-agent:<userId>`) instead of creating a new agent. A second Gmail account links to the same Inbox agent. Calendar and Drive get their own agents (`${service} agent`, with the account label when there's more than one account).
+- **Gmail**: provisioning links the connection to the user's Inbox agent (spawn key `inbox-agent:<userId>`) instead of creating a new agent. A second Gmail account links to the same Inbox agent. Gmail links start with writes on, because today's Inbox reply cards depend on `mail_send` passing the account check (`executor.ts:4273`); every send still needs its approval card. Calendar and Drive get their own agents (`${service} agent`, with the account label when there's more than one account) with writes off.
 
 ### Races and reconnects
 
-- Different connections have different spawn keys and can't collide. Completing the same connection twice is a no-op (already tested in `apps/api/src/connected-app-agent.postgres.test.ts`).
+- Different connections have different spawn keys and can't collide. Completing the same connection twice must be a no-op; the existing test (`apps/api/src/connected-app-agent.postgres.test.ts:114`) only covers creating the agent twice on a connected row, so add a test that completes the connection twice.
 - Composio reconnect reuses the row, so the agent is kept.
-- Google reconnect with `replacesConnectionId` deletes the old row (`connection-oauth.ts:~62-86`). In the same transaction, re-key the agent to the new id and carry over `agentBotId`, `writesEnabled`, `allAgents` and access rows, as cached mail already is.
+- Google reconnect with `replacesConnectionId` deletes the old row (`connection-oauth.ts:~62-86`). In the same transaction, carry over `agentBotId`, `writesEnabled`, `allAgents` and access rows to the new row, as cached mail already is. Calendar and Drive agents are re-keyed to the new connection id; the Inbox agent keeps its `inbox-agent:<userId>` key and is only relinked.
+- Pending rows never count toward denial: `deniedConnectionIds` ignores rows that aren't connected, so starting and abandoning a second account can't block an existing shared one.
 
 ### Removal
 
 | Event | Result |
 |---|---|
-| Agent archived or deleted | Connection stays private with no agent (owner answer). `releaseAgentServers` changes for new rows; old shared rows keep today's behaviour. |
+| Agent archived or deleted | Connection stays private with no agent (owner answer). `releaseAgentServers` keeps `allAgents: false` / `agentExclusive: true` for new rows, and `integrationAgentDenial` denies every bot on an exclusive server with no agent (today it allows assigned bots once `agentBotId` is null). Old shared rows keep today's behaviour. |
 | Connection revoked or removed | Archive its auto-created agent (chat history kept). The Inbox agent is never archived; it just loses that account. |
 | Reconnect after revoke | Row reused; a fresh agent is provisioned. |
 | MCP server removed | Archive its agent (today it is stranded). |
@@ -93,7 +95,7 @@ Allow `message_bot` in background runs when the target is an integration or owne
 
 ## Tests (offline)
 
-- API Postgres: new connection gets an agent and private access; twice-complete and parallel connects yield one agent each; Composio reconnect keeps the agent; Google replace re-keys it; existing shared rows unchanged through begin, complete and setAccess; abandoned pending row has no agent; revoke archives the agent; Gmail links to the Inbox agent; agent deletion leaves the connection private; MCP create provisions an exclusive agent and Carta is unchanged; cross-tenant isolation.
+- API Postgres: new connection gets an agent and private access; twice-complete and parallel connects yield one agent each; an abandoned pending row doesn't block an existing shared account; an exclusive MCP server with its agent removed denies every bot; Gmail reconnect keeps the Inbox agent's identity; Inbox reply cards still work with Gmail linked; Composio reconnect keeps the agent; Google replace re-keys it; existing shared rows unchanged through begin, complete and setAccess; abandoned pending row has no agent; revoke archives the agent; Gmail links to the Inbox agent; agent deletion leaves the connection private; MCP create provisions an exclusive agent and Carta is unchanged; cross-tenant isolation.
 - Adapters: per-connection denial for agent-linked rows; Google agents get only their service's tools for their own connections; other bots get none unless shared; writes only for the owner with writes on; consent gate; background `message_bot` allowed only to owner agents; mail sync and triage unaffected; directory lines present.
 - Web: no agents step after connect; share switch off by default and reveals Used by; Create agent offered only when no agent exists.
 - Mobile: agent link and share switch render from the API.

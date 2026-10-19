@@ -32,7 +32,7 @@ Owner answers:
 
 ## Data
 
-- `Notification`: `spaceId`, `userId`, `botId?`, `routineId?`, `runId?`, `surface` (page key such as `inbox`, `finance`, `legal`, `data-room`, or `thread` with `threadId`), `title` (≤80), `body?` (≤200), `link?` (in-app path only), `importance` (`info` | `attention`), `dedupeKey`, `createdAt`, `seenAt?`. Unique on `(spaceId, userId, botId, dedupeKey)`; indexed for unseen counts and recency.
+- `Notification`: `spaceId`, `userId`, `botId?`, `routineId?`, `runId?`, `surface` (page key such as `inbox`, `finance`, `legal`, `data-room`, or `thread` with `threadId`), `title` (≤80), `body?` (≤200), `link?` (in-app path only), `importance` (`info` | `attention`), `dedupeKey`, `createdAt`, `seenAt?`, `shownAt?` (set when a client displayed it as a toast). Indexed on `(spaceId, userId, botId, dedupeKey, createdAt)` but not unique: dedupe is a 24-hour window, enforced by checking for a recent row under a transaction-scoped advisory lock on that key, so the same key can notify again after 24 hours.
 - `NotificationDelivery`: outbox row per notification and external channel (`pending`, `sent`, `failed`, `skipped`; attempts, next attempt, last error).
 - `NotificationEndpoint`: per-device or per-account addresses (Expo token now; Slack and others later). Replaces the on-disk push tokens.
 - No second unread system: thread notifications reuse `Thread.unread`; page dots count unseen notifications per surface; opening a page marks that surface seen.
@@ -47,7 +47,7 @@ Owner answers:
 
 ## Delivery
 
-1. `createNotification()` inserts the notification and one pending delivery per enabled external channel in one transaction.
+1. `createNotification()` inserts the notification and, for `attention` only, one pending delivery per enabled external channel, in one transaction. `info` never leaves the app (owner answer: a dot only). Deliveries are scheduled 30 seconds out; the worker skips any whose notification has `shownAt` or `seenAt` set by then, so a user who is present gets the toast and no phone or OS push.
 2. After commit, publish `{id, surface, importance}` on a per-user realtime topic; clients fetch by id. A reconnecting client calls `notifications.list({since})`; the table is the source of truth.
 3. A worker job claims pending deliveries with `FOR UPDATE SKIP LOCKED`, sends through the channel adapter with the notification id as an idempotency key, and retries with backoff (max 5).
 4. Channel interface: evolve `NotificationProvider` into `NotificationChannel { describe(); send(envelope, endpoint, ctx) }`. Expo push becomes the first channel. Slack, iMessage and email are later adapters with a shared offline conformance suite in `packages/testkit`. Today's finish, help and takeover notifications move onto the same pipeline.
@@ -60,7 +60,7 @@ Owner answers:
 - **Sidebar right side**: one slot per page item. It shows a dot for unseen notifications on that surface, otherwise the page's glance value: Inbox unread count; Finance runway (for example "24 mo"), hidden when Hide money is on, with revenue as an alternative setting later; Legal deadlines due within 7 days; Data room items waiting on the user; nothing for Cap table and Artifacts. Glance values come from one server query per space, not from each page's full load.
 - **Rail**: on widths from 1024 px (after VIS-01), collapsing gives an icon rail with avatars and dots; labels become tooltips. The drawer stays below 1024 px. The stored preference migrates from hidden to rail. A keyboard shortcut is left open (no shortcut convention exists yet).
 - **New copy**: none beyond tooltips that reuse existing sidebar strings, the "+N" count, the runway format (for example "24 mo"), and channel names in settings ("Browser", "Phone"). Notification text is written by agents.
-- **Mobile**: push exists. Add a foreground handler so notifications show as the native banner while the app is open, plus row badges. No rail or toast on mobile.
+- **Mobile**: push exists, and so does a foreground handler (`configureForegroundNotifications` in `apps/mobile/lib/live-notifications.ts:63`, installed in `apps/mobile/app/_layout.tsx:52`). Extend it to the new notification kinds and add row badges. No rail or toast on mobile.
 
 ## Risks and open items
 
@@ -73,7 +73,7 @@ Owner answers:
 
 ## Tests (offline)
 
-- Postgres: create, dedupe, rate limits, cross-user and cross-space isolation, concurrent double calls, outbox claim by two workers (exactly one sends), retry and retention.
+- Postgres: create, dedupe within 24 hours and again after it, `info` creates no external delivery, a shown notification skips its push, rate limits, cross-user and cross-space isolation, concurrent double calls, outbox claim by two workers (exactly one sends), retry and retention.
 - Channel conformance suite with a fake transport.
 - RPC authorization for list and mark-seen.
 - Web: `shouldToast()` matrix, toast stacking, dot clearing on page open, glance values (including Hide money), rail preference migration, tag dedupe; stories and the Storybook smoke check.
@@ -89,6 +89,6 @@ Owner answers:
 5. Sidebar right-side slot: dots and glance values.
 6. Move finish, help and takeover onto the pipeline.
 7. Icon rail (after VIS-01).
-8. Mobile foreground banners and badges.
+8. Mobile: new kinds in the existing foreground handler, and badges.
 9. Settings: per-channel switches.
 10. Later, one PR per external channel (Slack, iMessage, email).
