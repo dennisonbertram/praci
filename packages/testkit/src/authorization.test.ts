@@ -195,6 +195,8 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ["usage/summary"],
       ["export/bot", { botId: "missing-bot" }],
       ["notifications/registerPush", { token: "ExponentPushToken[not-real]" }],
+      ["notifications/preferences"],
+      ["notifications/updatePreferences", { finish: false }],
       ["search/query", { q: "anything" }],
       ["voice/catalog"],
       ["voice/status"],
@@ -610,6 +612,42 @@ describeWithDatabase("API authorization and resource isolation", () => {
     expect(signedOut.status).toBe(200);
     expect((await me()).status).toBe(401);
     expect(await a.me()).toBe(200);
+  });
+
+  it("keeps notification preferences per user and checks channel names", async () => {
+    const first = await signup(app, `prefs-a-${stamp}@rakazo.test`, "Prefs A");
+    const second = await signup(app, `prefs-b-${stamp}@rakazo.test`, "Prefs B");
+    expect(await rpc(app, first, "notifications/preferences")).toMatchObject({
+      finish: true,
+      channels: {},
+      hasPhone: false,
+    });
+    await rpc(app, first, "notifications/updatePreferences", {
+      help: false,
+      channels: { push: false },
+    });
+    await rpc(app, first, "notifications/registerPush", { token: "ExponentPushToken[prefs]" });
+    const updated = await rpc(app, first, "notifications/updatePreferences", {
+      channels: { browser: false },
+    });
+    expect(updated).toEqual({
+      finish: true,
+      help: false,
+      takeover: true,
+      channels: { push: false, browser: false },
+      hasPhone: true,
+    });
+    expect(await rpc(app, second, "notifications/preferences")).toEqual({
+      finish: true,
+      help: true,
+      takeover: true,
+      channels: {},
+      hasPhone: false,
+    });
+    const bad = await raw(app, first, "notifications/updatePreferences", {
+      channels: { slack: false },
+    });
+    expect(bad.status).toBe(400);
   });
 
   it("drops a push token when the session that registered it is revoked", async () => {

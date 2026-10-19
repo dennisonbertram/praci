@@ -1,8 +1,8 @@
-import type { JobPublisher, NotificationProvider } from "@rakazo/adapter-kit";
+import type { JobPublisher } from "@rakazo/adapter-kit";
 import { messagingDeliverJob, routineWakeupJob, runContinueJob } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
 import { stuckWorkStatusMessages } from "@rakazo/core";
-import type { Pool, PrismaClient, ThreadEvents } from "@rakazo/db";
+import type { NotificationEvents, Pool, PrismaClient, ThreadEvents } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { PoolClient } from "pg";
 import { returnBotMessageOutcome } from "./bot-messages.js";
@@ -103,7 +103,7 @@ export function createJobReconciler(
     prisma: PrismaClient;
     jobs: JobPublisher;
     events?: ThreadEvents;
-    notifications?: NotificationProvider;
+    notificationEvents?: NotificationEvents;
     leadership?: ReconciliationLeadership;
     reconcileComputerUpdates?: () => Promise<void>;
     reconcileCloudAgents?: () => Promise<void>;
@@ -142,7 +142,7 @@ export function createJobReconciler(
           prisma: deps.prisma,
           jobs: deps.jobs,
           events: deps.events,
-          notifications: deps.notifications,
+          notificationEvents: deps.notificationEvents,
           now,
           batchSize,
           cursor: stuckCursor,

@@ -116,6 +116,21 @@ describePostgres("notification outbox (PostgreSQL)", () => {
     expect(channel.sent.filter((s) => s.envelope.id === note.id)).toHaveLength(1);
   });
 
+  it("gives the channel the group that owns the notification's thread", async () => {
+    const note = await attention();
+    await prisma.notification.update({ where: { id: note.id }, data: { threadId: "thread-x" } });
+    const channel = new FakeChannel();
+    const withThread = {
+      notification: prisma.notification,
+      notificationDelivery: prisma.notificationDelivery,
+      notificationEndpoint: prisma.notificationEndpoint,
+      $queryRaw: prisma.$queryRaw.bind(prisma),
+      thread: { findUnique: async () => ({ groupId: "group-9" }) },
+    } as never;
+    await deliverDueNotifications({ prisma: withThread, channels: [channel], now: at(31_000) });
+    expect(channel.sent.find((x) => x.envelope.id === note.id)?.envelope.groupId).toBe("group-9");
+  });
+
   it("skips a notification the user already saw or was shown", async () => {
     const shown = await attention();
     const seen = await attention();

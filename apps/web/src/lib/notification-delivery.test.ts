@@ -44,6 +44,15 @@ describe("deliverNotification", () => {
     expect(t.show).toHaveBeenCalledWith("Title", { body: "Body", tag: "n1" });
   });
 
+  it("skips the OS notification when the Browser switch is off, but still toasts", async () => {
+    const off = tab(false, { browserEnabled: () => false });
+    expect(await deliverNotification(n, off)).toBe("skipped");
+    expect(off.show).not.toHaveBeenCalled();
+    expect(off.requestPermission).not.toHaveBeenCalled();
+    const focused = tab(true, { browserEnabled: () => false });
+    expect(await deliverNotification(n, focused)).toBe("toast");
+  });
+
   it("skips when the server says it was already shown", async () => {
     const t = tab(false, { wasShown: async () => true });
     expect(await deliverNotification(n, t)).toBe("skipped");

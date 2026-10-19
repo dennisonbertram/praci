@@ -23,7 +23,6 @@ import type {
   ModelCredentialFailedState,
   ModelCredentialRetireReason,
   NotificationMessage,
-  NotificationProvider,
   SandboxProvider,
   SecretStore,
   SemanticMemoryProvider,
@@ -388,6 +387,7 @@ import { actorMayUsePrivateEndpoint } from "./private-endpoint.js";
 import type { RemoteTransportDependencies } from "./remote-mcp.js";
 import { assertSafeRemoteUrl } from "./remote-mcp.js";
 import { loadReplyContext, messageToAgentHistoryText } from "./reply-context.js";
+import { notifyThreadEvent } from "./run-notification.js";
 import {
   commitConsumedRunSecret,
   normalizeSecretAskPurpose,
@@ -2770,7 +2770,6 @@ export interface ExecutorDeps {
   /** The deployment default model can run; see resolveDeploymentModel. */
   deploymentModelConfigured?: boolean;
   dataDir?: string;
-  notifications?: NotificationProvider;
   /** Tells the user's open clients about a new notification; absent means no live signal. */
   notificationEvents?: NotificationEvents;
   jobs: JobPublisher;
@@ -8533,31 +8532,31 @@ async function runNotice(
 
 async function notifyRun(
   deps: ExecutorDeps,
-  run: { spaceId: string; userId: string; botId: string; threadId: string; trigger: string },
+  run: {
+    id?: string;
+    spaceId: string;
+    userId: string;
+    botId: string;
+    threadId: string;
+    trigger: string;
+  },
   message: NotificationMessage,
 ) {
-  if (
-    !deps.notifications ||
-    (isBackgroundRunTrigger(run.trigger) && message.kind !== "help" && message.kind !== "takeover")
-  )
+  if (isBackgroundRunTrigger(run.trigger) && message.kind !== "help" && message.kind !== "takeover")
     return;
-  const notice = await runNotice(deps.prisma, run).catch((error) => {
-    getLogger().error("notification preference lookup", error);
-    return null;
-  });
-  if (!notice?.enabled) return;
-  await deps.notifications
-    .send(notice.groupId ? { ...message, groupId: notice.groupId } : message, {
-      operationId: "notify",
-      traceId: run.botId,
-      spaceId: run.spaceId,
-      userId: run.userId,
-      botId: run.botId,
-      signal: new AbortController().signal,
-    })
-    .catch((error) => {
-      getLogger().error("run notification", error);
-    });
+  try {
+    const notice = await runNotice(deps.prisma, run);
+    if (!notice.enabled) return;
+    await notifyThreadEvent(
+      deps.prisma,
+      deps.notificationEvents,
+      run,
+      notice.groupId ? { ...message, groupId: notice.groupId } : message,
+      `${run.id ?? run.threadId}\n${message.title}\n${message.body}`,
+    );
+  } catch (error) {
+    getLogger().error("run notification", error);
+  }
 }
 
 const RUN_LEASE_MS = 5 * 60_000;

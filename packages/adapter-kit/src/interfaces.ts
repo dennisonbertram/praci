@@ -439,11 +439,6 @@ export interface RealtimeFanout {
   close(): Promise<void>;
 }
 
-export interface NotificationProvider {
-  describe(): AdapterDescriptor<{ push: boolean; email: boolean }>;
-  send(message: NotificationMessage, context: AdapterContext): Promise<void>;
-}
-
 /**
  * One external way to reach a user (phone push now; Slack, email later). Resolves "sent" or
  * "endpointGone"; throws on any failure the outbox should retry. `envelope.id` is the idempotency
