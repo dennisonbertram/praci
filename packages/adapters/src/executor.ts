@@ -4195,8 +4195,26 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }).then((accounts) => accounts.filter((a) => visibleToIdentity(a.id)));
           return calendarAccountsPromise;
         };
+        // An owner agent answers a bot of the same owner with its own mail, Calendar or Drive tools.
+        // Approvals still ask the user on the agent's own chat; the peer approves nothing.
+        const ownerAgentPeer =
+          run.trigger === "bot_message" &&
+          (isInboxAgentSpawnKey(bot.spawnKey) || appAgentIdentity) &&
+          Boolean(peerMessage?.fromBotId) &&
+          Boolean(
+            await deps.prisma.bot.findFirst({
+              where: {
+                id: peerMessage!.fromBotId,
+                spaceId: run.spaceId,
+                userId: bot.userId,
+                archivedAt: null,
+              },
+              select: { id: true },
+            }),
+          );
         const calendarEnabled =
           mailToolsAllowed({
+            ownerAgentPeer,
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -4206,6 +4224,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }) && (await calendarAccounts().catch(() => [])).length > 0;
         const mailEnabled =
           mailToolsAllowed({
+            ownerAgentPeer,
             hasProvider: Boolean(deps.mail),
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -4344,6 +4363,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         };
         const driveEnabled =
           driveToolsAllowed({
+            ownerAgentPeer,
             hasProvider: Boolean(deps.connectors),
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -8988,11 +9008,13 @@ async function loadBotDirectory(
     orderBy: { createdAt: "asc" },
     take: BOT_DIRECTORY_LIMIT,
   });
-  const owns = await ownerAgentLines(
-    prisma,
-    run,
-    peers.map((peer) => peer.id),
-  );
+  const ownerIds = peers
+    .filter(
+      (peer) => isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey),
+    )
+    .map((peer) => peer.id);
+  const owns =
+    ownerIds.length > 0 ? await ownerAgentLines(prisma, run, ownerIds) : new Map<string, string>();
   return renderBotDirectory(
     peers.map((peer) => ({
       id: peer.id,
@@ -9019,16 +9041,16 @@ export function directoryDescription(peer: {
   description: string;
   spawnKey: string | null;
 }): string {
-  if (isIntegrationAgentSpawnKey(peer.spawnKey)) {
+  if (isIntegrationAgentSpawnKey(peer.spawnKey) || isCartaAgentSpawnKey(peer.spawnKey)) {
     return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not tell the user to ask it themselves.`;
   }
-  if (!isFinanceAgentSpawnKey(peer.spawnKey) && !isCartaAgentSpawnKey(peer.spawnKey)) {
+  if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
   const page = isFinanceAgentSpawnKey(peer.spawnKey)
     ? "[Open Finance](/app/finance)"
     : "[Open Cap table](/app/cap-table)";
-  return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it, and end your reply with the link ${page}, where its page and chat live. This applies to this agent only, not to a Mercury, Brex or other integration agent, which you message with message_bot.`.trim();
+  return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it, and end your reply with the link ${page}, where its page and chat live. This applies to this agent only, not to a Mercury, Brex, Carta or other integration agent, which you message with message_bot.`.trim();
 }
 
 export function userTurnInstructions(parts: {

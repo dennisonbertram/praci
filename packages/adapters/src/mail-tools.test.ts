@@ -144,6 +144,15 @@ describe("mailToolsAllowed", () => {
     },
   );
 
+  it("lets an owner agent use its own tools on a bot_message run from the same owner", () => {
+    const peer = { ...owner, trigger: "bot_message" };
+    expect(mailToolsAllowed({ ...peer, ownerAgentPeer: true })).toBe(true);
+    // The flag never opens groups, channels or another owner's bot.
+    expect(mailToolsAllowed({ ...peer, ownerAgentPeer: true, groupId: "g" })).toBe(false);
+    expect(mailToolsAllowed({ ...peer, ownerAgentPeer: true, botUserId: "user-2" })).toBe(false);
+    expect(mailToolsAllowed({ ...owner, trigger: "webhook", ownerAgentPeer: true })).toBe(false);
+  });
+
   it("refuses a bot_message run, which another agent (even from another account) started", () => {
     expect(mailToolsAllowed({ ...owner, trigger: "bot_message" })).toBe(false);
   });

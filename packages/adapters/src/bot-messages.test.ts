@@ -166,6 +166,69 @@ describe("messaging another bot", () => {
     expect(ordinary.enqueue).not.toHaveBeenCalled();
   });
 
+  it("keeps a background chain limited to owner agents, but lets the answer reach the caller", async () => {
+    const inbox = {
+      id: "bot-inbox",
+      name: "Inbox",
+      title: "",
+      spawnKey: "inbox-agent:user-1",
+      thread: { id: "thread-inbox" },
+    };
+    const ordinary = {
+      id: "bot-target",
+      name: "Analyst",
+      title: "",
+      spawnKey: null,
+      thread: { id: "thread-target" },
+    };
+    const woken = { ...run, sourceMessageId: "m1" };
+    const fromBackground = [
+      {
+        kind: "bot_message_received",
+        fromBotId: "bot-ticket",
+        fromBotName: "Ticket bot",
+        text: "mail?",
+        hop: 1,
+        intent: "request",
+        backgroundOrigin: true,
+      },
+    ];
+    // The Inbox agent, woken by a background run, may not hand work to an ordinary bot.
+    const blocked = deps({ bots: [inbox, ordinary], hopBlocks: fromBackground });
+    expect(
+      await messageBot(blocked.deps, woken, sender, { bot_id: "bot-target", message: "x" }),
+    ).toMatchObject({ ok: false });
+    // Answering the bot that started the chain is still allowed, and the wake-up keeps the flag.
+    const caller = {
+      id: "bot-ticket",
+      name: "Ticket bot",
+      title: "",
+      spawnKey: null,
+      thread: { id: "thread-ticket" },
+    };
+    const back = deps({ bots: [inbox, caller], hopBlocks: fromBackground });
+    expect(
+      (
+        await messageBot(
+          back.deps,
+          woken,
+          sender,
+          { bot_id: "bot-ticket", message: "done", intent: "result" },
+          { allowTerminalSource: true },
+        )
+      ).ok,
+    ).toBe(true);
+    // It may ask another owner agent, and that delivery keeps the flag.
+    const next = deps({ bots: [inbox, ordinary], hopBlocks: fromBackground });
+    expect(
+      (await messageBot(next.deps, woken, sender, { bot_id: "bot-inbox", message: "x" })).ok,
+    ).toBe(true);
+    const received = next.tx.message.create.mock.calls
+      .flatMap(([call]) => (call as { data: { blocks: unknown[] } }).data.blocks)
+      .find((b) => (b as { kind: string }).kind === "bot_message_received");
+    expect(received).toMatchObject({ backgroundOrigin: true });
+  });
+
   it("marks a forced failure return unread on both sides", async () => {
     const harness = deps({
       hopBlocks: [

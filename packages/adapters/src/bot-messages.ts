@@ -112,11 +112,6 @@ export async function messageBot(
     name: input.confirm_name,
   });
   if (!target) return { ok: false as const, error: "no bot found with that id or name" };
-  if (options?.ownerAgentsOnly && !isOwnerAgentSpawnKey(target.spawnKey))
-    return {
-      ok: false as const,
-      error: "a background run can only message an agent that owns an account",
-    };
   if (target.id === sender.id) return { ok: false as const, error: "a bot cannot message itself" };
   if (!target.thread)
     return { ok: false as const, error: `${target.name} has no chat to deliver to` };
@@ -127,6 +122,14 @@ export async function messageBot(
       sourceContext.intent === "request" ||
       sourceContext.intent === "question") &&
     sourceContext?.fromBotId === target.id;
+  // A chain that began in a background run stays limited to owner agents, except answering its caller.
+  const ownerAgentsOnly =
+    options?.ownerAgentsOnly === true || sourceContext?.backgroundOrigin === true;
+  if (ownerAgentsOnly && !returnsToSender && !isOwnerAgentSpawnKey(target.spawnKey))
+    return {
+      ok: false as const,
+      error: "a background run can only message an agent that owns an account",
+    };
   if (botMessageHopExhausted(hop) && !returnsToSender) {
     return {
       ok: false as const,
@@ -239,6 +242,7 @@ export async function messageBot(
           hop,
           intent,
           returnToMessageId: outbound.id,
+          ...(ownerAgentsOnly ? { backgroundOrigin: true } : {}),
         };
         const inbound = await createThreadMessageInTransaction(tx, {
           threadId: targetThreadId,

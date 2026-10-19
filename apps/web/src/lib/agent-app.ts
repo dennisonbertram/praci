@@ -36,33 +36,77 @@ export function agentApp(
   return undefined;
 }
 
-let loaded: Promise<AgentAppData> | undefined;
+type SpaceData = AgentAppData & { bots: { id: string; spawnKey: string | null }[] };
 
-function loadAgentAppData(): Promise<AgentAppData> {
-  loaded ??= Promise.all([
-    rpc.connections.list().catch(() => []),
-    rpc.mcp.servers.list().catch(() => []),
-    rpc.connections.catalog({}).catch(() => []),
-  ])
-    .then(([connections, servers, catalog]) => ({ connections, servers, catalog }))
-    .catch(() => {
-      loaded = undefined;
-      return { connections: [], servers: [], catalog: [] };
-    });
-  return loaded;
+/** Fired after the integrations or their agents change, so cached logos are looked up again. */
+export const INTEGRATIONS_CHANGED_EVENT = "rakazo:integrations-changed";
+
+// One lookup per user and space. A failed lookup is dropped so the next render tries again.
+const cache = new Map<string, Promise<SpaceData>>();
+
+export function clearAgentAppCache() {
+  cache.clear();
 }
 
-/** Looks up the app behind an integration agent's bot; undefined until loaded or for other bots. */
-export function useAgentApp(bots: readonly { id: string; spawnKey: string | null }[]) {
-  const [data, setData] = useState<AgentAppData>();
-  const needed = bots.some(
-    (bot) => isIntegrationAgentSpawnKey(bot.spawnKey) || isCartaAgentSpawnKey(bot.spawnKey),
-  );
+if (typeof window !== "undefined") {
+  window.addEventListener(INTEGRATIONS_CHANGED_EVENT, clearAgentAppCache);
+}
+
+function loadSpace(userId: string, spaceId: string): Promise<SpaceData> {
+  const key = `${userId}:${spaceId}`;
+  let found = cache.get(key);
+  if (!found) {
+    const context = { context: { spaceId } };
+    found = (async () => {
+      const bots = await rpc.bots.list(undefined, context);
+      const none = { connections: [], servers: [], catalog: [], bots };
+      if (!bots.some((bot) => agentSpawnKey(bot.spawnKey))) return none;
+      const [connections, servers, catalog] = await Promise.all([
+        rpc.connections.list(undefined, context),
+        rpc.mcp.servers.list(undefined, context),
+        rpc.connections.catalog({}, context),
+      ]);
+      return { connections, servers, catalog, bots };
+    })();
+    cache.set(key, found);
+    found.catch(() => {
+      if (cache.get(key) === found) cache.delete(key);
+    });
+  }
+  return found;
+}
+
+const agentSpawnKey = (spawnKey: string | null) =>
+  isIntegrationAgentSpawnKey(spawnKey) || isCartaAgentSpawnKey(spawnKey);
+
+/** Looks up the app behind each integration agent's bot in the given spaces. */
+export function useAgentApp(userId: string | null | undefined, spaceIds: readonly string[]) {
+  const [data, setData] = useState<Record<string, SpaceData>>({});
+  const [version, setVersion] = useState(0);
+  const spaces = spaceIds.join(",");
   useEffect(() => {
-    if (needed) void loadAgentAppData().then(setData);
-  }, [needed]);
-  return (botId: string) => {
-    const bot = bots.find((row) => row.id === botId);
-    return data && bot ? agentApp(bot, data) : undefined;
+    const bump = () => setVersion((n) => n + 1);
+    window.addEventListener(INTEGRATIONS_CHANGED_EVENT, bump);
+    return () => window.removeEventListener(INTEGRATIONS_CHANGED_EVENT, bump);
+  }, []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: version re-runs the lookup after a change
+  useEffect(() => {
+    setData({});
+    if (!userId) return;
+    let live = true;
+    for (const spaceId of spaces.split(",").filter(Boolean)) {
+      loadSpace(userId, spaceId).then(
+        (loaded) => live && setData((prev) => ({ ...prev, [spaceId]: loaded })),
+        () => undefined,
+      );
+    }
+    return () => {
+      live = false;
+    };
+  }, [userId, spaces, version]);
+  return (botId: string, spaceId: string) => {
+    const space = data[spaceId];
+    const bot = space?.bots.find((row) => row.id === botId);
+    return space && bot ? agentApp(bot, space) : undefined;
   };
 }

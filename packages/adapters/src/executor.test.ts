@@ -8,6 +8,8 @@ import {
 import {
   expandSkillReferencesInPrompt,
   ONCE_ROUTINE_CRON,
+  ownsLine,
+  renderBotDirectory,
   VOICE_AGENT_INSTRUCTIONS,
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
@@ -1277,7 +1279,22 @@ describe("directoryDescription", () => {
       description: "Answers questions about your bank accounts.",
       spawnKey: financeAgentSpawnKey("u1"),
     });
-    expect(finance).toContain("not to a Mercury, Brex or other integration agent");
+    expect(finance).toContain("not to a Mercury, Brex, Carta or other integration agent");
+  });
+
+  it("tells peers to message the Carta agent and assembles one consistent directory entry", () => {
+    const description = `${directoryDescription({
+      description: "Reads the cap table.",
+      spawnKey: "carta-agent:u1",
+    })} ${ownsLine("Carta")}`;
+    expect(description).toContain("Message it with message_bot");
+    expect(description).not.toContain("instead of messaging it");
+    expect(description).not.toContain("cap-table)");
+    const directory =
+      renderBotDirectory([{ id: "b_c", name: "Carta", description, spawnKey: "carta-agent:u1" }]) ??
+      "";
+    expect(directory).toContain("Owns: Carta. Ask it for anything in Carta.");
+    expect(directory.split("Each integration agent owns one account").length - 1).toBe(1);
   });
 
   it("leaves other bots' descriptions alone", () => {
