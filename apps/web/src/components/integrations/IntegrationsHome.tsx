@@ -363,6 +363,7 @@ export function IntegrationsHome({
     x: t`Read posts, DMs and bookmarks`,
     treg: t`Live data, enrichment and generation tools`,
     devin: t`Coding sessions and repo docs`,
+    box: t`Search and read files and folders`,
   };
   const financeStatus = useFinanceStatus();
   const connectedKeys = connectedFinanceKeys(data.financeSources, financeStatus);

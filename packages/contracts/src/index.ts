@@ -4,6 +4,7 @@ export * from "./auth.js";
 export * from "./board.js";
 export * from "./bot-avatar.js";
 export * from "./bot-secrets.js";
+export * from "./box.js";
 export * from "./builtin-tools.js";
 export * from "./carta.js";
 export * from "./cloudflare-ai-gateway.js";
