@@ -3651,16 +3651,16 @@ export function ShellPage() {
             : "md:w-[316px]"
         }`}
       >
-        {/* Desktop only: room for the window controls, which the single row below cannot share. */}
-        {desktopBridge() ? (
-          <div className="app-drag px-[18px] pt-4">
-            <WindowChrome />
-          </div>
-        ) : null}
         <div className="app-drag flex items-center gap-1 px-2.5 pb-3 pt-3">
+          {/* Desktop only: window controls (or their macOS gap) lead the row; the rest stays no-drag. */}
+          {desktopBridge() ? (
+            <div className="shrink-0 pe-1.5">
+              <WindowChrome />
+            </div>
+          ) : null}
           <InputGroup
             data-testid="sidebar-search"
-            className="w-auto flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
+            className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
           >
             <InputGroupAddon>
               <Search size={16} strokeWidth={1.8} aria-hidden="true" />

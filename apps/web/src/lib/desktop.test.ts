@@ -84,6 +84,11 @@ describe("window chrome", () => {
       shell.indexOf('<div className="app-drag flex items-center gap-1 px-2.5 pb-3 pt-3">'),
     );
     const search = row.indexOf('data-testid="sidebar-search"');
+    // On desktop the window controls lead the same row, before Search.
+    const chrome = row.indexOf("<WindowChrome />");
+    expect(chrome).toBeGreaterThan(0);
+    expect(chrome).toBeLessThan(search);
+    expect(row.slice(search, search + 200)).toContain("app-no-drag");
     expect(search).toBeGreaterThan(0);
     expect(row.indexOf('data-testid="minimize-bots-sidebar"')).toBeGreaterThan(search);
     expect(row.indexOf('data-testid="create-menu-trigger"')).toBeGreaterThan(search);
