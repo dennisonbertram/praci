@@ -466,7 +466,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
               </Tip>
             </fieldset>
             <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
-            <FileInputButton variant="outline" className={TOOLBAR_BUTTON} tip={t`Add files`}>
+            <FileInputButton className={TOOLBAR_BUTTON} tip={t`Add files`}>
               <Plus aria-hidden="true" />
               <span className={TOOLBAR_LABEL}>
                 <Trans>Add files</Trans>
@@ -513,6 +513,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
             folders={nodes}
             folderId={filters.folderId}
             onFolder={(folderId) => setFilters({ ...filters, folderId })}
+            onNewFolder={() => setCreatingFolder(true)}
           />
           <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
             <div className="hidden @min-[800px]/bd:flex">
@@ -590,10 +591,15 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
               ) : view === "grid" && !searching ? (
                 <>
                   {subfolderList()}
-                  <GridView rows={rows} o={interaction} />
+                  <GridView rows={rows} o={interaction} sortField={sort?.field} />
                 </>
               ) : (
-                <ListView rows={rows} o={interaction} lead={subfolderList} />
+                <ListView
+                  rows={rows}
+                  o={interaction}
+                  lead={subfolderList}
+                  sortField={sort?.field}
+                />
               )}
               {list.nextCursor ? (
                 <div className="grid place-items-center p-3">

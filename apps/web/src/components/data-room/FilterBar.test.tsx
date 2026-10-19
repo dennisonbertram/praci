@@ -14,6 +14,7 @@ import { FilterBar, facetOptions } from "./FilterBar";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
+const onNewFolder = vi.fn();
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
@@ -44,6 +45,7 @@ const render = (query: string, onQuery: (query: string) => void) =>
         folders={[]}
         folderId={undefined}
         onFolder={() => undefined}
+        onNewFolder={onNewFolder}
       />,
     ),
   );
@@ -82,6 +84,7 @@ const renderSorted = (sort: { field: "createdAt"; direction: "desc" } | null) =>
         ]}
         folderId="f2"
         onFolder={() => undefined}
+        onNewFolder={onNewFolder}
       />,
     ),
   );
@@ -114,4 +117,19 @@ it("keeps the Type, Party and Document date pills where nothing has one, so the 
   render("", vi.fn());
   const pills = Array.from(container.querySelectorAll('[data-testid="data-room-filters"] button'));
   expect(pills.map((pill) => pill.textContent)).toEqual(["Type", "Party", "Document date"]);
+});
+
+it("has a visible New folder button beside the folder picker that opens the dialog", () => {
+  onNewFolder.mockClear();
+  renderSorted(null);
+  const add = container.querySelector<HTMLButtonElement>('button[aria-label="New folder"]');
+  expect(add).not.toBeNull();
+  act(() => add?.click());
+  expect(onNewFolder).toHaveBeenCalledTimes(1);
+});
+
+it("labels the date sort Document date, so it is not mistaken for when a file was added", () => {
+  renderSorted({ field: "createdAt", direction: "desc" });
+  expect(container.textContent).toContain("Recently added");
+  expect(container.textContent).not.toMatch(/Sort: Date\b/);
 });

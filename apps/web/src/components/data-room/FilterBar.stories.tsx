@@ -34,6 +34,7 @@ function Bar({
       folders={folderNodes(folders)}
       folderId={filters.folderId}
       onFolder={(folderId) => setFilters({ ...filters, folderId })}
+      onNewFolder={() => undefined}
     />
   );
 }

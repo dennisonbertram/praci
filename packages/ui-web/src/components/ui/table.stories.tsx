@@ -52,7 +52,7 @@ function Rows({ selected }: { selected?: string }) {
   return (
     <TableBody>
       {rows.map((r) => (
-        <TableRow key={r.id} className="group/row" aria-current={r.id === selected || undefined}>
+        <TableRow key={r.id} className="group/row" data-state={r.id === selected ? "selected" : undefined}>
           <TableCell>
             <div className="truncate font-medium" title={r.name}>
               {r.name}
