@@ -2000,6 +2000,10 @@ msgstr ""
 msgid "Collapse {0}"
 msgstr "{0} 접기"
 
+#: src/components/SidebarPagesGroup.tsx
+msgid "Collapse {title}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Collapse Carta agent"
 msgstr ""
@@ -3725,6 +3729,10 @@ msgstr "펼치기"
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "{0} 펼치기"
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Expand {title}"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
@@ -6043,6 +6051,7 @@ msgstr ""
 msgid "PagerDuty incident"
 msgstr "PagerDuty 인시던트"
 
+#: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Pages"

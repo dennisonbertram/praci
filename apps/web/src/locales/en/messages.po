@@ -2000,6 +2000,10 @@ msgstr "Coding sessions and repo docs"
 msgid "Collapse {0}"
 msgstr "Collapse {0}"
 
+#: src/components/SidebarPagesGroup.tsx
+msgid "Collapse {title}"
+msgstr "Collapse {title}"
+
 #: src/pages/Shell.tsx
 msgid "Collapse Carta agent"
 msgstr "Collapse Carta agent"
@@ -3725,6 +3729,10 @@ msgstr "Expand"
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "Expand {0}"
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Expand {title}"
+msgstr "Expand {title}"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
@@ -6043,6 +6051,7 @@ msgstr "Page options"
 msgid "PagerDuty incident"
 msgstr "PagerDuty incident"
 
+#: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Pages"

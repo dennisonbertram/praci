@@ -2000,6 +2000,10 @@ msgstr ""
 msgid "Collapse {0}"
 msgstr ""
 
+#: src/components/SidebarPagesGroup.tsx
+msgid "Collapse {title}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Collapse Carta agent"
 msgstr ""
@@ -3724,6 +3728,10 @@ msgstr "विस्तृत करें"
 #. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
+msgstr ""
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Expand {title}"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
@@ -6043,6 +6051,7 @@ msgstr ""
 msgid "PagerDuty incident"
 msgstr ""
 
+#: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Pages"
