@@ -8,7 +8,7 @@ function chat(id: string, name: string) {
     title: "",
     preview: "",
     pinned: false,
-    sectionId: null,
+    sectionId: null as string | null,
     parentBotId: null,
   };
 }
@@ -43,6 +43,41 @@ describe("sidebarGroupsForSpaces", () => {
     expect(group?.bots).toHaveLength(1);
   });
 
+  it("heads the only space with the given label and keeps its name", () => {
+    const [group] = sidebarGroupsForSpaces(
+      [space("space-1", "Personal", { canRename: true })],
+      "",
+      undefined,
+      "Personnel",
+    );
+    expect(group).toMatchObject({ title: "Personnel", spaceName: "Personal", relabeled: true });
+  });
+
+  it("keeps the Personnel title when agents are pinned or sectioned", () => {
+    const pinned = { ...chat("b1", "Chief"), pinned: true };
+    const filed = { ...chat("b2", "Ops"), sectionId: "s1" };
+    const loose = chat("b3", "Helper");
+    const only = {
+      ...space("space-1", "Personal", { canRename: true, bots: [pinned, filed, loose] }),
+      botSections: [{ id: "s1", name: "Ops team" }],
+    };
+    const groups = sidebarGroupsForSpaces([only], "", undefined, "Personnel");
+
+    expect(groups.map((g) => g.title)).toEqual([
+      "Personnel · Pinned",
+      "Personnel · Ops team",
+      "Personnel · Unassigned",
+    ]);
+    expect(groups.every((g) => g.spaceName === "Personal" && g.relabeled)).toBe(true);
+    expect(groups.map((g) => g.canRenameSpace)).toEqual([true, false, false]);
+  });
+
+  it("heads a pinned-only single space with Personnel", () => {
+    const only = space("space-1", "Personal", { bots: [{ ...chat("b1", "Chief"), pinned: true }] });
+    const groups = sidebarGroupsForSpaces([only], "", undefined, "Personnel");
+    expect(groups.map((g) => g.title)).toEqual(["Personnel · Pinned"]);
+  });
+
   it("still names each space once there is more than one", () => {
     const groups = sidebarGroupsForSpaces(
       [
@@ -50,6 +85,8 @@ describe("sidebarGroupsForSpaces", () => {
         space("space-2", "Support", { canRename: true, canDelete: true, bots: [] }),
       ],
       "",
+      undefined,
+      "Personnel",
     );
 
     expect(groups.map((group) => group.title)).toEqual(["Personal", "Support"]);

@@ -1991,8 +1991,8 @@ msgstr "Cloud"
 msgid "Code"
 msgstr "Code"
 
-#. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
 msgstr "Collapse {0}"
@@ -3695,8 +3695,8 @@ msgstr "Exchange"
 msgid "Expand"
 msgstr "Expand"
 
-#. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "Expand {0}"
@@ -6110,6 +6110,10 @@ msgstr "Person"
 #: src/pages/Inbox.tsx
 msgid "Personal"
 msgstr "Personal"
+
+#: src/pages/Shell.tsx
+msgid "Personnel"
+msgstr "Personnel"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
