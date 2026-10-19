@@ -3651,9 +3651,47 @@ export function ShellPage() {
             : "md:w-[316px]"
         }`}
       >
-        <div className="app-drag flex items-center justify-between px-[18px] pb-3 pt-4">
-          <WindowChrome />
-          <div className="relative flex items-center gap-2.5">
+        {/* Desktop only: room for the window controls, which the single row below cannot share. */}
+        {desktopBridge() ? (
+          <div className="app-drag px-[18px] pt-4">
+            <WindowChrome />
+          </div>
+        ) : null}
+        <div className="app-drag flex items-center gap-1 px-2.5 pb-3 pt-3">
+          <InputGroup
+            data-testid="sidebar-search"
+            className="w-auto flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
+          >
+            <InputGroupAddon>
+              <Search size={16} strokeWidth={1.8} aria-hidden="true" />
+            </InputGroupAddon>
+            <InputGroupInput
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape" && query) {
+                  e.preventDefault();
+                  setQuery("");
+                }
+              }}
+              // Chats, documents and mail, so the box says only "Search".
+              placeholder={t`Search`}
+              autoComplete="off"
+              name="sidebar-search"
+            />
+            {query ? (
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  size="icon-xs"
+                  aria-label={t`Clear search`}
+                  onClick={() => setQuery("")}
+                >
+                  <X aria-hidden="true" />
+                </InputGroupButton>
+              </InputGroupAddon>
+            ) : null}
+          </InputGroup>
+          <div className="relative flex shrink-0 items-center gap-1">
             <button
               type="button"
               aria-label={t`Activity`}
@@ -3661,7 +3699,7 @@ export function ShellPage() {
               title={t`Activity`}
               data-activity-mode={activityMode ? "on" : "off"}
               onClick={toggleActivityMode}
-              className={`app-no-drag flex h-7 w-7 items-center justify-center rounded-full ${
+              className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
                 activityMode
                   ? "bg-primary text-primary-foreground"
                   : "text-muted-foreground/70 hover:text-foreground/75"
@@ -3672,7 +3710,7 @@ export function ShellPage() {
             </button>
             <button
               type="button"
-              className="app-no-drag hidden h-7 w-7 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:inline-flex"
+              className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:inline-flex"
               aria-label={t`Hide sidebar`}
               title={t`Hide sidebar`}
               data-testid="minimize-bots-sidebar"
@@ -3682,7 +3720,7 @@ export function ShellPage() {
             </button>
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon"
               className="app-no-drag md:hidden"
               aria-label={t`Close menu`}
               title={t`Close menu`}
@@ -3693,7 +3731,7 @@ export function ShellPage() {
             </Button>
             <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
               <PopoverTrigger
-                className="app-no-drag text-[21px] text-muted-foreground/70 hover:text-foreground/75"
+                className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
                 title={t`Create`}
                 data-testid="create-menu-trigger"
               >
@@ -3743,39 +3781,6 @@ export function ShellPage() {
             </Popover>
           </div>
         </div>
-        <InputGroup
-          data-testid="sidebar-search"
-          className="mx-2.5 mb-3 w-auto rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
-        >
-          <InputGroupAddon>
-            <Search size={16} strokeWidth={1.8} aria-hidden="true" />
-          </InputGroupAddon>
-          <InputGroupInput
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Escape" && query) {
-                e.preventDefault();
-                setQuery("");
-              }
-            }}
-            // Chats, documents and mail, so the box says only "Search".
-            placeholder={t`Search`}
-            autoComplete="off"
-            name="sidebar-search"
-          />
-          {query ? (
-            <InputGroupAddon align="inline-end">
-              <InputGroupButton
-                size="icon-xs"
-                aria-label={t`Clear search`}
-                onClick={() => setQuery("")}
-              >
-                <X aria-hidden="true" />
-              </InputGroupButton>
-            </InputGroupAddon>
-          ) : null}
-        </InputGroup>
         <div className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {/* While searching, matching pages are listed with the results instead. */}
           {showSpaceSearch ? null : (

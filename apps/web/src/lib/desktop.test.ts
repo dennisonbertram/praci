@@ -77,6 +77,21 @@ describe("window chrome", () => {
     expect(shell).toContain("{botsSidebarCollapsed && desktopBridge() ? <WindowChrome /> : null}");
   });
 
+  it("puts the sidebar search and its header buttons in one row", () => {
+    const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../pages");
+    const shell = readFileSync(path.join(root, "Shell.tsx"), "utf8");
+    const row = shell.slice(
+      shell.indexOf('<div className="app-drag flex items-center gap-1 px-2.5 pb-3 pt-3">'),
+    );
+    const search = row.indexOf('data-testid="sidebar-search"');
+    expect(search).toBeGreaterThan(0);
+    expect(row.indexOf('data-testid="minimize-bots-sidebar"')).toBeGreaterThan(search);
+    expect(row.indexOf('data-testid="create-menu-trigger"')).toBeGreaterThan(search);
+    expect(row.indexOf('data-testid="create-menu-trigger"')).toBeLessThan(
+      row.indexOf('className="rk-scroll'),
+    );
+  });
+
   it("leaves window chrome to the shell on the artifacts page, which now sits inside it", () => {
     const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "../pages");
     const artifacts = readFileSync(path.join(root, "Artifacts.tsx"), "utf8");
