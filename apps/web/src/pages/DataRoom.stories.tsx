@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { folders, items } from "../stories/fixtures/data-room";
 import { DataRoomPage } from "./DataRoom";
@@ -27,4 +28,9 @@ export default meta;
 type Story = StoryObj;
 
 export const WithItems: Story = { beforeEach: () => load(items) };
+/** The Ask button opens the Data room agent's panel. */
+export const WithAskAgent: Story = {
+  beforeEach: () => load(items),
+  render: () => <DataRoomPage onAskAgent={fn()} />,
+};
 export const Empty: Story = { beforeEach: () => load([]) };

@@ -46,6 +46,7 @@ import {
   botSecretSubmissionSchema,
   CLOUDFLARE_AI_GATEWAY_CONFIG_MESSAGE,
   COMPUTER_COMMAND_OUTPUT_MAX_CHARS,
+  DATA_ROOM_AGENT_BUILTIN_TOOLS,
   disabledBuiltinToolSet,
   HistoryReadInputSchema,
   HistorySearchInputSchema,
@@ -53,6 +54,7 @@ import {
   integrationPresetForEndpoint,
   isAttachmentImageMimeType,
   isCartaAgentSpawnKey,
+  isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
@@ -3659,6 +3661,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The Legal agent works from the Data Room, mail and Drive through its own tools only: no
         // Composio, MCP or other connector tools, and a fixed list of built-ins (read-only mail).
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
+        // The Data room agent gets a fixed list of built-ins and no connector tools.
+        const dataRoomAgent = isDataRoomAgentSpawnKey(bot.spawnKey);
         // Connections limited to chosen agents stay out of this run unless the bot was granted access.
         const deniedIds = deniedConnectionIds(storedConnections);
         const ordinaryAllowedConnections = storedConnections.filter(
@@ -3733,7 +3737,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
 
         const discoveredPromise =
-          deps.connector && !mailOnly && !legalOnly && !voiceAgent
+          deps.connector && !mailOnly && !legalOnly && !dataRoomAgent && !voiceAgent
             ? (async () => {
                 if (appAgentIdentity) {
                   const current = await deps.prisma.connection.findFirst({
@@ -4432,6 +4436,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           messagingChannelRun,
         });
         const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
+        const dataRoomAgentToolSet: ReadonlySet<string> = new Set(DATA_ROOM_AGENT_BUILTIN_TOOLS);
         const builtins = [
           ...selectBuiltinToolsForRun({
             ticketBoardEnabled:
@@ -4471,7 +4476,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
           !isBackgroundRunTrigger(run.trigger)
             ? agentConnectionTools.filter((tool) => !disabledBuiltinTools.has(tool.name))
             : []),
-        ].filter((tool) => !legalOnly || legalToolSet.has(tool.name));
+        ].filter(
+          (tool) =>
+            (!legalOnly || legalToolSet.has(tool.name)) &&
+            (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)),
+        );
         // Generic connector tools (Composio, Pipedream, MCP) reach the owner's accounts, so a run
         // another agent started (bot_message, possibly from another account) gets none of them.
         // Webhook and messaging runs keep them: they have their own approval rules.
