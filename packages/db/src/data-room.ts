@@ -398,6 +398,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         size: number;
         storageKey?: string | null;
         folderId?: string | null;
+        importId?: string | null;
         sourceConnectionId?: string | null;
         externalId?: string | null;
         sourceUrl?: string | null;

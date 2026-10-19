@@ -14,6 +14,7 @@ import {
 import { Mail } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { dataRoomImportStarted } from "../../lib/data-room";
 import { syncErrorText } from "../../lib/inbox-sync-error";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -186,6 +187,7 @@ function EmailPicker({
         imported > 0 || (duplicates > 0 && failed === 0) ? importedText(imported, duplicates) : "",
         imported > 0 || duplicates > 0,
       );
+      dataRoomImportStarted();
       if (failed === 0) onClose();
       else setError(failedText(failed));
     } catch (cause) {

@@ -14,7 +14,7 @@ import {
 } from "@rakazo/adapters";
 import type { Actor, DataRoomApiItem } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, createDb } from "@rakazo/db";
+import { createDataRoomRepos, createDb, settleDataRoomImport } from "@rakazo/db";
 import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDataRoomService, mountDataRoomRoutes } from "./data-room.js";
@@ -793,7 +793,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
     const pick = { messageId: message.id, attachmentId: "att1" };
     const before = enqueued.length;
 
-    await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toEqual({
+    await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toMatchObject({
       imported: 1,
       duplicates: 0,
       failed: 0,
@@ -811,7 +811,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
 
     // The same pick again stores no second item or blob.
     const blobs = await blobCount(actors.A.spaceId);
-    await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toEqual({
+    await expect(client(actors.a).dataRoom.importEmail({ picks: [pick] })).resolves.toMatchObject({
       imported: 0,
       duplicates: 1,
       failed: 0,
@@ -846,7 +846,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
         { messageId: message.id, attachmentId: "att2" },
       ],
     });
-    expect(result).toEqual({ imported: 1, duplicates: 0, failed: 1 });
+    expect(result).toMatchObject({ imported: 1, duplicates: 0, failed: 1 });
     expect(
       await prisma.dataRoomItem.count({
         where: { spaceId: actors.A.spaceId, externalId: `gmail:${message.providerMessageId}:att2` },
@@ -874,7 +874,9 @@ describePostgres("Data room API (PostgreSQL)", () => {
     expect(listed.files.map((f) => f.id).sort()).toEqual(["dir1", "doc1", "solo"]);
 
     const before = enqueued.length;
-    await expect(client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] })).resolves.toEqual({
+    await expect(
+      client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] }),
+    ).resolves.toMatchObject({
       imported: 1,
       duplicates: 0,
       failed: 0,
@@ -893,7 +895,9 @@ describePostgres("Data room API (PostgreSQL)", () => {
 
     // A repeat is a duplicate and downloads nothing.
     const downloads = driveDownloads;
-    await expect(client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] })).resolves.toEqual({
+    await expect(
+      client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] }),
+    ).resolves.toMatchObject({
       imported: 0,
       duplicates: 1,
       failed: 0,
@@ -918,7 +922,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
     // A file that cannot be imported is counted and does not stop the others.
     await expect(
       client(actors.a).dataRoom.importDrive({ fileIds: ["dir1", "missing", "doc1"] }),
-    ).resolves.toEqual({ imported: 0, duplicates: 1, failed: 2 });
+    ).resolves.toMatchObject({ imported: 0, duplicates: 1, failed: 2 });
   });
 
   it("imports Drive folders as Data room folders, once, only through the caller's own Drive", async () => {
@@ -949,7 +953,14 @@ describePostgres("Data room API (PostgreSQL)", () => {
     // The form is skipped and counted. The request writes nothing but the one queued plan.
     const downloads = driveDownloads;
     const result = await a.dataRoom.importDrive({ driveFolderIds: ["dir1"], folderId: target.id });
-    expect(result).toEqual({ imported: 0, duplicates: 0, failed: 1, queued: 2, folders: 3 });
+    expect(result).toMatchObject({
+      imported: 0,
+      duplicates: 0,
+      failed: 1,
+      queued: 2,
+      folders: 3,
+      total: 3,
+    });
     expect(jobsNamed("dataroom.drive.import")).toHaveLength(1);
     expect((await a.dataRoom.folders()).filter((f) => f.name === "Sub")).toHaveLength(0);
     await runImports();
@@ -1004,6 +1015,124 @@ describePostgres("Data room API (PostgreSQL)", () => {
     } as never);
     expect(await prisma.dataRoomItem.count({ where: { userId: actors.d.userId } })).toBe(0);
     expect(await prisma.dataRoomFolder.count({ where: { userId: actors.d.userId } })).toBe(0);
+  });
+
+  it("tracks a folder import through its jobs and reuses a folder of the same name", async () => {
+    const a = client(actors.a);
+    const target = await a.dataRoom.folderCreate({ name: `Tracked ${run}` });
+    // A folder the user made by hand, with the name of the Drive folder.
+    const mine = await a.dataRoom.folderCreate({ name: "Folder", parentId: target.id });
+    await prisma.dataRoomItem.deleteMany({
+      where: { userId: actors.a.userId, externalId: { in: ["p1", "p2"] } },
+    });
+    const queue: BackgroundJob[] = [];
+    const deps = {
+      prisma,
+      artifacts: new LocalArtifactStore(root),
+      jobs: { enqueue: async (job: BackgroundJob) => void queue.push(job) },
+      connectors: { managed: () => driveConnector },
+    } as never;
+    const start = enqueued.length;
+    const result = await a.dataRoom.importDrive({ driveFolderIds: ["dir1"], folderId: target.id });
+    // Two files to wait for, and the form that was skipped.
+    expect(result).toMatchObject({ total: 3, queued: 2 });
+    const shown = async (id: string) => (await a.dataRoom.imports()).filter((i) => i.id === id);
+    expect(await shown(result.importId)).toMatchObject([
+      { total: 3, done: 0, failed: 1, inProgress: 2, finished: false },
+    ]);
+
+    for (const job of enqueued.slice(start).filter((j) => j.name === "dataroom.drive.import"))
+      await runDriveImport(deps, job.payload as never);
+    const created = (await a.dataRoom.folders()).filter((f) => f.name.startsWith("Folder"));
+    expect(created.filter((f) => f.parentId === target.id).map((f) => [f.id, f.name])).toEqual([
+      [mine.id, "Folder"],
+    ]);
+    for (const job of queue.splice(0)) await runDriveFileImport(deps, job.payload as never);
+    const items = await prisma.dataRoomItem.findMany({ where: { importId: result.importId } });
+    expect(items.map((i) => i.externalId).sort()).toEqual(["p1", "p2"]);
+    expect(items.every((i) => i.folderId !== null)).toBe(true);
+
+    // The files are read by the pipeline; the last one to be ready finishes the import.
+    await prisma.dataRoomItem.updateMany({
+      where: { importId: result.importId },
+      data: { status: "ready" },
+    });
+    await settleDataRoomImport(prisma, result.importId);
+    expect(await shown(result.importId)).toMatchObject([
+      { done: 2, failed: 1, inProgress: 0, finished: true },
+    ]);
+    expect(
+      await prisma.notification.count({
+        where: { dedupeKey: `data-room-import:${result.importId}` },
+      }),
+    ).toBe(1);
+
+    // Another user sees none of it.
+    expect(await client(actors.b).dataRoom.imports()).toEqual([]);
+
+    // Importing the same folder again files nothing new, so there is nothing to show.
+    const again = await a.dataRoom.importDrive({ driveFolderIds: ["dir1"], folderId: target.id });
+    for (const job of enqueued.slice(start).filter((j) => j.name === "dataroom.drive.import"))
+      await runDriveImport(deps, job.payload as never);
+    for (const job of queue.splice(0)) await runDriveFileImport(deps, job.payload as never);
+    expect(
+      (await prisma.dataRoomImport.findUniqueOrThrow({ where: { id: again.importId } })).finishedAt,
+    ).not.toBeNull();
+    // It only reports the skipped form; the two files were already in the Data room.
+    expect(await shown(again.importId)).toMatchObject([{ done: 2, failed: 1, latest: [] }]);
+  });
+
+  it("finishes an import whose file is gone from Drive or whose plan cannot run", async () => {
+    const connection = await prisma.connection.findFirstOrThrow({
+      where: { spaceId: actors.A.spaceId, userId: actors.a.userId, provider: "googledrive" },
+    });
+    const deps = {
+      prisma,
+      artifacts: new LocalArtifactStore(root),
+      jobs: { enqueue: async () => {} },
+      connectors: { managed: () => driveConnector },
+    } as never;
+    const finished = async (id: string) =>
+      (await prisma.dataRoomImport.findUniqueOrThrow({ where: { id } })).finishedAt !== null;
+    const gone = await prisma.dataRoomImport.create({
+      data: { spaceId: actors.A.spaceId, userId: actors.a.userId, source: "drive", total: 1 },
+    });
+    const payload = {
+      spaceId: actors.A.spaceId,
+      userId: actors.a.userId,
+      connectionId: connection.id,
+    };
+    await runDriveFileImport(deps, {
+      ...payload,
+      externalId: "missing",
+      folderId: null,
+      importId: gone.id,
+    } as never);
+    expect(await finished(gone.id)).toBe(true);
+    expect(await prisma.dataRoomImport.findUniqueOrThrow({ where: { id: gone.id } })).toMatchObject(
+      {
+        rejected: 1,
+      },
+    );
+
+    // A plan for a connection that is not the user's files nothing, and counts every file.
+    const refused = await prisma.dataRoomImport.create({
+      data: { spaceId: actors.B.spaceId, userId: actors.d.userId, source: "drive", total: 2 },
+    });
+    await runDriveImport(deps, {
+      spaceId: actors.B.spaceId,
+      userId: actors.d.userId,
+      connectionId: connection.id,
+      folderId: null,
+      importId: refused.id,
+      folders: [],
+      files: [
+        { id: "p1", folder: null },
+        { id: "p2", folder: null },
+      ],
+    } as never);
+    expect(await finished(refused.id)).toBe(true);
+    expect(await prisma.dataRoomItem.count({ where: { importId: refused.id } })).toBe(0);
   });
 
   it("ends a queued import quietly once the user is no longer a member of the space", async () => {
@@ -1133,6 +1262,6 @@ describePostgres("Data room API (PostgreSQL)", () => {
     // A folder id from someone else's Drive is just not found there: skipped, nothing queued.
     await expect(
       client(actors.d).dataRoom.importDrive({ driveFolderIds: ["dir1"] }),
-    ).resolves.toEqual({ imported: 0, duplicates: 0, failed: 1, queued: 0, folders: 0 });
+    ).resolves.toMatchObject({ imported: 0, duplicates: 0, failed: 1, queued: 0, folders: 0 });
   });
 });

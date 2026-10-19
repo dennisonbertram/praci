@@ -6857,6 +6857,7 @@ export function createRouter(deps: RouterDeps) {
       importDrive: authed.dataRoom.importDrive.handler(({ context, input }) =>
         dataRoom.importDrive(context.actor, input, context.signal),
       ),
+      imports: authed.dataRoom.imports.handler(({ context }) => dataRoom.imports(context.actor)),
       search: authed.dataRoom.search.handler(({ context, input }) =>
         dataRoom.search(context.actor, input),
       ),

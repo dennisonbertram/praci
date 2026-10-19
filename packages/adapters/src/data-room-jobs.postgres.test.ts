@@ -3,7 +3,7 @@ import type { BackgroundJob } from "@rakazo/adapter-kit";
 import { EmbedderMisconfiguredError } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, createDb } from "@rakazo/db";
+import { createDataRoomImport, createDataRoomRepos, createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { DataRoomJobDeps } from "./data-room-jobs.js";
 import {
@@ -62,7 +62,7 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
   let counter = 0;
   const addItem = async (
     text: string | Uint8Array,
-    opts: { name?: string; mimeType?: string; folderId?: string | null } = {},
+    opts: { name?: string; mimeType?: string; folderId?: string | null; importId?: string } = {},
   ) => {
     const bytes = typeof text === "string" ? new TextEncoder().encode(text) : text;
     const stored = await artifacts.put({ bytes });
@@ -74,6 +74,7 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
       size: bytes.byteLength,
       storageKey: stored.id,
       folderId: opts.folderId ?? null,
+      ...(opts.importId ? { importId: opts.importId } : {}),
     });
     jobs.queue.push({
       name: "dataroom.ingest",
@@ -399,6 +400,24 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
       status: "failed",
       error: "This file isn't a readable PDF.",
     });
+  });
+
+  it("finishes an import and notifies once when its last file is ready or failed", async () => {
+    reset();
+    const tracked = await createDataRoomImport(prisma, actor, { source: "drive", total: 2 });
+    const good = await addItem("fine", { importId: tracked.id });
+    const junk = new TextEncoder().encode("%PDF-1.4\nMOCK not really a PDF\n");
+    await addItem(junk, { name: "bad.pdf", mimeType: "application/pdf", importId: tracked.id });
+    const state = () => prisma.dataRoomImport.findUniqueOrThrow({ where: { id: tracked.id } });
+    const notes = () =>
+      prisma.notification.findMany({ where: { dedupeKey: `data-room-import:${tracked.id}` } });
+
+    await drain();
+    expect((await reload(good.id)).status).toBe("ready");
+    expect((await state()).finishedAt).not.toBeNull();
+    expect(await notes()).toMatchObject([
+      { surface: "data-room", title: "Imported 1 file from Google Drive", body: "1 failed" },
+    ]);
   });
 
   it("lets exactly one of two overlapping index runs embed, and the loser writes nothing", async () => {

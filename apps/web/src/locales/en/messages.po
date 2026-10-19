@@ -316,6 +316,10 @@ msgstr "{deadlines, plural, one {# deadline} other {# deadlines}}"
 msgid "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
 msgstr "{failed, plural, one {Couldn't import # file} other {Couldn't import # files}}"
 
+#: src/components/data-room/format.ts
+msgid "{files, plural, one {Importing # file} other {Importing # files}}"
+msgstr "{files, plural, one {Importing # file} other {Importing # files}}"
+
 #: src/pages/shell/GroupIntro.tsx
 msgid "{first} answers by default. Type @ and a name to ask one bot, or ask everyone to hear from each of them."
 msgstr "{first} answers by default. Type @ and a name to ask one bot, or ask everyone to hear from each of them."
@@ -3315,6 +3319,7 @@ msgstr "Disconnecting…"
 
 #: src/components/ComputerUpdateProgress.tsx
 #: src/components/data-room/DropZone.tsx
+#: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/CapTable.tsx
@@ -4249,6 +4254,10 @@ msgstr "Important"
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Imported"
 msgstr "Imported"
+
+#: src/components/data-room/ImportActivity.tsx
+msgid "Importing {done} of {total}"
+msgstr "Importing {done} of {total}"
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In"

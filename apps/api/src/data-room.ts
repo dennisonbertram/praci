@@ -41,7 +41,14 @@ import type {
   DataRoomSort,
   PrismaClient,
 } from "@rakazo/db";
-import { createDataRoomRepos, DataRoomConflictError, IsolationError } from "@rakazo/db";
+import {
+  createDataRoomImport,
+  createDataRoomRepos,
+  DataRoomConflictError,
+  IsolationError,
+  listDataRoomImports,
+  recordImportSkips,
+} from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { Hono } from "hono";
 import { cancelBody } from "./http-body.js";
@@ -419,6 +426,10 @@ export function createDataRoomService(deps: DataRoomDeps) {
         if (!message) throw new ORPCError("NOT_FOUND");
         messages.set(messageId, message);
       }
+      const tracked = await createDataRoomImport(deps.prisma, actor, {
+        source: "gmail",
+        total: input.picks.length,
+      });
       for (const pick of input.picks) {
         const message = messages.get(pick.messageId);
         if (!message) continue;
@@ -442,6 +453,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
               "attachment",
             ),
             folderId,
+            importId: tracked.id,
             sourceConnectionId,
             externalId,
             sourceUrl: `/app/inbox?mail=${pick.messageId}`,
@@ -457,7 +469,8 @@ export function createDataRoomService(deps: DataRoomDeps) {
           failed += 1;
         }
       }
-      return { imported, duplicates, failed };
+      await recordImportSkips(deps.prisma, tracked.id, { duplicates, rejected: failed });
+      return { imported, duplicates, failed, importId: tracked.id };
     },
 
     driveList: (
@@ -501,62 +514,91 @@ export function createDataRoomService(deps: DataRoomDeps) {
               maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
             })
           : undefined;
-        for (const externalId of plan ? [] : new Set(input.fileIds)) {
-          if (await known(actor, externalId, sourceConnectionId)) {
-            duplicates += 1;
-            continue;
+        const direct = plan ? [] : [...new Set(input.fileIds)];
+        const tracked = await createDataRoomImport(deps.prisma, actor, {
+          source: "drive",
+          total: plan ? plan.files.length + plan.skipped : direct.length,
+          rejected: plan?.skipped ?? 0,
+        });
+        let handled = 0;
+        try {
+          for (const externalId of direct) {
+            if (await known(actor, externalId, sourceConnectionId)) {
+              duplicates += 1;
+              handled += 1;
+              continue;
+            }
+            // One bad file does not stop the rest; an account or rate problem would fail them all.
+            const file = await downloadDriveFile(drive, context, externalId, {
+              connectionId: sourceConnectionId,
+              maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
+            }).catch((error: unknown) => {
+              if (
+                error instanceof DriveFileError &&
+                ["not_found", "unsupported", "too_large", "failed"].includes(error.code)
+              )
+                return null;
+              throw error;
+            });
+            handled += 1;
+            if (!file) {
+              failed += 1;
+              continue;
+            }
+            const modified = new Date(file.modifiedTime);
+            const { created } = await fileItem(actor, {
+              source: "drive",
+              ...dataRoomFileFields(file, "file"),
+              folderId,
+              importId: tracked.id,
+              sourceConnectionId,
+              externalId,
+              ...(file.webViewLink ? { sourceUrl: file.webViewLink } : {}),
+              ...(Number.isNaN(modified.getTime()) ? {} : { sourceUpdatedAt: modified }),
+            });
+            if (created) imported += 1;
+            else duplicates += 1;
           }
-          // One bad file does not stop the rest; an account or rate problem would fail them all.
-          const file = await downloadDriveFile(drive, context, externalId, {
-            connectionId: sourceConnectionId,
-            maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
-          }).catch((error: unknown) => {
-            if (
-              error instanceof DriveFileError &&
-              ["not_found", "unsupported", "too_large", "failed"].includes(error.code)
-            )
-              return null;
-            throw error;
-          });
-          if (!file) {
-            failed += 1;
-            continue;
-          }
-          const modified = new Date(file.modifiedTime);
-          const { created } = await fileItem(actor, {
-            source: "drive",
-            ...dataRoomFileFields(file, "file"),
-            folderId,
-            sourceConnectionId,
-            externalId,
-            ...(file.webViewLink ? { sourceUrl: file.webViewLink } : {}),
-            ...(Number.isNaN(modified.getTime()) ? {} : { sourceUpdatedAt: modified }),
-          });
-          if (created) imported += 1;
-          else duplicates += 1;
+        } catch (error) {
+          // The files after the one that broke the request are not coming.
+          await recordImportSkips(deps.prisma, tracked.id, { rejected: direct.length - handled });
+          throw error;
         }
-        if (!plan) return { imported, duplicates, failed };
+        if (!plan) {
+          await recordImportSkips(deps.prisma, tracked.id, { duplicates, rejected: failed });
+          return { imported, duplicates, failed, importId: tracked.id, total: direct.length };
+        }
         // One queued job holds the whole plan: it either exists, or nothing was written.
         if (plan.folders.length > 0 || plan.files.length > 0)
-          await deps.jobs.enqueue(
-            dataRoomDriveImportJob({
-              spaceId: actor.spaceId,
-              userId: actor.userId,
-              connectionId: sourceConnectionId,
-              folderId,
-              folders: plan.folders,
-              files: plan.files,
-            }),
-          );
+          await deps.jobs
+            .enqueue(
+              dataRoomDriveImportJob({
+                spaceId: actor.spaceId,
+                userId: actor.userId,
+                connectionId: sourceConnectionId,
+                folderId,
+                importId: tracked.id,
+                folders: plan.folders,
+                files: plan.files,
+              }),
+            )
+            .catch(async (error: unknown) => {
+              await deps.prisma.dataRoomImport.delete({ where: { id: tracked.id } });
+              throw error;
+            });
         return {
           imported,
           duplicates,
           failed: failed + plan.skipped,
+          importId: tracked.id,
+          total: plan.files.length + plan.skipped,
           queued: plan.files.length,
           folders: plan.folders.length,
         };
       });
     },
+
+    imports: (actor: Actor) => listDataRoomImports(deps.prisma, actor),
 
     search: (
       actor: Actor,

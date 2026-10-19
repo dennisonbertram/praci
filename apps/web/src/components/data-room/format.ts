@@ -62,5 +62,8 @@ export const importedText = (imported: number, duplicates: number) =>
     ? t`Already in the Data room`
     : plural(imported, { one: "Imported # file", other: "Imported # files" });
 
+export const importingText = (files: number) =>
+  plural(files, { one: "Importing # file", other: "Importing # files" });
+
 export const failedText = (failed: number) =>
   plural(failed, { one: "Couldn't import # file", other: "Couldn't import # files" });

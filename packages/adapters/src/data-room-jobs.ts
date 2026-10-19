@@ -16,7 +16,13 @@ import {
 import type { Actor } from "@rakazo/contracts";
 import { DATA_ROOM_METADATA_ORDINAL } from "@rakazo/contracts";
 import type { DataRoomItemRecord, PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, DataRoomStaleError, IsolationError, recordUsage } from "@rakazo/db";
+import {
+  createDataRoomRepos,
+  DataRoomStaleError,
+  IsolationError,
+  recordUsage,
+  settleDataRoomImport,
+} from "@rakazo/db";
 import type { DataRoomAi } from "./data-room-models.js";
 import { LlmDataRoomClassifier } from "./llm-data-room-classifier.js";
 import { modelAcceptsImageInput } from "./model-vision.js";
@@ -133,11 +139,13 @@ async function runStep(
       }
       return;
     }
-    await repo.stepWrite(actor, item.id, revision, {
+    const gaveUp = failures >= DATA_ROOM_JOB_ATTEMPTS;
+    const wrote = await repo.stepWrite(actor, item.id, revision, {
       error: failureText(error),
       failures,
-      ...(failures >= DATA_ROOM_JOB_ATTEMPTS ? { status: "failed" } : {}),
+      ...(gaveUp ? { status: "failed" } : {}),
     });
+    if (wrote && gaveUp && item.importId) await settleDataRoomImport(deps.prisma, item.importId);
     if (unreadable) return;
     throw error;
   }
@@ -497,11 +505,13 @@ export async function runDataRoomIndex(deps: DataRoomJobDeps, payload: Payload):
     }
     // A classify step that gave up left its reason with failures at 0; every other path has
     // failures > 0 or no error. Keep that reason on the ready item.
-    return repo.stepWrite(actor, item.id, revision, {
+    const wrote = await repo.stepWrite(actor, item.id, revision, {
       status: "ready",
       error: item.failures === 0 ? item.error : null,
       failures: 0,
     });
+    if (wrote && item.importId) await settleDataRoomImport(deps.prisma, item.importId);
+    return wrote;
   });
 }
 

@@ -33,6 +33,7 @@ const rpcMock = vi.hoisted(() => ({
   itemDelete: vi.fn(),
   itemRetry: vi.fn(),
   facetValues: vi.fn(),
+  imports: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
   rpc: {
@@ -46,6 +47,7 @@ vi.mock("../lib/rpc", () => ({
       itemDelete: rpcMock.itemDelete,
       itemRetry: rpcMock.itemRetry,
       facetValues: rpcMock.facetValues,
+      imports: rpcMock.imports,
     },
     legal: { itemLinks: async () => ({ contractTitle: null, deadlines: 0 }) },
   },
@@ -88,6 +90,7 @@ beforeEach(() => {
   vi.useFakeTimers();
   rpcMock.connections.mockResolvedValue([]);
   rpcMock.folders.mockResolvedValue([]);
+  rpcMock.imports.mockResolvedValue([]);
   rpcMock.facetValues.mockResolvedValue({ types: [], parties: [], sources: [], hasDates: false });
   rpcMock.list.mockResolvedValue({ items: [item("b.txt"), item("a.txt")], nextCursor: null });
   rpcMock.search.mockResolvedValue({ results: [], nextCursor: null });
@@ -1010,4 +1013,88 @@ it("confirms Try again at once, so the click visibly did something", async () =>
   await act(async () => again?.click());
   await settle();
   expect(getUploadToasts().map((toast) => toast.name)).toContain("Reading junk.pdf again");
+});
+
+const running = {
+  id: "imp1",
+  source: "drive",
+  total: 5,
+  done: 3,
+  failed: 0,
+  inProgress: 2,
+  finished: false,
+  latest: [],
+};
+const activity = () => container.querySelector('[role="status"]')?.textContent ?? "";
+
+it("shows an import's progress, reloads the list while it runs, and stops when it is done", async () => {
+  rpcMock.imports.mockResolvedValue([running]);
+  await renderPage();
+  await settle();
+  expect(activity()).toContain("Importing 3 of 5");
+  const listCalls = rpcMock.list.mock.calls.length;
+  const importCalls = rpcMock.imports.mock.calls.length;
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3_100);
+  });
+  expect(rpcMock.imports.mock.calls.length).toBeGreaterThan(importCalls);
+  expect(rpcMock.list.mock.calls.length).toBeGreaterThan(listCalls);
+
+  rpcMock.imports.mockResolvedValue([
+    {
+      ...running,
+      done: 4,
+      failed: 1,
+      inProgress: 0,
+      finished: true,
+      latest: [{ id: "id-a.txt", name: "a.txt" }],
+    },
+  ]);
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3_100);
+  });
+  expect(activity()).toContain("Imported 4 files");
+  expect(activity()).toContain("Couldn't import 1 file");
+  expect(activity()).toContain("a.txt");
+
+  // Nothing is running any more, so nothing asks again.
+  const settledImports = rpcMock.imports.mock.calls.length;
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(10_000);
+  });
+  expect(rpcMock.imports.mock.calls.length).toBe(settledImports);
+});
+
+it("opens a file of a finished import, and lets the row be dismissed", async () => {
+  rpcMock.imports.mockResolvedValue([
+    {
+      ...running,
+      done: 5,
+      inProgress: 0,
+      finished: true,
+      latest: [{ id: "B", name: "b.txt" }],
+    },
+  ]);
+  rpcMock.item.mockResolvedValue({ ...item("b.txt"), id: "B" });
+  await renderPage();
+  await settle();
+  const link = Array.from(container.querySelectorAll("[role=status] button")).find(
+    (b) => b.textContent === "b.txt",
+  );
+  await act(async () => (link as HTMLElement).click());
+  await settle();
+  expect(rpcMock.item).toHaveBeenCalledWith({ id: "B" });
+
+  const dismiss = container.querySelector<HTMLElement>(
+    '[role=status] button[aria-label="Dismiss"]',
+  );
+  await act(async () => dismiss?.click());
+  expect(activity()).toBe("");
+});
+
+it("shows no activity row when no import is running or recent", async () => {
+  await renderPage();
+  await settle();
+  expect(activity()).toBe("");
 });

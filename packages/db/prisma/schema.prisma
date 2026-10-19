@@ -225,6 +225,7 @@ model Space {
   threads                     Thread[]
   dataRoomFolders             DataRoomFolder[]
   dataRoomItems               DataRoomItem[]
+  dataRoomImports             DataRoomImport[]
   dataRoomChunks              DataRoomChunk[]
   dataRoomItemTexts           DataRoomItemText[]
   dataRoomSyncStates          DataRoomSyncState[]
@@ -2276,6 +2277,9 @@ model DataRoomItem {
   userId             String
   folderId           String?
   folder             DataRoomFolder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  /// The import that filed this item, when one did.
+  importId           String?
+  import             DataRoomImport?   @relation(fields: [importId], references: [id], onDelete: SetNull)
   /// "upload", "drive", "gmail", "chat" or "finance".
   source             String
   sourceConnectionId String?
@@ -2315,6 +2319,7 @@ model DataRoomItem {
   legalEdges         LegalEdge[]
 
   @@index([spaceId, folderId])
+  @@index([importId])
   @@index([spaceId, status])
   @@index([spaceId, userId, createdAt, id])
   @@index([spaceId, userId, docDate, id])
@@ -2323,6 +2328,30 @@ model DataRoomItem {
   @@index([parties], type: Gin)
   @@index([tags], type: Gin)
   @@map("data_room_items")
+}
+
+/// One import of files into the Data room (Drive or email). It finishes when every file is ready,
+/// failed, or was skipped; `notifiedAt` makes the finish notification happen once.
+model DataRoomImport {
+  id         String         @id @default(cuid())
+  spaceId    String
+  space      Space          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId     String
+  /// "drive" or "gmail".
+  source     String
+  /// Files the import set out to file, including the ones skipped below.
+  total      Int
+  /// Files already in the Data room; they count as done.
+  duplicates Int            @default(0)
+  /// Files that never became an item (gone, unsupported, too large); they count as failed.
+  rejected   Int            @default(0)
+  createdAt  DateTime       @default(now())
+  finishedAt DateTime?
+  notifiedAt DateTime?
+  items      DataRoomItem[]
+
+  @@index([spaceId, userId, createdAt])
+  @@map("data_room_imports")
 }
 
 /// Extracted document text, kept apart from the item so lists never load it. Lets indexing run
