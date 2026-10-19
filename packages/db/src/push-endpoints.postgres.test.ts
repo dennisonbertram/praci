@@ -98,4 +98,92 @@ describePostgres("push endpoints (PostgreSQL)", () => {
     await prisma.user.delete({ where: { id } });
     expect(await prisma.notificationEndpoint.count({ where: { userId: id } })).toBe(0);
   });
+
+  it("keeps one token when one session registers different tokens at once", async () => {
+    const other = createDb(databaseUrl!);
+    try {
+      for (let round = 0; round < 10; round += 1) {
+        await Promise.all([
+          savePushToken(prisma, a, `ExponentPushToken[x${round}]`, "s-race"),
+          savePushToken(other.prisma, a, `ExponentPushToken[y${round}]`, "s-race"),
+          savePushToken(prisma, a, `ExponentPushToken[z${round}]`, "s-race"),
+        ]);
+        expect(await tokens(a)).toHaveLength(1);
+      }
+    } finally {
+      await deletePushTokens(prisma, a);
+      await other.prisma.$disconnect();
+      await other.pool.end();
+    }
+  });
+
+  it("sign-out waits for a registration whose session check is in flight", async () => {
+    const other = createDb(databaseUrl!);
+    try {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let checking!: () => void;
+      const started = new Promise<void>((resolve) => {
+        checking = resolve;
+      });
+      const registering = savePushToken(prisma, a, "ExponentPushToken[late]", "s-out", {
+        sessionActive: async () => {
+          checking();
+          await gate;
+          return true;
+        },
+      });
+      await started;
+      // The sign-out cleanup runs on another connection while the registration holds the lock.
+      const ending = endSessionPushTokens(other.prisma, a, "s-out");
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      release();
+      await Promise.all([registering, ending]);
+      expect(await tokens(a)).toEqual([]);
+
+      // And a registration that checks after the session ended is refused.
+      await expect(
+        savePushToken(prisma, a, "ExponentPushToken[after]", "s-out", {
+          sessionActive: async () => false,
+        }),
+      ).rejects.toBeInstanceOf(PushSessionEndedError);
+      expect(await tokens(a)).toEqual([]);
+    } finally {
+      await other.prisma.$disconnect();
+      await other.pool.end();
+    }
+  });
+
+  it("session replacement waits for a registration, so the token follows the new session", async () => {
+    const other = createDb(databaseUrl!);
+    try {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      let checking!: () => void;
+      const started = new Promise<void>((resolve) => {
+        checking = resolve;
+      });
+      const registering = savePushToken(prisma, a, "ExponentPushToken[moved]", "s-old", {
+        sessionActive: async () => {
+          checking();
+          await gate;
+          return true;
+        },
+      });
+      await started;
+      const replacing = endSessionPushTokens(other.prisma, a, "s-old", "s-new");
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      release();
+      await Promise.all([registering, replacing]);
+      expect((await listPushEndpoints(prisma, a)).map((e) => e.sessionId)).toEqual(["s-new"]);
+    } finally {
+      await deletePushTokens(prisma, a);
+      await other.prisma.$disconnect();
+      await other.pool.end();
+    }
+  });
 });

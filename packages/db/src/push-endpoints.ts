@@ -5,6 +5,14 @@ const PUSH = "push";
 type Db = Pick<PrismaClient, "notificationEndpoint" | "$transaction">;
 type Reader = Pick<PrismaClient, "notificationEndpoint">;
 
+/**
+ * Registration, rotation, sign-out and session replacement for one user take this lock first, so
+ * they run one at a time. A token lock follows for cross-account handover; the order is always
+ * user, then token, so two transactions cannot wait on each other.
+ */
+const lockUser = (tx: Pick<PrismaClient, "$executeRaw">, userId: string) =>
+  tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`push-user:${userId}`}, 0))`;
+
 /** Registration found that its session was already gone. */
 export class PushSessionEndedError extends Error {
   constructor() {
@@ -30,7 +38,9 @@ export async function savePushToken(
 ): Promise<void> {
   const address = token.trim();
   await prisma.$transaction(async (tx) => {
+    await lockUser(tx, userId);
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`push-token:${address}`}, 0))`;
+    // Checked under the locks, in the transaction that writes, so sign-out cannot slip between.
     if (options?.sessionActive && !(await options.sessionActive())) {
       throw new PushSessionEndedError();
     }
@@ -62,12 +72,15 @@ export async function listPushEndpoints(prisma: Reader, userId: string): Promise
 
 /** Removes the push token the given session registered, or all of the user's when none is given. */
 export async function deletePushTokens(
-  prisma: Reader,
+  prisma: Db,
   userId: string,
   sessionId?: string,
 ): Promise<void> {
-  await prisma.notificationEndpoint.deleteMany({
-    where: { userId, channel: PUSH, ...(sessionId ? { sessionId } : {}) },
+  await prisma.$transaction(async (tx) => {
+    await lockUser(tx, userId);
+    await tx.notificationEndpoint.deleteMany({
+      where: { userId, channel: PUSH, ...(sessionId ? { sessionId } : {}) },
+    });
   });
 }
 
@@ -76,17 +89,20 @@ export async function deletePushTokens(
  * it. Only that session's token is touched, so another device keeps its own.
  */
 export async function endSessionPushTokens(
-  prisma: Reader,
+  prisma: Db,
   userId: string,
   sessionId: string,
   nextSessionId?: string,
 ): Promise<void> {
-  const where = { userId, channel: PUSH, sessionId };
-  if (nextSessionId) {
-    await prisma.notificationEndpoint.updateMany({ where, data: { sessionId: nextSessionId } });
-  } else {
-    await prisma.notificationEndpoint.deleteMany({ where });
-  }
+  await prisma.$transaction(async (tx) => {
+    await lockUser(tx, userId);
+    const where = { userId, channel: PUSH, sessionId };
+    if (nextSessionId) {
+      await tx.notificationEndpoint.updateMany({ where, data: { sessionId: nextSessionId } });
+    } else {
+      await tx.notificationEndpoint.deleteMany({ where });
+    }
+  });
 }
 
 /** Removes one endpoint, only while it still has the session it was read with. */

@@ -469,4 +469,69 @@ describe("expo push", () => {
     ).rejects.toThrow("DeviceNotRegistered");
     expect(store.tokens("user-1")).toEqual(["ExponentPushToken[old]", "ExponentPushToken[new]"]);
   });
+
+  it("does not send to a device another account claims during an earlier send", async () => {
+    const store = fakeStore();
+    store.add("user-1", "ExponentPushToken[first]");
+    store.add("user-1", "ExponentPushToken[second]");
+    const sent: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        sent.push((JSON.parse(String(init?.body)) as { to: string }).to);
+        store.add("user-2", "ExponentPushToken[second]");
+        return jsonResponse({ data: { status: "ok", id: "ticket" } });
+      }),
+    );
+    const push = new ExpoPushProvider(store.prisma);
+    await expect(
+      push.deliver(
+        { kind: "completion", title: "done", body: "secret", botId: "b", threadId: "t" },
+        notifyContext,
+      ),
+    ).resolves.toBe("delivered");
+    expect(sent).toEqual(["ExponentPushToken[first]"]);
+  });
+
+  it("does not send to a device whose session changed or ended during an earlier send", async () => {
+    const store = fakeStore();
+    store.add("user-1", "ExponentPushToken[first]", "s1");
+    store.add("user-1", "ExponentPushToken[second]", "s2");
+    const ended = new Set<string>();
+    const sent: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        sent.push((JSON.parse(String(init?.body)) as { to: string }).to);
+        ended.add("s2");
+        return jsonResponse({ data: { status: "ok", id: "ticket" } });
+      }),
+    );
+    const push = new ExpoPushProvider(store.prisma, async (id) =>
+      ended.has(id) ? null : new Date(Date.now() + 60_000),
+    );
+    await push.deliver(
+      { kind: "completion", title: "done", body: "secret", botId: "b", threadId: "t" },
+      notifyContext,
+    );
+    expect(sent).toEqual(["ExponentPushToken[first]"]);
+  });
+
+  it("does not send an endpoint whose session was changed between the checks", async () => {
+    const store = fakeStore();
+    store.add("user-1", "ExponentPushToken[a]", "s1");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const push = new ExpoPushProvider(store.prisma, async () => {
+      store.retarget("s1", "s-other");
+      return new Date(Date.now() + 60_000);
+    });
+    await expect(
+      push.deliver(
+        { kind: "completion", title: "done", body: "secret", botId: "b", threadId: "t" },
+        notifyContext,
+      ),
+    ).resolves.toBe("undeliverable");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

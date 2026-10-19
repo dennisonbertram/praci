@@ -4,7 +4,7 @@ import type {
   NotificationMessage,
   NotificationProvider,
 } from "@rakazo/adapter-kit";
-import type { PrismaClient } from "@rakazo/db";
+import type { PrismaClient, PushEndpoint } from "@rakazo/db";
 import { deletePushEndpoint, listPushEndpoints } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { combineSignals } from "./connector-safety.js";
@@ -79,7 +79,7 @@ export class ExpoPushProvider implements NotificationProvider {
   }
 
   async hasPushRecipient(userId: string): Promise<boolean> {
-    return (await this.deliverableTokens(userId)).length > 0;
+    return (await this.deliverableEndpoints(userId)).length > 0;
   }
 
   async send(message: NotificationMessage, context: AdapterContext): Promise<void> {
@@ -92,20 +92,26 @@ export class ExpoPushProvider implements NotificationProvider {
    * Delivered when at least one device accepted; throws the first failure when none did.
    */
   async deliver(message: NotificationMessage, context: AdapterContext): Promise<ExpoPushDelivery> {
-    const tokens = await this.deliverableTokens(context.userId);
-    if (tokens.length === 0) return "undeliverable";
+    const endpoints = await this.deliverableEndpoints(context.userId);
+    if (endpoints.length === 0) return "undeliverable";
     const signal = combineSignals(context.signal, AbortSignal.timeout(EXPO_PUSH_TIMEOUT_MS));
     const failures: unknown[] = [];
     let delivered = false;
-    for (const token of tokens) {
+    for (const endpoint of endpoints) {
       try {
-        await this.post(token, message, context, signal);
+        // Another account may have claimed this device, or its session ended, during an earlier send.
+        const current = await this.deliverableEndpoints(context.userId);
+        if (!current.some((e) => sameEndpoint(e, endpoint))) continue;
+        await this.post(endpoint.address, message, context, signal);
         delivered = true;
       } catch (error) {
         failures.push(error);
       }
     }
-    if (!delivered) throw failures[0];
+    if (!delivered) {
+      if (failures.length === 0) return "undeliverable";
+      throw failures[0];
+    }
     return "delivered";
   }
 
@@ -149,12 +155,12 @@ export class ExpoPushProvider implements NotificationProvider {
    * session is left for session replacement to retarget; an expired one is removed. The endpoints
    * are read again after the lookups so a token another account claimed meanwhile is not sent.
    */
-  private async deliverableTokens(userId: string): Promise<string[]> {
+  private async deliverableEndpoints(userId: string): Promise<PushEndpoint[]> {
     const saved = await listPushEndpoints(this.prisma, userId);
-    const live = new Set<string>();
+    const live: PushEndpoint[] = [];
     for (const endpoint of saved) {
       if (!endpoint.sessionId) {
-        live.add(endpoint.id);
+        live.push(endpoint);
         continue;
       }
       if (!this.sessionExpiresAt) continue;
@@ -170,15 +176,17 @@ export class ExpoPushProvider implements NotificationProvider {
         await deletePushEndpoint(this.prisma, endpoint);
         continue;
       }
-      live.add(endpoint.id);
+      live.push(endpoint);
     }
+    // Same row, token and session as when it was checked, or it is not sent.
     const current = await listPushEndpoints(this.prisma, userId);
-    const tokens = current
-      .filter((endpoint) => live.has(endpoint.id))
-      .map((endpoint) => endpoint.address);
-    return [...new Set(tokens)];
+    const kept = live.filter((endpoint) => current.some((c) => sameEndpoint(c, endpoint)));
+    return kept.filter((e, i) => kept.findIndex((o) => o.address === e.address) === i);
   }
 }
+
+const sameEndpoint = (a: PushEndpoint, b: PushEndpoint) =>
+  a.id === b.id && a.address === b.address && a.sessionId === b.sessionId;
 
 export type ExpoPushDelivery = "delivered" | "undeliverable";
 
