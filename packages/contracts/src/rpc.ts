@@ -29,6 +29,8 @@ import {
   DataRoomApiBoxListOutputSchema,
   DataRoomApiDriveListInputSchema,
   DataRoomApiDriveListOutputSchema,
+  DataRoomApiEmailImportedInputSchema,
+  DataRoomApiEmailImportedOutputSchema,
   DataRoomApiFacetValuesSchema,
   DataRoomApiFiltersSchema,
   DataRoomApiFolderSchema,
@@ -518,6 +520,10 @@ export const appContract = {
         }),
       )
       .output(z.object({ ok: z.literal(true) })),
+    remember: oc
+      .input(threadTarget.safeExtend({ messageId: Id }))
+      .output(z.object({ ok: z.literal(true) })),
+    remembered: oc.input(threadTarget).output(z.object({ messageIds: z.array(Id) })),
     stop: oc.input(threadTarget).output(z.object({ ok: z.literal(true) })),
     followUp: oc
       .input(
@@ -1272,6 +1278,9 @@ export const appContract = {
     importEmail: oc
       .input(DataRoomApiImportEmailInputSchema)
       .output(DataRoomApiImportEmailOutputSchema),
+    emailImported: oc
+      .input(DataRoomApiEmailImportedInputSchema)
+      .output(DataRoomApiEmailImportedOutputSchema),
     driveList: oc.input(DataRoomApiDriveListInputSchema).output(DataRoomApiDriveListOutputSchema),
     importDrive: oc
       .input(DataRoomApiImportDriveInputSchema)

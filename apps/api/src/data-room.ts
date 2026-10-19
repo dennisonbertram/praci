@@ -501,6 +501,37 @@ export function createDataRoomService(deps: DataRoomDeps) {
       return { modelId };
     },
 
+    /** The attachments of the caller's own messages that an email import already filed. */
+    emailImported: async (actor: Actor, input: { messageIds: string[] }) => {
+      const messages = await deps.prisma.cachedMailMessage.findMany({
+        where: { id: { in: input.messageIds }, spaceId: actor.spaceId, userId: actor.userId },
+        select: { id: true, connectionId: true, providerMessageId: true },
+      });
+      if (messages.length === 0) return { files: [] };
+      const items = await deps.prisma.dataRoomItem.findMany({
+        where: {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          source: "gmail",
+          OR: messages.map((m) => ({
+            sourceConnectionId: m.connectionId,
+            externalId: { startsWith: `gmail:${m.providerMessageId}:` },
+          })),
+        },
+        select: { externalId: true, sourceConnectionId: true },
+      });
+      const files: { messageId: string; attachmentId: string }[] = [];
+      for (const m of messages) {
+        const prefix = `gmail:${m.providerMessageId}:`;
+        for (const item of items) {
+          if (item.sourceConnectionId === m.connectionId && item.externalId?.startsWith(prefix)) {
+            files.push({ messageId: m.id, attachmentId: item.externalId.slice(prefix.length) });
+          }
+        }
+      }
+      return { files };
+    },
+
     /**
      * Copies attachments of the caller's own mail into the Data room through the upload pipeline.
      * The attachment id is stable for a message, so `gmail:<message>:<attachment>` names a repeat.

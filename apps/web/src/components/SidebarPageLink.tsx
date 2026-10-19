@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from "react";
 import { Tip } from "./data-room/FilterBar";
+import { usePagesCollapsed } from "./SidebarPagesGroup";
 
 /** In the icon rail a row keeps only its icon; the label moves to a tooltip (also on keyboard focus). */
 export function RailTip({
@@ -32,6 +33,7 @@ export function SidebarPageLink({
   onOpen,
   badge,
   badgeLabel,
+  notified = false,
   rail = false,
 }: {
   testId: string;
@@ -42,8 +44,12 @@ export function SidebarPageLink({
   badge?: ReactNode;
   /** What the badge means in words (for example "3 unread"), added to the accessible name. */
   badgeLabel?: string;
+  /** Unseen notification: the row stays visible while the pages group is collapsed. */
+  notified?: boolean;
   rail?: boolean;
 }) {
+  const collapsed = usePagesCollapsed();
+  if (collapsed && !notified && !current) return null;
   const name = badgeLabel ? `${label}, ${badgeLabel}` : label;
   return (
     <RailTip rail={rail} label={label}>

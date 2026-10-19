@@ -37,3 +37,8 @@ export const FolderSelected: Story = {
 };
 export const Folder: Story = { args: { ...FolderSelected.args, checked: false } };
 export const CannotImport: Story = { args: { disabled: true } };
+
+/** In the email picker: the checkbox is always shown, and a marker says the file is filed. */
+export const AlreadyInDataRoom: Story = {
+  args: { checked: true, disabled: true, showCheckbox: true, note: "In Data room" },
+};
