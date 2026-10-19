@@ -18,6 +18,11 @@ export interface AdapterContext {
   /** When releasing a screen after cancel, also stop orphaned browser work on that screen. */
   cancelRunWork?: boolean;
   signal: AbortSignal;
+  /**
+   * Awaited right before every network attempt of a write (not a GET), including retries, with
+   * nothing awaited between it and the request. A throw refuses the attempt and is not retried.
+   */
+  beforeWrite?: () => Promise<void>;
   /** Connected external accounts available to this run, including their owning connector. */
   connectedConnections?: ConnectedConnector[];
   connectedAppAgentConnectionId?: string;

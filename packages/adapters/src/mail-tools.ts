@@ -81,6 +81,13 @@ export type MailToolDeps = {
 
 class WriteDenied extends Error {}
 
+/** The context for a provider write: its retries ask again before each attempt. */
+const writeContext = (
+  deps: MailToolDeps,
+  account: MailAccount,
+  context: AdapterContext,
+): AdapterContext => ({ ...context, beforeWrite: () => allowWrite(deps, account) });
+
 async function allowWrite(deps: MailToolDeps, account: MailAccount) {
   const denial = await deps.beforeWrite?.(account);
   if (denial) throw new WriteDenied(denial);
@@ -732,8 +739,8 @@ async function mailDraft(
   const draftId = typeof args.draftId === "string" ? args.draftId.trim() : "";
   await allowWrite(deps, account);
   const saved = draftId
-    ? await deps.mail.updateDraft(account, draftId, draft, context)
-    : await deps.mail.createDraft(account, draft, context);
+    ? await deps.mail.updateDraft(account, draftId, draft, writeContext(deps, account, context))
+    : await deps.mail.createDraft(account, draft, writeContext(deps, account, context));
   return {
     ok: true,
     draftId: saved.draftId,
@@ -806,7 +813,7 @@ async function mailModify(
       // One provider call reaches every message of the conversation, cached or not.
       const threadId = row?.threadId ?? (await deps.mail.getMessage(account, id, context)).threadId;
       await allowWrite(deps, account);
-      await deps.mail.modifyThread(account, threadId, change, context);
+      await deps.mail.modifyThread(account, threadId, change, writeContext(deps, account, context));
       const cached = await cache.findMany({
         where: { ...owner, connectionId: account.id, threadId },
         select: { id: true },
@@ -815,7 +822,7 @@ async function mailModify(
       return { ok: true, messages: Math.max(cached.length, 1) };
     }
     await allowWrite(deps, account);
-    await deps.mail.modifyMessage(account, id, change, context);
+    await deps.mail.modifyMessage(account, id, change, writeContext(deps, account, context));
     if (row) await update({ id: row.id });
     return { ok: true, messages: 1 };
   } catch (error) {
@@ -881,12 +888,13 @@ async function mailSend(
     let draftId = given || row.draftId;
     if (!draftId) {
       await allowWrite(deps, account);
-      draftId = (await deps.mail.createDraft(account, draft, context)).draftId;
+      draftId = (await deps.mail.createDraft(account, draft, writeContext(deps, account, context)))
+        .draftId;
     }
     await table.update({ where: { id: row.id }, data: { draftId } });
     await allowWrite(deps, account);
     sending = true;
-    const sent = await deps.mail.sendDraft(account, draftId, context);
+    const sent = await deps.mail.sendDraft(account, draftId, writeContext(deps, account, context));
     sending = false;
     await record({ state: "sent", providerMessageId: sent.messageId || null });
     // So the Inbox shows the reply in its conversation, and the thread leaves Needs reply.
@@ -903,6 +911,8 @@ async function mailSend(
       note: "The email was sent. Tell the user it was sent; do not offer it again.",
     };
   } catch (error) {
+    // Refused before the request left: nothing was sent, even on a retry after a rate limit.
+    if (error instanceof WriteDenied) sending = false;
     if (sending && !(error instanceof MailProviderError && error.kind !== "unknown")) {
       await record({ state: "unknown" });
       return { error: `The send may or may not have gone out. ${CHECK_SENT}` };

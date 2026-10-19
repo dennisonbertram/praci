@@ -369,7 +369,14 @@ async function request(
       method,
       url,
       ...(body === undefined ? {} : { body }),
-      context,
+      // Retries inside the client ask again before each attempt.
+      context: {
+        ...context,
+        beforeWrite: async () => {
+          const denial = await deps.beforeWrite?.(account);
+          if (denial) throw new CalendarToolError(denial);
+        },
+      },
     });
     return response.data;
   } catch (error) {

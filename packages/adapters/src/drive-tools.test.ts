@@ -187,6 +187,25 @@ describe("drive_read", () => {
 });
 
 describe("drive_create_file", () => {
+  it("refuses the retry of a write when access changed after a rate limit", async () => {
+    let posts = 0;
+    const s = setup();
+    s.deps.connectors = {
+      managed: () =>
+        ({
+          proxy: async () => {
+            posts++;
+            return { status: 429, data: {} };
+          },
+        }) as unknown as ManagedConnectorProvider,
+    };
+    s.deps.beforeWrite = async () => (posts >= 1 ? "No longer available." : null);
+    expect(await s.run("drive_create_file", { name: "Plan", content: "x", kind: "doc" })).toEqual({
+      error: "No longer available.",
+    });
+    expect(posts).toBe(1);
+  });
+
   it("refuses a write when the check right before it denies, and still reads", async () => {
     const s = setup();
     s.deps.beforeWrite = async () => "No longer available.";

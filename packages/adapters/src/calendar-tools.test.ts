@@ -165,6 +165,30 @@ describe("calendar tools", () => {
     expect(methods).toEqual(["GET"]);
   });
 
+  it("refuses the retry of a write when access changed after a rate limit", async () => {
+    let posts = 0;
+    const connector = {
+      proxy: async () => {
+        posts++;
+        return { status: 429, data: {} };
+      },
+    } as unknown as ManagedConnectorProvider;
+    const result = await calendarToolFromTool(
+      "calendar_create_event",
+      {
+        accounts: async () => accounts,
+        connectors: { managed: () => connector },
+        google: new GoogleApiClient({ sleep: async () => undefined }),
+        beforeWrite: async () => (posts >= 1 ? "No longer available." : null),
+        now: () => new Date("2026-10-01T12:00:00Z"),
+      },
+      context,
+      { summary: "x", start: timed("2026-10-03T12:00:00Z"), end: timed("2026-10-03T13:00:00Z") },
+    );
+    expect(result).toEqual({ error: "No longer available." });
+    expect(posts).toBe(1);
+  });
+
   it("rejects a client event id outside base32hex", async () => {
     const { calendar } = setup();
     expect(

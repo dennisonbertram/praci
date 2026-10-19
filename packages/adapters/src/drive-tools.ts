@@ -214,7 +214,14 @@ class DriveCall {
         ...(init.body === undefined ? {} : { body: init.body }),
         ...(init.contentType ? { contentType: init.contentType } : {}),
         ...(init.responseType ? { responseType: init.responseType } : {}),
-        context: this.context,
+        // Retries inside the client ask again before each attempt.
+        context: {
+          ...this.context,
+          beforeWrite: async () => {
+            const denial = await this.deps.beforeWrite?.(this.account);
+            if (denial) throw new DriveToolError(denial);
+          },
+        },
       });
       return response.data;
     } catch (cause) {
