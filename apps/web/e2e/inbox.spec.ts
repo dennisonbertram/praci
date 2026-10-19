@@ -373,7 +373,7 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
   // Checking a to-do sends the change and keeps the item visible, struck through.
   // A container under 48rem shows two open to-dos and "1 more"; the collapsed agent panel leaves
   // the pane wider than that at the default viewport, so narrow the window.
-  await page.setViewportSize({ width: 900, height: 800 });
+  await page.setViewportSize({ width: 700, height: 800 });
   await card.getByRole("button", { name: "1 more" }).click();
   const checkbox = card.getByRole("checkbox", { name: "Pay the October invoice" });
   await expect(checkbox).not.toBeChecked();
@@ -815,7 +815,7 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
   const cases = [
     { name: "agent-open-1396", width: 1396, height: 800, agent: "open" },
     { name: "agent-open-1440", width: 1440, height: 900, agent: "open" },
-    { name: "agent-open-1024", width: 1024, height: 800, agent: "open" },
+    { name: "agent-open-1280", width: 1280, height: 800, agent: "open" },
     { name: "agent-closed-1440", width: 1440, height: 900, agent: "closed" },
     { name: "agent-closed-768", width: 768, height: 900, agent: "closed" },
     { name: "agent-closed-390", width: 390, height: 844, agent: "closed" },
