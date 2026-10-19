@@ -4297,14 +4297,36 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ? "Only this connected account's agent can make changes to it, and only while changes are on."
             : "This connected account is no longer available to this bot.";
         };
-        const googleWriteOnAgentConnection = async (toolName: string): Promise<boolean> => {
-          const accounts = GOOGLE_BUILTIN_WRITES.has(toolName)
+        // The account this call writes to: the one named, the only one, or the one a mail id is in.
+        // When it cannot be told, every account is a possible target.
+        const googleWriteOnAgentConnection = async (
+          toolName: string,
+          callArgs: Record<string, unknown>,
+        ): Promise<boolean> => {
+          const pending = GOOGLE_BUILTIN_WRITES.has(toolName)
             ? googleBuiltinAccounts(toolName)
             : undefined;
-          if (!accounts) return false;
-          const ids = new Set(
-            (await accounts.catch(() => [] as { id: string }[])).map((account) => account.id),
-          );
+          if (!pending) return false;
+          const accounts = await pending.catch(() => [] as { id: string }[]);
+          const wanted = typeof callArgs.account === "string" ? callArgs.account.trim() : "";
+          let targets = accounts;
+          if (wanted) {
+            targets = accounts.filter((account) =>
+              Object.values(account).some(
+                (value) =>
+                  typeof value === "string" && value.toLowerCase() === wanted.toLowerCase(),
+              ),
+            );
+          } else if (accounts.length > 1 && MAIL_TOOL_NAMES.has(toolName)) {
+            const inferred = await inferMailAccount(
+              deps.prisma,
+              { spaceId: run.spaceId, userId: bot.userId },
+              accounts as MailAccount[],
+              callArgs,
+            ).catch(() => undefined);
+            if (inferred) targets = [inferred];
+          }
+          const ids = new Set(targets.map((account) => account.id));
           const rows = await connectionRowsNow();
           return rows.some((row) => ids.has(row.id) && row.agentBotId !== null);
         };
@@ -4920,7 +4942,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (builtinDenial) return { error: builtinDenial };
           const writeOnAgentConnection = viaConnector
             ? false
-            : await googleWriteOnAgentConnection(name);
+            : await googleWriteOnAgentConnection(name, args);
           // Declared effect of the operation this call dispatches (installed API method and
           // flag). Install config is immutable per route resource, so it cannot drift before
           // execute; a catalog call uses the tool it was just resolved to.

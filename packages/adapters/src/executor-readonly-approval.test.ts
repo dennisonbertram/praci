@@ -940,6 +940,45 @@ describe("built-in mail on a connection with an integration agent", () => {
     expect(mail.createDraft).not.toHaveBeenCalled();
   });
 
+  describe("with two accounts, only one of which has an agent", () => {
+    const twoAccounts = (account: string, spawnKey: string | null = null) => {
+      const mail = {
+        listAccounts: vi.fn(async () => [
+          { id: "acct-1", address: "plain@example.test" },
+          { id: "acct-2", address: "agent@example.test" },
+        ]),
+        createDraft: vi.fn(async () => ({ draftId: "d1" })),
+      };
+      const f = fixture({
+        name: "mail_draft",
+        builtin: true,
+        spawnKey,
+        rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "mail_draft" }],
+        mail,
+        connectionRows: [
+          gmail(),
+          gmail({ id: "acct-2", agentBotId: "bot-1", writesEnabled: true }),
+        ],
+      });
+      f.setCalls([{ args: { ...draft, account }, executionId: "call-1" }]);
+      return { f, mail };
+    };
+
+    it("does not force approval for a write to the account without an agent", async () => {
+      const { f, mail } = twoAccounts("plain@example.test");
+      await f.run();
+      expect(f.pauseRunForInput).not.toHaveBeenCalled();
+      expect(mail.createDraft).toHaveBeenCalledOnce();
+    });
+
+    it("still asks for a write to the account the agent owns", async () => {
+      const { f, mail } = twoAccounts("agent@example.test");
+      await f.run();
+      expect(isApprovalPausedResult(f.results[0])).toBe(true);
+      expect(mail.createDraft).not.toHaveBeenCalled();
+    });
+  });
+
   it("refuses a draft on a revoked connection", async () => {
     const { f, mail } = draftRun(null, [gmail({ status: "revoked" })]);
     await f.run();
