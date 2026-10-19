@@ -13,6 +13,22 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
+#: src/components/sidebar-glance.tsx
+msgid " (done)"
+msgstr ""
+
+#: src/components/sidebar-glance.tsx
+msgid " (failed)"
+msgstr ""
+
+#: src/components/sidebar-glance.tsx
+msgid " (needs input)"
+msgstr ""
+
+#: src/components/sidebar-glance.tsx
+msgid " (new)"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"

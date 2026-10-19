@@ -14,7 +14,7 @@ import { NOTIFICATIONS_CHANGED_EVENT, surfaceOfPath, useSidebarGlance } from "./
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-const quiet = { financeRunwayMonths: null, legalDueSoon: 0, dataRoomWaiting: 0, urgentBotIds: [] };
+const quiet = { financeRunwayMonths: null, legalDueSoon: 0, dataRoomWaiting: 0, botKinds: {} };
 let seen: ReturnType<typeof useSidebarGlance>;
 function Probe({
   pathname,
@@ -106,23 +106,20 @@ it("waits to mark a page seen until the tab is focused", async () => {
   expect(rpc.notifications.markSeen).toHaveBeenCalledWith({ surface: "legal" });
 });
 
-it("clears an urgent agent by its thread, only while attended", async () => {
+it("clears every unseen notification of the viewed agent, only while attended", async () => {
   attended = false;
-  rpc.notifications.glance.mockResolvedValue({ ...quiet, urgentBotIds: ["bot-1"] });
+  rpc.notifications.glance.mockResolvedValue({ ...quiet, botKinds: { "bot-1": "done" } });
   const thread = { botId: "bot-1", threadId: "thread-1" };
   act(() => root.render(<Probe pathname="/app" thread={thread} />));
   await flush();
   expect(rpc.notifications.markSeen).not.toHaveBeenCalled();
   setAttended(true);
   await flush();
-  expect(rpc.notifications.markSeen).toHaveBeenCalledWith({
-    surface: "thread",
-    threadId: "thread-1",
-  });
+  expect(rpc.notifications.markSeen).toHaveBeenCalledWith({ botId: "bot-1" });
 });
 
-it("leaves an agent's thread alone when that agent is not urgent", async () => {
-  rpc.notifications.glance.mockResolvedValue({ ...quiet, urgentBotIds: ["bot-2"] });
+it("leaves an agent's thread alone when that agent has nothing unseen", async () => {
+  rpc.notifications.glance.mockResolvedValue({ ...quiet, botKinds: { "bot-2": "urgent" } });
   act(() =>
     root.render(<Probe pathname="/app" thread={{ botId: "bot-1", threadId: "thread-1" }} />),
   );

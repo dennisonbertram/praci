@@ -81,7 +81,12 @@ describePostgres("notify_user (PostgreSQL)", () => {
       where: { spaceId, title: "Runway dropped" },
     });
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ userId, surface: "finance", importance: "attention" });
+    expect(rows[0]).toMatchObject({
+      userId,
+      surface: "finance",
+      importance: "attention",
+      kind: "urgent",
+    });
     expect(notify).toHaveBeenCalledWith(
       { spaceId, userId },
       { id: rows[0]?.id, surface: "finance", importance: "attention" },
@@ -138,7 +143,12 @@ describePostgres("notify_user (PostgreSQL)", () => {
       where: { spaceId, title: "Quiet routine" },
       include: { deliveries: true },
     });
-    expect(row).toMatchObject({ surface: "inbox", importance: "info", routineId: "routine-1" });
+    expect(row).toMatchObject({
+      surface: "inbox",
+      importance: "info",
+      kind: "new",
+      routineId: "routine-1",
+    });
     expect(row.deliveries).toHaveLength(0);
     await prisma.notificationEndpoint.deleteMany({ where: { userId } });
   });

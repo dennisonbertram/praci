@@ -297,17 +297,25 @@
   }
 }
 
+/* A seeded icon sets --pixel-phase (0 to 1) and --pixel-speed; the negative delay starts each one
+   part-way through its cycle. Unseeded icons use phase 0 and speed 1. */
 .pixel-strip {
-  animation: pixel-strip var(--frame-dur) steps(var(--frames)) infinite;
+  --dur: calc(var(--frame-dur) * var(--pixel-speed, 1));
+  animation: pixel-strip var(--dur) steps(var(--frames)) infinite;
+  animation-delay: calc(var(--dur) * var(--pixel-phase, 0) * -1);
 }
 
 .pixel-mover {
-  animation: pixel-drive var(--drive-dur) steps(var(--travel-steps)) infinite alternate;
+  --dur: calc(var(--drive-dur) * var(--pixel-speed, 1));
+  animation: pixel-drive var(--dur) steps(var(--travel-steps)) infinite alternate;
+  animation-delay: calc(var(--dur) * 2 * var(--pixel-phase, 0) * -1);
 }
 
 .pixel-flip {
+  --dur: calc(var(--drive-dur) * var(--pixel-speed, 1) * 2);
   transform-box: view-box;
-  animation: pixel-flip calc(var(--drive-dur) * 2) linear infinite;
+  animation: pixel-flip var(--dur) linear infinite;
+  animation-delay: calc(var(--dur) * var(--pixel-phase, 0) * -1);
 }
 
 @media (prefers-reduced-motion: reduce) {

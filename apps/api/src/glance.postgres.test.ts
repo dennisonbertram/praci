@@ -63,7 +63,7 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
       financeRunwayMonths: null,
       legalDueSoon: 0,
       dataRoomWaiting: 0,
-      urgentBotIds: [],
+      botKinds: {},
     });
   });
 
@@ -110,7 +110,7 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
     expect((await glance(aliceElsewhere)).dataRoomWaiting).toBe(0);
   });
 
-  it("lists agents with an unseen attention notification, for the caller only", async () => {
+  it("reports each agent's highest-priority unseen kind, for the caller only", async () => {
     const row = (who: Actor, botId: string, extra: object, key: string) => ({
       spaceId: who.spaceId,
       userId: who.userId,
@@ -122,16 +122,38 @@ describePostgres("notifications.glance (PostgreSQL)", () => {
     });
     await prisma.notification.createMany({
       data: [
-        row(alice, "bot-urgent", { importance: "attention" }, "1"),
-        row(alice, "bot-urgent", { importance: "attention" }, "2"),
-        row(alice, "bot-info", { importance: "info" }, "3"),
-        row(alice, "bot-seen", { importance: "attention", seenAt: new Date() }, "4"),
-        row(bob, "bot-bob", { importance: "attention" }, "5"),
+        // Several kinds on one agent: urgent wins, then needs_input, failed, done, new.
+        row(alice, "bot-mixed", { importance: "attention", kind: "done" }, "1"),
+        row(alice, "bot-mixed", { importance: "attention", kind: "needs_input" }, "2"),
+        row(alice, "bot-mixed", { importance: "info", kind: "new" }, "3"),
+        row(alice, "bot-failed", { importance: "attention", kind: "failed" }, "4"),
+        row(alice, "bot-failed", { importance: "attention", kind: "done" }, "5"),
+        // Rows from before kinds existed fall back to importance.
+        row(alice, "bot-old-urgent", { importance: "attention" }, "6"),
+        row(alice, "bot-old-info", { importance: "info" }, "7"),
+        row(
+          alice,
+          "bot-seen",
+          { importance: "attention", kind: "urgent", seenAt: new Date() },
+          "8",
+        ),
+        row(
+          alice,
+          "bot-mixed",
+          { importance: "attention", kind: "urgent", seenAt: new Date() },
+          "9",
+        ),
+        row(bob, "bot-bob", { importance: "attention", kind: "done" }, "10"),
       ],
     });
-    expect((await glance(alice)).urgentBotIds).toEqual(["bot-urgent"]);
-    expect((await glance(bob)).urgentBotIds).toEqual(["bot-bob"]);
-    expect((await glance(aliceElsewhere)).urgentBotIds).toEqual([]);
+    expect((await glance(alice)).botKinds).toEqual({
+      "bot-mixed": "needs_input",
+      "bot-failed": "failed",
+      "bot-old-urgent": "urgent",
+      "bot-old-info": "new",
+    });
+    expect((await glance(bob)).botKinds).toEqual({ "bot-bob": "done" });
+    expect((await glance(aliceElsewhere)).botKinds).toEqual({});
   });
 
   it("reports runway from the three full months before this one, reading only those rows", async () => {
