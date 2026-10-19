@@ -244,6 +244,7 @@ import {
   lockOwnedGroup,
   markSeen,
   markShown,
+  NotificationValidationError,
   newestModelCredentialOrder,
   newestVoiceCredentialOrder,
   Prisma,
@@ -7180,14 +7181,21 @@ export function createRouter(deps: RouterDeps) {
         await deletePushTokens(deps.prisma, context.actor.userId, context.sessionId);
         return { ok: true as const };
       }),
-      list: authed.notifications.list.handler(async ({ context, input }) => ({
-        notifications: (
-          await listNotifications(deps.prisma, {
+      list: authed.notifications.list.handler(async ({ context, input }) => {
+        try {
+          const page = await listNotifications(deps.prisma, {
             ...context.actor,
             since: input.since ? new Date(input.since) : undefined,
-          })
-        ).map(toNotificationDto),
-      })),
+            cursor: input.cursor,
+          });
+          return { notifications: page.items.map(toNotificationDto), nextCursor: page.nextCursor };
+        } catch (error) {
+          if (error instanceof NotificationValidationError) {
+            throw new ORPCError("BAD_REQUEST", { message: error.message });
+          }
+          throw error;
+        }
+      }),
       markSeen: authed.notifications.markSeen.handler(async ({ context, input }) => ({
         count: await markSeen(deps.prisma, { ...context.actor, surface: input.surface }),
       })),

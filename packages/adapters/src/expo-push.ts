@@ -110,7 +110,7 @@ export class ExpoPushProvider implements NotificationProvider, NotificationChann
     return (await this.deliverableEndpoints(userId)).length > 0;
   }
 
-  async send(message: NotificationMessage, context: AdapterContext): Promise<void>;
+  async send(message: NotificationMessage, context: AdapterContext): Promise<undefined>;
   async send(
     envelope: NotificationEnvelope,
     endpoint: NotificationEndpointRef,
@@ -120,10 +120,10 @@ export class ExpoPushProvider implements NotificationProvider, NotificationChann
     message: NotificationMessage | NotificationEnvelope,
     endpointOrContext: NotificationEndpointRef | AdapterContext,
     maybeContext?: AdapterContext,
-  ): Promise<NotificationSendResult | void> {
+  ): Promise<NotificationSendResult | undefined> {
     if (!maybeContext) {
       await this.deliver(message as NotificationMessage, endpointOrContext as AdapterContext);
-      return;
+      return undefined;
     }
     return this.sendEnvelope(
       message as NotificationEnvelope,

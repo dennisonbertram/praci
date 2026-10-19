@@ -1077,8 +1077,19 @@ export const appContract = {
       .output(z.object({ ok: z.literal(true) })),
     unregisterPush: oc.output(z.object({ ok: z.literal(true) })),
     list: oc
-      .input(z.object({ since: z.string().datetime().optional() }))
-      .output(z.object({ notifications: z.array(NotificationSchema) })),
+      // Oldest first. Pass `nextCursor` back until it is null to catch up completely.
+      .input(
+        z.object({
+          since: z.string().datetime().optional(),
+          cursor: z.string().max(200).optional(),
+        }),
+      )
+      .output(
+        z.object({
+          notifications: z.array(NotificationSchema),
+          nextCursor: z.string().nullable(),
+        }),
+      ),
     markSeen: oc
       .input(z.object({ surface: z.string().min(1).max(64) }))
       .output(z.object({ count: z.number() })),
