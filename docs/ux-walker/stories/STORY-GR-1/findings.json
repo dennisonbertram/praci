@@ -1,0 +1,35 @@
+[
+  {
+    "id": "F-GR-1-001",
+    "story_id": "GR-1",
+    "severity": "high",
+    "category": "error-handling",
+    "criterion": "Error messages / Empty states: error must persist while the cause persists",
+    "score": "fail",
+    "description": "The 'Your mail didn't load' notice disappears about 30 s after it appears, and the page then says only 'No mail', although Gmail still answers 429 on every call. Opening Inbox from the sidebar the first time showed 'No mail' immediately (the earlier pause had expired); a page reload alternates between the notice and 'No mail' depending on whether the 30 s pause is active. Polled every 3 s: notice at :50-:05, 'No mail' from :08 onward with no user action.",
+    "expected": "While Gmail keeps rate-limiting, the page keeps showing the notice (or a sync is retried automatically and the notice returns).",
+    "actual": "Page shows 'No mail', which reads as an empty inbox; no Try again button, no hint that mail is withheld.",
+    "screenshot": "docs/ux-walker/stories/STORY-GR-1/screenshots/step-6-no-mail-after-30s.png",
+    "suggested_fix": "Do not drop a rate-limit failure from the list result when its pause expires; or re-run the sync when the pause ends and show the notice again if it fails. At minimum do not show 'No mail' for an account whose last sync failed.",
+    "files_likely_involved": [
+      "apps/api/src/inbox.ts",
+      "apps/web/src/pages/Inbox.tsx"
+    ]
+  },
+  {
+    "id": "F-GR-1-002",
+    "story_id": "GR-1",
+    "severity": "low",
+    "category": "happy-path",
+    "criterion": "Copy: precise wait time",
+    "score": "warn",
+    "description": "'Try again in a minute' is vague; real pause is 30 s. Notice is otherwise clear (cause 'Gmail is limiting requests', one Try again button, no Reconnect button) and appears once, with no duplicate anywhere on the page, at 1280 and 390 widths. Geometry audit: no overflow, spills or wrapped controls.",
+    "expected": "Copy matches actual pause or avoids a number.",
+    "actual": "'in a minute' vs 30 s pause; title 'didn't load' states no cause, cause only in second line.",
+    "screenshot": "docs/ux-walker/stories/STORY-GR-1/screenshots/step-4-reload.png",
+    "suggested_fix": "Optional: 'Try again in a few seconds' or drop the time.",
+    "files_likely_involved": [
+      "apps/web/src/lib/inbox-sync-error.ts"
+    ]
+  }
+]

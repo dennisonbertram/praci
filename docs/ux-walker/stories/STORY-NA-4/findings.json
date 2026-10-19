@@ -1,0 +1,34 @@
+[
+  {
+    "id": "F-NA-4-1",
+    "story_id": "STORY-NA-4",
+    "severity": "low",
+    "category": "simplicity",
+    "criterion": "Duplicate information / progressive disclosure",
+    "score": "warn",
+    "description": "The final dialog repeats itself: title 'Slack connected', subtitle 'Slack is ready.', then two checklist lines ('All bots can use Slack.', 'Slack now appears under Connected.'). The last line describes what the page already shows.",
+    "expected": "One short confirmation.",
+    "actual": "Four lines of confirmation text for one outcome.",
+    "screenshot": "docs/ux-walker/stories/STORY-NA-4/screenshots/step-4.png",
+    "suggested_fix": "Keep title plus the line about which bots have access; drop the other two.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/"
+    ]
+  },
+  {
+    "id": "F-NA-4-2",
+    "story_id": "STORY-NA-4",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Layout stability",
+    "score": "warn",
+    "description": "After leaving Integrations the pill first showed two logos (G, G) and about a second later three (G, G, N). The row changes width content once the new list arrives.",
+    "expected": "Pill shows the final set directly, or keeps the plain row until loaded.",
+    "actual": "Eval right after click: 'Connect apps G G'; 1.5s later: 'Connect apps G G N'.",
+    "screenshot": "docs/ux-walker/stories/STORY-NA-4/screenshots/step-6.png",
+    "suggested_fix": "Hold the previous list or the plain row until the reload finishes.",
+    "files_likely_involved": [
+      "apps/web/src/components/ConnectAppsButton.tsx"
+    ]
+  }
+]

@@ -1,0 +1,101 @@
+[
+  {
+    "id": "F-IA-3-01",
+    "story_id": "IA-3",
+    "severity": "high",
+    "category": "happy-path",
+    "criterion": "Labels/copy",
+    "score": "fail",
+    "description": "The approval card names the payment with an internal tool name and a bare number: Review before mcp__finance-mercury__requestSendMoney -> 1200. It does not show currency, payee name, or account name; details are raw JSON with ids chk-1111 and rcp-acme-mock. The one place Maya must be sure what she approves is the least readable.",
+    "expected": "Card reads like: Send $1,200.00 from MOCK Checking 1111 to Acme (Mock).",
+    "actual": "Internal tool id, bare 1200, JSON ids.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-3/screenshots/step-7.png",
+    "suggested_fix": "Render a sentence from amount, currency, account and recipient names; keep raw JSON behind a Details toggle.",
+    "files_likely_involved": [
+      "apps/web/src/components/AskCard.tsx",
+      "packages/adapters/src/approval-ask.ts"
+    ]
+  },
+  {
+    "id": "F-IA-3-02",
+    "story_id": "IA-3",
+    "severity": "high",
+    "category": "flow",
+    "criterion": "Dead ends / user intent",
+    "score": "fail",
+    "description": "After the first Deny the agent did not explain itself. It posted a second, nearly identical approval card (with an extra note field) seconds later. Only after the second Deny did it explain, and it then wrote I can't retry it right after it had retried.",
+    "expected": "After Deny the agent stops and says what it did not do.",
+    "actual": "Silent re-request of a payment the user just refused.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-3/screenshots/step-8.png",
+    "suggested_fix": "Agent instruction: after a denial do not call the tool again without a new user message; explain first.",
+    "files_likely_involved": [
+      "apps/api/src/integration-agent.ts"
+    ]
+  },
+  {
+    "id": "F-IA-3-03",
+    "story_id": "IA-3",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Dead ends",
+    "score": "warn",
+    "description": "The payment needs a recipient ID. The agent cannot list recipients (no such tool in the demo) and asks Maya for an ID she would not know. Payment is not completable by a normal user.",
+    "expected": "Agent finds the recipient by name.",
+    "actual": "Asks for an id; says it cannot look it up.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-3/screenshots/step-5.png",
+    "suggested_fix": "Expose recipient lookup to the agent (and the demo server), or ask a name-based question.",
+    "files_likely_involved": [
+      "packages/testkit/src/cli/demo/data.ts"
+    ]
+  },
+  {
+    "id": "F-IA-3-04",
+    "story_id": "IA-3",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Confirmations",
+    "score": "warn",
+    "description": "Maya is asked twice before the card: once in prose (Here's the payment request for your approval, then she has to type Yes, submit it) and then the card. Same approval is requested in two places.",
+    "expected": "One approval step, the card.",
+    "actual": "Prose confirmation, then card.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-3/screenshots/step-6.png",
+    "suggested_fix": "Agent instruction: call the tool directly and let the card be the confirmation.",
+    "files_likely_involved": [
+      "apps/api/src/integration-agent.ts"
+    ]
+  },
+  {
+    "id": "F-IA-3-05",
+    "story_id": "IA-3",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Theme consistency",
+    "score": "warn",
+    "description": "Denied is shown in the same green as Allowed once, so a refusal looks like success.",
+    "expected": "Neutral or distinct colour for Denied.",
+    "actual": "Green text.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-3/screenshots/step-9.png",
+    "suggested_fix": "Use muted/destructive tone for Denied.",
+    "files_likely_involved": [
+      "apps/web/src/components/AskCard.tsx",
+      "packages/adapters/src/approval-ask.ts"
+    ]
+  },
+  {
+    "id": "F-IA-3-06",
+    "story_id": "IA-3",
+    "severity": "low",
+    "category": "happy-path",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "The Allow changes dialog says change your Mercury data, which does not tell Maya this includes moving money. Single bullet in a list.",
+    "expected": "Say payments explicitly.",
+    "actual": "The agent will be able to change your Mercury data.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-3/screenshots/step-2.png",
+    "suggested_fix": "Reword: ...send payment requests from your account. It asks before each one.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/McpDetail.tsx",
+      "apps/web/src/components/integrations/IntegrationAgentSection.tsx"
+    ]
+  }
+]

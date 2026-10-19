@@ -1,0 +1,82 @@
+[
+  {
+    "id": "F-CA-2-1",
+    "story_id": "STORY-CA-2",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Confirmations",
+    "score": "warn",
+    "description": "One email needs two approvals: an agent-written 'Approve sending this email? Approve and send / Cancel' card, then a second 'Review before GMAIL_SEND_EMAIL' card with Allow once / Deny.",
+    "expected": "One approval per write.",
+    "actual": "Two sequential cards for the same send (step-3 then step-4).",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-2/screenshots/step-4.png",
+    "suggested_fix": "Drop the model-authored confirmation when the tool-approval card follows.",
+    "files_likely_involved": [
+      "apps/api approval flow"
+    ]
+  },
+  {
+    "id": "F-CA-2-2",
+    "story_id": "STORY-CA-2",
+    "severity": "medium",
+    "category": "consistency",
+    "criterion": "Component consistency / jargon",
+    "score": "warn",
+    "description": "The two approval cards differ in style, and the second shows the raw tool name and a JSON block. First card: two identical stacked outline buttons with no primary. Second card: light primary 'Allow once', 'Deny' and 'tool: GMAIL_SEND_EMAIL arguments: {...}'.",
+    "expected": "One card style; readable fields (To, Subject, Body).",
+    "actual": "Mixed card styles; internal tool id and JSON shown to a founder.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-2/screenshots/step-4.png",
+    "suggested_fix": "Render writes as a mail card (as the Carta mail card does) and hide tool ids.",
+    "files_likely_involved": [
+      "apps/web chat approval card"
+    ]
+  },
+  {
+    "id": "F-CA-2-3",
+    "story_id": "STORY-CA-2",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Importance encoding",
+    "score": "warn",
+    "description": "'Denied' is shown in the same green as 'Allowed once' and 'Answered'.",
+    "expected": "Denial reads neutral or distinct from approval.",
+    "actual": "Green 'Denied' label.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-2/screenshots/step-7.png",
+    "suggested_fix": "Use a neutral/muted color for denied.",
+    "files_likely_involved": [
+      "apps/web chat approval card"
+    ]
+  },
+  {
+    "id": "F-CA-2-4",
+    "story_id": "STORY-CA-2",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Recovery after Deny",
+    "score": "warn",
+    "description": "After I denied the second send (test2@), the agent produced a new approval card to send the first email (test@, 'Hello') again, which had already been sent. Possibly demo-model behavior, not verified with a real model.",
+    "expected": "After Deny the agent stops and says nothing was sent.",
+    "actual": "A fresh Allow once / Deny card for an earlier message appeared (step-7); I denied it too.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-2/screenshots/step-7.png",
+    "suggested_fix": "Confirm the agent does not retry a denied write; add a test.",
+    "files_likely_involved": [
+      "apps/api agent loop"
+    ]
+  },
+  {
+    "id": "F-CA-2-5",
+    "story_id": "STORY-CA-2",
+    "severity": "suggestion",
+    "category": "simplicity",
+    "criterion": "Help text",
+    "score": "warn",
+    "description": "The switch hint 'Off: the agent only reads. On: it can also make changes...' stays the same in both states.",
+    "expected": "Show the sentence for the current state only.",
+    "actual": "Static two-state sentence (step-2).",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-2/screenshots/step-2.png",
+    "suggested_fix": "Switch the hint text with the state.",
+    "files_likely_involved": [
+      "IntegrationAgentSection.tsx"
+    ]
+  }
+]

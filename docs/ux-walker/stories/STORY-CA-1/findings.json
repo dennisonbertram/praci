@@ -1,0 +1,83 @@
+[
+  {
+    "id": "F-CA-1-1",
+    "story_id": "STORY-CA-1",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Defaults / decision load",
+    "score": "warn",
+    "description": "New Sales mail agent was also switched on in the Founder mail account's Used by list, and Only this agent is off, so Sales mail stays readable by all 8 other bots.",
+    "expected": "A dedicated agent for one account has access only to that account; the exclusive default matches Carta's (on).",
+    "actual": "Used by (Founder mail) shows 'Sales mail (Mock) agent' on; Only this agent is off for the Sales row.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/step-4.png",
+    "suggested_fix": "Do not add the new agent to other accounts' access; consider defaulting Only this agent on, as Carta does.",
+    "files_likely_involved": [
+      "apps/web/src/pages/integrations/AppDetail.tsx",
+      "IntegrationAgentSection.tsx"
+    ]
+  },
+  {
+    "id": "F-CA-1-2",
+    "story_id": "STORY-CA-1",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Dead ends / next step",
+    "score": "warn",
+    "description": "Create agent lands on a blank chat: no greeting, no hint that the agent is read-only, no link back to the app page.",
+    "expected": "A first message or pointer (as the Carta agent chat has) that says what the agent can do.",
+    "actual": "Empty thread titled 'Sales mail (Mock) agent' with only the composer.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/step-3.png",
+    "suggested_fix": "Show a short intro or suggested prompts for connected-app agents.",
+    "files_likely_involved": [
+      "apps/web chat empty state"
+    ]
+  },
+  {
+    "id": "F-CA-1-3",
+    "story_id": "STORY-CA-1",
+    "severity": "low",
+    "category": "layout",
+    "criterion": "Responsive behavior",
+    "score": "warn",
+    "description": "At 390px the account row buttons wrap unevenly: Founder row has Rename on the title line and Create agent / Remove account below; Sales row has Rename on the title line and Remove account alone.",
+    "expected": "Buttons stay in one consistent group.",
+    "actual": "Mixed placement per row (see image).",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/mobile-check.png",
+    "suggested_fix": "Stack the row actions in one wrapped group under the name.",
+    "files_likely_involved": [
+      "apps/web/src/pages/integrations/AppDetail.tsx"
+    ]
+  },
+  {
+    "id": "F-CA-1-4",
+    "story_id": "STORY-CA-1",
+    "severity": "low",
+    "category": "layout",
+    "criterion": "Spacing / scroll",
+    "score": "warn",
+    "description": "Creating an agent moves Used by from a page-level list into the first account row, which pushes the Sales row's Agent card to y=741+ of an 800px viewport; the page needed 1500px to see it.",
+    "expected": "Agent controls for the account just acted on stay visible.",
+    "actual": "Agent card below the fold at 1280x800 (step-4 shows only the Sales row heading).",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/step-4.png",
+    "suggested_fix": "Collapse Used by per account, or show it only on demand.",
+    "files_likely_involved": [
+      "apps/web/src/pages/integrations/AppDetail.tsx"
+    ]
+  },
+  {
+    "id": "F-CA-1-5",
+    "story_id": "STORY-CA-1",
+    "severity": "low",
+    "category": "simplicity",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "The hint copy repeats the account name three times: 'Allow changes in Sales mail (Mock)', 'Other agents ask the Sales mail (Mock) agent instead of using Sales mail (Mock) themselves.'",
+    "expected": "Shorter wording, e.g. 'Other agents ask this agent instead.'",
+    "actual": "Account name x3 plus agent name inside one card under a row already titled Sales mail (Mock).",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/step-5.png",
+    "suggested_fix": "Use 'this account' / 'this agent' inside the account row.",
+    "files_likely_involved": [
+      "IntegrationAgentSection.tsx"
+    ]
+  }
+]

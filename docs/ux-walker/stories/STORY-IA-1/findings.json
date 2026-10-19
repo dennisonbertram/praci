@@ -1,0 +1,101 @@
+[
+  {
+    "id": "F-IA-1-01",
+    "story_id": "IA-1",
+    "severity": "high",
+    "category": "flow",
+    "criterion": "One way to the task / dead ends",
+    "score": "fail",
+    "description": "The Mercury, Brex and Blockscout tiles on the Integrations grid have no link to their detail page. Gmail and Carta tiles link to it. The only link on the Mercury tile is Open Finance, so Create agent, Allow changes and Only this agent cannot be reached by clicking.",
+    "expected": "Clicking the Mercury tile opens its detail page.",
+    "actual": "Tile title and body are plain divs (no anchor); the page was only reachable by typing /app/integrations/mcp/<id>. Finance page has no settings link either.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-1/screenshots/step-1.png",
+    "suggested_fix": "Make the whole tile or its title a link to the MCP detail page, as Carta's is.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/IntegrationsPage.tsx"
+    ]
+  },
+  {
+    "id": "F-IA-1-02",
+    "story_id": "IA-1",
+    "severity": "medium",
+    "category": "simplicity",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "Right after Create agent, the Used by list shows Mercury agent with a switch on, duplicating the Agent section above it. The switch can be turned off, which would cut the agent off from its own server.",
+    "expected": "Agent row appears once, in the Agent section.",
+    "actual": "Mercury agent is also a Used by row with a live switch.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-1/screenshots/step-5.png",
+    "suggested_fix": "Hide the integration agent from Used by, or make its row non-interactive.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/McpDetail.tsx",
+      "apps/web/src/components/integrations/IntegrationAgentSection.tsx"
+    ]
+  },
+  {
+    "id": "F-IA-1-03",
+    "story_id": "IA-1",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Component consistency",
+    "score": "warn",
+    "description": "The detail page header shows a grey M placeholder tile, while the grid tile showed the Mercury logo.",
+    "expected": "Same logo on both.",
+    "actual": "Letter placeholder on detail page.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-1/screenshots/step-3.png",
+    "suggested_fix": "Reuse the AppLogo used by the grid.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/McpDetail.tsx",
+      "apps/web/src/components/integrations/IntegrationAgentSection.tsx"
+    ]
+  },
+  {
+    "id": "F-IA-1-04",
+    "story_id": "IA-1",
+    "severity": "low",
+    "category": "happy-path",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "Create agent sits next to Reconnect with no hint of what it does (confirms the story's predicted hesitation).",
+    "expected": "A short reason or tooltip, or a clearer label.",
+    "actual": "Bare label.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-1/screenshots/step-3.png",
+    "suggested_fix": "Add a tooltip or put the agent offer in its own block above Used by.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/McpDetail.tsx",
+      "apps/web/src/components/integrations/IntegrationAgentSection.tsx"
+    ]
+  },
+  {
+    "id": "F-IA-1-05",
+    "story_id": "IA-1",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Component consistency",
+    "score": "warn",
+    "description": "The new Mercury agent gets exactly the same avatar as Finance agent, and Legal agent is nearly the same heart in blue, so the sidebar rows are hard to tell apart by icon.",
+    "expected": "Distinct avatars for bots that sit next to each other.",
+    "actual": "Same avatar as Finance agent (later re-created agent got a different purple one).",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-1/screenshots/step-4.png",
+    "suggested_fix": "Pick avatar to avoid existing ones.",
+    "files_likely_involved": [
+      "apps/api/src/integration-agent.ts"
+    ]
+  },
+  {
+    "id": "F-IA-1-06",
+    "story_id": "IA-1",
+    "severity": "suggestion",
+    "category": "disclosure",
+    "criterion": "Empty states",
+    "score": "warn",
+    "description": "The new agent's chat is completely empty, no greeting or example question.",
+    "expected": "One short starter line or suggestion chips for a first message.",
+    "actual": "Blank thread.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-1/screenshots/step-4.png",
+    "suggested_fix": "Seed a first assistant message.",
+    "files_likely_involved": [
+      "apps/api/src/integration-agent.ts"
+    ]
+  }
+]

@@ -1,0 +1,35 @@
+[
+  {
+    "id": "F-IA-7-01",
+    "story_id": "IA-7",
+    "severity": "medium",
+    "category": "flow",
+    "criterion": "Dead ends / data",
+    "score": "warn",
+    "description": "Create agent after archiving makes a fresh bot. The conversation, including the earlier payment approvals, stays in the archived bot and the new chat is empty.",
+    "expected": "Either restore the same agent or tell Maya the old history is archived.",
+    "actual": "New empty chat, old bot stays in Archived (count 2).",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-7/screenshots/step-4.png",
+    "suggested_fix": "Restore the archived agent when one exists, or say so on the button.",
+    "files_likely_involved": [
+      "apps/api/src/integration-agent.ts"
+    ]
+  },
+  {
+    "id": "F-IA-7-02",
+    "story_id": "IA-7",
+    "severity": "low",
+    "category": "flow",
+    "criterion": "Feedback",
+    "score": "warn",
+    "description": "Archiving the agent gives no dialog or note that this also releases Mercury and resets Allow changes and Only this agent. An open copy of the Mercury page still showed the old Agent section until reloaded.",
+    "expected": "State change is visible or announced.",
+    "actual": "Silent change; stale page.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-7/screenshots/step-2.png",
+    "suggested_fix": "Refetch the server on bot changes; mention the release in the archive confirm.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/McpDetail.tsx",
+      "apps/web/src/components/integrations/IntegrationAgentSection.tsx"
+    ]
+  }
+]

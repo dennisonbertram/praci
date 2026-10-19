@@ -1,0 +1,19 @@
+[
+  {
+    "id": "F-NA-6-1",
+    "story_id": "STORY-NA-6",
+    "severity": "medium",
+    "category": "visual",
+    "criterion": "Visual correctness / happy path",
+    "score": "warn",
+    "description": "Same root cause as F-NA-1-1: with logos unavailable, Google Calendar, Google Drive and GitHub all show the letter 'G' on the Integrations tiles, so the tile logos cannot tell the apps apart; the story's check 'three different logos' fails in this environment. Not verified with real logos.",
+    "expected": "Three different logos in the pill, each once; same image as the tile.",
+    "actual": "Before Slack was connected the pill showed 'G, G, S' (see STORY-NA-2 step-0.png); step-1.png was taken after NA-4 connected Slack, so it shows 'G, G, N'. Integrations tiles show G (Calendar), G (Drive), S (Slack) in STORY-NA-2 step-2.png. Slack appears once in Popular (before I connected it) and the pill shows it once.",
+    "screenshot": "docs/ux-walker/stories/STORY-NA-6/screenshots/step-1.png",
+    "suggested_fix": "As F-NA-1-1.",
+    "files_likely_involved": [
+      "apps/web/src/components/ConnectAppsButton.tsx",
+      "apps/web/src/components/integrations/AppLogo.tsx"
+    ]
+  }
+]

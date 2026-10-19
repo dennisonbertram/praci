@@ -1,0 +1,35 @@
+[
+  {
+    "id": "F-IA-6-01",
+    "story_id": "IA-6",
+    "severity": "high",
+    "category": "flow",
+    "criterion": "Primary goal",
+    "score": "fail",
+    "description": "With Only this agent on, Chief does not ask the Mercury agent. It tells Maya to go to the Mercury agent's chat herself, even when told to message it. The promise on the page (Other agents ask the Mercury agent instead) does not hold, so Maya loses Mercury answers in every other chat. The reply also carries an unrelated Open Finance link.",
+    "expected": "Chief gets the answer from the Mercury agent and replies with it.",
+    "actual": "Chief refuses and redirects the user.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-6/screenshots/step-3b.png",
+    "suggested_fix": "Check that message_bot is available to Chief and described in the agent's directory entry.",
+    "files_likely_involved": [
+      "apps/api/src/integration-agent.ts"
+    ]
+  },
+  {
+    "id": "F-IA-6-02",
+    "story_id": "IA-6",
+    "severity": "medium",
+    "category": "happy-path",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "Only this agent: for a first-time user the label could mean this agent is the only one that exists. The hint underneath does explain it. After turning it on, Used by quietly shrinks from nine rows to one with no note that other agents lost Mercury (Finance agent's Mercury switch had been on).",
+    "expected": "Label says what changes, e.g. Other agents ask this agent instead; Used by explains the hidden rows.",
+    "actual": "Terse label; rows vanish.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-6/screenshots/step-2.png",
+    "suggested_fix": "Reword label or add a one-line note in Used by: Other agents ask the Mercury agent instead.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/McpDetail.tsx",
+      "apps/web/src/components/integrations/IntegrationAgentSection.tsx"
+    ]
+  }
+]

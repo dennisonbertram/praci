@@ -1,0 +1,67 @@
+[
+  {
+    "id": "F-CA-6-1",
+    "story_id": "STORY-CA-6",
+    "severity": "high",
+    "category": "error-handling",
+    "criterion": "Data exposure / matches proposal",
+    "score": "fail",
+    "description": "The agent offered to save the draft 'with the investors Bcc'd', but the approval card puts all three investors in To, showing each investor's address to the others. Demo-model output; the card does show recipients plainly.",
+    "expected": "Recipients in Bcc as offered, or a warning on multiple external To addresses.",
+    "actual": "To: Dana Fakename, Priya Placeholder, Lee Notarealperson (step-4).",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-6/screenshots/step-4.png",
+    "suggested_fix": "Default investor updates to Bcc and flag multi-recipient To on the card.",
+    "files_likely_involved": [
+      "apps/api/src/carta-agent.ts",
+      "mail approval card"
+    ]
+  },
+  {
+    "id": "F-CA-6-2",
+    "story_id": "STORY-CA-6",
+    "severity": "medium",
+    "category": "visual",
+    "criterion": "Broken elements",
+    "score": "warn",
+    "description": "The mail card body shows raw markdown ('**Highlights**', '- TBD') while the chat message above renders it.",
+    "expected": "Rendered or plain text body.",
+    "actual": "Literal asterisks in the card.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-6/screenshots/step-5.png",
+    "suggested_fix": "Strip or render markdown in the card.",
+    "files_likely_involved": [
+      "mail approval card"
+    ]
+  },
+  {
+    "id": "F-CA-6-3",
+    "story_id": "STORY-CA-6",
+    "severity": "low",
+    "category": "flow",
+    "criterion": "Primary action before review",
+    "score": "warn",
+    "description": "The card shows Send before the user has expanded the truncated body ('Show more').",
+    "expected": "Body visible, or Send after review.",
+    "actual": "Body clipped at about 5 lines with Send visible.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-6/screenshots/step-4.png",
+    "suggested_fix": "Show full body or label the clip.",
+    "files_likely_involved": [
+      "mail approval card"
+    ]
+  },
+  {
+    "id": "F-CA-6-4",
+    "story_id": "STORY-CA-6",
+    "severity": "low",
+    "category": "simplicity",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "Draft is signed 'Alex' although the user is Maya Chen; it also has a trailing 'TBD: Q3 highlights...' line repeating the TBD sections.",
+    "expected": "Signature from the account holder; one TBD notice.",
+    "actual": "'Thanks, Alex' and duplicate TBD note.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-6/screenshots/step-3.png",
+    "suggested_fix": "Use the user's name.",
+    "files_likely_involved": [
+      "apps/api/src/carta-agent.ts"
+    ]
+  }
+]

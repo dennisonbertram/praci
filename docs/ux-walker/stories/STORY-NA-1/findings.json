@@ -1,0 +1,51 @@
+[
+  {
+    "id": "F-NA-1-1",
+    "story_id": "STORY-NA-1",
+    "severity": "medium",
+    "category": "visual",
+    "criterion": "Visual correctness / Happy path labels",
+    "score": "warn",
+    "description": "In the pill, the Google Calendar, Google Drive and Gmail-class logos all render as the same grey letter 'G'. The logo requests to cdn.simpleicons.org did not load in this sandbox (no internet), so the letter fallback showed. The story lists this as a known edge case.",
+    "expected": "Three recognizable, different apps in the pill, or a way to learn their names.",
+    "actual": "Pill shows 'G G G' (empty space) and 'G G S' (main space); no tooltip or label names the apps.",
+    "screenshot": "docs/ux-walker/stories/STORY-NA-1/screenshots/step-2.png",
+    "suggested_fix": "Make the fallback distinguishable (for Google apps use a different letter/color, or a short name), and/or add a tooltip naming the apps. Real logos not verified: needs a run with internet.",
+    "files_likely_involved": [
+      "apps/web/src/components/ConnectAppsButton.tsx",
+      "apps/web/src/components/integrations/AppLogo.tsx"
+    ]
+  },
+  {
+    "id": "F-NA-1-2",
+    "story_id": "STORY-NA-1",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Visual correctness (hover / contrast)",
+    "score": "warn",
+    "description": "Pill resting background (#252523) is nearly the same as the sidebar (#222220); hover is #2a2927, a 5-level change. Hover feedback is barely visible and the pill reads as plain text with a faint outline. As the only call to action in the sidebar it is low-emphasis.",
+    "expected": "Visible hover change; pill noticeable as the way to connect apps.",
+    "actual": "Measured computed colors: rest rgb(37,37,35), hover rgb(42,41,39). Screenshot hover shows no visible change.",
+    "screenshot": "docs/ux-walker/stories/STORY-NA-1/screenshots/step-2.png",
+    "suggested_fix": "Use a slightly stronger hover token or border change.",
+    "files_likely_involved": [
+      "apps/web/src/components/ConnectAppsButton.tsx"
+    ]
+  },
+  {
+    "id": "F-NA-1-3",
+    "story_id": "STORY-NA-1",
+    "severity": "low",
+    "category": "a11y",
+    "criterion": "Interactive sizing",
+    "score": "warn",
+    "description": "Pill is 35px high (touch target below 44px) in both desktop and mobile drawer.",
+    "expected": "Touch target at least 44px on mobile.",
+    "actual": "Measured height 35px, width 291px.",
+    "screenshot": "docs/ux-walker/stories/STORY-NA-1/screenshots/mobile-drawer.png",
+    "suggested_fix": "Increase vertical padding on the mobile drawer.",
+    "files_likely_involved": [
+      "apps/web/src/components/ConnectAppsButton.tsx"
+    ]
+  }
+]
