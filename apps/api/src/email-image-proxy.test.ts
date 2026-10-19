@@ -25,6 +25,7 @@ function setup(
     app,
     {
       secret: SECRET,
+      now,
       fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
         calls.push(String(input));
         expect(new Headers(init?.headers).get("cookie")).toBeNull();
@@ -116,6 +117,30 @@ describe("email image proxy", () => {
       (await get(setup(() => image("image/png", big)).app, "https://img.example.test/big.png"))
         .status,
     ).toBe(502);
+  });
+});
+
+describe("email image proxy expiry", () => {
+  it("rejects an expired link and a link whose expiry was edited", async () => {
+    const { app, calls } = setup(
+      () => image(),
+      actorOf(user1),
+      undefined,
+      () => 1_000_000,
+    );
+    const url = "https://img.example.test/a.png";
+    expect((await app.request(signedImageUrl(SECRET, url, user1, 1_000_001))).status).toBe(200);
+    expect((await app.request(signedImageUrl(SECRET, url, user1, 1_000_000))).status).toBe(403);
+    const edited = signedImageUrl(SECRET, url, user1, 1_000_001).replace("e=1000001", "e=9999999");
+    expect((await app.request(edited)).status).toBe(403);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("issues a link that lasts 24 hours", () => {
+    const link = signedImageUrl(SECRET, "https://a.test/x.png", user1);
+    const exp = Number(new URL(link, "http://x").searchParams.get("e"));
+    expect(exp - Date.now()).toBeGreaterThan(23.9 * 3600_000);
+    expect(exp - Date.now()).toBeLessThanOrEqual(24 * 3600_000);
   });
 });
 

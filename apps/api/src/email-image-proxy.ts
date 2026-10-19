@@ -14,23 +14,38 @@ const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/webp
 type Scope = Pick<Actor, "userId" | "spaceId">;
 
 /** HMAC over the target and the person it was made for. The prefix keeps it from matching any other use of the secret. */
-function sign(secret: string, url: string, scope: Scope): string {
+function sign(secret: string, url: string, scope: Scope, exp: number): string {
   return createHmac("sha256", secret)
-    .update(`email-image\0${scope.userId}\0${scope.spaceId}\0${url}`)
+    .update(`email-image\0${scope.userId}\0${scope.spaceId}\0${exp}\0${url}`)
     .digest("base64url");
 }
 
-export function signedImageUrl(secret: string, url: string, scope: Scope): string {
+const TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+
+/** `exp` is when the link stops working, in epoch milliseconds; each message open issues fresh links. */
+export function signedImageUrl(
+  secret: string,
+  url: string,
+  scope: Scope,
+  exp = Date.now() + TOKEN_TTL_MS,
+): string {
   const params = new URLSearchParams({
     u: url,
     s: `${scope.userId}.${scope.spaceId}`,
-    t: sign(secret, url, scope),
+    e: String(exp),
+    t: sign(secret, url, scope, exp),
   });
   return `${IMAGE_PROXY_PATH}?${params}`;
 }
 
-function validToken(secret: string, url: string, token: string, scope: Scope): boolean {
-  const a = Buffer.from(sign(secret, url, scope));
+function validToken(
+  secret: string,
+  url: string,
+  token: string,
+  scope: Scope,
+  exp: number,
+): boolean {
+  const a = Buffer.from(sign(secret, url, scope, exp));
   const b = Buffer.from(token);
   return a.length === b.length && timingSafeEqual(a, b);
 }
@@ -59,6 +74,7 @@ export interface ImageProxyOptions {
   /** Test seams for the guarded fetch. */
   fetch?: SafeWebFetchOptions["fetch"];
   resolveHostname?: SafeWebFetchOptions["resolveHostname"];
+  now?: () => number;
 }
 
 const SECURITY_HEADERS = {
@@ -80,12 +96,19 @@ export function mountEmailImageProxy(
   app.get(IMAGE_PROXY_PATH, async (c) => {
     const target = c.req.query("u") ?? "";
     const token = c.req.query("t") ?? "";
+    const exp = Number(c.req.query("e"));
     const actor = await authenticate(c.req.raw);
     // The token carries the user and space; try the session's, then reject when there is none to match against.
     const scope = actor
       ? { userId: actor.userId, spaceId: actor.spaceId }
       : parseScope(c.req.query("s"));
-    if (!scope || !target || !validToken(options.secret, target, token, scope)) {
+    if (
+      !scope ||
+      !target ||
+      !Number.isFinite(exp) ||
+      exp <= (options.now ?? Date.now)() ||
+      !validToken(options.secret, target, token, scope, exp)
+    ) {
       return c.json({ error: "Forbidden" }, 403);
     }
     try {
