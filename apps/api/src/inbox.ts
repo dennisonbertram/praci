@@ -35,7 +35,6 @@ export interface InboxDeps {
 
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_ROWS = 200;
-const DONE_VISIBLE_MS = 86_400_000;
 const SYNC_PARALLELISM = 4;
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 /** Messages asked of Gmail per account for one page of a filtered or searched list. */
@@ -685,7 +684,7 @@ export async function inboxTodosList(
       spaceId: actor.spaceId,
       userId: actor.userId,
       connectionId: input.connectionId ?? { in: connections.map((c) => c.id) },
-      OR: [{ doneAt: null }, { doneAt: { gte: new Date(Date.now() - DONE_VISIBLE_MS) } }],
+      doneAt: null,
     },
     include: todoInclude,
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],

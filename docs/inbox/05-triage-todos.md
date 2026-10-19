@@ -263,8 +263,7 @@ Every call uses the `authed` middleware and filters on `actor.spaceId` and `acto
 row id that belongs to someone else gives `NOT_FOUND`.
 
 - `inbox.todos.list({ connectionId? }) → { enabled: boolean, todos: InboxTodo[] }`. It returns
-  open to-dos plus those finished in the last 24 hours, so a checked item stays visible with a
-  strike-through until the next day. `connectionId` filters for the per-account tabs.
+  open to-dos only. The page keeps a just-checked item struck through while it fades out. `connectionId` filters for the per-account tabs.
 - `inbox.todos.setDone({ id, done }) → InboxTodo`. It sets or clears `doneAt` and always sets
   `touchedAt`. This is the only write the mockup needs.
 - Item 4's `inbox.list` adds `priority` and `reason` to each row, the same `enabled`
