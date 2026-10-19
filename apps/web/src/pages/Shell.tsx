@@ -367,7 +367,7 @@ import {
   ChoiceCard,
   McpApprovalCard,
 } from "./shell/message-cards";
-import { SidebarHeaderRow } from "./shell/sidebar-header-row";
+import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
 import { WindowChrome } from "./WindowChrome";
 
@@ -4592,8 +4592,8 @@ export function ShellPage() {
         <div
           className={`app-drag flex items-center justify-between px-3 md:px-[22px] ${
             pageMode
-              ? `py-2${botsSidebarCollapsed ? "" : " md:hidden"}`
-              : "border-b border-sidebar-border py-[17px]"
+              ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " md:hidden"}`
+              : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
           }`}
         >
           <div className="flex min-w-0 items-center gap-2">
