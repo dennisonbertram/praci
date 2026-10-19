@@ -69,6 +69,8 @@ export const BUILTIN_TOOL_NAMES = [
   "search_data_room",
   "read_data_room_item",
   "add_to_data_room",
+  "read_spreadsheet",
+  "create_spreadsheet",
   "workspace_agents",
   "agent_context",
   "search_agent_history",

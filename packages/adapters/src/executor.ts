@@ -431,6 +431,12 @@ import {
   skillReadFromTool,
   skillUpdateFromTool,
 } from "./skill-tools.js";
+import {
+  createSpreadsheetBytes,
+  readSpreadsheetTool,
+  SPREADSHEET_GUIDANCE,
+  spreadsheetAttachmentSummary,
+} from "./spreadsheet-tools.js";
 import type { TakeoverResumeCheckpoint } from "./takeover-resume.js";
 import {
   continueRunClaimFence,
@@ -4120,7 +4126,30 @@ export function createRunExecutor(deps: ExecutorDeps) {
           await workspaceCheckpoint.flush().catch(() => undefined);
           throw error;
         }
-        const attachedFilesPrompt = currentTurnFilesInstruction(currentTurnFiles);
+        const spreadsheetSummary = deps.artifacts
+          ? await spreadsheetAttachmentSummary(
+              {
+                prisma: deps.prisma,
+                artifacts: deps.artifacts,
+                scope: { spaceId: run.spaceId, userId: run.userId },
+              },
+              turnBlocks,
+              context,
+              {
+                toolOffered:
+                  !voiceAgent && !(bot.disabledBuiltinTools ?? []).includes("read_spreadsheet"),
+              },
+            ).catch((error: unknown) => {
+              if (context.signal.aborted) throw error;
+              return "";
+            })
+          : "";
+        const attachedFilesPrompt = [
+          currentTurnFilesInstruction(currentTurnFiles),
+          spreadsheetSummary,
+        ]
+          .filter(Boolean)
+          .join("\n\n");
         const graphical =
           computer.kind !== "desktop" && deps.sandbox.describe().capabilities.graphical;
         // Gate on the model this run will actually call — the pair written to the run row
@@ -5770,6 +5799,35 @@ export function createRunExecutor(deps: ExecutorDeps) {
               return failAttach(error instanceof Error ? error.message : "could not attach file");
             }
           }
+          if (name === "create_spreadsheet") {
+            if (!deps.artifacts) return finish({ error: "artifact storage unavailable" });
+            const built = createSpreadsheetBytes(args);
+            if ("error" in built) return finish(built);
+            const requested = typeof args.name === "string" ? args.name.trim() : "";
+            const fileName = `${(requested || "spreadsheet").replace(/[\\/]/g, "_").replace(/\.xlsx$/i, "")}.xlsx`;
+            try {
+              const attached = await attachWorkspaceFileToThread(
+                { prisma: deps.prisma, artifacts: deps.artifacts },
+                {
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  botId: bot.id,
+                  groupId: thread.groupId ?? undefined,
+                  runId: run.id,
+                  filePath: fileName,
+                  bytes: built.bytes,
+                  operationId: executionId,
+                  description: typeof args.description === "string" ? args.description : undefined,
+                },
+              );
+              await publishMessage(deps, run, "bot", [attached.block]);
+              return finish({ ok: true, artifactId: attached.artifactId, name: fileName });
+            } catch (error) {
+              return finish({
+                error: error instanceof Error ? error.message : "could not create the spreadsheet",
+              });
+            }
+          }
           if (name === "shell") {
             const command = String(args.command ?? args.cmd ?? "");
             const refusal = protectedComputerLifecycleRefusal(command);
@@ -6083,6 +6141,35 @@ export function createRunExecutor(deps: ExecutorDeps) {
               await recordApprovedMailOutcome(deps, run, applied.effect.id, name, result);
             }
             return finish(result);
+          }
+          if (name === "read_spreadsheet") {
+            if (!deps.artifacts) return finish({ error: "artifact storage unavailable" });
+            const read = () =>
+              readSpreadsheetTool(
+                {
+                  prisma: deps.prisma,
+                  artifacts: deps.artifacts as ArtifactStore,
+                  scope: { spaceId: run.spaceId, userId: run.userId },
+                  dataRoomEnabled,
+                  deniedConnectionIds: [...deniedIds],
+                },
+                context,
+                args,
+              );
+            // A Legal run sends Data room content to its own model, so it needs the same consent.
+            return finish(
+              legalOnly && args.item_id
+                ? await legalDataRoomGate(
+                    {
+                      prisma: deps.prisma,
+                      scope: { spaceId: run.spaceId, userId: bot.userId },
+                      allowed: async () => (await legalRunAi()).allowed,
+                    },
+                    name,
+                    read,
+                  )
+                : await read(),
+            );
           }
           if (DATA_ROOM_TOOL_NAMES.has(name) && deps.artifacts && dataRoomEnabled) {
             const artifacts = deps.artifacts;
@@ -9162,6 +9249,7 @@ export function userTurnInstructions(parts: {
       : undefined,
     parts.agentSkillsLine,
     parts.taughtSkillsLine,
+    offeredBuiltinClause(parts.disabledBuiltinTools, "read_spreadsheet", SPREADSHEET_GUIDANCE),
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "render_plot",

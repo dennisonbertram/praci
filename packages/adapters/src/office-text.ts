@@ -1,7 +1,7 @@
 import { Unzip, UnzipInflate, UnzipPassThrough } from "fflate";
 
 // An Office file is an untrusted zip: bound what it may expand to and how much work it costs.
-const MAX_INPUT_BYTES = 50 * 1024 * 1024;
+export const MAX_INPUT_BYTES = 50 * 1024 * 1024;
 const MAX_UNZIPPED_BYTES = 50 * 1024 * 1024;
 const MAX_ENTRIES = 2_000;
 /** Input is fed in slices so inflation can stop between them; one slice expands to ~16 MB at most. */
@@ -17,7 +17,7 @@ export const OFFICE_TYPES = {
 export type OfficeKind = (typeof OFFICE_TYPES)[keyof typeof OFFICE_TYPES];
 
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'" };
-const decode = (s: string) =>
+export const decode = (s: string) =>
   s.includes("&")
     ? s.replace(/&(#x[0-9a-f]+|#\d+|amp|lt|gt|quot|apos);/gi, (m, e: string) => {
         if (e[0] !== "#") return ENTITIES[e.toLowerCase()] ?? m;
@@ -46,7 +46,7 @@ class Budget {
  * Walks the tags of an XML fragment in one forward pass (each `indexOf` only moves ahead, so cost
  * is linear even for unclosed or hostile markup). `onTag` and `onText` return false to stop.
  */
-function walk(
+export function walk(
   xml: string,
   onTag: (name: string, closing: boolean, selfClosing: boolean, attrs: string) => boolean | void,
   onText: (text: string) => boolean | void,
@@ -167,7 +167,10 @@ function sheetText(xml: string, shared: string[], budget: Budget): string {
  * Reads the wanted entries of a zip, inflating in slices and stopping an entry the moment it
  * passes the shared byte budget. Sizes declared in the zip are never trusted.
  */
-function readEntries(bytes: Uint8Array, wanted: RegExp): Record<string, Uint8Array> {
+export function readEntries(
+  bytes: Uint8Array,
+  wanted: RegExp,
+): { files: Record<string, Uint8Array>; overBudget: boolean } {
   const files: Record<string, Uint8Array> = {};
   let entries = 0;
   let total = 0;
@@ -202,7 +205,7 @@ function readEntries(bytes: Uint8Array, wanted: RegExp): Record<string, Uint8Arr
   for (let at = 0; at < bytes.length && !overBudget; at += SLICE_BYTES) {
     unzip.push(bytes.subarray(at, at + SLICE_BYTES), at + SLICE_BYTES >= bytes.length);
   }
-  return files;
+  return { files, overBudget };
 }
 
 /** Text of a .docx, .xlsx or .pptx, read locally from its XML. Unreadable or oversized input gives "". */
@@ -215,7 +218,7 @@ export function extractOfficeText(bytes: Uint8Array, kind: OfficeKind): string {
   };
   let files: Record<string, Uint8Array>;
   try {
-    files = readEntries(bytes, want[kind]);
+    files = readEntries(bytes, want[kind]).files;
   } catch {
     return "";
   }
