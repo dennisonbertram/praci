@@ -716,6 +716,7 @@ msgstr ""
 msgid "Add email for {0}"
 msgstr ""
 
+#: src/components/data-room/DataRoomImportMenu.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr ""
@@ -764,6 +765,7 @@ msgid "Add your OpenRouter key above to start. The Legal agent then reads your D
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/pages/Artifacts.tsx
 msgid "Added"
@@ -1496,6 +1498,7 @@ msgid "Bots with their own computer and browser"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
 msgstr ""
 
@@ -2251,16 +2254,8 @@ msgstr ""
 msgid "Connect Executor"
 msgstr "Executor कनेक्ट करें"
 
-#: src/components/data-room/ImportFromEmail.tsx
-msgid "Connect Gmail"
-msgstr ""
-
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
-msgstr ""
-
-#: src/components/data-room/ImportFromDrive.tsx
-msgid "Connect Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3427,6 +3422,7 @@ msgstr ""
 msgid "Document date"
 msgstr ""
 
+#: src/components/data-room/FolderDocuments.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr ""
@@ -3587,6 +3583,7 @@ msgstr ""
 msgid "Edit wallet"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 msgid "Email"
@@ -4086,6 +4083,7 @@ msgid "Google apps"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr ""
 
@@ -5198,6 +5196,7 @@ msgid "Mute"
 msgstr "म्यूट करें"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -8426,6 +8425,7 @@ msgid "Turn on a model and allow AI access to sort files."
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx

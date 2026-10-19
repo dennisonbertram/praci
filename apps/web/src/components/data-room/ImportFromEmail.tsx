@@ -10,9 +10,13 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Input,
 } from "@rakazo/ui-web";
-import { Mail } from "lucide-react";
+import { Box, ChevronDown, Download, HardDrive, Mail } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { dataRoomImportStarted } from "../../lib/data-room";
@@ -22,12 +26,14 @@ import { errorText } from "../../lib/user-error";
 import { DriveRow } from "./DriveRow";
 import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
 import { dateText, failedText, importedText, isNoiseImage } from "./format";
-import { BoxImportButton, DriveImportButton } from "./ImportFromDrive";
+import { DrivePicker } from "./ImportFromDrive";
 
 const SEARCH_DEBOUNCE_MS = 300;
 /** The most attachments one import call accepts. */
 const MAX_PICKS = 20;
 const GMAIL_PAGE = "/app/integrations/app/google/gmail";
+const DRIVE_PAGE = "/app/integrations/app/google/googledrive";
+const BOX_CONNECT = "/app/integrations?connect=box";
 
 type Attachment = InboxMessage["attachments"][number];
 /** A message with the documents it carries; `filed` names those already in the Data room. */
@@ -312,28 +318,34 @@ const isConnected = (
     (row) => row.connectorId === "google" && row.provider === app && row.status === "connected",
   );
 
+type Source = "email" | "drive" | "box";
+
 /**
- * One button per import source. Add another source by adding a button here. With no Gmail account
- * connected the email button leads to the connection page instead.
+ * One "Import" menu with an item per source. Add another source by adding an item here. A source
+ * that is not connected stays in the menu and leads to its connection page. Gmail and Drive are
+ * left out when the server's catalog does not offer them, so no item leads to a dead end.
  */
 export function ImportSources({
   folderId,
+  ensureFolder,
   onDone,
   compact = false,
 }: {
   folderId: string | null;
+  /** Finds or creates the folder to file into, when choosing a source (instead of `folderId`). */
+  ensureFolder?: () => Promise<string>;
   onDone: (message: string, changed: boolean) => void;
   compact?: boolean;
 }) {
   const navigate = useNavigate();
-  // offered: the server's catalog has the app, so its connection page exists. A button never leads
-  // to the page's "isn't available on this server" dead end.
   const [apps, setApps] = useState<{
     gmail: { connected: boolean; offered: boolean };
     drive: { connected: boolean; offered: boolean };
     box: boolean;
   } | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<Source | null>(null);
+  const [ensured, setEnsured] = useState<string | null>(null);
+  const target = ensureFolder ? ensured : folderId;
   useEffect(() => {
     let current = true;
     const none = { connected: false, offered: false };
@@ -363,33 +375,63 @@ export function ImportSources({
     };
   }, []);
   if (apps === null) return null;
-  const label = apps.gmail.connected ? t`Import from email` : t`Connect Gmail`;
+  const choose = (source: Source, connected: boolean, connectPage: string) => {
+    if (!connected) return navigate(connectPage);
+    if (!ensureFolder) return setOpen(source);
+    ensureFolder()
+      .then((id) => {
+        setEnsured(id);
+        setOpen(source);
+      })
+      .catch((cause) => onDone(errorText(cause), false));
+  };
   return (
     <>
-      {apps.gmail.offered ? (
-        <ToolbarTip label={label} compact={compact}>
-          <Button
-            variant="outline"
-            className={compact ? TOOLBAR_BUTTON : undefined}
-            onClick={() => (apps.gmail.connected ? setOpen(true) : navigate(GMAIL_PAGE))}
+      <DropdownMenu>
+        <ToolbarTip label={t`Import`} compact={compact}>
+          <DropdownMenuTrigger
+            render={<Button variant="outline" className={compact ? TOOLBAR_BUTTON : undefined} />}
           >
-            <Mail aria-hidden="true" />
-            <span className={compact ? TOOLBAR_LABEL : undefined}>{label}</span>
-          </Button>
+            <Download aria-hidden="true" />
+            <span className={compact ? TOOLBAR_LABEL : undefined}>
+              <Trans>Import</Trans>
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className={compact ? "@max-[639px]/bd:hidden" : undefined}
+            />
+          </DropdownMenuTrigger>
         </ToolbarTip>
+        <DropdownMenuContent align="end">
+          {apps.gmail.offered ? (
+            <DropdownMenuItem onClick={() => choose("email", apps.gmail.connected, GMAIL_PAGE)}>
+              <Mail aria-hidden="true" />
+              <Trans>Email</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          {apps.drive.offered ? (
+            <DropdownMenuItem onClick={() => choose("drive", apps.drive.connected, DRIVE_PAGE)}>
+              <HardDrive aria-hidden="true" />
+              <Trans>Google Drive</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onClick={() => choose("box", apps.box, BOX_CONNECT)}>
+            <Box aria-hidden="true" />
+            <Trans>Box</Trans>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {open === "email" ? (
+        <EmailPicker folderId={target} onClose={() => setOpen(null)} onDone={onDone} />
       ) : null}
-      {open ? (
-        <EmailPicker folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
-      ) : null}
-      {apps.drive.offered ? (
-        <DriveImportButton
-          connected={apps.drive.connected}
-          compact={compact}
-          folderId={folderId}
+      {open === "drive" || open === "box" ? (
+        <DrivePicker
+          box={open === "box"}
+          folderId={target}
+          onClose={() => setOpen(null)}
           onDone={onDone}
         />
       ) : null}
-      {apps.box ? <BoxImportButton compact={compact} folderId={folderId} onDone={onDone} /> : null}
     </>
   );
 }

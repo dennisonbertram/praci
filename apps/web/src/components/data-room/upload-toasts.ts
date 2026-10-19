@@ -154,10 +154,12 @@ export function setOpenDataRoomFolder(folderId: string | undefined) {
   openFolder = folderId;
 }
 
-/** Uploads each file into the folder the Data room page shows (else the root), one toast per file. */
-export function uploadFilesToDataRoom(files: Iterable<File>) {
+/**
+ * Uploads each file into `folderId`, else the folder the Data room page shows (else the root), one
+ * toast per file.
+ */
+export function uploadFilesToDataRoom(files: Iterable<File>, folderId = openFolder) {
   sync();
-  const folderId = openFolder;
   for (const file of files) void uploadOne(file, folderId);
 }
 

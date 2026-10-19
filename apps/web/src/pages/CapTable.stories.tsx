@@ -1,5 +1,6 @@
 import type { Contact } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { CapTablePage } from "./CapTable";
 
@@ -211,4 +212,64 @@ export const CapTableLoadFailed: Story = {
         throw new Error("Could not load");
       },
     }),
+};
+
+const capFolders = [
+  { id: "f1", name: "Finance", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  { id: "f2", name: "Cap Table", parentId: "f1", createdAt: "2026-10-01T00:00:00.000Z" },
+];
+const document = (id: string, name: string, docType: string) => ({
+  id,
+  name,
+  mimeType: "application/pdf",
+  size: 120_000,
+  folderId: "f2",
+  source: "upload",
+  sourceUrl: null,
+  status: "ready",
+  error: null,
+  facets: {
+    docType,
+    docDate: null,
+    parties: [],
+    amountCents: null,
+    currency: null,
+    tags: [],
+    summary: null,
+  },
+  createdAt: "2026-10-12T00:00:00.000Z",
+});
+
+/** Files in the Finance / Cap Table Data room folder show under the table. */
+export const WithDocuments: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "dataRoom.folders": capFolders,
+      "dataRoom.items.list": {
+        items: [
+          document("i1", "Example option plan.pdf", "contract"),
+          document("i2", "Sample seed agreement.pdf", "contract"),
+        ],
+        nextCursor: null,
+      },
+    }),
+};
+
+/** The Import menu open: Email, Google Drive and Box, with Box not yet connected. */
+export const ImportMenuOpen: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "connections.list": [],
+      "connections.catalog": [
+        { connectorId: "google", slug: "gmail" },
+        { connectorId: "google", slug: "googledrive" },
+      ],
+    }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByRole("button", { name: "Import" }));
+  },
 };
