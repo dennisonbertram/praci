@@ -2000,6 +2000,10 @@ msgstr ""
 msgid "Collapse {0}"
 msgstr "Contraer {0}"
 
+#: src/components/SidebarPagesGroup.tsx
+msgid "Collapse {title}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Collapse Carta agent"
 msgstr ""
@@ -3721,6 +3725,10 @@ msgstr "Expandir"
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "Expandir {0}"
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Expand {title}"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
@@ -6039,6 +6047,7 @@ msgstr ""
 msgid "PagerDuty incident"
 msgstr "Incidente de PagerDuty"
 
+#: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Pages"
