@@ -104,6 +104,7 @@ const loadedWith =
       "threads.get": { ...thread, botId: bot.id },
       "threads.head": { threadId: "thread_demo", cursor: thread.cursor },
       "threads.messages": { threadId: "thread_demo", messages: [], olderCursor: null },
+      "threads.remembered": { messageIds: ["msg_2"] },
       "routines.list": [],
       "skills.list": [],
       "connections.list": [],

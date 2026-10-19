@@ -226,6 +226,7 @@ model Space {
   dataRoomFolders             DataRoomFolder[]
   dataRoomItems               DataRoomItem[]
   dataRoomImports             DataRoomImport[]
+  dataRoomChanges             DataRoomChange[]
   dataRoomChunks              DataRoomChunk[]
   dataRoomItemTexts           DataRoomItemText[]
   dataRoomSyncStates          DataRoomSyncState[]
@@ -1307,6 +1308,8 @@ model Notification {
   body       String?
   link       String?
   importance NotificationImportance @default(info)
+  /// Sidebar status icon: urgent, needs_input, failed, done or new. Null on older rows (falls back to importance).
+  kind       String?
   dedupeKey  String
   createdAt  DateTime               @default(now())
   seenAt     DateTime?
@@ -1315,6 +1318,7 @@ model Notification {
 
   @@index([spaceId, userId, botId, dedupeKey, createdAt])
   @@index([spaceId, userId, seenAt])
+  @@index([spaceId, userId, botId, seenAt])
   @@index([spaceId, userId, createdAt])
   @@map("notifications")
 }
@@ -2330,6 +2334,31 @@ model DataRoomItem {
   @@index([parties], type: Gin)
   @@index([tags], type: Gin)
   @@map("data_room_items")
+}
+
+/// One reversible change a Data room tidy-up made. Rows of one batch share `batchId`; undo walks them
+/// newest first. Nothing here deletes an item: a folder is deleted only when a merge emptied it.
+model DataRoomChange {
+  id        String    @id @default(cuid())
+  spaceId   String
+  space     Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId    String
+  batchId   String
+  /// Order within the batch.
+  seq       Int
+  /// "create_folder", "delete_folder", "move_folder", "move_item" or "rename_item".
+  kind      String
+  /// The folder or item the change touched.
+  targetId  String
+  before    Json
+  after     Json
+  /// "user" or "agent".
+  actor     String    @default("user")
+  createdAt DateTime  @default(now())
+  undoneAt  DateTime?
+
+  @@index([spaceId, userId, batchId, seq])
+  @@map("data_room_changes")
 }
 
 /// One import of files into the Data room (Drive, Box or email). It finishes when every file is ready,

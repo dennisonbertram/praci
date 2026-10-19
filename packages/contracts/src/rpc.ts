@@ -29,6 +29,8 @@ import {
   DataRoomApiBoxListOutputSchema,
   DataRoomApiDriveListInputSchema,
   DataRoomApiDriveListOutputSchema,
+  DataRoomApiEmailImportedInputSchema,
+  DataRoomApiEmailImportedOutputSchema,
   DataRoomApiFacetValuesSchema,
   DataRoomApiFiltersSchema,
   DataRoomApiFolderSchema,
@@ -48,6 +50,12 @@ import {
   DataRoomConsentGrantInputSchema,
   DataRoomConsentStatusSchema,
 } from "./data-room-api.js";
+import {
+  AutoSortApplyInputSchema,
+  AutoSortApplyOutputSchema,
+  AutoSortPlanSchema,
+  AutoSortUndoOutputSchema,
+} from "./data-room-autosort.js";
 import {
   ActionApprovalRuleSchema,
   ActionAutoReviewSettingsSchema,
@@ -201,7 +209,11 @@ import {
   LegalUpdateDeadlineInputSchema,
 } from "./legal.js";
 import { McpOauthClientSchema } from "./mcp.js";
-import { NotificationSchema, NotificationSignalSchema } from "./notification.js";
+import {
+  NotificationKindSchema,
+  NotificationSchema,
+  NotificationSignalSchema,
+} from "./notification.js";
 import {
   BotPageGetInputSchema,
   BotPageSaveInputSchema,
@@ -512,6 +524,10 @@ export const appContract = {
         }),
       )
       .output(z.object({ ok: z.literal(true) })),
+    remember: oc
+      .input(threadTarget.safeExtend({ messageId: Id }))
+      .output(z.object({ ok: z.literal(true) })),
+    remembered: oc.input(threadTarget).output(z.object({ messageIds: z.array(Id) })),
     stop: oc.input(threadTarget).output(z.object({ ok: z.literal(true) })),
     followUp: oc
       .input(
@@ -1131,13 +1147,17 @@ export const appContract = {
         }),
       ),
     markSeen: oc
-      // `id` or `threadId` narrows it to one notification or one thread on the surface.
+      // `id` or `threadId` narrows it to one notification or one thread on the surface. `botId`
+      // alone marks everything from that agent seen, whatever its surface.
       .input(
-        z.object({
-          surface: z.string().min(1).max(64),
-          id: z.string().min(1).optional(),
-          threadId: z.string().min(1).optional(),
-        }),
+        z
+          .object({
+            surface: z.string().min(1).max(64).optional(),
+            botId: z.string().min(1).optional(),
+            id: z.string().min(1).optional(),
+            threadId: z.string().min(1).optional(),
+          })
+          .refine((v) => v.surface || v.botId, "surface or botId is required"),
       )
       .output(z.object({ count: z.number() })),
     markShown: oc.input(z.object({ id: z.string().min(1) })).output(z.object({ ok: z.boolean() })),
@@ -1148,8 +1168,8 @@ export const appContract = {
         financeRunwayMonths: z.number().nullable(),
         legalDueSoon: z.number().int(),
         dataRoomWaiting: z.number().int(),
-        /** Agents with an unseen attention notification. */
-        urgentBotIds: z.array(z.string()),
+        /** Per agent with unseen notifications, the highest-priority kind. */
+        botKinds: z.record(z.string(), NotificationKindSchema),
       }),
     ),
     subscribe: oc.output(eventIterator(NotificationSignalSchema)),
@@ -1269,6 +1289,9 @@ export const appContract = {
     importEmail: oc
       .input(DataRoomApiImportEmailInputSchema)
       .output(DataRoomApiImportEmailOutputSchema),
+    emailImported: oc
+      .input(DataRoomApiEmailImportedInputSchema)
+      .output(DataRoomApiEmailImportedOutputSchema),
     driveList: oc.input(DataRoomApiDriveListInputSchema).output(DataRoomApiDriveListOutputSchema),
     importDrive: oc
       .input(DataRoomApiImportDriveInputSchema)
@@ -1280,6 +1303,12 @@ export const appContract = {
     search: oc.input(DataRoomApiSearchInputSchema).output(DataRoomApiSearchOutputSchema),
     consent: oc.output(DataRoomConsentStatusSchema),
     consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
+    autoSort: {
+      /** A proposed tidy-up; changes nothing. */
+      plan: oc.output(AutoSortPlanSchema),
+      apply: oc.input(AutoSortApplyInputSchema).output(AutoSortApplyOutputSchema),
+      undo: oc.input(z.object({ batchId: Id })).output(AutoSortUndoOutputSchema),
+    },
   },
   legal: {
     /** Idempotent: creates the Legal agent and its daily scan routine; returns the bot to open in the side panel. */

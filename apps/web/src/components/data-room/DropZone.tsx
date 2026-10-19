@@ -1,4 +1,4 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
 import { Upload, X } from "lucide-react";
@@ -127,6 +127,10 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                   <span className="font-medium">
                     {state.kind === "deleted" ? <Trans>Deleted</Trans> : <Trans>Renamed</Trans>}
                   </span>
+                ) : state.kind === "sorted" ? (
+                  <span className="font-medium">
+                    {plural(state.count, { one: "Sorted # item", other: "Sorted # items" })}
+                  </span>
                 ) : state.kind === "notice" ? (
                   <span className="min-w-0">{name}</span>
                 ) : (
@@ -186,6 +190,10 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                 <p className="mt-1 truncate text-xs text-muted-foreground" title={name}>
                   {name}
                 </p>
+              ) : state.kind === "sorted" ? (
+                <Button variant="link" size="xs" className="mt-1 h-auto p-0" onClick={state.undo}>
+                  <Trans>Undo</Trans>
+                </Button>
               ) : state.kind === "notice" ? null : (
                 <div className="mt-1 flex items-center justify-between gap-2 text-xs">
                   <span className="text-destructive">{failureText(state.reason)}</span>

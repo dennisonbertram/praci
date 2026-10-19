@@ -159,6 +159,14 @@ export const DataRoomApiImportEmailOutputSchema = z.object({
   importId: z.string(),
 });
 
+/** Which attachments of the caller's mail are already in the Data room, for the email picker. */
+export const DataRoomApiEmailImportedInputSchema = z.object({
+  messageIds: z.array(Id).min(1).max(100),
+});
+export const DataRoomApiEmailImportedOutputSchema = z.object({
+  files: z.array(z.object({ messageId: Id, attachmentId: z.string() })),
+});
+
 /** The caller's Google Drive for the import picker: a text search, or the children of a folder. */
 export const DataRoomApiDriveListInputSchema = z.object({
   query: z.string().max(200).optional(),

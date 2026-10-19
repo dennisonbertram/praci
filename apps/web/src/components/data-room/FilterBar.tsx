@@ -21,7 +21,16 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { ArrowDown, ArrowUp, ChevronDown, Folder, FolderPlus, Search, X } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  Folder,
+  FolderPlus,
+  Search,
+  WandSparkles,
+  X,
+} from "lucide-react";
 import { type FormEvent, type ReactElement, useState } from "react";
 import { PAGE_GUTTER_X } from "../PageHeader";
 import type { FolderNode } from "./folders";
@@ -310,6 +319,7 @@ export function FilterBar({
   folderId,
   onFolder,
   onNewFolder,
+  onAutoSort,
 }: {
   /** Where the folder tree is hidden (a narrow page), this picker chooses the folder. */
   folders: FolderNode[];
@@ -317,6 +327,8 @@ export function FilterBar({
   onFolder: (id: string | undefined) => void;
   /** Opens the New folder dialog; the folder tree's own button is hidden on this narrow page. */
   onNewFolder: () => void;
+  /** Opens Auto-sort; on this narrow page the folder tree's own button is hidden too. */
+  onAutoSort?: () => void;
   query: string;
   onQuery: (query: string) => void;
   searching: boolean;
@@ -424,6 +436,13 @@ export function FilterBar({
             <FolderPlus aria-hidden="true" />
           </Button>
         </Tip>
+        {onAutoSort ? (
+          <Tip label={t`Auto-sort`}>
+            <Button variant="outline" size="icon" aria-label={t`Auto-sort`} onClick={onAutoSort}>
+              <WandSparkles aria-hidden="true" />
+            </Button>
+          </Tip>
+        ) : null}
       </div>
       <div
         data-testid="data-room-filters"

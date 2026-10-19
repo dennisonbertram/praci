@@ -2,6 +2,20 @@ import * as z from "zod";
 
 export const NotificationImportanceSchema = z.enum(["info", "attention"]);
 
+/** Sidebar status kinds, highest priority first. */
+export const NOTIFICATION_KINDS = ["urgent", "needs_input", "failed", "done", "new"] as const;
+export const NotificationKindSchema = z.enum(NOTIFICATION_KINDS);
+export type NotificationKind = z.infer<typeof NotificationKindSchema>;
+
+/** The kind of a stored notification; rows from before kinds existed fall back to importance. */
+export const notificationKindOf = (n: {
+  kind?: string | null;
+  importance: "info" | "attention";
+}): NotificationKind => {
+  const parsed = NotificationKindSchema.safeParse(n.kind);
+  return parsed.success ? parsed.data : n.importance === "attention" ? "urgent" : "new";
+};
+
 /** What a realtime frame carries; clients fetch the notification by listing since. */
 export const NotificationSignalSchema = z.object({
   id: z.string(),

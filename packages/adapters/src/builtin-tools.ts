@@ -1281,6 +1281,49 @@ export const builtinAgentTools: ConnectorTool[] = [
     readOnly: true,
   },
   {
+    name: "read_spreadsheet",
+    description:
+      'Read an Excel (.xlsx, .xlsm) or CSV/TSV file: a chat attachment (artifact_id) or a Data room item (item_id). Returns the sheets with their dimensions, then for one sheet the columns (letters), the header row and the rows, each row as [sheet row number, ...cells]. Formulas appear as their last calculated values; dates are ISO strings; macros are never run. Defaults to the first sheet and 200 rows; pass sheet, range (for example "A1:F200") and max_rows (up to 1000) to read more. If truncated is true, read the next range.',
+    inputSchema: {
+      type: "object",
+      properties: {
+        artifact_id: { type: "string", description: "The id of an attached file or artifact." },
+        item_id: { type: "string", description: "The id from search_data_room." },
+        sheet: { type: "string", description: "Sheet name. Defaults to the first sheet." },
+        range: { type: "string", description: 'Cell range such as "A1:F200".' },
+        max_rows: { type: "number", description: "Default 200, max 1000." },
+      },
+    },
+    readOnly: true,
+  },
+  {
+    name: "create_spreadsheet",
+    description:
+      "Create a new Excel (.xlsx) file from values and attach it to the chat for the user to download. Each sheet has a name and rows (arrays of text, numbers, booleans or null). Values only: text starting with = stays text, not a formula. Always makes a new file; it never changes an existing one.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "File name, for example budget.xlsx." },
+        description: { type: "string", description: "One line describing the file." },
+        sheets: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              rows: {
+                type: "array",
+                items: { type: "array", items: { type: ["string", "number", "boolean", "null"] } },
+              },
+            },
+            required: ["name", "rows"],
+          },
+        },
+      },
+      required: ["sheets"],
+    },
+  },
+  {
     name: "add_to_data_room",
     description:
       "Add a document to the user's Data room without being asked: an email attachment (message_id and attachment_id, as listed by mail_get), a Drive file (drive_file_id), or an artifact (artifact_id). Files only, not message text. Don't choose a folder, name or tags; the Data room agent files it. Adding the same document again does nothing. Small inline images, calendar invites and contact cards return \"Not a document.\"",

@@ -34,7 +34,7 @@ const EMPTY: Glance = {
   financeRunwayMonths: null,
   legalDueSoon: 0,
   dataRoomWaiting: 0,
-  urgentBotIds: [],
+  botKinds: {},
 };
 
 /**
@@ -76,16 +76,18 @@ export function useSidebarGlance(
       .catch(() => undefined);
   }, [attended, surface, unseenHere, refresh]);
 
-  // Opening an agent's thread clears that agent's urgent mark.
-  const threadId = thread?.threadId;
-  const urgentHere = Boolean(thread?.botId && glance.urgentBotIds.includes(thread.botId));
+  // Viewing an agent's thread clears every unseen notification from that agent. They are raised on
+  // the thread or on a page surface (legal, finance, carta) with or without a thread id, so the
+  // scope is the agent, not the thread.
+  const threadBotId = thread?.botId;
+  const statusHere = threadBotId ? glance.botKinds[threadBotId] : undefined;
   useEffect(() => {
-    if (!attended || !threadId || !urgentHere) return;
+    if (!attended || !threadBotId || !statusHere) return;
     void rpc.notifications
-      .markSeen({ surface: "thread", threadId })
+      .markSeen({ botId: threadBotId })
       .then(refresh)
       .catch(() => undefined);
-  }, [attended, threadId, urgentHere, refresh]);
+  }, [attended, threadBotId, statusHere, refresh]);
 
   return { counts, glance };
 }

@@ -59,6 +59,7 @@ export async function runNotifyUser(
       body: text(args.body),
       link: text(args.link) || null,
       importance,
+      kind: importance === "attention" ? "urgent" : "new",
       dedupeKey: text(args.dedupeKey) || undefined,
     });
     if (result.status === "created") {

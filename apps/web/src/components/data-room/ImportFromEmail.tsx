@@ -1,4 +1,4 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { InboxListOutput, InboxMessage, MailRow } from "@rakazo/contracts";
 import { isBoxEndpoint } from "@rakazo/contracts";
@@ -10,85 +10,119 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   Input,
 } from "@rakazo/ui-web";
-import { Mail } from "lucide-react";
+import { Box, ChevronDown, Download, HardDrive, Mail } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { dataRoomImportStarted } from "../../lib/data-room";
 import { syncErrorText } from "../../lib/inbox-sync-error";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { DriveRow } from "./DriveRow";
 import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
-import { failedText, importedText, sizeText } from "./format";
-import { BoxImportButton, DriveImportButton } from "./ImportFromDrive";
+import { dateText, failedText, importedText, isNoiseImage } from "./format";
+import { DrivePicker } from "./ImportFromDrive";
 
 const SEARCH_DEBOUNCE_MS = 300;
 /** The most attachments one import call accepts. */
 const MAX_PICKS = 20;
 const GMAIL_PAGE = "/app/integrations/app/google/gmail";
+const DRIVE_PAGE = "/app/integrations/app/google/googledrive";
+const BOX_CONNECT = "/app/integrations?connect=box";
 
 type Attachment = InboxMessage["attachments"][number];
+/** A message with the documents it carries; `filed` names those already in the Data room. */
+type Item = { row: MailRow; files: Attachment[]; filed: Set<string> };
 type Picks = Map<string, { messageId: string; attachmentId: string }>;
 const pickKey = (messageId: string, attachmentId: string) => `${messageId}\u0000${attachmentId}`;
 
+/**
+ * The messages that carry real documents. Every page costs one `inbox.get` per message (attachment
+ * lists are not in the list rows); messages with only signature pictures are left out.
+ * ponytail: one call per row; a list-level attachment field would remove them.
+ */
+async function loadItems(rows: MailRow[]): Promise<Item[]> {
+  if (rows.length === 0) return [];
+  const [messages, imported] = await Promise.all([
+    Promise.all(rows.map((row) => rpc.inbox.get({ messageId: row.id }))),
+    rpc.dataRoom.emailImported({ messageIds: rows.map((row) => row.id) }),
+  ]);
+  const filed = new Set(imported.files.map((f) => pickKey(f.messageId, f.attachmentId)));
+  return rows
+    .map((row, i) => ({
+      row,
+      files: (messages[i]?.attachments ?? []).filter((file) => !isNoiseImage(file)),
+      filed,
+    }))
+    .filter((item) => item.files.length > 0);
+}
+
 function MessageRow({
-  row,
+  item,
   picks,
   full,
   onToggle,
 }: {
-  row: MailRow;
+  item: Item;
   picks: Picks;
   /** No more files can be ticked. */
   full: boolean;
-  onToggle: (messageId: string, attachmentId: string) => void;
+  onToggle: (messageId: string, attachmentIds: string[], on: boolean) => void;
 }) {
-  const [files, setFiles] = useState<Attachment[] | null>(null);
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState("");
-  function toggle() {
-    setOpen(!open);
-    if (files || open) return;
-    setError("");
-    rpc.inbox
-      .get({ messageId: row.id })
-      .then((message) => setFiles(message.attachments))
-      .catch((cause) => setError(errorText(cause)));
-  }
+  const { row, files, filed } = item;
+  const free = files.filter((file) => !filed.has(pickKey(row.id, file.id)));
+  const all = free.length > 0 && free.every((file) => picks.has(pickKey(row.id, file.id)));
   return (
     <li className="border-b border-border">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={toggle}
-        className="flex w-full flex-col items-start px-3 py-2 text-start text-sm hover:bg-muted"
-      >
-        <span className="max-w-full truncate font-medium">{row.subject}</span>
-        <span className="max-w-full truncate text-xs text-muted-foreground">{row.from}</span>
-      </button>
-      {open ? (
-        <div className="flex flex-col gap-1 px-3 pb-2">
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
-          {files?.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              <Trans>No files found</Trans>
-            </p>
-          ) : null}
-          {files?.map((file) => (
-            <div key={file.id} className="flex items-center gap-2 text-sm">
-              <Checkbox
-                aria-label={file.filename}
-                disabled={full && !picks.has(pickKey(row.id, file.id))}
-                checked={picks.has(pickKey(row.id, file.id))}
-                onCheckedChange={() => onToggle(row.id, file.id)}
-              />
-              <span className="min-w-0 flex-1 truncate">{file.filename}</span>
-              <span className="text-xs text-muted-foreground">{sizeText(file.size)}</span>
-            </div>
-          ))}
+      <div className="flex items-start gap-2 px-3 py-2 text-sm">
+        <Checkbox
+          aria-label={t`Select ${row.subject}`}
+          className="mt-0.5"
+          disabled={free.length === 0 || (full && !all)}
+          checked={all || free.length === 0}
+          onCheckedChange={(on) =>
+            onToggle(
+              row.id,
+              free.map((file) => file.id),
+              on,
+            )
+          }
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">{row.subject}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {row.from} · {dateText(row.receivedAt)}
+          </p>
         </div>
-      ) : null}
+      </div>
+      <div className="ps-6">
+        {files.map((file) => {
+          const done = filed.has(pickKey(row.id, file.id));
+          return (
+            <DriveRow
+              key={file.id}
+              file={{
+                id: file.id,
+                name: file.filename,
+                mimeType: file.mimeType,
+                size: file.size,
+                isFolder: false,
+              }}
+              showCheckbox
+              checked={done || picks.has(pickKey(row.id, file.id))}
+              disabled={done || (full && !picks.has(pickKey(row.id, file.id)))}
+              note={done ? t`In Data room` : undefined}
+              onToggle={() => onToggle(row.id, [file.id], !picks.has(pickKey(row.id, file.id)))}
+              onOpen={() => undefined}
+            />
+          );
+        })}
+      </div>
     </li>
   );
 }
@@ -104,7 +138,7 @@ function EmailPicker({
 }) {
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
-  const [rows, setRows] = useState<MailRow[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [next, setNext] = useState<string | undefined>();
   const [mailProblem, setMailProblem] = useState<Pick<
     InboxListOutput,
@@ -141,9 +175,10 @@ function EmailPicker({
     setMailProblem(null);
     rpc.inbox
       .list(listInput())
-      .then((page) => {
+      .then(async (page) => {
+        const loaded = await loadItems(page.rows);
         if (mine !== search.current) return;
-        setRows(page.rows);
+        setItems(loaded);
         setNext(page.nextPageToken);
         setMailProblem(problemOf(page));
       })
@@ -156,8 +191,9 @@ function EmailPicker({
     setLoading(true);
     try {
       const page = await rpc.inbox.list(listInput(next));
+      const loaded = await loadItems(page.rows);
       if (mine !== search.current) return;
-      setRows((prev) => [...prev, ...page.rows]);
+      setItems((prev) => [...prev, ...loaded]);
       setNext(page.nextPageToken);
     } catch (cause) {
       if (mine === search.current) setError(errorText(cause));
@@ -166,12 +202,15 @@ function EmailPicker({
     }
   }
 
-  function toggle(messageId: string, attachmentId: string) {
+  /** Ticks or unticks files of one message; a tick stops at the import limit. */
+  function toggle(messageId: string, attachmentIds: string[], on: boolean) {
     setPicks((prev) => {
       const copy = new Map(prev);
-      const key = pickKey(messageId, attachmentId);
-      if (copy.has(key)) copy.delete(key);
-      else copy.set(key, { messageId, attachmentId });
+      for (const attachmentId of attachmentIds) {
+        const key = pickKey(messageId, attachmentId);
+        if (!on) copy.delete(key);
+        else if (copy.size < MAX_PICKS) copy.set(key, { messageId, attachmentId });
+      }
       return copy;
     });
   }
@@ -225,16 +264,20 @@ function EmailPicker({
               ) : null}
             </p>
           ) : null}
-          {!loading && !error && !mailProblem && rows.length === 0 ? (
+          {loading && items.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted-foreground" role="status">
+              <Trans>Loading…</Trans>
+            </p>
+          ) : !loading && !error && !mailProblem && items.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted-foreground">
               <Trans>No files found</Trans>
             </p>
           ) : (
             <ul>
-              {rows.map((row) => (
+              {items.map((item) => (
                 <MessageRow
-                  key={row.id}
-                  row={row}
+                  key={item.row.id}
+                  item={item}
                   picks={picks}
                   full={picks.size >= MAX_PICKS}
                   onToggle={toggle}
@@ -257,7 +300,9 @@ function EmailPicker({
         </div>
         <DialogFooter>
           <Button disabled={busy || picks.size === 0} onClick={() => void submit()}>
-            <Trans>Import</Trans>
+            {picks.size > 0
+              ? plural(picks.size, { one: "Import # file", other: "Import # files" })
+              : t`Import`}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -273,28 +318,34 @@ const isConnected = (
     (row) => row.connectorId === "google" && row.provider === app && row.status === "connected",
   );
 
+type Source = "email" | "drive" | "box";
+
 /**
- * One button per import source. Add another source by adding a button here. With no Gmail account
- * connected the email button leads to the connection page instead.
+ * One "Import" menu with an item per source. Add another source by adding an item here. A source
+ * that is not connected stays in the menu and leads to its connection page. Gmail and Drive are
+ * left out when the server's catalog does not offer them, so no item leads to a dead end.
  */
 export function ImportSources({
   folderId,
+  ensureFolder,
   onDone,
   compact = false,
 }: {
   folderId: string | null;
+  /** Finds or creates the folder to file into, when choosing a source (instead of `folderId`). */
+  ensureFolder?: () => Promise<string>;
   onDone: (message: string, changed: boolean) => void;
   compact?: boolean;
 }) {
   const navigate = useNavigate();
-  // offered: the server's catalog has the app, so its connection page exists. A button never leads
-  // to the page's "isn't available on this server" dead end.
   const [apps, setApps] = useState<{
     gmail: { connected: boolean; offered: boolean };
     drive: { connected: boolean; offered: boolean };
     box: boolean;
   } | null>(null);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<Source | null>(null);
+  const [ensured, setEnsured] = useState<string | null>(null);
+  const target = ensureFolder ? ensured : folderId;
   useEffect(() => {
     let current = true;
     const none = { connected: false, offered: false };
@@ -324,33 +375,63 @@ export function ImportSources({
     };
   }, []);
   if (apps === null) return null;
-  const label = apps.gmail.connected ? t`Import from email` : t`Connect Gmail`;
+  const choose = (source: Source, connected: boolean, connectPage: string) => {
+    if (!connected) return navigate(connectPage);
+    if (!ensureFolder) return setOpen(source);
+    ensureFolder()
+      .then((id) => {
+        setEnsured(id);
+        setOpen(source);
+      })
+      .catch((cause) => onDone(errorText(cause), false));
+  };
   return (
     <>
-      {apps.gmail.offered ? (
-        <ToolbarTip label={label} compact={compact}>
-          <Button
-            variant="outline"
-            className={compact ? TOOLBAR_BUTTON : undefined}
-            onClick={() => (apps.gmail.connected ? setOpen(true) : navigate(GMAIL_PAGE))}
+      <DropdownMenu>
+        <ToolbarTip label={t`Import`} compact={compact}>
+          <DropdownMenuTrigger
+            render={<Button variant="outline" className={compact ? TOOLBAR_BUTTON : undefined} />}
           >
-            <Mail aria-hidden="true" />
-            <span className={compact ? TOOLBAR_LABEL : undefined}>{label}</span>
-          </Button>
+            <Download aria-hidden="true" />
+            <span className={compact ? TOOLBAR_LABEL : undefined}>
+              <Trans>Import</Trans>
+            </span>
+            <ChevronDown
+              aria-hidden="true"
+              className={compact ? "@max-[639px]/bd:hidden" : undefined}
+            />
+          </DropdownMenuTrigger>
         </ToolbarTip>
+        <DropdownMenuContent align="end">
+          {apps.gmail.offered ? (
+            <DropdownMenuItem onClick={() => choose("email", apps.gmail.connected, GMAIL_PAGE)}>
+              <Mail aria-hidden="true" />
+              <Trans>Email</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          {apps.drive.offered ? (
+            <DropdownMenuItem onClick={() => choose("drive", apps.drive.connected, DRIVE_PAGE)}>
+              <HardDrive aria-hidden="true" />
+              <Trans>Google Drive</Trans>
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuItem onClick={() => choose("box", apps.box, BOX_CONNECT)}>
+            <Box aria-hidden="true" />
+            <Trans>Box</Trans>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {open === "email" ? (
+        <EmailPicker folderId={target} onClose={() => setOpen(null)} onDone={onDone} />
       ) : null}
-      {open ? (
-        <EmailPicker folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
-      ) : null}
-      {apps.drive.offered ? (
-        <DriveImportButton
-          connected={apps.drive.connected}
-          compact={compact}
-          folderId={folderId}
+      {open === "drive" || open === "box" ? (
+        <DrivePicker
+          box={open === "box"}
+          folderId={target}
+          onClose={() => setOpen(null)}
           onDone={onDone}
         />
       ) : null}
-      {apps.box ? <BoxImportButton compact={compact} folderId={folderId} onDone={onDone} /> : null}
     </>
   );
 }

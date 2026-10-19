@@ -276,7 +276,7 @@ import {
   toTicketCommentDto,
   toTicketDto,
   touchGroupUpdatedAt,
-  unseenAttentionBotIds,
+  unseenBotKinds,
   unseenCounts,
   updateNotificationPreferences,
 } from "@rakazo/db";
@@ -422,6 +422,7 @@ import {
   seedBlankBotGreeting,
   startOnboarding,
 } from "./onboarding.js";
+import { rememberedMessageIds, rememberThreadMessage } from "./remember-message.js";
 import { listRoutineRuns } from "./routine-runs.js";
 import { listSpaceRuns } from "./runs.js";
 import { addScreenProxyCapability } from "./screen-proxy.js";
@@ -826,6 +827,8 @@ function toNotificationDto(row: Notification): NotificationDto {
 }
 
 export interface RouterDeps {
+  /** The model call behind Data room auto-sort; without it only duplicate folders are merged. */
+  proposeSort?: Parameters<typeof createDataRoomService>[0]["proposeSort"];
   cloudAgent?: CloudAgentConnection | null;
   prisma: PrismaClient;
   events: ThreadEvents;
@@ -1182,6 +1185,7 @@ export function createRouter(deps: RouterDeps) {
     },
     resolveAi: (scope) =>
       resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.resolveModel }, scope),
+    proposeSort: deps.proposeSort,
   });
 
   const authed = os.use(async ({ context, next }) => {
@@ -2627,6 +2631,15 @@ export function createRouter(deps: RouterDeps) {
           });
         }
         return { ok: true as const };
+      }),
+      remember: authed.threads.remember.handler(async ({ context, input }) => {
+        const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        await rememberThreadMessage(deps, context.actor, target, input.messageId);
+        return { ok: true as const };
+      }),
+      remembered: authed.threads.remembered.handler(async ({ context, input }) => {
+        const target = await resolveThreadTarget(deps.prisma, context.actor, input);
+        return { messageIds: await rememberedMessageIds(deps, context.actor, target) };
       }),
       stop: authed.threads.stop.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
@@ -6890,6 +6903,9 @@ export function createRouter(deps: RouterDeps) {
       itemRetry: authed.dataRoom.itemRetry.handler(({ context, input }) =>
         dataRoom.retryItem(context.actor, input.id),
       ),
+      emailImported: authed.dataRoom.emailImported.handler(({ context, input }) =>
+        dataRoom.emailImported(context.actor, input),
+      ),
       importEmail: authed.dataRoom.importEmail.handler(({ context, input }) =>
         dataRoom.importEmail(context.actor, input, context.signal),
       ),
@@ -6913,6 +6929,17 @@ export function createRouter(deps: RouterDeps) {
       consentGrant: authed.dataRoom.consentGrant.handler(({ context, input }) =>
         dataRoom.consentGrant(context.actor, input),
       ),
+      autoSort: {
+        plan: authed.dataRoom.autoSort.plan.handler(({ context }) =>
+          dataRoom.autoSort.plan(context.actor),
+        ),
+        apply: authed.dataRoom.autoSort.apply.handler(({ context, input }) =>
+          dataRoom.autoSort.apply(context.actor, input),
+        ),
+        undo: authed.dataRoom.autoSort.undo.handler(({ context, input }) =>
+          dataRoom.autoSort.undo(context.actor, input.batchId),
+        ),
+      },
     },
     legal: {
       agent: authed.legal.agent.handler(({ context }) =>
@@ -7434,6 +7461,7 @@ export function createRouter(deps: RouterDeps) {
         count: await markSeen(deps.prisma, {
           ...context.actor,
           surface: input.surface,
+          botId: input.botId,
           id: input.id,
           threadId: input.threadId,
         }),
@@ -7445,7 +7473,7 @@ export function createRouter(deps: RouterDeps) {
         counts: await unseenCounts(deps.prisma, context.actor),
       })),
       glance: authed.notifications.glance.handler(async ({ context }) => {
-        const [runwayMonths, legalDueSoon, dataRoomWaiting, urgentBotIds] = await Promise.all([
+        const [runwayMonths, legalDueSoon, dataRoomWaiting, botKinds] = await Promise.all([
           financeRunwayMonths(financeDeps, context.actor),
           legalDueSoonCount(legalDeps, context.actor, 7),
           // Failed items are the only ones the user can act on (retry or remove).
@@ -7456,9 +7484,9 @@ export function createRouter(deps: RouterDeps) {
               status: "failed",
             },
           }),
-          unseenAttentionBotIds(deps.prisma, context.actor),
+          unseenBotKinds(deps.prisma, context.actor),
         ]);
-        return { financeRunwayMonths: runwayMonths, legalDueSoon, dataRoomWaiting, urgentBotIds };
+        return { financeRunwayMonths: runwayMonths, legalDueSoon, dataRoomWaiting, botKinds };
       }),
       subscribe: authed.notifications.subscribe.handler(async function* ({ context }) {
         const follow = deps.notificationEvents.follow(context.actor, context.signal);

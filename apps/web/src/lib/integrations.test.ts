@@ -209,7 +209,16 @@ describe("first-party services", () => {
   });
 
   it("hides a catalog toolkit that is the same service's MCP variant", () => {
-    const catalog = ["box_mcp", "box", "devin-mcp", "notion"].map((slug) => item(slug, "other"));
+    const catalog = [
+      "box_mcp",
+      "box",
+      "devin-mcp",
+      "granola_mcp",
+      "granola",
+      "wispr_flow",
+      "wispr-flow",
+      "notion",
+    ].map((slug) => item(slug, "other"));
     expect(popularApps(catalog, []).map((i) => i.slug)).toEqual(["notion"]);
   });
 });

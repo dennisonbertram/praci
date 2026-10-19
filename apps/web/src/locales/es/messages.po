@@ -13,6 +13,22 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+#: src/components/sidebar-glance.tsx
+msgid " (done)"
+msgstr ""
+
+#: src/components/sidebar-glance.tsx
+msgid " (failed)"
+msgstr ""
+
+#: src/components/sidebar-glance.tsx
+msgid " (needs input)"
+msgstr ""
+
+#: src/components/sidebar-glance.tsx
+msgid " (new)"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
@@ -71,6 +87,11 @@ msgstr ""
 msgid "{0, plural, one {#+ result} other {#+ results}}"
 msgstr ""
 
+#. placeholder {0}: picks.size
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "{0, plural, one {Import # file} other {Import # files}}"
+msgstr ""
+
 #. placeholder {0}: confirming?.statement.transactionCount ?? 0
 #: src/components/finance/StatementImport.tsx
 msgid "{0, plural, one {Its # transaction will be removed from Finance.} other {Its # transactions will be removed from Finance.}}"
@@ -94,6 +115,11 @@ msgstr ""
 #. placeholder {0}: open.length
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
+msgstr ""
+
+#. placeholder {0}: state.count
+#: src/components/data-room/DropZone.tsx
+msgid "{0, plural, one {Sorted # item} other {Sorted # items}}"
 msgstr ""
 
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
@@ -710,6 +736,7 @@ msgstr ""
 msgid "Add email for {0}"
 msgstr ""
 
+#: src/components/data-room/DataRoomImportMenu.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr ""
@@ -758,6 +785,7 @@ msgid "Add your OpenRouter key above to start. The Legal agent then reads your D
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/pages/Artifacts.tsx
 msgid "Added"
@@ -959,6 +987,10 @@ msgstr ""
 msgid "Already in your Data room as {name}"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Already tidy."
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -1057,6 +1089,7 @@ msgid "Appearance"
 msgstr "Apariencia"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -1275,6 +1308,12 @@ msgstr ""
 msgid "Auto-renews, {notice} days notice"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderTree.tsx
+msgid "Auto-sort"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders"
 msgstr ""
@@ -1479,6 +1518,7 @@ msgid "Bots with their own computer and browser"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
 msgstr ""
 
@@ -1557,6 +1597,7 @@ msgstr "No se puede alcanzar el servidor."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
@@ -2004,6 +2045,10 @@ msgstr ""
 msgid "Collapse {0}"
 msgstr "Contraer {0}"
 
+#: src/components/SidebarPagesGroup.tsx
+msgid "Collapse {title}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Collapse Carta agent"
 msgstr ""
@@ -2229,16 +2274,8 @@ msgstr ""
 msgid "Connect Executor"
 msgstr "Conectar Executor"
 
-#: src/components/data-room/ImportFromEmail.tsx
-msgid "Connect Gmail"
-msgstr ""
-
 #: src/pages/Inbox.tsx
 msgid "Connect Gmail to read, sort and answer your mail here."
-msgstr ""
-
-#: src/components/data-room/ImportFromDrive.tsx
-msgid "Connect Google Drive"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -2715,6 +2752,10 @@ msgstr ""
 #. placeholder {0}: overview.error
 #: src/pages/Legal.tsx
 msgid "Could not refresh: {0}"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not remember"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -3401,6 +3442,7 @@ msgstr ""
 msgid "Document date"
 msgstr ""
 
+#: src/components/data-room/FolderDocuments.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr ""
@@ -3561,6 +3603,7 @@ msgstr ""
 msgid "Edit wallet"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 msgid "Email"
@@ -3725,6 +3768,10 @@ msgstr "Expandir"
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "Expandir {0}"
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Expand {title}"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
@@ -4056,6 +4103,7 @@ msgid "Google apps"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr ""
 
@@ -4297,6 +4345,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "In cash, not counted as burn"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "In Data room"
 msgstr ""
 
 #: src/lib/ticket-status.ts
@@ -4690,6 +4742,7 @@ msgid "Loading voice providers…"
 msgstr "Cargando proveedores de voz…"
 
 #: src/App.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
@@ -4887,6 +4940,10 @@ msgstr "Medio"
 msgid "Medium"
 msgstr "Medio"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Meeting notes and transcripts"
+msgstr ""
+
 #: src/pages/shell/GroupIntro.tsx
 msgid "Members"
 msgstr ""
@@ -4927,6 +4984,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Merchant"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Merge"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -5111,6 +5172,7 @@ msgstr ""
 msgid "More computer actions"
 msgstr "Más acciones de computadora"
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
 msgstr ""
@@ -5154,6 +5216,7 @@ msgid "Mute"
 msgstr "Silenciar"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -5698,6 +5761,10 @@ msgstr ""
 msgid "Notes"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Notetaker meetings, notes and tasks"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Nothing due in the next 30 days"
 msgstr ""
@@ -6039,6 +6106,7 @@ msgstr ""
 msgid "PagerDuty incident"
 msgstr "Incidente de PagerDuty"
 
+#: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Pages"
@@ -6575,6 +6643,14 @@ msgstr ""
 msgid "Relevance"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Remember"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Remembered"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/StatementImport.tsx
@@ -6696,6 +6772,7 @@ msgstr ""
 msgid "Removes the connection and bot access."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -6842,6 +6919,7 @@ msgid "Restoring your workspace"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -7223,7 +7301,9 @@ msgid "See who owns your company"
 msgstr ""
 
 #. placeholder {0}: file.name
+#. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Select {0}"
 msgstr ""
 
@@ -8029,6 +8109,10 @@ msgstr ""
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model could not sort your files."
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr ""
@@ -8360,7 +8444,12 @@ msgstr ""
 msgid "Turn off sending for {botName}?"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Turn on a model and allow AI access to sort files."
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/WalletDialog.tsx
@@ -8396,6 +8485,15 @@ msgstr ""
 msgid "Underline"
 msgstr ""
 
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}"
+msgstr ""
+
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}, skipped {skipped}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
 #: src/pages/CapTable.tsx

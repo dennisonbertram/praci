@@ -774,6 +774,47 @@ describe("Transcript failed-run note", () => {
   });
 });
 
+describe("Transcript Remember action", () => {
+  const msg = (id: string, seq: number, role: "user" | "bot"): ThreadMessage => ({
+    id,
+    threadId: "t1",
+    seq,
+    role,
+    blocks: [{ kind: "text", text: `message ${id}` }],
+    createdAt: "2026-10-01T00:00:00.000Z",
+  });
+
+  it("offers Remember on agent messages only and shows the saved state", () => {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.scrollTo = vi.fn() as never;
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    const onRemember = vi.fn();
+    act(() =>
+      root?.render(
+        <Transcript
+          {...transcriptProps()}
+          messages={[msg("u1", 1, "user"), msg("b1", 2, "bot"), msg("b2", 3, "bot")]}
+          scrollRequest={null}
+          remember={{ ids: new Set(["b2"]), onRemember }}
+        />,
+      ),
+    );
+    const buttons = container.querySelectorAll<HTMLButtonElement>(
+      '[aria-label="Remember"], [aria-label="Remembered"]',
+    );
+    expect([...buttons].map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Remember",
+      "Remembered",
+    ]);
+    expect(buttons[1]?.disabled).toBe(true);
+    act(() => buttons[0]?.click());
+    expect(onRemember).toHaveBeenCalledWith("b1");
+  });
+});
+
 describe("Transcript unread divider and new-message pill", () => {
   const msg = (seq: number, role: "bot" | "user" = "bot"): ThreadMessage => ({
     id: `m${seq}`,

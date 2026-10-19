@@ -67,3 +67,12 @@ export const importingText = (files: number) =>
 
 export const failedText = (failed: number) =>
   plural(failed, { one: "Couldn't import # file", other: "Couldn't import # files" });
+
+/**
+ * A signature or logo picture rather than a document: a small image, or an image named like the
+ * usual ones. The server already leaves out pictures the body embeds (Content-ID parts).
+ */
+const LOGO_NAME =
+  /^(image\d*|logo|signature|outlook-\w+|icon|banner|spacer|facebook|twitter|linkedin|instagram)\b/i;
+export const isNoiseImage = (file: { filename: string; mimeType: string; size: number }) =>
+  file.mimeType.startsWith("image/") && (file.size < 10_000 || LOGO_NAME.test(file.filename));

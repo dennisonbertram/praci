@@ -13,7 +13,13 @@ export {
   useAvatarReaction,
   Wordmark,
 } from "./bot-avatar.js";
-export { FireIcon, FireTruckIcon, PixelIcon } from "./components/pixel/pixel-icon.js";
+export {
+  FireIcon,
+  FireTruckIcon,
+  PixelIcon,
+  pixelPhase,
+  StatusIcon,
+} from "./components/pixel/pixel-icon.js";
 export { PIXEL_ICONS, type PixelSprite } from "./components/pixel/sprites.js";
 export * from "./components/ui/alert-dialog.js";
 export * from "./components/ui/badge.js";
