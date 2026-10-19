@@ -9,11 +9,7 @@ import type {
   IntegrationSetupState,
   McpServer,
 } from "@rakazo/contracts";
-import {
-  isCartaAgentSpawnKey,
-  isIntegrationAgentSpawnKey,
-  preferNativeGoogle,
-} from "@rakazo/contracts";
+import { preferNativeGoogle } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { desktopBridge, nativeGoogleAvailable } from "../../lib/desktop";
 import { optionalCatalogFeedProbe } from "../../lib/optional-catalog-feed";
@@ -140,40 +136,8 @@ export function useIntegrations(): IntegrationsData {
   return { ...data, refresh };
 }
 
-type OwnBotIds = string | null | undefined | readonly (string | null | undefined)[];
-
-/**
- * An integration agent works only with its own connection or server, so it is not offered on any
- * other, even when that account is shared with all agents. `own` is the agent(s) that belong here.
- * The Carta agent is the same for MCP servers, but its built-in mail, calendar and Drive tools do
- * reach shared Google connections, so lists for a native Google connection
- * (`connectorId === "google"`, as the executor's account lists select) pass `keepCarta`. Every
- * other connection hides it.
- */
-export function withoutOtherIntegrationAgents(
-  bots: Bot[],
-  own?: OwnBotIds,
-  { keepCarta = false } = {},
-): Bot[] {
-  const ownIds = Array.isArray(own) ? own : [own];
-  return bots.filter(
-    (bot) =>
-      ownIds.includes(bot.id) ||
-      !(
-        isIntegrationAgentSpawnKey(bot.spawnKey) ||
-        (!keepCarta && isCartaAgentSpawnKey(bot.spawnKey))
-      ),
-  );
-}
-
 /** Agents that can use a connection, for the avatar stack. */
-export function agentsFor(
-  bots: Bot[],
-  access: ConnectionAccess | undefined,
-  own?: OwnBotIds,
-  keepCarta = false,
-): Bot[] {
+export function agentsFor(bots: Bot[], access: ConnectionAccess | undefined): Bot[] {
   if (!access) return [];
-  const usable = withoutOtherIntegrationAgents(bots, own, { keepCarta });
-  return access.allAgents ? usable : usable.filter((bot) => access.botIds.includes(bot.id));
+  return access.allAgents ? bots : bots.filter((bot) => access.botIds.includes(bot.id));
 }

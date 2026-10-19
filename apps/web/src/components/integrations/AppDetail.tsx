@@ -26,11 +26,7 @@ import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { IntegrationAgentSection } from "./IntegrationAgentSection";
 import { AgentToggleList, StatusBadge } from "./parts";
-import {
-  type ConnectionAccess,
-  type IntegrationsData,
-  withoutOtherIntegrationAgents,
-} from "./useIntegrations";
+import type { ConnectionAccess, IntegrationsData } from "./useIntegrations";
 
 type Tool = { name: string; description: string };
 
@@ -216,15 +212,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       allAgents: true,
       botIds: [],
     };
-  // The agents shown in the lists below; toggling saves exactly these, so no hidden grant survives.
-  const shownBots = withoutOtherIntegrationAgents(
-    data.bots,
-    rows.map((row) => row.agentBotId),
-    {
-      keepCarta: connectorId === "google",
-    },
-  );
-  const allBotIds = shownBots.map((bot) => bot.id);
+  const allBotIds = data.bots.map((bot) => bot.id);
 
   async function updateAgent(action: () => Promise<void>, fallback: string) {
     setBusy(true);
@@ -250,12 +238,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   }
 
   async function setAgent(botId: string, on: boolean) {
-    const next = toggleAccess(
-      { ...access, botIds: access.botIds.filter((id) => allBotIds.includes(id)) },
-      allBotIds,
-      botId,
-      on,
-    );
+    const next = toggleAccess(access, allBotIds, botId, on);
     setOverride(next);
     setError(null);
     try {
@@ -459,7 +442,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                       <Trans>Used by</Trans>
                     </Heading>
                     <AgentToggleList
-                      bots={shownBots}
+                      bots={data.bots}
                       appName={row.displayName}
                       disabled={busy}
                       isOn={(botId) => access.allAgents || access.botIds.includes(botId)}
@@ -486,7 +469,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                     <Trans>Used by</Trans>
                   </Heading>
                   <AgentToggleList
-                    bots={shownBots}
+                    bots={data.bots}
                     appName={name}
                     disabled={busy}
                     isOn={(botId) => access.allAgents || access.botIds.includes(botId)}

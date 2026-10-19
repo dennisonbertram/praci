@@ -18,7 +18,6 @@ const revoke = vi.fn().mockResolvedValue({});
 const createAgent = vi.fn().mockResolvedValue({ botId: "bot_app" });
 const setWrites = vi.fn().mockResolvedValue({});
 const setExclusive = vi.fn().mockResolvedValue({});
-const setAccess = vi.fn().mockResolvedValue({});
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     connections: {
@@ -27,7 +26,6 @@ vi.mock("../../lib/rpc", () => ({
       createAgent: (...a: unknown[]) => createAgent(...a),
       setWrites: (...a: unknown[]) => setWrites(...a),
       setExclusive: (...a: unknown[]) => setExclusive(...a),
-      setAccess: (...a: unknown[]) => setAccess(...a),
     },
   },
 }));
@@ -132,7 +130,6 @@ afterEach(() => {
   createAgent.mockClear();
   setWrites.mockClear();
   setExclusive.mockClear();
-  setAccess.mockClear();
 });
 
 const PAGE = "/app/integrations/app/google/gmail";
@@ -375,81 +372,4 @@ it("offers Remove account per row only when there is more than one account", asy
   container.remove();
   await show(PAGE, data({ connections: [account("a"), account("b")] }));
   expect(labels().filter((label) => label === "Remove account")).toHaveLength(2);
-});
-
-it("saves only the agents it shows: no integration agent gets a hidden grant, Carta only on Google", async () => {
-  const bot = (id: string, name: string, spawnKey: string | null) =>
-    ({ id, name, spawnKey }) as IntegrationsData["bots"][number];
-  await show(
-    PAGE,
-    data({
-      connections: [appConnection({ connectorId: "google", provider: "gmail" })],
-      bots: [
-        bot("chief", "Chief", null),
-        bot("carta", "Carta", "carta-agent:u1"),
-        bot("integ", "Other app", "integration-agent:s9"),
-      ],
-      access: { conn_app: { allAgents: true, botIds: [] } },
-    }),
-  );
-  const names = switches().map((element) => element.getAttribute("aria-label"));
-  expect(names.join()).toContain("Carta");
-  expect(names.join()).not.toContain("Other app");
-  await act(async () => switches()[0]!.click());
-  expect(setAccess).toHaveBeenCalledWith({
-    connectionId: "conn_app",
-    allAgents: false,
-    botIds: ["carta"],
-  });
-});
-
-it("hides Carta on a non-Google connection", async () => {
-  const bot = (id: string, name: string, spawnKey: string | null) =>
-    ({ id, name, spawnKey }) as IntegrationsData["bots"][number];
-  await show(
-    APP_PAGE,
-    data({
-      connections: [appConnection()],
-      bots: [bot("chief", "Chief", null), bot("carta", "Carta", "carta-agent:u1")],
-      access: { conn_app: { allAgents: true, botIds: [] } },
-    }),
-  );
-  expect(
-    switches()
-      .map((element) => element.getAttribute("aria-label"))
-      .join(),
-  ).not.toContain("Carta");
-});
-
-it("keeps this page's own integration agent visible and granted when another agent is switched off", async () => {
-  const bot = (id: string, name: string, spawnKey: string | null) =>
-    ({ id, name, spawnKey }) as IntegrationsData["bots"][number];
-  await show(
-    APP_PAGE,
-    data({
-      connections: [
-        appConnection(),
-        appConnection({ id: "conn_agent", agentBotId: "own", displayName: "Second" }),
-      ],
-      bots: [
-        bot("chief", "Chief", null),
-        bot("other", "Helper", null),
-        bot("own", "Own agent", "integration-agent:s1"),
-      ],
-      access: {
-        conn_app: { allAgents: false, botIds: ["chief", "own"] },
-        conn_agent: { allAgents: false, botIds: ["own"] },
-      },
-    }),
-  );
-  const labels = switches().map((element) => element.getAttribute("aria-label") ?? "");
-  const own = labels.findIndex((label) => label.includes("Own agent"));
-  expect(own).toBeGreaterThan(-1);
-  const chief = labels.findIndex((label) => label.includes("Chief"));
-  await act(async () => switches()[chief]!.click());
-  expect(setAccess).toHaveBeenCalledWith({
-    connectionId: "conn_app",
-    allAgents: false,
-    botIds: ["own"],
-  });
 });
