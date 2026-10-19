@@ -27,6 +27,7 @@ export type DriveFileErrorCode =
   | "unsupported"
   | "too_large"
   | "rate_limited"
+  | "too_many"
   | "failed";
 
 /** Why a Drive file could not be listed or downloaded; `code` is stable, `message` is safe to show. */
@@ -129,6 +130,11 @@ function hasReason(data: unknown, reason: string): boolean {
   return Array.isArray(errors) && errors.some((entry) => asRecord(entry)?.reason === reason);
 }
 
+/** Whether `downloadDriveFile` can fetch this file: plain files and the Google types Drive exports to PDF. */
+export function isImportableDriveFile(file: Pick<DriveFileSummary, "mimeType">): boolean {
+  return !file.mimeType.startsWith(GOOGLE_APPS) || PDF_EXPORTS.has(file.mimeType);
+}
+
 function summary(value: unknown): DriveFileSummary {
   const file = asRecord(value) ?? {};
   const mimeType = typeof file.mimeType === "string" ? file.mimeType : "";
@@ -176,6 +182,18 @@ export async function listDriveFiles(
     files: (Array.isArray(data?.files) ? data.files : []).map(summary),
     ...(typeof next === "string" && next ? { nextPageToken: next } : {}),
   };
+}
+
+/** One file's or folder's details, from the caller's own Drive. */
+export async function getDriveFile(
+  deps: DriveFilesDeps,
+  context: AdapterContext,
+  fileId: string,
+  target: Target = {},
+): Promise<DriveFileSummary> {
+  const request = await connect(deps, context, target);
+  const id = encodeURIComponent(fileId);
+  return summary((await request(`${API}/files/${id}?fields=${FIELDS}&${SHARED}`)).data);
 }
 
 /**

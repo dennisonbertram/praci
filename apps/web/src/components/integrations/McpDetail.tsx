@@ -286,6 +286,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
         busy={busy}
         title={t`Allow changes in ${service}?`}
         confirm={t`Allow changes`}
+        grant
         onCancel={() => setConfirmingWrites(false)}
         onConfirm={() =>
           void run(async () => {

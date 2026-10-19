@@ -23,14 +23,24 @@ export type McpMaterialUpdate =
  * env/headers use full-replace semantics (the update payload is the complete
  * set), matching the create handler. OAuth state is preserved unless the
  * endpoint changed, since tokens issued for one endpoint must never be sent to
- * another server. */
+ * another server. `clearStatic` (the origin changed) likewise drops the stored
+ * secret, env and headers unless the update supplies new ones. */
 export function buildMcpUpdateMaterial(
   existing: McpSecretMaterial,
   config: McpServerConfigInput,
-  options: { clearOAuth?: boolean } = {},
+  options: { clearOAuth?: boolean; clearStatic?: boolean } = {},
 ): McpMaterialUpdate {
-  const material = options.clearOAuth ? { ...existing } : existing;
-  const clearedOAuth = options.clearOAuth === true && material.oauth !== undefined;
+  const material = options.clearOAuth || options.clearStatic ? { ...existing } : existing;
+  // A key stored for one host must never be sent to another: drop it unless this update replaces it.
+  const clearedStatic =
+    options.clearStatic === true && Boolean(material.secret || material.env || material.headers);
+  if (options.clearStatic) {
+    delete material.secret;
+    delete material.env;
+    delete material.headers;
+  }
+  const clearedOAuth =
+    (options.clearOAuth === true && material.oauth !== undefined) || clearedStatic;
   if (options.clearOAuth) delete material.oauth;
   const clearing = config.clearCredential === true;
   if (clearing) {
@@ -60,4 +70,13 @@ export function buildMcpUpdateMaterial(
       ...(headers !== undefined ? { headers } : {}),
     },
   };
+}
+
+/** The origin of an MCP endpoint, or null when there is none or it does not parse. */
+export function mcpOrigin(endpoint: string | null | undefined): string | null {
+  try {
+    return endpoint ? new URL(endpoint).origin : null;
+  } catch {
+    return null;
+  }
 }

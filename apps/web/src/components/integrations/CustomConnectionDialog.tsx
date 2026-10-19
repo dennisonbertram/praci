@@ -5,6 +5,7 @@ import type {
   McpServer,
 } from "@rakazo/contracts";
 import {
+  integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
   MCP_OAUTH_CLIENT_ID_REQUIRED,
@@ -63,6 +64,8 @@ export function CustomConnectionDialog({
   initialUrl = "",
   service,
   tokenSource = false,
+  apiKey = false,
+  keyHint,
   oauthClient = false,
   oauthScope,
   onClose,
@@ -75,6 +78,9 @@ export function CustomConnectionDialog({
   service?: string;
   /** Open on the Treg token form (the one way to connect Treg) instead of the URL form. */
   tokenSource?: boolean;
+  /** Ask only for an API key, sent as a bearer token, instead of a sign-in. `keyHint` says which key. */
+  apiKey?: boolean;
+  keyHint?: string;
   /** Show the OAuth client ID fields up front, for servers that refuse dynamic registration. */
   oauthClient?: boolean;
   oauthScope?: string;
@@ -262,6 +268,8 @@ export function CustomConnectionDialog({
   }
 
   async function connectUrl() {
+    // The key-only form needs its key, and never falls back to a browser sign-in.
+    if (apiKey && !token.trim()) return;
     if (!isHttpUrl(url.trim())) {
       setError(t`Enter the server URL, starting with https://.`);
       return;
@@ -270,7 +278,10 @@ export function CustomConnectionDialog({
       const created = await createServer();
       setServer(created);
       void refresh();
-      if (token.trim() || headerValue.trim()) setView({ kind: "agents" });
+      // The API creates the agent of a service that requires one, so there is no agent to choose.
+      if (integrationPresetForEndpoint(created.endpoint)?.requiresAgent)
+        setView({ kind: "done", hint: null });
+      else if (token.trim() || headerValue.trim()) setView({ kind: "agents" });
       else await signIn(created);
     }, t`Could not add the connection`);
   }
@@ -475,7 +486,9 @@ export function CustomConnectionDialog({
               {service ? <Trans>Connect {service}</Trans> : <Trans>Add a custom connection</Trans>}
             </DialogTitle>
             <DialogDescription>
-              {service ? (
+              {service && apiKey ? (
+                keyHint
+              ) : service ? (
                 <Trans>
                   Click Sign in with {service}. A {service} window opens for you to approve access.
                 </Trans>
@@ -500,6 +513,21 @@ export function CustomConnectionDialog({
                 />
               </div>
             )}
+            {apiKey ? (
+              <div className="mt-3 text-xs text-muted-foreground">
+                <Trans>API key</Trans>
+                <Input
+                  aria-label={t`API key`}
+                  autoFocus
+                  className="mt-1 font-mono text-sm"
+                  type="password"
+                  autoComplete="new-password"
+                  value={token}
+                  onChange={(event) => setToken(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && void connectUrl()}
+                />
+              </div>
+            ) : null}
             {needsClient ? (
               <div className="mt-3 space-y-3 text-xs text-muted-foreground">
                 <div>
@@ -645,12 +673,17 @@ export function CustomConnectionDialog({
                 <Trans>Cancel</Trans>
               </Button>
               <Button
-                disabled={busy || !url.trim() || (needsClient && !clientId.trim())}
+                disabled={
+                  busy ||
+                  !url.trim() ||
+                  (apiKey && !token.trim()) ||
+                  (needsClient && !clientId.trim())
+                }
                 onClick={() => void connectUrl()}
               >
                 {busy ? (
                   <Trans>Connecting…</Trans>
-                ) : service ? (
+                ) : service && !apiKey ? (
                   <Trans>Sign in with {service}</Trans>
                 ) : (
                   <Trans>Connect</Trans>

@@ -591,6 +591,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
         busy={busy}
         title={t`Allow changes in ${confirmingWrites?.displayName ?? name}?`}
         confirm={t`Allow changes`}
+        grant
         onCancel={() => setConfirmingWrites(null)}
         onConfirm={() => {
           if (!confirmingWrites) return;
@@ -618,6 +619,7 @@ export function ConfirmDialog({
   busy,
   title,
   confirm,
+  grant,
   children,
   onCancel,
   onConfirm,
@@ -626,6 +628,8 @@ export function ConfirmDialog({
   busy: boolean;
   title: string;
   confirm: string;
+  /** A permission grant, not a destructive act: the confirm button is primary. */
+  grant?: boolean;
   children: ReactNode;
   onCancel: () => void;
   onConfirm: () => void;
@@ -644,7 +648,7 @@ export function ConfirmDialog({
             <Trans>Cancel</Trans>
           </AlertDialogCancel>
           <AlertDialogAction
-            variant="destructive"
+            variant={grant ? "default" : "destructive"}
             disabled={busy}
             onClick={(event) => {
               event.preventDefault();

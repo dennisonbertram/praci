@@ -827,4 +827,57 @@ describePostgres("integration agents (PostgreSQL)", () => {
     await prisma.financeTransaction.deleteMany({ where: { mcpServerId: finServer.id } });
     await prisma.financeSyncState.deleteMany({ where: { mcpServerId: finServer.id } });
   });
+
+  describe("connecting Devin", () => {
+    const devinClient = (listServerTools: () => Promise<unknown[]>) =>
+      createRouterClient(
+        createRouter({
+          prisma,
+          env: {},
+          remoteConnectors: {
+            resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+          },
+          secrets: {
+            put: async (plaintext: string) => ({
+              id: `devin-${suffix}-${Math.random()}`,
+              ciphertext: plaintext,
+            }),
+          },
+          mcp: { listServerTools, callServerTool: async () => ({}) },
+          sandbox: {},
+          home: {},
+          jobs: { cancel: async () => undefined },
+        } as unknown as RouterDeps),
+        { context: { actor: a } as never },
+      );
+    const input = (slug: string) => ({
+      transport: "streamable_http" as const,
+      slug,
+      name: "Devin",
+      endpoint: "https://mcp.devin.ai/mcp",
+      headers: {},
+      secret: "fake-devin-key",
+      enabled: true,
+    });
+
+    it("creates its exclusive agent with writes off in the same request", async () => {
+      const created = await devinClient(async () => []).mcp.servers.create(
+        input(`devin-ok-${suffix}`),
+      );
+      expect(created.agentBotId).toBeTruthy();
+      expect(created).toMatchObject({ agentExclusive: true, writesEnabled: false });
+      const again = await client(a).integrationAgents.create({ serverId: created.id });
+      expect(again.botId).toBe(created.agentBotId);
+    });
+
+    it("stores nothing when Devin rejects the key", async () => {
+      const slug = `devin-bad-${suffix}`;
+      await expect(
+        devinClient(async () => {
+          throw new Error("401 Unauthorized");
+        }).mcp.servers.create(input(slug)),
+      ).rejects.toThrow(/Devin/);
+      expect(await prisma.mcpServer.count({ where: { spaceId, slug } })).toBe(0);
+    });
+  });
 });

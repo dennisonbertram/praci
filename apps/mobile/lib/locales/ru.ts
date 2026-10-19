@@ -794,6 +794,7 @@ export const RU_MESSAGES: Record<string, string> = {
   "SSO is temporarily unavailable. Try again.": "SSO временно недоступен. Попробуйте снова.",
   Inbox: "Входящие",
   "Inbox agent": "Агент входящих",
+  Sent: "Отправлено",
   "Could not load mail.": "Не удалось загрузить почту.",
   "Needs reply": "Нужен ответ",
   Earlier: "Ранее",

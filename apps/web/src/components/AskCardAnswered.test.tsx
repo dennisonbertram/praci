@@ -38,10 +38,22 @@ function render(answer: string) {
   return container.querySelector(".font-medium") as HTMLElement;
 }
 
-it("shows Denied in the destructive colour, not the success green of Allowed once", () => {
-  expect(render("allow").className).toContain("text-success");
+it("shows Denied in the destructive colour", () => {
   const denied = render("deny");
   expect(denied.textContent).toBe("Denied");
   expect(denied.className).toContain("text-destructive");
   expect(denied.className).not.toContain("text-success");
+});
+
+it.each([
+  ["allow", "text-foreground", "lucide-check"],
+  ["always", "text-foreground", "lucide-check"],
+  ["deny", "text-destructive", "lucide-x"],
+  ["confirm-payment", "text-muted-foreground", null],
+])("shows the %s outcome without success green", (answer, colour, icon) => {
+  const line = render(answer);
+  expect(line.className).toContain(colour);
+  expect(line.className).not.toContain("text-success");
+  if (icon) expect(line.querySelector(`svg.${icon}`)).toBeTruthy();
+  else expect(line.querySelector("svg")).toBeNull();
 });

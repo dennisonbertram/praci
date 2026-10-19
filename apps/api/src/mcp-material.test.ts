@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildMcpUpdateMaterial } from "./mcp-material.js";
+import { buildMcpUpdateMaterial, mcpOrigin } from "./mcp-material.js";
 
 describe("buildMcpUpdateMaterial", () => {
   it("keeps the stored blob untouched when the update carries no credential data", () => {
@@ -126,5 +126,46 @@ describe("buildMcpUpdateMaterial", () => {
       action: "store",
       material: { secret: "s", env: { OLD: "x" }, headers: { Authorization: "b" } },
     });
+  });
+});
+
+describe("credentials when the endpoint moves to another origin", () => {
+  const base = {
+    transport: "streamable_http" as const,
+    slug: "x",
+    name: "x",
+    endpoint: "https://new.example.test/mcp",
+    headers: {},
+  };
+  const stored = () => ({
+    secret: "synthetic-key",
+    headers: { "X-Api-Key": "synthetic-header" },
+    oauth: { tokens: { access_token: "t" } },
+  });
+
+  it("clears the stored secret, headers and OAuth when no new credentials are supplied", () => {
+    expect(buildMcpUpdateMaterial(stored(), base, { clearOAuth: true, clearStatic: true })).toEqual(
+      { action: "store", material: {} },
+    );
+  });
+
+  it("stores only the new credentials when they are supplied with the change", () => {
+    expect(
+      buildMcpUpdateMaterial(
+        stored(),
+        { ...base, secret: "synthetic-new-key" },
+        { clearOAuth: true, clearStatic: true },
+      ),
+    ).toEqual({ action: "store", material: { secret: "synthetic-new-key", headers: {} } });
+  });
+
+  it("keeps the secret when only the path changes", () => {
+    expect(buildMcpUpdateMaterial(stored(), base, {})).toMatchObject({
+      action: "store",
+      material: { secret: "synthetic-key" },
+    });
+    expect(mcpOrigin("https://a.test/mcp")).toBe(mcpOrigin("https://a.test/sse"));
+    expect(mcpOrigin("https://a.test/mcp")).not.toBe(mcpOrigin("https://b.test/mcp"));
+    expect(mcpOrigin(null)).toBeNull();
   });
 });

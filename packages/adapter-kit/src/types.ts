@@ -256,6 +256,8 @@ export interface ConnectorRoute {
   catalogGroup?: string;
   /** The MCP server's endpoint, so approval checks can tell which server a raw tool name belongs to. */
   endpoint?: string;
+  /** The MCP server's display name, shown on approval cards. */
+  serverName?: string;
   /** Read or write as classified at discovery, for an integration agent's tools. The executor asked for approval on that basis, so execute() refuses a tool that has since become a write. */
   discoveredReadOnly?: boolean;
 }
@@ -676,6 +678,29 @@ export interface BackgroundJobPayloads {
   "dataroom.ingest": { spaceId: string; userId: string; itemId: string };
   "dataroom.classify": { spaceId: string; userId: string; itemId: string };
   "dataroom.index": { spaceId: string; userId: string; itemId: string };
+  /**
+   * A planned Drive folder import: creates the Data room folders, then queues one
+   * `dataroom.drive.file` job per file. Safe to run again after a partial failure.
+   */
+  "dataroom.drive.import": {
+    spaceId: string;
+    userId: string;
+    connectionId: string;
+    /** Data room folder the imported tree goes under; null is the top level. */
+    folderId: string | null;
+    /** `parent` indexes an earlier entry; null is `folderId`. */
+    folders: { name: string; parent: number | null }[];
+    /** `folder` indexes `folders`; null is `folderId`. */
+    files: { id: string; folder: number | null }[];
+  };
+  /** Downloads one Drive file of a folder import and files it; a repeat files nothing. */
+  "dataroom.drive.file": {
+    spaceId: string;
+    userId: string;
+    connectionId: string;
+    externalId: string;
+    folderId: string | null;
+  };
 }
 
 export type BackgroundJobName = keyof BackgroundJobPayloads;

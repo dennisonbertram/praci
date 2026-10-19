@@ -3,9 +3,12 @@ import {
   CARTA_READ_TOOLS,
   CARTA_WRITE_TOOLS,
   cartaAgentSpawnKey,
+  DEVIN_READ_TOOLS,
+  DEVIN_WRITE_TOOLS,
 } from "@rakazo/contracts";
 import { createLogger, createTestSink, getLogger, installLogger } from "@rakazo/logging";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { isIntegrationAgentWrite } from "./approval-ask.js";
 import { InfisicalSecretStore } from "./infisical-secret-store.js";
 import { allowlistDrift, McpConnector } from "./mcp-connector.js";
 import { type McpOAuthBroker, StoredMcpOAuthProvider } from "./mcp-oauth.js";
@@ -2032,5 +2035,148 @@ describe("MCP connector Carta integration-agent policy", () => {
         await connector.close();
       }
     }
+  });
+});
+
+describe("MCP connector Devin agent", () => {
+  const endpoint = "https://mcp.devin.ai/mcp";
+  const server = {
+    ...SERVER,
+    endpoint,
+    name: "Devin",
+    slug: "devin",
+    spaceId: "w1",
+    userId: "u1",
+    writesEnabled: false,
+    agentBotId: "agent-1",
+    agentExclusive: false,
+  };
+  const agentBot = {
+    id: "agent-1",
+    spawnKey: "integration-agent:server-1",
+    spaceId: "w1",
+    userId: "u1",
+    archivedAt: null,
+  };
+  const tool = (name: string) => ({ name, inputSchema: { type: "object" } });
+  const TOOLS = [...DEVIN_READ_TOOLS, ...DEVIN_WRITE_TOOLS, "devin_added_later"].map(tool);
+
+  /** `linked`: the server has its agent; `asBot`: who is calling (the agent or an ordinary bot). */
+  async function setup(
+    writesEnabled: boolean,
+    { linked = true, asAgent = true }: { linked?: boolean; asAgent?: boolean } = {},
+  ) {
+    const bot = asAgent ? agentBot : { ...agentBot, id: "other", spawnKey: null };
+    const assignment = {
+      ...ASSIGNMENT,
+      botId: bot.id,
+      bot,
+      server: {
+        ...server,
+        writesEnabled,
+        agentBotId: linked ? agentBot.id : null,
+        agentBot: linked ? agentBot : null,
+      },
+    };
+    const state = { failNext: false, initializations: 0, calls: [] as string[], tools: TOOLS };
+    vi.stubGlobal("fetch", mcpFetch(state, endpoint));
+    const connector = new McpConnector(
+      {
+        botMcpServer: {
+          findMany: vi.fn().mockImplementation(async () => [assignment]),
+          findFirst: vi.fn().mockImplementation(async () => assignment),
+        },
+      } as never,
+      {} as never,
+      { network: TEST_NETWORK },
+    );
+    const context = {
+      spaceId: "w1",
+      userId: "u1",
+      botId: bot.id,
+      signal: new AbortController().signal,
+    } as never;
+    const call = async (toolName: string, discoveredReadOnly: boolean) => {
+      const events: Array<{ type: string }> = [];
+      for await (const event of connector.execute(
+        {
+          tool: `mcp__devin__${toolName}`,
+          args: {},
+          route: {
+            connectorId: "mcp",
+            resourceId: "server-1",
+            toolName,
+            endpoint,
+            discoveredReadOnly,
+          },
+        } as never,
+        context,
+      ))
+        events.push(event as never);
+      return events;
+    };
+    return { connector, state, context, call };
+  }
+
+  it("marks reads as reads and writes as writes, and hides tools it has not classified", async () => {
+    const { connector, context } = await setup(true);
+    const tools = await connector.discoverTools(context);
+    const byName = Object.fromEntries(tools.map((t) => [t.route?.toolName, t.readOnly]));
+    for (const name of DEVIN_READ_TOOLS) expect(byName[name]).toBe(true);
+    for (const name of DEVIN_WRITE_TOOLS) expect(byName[name]).toBe(false);
+    expect(byName).not.toHaveProperty("devin_added_later");
+    await connector.close();
+  });
+
+  it("offers no writes until changes are allowed, and refuses them if called", async () => {
+    const { connector, context, state, call } = await setup(false);
+    const names = (await connector.discoverTools(context)).map((t) => t.route?.toolName);
+    expect(names).toEqual([...DEVIN_READ_TOOLS]);
+    expect(await call("devin_session_create", false)).toMatchObject([{ type: "error" }]);
+    expect(await call("devin_added_later", false)).toMatchObject([{ type: "error" }]);
+    expect(await call("devin_session_search", true)).toMatchObject([{ type: "result" }]);
+    expect(state.calls).toEqual(["devin_session_search"]);
+    await connector.close();
+  });
+
+  it("gives an ordinary bot no Devin tool when the server has no agent, even with changes on", async () => {
+    for (const asAgent of [false, true]) {
+      const { connector, context, state, call } = await setup(true, { linked: false, asAgent });
+      expect(await connector.discoverTools(context)).toEqual([]);
+      for (const name of DEVIN_WRITE_TOOLS)
+        expect(await call(name, false)).toMatchObject([{ type: "error" }]);
+      expect(await call("devin_session_search", true)).toMatchObject([{ type: "error" }]);
+      expect(state.calls).toEqual([]);
+      await connector.close();
+    }
+  });
+
+  it("gives an ordinary bot only reads once the server has its agent", async () => {
+    const { connector, context, state, call } = await setup(true, { asAgent: false });
+    const names = (await connector.discoverTools(context)).map((t) => t.route?.toolName);
+    expect(names).toEqual([...DEVIN_READ_TOOLS]);
+    for (const name of DEVIN_WRITE_TOOLS)
+      expect(await call(name, false)).toMatchObject([{ type: "error" }]);
+    expect(state.calls).toEqual([]);
+    await connector.close();
+  });
+
+  it("asks the executor to approve each write with the same classification", () => {
+    for (const name of DEVIN_WRITE_TOOLS)
+      expect(
+        isIntegrationAgentWrite(
+          "integration-agent:server-1",
+          { connectorId: "mcp", endpoint, toolName: name },
+          false,
+        ),
+      ).toBe(true);
+    for (const name of DEVIN_READ_TOOLS)
+      expect(
+        isIntegrationAgentWrite(
+          "integration-agent:server-1",
+          { connectorId: "mcp", endpoint, toolName: name },
+          true,
+        ),
+      ).toBe(false);
   });
 });

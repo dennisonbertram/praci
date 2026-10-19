@@ -64,3 +64,21 @@ it("opens Move, Rename and Delete for a top-level folder on right-click", async 
   // All items is not a folder, so it has no menu.
   expect(entries()[0]?.querySelector("button")).toBeNull();
 });
+
+it("styles New folder like a folder row and marks the selected folder medium, not bold", () => {
+  act(() =>
+    root.render(
+      <FolderTree nodes={nodes} selected="f-inv" onSelect={vi.fn()} onNewFolder={vi.fn()} />,
+    ),
+  );
+  const button = Array.from(container.querySelectorAll("button")).find(
+    (b) => b.textContent === "New folder",
+  );
+  expect(button?.className).toContain("text-sm");
+  expect(button?.className).toContain("min-h-8");
+  expect(button?.querySelector("svg")?.getAttribute("class")).toContain("size-3.5");
+  const selected = entries().find((e) => e.getAttribute("aria-selected") === "true");
+  expect(selected?.className).toContain("font-medium");
+  expect(selected?.className).not.toContain("font-semibold");
+  expect(container.firstElementChild?.className).not.toContain("border-e");
+});

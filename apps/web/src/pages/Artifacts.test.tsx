@@ -107,6 +107,8 @@ it("opens the Artifacts screen and lists what listSpace returns", async () => {
   const page = await renderArtifacts();
   try {
     expect(page.container.textContent).toContain("Artifacts");
+    expect(page.container.querySelectorAll("h1")).toHaveLength(1);
+    expect(page.container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
     expect(page.container.textContent).toContain("Q3 Content Calendar");
     expect(page.container.querySelector("[data-testid='app-rail']")).toBeNull();
   } finally {

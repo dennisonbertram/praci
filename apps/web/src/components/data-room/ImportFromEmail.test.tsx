@@ -18,13 +18,14 @@ vi.mock("@lingui/react/macro", () => ({
 
 const rpcMock = vi.hoisted(() => ({
   connections: vi.fn(),
+  catalog: vi.fn(),
   list: vi.fn(),
   get: vi.fn(),
   importEmail: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
-    connections: { list: rpcMock.connections },
+    connections: { list: rpcMock.connections, catalog: rpcMock.catalog },
     inbox: { list: rpcMock.list, get: rpcMock.get },
     dataRoom: { importEmail: rpcMock.importEmail },
   },
@@ -64,8 +65,11 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function render(connections: unknown[]) {
+const offers = (...slugs: string[]) => slugs.map((slug) => ({ connectorId: "google", slug }));
+
+async function render(connections: unknown[], catalog = offers("gmail", "googledrive")) {
   rpcMock.connections.mockResolvedValue(connections);
+  rpcMock.catalog.mockResolvedValue(catalog);
   await act(async () => {
     root.render(
       <MemoryRouter>
@@ -166,4 +170,16 @@ it("stops offering unticked boxes once 20 files are picked", async () => {
   expect(
     boxes()[20]?.getAttribute("aria-disabled") ?? boxes()[20]?.hasAttribute("disabled"),
   ).toBeTruthy();
+});
+
+it("shows no Gmail button when the server does not offer Gmail and it is not connected", async () => {
+  await render([], offers("googledrive"));
+  expect(button("Connect Gmail")).toBeUndefined();
+  expect(button("Import from email")).toBeUndefined();
+  expect(button("Connect Google Drive")).toBeDefined();
+});
+
+it("keeps the Gmail button for a connected account even if the catalog omits it", async () => {
+  await render([{ connectorId: "google", provider: "gmail", status: "connected" }], []);
+  expect(button("Import from email")).toBeDefined();
 });

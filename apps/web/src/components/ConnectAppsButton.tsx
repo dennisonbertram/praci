@@ -61,7 +61,7 @@ export function ConnectAppsButton({ active, onClick }: { active: boolean; onClic
         type="button"
         data-testid="sidebar-integrations"
         onClick={onClick}
-        className="mx-3 mb-1 flex w-[calc(100%-1.5rem)] items-center justify-between gap-3 rounded-full border border-sidebar-border bg-muted py-1.5 pl-4 pr-2 hover:bg-sidebar-accent"
+        className="mb-1 flex w-full items-center justify-between gap-3 rounded-full border border-sidebar-border bg-muted py-1.5 pl-4 pr-2 hover:bg-sidebar-accent"
       >
         <span className="text-[14px] font-medium text-foreground/90">
           <Trans>Connect apps</Trans>
@@ -82,7 +82,7 @@ export function ConnectAppsButton({ active, onClick }: { active: boolean; onClic
       data-testid="sidebar-integrations"
       aria-current={active ? "page" : undefined}
       onClick={onClick}
-      className={`mx-3 mb-1 flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
+      className={`mb-1 flex w-full items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
         active ? "bg-sidebar-accent" : ""
       }`}
     >

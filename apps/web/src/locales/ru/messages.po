@@ -130,11 +130,6 @@ msgstr ""
 msgid "{0} {unitLabel}"
 msgstr "{0} {unitLabel}"
 
-#. placeholder {0}: server.name
-#: src/components/integrations/McpDetail.tsx
-msgid "{0} agent"
-msgstr ""
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -367,6 +362,10 @@ msgstr ""
 msgid "{name} accounts"
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} agent"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -420,6 +419,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "{serverName} connected"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "{service} agent"
 msgstr ""
 
 #: src/lib/format-bytes.ts
@@ -755,6 +758,11 @@ msgstr ""
 msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+msgid "Added"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Adding a contact"
 msgstr ""
@@ -885,8 +893,14 @@ msgstr ""
 msgid "Allow access below first."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
+msgstr ""
+
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "Allow changes in {0}?"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -976,6 +990,10 @@ msgstr ""
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Для этого поставщика сохранен API-ключ, а не вход по подписке."
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "An org-scoped Devin service-user key (starts with cog_)."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "Ответ"
@@ -1012,6 +1030,7 @@ msgstr "API вернулся, но обновление не завершило�
 #: src/components/AskCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
@@ -1977,8 +1996,12 @@ msgstr "Облако"
 msgid "Code"
 msgstr "Код"
 
-#. placeholder {0}: group.title
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Coding sessions and repo docs"
+msgstr ""
+
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
 msgstr "Свернуть {0}"
@@ -2432,6 +2455,7 @@ msgstr "Не удалось подключиться к экрану компь�
 msgid "Could not continue"
 msgstr "Не удалось продолжить"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not create agent"
 msgstr ""
@@ -2841,6 +2865,7 @@ msgstr "Не смог взять под контроль"
 msgid "Could not update"
 msgstr "Не удалось обновить"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update access"
 msgstr ""
@@ -2850,6 +2875,7 @@ msgstr ""
 msgid "Could not update bot access"
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update changes"
 msgstr ""
@@ -2959,6 +2985,7 @@ msgstr "Создайте раздел и переместите в него {0}.
 msgid "Create account"
 msgstr "Зарегистрироваться"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr ""
@@ -3075,8 +3102,6 @@ msgstr ""
 msgid "Data room search model"
 msgstr ""
 
-#: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -3356,6 +3381,7 @@ msgid "Docs & files"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
 msgid "Document date"
 msgstr ""
 
@@ -3678,8 +3704,8 @@ msgstr ""
 msgid "Expand"
 msgstr "Развернуть"
 
-#. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "Развернуть {0}"
@@ -3979,11 +4005,15 @@ msgid "Gmail didn't respond. Try again."
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts
-msgid "Gmail is limiting requests right now. Try again in a minute."
+msgid "Gmail is limiting requests right now."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Gmail is limiting requests. Try again in a minute."
+msgstr ""
+
+#: src/lib/inbox-sync-error.ts
+msgid "Gmail is still limiting requests."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -4207,6 +4237,11 @@ msgstr "Область загрузки изображения"
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Import"
+msgstr ""
+
+#. placeholder {0}: picks.size
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Import {0}"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -5200,6 +5235,7 @@ msgstr ""
 msgid "New Bot"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
 msgid "New folder"
@@ -5687,10 +5723,6 @@ msgstr ""
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr ""
 
-#: src/components/integrations/McpDetail.tsx
-msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
-msgstr ""
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -6094,6 +6126,10 @@ msgid "Personal"
 msgstr ""
 
 #: src/pages/Shell.tsx
+msgid "Personnel"
+msgstr ""
+
+#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
 msgid "Photo"
 msgstr "Фото"
@@ -6374,10 +6410,6 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Receipts"
-msgstr ""
-
-#: src/components/data-room/FilterBar.tsx
-msgid "Recently added"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -7157,6 +7189,11 @@ msgstr ""
 msgid "See who owns your company"
 msgstr ""
 
+#. placeholder {0}: file.name
+#: src/components/data-room/DriveRow.tsx
+msgid "Select {0}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Select a bot"
 msgstr "Выберите бота"
@@ -7222,6 +7259,7 @@ msgstr ""
 msgid "Sending…"
 msgstr "Отправка…"
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
@@ -7879,6 +7917,11 @@ msgstr ""
 msgid "the {month} statement"
 msgstr ""
 
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "The agent will be able to change your {0} data. It asks before each change."
+msgstr ""
+
 #: src/components/integrations/McpDetail.tsx
 msgid "The agent will be able to change your {service} data. It asks before each change."
 msgstr ""
@@ -8249,6 +8292,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -8270,10 +8314,6 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "Повторите тест."
-
-#: src/pages/Inbox.tsx
-msgid "Trying again…"
-msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"
@@ -8561,11 +8601,6 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Использует собственные учётные данные {hostCredentialSource} этого сервера для доступа к {selectedProviderName}."
-
-#. placeholder {0}: activity.label
-#: src/pages/Shell.tsx
-msgid "Using {0}"
-msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx

@@ -209,6 +209,8 @@ it("offers Add account when nothing is connected, opening the dialog with Upload
   rpcMock.exchanges.mockResolvedValue([]);
   await show("/app/finance");
   expect(container.textContent).toContain("Add an account to see cash, burn, runway and spend.");
+  expect(container.querySelectorAll("h1")).toHaveLength(1);
+  expect(container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
   expect(container.querySelectorAll('[data-testid="app-logo"]').length).toBe(2);
   expect(button(/^Ask Finance agent$/)).toBeUndefined();
   const add = button("Add account");

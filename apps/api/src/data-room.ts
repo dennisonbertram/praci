@@ -1,7 +1,11 @@
 import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
 import type { ArtifactStore, JobPublisher, MailProvider } from "@rakazo/adapter-kit";
-import { dataRoomBlobDeleteJob, dataRoomStepJob } from "@rakazo/adapter-kit";
+import {
+  dataRoomBlobDeleteJob,
+  dataRoomDriveImportJob,
+  dataRoomStepJob,
+} from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
 import {
   createFileDataRoomItem as createFileItem,
@@ -15,6 +19,7 @@ import {
   listDriveAccounts,
   listDriveFiles,
   modelAcceptsImageInput,
+  planDriveFolders,
 } from "@rakazo/adapters";
 import type {
   Actor,
@@ -161,6 +166,7 @@ const DRIVE_ERRORS = {
   unsupported: "BAD_REQUEST",
   too_large: "PAYLOAD_TOO_LARGE",
   rate_limited: "TOO_MANY_REQUESTS",
+  too_many: "BAD_REQUEST",
   failed: "INTERNAL_SERVER_ERROR",
 } as const;
 
@@ -469,7 +475,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
     /** Copies files of the caller's own Drive into the Data room; a Drive file id names a repeat. */
     importDrive: async (
       actor: Actor,
-      input: { fileIds: string[]; folderId?: string | null },
+      input: { fileIds: string[]; driveFolderIds?: string[]; folderId?: string | null },
       signal?: AbortSignal,
     ) => {
       const folderId = input.folderId ?? null;
@@ -485,7 +491,17 @@ export function createDataRoomService(deps: DataRoomDeps) {
         let imported = 0;
         let duplicates = 0;
         let failed = 0;
-        for (const externalId of new Set(input.fileIds)) {
+        // Listing is read-only, so an over-limit selection is refused before anything is written.
+        // Direct picks join the plan, so a mixed import writes only the one queued job.
+        const plan = input.driveFolderIds?.length
+          ? await planDriveFolders(drive, context, {
+              connectionId: sourceConnectionId,
+              folderIds: input.driveFolderIds,
+              directFileIds: input.fileIds,
+              maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
+            })
+          : undefined;
+        for (const externalId of plan ? [] : new Set(input.fileIds)) {
           if (await known(actor, externalId, sourceConnectionId)) {
             duplicates += 1;
             continue;
@@ -519,7 +535,26 @@ export function createDataRoomService(deps: DataRoomDeps) {
           if (created) imported += 1;
           else duplicates += 1;
         }
-        return { imported, duplicates, failed };
+        if (!plan) return { imported, duplicates, failed };
+        // One queued job holds the whole plan: it either exists, or nothing was written.
+        if (plan.folders.length > 0 || plan.files.length > 0)
+          await deps.jobs.enqueue(
+            dataRoomDriveImportJob({
+              spaceId: actor.spaceId,
+              userId: actor.userId,
+              connectionId: sourceConnectionId,
+              folderId,
+              folders: plan.folders,
+              files: plan.files,
+            }),
+          );
+        return {
+          imported,
+          duplicates,
+          failed: failed + plan.skipped,
+          queued: plan.files.length,
+          folders: plan.folders.length,
+        };
       });
     },
 
