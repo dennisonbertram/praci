@@ -43,6 +43,7 @@ describe("mobile jump to latest", () => {
         const [scrollState, setThreadScrollState] = useState<ThreadScrollState>({
           detached: false,
           unread: false,
+          newCount: 0,
         });
         const deps = {
           pinnedAroundRef,

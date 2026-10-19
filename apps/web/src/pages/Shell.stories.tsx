@@ -93,24 +93,29 @@ const snapshot = {
   run: null,
 };
 
-const loadedWith = (bot: ReturnType<typeof makeBot>) => () =>
-  mockRpc({
-    "spaces.list": { ...navigation, current: { ...navigation.current, bots: [bot, ...mockBots] } },
-    "threads.get": { ...snapshot, botId: bot.id },
-    "threads.head": { threadId: "thread_demo", cursor: 4 },
-    "threads.messages": { threadId: "thread_demo", messages: [], olderCursor: null },
-    "routines.list": [],
-    "skills.list": [],
-    "connections.list": [],
-    "connections.catalog": [],
-    "connections.featured": [],
-    "agentSkills.list": [],
-    "threads.subscribe": () =>
-      (async function* () {
-        await new Promise(() => undefined);
-      })(),
-    usage: null,
-  });
+const loadedWith =
+  (bot: ReturnType<typeof makeBot>, thread = snapshot) =>
+  () =>
+    mockRpc({
+      "spaces.list": {
+        ...navigation,
+        current: { ...navigation.current, bots: [bot, ...mockBots] },
+      },
+      "threads.get": { ...thread, botId: bot.id },
+      "threads.head": { threadId: "thread_demo", cursor: thread.cursor },
+      "threads.messages": { threadId: "thread_demo", messages: [], olderCursor: null },
+      "routines.list": [],
+      "skills.list": [],
+      "connections.list": [],
+      "connections.catalog": [],
+      "connections.featured": [],
+      "agentSkills.list": [],
+      "threads.subscribe": () =>
+        (async function* () {
+          await new Promise(() => undefined);
+        })(),
+      usage: null,
+    });
 
 const loaded = loadedWith(mockBots[0] as ReturnType<typeof makeBot>);
 
@@ -143,6 +148,52 @@ export const ConversationAppAgent: Story = {
 export const Conversation: Story = {
   decorators: [at("/app/bot_ada")],
   beforeEach: loaded,
+};
+
+/** Two replies arrived since the reader last opened the thread: the divider goes before the first. */
+export const ConversationUnreadDivider: Story = {
+  decorators: [at("/app/bot_ada")],
+  beforeEach: loadedWith(
+    mockBots[0] as ReturnType<typeof makeBot>,
+    {
+      ...snapshot,
+      cursor: 5,
+      lastReadSeq: 3,
+      messages: [
+        ...snapshot.messages,
+        message(5, "bot", "I also attached the figures you asked about."),
+      ],
+    } as typeof snapshot,
+  ),
+};
+
+const longReply = (seq: number) =>
+  message(
+    seq,
+    seq % 2 ? "user" : "bot",
+    `Message ${seq}. ${"A longer line of invented text that fills the conversation so it needs to scroll. ".repeat(5)}`,
+  );
+
+/** A long thread opens at the divider, with the unread messages below it counted in the pill. */
+export const ConversationUnreadPill: Story = {
+  // The transcript only scrolls inside a bounded page, as in the app.
+  decorators: [
+    (Story) => (
+      <div className="h-dvh">
+        <Story />
+      </div>
+    ),
+    at("/app/bot_ada"),
+  ],
+  beforeEach: loadedWith(
+    mockBots[0] as ReturnType<typeof makeBot>,
+    {
+      ...snapshot,
+      cursor: 16,
+      lastReadSeq: 5,
+      messages: Array.from({ length: 16 }, (_, i) => longReply(i + 1)),
+    } as typeof snapshot,
+  ),
 };
 
 const fileInputRef = createRef<HTMLInputElement>();

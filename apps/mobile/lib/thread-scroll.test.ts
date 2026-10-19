@@ -55,12 +55,12 @@ describe("mobile thread initial scroll", () => {
     behavior.onLayout();
     behavior.onContentChanged(false, "m1");
 
-    expect(behavior.onUserScroll(120)).toEqual({ detached: true, unread: false });
+    expect(behavior.onUserScroll(120)).toEqual({ detached: true, unread: false, newCount: 0 });
     expect(behavior.onLayout()).toBe(null);
     expect(behavior.onContentChanged(false, "m2")).toBe(null);
-    expect(behavior.state()).toEqual({ detached: true, unread: true });
+    expect(behavior.state()).toEqual({ detached: true, unread: true, newCount: 1 });
     expect(behavior.jumpToLatest()).toBe("smooth");
-    expect(behavior.state()).toEqual({ detached: false, unread: false });
+    expect(behavior.state()).toEqual({ detached: false, unread: false, newCount: 0 });
   });
 
   it("skips state commits during a 2 s detached drag of 120 scroll events", () => {
@@ -99,9 +99,46 @@ describe("mobile thread initial scroll", () => {
     expect(behavior.onContentChanged(false, "m2")).toBe(null);
     publish(behavior.state());
     expect(afterCommits).toBe(1);
-    expect(after).toEqual({ detached: true, unread: true });
+    expect(after).toEqual({ detached: true, unread: true, newCount: 1 });
     publish(behavior.onUserScroll(80));
     expect(afterCommits).toBe(2);
-    expect(after).toEqual({ detached: false, unread: false });
+    expect(after).toEqual({ detached: false, unread: false, newCount: 0 });
+  });
+});
+
+describe("mobile new-message pill count", () => {
+  function detached() {
+    const behavior = new ThreadScrollBehavior();
+    behavior.openThread("thread-1");
+    behavior.onLayout();
+    behavior.onContentChanged(false, "m1");
+    behavior.onUserScroll(500);
+    return behavior;
+  }
+
+  it("counts messages that arrive while the reader is scrolled up", () => {
+    const behavior = detached();
+    expect(behavior.state().newCount).toBe(0);
+    expect(behavior.onContentChanged(false, "m2", 1)).toBe(null);
+    expect(behavior.state()).toEqual({ detached: true, unread: true, newCount: 1 });
+    behavior.onContentChanged(false, "m4", 2);
+    expect(behavior.state().newCount).toBe(3);
+  });
+
+  it("does not count while following the tail, and resets on reaching the end or jumping", () => {
+    const following = new ThreadScrollBehavior();
+    following.openThread("thread-1");
+    following.onLayout();
+    following.onContentChanged(false, "m1");
+    expect(following.onContentChanged(false, "m2", 1)).toBe("smooth");
+    expect(following.state().newCount).toBe(0);
+
+    const behavior = detached();
+    behavior.onContentChanged(false, "m2", 2);
+    expect(behavior.onUserScroll(10).newCount).toBe(0);
+    behavior.onUserScroll(500);
+    behavior.onContentChanged(false, "m3", 1);
+    expect(behavior.jumpToLatest()).toBe("smooth");
+    expect(behavior.state()).toEqual({ detached: false, unread: false, newCount: 0 });
   });
 });

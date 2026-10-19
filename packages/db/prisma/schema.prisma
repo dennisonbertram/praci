@@ -572,6 +572,8 @@ model Thread {
   historyCompactionSummary    String?               @db.Text
   historyCompactionGeneration Int                   @default(0)
   unread                      Boolean               @default(false)
+  /// Highest message seq the thread's owner has read; -1 before any. Moves forward only, except markUnread.
+  lastReadSeq                 Int                   @default(-1)
   messages                    Message[]
   events                      Event[]
   tasks                       Task[]

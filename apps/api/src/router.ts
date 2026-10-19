@@ -450,7 +450,7 @@ import {
   setThreadUnreadState,
   stopThreadRuns,
   threadHead,
-  threadSnapshot,
+  threadSnapshotForReader,
 } from "./thread-target.js";
 import {
   disconnectVoiceCredential,
@@ -1443,7 +1443,7 @@ export function createRouter(deps: RouterDeps) {
       const [thread, routines] = active
         ? await Promise.all([
             resolveThreadTarget(deps.prisma, actor, { botId: active.id }).then((target) =>
-              threadSnapshot(deps, target),
+              threadSnapshotForReader(deps, actor, target),
             ),
             listRoutinesDto(deps, actor, active.id),
           ])
@@ -2533,7 +2533,7 @@ export function createRouter(deps: RouterDeps) {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input, {
           includeArchived: true,
         });
-        return threadSnapshot(deps, target);
+        return threadSnapshotForReader(deps, context.actor, target);
       }),
       messages: authed.threads.messages.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input, {
@@ -2930,7 +2930,7 @@ export function createRouter(deps: RouterDeps) {
       }),
       markRead: authed.threads.markRead.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
-        await setThreadUnreadState(deps.prisma, context.actor, target, false);
+        await setThreadUnreadState(deps.prisma, context.actor, target, false, input.upTo);
         return { ok: true as const };
       }),
       markUnread: authed.threads.markUnread.handler(async ({ context, input }) => {

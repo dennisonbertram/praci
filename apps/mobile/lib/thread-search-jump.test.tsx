@@ -50,6 +50,7 @@ describe("mobile search jump", () => {
         const [, setThreadScrollState] = useState<ThreadScrollState>({
           detached: false,
           unread: false,
+          newCount: 0,
         });
         const pinnedAroundRef = useRef<PinnedAround | null>(null);
         const jumpScrollTarget = useRef<string | null>(null);

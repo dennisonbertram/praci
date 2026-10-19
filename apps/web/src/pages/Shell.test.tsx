@@ -11,6 +11,8 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("@lingui/core/macro", () => ({
   msg: (parts: TemplateStringsArray) => parts[0],
   t: (parts: TemplateStringsArray) => parts.join(""),
+  plural: (count: number, forms: { one: string; other: string }) =>
+    (count === 1 ? forms.one : forms.other).replace("#", String(count)),
 }));
 vi.mock("@lingui/react/macro", () => {
   const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
@@ -769,5 +771,149 @@ describe("Transcript failed-run note", () => {
     expect(note()?.textContent).toBe("Scheduled run failed: Key rejected.");
     render(false);
     expect(note()?.textContent).toBe("Last run failed: Key rejected.");
+  });
+});
+
+describe("Transcript unread divider and new-message pill", () => {
+  const msg = (seq: number, role: "bot" | "user" = "bot"): ThreadMessage => ({
+    id: `m${seq}`,
+    threadId: "t1",
+    seq,
+    role,
+    blocks: [{ kind: "text", text: `message ${seq}` }],
+    createdAt: "2026-10-01T00:00:00.000Z",
+  });
+  // seq 0 bot, 1 user, 2 bot, 3 user, 4 bot
+  const thread = [msg(0), msg(1, "user"), msg(2), msg(3, "user"), msg(4)];
+
+  function mount() {
+    (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+    window.matchMedia ??= () =>
+      ({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }) as unknown as MediaQueryList;
+    globalThis.ResizeObserver ??= class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    };
+    Element.prototype.scrollIntoView = vi.fn();
+    Element.prototype.scrollTo = vi.fn() as never;
+    container = document.createElement("div");
+    document.body.append(container);
+    root = createRoot(container);
+    const props = transcriptProps();
+    const render = (messages: ThreadMessage[], extra: Partial<ComponentProps<typeof Transcript>>) =>
+      act(() =>
+        root?.render(<Transcript {...props} messages={messages} scrollRequest={null} {...extra} />),
+      );
+    return { props, render };
+  }
+  const dividers = () => [...(container?.querySelectorAll('[data-testid="unread-divider"]') ?? [])];
+  const followingRow = (divider: Element) =>
+    (divider.nextElementSibling as HTMLElement | null)?.dataset.messageId;
+
+  it("goes before the first unread message from the other party, never the user's own", () => {
+    const { render } = mount();
+    render(thread, { lastReadSeq: 1 });
+    expect(dividers()).toHaveLength(1);
+    expect(followingRow(dividers()[0]!)).toBe("m2");
+    expect(dividers()[0]?.textContent).toBe("New");
+  });
+
+  it("is absent when everything is read or only the user's own messages are newer", () => {
+    const { render } = mount();
+    render(thread, { lastReadSeq: 4 });
+    expect(dividers()).toHaveLength(0);
+    render([msg(0), msg(1, "user")], { lastReadSeq: 0 });
+    expect(dividers()).toHaveLength(0);
+  });
+
+  it("stays put as messages arrive and are marked read, and clears after the reader sends", () => {
+    const { render } = mount();
+    render(thread, { lastReadSeq: 1 });
+    render([...thread, msg(5)], { lastReadSeq: 5 });
+    expect(dividers()).toHaveLength(1);
+    expect(followingRow(dividers()[0]!)).toBe("m2");
+    render([...thread, msg(5), msg(6, "user")], { lastReadSeq: 5 });
+    expect(dividers()).toHaveLength(0);
+  });
+
+  describe("scrolled up", () => {
+    const scrollUp = () => {
+      const element = container?.querySelector<HTMLElement>('[data-testid="transcript"]');
+      if (!element) throw new Error("no transcript");
+      for (const [key, value] of [
+        ["scrollHeight", 2000],
+        ["clientHeight", 500],
+        ["scrollTop", 0],
+      ] as const) {
+        Object.defineProperty(element, key, { value, configurable: true, writable: true });
+      }
+      act(() => {
+        element.dispatchEvent(new Event("scroll", { bubbles: true }));
+      });
+    };
+    const pill = () => container?.querySelector('[data-testid="new-messages-count"]')?.textContent;
+    const jump = () =>
+      [...(container?.querySelectorAll("button") ?? [])].find((b) =>
+        /Jump to latest|new message/.test(b.textContent ?? ""),
+      );
+
+    it("counts new messages from the other party and dismisses the count", () => {
+      const { render } = mount();
+      render(thread, { lastReadSeq: 4 });
+      scrollUp();
+      expect(pill()).toBeUndefined();
+      expect(jump()?.textContent).toBe("Jump to latest");
+      render([...thread, msg(5)], { lastReadSeq: 4 });
+      expect(pill()).toBe("1 new message");
+      render([...thread, msg(5), msg(6, "user"), msg(7)], { lastReadSeq: 4 });
+      expect(pill()).toBe("2 new messages");
+      const dismiss = container?.querySelector<HTMLButtonElement>('button[aria-label="Dismiss"]');
+      act(() => dismiss?.click());
+      expect(pill()).toBeUndefined();
+      expect(jump()?.textContent).toBe("Jump to latest");
+      render([...thread, msg(5), msg(6, "user"), msg(7), msg(8)], { lastReadSeq: 4 });
+      expect(pill()).toBe("3 new messages");
+    });
+  });
+
+  describe("marking read", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+    });
+
+    it("reports the newest message once, after a debounce, while the tab is attended", () => {
+      vi.useFakeTimers();
+      vi.spyOn(document, "hasFocus").mockReturnValue(true);
+      const onRead = vi.fn().mockResolvedValue(undefined);
+      const { render } = mount();
+      render(thread, { lastReadSeq: 1, onRead });
+      expect(onRead).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(20);
+      });
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(onRead).toHaveBeenCalledTimes(1);
+      expect(onRead).toHaveBeenCalledWith(4, true);
+    });
+
+    it("does not write while the tab is unfocused", () => {
+      vi.useFakeTimers();
+      vi.spyOn(document, "hasFocus").mockReturnValue(false);
+      const onRead = vi.fn().mockResolvedValue(undefined);
+      const { render } = mount();
+      render(thread, { lastReadSeq: 1, onRead });
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(onRead).not.toHaveBeenCalled();
+    });
   });
 });

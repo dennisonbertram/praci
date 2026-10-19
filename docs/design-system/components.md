@@ -4,8 +4,8 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 197 of 197
-- Web and shared components: 559
-- Mobile components: 126 in 87 files, mobile — native story pending
+- Web and shared components: 560
+- Mobile components: 127 in 88 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -258,7 +258,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | RoutineSchedule | [apps/web/src/pages/RoutineSchedule.tsx](../../apps/web/src/pages/RoutineSchedule.tsx) | [RoutineSchedule.stories.tsx](../../apps/web/src/pages/RoutineSchedule.stories.tsx) | web |
 | ScratchpadSection | [apps/web/src/pages/ScratchpadSection.tsx](../../apps/web/src/pages/ScratchpadSection.tsx) | [ScratchpadSection.stories.tsx](../../apps/web/src/pages/ScratchpadSection.stories.tsx) | web |
 | SettingsOverlay | [apps/web/src/pages/SettingsOverlay.tsx](../../apps/web/src/pages/SettingsOverlay.tsx) | [SettingsOverlay.stories.tsx](../../apps/web/src/pages/SettingsOverlay.stories.tsx) | web |
-| ShellPage, Transcript, QuoteSelectionButton, Composer, MessageHoverActions, ComputerReleaseActions, SpeakerHeader, MessageView, DesktopKindEmptyState | [apps/web/src/pages/Shell.tsx](../../apps/web/src/pages/Shell.tsx) | [Shell.stories.tsx](../../apps/web/src/pages/Shell.stories.tsx) | web |
+| ShellPage, UnreadDivider, Transcript, QuoteSelectionButton, Composer, MessageHoverActions, ComputerReleaseActions, SpeakerHeader, MessageView, DesktopKindEmptyState | [apps/web/src/pages/Shell.tsx](../../apps/web/src/pages/Shell.tsx) | [Shell.stories.tsx](../../apps/web/src/pages/Shell.stories.tsx) | web |
 | AvatarStudioPopover | [apps/web/src/pages/shell/avatar-studio-popover.tsx](../../apps/web/src/pages/shell/avatar-studio-popover.tsx) | [avatar-studio-popover.stories.tsx](../../apps/web/src/pages/shell/avatar-studio-popover.stories.tsx) | web |
 | BotCredentialsSection | [apps/web/src/pages/shell/bot-credentials.tsx](../../apps/web/src/pages/shell/bot-credentials.tsx) | [bot-credentials.stories.tsx](../../apps/web/src/pages/shell/bot-credentials.stories.tsx) | web |
 | ChartView, BotPagePanel | [apps/web/src/pages/shell/bot-page-panel.tsx](../../apps/web/src/pages/shell/bot-page-panel.tsx) | [bot-page-panel.stories.tsx](../../apps/web/src/pages/shell/bot-page-panel.stories.tsx) | web |
@@ -377,6 +377,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ThreadComposer, MentionOptionIcon, MentionChipIcon | [apps/mobile/components/thread-composer.tsx](../../apps/mobile/components/thread-composer.tsx) | mobile — native story pending | mobile |
 | TimeSeparator | [apps/mobile/components/time-separator.tsx](../../apps/mobile/components/time-separator.tsx) | mobile — native story pending | mobile |
 | ToolCallLabel | [apps/mobile/components/tool-call-label.tsx](../../apps/mobile/components/tool-call-label.tsx) | mobile — native story pending | mobile |
+| UnreadDivider | [apps/mobile/components/unread-divider.tsx](../../apps/mobile/components/unread-divider.tsx) | mobile — native story pending | mobile |
 | VoicePlayerBar, VoiceControlButton | [apps/mobile/components/voice-player-bar.tsx](../../apps/mobile/components/voice-player-bar.tsx) | mobile — native story pending | mobile |
 | VoiceChatCard | [apps/mobile/components/VoiceChatCard.tsx](../../apps/mobile/components/VoiceChatCard.tsx) | mobile — native story pending | mobile |
 | Dot, WorkingIndicator | [apps/mobile/components/WorkingIndicator.tsx](../../apps/mobile/components/WorkingIndicator.tsx) | mobile — native story pending | mobile |
