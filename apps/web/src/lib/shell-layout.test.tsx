@@ -9,6 +9,7 @@ import {
   SIDEBAR_DOCKED_QUERY,
   showHeaderWindowChrome,
   sidebarInert,
+  sidebarRail,
   useDrawerFocus,
 } from "./shell-layout";
 
@@ -33,11 +34,16 @@ describe("window chrome and inert state", () => {
     expect(showHeaderWindowChrome(true, false)).toBe(true);
   });
 
-  it("makes the sidebar inert when collapsed or undocked, unless the drawer is open", () => {
-    expect(sidebarInert(false, true, false)).toBe(false);
-    expect(sidebarInert(true, true, false)).toBe(true);
-    expect(sidebarInert(false, false, false)).toBe(true);
-    expect(sidebarInert(false, false, true)).toBe(false);
+  it("keeps the rail interactive and makes the undocked sidebar inert unless the drawer is open", () => {
+    expect(sidebarInert(true, false)).toBe(false);
+    expect(sidebarInert(false, false)).toBe(true);
+    expect(sidebarInert(false, true)).toBe(false);
+  });
+
+  it("shows the rail only when collapsed and docked", () => {
+    expect(sidebarRail(true, true)).toBe(true);
+    expect(sidebarRail(true, false)).toBe(false);
+    expect(sidebarRail(false, true)).toBe(false);
   });
 });
 

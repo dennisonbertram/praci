@@ -28,3 +28,23 @@ type Story = StoryObj<typeof meta>;
 
 /** In a browser there are no window controls: Search and the buttons share the row. */
 export const Web: Story = {};
+
+/** In the icon rail the window controls move to the page header and only a search button remains. */
+export const Rail: Story = {
+  args: {
+    rail: true,
+    search: (
+      <button type="button" aria-label="Search" className="mx-auto size-9 rounded-xl">
+        S
+      </button>
+    ),
+    actions: null,
+  },
+  decorators: [
+    (Story) => (
+      <div className="w-14 bg-sidebar">
+        <Story />
+      </div>
+    ),
+  ],
+};
