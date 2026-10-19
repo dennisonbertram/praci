@@ -11,6 +11,7 @@ import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
 import { SuccessPop } from "../components/ai/primitives";
 import { ComputersUnavailableHint } from "../components/ComputersUnavailableHint";
 import { DesktopUpdateSection } from "../components/DesktopUpdates";
+import { NotificationSettingsSection } from "../components/NotificationSettings";
 import { SoftwareUpdateSection } from "../components/SoftwareUpdateSection";
 import { authClient } from "../lib/auth";
 import {
@@ -136,6 +137,8 @@ export function GeneralSettingsPanels({
       ) : null}
 
       <AiDataSharingSection />
+
+      <NotificationSettingsSection />
 
       <section className="rounded-xl border border-border px-4 py-4">
         <h3 className="text-[15px] font-medium text-foreground">

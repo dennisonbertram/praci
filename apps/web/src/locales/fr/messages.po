@@ -1408,6 +1408,7 @@ msgstr ""
 msgid "Bills"
 msgstr ""
 
+#: src/components/NotificationSettings.tsx
 #: src/lib/ticket-status.ts
 msgid "Blocked"
 msgstr ""
@@ -1511,6 +1512,7 @@ msgid "Brex does not share it"
 msgstr ""
 
 #: src/components/computer/ComputerWorkspace.tsx
+#: src/components/NotificationSettings.tsx
 msgid "Browser"
 msgstr ""
 
@@ -5706,6 +5708,7 @@ msgstr ""
 msgid "Nothing remembered yet"
 msgstr "Rien n'est mémorisé pour le moment"
 
+#: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
@@ -6142,6 +6145,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Personnel"
+msgstr ""
+
+#: src/components/NotificationSettings.tsx
+msgid "Phone"
 msgstr ""
 
 #: src/pages/Shell.tsx

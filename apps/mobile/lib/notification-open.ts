@@ -6,7 +6,8 @@ export type NotificationRoute =
   | {
       pathname: "/group-thread";
       params: { groupId: string; threadId?: string; spaceId?: string; name?: string };
-    };
+    }
+  | { pathname: "/inbox" };
 
 export type ThreadSpaceRequest =
   | { action: "show" }
@@ -44,10 +45,22 @@ export function notificationOpenTarget(data: unknown): NotificationRoute | null 
     ...(spaceId ? { spaceId } : {}),
     ...(name ? { name } : {}),
   };
+  // Mobile has only the Inbox page; other pages fall through to a bot or nothing.
+  const link = notificationField(record, "link");
+  if (!threadId && (notificationField(record, "surface") === "inbox" || link === "/inbox")) {
+    return { pathname: "/inbox" };
+  }
   const groupId = notificationField(record, "groupId");
   if (groupId) return { pathname: "/group-thread", params: { groupId, ...shared } };
   const botId = notificationField(record, "botId");
   if (botId) return { pathname: "/thread", params: { botId, ...shared } };
+  // Unified pushes may carry only an in-app link: /app/g/<groupId> or /app/<botId>.
+  const match = link?.split(/[?#]/)[0]?.match(/^\/app\/(?:(g)\/)?([^/]+)\/?$/);
+  if (match?.[2]) {
+    return match[1]
+      ? { pathname: "/group-thread", params: { groupId: match[2], ...shared } }
+      : { pathname: "/thread", params: { botId: match[2], ...shared } };
+  }
   return null;
 }
 
@@ -70,6 +83,18 @@ export function notificationOpenTargetFromLink(url: string): NotificationRoute |
     return null;
   }
   return notificationOpenTarget(data);
+}
+
+export function notificationSpaceId(data: unknown): string | undefined {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
+  return notificationField(data as Record<string, unknown>, "spaceId");
+}
+
+/** The page surface a notification belongs to, for marking it seen. Threads track their own unread. */
+export function notificationSurface(data: unknown): string | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const surface = notificationField(data as Record<string, unknown>, "surface");
+  return surface && surface !== "thread" ? surface : null;
 }
 
 export function notificationResponseRoute(

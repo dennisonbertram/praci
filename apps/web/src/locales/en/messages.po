@@ -1408,6 +1408,7 @@ msgstr "Billing"
 msgid "Bills"
 msgstr "Bills"
 
+#: src/components/NotificationSettings.tsx
 #: src/lib/ticket-status.ts
 msgid "Blocked"
 msgstr "Blocked"
@@ -1511,6 +1512,7 @@ msgid "Brex does not share it"
 msgstr "Brex does not share it"
 
 #: src/components/computer/ComputerWorkspace.tsx
+#: src/components/NotificationSettings.tsx
 msgid "Browser"
 msgstr "Browser"
 
@@ -5706,6 +5708,7 @@ msgstr "Nothing needs you right now."
 msgid "Nothing remembered yet"
 msgstr "Nothing remembered yet"
 
+#: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Notifications"
@@ -6143,6 +6146,10 @@ msgstr "Personal"
 #: src/pages/Shell.tsx
 msgid "Personnel"
 msgstr "Personnel"
+
+#: src/components/NotificationSettings.tsx
+msgid "Phone"
+msgstr "Phone"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx

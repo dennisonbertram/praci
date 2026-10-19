@@ -522,7 +522,6 @@ export async function createApp(
     deploymentModelKey: env.deploymentModelKey,
     deploymentModelConfigured: env.deploymentModelConfigured,
     dataDir: env.dataDir,
-    notifications,
     jobs,
     events,
     onTicketChange: ticketChanges,
@@ -553,6 +552,7 @@ export async function createApp(
     financeCallToolFor: financeCallToolOverride ?? createFinanceCallToolFor(prisma, mcp),
     artifacts,
     connectors: stack.connector,
+    notificationChannels: [notifications],
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);
@@ -562,7 +562,7 @@ export async function createApp(
         prisma,
         jobs,
         events,
-        notifications,
+        notificationEvents,
         reconcileCloudAgents: () => reconcileCloudAgents({ prisma, jobs, cloudAgent }),
         reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
       })

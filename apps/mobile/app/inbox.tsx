@@ -35,6 +35,8 @@ import {
 } from "../lib/mail-inbox";
 import { native, useThemedStyles } from "../lib/native";
 import { iosAtLeast } from "../lib/native-controls";
+import { setOpenSurface } from "../lib/open-surface";
+import { markSurfaceSeen } from "../lib/unseen-notifications";
 import { errorText } from "../lib/user-error";
 
 const ALL = "all";
@@ -120,6 +122,14 @@ export default function InboxScreen() {
       }
     },
     [fetchList, pollTriage, t],
+  );
+
+  useFocusEffect(
+    useCallback(() => {
+      setOpenSurface("inbox");
+      void markSurfaceSeen("inbox");
+      return () => setOpenSurface(null);
+    }, []),
   );
 
   useFocusEffect(

@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   ExpoPushProvider,
+  expoNotificationData,
   expoPushData,
   expoPushErrorMessage,
   MAX_EXPO_PUSH_RESPONSE_BYTES,
@@ -81,7 +82,7 @@ describe("expo push", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const push = new ExpoPushProvider(store.prisma);
-    await push.send(
+    await push.deliver(
       { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
       {
         operationId: "n",
@@ -118,7 +119,7 @@ describe("expo push", () => {
       );
     vi.stubGlobal("fetch", fetchMock);
     const push = new ExpoPushProvider(store.prisma);
-    await push.send(
+    await push.deliver(
       { kind: "takeover", title: "Need you", body: "on screen", botId: "bot-1", threadId: "th-1" },
       notifyContext,
     );
@@ -145,7 +146,7 @@ describe("expo push", () => {
     });
     expect(body.data.deliveryId.length).toBeGreaterThan(0);
 
-    await push.send(
+    await push.deliver(
       { kind: "takeover", title: "Need you", body: "on screen", botId: "bot-1", threadId: "th-1" },
       notifyContext,
     );
@@ -329,7 +330,7 @@ describe("expo push", () => {
     );
     const push = new ExpoPushProvider(store.prisma);
     await expect(
-      push.send(
+      push.deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -346,7 +347,7 @@ describe("expo push", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(response));
 
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -377,7 +378,7 @@ describe("expo push", () => {
 
     const started = Date.now();
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         { ...notifyContext, signal: abort.signal },
       ),
@@ -395,7 +396,7 @@ describe("expo push", () => {
     );
 
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -408,7 +409,7 @@ describe("expo push", () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not json")));
 
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -427,7 +428,7 @@ describe("expo push", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      new ExpoPushProvider(store.prisma).send(
+      new ExpoPushProvider(store.prisma).deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         { ...notifyContext, signal: controller.signal },
       ),
@@ -441,7 +442,7 @@ describe("expo push", () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("offline")));
     const push = new ExpoPushProvider(store.prisma);
     await expect(
-      push.send(
+      push.deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -462,7 +463,7 @@ describe("expo push", () => {
     );
     const push = new ExpoPushProvider(store.prisma);
     await expect(
-      push.send(
+      push.deliver(
         { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
@@ -533,6 +534,30 @@ describe("expo push", () => {
       ),
     ).resolves.toBe("undeliverable");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("expoNotificationData", () => {
+  it("carries the group so a tap opens the group thread", () => {
+    const envelope = {
+      id: "n1",
+      title: "t",
+      body: null,
+      link: "/app/g/g1",
+      surface: "thread",
+      importance: "attention" as const,
+      botId: "b1",
+      threadId: "t1",
+      groupId: "g1",
+    };
+    expect(expoNotificationData(envelope, "space-1")).toMatchObject({
+      threadId: "t1",
+      groupId: "g1",
+      link: "/app/g/g1",
+    });
+    expect(expoNotificationData({ ...envelope, groupId: null }, "space-1")).not.toHaveProperty(
+      "groupId",
+    );
   });
 });
 

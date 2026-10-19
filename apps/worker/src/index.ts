@@ -190,7 +190,7 @@ async function main() {
     });
   // One provider instance so emulator launches and polls share the same Map.
   const cloudAgent = createCloudAgentConnection();
-  // Shared with the reconciler so a stuck wait uses the same push path as a finish notice.
+  // The outbox worker sends phone pushes through this channel.
   const notifications = new ExpoPushProvider(prisma, (sessionId) =>
     pushSessionExpiresAt(prisma, sessionId),
   );
@@ -229,7 +229,6 @@ async function main() {
     deploymentModelKey,
     deploymentModelConfigured,
     dataDir,
-    notifications,
     notificationEvents,
     jobs,
     events,
@@ -285,7 +284,7 @@ async function main() {
     prisma,
     jobs,
     events,
-    notifications,
+    notificationEvents,
     leadership: createPostgresReconciliationLeadership(pool),
     reconcileCloudAgents: () => reconcileCloudAgents({ prisma, jobs, cloudAgent }),
     reconcileComputerUpdates: () => reconcileComputerUpdates({ prisma, jobs }),
