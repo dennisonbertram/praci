@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { FireIcon, FireTruckIcon, PixelIcon } from "./pixel-icon";
+import { FireIcon, FireTruckIcon, PixelIcon, StatusIcon } from "./pixel-icon";
 import { PIXEL_ICONS } from "./sprites";
 
 const meta = {
@@ -9,7 +9,8 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component: "Also shows: FireTruckIcon, FireIcon. Sprites are defined in sprites.ts.",
+        component:
+          "Also shows: FireTruckIcon, FireIcon, StatusIcon. Sprites are defined in sprites.ts.",
       },
     },
   },
@@ -36,6 +37,26 @@ export const Still: Story = {
     <div className="flex items-end gap-4 text-foreground">
       <FireTruckIcon size={32} animate={false} />
       <FireIcon size={32} animate={false} />
+    </div>
+  ),
+};
+
+const kinds = ["urgent", "needs_input", "failed", "done", "new"] as const;
+
+/** One icon per notification kind, in priority order. Seeds give each its own phase. */
+export const StatusKinds: Story = {
+  render: () => (
+    <div className="flex flex-col gap-4 text-foreground">
+      {[16, 32].map((size) => (
+        <div key={size} className="flex items-end gap-6">
+          {kinds.map((kind) => (
+            <div key={kind} className="flex flex-col items-center gap-1">
+              <StatusIcon kind={kind} size={size} seed={kind} label={kind} />
+              <span className="text-xs text-muted-foreground">{kind}</span>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   ),
 };

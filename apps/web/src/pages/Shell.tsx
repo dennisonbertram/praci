@@ -193,7 +193,7 @@ import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
-import { glanceBadge, runwayGlance, UrgentMark } from "../components/sidebar-glance";
+import { glanceBadge, runwayGlance, StatusMark } from "../components/sidebar-glance";
 import {
   LIVE_TOOL_STEP_WINDOW,
   StandaloneToolActivity,
@@ -4296,9 +4296,11 @@ export function ShellPage() {
                                         ) : null}
                                       </div>
                                       <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
-                                        {item.kind === "bot" &&
-                                        glance.urgentBotIds.includes(item.chat.id) ? (
-                                          <UrgentMark />
+                                        {item.kind === "bot" && glance.botKinds[item.chat.id] ? (
+                                          <StatusMark
+                                            kind={glance.botKinds[item.chat.id]!}
+                                            botId={item.chat.id}
+                                          />
                                         ) : null}
                                         {!compact ? (
                                           <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">

@@ -70,6 +70,7 @@ describePostgres("finish, help and takeover notifications (PostgreSQL)", () => {
       surface: "thread",
       threadId: "thread-1",
       importance: "attention",
+      kind: "done",
       link: "/app/bot-1",
       title: "Ada completion",
     });
@@ -108,6 +109,28 @@ describePostgres("finish, help and takeover notifications (PostgreSQL)", () => {
     );
     const row = await prisma.notification.findFirstOrThrow({ where: { title: "Ada help" } });
     expect(row.link).toBe("/app/g/g1");
+  });
+
+  it("sets the sidebar kind from the event", async () => {
+    const expected = {
+      completion: "done",
+      failure: "failed",
+      help: "needs_input",
+      takeover: "urgent",
+    } as const;
+    for (const [event, kind] of Object.entries(expected)) {
+      await notifyThreadEvent(
+        prisma,
+        undefined,
+        run,
+        message(event as keyof typeof expected),
+        `kind-${event}`,
+      );
+      const row = await prisma.notification.findFirstOrThrow({
+        where: { spaceId, userId, title: `Ada ${event}` },
+      });
+      expect(row.kind).toBe(kind);
+    }
   });
 
   it("is not rate limited like agent chatter", async () => {

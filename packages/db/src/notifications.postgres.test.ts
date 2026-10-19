@@ -9,6 +9,7 @@ import {
   markSeen,
   markShown,
   NotificationValidationError,
+  unseenBotKinds,
   unseenCounts,
   updateNotificationPreferences,
 } from "./notifications.js";
@@ -274,6 +275,33 @@ describePostgres("notifications (PostgreSQL)", () => {
     expect(
       (await prisma.notification.findUnique({ where: { id: a.notification.id } }))?.shownAt,
     ).not.toBeNull();
+  });
+
+  it("clears an agent's notifications on every surface, for the viewing user only", async () => {
+    const botId = `bot-view-${suffix}`;
+    const otherBot = `bot-other-${suffix}`;
+    const t0 = new Date();
+    const mk = (who: { spaceId: string; userId: string }, bot: string, surface: string) =>
+      createNotification(prisma, {
+        ...who,
+        botId: bot,
+        surface,
+        title: `${bot}-${surface}-${who.userId}`,
+        kind: "done",
+        now: t0,
+        skipRateLimits: true,
+      });
+    await mk(mine, botId, "legal"); // a page surface, no thread id
+    await mk(mine, botId, "thread");
+    await mk(mine, otherBot, "legal");
+    await mk(sameSpace, botId, "legal");
+    await mk(otherSpace, botId, "legal");
+    expect(await markSeen(prisma, { ...mine, botId })).toBe(2);
+    expect((await unseenBotKinds(prisma, mine))[botId]).toBeUndefined();
+    expect((await unseenBotKinds(prisma, mine))[otherBot]).toBe("done");
+    expect((await unseenBotKinds(prisma, sameSpace))[botId]).toBe("done");
+    expect((await unseenBotKinds(prisma, otherSpace))[botId]).toBe("done");
+    await expect(markSeen(prisma, { ...mine })).rejects.toThrow(NotificationValidationError);
   });
 
   it("marks only one notification or one thread seen when asked", async () => {

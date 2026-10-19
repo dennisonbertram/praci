@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import { FireTruckIcon } from "@rakazo/ui-web";
+import type { NotificationKind } from "@rakazo/contracts";
+import { StatusIcon } from "@rakazo/ui-web";
 
 /**
  * The right side of a page row: a dot while the page has unseen notifications, otherwise its glance
@@ -44,14 +45,23 @@ export function glanceBadge({
   };
 }
 
-/** Beside an agent's timestamp while it has an unseen attention notification. */
-export function UrgentMark() {
+const KIND_LABEL: Record<NotificationKind, () => React.ReactNode> = {
+  urgent: () => <Trans> (urgent)</Trans>,
+  needs_input: () => <Trans> (needs input)</Trans>,
+  failed: () => <Trans> (failed)</Trans>,
+  done: () => <Trans> (done)</Trans>,
+  new: () => <Trans> (new)</Trans>,
+};
+
+/**
+ * Beside an agent's timestamp while it has unseen notifications: the icon of the highest-priority
+ * kind. `botId` seeds the animation so rows do not move in lockstep.
+ */
+export function StatusMark({ kind, botId }: { kind: NotificationKind; botId: string }) {
   return (
-    <span className="inline-flex text-foreground">
-      <FireTruckIcon size={16} />
-      <span className="sr-only">
-        <Trans> (urgent)</Trans>
-      </span>
+    <span className="inline-flex text-foreground" data-kind={kind}>
+      <StatusIcon kind={kind} size={16} seed={botId} />
+      <span className="sr-only">{KIND_LABEL[kind]()}</span>
     </span>
   );
 }
