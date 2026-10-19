@@ -4358,7 +4358,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         }
         const exposedConnectorTools =
           !voiceAgent &&
-            (run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun)
+          (run.trigger !== "bot_message" || integrationPeerRun || connectedAppPeerRun)
             ? discovered.filter(
                 (tool) =>
                   !builtinAgentTools.some((builtin) => builtin.name === tool.name) &&
