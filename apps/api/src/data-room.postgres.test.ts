@@ -875,6 +875,14 @@ describePostgres("Data room API (PostgreSQL)", () => {
     });
     expect(await blobCount(actors.A.spaceId)).toBe(blobs);
 
+    // The picker learns which attachments are filed; another user sees none of them.
+    await expect(
+      client(actors.a).dataRoom.emailImported({ messageIds: [message.id] }),
+    ).resolves.toEqual({ files: [pick] });
+    await expect(
+      client(actors.b).dataRoom.emailImported({ messageIds: [message.id] }),
+    ).resolves.toEqual({ files: [] });
+
     // Another member of the same space and a user in another space cannot reach the message.
     await expect(client(actors.a2).dataRoom.importEmail({ picks: [pick] })).rejects.toMatchObject({
       code: "NOT_FOUND",

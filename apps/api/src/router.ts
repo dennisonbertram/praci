@@ -6890,6 +6890,9 @@ export function createRouter(deps: RouterDeps) {
       itemRetry: authed.dataRoom.itemRetry.handler(({ context, input }) =>
         dataRoom.retryItem(context.actor, input.id),
       ),
+      emailImported: authed.dataRoom.emailImported.handler(({ context, input }) =>
+        dataRoom.emailImported(context.actor, input),
+      ),
       importEmail: authed.dataRoom.importEmail.handler(({ context, input }) =>
         dataRoom.importEmail(context.actor, input, context.signal),
       ),
