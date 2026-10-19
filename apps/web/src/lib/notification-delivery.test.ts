@@ -28,10 +28,11 @@ function tab(focused: boolean, over: Record<string, unknown> = {}) {
 
 describe("deliverNotification", () => {
   it("a focused tab toasts at once and calls onShown", async () => {
-    const t = tab(true, { onShown: vi.fn() });
+    const onShown = vi.fn();
+    const t = tab(true, { onShown });
     expect(await deliverNotification(n, t)).toBe("toast");
     expect(t.toast).toHaveBeenCalledWith(n);
-    expect(t.onShown).toHaveBeenCalledWith("n1");
+    expect(onShown).toHaveBeenCalledWith("n1");
     expect(t.delay).not.toHaveBeenCalled();
     expect(t.requestPermission).not.toHaveBeenCalled();
   });
