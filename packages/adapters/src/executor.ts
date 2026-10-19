@@ -5274,6 +5274,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   reviewReason,
                   fullMail: isCartaMailSend(bot.spawnKey, name),
                   integrationWriteTool,
+                  serviceName: callRoute?.serverName,
                   mailAccount: await approvalMailAccount(),
                 }),
               ],
@@ -5288,7 +5289,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               kind: "help",
               title: `${bot.name} needs approval`,
               body: redactSecrets(
-                `Review before ${describeApprovalAction(name, args)}`,
+                `Review before ${describeApprovalAction(name, args, callRoute?.serverName)}`,
                 runSecrets,
               ),
               botId: bot.id,
@@ -9073,6 +9074,9 @@ export function threadContextForRun<T>(
     : { ...context, includeSemanticRecall: true };
 }
 
+export const ONE_APPROVAL_GUIDANCE =
+  "Do not ask for your own confirmation before a change; call the tool and the user approves on that card.";
+
 /** Profile fields the creation intro is asked to explain. Other runs keep the prior identity line. */
 export function runIdentityInstruction(
   bot: { name: string; title: string; description: string; instructions: string },
@@ -9080,10 +9084,16 @@ export function runIdentityInstruction(
   spawnKey?: string | null,
 ): string {
   if (isVoiceAgentSpawnKey(spawnKey)) return VOICE_AGENT_INSTRUCTIONS;
+  // Stored instructions are fixed at creation; this keeps older agents on the one-approval rule.
+  const guided =
+    (isIntegrationAgentSpawnKey(spawnKey) || isCartaAgentSpawnKey(spawnKey)) &&
+    !bot.instructions?.includes(ONE_APPROVAL_GUIDANCE)
+      ? { ...bot, instructions: `${bot.instructions ?? ""} ${ONE_APPROVAL_GUIDANCE}`.trim() }
+      : bot;
   if (trigger !== "created") {
-    return bot.instructions || `${bot.name}: ${bot.title}\n${bot.description}`;
+    return guided.instructions || `${bot.name}: ${bot.title}\n${bot.description}`;
   }
-  const instructions = bot.instructions.trim();
+  const instructions = guided.instructions.trim();
   return [
     `Name: ${bot.name.trim() || "(none)"}`,
     `Title: ${bot.title.trim() || "(none)"}`,

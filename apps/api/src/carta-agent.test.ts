@@ -133,7 +133,6 @@ describe("ensureCartaAgent", () => {
       "Other bots",
       "carta-investor-update",
       "carta-audit-response",
-      "Do not ask for your own confirmation before a change",
       "TBD",
     ])
       expect(String(input.instructions)).toContain(word);

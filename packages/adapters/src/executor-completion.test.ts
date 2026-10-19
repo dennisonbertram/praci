@@ -1,3 +1,4 @@
+import { cartaAgentSpawnKey, integrationAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
   completionMarksUnread,
@@ -10,6 +11,7 @@ import {
   LONG_WORK_PROGRESS_GUIDANCE,
   mayOpenModelStream,
   NO_RESPONSE,
+  ONE_APPROVAL_GUIDANCE,
   ROUTINE_SILENT_REPLY_GUIDANCE,
   runAllowsSilentEmpty,
   runIdentityInstruction,
@@ -458,6 +460,16 @@ describe("runReplyGuidance", () => {
       "Instructions: (none)",
     );
     expect(runIdentityInstruction(bot, "user")).toBe(bot.instructions);
+  });
+
+  it("adds the one-approval sentence at run time to older integration and Carta agents once", () => {
+    const bot = { name: "Mercury agent", title: "", description: "", instructions: "Old text." };
+    for (const key of [integrationAgentSpawnKey("srv-1"), cartaAgentSpawnKey("user-1")]) {
+      const prompt = runIdentityInstruction(bot, "user", key);
+      expect(prompt).toBe(`Old text. ${ONE_APPROVAL_GUIDANCE}`);
+      expect(runIdentityInstruction({ ...bot, instructions: prompt }, "user", key)).toBe(prompt);
+    }
+    expect(runIdentityInstruction(bot, "user", null)).toBe("Old text.");
   });
 
   it("does not send a finish notification for the creation intro", () => {

@@ -27,14 +27,16 @@ export function buildApprovalAskBlock(
     integrationWriteTool?: string;
     /** The From account the mail call will use when it named none (see inferMailAccount). */
     mailAccount?: string;
+    /** The MCP server's display name, so the title says which service runs the tool. */
+    serviceName?: string;
   },
 ): MessageBlock {
-  const summary = describeApprovalAction(toolName, args);
+  const summary = describeApprovalAction(toolName, args, options?.serviceName);
   const fullDetail = options?.fullMail || options?.integrationWriteTool !== undefined;
   const detail = options?.fullMail
     ? fullMailDetail(args, options.reviewReason)
     : options?.integrationWriteTool !== undefined
-      ? integrationWriteDetail(options.integrationWriteTool, args, options.reviewReason)
+      ? integrationWriteDetail(toolName, options.integrationWriteTool, args, options.reviewReason)
       : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
@@ -140,12 +142,17 @@ export function cartaMailSendIsComplete(args: Record<string, unknown>): boolean 
 
 /** The raw tool name and every argument, nested ones included, so the user sees the operation. */
 function integrationWriteDetail(
+  toolName: string,
   rawTool: string,
   args: Record<string, unknown>,
   reviewReason?: string,
 ): string {
   const lines = reviewReason?.trim() ? [reviewReason.trim()] : [];
-  lines.push(`tool: ${rawTool}`, `arguments: ${JSON.stringify(args, null, 2)}`);
+  lines.push(
+    `tool: ${toolName}`,
+    ...(rawTool === toolName ? [] : [`server tool: ${rawTool}`]),
+    `arguments: ${JSON.stringify(args, null, 2)}`,
+  );
   return lines.join("\n");
 }
 
@@ -161,7 +168,11 @@ function fullMailDetail(args: Record<string, unknown>, reviewReason?: string): s
 }
 
 /** What the approval is for, in words; never a raw tool name for mail. */
-export function describeApprovalAction(toolName: string, args: Record<string, unknown>): string {
+export function describeApprovalAction(
+  toolName: string,
+  args: Record<string, unknown>,
+  serviceName?: string,
+): string {
   if (toolName === "mail_send" || toolName === "mail_draft") {
     const [first, ...rest] = strings(args.to);
     const to = first ? ` to ${first}${rest.length ? ` and ${rest.length} more` : ""}` : "";
@@ -184,9 +195,22 @@ export function describeApprovalAction(toolName: string, args: Record<string, un
     return `Save contact “${args.name ? String(args.name) : "Untitled"}”`;
   }
   const target = pickScopeLabel(args);
-  const label = humanizeToolName(toolName);
+  const label = serviceName
+    ? `${serviceName}: ${humanizeToolName(toolName)}`
+    : humanizeToolName(toolName);
   return target ? `${label} → ${target}` : label;
 }
+
+/** Tools whose title and detail are written by hand; every other card shows the exact tool id. */
+const HAND_WRITTEN_TOOLS = new Set([
+  "mail_send",
+  "mail_draft",
+  "destination.write",
+  "delete_bot",
+  "archive_bot",
+  "create_space",
+  "contacts_save",
+]);
 
 function formatApprovalDetail(
   toolName: string,
@@ -197,6 +221,7 @@ function formatApprovalDetail(
   if (reviewReason?.trim()) {
     lines.push(reviewReason.trim().replace(/\u2014|\u2013/g, "-"));
   }
+  if (!HAND_WRITTEN_TOOLS.has(toolName)) lines.push(`tool: ${toolName}`);
   if (toolName === "create_space") {
     lines.push(
       "Bots, groups, chats, files, memory, and integrations in this space stay separate from other spaces.",

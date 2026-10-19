@@ -830,6 +830,16 @@ it("explains a rate-limited Inbox with no mail, and shows Try again working", as
     "true",
   );
   expect(retryButton?.querySelector("span")?.className).not.toContain("invisible");
+  // Activating the busy button again, by click or keyboard, must not start another refresh.
+  const calls = rpcMock.refresh.mock.calls.length;
+  await click(retryButton);
+  await act(async () => {
+    for (const key of ["Enter", " "]) {
+      retryButton?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      retryButton?.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true }));
+    }
+  });
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(calls);
   await act(async () => finish({}));
   expect(byText(c, "Try again")?.getAttribute("aria-disabled")).not.toBe("true");
   expect(document.activeElement).toBe(byText(c, "Try again"));
