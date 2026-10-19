@@ -94,6 +94,7 @@ async function mockDataRoom(page: Page) {
         nextCursor: null,
       },
       item: uploaded[0] ?? items[0],
+      itemRetry: { ...items[2], status: "processing", error: null },
     };
     if (!(name in answers)) return route.fulfill({ status: 404, body: "not mocked" });
     return route.fulfill({
@@ -134,7 +135,7 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
   const main = page.getByRole("main");
   await expect(main.getByRole("heading", { name: "Data room", level: 1 })).toBeVisible();
   const list = page.getByTestId("data-room-list");
-  const rows = list.locator("li[data-item-id]");
+  const rows = list.locator("tr[data-item-id]");
   await expect(rows).toHaveCount(3);
 
   // Nothing is previewed until a file is chosen; a click on the first item shows it.
@@ -229,7 +230,7 @@ test("Data room lists, searches, previews and takes dropped files", async ({ pag
 
     const name = await box(rows.first().getByTestId("data-room-name"));
     expect(name.width).toBeGreaterThanOrEqual(160);
-    const heads = page.getByTestId("data-room-head").locator(":scope > span");
+    const heads = page.getByTestId("data-room-head").locator("th");
     const shown: { x: number; width: number }[] = [];
     for (let i = 0; i < (await heads.count()); i++) {
       if (await heads.nth(i).isVisible()) shown.push(await box(heads.nth(i)));
@@ -419,7 +420,7 @@ test("Data room imports a mail attachment through the picker", async ({ page }, 
   await signup(page, `data-room-mail-${Date.now()}@rakazo.test`, "password12", "Data Room User");
   await completeOnboarding(page);
   await page.getByTestId("sidebar-data-room").click();
-  await expect(page.getByTestId("data-room-list").locator("li[data-item-id]")).toHaveCount(3);
+  await expect(page.getByTestId("data-room-list").locator("tr[data-item-id]")).toHaveCount(3);
 
   await page.getByRole("button", { name: "Import from email" }).click();
   const dialog = page.getByRole("dialog", { name: "Import from email" });
@@ -480,7 +481,7 @@ test("Data room imports a Google Drive file through the picker", async ({ page }
   await signup(page, `data-room-drive-${Date.now()}@rakazo.test`, "password12", "Data Room User");
   await completeOnboarding(page);
   await page.getByTestId("sidebar-data-room").click();
-  await expect(page.getByTestId("data-room-list").locator("li[data-item-id]")).toHaveCount(3);
+  await expect(page.getByTestId("data-room-list").locator("tr[data-item-id]")).toHaveCount(3);
 
   await page.getByRole("button", { name: "Import from Google Drive" }).click();
   const dialog = page.getByRole("dialog", { name: "Import from Google Drive" });
@@ -491,4 +492,190 @@ test("Data room imports a Google Drive file through the picker", async ({ page }
 
   await expect(page.getByRole("status").filter({ hasText: "Imported 1 file" })).toBeVisible();
   await expect.poll(() => calls.filter((c) => c.name === "items/list").length).toBeGreaterThan(1);
+});
+
+const json = (body: unknown) => ({
+  contentType: "application/json",
+  body: JSON.stringify({ json: body, meta: [] }),
+});
+const GOOGLE_APPS = [
+  { connectorId: "google", slug: "gmail" },
+  { connectorId: "google", slug: "googledrive" },
+];
+
+async function openDataRoom(page: Page, catalog: unknown[] = GOOGLE_APPS) {
+  await page.route("**/rpc/connections/list", (route) => route.fulfill(json([])));
+  await page.route("**/rpc/connections/catalog", (route) => route.fulfill(json(catalog)));
+  await signup(page, `data-room-vis12-${Date.now()}@rakazo.test`, "password12", "Data Room User");
+  await completeOnboarding(page);
+  await page.getByTestId("sidebar-data-room").click();
+  await expect(page.getByTestId("data-room-list").locator("tr[data-item-id]")).toHaveCount(3);
+}
+
+const VIEWPORTS = [
+  { width: 1440, height: 900 },
+  { width: 768, height: 1024 },
+  { width: 375, height: 812 },
+] as const;
+
+test("Data room header has one primary action, a visible New folder, and no sideways overflow", async ({
+  page,
+}, testInfo) => {
+  await mockDataRoom(page);
+  await openDataRoom(page);
+  for (const viewport of VIEWPORTS) {
+    await page.setViewportSize(viewport);
+    const add = page.getByRole("button", { name: "Add files" }).first();
+    await expect(add).toBeVisible();
+
+    // Exactly one header button has the primary fill (compared with a probe that uses bg-primary).
+    const header = await page.evaluate(() => {
+      const probe = document.createElement("div");
+      probe.className = "bg-primary";
+      document.body.append(probe);
+      const primary = getComputedStyle(probe).backgroundColor;
+      probe.remove();
+      const bar = Array.from(document.querySelectorAll("h1")).find(
+        (h) => h.textContent === "Data room",
+      )?.parentElement?.parentElement;
+      const buttons = Array.from(bar?.querySelectorAll("button") ?? []).filter(
+        (b) => b.getBoundingClientRect().width > 0,
+      );
+      const rects = buttons.map((b) => b.getBoundingClientRect().toJSON());
+      return {
+        filled: buttons
+          .filter((b) => getComputedStyle(b).backgroundColor === primary)
+          .map((b) => b.getAttribute("aria-label") ?? b.textContent),
+        count: buttons.length,
+        rects,
+        overflowX: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      };
+    });
+    expect(header.filled, `${viewport.width}px filled controls`).toHaveLength(1);
+    expect(header.filled[0]).toContain("Add files");
+    expect(header.overflowX).toBeLessThanOrEqual(0);
+    // No two header controls overlap.
+    for (let i = 0; i < header.rects.length; i++) {
+      for (let j = i + 1; j < header.rects.length; j++) {
+        const a = header.rects[i];
+        const b = header.rects[j];
+        if (!a || !b) continue;
+        const apart =
+          a.right <= b.left + 0.5 ||
+          b.right <= a.left + 0.5 ||
+          a.bottom <= b.top + 0.5 ||
+          b.bottom <= a.top + 0.5;
+        expect(apart, `${viewport.width}px header controls ${i} and ${j} overlap`).toBe(true);
+      }
+    }
+
+    if (viewport.width < 800) {
+      const newFolder = page.getByRole("button", { name: "New folder" });
+      await expect(newFolder).toBeVisible();
+      const at = await box(newFolder);
+      expect(at.width).toBeGreaterThanOrEqual(32);
+      expect(at.height).toBeGreaterThanOrEqual(32);
+      expect(at.x).toBeGreaterThanOrEqual(0);
+      expect(at.x + at.width).toBeLessThanOrEqual(viewport.width);
+      expect(at.y + at.height).toBeLessThanOrEqual(viewport.height);
+      await newFolder.click();
+      await expect(page.getByRole("dialog", { name: /New folder/ })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog")).toHaveCount(0);
+    }
+    await captureScreenshot(page, testInfo, `data-room-header-${viewport.width}`);
+  }
+});
+
+test("Data room failed row retries in place, and columns stay put as a file settles", async ({
+  page,
+}) => {
+  const { calls } = await mockDataRoom(page);
+  let settled = false;
+  await page.route("**/rpc/dataRoom/items/list", (route) =>
+    route.fulfill(
+      json({
+        items: items.map((i) => (i === items[1] && !settled ? { ...i, status: "processing" } : i)),
+        nextCursor: null,
+      }),
+    ),
+  );
+  await openDataRoom(page);
+  const retries = () => calls.filter((c) => c.name === "itemRetry").length;
+  const failed = page.locator('tr[data-item-id="c000000000000000000000003"]');
+
+  for (const viewport of [VIEWPORTS[0], VIEWPORTS[2]]) {
+    await page.setViewportSize(viewport);
+    const before = retries();
+    const retry = failed.getByRole("button", { name: "Try again" });
+    await expect(retry).toBeVisible();
+    await retry.click();
+    await expect.poll(retries).toBe(before + 1);
+    // The click is on the button alone: the preview stays closed.
+    await expect(page.getByTestId("data-room-preview")).toHaveCount(0);
+    await expect(page.getByRole("dialog")).toHaveCount(0);
+  }
+
+  // Header cells keep their x and width when the processing file becomes ready.
+  for (const viewport of [VIEWPORTS[0], VIEWPORTS[1]]) {
+    settled = false;
+    await page.setViewportSize(viewport);
+    await page.evaluate(() => window.dispatchEvent(new Event("rakazo:data-room-changed")));
+    const status = page.locator("tr[data-item-id] [data-testid=data-room-status]");
+    await expect(status.filter({ hasText: "Reading" })).toHaveCount(1);
+    const cells = async () =>
+      page
+        .getByTestId("data-room-head")
+        .locator("th")
+        .evaluateAll((cells) =>
+          cells.map((span) => {
+            const r = span.getBoundingClientRect();
+            return [Math.round(r.x * 10) / 10, Math.round(r.width * 10) / 10];
+          }),
+        );
+    const shapeBefore = await cells();
+    settled = true;
+    await page.evaluate(() => window.dispatchEvent(new Event("rakazo:data-room-changed")));
+    await expect(status.filter({ hasText: "Reading" })).toHaveCount(0);
+    expect(await cells()).toEqual(shapeBefore);
+    // The Type cell never carries a status word.
+    await expect(page.locator("tr[data-item-id]").first()).not.toContainText("Reading");
+  }
+});
+
+test("Data room Date column follows the sort", async ({ page }) => {
+  await mockDataRoom(page);
+  await openDataRoom(page);
+  await page.setViewportSize(VIEWPORTS[0]);
+  const head = page.getByTestId("data-room-head");
+  const firstDate = page.locator("tr[data-item-id]").first().locator(":scope > td").nth(2);
+  await expect(head).toContainText("Added");
+  await expect(firstDate).toHaveText("Oct 4, 2026");
+  await page.getByRole("button", { name: /^Sort:/ }).click();
+  await page.getByRole("menuitemradio", { name: "Document date" }).click();
+  await expect(head).toContainText("Document date");
+  await expect(firstDate).toHaveText("Oct 3, 2026");
+});
+
+test("Data room imports only appear for apps the server offers", async ({ page }) => {
+  await mockDataRoom(page);
+  await openDataRoom(page, []);
+  await page.setViewportSize(VIEWPORTS[0]);
+  await expect(page.getByRole("button", { name: "Add files" }).first()).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /Connect Google Drive|Import from Google Drive/ }),
+  ).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /Connect Gmail|Import from email/ })).toHaveCount(
+    0,
+  );
+
+  // With the apps offered (but not connected) the buttons are back and still lead to the app page.
+  await page.unroute("**/rpc/connections/catalog");
+  await page.route("**/rpc/connections/catalog", (route) => route.fulfill(json(GOOGLE_APPS)));
+  await page.reload();
+  const drive = page.getByRole("button", { name: "Connect Google Drive" });
+  await expect(drive).toBeVisible();
+  await expect(page.getByRole("button", { name: "Connect Gmail" })).toBeVisible();
+  await drive.click();
+  await expect(page).toHaveURL(/\/app\/integrations\/app\/google\/googledrive$/);
 });

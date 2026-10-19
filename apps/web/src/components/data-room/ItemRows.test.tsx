@@ -23,6 +23,7 @@ const item = (id: string, folderId: string | null) =>
     status: "ready",
     mimeType: "application/pdf",
     source: "upload",
+    createdAt: "2026-03-04T00:00:00.000Z",
     facets: { docType: null, docDate: null, parties: [] },
   }) as unknown as DataRoomApiItem;
 
@@ -58,25 +59,120 @@ it("names each row's folder in All items, and not inside that folder", () => {
     snippets: [],
   }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
-  expect(names()).toEqual(["lease.pdfLegal", "loose.pdf"]);
+  expect(names()).toEqual(["lease.pdfLegalNot tagged", "loose.pdfNot tagged"]);
   act(() => root.render(<ListView rows={rows.slice(0, 1)} o={o("f-legal")} />));
-  expect(names()).toEqual(["lease.pdf"]);
+  expect(names()).toEqual(["lease.pdfNot tagged"]);
 });
 
-it("puts the status in its own column, so every row has the cell and only the failed one fills it", () => {
+it("renders a native table in the Cap table style, with the header hidden on a phone", () => {
+  const rows = [item("lease", "f-legal")].map((i) => ({ item: i, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const table = container.querySelector("table");
+  expect(table?.className).toContain("w-full table-fixed text-sm");
+  const row = container.querySelector("[data-row]");
+  expect(row?.tagName).toBe("TR");
+  expect(row?.className).toContain(
+    "h-14 border-t border-border transition-colors hover:bg-muted/50",
+  );
+  expect(container.querySelector("td")?.className).toContain("py-2 pe-3");
+  const head = container.querySelector('[data-testid="data-room-head"]');
+  expect(head?.className).toContain("hidden");
+  expect(head?.querySelector("th")?.className).toContain("text-xs");
+  expect(head?.textContent).toBe("NameTypeAddedPartiesStatus");
+  expect(container.querySelectorAll("colgroup > col")).toHaveLength(6);
+});
+
+it("cuts parties to one line with the full value in the title, and shows a dash when empty", () => {
+  const rows = [
+    {
+      ...tagged("deck", "investor", null),
+      facets: {
+        docType: "investor",
+        docDate: null,
+        parties: ["Quill Capital (Mock)", "Acme Servo Supply (Mock)"],
+      },
+    },
+    item("bare", null),
+  ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const cells = Array.from(container.querySelectorAll('[data-testid="data-room-parties"]'));
+  expect(cells[0]?.className).toContain("truncate");
+  expect(cells[0]?.className).not.toContain("line-clamp");
+  expect(cells[0]?.getAttribute("title")).toBe("Quill Capital (Mock), Acme Servo Supply (Mock)");
+  expect(cells[1]?.textContent).toBe("—");
+});
+
+it("shows the row's menu on hover or focus, and always on touch", () => {
+  act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
+  const row = container.querySelector("[data-row]");
+  expect(row?.className).toContain("group/row");
+  const menu = row?.querySelector('button[aria-label^="More actions for"]')?.className ?? "";
+  for (const c of [
+    "opacity-0",
+    "group-hover/row:opacity-100",
+    "group-focus-visible/row:opacity-100",
+    "data-popup-open:opacity-100",
+    "pointer-coarse:opacity-100",
+  ])
+    expect(menu).toContain(c);
+});
+
+it("puts the status in its own column as a badge, and never in the Type cell", () => {
   const rows = [
     { ...item("junk", null), status: "failed" },
+    { ...item("busy", null), status: "processing" },
     item("a-much-longer-file-name", null),
   ].map((i) => ({ item: i as DataRoomApiItem, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const cells = Array.from(container.querySelectorAll('[data-testid="data-room-status"]'));
-  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", ""]);
+  expect(cells.map((cell) => cell.textContent)).toEqual(["Failed", "Reading", ""]);
+  expect(cells[0]?.querySelector("[data-slot=badge]")).not.toBeNull();
+  // The Type cell (second) never holds a status word.
+  for (const row of container.querySelectorAll("[data-row]")) {
+    expect(row.children[1]?.textContent).not.toMatch(/Reading|Failed/);
+  }
   // The failed row also says why under its name, so phones (no Status column) still explain it.
-  expect(names()).toEqual([
-    "junk.pdfCould not read this file. Delete it and upload it again.",
-    "a-much-longer-file-name.pdf",
-  ]);
+  expect(names()[0]).toContain("Could not read this file. Delete it and upload it again.");
   expect(container.querySelectorAll('[data-testid="data-room-failed-reason"]')).toHaveLength(1);
+});
+
+it("has an inline Try again on a failed row that retries once and does not open the preview", () => {
+  const onAction = vi.fn();
+  const onToggle = vi.fn();
+  const rows = [{ ...item("junk", null), status: "failed" }, item("fine", null)].map((i) => ({
+    item: i as DataRoomApiItem,
+    snippets: [],
+  }));
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), onAction, onToggle }} />));
+  const retry = Array.from(container.querySelectorAll("button")).filter(
+    (b) => b.textContent === "Try again",
+  );
+  expect(retry).toHaveLength(1);
+  expect(retry[0]?.closest("[data-item-id]")?.getAttribute("data-item-id")).toBe("junk");
+  act(() => retry[0]?.click());
+  expect(onAction).toHaveBeenCalledTimes(1);
+  expect(onAction).toHaveBeenCalledWith("retry", expect.objectContaining({ id: "junk" }));
+  expect(onToggle).not.toHaveBeenCalled();
+});
+
+it("follows the sort in the Date column: Added by default, Document date when sorted by it", () => {
+  const rows = [
+    {
+      ...tagged("deck", "investor", "2025-12-21T00:00:00.000Z"),
+      createdAt: "2026-03-04T00:00:00.000Z",
+    },
+  ].map((i) => ({ item: i, snippets: [] }));
+  const header = () => container.querySelector('[data-testid="data-room-head"]')?.textContent;
+  const dateCell = () => container.querySelector("[data-row]")?.children[2]?.textContent;
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(header()).toContain("Added");
+  expect(header()).not.toContain("Document date");
+  expect(dateCell()).toBe("Mar 4, 2026");
+  act(() => root.render(<ListView rows={rows} o={o()} sortField="createdAt" />));
+  expect(dateCell()).toBe("Mar 4, 2026");
+  act(() => root.render(<ListView rows={rows} o={o()} sortField="date" />));
+  expect(header()).toContain("Document date");
+  expect(dateCell()).toBe("Dec 21, 2025");
 });
 
 it("says in the row why a file failed, not only in a tooltip", () => {
@@ -95,16 +191,18 @@ it("gives every sub-folder a More actions menu", () => {
   for (const tiles of [false, true]) {
     act(() =>
       root.render(
-        <SubfolderList
-          folders={[invoices]}
-          contents={() => "2 items"}
-          onOpen={vi.fn()}
-          onAction={onAction}
-          tiles={tiles}
-        />,
+        <table>
+          <SubfolderList
+            folders={[invoices]}
+            contents={() => "2 items"}
+            onOpen={vi.fn()}
+            onAction={onAction}
+            tiles={tiles}
+          />
+        </table>,
       ),
     );
-    expect(container.querySelector('li button[aria-label^="More actions for"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label^="More actions for"]')).not.toBeNull();
   }
 });
 
@@ -123,7 +221,7 @@ it("keeps a renamed file's type while search re-indexes it, and names a failure 
   expect(container.textContent).toContain("Roadmap");
   expect(container.textContent).not.toContain("Reading");
   // The phone-only line under the name, for where the Type column is hidden.
-  expect(names()[1]).toBe("scan.pdfFailed");
+  expect(names()[1]).toContain("scan.pdfFailed");
 });
 
 const tagged = (id: string, docType: string | null, docDate: string | null) =>
@@ -137,7 +235,7 @@ it("puts the type and date under the name for a phone, and says when a file is n
     tagged("deck", "presentation", "2025-12-21T00:00:00.000Z"),
     tagged("sheet", null, null),
   ].map((i) => ({ item: i, snippets: [] }));
-  act(() => root.render(<ListView rows={rows} o={o()} />));
+  act(() => root.render(<ListView rows={rows} o={o()} sortField="date" />));
   const lines = Array.from(container.querySelectorAll('[data-testid="data-room-subline"]')).map(
     (line) => line.textContent,
   );
@@ -145,16 +243,12 @@ it("puts the type and date under the name for a phone, and says when a file is n
   expect(lines[1]).toBe("Not tagged");
 });
 
-it("bolds only the shown row's name, so its type and parties keep their width", () => {
+it("highlights the shown row and bolds only its name cell's text via the name style", () => {
   const rows = [tagged("deck", "investor", null)].map((i) => ({ item: i, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={{ ...o(), shownId: "deck" }} />));
   const row = container.querySelector('[data-item-id="deck"]');
-  expect(row?.className).not.toContain("font-medium");
-  expect(row?.querySelector('[title="deck.pdf"]')?.className).toContain("font-medium");
-  // A long party wraps to a second line instead of losing the end of its name.
-  const parties = row?.querySelector('[data-testid="data-room-parties"]')?.className ?? "";
-  expect(parties).toContain("line-clamp-2");
-  expect(parties).not.toContain("truncate");
+  expect(row?.getAttribute("aria-current")).toBe("true");
+  expect(row?.className).toContain("bg-sidebar-accent");
 });
 
 it("gives a tile's type and date a line each, and marks an untagged tile", () => {

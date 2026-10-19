@@ -130,11 +130,6 @@ msgstr ""
 msgid "{0} {unitLabel}"
 msgstr "{0} {unitLabel}"
 
-#. placeholder {0}: server.name
-#: src/components/integrations/McpDetail.tsx
-msgid "{0} agent"
-msgstr ""
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -367,6 +362,10 @@ msgstr ""
 msgid "{name} accounts"
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} agent"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -420,6 +419,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "{serverName} connected"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "{service} agent"
 msgstr ""
 
 #: src/lib/format-bytes.ts
@@ -755,6 +758,11 @@ msgstr ""
 msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+msgid "Added"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Adding a contact"
 msgstr ""
@@ -885,8 +893,14 @@ msgstr ""
 msgid "Allow access below first."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
+msgstr ""
+
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "Allow changes in {0}?"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -2432,6 +2446,7 @@ msgstr "No se pudo conectar a la pantalla de la computadora"
 msgid "Could not continue"
 msgstr "No se pudo continuar"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not create agent"
 msgstr ""
@@ -2841,6 +2856,7 @@ msgstr "No se pudo tomar el control"
 msgid "Could not update"
 msgstr "No se pudo actualizar"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update access"
 msgstr ""
@@ -2850,6 +2866,7 @@ msgstr ""
 msgid "Could not update bot access"
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update changes"
 msgstr ""
@@ -2959,6 +2976,7 @@ msgstr "Crea una sección y mueve {0} a ella."
 msgid "Create account"
 msgstr "Crear cuenta"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr ""
@@ -3075,8 +3093,6 @@ msgstr ""
 msgid "Data room search model"
 msgstr ""
 
-#: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -3356,6 +3372,7 @@ msgid "Docs & files"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
 msgid "Document date"
 msgstr ""
 
@@ -3979,7 +3996,7 @@ msgid "Gmail didn't respond. Try again."
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts
-msgid "Gmail is limiting requests right now. Try again in a minute."
+msgid "Gmail is limiting requests right now. Try again in a few seconds."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -5200,6 +5217,7 @@ msgstr ""
 msgid "New Bot"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
 msgid "New folder"
@@ -5685,10 +5703,6 @@ msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
-msgstr ""
-
-#: src/components/integrations/McpDetail.tsx
-msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
 msgstr ""
 
 #. placeholder {0}: call.botName
@@ -6374,10 +6388,6 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Receipts"
-msgstr ""
-
-#: src/components/data-room/FilterBar.tsx
-msgid "Recently added"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -7879,6 +7889,11 @@ msgstr ""
 msgid "the {month} statement"
 msgstr ""
 
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "The agent will be able to change your {0} data. It asks before each change."
+msgstr ""
+
 #: src/components/integrations/McpDetail.tsx
 msgid "The agent will be able to change your {service} data. It asks before each change."
 msgstr ""
@@ -8249,6 +8264,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -8270,10 +8286,6 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "Vuelve a intentar la prueba."
-
-#: src/pages/Inbox.tsx
-msgid "Trying again…"
-msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"

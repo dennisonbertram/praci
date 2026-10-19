@@ -410,10 +410,9 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
       hasDates: facetValues.hasDates || shown.hasDates,
     };
   }, [rows, facetValues]);
-  const subfolderList = (rowClass?: string) => (
+  const subfolderList = () => (
     <SubfolderList
       tiles={view === "grid"}
-      rowClass={rowClass}
       contents={(folder) => folderContents(folder, folders)}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}
@@ -516,7 +515,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
             onNewFolder={() => setCreatingFolder(true)}
           />
           <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
-            <div className="hidden @min-[800px]/bd:flex">
+            <div className="hidden self-stretch border-e border-border @min-[800px]/bd:flex">
               <FolderTree
                 nodes={nodes}
                 selected={filters.folderId}
@@ -591,7 +590,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
               ) : view === "grid" && !searching ? (
                 <>
                   {subfolderList()}
-                  <GridView rows={rows} o={interaction} sortField={sort?.field} />
+                  <GridView rows={rows} o={interaction} />
                 </>
               ) : (
                 <ListView

@@ -29,13 +29,35 @@ export default meta;
 type Story = StoryObj;
 
 export const List: Story = { render: () => <ListView rows={rows} o={o} /> };
-/** Nothing classified yet: the facet columns give their width to the name. */
+/** Nothing classified yet: every column keeps its place, with a dash where a value is missing. */
 export const ListWithoutFacets: Story = {
   render: () => (
     <ListView
       rows={rows.map(({ item }) => ({
         item: { ...item, facets: { ...item.facets, docType: null, docDate: null, parties: [] } },
         snippets: [],
+      }))}
+      o={o}
+    />
+  ),
+};
+/** Sorted by document date: the Date column is headed "Document date" and shows that date. */
+export const ListByDocumentDate: Story = {
+  render: () => <ListView rows={rows} o={o} sortField="date" />,
+};
+/** A file being read and a failed one: Status is its own column, and the failed row offers Try again. */
+export const ListWithStatus: Story = {
+  render: () => (
+    <ListView
+      rows={rows.map((row, index) => ({
+        ...row,
+        item: {
+          ...row.item,
+          ...(index === 0 ? { status: "processing" as const } : {}),
+          ...(index === 1
+            ? { status: "failed" as const, error: "This file isn't a readable PDF." }
+            : {}),
+        },
       }))}
       o={o}
     />
@@ -126,9 +148,8 @@ export const ListWithSubfolders: Story = {
     <ListView
       rows={rows}
       o={o}
-      lead={(rowClass) => (
+      lead={() => (
         <SubfolderList
-          rowClass={rowClass}
           contents={(folder) => (folder.itemCount ? `${folder.itemCount} items` : "Empty")}
           folders={[
             {
