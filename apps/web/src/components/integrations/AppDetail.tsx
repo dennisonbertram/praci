@@ -216,7 +216,9 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       allAgents: true,
       botIds: [],
     };
-  const allBotIds = data.bots.map((bot) => bot.id);
+  // The agents shown in the lists below; toggling saves exactly these, so no hidden grant survives.
+  const shownBots = withoutOtherIntegrationAgents(data.bots, undefined, { keepCarta: true });
+  const allBotIds = shownBots.map((bot) => bot.id);
 
   async function updateAgent(action: () => Promise<void>, fallback: string) {
     setBusy(true);
@@ -242,7 +244,12 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   }
 
   async function setAgent(botId: string, on: boolean) {
-    const next = toggleAccess(access, allBotIds, botId, on);
+    const next = toggleAccess(
+      { ...access, botIds: access.botIds.filter((id) => allBotIds.includes(id)) },
+      allBotIds,
+      botId,
+      on,
+    );
     setOverride(next);
     setError(null);
     try {
@@ -446,7 +453,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                       <Trans>Used by</Trans>
                     </Heading>
                     <AgentToggleList
-                      bots={withoutOtherIntegrationAgents(data.bots)}
+                      bots={shownBots}
                       appName={row.displayName}
                       disabled={busy}
                       isOn={(botId) => access.allAgents || access.botIds.includes(botId)}
@@ -473,7 +480,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                     <Trans>Used by</Trans>
                   </Heading>
                   <AgentToggleList
-                    bots={withoutOtherIntegrationAgents(data.bots)}
+                    bots={shownBots}
                     appName={name}
                     disabled={busy}
                     isOn={(botId) => access.allAgents || access.botIds.includes(botId)}

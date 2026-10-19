@@ -140,15 +140,27 @@ export function useIntegrations(): IntegrationsData {
   return { ...data, refresh };
 }
 
+type OwnBotIds = string | null | undefined | readonly (string | null | undefined)[];
+
 /**
  * An integration agent works only with its own connection or server, so it is not offered on any
- * other, even when that account is shared with all agents. `ownBotId` is the agent that belongs here.
+ * other, even when that account is shared with all agents. `own` is the agent(s) that belong here.
+ * The Carta agent is the same for MCP servers, but its built-in mail, calendar and Drive tools do
+ * reach shared Google connections, so connection lists pass `keepCarta` and still show it.
  */
-export function withoutOtherIntegrationAgents(bots: Bot[], ownBotId?: string | null): Bot[] {
+export function withoutOtherIntegrationAgents(
+  bots: Bot[],
+  own?: OwnBotIds,
+  { keepCarta = false } = {},
+): Bot[] {
+  const ownIds = Array.isArray(own) ? own : [own];
   return bots.filter(
     (bot) =>
-      bot.id === ownBotId ||
-      !(isIntegrationAgentSpawnKey(bot.spawnKey) || isCartaAgentSpawnKey(bot.spawnKey)),
+      ownIds.includes(bot.id) ||
+      !(
+        isIntegrationAgentSpawnKey(bot.spawnKey) ||
+        (!keepCarta && isCartaAgentSpawnKey(bot.spawnKey))
+      ),
   );
 }
 
@@ -156,9 +168,9 @@ export function withoutOtherIntegrationAgents(bots: Bot[], ownBotId?: string | n
 export function agentsFor(
   bots: Bot[],
   access: ConnectionAccess | undefined,
-  ownBotId?: string | null,
+  own?: OwnBotIds,
 ): Bot[] {
   if (!access) return [];
-  const usable = withoutOtherIntegrationAgents(bots, ownBotId);
+  const usable = withoutOtherIntegrationAgents(bots, own, { keepCarta: true });
   return access.allAgents ? usable : usable.filter((bot) => access.botIds.includes(bot.id));
 }

@@ -241,7 +241,7 @@ function AppCard({
           bots={agentsFor(
             data.bots,
             working ? data.access[working.id] : undefined,
-            working?.agentBotId,
+            app.rows.map((row) => row.agentBotId),
           )}
         />
       )}

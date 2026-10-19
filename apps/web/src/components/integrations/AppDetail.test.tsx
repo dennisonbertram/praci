@@ -18,6 +18,7 @@ const revoke = vi.fn().mockResolvedValue({});
 const createAgent = vi.fn().mockResolvedValue({ botId: "bot_app" });
 const setWrites = vi.fn().mockResolvedValue({});
 const setExclusive = vi.fn().mockResolvedValue({});
+const setAccess = vi.fn().mockResolvedValue({});
 vi.mock("../../lib/rpc", () => ({
   rpc: {
     connections: {
@@ -26,6 +27,7 @@ vi.mock("../../lib/rpc", () => ({
       createAgent: (...a: unknown[]) => createAgent(...a),
       setWrites: (...a: unknown[]) => setWrites(...a),
       setExclusive: (...a: unknown[]) => setExclusive(...a),
+      setAccess: (...a: unknown[]) => setAccess(...a),
     },
   },
 }));
@@ -130,6 +132,7 @@ afterEach(() => {
   createAgent.mockClear();
   setWrites.mockClear();
   setExclusive.mockClear();
+  setAccess.mockClear();
 });
 
 const PAGE = "/app/integrations/app/google/gmail";
@@ -372,4 +375,30 @@ it("offers Remove account per row only when there is more than one account", asy
   container.remove();
   await show(PAGE, data({ connections: [account("a"), account("b")] }));
   expect(labels().filter((label) => label === "Remove account")).toHaveLength(2);
+});
+
+it("saves only the agents it shows: Carta stays, other integration agents never get a hidden grant", async () => {
+  const bot = (id: string, name: string, spawnKey: string | null) =>
+    ({ id, name, spawnKey }) as IntegrationsData["bots"][number];
+  await show(
+    APP_PAGE,
+    data({
+      connections: [appConnection()],
+      bots: [
+        bot("chief", "Chief", null),
+        bot("carta", "Carta", "carta-agent:u1"),
+        bot("integ", "Other app", "integration-agent:s9"),
+      ],
+      access: { conn_app: { allAgents: true, botIds: [] } },
+    }),
+  );
+  const names = switches().map((element) => element.getAttribute("aria-label"));
+  expect(names.join()).toContain("Carta");
+  expect(names.join()).not.toContain("Other app");
+  await act(async () => switches()[0]!.click());
+  expect(setAccess).toHaveBeenCalledWith({
+    connectionId: "conn_app",
+    allAgents: false,
+    botIds: ["carta"],
+  });
 });
