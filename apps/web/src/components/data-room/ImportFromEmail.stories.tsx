@@ -19,6 +19,10 @@ const meta = {
           status: "connected",
         },
       ],
+      "connections.catalog": [
+        { connectorId: "google", slug: "gmail" },
+        { connectorId: "google", slug: "googledrive" },
+      ],
       "inbox.list": {
         accounts: [{ id: "c1" }],
         failedAccounts: [],
@@ -73,4 +77,15 @@ export const NeedsReconnect: Story = {
 
 export const NotConnected: Story = {
   beforeEach: () => mockRpc({ "connections.list": [] }),
+};
+
+/** The server offers neither app: no button leads to a page that says "isn't available". */
+export const NotOffered: Story = {
+  render: (args) => (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <span>No import buttons:</span>
+      <ImportSources {...args} />
+    </div>
+  ),
+  beforeEach: () => mockRpc({ "connections.list": [], "connections.catalog": [] }),
 };

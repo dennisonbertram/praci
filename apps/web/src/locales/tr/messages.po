@@ -758,6 +758,11 @@ msgstr ""
 msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+msgid "Added"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Adding a contact"
 msgstr ""
@@ -3088,8 +3093,6 @@ msgstr ""
 msgid "Data room search model"
 msgstr ""
 
-#: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -3369,6 +3372,7 @@ msgid "Docs & files"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
 msgid "Document date"
 msgstr ""
 
@@ -5217,6 +5221,7 @@ msgstr ""
 msgid "New Bot"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
 msgid "New folder"
@@ -6389,10 +6394,6 @@ msgstr ""
 msgid "Receipts"
 msgstr ""
 
-#: src/components/data-room/FilterBar.tsx
-msgid "Recently added"
-msgstr ""
-
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -7235,6 +7236,7 @@ msgstr ""
 msgid "Sending…"
 msgstr "Gönderiliyor…"
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
@@ -8267,6 +8269,7 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx

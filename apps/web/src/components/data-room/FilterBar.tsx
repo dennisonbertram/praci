@@ -21,7 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { ArrowDown, ArrowUp, ChevronDown, Folder, Search, X } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronDown, Folder, FolderPlus, Search, X } from "lucide-react";
 import { type FormEvent, type ReactElement, useState } from "react";
 import type { FolderNode } from "./folders";
 import { typeLabel } from "./format";
@@ -40,10 +40,10 @@ export const sourceLabel = (source: string) =>
 
 const sortLabels = (): Record<SortField | "relevance", string> => ({
   relevance: t`Relevance`,
-  date: t`Date`,
+  date: t`Document date`,
   name: t`Name`,
   type: t`Type`,
-  createdAt: t`Recently added`,
+  createdAt: t`Added`,
 });
 
 /** A hover and focus label for an icon-only control. */
@@ -307,11 +307,14 @@ export function FilterBar({
   folders,
   folderId,
   onFolder,
+  onNewFolder,
 }: {
   /** Where the folder tree is hidden (a narrow page), this picker chooses the folder. */
   folders: FolderNode[];
   folderId: string | undefined;
   onFolder: (id: string | undefined) => void;
+  /** Opens the New folder dialog; the folder tree's own button is hidden on this narrow page. */
+  onNewFolder: () => void;
   query: string;
   onQuery: (query: string) => void;
   searching: boolean;
@@ -382,7 +385,7 @@ export function FilterBar({
         ) : null}
       </InputGroup>
       {/* Where the folder tree is hidden, this picks the folder; it sits with Sort, not the pills. */}
-      <div className="order-2 flex h-8 items-center @min-[800px]/bd:hidden">
+      <div className="order-2 flex h-8 items-center gap-1 @min-[800px]/bd:hidden">
         <DropdownMenu>
           <DropdownMenuTrigger
             data-testid="data-room-folder-picker"
@@ -414,6 +417,11 @@ export function FilterBar({
             </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
+        <Tip label={t`New folder`}>
+          <Button variant="outline" size="icon" aria-label={t`New folder`} onClick={onNewFolder}>
+            <FolderPlus aria-hidden="true" />
+          </Button>
+        </Tip>
       </div>
       <div
         data-testid="data-room-filters"

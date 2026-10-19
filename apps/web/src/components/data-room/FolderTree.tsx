@@ -75,7 +75,7 @@ export function FolderTree({
         style={{ paddingInlineStart: `${8 + depth * 16}px` }}
         className={cn(
           "group flex min-h-8 cursor-pointer items-center gap-2 rounded-lg pe-1 text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring",
-          selected === id && "bg-sidebar-accent font-semibold",
+          selected === id && "bg-sidebar-accent font-medium",
         )}
       >
         <Folder aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />
@@ -97,7 +97,7 @@ export function FolderTree({
     );
   };
   return (
-    <div className="flex w-56 shrink-0 flex-col border-e border-border">
+    <div className="flex w-56 shrink-0 flex-col">
       <div
         role="tree"
         aria-label={t`Folders`}
@@ -113,10 +113,10 @@ export function FolderTree({
           <Button
             variant="ghost"
             size="sm"
-            className="w-full justify-start text-muted-foreground"
+            className="min-h-8 w-full justify-start gap-2 ps-2 text-sm font-normal text-muted-foreground"
             onClick={onNewFolder}
           >
-            <FolderPlus aria-hidden="true" />
+            <FolderPlus aria-hidden="true" className="size-3.5" />
             <Trans>New folder</Trans>
           </Button>
         </div>
