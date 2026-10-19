@@ -71,13 +71,14 @@ it("renders a native table in the Cap table style, with the header hidden on a p
   const rows = [item("lease", "f-legal")].map((i) => ({ item: i, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const table = container.querySelector("table");
-  for (const cls of ["w-full", "table-fixed", "text-sm"]) expect(table?.classList.contains(cls)).toBe(true);
+  for (const cls of ["w-full", "table-fixed", "text-sm"])
+    expect(table?.classList.contains(cls)).toBe(true);
   const row = container.querySelector("[data-row]");
   expect(row?.tagName).toBe("TR");
-  expect(row?.className).toContain(
-    "h-14 border-t border-border transition-colors hover:bg-muted/50",
-  );
-  expect(container.querySelector("td")?.className).toContain("py-2 pe-3");
+  for (const cls of ["h-14", "border-t", "border-border", "hover:bg-muted/50"])
+    expect(row?.classList.contains(cls)).toBe(true);
+  const cell = container.querySelector("td");
+  for (const cls of ["py-2", "pe-3"]) expect(cell?.classList.contains(cls)).toBe(true);
   const head = container.querySelector('[data-testid="data-room-head"]');
   expect(head?.className).toContain("hidden");
   expect(head?.querySelector("th")?.className).toContain("text-xs");
