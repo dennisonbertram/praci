@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, useLocation, useNavigate } from "react-router-dom";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
   () =>
@@ -817,8 +817,10 @@ it("explains a rate-limited Inbox with no mail, and shows Try again working", as
   expect(c.querySelector('[role="alert"]')?.textContent).toContain("Gmail is limiting requests");
   let finish: (value: unknown) => void = () => {};
   rpcMock.refresh.mockReturnValue(new Promise((r) => (finish = r)));
+  byText(c, "Try again")?.focus();
   await click(byText(c, "Try again"));
-  expect(byText(c, "Try again")?.disabled).toBe(true);
+  expect(byText(c, "Try again")?.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(byText(c, "Try again"));
   expect(c.querySelector('[data-slot="spinner"]')).not.toBeNull();
   // The label stays in the accessibility tree (not display/visibility hidden) and the spinner
   // is decorative, so the busy button is still announced as "Try again".
@@ -828,8 +830,64 @@ it("explains a rate-limited Inbox with no mail, and shows Try again working", as
     "true",
   );
   expect(retryButton?.querySelector("span")?.className).not.toContain("invisible");
+  // Activating the busy button again, by click or keyboard, must not start another refresh.
+  const calls = rpcMock.refresh.mock.calls.length;
+  await click(retryButton);
+  await act(async () => {
+    for (const key of ["Enter", " "]) {
+      retryButton?.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+      retryButton?.dispatchEvent(new KeyboardEvent("keyup", { key, bubbles: true }));
+    }
+  });
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(calls);
   await act(async () => finish({}));
-  expect(byText(c, "Try again")?.disabled).toBe(false);
+  expect(byText(c, "Try again")?.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(byText(c, "Try again"));
+  expect(c.textContent).not.toContain("few seconds");
+  expect(c.querySelector('[role="alert"]')?.textContent).toBe("Gmail is still limiting requests.");
+  expect(c.querySelector('[role="alert"]')?.className).toContain("text-warning");
+});
+
+describe("Try again notice", () => {
+  const limitedList = () =>
+    list([], { failedAccounts: ["Me"], reconnectAccounts: [], rateLimitedAccounts: ["Me"] });
+  const retryWith = async (after: () => Promise<unknown> | unknown) => {
+    rpcMock.list.mockResolvedValue(limitedList());
+    const c = await render();
+    rpcMock.refresh.mockResolvedValue({});
+    let finishList: (value: unknown) => void = () => {};
+    rpcMock.list.mockImplementation(() => new Promise((r) => (finishList = r)));
+    await click(byText(c, "Try again"));
+    // The refresh settled; the list reload after it is still pending.
+    expect(c.querySelector('[role="alert"]')?.textContent ?? "").not.toContain("still limiting");
+    await act(async () => finishList(await after()));
+    return c;
+  };
+
+  it("shows no still-limited text while the reload after the sync is pending, then none when clear", async () => {
+    const c = await retryWith(() => list([row("a")]));
+    expect(c.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it("says Gmail is still limiting requests when the reload after the sync is limited", async () => {
+    const c = await retryWith(() => limitedList());
+    expect(c.querySelector('[role="alert"]')?.textContent).toContain("still limiting");
+  });
+});
+
+it("shows the rate-limit notice in the warning colour above cached mail", async () => {
+  rpcMock.list.mockResolvedValue(
+    list([row("a")], {
+      failedAccounts: ["Me"],
+      reconnectAccounts: [],
+      rateLimitedAccounts: ["Me"],
+    }),
+  );
+  const c = await render();
+  const alert = c.querySelector('[role="alert"]');
+  expect(alert?.textContent).toContain("Gmail is limiting requests right now.");
+  expect(alert?.className).toContain("text-warning");
+  expect(alert?.className).not.toContain("text-destructive");
 });
 
 it("turns off search and Filter until mail is connected", async () => {

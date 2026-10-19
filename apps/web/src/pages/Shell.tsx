@@ -6045,7 +6045,7 @@ export const Transcript = memo(function Transcript({
         : activity?.kind === "writing"
           ? t`Writing`
           : activity?.kind === "tool"
-            ? (toolActionLabel(activity.action) ?? t`Using ${activity.label}`)
+            ? (toolActionLabel(activity.action) ?? activity.label)
             : workingBotName
               ? t`${workingBotName} is working`
               : t`Bots are working`;

@@ -143,6 +143,8 @@ export function InboxPage({
   const keyRef = useRef(listKey);
   keyRef.current = listKey;
   const listRequest = useRef(0);
+  // Set when a retry's sync settled: the next list answer is the first one after it, and ends "retrying".
+  const awaitRetryList = useRef(false);
   const listApplied = useRef(0);
   // Pages after the first of a filtered or searched list, which Gmail pages for us.
   const [more, setMore] = useState<{ rows: MailRow[]; token?: string; busy: boolean }>({
@@ -163,6 +165,8 @@ export function InboxPage({
   const [synced, setSynced] = useState(false);
   // "Try again" is busy until its sync answers, so the click visibly does something.
   const [retrying, setRetrying] = useState(false);
+  // A retry was made since the notice appeared; if the notice is back, it says so.
+  const [retried, setRetried] = useState(false);
   const [reload, setReload] = useState(0);
   const [attempt, setAttempt] = useState(0);
   const polls = useRef(0);
@@ -215,6 +219,12 @@ export function InboxPage({
     if (paused) return;
     const key = listKey;
     const request = ++listRequest.current;
+    const afterRetry = awaitRetryList.current;
+    const endRetry = () => {
+      if (!afterRetry) return;
+      awaitRetryList.current = false;
+      setRetrying(false);
+    };
     // A reload (a triage poll, a sync) must not throw away an answer for the list still on screen:
     // a slow search would otherwise never land while polls keep restarting it. Only a newer answer
     // for the same list, or a different list, replaces it.
@@ -227,6 +237,7 @@ export function InboxPage({
         cache.current.set(key, next);
         setData(next);
         setDataKey(key);
+        endRetry();
         // A refresh of the same list keeps the pages already loaded (minus rows the fresh first
         // page now holds); only a different list starts over.
         const same = appliedKey.current === key;
@@ -243,6 +254,7 @@ export function InboxPage({
         // A removed account leaves its tab behind; fall back to All.
         if (tab) setTab(undefined);
         else setError(errorText(cause));
+        endRetry();
       });
   }, [tab, filter, query, view, category, reload, paused]);
 
@@ -317,8 +329,9 @@ export function InboxPage({
         if (live) setError(errorText(cause));
       })
       .then(() => {
-        setRetrying(false);
-        if (!live) return;
+        if (!live) return setRetrying(false);
+        // "Try again" stays busy until the list reloaded after this sync answers.
+        awaitRetryList.current = true;
         setSynced(true);
         setReload((n) => n + 1);
         onRefreshed();
@@ -382,7 +395,12 @@ export function InboxPage({
     [groups],
   );
   const accounts = data?.accounts ?? [];
-  const failed = error || (shown ? syncErrorText(shown) : "");
+  const failed = error || (shown ? syncErrorText(shown, retried && !retrying) : "");
+  const limited =
+    !error && Boolean(shown?.rateLimitedAccounts?.length) && !shown?.reconnectAccounts.length;
+  useEffect(() => {
+    if (!failed) setRetried(false);
+  }, [failed]);
   const todos = todosByTab[tabKey];
   // A lapsed sign-in is fixed by signing in again; trying again would fail the same way.
   const reconnect = !error && Boolean(shown?.reconnectAccounts.length);
@@ -390,6 +408,8 @@ export function InboxPage({
   const failedEmpty =
     Boolean(failed) && (!shown || rows.length === 0) && !(data && accounts.length === 0);
   const retry = () => {
+    if (retrying) return;
+    setRetried(true);
     setError("");
     setRetrying(true);
     setAttempt((n) => n + 1);
@@ -632,7 +652,7 @@ export function InboxPage({
       variant={fixVariant}
       size={failedEmpty ? "default" : "sm"}
       onClick={retry}
-      disabled={retrying}
+      aria-disabled={retrying}
       aria-busy={retrying}
       className="relative"
     >
@@ -878,7 +898,10 @@ export function InboxPage({
       ) : null}
 
       {failed && !failedEmpty ? (
-        <div role="alert" className="mb-4 flex items-center gap-3 text-sm text-destructive">
+        <div
+          role="alert"
+          className={`mb-4 flex items-center gap-3 text-sm ${limited ? "text-warning" : "text-destructive"}`}
+        >
           <span>{failed}</span>
           {fixButton}
         </div>
@@ -895,7 +918,7 @@ export function InboxPage({
             )
           }
           description={
-            <span role="alert">
+            <span role="alert" className={limited ? "text-warning" : undefined}>
               {reconnect ? (
                 <Trans>Gmail signed this account out. Sign in again to see your mail here.</Trans>
               ) : (

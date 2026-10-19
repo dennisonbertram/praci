@@ -1,0 +1,329 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440x900-mercury-approval-pending.png",
+    "1440x900-mercury-approval-allowed.png",
+    "1440x900-mercury-approval-denied.png",
+    "375x812-mercury-approval-pending.png",
+    "768x1024-mercury-header-computer.png",
+    "375x812-mercury-first-open.png",
+    "1440x900-mercury-write-confirm-ask.png",
+    "1440x900-mercury-composer-long.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 62,
+      "costUsd": 0.150892,
+      "result": {
+        "verdict": "Not ready for a non-technical founder handling money: the core read-answer is clear, but the payment approval exposes raw MCP/JSON instead of a human-verifiable payment summary, gives Allow dangerous visual priority, duplicates confirmation, and collapses completely when the Computer panel opens at tablet width — plus the first-open thread is a blank void.",
+        "findings": [
+          {
+            "level": "component",
+            "element": "Approval card title 'Review before mcp__finance-mercury__requestSendMoney → 1200' and JSON block 'tool: requestSendMoney / arguments: { \"accountId\": \"chk-1111\", \"amount\": 1200, \"recipientId\": \"recipient_mock_acme\" }'",
+            "problem": "The decisive money screen is written for engineers, not Maya. She must parse MCP, a tool name, chk-1111 and recipient_mock_acme to verify a payment; 1200 has no $, comma, decimals, source-account name, or plain-language payee. Verification is effectively impossible, so an accidental/wrong payment cannot be caught here.",
+            "norm": "Financial-confirmation & plain-language norm (WCAG plain language, payment-review conventions): restate amount, payee, source, fees/timing in user vocabulary at the point of consent; never require reading raw API payloads.",
+            "severity": "P0",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Replace JSON with a human summary card: 'Pay $1,200.00 to Acme (Mock) from MOCK Checking ••1111 — Note: Payment to Acme (Mock)'. Move raw tool/MCP payload behind a collapsed 'Technical details' disclosure."
+          },
+          {
+            "level": "component",
+            "element": "'Allow once' (solid near-white, full-width) vs 'Deny' (dark, low-contrast outline) buttons",
+            "problem": "Allow is the dominant, bright, first and most tappable action; Deny reads as disabled/secondary. For an irreversible money movement this steers toward approval and makes the safe choice visually recessive — the exact opposite of a high-risk consent pattern.",
+            "norm": "High-risk/destructive action hierarchy & error prevention: make the safe action easy and legible, make the consequential action explicit (verb + amount), never give it default-button luminosity without friction.",
+            "severity": "P0",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Equal-weight, high-contrast buttons labeled 'Deny' and 'Allow once — pay $1,200 to Acme'; keep Deny first/left as the safe default, require the Allow label to carry amount+payee, and consider a deliberate press-and-hold or typed confirmation for payments."
+          },
+          {
+            "level": "layout",
+            "element": "Three-column layout with left agent sidebar + chat column squeezed to ~1-character line + 'Computer is on' right panel",
+            "problem": "At 768px the chat becomes literally unreadable: message text stacks one word/fragment per line ('(Mo ck) for offic e snac ks was not sub mitt ed;'), the composer is cut to 'Please se very long no…', and the header truncates to 'M.' Opening Computer destroys the primary task surface instead of layering over it.",
+            "norm": "Responsive layout norm: below desktop widths, secondary panels overlay, sheet, or replace — never crush the primary content below a readable min-width (~320px).",
+            "severity": "P0",
+            "screenshot": "768x1024-mercury-header-computer.png",
+            "fix": "At ≤1024px make Computer a full-width overlay/right sheet covering chat (with close returning to thread), or collapse the agent sidebar to icons/hidden when the panel opens. Enforce a min chat width and reflow, don't shrink-to-fit three panes."
+          },
+          {
+            "level": "page",
+            "element": "Entire message thread area (blank black between 'Mercury agent' header and composer)",
+            "problem": "First open is a void: no greeting, no statement of what the Mercury agent can/can't do, no Mercury connection status, no suggested first prompts (e.g. 'What's my checking balance?'). A busy first-time founder has no affordance for what to type and no reassurance about permissions around money.",
+            "norm": "Empty-state norm for chat/agents: orient (identity+capability), set safety expectations, and offer 2–4 tappable starter prompts.",
+            "severity": "P1",
+            "screenshot": "375x812-mercury-first-open.png",
+            "fix": "Add an empty state: 'I'm your Mercury agent. I can check balances and prepare payments — I won't move money without your approval.' plus chips: 'Checking balance', 'Recent payments', 'Prepare a payment'."
+          },
+          {
+            "level": "group",
+            "element": "Two stacked consents: 'Confirm payment request: send $1,200…' (Confirm/Cancel in 1440x900-mercury-write-confirm-ask.png) followed by 'Review before mcp__… Allow once/Deny' approval card",
+            "problem": "The user confirms twice for one payment with different vocabularies ('Confirm payment request' → 'Allow once'), and the first card then shows only 'Answered: Confirm payment request'. It's unclear which step actually authorizes, whether Mercury has been asked, or why a second review exists — inviting double-taps, abandonment, or assuming funds already moved.",
+            "norm": "Single, unambiguous consent moment for consequential actions; if a platform (Mercury) adds a second approval, label the steps explicitly ('Step 1 of 2: Rakazo review — Mercury will still ask you to approve; no money moves yet').",
+            "severity": "P1",
+            "screenshot": "1440x900-mercury-write-confirm-ask.png",
+            "fix": "Collapse to one approval card, or explicitly number/label the two stages and carry the same payment summary ('$1,200 to Acme from Checking ••1111') through both; after step 1, show state 'Waiting for your Mercury approval — not paid yet'."
+          },
+          {
+            "level": "component",
+            "element": "'Confirm payment request' and 'Cancel' buttons (both identical dark full-width stacked rows)",
+            "problem": "Both options have identical weight and low contrast; the primary verb is generic and does not repeat amount/payee, so a fast tap on memory ('Confirm payment request') can approve the wrong thing. Stacking two ~44px full-width rows also wastes vertical space and reads like a settings list, not a decision.",
+            "norm": "Action clarity: primary/secondary must be visually differentiated, the committing button must echo its object ('Confirm $1,200 to Acme'), and safe cancel must be obvious.",
+            "severity": "P1",
+            "screenshot": "1440x900-mercury-write-confirm-ask.png",
+            "fix": "Side-by-side (desktop) / clearly weighted buttons: quiet high-contrast 'Cancel' and one filled 'Confirm $1,200 payment to Acme'. Increase text contrast on both."
+          },
+          {
+            "level": "component",
+            "element": "Answered states: small green 'Allowed once', red 'Denied', green 'Answered: Confirm payment request' text left at card bottom, with the JSON block still dominant above",
+            "problem": "Decided cards keep the scary JSON as the main content and reduce the outcome to a tiny color-only label (green/red, no icon, no restated outcome). Red/green-only signaling fails color-vision users, and in the scrolled denied view the prior 'Allowed once' card is clipped mid-JSON so history is hard to audit.",
+            "norm": "Readable answered/disabled states for auditability: decided cards collapse the payload, show an icon + text status ('Allowed once — $1,200 to Acme, submitted 8:06 AM'), and don't rely on color alone.",
+            "severity": "P1",
+            "screenshot": "1440x900-mercury-approval-denied.png",
+            "fix": "On decision, collapse JSON to 'Details', replace button area with a status row: check/slash icon + 'Allowed once · $1,200 to Acme (Mock) · 8:06 AM' or 'Denied · $300 to Acme · nothing was sent', in neutral+semantic color."
+          },
+          {
+            "level": "component",
+            "element": "Right panel: 'Computer is on', 'Team Computer', 'Mercury agent's computer screen' (empty black area), 'Routines' with icon-only '+' and copy 'Work this bot repeats for you, like a cash check every Monday.'",
+            "problem": "The panel claims a computer screen but shows nothing (no screenshot/placeholder state), 'Computer is on' offers no visible off/pause control despite a settings gear, and Routines has no routines, no empty state, and an ungrammatical, vague definition. The brief's 'Computer and routines' destination is undiscoverable from the chat header too (see header finding).",
+            "norm": "Panel truthfulness & empty states: label state with its control (On toggle), show content or an explicit empty state, explain routines with a concrete example and a labeled 'Add routine' button.",
+            "severity": "P1",
+            "screenshot": "768x1024-mercury-header-computer.png",
+            "fix": "Add an On/Pause toggle next to 'Computer is on', a real empty-screen state ('No activity right now — the agent will show its work here'), and Routines empty state with labeled '+ Add routine' and example 'e.g. Check cash every Monday at 9 AM'."
+          },
+          {
+            "level": "component",
+            "element": "Header top-right monitor icon-only button (no 'Computer and routines' label) next to 'Mercury agent'",
+            "problem": "A bare monitor glyph gives a founder who doesn't know this product no reason to infer 'Computer and routines', no tooltip-visible affordance in the screenshot, and ~16px target. A core trust surface (watching what the agent does) is hidden behind iconography.",
+            "norm": "Recognition over recall / labeled controls for non-expert users; minimum 44px touch target (WCAG 2.5.8 / Apple HIG).",
+            "severity": "P1",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Use a labeled button 'Computer & routines' (icon + text) on desktop, ≥44px tall; on phone keep icon+accessible label with a visible text label in the opened panel header."
+          },
+          {
+            "level": "group",
+            "element": "Left sidebar agent list: truncated previews 'The hiring plan puts a senior robotics en…' and Mercury row preview 'Review before mcp__finance-mercury__…' with identical '8:00 AM' on nearly every row",
+            "problem": "The sidebar leaks the same raw MCP jargon into navigation, truncates every preview to uselessness at this width, and uniform 8:00 AM timestamps destroy scannability of what's new. The selected 'Mercury agent' row is only subtly shaded despite an active payment awaiting decision — no pending-approval badge draws Maya back to it.",
+            "norm": "Navigation summaries must be human-readable and state-aware; items needing a decision get a persistent badge/count, not just truncated last-message text.",
+            "severity": "P2",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Render previews from human summaries ('Payment approval needed: $1,200 to Acme'), add an amber 'Needs approval' pill on Mercury agent, widen or wrap previews to two meaningful lines, and use relative/grouped times instead of repeated 8:00 AM."
+          },
+          {
+            "level": "component",
+            "element": "Long-message composer: multi-line text ending '…so we can see the height limit.' with '+' bottom-left and white send bottom-right; mic button present in empty composer is gone",
+            "problem": "The composer grows correctly but controls silently change: the mic disappears once text is long (present in the empty/short state), so dictation affordance is inconsistent; '+' and send drift to opposite bottom corners far from the text end, and there's no indication of height limit/scroll behavior as it keeps growing toward the thread.",
+            "norm": "Composer consistency (Slack/iMessage/ChatGPT conventions): stable control set, mic↔send swap only as a deliberate state, capped auto-grow (~40% viewport) with internal scroll.",
+            "severity": "P2",
+            "screenshot": "1440x900-mercury-composer-long.png",
+            "fix": "Cap composer height with internal scrolling, keep a fixed bottom toolbar row (+, mic when empty / send when text, predictably swapped), and keep send adjacent to the input's end."
+          },
+          {
+            "level": "component",
+            "element": "Approval card JSON on phone: 'Review before mcp__finance-mercury__requestSendMoney → 1200' wrapping mid-token and '\"note\": \"Payment to Acme (Mock)\"' hard-wrapping, card filling nearly the whole 375px viewport above the composer",
+            "problem": "On phone the unreadable payload gets worse: identifiers break across lines, the user's own initiating message is pushed off-screen, and Allow/Deny sit at the very bottom of a tall card so the payment context (who/amount/from) isn't visible at the moment of tapping without scrolling back up.",
+            "norm": "Mobile consent norm: the full decision summary + actions must be visible together on one screen (375×812) with ≥44px targets; no horizontal/mid-token mangling of critical values.",
+            "severity": "P2",
+            "screenshot": "375x812-mercury-approval-pending.png",
+            "fix": "Use the human summary card (amount/payee/from/note as labeled rows) so it fits above the fold with sticky Allow/Deny at card bottom; keep raw JSON out of the mobile default view entirely."
+          },
+          {
+            "level": "group",
+            "element": "Message metadata: floating '8:05 AM'/'8:24 AM' and emoji/reply/'…' icon row detached to the right of assistant bubbles, present on some messages only (e.g. denied follow-up) and absent on others (approval cards)",
+            "problem": "Timestamps and hover/tap actions float in the gutter, misaligned with their bubbles, appearing inconsistently — the approval cards (the messages most likely to need copy/reference actions) have none. It adds visual noise without aiding scanning or trust, and the tiny icons are sub-44px targets on touch.",
+            "norm": "Consistent message chrome: timestamp anchored to its bubble (or day divider only), actions on hover (desktop) / long-press (mobile) uniformly available, ≥44px on touch.",
+            "severity": "P2",
+            "screenshot": "1440x900-mercury-approval-denied.png",
+            "fix": "Attach time to the bubble footer at small size, apply the same action affordance to every message incl. approval cards, and enlarge/hide touch targets appropriately per viewport."
+          },
+          {
+            "level": "page",
+            "element": "Post-decision assistant messages: 'The $1,200 payment request to Acme was submitted and is pending approval. The funds may not move until Mercury approves it.' / 'The $300 payment request to Acme (Mock) for office snacks was not submitted'",
+            "problem": "Wording is almost excellent but introduces an unexplained second approver: Maya just tapped 'Allow once', then learns Mercury must also approve — with no link/status/next step ('Where do I approve in Mercury? What happens next?'). 'was not submitted; the action was denied' after Deny is clear but offers only 'What would you like me to do instead?' with no quick recovery (edit amount, choose different account).",
+            "norm": "Closed-loop status communication: after consent, state what's done, what's pending, who acts next, and where; after denial, offer concrete next actions.",
+            "severity": "P2",
+            "screenshot": "1440x900-mercury-approval-allowed.png",
+            "fix": "Add next-step line/link: 'Next: approve it in Mercury — we'll update you here' with a status chip that later resolves; after Deny add chips 'Edit amount', 'Different account', 'Just check balance'."
+          },
+          {
+            "level": "layout",
+            "element": "Overall desktop frame: sidebar (~320px) + chat thread with very wide assistant bubbles and large empty right margin; thread content starts at same left edge regardless of message type",
+            "problem": "Assistant bubbles and especially the approval card (~520px) hug the left while user bubbles sit far right, creating a wide dead middle and making the approval card feel like a sidebar artifact rather than the center of attention at the moment of decision. Vertical rhythm is otherwise consistent, but the money moment gets no focal emphasis (no elevation, border, or scrim distinction from chat).",
+            "norm": "Visual hierarchy for consequential in-chat cards: decision cards should be distinctly elevated/anchored and width-constrained for line-length, not just another bubble in the stream.",
+            "severity": "P3",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Give pending approval cards distinct treatment (border/elevation, 'Action needed' eyebrow, slight width increase) and keep decided cards visually demoted/collapsed so pending decisions stand out in a long thread."
+          }
+        ],
+        "excellent": [
+          "Read-answer bubble in 1440x900-mercury-approval-pending.png: 'Your checking account balance is $412,420.55, as of October 14, 2026.' — amount and as-of date bolded, one scannable line, exactly what a busy founder needs.",
+          "Post-decision follow-ups restate amount + payee in plain English and explicitly bound the risk ('pending approval. The funds may not move until Mercury approves it.' / 'was not submitted') in 1440x900-mercury-approval-allowed.png and 1440x900-mercury-approval-denied.png — the right instinct, undermined only by the cards above them.",
+          "Phone layout in 375x812-mercury-first-open.png correctly drops the sidebar behind a hamburger and keeps header + full-width composer with mic/send — the chrome is clean; it's the missing empty state that fails, not the frame.",
+          "Long composer in 1440x900-mercury-composer-long.png wraps and auto-grows keeping the full pasted text and a prominent send button visible rather than truncating — good foundation, needs the height cap/control consistency noted above.",
+          "Allow/Deny on 375x812-mercury-approval-pending.png are full-width, generously tall touch targets — sizing is right even though their visual weighting and labels are not."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 91,
+      "costUsd": 0.092074,
+      "result": {
+        "verdict": "Fails readiness for a founder persona due to two P0 blockers: raw MCP tool schemas and internal IDs are exposed directly in financial approval cards (violating persona mental models and payment safety), and opening the Computer panel at tablet width (768x1024) crushes the chat thread into an unreadable 135px column.",
+        "findings": [
+          {
+            "level": "layout",
+            "element": "Three-column layout (Sidebar + Chat thread + Computer panel)",
+            "problem": "At the 768x1024 tablet viewport, the left sidebar (~315px), central chat thread (~135px), and right 'Computer' panel (~318px) are all rendered simultaneously side-by-side. The central chat column is crushed so severely that the header title truncates to 'M.', message text wraps at 2 to 4 characters per line ('offic / e / snac / ks / was / not / sub / mitt / ed'), and the bottom composer text is clipped horizontally.",
+            "norm": "Responsive layout & minimum readable measure (45–75ch per line; side panels must overlay or collapse navigation below 1024px)",
+            "severity": "P0",
+            "screenshot": "768x1024-mercury-header-computer.png",
+            "fix": "Below 1024px, collapse the left navigation sidebar into a slide-over drawer when the right 'Computer' panel is opened, or render the 'Computer' panel as a slide-over sheet so the chat thread retains a minimum width of 375px."
+          },
+          {
+            "level": "component",
+            "element": "Payment approval card ('Review before mcp__finance-mercury__requestSendMoney -> 1200')",
+            "problem": "The approval card exposes raw MCP protocol naming ('mcp__finance-mercury__requestSendMoney'), unformatted currency ('1200' instead of '$1,200.00'), and a raw developer JSON payload containing internal database keys ('accountId': 'chk-1111', 'recipientId': 'recipient_mock_acme'). Maya does not know what MCP or tool arguments are, and reading raw JSON increases the risk of approving an erroneous transfer.",
+            "norm": "Match between system and the real world (Nielsen #2) & Financial transaction clarity",
+            "severity": "P0",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Replace the raw tool name and JSON dump with a structured human-readable banking summary card: clear header ('Approve Mercury Payment'), prominent formatted amount ('$1,200.00'), and labeled rows for 'To' ('Acme (Mock)'), 'From' ('MOCK Checking ••1111'), and 'Memo' ('Payment to Acme (Mock)'). Hide raw technical details behind an optional developer disclosure if ever needed."
+          },
+          {
+            "level": "component",
+            "element": "'Allow once' and 'Deny' buttons in the payment approval card",
+            "problem": "'Allow once' is styled as a full-width, high-contrast solid white bar stacked above a low-contrast dark 'Deny' button, with left-aligned button labels. In a financial context where the user 'must never move money by accident', using generic developer permission phrasing ('Allow once') on a massive full-width primary target encourages reflexive clicking without verifying the amount.",
+            "norm": "High-stakes confirmation hierarchy & Button label alignment conventions",
+            "severity": "P1",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Use explicit action-and-amount copy ('Approve $1,200 request' and 'Deny'), center-align button text, place the buttons side-by-side on desktop (or compact proportional buttons) with clear visual separation, and give 'Deny' sufficient contrast so rejecting a payment is equally accessible."
+          },
+          {
+            "level": "group",
+            "element": "Two-step confirmation sequence ('Confirm payment request' card followed by 'Review before mcp...' card)",
+            "problem": "When asked to pay $1,200, the agent first renders an in-chat confirmation prompt ('Confirm payment request' / 'Cancel' in 1440x900-mercury-write-confirm-ask.png) and immediately follows it with a second approval card ('Allow once' / 'Deny' in 1440x900-mercury-approval-pending.png) for the exact same action. Conversely, for the $300 payment in 1440x900-mercury-approval-denied.png, it skips the first card entirely. This double-prompting is redundant and inconsistent.",
+            "norm": "Interaction efficiency & Workflow consistency",
+            "severity": "P1",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Consolidate write confirmations into a single, human-readable approval card per transaction so the founder confirms the payment details exactly once."
+          },
+          {
+            "level": "component",
+            "element": "Action buttons in 'Confirm payment request' card ('Confirm payment request' / 'Cancel')",
+            "problem": "Both 'Confirm payment request' and 'Cancel' are rendered as identical full-width, dark-outlined rectangles with left-aligned text and zero visual hierarchy distinguishing the affirmative action from cancellation. They look like multiple-choice quiz options rather than transactional controls.",
+            "norm": "Primary vs. secondary action hierarchy",
+            "severity": "P1",
+            "screenshot": "1440x900-mercury-write-confirm-ask.png",
+            "fix": "Eliminate this redundant pre-confirmation card in favor of a single unified approval card; when binary action buttons are used, differentiate primary and secondary weights and center-align button labels."
+          },
+          {
+            "level": "page",
+            "element": "Empty message thread canvas on first open",
+            "problem": "Opening the Mercury agent for the first time presents a completely blank dark void between the top bar and bottom composer. A busy founder gets no indication of which Mercury account is linked, what actions the agent can perform, or suggested starter prompts.",
+            "norm": "Empty state onboarding & Discoverability",
+            "severity": "P1",
+            "screenshot": "375x812-mercury-first-open.png",
+            "fix": "Populate the empty state with the Mercury agent avatar, a brief capability summary (e.g., 'Connected to Northwind Robotics Mercury — check balances, track runway, or draft payment requests'), and 3–4 clickable starter prompt chips (e.g., 'What is my checking balance?', 'Show recent transactions')."
+          },
+          {
+            "level": "component",
+            "element": "Active thread preview subtitle in left sidebar ('Mercury agent')",
+            "problem": "The sidebar preview line under 'Mercury agent' leaks the raw internal tool string: 'Review before mcp__finance-mercury_...'.",
+            "norm": "Human-readable system status & Information scent",
+            "severity": "P1",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Format tool-pending sidebar previews with human-readable descriptions such as 'Approval needed: Pay Acme (Mock) $1,200'."
+          },
+          {
+            "level": "component",
+            "element": "Resolved states of approval cards ('Answered: Confirm payment request', 'Allowed once', 'Denied')",
+            "problem": "Once an approval card is acted upon, the raw JSON block remains fully expanded and prominent while the resolution status is shown only as small, unbadged green or red text ('Allowed once' / 'Denied') without icons, timestamps, or actor attribution. Additionally, 'Answered: Confirm payment request' uses form/survey phrasing ('Answered:') instead of action confirmation copy.",
+            "norm": "Auditability & Resolved state visual hierarchy",
+            "severity": "P2",
+            "screenshot": "1440x900-mercury-approval-allowed.png",
+            "fix": "Display a distinct status pill with an icon (e.g., green checkmark badge 'Approved • $1,200.00 to Acme (Mock)' or red cross badge 'Denied by Maya Chen') and collapse verbose parameters into a compact summary row."
+          },
+          {
+            "level": "group",
+            "element": "Message timestamp and reaction/reply action cluster ('8:06 AM' + emoji, reply, more icons)",
+            "problem": "The timestamp and hover actions float outside the right edge of a single message card. In 1440x900-mercury-approval-allowed.png, the '8:06 AM' timestamp and emoji/reply actions are attached to the middle system tool card rather than the final agent message below it, and because bubbles have different widths, this cluster jumps horizontally by ~250px across different states.",
+            "norm": "Spatial consistency & Message action affordance",
+            "severity": "P2",
+            "screenshot": "1440x900-mercury-approval-allowed.png",
+            "fix": "Anchor timestamps consistently inside or directly beneath each message group header/footer, and restrict reaction/reply toolbars to conversational messages rather than system tool cards."
+          },
+          {
+            "level": "layout",
+            "element": "Desktop chat thread and composer width",
+            "problem": "At 1440x900, the chat canvas and bottom composer span the entire ~1125px width right of the sidebar. User messages pin to the far right edge while agent messages pin to the far left, forcing excessive horizontal eye movement, and the multi-line composer stretches to ~135 characters per line.",
+            "norm": "Optimal line length (65–80ch) & Centered conversation column",
+            "severity": "P2",
+            "screenshot": "1440x900-mercury-composer-long.png",
+            "fix": "Constrain the message stream and composer container to a centered max-width of 768px–840px within the main viewport panel."
+          },
+          {
+            "level": "group",
+            "element": "Left sidebar lower workspace sections ('MOCK DEMO DATA — RECONNECT NEEDED', 'EMPTY SPACE')",
+            "problem": "In the 768x1024 view, the collapsed workspace headers at the bottom of the sidebar stack tightly and the third header is vertically clipped mid-text by the 'Connect apps' footer bar without a scroll fade or proper padding.",
+            "norm": "Scroll container clipping & Visual boundaries",
+            "severity": "P2",
+            "screenshot": "768x1024-mercury-header-computer.png",
+            "fix": "Add bottom padding and a subtle top border or gradient mask above the sticky 'Connect apps' footer so scrollable sidebar items never clip mid-line."
+          },
+          {
+            "level": "component",
+            "element": "'Team Computer' display area inside the right 'Computer' panel",
+            "problem": "The 'Team Computer' viewport box has almost identical background luminance to the surrounding panel and no border, making it look like an accidental ~200px gap of dead space above 'Mercury agent's computer screen'.",
+            "norm": "Figure-ground contrast & Surface elevation",
+            "severity": "P2",
+            "screenshot": "768x1024-mercury-header-computer.png",
+            "fix": "Add a subtle 1px border (`rgba(255,255,255,0.08)`), rounded corners, and an explicit idle state illustration or icon inside the 'Team Computer' preview frame."
+          },
+          {
+            "level": "component",
+            "element": "'Connect apps' bar in left sidebar ('G G S' badges)",
+            "problem": "The 'Connect apps' button displays three tiny grey circles with plain letters 'G', 'G', 'S'. A first-time user cannot distinguish which integrations these single letters represent (e.g., Gmail vs. Google Drive vs. Google Calendar).",
+            "norm": "Iconographic recognition over recall (Nielsen #6)",
+            "severity": "P2",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Render recognizable full-color or monochrome brand logos for connected/available integrations (Google, Slack, Mercury, Carta) instead of single-letter text initials."
+          },
+          {
+            "level": "group",
+            "element": "Left sidebar top bar and workspace section header ('MOCK DEMO DATA — NORTHWIND ROBOTICS')",
+            "problem": "The top-left header of the sidebar is empty on the left side (missing product branding or workspace identity), while the section header below ('• 🔒 MOCK DEMO DATA — NORTHWIND ROBOTICS ⌄ •••') crowds a status dot, a lock icon, two-line wrapping uppercase text, a chevron, and an overflow menu into a single cramped row.",
+            "norm": "Navigation hierarchy & Header density",
+            "severity": "P3",
+            "screenshot": "1440x900-mercury-approval-pending.png",
+            "fix": "Move the primary workspace switcher ('Northwind Robotics') into the top sidebar header alongside the action icons, and simplify section headers to a single clean line."
+          },
+          {
+            "level": "component",
+            "element": "Top edge of mobile chat viewport",
+            "problem": "On mobile, the top message card ('Confirm payment request...') is clipped flush against the bottom border of the header bar with zero top breathing room or scroll-shadow cue.",
+            "norm": "Viewport edge padding & Scroll affordance",
+            "severity": "P3",
+            "screenshot": "375x812-mercury-approval-pending.png",
+            "fix": "Ensure a subtle gradient scroll mask under the sticky header and default the scroll position so the active approval card and its preceding context have clear vertical margin."
+          },
+          {
+            "level": "component",
+            "element": "Microphone button in composer when text is present",
+            "problem": "While typing a multi-line message, the microphone button disappears completely from the bottom-right of the composer, preventing the user from dictating additional text into an existing draft.",
+            "norm": "Control persistence",
+            "severity": "P3",
+            "screenshot": "1440x900-mercury-composer-long.png",
+            "fix": "Keep the voice input button visible alongside the send button in the bottom action row of the expanded composer."
+          }
+        ],
+        "excellent": [
+          "Clear, unambiguous conversational copy on payment state transitions: the agent explicitly distinguishes between a payment request being 'submitted and pending approval' in Mercury (1440x900-mercury-approval-allowed.png) versus 'not submitted; the action was denied' (1440x900-mercury-approval-denied.png), preventing false assumptions about whether funds have moved.",
+          "Multi-line composer expansion in 1440x900-mercury-composer-long.png cleanly relocates the '+' attachment button and send arrow to a dedicated bottom control row so long paragraphs wrap smoothly without colliding with inline icons.",
+          "Distinct, color-coded agent avatars in the left sidebar and header make it easy to visually scan and distinguish specialized bots (Chief, Inbox, Finance, Carta, Legal, Mercury) at a glance.",
+          "Real-time background activity indicator ('Working...' in blue beneath 'Finance helper (mock)' in the sidebar) gives the founder calm ambient visibility into parallel agent tasks."
+        ]
+      }
+    }
+  ]
+}

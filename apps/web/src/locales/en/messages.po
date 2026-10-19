@@ -3996,12 +3996,16 @@ msgid "Gmail didn't respond. Try again."
 msgstr "Gmail didn't respond. Try again."
 
 #: src/lib/inbox-sync-error.ts
-msgid "Gmail is limiting requests right now. Try again in a few seconds."
-msgstr "Gmail is limiting requests right now. Try again in a few seconds."
+msgid "Gmail is limiting requests right now."
+msgstr "Gmail is limiting requests right now."
 
 #: src/components/ComposeEmail.tsx
 msgid "Gmail is limiting requests. Try again in a minute."
 msgstr "Gmail is limiting requests. Try again in a minute."
+
+#: src/lib/inbox-sync-error.ts
+msgid "Gmail is still limiting requests."
+msgstr "Gmail is still limiting requests."
 
 #: src/pages/Inbox.tsx
 msgid "Gmail needs to be reconnected"
@@ -8574,11 +8578,6 @@ msgstr "Uses Carta figures and asks before sending."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
-
-#. placeholder {0}: activity.label
-#: src/pages/Shell.tsx
-msgid "Using {0}"
-msgstr "Using {0}"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx

@@ -583,6 +583,11 @@ describe("humanizeToolName", () => {
     expect(humanizeToolName("mcp__carta__cap_table_chart")).toBe("Carta cap table");
     expect(humanizeToolName("mcp__linear__list_issues")).toBe("List issues");
   });
+
+  it("splits camelCase ids, with or without an MCP prefix", () => {
+    expect(humanizeToolName("mcp__finance-mercury__getAccounts")).toBe("Get accounts");
+    expect(humanizeToolName("requestSendMoney")).toBe("Request send money");
+  });
 });
 
 describe("appendToolStep", () => {
