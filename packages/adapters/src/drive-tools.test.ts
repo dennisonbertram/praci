@@ -187,6 +187,17 @@ describe("drive_read", () => {
 });
 
 describe("drive_create_file", () => {
+  it("refuses a write when the check right before it denies, and still reads", async () => {
+    const s = setup();
+    s.deps.beforeWrite = async () => "No longer available.";
+    expect(await s.run("drive_create_file", { name: "Plan", content: "x", kind: "doc" })).toEqual({
+      error: "No longer available.",
+    });
+    expect(s.emulator.requests).toEqual([]);
+    await s.run("drive_search", { query: "plan" });
+    expect(s.emulator.requests).toHaveLength(1);
+  });
+
   it("creates a Google Doc and uploads the text for conversion", async () => {
     const s = setup();
     const r = (await s.run("drive_create_file", {
