@@ -1,5 +1,6 @@
 import type { NotificationChannel } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
+import { deletePushEndpoint } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 
 export const OUTBOX_MAX_ATTEMPTS = 5;
@@ -107,9 +108,7 @@ async function deliverOne(
       if (result === "sent") sent += 1;
       else {
         // Only if the row is still the one the channel judged dead.
-        await deps.prisma.notificationEndpoint.deleteMany({
-          where: { id: endpoint.id, address: endpoint.address, sessionId: endpoint.sessionId },
-        });
+        await deletePushEndpoint(deps.prisma, endpoint);
       }
     } catch (e) {
       error = e;

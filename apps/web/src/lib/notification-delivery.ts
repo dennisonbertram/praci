@@ -11,93 +11,62 @@ export function shouldToast(state: { visible: boolean; focused: boolean }): bool
 
 export type DeliveryResult = "toast" | "os" | "skipped" | "failed";
 
-type Deps = {
+export type DeliveryDeps = {
   toast: (n: AttentionNotification) => void;
   requestPermission: () => Promise<NotificationPermission> | undefined;
   show: (title: string, options: NotificationOptions) => void;
-  locks?: Pick<LockManager, "request">;
-  storage?: Pick<Storage, "getItem" | "setItem">;
   state: () => { visible: boolean; focused: boolean };
-  now: () => number;
   delay: (ms: number) => Promise<unknown>;
-  /** Called after a toast is shown, so the caller can tell the server (skips phone push). */
-  onShown?: (id: string) => void;
+  /** Server check: was this notification already shown or seen on another device or tab? */
+  wasShown?: (id: string) => Promise<boolean> | boolean;
+  /** Called after a toast is shown, so the caller can tell the server (skips phone push). Failures are reported, not treated as delivery failures. */
+  onShown?: (id: string) => Promise<void> | void;
+  reportError?: (error: unknown) => void;
 };
 
-/** Background tabs wait this long so a focused tab claims the notification first. */
+/** Background tabs wait this long so a focused tab can toast first. */
 export const AWAY_DELAY_MS = 1500;
-const STORAGE_KEY = "rakazo-delivered-notifications";
-const RETAIN_MS = 24 * 60 * 60 * 1000;
 
-const defaultDeps = (): Deps => ({
+const defaultDeps = (): DeliveryDeps => ({
   toast: enqueueNotificationToast,
   requestPermission: () => requestBrowserNotificationPermission(),
   show: (title, options) => {
     const shown = new Notification(title, options);
     shown.onclick = () => window.focus();
   },
-  locks: typeof navigator === "undefined" ? undefined : navigator.locks,
-  storage: typeof localStorage === "undefined" ? undefined : localStorage,
   state: () => ({ visible: document.visibilityState === "visible", focused: document.hasFocus() }),
-  now: () => Date.now(),
   delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  reportError: (error) => console.error(error),
 });
 
-function readRecord(deps: Deps): Record<string, number> {
-  try {
-    const parsed = JSON.parse(deps.storage?.getItem(STORAGE_KEY) ?? "{}");
-    const cutoff = deps.now() - RETAIN_MS;
-    return Object.fromEntries(
-      Object.entries(parsed as Record<string, number>).filter(([, at]) => at > cutoff),
-    );
-  } catch {
-    return {};
-  }
-}
-
-function writeRecord(deps: Deps, record: Record<string, number>) {
-  try {
-    deps.storage?.setItem(STORAGE_KEY, JSON.stringify(record));
-  } catch {
-    // Storage unavailable: the lock still serialises tabs, but a late tab may repeat it.
-  }
-}
-
 /**
- * Every delivery runs in one per-id critical section that checks and records a shared
- * "delivered" entry first, so exactly one tab shows a notification, even a late one.
+ * Only the focused tab toasts (at most one tab can be), so toasts need no coordination.
+ * Other tabs wait, then re-check focus, ask the server whether it was already shown, and
+ * show an OS notification tagged with the id; the browser collapses same-tag notifications.
  */
 export async function deliverNotification(
   n: AttentionNotification,
-  deps: Deps = defaultDeps(),
+  overrides: Partial<DeliveryDeps> = {},
 ): Promise<DeliveryResult> {
   try {
-    const present = shouldToast(deps.state());
-    if (!present) {
-      await deps.delay(AWAY_DELAY_MS);
-      if ((await deps.requestPermission()) !== "granted") return "skipped";
-    }
-    const critical = async (): Promise<DeliveryResult> => {
-      const record = readRecord(deps);
-      if (record[n.id]) return "skipped";
-      writeRecord(deps, { ...record, [n.id]: deps.now() });
+    const deps = { ...defaultDeps(), ...overrides };
+    // The toast is on screen, so the result is "toast" even if onShown fails; that is reported.
+    const toast = async (): Promise<DeliveryResult> => {
+      deps.toast(n);
       try {
-        if (present) {
-          deps.toast(n);
-          deps.onShown?.(n.id);
-          return "toast";
-        }
-        deps.show(n.title, { body: n.body, tag: n.id });
-        return "os";
-      } catch {
-        const { [n.id]: _undo, ...rest } = readRecord(deps);
-        writeRecord(deps, rest);
-        return "failed";
+        await deps.onShown?.(n.id);
+      } catch (error) {
+        deps.reportError?.(error);
       }
+      return "toast";
     };
-    return deps.locks
-      ? await deps.locks.request(`rakazo-notification-${n.id}`, critical)
-      : await critical();
+    if (shouldToast(deps.state())) return toast();
+    await deps.delay(AWAY_DELAY_MS);
+    if (await deps.wasShown?.(n.id)) return "skipped";
+    if (shouldToast(deps.state())) return toast();
+    if ((await deps.requestPermission()) !== "granted") return "skipped";
+    deps.show(n.title, { body: n.body, tag: n.id });
+    return "os";
   } catch {
     return "failed";
   }

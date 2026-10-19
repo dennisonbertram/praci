@@ -162,7 +162,6 @@ import {
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
-  integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
@@ -368,6 +367,7 @@ import {
 } from "./inbox-compose.js";
 import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
 import {
+  connectionAgentSpawnKeys,
   ensureConnectedAppAgent,
   ensureIntegrationAgent,
   setConnectedAppExclusive,
@@ -5882,7 +5882,7 @@ export function createRouter(deps: RouterDeps) {
                 id: connection.agentBotId,
                 spaceId: actor.spaceId,
                 userId: actor.userId,
-                spawnKey: integrationAgentSpawnKey(connection.id),
+                spawnKey: { in: connectionAgentSpawnKeys(actor, connection) },
                 archivedAt: null,
               },
               data: { updatedAt: new Date() },
@@ -7167,6 +7167,7 @@ export function createRouter(deps: RouterDeps) {
         if (!sessionId) throw new ORPCError("UNAUTHORIZED");
         try {
           await savePushToken(deps.prisma, context.actor.userId, input.token, sessionId, {
+            replacesToken: input.replacesToken,
             sessionActive: async () => {
               const expiresAt = await pushSessionExpiresAt(deps.prisma, sessionId);
               return expiresAt !== null && expiresAt.getTime() > Date.now();

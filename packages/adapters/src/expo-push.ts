@@ -14,6 +14,7 @@ import { getLogger } from "@rakazo/logging";
 import { combineSignals } from "./connector-safety.js";
 import { readBodyCapped, withAbort } from "./web-ssrf.js";
 
+const DEVICE_NOT_REGISTERED = "DeviceNotRegistered";
 const EXPO_PUSH_TIMEOUT_MS = 15_000;
 export const MAX_EXPO_PUSH_RESPONSE_BYTES = 64 * 1024;
 
@@ -65,14 +66,6 @@ export function expoPushErrorMessage(body: unknown, status: number): string | un
   }
   if (status < 200 || status >= 300) return `expo push failed (${status})`;
   return undefined;
-}
-
-/** Expo reported the token as no longer registered; the endpoint should be deleted. */
-export class ExpoDeviceNotRegisteredError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "ExpoDeviceNotRegisteredError";
-  }
 }
 
 /** Data a notification tap uses to open the notification's page or thread. */
@@ -170,7 +163,7 @@ export class ExpoPushProvider implements NotificationProvider, NotificationChann
       );
       return "sent";
     } catch (error) {
-      if (error instanceof ExpoDeviceNotRegisteredError) return "endpointGone";
+      if (error instanceof Error && error.name === DEVICE_NOT_REGISTERED) return "endpointGone";
       throw error;
     }
   }
@@ -205,6 +198,13 @@ export class ExpoPushProvider implements NotificationProvider, NotificationChann
         delivered = true;
       } catch (error) {
         failures.push(error);
+        // Expo says the app was uninstalled or the token is dead: forget that endpoint only, and
+        // only if it is still the row we read (another device or a re-registration stays).
+        if (error instanceof Error && error.name === DEVICE_NOT_REGISTERED) {
+          await deletePushEndpoint(this.prisma, endpoint).catch((e) =>
+            getLogger().error("push endpoint prune failed", e),
+          );
+        }
       }
     }
     if (!delivered) {
@@ -241,10 +241,11 @@ export class ExpoPushProvider implements NotificationProvider, NotificationChann
     const failure = expoPushErrorMessage(body, response.status);
     if (!failure) return;
     getLogger().error(failure);
-    if (expoPushTickets(body).some((ticket) => ticket.details?.error === "DeviceNotRegistered")) {
-      throw new ExpoDeviceNotRegisteredError(failure);
+    const error = new Error(failure);
+    if (expoPushTickets(body).some((t) => t.details?.error === "DeviceNotRegistered")) {
+      error.name = DEVICE_NOT_REGISTERED;
     }
-    throw new Error(failure);
+    throw error;
   }
 
   /**

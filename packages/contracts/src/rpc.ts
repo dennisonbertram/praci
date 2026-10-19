@@ -1073,7 +1073,13 @@ export const appContract = {
   notifications: {
     registerPush: oc
       // No whitespace: the token store keeps the registering session on the next line.
-      .input(z.object({ token: z.string().min(8).max(512).regex(/^\S+$/) }))
+      .input(
+        z.object({
+          token: z.string().min(8).max(512).regex(/^\S+$/),
+          /** This device's previous token, removed when the token rotated. */
+          replacesToken: z.string().min(8).max(512).regex(/^\S+$/).optional(),
+        }),
+      )
       .output(z.object({ ok: z.literal(true) })),
     unregisterPush: oc.output(z.object({ ok: z.literal(true) })),
     list: oc

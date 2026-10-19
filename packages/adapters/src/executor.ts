@@ -4172,12 +4172,15 @@ export function createRunExecutor(deps: ExecutorDeps) {
           graphical && browser.describe().capabilities.page && !heldForTakeover;
         const disabledBuiltinTools = disabledBuiltinToolSet(bot.disabledBuiltinTools);
         // Connected mail accounts of the bot owner, looked up once per run and never shared.
+        // A Calendar or Drive agent sees only the account it is linked to.
+        const visibleToIdentity = (id: string) =>
+          !deniedIds.has(id) && (!appAgentIdentity || id === appAgentConnection?.id);
         let mailAccountsPromise: Promise<MailAccount[]> | undefined;
         const mailAccounts = () => {
           mailAccountsPromise ??= deps.mail
             ? deps.mail
                 .listAccounts({ spaceId: run.spaceId, userId: bot.userId }, context)
-                .then((accounts) => accounts.filter((a) => !deniedIds.has(a.id)))
+                .then((accounts) => accounts.filter((a) => visibleToIdentity(a.id)))
             : Promise.resolve([]);
           return mailAccountsPromise;
         };
@@ -4187,7 +4190,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           calendarAccountsPromise ??= listCalendarAccounts(deps.prisma, {
             spaceId: run.spaceId,
             userId: bot.userId,
-          }).then((accounts) => accounts.filter((a) => !deniedIds.has(a.id)));
+          }).then((accounts) => accounts.filter((a) => visibleToIdentity(a.id)));
           return calendarAccountsPromise;
         };
         const calendarEnabled =
@@ -4208,10 +4211,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
             messagingChannelRun,
             trigger: run.trigger,
           }) && (await mailAccounts().catch(() => [])).length > 0;
-        // The Inbox agent reads mail only with the AI data sharing consent the Inbox sorting needs,
+        // Any agent reads mail only with the AI data sharing consent the Inbox sorting needs,
         // so turning that off stops both. Read on every mail tool call, so revoking it mid-run applies.
         const inboxMailConsentMissing = () => {
-          if (!isInboxAgentSpawnKey(bot.spawnKey)) return Promise.resolve(false);
           return triageStatus(
             { prisma: deps.prisma, resolveModel },
             { userId: bot.userId, spaceId: run.spaceId },
@@ -4227,7 +4229,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           driveAccountsPromise ??= listDriveAccounts(deps.prisma, {
             spaceId: run.spaceId,
             userId: bot.userId,
-          }).then((accounts) => accounts.filter((a) => !deniedIds.has(a.id)));
+          }).then((accounts) => accounts.filter((a) => visibleToIdentity(a.id)));
           return driveAccountsPromise;
         };
         // The built-in Google tools act on a specific connection, so they follow the same rules as
@@ -4414,6 +4416,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             messagingChannelRun,
             cartaAgent,
             integrationAgent: integrationAgent || appAgentIdentity,
+            googleAgentProvider:
+              appAgentConnection?.connectorId === "google"
+                ? appAgentConnection.provider
+                : undefined,
             voiceAgent,
             voiceWorkspaceReadAllowed,
             voiceCall,
@@ -8603,6 +8609,8 @@ export function selectBuiltinToolsForRun(options: {
   cartaAgent?: boolean;
   /** An integration agent: no mail, calendar, Drive, Data room, finance or contact tools. */
   integrationAgent?: boolean;
+  /** A Calendar or Drive agent keeps the built-ins of its own Google service. */
+  googleAgentProvider?: string;
   voiceAgent?: boolean;
   voiceWorkspaceReadAllowed?: boolean;
   /** Hanging up is only offered to a turn the caller spoke on a live call. */
@@ -8614,8 +8622,8 @@ export function selectBuiltinToolsForRun(options: {
     options = {
       ...options,
       mailEnabled: false,
-      calendarEnabled: false,
-      driveEnabled: false,
+      calendarEnabled: options.calendarEnabled && options.googleAgentProvider === "googlecalendar",
+      driveEnabled: options.driveEnabled && options.googleAgentProvider === "googledrive",
       dataRoomEnabled: false,
       financeEnabled: false,
       contactsEnabled: false,
