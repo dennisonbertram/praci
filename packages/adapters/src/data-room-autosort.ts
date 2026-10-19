@@ -1,5 +1,9 @@
 import type { AutoSortOperation, AutoSortPlan, AutoSortProposal } from "@rakazo/contracts";
-import { AutoSortProposalSchema, DataRoomApiName } from "@rakazo/contracts";
+import {
+  AUTO_SORT_MAX_OPERATIONS,
+  AutoSortProposalSchema,
+  DataRoomApiName,
+} from "@rakazo/contracts";
 
 export interface AutoSortFolder {
   id: string;
@@ -49,7 +53,7 @@ interface Node {
   children: Node[];
 }
 
-const label = (path: string[]) => path.join(" / ") || "Unfiled";
+const label = (path: string[]) => path.join(" / ").slice(0, 400) || "Unfiled";
 
 /**
  * Turns the model's answer (or none) into the operations a person reviews. Without a usable
@@ -119,15 +123,29 @@ export function buildAutoSortPlan(input: {
     new Set(parsed.data.items.map((p) => p.id)).size === parsed.data.items.length
       ? parsed.data
       : null;
-  if (!proposal) return { mode: "basic", operations };
+  const cap = (list: AutoSortOperation[]) => list.slice(0, AUTO_SORT_MAX_OPERATIONS);
+  if (!proposal) {
+    return {
+      mode: "basic",
+      // A proposal that was given but unusable; no proposal at all is the caller's to explain.
+      ...(input.proposal === null ? {} : { reason: "ai_failed" as const }),
+      operations: cap(operations),
+    };
+  }
 
   /** An existing folder with the same key keeps its spelling at every level. */
+  const created = new Map<string, string>();
   const snap = (path: string[]): string[] => {
     const out: string[] = [];
     let level: Node[] | null = roots;
+    let prefix = "";
     for (const name of path) {
       const hit: Node | undefined = level?.find((n) => folderKey(n.name) === folderKey(name));
-      out.push(hit?.name ?? name);
+      prefix += `\0${folderKey(name)}`;
+      // New folders that differ only in case or a "(2)" suffix are one folder, spelled as first seen.
+      const spelling = hit?.name ?? created.get(prefix) ?? name;
+      if (!hit) created.set(prefix, spelling);
+      out.push(spelling);
       level = hit?.children ?? null;
     }
     return out;
@@ -146,7 +164,7 @@ export function buildAutoSortPlan(input: {
         type: "move_item",
         key: `move:${item.id}`,
         itemId: item.id,
-        name: item.name,
+        name: item.name.slice(0, 255),
         fromFolderId: item.folderId,
         toPath: target,
         from: label(current),
@@ -177,11 +195,11 @@ export function buildAutoSortPlan(input: {
       type: "rename_item",
       key: `rename:${item.id}`,
       itemId: item.id,
-      fromName: item.name,
+      fromName: item.name.slice(0, 255),
       toName: name,
     });
   }
-  return { mode: "ai", operations };
+  return { mode: "ai", operations: cap(operations) };
 }
 
 /** The model's view: one JSON line per item, summaries cut short, never the text. */

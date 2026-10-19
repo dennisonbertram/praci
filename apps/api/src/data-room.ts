@@ -288,8 +288,14 @@ export function createDataRoomService(deps: DataRoomDeps) {
   };
 
   /** Items whose name or folder path changed go back through indexing. */
-  const reindexAfterSort = async (actor: Actor, done: { itemIds: string[] }) =>
-    enqueueIndex(actor, await repo.reindexItems(actor, done.itemIds));
+  const reindexAfterSort = async (actor: Actor, done: { itemIds: string[] }) => {
+    // The change is committed: a failure here must not hide the batch id the caller needs to undo it.
+    try {
+      await enqueueIndex(actor, await repo.reindexItems(actor, done.itemIds));
+    } catch (error) {
+      getLogger().error("data room re-index after auto-sort failed", error);
+    }
+  };
 
   async function consentStatus(actor: Actor): Promise<DataRoomConsentStatus & { ai?: DataRoomAi }> {
     const ai = await deps.resolveAi?.(actor);
@@ -391,7 +397,9 @@ export function createDataRoomService(deps: DataRoomDeps) {
           deps.resolveAi?.(actor),
         ]);
         let proposal: unknown = null;
+        let asked = false;
         if (ai?.model && ai.allowed && deps.proposeSort && items.length) {
+          asked = true;
           const paths = autoSortFolderPaths(folders);
           const operationId = `data-room-sort:${actor.spaceId}:${Date.now()}`;
           try {
@@ -418,7 +426,9 @@ export function createDataRoomService(deps: DataRoomDeps) {
             });
           }
         }
-        return buildAutoSortPlan({ folders, items, proposal });
+        const plan = buildAutoSortPlan({ folders, items, proposal });
+        if (plan.mode === "ai" || plan.reason || !items.length) return plan;
+        return { ...plan, reason: asked ? ("ai_failed" as const) : ("ai_unavailable" as const) };
       },
       apply: (actor: Actor, input: { operations: AutoSortOperation[] }) =>
         dataRoomCall(async () => {

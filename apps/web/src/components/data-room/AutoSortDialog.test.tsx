@@ -126,7 +126,7 @@ it("says Already tidy. when there is nothing to change, and shows an error with 
 
 it("shows Sorted N items after applying, and Undo reverses that batch", async () => {
   setUploadScope("u1");
-  autoSort.undo.mockResolvedValue({ restored: 3, skipped: 0 });
+  autoSort.undo.mockResolvedValue({ restored: 2, skipped: 1 });
   showSortedToast(3, "b1");
   const toast = getUploadToasts().at(-1);
   expect(toast?.state).toMatchObject({ kind: "sorted", count: 3 });
@@ -134,4 +134,13 @@ it("shows Sorted N items after applying, and Undo reverses that batch", async ()
   await flush();
   expect(autoSort.undo).toHaveBeenCalledWith({ batchId: "b1" });
   expect(getUploadToasts().some((t) => t.id === toast?.id)).toBe(false);
+  expect(getUploadToasts().map((t) => t.name)).toContain("Undid 2, skipped 1");
+});
+
+it("does not call a plan with no model 'Already tidy.', and offers Retry", async () => {
+  autoSort.plan.mockResolvedValue({ mode: "basic", reason: "ai_failed", operations: [] });
+  await render();
+  expect(document.body.textContent).not.toContain("Already tidy.");
+  expect(document.body.textContent).toContain("The model could not sort your files.");
+  expect(button("Retry")).toBeTruthy();
 });

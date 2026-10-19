@@ -227,4 +227,46 @@ describePostgres("data room auto-sort apply and undo (PostgreSQL)", () => {
       "Edited later.png",
     );
   });
+
+  it("does not re-parent a folder under its own descendant on undo", async () => {
+    const { a } = await fresh();
+    const p = await dr.createFolder(a, { name: "P" });
+    const f = await dr.createFolder(a, { name: "F", parentId: p.id });
+    const c = await dr.createFolder(a, { name: "C", parentId: f.id });
+    const into = await dr.createFolder(a, { name: "I" });
+    const done = await sort.apply(a, [
+      {
+        type: "merge_folder",
+        key: "m",
+        folderId: f.id,
+        intoFolderId: into.id,
+        from: "F",
+        into: "I",
+      },
+    ]);
+    await dr.moveFolder(a, p.id, c.id);
+    const undone = await sort.undo(a, done.batchId);
+    expect(undone.skipped).toBeGreaterThan(0);
+    // Every folder still reaches the top without a loop.
+    const all = new Map((await dr.listFolders(a)).map((x) => [x.id, x]));
+    for (const folder of all.values()) {
+      const seen = new Set<string>();
+      for (
+        let n: typeof folder | undefined = folder;
+        n;
+        n = n.parentId ? all.get(n.parentId) : undefined
+      ) {
+        expect(seen.has(n.id)).toBe(false);
+        seen.add(n.id);
+      }
+    }
+  });
+
+  it("returns the items under restored folders so they are indexed again", async () => {
+    const { a } = await fresh();
+    const { policy, ops } = await messy(a);
+    const done = await sort.apply(a, ops);
+    const undone = await sort.undo(a, done.batchId);
+    expect(undone.itemIds).toContain(policy.id);
+  });
 });

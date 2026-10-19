@@ -107,12 +107,13 @@ describePostgres("Data room auto-sort service (PostgreSQL)", () => {
     answer = { items: [{ id: item.id, folderPath: ["Elsewhere"] }] };
     const basic = await svc.autoSort.plan(a);
     expect(basic.mode).toBe("basic");
+    expect(basic.reason).toBe("ai_unavailable");
     expect(basic.operations.map((o) => o.type)).toEqual(["merge_folder"]);
     expect(asked).toEqual([]);
 
     allowed = true;
     answer = new Error("model down");
-    expect((await svc.autoSort.plan(a)).mode).toBe("basic");
+    expect((await svc.autoSort.plan(a)).reason).toBe("ai_failed");
 
     answer = {
       items: [{ id: item.id, folderPath: ["Benefits", "Dental"], name: "Dental statement 2026" }],

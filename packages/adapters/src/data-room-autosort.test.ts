@@ -1,3 +1,4 @@
+import { AutoSortPlanSchema } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { type AutoSortItem, buildAutoSortPlan, isMeaninglessName } from "./data-room-autosort.js";
 
@@ -131,5 +132,47 @@ describe("buildAutoSortPlan", () => {
     expect(
       ["Plan summary.pdf", "Scanner manual.pdf", "Image rights.pdf"].some(isMeaninglessName),
     ).toBe(false);
+  });
+
+  it("groups new folders that differ only in case or a (2) suffix, using the first spelling", () => {
+    const plan = buildAutoSortPlan({
+      folders,
+      items,
+      proposal: {
+        items: [
+          { id: "i-plan", folderPath: ["Taxes"] },
+          { id: "i-dental", folderPath: ["taxes (2)"] },
+          { id: "i-pdf", folderPath: ["TAXES"] },
+        ],
+      },
+    });
+    const moves = plan.operations.filter((o) => o.type === "move_item");
+    expect(moves.map((o) => o.toPath)).toEqual([["Taxes"], ["Taxes"], ["Taxes"]]);
+  });
+
+  it("shortens long folder labels and caps the operations", () => {
+    const long = "x".repeat(250);
+    const dupes = Array.from({ length: 6 }, (_, n) => [
+      { id: `d${n}`, name: `Dup ${n}`, parentId: null },
+      { id: `e${n}`, name: `Dup ${n} (2)`, parentId: null },
+    ]).flat();
+    const many = Array.from({ length: 500 }, (_, n) => item(`n${n}`, `scan${n}.pdf`, null));
+    const plan = buildAutoSortPlan({
+      folders: [
+        ...dupes,
+        { id: "f-long", name: long, parentId: null },
+        { id: "f-long2", name: `${long} (2)`, parentId: "f-long" },
+      ],
+      items: many,
+      proposal: {
+        items: many.map((m, n) => ({ id: m.id, folderPath: [`A${n % 2}`], name: `Doc ${n}` })),
+      },
+    });
+    expect(plan.operations.length).toBe(1000);
+    expect(AutoSortPlanSchema.safeParse(plan).success).toBe(true);
+  });
+
+  it("says why a plan has no model proposal", () => {
+    expect(buildAutoSortPlan({ folders, items, proposal: { nope: 1 } }).reason).toBe("ai_failed");
   });
 });

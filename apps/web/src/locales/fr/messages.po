@@ -8086,6 +8086,10 @@ msgstr ""
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model could not sort your files."
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr ""
@@ -8417,6 +8421,10 @@ msgstr ""
 msgid "Turn off sending for {botName}?"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Turn on a model and allow AI access to sort files."
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -8451,6 +8459,14 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Underline"
+msgstr ""
+
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}"
+msgstr ""
+
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}, skipped {skipped}"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx

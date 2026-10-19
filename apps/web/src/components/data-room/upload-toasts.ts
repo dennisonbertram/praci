@@ -1,3 +1,4 @@
+import { t } from "@lingui/core/macro";
 import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
 import { DATA_ROOM_CHANGED, DataRoomUploadError, uploadToDataRoom } from "../../lib/data-room";
 import { rpc, selectedSpaceId } from "../../lib/rpc";
@@ -183,7 +184,10 @@ export function showSortedToast(count: number, batchId: string) {
     dismissUploadToast(id);
     rpc.dataRoom.autoSort
       .undo({ batchId })
-      .then(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)))
+      .then(({ restored, skipped }) => {
+        window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
+        showNoticeToast(skipped ? t`Undid ${restored}, skipped ${skipped}` : t`Undid ${restored}`);
+      })
       .catch((error: unknown) => showNoticeToast(errorText(error)));
   };
   toasts = [...toasts, { id, name: "", state: { kind: "sorted", count, undo } }];

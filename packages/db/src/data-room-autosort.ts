@@ -296,7 +296,12 @@ export function createDataRoomAutoSortRepos(prisma: PrismaClient) {
             ok =
               folder?.parentId === (after.parentId ?? null) &&
               (await folderExists(before.parentId)) &&
-              !(await taken(before.parentId ?? null, folder.name));
+              !(await taken(before.parentId ?? null, folder.name)) &&
+              // The old parent may have ended up under this folder since: that would be a loop.
+              !(
+                before.parentId &&
+                (await descendantIds(tx, actor, row.targetId)).has(before.parentId)
+              );
             if (ok) {
               await tx.dataRoomFolder.update({
                 where: { id: row.targetId },
@@ -340,6 +345,7 @@ export function createDataRoomAutoSortRepos(prisma: PrismaClient) {
             skipped += 1;
           }
         }
+        for (const id of await itemsUnder(tx, actor, movedFolderIds)) itemIds.add(id);
         await tx.dataRoomChange.updateMany({
           where: { id: { in: done } },
           data: { undoneAt: new Date() },

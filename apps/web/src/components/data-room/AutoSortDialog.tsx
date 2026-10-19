@@ -77,6 +77,12 @@ export function AutoSortDialog({
     { type: "move_item", title: t`Move` },
     { type: "rename_item", title: t`Rename` },
   ];
+  const reasonText =
+    plan?.reason === "ai_failed"
+      ? t`The model could not sort your files.`
+      : plan?.reason
+        ? t`Turn on a model and allow AI access to sort files.`
+        : null;
   const chosen = plan?.operations.filter((op) => !off.has(op.key)) ?? [];
   const toggle = (key: string, on: boolean) =>
     setOff((prev) => {
@@ -123,12 +129,20 @@ export function AutoSortDialog({
             </div>
           ) : !plan ? (
             <LoadingState label={t`Auto-sort`} />
-          ) : plan.operations.length === 0 ? (
+          ) : plan.operations.length === 0 && !reasonText ? (
             <p className="text-muted-foreground">
               <Trans>Already tidy.</Trans>
             </p>
           ) : (
             <div className="flex flex-col gap-3">
+              {reasonText ? (
+                <div className="flex flex-wrap items-center gap-3 px-2 text-muted-foreground">
+                  {reasonText}
+                  <Button variant="outline" size="sm" onClick={load}>
+                    <Trans>Retry</Trans>
+                  </Button>
+                </div>
+              ) : null}
               {groups.map(({ type, title }) => {
                 const ops = plan.operations.filter((op) => op.type === type);
                 return ops.length ? (
