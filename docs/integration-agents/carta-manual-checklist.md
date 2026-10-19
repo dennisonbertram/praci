@@ -11,7 +11,7 @@ Do not use production writes merely to validate this migration.
    Changes should be off. Existing assignment rows for other bots should still exist,
    but exclusivity should prevent those bots from using Carta directly.
 3. Open Integrations → Carta. Confirm there is one general **Agent** section with the Carta
-   agent link, **Allow changes in Carta** off, and **Only this agent** on. Confirm the
+   agent link, **Allow changes in Carta** off, and **Share with all agents** off. Confirm the
    existing **Open Cap table** shortcut still works. If no agent exists, **Create agent**
    should open the specialized Carta agent, not a generic duplicate.
 4. Ask the Carta agent to read the cap table. Compare its figures with Carta; no mutation
@@ -25,9 +25,9 @@ Do not use production writes merely to validate this migration.
 6. Ask for an investor email draft. Verify that sending requires a fresh approval displaying
    the exact recipients (including cc/bcc), subject, and complete body. Deny the send unless
    you intend to send that actual message. A draft ID alone must not authorize sending.
-7. Confirm another agent cannot directly use Carta while **Only this agent** is on. If you
-   deliberately turn it off, previously assigned bots may regain allowed reads, never writes.
-   Turn it back on after checking. Repeating a refresh must not reset the chosen setting.
+7. Confirm another agent cannot directly use Carta while **Share with all agents** is off. If you
+   deliberately turn it on, previously assigned bots may regain allowed reads, never writes.
+   Turn it back off after checking. Repeating a refresh must not reset the chosen setting.
 8. Disconnect or remove a test server only if intended. Confirm its former agent cannot
    continue to call it, and reconnecting does not silently re-enable writes. Removing a server
    does not introduce new automatic archiving behavior.

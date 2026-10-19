@@ -1,5 +1,11 @@
 # Integration agents plan
 
+Update: new connections now get their own private agent automatically, and the
+"Only this agent" switch became **Share with all agents**, off by default. Read
+[agent-per-connection](../plans/agent-per-connection.md) for the current behaviour.
+This document keeps the original design and decisions; where it says "Only this
+agent", read "Share with all agents" turned off.
+
 ## Goal
 
 Any integration (an MCP server or a connected app) gets a "Create agent" action on
@@ -9,9 +15,10 @@ integration. The user decides two things per integration:
 - **Allow changes.** Off by default: the agent only reads. On: it can also call the
   integration's write tools (payments, card changes, memo edits), and every write
   asks the user to approve that exact call. There is no "Always allow".
-- **Only this agent.** Off: the integration stays shared, as it is today, and other
-  agents keep their access. On: other agents lose direct access and must ask the
-  integration's agent with `message_bot`.
+- **Share with all agents** (originally "Only this agent", inverted). Off, the default
+  for new connections: other agents have no direct access and must ask the
+  integration's agent with `message_bot`. On: other agents can use the integration,
+  and Used by lets the user choose which.
 
 The first two agents made with it are a **Mercury agent** and a **Brex agent**. The
 hard-coded Carta agent moves onto the same mechanism later (see "Carta later").
@@ -213,9 +220,8 @@ Everything is on the integration's existing page (`McpDetail.tsx`). No new page.
   then two switches, then the existing "Used by" list.
   - "Allow changes in {Service}" (the Carta switch, generalized). Turning it on opens
     a confirmation dialog; turning it off applies at once.
-  - "Only this agent". Applies at once; fully reversible, so no dialog.
-  - While exclusive, "Used by" lists only the agent (the other rows are hidden, not
-    deleted).
+  - "Share with all agents", off by default. Applies at once; fully reversible, so no
+    dialog. Used by appears only while it is on, with the owning agent first.
 - **Agent defaults:** name "{Service} agent", the default generated avatar (TBD:
   use the integration's logo if the bot avatar system takes an image), a description
   for the bot directory, and instructions derived from a template plus the
@@ -240,8 +246,7 @@ Everything is on the integration's existing page (`McpDetail.tsx`). No new page.
 | "Allow changes in {Service}" | Switch label | Reuses the Carta wording; the only control for writes. |
 | "Off: the agent only reads. On: it can also make changes, and asks you before each one." | Switch hint | Shorter than Carta's; states the safe default and the approval, which a switch name cannot. |
 | "Allow changes in {Service}?" / "The agent will be able to change your {Service} data. It asks before each change." | Confirm dialog | Reuses Carta's dialog; turning writes on is the one step that must not be an accident. |
-| "Only this agent" | Switch label | The sharing control. |
-| "Other agents ask the {Service} agent instead of using {Service} themselves." | Switch hint | The consequence is not obvious from the name, and it is the reason other agents "stop working" with the service. Could be removed if usability testing shows the name suffices. |
+| "Share with all agents" | Switch label | The sharing control; replaces "Only this agent" and its hint, which were removed. |
 | "{Service} agent" | Default bot name | Needed for a bot to have a name. |
 | "The {Service} agent loses access to {Service}." | Remove-server dialog | Reuses Carta's line, generalized. |
 
@@ -295,10 +300,11 @@ the confirmation.
 Notion-style apps use `Connection`. Each connected account offers Create agent
 in `AppDetail`, with spawn key `integration-agent:<connectionId>`. The typed
 `Connection.agentBotId` relation identifies the agent and `writesEnabled` defaults
-to false. "Only this agent" sets `allAgents = false` plus one
-`BotConnectionAccess` row; disabling it restores shared access. Archiving or
-deleting the agent releases the link and resets the connection to shared,
-read-only defaults.
+to false. A private connection is `allAgents = false` plus one
+`BotConnectionAccess` row for the agent; "Share with all agents" sets `allAgents`
+true. Archiving or deleting the agent of a connection created private keeps it
+private with no agent (Create agent offered); older connections reset to shared,
+read-only defaults as before.
 
 The agent sees only its own account's app tools and plain built-ins, including
 when another bot starts a same-owner peer run. A tool is read-only only when its
