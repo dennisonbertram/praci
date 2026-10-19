@@ -150,6 +150,11 @@ export class ExpoPushProvider implements NotificationProvider, NotificationChann
       const expiresAt = await this.sessionExpiresAt?.(current.sessionId);
       if (!expiresAt || expiresAt.getTime() <= Date.now()) return "endpointGone";
     }
+    // Re-read after every await: the device may have moved to another account or session meanwhile.
+    const latest = (await listPushEndpoints(this.prisma, context.userId)).find((e) =>
+      sameEndpoint(e, endpoint),
+    );
+    if (!latest) return "endpointGone";
     const signal = combineSignals(context.signal, AbortSignal.timeout(EXPO_PUSH_TIMEOUT_MS));
     try {
       await this.post(

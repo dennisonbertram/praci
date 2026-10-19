@@ -172,6 +172,7 @@ import {
   isLegalAgentSpawnKey,
   isRetiredVoiceAgentSpawnKey,
   isVoiceAgentSpawnKey,
+  NOTIFICATION_HEARTBEAT_ID,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   parseTicketRef,
   usableModelId,
@@ -7224,7 +7225,7 @@ export function createRouter(deps: RouterDeps) {
               authorizedAt = Date.now();
             }
             if (next === "silent") {
-              yield { id: "heartbeat", surface: "", importance: "info" as const };
+              yield { id: NOTIFICATION_HEARTBEAT_ID, surface: "", importance: "info" as const };
               continue;
             }
             pending = undefined;

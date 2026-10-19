@@ -28,7 +28,11 @@ class FakeChannel implements NotificationChannel {
       capabilities: { push: true, email: false },
     };
   }
-  async send(envelope: NotificationEnvelope, endpoint: NotificationEndpointRef) {
+  async send(
+    envelope: NotificationEnvelope,
+    endpoint: NotificationEndpointRef,
+    _ctx: { signal: AbortSignal },
+  ) {
     const result = this.result(endpoint);
     if (result instanceof Error) throw result;
     if (result === "sent") this.sent.push({ envelope, endpoint });
@@ -93,7 +97,7 @@ describePostgres("notification outbox (PostgreSQL)", () => {
     const note = await attention();
     const channel = new FakeChannel();
     await deliverDueNotifications({ prisma, channels: [channel], now: at(10_000) });
-    expect(channel.sent).toHaveLength(0);
+    expect(channel.sent.filter((x) => x.envelope.id === note.id)).toHaveLength(0);
     expect((await delivery(note.id)).status).toBe("pending");
     await prisma.notification.delete({ where: { id: note.id } });
   });
@@ -171,5 +175,70 @@ describePostgres("notification outbox (PostgreSQL)", () => {
     await deliverDueNotifications({ prisma, channels: [channel], now: at(31_000) });
     expect((await delivery(note.id)).status).toBe("skipped");
     expect(await prisma.notificationEndpoint.count({ where: { userId } })).toBe(0);
+  });
+
+  it("deletes a gone endpoint only if it is unchanged since it was read", async () => {
+    await prisma.notificationEndpoint.create({
+      data: {
+        userId,
+        channel: "push",
+        address: "ExponentPushToken[r]",
+        deviceId: "r",
+        sessionId: "old",
+      },
+    });
+    const note = await attention();
+    const channel = new FakeChannel();
+    channel.send = async (_envelope, endpoint) => {
+      // The device re-registers (same row, new session) while the send is in flight.
+      await prisma.notificationEndpoint.updateMany({
+        where: { id: endpoint.id },
+        data: { sessionId: "new" },
+      });
+      return "endpointGone";
+    };
+    await deliverDueNotifications({ prisma, channels: [channel], now: at(31_000) });
+    await new Promise((r) => setTimeout(r, 100));
+    const row = await prisma.notificationEndpoint.findFirst({ where: { deviceId: "r" } });
+    expect(row?.sessionId).toBe("new");
+    expect((await delivery(note.id)).status).toBe("skipped");
+    await prisma.notificationEndpoint.deleteMany({ where: { deviceId: "r" } });
+  });
+
+  it("sends once when a slow send outlives its lease and another worker takes over", async () => {
+    await prisma.notificationEndpoint.create({
+      data: { userId, channel: "push", address: "ExponentPushToken[s]", deviceId: "s" },
+    });
+    const note = await attention();
+    let calls = 0;
+    const slow = new FakeChannel();
+    slow.send = async (envelope, endpoint, ctx: { signal: AbortSignal }) => {
+      calls += 1;
+      if (calls === 1) {
+        // First worker: hangs until its lease-bound signal aborts.
+        await new Promise((_, reject) =>
+          ctx.signal.addEventListener("abort", () => reject(new Error("aborted"))),
+        );
+      }
+      slow.sent.push({ envelope, endpoint });
+      return "sent";
+    };
+    const first = deliverDueNotifications({
+      prisma,
+      channels: [slow],
+      now: at(31_000),
+      leaseMs: 200,
+    });
+    await new Promise((r) => setTimeout(r, 50));
+    // Past the lease on the delivery clock; the second worker reclaims it.
+    await deliverDueNotifications({
+      prisma,
+      channels: [slow],
+      now: at(31_000 + 300),
+      leaseMs: 200,
+    });
+    await first;
+    expect(slow.sent.filter((x) => x.envelope.id === note.id)).toHaveLength(1);
+    expect((await delivery(note.id)).status).toBe("sent");
   });
 });

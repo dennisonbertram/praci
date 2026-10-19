@@ -10,6 +10,10 @@ export const NotificationSignalSchema = z.object({
 });
 export type NotificationSignal = z.infer<typeof NotificationSignalSchema>;
 
+/** Frame ids that are not notifications: the client should call notifications.list to catch up. */
+export const NOTIFICATION_CATCH_UP_ID = "catch-up";
+export const NOTIFICATION_HEARTBEAT_ID = "heartbeat";
+
 export const NotificationSchema = z.object({
   id: z.string(),
   botId: z.string().nullable(),
