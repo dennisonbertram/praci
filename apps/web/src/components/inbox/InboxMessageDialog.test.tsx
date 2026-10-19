@@ -461,3 +461,43 @@ it("follows the caller's archived state over an older loaded copy", async () => 
   expect(labels()).toContain("Archive");
   expect(labels()).not.toContain("Move to Inbox");
 });
+
+const sentMarks = () =>
+  [...document.querySelectorAll("span")].filter((e) => e.textContent === "Sent");
+
+it("marks the opened message and thread rows the user sent with a green Sent flag", async () => {
+  get.mockImplementation(async () => ({
+    ...message("open"),
+    from: "me@example.test",
+    fromSelf: true,
+    thread: [
+      {
+        id: "mine",
+        from: "me@example.test",
+        receivedAt: "2026-10-09T09:00:00.000Z",
+        snippet: "Mine",
+        fromSelf: true,
+      },
+      { id: "theirs", from: "Morgan", receivedAt: "2026-10-09T10:00:00.000Z", snippet: "Theirs" },
+    ],
+  }));
+  act(() => root.render(<InboxMessageDialog messageId="open" onClose={() => {}} />));
+  await flush();
+  expect(sentMarks()).toHaveLength(2);
+  for (const mark of sentMarks()) {
+    expect(mark.className).toContain("text-muted-foreground");
+    expect(mark.className).not.toContain("text-success");
+    expect(mark.querySelector("svg")?.getAttribute("class")).toContain("text-success");
+  }
+  const rows = [...document.querySelectorAll("ol > li")];
+  expect(rows[0]?.className).toContain("border-s-success");
+  expect(rows[1]?.className).not.toContain("success");
+  expect(rows[1]?.textContent).not.toContain("Sent");
+});
+
+it("does not mark a message someone else sent", async () => {
+  get.mockImplementation(async () => message("plain"));
+  act(() => root.render(<InboxMessageDialog messageId="plain" onClose={() => {}} />));
+  await flush();
+  expect(sentMarks()).toHaveLength(0);
+});

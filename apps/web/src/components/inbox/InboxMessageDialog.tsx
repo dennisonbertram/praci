@@ -13,6 +13,7 @@ import {
 } from "@rakazo/ui-web";
 import {
   Archive,
+  Check,
   ChevronDown,
   ChevronUp,
   FileArchive,
@@ -274,17 +275,20 @@ function InboxMessage({
               <span className="font-semibold text-foreground">{sender.name}</span>
               {sender.address ? <span className="text-xs"> {`<${sender.address}>`}</span> : null}
             </span>
-            <time
-              dateTime={sent && !Number.isNaN(sent.getTime()) ? sent.toISOString() : undefined}
-              className="shrink-0 text-xs tabular-nums"
-            >
-              {sent && !Number.isNaN(sent.getTime())
-                ? sent.toLocaleString(i18n.locale || "en", {
-                    dateStyle: "medium",
-                    timeStyle: "short",
-                  })
-                : message.date}
-            </time>
+            <span className="flex shrink-0 items-baseline gap-2">
+              {message.fromSelf ? <SentMark /> : null}
+              <time
+                dateTime={sent && !Number.isNaN(sent.getTime()) ? sent.toISOString() : undefined}
+                className="text-xs tabular-nums"
+              >
+                {sent && !Number.isNaN(sent.getTime())
+                  ? sent.toLocaleString(i18n.locale || "en", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })
+                  : message.date}
+              </time>
+            </span>
           </div>
           <div className="flex gap-x-3 text-xs">
             <span dir="auto" title={message.to} className="min-w-0 truncate">
@@ -526,6 +530,16 @@ function InboxAttachments({
   );
 }
 
+/** Shown on a message the user sent; the provider only reports a message as sent once it left. */
+function SentMark() {
+  return (
+    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+      <Check aria-hidden="true" className="size-3 text-success" />
+      <Trans>Sent</Trans>
+    </span>
+  );
+}
+
 /** Other messages of the conversation, one line each; a click shows that message's text. */
 /** A reply's preview without the "On <date>, <name> wrote:" line that starts its quote. */
 export function withoutQuoteHeader(snippet: string): string {
@@ -566,7 +580,12 @@ function ThreadMessage({ item }: { item: InboxThreadMessage }) {
   };
   const sent = new Date(item.receivedAt);
   return (
-    <li className="border-b border-border last:border-b-0">
+    <li
+      className={cn(
+        "border-b border-border last:border-b-0",
+        item.fromSelf && "border-s-2 border-s-success/40",
+      )}
+    >
       <Button
         variant="ghost"
         aria-expanded={open}
@@ -579,6 +598,7 @@ function ThreadMessage({ item }: { item: InboxThreadMessage }) {
         <span dir="auto" className="min-w-0 flex-1 truncate text-muted-foreground">
           {open ? null : maskCurrencyWhenHidden(withoutQuoteHeader(item.snippet))}
         </span>
+        {item.fromSelf ? <SentMark /> : null}
         <time
           dateTime={item.receivedAt}
           className="shrink-0 text-xs text-muted-foreground tabular-nums"

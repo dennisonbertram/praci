@@ -7232,6 +7232,7 @@ msgstr "Sending is turned off."
 msgid "Sending…"
 msgstr "Sending…"
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"

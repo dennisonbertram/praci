@@ -7232,6 +7232,7 @@ msgstr ""
 msgid "Sending…"
 msgstr "भेजा जा रहा है…"
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
