@@ -1123,7 +1123,14 @@ export const appContract = {
         }),
       ),
     markSeen: oc
-      .input(z.object({ surface: z.string().min(1).max(64) }))
+      // `id` or `threadId` narrows it to one notification or one thread on the surface.
+      .input(
+        z.object({
+          surface: z.string().min(1).max(64),
+          id: z.string().min(1).optional(),
+          threadId: z.string().min(1).optional(),
+        }),
+      )
       .output(z.object({ count: z.number() })),
     markShown: oc.input(z.object({ id: z.string().min(1) })).output(z.object({ ok: z.boolean() })),
     unseenCounts: oc.output(z.object({ counts: z.record(z.string(), z.number()) })),

@@ -11,7 +11,7 @@ const BATCH = 25;
 
 type Db = Pick<
   PrismaClient,
-  "notification" | "notificationDelivery" | "notificationEndpoint" | "$queryRaw"
+  "notification" | "notificationDelivery" | "notificationEndpoint" | "thread" | "$queryRaw"
 >;
 
 /** 1 minute after the first failure, then 2, 4, 8. */
@@ -78,6 +78,13 @@ async function deliverOne(
   });
   if (!notification || notification.shownAt || notification.seenAt) return finish("skipped");
   const channel = deps.channels.find((c) => c.channel === delivery.channel);
+  const thread = notification.threadId
+    ? await deps.prisma.thread.findUnique({
+        where: { id: notification.threadId },
+        select: { groupId: true },
+      })
+    : null;
+  const envelope = { ...notification, groupId: thread?.groupId ?? null };
   if (!channel) return finish("failed", `No ${delivery.channel} channel is configured.`);
   const endpoints = await deps.prisma.notificationEndpoint.findMany({
     where: {
@@ -104,7 +111,7 @@ async function deliverOne(
     });
     if (owned === 0) return null;
     try {
-      const result = await channel.send(notification, endpoint, context);
+      const result = await channel.send(envelope, endpoint, context);
       if (result === "sent") sent += 1;
       else {
         // Only if the row is still the one the channel judged dead.

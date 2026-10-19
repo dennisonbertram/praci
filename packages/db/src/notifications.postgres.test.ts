@@ -276,6 +276,36 @@ describePostgres("notifications (PostgreSQL)", () => {
     ).not.toBeNull();
   });
 
+  it("marks only one notification or one thread seen when asked", async () => {
+    const t0 = new Date();
+    const mk = (title: string, threadId: string) =>
+      createNotification(prisma, {
+        ...sameSpace,
+        botId: `bot-scoped-${suffix}`,
+        surface: "thread",
+        threadId,
+        title,
+        now: t0,
+        skipRateLimits: true,
+      });
+    const a1 = await mk("a1", "thread-a");
+    await mk("a2", "thread-a");
+    await mk("b1", "thread-b");
+    if (a1.status !== "created") throw new Error("unreachable");
+    const unseen = async () => (await unseenCounts(prisma, sameSpace)).thread ?? 0;
+    const before = await unseen();
+    expect(
+      await markSeen(prisma, { ...sameSpace, surface: "thread", id: a1.notification.id }),
+    ).toBe(1);
+    expect(await unseen()).toBe(before - 1);
+    expect(await markSeen(prisma, { ...sameSpace, surface: "thread", threadId: "thread-a" })).toBe(
+      1,
+    );
+    expect(await unseen()).toBe(before - 2);
+    // Another user's notification with the same id is untouched.
+    expect(await markSeen(prisma, { ...mine, surface: "thread", threadId: "thread-b" })).toBe(0);
+  });
+
   it("pages through 250 notifications after a time without losing or repeating any", async () => {
     const owner = { spaceId: mine.spaceId, userId: sameSpace.userId };
     const base = new Date("2031-01-01T00:00:00Z");

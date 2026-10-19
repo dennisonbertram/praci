@@ -2,13 +2,7 @@ import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import { mkdir, open, rm } from "node:fs/promises";
 import path from "node:path";
-import type {
-  AdapterContext,
-  ArtifactPut,
-  ArtifactStore,
-  NotificationMessage,
-  NotificationProvider,
-} from "@rakazo/adapter-kit";
+import type { AdapterContext, ArtifactPut, ArtifactStore } from "@rakazo/adapter-kit";
 
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
 
@@ -56,22 +50,5 @@ export class LocalArtifactStore implements ArtifactStore {
 
   async remove(id: string, context: AdapterContext) {
     await rm(path.join(this.root, "artifacts", context.spaceId, id), { force: true });
-  }
-}
-
-export class CapturingNotificationProvider implements NotificationProvider {
-  readonly sent: NotificationMessage[] = [];
-
-  describe() {
-    return {
-      id: "capturing",
-      contractVersion: "1",
-      adapterVersion: "0.1.0",
-      capabilities: { push: false, email: false },
-    };
-  }
-
-  async send(message: NotificationMessage, _context: AdapterContext): Promise<void> {
-    this.sent.push(message);
   }
 }

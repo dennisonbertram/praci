@@ -771,6 +771,8 @@ export interface NotificationEnvelope {
   importance: "info" | "attention";
   botId: string | null;
   threadId: string | null;
+  /** Group chat that owns threadId, so a tap does not open the bot's direct thread. */
+  groupId?: string | null;
 }
 
 /** Where a channel reaches the user: a device token, a Slack user, an address. */

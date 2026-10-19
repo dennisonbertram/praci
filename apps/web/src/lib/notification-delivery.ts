@@ -1,5 +1,20 @@
+import type { NotificationDto } from "@rakazo/contracts";
 import { enqueueNotificationToast, type NotificationToastInput } from "@rakazo/ui-web";
 import { requestBrowserNotificationPermission } from "./browser-notifications";
+import { maskCurrencyWhenHidden } from "./hide-amounts-preference";
+
+/** Dispatched on `window` after the channel switches change, so the app root reloads them. */
+export const NOTIFICATION_SETTINGS_CHANGED = "rakazo:notification-settings-changed";
+
+/** The toast and OS text for a stored notification; amounts stay hidden while Hide money is on. */
+export function attentionFromDto(n: NotificationDto): AttentionNotification {
+  return {
+    id: n.id,
+    title: maskCurrencyWhenHidden(n.title),
+    body: n.body ? maskCurrencyWhenHidden(n.body) : undefined,
+    href: n.link ?? undefined,
+  };
+}
 
 /** An `attention` notification; `info` only puts a dot on the sidebar and never reaches here. */
 export type AttentionNotification = NotificationToastInput;
