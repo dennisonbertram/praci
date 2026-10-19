@@ -5,12 +5,12 @@ import path from "node:path";
 import type { AdapterContext, AgentHomeStore, ArtifactStore } from "@rakazo/adapter-kit";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { checkpointComputerWorkspace, restoreComputerWorkspace } from "./computer-workspace.js";
+import { LocalAgentHomeStore } from "./home.js";
 import {
   AgentHomeConflictError,
   createAgentHomeStore,
   ObjectAgentHomeStore,
 } from "./object-home.js";
-import { LocalAgentHomeStore } from "./home.js";
 
 const ctx = (spaceId: string): AdapterContext => ({
   operationId: "op",
