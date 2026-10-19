@@ -1,6 +1,6 @@
 # Document filesystem
 
-Status: proposal. Nothing here is built.
+Status: approved plan. Nothing here is built.
 
 ## Goal
 
@@ -10,6 +10,20 @@ are spread across three stores and three listings. This plan names every place
 files live, proposes one tree backed by one blob store, and orders the work so the
 smallest, most necessary change (getting local disk out of the multi-tenant path)
 ships first.
+
+## Owner answers
+
+| Question | Answer |
+| --- | --- |
+| Chat attachments in the tree | Visible files under `/Artifacts/Chats/<chat name>`. |
+| Agent workspace files | A snapshot in object storage first. Individual browsable files come in a later phase. |
+| Artifacts sidebar entry | Stays, as a shortcut to the filtered Data room view. |
+| Install without S3 settings | The compose stack bundles MinIO and creates the bucket on first start, so every install uses the S3 path. Local disk is an explicit opt-out for development only. |
+
+Defaults chosen by the coordinator (not asked of the owner):
+
+- Content-hash dedupe is deferred until after phase 7. Until then there is one blob per node.
+- The tree is owner-only in shared spaces until the Data room sharing design lands.
 
 ## Inventory (as of main at 965302f48)
 
@@ -119,7 +133,7 @@ The tree has system root folders, created on demand per owner:
   and can stay filed by the Data room agent.
 
 The Artifacts page becomes a filtered Data room view (`source = artifact`, newest
-first), so the sidebar loses one entry and nothing else about it changes. The
+first). Its sidebar entry stays as a shortcut to that view. The
 Data room page gains the system folders. No new page is needed.
 
 ### Agents
@@ -140,9 +154,9 @@ exists today: the workspace is a directory inside the sandbox, checkpointed to t
 store and restored on start. The change is where the checkpoint goes. Replace
 `LocalAgentHomeStore` with a store that writes a workspace snapshot to object
 storage (one archive object per Computer, or per-file blobs under
-`/Agents/<name>` nodes), with a Postgres row holding the current revision. Start
-with the archive, because it needs no tree changes and fixes the multi-tenant
-bug. Per-file nodes (so a user sees agent files as documents) come later and
+`/Agents/<name>` nodes), with a Postgres row holding the current revision. Phase 1
+is the archive (owner decision), because it needs no tree changes and fixes the
+multi-tenant bug. Per-file nodes (so a user sees agent files as documents) come later and
 sync only an allowlist of folders, because a workspace also holds browser
 profiles and caches. A FUSE-style live mount is not recommended: it adds latency,
 a privileged container, and a second consistency problem.
@@ -180,7 +194,8 @@ volume keeps working until the flag flips.
   is never addressable except through a node the caller can read, and the upload
   response must not reveal that the bytes already existed for someone else (reply
   as if newly stored).
-- **Reference counting.** Moving from "one blob per row" to shared blobs risks
+- **Reference counting.** Dedupe is deferred until after phase 7; until then each
+  node owns one blob. Moving from "one blob per row" to shared blobs risks
   deleting bytes another node needs. Do not turn on blob sharing until the
   delete job checks references inside a transaction. Until then, keep the current
   one-blob-per-node behavior and just record `sha256`.
@@ -205,8 +220,11 @@ volume keeps working until the flag flips.
    make the docker `LocalAgentHomeStore` special cases in
    `computer-workspace.ts` conditional on a capability, not an `instanceof`.
    Deterministic offline conformance test against a fake `ArtifactStore`. Update
-   `docs/self-host.md` (volume note, E2B note). Without S3 configured, keep the
-   local store as the single-process default.
+   `docs/self-host.md` (volume note, E2B note). Also in this phase: the compose
+   stacks (source checkout and published images) include MinIO with the bucket
+   created on first start and `RAKAZO_S3_*` preset for the bundled service, so
+   every install uses the S3 path. Local disk becomes an explicit
+   development-only opt-out; update `.env.example` and the self-host docs to match.
 2. **Contract fix.** Make `LocalArtifactStore.put` return a SHA-256 like the S3
    store; add a shared conformance test for both. Small, independent.
 3. **Tree tables, dual-write.** `Blob` and `DocumentNode`, migrations, repository
@@ -214,31 +232,14 @@ volume keeps working until the flag flips.
    `createFileDataRoomItem`. No UI change.
 4. **Backfill job** and an invariants check (every row has a node, every node's
    blob exists).
-5. **Artifacts page reads the tree** (filtered Data room view, no new page); web
+5. **Artifacts page reads the tree** (filtered Data room view, sidebar shortcut kept, chat attachments under `/Artifacts/Chats/<chat name>`); web
    Storybook and an e2e screenshot for the changed page.
 6. **Data room folders move onto nodes**; system folders (`/Data room`,
    `/Artifacts`, `/Agents`); the Data room page shows them.
 7. **Agent file tool** over the tree (read, list, write, search), with the existing
    write approval and no delete.
-8. **Workspace files as nodes** for an allowlisted folder, and optional dedupe
-   across rows with reference-counted blob deletion.
-9. **Finance statement bytes** move to `Blob` (leave a nullable `fileBytes` until
+8. **Workspace files as nodes** for an allowlisted folder (individually browsable agent files).
+9. **Content-hash dedupe** with reference-counted blob deletion (after phase 7).
+10. **Finance statement bytes** move to `Blob` (leave a nullable `fileBytes` until
    backfilled).
-10. **Quotas and streaming/multipart** for large files.
-
-## Open questions for the owner
-
-1. Should chat attachments appear as visible files in the tree (for example
-   `/Artifacts/Chats/<title>`), or stay attached to the chat and only be
-   searchable? Showing them risks clutter; hiding them keeps two ways to find one
-   file.
-2. Do agent workspace files need to appear as individual documents users can
-   browse and search, or is a downloadable workspace snapshot enough for now?
-3. Is an owner-only tree acceptable for shared spaces for now, with space-wide
-   visibility left to the Data room's later sharing design?
-4. Should the Artifacts sidebar entry disappear once it is a filtered Data room
-   view, or stay as a shortcut to that view?
-5. Is content-hash dedupe worth its delete complexity now, or should phases 1 to 7
-   ship with one blob per node?
-6. Which should be the default for a fresh install without S3 settings: local disk
-   (current) or the bundled MinIO from the compose file?
+11. **Quotas and streaming/multipart** for large files.
