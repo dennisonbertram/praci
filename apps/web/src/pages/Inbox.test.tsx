@@ -817,8 +817,10 @@ it("explains a rate-limited Inbox with no mail, and shows Try again working", as
   expect(c.querySelector('[role="alert"]')?.textContent).toContain("Gmail is limiting requests");
   let finish: (value: unknown) => void = () => {};
   rpcMock.refresh.mockReturnValue(new Promise((r) => (finish = r)));
+  byText(c, "Try again")?.focus();
   await click(byText(c, "Try again"));
-  expect(byText(c, "Try again")?.disabled).toBe(true);
+  expect(byText(c, "Try again")?.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(byText(c, "Try again"));
   expect(c.querySelector('[data-slot="spinner"]')).not.toBeNull();
   // The label stays in the accessibility tree (not display/visibility hidden) and the spinner
   // is decorative, so the busy button is still announced as "Try again".
@@ -829,7 +831,26 @@ it("explains a rate-limited Inbox with no mail, and shows Try again working", as
   );
   expect(retryButton?.querySelector("span")?.className).not.toContain("invisible");
   await act(async () => finish({}));
-  expect(byText(c, "Try again")?.disabled).toBe(false);
+  expect(byText(c, "Try again")?.getAttribute("aria-disabled")).not.toBe("true");
+  expect(document.activeElement).toBe(byText(c, "Try again"));
+  expect(c.textContent).not.toContain("few seconds");
+  expect(c.querySelector('[role="alert"]')?.textContent).toBe("Gmail is still limiting requests.");
+  expect(c.querySelector('[role="alert"]')?.className).toContain("text-warning");
+});
+
+it("shows the rate-limit notice in the warning colour above cached mail", async () => {
+  rpcMock.list.mockResolvedValue(
+    list([row("a")], {
+      failedAccounts: ["Me"],
+      reconnectAccounts: [],
+      rateLimitedAccounts: ["Me"],
+    }),
+  );
+  const c = await render();
+  const alert = c.querySelector('[role="alert"]');
+  expect(alert?.textContent).toContain("Gmail is limiting requests right now.");
+  expect(alert?.className).toContain("text-warning");
+  expect(alert?.className).not.toContain("text-destructive");
 });
 
 it("turns off search and Filter until mail is connected", async () => {
