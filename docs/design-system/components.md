@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 189 of 189
-- Web and shared components: 546
+- Web and shared component files with stories: 190 of 190
+- Web and shared components: 549
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -51,6 +51,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | WorkingRing, BotAvatar, ShapeAvatar, RobotAvatar, OrganicAvatar, GrokShapePreview, Wordmark | [packages/ui-web/src/bot-avatar.tsx](../../packages/ui-web/src/bot-avatar.tsx) | [bot-avatar.stories.tsx](../../packages/ui-web/src/bot-avatar.stories.tsx) | shared |
+| PixelIcon, FireTruckIcon, FireIcon | [packages/ui-web/src/components/pixel/pixel-icon.tsx](../../packages/ui-web/src/components/pixel/pixel-icon.tsx) | [pixel-icon.stories.tsx](../../packages/ui-web/src/components/pixel/pixel-icon.stories.tsx) | shared |
 | GroupAvatar | [packages/ui-web/src/group-avatar.tsx](../../packages/ui-web/src/group-avatar.tsx) | [group-avatar.stories.tsx](../../packages/ui-web/src/group-avatar.stories.tsx) | shared |
 | ModelThinkingOptions | [packages/ui-web/src/model-thinking-options.tsx](../../packages/ui-web/src/model-thinking-options.tsx) | [model-thinking-options.stories.tsx](../../packages/ui-web/src/model-thinking-options.stories.tsx) | shared |
 
