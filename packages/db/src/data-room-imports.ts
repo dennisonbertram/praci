@@ -4,10 +4,11 @@ import type { PrismaClient } from "./client.js";
 import { createNotification } from "./notifications.js";
 
 type Owner = Pick<Actor, "spaceId" | "userId">;
-export type DataRoomImportSource = "drive" | "gmail";
+export type DataRoomImportSource = "drive" | "box" | "gmail";
 
 const SOURCE_NAMES: Record<DataRoomImportSource, string> = {
   drive: "Google Drive",
+  box: "Box",
   gmail: "Email",
 };
 /** How long an import that has not finished is still reported; a lost job must not spin forever. */

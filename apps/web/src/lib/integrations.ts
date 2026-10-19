@@ -4,7 +4,7 @@ import type {
   ConnectionCategory,
   McpServer,
 } from "@rakazo/contracts";
-import { DEVIN_MCP_ENDPOINT } from "@rakazo/contracts";
+import { BOX_MCP_ENDPOINT, BOX_OAUTH_SCOPE, DEVIN_MCP_ENDPOINT } from "@rakazo/contracts";
 import { matchFeaturedConnectorId } from "@rakazo/core";
 
 export type CategoryFilter = "all" | Exclude<ConnectionCategory, "other">;
@@ -153,6 +153,17 @@ export const FIRST_PARTY_MCP = [
     category: "developer",
     // Devin takes a service-user key, sent as a bearer token, not a sign-in.
     apiKey: true,
+  },
+  {
+    id: "box",
+    name: "Box",
+    logo: "https://cdn.simpleicons.org/box",
+    endpoint: BOX_MCP_ENDPOINT,
+    section: "tools",
+    category: "docs_files",
+    // Box does not register clients on the fly: the user brings the Client ID and secret of a Box app.
+    oauthClient: true,
+    scope: BOX_OAUTH_SCOPE,
   },
 ] as const satisfies readonly {
   id: string;

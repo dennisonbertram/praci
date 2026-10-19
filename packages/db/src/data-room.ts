@@ -391,7 +391,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     async createItem(
       actor: Actor,
       input: {
-        source: "upload" | "drive" | "gmail" | "chat" | "finance";
+        source: "upload" | "drive" | "box" | "gmail" | "chat" | "finance";
         sha256: string;
         name: string;
         mimeType: string;

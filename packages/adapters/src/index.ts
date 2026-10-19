@@ -23,7 +23,9 @@ export {
   normalizeSecretDestination,
   storeBotSecret,
 } from "./bot-secrets.js";
+export * from "./box-api-emulator.js";
 export * from "./box-emulator.js";
+export * from "./box-files.js";
 export * from "./box-sandbox.js";
 export * from "./brex-finance-source.js";
 export * from "./browser-emulator.js";
@@ -57,6 +59,7 @@ export * from "./computer-workspace.js";
 export * from "./createos-sandbox.js";
 export * from "./current-time.js";
 export * from "./cursor-cloud-agent.js";
+export * from "./data-room-box-import.js";
 export * from "./data-room-drive-import.js";
 export * from "./data-room-files.js";
 export * from "./data-room-jobs.js";

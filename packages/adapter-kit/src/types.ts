@@ -708,6 +708,32 @@ export interface BackgroundJobPayloads {
     folderId: string | null;
     importId?: string;
   };
+  /**
+   * A planned Box folder import: creates the Data room folders, then queues one
+   * `dataroom.box.file` job per file. Safe to run again after a partial failure.
+   */
+  "dataroom.box.import": {
+    spaceId: string;
+    userId: string;
+    connectionId: string;
+    /** Data room folder the imported tree goes under; null is the top level. */
+    folderId: string | null;
+    /** The import to report progress on; absent on jobs queued before imports were tracked. */
+    importId?: string;
+    /** `parent` indexes an earlier entry; null is `folderId`. */
+    folders: { name: string; parent: number | null }[];
+    /** `folder` indexes `folders`; null is `folderId`. */
+    files: { id: string; folder: number | null }[];
+  };
+  /** Downloads one Box file of a folder import and files it; a repeat files nothing. */
+  "dataroom.box.file": {
+    spaceId: string;
+    userId: string;
+    connectionId: string;
+    externalId: string;
+    folderId: string | null;
+    importId?: string;
+  };
 }
 
 export type BackgroundJobName = keyof BackgroundJobPayloads;

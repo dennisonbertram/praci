@@ -3,11 +3,15 @@ import { ORPCError } from "@orpc/server";
 import type { ArtifactStore, JobPublisher, MailProvider } from "@rakazo/adapter-kit";
 import {
   dataRoomBlobDeleteJob,
+  dataRoomBoxImportJob,
   dataRoomDriveImportJob,
   dataRoomStepJob,
 } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
 import {
+  BoxFileError,
+  type BoxFilesDeps,
+  boxExternalId,
   createFileDataRoomItem as createFileItem,
   DATA_ROOM_MIME,
   DriveFileError,
@@ -15,10 +19,14 @@ import {
   dataRoomBlobContext,
   dataRoomFileFields,
   dataRoomQueryVector,
+  downloadBoxFile,
   downloadDriveFile,
+  listBoxAccounts,
+  listBoxFiles,
   listDriveAccounts,
   listDriveFiles,
   modelAcceptsImageInput,
+  planBoxFolders,
   planDriveFolders,
 } from "@rakazo/adapters";
 import type {
@@ -68,6 +76,8 @@ export interface DataRoomDeps {
   mail?: MailProvider;
   /** Needed only to import from Google Drive. */
   connectors?: DriveFilesDeps["connectors"];
+  /** Needed only to import from Box: reads the sign-in of the user's Box connection. */
+  box?: Omit<BoxFilesDeps, "prisma">;
   /** Injectable so tests can use a small cap. */
   maxUploadBytes?: number;
   /** How long the blob cleanup waits, so a failed row delete can be seen first. Tests shorten it. */
@@ -191,6 +201,25 @@ async function withDrive<T>(
     return await run({ prisma: deps.prisma, connectors }, account.id);
   } catch (error) {
     if (error instanceof DriveFileError)
+      throw new ORPCError(DRIVE_ERRORS[error.code], { message: error.message });
+    throw error;
+  }
+}
+
+/** Runs a Box call as the caller's only connected Box account, with failures as API errors. */
+async function withBox<T>(
+  deps: DataRoomDeps,
+  actor: Actor,
+  run: (box: BoxFilesDeps, connectionId: string) => Promise<T>,
+): Promise<T> {
+  const box = deps.box;
+  if (!box) throw new ORPCError("SERVICE_UNAVAILABLE", { message: "Box is unavailable" });
+  try {
+    const [account] = await listBoxAccounts(deps.prisma, actor);
+    if (!account) throw new BoxFileError("not_connected", "No connected Box account");
+    return await run({ prisma: deps.prisma, ...box }, account.id);
+  } catch (error) {
+    if (error instanceof BoxFileError)
       throw new ORPCError(DRIVE_ERRORS[error.code], { message: error.message });
     throw error;
   }
@@ -599,6 +628,138 @@ export function createDataRoomService(deps: DataRoomDeps) {
     },
 
     imports: (actor: Actor) => listDataRoomImports(deps.prisma, actor),
+
+    boxList: (
+      actor: Actor,
+      input: { query?: string; folderId?: string; pageToken?: string },
+      signal?: AbortSignal,
+    ) =>
+      withBox(deps, actor, (box, connectionId) =>
+        listBoxFiles(
+          box,
+          { ...actor, signal: signal ?? new AbortController().signal },
+          {
+            ...input,
+            connectionId,
+          },
+        ),
+      ),
+
+    /** Copies files of the caller's own Box into the Data room; a Box file id names a repeat. */
+    importBox: async (
+      actor: Actor,
+      input: { fileIds: string[]; boxFolderIds?: string[]; folderId?: string | null },
+      signal?: AbortSignal,
+    ) => {
+      const folderId = input.folderId ?? null;
+      if (folderId) {
+        const folder = await deps.prisma.dataRoomFolder.findFirst({
+          where: { id: folderId, spaceId: actor.spaceId, userId: actor.userId },
+          select: { id: true },
+        });
+        if (!folder) throw new ORPCError("NOT_FOUND");
+      }
+      return withBox(deps, actor, async (box, sourceConnectionId) => {
+        const scope = {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          signal: signal ?? new AbortController().signal,
+        };
+        const maxBytes = deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES;
+        let imported = 0;
+        let duplicates = 0;
+        let failed = 0;
+        // Listing is read-only, so an over-limit selection is refused before anything is written.
+        const plan = input.boxFolderIds?.length
+          ? await planBoxFolders(box, scope, {
+              connectionId: sourceConnectionId,
+              folderIds: input.boxFolderIds,
+              directFileIds: input.fileIds,
+              maxBytes,
+            })
+          : undefined;
+        const direct = plan ? [] : [...new Set(input.fileIds)];
+        const tracked = await createDataRoomImport(deps.prisma, actor, {
+          source: "box",
+          total: plan ? plan.files.length + plan.skipped : direct.length,
+          rejected: plan?.skipped ?? 0,
+        });
+        let handled = 0;
+        try {
+          for (const externalId of direct) {
+            if (await known(actor, boxExternalId(externalId))) {
+              duplicates += 1;
+              handled += 1;
+              continue;
+            }
+            // One bad file does not stop the rest; an account or rate problem would fail them all.
+            const file = await downloadBoxFile(box, scope, externalId, {
+              connectionId: sourceConnectionId,
+              maxBytes,
+            }).catch((error: unknown) => {
+              if (
+                error instanceof BoxFileError &&
+                ["not_found", "unsupported", "too_large", "failed"].includes(error.code)
+              )
+                return null;
+              throw error;
+            });
+            handled += 1;
+            if (!file) {
+              failed += 1;
+              continue;
+            }
+            const modified = new Date(file.modifiedTime);
+            const { created } = await fileItem(actor, {
+              source: "box",
+              ...dataRoomFileFields(file, "file"),
+              folderId,
+              importId: tracked.id,
+              externalId: boxExternalId(externalId),
+              sourceUrl: file.webViewLink,
+              ...(Number.isNaN(modified.getTime()) ? {} : { sourceUpdatedAt: modified }),
+            });
+            if (created) imported += 1;
+            else duplicates += 1;
+          }
+        } catch (error) {
+          // The files after the one that broke the request are not coming.
+          await recordImportSkips(deps.prisma, tracked.id, { rejected: direct.length - handled });
+          throw error;
+        }
+        if (!plan) {
+          await recordImportSkips(deps.prisma, tracked.id, { duplicates, rejected: failed });
+          return { imported, duplicates, failed, importId: tracked.id, total: direct.length };
+        }
+        // One queued job holds the whole plan: it either exists, or nothing was written.
+        if (plan.folders.length > 0 || plan.files.length > 0)
+          await deps.jobs
+            .enqueue(
+              dataRoomBoxImportJob({
+                spaceId: actor.spaceId,
+                userId: actor.userId,
+                connectionId: sourceConnectionId,
+                folderId,
+                importId: tracked.id,
+                folders: plan.folders,
+                files: plan.files,
+              }),
+            )
+            .catch(async (error: unknown) => {
+              await deps.prisma.dataRoomImport.delete({ where: { id: tracked.id } });
+              throw error;
+            });
+        return {
+          imported,
+          duplicates,
+          failed: failed + plan.skipped,
+          importId: tracked.id,
+          total: plan.files.length + plan.skipped,
+          queued: plan.files.length,
+          folders: plan.folders.length,
+        };
+      });
+    },
 
     search: (
       actor: Actor,

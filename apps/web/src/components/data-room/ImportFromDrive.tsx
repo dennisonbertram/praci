@@ -10,7 +10,7 @@ import {
   DialogTitle,
   Input,
 } from "@rakazo/ui-web";
-import { ArrowLeft, HardDrive } from "lucide-react";
+import { ArrowLeft, Box, HardDrive } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { dataRoomImportStarted } from "../../lib/data-room";
@@ -32,10 +32,13 @@ const importable = (file: DataRoomApiDriveFile) =>
   !file.mimeType.startsWith(GOOGLE_APPS) || EXPORTABLE.includes(file.mimeType);
 
 function DrivePicker({
+  box = false,
   folderId,
   onClose,
   onDone,
 }: {
+  /** Browse and import the user's Box instead of Google Drive; the picker is the same. */
+  box?: boolean;
   folderId: string | null;
   onClose: () => void;
   onDone: (message: string, changed: boolean) => void;
@@ -52,6 +55,7 @@ function DrivePicker({
   const [picks, setPicks] = useState<Map<string, boolean>>(new Map());
   const [busy, setBusy] = useState(false);
   const here = path.at(-1)?.id;
+  const list = box ? rpc.dataRoom.boxList : rpc.dataRoom.driveList;
   // Which listing is on screen; an answer for an earlier folder or search is dropped.
   const listing = useRef(0);
 
@@ -66,8 +70,7 @@ function DrivePicker({
     const id = ++listing.current;
     setLoading(true);
     setError("");
-    rpc.dataRoom
-      .driveList(query ? { query } : here ? { folderId: here } : {})
+    list(query ? { query } : here ? { folderId: here } : {})
       .then((page) => {
         if (!current) return;
         setFiles(page.files);
@@ -84,7 +87,7 @@ function DrivePicker({
     const id = listing.current;
     setLoading(true);
     try {
-      const page = await rpc.dataRoom.driveList({
+      const page = await list({
         ...(query ? { query } : here ? { folderId: here } : {}),
         pageToken: next,
       });
@@ -117,11 +120,11 @@ function DrivePicker({
     setError("");
     try {
       const ids = [...picks];
-      const { imported, duplicates, failed, queued, folders } = await rpc.dataRoom.importDrive({
-        fileIds: ids.filter(([, isFolder]) => !isFolder).map(([id]) => id),
-        driveFolderIds: ids.filter(([, isFolder]) => isFolder).map(([id]) => id),
-        folderId,
-      });
+      const fileIds = ids.filter(([, isFolder]) => !isFolder).map(([id]) => id);
+      const folderIds = ids.filter(([, isFolder]) => isFolder).map(([id]) => id);
+      const { imported, duplicates, failed, queued, folders } = box
+        ? await rpc.dataRoom.importBox({ fileIds, boxFolderIds: folderIds, folderId })
+        : await rpc.dataRoom.importDrive({ fileIds, driveFolderIds: folderIds, folderId });
       // The folders and files of a folder import are written by background jobs.
       const waiting = queued ?? 0;
       onDone(
@@ -147,7 +150,7 @@ function DrivePicker({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            <Trans>Import from Google Drive</Trans>
+            {box ? <Trans>Import from Box</Trans> : <Trans>Import from Google Drive</Trans>}
           </DialogTitle>
         </DialogHeader>
         <div className="flex items-center gap-2">
@@ -165,8 +168,8 @@ function DrivePicker({
             type="search"
             value={input}
             onChange={(event) => setInput(event.target.value)}
-            placeholder={t`Search Drive`}
-            aria-label={t`Search Drive`}
+            placeholder={box ? t`Search Box` : t`Search Drive`}
+            aria-label={box ? t`Search Box` : t`Search Drive`}
           />
         </div>
         <div className="rk-scroll max-h-80 overflow-y-auto rounded-md border border-border">
@@ -183,7 +186,7 @@ function DrivePicker({
                     file={file}
                     checked={picks.has(file.id)}
                     disabled={
-                      (!file.isFolder && !importable(file)) ||
+                      (!box && !file.isFolder && !importable(file)) ||
                       (!picks.has(file.id) && picks.size >= MAX_PICKS)
                     }
                     onToggle={() => toggle(file)}
@@ -250,6 +253,37 @@ export function DriveImportButton({
       </ToolbarTip>
       {open ? (
         <DrivePicker folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
+      ) : null}
+    </>
+  );
+}
+
+/** The Box import button. Shown only once a Box account is connected; the server uses that account. */
+export function BoxImportButton({
+  compact,
+  folderId,
+  onDone,
+}: {
+  compact: boolean;
+  folderId: string | null;
+  onDone: (message: string, changed: boolean) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const label = t`Import from Box`;
+  return (
+    <>
+      <ToolbarTip label={label} compact={compact}>
+        <Button
+          variant="outline"
+          className={compact ? TOOLBAR_BUTTON : undefined}
+          onClick={() => setOpen(true)}
+        >
+          <Box aria-hidden="true" />
+          <span className={compact ? TOOLBAR_LABEL : undefined}>{label}</span>
+        </Button>
+      </ToolbarTip>
+      {open ? (
+        <DrivePicker box folderId={folderId} onClose={() => setOpen(false)} onDone={onDone} />
       ) : null}
     </>
   );

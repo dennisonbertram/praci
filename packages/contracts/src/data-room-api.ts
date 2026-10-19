@@ -205,7 +205,7 @@ export const DataRoomApiImportDriveOutputSchema = z.object({
 /** An import that is running, or finished in the last few minutes. */
 export const DataRoomApiImportSchema = z.object({
   id: z.string(),
-  /** "drive" or "gmail". */
+  /** "drive", "box" or "gmail". */
   source: z.string(),
   total: z.number().int(),
   /** Ready, plus files that were already in the Data room. */
@@ -218,3 +218,17 @@ export const DataRoomApiImportSchema = z.object({
   latest: z.array(z.object({ id: z.string(), name: z.string() })),
 });
 export type DataRoomApiImport = z.infer<typeof DataRoomApiImportSchema>;
+/** The caller's Box for the import picker. Lists and files have the same shape as Drive's. */
+export const DataRoomApiBoxListInputSchema = DataRoomApiDriveListInputSchema;
+export const DataRoomApiBoxListOutputSchema = DataRoomApiDriveListOutputSchema;
+export const DataRoomApiImportBoxInputSchema = z
+  .object({
+    fileIds: z.array(z.string().min(1).max(200)).max(20).default([]),
+    /** Box folders, imported with all their subfolders in the background. */
+    boxFolderIds: z.array(z.string().min(1).max(200)).max(20).default([]),
+    folderId: NullableId.optional(),
+  })
+  .refine((input) => input.fileIds.length + input.boxFolderIds.length > 0, {
+    message: "Pick at least one file or folder",
+  });
+export const DataRoomApiImportBoxOutputSchema = DataRoomApiImportDriveOutputSchema;

@@ -5,10 +5,13 @@ import path from "node:path";
 import { createRouterClient } from "@orpc/server";
 import type { BackgroundJob } from "@rakazo/adapter-kit";
 import {
+  BoxApiEmulator,
   createBackgroundJobHandlers,
   DRIVE_IMPORT_MAX_FILES,
   DriveApiEmulator,
   LocalArtifactStore,
+  runBoxFileImport,
+  runBoxImport,
   runDriveFileImport,
   runDriveImport,
 } from "@rakazo/adapters";
@@ -44,6 +47,25 @@ describePostgres("Data room API (PostgreSQL)", () => {
   const blobCount = async (spaceId: string) =>
     (await readdir(path.join(root, "artifacts", spaceId)).catch(() => [])).length;
 
+  const boxItem = (id: string, name: string, parent?: string) => ({
+    id,
+    type: "file" as const,
+    name,
+    ...(parent ? { parent } : {}),
+    bytes: new TextEncoder().encode(`%PDF-box-${id}`),
+  });
+  const box = new BoxApiEmulator([
+    { id: "50", type: "folder", name: "Box Deals" },
+    { id: "51", type: "folder", name: "Box 2026", parent: "50" },
+    { id: "52", type: "folder", name: "Box Empty", parent: "51" },
+    boxItem("60", "term-sheet.pdf", "50"),
+    boxItem("61", "side-letter.pdf", "51"),
+    boxItem("62", "loose.pdf"),
+  ]);
+  const boxOAuth = {
+    providerFor: async () => ({ tokens: async () => ({ access_token: "box-token" }) }),
+  };
+
   const client = (who: Actor | null) =>
     createRouterClient(
       createRouter({
@@ -62,6 +84,8 @@ describePostgres("Data room API (PostgreSQL)", () => {
         artifacts: new LocalArtifactStore(root),
         mail,
         connectors: { managed: () => driveConnector },
+        mcpOAuth: boxOAuth,
+        boxFetch: box.fetch,
       } as unknown as RouterDeps),
       { context: { actor: who } as never },
     );
@@ -1296,5 +1320,130 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await expect(
       client(actors.d).dataRoom.importDrive({ driveFolderIds: ["dir1"] }),
     ).resolves.toMatchObject({ imported: 0, duplicates: 0, failed: 1, queued: 0, folders: 0 });
+  });
+
+  it("imports from Box through the caller's own Box connection only, keeping folders", async () => {
+    const a = client(actors.a);
+    await expect(a.dataRoom.boxList({})).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    const server = await prisma.mcpServer.create({
+      data: {
+        spaceId: actors.A.spaceId,
+        userId: actors.a.userId,
+        slug: `box-${run}`,
+        name: "Box",
+        transport: "streamable_http",
+        endpoint: "https://mcp.box.com",
+      },
+    });
+    const listing = await a.dataRoom.boxList({});
+    expect(listing.files.map((f) => f.name).sort()).toEqual(["Box Deals", "loose.pdf"]);
+    expect(box.requests.at(-1)?.authorization).toBe("Bearer box-token");
+
+    // A direct pick is filed inline, once, with its Box source and link.
+    await expect(a.dataRoom.importBox({ fileIds: ["62"] })).resolves.toMatchObject({
+      imported: 1,
+      duplicates: 0,
+      failed: 0,
+    });
+    await expect(a.dataRoom.importBox({ fileIds: ["62"] })).resolves.toMatchObject({
+      imported: 0,
+      duplicates: 1,
+      failed: 0,
+    });
+    const loose = await prisma.dataRoomItem.findFirstOrThrow({
+      where: { spaceId: actors.A.spaceId, externalId: "box:62" },
+    });
+    expect(loose).toMatchObject({
+      source: "box",
+      sourceConnectionId: null,
+      externalId: "box:62",
+      sourceUrl: "https://app.box.com/file/62",
+      userId: actors.a.userId,
+    });
+
+    // A folder import queues one plan; running it and its file jobs recreates the tree.
+    const target = await a.dataRoom.folderCreate({ name: `Box target ${run}` });
+    const start = enqueued.length;
+    const queue: BackgroundJob[] = [];
+    const deps = {
+      prisma,
+      artifacts: new LocalArtifactStore(root),
+      jobs: { enqueue: async (job: BackgroundJob) => void queue.push(job) },
+      box: { accessToken: async () => "box-token", fetch: box.fetch },
+    } as never;
+    const result = await a.dataRoom.importBox({ boxFolderIds: ["50"], folderId: target.id });
+    expect(result).toMatchObject({
+      imported: 0,
+      duplicates: 0,
+      failed: 0,
+      queued: 2,
+      folders: 3,
+      total: 2,
+    });
+    const plans = enqueued.slice(start).filter((j) => j.name === "dataroom.box.import");
+    expect(plans).toHaveLength(1);
+    for (let round = 0; round < 2; round++) {
+      for (const job of plans) await runBoxImport(deps, job.payload as never);
+      for (const job of queue.splice(0)) await runBoxFileImport(deps, job.payload as never);
+    }
+    const folders = await a.dataRoom.folders();
+    const deals = folders.find((f) => f.name === "Box Deals");
+    const year = folders.find((f) => f.name === "Box 2026");
+    expect(deals?.parentId).toBe(target.id);
+    expect(year?.parentId).toBe(deals?.id);
+    expect(folders.find((f) => f.name === "Box Empty")?.parentId).toBe(year?.id);
+    const filed = await prisma.dataRoomItem.findMany({
+      where: { spaceId: actors.A.spaceId, externalId: { in: ["box:60", "box:61"] } },
+    });
+    expect(filed.map((i) => [i.externalId, i.folderId]).sort()).toEqual([
+      ["box:60", deals?.id],
+      ["box:61", year?.id],
+    ]);
+
+    // The import is followed to the end: two files, each counted once although the jobs ran twice,
+    // and the last one ready finishes it with a Box notification.
+    const tracked = async () =>
+      (await a.dataRoom.imports()).filter((i) => i.id === result.importId);
+    expect(await tracked()).toMatchObject([
+      { source: "box", total: 2, done: 0, failed: 0, inProgress: 2, finished: false },
+    ]);
+    await prisma.dataRoomItem.updateMany({
+      where: { importId: result.importId },
+      data: { status: "ready" },
+    });
+    await settleDataRoomImport(prisma, result.importId);
+    expect(await tracked()).toMatchObject([{ done: 2, failed: 0, inProgress: 0, finished: true }]);
+    expect(
+      await prisma.notification.findMany({
+        where: { dedupeKey: `data-room-import:${result.importId}` },
+      }),
+    ).toMatchObject([{ surface: "data-room", title: "Imported 2 files from Box" }]);
+
+    // Another member of the space has no Box connection, and neither may use this one.
+    await expect(client(actors.a2).dataRoom.boxList({})).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
+    await expect(client(actors.a2).dataRoom.importBox({ fileIds: ["62"] })).rejects.toMatchObject({
+      code: "PRECONDITION_FAILED",
+    });
+    const foreign = { spaceId: actors.A.spaceId, userId: actors.a2.userId, folderId: null };
+    await runBoxFileImport(deps, {
+      ...foreign,
+      connectionId: server.id,
+      externalId: "60",
+    } as never);
+    expect(
+      await prisma.dataRoomItem.count({ where: { userId: actors.a2.userId, source: "box" } }),
+    ).toBe(0);
+
+    // A lapsed sign-in asks the user to reconnect; a missing file is counted as failed.
+    box.failWith = 401;
+    await expect(a.dataRoom.boxList({})).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
+    box.failWith = undefined;
+    await expect(a.dataRoom.importBox({ fileIds: ["70"] })).resolves.toMatchObject({
+      imported: 0,
+      duplicates: 0,
+      failed: 1,
+    });
   });
 });

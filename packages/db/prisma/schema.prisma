@@ -2280,7 +2280,7 @@ model DataRoomItem {
   /// The import that filed this item, when one did.
   importId           String?
   import             DataRoomImport?   @relation(fields: [importId], references: [id], onDelete: SetNull)
-  /// "upload", "drive", "gmail", "chat" or "finance".
+  /// "upload", "drive", "box", "gmail", "chat" or "finance".
   source             String
   sourceConnectionId String?
   sourceConnection   Connection?       @relation(fields: [sourceConnectionId], references: [id], onDelete: SetNull)
@@ -2330,14 +2330,14 @@ model DataRoomItem {
   @@map("data_room_items")
 }
 
-/// One import of files into the Data room (Drive or email). It finishes when every file is ready,
+/// One import of files into the Data room (Drive, Box or email). It finishes when every file is ready,
 /// failed, or was skipped; `notifiedAt` makes the finish notification happen once.
 model DataRoomImport {
   id         String         @id @default(cuid())
   spaceId    String
   space      Space          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId     String
-  /// "drive" or "gmail".
+  /// "drive", "box" or "gmail".
   source     String
   /// Files the import set out to file, including the ones skipped below.
   total      Int

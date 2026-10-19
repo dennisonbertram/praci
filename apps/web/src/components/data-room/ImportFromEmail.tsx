@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { InboxListOutput, InboxMessage, MailRow } from "@rakazo/contracts";
+import { isBoxEndpoint } from "@rakazo/contracts";
 import {
   Button,
   Checkbox,
@@ -20,7 +21,7 @@ import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
 import { failedText, importedText, sizeText } from "./format";
-import { DriveImportButton } from "./ImportFromDrive";
+import { BoxImportButton, DriveImportButton } from "./ImportFromDrive";
 
 const SEARCH_DEBOUNCE_MS = 300;
 /** The most attachments one import call accepts. */
@@ -291,6 +292,7 @@ export function ImportSources({
   const [apps, setApps] = useState<{
     gmail: { connected: boolean; offered: boolean };
     drive: { connected: boolean; offered: boolean };
+    box: boolean;
   } | null>(null);
   const [open, setOpen] = useState(false);
   useEffect(() => {
@@ -299,8 +301,9 @@ export function ImportSources({
     Promise.all([
       rpc.connections.list(),
       rpc.connections.catalog({}).catch(() => [] as { connectorId: string; slug: string }[]),
+      rpc.mcp.servers.list().catch(() => []),
     ])
-      .then(([rows, catalog]) => {
+      .then(([rows, catalog, servers]) => {
         if (!current) return;
         const offered = (slug: string) =>
           catalog.some((app) => app.connectorId === "google" && app.slug === slug);
@@ -311,9 +314,11 @@ export function ImportSources({
         setApps({
           gmail: { connected: gmail, offered: gmail || offered("gmail") },
           drive: { connected: drive, offered: drive || offered("googledrive") },
+          // A Box MCP server is the Box sign-in the import reads from.
+          box: servers.some((server) => "endpoint" in server && isBoxEndpoint(server.endpoint)),
         });
       })
-      .catch(() => current && setApps({ gmail: none, drive: none }));
+      .catch(() => current && setApps({ gmail: none, drive: none, box: false }));
     return () => {
       current = false;
     };
@@ -345,6 +350,7 @@ export function ImportSources({
           onDone={onDone}
         />
       ) : null}
+      {apps.box ? <BoxImportButton compact={compact} folderId={folderId} onDone={onDone} /> : null}
     </>
   );
 }

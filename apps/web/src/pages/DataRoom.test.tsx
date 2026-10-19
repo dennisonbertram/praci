@@ -39,6 +39,7 @@ const rpcMock = vi.hoisted(() => ({
 vi.mock("../lib/rpc", () => ({
   rpc: {
     connections: { list: rpcMock.connections, catalog: async () => [] },
+    mcp: { servers: { list: async () => [] } },
     dataRoom: {
       folders: rpcMock.folders,
       items: { list: rpcMock.list },

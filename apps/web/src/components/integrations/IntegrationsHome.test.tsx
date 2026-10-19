@@ -200,6 +200,16 @@ it("offers Devin and opens the API key form", async () => {
   expect(document.body.textContent).not.toContain("Sign in with Devin");
 });
 
+it("offers Box and asks for the Box app's client ID, secret and callback URL", async () => {
+  await show(data(true, false));
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Box"]');
+  expect(connect).not.toBeNull();
+  await act(async () => connect?.click());
+  expect(document.querySelector('input[aria-label="Client ID"]')).not.toBeNull();
+  expect(document.querySelector('input[aria-label="Callback URL"]')).not.toBeNull();
+  expect(document.querySelector('input[aria-label="Server URL"]')).toBeNull();
+});
+
 it("shows Carta but not Zernio under the Finance chip", async () => {
   await show(data(true, true));
   const chip = [...container.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")].find(

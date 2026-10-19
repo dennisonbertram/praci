@@ -25,11 +25,15 @@ import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot
 import { CapTableStateSchema } from "./carta.js";
 import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from "./contacts.js";
 import {
+  DataRoomApiBoxListInputSchema,
+  DataRoomApiBoxListOutputSchema,
   DataRoomApiDriveListInputSchema,
   DataRoomApiDriveListOutputSchema,
   DataRoomApiFacetValuesSchema,
   DataRoomApiFiltersSchema,
   DataRoomApiFolderSchema,
+  DataRoomApiImportBoxInputSchema,
+  DataRoomApiImportBoxOutputSchema,
   DataRoomApiImportDriveInputSchema,
   DataRoomApiImportDriveOutputSchema,
   DataRoomApiImportEmailInputSchema,
@@ -1268,6 +1272,8 @@ export const appContract = {
       .output(DataRoomApiImportDriveOutputSchema),
     /** The caller's imports that are running, or finished in the last few minutes. */
     imports: oc.output(z.array(DataRoomApiImportSchema)),
+    boxList: oc.input(DataRoomApiBoxListInputSchema).output(DataRoomApiBoxListOutputSchema),
+    importBox: oc.input(DataRoomApiImportBoxInputSchema).output(DataRoomApiImportBoxOutputSchema),
     search: oc.input(DataRoomApiSearchInputSchema).output(DataRoomApiSearchOutputSchema),
     consent: oc.output(DataRoomConsentStatusSchema),
     consentGrant: oc.input(DataRoomConsentGrantInputSchema).output(DataRoomConsentStatusSchema),
