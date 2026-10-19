@@ -111,6 +111,31 @@ describePostgres("voice.agent (PostgreSQL)", () => {
     }
   });
 
+  it("refuses to restore an archived Elio once a replacement took its identity", async () => {
+    const who = client(actor(userB));
+    const old = await who.voice.agent();
+    await who.bots.archive({ botId: old.id });
+    const replacement = await who.voice.agent();
+    expect(replacement.id).not.toBe(old.id);
+
+    await expect(who.bots.restore({ botId: old.id })).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+    });
+    expect(
+      await prisma.bot.findUniqueOrThrow({ where: { id: old.id }, select: { archivedAt: true } }),
+    ).toEqual({ archivedAt: expect.any(Date) });
+  });
+
+  it("restores an archived Elio that still holds its identity", async () => {
+    const who = client(actor(userA));
+    const elio = await who.voice.agent();
+    await who.bots.archive({ botId: elio.id });
+    await who.bots.restore({ botId: elio.id });
+    expect(
+      await prisma.bot.findUniqueOrThrow({ where: { id: elio.id }, select: { archivedAt: true } }),
+    ).toEqual({ archivedAt: null });
+  });
+
   it("persists Elio's delegation and the specialist's explicit result in Elio's thread", async () => {
     const elio = await client(actor(userA)).voice.agent();
     const specialist = await createRepos(prisma).createBot(actor(userA), {

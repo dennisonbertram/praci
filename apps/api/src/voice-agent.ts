@@ -16,3 +16,10 @@ export function ensureVoiceAgent(
     notifyOnFinish: true,
   });
 }
+
+/**
+ * A replaced Elio lost its spawn key but kept Elio's instructions. Restoring it would give those
+ * instructions ordinary tools, so it stays archived.
+ */
+export const isReplacedVoiceAgent = (bot: { spawnKey?: string | null; instructions: string }) =>
+  !bot.spawnKey && bot.instructions === VOICE_AGENT_INSTRUCTIONS;

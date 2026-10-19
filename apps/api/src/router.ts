@@ -423,7 +423,7 @@ import {
   updateVoiceSpeechModel,
   voiceContext,
 } from "./voice.js";
-import { ensureVoiceAgent } from "./voice-agent.js";
+import { ensureVoiceAgent, isReplacedVoiceAgent } from "./voice-agent.js";
 
 const MAX_COMPUTER_TEXT_FILE_BYTES = 2 * 1024 * 1024;
 /** Each command writes a running and a done event, so this keeps about 100 commands. */
@@ -2158,6 +2158,9 @@ export function createRouter(deps: RouterDeps) {
       restore: authed.bots.restore.handler(async ({ context, input }) => {
         const bot = await repos.getBot(context.actor, input.botId, { includeArchived: true });
         if (!bot.archivedAt) return { ok: true as const };
+        if (isReplacedVoiceAgent(bot)) {
+          throw new ORPCError("BAD_REQUEST", { message: "This voice agent was replaced" });
+        }
         try {
           if (bot.computer) {
             await restoreBotUnderComputerQuota(deps.prisma, {
