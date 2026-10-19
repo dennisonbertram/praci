@@ -832,4 +832,38 @@ describe("PipedreamConnector connected-app agent dispatch gates", () => {
     ]);
     expect(calls).toEqual([]);
   });
+
+  it("dispatches nothing when writes are turned off during MCP initialization", async () => {
+    let writesOn = true;
+    const calls: Array<{ app: string | null; name: string; args: unknown }> = [];
+    const inner = pipedreamMcpFetch(appTools("gmail", 1), calls);
+    const connector = new PipedreamConnector(FAKE_CONFIG, {
+      ...TEST_NETWORK,
+      fetch: async (input, init) => {
+        if (String(init?.body).includes('"method":"initialize"')) writesOn = false;
+        return inner(input, init);
+      },
+    });
+    const events = [];
+    for await (const event of connector.execute(
+      {
+        tool: "gmail_tool_0",
+        args: { text: "hi" },
+        executionId: "gate",
+        route,
+        beforeDispatch: async () =>
+          writesOn ? null : "Changes are off for this connected account.",
+      },
+      appAgentContext,
+    )) {
+      events.push(event);
+    }
+    expect(events).toEqual([
+      expect.objectContaining({
+        type: "error",
+        message: expect.stringContaining("Changes are off"),
+      }),
+    ]);
+    expect(calls).toEqual([]);
+  });
 });

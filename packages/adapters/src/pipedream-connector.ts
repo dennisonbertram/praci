@@ -108,6 +108,8 @@ function securePipedreamConnectUrl(value: string): URL {
   return url;
 }
 
+class DispatchRefused extends Error {}
+
 export class PipedreamConnector implements ManagedConnectorProvider {
   private accessToken?: { value: string; expiresAt: number };
   private accessTokenRequest?: Promise<string>;
@@ -342,18 +344,25 @@ export class PipedreamConnector implements ManagedConnectorProvider {
           return;
         }
       }
-      // Last await before the provider call: re-read the connection after all setup above.
-      const denied = await call.beforeDispatch?.();
-      if (denied) {
-        yield { type: "error", message: denied };
-        return;
-      }
-      const result = await callRemoteMcpTool(remote, call.route?.toolName ?? call.tool, call.args);
+      const result = await callRemoteMcpTool(
+        remote,
+        call.route?.toolName ?? call.tool,
+        call.args,
+        // Runs after DNS checks and MCP initialization, right before the provider call.
+        async () => {
+          const denied = await call.beforeDispatch?.();
+          if (denied) throw new DispatchRefused(denied);
+        },
+      );
       yield {
         type: "result",
         data: redactConnectorPayload(result, [token, this.config.clientSecret]),
       };
     } catch (error) {
+      if (error instanceof DispatchRefused) {
+        yield { type: "error", message: error.message };
+        return;
+      }
       yield {
         type: "error",
         message: sanitizeConnectorError(

@@ -77,8 +77,11 @@ export async function callRemoteMcpTool(
   options: RemoteMcpOptions,
   toolName: string,
   args: Record<string, unknown>,
+  /** Awaited after the connection is initialized, immediately before the call. A throw refuses it. */
+  beforeCall?: () => Promise<void>,
 ): Promise<unknown> {
   return withRemoteMcpClient(options, async (client, signal) => {
+    await beforeCall?.();
     const result = await client.callTool({ name: toolName, arguments: args }, undefined, {
       signal,
       timeout: MCP_TIMEOUT_MS,

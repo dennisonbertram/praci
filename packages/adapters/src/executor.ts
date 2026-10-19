@@ -7130,6 +7130,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
             for await (const event of deps.connector.execute(
               {
                 ...connectorCall,
+                // The classification the approval decision used. A connector refuses to dispatch
+                // a tool that is a write now, so a read that skipped approval cannot become one.
+                route:
+                  connectorCall.route && declaredReadOnly === true
+                    ? { ...connectorCall.route, discoveredReadOnly: true }
+                    : connectorCall.route,
                 tool: name,
                 args,
                 executionId: effectKey,

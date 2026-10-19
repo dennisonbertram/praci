@@ -566,7 +566,7 @@ export class ComposioConnector implements ComposioProvider {
         connections,
         Boolean(call.route?.connectionId),
       );
-      if (call.route?.connectionId) {
+      if (call.route && (call.route.connectionId || call.route.discoveredReadOnly === true)) {
         // Fetched now, not at discovery: a read that has become a write must not run unasked.
         const offered = new Map(
           asConnectorTools(await session.tools()).map((tool) => [tool.name, tool.readOnly]),
@@ -585,7 +585,7 @@ export class ComposioConnector implements ComposioProvider {
                     : []
                   : [item.tool],
               );
-        if (requested.some((tool) => !tool || !offered.has(tool))) {
+        if (call.route.connectionId && requested.some((tool) => !tool || !offered.has(tool))) {
           yield { type: "error", message: "Tool is not available for this connected account" };
           return;
         }

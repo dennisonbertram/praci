@@ -1508,6 +1508,15 @@ describe("composio connected-app agent dispatch gates", () => {
     expect(composioSdkState.executions).toEqual([]);
   });
 
+  it("refuses a discovered read that became a write on a route without a connection id", async () => {
+    const events = await run({
+      route: { connectorId: "composio", toolName: "GITHUB_GET_REPOS", discoveredReadOnly: true },
+      readOnlyNow: false,
+    });
+    expect(events).toEqual([expect.objectContaining({ type: "error" })]);
+    expect(composioSdkState.executions).toEqual([]);
+  });
+
   it("dispatches a discovered read that is still a read", async () => {
     const events = await run({
       route: { ...route, discoveredReadOnly: true },
