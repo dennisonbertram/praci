@@ -364,6 +364,8 @@ export function IntegrationsHome({
     treg: t`Live data, enrichment and generation tools`,
     devin: t`Coding sessions and repo docs`,
     box: t`Search and read files and folders`,
+    granola: t`Meeting notes and transcripts`,
+    wisprflow: t`Notetaker meetings, notes and tasks`,
   };
   const financeStatus = useFinanceStatus();
   const connectedKeys = connectedFinanceKeys(data.financeSources, financeStatus);

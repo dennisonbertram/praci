@@ -15,6 +15,8 @@ const APP_COLOR: Record<string, number> = {
   brex: 5,
   mercury: 0,
   devin: 3,
+  granola: 1,
+  "wispr flow": 2,
   notion: 6,
   "google calendar": 4,
   calendar: 4,
