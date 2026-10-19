@@ -25,11 +25,11 @@ export class ThreadScrollBehavior {
     return this.contentReady && !this.currentState.detached ? "jump" : null;
   }
 
-  /** `incoming` is how many messages from the other party the change added. */
+  /** `incoming` is how many stored messages from the other party the change added. */
   onContentChanged(
     blocked: boolean,
     latestMessageId: string | null,
-    incoming = 1,
+    incoming = 0,
   ): ThreadScrollAction {
     if (blocked) return null;
     this.contentReady = true;
@@ -38,10 +38,11 @@ export class ThreadScrollBehavior {
     this.latestMessageId = latestMessageId;
     if (initial) return this.laidOut ? "jump" : null;
     if (this.currentState.detached) {
+      // A live progress row changes the latest id without adding a message, so it adds no count.
       this.currentState = {
         detached: true,
-        unread: true,
-        newCount: this.currentState.newCount + Math.max(1, incoming),
+        unread: this.currentState.unread || incoming > 0,
+        newCount: this.currentState.newCount + incoming,
       };
       return null;
     }

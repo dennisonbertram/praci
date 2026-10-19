@@ -567,9 +567,15 @@ export const appContract = {
         }),
       )
       .output(z.object({ ok: z.literal(true) })),
-    /** Moves the read boundary forward to `upTo` (the newest message when omitted); never backward. */
+    /**
+     * Moves the read boundary forward to the message `upToMessageId` (the newest when omitted);
+     * never backward, and an unknown id changes nothing. `toEnd` says the reader reached the end of
+     * the latest page, which clears the unread flag even when newer stored messages are hidden.
+     */
     markRead: oc
-      .input(threadTarget.safeExtend({ upTo: z.number().int().nonnegative().optional() }))
+      .input(
+        threadTarget.safeExtend({ upToMessageId: Id.optional(), toEnd: z.boolean().optional() }),
+      )
       .output(z.object({ ok: z.literal(true) })),
     markUnread: oc.input(threadTarget).output(z.object({ ok: z.literal(true) })),
   },

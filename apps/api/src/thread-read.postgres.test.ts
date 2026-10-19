@@ -28,12 +28,14 @@ describePostgres("thread read boundary (PostgreSQL)", () => {
   let prisma: PrismaClient;
   let close: () => Promise<void>;
   const target = (threadId: string) => ({ threadId }) as unknown as ThreadTarget;
+  const mid = (threadId: string, seq: number) => messageIds.get(threadId)![seq]!;
   const read = async (threadId: string) =>
     prisma.thread.findUniqueOrThrow({
       where: { id: threadId },
       select: { lastReadSeq: true, unread: true },
     });
   /** Seqs 0..n-1 alternate bot, user, bot, ... so seq 0, 2, 4 come from the other party. */
+  const messageIds = new Map<string, string[]>();
   async function thread(owner: Actor, messages = 5) {
     const group = await prisma.chatGroup.create({
       data: {
@@ -45,13 +47,16 @@ describePostgres("thread read boundary (PostgreSQL)", () => {
       include: { thread: true },
     });
     const created = group.thread!;
+    const ids: string[] = [];
     for (let i = 0; i < messages; i++) {
-      await createThreadMessage(prisma, {
+      const message = await createThreadMessage(prisma, {
         threadId: created.id,
         role: i % 2 === 0 ? "bot" : "user",
         blocks: [{ kind: "text", text: `m${i}` }],
       });
+      ids.push(message.id);
     }
+    messageIds.set(created.id, ids);
     return created.id;
   }
 
@@ -95,7 +100,7 @@ describePostgres("thread read boundary (PostgreSQL)", () => {
       memberBotIds: [],
     } as ThreadTarget;
     expect((await threadSnapshotForReader({ prisma }, alice, group)).lastReadSeq).toBe(-1);
-    await setThreadUnreadState(prisma, alice, group, false, 2);
+    await setThreadUnreadState(prisma, alice, group, false, { upToMessageId: mid(id, 2) });
     expect((await threadSnapshotForReader({ prisma }, alice, group)).lastReadSeq).toBe(2);
     // Another user gets no boundary of their own, and so never sees Alice's.
     expect((await threadSnapshotForReader({ prisma }, bob, group)).lastReadSeq).toBeUndefined();
@@ -103,26 +108,53 @@ describePostgres("thread read boundary (PostgreSQL)", () => {
 
   it("moves forward only and clears unread at the newest message", async () => {
     const id = await thread(alice);
-    await setThreadUnreadState(prisma, alice, target(id), false, 2);
+    await setThreadUnreadState(prisma, alice, target(id), false, { upToMessageId: mid(id, 2) });
     expect(await read(id)).toEqual({ lastReadSeq: 2, unread: true });
-    await setThreadUnreadState(prisma, alice, target(id), false, 1);
+    await setThreadUnreadState(prisma, alice, target(id), false, { upToMessageId: mid(id, 1) });
     expect(await read(id)).toEqual({ lastReadSeq: 2, unread: true });
-    await setThreadUnreadState(prisma, alice, target(id), false, 99);
+    await setThreadUnreadState(prisma, alice, target(id), false, { upToMessageId: mid(id, 4) });
     expect(await read(id)).toEqual({ lastReadSeq: 4, unread: false });
-    await setThreadUnreadState(prisma, alice, target(id), false, 0);
+    await setThreadUnreadState(prisma, alice, target(id), false, { upToMessageId: mid(id, 0) });
     expect(await read(id)).toEqual({ lastReadSeq: 4, unread: false });
   });
 
-  it("reads to the end when upTo is omitted", async () => {
+  it("reads to the end when no message is named", async () => {
     const id = await thread(alice);
     await setThreadUnreadState(prisma, alice, target(id), false);
     expect(await read(id)).toEqual({ lastReadSeq: 4, unread: false });
   });
 
+  it("ignores an unknown message id and one from another thread", async () => {
+    const id = await thread(alice);
+    const other = await thread(alice);
+    await setThreadUnreadState(prisma, alice, target(id), false, {
+      upToMessageId: "nope",
+      toEnd: true,
+    });
+    await setThreadUnreadState(prisma, alice, target(id), false, {
+      upToMessageId: mid(other, 4),
+      toEnd: true,
+    });
+    expect(await read(id)).toEqual({ lastReadSeq: -1, unread: true });
+  });
+
+  it("clears unread when the reader reached the end, even if newer stored messages are hidden", async () => {
+    const id = await thread(alice);
+    // The newest stored messages (seq 3 and 4) are not in the reader's snapshot; seq 2 is the last they see.
+    await setThreadUnreadState(prisma, alice, target(id), false, {
+      upToMessageId: mid(id, 2),
+      toEnd: true,
+    });
+    expect(await read(id)).toEqual({ lastReadSeq: 2, unread: false });
+  });
+
   it("leaves another user's or space's thread untouched", async () => {
     const id = await thread(alice);
     await setThreadUnreadState(prisma, bob, target(id), false);
-    await setThreadUnreadState(prisma, aliceElsewhere, target(id), false, 4);
+    await setThreadUnreadState(prisma, aliceElsewhere, target(id), false, {
+      upToMessageId: mid(id, 4),
+      toEnd: true,
+    });
     await setThreadUnreadState(prisma, bob, target(id), true);
     expect(await read(id)).toEqual({ lastReadSeq: -1, unread: true });
     const bobs = await thread(bob);
@@ -139,22 +171,38 @@ describePostgres("thread read boundary (PostgreSQL)", () => {
     await prisma.thread.update({ where: { id }, data: { lastReadSeq: 0 } });
     await setThreadUnreadState(prisma, alice, target(id), true);
     expect(await read(id)).toEqual({ lastReadSeq: 0, unread: true });
-    await setThreadUnreadState(prisma, alice, target(id), false, 4);
+    await setThreadUnreadState(prisma, alice, target(id), false, { upToMessageId: mid(id, 4) });
     expect(await read(id)).toEqual({ lastReadSeq: 4, unread: false });
+  });
+
+  it("concurrent markRead and markUnread end in a consistent state", async () => {
+    for (let i = 0; i < 10; i++) {
+      const id = await thread(alice);
+      await Promise.all([
+        setThreadUnreadState(prisma, alice, target(id), false),
+        setThreadUnreadState(prisma, alice, target(id), true),
+      ]);
+      const state = await read(id);
+      // Either order is valid; unread must always agree with an unread newest bot message.
+      expect(
+        (state.unread && state.lastReadSeq === 3) || (!state.unread && state.lastReadSeq === 4),
+      ).toBe(true);
+    }
   });
 
   it("the migration backfills read threads to their newest message and unread ones before it", async () => {
     const readId = await thread(alice);
     const unreadId = await thread(alice);
     const emptyId = await thread(alice, 0);
+    const userLastId = await thread(alice, 4);
     await prisma.thread.update({ where: { id: readId }, data: { unread: false } });
     await prisma.thread.updateMany({
-      where: { id: { in: [readId, unreadId, emptyId] } },
+      where: { id: { in: [readId, unreadId, emptyId, userLastId] } },
       data: { lastReadSeq: -1 },
     });
     const sql = readFileSync(
       new URL(
-        "../../../packages/db/prisma/migrations/20261104000000_thread_last_read_seq/migration.sql",
+        "../../../packages/db/prisma/migrations/20261107000000_thread_last_read_seq/migration.sql",
         import.meta.url,
       ),
       "utf8",
@@ -169,5 +217,7 @@ describePostgres("thread read boundary (PostgreSQL)", () => {
     expect((await read(readId)).lastReadSeq).toBe(4);
     expect((await read(unreadId)).lastReadSeq).toBe(3);
     expect((await read(emptyId)).lastReadSeq).toBe(-1);
+    // Newest message is the user's own, so nothing is unread.
+    expect((await read(userLastId)).lastReadSeq).toBe(3);
   });
 });

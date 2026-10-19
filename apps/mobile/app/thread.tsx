@@ -30,7 +30,7 @@ import {
   latestAnswerableAskMessageId,
   messageProviderLabel,
   newClientId,
-  newMessagesSince,
+  newMessagesAfter,
   plainTextFromMarkdown,
   projectMessageReactions,
   reconcileThreadScrollState,
@@ -653,7 +653,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     );
   }
   const unreadMessageId = unreadDividerId(unreadAnchor.current, storedMessages);
-  const countedSeq = useRef(-1);
+  const countedId = useRef<string | null>(null);
   const activePendingAttachments = attachmentsForThread(pendingAttachments, threadKey);
   const composerRef = useRef<ThreadComposerHandle>(null);
   const composerMentionTargets = useMemo(
@@ -1382,7 +1382,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     const current = snapRef.current;
     if (!target || !current || showingSavedRef.current || pinnedAroundRef.current) return;
     if (scrollBehavior.current.state().detached) return;
-    const upTo = current.messages.filter(isStoredMessage).at(-1)?.seq;
+    const upTo = current.messages.filter(isStoredMessage).at(-1)?.id;
     if (upTo === undefined) return;
     const marker = `${target}:${upTo}`;
     if (readVisibleTarget.current === marker) return;
@@ -1394,17 +1394,20 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           () => undefined,
         );
       }
-      void rpc("threads/markRead", groupId ? { groupId, upTo } : { botId: botId!, upTo }).catch(
-        () => {
-          if (readVisibleTarget.current === marker) readVisibleTarget.current = null;
-        },
-      );
+      // The thread is at its latest messages here, so this reaches the end of the loaded page.
+      const input = { upToMessageId: upTo, toEnd: true };
+      void rpc(
+        "threads/markRead",
+        groupId ? { groupId, ...input } : { botId: botId!, ...input },
+      ).catch(() => {
+        if (readVisibleTarget.current === marker) readVisibleTarget.current = null;
+      });
     }, 300);
   }, [botId, groupId, navigation, readOnly]);
-  const latestStoredSeq = snap?.messages.filter(isStoredMessage).at(-1)?.seq;
+  const latestStoredId = snap?.messages.filter(isStoredMessage).at(-1)?.id;
   useEffect(() => {
-    if (snap && latestStoredSeq !== undefined) markReadIfVisible();
-  }, [snap, latestStoredSeq, threadScrollState.detached, showingSaved, markReadIfVisible]);
+    if (snap && latestStoredId !== undefined) markReadIfVisible();
+  }, [snap, latestStoredId, threadScrollState.detached, showingSaved, markReadIfVisible]);
 
   useEffect(() => {
     if (!notificationThreadId || AppState.currentState !== "active" || !navigation.isFocused())
@@ -2523,8 +2526,10 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                           pinnedAroundRef.current.groupId === groupId))) ||
                     expandedHistoryThread.current === snap?.threadId,
                 );
-                const incoming = newMessagesSince(storedMessages, countedSeq.current);
-                countedSeq.current = storedMessages.at(-1)?.seq ?? -1;
+                // Stored messages only, by list order: live rows carry event seqs, and a progress
+                // row is not a message.
+                const incoming = newMessagesAfter(storedMessages, countedId.current);
+                countedId.current = storedMessages.at(-1)?.id ?? null;
                 performScroll(
                   scrollBehavior.current.onContentChanged(blocked, latestMessageId, incoming),
                 );

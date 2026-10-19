@@ -48,12 +48,14 @@ import {
   isRunTerminalEvent,
   isStoredMessage,
   isToolActivityBlock,
+  lastReadMessageId,
+  laterMessageId,
   latestAnswerableAskMessageId,
   matchesArtifactQuery,
   mentionChipKey,
   nestRosterByParent,
   newClientId,
-  newMessagesSince,
+  newMessagesAfter,
   plainTextFromMarkdown,
   projectMessageReactions,
   rankMentionOptions,
@@ -318,6 +320,7 @@ import {
   threadRunError,
   userHoldsComputerControl,
 } from "../lib/thread-events";
+import { threadReadInput } from "../lib/thread-read";
 import { getToolActivityEnabled, subscribeToolActivity } from "../lib/tool-activity-preference";
 import {
   isToolOnlyNarration,
@@ -2038,14 +2041,21 @@ export function ShellPage() {
     : snapshot?.botId === active?.id
       ? snapshot
       : null;
-  // The transcript reports what the reader has seen. A thread marked unread by hand stays unread
-  // until it is opened again, and a pinned search window never reaches the newest message.
-  const readThreadUpTo = (upTo: number, toEnd: boolean) => {
+  // The transcript reports the last message the reader saw. Rows built from live events carry
+  // event seqs, so the boundary is named by message id and resolved on the server.
+  const readThreadUpTo = (messageId: string, toEnd: boolean) => {
     const id = inGroup ? groupId : active?.id;
-    if (!id || manuallyUnread.current.has(id)) return;
-    const clears = toEnd && !pinnedAroundRef.current;
-    return rpc.threads.markRead(inGroup ? { groupId: id, upTo } : { botId: id, upTo }).then(() => {
-      if (!clears) return;
+    if (!id) return;
+    const input = threadReadInput({
+      target: inGroup ? { groupId: id } : { botId: id },
+      pinned: pinnedAroundRef.current != null,
+      manuallyUnread: manuallyUnread.current.has(id),
+      messageId,
+      toEnd,
+    });
+    if (!input) return;
+    return rpc.threads.markRead(input).then(() => {
+      if (!toEnd) return;
       if (!inGroup) {
         updateBotUnread(id, false);
         return;
@@ -6091,7 +6101,7 @@ export const Transcript = memo(function Transcript({
   /** The reader's read boundary when the thread opened; the "New" divider and pill count start there. */
   lastReadSeq?: number;
   /** Called, debounced, once the reader is attending to messages up to `upTo`; `toEnd` when at the latest. */
-  onRead?: (upTo: number, toEnd: boolean) => Promise<void> | void;
+  onRead?: (messageId: string, toEnd: boolean) => Promise<void> | void;
 }) {
   const { t } = useLingui();
   const [atEnd, setAtEnd] = useState(true);
@@ -6118,23 +6128,28 @@ export const Transcript = memo(function Transcript({
   );
   const [openedLastReadSeq] = useState(lastReadSeq);
   const [dividerId] = useState(() => firstUnreadMessageId(countable, openedLastReadSeq));
-  const [openedLatestSeq] = useState(() => countable.at(-1)?.seq ?? -1);
+  // Live rows carry event seqs, so everything after open is compared by id and list order.
+  const [openedLatestId] = useState(() => countable.at(-1)?.id ?? null);
   const showDividerId =
-    dividerId && messageById.has(dividerId) && !userRepliedAfter(messages, openedLatestSeq)
+    dividerId && messageById.has(dividerId) && !userRepliedAfter(messages, openedLatestId)
       ? dividerId
       : null;
   const attended = useAttended();
-  const latestSeq = readable.at(-1)?.seq ?? -1;
-  const latestSeqRef = useRef(latestSeq);
-  latestSeqRef.current = latestSeq;
-  // Highest seq the reader has had in view, and the highest already reported as read.
-  const [seenSeq, setSeenSeq] = useState(() => openedLastReadSeq ?? latestSeq);
-  const [viewSeq, setViewSeq] = useState(-1);
-  const reportedSeq = useRef(-1);
+  const latestId = readable.at(-1)?.id ?? null;
+  const latestIdRef = useRef(latestId);
+  latestIdRef.current = latestId;
+  // The newest message the reader has had in view, and the newest already reported as read.
+  const [seenId, setSeenId] = useState(() => lastReadMessageId(readable, openedLastReadSeq));
+  const [viewId, setViewId] = useState<string | null>(null);
+  const reportedId = useRef<string | null>(null);
   const onReadRef = useRef(onRead);
   onReadRef.current = onRead;
   const [dismissedCount, setDismissedCount] = useState(0);
-  const newCount = atEnd ? 0 : newMessagesSince(countable, seenSeq);
+  const newCount = atEnd
+    ? 0
+    : newMessagesAfter(readable, seenId, (message) =>
+        messageHasVisibleBlocks(message.blocks, showToolActivity),
+      );
   const showNewCount = newCount > dismissedCount;
   const workingBotName = workingBots.length === 1 ? workingBots[0]?.name : undefined;
   const workingLabel =
@@ -6404,16 +6419,16 @@ export const Transcript = memo(function Transcript({
     const element = scrollRef.current;
     if (!element) return;
     if (transcriptIsNearEnd(element)) {
-      setViewSeq(latestSeqRef.current);
+      setViewId(latestIdRef.current);
       return;
     }
     const bottom = element.getBoundingClientRect().bottom - 16;
-    let seq = -1;
-    for (const row of element.querySelectorAll<HTMLElement>("[data-message-seq]")) {
+    let id: string | null = null;
+    for (const row of element.querySelectorAll<HTMLElement>("[data-stored-message]")) {
       if (row.getBoundingClientRect().top >= bottom) break;
-      seq = Number(row.dataset.messageSeq);
+      id = row.dataset.messageId ?? id;
     }
-    setViewSeq(seq);
+    setViewId(id);
   }, [scrollRef]);
   useLayoutEffect(() => {
     measureView();
@@ -6449,21 +6464,22 @@ export const Transcript = memo(function Transcript({
   }, [atEnd]);
 
   useEffect(() => {
-    if (attended && !waitingForDivider) setSeenSeq((seen) => Math.max(seen, viewSeq));
-  }, [attended, waitingForDivider, viewSeq]);
+    if (attended && !waitingForDivider) setSeenId((seen) => laterMessageId(readable, seen, viewId));
+  }, [attended, waitingForDivider, viewId, readable]);
 
   // Report what the reader has seen, only while attending and after the view settles.
   useEffect(() => {
-    if (!attended || waitingForDivider || viewSeq <= reportedSeq.current) return;
+    if (!attended || waitingForDivider || !viewId || viewId === reportedId.current) return;
+    if (laterMessageId(readable, reportedId.current, viewId) !== viewId) return;
     const timer = window.setTimeout(() => {
-      const previous = reportedSeq.current;
-      reportedSeq.current = viewSeq;
-      Promise.resolve(onReadRef.current?.(viewSeq, atEnd)).catch(() => {
-        reportedSeq.current = previous;
+      const previous = reportedId.current;
+      reportedId.current = viewId;
+      Promise.resolve(onReadRef.current?.(viewId, atEnd)).catch(() => {
+        reportedId.current = previous;
       });
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [attended, waitingForDivider, viewSeq, atEnd]);
+  }, [attended, waitingForDivider, viewId, atEnd, readable]);
 
   const loadOlder = useCallback(() => {
     const wasFollowing = following.current;
@@ -6609,7 +6625,7 @@ export const Transcript = memo(function Transcript({
               {showDividerId === message.id ? <UnreadDivider /> : null}
               <div
                 data-message-id={message.id}
-                data-message-seq={isStoredMessage(message) ? message.seq : undefined}
+                data-stored-message={isStoredMessage(message) ? "" : undefined}
                 className={
                   peerReceipt
                     ? "relative py-0.5"

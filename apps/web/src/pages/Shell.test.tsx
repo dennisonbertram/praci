@@ -922,6 +922,47 @@ describe("Transcript unread divider and new-message pill", () => {
     });
   });
 
+  describe("pill count with live rows", () => {
+    const live = (seq: number, role: "bot" | "user" = "bot") => ({
+      ...msg(seq, role),
+      seq: 900 + seq * 7,
+    });
+    const element = () => container?.querySelector<HTMLElement>('[data-testid="transcript"]');
+    const scrollUp = () => {
+      const el = element();
+      if (!el) throw new Error("no transcript");
+      for (const [key, value] of [
+        ["scrollHeight", 2000],
+        ["clientHeight", 500],
+        ["scrollTop", 0],
+      ] as const) {
+        Object.defineProperty(el, key, { value, configurable: true, writable: true });
+      }
+      act(() => {
+        el.dispatchEvent(new Event("scroll", { bubbles: true }));
+      });
+    };
+    const pill = () => container?.querySelector('[data-testid="new-messages-count"]')?.textContent;
+
+    it("does not count an old row rewritten in place, nor a refresh that renumbers rows", () => {
+      const { render } = mount();
+      const rows = thread;
+      render(rows, { lastReadSeq: 4 });
+      scrollUp();
+      // thread.message.updated rewrites an old row with the event's (larger) seq.
+      render(
+        rows.map((m) => (m.id === "m2" ? { ...m, seq: 5000 } : m)),
+        { lastReadSeq: 4 },
+      );
+      expect(pill()).toBeUndefined();
+      // A refresh brings the stored seqs back.
+      render(thread, { lastReadSeq: 4 });
+      expect(pill()).toBeUndefined();
+      render([...thread, live(5)], { lastReadSeq: 4 });
+      expect(pill()).toBe("1 new message");
+    });
+  });
+
   describe("marking read", () => {
     afterEach(() => {
       vi.useRealTimers();
@@ -942,7 +983,59 @@ describe("Transcript unread divider and new-message pill", () => {
         vi.advanceTimersByTime(300);
       });
       expect(onRead).toHaveBeenCalledTimes(1);
-      expect(onRead).toHaveBeenCalledWith(4, true);
+      expect(onRead).toHaveBeenCalledWith("m4", true);
+    });
+
+    // Rows built from SSE events carry event seqs, far from the stored Message.seq.
+    const liveThread = thread.map((m, i) => ({ ...m, seq: 900 + i * 7 }));
+
+    it("names the last visible message, not the newest, when scrolled up on live rows", () => {
+      vi.useFakeTimers();
+      vi.spyOn(document, "hasFocus").mockReturnValue(true);
+      const onRead = vi.fn().mockResolvedValue(undefined);
+      const { render } = mount();
+      render(liveThread, { onRead });
+      const element = container?.querySelector<HTMLElement>('[data-testid="transcript"]');
+      if (!element) throw new Error("no transcript");
+      for (const [key, value] of [
+        ["scrollHeight", 2000],
+        ["clientHeight", 300],
+        ["scrollTop", 0],
+      ] as const) {
+        Object.defineProperty(element, key, { value, configurable: true, writable: true });
+      }
+      element.getBoundingClientRect = () => ({ bottom: 300, top: 0 }) as DOMRect;
+      container?.querySelectorAll<HTMLElement>("[data-message-id]").forEach((row, i) => {
+        row.getBoundingClientRect = () => ({ top: i * 100, bottom: i * 100 + 90 }) as DOMRect;
+      });
+      onRead.mockClear();
+      act(() => {
+        element.dispatchEvent(new Event("scroll", { bubbles: true }));
+      });
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      // Rows 0 to 2 are on screen (the row at 300 is below the fold): m2, never the newest m4.
+      expect(onRead).toHaveBeenLastCalledWith("m2", false);
+      expect(onRead).not.toHaveBeenCalledWith("m4", expect.anything());
+    });
+
+    it("sends nothing for an earlier row after a later one was reported", () => {
+      vi.useFakeTimers();
+      vi.spyOn(document, "hasFocus").mockReturnValue(true);
+      const onRead = vi.fn().mockResolvedValue(undefined);
+      const { render } = mount();
+      render(liveThread, { onRead });
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(onRead).toHaveBeenCalledTimes(1);
+      // A refresh replaces the live rows with stored ones (different seqs, same ids).
+      render(thread, { onRead });
+      act(() => {
+        vi.advanceTimersByTime(400);
+      });
+      expect(onRead).toHaveBeenCalledTimes(1);
     });
 
     it("does not write while the tab is unfocused", () => {

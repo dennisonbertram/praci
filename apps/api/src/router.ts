@@ -2943,7 +2943,10 @@ export function createRouter(deps: RouterDeps) {
       }),
       markRead: authed.threads.markRead.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
-        await setThreadUnreadState(deps.prisma, context.actor, target, false, input.upTo);
+        await setThreadUnreadState(deps.prisma, context.actor, target, false, {
+          upToMessageId: input.upToMessageId,
+          toEnd: input.toEnd,
+        });
         return { ok: true as const };
       }),
       markUnread: authed.threads.markUnread.handler(async ({ context, input }) => {

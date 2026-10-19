@@ -3,7 +3,7 @@ import { firstUnreadMessageId, userRepliedAfter } from "@rakazo/core";
 type Message = { id: string; seq: number; role: string };
 
 /** Where the "New" divider sits for one open thread, fixed when the thread's first live snapshot arrives. */
-export type UnreadAnchor = { key: string; dividerId: string | null; openedLatestSeq: number };
+export type UnreadAnchor = { key: string; dividerId: string | null; openedLatestId: string | null };
 
 /** Keeps the anchor for `key`, or builds it from the first snapshot that carries a read boundary. */
 export function openUnreadAnchor(
@@ -17,7 +17,7 @@ export function openUnreadAnchor(
   return {
     key,
     dividerId: firstUnreadMessageId(messages, lastReadSeq),
-    openedLatestSeq: messages.at(-1)?.seq ?? -1,
+    openedLatestId: messages.at(-1)?.id ?? null,
   };
 }
 
@@ -28,5 +28,5 @@ export function unreadDividerId(
 ): string | null {
   if (!anchor?.dividerId) return null;
   if (!messages.some((message) => message.id === anchor.dividerId)) return null;
-  return userRepliedAfter(messages, anchor.openedLatestSeq) ? null : anchor.dividerId;
+  return userRepliedAfter(messages, anchor.openedLatestId) ? null : anchor.dividerId;
 }

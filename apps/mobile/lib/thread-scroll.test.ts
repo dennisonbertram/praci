@@ -57,7 +57,7 @@ describe("mobile thread initial scroll", () => {
 
     expect(behavior.onUserScroll(120)).toEqual({ detached: true, unread: false, newCount: 0 });
     expect(behavior.onLayout()).toBe(null);
-    expect(behavior.onContentChanged(false, "m2")).toBe(null);
+    expect(behavior.onContentChanged(false, "m2", 1)).toBe(null);
     expect(behavior.state()).toEqual({ detached: true, unread: true, newCount: 1 });
     expect(behavior.jumpToLatest()).toBe("smooth");
     expect(behavior.state()).toEqual({ detached: false, unread: false, newCount: 0 });
@@ -96,7 +96,7 @@ describe("mobile thread initial scroll", () => {
     expect(afterCommits).toBe(0);
 
     // Unread arrival and reattachment still publish their visible transitions.
-    expect(behavior.onContentChanged(false, "m2")).toBe(null);
+    expect(behavior.onContentChanged(false, "m2", 1)).toBe(null);
     publish(behavior.state());
     expect(afterCommits).toBe(1);
     expect(after).toEqual({ detached: true, unread: true, newCount: 1 });
@@ -123,6 +123,15 @@ describe("mobile new-message pill count", () => {
     expect(behavior.state()).toEqual({ detached: true, unread: true, newCount: 1 });
     behavior.onContentChanged(false, "m4", 2);
     expect(behavior.state().newCount).toBe(3);
+  });
+
+  it("adds no count for a live progress row, then counts the stored message once", () => {
+    const behavior = detached();
+    // progress:<runId> becomes the latest id without being a stored message.
+    behavior.onContentChanged(false, "progress:run1", 0);
+    expect(behavior.state()).toEqual({ detached: true, unread: false, newCount: 0 });
+    behavior.onContentChanged(false, "m2", 1);
+    expect(behavior.state()).toEqual({ detached: true, unread: true, newCount: 1 });
   });
 
   it("does not count while following the tail, and resets on reaching the end or jumping", () => {

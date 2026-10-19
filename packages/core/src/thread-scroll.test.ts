@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   firstUnreadMessageId,
-  newMessagesSince,
+  isStoredMessage,
+  lastReadMessageId,
+  laterMessageId,
+  newMessagesAfter,
   reconcileThreadScrollState,
   userRepliedAfter,
 } from "./thread-scroll.js";
@@ -50,13 +53,40 @@ describe("read boundary", () => {
     expect(firstUnreadMessageId(messages, undefined)).toBeNull();
   });
 
-  it("counts only the other party's newer messages", () => {
-    expect(newMessagesSince(messages, 0)).toBe(2);
-    expect(newMessagesSince(messages, 4)).toBe(0);
+  it("counts only the other party's messages after an id, by list order", () => {
+    expect(newMessagesAfter(messages, "a")).toBe(2);
+    expect(newMessagesAfter(messages, "e")).toBe(0);
+    expect(newMessagesAfter(messages, "missing")).toBe(0);
   });
 
-  it("notices a reply from the reader after the first unread message", () => {
-    expect(userRepliedAfter(messages, 2)).toBe(true);
-    expect(userRepliedAfter(messages, 3)).toBe(false);
+  it("ignores event seqs on live rows and in-place updates", () => {
+    // SSE rows carry the event seq (here far larger than the stored seqs).
+    const live = messages.map((m, i) => ({ ...m, seq: 900 + i }));
+    expect(newMessagesAfter(live, "c")).toBe(1);
+    expect(
+      newMessagesAfter([...live.slice(0, 2), { ...live[2]!, seq: 999 }, ...live.slice(3)], "c"),
+    ).toBe(1);
+    expect(newMessagesAfter(live, "e")).toBe(0);
+  });
+
+  it("skips rows the caller says do not count, such as live progress rows", () => {
+    const withProgress = [...messages, { id: "progress:run1", seq: 5, role: "bot" }];
+    expect(newMessagesAfter(withProgress, "e", (m) => isStoredMessage(m))).toBe(0);
+    expect(newMessagesAfter(withProgress, "e")).toBe(1);
+  });
+
+  it("finds the last read message and the later of two ids", () => {
+    expect(lastReadMessageId(messages, 3)).toBe("d");
+    expect(lastReadMessageId(messages, -1)).toBeNull();
+    expect(lastReadMessageId(messages, undefined)).toBe("e");
+    expect(laterMessageId(messages, "b", "d")).toBe("d");
+    expect(laterMessageId(messages, "d", "b")).toBe("d");
+    expect(laterMessageId(messages, null, "b")).toBe("b");
+  });
+
+  it("notices a reply from the reader after a message", () => {
+    expect(userRepliedAfter(messages, "c")).toBe(true);
+    expect(userRepliedAfter(messages, "d")).toBe(false);
+    expect(userRepliedAfter(messages, null)).toBe(false);
   });
 });

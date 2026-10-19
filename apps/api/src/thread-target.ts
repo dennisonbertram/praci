@@ -1239,47 +1239,43 @@ export async function threadSnapshotForReader(
 }
 
 /**
- * Marking read moves the read boundary forward to `upTo` (the newest message when omitted), never
- * backward, and clears `unread` once it reaches the newest message. Marking unread moves the
- * boundary back so the newest other-party message is unread again.
+ * Marking read moves the read boundary forward to the message `upToMessageId` (the newest when
+ * omitted), never backward, and clears `unread` at the newest message or when the reader reports
+ * `toEnd`. An id that is not in this thread changes nothing. Marking unread moves the boundary back
+ * so the newest other-party message is unread again. Each is one statement scoped to the caller.
  */
 export async function setThreadUnreadState(
   prisma: PrismaClient,
   actor: Actor,
   target: ThreadTarget,
   unread: boolean,
-  upTo?: number,
+  read: { upToMessageId?: string; toEnd?: boolean } = {},
 ) {
   if (unread) {
-    const newest = await prisma.message.findFirst({
-      where: { threadId: target.threadId, role: { not: "user" } },
-      orderBy: { seq: "desc" },
-      select: { seq: true },
-    });
-    const result = await prisma.thread.updateMany({
-      where: { id: target.threadId, spaceId: actor.spaceId, userId: actor.userId },
-      data: { unread: true },
-    });
-    if (result.count > 1) throw new IsolationError();
-    if (newest) {
-      await prisma.thread.updateMany({
-        where: {
-          id: target.threadId,
-          spaceId: actor.spaceId,
-          userId: actor.userId,
-          lastReadSeq: { gte: newest.seq },
-        },
-        data: { lastReadSeq: newest.seq - 1 },
-      });
-    }
+    const count = await prisma.$executeRaw`
+      UPDATE threads SET
+        "unread" = true,
+        "lastReadSeq" = LEAST("lastReadSeq", COALESCE(
+          (SELECT MAX(m."seq") - 1 FROM messages m WHERE m."threadId" = threads.id AND m."role" <> 'user'),
+          "lastReadSeq"))
+      WHERE id = ${target.threadId} AND "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId}`;
+    if (count > 1) throw new IsolationError();
     return;
   }
+  const upTo = read.upToMessageId ?? null;
   // GREATEST keeps the boundary monotonic under concurrent tabs; the WHERE keeps it the caller's.
   const rows = await prisma.$queryRaw<{ id: string }[]>`
     UPDATE threads SET
-      "lastReadSeq" = GREATEST("lastReadSeq", LEAST(COALESCE(${upTo ?? null}::int, "nextMessageSeq" - 1), "nextMessageSeq" - 1)),
-      "unread" = "unread" AND GREATEST("lastReadSeq", LEAST(COALESCE(${upTo ?? null}::int, "nextMessageSeq" - 1), "nextMessageSeq" - 1)) < "nextMessageSeq" - 1
-    WHERE id = ${target.threadId} AND "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId}
-    RETURNING id`;
+      "lastReadSeq" = GREATEST("lastReadSeq", LEAST(r.seq, "nextMessageSeq" - 1)),
+      "unread" = CASE
+        WHEN ${read.toEnd ?? false}::boolean
+          OR GREATEST("lastReadSeq", LEAST(r.seq, "nextMessageSeq" - 1)) >= "nextMessageSeq" - 1
+        THEN false ELSE "unread" END
+    FROM (SELECT COALESCE(
+      (SELECT m."seq" FROM messages m WHERE m."id" = ${upTo}::text AND m."threadId" = ${target.threadId}),
+      CASE WHEN ${upTo}::text IS NULL THEN 2147483647 END) AS seq) r
+    WHERE threads.id = ${target.threadId} AND threads."spaceId" = ${actor.spaceId}
+      AND threads."userId" = ${actor.userId} AND r.seq IS NOT NULL
+    RETURNING threads.id`;
   if (rows.length > 1) throw new IsolationError();
 }
