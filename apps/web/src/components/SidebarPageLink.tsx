@@ -31,6 +31,7 @@ export function SidebarPageLink({
   label,
   onOpen,
   badge,
+  badgeLabel,
   rail = false,
 }: {
   testId: string;
@@ -39,15 +40,18 @@ export function SidebarPageLink({
   label: string;
   onOpen: () => void;
   badge?: ReactNode;
+  /** What the badge means in words (for example "3 unread"), added to the accessible name. */
+  badgeLabel?: string;
   rail?: boolean;
 }) {
+  const name = badgeLabel ? `${label}, ${badgeLabel}` : label;
   return (
     <RailTip rail={rail} label={label}>
       <button
         type="button"
         data-testid={testId}
         aria-current={current ? "page" : undefined}
-        aria-label={rail ? label : undefined}
+        aria-label={rail || badgeLabel ? name : undefined}
         onClick={onOpen}
         className={`mb-1 flex items-center rounded-xl text-start hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring ${
           rail ? "justify-center px-0 py-1.5" : "gap-3 px-2.5 py-2"
@@ -63,11 +67,7 @@ export function SidebarPageLink({
             />
           ) : null}
         </span>
-        {rail ? (
-          badge ? (
-            <span className="sr-only">{badge}</span>
-          ) : null
-        ) : (
+        {rail ? null : (
           <>
             <span className="text-[14px] font-medium text-foreground/90">{label}</span>
             {badge}

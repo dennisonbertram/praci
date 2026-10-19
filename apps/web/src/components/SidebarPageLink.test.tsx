@@ -30,6 +30,7 @@ const render = (rail: boolean, badge?: string) => {
           icon={<Mail aria-hidden="true" />}
           label="Inbox"
           badge={badge ? <span>{badge}</span> : undefined}
+          badgeLabel={badge}
           onOpen={() => {}}
         />
         <SidebarPageLink
@@ -49,18 +50,17 @@ it("shows the label and the badge text beside the icon when open", () => {
   render(false, "3 unread");
   expect(container.textContent).toContain("Inbox");
   expect(container.textContent).toContain("3 unread");
+  expect(container.querySelector("button")?.getAttribute("aria-label")).toBe("Inbox, 3 unread");
   expect(container.querySelector('[data-testid="rail-badge"]')).toBeNull();
 });
 
 it("keeps an accessible name and a badge dot on the icon in the rail", () => {
   render(true, "3 unread");
   const [inbox, finance] = [...container.querySelectorAll("button")];
-  expect(inbox?.getAttribute("aria-label")).toBe("Inbox");
+  expect(inbox?.getAttribute("aria-label")).toBe("Inbox, 3 unread");
   expect(finance?.getAttribute("aria-label")).toBe("Finance");
   expect(inbox?.querySelector('[data-testid="rail-badge"]')).not.toBeNull();
   expect(finance?.querySelector('[data-testid="rail-badge"]')).toBeNull();
-  // The badge text stays available to screen readers; the visible label is gone.
-  expect(inbox?.querySelector(".sr-only")?.textContent).toBe("3 unread");
   expect(container.textContent).not.toContain("Finance");
 });
 

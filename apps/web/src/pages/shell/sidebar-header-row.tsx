@@ -16,17 +16,23 @@ export function SidebarHeaderRow({
   rail?: boolean;
 }) {
   return (
-    <div
-      className={`app-drag flex items-center gap-1 border-b border-sidebar-border px-2.5 ${TOP_BAR_HEIGHT}`}
-    >
-      {/* Desktop only: window controls (or their macOS gap) lead the row; the rest stays no-drag. */}
-      {desktopBridge() && !rail ? (
-        <div data-testid="sidebar-window-chrome" className="shrink-0 pe-1.5">
-          <WindowChrome />
-        </div>
+    <>
+      {/* The native window controls overlay the top-left, so the rail starts below them. */}
+      {rail && desktopBridge() ? (
+        <div data-testid="sidebar-rail-chrome-spacer" className="app-drag h-8 shrink-0" />
       ) : null}
-      {search}
-      {actions}
-    </div>
+      <div
+        className={`app-drag flex items-center gap-1 border-b border-sidebar-border px-2.5 ${TOP_BAR_HEIGHT}`}
+      >
+        {/* Desktop only: window controls (or their macOS gap) lead the row; the rest stays no-drag. */}
+        {desktopBridge() && !rail ? (
+          <div data-testid="sidebar-window-chrome" className="shrink-0 pe-1.5">
+            <WindowChrome />
+          </div>
+        ) : null}
+        {search}
+        {actions}
+      </div>
+    </>
   );
 }

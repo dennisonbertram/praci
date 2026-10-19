@@ -3833,6 +3833,11 @@ export function ShellPage() {
                   setMobileSidebarOpen(false);
                   navigate("/app/inbox");
                 }}
+                badgeLabel={
+                  inboxUnread > 0
+                    ? plural(inboxUnread, { one: "# unread", other: "# unread" })
+                    : undefined
+                }
                 badge={
                   inboxUnread > 0 ? (
                     <span
@@ -4157,7 +4162,13 @@ export function ShellPage() {
                             <RailTip rail={rail} label={item.chat.name}>
                               <button
                                 type="button"
-                                aria-label={rail ? item.chat.name : undefined}
+                                aria-label={
+                                  rail
+                                    ? item.chat.unread
+                                      ? `${item.chat.name}${t` (unread)`}`
+                                      : item.chat.name
+                                    : undefined
+                                }
                                 draggable={item.kind === "bot"}
                                 data-roster-bot-id={item.kind === "bot" ? item.chat.id : undefined}
                                 data-roster-unread={item.chat.unread ? "true" : undefined}
