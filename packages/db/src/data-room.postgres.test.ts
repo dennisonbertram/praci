@@ -609,6 +609,26 @@ describePostgres("data room repository (PostgreSQL)", () => {
       expect(await dr.requeueReady(a, "ingest")).toContain(item.id);
     });
 
+    it("requeues PDF and Office items stored without text for ingest", async () => {
+      const docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      const made = [
+        await upload(a, `scan-${run}.pdf`, `pdf-${run}`, { mimeType: "application/pdf" }),
+        await upload(a, `memo-${run}.docx`, `docx-${run}`, { mimeType: docx }),
+        await upload(a, `sheet-${run}.XLSX`, `xlsx-${run}`, {
+          mimeType: "application/octet-stream",
+        }),
+        await upload(a, `has-text-${run}.pdf`, `pdft-${run}`, { mimeType: "application/pdf" }),
+      ];
+      for (const [i, { item }] of made.entries()) {
+        await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "ready" } });
+        await prisma.dataRoomItemText.create({
+          data: { itemId: item.id, spaceId: a.spaceId, userId: a.userId, text: i === 3 ? "x" : "" },
+        });
+      }
+      const ids = await dr.requeueReady(a, "ingest");
+      expect(made.map(({ item }) => ids.includes(item.id))).toEqual([true, true, true, false]);
+    });
+
     it("refuses a cursor from the other search mode or another embedding model", async () => {
       const q = `mode${run}`;
       for (let i = 0; i < 3; i++) await put(a, `mode${i}`, `${q} text ${i}`, unit(80 + i));
