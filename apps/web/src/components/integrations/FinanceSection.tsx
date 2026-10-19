@@ -38,6 +38,17 @@ function useMounted() {
   return mounted;
 }
 
+/** A tile's name; when the connection has an MCP server it links to that page, covering the tile. */
+function TileName({ name, to }: { name: string; to?: string }) {
+  return to ? (
+    <Link to={to} className="block truncate font-semibold after:absolute after:inset-0">
+      {name}
+    </Link>
+  ) : (
+    <div className="truncate font-semibold">{name}</div>
+  );
+}
+
 /**
  * Balances come from public RPC, so Blockscout works without a key (the first wallet creates its
  * keyless server); a server without a key offers to add one instead of claiming it is not connected.
@@ -61,11 +72,11 @@ function CryptoTile({
   const [dialog, setDialog] = useState(false);
 
   return (
-    <IntegrationTile data-testid="finance-tile-crypto">
+    <IntegrationTile data-testid="finance-tile-crypto" className="relative">
       <div className="flex min-w-0 items-center gap-3">
         <AppLogo name="Blockscout" logo="/logos/blockscout.svg" />
         <div className="min-w-0">
-          <div className="truncate font-semibold">Blockscout</div>
+          <TileName name="Blockscout" to={manageTo} />
           <div className="truncate text-xs text-muted-foreground">
             {hasKey ? (
               <Trans>Wallet balances and history</Trans>
@@ -90,14 +101,19 @@ function CryptoTile({
             {/* One main action like the other tiles; the optional key and agents sit in the menu. */}
             <Link
               to={financePath.crypto()}
-              className="ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+              className="relative z-10 ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
             >
               {hasKey || hasServer ? <Trans>Open Finance</Trans> : <Trans>Add wallet</Trans>}
             </Link>
             <DropdownMenu>
               <DropdownMenuTrigger
                 render={
-                  <Button variant="ghost" size="icon-xs" aria-label={t`More Blockscout actions`} />
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    className="relative z-10"
+                    aria-label={t`More Blockscout actions`}
+                  />
                 }
               >
                 <MoreHorizontal aria-hidden="true" />
@@ -402,12 +418,20 @@ export function FinanceSection({
           const connected = status === "ok";
           const reconnect = status === "needs_reconnect" || status === "error";
           const error = errors[provider];
+          const serverId = sources.find((source) => source.provider === provider)?.serverId;
           return (
-            <IntegrationTile key={provider} data-testid={`finance-tile-${provider}`}>
+            <IntegrationTile
+              key={provider}
+              data-testid={`finance-tile-${provider}`}
+              className="relative"
+            >
               <div className="flex min-w-0 items-center gap-3">
                 <AppLogo name={name} logo={logo} />
                 <div className="min-w-0">
-                  <div className="truncate font-semibold">{name}</div>
+                  <TileName
+                    name={name}
+                    to={connected && serverId ? `/app/integrations/mcp/${serverId}` : undefined}
+                  />
                   <div className="truncate text-xs text-muted-foreground">
                     {description[provider]}
                   </div>
@@ -431,7 +455,7 @@ export function FinanceSection({
                 {connected ? (
                   <Link
                     to="/app/finance"
-                    className="ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+                    className="relative z-10 ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
                   >
                     <Trans>Open Finance</Trans>
                   </Link>
@@ -439,7 +463,7 @@ export function FinanceSection({
                   <Button
                     size="sm"
                     variant="outline"
-                    className="ms-auto"
+                    className="relative z-10 ms-auto"
                     disabled={busy !== null}
                     aria-label={
                       status === "error"

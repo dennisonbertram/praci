@@ -26,7 +26,11 @@ import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { IntegrationAgentSection } from "./IntegrationAgentSection";
 import { AgentToggleList, StatusBadge } from "./parts";
-import type { ConnectionAccess, IntegrationsData } from "./useIntegrations";
+import {
+  type ConnectionAccess,
+  type IntegrationsData,
+  withoutOtherIntegrationAgents,
+} from "./useIntegrations";
 
 type Tool = { name: string; description: string };
 
@@ -442,7 +446,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                       <Trans>Used by</Trans>
                     </Heading>
                     <AgentToggleList
-                      bots={data.bots}
+                      bots={withoutOtherIntegrationAgents(data.bots)}
                       appName={row.displayName}
                       disabled={busy}
                       isOn={(botId) => access.allAgents || access.botIds.includes(botId)}
@@ -469,7 +473,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
                     <Trans>Used by</Trans>
                   </Heading>
                   <AgentToggleList
-                    bots={data.bots}
+                    bots={withoutOtherIntegrationAgents(data.bots)}
                     appName={name}
                     disabled={busy}
                     isOn={(botId) => access.allAgents || access.botIds.includes(botId)}
@@ -636,7 +640,7 @@ export function ConfirmDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription render={<div />}>
-            <ul className="list-disc space-y-1.5 ps-5 text-foreground">{children}</ul>
+            <ul className="list-disc space-y-1.5 ps-5 text-start text-foreground">{children}</ul>
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

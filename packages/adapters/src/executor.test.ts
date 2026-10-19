@@ -1266,6 +1266,20 @@ describe("directoryDescription", () => {
     expect(line).toContain("[Open Finance](/app/finance)");
   });
 
+  it("tells peers to message an integration agent, and not to send the user to the Finance agent for it", () => {
+    const integration = directoryDescription({
+      description: "Works with the user's Mercury account.",
+      spawnKey: "integration-agent:server-1",
+    });
+    expect(integration).toContain("Message it with message_bot");
+    expect(integration).not.toContain("instead of messaging it");
+    const finance = directoryDescription({
+      description: "Answers questions about your bank accounts.",
+      spawnKey: financeAgentSpawnKey("u1"),
+    });
+    expect(finance).toContain("not to a Mercury, Brex or other integration agent");
+  });
+
   it("leaves other bots' descriptions alone", () => {
     expect(directoryDescription({ description: "Drafts contracts.", spawnKey: null })).toBe(
       "Drafts contracts.",

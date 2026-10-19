@@ -47,7 +47,7 @@ import {
   useFinanceStatus,
 } from "./FinanceSection";
 import { AgentStack, IntegrationTile, StatusBadge } from "./parts";
-import { agentsFor, type IntegrationsData } from "./useIntegrations";
+import { agentsFor, type IntegrationsData, withoutOtherIntegrationAgents } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
 /** An in-app path to return to, or null for anything that could leave the app. */
@@ -138,6 +138,7 @@ function McpCard({
   const assigned = data.mcpAssignments
     .filter((entry) => entry.serverId === server.id)
     .map((entry) => entry.botId);
+  const usable = withoutOtherIntegrationAgents(data.bots, server.agentBotId);
   const known =
     "endpoint" in server
       ? FIRST_PARTY_MCP.find((entry) => isSameMcpEndpoint(server.endpoint, entry.endpoint))
@@ -179,7 +180,7 @@ function McpCard({
           {reconnect.error}
         </p>
       ) : null}
-      <UsedBy bots={data.bots.filter((bot) => assigned.includes(bot.id))} />
+      <UsedBy bots={usable.filter((bot) => assigned.includes(bot.id))} />
       {reconnect.needsClient ? (
         <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
       ) : null}
@@ -236,7 +237,13 @@ function AppCard({
           <Trans>Waiting for you to finish signing in.</Trans>
         </p>
       ) : (
-        <UsedBy bots={agentsFor(data.bots, working ? data.access[working.id] : undefined)} />
+        <UsedBy
+          bots={agentsFor(
+            data.bots,
+            working ? data.access[working.id] : undefined,
+            working?.agentBotId,
+          )}
+        />
       )}
     </Card>
   );
@@ -387,7 +394,10 @@ export function IntegrationsHome({
   const cryptoServer = connectedKeys.has("crypto") ? data.servers.find(isCrypto) : undefined;
   /** The agents assigned to an MCP server. */
   const botsOn = (serverId: string) =>
-    data.bots.filter((bot) =>
+    withoutOtherIntegrationAgents(
+      data.bots,
+      data.servers.find((server) => server.id === serverId)?.agentBotId,
+    ).filter((bot) =>
       data.mcpAssignments.some((entry) => entry.serverId === serverId && entry.botId === bot.id),
     );
   const servers = data.servers.filter(

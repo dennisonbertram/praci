@@ -8927,18 +8927,23 @@ export function splitInboxSearchSkill<T extends { name: string; content: string 
 /**
  * A teammate's description in the bot directory. The Finance and Carta agents read their data only
  * when the user asks them directly, so other bots send the user there instead of messaging them.
+ * An integration agent (Mercury, Brex, ...) is the opposite: other bots message it. The two lines say
+ * so, because a model that reads both mixes them up and refuses to message the integration agent.
  */
 export function directoryDescription(peer: {
   description: string;
   spawnKey: string | null;
 }): string {
+  if (isIntegrationAgentSpawnKey(peer.spawnKey)) {
+    return `${peer.description} Message it with message_bot whenever the user asks about this account, even if they did not name it; it answers you, and you pass its answer on. Do not tell the user to ask it themselves.`;
+  }
   if (!isFinanceAgentSpawnKey(peer.spawnKey) && !isCartaAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
   const page = isFinanceAgentSpawnKey(peer.spawnKey)
     ? "[Open Finance](/app/finance)"
     : "[Open Cap table](/app/cap-table)";
-  return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it, and end your reply with the link ${page}, where its page and chat live.`.trim();
+  return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it, and end your reply with the link ${page}, where its page and chat live. This applies to this agent only, not to a Mercury, Brex or other integration agent, which you message with message_bot.`.trim();
 }
 
 export function userTurnInstructions(parts: {

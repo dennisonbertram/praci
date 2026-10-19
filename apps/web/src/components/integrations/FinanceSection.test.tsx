@@ -84,13 +84,23 @@ it("connects through the Finance API and shows Open Finance once connected", asy
   const onChanged = await show([source("mercury", "not_connected"), source("brex", "ok")]);
   expect(tile("mercury")?.textContent).toContain("Not connected");
   expect(tile("brex")?.textContent).toContain("Connected");
-  expect(tile("brex")?.querySelector("a")?.getAttribute("href")).toBe("/app/finance");
+  expect(tile("brex")?.querySelector('a[href="/app/finance"]')).not.toBeNull();
   expect(tile("brex")?.querySelector("img")?.getAttribute("src")).toContain("brex");
   expect(tile("mercury")?.querySelector("img")?.getAttribute("src")).toBe("/logos/mercury.svg");
 
   await press("mercury");
   expect(connect).toHaveBeenCalledWith("mercury", false);
   expect(onChanged).toHaveBeenCalled();
+});
+
+it("opens the connection's page from the tile name so its agents can be created", async () => {
+  await show([source("mercury", "ok"), source("brex", "not_connected")]);
+  const name = (p: string) => tile(p)?.querySelector("a")?.textContent;
+  expect(tile("mercury")?.querySelector('a[href="/app/integrations/mcp/s1"]')?.textContent).toBe(
+    "Mercury",
+  );
+  // Not connected: there is no page yet.
+  expect(name("brex")).not.toBe("Brex");
 });
 
 it("shows a connected bank's extra line (its agents) like the other connected tiles", async () => {

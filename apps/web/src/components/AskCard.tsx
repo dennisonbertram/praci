@@ -119,7 +119,9 @@ export function AskCard({
         </pre>
       ) : null}
       {block.status === "answered" ? (
-        <div className="mt-3.5 text-[13.5px] font-medium text-success">
+        <div
+          className={`mt-3.5 text-[13.5px] font-medium ${block.answer === "deny" ? "text-destructive" : "text-success"}`}
+        >
           {formatAnsweredState(
             block.answer,
             Boolean(approvalActions),

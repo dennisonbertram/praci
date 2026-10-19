@@ -9,7 +9,11 @@ import type {
   IntegrationSetupState,
   McpServer,
 } from "@rakazo/contracts";
-import { preferNativeGoogle } from "@rakazo/contracts";
+import {
+  isCartaAgentSpawnKey,
+  isIntegrationAgentSpawnKey,
+  preferNativeGoogle,
+} from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { desktopBridge, nativeGoogleAvailable } from "../../lib/desktop";
 import { optionalCatalogFeedProbe } from "../../lib/optional-catalog-feed";
@@ -136,8 +140,25 @@ export function useIntegrations(): IntegrationsData {
   return { ...data, refresh };
 }
 
+/**
+ * An integration agent works only with its own connection or server, so it is not offered on any
+ * other, even when that account is shared with all agents. `ownBotId` is the agent that belongs here.
+ */
+export function withoutOtherIntegrationAgents(bots: Bot[], ownBotId?: string | null): Bot[] {
+  return bots.filter(
+    (bot) =>
+      bot.id === ownBotId ||
+      !(isIntegrationAgentSpawnKey(bot.spawnKey) || isCartaAgentSpawnKey(bot.spawnKey)),
+  );
+}
+
 /** Agents that can use a connection, for the avatar stack. */
-export function agentsFor(bots: Bot[], access: ConnectionAccess | undefined): Bot[] {
+export function agentsFor(
+  bots: Bot[],
+  access: ConnectionAccess | undefined,
+  ownBotId?: string | null,
+): Bot[] {
   if (!access) return [];
-  return access.allAgents ? bots : bots.filter((bot) => access.botIds.includes(bot.id));
+  const usable = withoutOtherIntegrationAgents(bots, ownBotId);
+  return access.allAgents ? usable : usable.filter((bot) => access.botIds.includes(bot.id));
 }

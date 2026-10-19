@@ -12,7 +12,7 @@ import { AppLogo } from "./AppLogo";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
 import { IntegrationAgentSection } from "./IntegrationAgentSection";
 import { AgentToggleList, StatusBadge } from "./parts";
-import type { IntegrationsData } from "./useIntegrations";
+import { type IntegrationsData, withoutOtherIntegrationAgents } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
 export function McpDetail({ data }: { data: IntegrationsData }) {
@@ -117,7 +117,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
   const usedBy =
     hasAgent && server.agentExclusive
       ? data.bots.filter((bot) => bot.id === server.agentBotId)
-      : data.bots;
+      : withoutOtherIntegrationAgents(data.bots, server.agentBotId);
   return (
     <div className="rk-scroll h-full overflow-y-auto px-4 py-6 md:px-9 md:py-7">
       <div className="mx-auto max-w-[1040px]">
