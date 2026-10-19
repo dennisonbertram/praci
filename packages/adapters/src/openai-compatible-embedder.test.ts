@@ -241,3 +241,31 @@ describe("OpenAICompatibleEmbedder", () => {
     expect(sent).toBeLessThan(40);
   });
 });
+
+describe("OpenAICompatibleEmbedder with a built-in provider URL", () => {
+  const ctx = { signal: new AbortController().signal } as AdapterContext;
+  const reply = (dims: number) =>
+    vi.fn(async () =>
+      Response.json({ data: [{ index: 0, embedding: new Array(dims).fill(0.1) }] }),
+    ) as unknown as typeof globalThis.fetch;
+  const base = { baseUrl: "https://openrouter.ai/api/v1", apiKey: "k", model: "m" };
+
+  it("refuses a public host unless allowPublic is set", () => {
+    delete process.env.RAKAZO_OPENAI_COMPAT_ALLOW_PUBLIC;
+    expect(() => new OpenAICompatibleEmbedder(base)).toThrow(/Public model endpoints/);
+    expect(() => new OpenAICompatibleEmbedder({ ...base, allowPublic: true })).not.toThrow();
+  });
+
+  it("still refuses metadata hosts and keyed http with allowPublic", () => {
+    for (const baseUrl of ["http://169.254.169.254/v1", "http://example.com/v1"]) {
+      expect(() => new OpenAICompatibleEmbedder({ ...base, baseUrl, allowPublic: true })).toThrow();
+    }
+  });
+
+  it("accepts 1024 dimensions and rejects 1536", async () => {
+    const ok = new OpenAICompatibleEmbedder({ ...base, allowPublic: true, fetch: reply(1024) });
+    await expect(ok.embed(["a"], ctx)).resolves.toMatchObject({ model: "m" });
+    const bad = new OpenAICompatibleEmbedder({ ...base, allowPublic: true, fetch: reply(1536) });
+    await expect(bad.embed(["a"], ctx)).rejects.toBeInstanceOf(EmbedderMisconfiguredError);
+  });
+});
