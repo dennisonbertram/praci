@@ -130,11 +130,6 @@ msgstr ""
 msgid "{0} {unitLabel}"
 msgstr "{0} {unitLabel}"
 
-#. placeholder {0}: server.name
-#: src/components/integrations/McpDetail.tsx
-msgid "{0} agent"
-msgstr ""
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -367,6 +362,10 @@ msgstr ""
 msgid "{name} accounts"
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} agent"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -420,6 +419,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "{serverName} connected"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "{service} agent"
 msgstr ""
 
 #: src/lib/format-bytes.ts
@@ -885,8 +888,14 @@ msgstr ""
 msgid "Allow access below first."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
+msgstr ""
+
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "Allow changes in {0}?"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -2432,6 +2441,7 @@ msgstr ""
 msgid "Could not continue"
 msgstr "Devam edilemedi"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not create agent"
 msgstr ""
@@ -2841,6 +2851,7 @@ msgstr "Kontrol alınamadı"
 msgid "Could not update"
 msgstr "Güncellenemedi"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update access"
 msgstr ""
@@ -2850,6 +2861,7 @@ msgstr ""
 msgid "Could not update bot access"
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update changes"
 msgstr ""
@@ -2959,6 +2971,7 @@ msgstr "Bir bölüm oluştur ve {0} botunu içine taşı."
 msgid "Create account"
 msgstr "Hesap oluştur"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr ""
@@ -3979,7 +3992,7 @@ msgid "Gmail didn't respond. Try again."
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts
-msgid "Gmail is limiting requests right now. Try again in a minute."
+msgid "Gmail is limiting requests right now. Try again in a few seconds."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -5687,10 +5700,6 @@ msgstr ""
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr ""
 
-#: src/components/integrations/McpDetail.tsx
-msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
-msgstr ""
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -7222,6 +7231,7 @@ msgstr ""
 msgid "Sending…"
 msgstr "Gönderiliyor…"
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
 msgid "Sent"
@@ -7879,6 +7889,11 @@ msgstr ""
 msgid "the {month} statement"
 msgstr ""
 
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "The agent will be able to change your {0} data. It asks before each change."
+msgstr ""
+
 #: src/components/integrations/McpDetail.tsx
 msgid "The agent will be able to change your {service} data. It asks before each change."
 msgstr ""
@@ -8270,10 +8285,6 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "Testi yeniden dene."
-
-#: src/pages/Inbox.tsx
-msgid "Trying again…"
-msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"
