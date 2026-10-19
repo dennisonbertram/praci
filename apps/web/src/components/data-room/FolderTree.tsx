@@ -4,6 +4,7 @@ import type { DataRoomApiFolder } from "@rakazo/contracts";
 import { Button, cn } from "@rakazo/ui-web";
 import { Folder, FolderPlus } from "lucide-react";
 import { type KeyboardEvent, useState } from "react";
+import { PAGE_GUTTER_START } from "../PageHeader";
 import type { FolderNode } from "./folders";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
 
@@ -97,19 +98,19 @@ export function FolderTree({
     );
   };
   return (
-    <div className="flex w-56 shrink-0 flex-col">
+    <div className={cn("flex w-61 shrink-0 flex-col", PAGE_GUTTER_START)}>
       <div
         role="tree"
         aria-label={t`Folders`}
         tabIndex={-1}
         onKeyDown={onKeyDown}
-        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto p-2"
+        className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto py-2 pe-2"
       >
         {entry(undefined, 0)}
         {nodes.map(({ folder, depth }) => entry(folder, depth))}
       </div>
       {onNewFolder ? (
-        <div className="p-2 pt-0">
+        <div className="pe-2 pb-2">
           <Button
             variant="ghost"
             size="sm"

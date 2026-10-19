@@ -167,6 +167,8 @@ it("renders search highlights as text and <mark>, never as HTML", () => {
 
 it("waits for typing to pause, then searches on the server", async () => {
   await renderPage();
+  expect(container.querySelectorAll("h1")).toHaveLength(1);
+  expect(container.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
   expect(rpcMock.list).toHaveBeenCalledTimes(1);
 
   const input = container.querySelector<HTMLInputElement>('input[name="data-room-search"]');

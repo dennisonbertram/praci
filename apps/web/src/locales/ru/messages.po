@@ -990,6 +990,10 @@ msgstr ""
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Для этого поставщика сохранен API-ключ, а не вход по подписке."
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "An org-scoped Devin service-user key (starts with cog_)."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "Ответ"
@@ -1026,6 +1030,7 @@ msgstr "API вернулся, но обновление не завершило�
 #: src/components/AskCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
@@ -1990,6 +1995,10 @@ msgstr "Облако"
 #: src/components/AskCard.tsx
 msgid "Code"
 msgstr "Код"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Coding sessions and repo docs"
+msgstr ""
 
 #. placeholder {0}: item.chat.name
 #. placeholder {0}: sidebarHeader.name

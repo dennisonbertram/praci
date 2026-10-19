@@ -23,6 +23,7 @@ import {
 } from "@rakazo/ui-web";
 import { ArrowDown, ArrowUp, ChevronDown, Folder, FolderPlus, Search, X } from "lucide-react";
 import { type FormEvent, type ReactElement, useState } from "react";
+import { PAGE_GUTTER_X } from "../PageHeader";
 import type { FolderNode } from "./folders";
 import { typeLabel } from "./format";
 import type { Filters, Sort, SortField } from "./use-data-room-list";
@@ -350,7 +351,7 @@ export function FilterBar({
   return (
     // Search and Sort share the first row; the filter pills wrap on a row of their own below, or,
     // given room, between the two. Sort never moves down among the pills.
-    <div className="flex flex-wrap items-start gap-1.5 px-4 pb-2.5 md:px-7">
+    <div className={`flex flex-wrap items-start gap-1.5 pb-2.5 ${PAGE_GUTTER_X}`}>
       <InputGroup className="order-1 w-full @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80">
         <InputGroupAddon>
           <Search aria-hidden="true" />

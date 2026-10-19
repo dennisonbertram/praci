@@ -164,6 +164,7 @@ import {
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
   integrationAgentSpawnKey,
+  integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
   isFinanceAgentSpawnKey,
@@ -375,7 +376,7 @@ import {
   resolveMcpApprovalCards,
   revertConnectedMcpApprovals,
 } from "./mcp-approval.js";
-import { buildMcpUpdateMaterial } from "./mcp-material.js";
+import { buildMcpUpdateMaterial, mcpOrigin } from "./mcp-material.js";
 import {
   disconnectMemoryProvider,
   persistMemoryProviderConfig,
@@ -4579,6 +4580,45 @@ export function createRouter(deps: RouterDeps) {
           // An existing Carta agent gets a newly added Carta server, with read tools only.
           if (isCartaEndpoint(row.endpoint))
             await assignToExistingCartaAgent(deps.prisma, context.actor);
+          // A service only its own agent may use (Devin) gets that agent now, after its key is
+          // checked, so the first tool call already works and a rejected key leaves nothing behind.
+          if (
+            !isCartaEndpoint(row.endpoint) &&
+            integrationPresetForEndpoint(row.endpoint)?.requiresAgent
+          ) {
+            const preset = integrationPresetForEndpoint(row.endpoint)!;
+            if (deps.mcp) {
+              try {
+                await deps.mcp.listServerTools(
+                  row,
+                  computerContext(context.actor, "mcp", "mcp.create"),
+                  { fresh: true },
+                );
+              } catch {
+                await deps.prisma.mcpServer.deleteMany({
+                  where: { id: row.id, ...actorScope(context.actor) },
+                });
+                if (stored)
+                  await deps.prisma.secret.deleteMany({
+                    where: { id: stored.id, ...actorScope(context.actor) },
+                  });
+                throw new ORPCError("BAD_REQUEST", {
+                  message: `Could not connect to ${preset.service}. Check the API key and try again.`,
+                });
+              }
+            }
+            await ensureIntegrationAgent(
+              {
+                prisma: deps.prisma,
+                repos,
+                archiveBot: (botId) => archiveActorBot(context.actor, botId),
+              },
+              context.actor,
+              row.id,
+            );
+            const linked = await setIntegrationExclusive(deps.prisma, context.actor, row.id, true);
+            return mcpServerDto(linked, await mcpOAuth.statusFor(linked, context.actor));
+          }
           return mcpServerDto(row, await mcpOAuth.statusFor(row, context.actor));
         }),
         update: authed.mcp.servers.update.handler(async ({ context, input }) => {
@@ -4637,6 +4677,8 @@ export function createRouter(deps: RouterDeps) {
             }
             const update = buildMcpUpdateMaterial(existingMaterial, config, {
               clearOAuth: existing.endpoint !== nextEndpoint,
+              // A stored key belongs to one host: a new origin gets only credentials sent with it.
+              clearStatic: mcpOrigin(existing.endpoint) !== mcpOrigin(nextEndpoint),
             });
             const stored =
               update.action === "store" && Object.keys(update.material).length > 0

@@ -247,6 +247,8 @@ afterEach(async () => {
 it("moves the selection with j and k and opens it with Enter", async () => {
   const c = await render();
   await press("j");
+  expect(c.querySelectorAll("h1")).toHaveLength(1);
+  expect(c.querySelector("h1")?.closest("[data-page-header]")).not.toBeNull();
   expect(selected(c)).toBe("a");
   await press("j");
   await press("ArrowDown");

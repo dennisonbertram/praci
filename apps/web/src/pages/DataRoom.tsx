@@ -44,6 +44,7 @@ import {
 } from "../components/data-room/use-data-room-list";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { PageEmptyState } from "../components/PageEmptyState";
+import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_CHANGED, readDataRoomView, saveDataRoomView } from "../lib/data-room";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
@@ -426,53 +427,54 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
 
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 px-4 pt-2 pb-3 md:px-7 md:pt-5">
-        {/* The company's name goes under the title where a line is too short for both. */}
-        <div className="me-auto flex min-w-0 flex-col @min-[640px]/bd:flex-row @min-[640px]/bd:items-baseline @min-[640px]/bd:gap-2">
-          <h1 className="shrink-0 text-lg font-semibold">
-            <Trans>Data room</Trans>
-          </h1>
-          {spaceName ? (
-            <span className="min-w-0 text-xs break-words text-muted-foreground @min-[640px]/bd:truncate">
-              {spaceName}
-            </span>
-          ) : null}
-        </div>
-        {empty ? null : (
-          <>
-            <HideAmountsButton />
-            <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
-              <legend className="sr-only">{t`View`}</legend>
-              <Tip label={t`List view`}>
-                <Toggle
-                  size="sm"
-                  pressed={view === "list"}
-                  onPressedChange={() => setView("list")}
-                  aria-label={t`List view`}
-                >
-                  <List aria-hidden="true" />
-                </Toggle>
-              </Tip>
-              <Tip label={t`Grid view`}>
-                <Toggle
-                  size="sm"
-                  pressed={view === "grid"}
-                  onPressedChange={() => setView("grid")}
-                  aria-label={t`Grid view`}
-                >
-                  <LayoutGrid aria-hidden="true" />
-                </Toggle>
-              </Tip>
-            </fieldset>
-            <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
-            <FileInputButton className={TOOLBAR_BUTTON} tip={t`Add files`}>
-              <Plus aria-hidden="true" />
-              <span className={TOOLBAR_LABEL}>
-                <Trans>Add files</Trans>
+      <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
+        <PageHeader
+          title={<Trans>Data room</Trans>}
+          meta={
+            spaceName ? (
+              <span className="truncate" title={spaceName}>
+                {spaceName}
               </span>
-            </FileInputButton>
-          </>
-        )}
+            ) : null
+          }
+          actions={
+            empty ? null : (
+              <>
+                <HideAmountsButton />
+                <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
+                  <legend className="sr-only">{t`View`}</legend>
+                  <Tip label={t`List view`}>
+                    <Toggle
+                      size="sm"
+                      pressed={view === "list"}
+                      onPressedChange={() => setView("list")}
+                      aria-label={t`List view`}
+                    >
+                      <List aria-hidden="true" />
+                    </Toggle>
+                  </Tip>
+                  <Tip label={t`Grid view`}>
+                    <Toggle
+                      size="sm"
+                      pressed={view === "grid"}
+                      onPressedChange={() => setView("grid")}
+                      aria-label={t`Grid view`}
+                    >
+                      <LayoutGrid aria-hidden="true" />
+                    </Toggle>
+                  </Tip>
+                </fieldset>
+                <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
+                <FileInputButton className={TOOLBAR_BUTTON} tip={t`Add files`}>
+                  <Plus aria-hidden="true" />
+                  <span className={TOOLBAR_LABEL}>
+                    <Trans>Add files</Trans>
+                  </span>
+                </FileInputButton>
+              </>
+            )
+          }
+        />
       </div>
       {empty ? (
         <div className="flex justify-center px-6 pt-4">
@@ -494,7 +496,7 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
         </div>
       ) : (
         <>
-          <div className="px-4 pb-2.5 empty:hidden md:px-7">
+          <div className={`${PAGE_GUTTER_X} pb-2.5 empty:hidden`}>
             <DataRoomConsentPrompt onAllowed={reload} />
           </div>
           <FilterBar

@@ -15,6 +15,7 @@ import {
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { LegalConsentPrompt } from "../components/legal/ConsentPrompt";
 import { LegalGraphView } from "../components/legal/LegalGraph";
+import { PageHeader } from "../components/PageHeader";
 import { DATA_ROOM_PATH } from "../lib/data-room";
 import { daysBetween, todayIso } from "../lib/legal-format";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -177,56 +178,56 @@ function Legal({
   const lastScan = data.agent.lastScanAt ? formatRelativeTime(data.agent.lastScanAt) : "";
   return (
     <div>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-lg font-semibold">
-          <Trans>Legal</Trans>
-        </h1>
-        <SpaceName />
-        <span className="text-[11px] text-muted-foreground">
-          {lastRun?.status === "failed" && !running ? (
-            keyRejected ? (
-              <Trans>Last scan failed: OpenRouter did not accept your key.</Trans>
-            ) : lastRun.error ? (
-              <Trans>Last scan failed: {runErrorText(lastRun.error)}</Trans>
-            ) : (
-              <Trans>Last scan failed</Trans>
-            )
-          ) : lastScan && needsConsent ? (
-            <Trans>Last scan {lastScan}. Daily scans wait until you allow access.</Trans>
-          ) : lastScan ? (
-            data.agent.dailyScanActive ? (
-              <Trans>Last scan {lastScan}. Scans daily.</Trans>
-            ) : (
-              <Trans>Last scan {lastScan}. Daily scan paused.</Trans>
-            )
-          ) : data.agent.dailyScanActive ? (
-            <Trans>Not scanned yet</Trans>
-          ) : (
-            <Trans>Not scanned yet. Daily scan paused.</Trans>
-          )}
-        </span>
-        {/* A rejected key is fixed in one place; go straight to its field. */}
-        {keyRejected && onOpenSettings ? (
-          <Button size="sm" variant="outline" onClick={onOpenSettings}>
-            <Trans>Replace OpenRouter key</Trans>
-          </Button>
-        ) : null}
-        <div className="ms-auto flex flex-wrap items-center justify-end gap-2">
-          {/* Narrow, the reason takes its own line under the buttons, so they stay on one row. */}
-          {scanReason ? (
-            <span className="order-last w-full text-end text-xs text-muted-foreground @xl:order-none @xl:w-auto">
-              {scanReason}
+      <PageHeader
+        title={<Trans>Legal</Trans>}
+        meta={
+          <>
+            <SpaceName />
+            <span className="min-w-0 truncate text-[11px]">
+              {lastRun?.status === "failed" && !running ? (
+                keyRejected ? (
+                  <Trans>Last scan failed: OpenRouter did not accept your key.</Trans>
+                ) : lastRun.error ? (
+                  <Trans>Last scan failed: {runErrorText(lastRun.error)}</Trans>
+                ) : (
+                  <Trans>Last scan failed</Trans>
+                )
+              ) : lastScan && needsConsent ? (
+                <Trans>Last scan {lastScan}. Daily scans wait until you allow access.</Trans>
+              ) : lastScan ? (
+                data.agent.dailyScanActive ? (
+                  <Trans>Last scan {lastScan}. Scans daily.</Trans>
+                ) : (
+                  <Trans>Last scan {lastScan}. Daily scan paused.</Trans>
+                )
+              ) : data.agent.dailyScanActive ? (
+                <Trans>Not scanned yet</Trans>
+              ) : (
+                <Trans>Not scanned yet. Daily scan paused.</Trans>
+              )}
             </span>
-          ) : null}
-          <div className="flex items-center gap-2">
+            {/* A rejected key is fixed in one place; go straight to its field. */}
+            {keyRejected && onOpenSettings ? (
+              <Button size="sm" variant="outline" onClick={onOpenSettings}>
+                <Trans>Replace OpenRouter key</Trans>
+              </Button>
+            ) : null}
+          </>
+        }
+        actions={
+          <>
             <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
               {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
             </Button>
             <HideAmountsButton />
             <AskAgentButton />
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
+      {/* The reason a scan cannot start sits under the header so the buttons keep one row. */}
+      {scanReason ? (
+        <p className="-mt-2 mb-4 text-end text-xs text-muted-foreground">{scanReason}</p>
+      ) : null}
       {overview.error ? (
         <ErrorNotice message={t`Could not refresh: ${overview.error}`} onRetry={overview.reload} />
       ) : null}

@@ -990,6 +990,10 @@ msgstr ""
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Há uma chave de API armazenada para este provedor, não um login de assinatura."
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "An org-scoped Devin service-user key (starts with cog_)."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "Resposta"
@@ -1026,6 +1030,7 @@ msgstr ""
 #: src/components/AskCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
@@ -1990,6 +1995,10 @@ msgstr "Nuvem"
 #: src/components/AskCard.tsx
 msgid "Code"
 msgstr "Código"
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Coding sessions and repo docs"
+msgstr ""
 
 #. placeholder {0}: item.chat.name
 #. placeholder {0}: sidebarHeader.name

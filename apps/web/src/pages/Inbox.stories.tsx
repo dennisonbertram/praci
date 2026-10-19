@@ -101,6 +101,24 @@ export const WithTriage: Story = {
     }),
 };
 
+/** Triage on, a named filter chosen, and the Ask button: every header action at phone width. */
+export const CrowdedHeaderPhone375: Story = {
+  args: { onShowAgent: () => undefined },
+  parameters: { initialEntries: ["/?filter=unread"] },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": { ...list, enabled: true, triageBlocked: null },
+      "inbox.todos.list": { enabled: true, todos },
+    }),
+  decorators: [
+    (Story) => (
+      <div className="w-[375px]">
+        <Story />
+      </div>
+    ),
+  ],
+};
+
 export const NeedsConsent: Story = {
   beforeEach: () =>
     mockRpc({
