@@ -1,4 +1,5 @@
 export const FR_MESSAGES: Record<string, string> = {
+  "Share with all agents": "Partager avec tous les agents",
   "Couldn't refresh — showing the last loaded messages.":
     "Impossible d’actualiser – affichage des derniers messages chargés.",
   "Try Again": "Réessayer",
