@@ -6,6 +6,7 @@ import {
   financeAgentSpawnKey,
   financeProviderForEndpoint,
   isCryptoEndpoint,
+  pageAgentColor,
 } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 
@@ -82,6 +83,7 @@ export async function ensureFinanceAgent(
     description: "Answers questions about your bank, card, statement and crypto accounts.",
     instructions: FINANCE_AGENT_INSTRUCTIONS,
     notifyOnFinish: true,
+    color: pageAgentColor("finance"),
   });
   await assignFinanceServers(deps.prisma, actor, bot.id);
   return bot;

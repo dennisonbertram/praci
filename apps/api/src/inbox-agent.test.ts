@@ -1,5 +1,5 @@
 import type { Actor, Bot } from "@rakazo/contracts";
-import { inboxAgentSpawnKey } from "@rakazo/contracts";
+import { inboxAgentSpawnKey, pageAgentColor } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { ensureInboxAgent } from "./inbox-agent.js";
 
@@ -30,7 +30,7 @@ describe("ensureInboxAgent", () => {
     );
     const input = (createBot.mock.calls[0] as unknown as [Actor, Record<string, unknown>])[1];
     expect(input).not.toHaveProperty("disabledBuiltinTools");
-    expect(input).not.toHaveProperty("color");
+    expect(input.color).toBe(pageAgentColor("inbox"));
     // A reply goes out through mail_send, which the user approves on a card before it is sent.
     expect(String(input.instructions)).toContain("call mail_send");
     expect(String(input.instructions)).toContain("approves, edits or discards it");

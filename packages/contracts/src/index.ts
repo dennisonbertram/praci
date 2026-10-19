@@ -1,3 +1,4 @@
+export * from "./agent-colors.js";
 export * from "./ai-consent.js";
 export * from "./attachments.js";
 export * from "./auth.js";

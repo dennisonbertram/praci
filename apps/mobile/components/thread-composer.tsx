@@ -13,6 +13,7 @@ import type { Ref } from "react";
 import { useImperativeHandle, useMemo, useState } from "react";
 import type { ViewStyle } from "react-native";
 import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { useAccentedTokens } from "../lib/bot-accent";
 import { useI18n } from "../lib/i18n";
 import { useMobileTokens, useResolvedAppearance } from "../lib/native";
 import type { ComposerSnapshot } from "../lib/thread-feedback";
@@ -65,7 +66,7 @@ export function ThreadComposer({
   startVoiceCall,
   onSlashAction,
 }: ThreadComposerProps) {
-  const tokens = useMobileTokens();
+  const tokens = useAccentedTokens();
   const colorScheme = useResolvedAppearance();
   const { t } = useI18n();
   const [draft, setDraft] = useState("");

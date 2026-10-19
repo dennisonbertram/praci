@@ -1,5 +1,5 @@
 import type { Actor, Bot } from "@rakazo/contracts";
-import { inboxAgentSpawnKey } from "@rakazo/contracts";
+import { inboxAgentSpawnKey, pageAgentColor } from "@rakazo/contracts";
 import type { createRepos } from "@rakazo/db";
 
 const INBOX_AGENT_INSTRUCTIONS =
@@ -27,5 +27,6 @@ export function ensureInboxAgent(
     description: "Reads your mail, finds what needs a reply and writes replies.",
     instructions: INBOX_AGENT_INSTRUCTIONS,
     notifyOnFinish: true,
+    color: pageAgentColor("inbox"),
   });
 }

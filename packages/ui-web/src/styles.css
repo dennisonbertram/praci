@@ -17,6 +17,8 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
+  --color-bot-accent: var(--bot-accent, var(--primary));
+  --color-bot-accent-foreground: var(--bot-accent-foreground, var(--primary-foreground));
   --color-chat-user: var(--chat-user);
   --color-chat-user-foreground: var(--chat-user-foreground);
   --color-muted: var(--muted);
@@ -45,6 +47,12 @@
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
   --radius-2xl: calc(var(--radius) + 8px);
+}
+
+/* A bot's thread sets --bot-accent; the user's own bubbles take it as their fill. */
+[data-bot-accent] {
+  --chat-user: var(--bot-accent);
+  --chat-user-foreground: var(--bot-accent-foreground);
 }
 
 @layer base {

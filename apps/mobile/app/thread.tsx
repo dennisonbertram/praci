@@ -141,6 +141,7 @@ import { mobileTokens } from "../lib/appearance";
 import type { MobileArtifactTarget } from "../lib/artifact-open";
 import { openMobileArtifact } from "../lib/artifact-open";
 import { nextAutoSpeakAction } from "../lib/auto-speak";
+import { BotAccentContext, useAccentedTokens } from "../lib/bot-accent";
 import { confirmDeleteBot, restoreArchivedBot } from "../lib/bot-lifecycle";
 import { retainUnchangedBotRoster } from "../lib/bot-roster";
 import { findSwitchTarget, ringOnArrival, takeRingOnArrival } from "../lib/bot-switch";
@@ -2317,408 +2318,410 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   ));
 
   return (
-    <KeyboardAvoidingView
-      behavior="height"
-      // Android lays out the screen below the opaque native navigation header.
-      keyboardVerticalOffset={Platform.OS === "android" ? nativeHeaderHeight : 0}
-      style={{ flex: 1, backgroundColor: tokens.background, paddingHorizontal: 20 }}
-    >
-      {error ? (
-        <Text style={{ color: tokens.mutedForeground, marginTop: headerHeight + 28 }}>
-          {showingSaved ? t("Couldn't refresh — showing the last loaded messages.") : error}
-        </Text>
-      ) : null}
-      {runError ? (
-        <Text style={{ color: tokens.destructive, marginTop: error ? 12 : headerHeight + 28 }}>
-          {runError}
-        </Text>
-      ) : null}
-      {pins && hasStats && botId ? (
-        <PinsStrip
-          botId={botId}
-          stats={pins.stats}
-          topInset={error || runError ? 8 : headerHeight}
-          onRefreshed={setPins}
-        />
-      ) : null}
-      {/* The floor keeps a tall suggestion list from sliding under the transparent header. */}
-      <View style={{ flex: 1, minHeight: headerHeight, position: "relative" }}>
-        {showPinnedPage ? (
-          <ScrollView
-            key={jumpScrollTarget.current ?? pinnedTarget?.messageId ?? threadKey}
-            ref={pinnedScroll}
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              paddingTop: (hasStats ? 0 : headerHeight) + 8,
-              paddingBottom: 16,
-            }}
-            maintainVisibleContentPosition={messageListPosition}
-            scrollEventThrottle={16}
-            onLayout={(event) => {
-              pinnedScrollMetrics.current.viewport = event.nativeEvent.layout.height;
-              loadNewerNearEnd();
-            }}
-            onContentSizeChange={(_, height) => {
-              pinnedScrollMetrics.current.content = height;
-              const jumpOffset = jumpAnchor.current.align(headerHeight + 24);
-              if (jumpOffset != null) scrollPinnedTo(jumpOffset);
-              const armedAt = joinPinnedAfterLayout.current;
-              if (armedAt != null && height !== armedAt) {
-                joinPinnedAfterLayout.current = null;
-                if (
-                  !jumpAnchor.current.holds() &&
-                  pinnedAroundRef.current?.newerCursor == null &&
-                  pinnedNearEnd()
-                ) {
+    <BotAccentContext.Provider value={inGroup ? null : (currentBot?.color ?? null)}>
+      <KeyboardAvoidingView
+        behavior="height"
+        // Android lays out the screen below the opaque native navigation header.
+        keyboardVerticalOffset={Platform.OS === "android" ? nativeHeaderHeight : 0}
+        style={{ flex: 1, backgroundColor: tokens.background, paddingHorizontal: 20 }}
+      >
+        {error ? (
+          <Text style={{ color: tokens.mutedForeground, marginTop: headerHeight + 28 }}>
+            {showingSaved ? t("Couldn't refresh — showing the last loaded messages.") : error}
+          </Text>
+        ) : null}
+        {runError ? (
+          <Text style={{ color: tokens.destructive, marginTop: error ? 12 : headerHeight + 28 }}>
+            {runError}
+          </Text>
+        ) : null}
+        {pins && hasStats && botId ? (
+          <PinsStrip
+            botId={botId}
+            stats={pins.stats}
+            topInset={error || runError ? 8 : headerHeight}
+            onRefreshed={setPins}
+          />
+        ) : null}
+        {/* The floor keeps a tall suggestion list from sliding under the transparent header. */}
+        <View style={{ flex: 1, minHeight: headerHeight, position: "relative" }}>
+          {showPinnedPage ? (
+            <ScrollView
+              key={jumpScrollTarget.current ?? pinnedTarget?.messageId ?? threadKey}
+              ref={pinnedScroll}
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                paddingTop: (hasStats ? 0 : headerHeight) + 8,
+                paddingBottom: 16,
+              }}
+              maintainVisibleContentPosition={messageListPosition}
+              scrollEventThrottle={16}
+              onLayout={(event) => {
+                pinnedScrollMetrics.current.viewport = event.nativeEvent.layout.height;
+                loadNewerNearEnd();
+              }}
+              onContentSizeChange={(_, height) => {
+                pinnedScrollMetrics.current.content = height;
+                const jumpOffset = jumpAnchor.current.align(headerHeight + 24);
+                if (jumpOffset != null) scrollPinnedTo(jumpOffset);
+                const armedAt = joinPinnedAfterLayout.current;
+                if (armedAt != null && height !== armedAt) {
+                  joinPinnedAfterLayout.current = null;
+                  if (
+                    !jumpAnchor.current.holds() &&
+                    pinnedAroundRef.current?.newerCursor == null &&
+                    pinnedNearEnd()
+                  ) {
+                    showLatest();
+                    return;
+                  }
+                }
+                loadNewerNearEnd();
+              }}
+              onScroll={(event) => {
+                const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+                pinnedScrollMetrics.current = {
+                  offset: contentOffset.y,
+                  viewport: layoutMeasurement.height,
+                  content: contentSize.height,
+                };
+                loadNewerNearEnd();
+              }}
+              onScrollBeginDrag={() => {
+                newerLoadFailed.current = false;
+                if (!jumpAnchor.current.holds()) return;
+                jumpAnchor.current.release();
+                jumpScrollTarget.current = null;
+              }}
+              onScrollEndDrag={updatePinnedScroll}
+              onMomentumScrollEnd={updatePinnedScroll}
+            >
+              {loadEarlierControl}
+              {threadWindowMessages(visibleMessages, pinnedNewerCursor).map((message, index) =>
+                renderMessageRow(message, { enableJump: true, index }),
+              )}
+              {pinnedNewerCursor === null ? failedSendBubbles : null}
+              {pinnedNewerCursor === null ? (
+                workingFooter
+              ) : loadingNewer ? (
+                <ActivityIndicator color={tokens.mutedForeground} style={{ marginVertical: 12 }} />
+              ) : null}
+            </ScrollView>
+          ) : (
+            <FlatList
+              key={threadKey}
+              ref={scroll}
+              data={liveItems}
+              inverted
+              keyExtractor={threadItemKey}
+              // This callback tracks every row input, including reply, reaction and highlight state.
+              extraData={renderMessageRow}
+              style={messageListStyles.list}
+              // Inverted, so the bottom padding is the visual top, clear of the transparent header.
+              contentContainerStyle={listContentStyle}
+              maintainVisibleContentPosition={messageListPosition}
+              scrollEventThrottle={16}
+              onScrollBeginDrag={() => {
+                userDragging.current = true;
+              }}
+              onScroll={(event) => {
+                if (userDragging.current) updateUserScroll(event);
+              }}
+              onScrollEndDrag={(event) => {
+                updateUserScroll(event);
+                userDragging.current = false;
+              }}
+              onMomentumScrollEnd={updateUserScroll}
+              onLayout={() => performScroll(scrollBehavior.current.onLayout())}
+              onContentSizeChange={() => {
+                if (loadingOlderContent.current) {
+                  loadingOlderContent.current = false;
+                  return;
+                }
+                const blocked = Boolean(
+                  jumpScrollTarget.current ||
+                    (pinnedAroundRef.current &&
+                      ((pinnedAroundRef.current.botId && pinnedAroundRef.current.botId === botId) ||
+                        (pinnedAroundRef.current.groupId &&
+                          pinnedAroundRef.current.groupId === groupId))) ||
+                    expandedHistoryThread.current === snap?.threadId,
+                );
+                performScroll(scrollBehavior.current.onContentChanged(blocked, latestMessageId));
+                publishThreadScrollState(scrollBehavior.current.state());
+              }}
+              ListFooterComponent={loadEarlierControl}
+              ListHeaderComponent={
+                <>
+                  {failedSendBubbles}
+                  {workingFooter}
+                </>
+              }
+              renderItem={renderItem}
+            />
+          )}
+          {showPinnedPage || threadScrollState.detached ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                threadScrollState.unread ? t("Jump to latest, new messages") : t("Jump to latest")
+              }
+              onPress={() => {
+                if (showPinnedPage) {
                   showLatest();
                   return;
                 }
-              }
-              loadNewerNearEnd();
-            }}
-            onScroll={(event) => {
-              const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-              pinnedScrollMetrics.current = {
-                offset: contentOffset.y,
-                viewport: layoutMeasurement.height,
-                content: contentSize.height,
-              };
-              loadNewerNearEnd();
-            }}
-            onScrollBeginDrag={() => {
-              newerLoadFailed.current = false;
-              if (!jumpAnchor.current.holds()) return;
-              jumpAnchor.current.release();
-              jumpScrollTarget.current = null;
-            }}
-            onScrollEndDrag={updatePinnedScroll}
-            onMomentumScrollEnd={updatePinnedScroll}
-          >
-            {loadEarlierControl}
-            {threadWindowMessages(visibleMessages, pinnedNewerCursor).map((message, index) =>
-              renderMessageRow(message, { enableJump: true, index }),
-            )}
-            {pinnedNewerCursor === null ? failedSendBubbles : null}
-            {pinnedNewerCursor === null ? (
-              workingFooter
-            ) : loadingNewer ? (
-              <ActivityIndicator color={tokens.mutedForeground} style={{ marginVertical: 12 }} />
-            ) : null}
-          </ScrollView>
-        ) : (
-          <FlatList
-            key={threadKey}
-            ref={scroll}
-            data={liveItems}
-            inverted
-            keyExtractor={threadItemKey}
-            // This callback tracks every row input, including reply, reaction and highlight state.
-            extraData={renderMessageRow}
-            style={messageListStyles.list}
-            // Inverted, so the bottom padding is the visual top, clear of the transparent header.
-            contentContainerStyle={listContentStyle}
-            maintainVisibleContentPosition={messageListPosition}
-            scrollEventThrottle={16}
-            onScrollBeginDrag={() => {
-              userDragging.current = true;
-            }}
-            onScroll={(event) => {
-              if (userDragging.current) updateUserScroll(event);
-            }}
-            onScrollEndDrag={(event) => {
-              updateUserScroll(event);
-              userDragging.current = false;
-            }}
-            onMomentumScrollEnd={updateUserScroll}
-            onLayout={() => performScroll(scrollBehavior.current.onLayout())}
-            onContentSizeChange={() => {
-              if (loadingOlderContent.current) {
-                loadingOlderContent.current = false;
-                return;
-              }
-              const blocked = Boolean(
-                jumpScrollTarget.current ||
-                  (pinnedAroundRef.current &&
-                    ((pinnedAroundRef.current.botId && pinnedAroundRef.current.botId === botId) ||
-                      (pinnedAroundRef.current.groupId &&
-                        pinnedAroundRef.current.groupId === groupId))) ||
-                  expandedHistoryThread.current === snap?.threadId,
-              );
-              performScroll(scrollBehavior.current.onContentChanged(blocked, latestMessageId));
-              publishThreadScrollState(scrollBehavior.current.state());
-            }}
-            ListFooterComponent={loadEarlierControl}
-            ListHeaderComponent={
-              <>
-                {failedSendBubbles}
-                {workingFooter}
-              </>
-            }
-            renderItem={renderItem}
-          />
-        )}
-        {showPinnedPage || threadScrollState.detached ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              threadScrollState.unread ? t("Jump to latest, new messages") : t("Jump to latest")
-            }
-            onPress={() => {
-              if (showPinnedPage) {
-                showLatest();
-                return;
-              }
-              performScroll(scrollBehavior.current.jumpToLatest());
-              publishThreadScrollState(scrollBehavior.current.state());
-            }}
-            style={{
-              position: "absolute",
-              left: "50%",
-              marginLeft: -21,
-              bottom: 12,
-              width: 42,
-              height: 42,
-            }}
-          >
-            <GlassSurface
-              shape="circle"
-              style={styles.circleButton}
-              fallbackStyle={{
-                borderWidth: 1,
-                borderColor: native.fillPressed,
-                backgroundColor: native.fill,
+                performScroll(scrollBehavior.current.jumpToLatest());
+                publishThreadScrollState(scrollBehavior.current.state());
+              }}
+              style={{
+                position: "absolute",
+                left: "50%",
+                marginLeft: -21,
+                bottom: 12,
+                width: 42,
+                height: 42,
               }}
             >
-              <NativeSymbol
-                ios="arrow.down"
-                android="arrow-down"
-                size={18}
-                color={tokens.foreground}
-              />
-              {threadScrollState.unread ? (
-                <View
-                  style={{
-                    position: "absolute",
-                    top: 3,
-                    right: 3,
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: tokens.primary,
-                  }}
-                />
-              ) : null}
-            </GlassSurface>
-          </Pressable>
-        ) : null}
-      </View>
-      {/* Fades messages out under the transparent header; the alpha stop keeps the page hue. */}
-      {iosAtLeast(26) ? (
-        <View pointerEvents="none" style={[styles.headerFade, { height: headerHeight + 24 }]} />
-      ) : null}
-      {/* Shrinks (the suggestion lists scroll) so the input and Send stay above the keyboard. */}
-      <View
-        style={{
-          display: readOnly ? "none" : "flex",
-          flexShrink: 1,
-          paddingBottom: keyboardVisible ? 12 : Math.max(insets.bottom + 12, 24),
-        }}
-      >
-        {/* Fades messages out above the composer, like the header fade. */}
-        <View pointerEvents="none" style={styles.composerFade} />
-        {replyTarget ? (
-          <GlassSurface
-            style={{
-              marginTop: 12,
-              borderRadius: 999,
-              paddingStart: 16,
-              paddingEnd: 10,
-              paddingVertical: 8,
-              flexDirection: "row",
-              alignItems: "center",
-              gap: 8,
-            }}
-            fallbackStyle={{
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: tokens.border,
-              backgroundColor: tokens.card,
-              paddingStart: 12,
-              paddingEnd: 12,
-              paddingVertical: 10,
-            }}
-          >
-            <ComposerReplyPreview
-              author={
-                replyTarget.role === "user"
-                  ? t("You")
-                  : (memberName(snap?.members, replyTarget.botId) ?? displayName ?? t("Bot"))
-              }
-              quote={replyQuote}
-              text={previewMessageText(replyTarget)}
-              attachment={replyAttachment(replyTarget.blocks)}
-              threadTarget={artifactTarget}
-            />
-            <ReplyDismissButton
-              onPress={() => {
-                setReplyTarget(null);
-                setReplyQuote(null);
-              }}
-            />
-          </GlassSurface>
-        ) : null}
-        {attachmentNotice ? (
-          <Text style={{ color: tokens.warning, marginTop: 12, fontSize: 13 }}>
-            {attachmentNotice}
-          </Text>
-        ) : null}
-        {activePendingAttachments.length ? (
-          <View
-            style={{
-              flexDirection: "row",
-              flexWrap: "wrap",
-              gap: 8,
-              marginTop: 12,
-            }}
-          >
-            {activePendingAttachments.map((attachment) => (
-              <View
-                key={attachment.id}
-                style={{
-                  flexDirection: "row",
-                  alignItems: "center",
-                  gap: 8,
-                  borderRadius: 999,
+              <GlassSurface
+                shape="circle"
+                style={styles.circleButton}
+                fallbackStyle={{
                   borderWidth: 1,
-                  borderColor: tokens.border,
-                  backgroundColor: tokens.card,
-                  paddingHorizontal: 12,
-                  paddingVertical: 8,
+                  borderColor: native.fillPressed,
+                  backgroundColor: native.fill,
                 }}
               >
-                {attachment.previewUri ? (
-                  <Image
-                    source={{ uri: attachment.previewUri }}
-                    style={{ width: 28, height: 28, borderRadius: 6 }}
+                <NativeSymbol
+                  ios="arrow.down"
+                  android="arrow-down"
+                  size={18}
+                  color={tokens.foreground}
+                />
+                {threadScrollState.unread ? (
+                  <View
+                    style={{
+                      position: "absolute",
+                      top: 3,
+                      right: 3,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: tokens.primary,
+                    }}
                   />
-                ) : (
-                  <NativeSymbol
-                    ios="paperclip"
-                    android="attach"
-                    size={16}
-                    color={tokens.mutedForeground}
-                  />
-                )}
-                <Text style={{ color: tokens.foreground, maxWidth: 140 }} numberOfLines={1}>
-                  {attachment.name}
-                </Text>
-                <Pressable
-                  accessibilityLabel={t("Remove {name}", { name: attachment.name })}
-                  onPress={() =>
-                    setPendingAttachments((current) =>
-                      current.filter((item) => item.id !== attachment.id),
-                    )
-                  }
-                >
-                  <NativeSymbol
-                    ios="xmark"
-                    android="close"
-                    size={14}
-                    color={tokens.mutedForeground}
-                  />
-                </Pressable>
-              </View>
-            ))}
-          </View>
+                ) : null}
+              </GlassSurface>
+            </Pressable>
+          ) : null}
+        </View>
+        {/* Fades messages out under the transparent header; the alpha stop keeps the page hue. */}
+        {iosAtLeast(26) ? (
+          <View pointerEvents="none" style={[styles.headerFade, { height: headerHeight + 24 }]} />
         ) : null}
-        <ThreadComposer
-          key={threadKey}
-          ref={composerRef}
-          agentSkills={agentSkills}
-          composerMentionTargets={composerMentionTargets}
-          composerPrompt={composerPrompt}
-          replyTargetId={replyTarget?.id}
-          replyQuote={replyQuote}
-          attachmentIds={activePendingAttachments.map((attachment) => attachment.id)}
-          botId={botId}
-          onCall={onCall}
-          working={working}
-          sending={sending}
-          styles={styles}
-          attachActions={attachActions}
-          attachFrom={attachFrom}
-          send={send}
-          stop={stop}
-          startVoiceCall={startVoiceCall}
-          onSlashAction={runSlashAction}
-        />
-      </View>
-      <Modal
-        visible={botActionsOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setBotActionsOpen(false)}
-      >
+        {/* Shrinks (the suggestion lists scroll) so the input and Send stay above the keyboard. */}
         <View
           style={{
-            flex: 1,
-            justifyContent: "center",
-            padding: 24,
-            backgroundColor: tokens.overlay,
+            display: readOnly ? "none" : "flex",
+            flexShrink: 1,
+            paddingBottom: keyboardVisible ? 12 : Math.max(insets.bottom + 12, 24),
           }}
         >
-          <Pressable
-            accessibilityLabel={t("Cancel")}
-            onPress={() => setBotActionsOpen(false)}
-            style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
-          />
-          <View
-            accessibilityViewIsModal
-            style={{ backgroundColor: tokens.popover, borderRadius: 24, paddingVertical: 12 }}
-          >
-            {botActions.map((action) => (
-              <Pressable
-                key={action.text}
-                accessibilityRole="button"
+          {/* Fades messages out above the composer, like the header fade. */}
+          <View pointerEvents="none" style={styles.composerFade} />
+          {replyTarget ? (
+            <GlassSurface
+              style={{
+                marginTop: 12,
+                borderRadius: 999,
+                paddingStart: 16,
+                paddingEnd: 10,
+                paddingVertical: 8,
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 8,
+              }}
+              fallbackStyle={{
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: tokens.border,
+                backgroundColor: tokens.card,
+                paddingStart: 12,
+                paddingEnd: 12,
+                paddingVertical: 10,
+              }}
+            >
+              <ComposerReplyPreview
+                author={
+                  replyTarget.role === "user"
+                    ? t("You")
+                    : (memberName(snap?.members, replyTarget.botId) ?? displayName ?? t("Bot"))
+                }
+                quote={replyQuote}
+                text={previewMessageText(replyTarget)}
+                attachment={replyAttachment(replyTarget.blocks)}
+                threadTarget={artifactTarget}
+              />
+              <ReplyDismissButton
                 onPress={() => {
-                  setBotActionsOpen(false);
-                  action.onPress();
+                  setReplyTarget(null);
+                  setReplyQuote(null);
                 }}
-                style={{ minHeight: 56, justifyContent: "center", paddingHorizontal: 24 }}
-              >
-                <Text
+              />
+            </GlassSurface>
+          ) : null}
+          {attachmentNotice ? (
+            <Text style={{ color: tokens.warning, marginTop: 12, fontSize: 13 }}>
+              {attachmentNotice}
+            </Text>
+          ) : null}
+          {activePendingAttachments.length ? (
+            <View
+              style={{
+                flexDirection: "row",
+                flexWrap: "wrap",
+                gap: 8,
+                marginTop: 12,
+              }}
+            >
+              {activePendingAttachments.map((attachment) => (
+                <View
+                  key={attachment.id}
                   style={{
-                    color: action.destructive ? tokens.destructive : tokens.popoverForeground,
-                    fontSize: 16,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    borderColor: tokens.border,
+                    backgroundColor: tokens.card,
+                    paddingHorizontal: 12,
+                    paddingVertical: 8,
                   }}
                 >
-                  {action.text}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+                  {attachment.previewUri ? (
+                    <Image
+                      source={{ uri: attachment.previewUri }}
+                      style={{ width: 28, height: 28, borderRadius: 6 }}
+                    />
+                  ) : (
+                    <NativeSymbol
+                      ios="paperclip"
+                      android="attach"
+                      size={16}
+                      color={tokens.mutedForeground}
+                    />
+                  )}
+                  <Text style={{ color: tokens.foreground, maxWidth: 140 }} numberOfLines={1}>
+                    {attachment.name}
+                  </Text>
+                  <Pressable
+                    accessibilityLabel={t("Remove {name}", { name: attachment.name })}
+                    onPress={() =>
+                      setPendingAttachments((current) =>
+                        current.filter((item) => item.id !== attachment.id),
+                      )
+                    }
+                  >
+                    <NativeSymbol
+                      ios="xmark"
+                      android="close"
+                      size={14}
+                      color={tokens.mutedForeground}
+                    />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+          ) : null}
+          <ThreadComposer
+            key={threadKey}
+            ref={composerRef}
+            agentSkills={agentSkills}
+            composerMentionTargets={composerMentionTargets}
+            composerPrompt={composerPrompt}
+            replyTargetId={replyTarget?.id}
+            replyQuote={replyQuote}
+            attachmentIds={activePendingAttachments.map((attachment) => attachment.id)}
+            botId={botId}
+            onCall={onCall}
+            working={working}
+            sending={sending}
+            styles={styles}
+            attachActions={attachActions}
+            attachFrom={attachFrom}
+            send={send}
+            stop={stop}
+            startVoiceCall={startVoiceCall}
+            onSlashAction={runSlashAction}
+          />
         </View>
-      </Modal>
-      <SelectTextSheet text={selectableText} onClose={() => setSelectableText(null)} />
-      {markdownPreview && artifactTarget ? (
-        <MarkdownArtifactPreview
-          threadTarget={artifactTarget}
-          target={markdownPreview}
-          onClose={() => setMarkdownPreview(null)}
-        />
-      ) : null}
-      {quoteTarget ? (
-        <QuoteSheet
-          message={quoteTarget}
-          onCancel={() => setQuoteTarget(null)}
-          onQuote={(excerpt) => {
-            setReplyTarget(quoteTarget);
-            setReplyQuote(excerpt);
-            setQuoteTarget(null);
-          }}
-        />
-      ) : null}
-    </KeyboardAvoidingView>
+        <Modal
+          visible={botActionsOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setBotActionsOpen(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              padding: 24,
+              backgroundColor: tokens.overlay,
+            }}
+          >
+            <Pressable
+              accessibilityLabel={t("Cancel")}
+              onPress={() => setBotActionsOpen(false)}
+              style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
+            />
+            <View
+              accessibilityViewIsModal
+              style={{ backgroundColor: tokens.popover, borderRadius: 24, paddingVertical: 12 }}
+            >
+              {botActions.map((action) => (
+                <Pressable
+                  key={action.text}
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setBotActionsOpen(false);
+                    action.onPress();
+                  }}
+                  style={{ minHeight: 56, justifyContent: "center", paddingHorizontal: 24 }}
+                >
+                  <Text
+                    style={{
+                      color: action.destructive ? tokens.destructive : tokens.popoverForeground,
+                      fontSize: 16,
+                    }}
+                  >
+                    {action.text}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        </Modal>
+        <SelectTextSheet text={selectableText} onClose={() => setSelectableText(null)} />
+        {markdownPreview && artifactTarget ? (
+          <MarkdownArtifactPreview
+            threadTarget={artifactTarget}
+            target={markdownPreview}
+            onClose={() => setMarkdownPreview(null)}
+          />
+        ) : null}
+        {quoteTarget ? (
+          <QuoteSheet
+            message={quoteTarget}
+            onCancel={() => setQuoteTarget(null)}
+            onQuote={(excerpt) => {
+              setReplyTarget(quoteTarget);
+              setReplyQuote(excerpt);
+              setQuoteTarget(null);
+            }}
+          />
+        ) : null}
+      </KeyboardAvoidingView>
+    </BotAccentContext.Provider>
   );
 }
 
@@ -3211,7 +3214,7 @@ const MessageBubble = memo(function MessageBubble({
   actionProps: MessageActionProps;
 }) {
   const colorScheme = useResolvedAppearance();
-  const tokens = mobileTokens();
+  const tokens = useAccentedTokens();
   const { t } = useI18n();
   const [peerExpanded, setPeerExpanded] = useState(false);
   const artifactTarget: MobileArtifactTarget = groupId ? { groupId } : { botId };
@@ -3858,7 +3861,7 @@ function MessageTextCard({
   actionProps: MessageActionProps;
 }) {
   const colorScheme = useResolvedAppearance();
-  const tokens = mobileTokens();
+  const tokens = useAccentedTokens();
   const contentText = blockText(message);
   if (!contentText) return null;
   return (

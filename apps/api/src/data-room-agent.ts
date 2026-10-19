@@ -1,5 +1,5 @@
 import type { Actor, Bot } from "@rakazo/contracts";
-import { dataRoomAgentSpawnKey } from "@rakazo/contracts";
+import { dataRoomAgentSpawnKey, pageAgentColor } from "@rakazo/contracts";
 import type { createRepos } from "@rakazo/db";
 
 const DATA_ROOM_AGENT_INSTRUCTIONS =
@@ -21,5 +21,6 @@ export async function ensureDataRoomAgent(
     description: "Finds and reads the documents in your Data room.",
     instructions: DATA_ROOM_AGENT_INSTRUCTIONS,
     notifyOnFinish: true,
+    color: pageAgentColor("data-room"),
   });
 }

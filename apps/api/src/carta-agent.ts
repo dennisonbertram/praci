@@ -5,6 +5,7 @@ import {
   CARTA_WRITE_TOOLS,
   cartaAgentSpawnKey,
   isCartaEndpoint,
+  pageAgentColor,
 } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
 import {
@@ -124,6 +125,7 @@ export async function ensureCartaAgent(
     description: "Keeps your cap table and investor contacts, and drafts investor updates.",
     instructions: CARTA_AGENT_INSTRUCTIONS,
     notifyOnFinish: true,
+    color: pageAgentColor("carta"),
   });
   await assignCartaServers(deps.prisma, actor, bot.id);
   return bot;

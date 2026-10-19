@@ -70,6 +70,7 @@ import {
   withLiveStreamingProgress,
 } from "@rakazo/core";
 import { financeCardSummary } from "@rakazo/core/message-quote";
+import { botAccentStyle } from "@rakazo/ui-tokens";
 import type { GroupAvatarMember } from "@rakazo/ui-web";
 import {
   AvatarStyleProvider,
@@ -1032,6 +1033,8 @@ export function ShellPage() {
               : capTableMode
                 ? findCartaAgent(bots, userId)
                 : routeBot.bot;
+  /** The open bot's colour. A group or a missing bot has no `active`, so its thread stays monochrome. */
+  const threadAccent = active?.color;
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
@@ -3341,7 +3344,11 @@ export function ShellPage() {
       ) : null}
       {!inGroup && !pageMode && botPins ? <PinsStrip pins={botPins} onPins={setBotPins} /> : null}
       <div className="flex min-h-0 flex-1">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          className="flex min-h-0 min-w-0 flex-1 flex-col"
+          data-bot-accent={threadAccent ? "" : undefined}
+          style={threadAccent ? botAccentStyle(threadAccent) : undefined}
+        >
           <BotToolControlsContext.Provider value={botToolControls}>
             {inboxMode &&
             activeSnapshot &&
@@ -6671,7 +6678,7 @@ export const Transcript = memo(function Transcript({
         onClick={jumpToLatest}
         // A labeled, opaque pill: an unlabeled see-through circle read as part of the text under it.
         // In a narrow panel it shrinks to a round button at the right edge, so it covers less text.
-        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center justify-center gap-1.5 rounded-full border border-border bg-popover px-3 @max-md:left-auto @max-md:right-3 @max-md:w-8 @max-md:translate-x-0 @max-md:px-0 text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent motion-reduce:transition-none ${
+        className={`absolute bottom-4 left-1/2 z-20 flex h-8 -translate-x-1/2 items-center justify-center gap-1.5 rounded-full border border-border bg-popover px-3 @max-md:left-auto @max-md:right-3 @max-md:w-8 @max-md:translate-x-0 @max-md:px-0 text-[13px] font-medium text-foreground shadow-md transition-[opacity,transform,background-color] duration-200 ease-[cubic-bezier(.22,1,.36,1)] hover:bg-accent in-data-bot-accent:border-transparent in-data-bot-accent:bg-bot-accent in-data-bot-accent:text-bot-accent-foreground in-data-bot-accent:hover:bg-bot-accent/90 motion-reduce:transition-none ${
           atEnd ? "pointer-events-none translate-y-2 opacity-0" : "translate-y-0 opacity-100"
         }`}
       >
@@ -7787,7 +7794,7 @@ export const Composer = memo(function Composer({
                   aria-label={t`Send`}
                   disabled={sending || disabled}
                   onClick={send}
-                  className="size-8 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95"
+                  className="size-8 rounded-full bg-white text-black hover:bg-white/90 in-data-bot-accent:bg-bot-accent in-data-bot-accent:text-bot-accent-foreground in-data-bot-accent:hover:bg-bot-accent/90 shadow-sm transition-transform active:scale-95"
                 >
                   <ArrowUp size={16} strokeWidth={2.2} />
                 </Button>
@@ -7809,7 +7816,7 @@ export const Composer = memo(function Composer({
               aria-label={t`Send`}
               disabled={sending || !canSend || disabled}
               onClick={send}
-              className="size-8 shrink-0 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95 disabled:bg-white/10 disabled:text-muted-foreground/30 disabled:shadow-none"
+              className="size-8 shrink-0 rounded-full bg-white text-black hover:bg-white/90 shadow-sm transition-transform active:scale-95 in-data-bot-accent:bg-bot-accent in-data-bot-accent:text-bot-accent-foreground in-data-bot-accent:hover:bg-bot-accent/90 disabled:bg-white/10 disabled:text-muted-foreground/30 disabled:shadow-none in-data-bot-accent:disabled:bg-bot-accent/25 in-data-bot-accent:disabled:text-bot-accent-foreground/60"
             >
               <ArrowUp size={16} strokeWidth={2.2} />
             </Button>
