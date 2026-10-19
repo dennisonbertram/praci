@@ -2,8 +2,9 @@ import * as Notifications from "expo-notifications";
 import { router } from "expo-router";
 import { useEffect } from "react";
 import { loadSessionToken } from "./api";
-import { notificationResponseRoute } from "./notification-open";
+import { notificationResponseRoute, notificationSurface } from "./notification-open";
 import { closeSettingsSheet } from "./settings-sheet";
+import { markSurfaceSeen } from "./unseen-notifications";
 
 const openedResponses = new Set<string>();
 
@@ -35,7 +36,8 @@ export async function openNotificationResponse(
   const key = occurrenceKey(response);
   if (!key || openedResponses.has(key)) return false;
   const target = notificationResponseRoute(response, Notifications.DEFAULT_ACTION_IDENTIFIER);
-  if (!target) return false;
+  const surface = notificationSurface(response.notification.request.content.data);
+  if (!target && !surface) return false;
   // Claim before the session read so a cold-start hook and the tap listener
   // cannot both open the same response.
   openedResponses.add(key);
@@ -49,7 +51,8 @@ export async function openNotificationResponse(
       return false;
     }
     closeSettingsSheet();
-    router.push(target);
+    if (target) router.push(target);
+    if (surface) void markSurfaceSeen(surface);
     clearNotificationResponseIfCurrent(response);
     return true;
   } catch {

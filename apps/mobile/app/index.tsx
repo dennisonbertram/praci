@@ -81,6 +81,7 @@ import {
   currentSessionGeneration,
   subscribeSessionGeneration,
 } from "../lib/session";
+import { useUnseenCount } from "../lib/unseen-notifications";
 import { useInboxDay } from "../lib/use-inbox-day";
 import { errorText } from "../lib/user-error";
 
@@ -953,6 +954,7 @@ function ActivityRow({
 function MailInboxRow({ onPress }: { onPress: () => void }) {
   const styles = useThemedStyles(createHomeStyles);
   const { t } = useI18n();
+  const unseen = useUnseenCount("inbox") > 0;
   return (
     <Pressable
       accessibilityRole="button"
@@ -963,6 +965,7 @@ function MailInboxRow({ onPress }: { onPress: () => void }) {
         <NativeSymbol ios="tray" android="file-tray-outline" size={22} />
       </View>
       <Text style={styles.name}>{t("Inbox")}</Text>
+      {unseen ? <View accessibilityElementsHidden style={styles.unreadDot} /> : null}
     </Pressable>
   );
 }

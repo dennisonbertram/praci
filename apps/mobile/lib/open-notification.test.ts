@@ -13,6 +13,7 @@ vi.mock("expo-router", () => ({
 vi.mock("./api", () => ({
   loadSessionToken: vi.fn(),
 }));
+vi.mock("./unseen-notifications", () => ({ markSurfaceSeen: vi.fn() }));
 vi.mock("./settings-sheet", () => ({
   closeSettingsSheet: vi.fn(),
 }));
@@ -22,6 +23,7 @@ import { router } from "expo-router";
 import { loadSessionToken } from "./api";
 import { openNotificationResponse } from "./open-notification";
 import { closeSettingsSheet } from "./settings-sheet";
+import { markSurfaceSeen } from "./unseen-notifications";
 
 const DEFAULT_ACTION = "expo.modules.notifications.actions.DEFAULT";
 
@@ -186,5 +188,33 @@ describe("opening a notification tap", () => {
     await expect(openNotificationResponse(tap("thread-shared-once", data))).resolves.toBe(true);
     await expect(openNotificationResponse(tap("thread-shared-once", data))).resolves.toBe(false);
     expect(router.push).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("opening a notification by surface", () => {
+  it("opens the inbox and marks it seen", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(tap("n-inbox", { notificationId: "n1", surface: "inbox" }));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/inbox" });
+    expect(markSurfaceSeen).toHaveBeenCalledWith("inbox");
+  });
+
+  it("opens the thread for a thread notification without marking a page seen", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(
+      tap("n-thread", { surface: "thread", botId: "bot-1", threadId: "t-1" }),
+    );
+    expect(router.push).toHaveBeenCalledWith({
+      pathname: "/thread",
+      params: { botId: "bot-1", threadId: "t-1" },
+    });
+    expect(markSurfaceSeen).not.toHaveBeenCalled();
+  });
+
+  it("marks a page with no mobile screen seen and does not navigate", async () => {
+    vi.mocked(loadSessionToken).mockResolvedValue("token");
+    await openNotificationResponse(tap("n-fin", { surface: "finance", link: "/finance" }));
+    expect(router.push).not.toHaveBeenCalled();
+    expect(markSurfaceSeen).toHaveBeenCalledWith("finance");
   });
 });

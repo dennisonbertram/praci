@@ -3,6 +3,7 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { apiBaseWarning, normalizeApiBase } from "./endpoint";
 import { t } from "./i18n";
+import { isOpenSurface } from "./open-surface";
 
 export interface LiveNotificationSettings {
   liveConnection: boolean;
@@ -65,7 +66,8 @@ export function configureForegroundNotifications(): void {
   foregroundHandlerConfigured = true;
   Notifications.setNotificationHandler({
     handleNotification: async ({ request }) => {
-      const show = !notificationTargetsThread(request.content.data, openThread);
+      const data = request.content.data;
+      const show = !notificationTargetsThread(data, openThread) && !isOpenSurface(data?.surface);
       return {
         shouldShowBanner: show,
         shouldShowList: show,

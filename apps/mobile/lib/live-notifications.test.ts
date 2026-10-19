@@ -13,6 +13,7 @@ import {
   notificationTargetsThread,
   setOpenNotificationThread,
 } from "./live-notifications";
+import { setOpenSurface } from "./open-surface";
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -53,5 +54,15 @@ describe("notification thread targeting", () => {
     await expect(
       handler?.handleNotification({ request: { content: { data: { botId: "bot-2" } } } } as never),
     ).resolves.toMatchObject({ shouldShowBanner: true, shouldShowList: true });
+
+    // New notification kinds carry data.notificationId and a page surface.
+    const show = (surface: string) =>
+      handler?.handleNotification({
+        request: { content: { data: { notificationId: "n1", surface } } },
+      } as never);
+    setOpenSurface("inbox");
+    await expect(show("inbox")).resolves.toMatchObject({ shouldShowBanner: false });
+    await expect(show("finance")).resolves.toMatchObject({ shouldShowBanner: true });
+    setOpenSurface(null);
   });
 });
