@@ -8576,11 +8576,6 @@ msgstr "Uses Carta figures and asks before sending."
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 
-#. placeholder {0}: activity.label
-#: src/pages/Shell.tsx
-msgid "Using {0}"
-msgstr "Using {0}"
-
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/legal/LegalContracts.tsx

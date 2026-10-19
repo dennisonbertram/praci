@@ -8576,11 +8576,6 @@ msgstr ""
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "使用此服务器自己的 {hostCredentialSource} 凭据访问 {selectedProviderName}。"
 
-#. placeholder {0}: activity.label
-#: src/pages/Shell.tsx
-msgid "Using {0}"
-msgstr ""
-
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/legal/LegalContracts.tsx
