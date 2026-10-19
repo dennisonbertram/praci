@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 185 of 185
-- Web and shared components: 534
+- Web and shared component files with stories: 186 of 186
+- Web and shared components: 544
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -21,7 +21,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | --- | --- | --- | --- |
 | AlertDialog, AlertDialogTrigger, AlertDialogPortal, AlertDialogOverlay, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogMedia, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel | [packages/ui-web/src/components/ui/alert-dialog.tsx](../../packages/ui-web/src/components/ui/alert-dialog.tsx) | [alert-dialog.stories.tsx](../../packages/ui-web/src/components/ui/alert-dialog.stories.tsx) | shared |
 | Badge | [packages/ui-web/src/components/ui/badge.tsx](../../packages/ui-web/src/components/ui/badge.tsx) | [badge.stories.tsx](../../packages/ui-web/src/components/ui/badge.stories.tsx) | shared |
-| Button | [packages/ui-web/src/components/ui/button.tsx](../../packages/ui-web/src/components/ui/button.tsx) | [alert-dialog.stories.tsx](../../packages/ui-web/src/components/ui/alert-dialog.stories.tsx), [button.stories.tsx](../../packages/ui-web/src/components/ui/button.stories.tsx), [card.stories.tsx](../../packages/ui-web/src/components/ui/card.stories.tsx), [dialog.stories.tsx](../../packages/ui-web/src/components/ui/dialog.stories.tsx), [dropdown-menu.stories.tsx](../../packages/ui-web/src/components/ui/dropdown-menu.stories.tsx), [popover.stories.tsx](../../packages/ui-web/src/components/ui/popover.stories.tsx), [tooltip.stories.tsx](../../packages/ui-web/src/components/ui/tooltip.stories.tsx) | shared |
+| Button | [packages/ui-web/src/components/ui/button.tsx](../../packages/ui-web/src/components/ui/button.tsx) | [alert-dialog.stories.tsx](../../packages/ui-web/src/components/ui/alert-dialog.stories.tsx), [button.stories.tsx](../../packages/ui-web/src/components/ui/button.stories.tsx), [card.stories.tsx](../../packages/ui-web/src/components/ui/card.stories.tsx), [dialog.stories.tsx](../../packages/ui-web/src/components/ui/dialog.stories.tsx), [dropdown-menu.stories.tsx](../../packages/ui-web/src/components/ui/dropdown-menu.stories.tsx), [popover.stories.tsx](../../packages/ui-web/src/components/ui/popover.stories.tsx), [table.stories.tsx](../../packages/ui-web/src/components/ui/table.stories.tsx), [tooltip.stories.tsx](../../packages/ui-web/src/components/ui/tooltip.stories.tsx) | shared |
 | Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter | [packages/ui-web/src/components/ui/card.tsx](../../packages/ui-web/src/components/ui/card.tsx) | [card.stories.tsx](../../packages/ui-web/src/components/ui/card.stories.tsx) | shared |
 | Checkbox | [packages/ui-web/src/components/ui/checkbox.tsx](../../packages/ui-web/src/components/ui/checkbox.tsx) | [checkbox.stories.tsx](../../packages/ui-web/src/components/ui/checkbox.stories.tsx) | shared |
 | Command, CommandDialog, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandSeparator, CommandItem, CommandShortcut | [packages/ui-web/src/components/ui/command.tsx](../../packages/ui-web/src/components/ui/command.tsx) | [command.stories.tsx](../../packages/ui-web/src/components/ui/command.stories.tsx) | shared |
@@ -40,6 +40,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Skeleton | [packages/ui-web/src/components/ui/skeleton.tsx](../../packages/ui-web/src/components/ui/skeleton.tsx) | [skeleton.stories.tsx](../../packages/ui-web/src/components/ui/skeleton.stories.tsx) | shared |
 | Spinner | [packages/ui-web/src/components/ui/spinner.tsx](../../packages/ui-web/src/components/ui/spinner.tsx) | [spinner.stories.tsx](../../packages/ui-web/src/components/ui/spinner.stories.tsx) | shared |
 | Switch | [packages/ui-web/src/components/ui/switch.tsx](../../packages/ui-web/src/components/ui/switch.tsx) | [switch.stories.tsx](../../packages/ui-web/src/components/ui/switch.stories.tsx) | shared |
+| Table, TableHeader, TableBody, TableRow, TableHeadRow, TableHead, TableCell, TableCaption | [packages/ui-web/src/components/ui/table.tsx](../../packages/ui-web/src/components/ui/table.tsx) | [table.stories.tsx](../../packages/ui-web/src/components/ui/table.stories.tsx) | shared |
 | Tabs, TabsList, TabsTrigger, TabsContent | [packages/ui-web/src/components/ui/tabs.tsx](../../packages/ui-web/src/components/ui/tabs.tsx) | [tabs.stories.tsx](../../packages/ui-web/src/components/ui/tabs.stories.tsx) | shared |
 | Textarea | [packages/ui-web/src/components/ui/textarea.tsx](../../packages/ui-web/src/components/ui/textarea.tsx) | [textarea.stories.tsx](../../packages/ui-web/src/components/ui/textarea.stories.tsx) | shared |
 | Toggle | [packages/ui-web/src/components/ui/toggle.tsx](../../packages/ui-web/src/components/ui/toggle.tsx) | [toggle.stories.tsx](../../packages/ui-web/src/components/ui/toggle.stories.tsx) | shared |
@@ -134,7 +135,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | MessageRow, EmailPicker, ImportSources | [apps/web/src/components/data-room/ImportFromEmail.tsx](../../apps/web/src/components/data-room/ImportFromEmail.tsx) | [ImportFromEmail.stories.tsx](../../apps/web/src/components/data-room/ImportFromEmail.stories.tsx) | web |
 | NameInput, FolderOptions, NewFolderDialog, ItemDialog, DeleteDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
 | ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx), [ItemMenu.stories.tsx](../../apps/web/src/components/data-room/ItemMenu.stories.tsx) | web |
-| Marker, TableHead, ItemRow, SubfolderList, ListView, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
+| Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
 | Field, Tag, ImagePreview, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
 
 ## Web components/finance

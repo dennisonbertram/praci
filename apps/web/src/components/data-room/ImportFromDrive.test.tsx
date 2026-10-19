@@ -18,12 +18,13 @@ vi.mock("@lingui/react/macro", () => ({
 
 const rpcMock = vi.hoisted(() => ({
   connections: vi.fn(),
+  catalog: vi.fn(),
   driveList: vi.fn(),
   importDrive: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({
   rpc: {
-    connections: { list: rpcMock.connections },
+    connections: { list: rpcMock.connections, catalog: rpcMock.catalog },
     dataRoom: { driveList: rpcMock.driveList, importDrive: rpcMock.importDrive },
   },
 }));
@@ -74,8 +75,15 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-async function render(connections: unknown[]) {
+const offers = (...slugs: string[]) => slugs.map((slug) => ({ connectorId: "google", slug }));
+
+async function render(
+  connections: unknown[],
+  catalog: unknown[] | Error = offers("gmail", "googledrive"),
+) {
   rpcMock.connections.mockResolvedValue(connections);
+  if (catalog instanceof Error) rpcMock.catalog.mockRejectedValue(catalog);
+  else rpcMock.catalog.mockResolvedValue(catalog);
   await act(async () => {
     root.render(
       <MemoryRouter>
@@ -159,4 +167,20 @@ it("stops offering more files after 20 are ticked", async () => {
   const boxes = () => Array.from(document.body.querySelectorAll('[role="checkbox"]'));
   for (const box of boxes().slice(0, 20)) await click(box);
   expect(boxes()[20]?.hasAttribute("data-disabled")).toBe(true);
+});
+
+it("shows no Drive button when the server does not offer Drive and it is not connected", async () => {
+  await render(
+    [{ connectorId: "google", provider: "googledrive", status: "pending" }],
+    offers("gmail"),
+  );
+  expect(button("Connect Google Drive")).toBeUndefined();
+  expect(button("Import from Google Drive")).toBeUndefined();
+  // Gmail is still offered, so the other button stays.
+  expect(button("Connect Gmail")).toBeDefined();
+});
+
+it("shows no Drive button when the catalog cannot be read", async () => {
+  await render([], new Error("no catalog"));
+  expect(button("Connect Google Drive")).toBeUndefined();
 });

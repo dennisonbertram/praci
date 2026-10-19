@@ -758,6 +758,11 @@ msgstr "Add your OpenRouter key"
 msgid "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr "Add your OpenRouter key above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
+msgid "Added"
+msgstr "Added"
+
 #: src/pages/Shell.tsx
 msgid "Adding a contact"
 msgstr "Adding a contact"
@@ -3088,8 +3093,6 @@ msgstr "Data room"
 msgid "Data room search model"
 msgstr "Data room search model"
 
-#: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -3369,6 +3372,7 @@ msgid "Docs & files"
 msgstr "Docs & files"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ItemRows.tsx
 msgid "Document date"
 msgstr "Document date"
 
@@ -5213,6 +5217,7 @@ msgstr "New bot"
 msgid "New Bot"
 msgstr "New Bot"
 
+#: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
 msgid "New folder"
@@ -6384,10 +6389,6 @@ msgstr "Receipt hidden while amounts are hidden"
 #: src/pages/Inbox.tsx
 msgid "Receipts"
 msgstr "Receipts"
-
-#: src/components/data-room/FilterBar.tsx
-msgid "Recently added"
-msgstr "Recently added"
 
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/integrations/AppDetail.tsx
@@ -8264,6 +8265,7 @@ msgstr "Try {name} again"
 
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
