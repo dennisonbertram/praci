@@ -108,6 +108,8 @@ function securePipedreamConnectUrl(value: string): URL {
   return url;
 }
 
+class DispatchRefused extends Error {}
+
 export class PipedreamConnector implements ManagedConnectorProvider {
   private accessToken?: { value: string; expiresAt: number };
   private accessTokenRequest?: Promise<string>;
@@ -129,22 +131,26 @@ export class PipedreamConnector implements ManagedConnectorProvider {
   }
 
   async catalog(context: AdapterContext, query?: string): Promise<ConnectorCatalogItem[]> {
-    const [apps, connected] = await Promise.all([
-      this.apps(),
+    const [directory, connected] = await Promise.all([
+      this.catalogDirectory(),
       this.listConnectedExternalIds(context),
     ]);
     const connectedSet = new Set(connected);
     return filterCatalog(
-      apps.map((app) => ({
-        connectorId: "pipedream",
-        slug: app.name_slug,
-        name: app.name,
-        logo: app.img_src ?? null,
-        connected: connectedSet.has(app.name_slug),
-        noAuth: false,
-      })),
+      directory.map((item) => ({ ...item, connected: connectedSet.has(item.slug) })),
       query ?? "",
     );
+  }
+
+  async catalogDirectory(): Promise<Omit<ConnectorCatalogItem, "connected">[]> {
+    const apps = await this.apps();
+    return apps.map((app) => ({
+      connectorId: "pipedream",
+      slug: app.name_slug,
+      name: app.name,
+      logo: app.img_src ?? null,
+      noAuth: false,
+    }));
   }
 
   async warmDirectory(): Promise<void> {
@@ -164,18 +170,33 @@ export class PipedreamConnector implements ManagedConnectorProvider {
   }
 
   private async allTools(context: AdapterContext): Promise<ConnectorTool[]> {
-    const apps =
-      context.connectedConnections
-        ?.filter((connection) => connection.connectorId === "pipedream")
-        .map((connection) => connection.externalId) ?? [];
+    const connections =
+      context.connectedConnections?.filter(
+        (connection) => connection.connectorId === "pipedream",
+      ) ?? [];
+    const apps = connections.map((connection) => connection.externalId);
     if (apps.length === 0) return [];
     const token = await this.token();
     const groups = await Promise.all(
       [...new Set(apps)].map(async (app) => {
         try {
+          const connection = context.connectedAppAgentConnectionId
+            ? connections.find(
+                (candidate) =>
+                  candidate.id === context.connectedAppAgentConnectionId &&
+                  candidate.externalId === app,
+              )
+            : undefined;
+          const accountId = connection?.providerRef?.trim();
+          if (
+            context.connectedAppAgentConnectionId &&
+            (!connection || !accountId || accountId === connection.externalId)
+          ) {
+            return [];
+          }
           const tools = await listRemoteMcpTools({
             endpoint: MCP_ENDPOINT,
-            headers: this.mcpHeaders(context, app, token),
+            headers: this.mcpHeaders(context, app, token, accountId),
             signal: context.signal,
             fetch: this.dependencies.fetch,
             resolveHostname: this.dependencies.resolveHostname,
@@ -204,13 +225,17 @@ export class PipedreamConnector implements ManagedConnectorProvider {
 
   async discoverTools(context: AdapterContext): Promise<ConnectorTool[]> {
     const tools = await this.allTools(context);
-    if (tools.length <= DIRECT_TOOL_LIMIT) return tools;
-    return lazyCatalogTools(
-      catalogToolPrefix("pipedream"),
-      "pipedream",
-      "app",
-      catalogEntries(tools),
-    );
+    if (context.connectedAppAgentConnectionId) return tools;
+    const exposed =
+      tools.length <= DIRECT_TOOL_LIMIT
+        ? tools
+        : lazyCatalogTools(
+            catalogToolPrefix("pipedream"),
+            "pipedream",
+            "app",
+            catalogEntries(tools),
+          );
+    return exposed;
   }
 
   async resolveCall(
@@ -219,7 +244,39 @@ export class PipedreamConnector implements ManagedConnectorProvider {
   ): Promise<{ call: ConnectorCall; tool: ConnectorTool } | undefined> {
     // Wrappers have no resourceId; real tools always do.
     if (call.route?.resourceId || call.route?.toolName !== CATALOG_EXECUTE) return undefined;
-    return resolveCatalogCall(call, catalogEntries(await this.allTools(context)));
+    const resolved = resolveCatalogCall(call, catalogEntries(await this.allTools(context)));
+    if (!resolved) return undefined;
+    const connections =
+      context.connectedConnections?.filter(
+        (connection) => connection.connectorId === "pipedream",
+      ) ?? [];
+    if (context.connectedAppAgentConnectionId) {
+      if (
+        call.route.connectionId !== context.connectedAppAgentConnectionId ||
+        connections.length !== 1 ||
+        connections[0]!.id !== context.connectedAppAgentConnectionId ||
+        resolved.tool.route?.resourceId !== connections[0]!.externalId
+      ) {
+        return undefined;
+      }
+      const connectionId = connections[0]!.id;
+      return {
+        call: { ...resolved.call, route: { ...resolved.call.route!, connectionId } },
+        tool: { ...resolved.tool, route: { ...resolved.tool.route!, connectionId } },
+      };
+    }
+    if (
+      !call.route.connectionId ||
+      connections.length !== 1 ||
+      resolved.tool.route?.resourceId !== connections[0]!.externalId
+    ) {
+      return resolved;
+    }
+    const connectionId = connections[0]!.id;
+    return {
+      call: { ...resolved.call, route: { ...resolved.call.route!, connectionId } },
+      tool: { ...resolved.tool, route: { ...resolved.tool.route!, connectionId } },
+    };
   }
 
   async *execute(call: ConnectorCall, context: AdapterContext): AsyncIterable<ConnectorEvent> {
@@ -240,25 +297,72 @@ export class PipedreamConnector implements ManagedConnectorProvider {
       yield { type: "error", message: "Pipedream app route is missing" };
       return;
     }
+    let accountId: string | undefined;
+    if (call.route?.connectionId) {
+      const connection = context.connectedConnections?.find(
+        (candidate) =>
+          candidate.id === call.route?.connectionId &&
+          candidate.connectorId === "pipedream" &&
+          candidate.externalId === app,
+      );
+      accountId = connection?.providerRef?.trim();
+      if (
+        !connection ||
+        (context.connectedAppAgentConnectionId &&
+          (connection.id !== context.connectedAppAgentConnectionId ||
+            !accountId ||
+            accountId === connection.externalId))
+      ) {
+        yield { type: "error", message: "Connected app route is unavailable" };
+        return;
+      }
+    } else if (context.connectedAppAgentConnectionId) {
+      yield { type: "error", message: "Connected app route is unavailable" };
+      return;
+    }
     let token: string | undefined;
     try {
       token = await this.token();
+      const remote = {
+        endpoint: MCP_ENDPOINT,
+        headers: this.mcpHeaders(context, app, token, accountId),
+        signal: context.signal,
+        fetch: this.dependencies.fetch,
+        resolveHostname: this.dependencies.resolveHostname,
+      };
+      if (call.route?.discoveredReadOnly === true) {
+        // Classified now, not at discovery: a read that became a write must not run unasked.
+        const live = (await listRemoteMcpTools(remote)).find(
+          (tool) => tool.name === (call.route?.toolName ?? call.tool),
+        );
+        if (live?.readOnly !== true) {
+          yield {
+            type: "error",
+            message:
+              "This tool changed from a read to a change since it was listed, so it was not run. Try again in a new message.",
+          };
+          return;
+        }
+      }
       const result = await callRemoteMcpTool(
-        {
-          endpoint: MCP_ENDPOINT,
-          headers: this.mcpHeaders(context, app, token),
-          signal: context.signal,
-          fetch: this.dependencies.fetch,
-          resolveHostname: this.dependencies.resolveHostname,
-        },
+        remote,
         call.route?.toolName ?? call.tool,
         call.args,
+        // Runs after DNS checks and MCP initialization, right before the provider call.
+        async () => {
+          const denied = await call.beforeDispatch?.();
+          if (denied) throw new DispatchRefused(denied);
+        },
       );
       yield {
         type: "result",
         data: redactConnectorPayload(result, [token, this.config.clientSecret]),
       };
     } catch (error) {
+      if (error instanceof DispatchRefused) {
+        yield { type: "error", message: error.message };
+        return;
+      }
       yield {
         type: "error",
         message: sanitizeConnectorError(
@@ -448,6 +552,7 @@ export class PipedreamConnector implements ManagedConnectorProvider {
     context: AdapterContext,
     app: string,
     accessToken: string,
+    accountId?: string,
   ): Record<string, string> {
     return {
       authorization: `Bearer ${accessToken}`,
@@ -455,6 +560,7 @@ export class PipedreamConnector implements ManagedConnectorProvider {
       "x-pd-environment": this.config.environment,
       "x-pd-external-user-id": this.externalUserId(context),
       "x-pd-app-slug": app,
+      ...(accountId ? { "x-pd-account-id": accountId } : {}),
     };
   }
 

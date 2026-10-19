@@ -27,26 +27,93 @@ type FakeServer = {
   endpoint: string | null;
   enabled?: boolean;
   writesEnabled?: boolean;
+  agentBotId?: string | null;
+  agentExclusive?: boolean;
 };
 
 function fakes(servers: FakeServer[]) {
-  const bot = { id: "bot-1" } as Bot;
+  const bot = {
+    id: "bot-1",
+    spaceId: actor.spaceId,
+    userId: actor.userId,
+    spawnKey: cartaAgentSpawnKey(actor.userId),
+    archivedAt: null,
+  } as Bot;
   const createBot = vi.fn(async () => bot);
-  const findMany = vi.fn(async () =>
-    servers.map((server) => ({ enabled: true, writesEnabled: false, ...server })),
+  const rows = servers.map((server) => ({
+    enabled: true,
+    writesEnabled: false,
+    agentBotId: null,
+    agentExclusive: false,
+    ...server,
+  }));
+  const findMany = vi.fn(async () => rows.map((server) => ({ ...server })));
+  const serverUpdateMany = vi.fn(
+    async ({
+      where,
+      data,
+    }: {
+      where: {
+        id: string;
+        endpoint: string | null;
+        enabled: boolean;
+        writesEnabled: boolean;
+        agentBotId: string | null;
+      };
+      data: Record<string, unknown>;
+    }) => {
+      const row = rows.find(
+        (server) =>
+          server.id === where.id &&
+          server.endpoint === where.endpoint &&
+          server.enabled === where.enabled &&
+          server.writesEnabled === where.writesEnabled &&
+          server.agentBotId === where.agentBotId,
+      );
+      if (!row) return { count: 0 };
+      Object.assign(row, data);
+      return { count: 1 };
+    },
   );
+  const botUpdateMany = vi.fn(async ({ where }: { where: Record<string, unknown> }) => ({
+    count:
+      where.id === bot.id &&
+      where.spaceId === bot.spaceId &&
+      where.userId === bot.userId &&
+      where.spawnKey === bot.spawnKey &&
+      where.archivedAt === null
+        ? 1
+        : 0,
+  }));
   const upsert = vi.fn(async () => ({}));
-  const deleteMany = vi.fn(async () => ({ count: 0 }));
-  const prisma = {
-    mcpServer: { findMany },
+  const assignments = [{ botId: "other-bot", serverId: "srv-carta" }];
+  const deleteMany = vi.fn(async () => {
+    assignments.length = 0;
+    return { count: 1 };
+  });
+  const fakeTx = {
+    bot: { updateMany: botUpdateMany },
+    mcpServer: { findMany, updateMany: serverUpdateMany },
     botMcpServer: { upsert, deleteMany },
-    bot: { findFirst: vi.fn(async () => bot) },
+  };
+  const transaction = vi.fn(async (callback: (tx: typeof fakeTx) => unknown) => callback(fakeTx));
+  const prisma = {
+    mcpServer: { findMany, updateMany: serverUpdateMany },
+    botMcpServer: { upsert, deleteMany },
+    bot: { findFirst: vi.fn(async () => bot), updateMany: botUpdateMany },
+    $transaction: transaction,
   } as never;
   return {
     createBot,
     findMany,
+    serverUpdateMany,
+    botUpdateMany,
+    rows,
     upsert,
     deleteMany,
+    transaction,
+    tx: fakeTx,
+    assignments,
     prisma,
     deps: { prisma, repos: { createBot } },
   };
@@ -93,7 +160,12 @@ describe("ensureCartaAgent", () => {
 
   it("adds the write tools only for a server whose writes are on, and skips a disabled server", async () => {
     const { upsert, deps } = fakes([
-      { id: "srv-on", endpoint: CARTA_MCP_ENDPOINT, writesEnabled: true },
+      {
+        id: "srv-on",
+        endpoint: CARTA_MCP_ENDPOINT,
+        writesEnabled: true,
+        agentBotId: "bot-1",
+      },
       { id: "srv-off", endpoint: CARTA_MCP_ENDPOINT, enabled: false },
     ]);
     await ensureCartaAgent(deps, actor);
@@ -108,20 +180,70 @@ describe("ensureCartaAgent", () => {
     );
   });
 
-  it("takes every Carta server away from the user's other bots", async () => {
-    const { deleteMany, deps } = fakes([
+  it("links new Carta servers with exclusive on and writes off", async () => {
+    const { serverUpdateMany, rows, deps } = fakes([
       { id: "srv-carta", endpoint: CARTA_MCP_ENDPOINT, enabled: false },
       { id: "srv-other", endpoint: "https://mcp.example.com/mcp" },
     ]);
     await ensureCartaAgent(deps, actor);
-    expect(deleteMany).toHaveBeenCalledWith({
-      where: {
-        spaceId: "space-1",
-        userId: "user-1",
-        serverId: { in: ["srv-carta"] },
-        botId: { not: "bot-1" },
-      },
+    expect(rows[0]).toMatchObject({
+      agentBotId: "bot-1",
+      agentExclusive: true,
+      writesEnabled: false,
     });
+    expect(serverUpdateMany).toHaveBeenCalledOnce();
+  });
+
+  it("does not restore a Carta link after the endpoint changes during assignment", async () => {
+    const { serverUpdateMany, rows, upsert, deps } = fakes([
+      { id: "srv-carta", endpoint: CARTA_MCP_ENDPOINT },
+    ]);
+    serverUpdateMany.mockImplementationOnce(async () => {
+      rows[0]!.endpoint = "https://mcp.example.com/mcp";
+      return { count: 0 };
+    });
+    await ensureCartaAgent(deps, actor);
+    expect(rows[0]!.agentBotId).toBeNull();
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("does not link Carta servers when the agent is no longer live", async () => {
+    const { botUpdateMany, serverUpdateMany, rows, deps } = fakes([
+      { id: "srv-carta", endpoint: CARTA_MCP_ENDPOINT },
+    ]);
+    botUpdateMany.mockResolvedValueOnce({ count: 0 });
+    await ensureCartaAgent(deps, actor);
+    expect(serverUpdateMany).not.toHaveBeenCalled();
+    expect(rows[0]!.agentBotId).toBeNull();
+  });
+
+  it("preserves another bot's Carta assignment and existing agent switches", async () => {
+    const { deleteMany, serverUpdateMany, upsert, rows, deps, assignments } = fakes([
+      {
+        id: "srv-carta",
+        endpoint: CARTA_MCP_ENDPOINT,
+        agentBotId: "bot-1",
+        agentExclusive: false,
+        writesEnabled: true,
+      },
+    ]);
+    await ensureCartaAgent(deps, actor);
+    expect(rows[0]).toMatchObject({
+      agentBotId: "bot-1",
+      agentExclusive: false,
+      writesEnabled: true,
+    });
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        update: {
+          allowAllTools: false,
+          allowedTools: [...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS],
+        },
+      }),
+    );
+    expect(assignments).toEqual([{ botId: "other-bot", serverId: "srv-carta" }]);
+    expect(deleteMany).not.toHaveBeenCalled();
+    expect(serverUpdateMany).toHaveBeenCalledOnce();
   });
 
   it("assignToExistingCartaAgent narrows an existing agent's assignment", async () => {
@@ -130,16 +252,14 @@ describe("ensureCartaAgent", () => {
     expect(upsert).toHaveBeenCalledTimes(1);
   });
 
-  it("assignToExistingCartaAgent clears other bots even before the Carta agent exists", async () => {
+  it("assignToExistingCartaAgent preserves other assignments when no agent exists", async () => {
     const { upsert, deleteMany, prisma } = fakes([
       { id: "srv-carta", endpoint: CARTA_MCP_ENDPOINT },
     ]);
     (prisma as never as { bot: { findFirst: unknown } }).bot.findFirst = vi.fn(async () => null);
     await assignToExistingCartaAgent(prisma, actor);
     expect(upsert).not.toHaveBeenCalled();
-    expect(deleteMany).toHaveBeenCalledWith({
-      where: { spaceId: "space-1", userId: "user-1", serverId: { in: ["srv-carta"] } },
-    });
+    expect(deleteMany).not.toHaveBeenCalled();
   });
 });
 
@@ -152,20 +272,29 @@ describe("Carta populate run", () => {
     const runCreate = vi.fn(async () => ({ id: "run-new" }));
     const taskCreate = vi.fn(async () => ({ id: "task-1" }));
     const messageCreate = vi.fn(async () => ({ id: "msg-1" }));
+    const basePrisma = base.prisma as unknown as Record<string, unknown>;
+    const baseMcpServer = basePrisma.mcpServer as Record<string, unknown>;
     const tx = {
+      ...basePrisma,
       $executeRaw: vi.fn(async () => 0),
       run: { findFirst: runFindFirst, create: runCreate },
       task: { create: taskCreate },
       thread: { update: vi.fn(async () => ({ nextMessageSeq: 1, nextEventSeq: 1 })) },
       message: { create: messageCreate },
       event: { create: vi.fn(async () => ({ id: "evt-1" })) },
+      mcpServer: {
+        ...baseMcpServer,
+        findFirst: vi.fn(async () => ({
+          endpoint: options.endpoint ?? CARTA_MCP_ENDPOINT,
+        })),
+      },
     };
     const enqueueRun = vi.fn(async () => {});
     const deps = {
       prisma: {
-        ...(base.prisma as object),
+        ...basePrisma,
         mcpServer: {
-          findMany: base.findMany,
+          ...baseMcpServer,
           findFirst: vi.fn(async () => ({
             endpoint: options.endpoint ?? CARTA_MCP_ENDPOINT,
           })),

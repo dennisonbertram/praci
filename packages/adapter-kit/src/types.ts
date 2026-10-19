@@ -20,6 +20,7 @@ export interface AdapterContext {
   signal: AbortSignal;
   /** Connected external accounts available to this run, including their owning connector. */
   connectedConnections?: ConnectedConnector[];
+  connectedAppAgentConnectionId?: string;
   /** @deprecated Prefer connectedConnections so providers with the same app slug cannot collide. */
   connectedProviders?: string[];
 }
@@ -240,6 +241,8 @@ export interface ConnectorTool {
 export interface ConnectorRoute {
   connectorId: string;
   toolName: string;
+  /** Trusted local Connection row that authorized the route; distinct from provider resource ids. */
+  connectionId?: string;
   resourceId?: string;
   resourceRevision?: string | number;
   /** Source label for lazy catalog name indexes. Never exposed as a model schema field. */
@@ -256,6 +259,12 @@ export interface ConnectorCall {
   connectionId?: string;
   executionId: string;
   route?: ConnectorRoute;
+  /**
+   * Re-reads the durable state that authorizes this call (writes switch, agent link, exclusivity)
+   * and returns a message to refuse with, or null. A connector with provider setup (sessions,
+   * credentials, metadata) awaits it after that setup and dispatches with nothing awaited between.
+   */
+  beforeDispatch?: () => Promise<string | null>;
 }
 
 export type ConnectorEvent =

@@ -268,11 +268,42 @@ export async function archiveSpawnedBot(
 }
 
 /** Deleting or archiving an integration agent frees its servers: no agent, shared, read-only. */
-function releaseAgentServers(tx: Pick<PrismaClient, "mcpServer">, botId: string) {
-  return tx.mcpServer.updateMany({
-    where: { agentBotId: botId },
-    data: { agentBotId: null, agentExclusive: false, writesEnabled: false },
-  });
+async function releaseAgentServers(
+  tx: Pick<PrismaClient, "mcpServer" | "connection" | "botConnectionAccess">,
+  bot: Pick<LifecycleBot, "id" | "spaceId" | "userId">,
+) {
+  const scope = {
+    agentBotId: bot.id,
+    spaceId: bot.spaceId,
+    ...(bot.userId ? { userId: bot.userId } : {}),
+  };
+  const [servers, connections] = await Promise.all([
+    tx.mcpServer.updateMany({
+      where: scope,
+      data: { agentBotId: null, agentExclusive: false, writesEnabled: false },
+    }),
+    (async () => {
+      const linked = await tx.connection.findMany({
+        where: scope,
+        select: { id: true },
+      });
+      if (linked.length === 0) return { count: 0 };
+      const released = await tx.connection.updateMany({
+        where: scope,
+        data: { agentBotId: null, writesEnabled: false, allAgents: true },
+      });
+      await tx.botConnectionAccess.deleteMany({
+        where: {
+          botId: bot.id,
+          spaceId: bot.spaceId,
+          ...(bot.userId ? { userId: bot.userId } : {}),
+          connectionId: { in: linked.map((connection) => connection.id) },
+        },
+      });
+      return released;
+    })(),
+  ]);
+  return { servers, connections };
 }
 
 export async function archiveBot(
@@ -325,7 +356,7 @@ export async function archiveBot(
       where: { id: bot.id },
       data: { archivedAt: bot.archivedAt ?? now, pinned: false },
     });
-    await releaseAgentServers(tx, bot.id);
+    await releaseAgentServers(tx, bot);
   });
   await Promise.allSettled([
     ...activeRuns.map((run) => deps.jobs.cancel(runJobKey(run.id))),
@@ -428,7 +459,7 @@ export async function destroyBot(
           memoriesPreserved: !options.deleteMemories,
         },
       });
-      await releaseAgentServers(tx, bot.id);
+      await releaseAgentServers(tx, bot);
       await tx.bot.delete({ where: { id: bot.id } });
       if (webhookSecretId) {
         await tx.secret.deleteMany({

@@ -49,6 +49,98 @@ type Story = StoryObj<typeof meta>;
 
 export const Connected: Story = {};
 
+export const AgentReadOnly: Story = {
+  render: () => (
+    <Page
+      data={demoIntegrations({
+        connections: [demoConnection({ agentBotId: "bot_ada", writesEnabled: false })],
+      })}
+    />
+  ),
+};
+
+export const AgentChangesEnabled: Story = {
+  render: () => (
+    <Page
+      data={demoIntegrations({
+        connections: [demoConnection({ agentBotId: "bot_ada", writesEnabled: true })],
+      })}
+    />
+  ),
+};
+
+export const AgentExclusive: Story = {
+  render: () => (
+    <Page
+      data={demoIntegrations({
+        connections: [demoConnection({ agentBotId: "bot_ada", writesEnabled: false })],
+        access: { conn_1: { allAgents: false, botIds: ["bot_ada"] } },
+      })}
+    />
+  ),
+};
+
+export const TwoAccountAgents: Story = {
+  render: () => (
+    <Page
+      data={demoIntegrations({
+        connections: [
+          demoConnection({ agentBotId: "bot_ada", writesEnabled: false }),
+          demoConnection({
+            id: "conn_second",
+            displayName: "Second workspace",
+            agentBotId: "bot_second",
+            writesEnabled: true,
+          }),
+        ],
+      })}
+    />
+  ),
+};
+
+export const MixedAccountAgents: Story = {
+  render: () => (
+    <Page
+      data={demoIntegrations({
+        connections: [
+          demoConnection({ agentBotId: "bot_ada", writesEnabled: false }),
+          demoConnection({
+            id: "conn_ordinary",
+            displayName: "Personal account",
+            agentBotId: null,
+          }),
+        ],
+      })}
+    />
+  ),
+};
+
+export const CreateAgentFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "connections.tools": tools,
+      "connections.createAgent": () => Promise.reject(new Error("Could not create agent")),
+    }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", { name: /Create agent/ }),
+    );
+    await expect(await within(canvasElement).findByRole("alert")).toHaveTextContent(
+      "Could not create agent",
+    );
+  },
+};
+
+export const ConfirmAgentChanges: Story = {
+  ...AgentReadOnly,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("switch", { name: /Allow changes/ }),
+    );
+    await expect(await within(document.body).findByRole("alertdialog")).toBeTruthy();
+  },
+};
+
 export const ManyAccountsOneFailed: Story = {
   render: () => (
     <Page

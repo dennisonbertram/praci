@@ -714,11 +714,14 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
     it("loads the body of the caller's own message through the provider", async () => {
       await wipe();
       seedMailboxes();
+      await cache(b, connB, "a-1");
+      await cache(c, connC, "a-1");
       await inboxRefresh(deps, a, {});
       const row = await prisma.cachedMailMessage.findFirstOrThrow({
-        where: { providerMessageId: "a-1" },
+        where: { spaceId: spaceA, userId: userA, connectionId: connA, providerMessageId: "a-1" },
       });
 
+      expect(row).toMatchObject({ spaceId: spaceA, userId: userA, connectionId: connA });
       const message = await inboxGet(deps, a, { messageId: row.id });
 
       expect(message).toMatchObject({

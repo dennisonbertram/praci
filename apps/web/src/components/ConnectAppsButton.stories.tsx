@@ -38,7 +38,7 @@ type Story = StoryObj<typeof meta>;
 export const Unconnected: Story = {
   beforeEach: () =>
     mockRpc({
-      "connections.catalog": [
+      "connections.featured": [
         app("slack", logo("#888")),
         app("notion", logo("#666")),
         app("gmail", logo("#aaa")),
@@ -51,7 +51,7 @@ export const Unconnected: Story = {
 export const AllConnected: Story = {
   beforeEach: () =>
     mockRpc({
-      "connections.catalog": [app("slack", null)],
+      "connections.featured": [app("slack", null)],
       "connections.list": [{ connectorId: "composio", provider: "slack", status: "connected" }],
     }),
 };
@@ -60,11 +60,25 @@ export const AllConnected: Story = {
 export const LogoFallback: Story = {
   beforeEach: () =>
     mockRpc({
-      "connections.catalog": [
+      "connections.featured": [
         app("slack", "data:image/png;base64,broken"),
         app("notion", null),
         app("gmail", "data:image/png;base64,broken"),
       ],
+      "connections.list": [],
+    }),
+};
+
+/** The full catalog can take longer than the featured metadata. */
+export const SlowCatalog: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "connections.featured": [
+        app("slack", logo("#888")),
+        app("notion", logo("#666")),
+        app("gmail", logo("#aaa")),
+      ],
+      "connections.catalog": () => new Promise(() => undefined),
       "connections.list": [],
     }),
 };

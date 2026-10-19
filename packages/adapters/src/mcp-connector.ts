@@ -1,4 +1,4 @@
-import type { CallToolResult, Tool } from "@modelcontextprotocol/sdk/types.js";
+import type { CallToolResult, ListToolsResult, Tool } from "@modelcontextprotocol/sdk/types.js";
 import type {
   AdapterContext,
   ConnectorCall,
@@ -9,15 +9,12 @@ import type {
 } from "@rakazo/adapter-kit";
 import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
 import {
-  CARTA_READ_TOOLS,
-  CARTA_WRITE_TOOLS,
   FINANCE_READ_TOOLS,
   financeProviderForEndpoint,
-  integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
-  isCartaEndpoint,
   isFinanceAgentSpawnKey,
+  isIntegrationAgentForServer,
   isIntegrationAgentSpawnKey,
   isLocalMcpHost,
   isReadTool,
@@ -59,6 +56,13 @@ type PendingSession = {
   ref?: string;
 };
 
+const TOOL_LIST_TTL_MS = 30_000;
+type ToolListEntry = {
+  result?: ListToolsResult;
+  expiresAt: number;
+  pending?: Promise<ListToolsResult>;
+};
+
 /** Runtime MCP connector. Authorization is re-checked against the bot assignment on every call. */
 /**
  * Stale allowlist entries are filtered out below with no error. Discovery already has the
@@ -86,28 +90,34 @@ type GateAssignment = {
   allowAllTools: boolean;
   allowedTools: unknown;
   server: {
-    id?: string;
+    id: string;
     name?: string;
-    spaceId?: string;
-    userId?: string;
+    spaceId: string;
+    userId: string;
     endpoint?: string | null;
     writesEnabled?: boolean;
     agentBotId?: string | null;
     agentExclusive?: boolean;
+    agentBot?: {
+      id: string;
+      spaceId: string;
+      userId: string;
+      spawnKey: string | null;
+      archivedAt: Date | null;
+    } | null;
   };
-  bot?: { spawnKey: string | null; spaceId?: string; userId?: string } | null;
+  bot?: {
+    id: string;
+    spawnKey: string | null;
+    spaceId: string;
+    userId: string;
+    archivedAt: Date | null;
+  } | null;
 };
 
 /** Whether the assignment's bot is the server's integration agent. Never trusts agentBotId alone. */
 export function isServerAgent(assignment: GateAssignment): boolean {
-  const { server, bot } = assignment;
-  return (
-    Boolean(server.agentBotId) &&
-    server.agentBotId === assignment.botId &&
-    bot?.spawnKey === integrationAgentSpawnKey(server.id ?? "") &&
-    bot?.spaceId === server.spaceId &&
-    bot?.userId === server.userId
-  );
+  return isIntegrationAgentForServer(assignment.server, assignment.bot);
 }
 
 /**
@@ -121,19 +131,21 @@ export function integrationAgentDenial(
   tool: { name: string; annotations?: ToolAnnotations },
 ): "belongs-to-agent" | "writes-off" | null {
   const { server, bot } = assignment;
-  const botIsIntegrationAgent = isIntegrationAgentSpawnKey(bot?.spawnKey);
+  const preset = integrationPresetForEndpoint(server.endpoint);
+  const botIsIntegrationAgent =
+    isIntegrationAgentSpawnKey(bot?.spawnKey) ||
+    isCartaAgentSpawnKey(bot?.spawnKey) ||
+    isServerAgent(assignment);
+  if (preset?.requiresAgent && !isIntegrationAgentForServer(server, server.agentBot))
+    return "belongs-to-agent";
   if (!server.agentBotId && !botIsIntegrationAgent) return null;
   if (isServerAgent(assignment)) {
-    const preset = integrationPresetForEndpoint(server.endpoint);
     return isReadTool(tool, preset) || server.writesEnabled === true ? null : "writes-off";
   }
   // exclusive without an agent is off; a stranded agent bot (released or forged) gets reads only.
   if (server.agentBotId && server.agentExclusive) return "belongs-to-agent";
-  if (botIsIntegrationAgent && bot?.spawnKey !== integrationAgentSpawnKey(server.id ?? ""))
-    return "belongs-to-agent";
-  return isReadTool(tool, integrationPresetForEndpoint(server.endpoint))
-    ? null
-    : "belongs-to-agent";
+  if (botIsIntegrationAgent && !isIntegrationAgentForServer(server, bot)) return "belongs-to-agent";
+  return isReadTool(tool, preset) ? null : "belongs-to-agent";
 }
 
 const denialMessage = (
@@ -154,24 +166,12 @@ export function assignmentAllowsTool(
   annotations?: ToolAnnotations,
 ): boolean {
   if (integrationAgentDenial(assignment, { name: toolName, annotations })) return false;
-  const cartaServer = isCartaEndpoint(assignment.server.endpoint);
-  const cartaAgent = isCartaAgentSpawnKey(assignment.bot?.spawnKey);
-  // Carta belongs to the Carta agent; other bots ask it through message_bot.
-  if (cartaServer && !cartaAgent) return false;
+  const preset = integrationPresetForEndpoint(assignment.server.endpoint);
+  if (preset?.allowedTools && !preset.allowedTools.includes(toolName)) return false;
   if (isFinanceAgentSpawnKey(assignment.bot?.spawnKey)) {
     const provider = financeProviderForEndpoint(assignment.server.endpoint);
     if (provider && !(FINANCE_READ_TOOLS[provider] as readonly string[]).includes(toolName))
       return false;
-  }
-  if (cartaAgent) {
-    // Only Carta's own tools: another server (say, email) would send mail without the mail_send approval.
-    if (!cartaServer) return false;
-    // Write tools need the server's switch, checked on every call so turning it off takes effect at once.
-    const allowed =
-      (CARTA_READ_TOOLS as readonly string[]).includes(toolName) ||
-      (assignment.server.writesEnabled === true &&
-        (CARTA_WRITE_TOOLS as readonly string[]).includes(toolName));
-    if (!allowed) return false;
   }
   return assignment.allowAllTools || (assignment.allowedTools as unknown[]).includes(toolName);
 }
@@ -198,6 +198,7 @@ function reportAllowlistDrift(
 export class McpConnector implements ConnectorProvider {
   private readonly sessions = new Map<string, SessionEntry>();
   private readonly connecting = new Map<string, PendingSession>();
+  private readonly toolLists = new WeakMap<McpSession, ToolListEntry>();
   // Discovery runs more than once per run: once up front, then again on every lazy
   // catalog access. Each attempt needs its own executionId.
   private discoverySeq = 0;
@@ -262,14 +263,25 @@ export class McpConnector implements ConnectorProvider {
         userId: context.userId,
         server: { enabled: true },
       },
-      include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
+      include: {
+        server: {
+          include: {
+            agentBot: {
+              select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+            },
+          },
+        },
+        bot: {
+          select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+        },
+      },
     });
     const groups = await Promise.all(
       assignments.map(async (assignment): Promise<ConnectorTool[]> => {
         const startedAt = Date.now();
         try {
           const session = await this.sessionFor(assignment.server, context);
-          const listed = await session.listTools({ signal: context.signal });
+          const listed = await this.cachedTools(session, context.signal);
           reportAllowlistDrift(assignment, listed.tools, context);
           return listed.tools
             .filter((tool) => assignmentAllowsTool(assignment, tool.name, tool.annotations))
@@ -401,19 +413,36 @@ export class McpConnector implements ConnectorProvider {
           userId: context.userId,
           server: { enabled: true },
         },
-        include: { server: true, bot: { select: { spawnKey: true, spaceId: true, userId: true } } },
+        include: {
+          server: {
+            include: {
+              agentBot: {
+                select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+              },
+            },
+          },
+          bot: {
+            select: { id: true, spawnKey: true, spaceId: true, userId: true, archivedAt: true },
+          },
+        },
       });
     let assignment = await loadAssignment();
     if (!assignment) {
       yield { type: "error", message: "MCP tool is not assigned to this bot" };
       return;
     }
-    // Annotations decide read or write, so a server with an agent is asked for its tool list.
+    // Preset classifications cannot change with annotations. Other tools still need a live list:
+    // cached read hints must never authorize a tool that has become a write since discovery.
     let annotations: ToolAnnotations;
     if (assignment.server.agentBotId) {
       try {
         const session = await this.sessionFor(assignment.server, context);
-        const listed = await session.listTools({ signal: context.signal });
+        const preset = integrationPresetForEndpoint(assignment.server.endpoint);
+        const fixedClassification =
+          preset?.reads.includes(route.toolName) || preset?.forcedWrites.includes(route.toolName);
+        const listed = fixedClassification
+          ? await this.cachedTools(session, context.signal)
+          : await session.listTools({ signal: context.signal });
         annotations = listed.tools.find((tool) => tool.name === route.toolName)?.annotations;
       } catch (error) {
         yield { type: "error", message: sanitizeConnectorError(error) };
@@ -506,12 +535,28 @@ export class McpConnector implements ConnectorProvider {
     context: AdapterContext,
     toolName: string,
     args: Record<string, unknown>,
+    options: {
+      /**
+       * Runs after the session is ready and immediately before the call, with nothing awaited in
+       * between. A throw refuses the call. Callers that authorize outside the approval flow use
+       * it to re-read their authorization once setup is done.
+       */
+      beforeCall?: () => Promise<void>;
+    } = {},
   ): Promise<CallToolResult> {
     const sessionKey = this.sessionKey(server, context);
     let material: OAuthMaterial | undefined;
+    let session: McpSession;
     try {
-      const session = await this.sessionFor(server, context);
+      session = await this.sessionFor(server, context);
       material = this.sessions.get(sessionKey)?.material;
+    } catch (error) {
+      const secrets = material ? oauthMaterialSecrets(material) : [];
+      await this.evict(sessionKey);
+      throw new Error(sanitizeConnectorError(error, secrets));
+    }
+    await options.beforeCall?.();
+    try {
       return await session.callTool(toolName, args, { signal: context.signal });
     } catch (error) {
       const secrets = material ? oauthMaterialSecrets(material) : [];
@@ -520,12 +565,22 @@ export class McpConnector implements ConnectorProvider {
     }
   }
 
-  /** Lists a stored server's tools, with their annotations, outside a bot run. */
-  async listServerTools(server: McpServer, context: AdapterContext): Promise<Tool[]> {
+  /**
+   * Lists a stored server's tools, with their annotations, outside a bot run. The listing is
+   * cached for a short time; pass `fresh` when the answer authorizes a call.
+   */
+  async listServerTools(
+    server: McpServer,
+    context: AdapterContext,
+    options: { fresh?: boolean } = {},
+  ): Promise<Tool[]> {
     const sessionKey = this.sessionKey(server, context);
     try {
       const session = await this.sessionFor(server, context);
-      return (await session.listTools({ signal: context.signal })).tools;
+      const listed = options.fresh
+        ? await session.listTools({ signal: context.signal })
+        : await this.cachedTools(session, context.signal);
+      return structuredClone(listed.tools);
     } catch (error) {
       await this.evict(sessionKey);
       throw new Error(sanitizeConnectorError(error));
@@ -535,7 +590,12 @@ export class McpConnector implements ConnectorProvider {
   async close(): Promise<void> {
     this.unsubscribe();
     await Promise.allSettled([...this.connecting.values()].map(({ promise }) => promise));
-    await Promise.all([...this.sessions.values()].map(({ session }) => session.close()));
+    await Promise.all(
+      [...this.sessions.values()].map(({ session }) => {
+        this.toolLists.delete(session);
+        return session.close();
+      }),
+    );
     this.sessions.clear();
     this.connecting.clear();
   }
@@ -550,7 +610,39 @@ export class McpConnector implements ConnectorProvider {
     const entry = this.sessions.get(sessionKey);
     if (!entry) return;
     this.sessions.delete(sessionKey);
+    this.toolLists.delete(entry.session);
     await entry.session.close();
+  }
+
+  private async cachedTools(session: McpSession, signal?: AbortSignal): Promise<ListToolsResult> {
+    signal?.throwIfAborted();
+    let entry = this.toolLists.get(session);
+    if (!entry) {
+      entry = { expiresAt: 0 };
+      this.toolLists.set(session, entry);
+    }
+    if (entry.result && Date.now() < entry.expiresAt) return entry.result;
+    let pending = entry.pending;
+    if (!pending) {
+      const current = entry;
+      pending = session.listTools({ signal }).then(
+        (result) => {
+          current.result = result;
+          current.expiresAt = Date.now() + TOOL_LIST_TTL_MS;
+          current.pending = undefined;
+          return result;
+        },
+        (error) => {
+          current.result = undefined;
+          current.pending = undefined;
+          throw error;
+        },
+      );
+      entry.pending = pending;
+    }
+    const result = await pending;
+    signal?.throwIfAborted();
+    return result;
   }
 
   private async sessionFor(server: McpServer, context: AdapterContext): Promise<McpSession> {

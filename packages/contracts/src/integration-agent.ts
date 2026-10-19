@@ -1,3 +1,9 @@
+import {
+  CARTA_READ_TOOLS,
+  CARTA_WRITE_TOOLS,
+  cartaAgentSpawnKey,
+  isCartaEndpoint,
+} from "./carta.js";
 import type { FinanceProvider } from "./finance.js";
 import { FINANCE_READ_TOOLS, financeProviderForEndpoint } from "./finance.js";
 
@@ -6,6 +12,47 @@ export const integrationAgentSpawnKey = (serverId: string) => `integration-agent
 
 export const isIntegrationAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(integrationAgentSpawnKey("")));
+
+/** The expected identity for a server's integration agent, including the specialized Carta agent. */
+export function integrationAgentSpawnKeyForServer(server: {
+  id: string;
+  userId: string;
+  endpoint?: string | null;
+}): string {
+  return isCartaEndpoint(server.endpoint)
+    ? cartaAgentSpawnKey(server.userId)
+    : integrationAgentSpawnKey(server.id);
+}
+
+/** Whether this exact, live bot is linked to the server as its integration agent. */
+export function isIntegrationAgentForServer(
+  server: {
+    id: string;
+    spaceId: string;
+    userId: string;
+    endpoint?: string | null;
+    agentBotId?: string | null;
+  },
+  bot:
+    | {
+        id: string;
+        spaceId: string;
+        userId: string;
+        spawnKey: string | null;
+        archivedAt: Date | null;
+      }
+    | null
+    | undefined,
+): boolean {
+  return Boolean(
+    bot &&
+      server.agentBotId === bot.id &&
+      server.spaceId === bot.spaceId &&
+      server.userId === bot.userId &&
+      bot.spawnKey === integrationAgentSpawnKeyForServer(server) &&
+      bot.archivedAt === null,
+  );
+}
 
 /**
  * Per-provider read and write lists, for tools whose MCP annotations are missing or wrong.
@@ -18,6 +65,10 @@ export type IntegrationPreset = {
   reads: readonly string[];
   /** Tools that are always writes, whatever the annotation says. Wins over `reads`. */
   forcedWrites: readonly string[];
+  /** When present, no tool outside this list may be used, regardless of server annotations. */
+  allowedTools?: readonly string[];
+  /** The integration must have a valid linked agent before any tool may be used. */
+  requiresAgent?: boolean;
   /** What the service is and how its writes behave, added to the agent's instructions. */
   instructions: string;
 };
@@ -152,12 +203,22 @@ export const INTEGRATION_PRESETS = {
       "verify_shipping_address",
     ],
   },
-} as const satisfies Record<FinanceProvider, IntegrationPreset>;
+  carta: {
+    service: "Carta",
+    instructions:
+      "Carta manages a company's cap table and investor relationships. Changes in Carta are requests that the user approves here. Never invent a figure: write TBD where you do not have one.",
+    reads: CARTA_READ_TOOLS,
+    forcedWrites: CARTA_WRITE_TOOLS,
+    allowedTools: [...CARTA_READ_TOOLS, ...CARTA_WRITE_TOOLS],
+    requiresAgent: true,
+  },
+} as const satisfies Record<FinanceProvider | "carta", IntegrationPreset>;
 
 /** The preset for an MCP server, matched by its endpoint like the Finance agent. */
 export function integrationPresetForEndpoint(
   endpoint: string | null | undefined,
 ): IntegrationPreset | undefined {
+  if (isCartaEndpoint(endpoint)) return INTEGRATION_PRESETS.carta;
   const provider = financeProviderForEndpoint(endpoint);
   return provider ? INTEGRATION_PRESETS[provider] : undefined;
 }
@@ -168,8 +229,9 @@ export function integrationPresetForEndpoint(
  */
 export function isReadTool(
   tool: { name: string; annotations?: { readOnlyHint?: boolean } | null },
-  preset?: Pick<IntegrationPreset, "reads" | "forcedWrites">,
+  preset?: Pick<IntegrationPreset, "reads" | "forcedWrites" | "allowedTools">,
 ): boolean {
+  if (preset?.allowedTools && !preset.allowedTools.includes(tool.name)) return false;
   if (preset?.forcedWrites.includes(tool.name)) return false;
   return tool.annotations?.readOnlyHint === true || Boolean(preset?.reads.includes(tool.name));
 }

@@ -46,7 +46,16 @@ async function show(
 ) {
   const data = {
     ...mockIntegrations({
-      servers: [mockServer("s1", "Carta", { endpoint, writesEnabled, ...extra })],
+      servers: [
+        mockServer("s1", "Carta", {
+          endpoint,
+          writesEnabled,
+          ...(endpoint === "https://mcp.app.carta.com/mcp"
+            ? { agentBotId: "bot_ada", agentExclusive: true }
+            : {}),
+          ...extra,
+        }),
+      ],
     }),
     refresh,
   };
@@ -199,4 +208,24 @@ it("Only this agent saves at once and, while on, Used by lists only the agent", 
   expect(container.querySelectorAll('[role="switch"][aria-label$="can use Carta"]')).toHaveLength(
     1,
   );
+});
+
+it("uses the general Agent section for a linked Carta agent", async () => {
+  setExclusive.mockResolvedValue({});
+  await show(false);
+  expect(container.querySelector('section[aria-label="Agent"]')).not.toBeNull();
+  expect(container.querySelectorAll("#server-writes")).toHaveLength(1);
+  expect(container.textContent).toContain("Only this agent");
+  expect(container.querySelector('a[href="/app/bot_ada"]')).not.toBeNull();
+  await act(async () => container.querySelector<HTMLElement>("#server-exclusive")?.click());
+  expect(setExclusive).toHaveBeenCalledWith({ serverId: "s1", exclusive: false });
+});
+
+it("offers Create agent for Carta without a linked agent, with no writes switch", async () => {
+  create.mockResolvedValue({ server: {}, botId: "bot_carta" });
+  await show(false, undefined, { agentBotId: null, agentExclusive: false });
+  expect(writesSwitch()).toBeNull();
+  await press("Create agent");
+  expect(create).toHaveBeenCalledWith({ serverId: "s1" });
+  expect(navigate).toHaveBeenCalledWith("/app/bot_carta");
 });

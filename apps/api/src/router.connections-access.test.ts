@@ -1,5 +1,6 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import type { Actor } from "@rakazo/contracts";
+import { integrationAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "./router.js";
@@ -31,6 +32,7 @@ const conn = (id: string, status: string, extra: Row = {}): Row => ({
   displayName: id,
   status,
   allAgents: true,
+  agentBotId: null,
   createdAt: new Date("2026-10-01T00:00:00Z"),
   ...extra,
 });
@@ -70,6 +72,9 @@ function harness(connections: Row[], bots: Row[], access: Row[] = []) {
       count: vi.fn(
         async ({ where }: { where: Row }) => bots.filter((r) => matches(r, where)).length,
       ),
+      updateMany: vi.fn(async ({ where }: { where: Row }) => ({
+        count: bots.filter((r) => matches(r, where)).length,
+      })),
     },
     botConnectionAccess: {
       deleteMany: vi.fn(async ({ where }: { where: Row }) => {
@@ -108,7 +113,12 @@ function harness(connections: Row[], bots: Row[], access: Row[] = []) {
   return { call, access, connections };
 }
 
-const bot = (id: string, userId = "u1"): Row => ({ id, spaceId: "s1", userId });
+const bot = (id: string, userId = "u1", extra: Row = {}): Row => ({
+  id,
+  spaceId: "s1",
+  userId,
+  ...extra,
+});
 
 describe("connections.list", () => {
   it("returns connected, pending and error rows with a reason, never revoked", async () => {
@@ -198,40 +208,78 @@ describe("connections.access and setAccess", () => {
     expect(h.access).toEqual([]);
   });
 
-  it("applies one setting to every account of the app and leaves other apps alone", async () => {
+  it("fans out ordinary access to matching accounts and leaves other apps alone", async () => {
     const h = harness(
       [
         conn("a", "connected"),
-        conn("b", "pending"),
+        conn("b", "connected"),
         conn("c", "connected", { provider: "github" }),
+        conn("d", "connected", { allAgents: false, agentBotId: "linked-agent" }),
       ],
-      [bot("b1")],
+      [bot("b1"), bot("linked-agent")],
+      [{ connectionId: "d", botId: "linked-agent", userId: "u1", spaceId: "s1" }],
     );
     await h.call("connections/setAccess", { connectionId: "a", allAgents: false, botIds: ["b1"] });
     expect(h.connections.map((r) => [r.id, r.allAgents])).toEqual([
       ["a", false],
       ["b", false],
       ["c", true],
+      ["d", false],
     ]);
     expect(h.access.map((r) => [r.connectionId, r.botId])).toEqual([
+      ["d", "linked-agent"],
       ["a", "b1"],
       ["b", "b1"],
     ]);
   });
 
-  it("gives a newly connected account the app's existing setting", async () => {
+  it("does not let setAccess grant other bots on an exclusive agent connection", async () => {
     const h = harness(
-      [conn("a", "connected", { allAgents: false })],
-      [bot("b1")],
-      [{ connectionId: "a", botId: "b1", userId: "u1", spaceId: "s1" }],
+      [conn("a", "connected", { allAgents: false, agentBotId: "agent" })],
+      [
+        bot("agent", "u1", {
+          spawnKey: integrationAgentSpawnKey("a"),
+          archivedAt: null,
+        }),
+        bot("other"),
+      ],
+      [{ connectionId: "a", botId: "agent", userId: "u1", spaceId: "s1" }],
+    );
+
+    const result = await h.call("connections/setAccess", {
+      connectionId: "a",
+      allAgents: false,
+      botIds: ["agent", "other"],
+    });
+
+    expect(result.status).toBeGreaterThanOrEqual(400);
+    expect(h.connections[0]).toMatchObject({ allAgents: false, agentBotId: "agent" });
+    expect(h.access).toEqual([{ connectionId: "a", botId: "agent", userId: "u1", spaceId: "s1" }]);
+  });
+
+  it("gives a new account the ordinary app setting without inheriting a linked sibling", async () => {
+    const h = harness(
+      [
+        conn("a", "connected", { allAgents: false }),
+        conn("linked", "connected", { allAgents: false, agentBotId: "linked-agent" }),
+      ],
+      [bot("b1"), bot("linked-agent")],
+      [
+        { connectionId: "a", botId: "b1", userId: "u1", spaceId: "s1" },
+        { connectionId: "linked", botId: "linked-agent", userId: "u1", spaceId: "s1" },
+      ],
     );
     await h.call("connections/begin", {
       connectorId: "composio",
       provider: "slack",
       displayName: "Second",
     });
-    const created = h.connections[1] as Row;
+    const created = h.connections.at(-1) as Row;
     expect(created.allAgents).toBe(false);
-    expect(h.access.map((r) => [r.connectionId, r.botId])).toContainEqual([created.id, "b1"]);
+    expect(h.access.map((r) => [r.connectionId, r.botId])).toEqual([
+      ["a", "b1"],
+      ["linked", "linked-agent"],
+      [created.id, "b1"],
+    ]);
   });
 });

@@ -1,5 +1,5 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { isCartaAgentSpawnKey, isCartaEndpoint } from "@rakazo/contracts";
+import { isCartaEndpoint } from "@rakazo/contracts";
 import { Button, Input } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
@@ -10,7 +10,7 @@ import { errorText } from "../../lib/user-error";
 import { ConfirmDialog, Heading } from "./AppDetail";
 import { AppLogo } from "./AppLogo";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
-import { IntegrationAgentSection, WritesSwitch } from "./IntegrationAgentSection";
+import { IntegrationAgentSection } from "./IntegrationAgentSection";
 import { AgentToggleList, StatusBadge } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
@@ -106,7 +106,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
   const carta = isCartaEndpoint(server.endpoint);
   const service = carta ? "Carta" : server.name;
   const agent = data.bots.find((bot) => bot.id === server.agentBotId);
-  const hasAgent = !carta && server.agentBotId !== null;
+  const hasAgent = server.agentBotId !== null;
   const setWrites = (on: boolean) =>
     on
       ? setConfirmingWrites(true)
@@ -114,9 +114,8 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           () => rpc.mcp.servers.setWrites({ id: server.id, enabled: false }).then(() => undefined),
           t`Could not update changes`,
         );
-  const usedBy = carta
-    ? data.bots.filter((bot) => isCartaAgentSpawnKey(bot.spawnKey))
-    : hasAgent && server.agentExclusive
+  const usedBy =
+    hasAgent && server.agentExclusive
       ? data.bots.filter((bot) => bot.id === server.agentBotId)
       : data.bots;
   return (
@@ -193,7 +192,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
               <Trans>Disconnect sign-in</Trans>
             </Button>
           ) : null}
-          {!carta && !hasAgent ? (
+          {!hasAgent ? (
             <Button
               variant="outline"
               disabled={busy}
@@ -212,26 +211,10 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           </Button>
         </div>
 
-        {carta ? (
-          <div className="mt-4">
-            <WritesSwitch
-              service="Carta"
-              checked={server.writesEnabled}
-              disabled={busy}
-              onChange={setWrites}
-              hint={
-                <Trans>
-                  Off: the Carta agent only reads Carta. On: it can also make changes, such as
-                  option grants, and asks you before each one.
-                </Trans>
-              }
-            />
-          </div>
-        ) : null}
         {hasAgent && server.agentBotId ? (
           <IntegrationAgentSection
-            service={server.name}
-            agentName={agent?.name ?? t`${server.name} agent`}
+            service={service}
+            agentName={agent?.name ?? t`${service} agent`}
             agentHref={`/app/${server.agentBotId}`}
             writesEnabled={server.writesEnabled}
             exclusive={server.agentExclusive}

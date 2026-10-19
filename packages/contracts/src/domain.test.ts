@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type ConnectionCatalogItem, preferNativeGoogle } from "./domain.js";
+import type { ConnectionCatalogItem } from "./domain.js";
+import { ConnectionSchema, preferNativeGoogle } from "./domain.js";
 
 const item = (connectorId: string, slug: string): ConnectionCatalogItem => ({
   connectorId,
@@ -72,5 +73,24 @@ describe("preferNativeGoogle", () => {
       drive,
       google,
     ]);
+  });
+});
+
+describe("ConnectionSchema", () => {
+  it("keeps agent fields optional for existing fixtures and exposes durable values", () => {
+    const base = {
+      id: "connection-1",
+      connectorId: "composio",
+      provider: "GMAIL",
+      displayName: "Work Gmail",
+      status: "connected",
+      error: null,
+      capabilities: [],
+      createdAt: "2026-10-01T00:00:00.000Z",
+    };
+    expect(ConnectionSchema.parse(base)).toMatchObject(base);
+    expect(
+      ConnectionSchema.parse({ ...base, writesEnabled: true, agentBotId: "bot-1" }),
+    ).toMatchObject({ writesEnabled: true, agentBotId: "bot-1" });
   });
 });

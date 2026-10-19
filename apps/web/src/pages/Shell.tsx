@@ -8,8 +8,6 @@ import type {
   BotSection,
   ComputerReleaseReason,
   ComputerStatus,
-  Connection,
-  ConnectionCatalogItem,
   Group,
   MailEdits,
   Me,
@@ -248,11 +246,7 @@ import {
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
 import { desktopBridge } from "../lib/desktop";
-import {
-  chatStarterQuestions,
-  financeAgentSuggestions,
-  findFinanceAgent,
-} from "../lib/finance-agent";
+import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { findLegalAgent } from "../lib/legal-agent";
@@ -2254,35 +2248,11 @@ export function ShellPage() {
   const botsForMentionsRef = useRef(bots);
   botsForMentionsRef.current = bots;
 
-  useEffect(() => {
-    const bots = botsForMentionsRef.current;
-    if (!initialBotsLoaded || bots.length === 0) {
-      setMentionRoutines([]);
-      setMentionConnectors([]);
-      return;
-    }
-    let cancelled = false;
-    const botNameById = new Map(bots.map((bot) => [bot.id, bot.name]));
-    void Promise.all(
-      bots.map((bot) =>
-        rpc.routines
-          .list({ botId: bot.id })
-          .then((rows) =>
-            rows.map((routine) => ({
-              ...routine,
-              botName: botNameById.get(bot.id) ?? bot.name,
-            })),
-          )
-          .catch(() => [] as Array<Routine & { botName?: string }>),
-      ),
-    ).then((lists) => {
-      if (!cancelled) setMentionRoutines(lists.flat());
-    });
+  const loadMentionConnectors = useCallback(() => {
     void Promise.all([
-      rpc.connections.list().catch(() => [] as Connection[]),
-      rpc.connections.catalog({}).catch(() => [] as ConnectionCatalogItem[]),
+      rpc.connections.list().catch(() => []),
+      rpc.connections.catalog({}).catch(() => []),
     ]).then(([connections, catalog]) => {
-      if (cancelled) return;
       const connected = connections.filter((row) => row.status === "connected");
       const options: Array<{
         id: string;
@@ -2309,10 +2279,36 @@ export function ShellPage() {
         options.push({
           id: `catalog:${item.connectorId}:${item.slug}`,
           name: item.name,
-          authStatus: "needs_auth",
+          authStatus: "needs_auth" as const,
         });
       }
       setMentionConnectors(options);
+    });
+  }, []);
+
+  useEffect(() => {
+    const bots = botsForMentionsRef.current;
+    if (!initialBotsLoaded || bots.length === 0) {
+      setMentionRoutines([]);
+      setMentionConnectors([]);
+      return;
+    }
+    let cancelled = false;
+    const botNameById = new Map(bots.map((bot) => [bot.id, bot.name]));
+    void Promise.all(
+      bots.map((bot) =>
+        rpc.routines
+          .list({ botId: bot.id })
+          .then((rows) =>
+            rows.map((routine) => ({
+              ...routine,
+              botName: botNameById.get(bot.id) ?? bot.name,
+            })),
+          )
+          .catch(() => [] as Array<Routine & { botName?: string }>),
+      ),
+    ).then((lists) => {
+      if (!cancelled) setMentionRoutines(lists.flat());
     });
     return () => {
       cancelled = true;
@@ -3283,15 +3279,6 @@ export function ShellPage() {
     .toUpperCase();
 
   const pinsList = !inGroup && !pageMode && botPins?.list ? botPins : null;
-  const chatStarters = chatStarterQuestions(
-    active,
-    userId,
-    Boolean(activeSnapshot) &&
-      transcriptMessages.length === 0 &&
-      activeSnapshot?.olderCursor == null &&
-      !transcriptRunning &&
-      !sending,
-  );
   const composerDisabled = Boolean(recordingSkill) || pageAgentNeedsModel;
   const paneAcceptsFiles = !pageMode && Boolean(active || activeGroup);
   function onPaneFileDrag(event: DragEvent<HTMLElement>) {
@@ -3522,6 +3509,7 @@ export function ShellPage() {
               replyTargetName={replyTargetName}
               onClearReply={clearReply}
               mentionTargets={composerMentionTargets}
+              onMentionOpen={loadMentionConnectors}
               agentSkills={agentSkills}
               onSlashOpen={refreshAgentSkills}
               sentHistory={sentHistory}
@@ -6703,6 +6691,7 @@ export const Composer = memo(function Composer({
   replyTargetName,
   onClearReply,
   mentionTargets,
+  onMentionOpen,
   agentSkills,
   onSlashOpen,
   onSlashAction,
@@ -6736,6 +6725,7 @@ export const Composer = memo(function Composer({
   replyTargetName?: string;
   onClearReply?: () => void;
   mentionTargets?: ComposerMention[];
+  onMentionOpen?: () => void;
   agentSkills?: AgentSkillCatalogEntry[];
   onSlashOpen?: () => void;
   onSlashAction?: (action: SlashActionId) => void;
@@ -6918,7 +6908,9 @@ export const Composer = memo(function Composer({
     markEdited();
     setDraft(value);
     const mentionMatch = /(?:^|\s)@([\w-]*)$/.exec(value);
-    setMentionQuery(mentionMatch ? (mentionMatch[1] ?? "") : null);
+    const nextMentionQuery = mentionMatch ? (mentionMatch[1] ?? "") : null;
+    if (mentionQuery === null && nextMentionQuery !== null) onMentionOpen?.();
+    setMentionQuery(nextMentionQuery);
     // `/` only at the start of the draft so forced skills expand (`Use skill:` / `/Name` prefix).
     const slashMatch = selectedSkill === null ? /^\/([^\n]*)$/.exec(value) : null;
     const nextSlash = slashMatch ? (slashMatch[1] ?? "") : null;
