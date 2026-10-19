@@ -5,38 +5,25 @@ import {
   Button,
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Input,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
   Popover,
   PopoverContent,
   PopoverTrigger,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
 } from "@rakazo/ui-web";
-import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  Folder,
-  FolderPlus,
-  Search,
-  WandSparkles,
-  X,
-} from "lucide-react";
+import { ChevronDown, Folder, FolderPlus, WandSparkles, X } from "lucide-react";
 import { type FormEvent, type ReactElement, useState } from "react";
+import { PickFilter, SearchField, SortControl, Tip } from "../ListControls";
 import { PAGE_GUTTER_X } from "../PageHeader";
 import type { FolderNode } from "./folders";
 import { typeLabel } from "./format";
 import type { Filters, Sort, SortField } from "./use-data-room-list";
 import { naturalSort } from "./use-data-room-list";
+
+// Other files import Tip from here.
+export { Tip };
 
 export const sourceLabels = () => ({
   upload: t`Upload`,
@@ -56,24 +43,6 @@ const sortLabels = (): Record<SortField | "relevance", string> => ({
   type: t`Type`,
   createdAt: t`Added`,
 });
-
-/** A hover and focus label for an icon-only control. */
-export function Tip({
-  label,
-  side,
-  children,
-}: {
-  label: string;
-  side?: "top" | "bottom" | "left" | "right";
-  children: ReactElement;
-}) {
-  return (
-    <Tooltip>
-      <TooltipTrigger render={children} />
-      <TooltipContent side={side}>{label}</TooltipContent>
-    </Tooltip>
-  );
-}
 
 /** In the page header the labelled buttons shrink to icons where the line is too short for text. */
 export const TOOLBAR_BUTTON = "@max-[639px]/bd:w-8 @max-[639px]/bd:px-0";
@@ -207,74 +176,6 @@ function DateFilter({
   );
 }
 
-/** A pill that picks one of the values the items have; with a value it shows it and a remove button. */
-function PickFilter({
-  label,
-  value,
-  options,
-  empty,
-  onChange,
-}: {
-  label: string;
-  value: string | undefined;
-  /** [value, display name] pairs. */
-  options: [string, string][];
-  /** Shown in the menu when there is nothing to pick, so the pill never vanishes unexplained. */
-  empty?: string;
-  onChange: (value: string | undefined) => void;
-}) {
-  const shown = options.find(([option]) => option === value)?.[1] ?? value;
-  return (
-    <span className="inline-flex items-center">
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          render={
-            <Button
-              variant={value ? "secondary" : "outline"}
-              size="sm"
-              className={value ? "rounded-s-full rounded-e-none" : "rounded-full"}
-            />
-          }
-          aria-label={value ? `${label}: ${shown}` : t`Filter by ${label}`}
-        >
-          {value ? `${label}: ${shown}` : label}
-          {value ? null : <ChevronDown aria-hidden="true" />}
-        </DropdownMenuTrigger>
-        {/* As wide as its longest value (within the screen), so names do not wrap. */}
-        <DropdownMenuContent
-          align="start"
-          className="max-h-72 w-max min-w-40 max-w-[min(24rem,calc(100vw-2rem))]"
-        >
-          <DropdownMenuRadioGroup
-            value={value ?? ""}
-            onValueChange={(next) => onChange(String(next))}
-          >
-            {options.map(([option, name]) => (
-              <DropdownMenuRadioItem key={option} value={option} closeOnClick>
-                {name}
-              </DropdownMenuRadioItem>
-            ))}
-          </DropdownMenuRadioGroup>
-          {options.length === 0 && empty ? (
-            <DropdownMenuItem disabled>{empty}</DropdownMenuItem>
-          ) : null}
-        </DropdownMenuContent>
-      </DropdownMenu>
-      {value ? (
-        <Button
-          variant="secondary"
-          size="icon-sm"
-          className="rounded-s-none rounded-e-full"
-          aria-label={t`Remove filter ${label}`}
-          onClick={() => onChange(undefined)}
-        >
-          <X aria-hidden="true" />
-        </Button>
-      ) : null}
-    </span>
-  );
-}
-
 export type FacetOptions = {
   types: string[];
   parties: string[];
@@ -365,39 +266,14 @@ export function FilterBar({
     // Search and Sort share the first row; the filter pills wrap on a row of their own below, or,
     // given room, between the two. Sort never moves down among the pills.
     <div className={`flex flex-wrap items-start gap-1.5 pb-2.5 ${PAGE_GUTTER_X}`}>
-      <InputGroup className="order-1 w-full @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80">
-        <InputGroupAddon>
-          <Search aria-hidden="true" />
-        </InputGroupAddon>
-        <InputGroupInput
-          type="search"
-          value={query}
-          onChange={(event) => onQuery(event.target.value)}
-          placeholder={t`Search names and text`}
-          aria-label={t`Search documents`}
-          autoComplete="off"
-          name="data-room-search"
-          onKeyDown={(event) => event.key === "Escape" && query && onQuery("")}
-          className="[&::-webkit-search-cancel-button]:appearance-none"
-        />
-        {query ? (
-          <InputGroupAddon align="inline-end">
-            <InputGroupButton
-              size="icon-xs"
-              aria-label={t`Clear search`}
-              onClick={(event) => {
-                onQuery("");
-                event.currentTarget
-                  .closest("[data-slot=input-group]")
-                  ?.querySelector("input")
-                  ?.focus();
-              }}
-            >
-              <X aria-hidden="true" />
-            </InputGroupButton>
-          </InputGroupAddon>
-        ) : null}
-      </InputGroup>
+      <SearchField
+        className="order-1 w-full @min-[640px]/bd:me-1.5 @min-[640px]/bd:w-80"
+        value={query}
+        onChange={onQuery}
+        placeholder={t`Search names and text`}
+        label={t`Search documents`}
+        name="data-room-search"
+      />
       {/* Where the folder tree is hidden, this picks the folder; it sits with Sort, not the pills. */}
       <div className="order-2 flex h-8 items-center gap-1 @min-[800px]/bd:hidden">
         <DropdownMenu>
@@ -486,45 +362,15 @@ export function FilterBar({
         ) : null}
       </div>
       <div className="order-3 ms-auto flex h-8 shrink-0 items-center gap-0.5 @min-[960px]/bd:order-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={<Button variant="outline" size="sm" className="rounded-full" />}
-          >
-            <Trans>Sort: {labels[field]}</Trans>
-            <ChevronDown aria-hidden="true" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-40">
-            <DropdownMenuRadioGroup
-              value={field}
-              onValueChange={(next) =>
-                onSort(next === "relevance" ? null : naturalSort(next as SortField))
-              }
-            >
-              {fields.map((name) => (
-                <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                  {labels[name]}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
         {/* Relevance has no direction, so the arrow only shows for a field sort. */}
-        {sort ? (
-          <Tip label={direction === "asc" ? t`Ascending` : t`Descending`}>
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              aria-label={direction === "asc" ? t`Ascending` : t`Descending`}
-              onClick={() => onSort({ ...sort, direction: direction === "asc" ? "desc" : "asc" })}
-            >
-              {direction === "asc" ? (
-                <ArrowUp aria-hidden="true" />
-              ) : (
-                <ArrowDown aria-hidden="true" />
-              )}
-            </Button>
-          </Tip>
-        ) : null}
+        <SortControl
+          fields={fields.map((name) => [name, labels[name]])}
+          field={field}
+          fieldLabel={labels[field]}
+          direction={sort ? direction : undefined}
+          onField={(next) => onSort(next === "relevance" ? null : naturalSort(next as SortField))}
+          onDirection={(next) => sort && onSort({ ...sort, direction: next })}
+        />
       </div>
     </div>
   );

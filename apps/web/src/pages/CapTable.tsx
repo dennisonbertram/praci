@@ -40,6 +40,7 @@ import { FolderDocuments } from "../components/data-room/FolderDocuments";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { CustomConnectionDialog } from "../components/integrations/CustomConnectionDialog";
 import { useIntegrations } from "../components/integrations/useIntegrations";
+import { PickFilter, SearchField, SortControl } from "../components/ListControls";
 import { PageHeader } from "../components/PageHeader";
 import { hasConnectedCarta } from "../lib/carta-agent";
 import { percentFigure, shareCount, usdFigure } from "../lib/finance-format";
@@ -111,6 +112,46 @@ const matchesFilter = (row: Row, filter: Filter): boolean =>
   (CARTA_FILTERS.includes(filter)
     ? !!row.holder && holdingKind(row.holder) === filter
     : rowKind(row) === filter);
+
+type SortField = "name" | "kind" | "percent" | "shares" | "amountUsd";
+type Direction = "asc" | "desc";
+const SORT_FIELDS: readonly SortField[] = ["name", "kind", "percent", "shares", "amountUsd"];
+const parseSortField = (value: string | null): SortField | null =>
+  SORT_FIELDS.find((field) => field === value) ?? null;
+
+const rowName = ({ contact, holder }: Row) => contact?.name ?? holder?.name ?? "";
+const rowSecurity = ({ holder }: Row) => holder?.security;
+
+/** Name, company and email, either from the contact or from Carta. */
+const rowMatchesQuery = (row: Row, query: string): boolean =>
+  [
+    rowName(row),
+    row.contact?.organization ?? row.holder?.organization,
+    row.contact?.email ?? row.holder?.email,
+  ].some((text) => text?.toLowerCase().includes(query));
+
+/** A row's number for a sort field; a row with none (a contact with no holding) sorts last. */
+const rowNumber = (row: Row, field: "percent" | "shares" | "amountUsd"): number | null =>
+  row.holder?.[field] ?? null;
+
+function sortRows(
+  rows: Row[],
+  field: SortField,
+  direction: Direction,
+  kindName: (row: Row) => string,
+): Row[] {
+  const sign = direction === "asc" ? 1 : -1;
+  const text = (a: string, b: string) => a.localeCompare(b, undefined, { numeric: true });
+  return [...rows].sort((a, b) => {
+    if (field === "name") return sign * text(rowName(a), rowName(b));
+    if (field === "kind")
+      return sign * text(kindName(a), kindName(b)) || text(rowName(a), rowName(b));
+    const x = rowNumber(a, field);
+    const y = rowNumber(b, field);
+    if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
+    return sign * (x - y);
+  });
+}
 
 function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
   const byEmail = new Map(contacts.filter((c) => c.email).map((c) => [c.email?.toLowerCase(), c]));
@@ -494,6 +535,17 @@ export function CapTablePage({
       },
       { replace: true },
     );
+  const setParam = (key: string, value: string | undefined) =>
+    setParams(
+      (current) => {
+        const updated = new URLSearchParams(current);
+        if (value) updated.set(key, value);
+        else updated.delete(key);
+        return updated;
+      },
+      { replace: true },
+    );
+  const query = params.get("q") ?? "";
   const [editing, setEditing] = useState<Contact | Prefill | "new" | null>(null);
   const [toast, setToast] = useState<{
     text: string;
@@ -636,7 +688,41 @@ export function CapTablePage({
   useEffect(() => {
     if (filtersSettled && filter !== requestedFilter) setFilter("all");
   });
-  const shown = rows.filter((row) => matchesFilter(row, filter));
+  const kindRows = rows.filter((row) => matchesFilter(row, filter));
+  // Security shows only with a choice to make: two or more securities among these rows.
+  const securities = [...new Set(kindRows.flatMap((row) => rowSecurity(row) ?? []))].sort((a, b) =>
+    a.localeCompare(b),
+  );
+  const security = securities.includes(params.get("security") ?? "")
+    ? (params.get("security") ?? undefined)
+    : undefined;
+  const hasShares = rows.some((row) => rowNumber(row, "shares") !== null);
+  const hasAmounts = rows.some((row) => rowNumber(row, "amountUsd") !== null);
+  const sortFields: [SortField, string][] = [
+    ["name", t`Name`],
+    ["kind", t`Kind`],
+    ...(snapshot ? [["percent", t`Ownership`] as [SortField, string]] : []),
+    ...(hasShares ? [["shares", t`Shares`] as [SortField, string]] : []),
+    ...(hasAmounts ? [["amountUsd", t`Amount`] as [SortField, string]] : []),
+  ];
+  const requestedSort = parseSortField(params.get("sort"));
+  const defaultSort: SortField = snapshot ? "percent" : "name";
+  const sortField = sortFields.some(([name]) => name === requestedSort)
+    ? (requestedSort as SortField)
+    : defaultSort;
+  const sortDirection: Direction =
+    params.get("dir") === "asc" || params.get("dir") === "desc"
+      ? (params.get("dir") as Direction)
+      : sortField === "name" || sortField === "kind"
+        ? "asc"
+        : "desc";
+  const needle = query.trim().toLowerCase();
+  const narrowed = kindRows.filter(
+    (row) =>
+      (!security || rowSecurity(row) === security) && (!needle || rowMatchesQuery(row, needle)),
+  );
+  const shown = sortRows(narrowed, sortField, sortDirection, (row) => names[rowKind(row)]);
+  const narrowing = !!needle || !!security;
   const showHoldings = snapshot !== null || reading;
   const filterNames: Record<Filter, string> = {
     all: t`All`,
@@ -858,6 +944,58 @@ export function CapTablePage({
         </TabsList>
       </Tabs>
 
+      {rows.length > 0 && !error ? (
+        // Search takes the first row on a phone; Security and Sort wrap beneath it.
+        <div className="mb-4 flex flex-wrap items-center gap-1.5">
+          <SearchField
+            className="w-full @md:w-72"
+            value={query}
+            onChange={(next) => setParam("q", next || undefined)}
+            placeholder={t`Search`}
+            label={t`Search`}
+            name="cap-table-search"
+          />
+          {securities.length > 1 || security ? (
+            <PickFilter
+              label={t`Security`}
+              value={security}
+              options={securities.map((name) => [name, name])}
+              onChange={(next) => setParam("security", next)}
+            />
+          ) : null}
+          <div className="ms-auto flex items-center gap-0.5">
+            <SortControl
+              fields={sortFields}
+              field={sortField}
+              fieldLabel={sortFields.find(([name]) => name === sortField)?.[1] ?? ""}
+              direction={sortDirection}
+              onField={(next) =>
+                setParams(
+                  (current) => {
+                    const updated = new URLSearchParams(current);
+                    updated.set("sort", next);
+                    updated.delete("dir");
+                    return updated;
+                  },
+                  { replace: true },
+                )
+              }
+              onDirection={(next) =>
+                setParams(
+                  (current) => {
+                    const updated = new URLSearchParams(current);
+                    updated.set("sort", sortField);
+                    updated.set("dir", next);
+                    return updated;
+                  },
+                  { replace: true },
+                )
+              }
+            />
+          </div>
+        </div>
+      ) : null}
+
       {refreshError ? (
         <div role="alert" className="mb-3 flex flex-wrap items-center gap-3 text-sm">
           <span className="text-destructive">{refreshError}</span>
@@ -889,8 +1027,28 @@ export function CapTablePage({
         </div>
       ) : shown.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-16 text-center">
-          <p className="max-w-sm text-sm text-muted-foreground">{emptyText[filter]}</p>
-          {!isContactKind(filter) ? null : (
+          <p className="max-w-sm text-sm text-muted-foreground">
+            {narrowing ? t`No matches` : emptyText[filter]}
+          </p>
+          {narrowing ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                setParams(
+                  (current) => {
+                    const updated = new URLSearchParams(current);
+                    updated.delete("q");
+                    updated.delete("security");
+                    return updated;
+                  },
+                  { replace: true },
+                )
+              }
+            >
+              <Trans>Clear filters</Trans>
+            </Button>
+          ) : !isContactKind(filter) ? null : (
             <Button variant="outline" size="sm" onClick={addContact}>
               <Plus aria-hidden="true" />
               {addKindLabel[filter]}

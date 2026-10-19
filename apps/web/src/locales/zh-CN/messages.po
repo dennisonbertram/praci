@@ -1011,6 +1011,7 @@ msgstr "始终允许"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
@@ -1164,7 +1165,7 @@ msgstr ""
 msgid "Artifacts"
 msgstr ""
 
-#: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Ascending"
 msgstr ""
 
@@ -1924,6 +1925,7 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/pages/CapTable.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
 msgstr ""
@@ -1932,7 +1934,7 @@ msgstr ""
 msgid "Clear formatting"
 msgstr ""
 
-#: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr ""
@@ -3299,7 +3301,7 @@ msgstr "拒绝"
 msgid "Deployment default"
 msgstr "部署默认"
 
-#: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Descending"
 msgstr ""
 
@@ -3863,6 +3865,7 @@ msgid "Filter"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Filter by {label}"
 msgstr ""
 
@@ -5520,6 +5523,7 @@ msgstr ""
 msgid "No mail matches this filter"
 msgstr ""
 
+#: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
 msgstr ""
@@ -6721,6 +6725,7 @@ msgid "Remove attachments?"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Remove filter {label}"
 msgstr ""
 
@@ -7189,6 +7194,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
@@ -7300,6 +7306,7 @@ msgstr ""
 msgid "Searching…"
 msgstr "正在搜索…"
 
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 msgid "Security"
 msgstr ""
@@ -7702,9 +7709,8 @@ msgstr "软件更新"
 msgid "Something went wrong. Try again."
 msgstr "出了点问题。请重试。"
 
-#. placeholder {0}: labels[field]
-#: src/components/data-room/FilterBar.tsx
-msgid "Sort: {0}"
+#: src/components/ListControls.tsx
+msgid "Sort: {fieldLabel}"
 msgstr ""
 
 #: src/pages/Inbox.tsx
