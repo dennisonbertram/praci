@@ -64,6 +64,7 @@ import {
   serializeComposerPrompt,
   speechFromBlocks,
   timeSeparatorIds,
+  toolPhrase,
   truncateSlashDescription,
   userVisibleMessages,
   withLiveStreamingProgress,
@@ -6104,7 +6105,8 @@ export const Transcript = memo(function Transcript({
         : activity?.kind === "writing"
           ? t`Writing`
           : activity?.kind === "tool"
-            ? (toolActionLabel(activity.action) ?? activity.label)
+            ? (toolActionLabel(activity.action) ??
+              (toolPhrase(activity.label, "activity") || activity.label))
             : workingBotName
               ? t`${workingBotName} is working`
               : t`Bots are working`;

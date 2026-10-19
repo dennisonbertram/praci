@@ -16,6 +16,9 @@ import {
   sanitizeJsonValue,
   sanitizeUtf16ForJson,
   stripLiveStreamingProgress,
+  toolPhrase,
+  toolStepLabel,
+  toolStepsSummary,
   trackToolCallStreak,
   trackToolNameStreak,
   withLiveStreamingProgress,
@@ -587,6 +590,73 @@ describe("humanizeToolName", () => {
   it("splits camelCase ids, with or without an MCP prefix", () => {
     expect(humanizeToolName("mcp__finance-mercury__getAccounts")).toBe("Get accounts");
     expect(humanizeToolName("requestSendMoney")).toBe("Request send money");
+  });
+});
+
+describe("tool names for people", () => {
+  const ids = [
+    "mcp__finance-brex__get_banking_transactions",
+    "mcp__brex__list_cards",
+    "mail_search",
+    "getAccounts",
+    "SLACK_FIND_CHANNELS",
+    "mcp__a____b__",
+    "mcp__only_server",
+    "__",
+    "",
+    "x".repeat(500),
+    "a_".repeat(200),
+  ];
+
+  it("never shows mcp__, underscores or camelCase ids", () => {
+    for (const id of ids) {
+      for (const text of [
+        humanizeToolName(id),
+        toolPhrase(id, "activity"),
+        toolPhrase(id, "done"),
+      ]) {
+        expect(text).not.toMatch(/mcp|_|[a-z][A-Z]/);
+        expect(text.length).toBeLessThanOrEqual(60);
+      }
+    }
+  });
+
+  it("puts MCP, connector and built-in tools in the present or past tense", () => {
+    const brex = "mcp__finance-brex__get_banking_transactions";
+    expect(toolPhrase(brex, "activity")).toBe("Checking banking transactions");
+    expect(toolPhrase(brex, "done")).toBe("Checked banking transactions");
+    expect(toolPhrase("mail_search", "done")).toBe("Mail search");
+    expect(toolPhrase("SLACK_FIND_CHANNELS", "done")).toBe("Slack find channels");
+    expect(toolPhrase("mcp__x__createInvoice", "activity")).toBe("Creating invoice");
+    expect(toolPhrase("mcp__x__send_message", "done")).toBe("Sent message");
+    expect(toolPhrase("mcp__a____b__", "done")).toBe("B");
+  });
+
+  it("drops the agent's own service name and a trailing by-id", () => {
+    expect(toolPhrase("brex_list_cards", "done", "Brex")).toBe("Checked cards");
+    expect(toolPhrase("mcp__brex__get_card_by_id", "activity", "Brex agent")).toBe("Checking card");
+    expect(humanizeToolName("brex", "Brex")).toBe("Brex");
+  });
+
+  it("cleans a step label saved as a raw id and leaves other labels alone", () => {
+    expect(toolStepLabel("get_active_integration")).toBe("Get active integration");
+    expect(toolStepLabel("Read a file")).toBe("Read a file");
+  });
+
+  it("summarizes steps as the latest call or a count", () => {
+    expect(toolStepsSummary([])).toBe("");
+    expect(toolStepsSummary([{ label: "Get banking transactions", count: 1 }])).toBe(
+      "Checked banking transactions",
+    );
+    expect(
+      toolStepsSummary([
+        { label: "Get active integration", count: 1 },
+        { label: "Get banking transactions", count: 1 },
+      ]),
+    ).toBe("Used 2 tools");
+    expect(toolStepsSummary([{ label: "Get banking transactions", count: 3 }])).toBe(
+      "Used 3 tools",
+    );
   });
 });
 

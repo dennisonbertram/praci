@@ -1,4 +1,11 @@
-import { ACTIVE_RUN_STATUSES, BACKGROUND_RUN_TRIGGERS, plainTextFromMarkdown } from "@rakazo/core";
+import type { MessageBlock } from "@rakazo/contracts";
+import {
+  ACTIVE_RUN_STATUSES,
+  BACKGROUND_RUN_TRIGGERS,
+  isToolActivityBlock,
+  plainTextFromMarkdown,
+  toolStepsSummary,
+} from "@rakazo/core";
 
 export const activeRunStatuses = [...ACTIVE_RUN_STATUSES];
 const backgroundRunTriggers = [...BACKGROUND_RUN_TRIGGERS];
@@ -27,6 +34,10 @@ export const latestBotRunSelection = {
   select: { id: true, status: true },
 } as const;
 
+/** Tool ids run together ("get_active_integration get_banking_tr…") are not words a person wrote. */
+const TOOL_ID_LIST = /^\s*[a-z\d]+(?:_[a-z\d]+)+(?:\s+[a-z\d]+(?:_[a-z\d]+)+)*…?\s*$/;
+
+/** The words of a message, else one line about its tool calls. Live tool activity never counts as words. */
 export function previewFromBlocks(blocks: unknown): string {
   const rows = Array.isArray(blocks) ? blocks : [];
   for (const block of rows) {
@@ -34,12 +45,19 @@ export function previewFromBlocks(blocks: unknown): string {
       block &&
       typeof block === "object" &&
       "text" in block &&
-      typeof (block as { text?: unknown }).text === "string"
+      typeof (block as { text?: unknown }).text === "string" &&
+      !isToolActivityBlock(block as MessageBlock)
     ) {
-      return previewText((block as { text: string }).text);
+      const text = previewText((block as { text: string }).text);
+      if (!TOOL_ID_LIST.test(text)) return text;
     }
   }
-  return "";
+  const steps = rows.flatMap((block) =>
+    block && typeof block === "object" && (block as MessageBlock).kind === "steps"
+      ? (block as Extract<MessageBlock, { kind: "steps" }>).steps
+      : [],
+  );
+  return toolStepsSummary(steps);
 }
 
 const TABLE_ROW = /^\s*\|.*\|\s*$/;

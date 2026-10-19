@@ -38,7 +38,7 @@ function markup(props: {
 }
 
 function stepsOf(n: number) {
-  return Array.from({ length: n }, (_, i) => ({ label: `step-${i}`, count: 1 }));
+  return Array.from({ length: n }, (_, i) => ({ label: `step_${i}`, count: 1 }));
 }
 
 const OPEN_DETAILS = /<details[^>]* open/;
@@ -140,11 +140,11 @@ describe("ToolSteps", () => {
       <ToolSteps steps={steps} currentIndex={steps.length - 1} limit={LIVE_TOOL_STEP_WINDOW} />,
     );
     expect(html).toContain("+3 earlier steps");
-    for (const hidden of ["step-0<", "step-1<", "step-2<"]) expect(html).not.toContain(hidden);
-    for (let i = 3; i < steps.length; i++) expect(html).toContain(`step-${i}<`);
+    for (const hidden of ["Step 0<", "Step 1<", "Step 2<"]) expect(html).not.toContain(hidden);
+    for (let i = 3; i < steps.length; i++) expect(html).toContain(`Step ${i}<`);
     // The pulsing marker stays on the latest step after the window shifts the indexes.
-    expect(html).toMatch(/◷<\/span><span[^>]*>step-8</);
-    expect(html.match(/◷/g)).toHaveLength(1);
+    expect(html).toMatch(/data-state="running"[^>]*title="Step 8"/);
+    expect(html.match(/data-state="running"/g)).toHaveLength(1);
   });
 
   it("uses the singular for one hidden step", () => {
@@ -167,7 +167,7 @@ describe("ToolSteps", () => {
     );
     expect(all).not.toContain("earlier");
     expect(fits).not.toContain("earlier");
-    for (let i = 0; i < 9; i++) expect(all).toContain(`step-${i}<`);
+    for (let i = 0; i < 9; i++) expect(all).toContain(`Step ${i}<`);
   });
 });
 
@@ -193,7 +193,7 @@ describe("StandaloneToolActivity", () => {
     );
     expect(done).not.toMatch(OPEN_DETAILS);
     expect(done).not.toContain("earlier");
-    for (let i = 0; i < 9; i++) expect(done).toContain(`step-${i}<`);
+    for (let i = 0; i < 9; i++) expect(done).toContain(`Step ${i}<`);
   });
 });
 
