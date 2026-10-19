@@ -9,6 +9,8 @@ import type * as AutoReviewModule from "./auto-review.js";
 import type * as BotMessagesModule from "./bot-messages.js";
 import * as botMessages from "./bot-messages.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
+import type * as DataRoomToolsModule from "./data-room-tools.js";
+import * as dataRoomTools from "./data-room-tools.js";
 import { createRunExecutor } from "./executor.js";
 
 vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
@@ -22,6 +24,11 @@ vi.mock("./auto-review.js", async (importOriginal) => ({
   resolveAutoReviewChecker: () => ({ provider: "scripted", model: "checker" }),
   isAutoReviewCheckerConfigured: () => true,
   runAutoReviewJudge: vi.fn(),
+}));
+
+vi.mock("./data-room-tools.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof DataRoomToolsModule>()),
+  dataRoomToolFromTool: vi.fn(async () => ({ results: [] })),
 }));
 
 vi.mock("./bot-messages.js", async (importOriginal) => ({
@@ -53,7 +60,18 @@ type ToolCall = {
   executionId: string;
 };
 
-function fixture(runId = "run-1", voiceAgent = false, options: { trigger?: string } = {}) {
+function fixture(
+  runId = "run-1",
+  voiceAgent = false,
+  options: {
+    trigger?: string;
+    sourceMessageId?: string;
+    messages?: Array<{ id: string; seq: number; role: string; blocks: unknown[] }>;
+    summary?: string;
+    connections?: unknown[];
+    artifacts?: unknown;
+  } = {},
+) {
   const effects: Effect[] = [];
   const results: unknown[] = [];
   const scratchpadRows: Array<{
@@ -76,6 +94,7 @@ function fixture(runId = "run-1", voiceAgent = false, options: { trigger?: strin
     userId: "user-1",
     status: "queued",
     trigger: options.trigger ?? "user",
+    sourceMessageId: options.sourceMessageId ?? null,
     leaseFence: 0,
   };
   const memoryCommit = vi.fn(async () => ({ revision: "rev-1" }));
@@ -150,12 +169,23 @@ function fixture(runId = "run-1", voiceAgent = false, options: { trigger?: strin
       update: vi.fn(),
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
-    thread: { findUniqueOrThrow: vi.fn(async () => ({ id: run.threadId, groupId: null })) },
-    message: { findMany: vi.fn(async () => []) },
+    thread: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.threadId,
+        groupId: null,
+        historyCompactionSummary: options.summary ?? null,
+        historyCompactedUpToSeq: options.summary ? 1 : null,
+      })),
+    },
+    message: {
+      findMany: vi.fn(async () => [...(options.messages ?? [])].reverse()),
+      findUnique: vi.fn(async () => null),
+      findFirst: vi.fn(async () => null),
+    },
     task: {
       findUniqueOrThrow: vi.fn(async () => ({ id: run.taskId, prompt: "Update shared state" })),
     },
-    connection: { findMany: vi.fn(async () => []) },
+    connection: { findMany: vi.fn(async () => options.connections ?? []) },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
     userModelCredential: { findFirst: vi.fn(async () => null) },
     deploymentSettings: {
@@ -233,6 +263,7 @@ function fixture(runId = "run-1", voiceAgent = false, options: { trigger?: strin
     memoryProviders: { resolve: async () => null },
     events: { append: vi.fn(async () => undefined), pauseRunForInput, finalizeRun },
     jobs: { enqueue: vi.fn(async () => undefined) },
+    artifacts: options.artifacts,
     secrets: [],
   } as unknown as Parameters<typeof createRunExecutor>[0]);
 
@@ -311,6 +342,88 @@ describe("mutating tool effect idempotency keys", () => {
     expect(f.runtimeRequest?.tools.map((tool) => tool.name)).not.toContain("workspace_agents");
     expect(f.results).toEqual([{ error: "Tool workspace_agents is not available to Elio." }]);
     expect(f.connectorDiscoverTools).not.toHaveBeenCalled();
+  });
+
+  it("keeps connection-restricted Data Room documents hidden from Elio", async () => {
+    const f = fixture("voice-data-room-run", true, {
+      artifacts: {},
+      connections: [
+        {
+          id: "restricted-connection",
+          connectorId: "drive",
+          provider: "drive",
+          providerRef: null,
+          displayName: "Restricted Drive",
+          status: "connected",
+          allAgents: false,
+          botAccess: [],
+        },
+      ],
+    });
+    f.setCalls([
+      { name: "search_data_room", args: { query: "plan" }, executionId: "data-room-call" },
+    ]);
+
+    await f.run();
+
+    expect(dataRoomTools.dataRoomToolFromTool).toHaveBeenCalledWith(
+      "search_data_room",
+      expect.objectContaining({ deniedConnectionIds: ["restricted-connection"] }),
+      expect.anything(),
+      expect.anything(),
+    );
+    expect(f.connectorDiscoverTools).not.toHaveBeenCalled();
+  });
+
+  it.each(["bot_message", "messaging"])(
+    "hides Elio's private history and summary from a %s run's model input",
+    async (trigger) => {
+      const f = fixture("voice-history-run", true, {
+        trigger,
+        sourceMessageId: "peer-message",
+        summary: "private-summary-secret",
+        messages: [
+          {
+            id: "m1",
+            seq: 1,
+            role: "user",
+            blocks: [{ kind: "text", text: "private-user-secret" }],
+          },
+          {
+            id: "m2",
+            seq: 2,
+            role: "bot",
+            blocks: [{ kind: "text", text: "private-reply-secret" }],
+          },
+          {
+            id: "peer-message",
+            seq: 3,
+            role: "user",
+            blocks: [{ kind: "text", text: "peer-asks" }],
+          },
+        ],
+      });
+
+      await f.run();
+
+      const input = JSON.stringify(f.runtimeRequest?.history);
+      expect(input).not.toContain("private-user-secret");
+      expect(input).not.toContain("private-reply-secret");
+      expect(input).not.toContain("private-summary-secret");
+      expect(input).toContain("peer-asks");
+    },
+  );
+
+  it("keeps Elio's history in the owner's private chat", async () => {
+    const f = fixture("voice-owner-run", true, {
+      messages: [
+        { id: "m1", seq: 1, role: "user", blocks: [{ kind: "text", text: "owner-earlier" }] },
+      ],
+    });
+
+    await f.run();
+
+    expect(JSON.stringify(f.runtimeRequest?.history)).toContain("owner-earlier");
   });
 
   it("rejects forged privileged calls for Elio before connector or effect work", async () => {

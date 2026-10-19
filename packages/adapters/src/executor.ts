@@ -3507,7 +3507,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const voiceAgent = isVoiceAgentSpawnKey(bot.spawnKey);
         const [
           thread,
-          messages,
+          loadedMessages,
           peerMessage,
           task,
           storedConnections,
@@ -3525,21 +3525,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ? loadBotMessageContext(deps.prisma, run.sourceMessageId)
             : Promise.resolve(undefined),
           deps.prisma.task.findUniqueOrThrow({ where: { id: run.taskId } }),
-          voiceAgent
-            ? Promise.resolve([])
-            : deps.prisma.connection.findMany({
-                where: { userId: run.userId, spaceId: run.spaceId },
-                select: {
-                  id: true,
-                  connectorId: true,
-                  provider: true,
-                  providerRef: true,
-                  displayName: true,
-                  status: true,
-                  allAgents: true,
-                  botAccess: { where: { botId: run.botId }, select: { botId: true } },
-                },
-              }),
+          // Elio gets no connector tools, but Data Room reads still need the denied ids.
+          deps.prisma.connection.findMany({
+            where: { userId: run.userId, spaceId: run.spaceId },
+            select: {
+              id: true,
+              connectorId: true,
+              provider: true,
+              providerRef: true,
+              displayName: true,
+              status: true,
+              allAgents: true,
+              botAccess: { where: { botId: run.botId }, select: { botId: true } },
+            },
+          }),
           findDefaultModelCredential(deps.prisma, run),
           deps.prisma.deploymentSettings.findUnique({
             where: { id: "default" },
@@ -3565,6 +3564,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ? Promise.resolve({})
             : loadBotCommandEnvironment(deps.prisma, deps.secretStore, run),
         ]);
+        const voiceWorkspaceReadAllowed =
+          voiceAgent &&
+          run.userId === bot.userId &&
+          !thread.groupId &&
+          !messagingChannelRun &&
+          ["user", "follow_up", "call_end"].includes(run.trigger);
+        // Outside the owner's private chat Elio may not see its private history or summaries,
+        // the same boundary its private-read tools have: keep only the triggering message.
+        const hidePrivateVoiceHistory = voiceAgent && !voiceWorkspaceReadAllowed;
+        const messages = hidePrivateVoiceHistory
+          ? loadedMessages.filter((message) => message.id === run.sourceMessageId)
+          : loadedMessages;
         const historySearchBeforeSeq =
           contextStrategy !== "current" && run.sourceMessageId
             ? (messages.find((message) => message.id === run.sourceMessageId)?.seq ??
@@ -3617,12 +3628,6 @@ export function createRunExecutor(deps: ExecutorDeps) {
         // The Legal agent works from the Data Room, mail and Drive through its own tools only: no
         // Composio, MCP or other connector tools, and a fixed list of built-ins (read-only mail).
         const legalOnly = isLegalAgentSpawnKey(bot.spawnKey);
-        const voiceWorkspaceReadAllowed =
-          voiceAgent &&
-          run.userId === bot.userId &&
-          !thread.groupId &&
-          !messagingChannelRun &&
-          ["user", "follow_up", "call_end"].includes(run.trigger);
         // Connections limited to chosen agents stay out of this run unless the bot was granted access.
         const deniedIds = deniedConnectionIds(storedConnections);
         const composioRows =
@@ -3706,7 +3711,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             summary: thread.historyCompactionSummary,
             historyCompactedUpToSeq: thread.historyCompactedUpToSeq,
           },
-          messagingChannelRun,
+          messagingChannelRun || hidePrivateVoiceHistory,
         );
         const compactedHistory = selectCompactedHistory({
           messages: threadContext.messages,
