@@ -92,6 +92,18 @@ export const ApprovalDenied: Story = {
   },
 };
 
+export const ApprovalAnsweredConfirm: Story = {
+  args: {
+    block: ask({
+      text: "Send this payment request?",
+      approvalEffectId: "effect_demo",
+      actions: [{ id: "confirm-payment", label: "Confirm payment request" }],
+      status: "answered",
+      answer: "confirm-payment",
+    }),
+  },
+};
+
 export const CreateSpaceApproval: Story = {
   args: {
     block: ask({

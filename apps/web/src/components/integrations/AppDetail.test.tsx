@@ -200,6 +200,11 @@ it("reveals agent controls only after creation and confirms enabling changes", a
   await press("Cancel");
   expect(setWrites).not.toHaveBeenCalled();
   await act(async () => switches()[0]!.click());
+  const grant = [...document.querySelectorAll("button")].find(
+    (b) => b.textContent === "Allow changes",
+  );
+  expect(grant?.className).toContain("bg-primary");
+  expect(grant?.className).not.toContain("text-destructive");
   await press("Allow changes");
   expect(setWrites).toHaveBeenCalledWith({ connectionId: "conn_app", enabled: true });
   expect(refresh).toHaveBeenCalled();
