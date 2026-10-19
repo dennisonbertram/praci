@@ -827,6 +827,8 @@ function toNotificationDto(row: Notification): NotificationDto {
 }
 
 export interface RouterDeps {
+  /** The model call behind Data room auto-sort; without it only duplicate folders are merged. */
+  proposeSort?: Parameters<typeof createDataRoomService>[0]["proposeSort"];
   cloudAgent?: CloudAgentConnection | null;
   prisma: PrismaClient;
   events: ThreadEvents;
@@ -1183,6 +1185,7 @@ export function createRouter(deps: RouterDeps) {
     },
     resolveAi: (scope) =>
       resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.resolveModel }, scope),
+    proposeSort: deps.proposeSort,
   });
 
   const authed = os.use(async ({ context, next }) => {
@@ -6926,6 +6929,17 @@ export function createRouter(deps: RouterDeps) {
       consentGrant: authed.dataRoom.consentGrant.handler(({ context, input }) =>
         dataRoom.consentGrant(context.actor, input),
       ),
+      autoSort: {
+        plan: authed.dataRoom.autoSort.plan.handler(({ context }) =>
+          dataRoom.autoSort.plan(context.actor),
+        ),
+        apply: authed.dataRoom.autoSort.apply.handler(({ context, input }) =>
+          dataRoom.autoSort.apply(context.actor, input),
+        ),
+        undo: authed.dataRoom.autoSort.undo.handler(({ context, input }) =>
+          dataRoom.autoSort.undo(context.actor, input.batchId),
+        ),
+      },
     },
     legal: {
       agent: authed.legal.agent.handler(({ context }) =>

@@ -54,6 +54,7 @@ import {
   isComposioEnabled,
   isMessagingSurfaceEnabled,
   isPipedreamEnabled,
+  LlmDataRoomClassifier,
   LocalAgentHomeStore,
   McpConnector,
   McpOAuthBroker,
@@ -573,6 +574,12 @@ export async function createApp(
   reconciler?.start();
 
   const router = createRouter({
+    proposeSort: (model, input, context) =>
+      new LlmDataRoomClassifier({
+        runtime,
+        model,
+        onUsage: (usage, attribution) => recordUsage(prisma, usage, attribution),
+      }).proposeSort(input, context),
     cloudAgent,
     codexCatalog,
     prisma,

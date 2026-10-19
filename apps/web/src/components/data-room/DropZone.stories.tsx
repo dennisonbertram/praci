@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
 import { DataRoomDropZone } from "./DropZone";
-import { showDeletedToast } from "./upload-toasts";
+import { showDeletedToast, showSortedToast } from "./upload-toasts";
 
 const meta = {
   title: "DataRoom/DropZone",
@@ -27,6 +27,20 @@ export const Deleted: StoryObj = {
     <div className="p-4 text-sm">
       <DataRoomDropZone userId="usr_sample" />
       <DeletedToast />
+    </div>
+  ),
+};
+
+function SortedToast() {
+  useEffect(() => showSortedToast(5, "batch_sample"), []);
+  return null;
+}
+/** The confirmation after Auto-sort, with Undo for that batch. */
+export const Sorted: StoryObj = {
+  render: () => (
+    <div className="p-4 text-sm">
+      <DataRoomDropZone userId="usr_sample" />
+      <SortedToast />
     </div>
   ),
 };
