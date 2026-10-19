@@ -21,6 +21,7 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos, createThreadEvents } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { isIntegrationAgentWrite } from "../../../packages/adapters/src/approval-ask.js";
 import { isApprovalPausedResult } from "../../../packages/adapters/src/approval-effect.js";
 import type * as ComputerLifecycleModule from "../../../packages/adapters/src/computer-lifecycle.js";
 import {
@@ -625,7 +626,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
   });
 
   for (const mode of ["archive", "delete"] as const) {
-    it(`${mode} releases the server but keeps it exclusive`, async () => {
+    it(`${mode} releases the server`, async () => {
       const s = await mkServer(userA, `rel-${mode}`, "https://api.brex.com/mcp");
       const created = await client(a).integrationAgents.create({ serverId: s.id });
       await client(a).integrationAgents.setExclusive({ serverId: s.id, exclusive: true });
@@ -635,7 +636,7 @@ describePostgres("integration agents (PostgreSQL)", () => {
       else await destroyBot(lifecycleDeps(), bot, ctx(a), { deleteMemories: true });
       expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: s.id } })).toMatchObject({
         agentBotId: null,
-        agentExclusive: true,
+        agentExclusive: false,
         writesEnabled: false,
       });
       // A new agent can then be made.
@@ -894,7 +895,24 @@ describePostgres("integration agents (PostgreSQL)", () => {
           other(`gen-ok-${suffix}`),
         );
         expect(created.agentBotId).toBeTruthy();
-        expect(created).toMatchObject({ agentExclusive: true, writesEnabled: false });
+        // No preset: writes start on because tools rarely declare read-only; each call still asks.
+        expect(created).toMatchObject({ agentExclusive: true, writesEnabled: true });
+        const row = await prisma.mcpServer.findUniqueOrThrow({
+          where: { id: created.id },
+          include: { agentBot: true },
+        });
+        expect(row.agentProvisionedAt).not.toBeNull();
+        const write = { name: "do_thing" };
+        expect(
+          integrationAgentDenial({ server: row, bot: row.agentBot } as never, write),
+        ).toBeNull();
+        expect(
+          isIntegrationAgentWrite(
+            row.agentBot?.spawnKey,
+            { connectorId: "mcp", endpoint: row.endpoint ?? undefined, toolName: "do_thing" },
+            undefined,
+          ),
+        ).toBe(true);
         const again = await client(a).integrationAgents.create({ serverId: created.id });
         expect(again.botId).toBe(created.agentBotId);
       });
@@ -966,6 +984,15 @@ describePostgres("integration agents (PostgreSQL)", () => {
           writesEnabled: false,
         });
         expect(await denied(created.id)).toBe("belongs-to-agent");
+      });
+
+      it("frees a server that was made exclusive by hand", async () => {
+        const hand = await mkServer(userA, `gen-hand-${suffix}`, "https://mcp.example.test/h");
+        const { botId } = await client(a).integrationAgents.create({ serverId: hand.id });
+        await client(a).integrationAgents.setExclusive({ serverId: hand.id, exclusive: true });
+        await archiveById(botId);
+        const row = await prisma.mcpServer.findUniqueOrThrow({ where: { id: hand.id } });
+        expect(row).toMatchObject({ agentBotId: null, agentExclusive: false });
       });
 
       it("still frees a shared server when its agent is archived", async () => {

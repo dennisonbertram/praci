@@ -283,10 +283,17 @@ async function releaseAgentServers(
     ...(bot.userId ? { userId: bot.userId } : {}),
   };
   const [servers, connections] = await Promise.all([
-    tx.mcpServer.updateMany({
-      where: scope,
-      data: { agentBotId: null, writesEnabled: false },
-    }),
+    // Servers made by provisioning stay exclusive; ones set exclusive by hand are shared again.
+    (async () => {
+      await tx.mcpServer.updateMany({
+        where: { ...scope, agentProvisionedAt: null },
+        data: { agentBotId: null, agentExclusive: false, writesEnabled: false },
+      });
+      return tx.mcpServer.updateMany({
+        where: { ...scope, agentProvisionedAt: { not: null } },
+        data: { agentBotId: null, writesEnabled: false },
+      });
+    })(),
     (async () => {
       const linked = await tx.connection.findMany({
         where: scope,

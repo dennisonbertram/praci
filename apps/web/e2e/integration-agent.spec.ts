@@ -48,42 +48,34 @@ test("creates an integration agent, opens its chat, and persists its permissions
     const bots = await call("bots/list");
     return { server, firstBotId: bots[0].id as string };
   });
-  expect(server.agentBotId).toBeNull();
-  expect(firstBotId).toBeTruthy();
-  await page.goto(`/app/integrations/mcp/${server.id}`);
-  const createdResponse = page.waitForResponse("**/rpc/integrationAgents/create");
-  await page.getByRole("button", { name: "Create agent", exact: true }).click();
-  const response = await createdResponse;
-  expect(response.ok()).toBe(true);
-  const { json: created } = await response.json();
-  expect(created.botId).toBeTruthy();
-  expect(created.botId).not.toBe(firstBotId);
-  await expect(page).toHaveURL(new RegExp(`/app/${created.botId}$`));
+  // Creating the server also created its agent, exclusive, with changes on (no integration preset).
+  expect(server.agentBotId).toBeTruthy();
+  expect(server.agentBotId).not.toBe(firstBotId);
+  const agentBotId = server.agentBotId as string;
+  await page.goto(`/app/${agentBotId}`);
   await expect(page.getByPlaceholder("Message Demo Bank agent", { exact: true })).toBeVisible();
-  const sidebarAgent = page.locator(`[data-roster-bot-id="${created.botId}"]`);
+  const sidebarAgent = page.locator(`[data-roster-bot-id="${agentBotId}"]`);
   await expect(sidebarAgent).toBeVisible();
   await expect(sidebarAgent).toHaveAttribute("aria-current", "page");
-  await expect(page.locator(`[data-roster-bot-id="${firstBotId}"]`)).not.toHaveAttribute(
-    "aria-current",
-    "page",
-  );
   await captureScreenshot(page, testInfo, "integration-agent-created-chat");
 
   await page.goto(`/app/integrations/mcp/${server.id}`);
   const section = page.getByRole("region", { name: "Agent" });
   await expect(section.getByRole("link", { name: "Demo Bank agent" })).toHaveAttribute(
     "href",
-    `/app/${created.botId}`,
+    `/app/${agentBotId}`,
   );
   const writes = section.getByRole("switch", { name: "Allow changes in Demo Bank" });
   const exclusive = section.getByRole("switch", { name: "Only this agent" });
-  await expect(writes).not.toBeChecked();
-  await expect(exclusive).not.toBeChecked();
+  await expect(writes).toBeChecked();
+  await expect(exclusive).toBeChecked();
   await expect(page.getByRole("button", { name: "Create agent" })).toHaveCount(0);
+  await captureScreenshot(page, testInfo, "integration-agent-section");
 
   await writes.click();
+  await expect(writes).not.toBeChecked();
+  await writes.click();
   const confirmation = page.getByRole("alertdialog");
-  await expect(confirmation).toBeVisible();
   await expect(confirmation).toContainText("Allow changes in Demo Bank?");
   await confirmation.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(writes).not.toBeChecked();
@@ -91,17 +83,8 @@ test("creates an integration agent, opens its chat, and persists its permissions
   await confirmation.getByRole("button", { name: "Allow changes", exact: true }).click();
   await expect(writes).toBeChecked();
   await exclusive.click();
-  await expect(exclusive).toBeChecked();
-  await page.reload();
-  await expect(writes).toBeChecked();
-  await expect(exclusive).toBeChecked();
-  await captureScreenshot(page, testInfo, "integration-agent-section");
-
-  await writes.click();
-  await expect(writes).not.toBeChecked();
-  await exclusive.click();
   await expect(exclusive).not.toBeChecked();
   await page.reload();
-  await expect(writes).not.toBeChecked();
+  await expect(writes).toBeChecked();
   await expect(exclusive).not.toBeChecked();
 });

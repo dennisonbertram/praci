@@ -108,6 +108,32 @@ it("skips the bot step when the API already made the server's agent", async () =
   expect(document.body.textContent).not.toContain("Continue");
 });
 
+it("skips the bot step after sign-in when the API already made the agent", async () => {
+  api.create.mockResolvedValue({ ...server, agentBotId: "bot-1" });
+  api.begin.mockResolvedValue({
+    status: "authorization_required",
+    authorizationUrl: "https://a/x",
+  });
+  api.open.mockReturnValue({ close: vi.fn(), closed: false });
+  api.wait.mockResolvedValue("connected");
+  await mount();
+  await click("Connect");
+  expect(document.body.textContent).toContain("connected");
+  expect(document.body.textContent).not.toContain("Continue");
+});
+
+it("asks for bots after sign-in when no agent was made", async () => {
+  api.begin.mockResolvedValue({
+    status: "authorization_required",
+    authorizationUrl: "https://a/x",
+  });
+  api.open.mockReturnValue({ close: vi.fn(), closed: false });
+  api.wait.mockResolvedValue("connected");
+  await mount();
+  await click("Connect");
+  expect(document.body.textContent).toContain("Continue");
+});
+
 it("adds an SSE-only server when SSE is chosen", async () => {
   await mount();
   await type("Transport", "sse");

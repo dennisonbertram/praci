@@ -4641,12 +4641,13 @@ export function createRouter(deps: RouterDeps) {
                 context.actor,
                 row.id,
               );
-              const linked = await setIntegrationExclusive(
-                deps.prisma,
-                context.actor,
-                row.id,
-                true,
-              );
+              await setIntegrationExclusive(deps.prisma, context.actor, row.id, true);
+              // Marks the agent as auto-made. A generic server's tools rarely declare read-only, so
+              // its writes start on; the agent's approval card is still mandatory for each one.
+              const linked = await deps.prisma.mcpServer.update({
+                where: { id: row.id },
+                data: { agentProvisionedAt: new Date(), writesEnabled: !preset },
+              });
               return mcpServerDto(linked, await mcpOAuth.statusFor(linked, context.actor));
             } catch (error) {
               if (preset?.requiresAgent) throw error;
@@ -4851,11 +4852,12 @@ export function createRouter(deps: RouterDeps) {
               spaceId: context.actor.spaceId,
               userId: context.actor.userId,
             },
-            select: { id: true, secretId: true, endpoint: true, agentBotId: true },
+            select: { id: true, secretId: true },
           });
           if (!server) throw new IsolationError();
           // Assignments cascade; the encrypted credential must go with the server.
           // Cards are closed first, including ones that were never assigned.
+          let agentToArchive: string | null = null;
           const seqs = await deps.prisma.$transaction(async (tx) => {
             const painted = await dismissMcpServerApprovals(
               onboardingDeps,
@@ -4863,7 +4865,10 @@ export function createRouter(deps: RouterDeps) {
               server.id,
               tx,
             );
-            await tx.mcpServer.delete({ where: { id: server.id } });
+            // The deleted row says which agent it had at that moment, so a concurrent relink is seen.
+            const deleted = await tx.mcpServer.delete({ where: { id: server.id } });
+            agentToArchive =
+              deleted.agentBotId && !isCartaEndpoint(deleted.endpoint) ? deleted.agentBotId : null;
             if (server.secretId) {
               await tx.secret.deleteMany({
                 where: {
@@ -4875,12 +4880,12 @@ export function createRouter(deps: RouterDeps) {
             }
             return painted;
           });
-          for (const event of seqs) await deps.events.notify(event.threadId, event.seq);
-          // The server's own agent goes with it; Carta's agent is shared and stays.
-          if (server.agentBotId && !isCartaEndpoint(server.endpoint))
-            await archiveActorBot(context.actor, server.agentBotId).catch((error) =>
+          // The server's own agent goes with it, whether or not notifications succeed; Carta's is shared.
+          if (agentToArchive)
+            await archiveActorBot(context.actor, agentToArchive).catch((error) =>
               getLogger().error("mcp.servers.remove: agent not archived", error),
             );
+          for (const event of seqs) await deps.events.notify(event.threadId, event.seq);
           return { ok: true as const };
         }),
       },
