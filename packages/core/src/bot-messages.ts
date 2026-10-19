@@ -1,6 +1,8 @@
 import {
   BOT_DESCRIPTION_MAX_LENGTH,
   type BotMessageIntent,
+  isCartaAgentSpawnKey,
+  isIntegrationAgentSpawnKey,
   type MessageBlock,
 } from "@rakazo/contracts";
 
@@ -21,6 +23,7 @@ export interface BotAddress {
   name: string;
   title?: string;
   description?: string;
+  spawnKey?: string | null;
 }
 
 export function clampBotMessage(text: string): string {
@@ -92,6 +95,14 @@ export function formatBotRosterLines(bots: readonly BotAddress[]): string[] {
   });
 }
 
+export const INTEGRATION_DIRECTORY_NOTE =
+  "Each integration agent owns one account; ask the one that owns the system you need.";
+
+/** Model-facing line saying which account an owner agent holds. The label only tells accounts apart. */
+export function ownsLine(service: string, account?: string): string {
+  return `Owns: ${service}${account ? ` (${account})` : ""}. Ask it for anything in ${service}.`;
+}
+
 /**
  * The teammate list a bot needs to address anyone. Without it a bot only knows
  * the bots it spawned itself.
@@ -104,6 +115,11 @@ export function renderBotDirectory(bots: readonly BotAddress[]): string | undefi
     ...formatBotRosterLines(bots),
     "</teammate_directory>",
     "Use message_bot for useful updates, questions, and results. Delivery is async and does not end your turn. Continue independent work; do not poll or send ack-only messages. Later updates only if they add something new.",
+    ...(bots.some(
+      (bot) => isIntegrationAgentSpawnKey(bot.spawnKey) || isCartaAgentSpawnKey(bot.spawnKey),
+    )
+      ? [INTEGRATION_DIRECTORY_NOTE]
+      : []),
   ].join("\n");
 }
 

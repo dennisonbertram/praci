@@ -172,6 +172,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
+| AgentAvatar | [apps/web/src/components/integrations/AgentAvatar.tsx](../../apps/web/src/components/integrations/AgentAvatar.tsx) | [AgentAvatar.stories.tsx](../../apps/web/src/components/integrations/AgentAvatar.stories.tsx) | web |
 | AgentStep | [apps/web/src/components/integrations/AgentStep.tsx](../../apps/web/src/components/integrations/AgentStep.tsx) | [AgentStep.stories.tsx](../../apps/web/src/components/integrations/AgentStep.stories.tsx) | web |
 | AlchemyConnectDialog | [apps/web/src/components/integrations/AlchemyConnectDialog.tsx](../../apps/web/src/components/integrations/AlchemyConnectDialog.tsx) | [AlchemyConnectDialog.stories.tsx](../../apps/web/src/components/integrations/AlchemyConnectDialog.stories.tsx) | web |
 | Heading, AccountRow, AppDetail, ConfirmDialog | [apps/web/src/components/integrations/AppDetail.tsx](../../apps/web/src/components/integrations/AppDetail.tsx) | [AppDetail.stories.tsx](../../apps/web/src/components/integrations/AppDetail.stories.tsx) | web |

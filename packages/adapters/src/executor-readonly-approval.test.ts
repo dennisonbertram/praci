@@ -127,7 +127,7 @@ function fixture({
   /** The catalog wrapper the model calls when `catalog` is set. */
   executeToolName?: string;
   /** A bot_message run started by bot `peer-1`: whether that bot is in the run's space and user, and whether the bot is its server's agent. */
-  peer?: { senderInScope: boolean; linked: boolean; serverIds?: string[] };
+  peer?: { senderInScope: boolean; linked: boolean; serverIds?: string[]; ownerOrigin?: boolean };
   connectionRows?: Record<string, unknown>[];
   /** Offers the native Google Calendar and Drive tools. */
   googleConnectors?: boolean;
@@ -291,6 +291,7 @@ function fixture({
             hop: 1,
             intent: "request",
             returnToMessageId: "m0",
+            ...(peer?.ownerOrigin ? { ownerOrigin: true } : {}),
           },
         ],
         replyTo: null,
@@ -2291,5 +2292,102 @@ describe("integration agent asked by another bot", () => {
     await f.run();
     expect(f.offeredTools).not.toContain("mcp__demo__requestSendMoney");
     expect(f.execute).not.toHaveBeenCalled();
+  });
+});
+
+describe("Inbox agent asked by another bot", () => {
+  const mail = () => ({
+    listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+  });
+  const peerRun = (name: string, senderInScope: boolean, ownerOrigin = true, extra = {}) =>
+    fixture({
+      name,
+      builtin: true,
+      trigger: "bot_message",
+      peer: { senderInScope, linked: false, ownerOrigin },
+      spawnKey: inboxAgentSpawnKey("user-1"),
+      mail: mail(),
+      ...extra,
+    });
+
+  it("searches the owner's mail for a bot of the same space and user", async () => {
+    const f = peerRun("mail_search", true);
+    f.setCalls([{ args: { queries: ["from:priya"] }, executionId: "call-1" }]);
+    await f.run();
+    expect(f.offeredTools).toContain("mail_search");
+    expect(f.results[0]).not.toEqual({ error: expect.stringContaining("unknown tool") });
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("offers no mail when the chain did not start with the owner", async () => {
+    const f = peerRun("mail_search", true, false);
+    await f.run();
+    expect(f.offeredTools).not.toContain("mail_search");
+  });
+
+  it("gives the Inbox agent no Calendar or Drive tools on a peer's request", async () => {
+    const f = peerRun("mail_search", true, true, { googleConnectors: true });
+    await f.run();
+    expect(f.offeredTools).toContain("mail_search");
+    expect(
+      f.offeredTools.filter((n) => n.startsWith("calendar_") || n.startsWith("drive_")),
+    ).toEqual([]);
+  });
+
+  it.each(["mail_draft", "mail_modify", "mail_send"])(
+    "asks the user for %s even with an allow rule and Auto Review on",
+    async (name) => {
+      const f = peerRun("mail_send", true, true, {
+        name,
+        rules: [{ effect: "always_allow", matchKind: "tool", matchValue: name }],
+        autoReview: true,
+      });
+      f.setCalls([
+        {
+          args: {
+            to: ["sam@example.test"],
+            subject: "Hi",
+            body: "Hello",
+            id: "m1",
+            addLabels: ["x"],
+          },
+          executionId: "call-1",
+        },
+      ]);
+      await f.run();
+      expect(isApprovalPausedResult(f.results[0])).toBe(true);
+      expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    },
+  );
+
+  it("offers no mail to a sender outside the run's space and user", async () => {
+    const f = peerRun("mail_search", false);
+    await f.run();
+    expect(f.offeredTools).not.toContain("mail_search");
+  });
+
+  it("pauses a mail_send on a card in the agent's own chat, which only the user can answer", async () => {
+    const f = peerRun("mail_send", true);
+    f.setCalls([
+      {
+        args: { to: ["sam@example.test"], subject: "Hi", body: "Hello" },
+        executionId: "call-1",
+      },
+    ]);
+    await f.run();
+    expect(isApprovalPausedResult(f.results[0])).toBe(true);
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    // The card is stored on the Inbox agent's own thread and run, not the asking bot's.
+    expect(f.pauseRunForInput).toHaveBeenCalledWith(
+      expect.objectContaining({
+        spaceId: "space-1",
+        threadId: "thread-1",
+        botId: "bot-1",
+        runId: "run-1",
+        blocks: [expect.objectContaining({ kind: "ask", approvalEffectId: f.effects[0]!.id })],
+      }),
+    );
+    expect(f.effects[0]).toMatchObject({ status: "intended", runId: "run-1" });
+    expect(f.offeredTools).not.toContain("respond_agent_connection");
   });
 });

@@ -123,9 +123,12 @@ export function mailToolsAllowed(options: {
   messagingChannelRun: boolean;
   /** The run trigger; bot_message runs are not owner-initiated. */
   trigger: string;
+  /** An owner agent (Inbox, Calendar, Drive) answering a bot of the same owner with its own tools. */
+  ownerAgentPeer?: boolean;
 }): boolean {
   return (
-    OWNER_INITIATED_TRIGGERS.has(options.trigger) &&
+    (OWNER_INITIATED_TRIGGERS.has(options.trigger) ||
+      (options.trigger === "bot_message" && options.ownerAgentPeer === true)) &&
     options.hasProvider &&
     !options.groupId &&
     options.runUserId === options.botUserId &&
