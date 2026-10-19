@@ -1,5 +1,9 @@
 import type { Actor, Bot } from "@rakazo/contracts";
-import { DATA_ROOM_AGENT_BUILTIN_TOOLS, dataRoomAgentSpawnKey } from "@rakazo/contracts";
+import {
+  DATA_ROOM_AGENT_BUILTIN_TOOLS,
+  dataRoomAgentSpawnKey,
+  pageAgentColor,
+} from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { ensureDataRoomAgent } from "./data-room-agent.js";
 
@@ -20,7 +24,11 @@ describe("ensureDataRoomAgent", () => {
     expect(dataRoomAgentSpawnKey("user-1")).toBe("data-room-agent:user-1");
     expect(createBot).toHaveBeenCalledWith(
       actor,
-      expect.objectContaining({ spawnKey: "data-room-agent:user-1", name: "Data room agent" }),
+      expect.objectContaining({
+        spawnKey: "data-room-agent:user-1",
+        name: "Data room agent",
+        color: pageAgentColor("data-room"),
+      }),
     );
   });
 

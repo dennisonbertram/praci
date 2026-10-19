@@ -2,6 +2,9 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
+  accentForeground,
+  botAccentStyle,
+  botColors,
   type ColorTokens,
   cssVariableName,
   darkTokens,
@@ -251,5 +254,33 @@ describe("dark input contrast", () => {
     const card = luminance(darkTokens.card);
     const ratio = (Math.max(input, card) + 0.05) / (Math.min(input, card) + 0.05);
     expect(ratio).toBeGreaterThanOrEqual(1.3);
+  });
+});
+
+describe("bot accent", () => {
+  it("picks a readable foreground for every palette colour", () => {
+    for (const hex of botColors) {
+      const fg = accentForeground(hex);
+      const l = (h: string) => {
+        const n = Number.parseInt(h.slice(1), 16);
+        const c = (v: number) => {
+          const x = v / 255;
+          return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
+        };
+        return 0.2126 * c((n >> 16) & 255) + 0.7152 * c((n >> 8) & 255) + 0.0722 * c(n & 255);
+      };
+      const [hi, lo] = [Math.max(l(hex), l(fg)), Math.min(l(hex), l(fg))];
+      expect((hi + 0.05) / (lo + 0.05)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  it("chooses white on dark colours and near-black on light ones", () => {
+    expect(accentForeground("#000000")).toBe("#ffffff");
+    expect(accentForeground("#ffffff")).toBe("#111111");
+  });
+  it("sets the two custom properties a thread container needs", () => {
+    expect(botAccentStyle("#3B82F6")).toEqual({
+      "--bot-accent": "#3B82F6",
+      "--bot-accent-foreground": accentForeground("#3B82F6"),
+    });
   });
 });

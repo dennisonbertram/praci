@@ -2,7 +2,12 @@ import type { JobPublisher } from "@rakazo/adapter-kit";
 import { routineWakeupJob } from "@rakazo/adapter-kit";
 import { lockLegalBot } from "@rakazo/adapters";
 import type { Actor, Bot } from "@rakazo/contracts";
-import { LEGAL_AGENT_MODEL, LEGAL_SCAN_ROUTINE_NAME, legalAgentSpawnKey } from "@rakazo/contracts";
+import {
+  LEGAL_AGENT_MODEL,
+  LEGAL_SCAN_ROUTINE_NAME,
+  legalAgentSpawnKey,
+  pageAgentColor,
+} from "@rakazo/contracts";
 import { nextCronDateAcrossStrict } from "@rakazo/core";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 
@@ -75,6 +80,7 @@ export async function ensureLegalAgent(
     description: "Reads your contracts and tracks legal deadlines.",
     instructions: LEGAL_AGENT_INSTRUCTIONS,
     notifyOnFinish: true,
+    color: pageAgentColor("legal"),
     modelProvider: LEGAL_AGENT_MODEL.provider,
     modelId: LEGAL_AGENT_MODEL.id,
     thinkingLevel: LEGAL_AGENT_MODEL.thinkingLevel,

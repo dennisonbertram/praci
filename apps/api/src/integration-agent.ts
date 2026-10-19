@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import type { Actor, Bot } from "@rakazo/contracts";
 import {
+  appAgentColor,
   cartaAgentSpawnKey,
   inboxAgentSpawnKey,
   integrationAgentSpawnKey,
@@ -162,6 +163,7 @@ export async function ensureConnectedAppAgent(
           description: `Works with the user's ${service} account. Other agents: ask it with message_bot instead of using ${service} yourself.`,
           instructions: connectedAppAgentInstructions(initial),
           notifyOnFinish: true,
+          color: appAgentColor([initial.provider, initial.displayName], spawnKey),
         });
     const linked = await link(bot).catch(async (error) => {
       // The Inbox agent serves every Gmail account, so a failed link never archives it.
@@ -403,6 +405,7 @@ export async function ensureIntegrationAgent(
       description: `Works with the user's ${service} account. Other agents: ask it with message_bot instead of using ${service} yourself.`,
       instructions: instructions(service, preset?.instructions),
       notifyOnFinish: true,
+      color: appAgentColor([service], integrationAgentSpawnKey(server.id)),
     });
     const linked = await link(bot).catch(async (error) => {
       // A bot this call made must not be left without a server; one that already existed is not ours to archive.

@@ -1,8 +1,9 @@
+import { BOT_COLORS } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { createRef, type ReactNode, useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { mockRpc } from "../lib/__mocks__/rpc";
-import { mockBots, mockSections } from "../stories/fixtures";
+import { makeBot, mockBots, mockSections } from "../stories/fixtures";
 import { Composer, ShellPage } from "./Shell";
 
 /** The preview already provides a router at "/", so move it to the route instead of nesting one. */
@@ -92,10 +93,10 @@ const snapshot = {
   run: null,
 };
 
-const loaded = () =>
+const loadedWith = (bot: ReturnType<typeof makeBot>) => () =>
   mockRpc({
-    "spaces.list": navigation,
-    "threads.get": snapshot,
+    "spaces.list": { ...navigation, current: { ...navigation.current, bots: [bot, ...mockBots] } },
+    "threads.get": { ...snapshot, botId: bot.id },
     "threads.head": { threadId: "thread_demo", cursor: 4 },
     "threads.messages": { threadId: "thread_demo", messages: [], olderCursor: null },
     "routines.list": [],
@@ -110,6 +111,34 @@ const loaded = () =>
       })(),
     usage: null,
   });
+
+const loaded = loadedWith(mockBots[0] as ReturnType<typeof makeBot>);
+
+/** A page agent keeps the fixed colour its Inbox gets. */
+export const ConversationPageAgent: Story = {
+  decorators: [at("/app/bot_inbox_agent")],
+  beforeEach: loadedWith(
+    makeBot({
+      id: "bot_inbox_agent",
+      name: "Inbox agent",
+      color: BOT_COLORS[2],
+      spawnKey: "inbox-agent:user_demo",
+    }),
+  ),
+};
+
+/** An app agent takes the palette colour nearest its brand (Brex is orange). */
+export const ConversationAppAgent: Story = {
+  decorators: [at("/app/bot_brex_agent")],
+  beforeEach: loadedWith(
+    makeBot({
+      id: "bot_brex_agent",
+      name: "Brex agent",
+      color: BOT_COLORS[5],
+      spawnKey: "integration-agent:server_demo",
+    }),
+  ),
+};
 
 export const Conversation: Story = {
   decorators: [at("/app/bot_ada")],

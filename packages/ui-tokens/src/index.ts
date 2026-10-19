@@ -226,3 +226,32 @@ export function renderTokensCss(): string {
     renderBlock('[data-theme="light"]', "light", lightTokens),
   ].join("\n\n")}\n`;
 }
+
+const channel = (value: number) => {
+  const c = value / 255;
+  return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+};
+
+/** WCAG relative luminance of a `#rrggbb` colour. */
+function luminance(hex: string): number {
+  const n = Number.parseInt(hex.slice(1), 16);
+  return (
+    0.2126 * channel((n >> 16) & 255) + 0.7152 * channel((n >> 8) & 255) + 0.0722 * channel(n & 255)
+  );
+}
+
+export const ACCENT_LIGHT_FOREGROUND = "#ffffff";
+export const ACCENT_DARK_FOREGROUND = "#111111";
+
+/** White or near-black, whichever reads better on `hex`. */
+export function accentForeground(hex: string): string {
+  const l = luminance(hex);
+  const onWhite = 1.05 / (l + 0.05);
+  const onDark = (l + 0.05) / (luminance(ACCENT_DARK_FOREGROUND) + 0.05);
+  return onWhite >= onDark ? ACCENT_LIGHT_FOREGROUND : ACCENT_DARK_FOREGROUND;
+}
+
+/** The `--bot-accent` pair a thread container sets so its descendants use the bot's colour. */
+export function botAccentStyle(hex: string): Record<`--${string}`, string> {
+  return { "--bot-accent": hex, "--bot-accent-foreground": accentForeground(hex) };
+}
