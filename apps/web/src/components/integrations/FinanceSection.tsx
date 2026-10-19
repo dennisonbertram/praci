@@ -44,7 +44,10 @@ const TILE = "relative transition-colors hover:bg-muted/40";
 /** A tile's name; when the connection has an MCP server it links to that page, covering the tile. */
 function TileName({ name, to }: { name: string; to?: string }) {
   return to ? (
-    <Link to={to} className="block truncate font-semibold outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-3 focus-visible:after:ring-ring/50">
+    <Link
+      to={to}
+      className="block truncate font-semibold outline-none after:absolute after:inset-0 after:rounded-xl focus-visible:after:ring-3 focus-visible:after:ring-ring/50"
+    >
       {name}
     </Link>
   ) : (
