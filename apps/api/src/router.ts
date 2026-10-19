@@ -690,6 +690,17 @@ async function allEffectiveAccess(prisma: PrismaClient, actor: Actor) {
   return effectiveAccessByConnection(rows, bots);
 }
 
+/** Runs a transaction again once if Postgres picked it as the victim of a deadlock. */
+async function retryOnDeadlock<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    const code = (error as { code?: unknown }).code;
+    if (code === "P2034" || /deadlock/i.test(String((error as Error)?.message))) return run();
+    throw error;
+  }
+}
+
 function connectionDto(row: {
   id: string;
   connectorId: string;
@@ -5383,6 +5394,7 @@ export function createRouter(deps: RouterDeps) {
                 status: "pending",
                 providerRef: null,
                 metadata: {},
+                agentProvisionPending: true,
               },
             });
           }
@@ -5396,6 +5408,7 @@ export function createRouter(deps: RouterDeps) {
               displayName: input.displayName,
               status: "pending",
               allAgents: false,
+              agentProvisionPending: true,
             },
           });
           return created;
@@ -5887,14 +5900,9 @@ export function createRouter(deps: RouterDeps) {
             { timeout: 60_000 },
           );
         }
-        // A poll that lost the race to the winning poll sees the row already connected, so a row
-        // connected moments ago and not yet provisioned counts too. Older connected rows are never
-        // touched. ponytail: a time window, since a plain flag would need another column.
-        if (
-          row.status === "connected" &&
-          !row.agentProvisionedAt &&
-          (existing.status !== "connected" || Date.now() - existing.updatedAt.getTime() < 120_000)
-        ) {
+        // Whoever sees the row connected with provisioning still pending does it; the flag makes
+        // it happen once, and also recovers a crash between connected and provisioning.
+        if (row.status === "connected" && row.agentProvisionPending) {
           await provisionForActor(context.actor, row.id);
           row =
             (await deps.prisma.connection.findFirst({
@@ -5936,9 +5944,15 @@ export function createRouter(deps: RouterDeps) {
               provider: true,
               agentBotId: true,
               agentProvisionedAt: true,
+              agentProvisionPending: true,
             },
           });
           if (!connection) throw new IsolationError();
+          const standalone = Boolean(
+            connection.agentBotId ||
+              connection.agentProvisionedAt ||
+              connection.agentProvisionPending,
+          );
           if (connection.agentBotId) {
             const activeAgent = await tx.bot.updateMany({
               where: {
@@ -5969,20 +5983,20 @@ export function createRouter(deps: RouterDeps) {
             where: { id: { in: botIds }, spaceId: actor.spaceId, userId: actor.userId },
           });
           if (bots !== botIds.length) throw new IsolationError();
-          const siblings =
-            connection.agentBotId || connection.agentProvisionedAt
-              ? [{ id: connection.id }]
-              : await tx.connection.findMany({
-                  where: {
-                    spaceId: actor.spaceId,
-                    userId: actor.userId,
-                    connectorId: connection.connectorId,
-                    provider: connection.provider,
-                    agentBotId: null,
-                    agentProvisionedAt: null,
-                  },
-                  select: { id: true },
-                });
+          const siblings = standalone
+            ? [{ id: connection.id }]
+            : await tx.connection.findMany({
+                where: {
+                  spaceId: actor.spaceId,
+                  userId: actor.userId,
+                  connectorId: connection.connectorId,
+                  provider: connection.provider,
+                  agentBotId: null,
+                  agentProvisionedAt: null,
+                  agentProvisionPending: false,
+                },
+                select: { id: true },
+              });
           const ids = siblings.map((row) => row.id);
           if (ids.length === 0)
             throw new ORPCError("CONFLICT", { message: "The connection changed; retry" });
@@ -5992,6 +6006,9 @@ export function createRouter(deps: RouterDeps) {
               spaceId: actor.spaceId,
               userId: actor.userId,
               agentBotId: connection.agentBotId,
+              // A sibling provisioned or archived since it was listed is never shared with it.
+              agentProvisionedAt: connection.agentProvisionedAt,
+              agentProvisionPending: connection.agentProvisionPending,
             },
             data: { allAgents: input.allAgents },
           });
@@ -6086,26 +6103,38 @@ export function createRouter(deps: RouterDeps) {
           ? await prepareManagedConnectorForTransaction(configured)
           : undefined;
         let agentToArchive: string | null = null;
-        const outcome = await deps.prisma.$transaction(
-          async (tx) => {
-            const row = await tx.connection.findFirst({
-              where: {
-                id: input.connectionId,
-                spaceId: context.actor.spaceId,
-                userId: context.actor.userId,
-              },
-            });
-            if (!row) {
-              return {
-                remote: null as null | RemoteRevoke,
-                previousStatus: null as string | null,
-              };
-            }
+        // What the revoke took off the row, to put back if the remote revoke fails recoverably.
+        const undo: {
+          ownership: {
+            agentBotId: string | null;
+            agentProvisionedAt: Date;
+            writesEnabled: boolean;
+            grants: { botId: string; spaceId: string; userId: string }[];
+          } | null;
+        } = { ownership: null };
+        const outcome = await retryOnDeadlock(() =>
+          deps.prisma.$transaction(
+            async (tx) => {
+              agentToArchive = null;
+              undo.ownership = null;
+              const row = await tx.connection.findFirst({
+                where: {
+                  id: input.connectionId,
+                  spaceId: context.actor.spaceId,
+                  userId: context.actor.userId,
+                },
+              });
+              if (!row) {
+                return {
+                  remote: null as null | RemoteRevoke,
+                  previousStatus: null as string | null,
+                };
+              }
 
-            // Advisory lock covers inserts as well as existing rows. SELECT FOR UPDATE
-            // alone misses a concurrent begin that inserts after the lock query.
-            await lockProviderConnectionScope(tx, context.actor, row.connectorId, row.provider);
-            await tx.$queryRaw`
+              // Advisory lock covers inserts as well as existing rows. SELECT FOR UPDATE
+              // alone misses a concurrent begin that inserts after the lock query.
+              await lockProviderConnectionScope(tx, context.actor, row.connectorId, row.provider);
+              await tx.$queryRaw`
               SELECT id
               FROM connections
               WHERE "spaceId" = ${context.actor.spaceId}
@@ -6115,118 +6144,129 @@ export function createRouter(deps: RouterDeps) {
                 AND status IN ('connected', 'pending', 'error')
               FOR UPDATE`;
 
-            const updated = await tx.connection.updateMany({
-              where: {
-                id: row.id,
-                spaceId: context.actor.spaceId,
-                userId: context.actor.userId,
-                status: { in: ["connected", "pending", "error"] },
-              },
-              data: { status: "revoked" },
-            });
-            if (updated.count === 0) {
-              return {
-                remote: null as null | RemoteRevoke,
-                previousStatus: null as string | null,
-              };
-            }
-            // Unlink a provisioned agent under the same lock, so a begin that reuses the row
-            // right after sees a clean row. The agent itself is archived once this commits.
-            if (row.agentProvisionedAt) {
-              const agent = row.agentBotId
-                ? await tx.bot.findFirst({
-                    where: { id: row.agentBotId, spaceId: row.spaceId, userId: row.userId },
-                    select: { spawnKey: true },
-                  })
-                : null;
-              agentToArchive =
-                agent?.spawnKey === integrationAgentSpawnKey(row.id) ? row.agentBotId : null;
-              await tx.connection.update({
-                where: { id: row.id },
-                data: { agentBotId: null, agentProvisionedAt: null, writesEnabled: false },
+              const updated = await tx.connection.updateMany({
+                where: {
+                  id: row.id,
+                  spaceId: context.actor.spaceId,
+                  userId: context.actor.userId,
+                  status: { in: ["connected", "pending", "error"] },
+                },
+                data: { status: "revoked" },
               });
-              await tx.botConnectionAccess.deleteMany({ where: { connectionId: row.id } });
-            }
-            // Revoking only marks the row, so no cascade fires; mail data goes explicitly.
-            await deleteMailConnectionData(tx, {
-              spaceId: context.actor.spaceId,
-              userId: context.actor.userId,
-              connectionId: row.id,
-            });
-
-            const remaining = await tx.connection.count({
-              where: {
+              if (updated.count === 0) {
+                return {
+                  remote: null as null | RemoteRevoke,
+                  previousStatus: null as string | null,
+                };
+              }
+              // Unlink a provisioned agent under the same lock, so a begin that reuses the row
+              // right after sees a clean row. The agent itself is archived once this commits.
+              if (row.agentProvisionedAt) {
+                const agent = row.agentBotId
+                  ? await tx.bot.findFirst({
+                      where: { id: row.agentBotId, spaceId: row.spaceId, userId: row.userId },
+                      select: { spawnKey: true },
+                    })
+                  : null;
+                agentToArchive =
+                  agent?.spawnKey === integrationAgentSpawnKey(row.id) ? row.agentBotId : null;
+                undo.ownership = {
+                  agentBotId: row.agentBotId,
+                  agentProvisionedAt: row.agentProvisionedAt,
+                  writesEnabled: row.writesEnabled,
+                  grants: await tx.botConnectionAccess.findMany({
+                    where: { connectionId: row.id },
+                    select: { botId: true, spaceId: true, userId: true },
+                  }),
+                };
+                await tx.connection.update({
+                  where: { id: row.id },
+                  data: { agentBotId: null, agentProvisionedAt: null, writesEnabled: false },
+                });
+                await tx.botConnectionAccess.deleteMany({ where: { connectionId: row.id } });
+              }
+              // Revoking only marks the row, so no cascade fires; mail data goes explicitly.
+              await deleteMailConnectionData(tx, {
                 spaceId: context.actor.spaceId,
                 userId: context.actor.userId,
-                connectorId: row.connectorId,
-                provider: row.provider,
-                status: { in: ["connected", "pending"] },
-              },
-            });
-            const connectionRef = row.providerRef || row.provider;
-            const accountSpecific = Boolean(row.providerRef && row.providerRef !== row.provider);
-            // Account-scoped refs can disconnect one remote authorization while
-            // siblings remain. Slug-only legacy rows must wait until they are last,
-            // or a provider-wide revoke would drop every account for that app.
-            if (!accountSpecific && remaining > 0) {
-              return {
-                remote: null as null | RemoteRevoke,
-                previousStatus: null as string | null,
-              };
-            }
+                connectionId: row.id,
+              });
 
-            // Slug-only remote delete is provider-wide. Run it before commit while
-            // still holding the begin/revoke lock so a new authorization cannot be
-            // created and then wiped by Pipedream's slug-scoped DELETE.
-            if (!accountSpecific) {
-              if (
-                !needsProvider ||
-                row.connectorId !== snapshot?.connectorId ||
-                row.provider !== snapshot?.provider ||
-                (prepared?.recheck && !(await prepared.recheck(tx)))
-              ) {
-                throw new ORPCError("CONFLICT", {
-                  message: "Integration credentials changed; retry.",
-                });
+              const remaining = await tx.connection.count({
+                where: {
+                  spaceId: context.actor.spaceId,
+                  userId: context.actor.userId,
+                  connectorId: row.connectorId,
+                  provider: row.provider,
+                  status: { in: ["connected", "pending"] },
+                },
+              });
+              const connectionRef = row.providerRef || row.provider;
+              const accountSpecific = Boolean(row.providerRef && row.providerRef !== row.provider);
+              // Account-scoped refs can disconnect one remote authorization while
+              // siblings remain. Slug-only legacy rows must wait until they are last,
+              // or a provider-wide revoke would drop every account for that app.
+              if (!accountSpecific && remaining > 0) {
+                return {
+                  remote: null as null | RemoteRevoke,
+                  previousStatus: null as string | null,
+                };
               }
-              const connector = prepared?.provider;
-              if (!connector) {
-                throw new ORPCError("BAD_REQUEST", {
-                  message: `Connector ${row.connectorId} is not configured`,
-                });
+
+              // Slug-only remote delete is provider-wide. Run it before commit while
+              // still holding the begin/revoke lock so a new authorization cannot be
+              // created and then wiped by Pipedream's slug-scoped DELETE.
+              if (!accountSpecific) {
+                if (
+                  !needsProvider ||
+                  row.connectorId !== snapshot?.connectorId ||
+                  row.provider !== snapshot?.provider ||
+                  (prepared?.recheck && !(await prepared.recheck(tx)))
+                ) {
+                  throw new ORPCError("CONFLICT", {
+                    message: "Integration credentials changed; retry.",
+                  });
+                }
+                const connector = prepared?.provider;
+                if (!connector) {
+                  throw new ORPCError("BAD_REQUEST", {
+                    message: `Connector ${row.connectorId} is not configured`,
+                  });
+                }
+                try {
+                  // Abort before the 60s Prisma transaction timeout so a late remote
+                  // delete cannot succeed after local status has already rolled back.
+                  const signals = [AbortSignal.timeout(45_000)];
+                  if (context.signal) signals.unshift(context.signal);
+                  const revokeSignal =
+                    signals.length === 1 ? signals[0]! : AbortSignal.any(signals);
+                  await connector.revoke(
+                    connectionRef,
+                    connectionContext(context.actor, "connections.revoke", revokeSignal),
+                    { provider: row.provider },
+                  );
+                } catch (error) {
+                  if (error instanceof ORPCError) throw error;
+                  throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
+                }
+                return {
+                  remote: null as null | RemoteRevoke,
+                  previousStatus: null as string | null,
+                };
               }
-              try {
-                // Abort before the 60s Prisma transaction timeout so a late remote
-                // delete cannot succeed after local status has already rolled back.
-                const signals = [AbortSignal.timeout(45_000)];
-                if (context.signal) signals.unshift(context.signal);
-                const revokeSignal = signals.length === 1 ? signals[0]! : AbortSignal.any(signals);
-                await connector.revoke(
+
+              return {
+                remote: {
+                  connectorId: row.connectorId,
                   connectionRef,
-                  connectionContext(context.actor, "connections.revoke", revokeSignal),
-                  { provider: row.provider },
-                );
-              } catch (error) {
-                if (error instanceof ORPCError) throw error;
-                throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
-              }
-              return {
-                remote: null as null | RemoteRevoke,
-                previousStatus: null as string | null,
+                  provider: row.provider,
+                  accountSpecific,
+                },
+                previousStatus: row.status,
               };
-            }
-
-            return {
-              remote: {
-                connectorId: row.connectorId,
-                connectionRef,
-                provider: row.provider,
-                accountSpecific,
-              },
-              previousStatus: row.status,
-            };
-          },
-          { timeout: 60_000 },
+            },
+            { timeout: 60_000 },
+          ),
         );
 
         // Revoke keeps the Connection row, so no cascade removes the saved mail searches.
@@ -6242,15 +6282,33 @@ export function createRouter(deps: RouterDeps) {
             // Local row was marked revoked inside the transaction; restore it so a
             // failed remote disconnect remains retryable instead of orphaned.
             if (!outcome.previousStatus) return;
-            await deps.prisma.connection.updateMany({
+            const restored = await deps.prisma.connection.updateMany({
               where: {
                 id: input.connectionId,
                 spaceId: context.actor.spaceId,
                 userId: context.actor.userId,
                 status: "revoked",
               },
-              data: { status: outcome.previousStatus },
+              data: {
+                status: outcome.previousStatus,
+                ...(undo.ownership
+                  ? {
+                      agentBotId: undo.ownership.agentBotId,
+                      agentProvisionedAt: undo.ownership.agentProvisionedAt,
+                      writesEnabled: undo.ownership.writesEnabled,
+                    }
+                  : {}),
+              },
             });
+            // Put the agent and its grants back, so the connection does not turn shareable.
+            if (undo.ownership && restored.count > 0)
+              await deps.prisma.botConnectionAccess.createMany({
+                data: undo.ownership.grants.map((grant) => ({
+                  ...grant,
+                  connectionId: input.connectionId,
+                })),
+                skipDuplicates: true,
+              });
           };
           try {
             const connector = deps.connectors.managed(outcome.remote.connectorId);

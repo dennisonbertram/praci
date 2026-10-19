@@ -96,14 +96,9 @@ export async function completeNativeOAuth(options: {
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
           // The agent, its access and its settings move too. A Calendar or Drive agent is keyed by
           // its connection, so it follows the new id; the Inbox agent keeps its per-user key.
-          // A grant the new row already has is dropped, not moved twice (unique per bot).
-          const already = await tx.botConnectionAccess.findMany({
-            where: { connectionId: current.id },
-            select: { botId: true },
-          });
-          await tx.botConnectionAccess.deleteMany({
-            where: { connectionId: taken.id, botId: { in: already.map((a) => a.botId) } },
-          });
+          // The new row takes exactly the old row's grants: anything the pending row picked up
+          // (for example from sharing a sibling) must not read a connection with private settings.
+          await tx.botConnectionAccess.deleteMany({ where: { connectionId: current.id } });
           await tx.botConnectionAccess.updateMany({
             where: { connectionId: taken.id },
             data: next,
@@ -117,6 +112,7 @@ export async function completeNativeOAuth(options: {
             writesEnabled: taken.writesEnabled,
             allAgents: taken.allAgents,
             agentProvisionedAt: taken.agentProvisionedAt,
+            agentProvisionPending: false,
           };
           await tx.connection.delete({ where: { id: taken.id } });
           if (taken.secretId)

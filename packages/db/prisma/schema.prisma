@@ -959,6 +959,9 @@ model Connection {
   /// Set when Rakazo made this connection private to its own agent on connect. Such a connection
   /// stays private when the agent goes away; rows without it keep the old release-to-shared rule.
   agentProvisionedAt DateTime?
+  /// Set by begin on a new row and cleared when its agent has been provisioned, so a crash between
+  /// connected and provisioning is picked up by the next complete. Never set on older rows.
+  agentProvisionPending Boolean            @default(false)
 
   @@index([spaceId, userId, connectorId])
   @@index([agentBotId])

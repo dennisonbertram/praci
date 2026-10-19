@@ -39,7 +39,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     }),
     complete: async () => undefined,
     connectionReady: async () => true,
-    revoke: async () => undefined,
+    revoke: async (..._args: unknown[]): Promise<void> => undefined,
   };
   const client = (who: Actor) =>
     createRouterClient(
@@ -66,6 +66,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
       status: string;
       allAgents: boolean;
       userId: string;
+      agentProvisionPending: boolean;
     }> = {},
   ) =>
     prisma.connection.create({
@@ -76,6 +77,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
         provider: "notion",
         displayName: "Notion",
         status: "pending",
+        agentProvisionPending: (data.status ?? "pending") === "pending",
         providerRef: `ref-${Math.random().toString(36).slice(2)}`,
         ...data,
       },
@@ -239,6 +241,12 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     for (const provider of ["googlecalendar", "gmail"]) {
       const g = google(provider);
       // The replacement already has a grant for a bot the old row also has.
+      const stray = await createRepos(prisma).createBot(owner, {
+        name: `Stray ${provider}`,
+        title: "",
+        description: "",
+        instructions: "",
+      });
       const extra = await createRepos(prisma).createBot(owner, {
         name: `Extra ${provider}`,
         title: "",
@@ -257,8 +265,9 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
         where: { id: next.id },
         data: { providerRef: g.state, metadata: { replacesConnectionId: old.id } },
       });
+      // A grant the pending row picked up on its own must not survive the replacement.
       await prisma.botConnectionAccess.create({
-        data: { connectionId: next.id, botId: extra.id, spaceId, userId },
+        data: { connectionId: next.id, botId: stray.id, spaceId, userId },
       });
       const google2 = {
         begin: async () => undefined,
@@ -371,7 +380,11 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
   });
 
   it("an archive between the agent's creation and its link still ends private and linked", async () => {
-    const pending = await create({ status: "connected", provider: "pipedrive" });
+    const pending = await create({
+      status: "connected",
+      provider: "pipedrive",
+      agentProvisionPending: true,
+    });
     const repos = createRepos(prisma);
     let archivedOnce = false;
     await provisionConnectionAgent(
@@ -460,6 +473,130 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     const second = await complete(begun.connectionId);
     expect(second.agentBotId).toBeTruthy();
     expect(second.agentBotId).not.toBe(first.agentBotId);
+  });
+
+  it("a rename does not make an old connected connection eligible for provisioning", async () => {
+    const legacy = await create({ status: "connected", provider: "renamed", allAgents: true });
+    await client(owner).connections.rename({ connectionId: legacy.id, displayName: "Renamed" });
+    const done = await complete(legacy.id);
+    expect(done.agentBotId).toBeNull();
+    expect(await row(legacy.id)).toMatchObject({ allAgents: true, agentProvisionedAt: null });
+  });
+
+  it("a crash between connected and provisioning is recovered by the next complete", async () => {
+    const crashed = await create({
+      status: "connected",
+      provider: "crashed",
+      agentProvisionPending: true,
+    });
+    const done = await complete(crashed.id);
+    expect(done.agentBotId).toBeTruthy();
+    expect(await row(crashed.id)).toMatchObject({
+      allAgents: false,
+      agentProvisionPending: false,
+    });
+  });
+
+  it("a recoverable remote revoke failure leaves the agent, marker and grants in place", async () => {
+    const pending = await create({ provider: "revokefail" });
+    const done = await complete(pending.id);
+    const original = connector.revoke;
+    connector.revoke = async () => {
+      throw new Error("provider unavailable");
+    };
+    try {
+      await expect(
+        client(owner).connections.revoke({ connectionId: pending.id }),
+      ).rejects.toBeTruthy();
+    } finally {
+      connector.revoke = original;
+    }
+    expect(await row(pending.id)).toMatchObject({
+      status: "connected",
+      agentBotId: done.agentBotId,
+      allAgents: false,
+      agentProvisionedAt: expect.any(Date),
+    });
+    expect((await access(pending.id)).map((a) => a.botId)).toEqual([done.agentBotId]);
+    expect(
+      (await prisma.bot.findUniqueOrThrow({ where: { id: done.agentBotId as string } })).archivedAt,
+    ).toBeNull();
+    // A legacy sibling's share still cannot reach it.
+    const legacy = await create({ status: "connected", provider: "revokefail", allAgents: true });
+    await client(owner).connections.setAccess({
+      connectionId: legacy.id,
+      allAgents: false,
+      botIds: [],
+    });
+    expect(await row(pending.id)).toMatchObject({ allAgents: false });
+  });
+
+  it("sharing a legacy sibling never shares a row provisioned while it was being listed", async () => {
+    const legacyA = await create({ status: "connected", provider: "race", allAgents: true });
+    const sibling = await create({ status: "connected", provider: "race", allAgents: true });
+    const racing = createRouterClient(
+      createRouter({
+        prisma: new Proxy(prisma, {
+          get(target, prop, receiver) {
+            if (prop !== "$transaction") return Reflect.get(target, prop, receiver);
+            return (fn: (tx: PrismaClient) => unknown, options?: unknown) =>
+              (target.$transaction as (f: unknown, o?: unknown) => unknown)(
+                (tx: PrismaClient) =>
+                  fn(
+                    new Proxy(tx, {
+                      get(inner, key, innerReceiver) {
+                        const value = Reflect.get(inner, key, innerReceiver);
+                        if (key !== "connection") return value;
+                        return new Proxy(value, {
+                          get(model, method, modelReceiver) {
+                            const original = Reflect.get(model, method, modelReceiver);
+                            if (method !== "findMany") return original;
+                            return async (...args: unknown[]) => {
+                              const rows = await (original as (...a: unknown[]) => unknown)(
+                                ...args,
+                              );
+                              // The sibling is provisioned after it was listed.
+                              await prisma.connection.update({
+                                where: { id: sibling.id },
+                                data: { agentProvisionedAt: new Date() },
+                              });
+                              return rows;
+                            };
+                          },
+                        });
+                      },
+                    }),
+                  ),
+                options,
+              );
+          },
+        }),
+        env: { webOrigin: "http://localhost" },
+        connectors: { managed: () => connector, managedProviders: () => [connector] },
+      } as unknown as RouterDeps),
+      { context: { actor: owner } as never },
+    );
+    await expect(
+      racing.connections.setAccess({ connectionId: legacyA.id, allAgents: false, botIds: [] }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
+    expect(await row(sibling.id)).toMatchObject({ allAgents: true });
+    expect(await row(legacyA.id)).toMatchObject({ allAgents: true });
+  });
+
+  it("revoke and relinking the same connection do not deadlock", async () => {
+    for (let i = 0; i < 8; i += 1) {
+      const pending = await create({ provider: `lock${i}` });
+      const done = await complete(pending.id);
+      const results = await Promise.allSettled([
+        client(owner).connections.revoke({ connectionId: pending.id }),
+        client(owner).connections.createAgent({ connectionId: pending.id }),
+        client(owner).connections.setWrites({ connectionId: pending.id, enabled: true }),
+      ]);
+      for (const result of results)
+        if (result.status === "rejected")
+          expect(String((result.reason as Error).message)).not.toMatch(/deadlock/i);
+      expect(done.agentBotId).toBeTruthy();
+    }
   });
 
   it("does not provision for another owner's connection", async () => {
