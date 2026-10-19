@@ -16,6 +16,7 @@ interface ComposeService {
   restart?: string;
   network_mode?: string;
   networks?: string[];
+  depends_on?: Record<string, unknown>;
 }
 
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
@@ -55,6 +56,8 @@ describe("the images compose file", () => {
       "api",
       "computer",
       "data-init",
+      "minio",
+      "minio-init",
       "postgres",
       "supervisor",
       "web",
@@ -70,6 +73,17 @@ describe("the images compose file", () => {
       /^\$\{POSTGRES_IMAGE:-pgvector\/pgvector:pg16-trixie@sha256:[0-9a-f]{64}\}$/,
     );
     expect(compose.services["data-init"]?.image).toMatch(/^\$\{BUSYBOX_IMAGE:-busybox:1\}$/);
+  });
+
+  it("bundles MinIO, creates its bucket once, and presets the S3 settings without a host port", () => {
+    expect(compose.services.minio?.ports).toBeUndefined();
+    expect(compose.services["minio-init"]?.restart).toBe("no");
+    for (const name of ["api", "worker"] as const) {
+      const environment = compose.services[name]?.environment ?? {};
+      expect(environment.RAKAZO_S3_ENDPOINT).toBe("${RAKAZO_S3_ENDPOINT:-http://minio:9000}");
+      expect(environment.RAKAZO_S3_FORCE_PATH_STYLE).toBe("${RAKAZO_S3_FORCE_PATH_STYLE:-true}");
+      expect(compose.services[name]?.depends_on).toHaveProperty("minio-init");
+    }
   });
 
   it("skips non-string Compose environment scalars when collecting image names", () => {

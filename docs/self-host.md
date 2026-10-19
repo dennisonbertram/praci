@@ -391,7 +391,8 @@ The Electron desktop app is a client of the same API. Docker and E2B still apply
   optional. Keep the supervisor private, as the included Compose files do.
 - **E2B** runs bot computers away from the Rakazo host and is a good choice for public or multi-user
   production deployments. Rakazo checkpoints the portable workspace and browser-profile directory to
-  `DATA_DIR`; the E2B disk is a runtime cache, not the durable source of truth.
+  object storage (see [Object storage](#object-storage-for-artifacts-and-agent-homes)); the E2B disk is
+  a runtime cache, not the durable source of truth.
 - **Daytona** provides the same remote-computer contract through Daytona sandboxes. Configure
   `DAYTONA_API_KEY` and optionally `DAYTONA_API_URL` / `DAYTONA_TARGET` / `DAYTONA_SNAPSHOT`.
 - **CreateOS** provides the same remote-computer contract through CreateOS desktop sandboxes.
@@ -413,11 +414,18 @@ The Electron desktop app is a client of the same API. Docker and E2B still apply
 
 For provider configuration and health checks, see the [provider setup guide](./self-host-sandbox-providers.md).
 
-## Object storage for artifacts
+## Object storage for artifacts and agent homes
 
-By default Rakazo keeps uploaded and generated files on the local disk under `data/`, which is
-only safe when a single API or worker process runs. To run several processes, point Rakazo at any
-S3-compatible store (AWS S3, Cloudflare R2, MinIO). Files are stored under
+The Compose stacks (`docker-compose.yml`, `docker-compose.images.yml` and `docker-compose.prod.yml`)
+include a MinIO service and a one-shot `minio-init` service that creates the bucket on first start.
+API and worker get `RAKAZO_S3_*` preset to that service, so a default install stores uploaded and
+generated files and agent homes in object storage with no extra setup. MinIO is not published on the
+host. Its default credentials are placeholders; set `RAKAZO_S3_ACCESS_KEY_ID` and
+`RAKAZO_S3_SECRET_ACCESS_KEY` in `.env` before the first start of any stack others can reach (MinIO
+keeps the credentials it was first started with). Back up the `miniodata` volume with the database.
+
+To use another S3-compatible store (AWS S3, Cloudflare R2, a MinIO you run yourself), set the
+variables below in `.env`; they replace the presets. Files are stored under
 `<prefix>/artifacts/<space id>/<id>`, so one bucket can serve many spaces. Set the first four
 variables together; any `RAKAZO_S3_*` variable that is set turns object storage on, and a partial set stops startup and names the missing variable.
 
@@ -429,6 +437,29 @@ variables together; any `RAKAZO_S3_*` variable that is set turns object storage 
 - `RAKAZO_S3_PREFIX`: optional key prefix.
 
 Plain `http` endpoints are accepted only for localhost, private network addresses and single-word hostnames such as `minio`; use `https` for anything else. Existing local files are not copied to the bucket.
+
+Without any `RAKAZO_S3_*` variable (for example `pnpm dev` outside Compose), artifacts and home snapshots
+fall back to local disk under `DATA_DIR`, which is only safe for a single process.
+
+### Agent homes
+
+Each Computer's persistent workspace (its home) is saved as one zip snapshot in the object store. The
+Computer row in Postgres holds the current revision and snapshot id, and a save succeeds only if that
+revision has not changed since it was read, so two workers cannot overwrite each other. Every lookup is
+scoped to the Computer's space. `DATA_DIR/homes/<key>` is a working copy: the Docker supervisor mounts
+it, and Rakazo refreshes it from the snapshot when another process saved a newer revision.
+
+An existing deployment migrates on its own. The first time a Computer's home is used and it has no
+snapshot, Rakazo uploads the existing `DATA_DIR/homes/<key>` directory and uses the snapshot from then
+on. The local directory is not deleted. Set `RAKAZO_AGENT_HOME_STORE=local` to keep homes only on local
+disk; this is a development opt-out and is not safe with more than one API or worker host.
+
+### Pi session recordings
+
+With `PI_SESSION_RECORDING=true` (off by default), Pi writes JSONL transcripts to
+`DATA_DIR/pi-sessions/<user>/<bot>` with 30-day retention. They are diagnostic recordings that nothing
+reads back to run an agent, so they are runtime data and stay on local disk. Moving them to object
+storage is follow-up work; the transcripts are unencrypted, so leave recording off on shared hosts.
 
 ## Backup
 
@@ -889,9 +920,10 @@ rather not grant the capability.
 ## Other deployment layouts
 
 API and worker need always-on processes; serverless request handlers are not sufficient. Use a
-Node.js version supported by the root `package.json`, Postgres 16 and a persistent `DATA_DIR` volume shared by API and worker, with encrypted off-host
-backups. The current home store uses a local filesystem, so deployments on separate hosts need a
-shared filesystem; an object-storage adapter is not available yet.
+Node.js version supported by the root `package.json`, Postgres 16 and an S3-compatible object store, with encrypted off-host backups. Agent homes live in
+the object store, so API and worker processes on separate hosts need no shared filesystem. A Docker
+computer still mounts its working copy under `DATA_DIR/homes`, so Docker computers need the
+supervisor and its `DATA_DIR` on one host.
 
 Use the same HTTPS origin for the web app, `/api`, and `/rpc`. Preserve the authenticated screen
 proxy routes. Choose a [computer provider](#choosing-a-computer-provider) appropriate to the
