@@ -12,7 +12,7 @@
     "screenshot": "docs/ux-walker/stories/STORY-IA-1/screenshots/step-1.png",
     "suggested_fix": "Make the whole tile or its title a link to the MCP detail page, as Carta's is.",
     "files_likely_involved": [
-      "apps/web/src/components/integrations/IntegrationsPage.tsx"
+      "apps/web/src/components/integrations/IntegrationsHome.tsx"
     ]
   },
   {

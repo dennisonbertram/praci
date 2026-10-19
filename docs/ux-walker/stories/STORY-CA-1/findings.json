@@ -12,7 +12,7 @@
     "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/step-4.png",
     "suggested_fix": "Do not add the new agent to other accounts' access; consider defaulting Only this agent on, as Carta does.",
     "files_likely_involved": [
-      "apps/web/src/pages/integrations/AppDetail.tsx",
+      "apps/web/src/components/integrations/AppDetail.tsx",
       "IntegrationAgentSection.tsx"
     ]
   },
@@ -45,7 +45,7 @@
     "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/mobile-check.png",
     "suggested_fix": "Stack the row actions in one wrapped group under the name.",
     "files_likely_involved": [
-      "apps/web/src/pages/integrations/AppDetail.tsx"
+      "apps/web/src/components/integrations/AppDetail.tsx"
     ]
   },
   {
@@ -61,7 +61,7 @@
     "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/step-4.png",
     "suggested_fix": "Collapse Used by per account, or show it only on demand.",
     "files_likely_involved": [
-      "apps/web/src/pages/integrations/AppDetail.tsx"
+      "apps/web/src/components/integrations/AppDetail.tsx"
     ]
   },
   {

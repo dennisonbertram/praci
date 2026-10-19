@@ -1,5 +1,7 @@
 # STORY-CA-1 walk report
 
+Screenshots cited here are kept locally and not committed; the written findings are the record.
+
 Verdict: PASS with findings
 
 Setup: mock demo, Gmail Sales account in place of Notion.

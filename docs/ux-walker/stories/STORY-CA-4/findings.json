@@ -28,7 +28,7 @@
     "screenshot": "docs/ux-walker/stories/STORY-CA-4/screenshots/step-1.png",
     "suggested_fix": "Align verbs and positions.",
     "files_likely_involved": [
-      "apps/web/src/pages/integrations/AppDetail.tsx",
+      "apps/web/src/components/integrations/AppDetail.tsx",
       "McpDetail.tsx"
     ]
   },

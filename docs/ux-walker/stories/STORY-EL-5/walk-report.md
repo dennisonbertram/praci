@@ -1,5 +1,7 @@
 # Walk report: STORY-EL-5 (call does not start)
 
+Screenshots cited here are kept locally and not committed; the written findings are the record.
+
 Verdict: PASS for Case A (behaviour matches the story), with findings. Case B not walked.
 Stack: mock demo at 127.0.0.1:5380, signed in as the mock founder, desktop 1440x900 and mobile 390x844.
 

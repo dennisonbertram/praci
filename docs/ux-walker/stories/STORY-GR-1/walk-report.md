@@ -1,4 +1,6 @@
 # Walk report GR-1: Gmail rate-limits the sync (notice)
+
+Screenshots cited here are kept locally and not committed; the written findings are the record.
 Result: FAIL (1 high, 1 low). Viewport 1280x800 plus one 390x844 check. Space "MOCK DEMO DATA — Mail rate-limited", session uxw-gr.
 
 ## Flow log

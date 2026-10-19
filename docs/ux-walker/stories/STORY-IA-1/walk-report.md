@@ -1,5 +1,7 @@
 # Walk report: STORY-IA-1
 
+Screenshots cited here are kept locally and not committed; the written findings are the record.
+
 Verdict: **FAIL**. Viewport 1280x800 desktop plus one 390x844 check (`screenshots/mobile-check.png`, no overflow or wrapped controls; geometry audit pageOverflowX = 0). App: mock demo at 127.0.0.1:5380, user mock-founder. Console: no errors seen.
 
 ## Flow log

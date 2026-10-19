@@ -1,5 +1,7 @@
 # UX flow report: new features (2026-10-19)
 
+Screenshots cited here are kept locally and not committed; the written findings are the record.
+
 Scope: the Connect apps pill, integration agents on MCP and app pages, the Carta agent, the Gmail rate-limit notice, and Elio's first call.
 Detail lives in `docs/ux-flow/new-features/journeys/NEW-1.md` to `NEW-6.md` and `docs/ux-flow/new-features/redundancy.md`. Screenshot paths below are relative to `docs/ux-walker/stories/`.
 

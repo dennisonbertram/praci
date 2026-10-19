@@ -1,5 +1,7 @@
 # Walk report STORY-NA-6
 
+Screenshots cited here are kept locally and not committed; the written findings are the record.
+
 Verdict: PASS with warnings (partial)
 
 ## Flow log

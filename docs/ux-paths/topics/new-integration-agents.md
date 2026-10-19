@@ -7,7 +7,7 @@ Sources: `docs/integration-agents/README.md`, `apps/web/src/components/integrati
 ## Demo preconditions (read first)
 
 - **Mercury and Brex are seeded** in the mock demo (`seed.ts:203-228`): two connected MCP servers named "Mercury" and "Brex" with a fake stored login, plus the Finance agent. Neither has an agent yet, so the Integrations page shows **Create agent** for each.
-- **BLOCKER for the payment stories (IA-3, IA-4, IA-6 write part).** The demo's emulated Mercury server lists only five tools: `getAccounts`, `getTreasury`, `listTransactions`, `getTransactionById`, `getAttachment` (`DEMO_FINANCE_TOOLS`, `data.ts:859-881`). The fake `requestSendMoney` exists in `finance-fake-tools.ts:113-128` (it only records the call and returns `fake-request-1`, status `pendingApproval`) and in that file's own `fakeMercuryMcpFetch`, but the demo stack does not serve it. So on the stock demo the Mercury agent has no write tool, and a payment request cannot produce an approval card. To walk these stories, add `requestSendMoney` (with an input schema such as `{accountId, recipientId, amount, ...}`) to `DEMO_FINANCE_TOOLS.mercury`. The demo `callToolFor` already routes to the fake Mercury, which handles it. Brex has no write tool in the demo either (its four demo tools are all reads), so there is no Brex write walk.
+- **Payment stories (IA-3, IA-4, IA-6 write part).** The demo's emulated Mercury serves `requestSendMoney` (`DEMO_FINANCE_TOOLS` in `data.ts`). It records the call and returns a fake pending request (`fake-request-1`, status `pendingApproval`); no money moves. Brex has no write tool in the demo (its four demo tools are all reads), so there is no Brex write walk.
 - **Chat model.** The agent answers through the demo's configured model. A scripted or mock model must be told to call `requestSendMoney` for the payment stories. UNVERIFIED: whether the demo model does so on request. If it only chats, IA-3/IA-4 stop at the dialog.
 - **Other agents.** Chief and the Finance agent (created on first use) exist. The Finance agent already has read-only access to Mercury and Brex.
 - **Reset note.** IA-5, IA-6 and IA-7 change shared server state (exclusive flag, archived agent). Re-seed between walks.
@@ -74,7 +74,7 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 **Topic**: Integration agents
 **Persona**: Maya, wants to pay a bill by chatting but is afraid of the agent moving money.
 **Goal**: See that a payment waits for her decision and that Deny stops it.
-**Preconditions**: IA-1 done. **Requires `requestSendMoney` added to the demo tool list (see Demo preconditions).** Writes off.
+**Preconditions**: IA-1 done. Writes off.
 **Ideal path**: 5 — Mercury page → turn on **Allow changes in Mercury** → **Allow changes** in the dialog → open chat → ask → **Deny**.
 **Alternate paths**: (1) Ask for the payment first with writes off; the agent says it cannot (IA-2 step 3), then she turns the switch on. (2) Turn on from the Agent section of the chat's bot page (none; only the integration page has the switch).
 
@@ -151,7 +151,7 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 **Topic**: Integration agents
 **Persona**: Maya, wants only one agent to touch the bank, but still wants her other assistants to be useful.
 **Goal**: See that other agents lose direct Mercury access, can still get answers by messaging the Mercury agent, and that the Finance page still works.
-**Preconditions**: IA-1 done. Writes can be on or off (the story works with off). The Finance agent exists and has Mercury assigned (seeded). Chief is the first bot. For the write part, `requestSendMoney` is added to the demo.
+**Preconditions**: IA-1 done. Writes can be on or off (the story works with off). The Finance agent exists and has Mercury assigned (seeded). Chief is the first bot. The write part uses the demo's `requestSendMoney`.
 **Ideal path**: 3 — Mercury page → switch **Only this agent** → ask Chief a Mercury question.
 **Alternate paths**: (1) Leave it shared: other agents keep read-only Mercury access (no writes, even with changes on). (2) Untick Mercury under **Used by** for each bot by hand (one bot at a time; same result for reads but writes are still not offered to non-agents).
 

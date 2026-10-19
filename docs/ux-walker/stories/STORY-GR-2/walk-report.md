@@ -1,4 +1,6 @@
 # Walk report GR-2: "Try again" during the pause
+
+Screenshots cited here are kept locally and not committed; the written findings are the record.
 Result: FAIL-soft (1 medium, 1 low; the button works and prevents double clicks).
 
 ## Flow log
