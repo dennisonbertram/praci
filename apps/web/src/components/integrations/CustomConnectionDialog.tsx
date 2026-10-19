@@ -5,6 +5,7 @@ import type {
   McpServer,
 } from "@rakazo/contracts";
 import {
+  integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
   MCP_OAUTH_CLIENT_ID_REQUIRED,
@@ -267,6 +268,8 @@ export function CustomConnectionDialog({
   }
 
   async function connectUrl() {
+    // The key-only form needs its key, and never falls back to a browser sign-in.
+    if (apiKey && !token.trim()) return;
     if (!isHttpUrl(url.trim())) {
       setError(t`Enter the server URL, starting with https://.`);
       return;
@@ -275,7 +278,10 @@ export function CustomConnectionDialog({
       const created = await createServer();
       setServer(created);
       void refresh();
-      if (token.trim() || headerValue.trim()) setView({ kind: "agents" });
+      // The API creates the agent of a service that requires one, so there is no agent to choose.
+      if (integrationPresetForEndpoint(created.endpoint)?.requiresAgent)
+        setView({ kind: "done", hint: null });
+      else if (token.trim() || headerValue.trim()) setView({ kind: "agents" });
       else await signIn(created);
     }, t`Could not add the connection`);
   }

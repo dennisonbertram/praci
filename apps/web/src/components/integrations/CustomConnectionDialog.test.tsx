@@ -223,3 +223,35 @@ it("asks only for an API key and stores it as the bearer secret, with no sign-in
   );
   expect(api.begin).not.toHaveBeenCalled();
 });
+
+const devinProps = { apiKey: true, service: "Devin", initialUrl: DEVIN_MCP_ENDPOINT } as const;
+
+it("does not submit or start sign-in when Enter is pressed without an API key", async () => {
+  await mount(devinProps);
+  await act(async () => {
+    field("API key").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+  });
+  expect(api.create).not.toHaveBeenCalled();
+  expect(api.begin).not.toHaveBeenCalled();
+});
+
+it("skips the bot step for Devin because the API creates its agent", async () => {
+  api.create.mockResolvedValue({ id: "srv-d", name: "Devin", endpoint: DEVIN_MCP_ENDPOINT });
+  await mount(devinProps);
+  await type("API key", "cog_placeholder");
+  await click("Connect");
+  expect(document.body.textContent).toContain("Devin connected");
+  expect(document.body.textContent).not.toContain("Continue");
+  expect(api.begin).not.toHaveBeenCalled();
+});
+
+it("shows the API error when Devin rejects the key", async () => {
+  api.create.mockRejectedValue(
+    new Error("Could not connect to Devin. Check the API key and try again."),
+  );
+  await mount(devinProps);
+  await type("API key", "cog_placeholder");
+  await click("Connect");
+  expect(document.body.textContent).toContain("Could not connect to Devin.");
+  expect(document.body.textContent).not.toContain("connected");
+});
