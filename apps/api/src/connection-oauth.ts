@@ -73,20 +73,18 @@ export async function completeNativeOAuth(options: {
             status: { in: ["connected", "pending", "error"] },
             providerRef: connectionRef,
           },
-          select: {
-            id: true,
-            secretId: true,
-            agentBotId: true,
-            writesEnabled: true,
-            allAgents: true,
-            agentProvisionedAt: true,
-          },
+          select: { id: true, secretId: true },
         });
         let carried: Prisma.ConnectionUncheckedUpdateInput = {};
         const replaces = (current.metadata as { replacesConnectionId?: unknown } | null)
           ?.replacesConnectionId;
         if (taken && taken.id === replaces) {
           replaced = true;
+          // Lock both rows first (the order every access change uses: connection, then bot, then
+          // grants), then read the old row's settings, so a concurrent change to them is not lost.
+          await tx.$queryRaw`SELECT id FROM connections WHERE id IN (${taken.id}, ${current.id}) ORDER BY id FOR UPDATE`;
+          const old = await tx.connection.findFirst({ where: { id: taken.id, ...owner } });
+          if (!old) throw new ORPCError("CONFLICT", { message: "The connection changed; retry" });
           // The same account signing in again replaces its old connection: the Inbox's to-dos and
           // cached mail move over, so reconnecting loses nothing. Not revoked remotely, since that
           // could invalidate the new token of the same grant.
@@ -94,25 +92,23 @@ export async function completeNativeOAuth(options: {
           await tx.cachedMailMessage.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.inboxTodo.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
-          // The agent, its access and its settings move too. A Calendar or Drive agent is keyed by
-          // its connection, so it follows the new id; the Inbox agent keeps its per-user key.
-          // The new row takes exactly the old row's grants: anything the pending row picked up
-          // (for example from sharing a sibling) must not read a connection with private settings.
+          // A Calendar or Drive agent is keyed by its connection, so it follows the new id; the
+          // Inbox agent keeps its per-user key.
+          await tx.bot.updateMany({
+            where: { ...owner, spawnKey: integrationAgentSpawnKey(taken.id), archivedAt: null },
+            data: { spawnKey: integrationAgentSpawnKey(current.id) },
+          });
+          // The new row takes exactly the old row's grants and settings.
           await tx.botConnectionAccess.deleteMany({ where: { connectionId: current.id } });
           await tx.botConnectionAccess.updateMany({
             where: { connectionId: taken.id },
             data: next,
           });
-          await tx.bot.updateMany({
-            where: { ...owner, spawnKey: integrationAgentSpawnKey(taken.id), archivedAt: null },
-            data: { spawnKey: integrationAgentSpawnKey(current.id) },
-          });
           carried = {
-            agentBotId: taken.agentBotId,
-            writesEnabled: taken.writesEnabled,
-            allAgents: taken.allAgents,
-            agentProvisionedAt: taken.agentProvisionedAt,
-            agentProvisionPending: false,
+            agentBotId: old.agentBotId,
+            writesEnabled: old.writesEnabled,
+            allAgents: old.allAgents,
+            privateByDefault: old.privateByDefault,
           };
           await tx.connection.delete({ where: { id: taken.id } });
           if (taken.secretId)

@@ -66,7 +66,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
       status: string;
       allAgents: boolean;
       userId: string;
-      agentProvisionPending: boolean;
+      privateByDefault: boolean;
     }> = {},
   ) =>
     prisma.connection.create({
@@ -77,7 +77,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
         provider: "notion",
         displayName: "Notion",
         status: "pending",
-        agentProvisionPending: (data.status ?? "pending") === "pending",
+        privateByDefault: (data.status ?? "pending") === "pending",
         providerRef: `ref-${Math.random().toString(36).slice(2)}`,
         ...data,
       },
@@ -141,7 +141,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     expect(await row(begun.connectionId)).toMatchObject({
       allAgents: false,
       agentBotId: null,
-      agentProvisionedAt: null,
+      privateByDefault: true,
     });
     expect(await access(begun.connectionId)).toEqual([]);
     expect(await row(sibling.id)).toMatchObject({ allAgents: true, agentBotId: null });
@@ -168,7 +168,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
       writesEnabled: false,
       agentBotId: done.agentBotId,
     });
-    expect(current.agentProvisionedAt).not.toBeNull();
+    expect(current.privateByDefault).toBe(true);
     expect((await access(pending.id)).map((a) => a.botId)).toEqual([done.agentBotId]);
 
     // The user shares it; completing again must not take the share back.
@@ -209,7 +209,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     expect(await row(legacy.id)).toMatchObject({
       allAgents: true,
       agentBotId: null,
-      agentProvisionedAt: null,
+      privateByDefault: false,
     });
   });
 
@@ -322,7 +322,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     expect(await row(app.id)).toMatchObject({
       status: "revoked",
       agentBotId: null,
-      agentProvisionedAt: null,
+      privateByDefault: true,
     });
   });
 
@@ -372,7 +372,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
         status: "connected",
         allAgents: false,
         agentBotId: expect.any(String),
-        agentProvisionedAt: expect.any(Date),
+        privateByDefault: true,
       });
     } finally {
       connector.begin = original;
@@ -383,7 +383,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     const pending = await create({
       status: "connected",
       provider: "pipedrive",
-      agentProvisionPending: true,
+      privateByDefault: true,
     });
     const repos = createRepos(prisma);
     let archivedOnce = false;
@@ -407,7 +407,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     );
     const current = await row(pending.id);
     expect(current).toMatchObject({ allAgents: false });
-    expect(current.agentProvisionedAt).not.toBeNull();
+    expect(current.privateByDefault).toBe(true);
     const bot = await prisma.bot.findUniqueOrThrow({ where: { id: current.agentBotId as string } });
     expect(bot.archivedAt).toBeNull();
   });
@@ -463,7 +463,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     expect(await row(pending.id)).toMatchObject({
       status: "revoked",
       agentBotId: null,
-      agentProvisionedAt: null,
+      privateByDefault: true,
     });
     const begun = await client(owner).connections.begin({
       connectorId: "composio",
@@ -480,20 +480,20 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     await client(owner).connections.rename({ connectionId: legacy.id, displayName: "Renamed" });
     const done = await complete(legacy.id);
     expect(done.agentBotId).toBeNull();
-    expect(await row(legacy.id)).toMatchObject({ allAgents: true, agentProvisionedAt: null });
+    expect(await row(legacy.id)).toMatchObject({ allAgents: true, privateByDefault: false });
   });
 
   it("a crash between connected and provisioning is recovered by the next complete", async () => {
     const crashed = await create({
       status: "connected",
       provider: "crashed",
-      agentProvisionPending: true,
+      privateByDefault: true,
     });
     const done = await complete(crashed.id);
     expect(done.agentBotId).toBeTruthy();
     expect(await row(crashed.id)).toMatchObject({
       allAgents: false,
-      agentProvisionPending: false,
+      privateByDefault: true,
     });
   });
 
@@ -515,7 +515,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
       status: "connected",
       agentBotId: done.agentBotId,
       allAgents: false,
-      agentProvisionedAt: expect.any(Date),
+      privateByDefault: true,
     });
     expect((await access(pending.id)).map((a) => a.botId)).toEqual([done.agentBotId]);
     expect(
@@ -558,7 +558,7 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
                               // The sibling is provisioned after it was listed.
                               await prisma.connection.update({
                                 where: { id: sibling.id },
-                                data: { agentProvisionedAt: new Date() },
+                                data: { privateByDefault: true },
                               });
                               return rows;
                             };
@@ -596,6 +596,101 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
         if (result.status === "rejected")
           expect(String((result.reason as Error).message)).not.toMatch(/deadlock/i);
       expect(done.agentBotId).toBeTruthy();
+    }
+  });
+
+  it("a reused legacy shared error row stays shared after reconnecting", async () => {
+    const legacy = await create({
+      status: "error",
+      provider: "legacyerror",
+      allAgents: true,
+      privateByDefault: false,
+    });
+    const begun = await client(owner).connections.begin({
+      connectorId: "composio",
+      provider: "legacyerror",
+      displayName: "Legacy",
+    });
+    expect(begun.connectionId).toBe(legacy.id);
+    const done = await complete(legacy.id);
+    expect(done.agentBotId).toBeNull();
+    expect(await row(legacy.id)).toMatchObject({
+      status: "connected",
+      allAgents: true,
+      privateByDefault: false,
+    });
+  });
+
+  it("a manual Create agent on a private connection behaves like provisioning, and stays private after archive", async () => {
+    const crashed = await create({
+      status: "connected",
+      provider: "manual",
+      privateByDefault: true,
+    });
+    await prisma.connection.update({ where: { id: crashed.id }, data: { allAgents: true } });
+    const { botId } = await client(owner).connections.createAgent({ connectionId: crashed.id });
+    expect(await row(crashed.id)).toMatchObject({ allAgents: false, agentBotId: botId });
+    expect((await access(crashed.id)).map((a) => a.botId)).toEqual([botId]);
+    await archiveBot(lifecycle(), await prisma.bot.findUniqueOrThrow({ where: { id: botId } }), {
+      userId,
+      spaceId,
+    } as never);
+    expect(await row(crashed.id)).toMatchObject({ allAgents: false, agentBotId: null });
+    expect(await access(crashed.id)).toEqual([]);
+  });
+
+  it("a revoked private connection gets no grants from a legacy sibling's share", async () => {
+    const pending = await create({ provider: "sharedsib" });
+    await complete(pending.id);
+    await client(owner).connections.revoke({ connectionId: pending.id });
+    const legacy = await create({ status: "connected", provider: "sharedsib", allAgents: true });
+    const helper = await createRepos(prisma).createBot(owner, {
+      name: "Sibling helper",
+      title: "",
+      description: "",
+      instructions: "",
+    });
+    await client(owner).connections.setAccess({
+      connectionId: legacy.id,
+      allAgents: false,
+      botIds: [helper.id],
+    });
+    expect(await access(pending.id)).toEqual([]);
+    expect(await row(pending.id)).toMatchObject({ allAgents: false, privateByDefault: true });
+  });
+
+  it("a Google replacement never copies a stale share over a concurrent setExclusive", async () => {
+    for (let i = 0; i < 6; i += 1) {
+      const provider = "googledrive";
+      const ref = `race-acct-${i}-${suffix}`;
+      const state = `race-state-${i}-${suffix}`;
+      const old = await create({ connectorId: "google", provider, status: "connected" });
+      await prisma.connection.update({ where: { id: old.id }, data: { providerRef: ref } });
+      const { botId } = await client(owner).connections.createAgent({ connectionId: old.id });
+      await client(owner).connections.setExclusive({ connectionId: old.id, exclusive: false });
+      const next = await create({ connectorId: "google", provider });
+      await prisma.connection.update({
+        where: { id: next.id },
+        data: { providerRef: state, metadata: { replacesConnectionId: old.id } },
+      });
+      const [exclusive] = await Promise.allSettled([
+        client(owner).connections.setExclusive({ connectionId: old.id, exclusive: true }),
+        completeNativeOAuth({
+          prisma,
+          actor: owner,
+          connector: {
+            complete: async () => ({ connectionRef: ref, secretId: `race-secret-${i}-${suffix}` }),
+          } as never,
+          connectorId: "google",
+          state,
+          code: "c",
+          context: {} as never,
+          lock: async () => undefined,
+        }),
+      ]);
+      const current = await row(next.id);
+      if (exclusive.status === "fulfilled") expect(current.allAgents).toBe(false);
+      expect(current.agentBotId).toBe(botId);
     }
   });
 

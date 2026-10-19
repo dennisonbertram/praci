@@ -678,7 +678,7 @@ async function allEffectiveAccess(prisma: PrismaClient, actor: Actor) {
         status: true,
         allAgents: true,
         agentBotId: true,
-        agentProvisionedAt: true,
+        privateByDefault: true,
         botAccess: { where: scope, select: { botId: true } },
       },
     }),
@@ -5394,7 +5394,6 @@ export function createRouter(deps: RouterDeps) {
                 status: "pending",
                 providerRef: null,
                 metadata: {},
-                agentProvisionPending: true,
               },
             });
           }
@@ -5408,7 +5407,7 @@ export function createRouter(deps: RouterDeps) {
               displayName: input.displayName,
               status: "pending",
               allAgents: false,
-              agentProvisionPending: true,
+              privateByDefault: true,
             },
           });
           return created;
@@ -5900,9 +5899,9 @@ export function createRouter(deps: RouterDeps) {
             { timeout: 60_000 },
           );
         }
-        // Whoever sees the row connected with provisioning still pending does it; the flag makes
-        // it happen once, and also recovers a crash between connected and provisioning.
-        if (row.status === "connected" && row.agentProvisionPending) {
+        // A connection created private gets its agent as soon as it is connected and has none:
+        // the first connect, a reconnect, a racing poll and a crash before provisioning alike.
+        if (row.status === "connected" && row.privateByDefault && !row.agentBotId) {
           await provisionForActor(context.actor, row.id);
           row =
             (await deps.prisma.connection.findFirst({
@@ -5936,6 +5935,8 @@ export function createRouter(deps: RouterDeps) {
         const { actor } = context;
         let botIds = [...new Set(input.botIds)];
         await deps.prisma.$transaction(async (tx) => {
+          // Connection row first, then bots and grants: the same order as every other path.
+          await tx.$queryRaw`SELECT id FROM connections WHERE id = ${input.connectionId} FOR UPDATE`;
           const connection = await tx.connection.findFirst({
             where: { id: input.connectionId, spaceId: actor.spaceId, userId: actor.userId },
             select: {
@@ -5943,16 +5944,11 @@ export function createRouter(deps: RouterDeps) {
               connectorId: true,
               provider: true,
               agentBotId: true,
-              agentProvisionedAt: true,
-              agentProvisionPending: true,
+              privateByDefault: true,
             },
           });
           if (!connection) throw new IsolationError();
-          const standalone = Boolean(
-            connection.agentBotId ||
-              connection.agentProvisionedAt ||
-              connection.agentProvisionPending,
-          );
+          const standalone = Boolean(connection.agentBotId || connection.privateByDefault);
           if (connection.agentBotId) {
             const activeAgent = await tx.bot.updateMany({
               where: {
@@ -5992,8 +5988,7 @@ export function createRouter(deps: RouterDeps) {
                   connectorId: connection.connectorId,
                   provider: connection.provider,
                   agentBotId: null,
-                  agentProvisionedAt: null,
-                  agentProvisionPending: false,
+                  privateByDefault: false,
                 },
                 select: { id: true },
               });
@@ -6007,8 +6002,7 @@ export function createRouter(deps: RouterDeps) {
               userId: actor.userId,
               agentBotId: connection.agentBotId,
               // A sibling provisioned or archived since it was listed is never shared with it.
-              agentProvisionedAt: connection.agentProvisionedAt,
-              agentProvisionPending: connection.agentProvisionPending,
+              privateByDefault: connection.privateByDefault,
             },
             data: { allAgents: input.allAgents },
           });
@@ -6107,7 +6101,6 @@ export function createRouter(deps: RouterDeps) {
         const undo: {
           ownership: {
             agentBotId: string | null;
-            agentProvisionedAt: Date;
             writesEnabled: boolean;
             grants: { botId: string; spaceId: string; userId: string }[];
           } | null;
@@ -6161,7 +6154,7 @@ export function createRouter(deps: RouterDeps) {
               }
               // Unlink a provisioned agent under the same lock, so a begin that reuses the row
               // right after sees a clean row. The agent itself is archived once this commits.
-              if (row.agentProvisionedAt) {
+              if (row.privateByDefault) {
                 const agent = row.agentBotId
                   ? await tx.bot.findFirst({
                       where: { id: row.agentBotId, spaceId: row.spaceId, userId: row.userId },
@@ -6172,7 +6165,6 @@ export function createRouter(deps: RouterDeps) {
                   agent?.spawnKey === integrationAgentSpawnKey(row.id) ? row.agentBotId : null;
                 undo.ownership = {
                   agentBotId: row.agentBotId,
-                  agentProvisionedAt: row.agentProvisionedAt,
                   writesEnabled: row.writesEnabled,
                   grants: await tx.botConnectionAccess.findMany({
                     where: { connectionId: row.id },
@@ -6181,7 +6173,7 @@ export function createRouter(deps: RouterDeps) {
                 };
                 await tx.connection.update({
                   where: { id: row.id },
-                  data: { agentBotId: null, agentProvisionedAt: null, writesEnabled: false },
+                  data: { agentBotId: null, writesEnabled: false },
                 });
                 await tx.botConnectionAccess.deleteMany({ where: { connectionId: row.id } });
               }
@@ -6294,7 +6286,6 @@ export function createRouter(deps: RouterDeps) {
                 ...(undo.ownership
                   ? {
                       agentBotId: undo.ownership.agentBotId,
-                      agentProvisionedAt: undo.ownership.agentProvisionedAt,
                       writesEnabled: undo.ownership.writesEnabled,
                     }
                   : {}),

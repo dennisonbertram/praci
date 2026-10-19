@@ -16,8 +16,8 @@ export type ConnectionAccessRow = {
   status: string;
   allAgents: boolean;
   agentBotId: string | null;
-  /** Set when Rakazo made the connection private to its own agent on connect. */
-  agentProvisionedAt?: Date | null;
+  /** Created private to its own agent: always scoped on its own, never grouped with siblings. */
+  privateByDefault?: boolean;
   botAccess: { botId: string }[];
 };
 
@@ -64,7 +64,7 @@ export function botCanReachConnection(
  * denies anything, so an abandoned second account cannot block a shared one.
  * - Ordinary rows (no linked agent) keep the app-wide rule: if any connected account of an app is
  *   limited to other agents, every live account of that app is denied, so no sibling stands in.
- * - Provisioned connections that lost their agent are denied one by one too.
+ * - Connections created private (privateByDefault) are denied one by one too.
  * - Agent-linked native Google rows are denied one by one: an exclusive account never denies its
  *   siblings, because the Google built-in tools check the account id of every call. Every other
  *   connector keeps the app-wide rule, because Composio and Pipedream can resolve an account the
@@ -76,9 +76,8 @@ export function deniedConnectionIds(rows: ConnectionAccessRow[]): Set<string> {
   const live = rows.filter((row) => row.status !== "revoked");
   const perConnection = (row: ConnectionAccessRow) =>
     (row.connectorId === "google" && row.agentBotId !== null) ||
-    // A private connection whose agent is gone stands alone: it never denies, or is shared with,
-    // its siblings.
-    (row.agentProvisionedAt != null && row.agentBotId === null);
+    // A connection created private stands alone: it never denies, or is shared with, its siblings.
+    row.privateByDefault === true;
   const deniedApps = new Set(
     live
       .filter(

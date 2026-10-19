@@ -227,7 +227,7 @@ describe("provisioned connections that lost their agent", () => {
     const rows = [
       row("private", "connected", false, {
         connectorId,
-        agentProvisionedAt: new Date(),
+        privateByDefault: true,
       }),
       row("legacy", "connected", true, { connectorId }),
     ];

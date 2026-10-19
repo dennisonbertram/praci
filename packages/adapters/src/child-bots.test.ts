@@ -1660,7 +1660,10 @@ describe("archiveBot", () => {
       where: { id: "bot-1" },
       data: { archivedAt: expect.any(Date), pinned: false },
     });
-    expect(groupCleanup.$queryRaw).not.toHaveBeenCalled();
+    // Only the agent's connection rows are locked; no chat group is touched.
+    expect(
+      groupCleanup.$queryRaw.mock.calls.some(([query]) => String(query).includes("chat_groups")),
+    ).toBe(false);
     expect(groupCleanup.chatGroup.deleteMany).not.toHaveBeenCalled();
     expect(groupCleanup.chatGroupMember.deleteMany).not.toHaveBeenCalled();
     expect(cancel).toHaveBeenCalledWith("run:run-1");

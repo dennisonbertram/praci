@@ -72,7 +72,6 @@ export async function ensureConnectedAppAgent(
   },
   actor: Actor,
   connectionId: string,
-  options: { provision?: boolean } = {},
 ): Promise<{ connection: Awaited<ReturnType<typeof loadConnectedApp>>; bot: Bot }> {
   const initial = await loadConnectedApp(deps.prisma, actor, connectionId);
   // A Gmail account is read and answered by the user's one Inbox agent, so it links there.
@@ -83,6 +82,8 @@ export async function ensureConnectedAppAgent(
     : integrationAgentSpawnKey(connectionId);
   const link = (bot: Bot) =>
     deps.prisma.$transaction(async (tx) => {
+      // One lock order everywhere: connection row, then the bot row, then grants.
+      await tx.$queryRaw`SELECT id FROM connections WHERE id = ${connectionId} FOR UPDATE`;
       const { count } = await tx.bot.updateMany({
         where: {
           id: bot.id,
@@ -94,8 +95,6 @@ export async function ensureConnectedAppAgent(
         data: { updatedAt: new Date() },
       });
       if (!count) return null;
-      // Lock order everywhere: connection row, then its grants. Revoke takes them the same way.
-      await tx.$queryRaw`SELECT id FROM connections WHERE id = ${connectionId} FOR UPDATE`;
 
       const current = await tx.connection.findFirst({
         where: { ...scope(actor, connectionId), status: "connected" },
@@ -106,7 +105,10 @@ export async function ensureConnectedAppAgent(
       // Inbox reply cards are mail_send calls by the Inbox agent, which a linked account refuses
       // while changes are off. Every send still waits for its approval card.
       const firstLink = !current.agentBotId;
-      const provisioning = Boolean(options.provision && current.agentProvisionPending);
+      // A connection created private is made private to its agent by the link itself, so manual
+      // Create agent and automatic provisioning do exactly the same. An archive that lands after
+      // this transaction sees privateByDefault and keeps the connection private.
+      const privatize = current.privateByDefault && firstLink;
 
       await tx.botConnectionAccess.upsert({
         where: { connectionId_botId: { connectionId, botId: bot.id } },
@@ -127,16 +129,12 @@ export async function ensureConnectedAppAgent(
         data: {
           agentBotId: bot.id,
           ...(inbox && firstLink ? { writesEnabled: true } : {}),
-          // Made in the same transaction as the link, which holds the agent's row: an archive
-          // either comes first (no link) or after (and then sees the marker and keeps it private).
-          ...(provisioning
-            ? { agentProvisionedAt: new Date(), allAgents: false, agentProvisionPending: false }
-            : {}),
+          ...(privatize ? { allAgents: false } : {}),
         },
       });
       if (!updated.count)
         throw new ORPCError("CONFLICT", { message: "The connection changed; retry" });
-      if (provisioning)
+      if (privatize)
         await tx.botConnectionAccess.deleteMany({
           where: {
             connectionId,
@@ -178,10 +176,9 @@ export async function ensureConnectedAppAgent(
 }
 
 /**
- * Gives a connection that just became connected its own agent and makes it private to that agent
- * (writes stay as the link set them: off, except Gmail on the Inbox agent). Runs once per
- * connection: the agentProvisionPending flag (set by begin, cleared with the link) means a second completion, or a connection the user
- * has since shared, is left alone. Best-effort: Create agent is the repair path.
+ * Gives a connection created private its own agent (Gmail links to the Inbox agent). Does nothing
+ * for older connections, for one that already has an agent, or one not yet connected, so it is
+ * safe to call on every complete and on a reconnect. Best-effort: Create agent is the repair path.
  */
 export async function provisionConnectionAgent(
   deps: Parameters<typeof ensureConnectedAppAgent>[0],
@@ -194,10 +191,10 @@ export async function provisionConnectionAgent(
     try {
       const row = await deps.prisma.connection.findFirst({
         where: { ...scope(actor, connectionId), status: "connected" },
-        select: { agentProvisionPending: true },
+        select: { privateByDefault: true, agentBotId: true },
       });
-      if (!row?.agentProvisionPending) return;
-      await ensureConnectedAppAgent(deps, actor, connectionId, { provision: true });
+      if (!row?.privateByDefault || row.agentBotId) return;
+      await ensureConnectedAppAgent(deps, actor, connectionId);
       return;
     } catch (error) {
       if (attempt === 2)
@@ -245,6 +242,7 @@ export async function setConnectedAppWrites(
   enabled: boolean,
 ) {
   return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM connections WHERE id = ${connectionId} FOR UPDATE`;
     const current = await loadConnectedApp(tx, actor, connectionId);
     await lockConnectedAppAgent(tx, actor, current);
     const updated = await tx.connection.updateMany({
@@ -268,6 +266,7 @@ export async function setConnectedAppExclusive(
   exclusive: boolean,
 ) {
   return prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT id FROM connections WHERE id = ${connectionId} FOR UPDATE`;
     const current = await loadConnectedApp(tx, actor, connectionId);
     await lockConnectedAppAgent(tx, actor, current);
     const agentBotId = current.agentBotId;

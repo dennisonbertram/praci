@@ -45,9 +45,11 @@ function setup(replacesConnectionId?: string) {
       },
     );
   const tx = {
+    $queryRaw: vi.fn(async () => []),
     connection: {
       findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> }) => {
         if (where.id === "pending") return rows.pending;
+        if (where.id === "old") return rows.old ?? null;
         if (where.providerRef === "acct-1") return rows.old ?? null;
         return null;
       }),

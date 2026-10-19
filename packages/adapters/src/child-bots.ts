@@ -269,6 +269,11 @@ export async function archiveSpawnedBot(
   return { ok: true as const, botId: target.id, name: target.name };
 }
 
+/** Connection rows are locked before the bot row everywhere, so relinking cannot deadlock with this. */
+async function lockAgentConnections(tx: Pick<PrismaClient, "$queryRaw">, botId: string) {
+  await tx.$queryRaw`SELECT id FROM connections WHERE "agentBotId" = ${botId} ORDER BY id FOR UPDATE`;
+}
+
 /**
  * Deleting or archiving an integration agent frees its servers: no agent, read-only. A server
  * that was exclusive to it stays exclusive, so with no agent no bot can use it.
@@ -302,7 +307,7 @@ async function releaseAgentServers(
       if (linked.length === 0) return { count: 0 };
       // A connection Rakazo made private on connect stays private with no agent; older ones
       // go back to shared.
-      const stayPrivate = { ...scope, agentProvisionedAt: { not: null } };
+      const stayPrivate = { ...scope, privateByDefault: true };
       const released = await tx.connection.updateMany({
         where: stayPrivate,
         data: { agentBotId: null, writesEnabled: false, allAgents: false },
@@ -372,6 +377,7 @@ export async function archiveBot(
         data: { state: "stopped" },
       });
     }
+    await lockAgentConnections(tx, bot.id);
     await tx.bot.update({
       where: { id: bot.id },
       data: { archivedAt: bot.archivedAt ?? now, pinned: false },
@@ -479,6 +485,7 @@ export async function destroyBot(
           memoriesPreserved: !options.deleteMemories,
         },
       });
+      await lockAgentConnections(tx, bot.id);
       await releaseAgentServers(tx, bot);
       await tx.bot.delete({ where: { id: bot.id } });
       if (webhookSecretId) {
