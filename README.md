@@ -250,6 +250,7 @@ worktree.
 
 - [Self-hosting](./docs/self-host.md)
 - [Self-host secrets](./docs/self-host-secrets.md)
+- [Data room setup, search and embeddings](./docs/data-room/README.md#setting-up-from-scratch)
 - [Computer runtime and isolation](./docs/computer-runtime.md)
 - [Desktop releases](./docs/desktop-release.md)
 - [Mobile releases](./docs/mobile-release.md)

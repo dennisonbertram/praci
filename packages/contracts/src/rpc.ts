@@ -1237,6 +1237,8 @@ export const appContract = {
     },
   },
   dataRoom: {
+    /** Idempotent: creates the Data room agent; returns the bot to open in the side panel. */
+    agent: oc.output(BotSchema),
     folders: oc.output(z.array(DataRoomApiFolderSchema)),
     /** Omit folderId for every folder; null for items outside any folder. */
     /** Each facet's values given the other filters, so no pick combines into nothing. */

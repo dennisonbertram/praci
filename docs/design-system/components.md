@@ -143,7 +143,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | NameInput, FolderOptions, NewFolderDialog, ItemDialog, DeleteDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
 | ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx), [ItemMenu.stories.tsx](../../apps/web/src/components/data-room/ItemMenu.stories.tsx) | web |
 | Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
-| Field, Tag, ImagePreview, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
+| Field, Tag, FilePreview, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
 
 ## Web components/finance
 

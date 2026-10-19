@@ -167,6 +167,7 @@ import {
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
+  isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
@@ -310,6 +311,7 @@ import {
 } from "./computer-status.js";
 import { completeNativeOAuth, connectionError } from "./connection-oauth.js";
 import { createDataRoomService } from "./data-room.js";
+import { ensureDataRoomAgent } from "./data-room-agent.js";
 import {
   type FinanceCryptoDeps,
   financeAccountDetail,
@@ -1984,6 +1986,7 @@ export function createRouter(deps: RouterDeps) {
           isInboxAgentSpawnKey(input.spawnKey) ||
           isFinanceAgentSpawnKey(input.spawnKey) ||
           isLegalAgentSpawnKey(input.spawnKey) ||
+          isDataRoomAgentSpawnKey(input.spawnKey) ||
           isCartaAgentSpawnKey(input.spawnKey) ||
           isIntegrationAgentSpawnKey(input.spawnKey) ||
           isVoiceAgentSpawnKey(input.spawnKey)
@@ -6819,6 +6822,11 @@ export function createRouter(deps: RouterDeps) {
       }),
     },
     dataRoom: {
+      agent: authed.dataRoom.agent.handler(({ context }) =>
+        ensureDataRoomAgent({ repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
       folders: authed.dataRoom.folders.handler(({ context }) => dataRoom.folders(context.actor)),
       facetValues: authed.dataRoom.facetValues.handler(({ context, input }) =>
         dataRoom.facetValues(context.actor, input),

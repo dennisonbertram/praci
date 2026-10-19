@@ -16,6 +16,7 @@ import {
   runDriveImport,
 } from "@rakazo/adapters";
 import type { Actor, DataRoomApiItem } from "@rakazo/contracts";
+import { dataRoomAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb } from "@rakazo/db";
 import { Hono } from "hono";
@@ -266,6 +267,38 @@ describePostgres("Data room API (PostgreSQL)", () => {
   });
 
   let item: DataRoomApiItem;
+
+  it("creates one Data room agent per user, however often it is asked", async () => {
+    const [first, again, other] = await Promise.all([
+      client(actors.a).dataRoom.agent(),
+      client(actors.a).dataRoom.agent(),
+      client(actors.a2).dataRoom.agent(),
+    ]);
+    expect(again.id).toBe(first.id);
+    expect(first).toMatchObject({
+      name: "Data room agent",
+      spawnKey: dataRoomAgentSpawnKey(actors.a.userId),
+    });
+    // A member of the same space gets their own agent, not the first user's.
+    expect(other.id).not.toBe(first.id);
+    expect(other.spawnKey).toBe(dataRoomAgentSpawnKey(actors.a2.userId));
+    expect(
+      await prisma.bot.count({
+        where: { spaceId: actors.a.spaceId, spawnKey: { startsWith: "data-room-agent:" } },
+      }),
+    ).toBe(2);
+    await expect(
+      client(actors.a).bots.create({
+        name: "Squatter",
+        title: "",
+        description: "",
+        instructions: "",
+        notifyOnFinish: true,
+        computerMode: "team" as const,
+        spawnKey: dataRoomAgentSpawnKey(actors.b.userId),
+      }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
 
   it("rejects unauthenticated upload, download and procedures", async () => {
     expect((await upload(null, "name=x.txt", "hi")).status).toBe(401);
