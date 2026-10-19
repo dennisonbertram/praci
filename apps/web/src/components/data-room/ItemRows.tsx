@@ -102,6 +102,9 @@ const empty = <span className="text-muted-foreground">{DASH}</span>;
 /** Hidden until the list pane is wide enough, then shown as a table cell. */
 const MID_COL = "hidden @min-[500px]/list:table-cell";
 const PARTIES_COL = "hidden @min-[640px]/list:table-cell";
+// A <col> must show as table-column: table-cell on it breaks the fixed column sizing.
+const MID_COLUMN = "hidden @min-[500px]/list:table-column";
+const PARTIES_COLUMN = "hidden @min-[640px]/list:table-column";
 /** The "⋯" shows on hover or focus, while its menu is open, and always on touch screens. */
 const ROW_ACTIONS =
   "opacity-0 group-hover/row:opacity-100 group-focus-visible/row:opacity-100 focus-visible:opacity-100 data-popup-open:opacity-100 pointer-coarse:opacity-100";
@@ -116,10 +119,10 @@ function Columns() {
   return (
     <colgroup>
       <col />
-      <col className={cn(MID_COL, "w-28")} />
-      <col className={cn(MID_COL, "w-24")} />
-      <col className={cn(PARTIES_COL, "w-36")} />
-      <col className={cn(MID_COL, "w-20")} />
+      <col className={cn(MID_COLUMN, "w-28")} />
+      <col className={cn(MID_COLUMN, "w-24")} />
+      <col className={cn(PARTIES_COLUMN, "w-36")} />
+      <col className={cn(MID_COLUMN, "w-20")} />
       <col className="w-7" />
     </colgroup>
   );
@@ -281,7 +284,13 @@ function ItemRow({
       </TableRow>
       {snippets.length ? (
         // Under the name (past its icon), across the whole row.
-        <TableRow className="h-auto border-t-0 hover:bg-transparent">
+        <TableRow
+          className={cn(
+            "h-auto cursor-pointer border-t-0",
+            shown && "bg-sidebar-accent hover:bg-sidebar-accent",
+          )}
+          onClick={() => o.onToggle(item)}
+        >
           <TableCell colSpan={6} className="pt-0 ps-5.5">
             <div className="flex flex-col gap-1">
               {snippets.map((snippet) => (

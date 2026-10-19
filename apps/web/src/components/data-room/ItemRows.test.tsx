@@ -265,3 +265,21 @@ it("gives a tile's type and date a line each, and marks an untagged tile", () =>
   expect(lines(tiles[0] as Element)).toEqual(["Presentation", "Dec 21, 2025"]);
   expect(tiles[1]?.textContent).toContain("Not tagged");
 });
+
+it("sizes the columns with table-column <col>s, not table-cell", () => {
+  act(() => root.render(<ListView rows={[{ item: item("a", null), snippets: [] }]} o={o()} />));
+  const cols = Array.from(container.querySelectorAll("col")).map((c) => c.className);
+  expect(cols.some((c) => c.includes("table-cell"))).toBe(false);
+  expect(cols.filter((c) => c.includes("table-column"))).toHaveLength(4);
+});
+
+it("opens the file when its search snippet is clicked", () => {
+  const onToggle = vi.fn();
+  const rows = [{ item: item("lease", null), snippets: ["a «match» here"] }];
+  act(() => root.render(<ListView rows={rows} o={{ ...o(), onToggle }} />));
+  const snippetRow = container.querySelector('tbody[aria-label="Items"] tr:not([data-row])');
+  expect(snippetRow?.textContent).toContain("match");
+  const text = snippetRow?.querySelector("p");
+  act(() => text?.click());
+  expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ id: "lease" }));
+});
