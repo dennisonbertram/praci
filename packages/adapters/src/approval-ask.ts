@@ -10,7 +10,7 @@ import {
   isReadTool,
   MAX_COMPOSE_BODY,
 } from "@rakazo/contracts";
-import { redactSecrets } from "@rakazo/core";
+import { humanizeToolName, redactSecrets } from "@rakazo/core";
 import { buildRawMessage, displayAddress, parseRecipients } from "./mail-compose.js";
 
 const MAX_APPROVAL_SUMMARY_LENGTH = 500;
@@ -184,7 +184,8 @@ export function describeApprovalAction(toolName: string, args: Record<string, un
     return `Save contact “${args.name ? String(args.name) : "Untitled"}”`;
   }
   const target = pickScopeLabel(args);
-  return target ? `${toolName} → ${target}` : toolName;
+  const label = humanizeToolName(toolName);
+  return target ? `${label} → ${target}` : label;
 }
 
 function formatApprovalDetail(

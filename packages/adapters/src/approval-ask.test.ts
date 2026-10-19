@@ -189,6 +189,9 @@ describe("mail approval payload", () => {
       return block.kind === "ask" ? block.text : "";
     };
     expect(text("mail_send")).toBe("Review before sending email to Jana <jana@example.test>");
+    expect(text("mcp__finance-mercury__requestSendMoney")).toBe(
+      "Review before Request send money → Jana <jana@example.test>",
+    );
     expect(text("mail_draft")).toBe("Review before saving a draft to Jana <jana@example.test>");
   });
 
