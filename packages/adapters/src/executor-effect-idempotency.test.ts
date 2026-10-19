@@ -414,6 +414,16 @@ describe("mutating tool effect idempotency keys", () => {
     },
   );
 
+  it("never gives an owner's steering message to an Elio peer run", async () => {
+    const peer = fixture("voice-steer-peer", true, { trigger: "bot_message" });
+    await peer.run();
+    expect(peer.runtimeRequest?.claimSteering).toBeUndefined();
+
+    const owner = fixture("voice-steer-owner", true);
+    await owner.run();
+    expect(owner.runtimeRequest?.claimSteering).toBeTypeOf("function");
+  });
+
   it("keeps Elio's history in the owner's private chat", async () => {
     const f = fixture("voice-owner-run", true, {
       messages: [

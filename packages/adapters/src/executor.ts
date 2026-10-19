@@ -7313,60 +7313,63 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   completion,
                   runSecrets,
                 ),
-              claimSteering: scripted
-                ? undefined
-                : async (seenIds) => {
-                    const steering = await deps.events.claimSteering({
-                      threadId: thread.id,
-                      botId: bot.id,
-                      runId,
-                      leaseOwner: workerId,
-                      leaseFence: fence,
-                      seenIds,
-                    });
-                    return Promise.all(
-                      steering.map(async (item) => {
-                        const { images, files, unavailableInstruction } =
-                          await settleSteeringAttachmentLoads(
-                            loadCurrentTurnImages(deps, item.blocks, context),
-                            deps.artifacts
-                              ? materializeCurrentTurnFiles(
-                                  {
-                                    prisma: deps.prisma,
-                                    artifacts: deps.artifacts,
-                                    sandbox: deps.sandbox,
-                                  },
-                                  item.blocks,
-                                  {
-                                    context,
-                                    computer,
-                                    computerMode,
-                                    markWorkspaceDirty: workspaceCheckpoint.markDirty,
-                                  },
-                                )
-                              : Promise.resolve([]),
-                            item.blocks,
-                            context.signal,
-                          );
-                        workspaceCheckpoint.markFiles(files);
-                        const filesInstruction = currentTurnFilesInstruction(files);
-                        return {
-                          id: item.id,
-                          messageId: item.messageId,
-                          historyText: item.text,
-                          text: [
-                            await loadReplyContext(deps.prisma, thread.id, item.messageId),
-                            item.text,
-                            filesInstruction,
-                            unavailableInstruction,
-                          ]
-                            .filter(Boolean)
-                            .join("\n\n"),
-                          images,
-                        };
-                      }),
-                    );
-                  },
+              // An owner's private message must not steer an Elio peer run: it stays unclaimed and
+              // the owner run that starts when this one finishes answers it.
+              claimSteering:
+                scripted || hidePrivateVoiceHistory
+                  ? undefined
+                  : async (seenIds) => {
+                      const steering = await deps.events.claimSteering({
+                        threadId: thread.id,
+                        botId: bot.id,
+                        runId,
+                        leaseOwner: workerId,
+                        leaseFence: fence,
+                        seenIds,
+                      });
+                      return Promise.all(
+                        steering.map(async (item) => {
+                          const { images, files, unavailableInstruction } =
+                            await settleSteeringAttachmentLoads(
+                              loadCurrentTurnImages(deps, item.blocks, context),
+                              deps.artifacts
+                                ? materializeCurrentTurnFiles(
+                                    {
+                                      prisma: deps.prisma,
+                                      artifacts: deps.artifacts,
+                                      sandbox: deps.sandbox,
+                                    },
+                                    item.blocks,
+                                    {
+                                      context,
+                                      computer,
+                                      computerMode,
+                                      markWorkspaceDirty: workspaceCheckpoint.markDirty,
+                                    },
+                                  )
+                                : Promise.resolve([]),
+                              item.blocks,
+                              context.signal,
+                            );
+                          workspaceCheckpoint.markFiles(files);
+                          const filesInstruction = currentTurnFilesInstruction(files);
+                          return {
+                            id: item.id,
+                            messageId: item.messageId,
+                            historyText: item.text,
+                            text: [
+                              await loadReplyContext(deps.prisma, thread.id, item.messageId),
+                              item.text,
+                              filesInstruction,
+                              unavailableInstruction,
+                            ]
+                              .filter(Boolean)
+                              .join("\n\n"),
+                            images,
+                          };
+                        }),
+                      );
+                    },
             },
             context,
           );

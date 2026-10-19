@@ -114,6 +114,11 @@ describePostgres("voice.agent (PostgreSQL)", () => {
   it("refuses to restore an archived Elio once a replacement took its identity", async () => {
     const who = client(actor(userB));
     const old = await who.voice.agent();
+    // Editing the profile rewrites the stored instructions, so they must not identify Elio.
+    await prisma.bot.update({
+      where: { id: old.id },
+      data: { description: "Edited description", instructions: "Edited instructions" },
+    });
     await who.bots.archive({ botId: old.id });
     const replacement = await who.voice.agent();
     expect(replacement.id).not.toBe(old.id);
@@ -124,6 +129,9 @@ describePostgres("voice.agent (PostgreSQL)", () => {
     expect(
       await prisma.bot.findUniqueOrThrow({ where: { id: old.id }, select: { archivedAt: true } }),
     ).toEqual({ archivedAt: expect.any(Date) });
+    expect(
+      await prisma.bot.findUniqueOrThrow({ where: { id: old.id }, select: { spawnKey: true } }),
+    ).toEqual({ spawnKey: `voice-agent-retired:${old.id}` });
   });
 
   it("restores an archived Elio that still holds its identity", async () => {
