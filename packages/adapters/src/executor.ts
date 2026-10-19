@@ -51,6 +51,7 @@ import {
   HistoryReadInputSchema,
   HistorySearchInputSchema,
   integrationAgentSpawnKey,
+  integrationPresetForEndpoint,
   isAttachmentImageMimeType,
   isCartaAgentSpawnKey,
   isFinanceAgentSpawnKey,
@@ -97,6 +98,7 @@ import {
   messagingDmSurfaceNote,
   nextCronDateAcross,
   nextFence,
+  ownsLine,
   parseSkillMd,
   planActionGate,
   promptInvokesSkill,
@@ -7139,6 +7141,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   | undefined,
                 deliveryKey: effectKey,
               },
+              // A background run may only ask an agent that owns an account.
+              { ownerAgentsOnly: isBackgroundRunTrigger(run.trigger) },
             );
             if (!sent.ok) return finish({ error: sent.error });
             return finish({
@@ -7499,37 +7503,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
             })
           : history;
         const runtimeHistory = [...historicalContext, ...historyWithImages];
-        // Without a roster a bot only knows the bots it spawned itself.
         const botDirectory =
           thread.groupId || voiceAgent
             ? undefined
-            : renderBotDirectory(
-                (
-                  await deps.prisma.bot.findMany({
-                    where: {
-                      spaceId: run.spaceId,
-                      userId: run.userId,
-                      archivedAt: null,
-                      id: { not: bot.id },
-                      thread: { isNot: null },
-                    },
-                    select: {
-                      id: true,
-                      name: true,
-                      title: true,
-                      description: true,
-                      spawnKey: true,
-                    },
-                    orderBy: { createdAt: "asc" },
-                    take: BOT_DIRECTORY_LIMIT,
-                  })
-                ).map((peer) => ({
-                  id: peer.id,
-                  name: peer.name,
-                  title: peer.title,
-                  description: directoryDescription(peer),
-                })),
-              );
+            : await loadBotDirectory(deps.prisma, run, bot.id);
 
         if (heldForTakeover) {
           const releasedCheckpoint = takeoverCheckpointOf(
@@ -8651,11 +8628,14 @@ export function selectBuiltinToolsForRun(options: {
       (options.legalEnabled || !LEGAL_GATED_TOOL_NAMES.has(tool.name)) &&
       (options.contactsEnabled || !CONTACT_TOOL_NAMES.has(tool.name)) &&
       (options.dataRoomEnabled || !DATA_ROOM_TOOL_NAMES.has(tool.name)) &&
-      !(options.cartaAgent && CARTA_BLOCKED_DELEGATION_TOOLS.has(tool.name)) &&
+      !(
+        (options.cartaAgent || options.integrationAgent) &&
+        CARTA_BLOCKED_DELEGATION_TOOLS.has(tool.name)
+      ) &&
       (options.ticketBoardEnabled ||
         (tool.name !== "board_tickets" && !tool.name.startsWith("ticket_"))) &&
       (!isBackgroundRunTrigger(options.trigger) ||
-        !["message_user", "message_bot", "handoff_to_bot", "message_agent"].includes(tool.name)) &&
+        !["message_user", "handoff_to_bot", "message_agent"].includes(tool.name)) &&
       (options.voiceCall || tool.name !== "end_call") &&
       (options.historyRetrievalEnabled ||
         !["search_history", "read_history"].includes(tool.name)) &&
@@ -8936,6 +8916,91 @@ export function splitInboxSearchSkill<T extends { name: string; content: string 
 }
 
 // Ordering matters: stable blocks first, volatile ones last, so the prefix stays cacheable.
+/** The "Owns:" line per owner agent: its service, plus the account name when the user has several of that service. */
+async function ownerAgentLines(
+  prisma: PrismaClient,
+  scope: { spaceId: string; userId: string },
+  peerIds: string[],
+): Promise<Map<string, string>> {
+  const where = { spaceId: scope.spaceId, userId: scope.userId, agentBotId: { not: null } };
+  const [connections, servers] = await Promise.all([
+    prisma.connection.findMany({
+      where,
+      select: { agentBotId: true, provider: true, displayName: true },
+    }),
+    prisma.mcpServer.findMany({
+      where,
+      select: { agentBotId: true, name: true, endpoint: true },
+    }),
+  ]);
+  const owned = [
+    ...connections.map((c) => ({
+      botId: c.agentBotId,
+      service: GOOGLE_SERVICE_NAMES[c.provider] ?? c.provider,
+      account: c.displayName,
+    })),
+    ...servers.map((s) => ({
+      botId: s.agentBotId,
+      service: integrationPresetForEndpoint(s.endpoint)?.service ?? s.name,
+      account: s.name,
+    })),
+  ];
+  const perService = new Map<string, number>();
+  for (const { service } of owned) perService.set(service, (perService.get(service) ?? 0) + 1);
+  const lines = new Map<string, string>();
+  for (const { botId, service, account } of owned) {
+    if (botId && peerIds.includes(botId)) {
+      lines.set(botId, ownsLine(service, (perService.get(service) ?? 0) > 1 ? account : undefined));
+    }
+  }
+  return lines;
+}
+
+const GOOGLE_SERVICE_NAMES: Record<string, string> = {
+  googlecalendar: "Google Calendar",
+  googledrive: "Google Drive",
+  gmail: "Gmail",
+};
+
+/** Without a roster a bot only knows the bots it spawned itself. */
+async function loadBotDirectory(
+  prisma: PrismaClient,
+  run: { spaceId: string; userId: string },
+  selfBotId: string,
+): Promise<string | undefined> {
+  const peers = await prisma.bot.findMany({
+    where: {
+      spaceId: run.spaceId,
+      userId: run.userId,
+      archivedAt: null,
+      id: { not: selfBotId },
+      thread: { isNot: null },
+    },
+    select: { id: true, name: true, title: true, description: true, spawnKey: true },
+    orderBy: { createdAt: "asc" },
+    take: BOT_DIRECTORY_LIMIT,
+  });
+  const owns = await ownerAgentLines(
+    prisma,
+    run,
+    peers.map((peer) => peer.id),
+  );
+  return renderBotDirectory(
+    peers.map((peer) => ({
+      id: peer.id,
+      name: peer.name,
+      title: peer.title,
+      spawnKey: peer.spawnKey,
+      description: [
+        directoryDescription(peer),
+        isInboxAgentSpawnKey(peer.spawnKey) ? ownsLine("Gmail") : owns.get(peer.id),
+      ]
+        .filter(Boolean)
+        .join(" "),
+    })),
+  );
+}
+
 /**
  * A teammate's description in the bot directory. The Finance and Carta agents read their data only
  * when the user asks them directly, so other bots send the user there instead of messaging them.
@@ -9085,6 +9150,9 @@ export function threadContextForRun<T>(
     : { ...context, includeSemanticRecall: true };
 }
 
+export const INBOX_OWNER_GUIDANCE =
+  "You own the user's Gmail. Other agents will ask you for mail; answer them with message_bot.";
+
 export const ONE_APPROVAL_GUIDANCE =
   "Do not ask for your own confirmation before a change; call the tool and the user approves on that card.";
 
@@ -9097,10 +9165,15 @@ export function runIdentityInstruction(
   if (isVoiceAgentSpawnKey(spawnKey)) return VOICE_AGENT_INSTRUCTIONS;
   // Stored instructions are fixed at creation; this keeps older agents on the one-approval rule.
   const guide = isIntegrationAgentSpawnKey(spawnKey) || isCartaAgentSpawnKey(spawnKey);
-  const withGuide = (text: string) =>
-    guide && !text.includes(ONE_APPROVAL_GUIDANCE)
-      ? `${text} ${ONE_APPROVAL_GUIDANCE}`.trim()
+  const inbox = isInboxAgentSpawnKey(spawnKey);
+  const withGuide = (text: string) => {
+    if (guide && !text.includes(ONE_APPROVAL_GUIDANCE)) {
+      text = `${text} ${ONE_APPROVAL_GUIDANCE}`.trim();
+    }
+    return inbox && !text.includes(INBOX_OWNER_GUIDANCE)
+      ? `${text} ${INBOX_OWNER_GUIDANCE}`.trim()
       : text;
+  };
   if (trigger !== "created") {
     return withGuide(bot.instructions || `${bot.name}: ${bot.title}\n${bot.description}`);
   }

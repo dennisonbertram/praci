@@ -1,5 +1,6 @@
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type { BotMessageIntent, MessageBlock } from "@rakazo/contracts";
+import { isOwnerAgentSpawnKey } from "@rakazo/contracts";
 import {
   BOT_MESSAGE_MAX_LENGTH,
   botMessageContext,
@@ -81,7 +82,7 @@ export async function messageBot(
     intent?: BotMessageIntent;
     deliveryKey?: string;
   },
-  options?: { allowTerminalSource?: boolean; forceUnread?: boolean },
+  options?: { allowTerminalSource?: boolean; forceUnread?: boolean; ownerAgentsOnly?: boolean },
 ) {
   const message = String(input.message ?? "").trim();
   if (!message) return { ok: false as const, error: "message is required" };
@@ -98,13 +99,24 @@ export async function messageBot(
 
   const candidates = await deps.prisma.bot.findMany({
     where: { spaceId: run.spaceId, userId: run.userId, archivedAt: null },
-    select: { id: true, name: true, title: true, thread: { select: { id: true } } },
+    select: {
+      id: true,
+      name: true,
+      title: true,
+      spawnKey: true,
+      thread: { select: { id: true } },
+    },
   });
   const target = resolveBotAddress(candidates, {
     botId: input.bot_id,
     name: input.confirm_name,
   });
   if (!target) return { ok: false as const, error: "no bot found with that id or name" };
+  if (options?.ownerAgentsOnly && !isOwnerAgentSpawnKey(target.spawnKey))
+    return {
+      ok: false as const,
+      error: "a background run can only message an agent that owns an account",
+    };
   if (target.id === sender.id) return { ok: false as const, error: "a bot cannot message itself" };
   if (!target.thread)
     return { ok: false as const, error: `${target.name} has no chat to deliver to` };

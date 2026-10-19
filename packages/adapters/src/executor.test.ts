@@ -3407,7 +3407,17 @@ describe("ticket board tool capability", () => {
       trigger: "tickets",
       ticketBoardEnabled: true,
     }).map((tool) => tool.name);
-    for (const name of ["message_bot", "handoff_to_bot", "message_agent"])
+    for (const name of ["handoff_to_bot", "message_agent"])
       expect(backgroundNames).not.toContain(name);
+    // message_bot stays: messageBot restricts a background run to owner agents.
+    expect(backgroundNames).toContain("message_bot");
+  });
+  it("takes delegation tools from integration agents, not from other bots", () => {
+    const names = (extra: object) =>
+      selectBuiltinToolsForRun({ ...options, ...extra }).map((tool) => tool.name);
+    for (const name of ["message_bot", "handoff_to_bot", "spawn_bot"]) {
+      expect(names({ integrationAgent: true })).not.toContain(name);
+    }
+    expect(names({})).toContain("message_bot");
   });
 });

@@ -10,6 +10,7 @@ import {
   clampBotMessage,
   formatBotRosterLines,
   nextBotMessageHop,
+  ownsLine,
   renderBotDirectory,
   renderGroupMembersContext,
   resolveBotAddress,
@@ -108,6 +109,24 @@ describe("directory", () => {
     expect(directory).toContain("async");
     expect(directory).toContain("does not end your turn");
     expect(directory).toContain("Later updates only if they add something new");
+  });
+
+  it("adds the integration note once, only when an integration agent is listed", () => {
+    const note = "Each integration agent owns one account";
+    const count = (text: string) => text.split(note).length - 1;
+    expect(count(renderBotDirectory(bots) ?? "")).toBe(0);
+    const withAgents =
+      renderBotDirectory([
+        ...bots,
+        { id: "b_3", name: "Mercury", spawnKey: "integration-agent:s1" },
+        { id: "b_4", name: "Brex", spawnKey: "integration-agent:s2" },
+      ]) ?? "";
+    expect(count(withAgents)).toBe(1);
+  });
+
+  it("words the owns line with the account only when given", () => {
+    expect(ownsLine("Mercury")).toBe("Owns: Mercury. Ask it for anything in Mercury.");
+    expect(ownsLine("Gmail", "work")).toBe("Owns: Gmail (work). Ask it for anything in Gmail.");
   });
 
   it("treats directory fields as untrusted prompt data", () => {

@@ -134,6 +134,38 @@ describe("messaging another bot", () => {
     expect(harness.enqueue).toHaveBeenCalledTimes(1);
   });
 
+  it("lets a background run reach only an owner agent", async () => {
+    const owner = deps({
+      bots: [
+        {
+          id: "bot-target",
+          name: "Mercury",
+          title: "",
+          spawnKey: "integration-agent:srv-1",
+          thread: { id: "thread-target" },
+        },
+      ],
+    });
+    const ok = await messageBot(
+      owner.deps,
+      run,
+      sender,
+      { bot_id: "bot-target", message: "balance?" },
+      { ownerAgentsOnly: true },
+    );
+    expect(ok.ok).toBe(true);
+    const ordinary = deps();
+    const blocked = await messageBot(
+      ordinary.deps,
+      run,
+      sender,
+      { bot_id: "bot-target", message: "hi" },
+      { ownerAgentsOnly: true },
+    );
+    expect(blocked).toMatchObject({ ok: false });
+    expect(ordinary.enqueue).not.toHaveBeenCalled();
+  });
+
   it("marks a forced failure return unread on both sides", async () => {
     const harness = deps({
       hopBlocks: [

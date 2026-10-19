@@ -184,6 +184,7 @@ import { EmailCards } from "../components/EmailCards";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { FinanceCardGroup } from "../components/FinanceCards";
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
+import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
@@ -202,6 +203,7 @@ import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
+import { useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
 import { authClient } from "../lib/auth";
 import { takeInitialBootstrap } from "../lib/bootstrap";
@@ -506,6 +508,7 @@ export function ShellPage() {
   const userId = session.data?.user.id;
   const [groups, setGroups] = useState<Group[]>([]);
   const [bots, setBots] = useState<Bot[]>([]);
+  const agentAppFor = useAgentApp(bots);
   const botsRef = useRef(bots);
   botsRef.current = bots;
   const voiceCallStarting = useRef(false);
@@ -4230,7 +4233,8 @@ export function ShellPage() {
                               }
                             >
                               {item.kind === "bot" ? (
-                                <BotAvatar
+                                <AgentAvatar
+                                  app={agentAppFor(item.chat.id)}
                                   color={item.chat.color}
                                   identity={item.chat.id}
                                   size={36}
