@@ -448,7 +448,7 @@ describe("expo push", () => {
     ).rejects.toThrow("offline");
   });
 
-  it("reports DeviceNotRegistered without deleting a stored or replacement token", async () => {
+  it("prunes a DeviceNotRegistered endpoint but keeps a replacement token", async () => {
     const store = fakeStore();
     store.add("user-1", "ExponentPushToken[old]");
     vi.stubGlobal(
@@ -467,7 +467,7 @@ describe("expo push", () => {
         notifyContext,
       ),
     ).rejects.toThrow("DeviceNotRegistered");
-    expect(store.tokens("user-1")).toEqual(["ExponentPushToken[old]", "ExponentPushToken[new]"]);
+    expect(store.tokens("user-1")).toEqual(["ExponentPushToken[new]"]);
   });
 
   it("does not send to a device another account claims during an earlier send", async () => {
@@ -536,20 +536,45 @@ describe("expo push", () => {
   });
 });
 
-describe("expo push handover", () => {
-  it("does not send the previous owner's push to a device that moved to another account", async () => {
+describe("expo push prune", () => {
+  it("keeps other devices when one endpoint is DeviceNotRegistered", async () => {
     const store = fakeStore();
-    store.add("user-1", "ExponentPushToken[device]");
-    store.add("user-2", "ExponentPushToken[device]");
-    const fetchMock = vi.fn();
-    vi.stubGlobal("fetch", fetchMock);
+    store.add("user-1", "ExponentPushToken[dead]");
+    store.add("user-1", "ExponentPushToken[alive]");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (_url: string, init?: RequestInit) => {
+        const to = (JSON.parse(String(init?.body)) as { to: string }).to;
+        return jsonResponse(
+          to.includes("dead")
+            ? { data: { status: "error", details: { error: "DeviceNotRegistered" } } }
+            : { data: { status: "ok", id: "t" } },
+        );
+      }),
+    );
     const push = new ExpoPushProvider(store.prisma);
     await expect(
       push.deliver(
-        { kind: "completion", title: "done", body: "private", botId: "b", threadId: "t" },
+        { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
         notifyContext,
       ),
-    ).resolves.toBe("undeliverable");
-    expect(fetchMock).not.toHaveBeenCalled();
+    ).resolves.toBe("delivered");
+    expect(store.tokens("user-1")).toEqual(["ExponentPushToken[alive]"]);
+  });
+
+  it("does not prune an unrelated failure", async () => {
+    const store = fakeStore();
+    store.add("user-1", "ExponentPushToken[a]");
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(jsonResponse({ errors: [{ message: "boom" }] }, 500)),
+    );
+    await expect(
+      new ExpoPushProvider(store.prisma).deliver(
+        { kind: "completion", title: "done", body: "ok", botId: "b", threadId: "t" },
+        notifyContext,
+      ),
+    ).rejects.toThrow("boom");
+    expect(store.tokens("user-1")).toEqual(["ExponentPushToken[a]"]);
   });
 });
