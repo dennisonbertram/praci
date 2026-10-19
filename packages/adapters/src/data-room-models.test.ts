@@ -1,5 +1,6 @@
 import { DATA_ROOM_DISCLOSURE_VERSION } from "@rakazo/contracts";
-import { describe, expect, it } from "vitest";
+import { getLogger } from "@rakazo/logging";
+import { describe, expect, it, vi } from "vitest";
 import { resolveDataRoomAi } from "./data-room-models.js";
 
 const scope = { userId: "u1", spaceId: "s1" };
@@ -102,5 +103,37 @@ describe("resolveDataRoomAi", () => {
     );
     expect(changed.allowed).toBe(false);
     expect(changed.consentKey).not.toBe(first.consentKey);
+  });
+
+  it("builds embedders for built-in providers at their fixed URL, without the env override", async () => {
+    delete process.env.RAKAZO_OPENAI_COMPAT_ALLOW_PUBLIC;
+    for (const provider of ["openrouter", "openai"]) {
+      const ai = await resolveDataRoomAi(
+        deps({
+          model: { provider, id: "chat-1", apiKey: "k" },
+          embeddingModel: "openai/text-embedding-3-large",
+        }).deps,
+        scope,
+      );
+      expect(ai.embedder).not.toBeNull();
+    }
+    const none = await resolveDataRoomAi(
+      deps({ model: { provider: "anthropic", id: "c", apiKey: "k" }, embeddingModel: "e" }).deps,
+      scope,
+    );
+    expect(none.embedder).toBeNull();
+  });
+
+  it("logs one warning per provider and reason when the embedder is refused", async () => {
+    delete process.env.RAKAZO_OPENAI_COMPAT_ALLOW_PUBLIC;
+    const warn = vi.spyOn(getLogger(), "warn").mockImplementation(() => {});
+    const model = { ...chat, provider: "other-compat", baseUrl: "https://llm.example.test/v1" };
+    for (let i = 0; i < 2; i++) {
+      const ai = await resolveDataRoomAi(deps({ model, embeddingModel: "e" }).deps, scope);
+      expect(ai.embedder).toBeNull();
+    }
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(warn.mock.calls)).not.toContain("test-key");
+    warn.mockRestore();
   });
 });

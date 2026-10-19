@@ -5,6 +5,7 @@ import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web"
 import { LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { AskBotButton } from "../components/AskBotButton";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
 import {
   FilterBar,
@@ -104,7 +105,13 @@ function FileInputButton({
  * The Data room: folders, a list or grid of filed items, and a preview of one of them. `spaceName`
  * names the company when there is more than one, so its documents are never mistaken for another's.
  */
-export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
+export function DataRoomPage({
+  spaceName,
+  onAskAgent,
+}: {
+  spaceName?: string;
+  onAskAgent?: () => void;
+} = {}) {
   const [params, setParams] = useSearchParams();
   const linkedItem = params.get("item");
   const urlFolder = params.get("folder") ?? undefined;
@@ -450,41 +457,44 @@ export function DataRoomPage({ spaceName }: { spaceName?: string } = {}) {
             ) : null
           }
           actions={
-            empty ? null : (
-              <>
-                <HideAmountsButton />
-                <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
-                  <legend className="sr-only">{t`View`}</legend>
-                  <Tip label={t`List view`}>
-                    <Toggle
-                      size="sm"
-                      pressed={view === "list"}
-                      onPressedChange={() => setView("list")}
-                      aria-label={t`List view`}
-                    >
-                      <List aria-hidden="true" />
-                    </Toggle>
-                  </Tip>
-                  <Tip label={t`Grid view`}>
-                    <Toggle
-                      size="sm"
-                      pressed={view === "grid"}
-                      onPressedChange={() => setView("grid")}
-                      aria-label={t`Grid view`}
-                    >
-                      <LayoutGrid aria-hidden="true" />
-                    </Toggle>
-                  </Tip>
-                </fieldset>
-                <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
-                <FileInputButton className={TOOLBAR_BUTTON} tip={t`Add files`}>
-                  <Plus aria-hidden="true" />
-                  <span className={TOOLBAR_LABEL}>
-                    <Trans>Add files</Trans>
-                  </span>
-                </FileInputButton>
-              </>
-            )
+            <>
+              {empty ? null : (
+                <>
+                  <HideAmountsButton />
+                  <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
+                    <legend className="sr-only">{t`View`}</legend>
+                    <Tip label={t`List view`}>
+                      <Toggle
+                        size="sm"
+                        pressed={view === "list"}
+                        onPressedChange={() => setView("list")}
+                        aria-label={t`List view`}
+                      >
+                        <List aria-hidden="true" />
+                      </Toggle>
+                    </Tip>
+                    <Tip label={t`Grid view`}>
+                      <Toggle
+                        size="sm"
+                        pressed={view === "grid"}
+                        onPressedChange={() => setView("grid")}
+                        aria-label={t`Grid view`}
+                      >
+                        <LayoutGrid aria-hidden="true" />
+                      </Toggle>
+                    </Tip>
+                  </fieldset>
+                  <ImportSources compact folderId={filters.folderId ?? null} onDone={showNotice} />
+                  <FileInputButton className={TOOLBAR_BUTTON} tip={t`Add files`}>
+                    <Plus aria-hidden="true" />
+                    <span className={TOOLBAR_LABEL}>
+                      <Trans>Add files</Trans>
+                    </span>
+                  </FileInputButton>
+                </>
+              )}
+              {onAskAgent ? <AskBotButton botName="Data room agent" onClick={onAskAgent} /> : null}
+            </>
           }
         />
       </div>

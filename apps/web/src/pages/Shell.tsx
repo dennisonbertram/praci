@@ -244,6 +244,7 @@ import {
   screenIframeSandbox,
 } from "../lib/computer-screen";
 import { publishComputerCommand } from "../lib/computer-workspace";
+import { dataRoomAgentSuggestions, findDataRoomAgent } from "../lib/data-room-agent";
 import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
@@ -538,6 +539,9 @@ export function ShellPage() {
   const [financeAgentOpen, setFinanceAgentOpen] = useState(false);
   const [creatingFinanceAgent, setCreatingFinanceAgent] = useState(false);
   const [financeAgentError, setFinanceAgentError] = useState("");
+  const [dataRoomAgentOpen, setDataRoomAgentOpen] = useState(false);
+  const [creatingDataRoomAgent, setCreatingDataRoomAgent] = useState(false);
+  const [dataRoomAgentError, setDataRoomAgentError] = useState("");
   const [legalAgentOpen, setLegalAgentOpen] = useState(false);
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
@@ -1001,6 +1005,9 @@ export function ShellPage() {
     if (!financeMode) setFinanceAgentOpen(false);
   }, [financeMode]);
   useEffect(() => {
+    if (!dataRoomMode) setDataRoomAgentOpen(false);
+  }, [dataRoomMode]);
+  useEffect(() => {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
   const routeBot = resolveRouteBot({
@@ -1011,17 +1018,19 @@ export function ShellPage() {
     applied: botsListApplied.current,
   });
   const active =
-    inGroup || integrationsMode || dataRoomMode || artifactsMode || boardMode
+    inGroup || integrationsMode || artifactsMode || boardMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
         : financeMode
           ? findFinanceAgent(bots, userId)
-          : legalMode
-            ? findLegalAgent(bots, userId)
-            : capTableMode
-              ? findCartaAgent(bots, userId)
-              : routeBot.bot;
+          : dataRoomMode
+            ? findDataRoomAgent(bots, userId)
+            : legalMode
+              ? findLegalAgent(bots, userId)
+              : capTableMode
+                ? findCartaAgent(bots, userId)
+                : routeBot.bot;
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
@@ -2750,6 +2759,24 @@ export function ShellPage() {
     }
   }
 
+  async function createDataRoomAgent() {
+    setCreatingDataRoomAgent(true);
+    setDataRoomAgentError("");
+    try {
+      await rpc.dataRoom.agent();
+      await refreshBots();
+    } catch (error) {
+      setDataRoomAgentError(errorText(error, t`Could not create the Data room agent`));
+    } finally {
+      setCreatingDataRoomAgent(false);
+    }
+  }
+
+  function askDataRoomAgent() {
+    setDataRoomAgentOpen(true);
+    if (!active && !creatingDataRoomAgent) void createDataRoomAgent();
+  }
+
   async function createLegalAgent() {
     setCreatingLegalAgent(true);
     setLegalAgentError("");
@@ -2858,35 +2885,48 @@ export function ShellPage() {
           error: financeAgentError,
           suggestions: financeAgentSuggestions(),
         }
-      : legalMode
+      : dataRoomMode
         ? {
-            name: "legal-agent",
-            testId: "legal-agent-panel",
-            open: legalAgentOpen,
-            collapse: () => setLegalAgentOpen(false),
-            collapseLabel: t`Collapse Legal agent`,
-            create: createLegalAgent,
-            createLabel: t`Create Legal agent`,
-            creating: creatingLegalAgent,
-            error: legalAgentError,
+            name: "data-room-agent",
+            testId: "data-room-agent-panel",
+            open: dataRoomAgentOpen,
+            collapse: () => setDataRoomAgentOpen(false),
+            collapseLabel: t`Collapse Data room agent`,
+            create: createDataRoomAgent,
+            createLabel: t`Create Data room agent`,
+            creating: creatingDataRoomAgent,
+            error: dataRoomAgentError,
+            suggestions: dataRoomAgentSuggestions(),
           }
-        : capTableMode
+        : legalMode
           ? {
-              name: "carta-agent",
-              testId: "carta-agent-panel",
-              // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-              // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
-              open: cartaPanel.open,
-              collapse: () => setCartaAgentCollapsedPref(true),
-              collapseLabel: t`Collapse Carta agent`,
-              // A failed creation is retried from the panel; the agent otherwise appears by itself.
-              create: cartaAgentError ? createCartaAgent : undefined,
-              createLabel: t`Try again`,
-              creating: creatingCartaAgent,
-              error: cartaAgentError,
-              suggestions: cartaSuggestions,
+              name: "legal-agent",
+              testId: "legal-agent-panel",
+              open: legalAgentOpen,
+              collapse: () => setLegalAgentOpen(false),
+              collapseLabel: t`Collapse Legal agent`,
+              create: createLegalAgent,
+              createLabel: t`Create Legal agent`,
+              creating: creatingLegalAgent,
+              error: legalAgentError,
             }
-          : null;
+          : capTableMode
+            ? {
+                name: "carta-agent",
+                testId: "carta-agent-panel",
+                // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+                // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
+                open: cartaPanel.open,
+                collapse: () => setCartaAgentCollapsedPref(true),
+                collapseLabel: t`Collapse Carta agent`,
+                // A failed creation is retried from the panel; the agent otherwise appears by itself.
+                create: cartaAgentError ? createCartaAgent : undefined,
+                createLabel: t`Try again`,
+                creating: creatingCartaAgent,
+                error: cartaAgentError,
+                suggestions: cartaSuggestions,
+              }
+            : null;
   // The Carta agent opened full screen from its panel: same intro, and a way back to Cap table.
   const cartaAgentPage =
     !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
@@ -4728,6 +4768,7 @@ export function ShellPage() {
           </ErrorBoundary>
         ) : dataRoomMode ? (
           <DataRoomPage
+            onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
             spaceName={
               spaces.length > 1
                 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name

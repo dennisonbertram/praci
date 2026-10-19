@@ -142,8 +142,16 @@ const PREVIEW_IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 export const canPreviewImage = (item: Pick<DataRoomApiItem, "mimeType" | "size">) =>
   PREVIEW_IMAGE_TYPES.has(item.mimeType) && item.size <= PREVIEW_IMAGE_MAX_BYTES;
 
-/** An object URL of the item as an image (typed by us, never by the server), for an <img>. */
-export async function dataRoomImageUrl(item: Pick<DataRoomApiItem, "id" | "mimeType">) {
+/** A PDF the browser's own viewer can show in a frame. */
+export const canPreviewPdf = (item: Pick<DataRoomApiItem, "mimeType" | "size">) =>
+  item.mimeType === "application/pdf" && item.size <= PREVIEW_IMAGE_MAX_BYTES;
+
+/**
+ * An object URL of the item (typed by us, never by the server) for an <img> or a PDF frame. The
+ * bytes come through the authenticated content route, which a frame could not call itself because
+ * it cannot send the space header.
+ */
+export async function dataRoomFileUrl(item: Pick<DataRoomApiItem, "id" | "mimeType">) {
   const blob = await fetchDataRoomBlob(item);
   return URL.createObjectURL(new Blob([blob], { type: item.mimeType }));
 }

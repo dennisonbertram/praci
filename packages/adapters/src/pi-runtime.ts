@@ -673,6 +673,18 @@ function toPiImages(images: AgentRunRequest["currentTurnImages"]) {
   }));
 }
 
+const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
+
+/**
+ * Fixed OpenAI-compatible `/embeddings` base URL of a built-in provider, taken from the same table
+ * chat uses. Only providers known to serve `/embeddings` are listed; others have none.
+ */
+export function builtinEmbeddingsBaseUrl(provider: string): string | undefined {
+  if (provider === "openrouter") return OPENROUTER_BASE_URL;
+  if (provider === "openai") return catalogModels().getModels("openai")[0]?.baseUrl;
+  return undefined;
+}
+
 function configuredOpenRouterModel(
   id: string,
   contextWindow = 16_384,
@@ -688,7 +700,7 @@ function configuredOpenRouterModel(
     name: id,
     api: "openai-completions",
     provider: "openrouter",
-    baseUrl: "https://openrouter.ai/api/v1",
+    baseUrl: OPENROUTER_BASE_URL,
     reasoning: true,
     input: ["text"],
     cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },

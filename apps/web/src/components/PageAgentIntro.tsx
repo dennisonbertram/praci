@@ -1,13 +1,15 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
+import { dataRoomAgentSuggestions } from "../lib/data-room-agent";
 
-export type PageAgentKind = "inbox" | "finance" | "carta";
+export type PageAgentKind = "inbox" | "finance" | "carta" | "data-room";
 
 /** Which page agent a bot is, from the spawn key its page created it with (null for other bots). */
 export function pageAgentKind(spawnKey: string | null | undefined): PageAgentKind | null {
   if (spawnKey?.startsWith("inbox-agent:")) return "inbox";
   if (spawnKey?.startsWith("finance-agent:")) return "finance";
   if (spawnKey?.startsWith("carta-agent:")) return "carta";
+  if (spawnKey?.startsWith("data-room-agent:")) return "data-room";
   return null;
 }
 
@@ -36,11 +38,13 @@ export function PageAgentIntro({
             t`What did we spend last month?`,
             t`Which bills are unpaid?`,
           ]
-        : [
-            t`Who owns what in the company?`,
-            t`How much of the option pool is left?`,
-            t`Draft this month's investor update`,
-          ];
+        : kind === "data-room"
+          ? dataRoomAgentSuggestions()
+          : [
+              t`Who owns what in the company?`,
+              t`How much of the option pool is left?`,
+              t`Draft this month's investor update`,
+            ];
   return (
     <div className="flex min-h-0 flex-1 flex-col justify-end gap-3 px-4 py-5 md:px-7">
       <p className="text-sm text-muted-foreground">
@@ -52,6 +56,10 @@ export function PageAgentIntro({
         ) : kind === "finance" ? (
           <Trans>
             I read your bank and card accounts and answer questions about cash, spending and runway.
+          </Trans>
+        ) : kind === "data-room" ? (
+          <Trans>
+            I search and read the documents in your Data room and answer questions about them.
           </Trans>
         ) : (
           <Trans>

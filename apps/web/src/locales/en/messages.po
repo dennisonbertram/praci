@@ -2001,6 +2001,10 @@ msgid "Collapse Carta agent"
 msgstr "Collapse Carta agent"
 
 #: src/pages/Shell.tsx
+msgid "Collapse Data room agent"
+msgstr "Collapse Data room agent"
+
+#: src/pages/Shell.tsx
 msgid "Collapse Finance agent"
 msgstr "Collapse Finance agent"
 
@@ -2465,6 +2469,10 @@ msgstr "Could not create space"
 #: src/pages/Shell.tsx
 msgid "Could not create the Carta agent"
 msgstr "Could not create the Carta agent"
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Data room agent"
+msgstr "Could not create the Data room agent"
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Finance agent"
@@ -2979,6 +2987,10 @@ msgstr "Create account"
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr "Create agent"
+
+#: src/pages/Shell.tsx
+msgid "Create Data room agent"
+msgstr "Create Data room agent"
 
 #: src/pages/Shell.tsx
 msgid "Create Finance agent"
@@ -3838,6 +3850,10 @@ msgstr "Find models"
 msgid "Find recurring and overlapping spend to cut."
 msgstr "Find recurring and overlapping spend to cut."
 
+#: src/lib/data-room-agent.ts
+msgid "Find the latest contract"
+msgstr "Find the latest contract"
+
 #: src/components/PageAgentIntro.tsx
 msgid "Find the latest invoice"
 msgstr "Find the latest invoice"
@@ -4191,6 +4207,10 @@ msgstr "I read your bank and card accounts and answer questions about cash, spen
 #: src/components/PageAgentIntro.tsx
 msgid "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
 msgstr "I read your mail, find what needs a reply and write replies. You approve each email before it is sent."
+
+#: src/components/PageAgentIntro.tsx
+msgid "I search and read the documents in your Data room and answer questions about them."
+msgstr "I search and read the documents in your Data room and answer questions about them."
 
 #: src/pages/Shell.tsx
 msgid "I’m done"
@@ -6776,6 +6796,7 @@ msgstr "Reset your password"
 msgid "Resetting…"
 msgstr "Resetting…"
 
+#: src/components/data-room/Preview.tsx
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
 msgstr "Resize panel"
@@ -8802,6 +8823,10 @@ msgstr "Which bills are unpaid?"
 #: src/components/integrations/AgentStep.tsx
 msgid "Which bots can use {appName}?"
 msgstr "Which bots can use {appName}?"
+
+#: src/lib/data-room-agent.ts
+msgid "Which documents mention renewal?"
+msgstr "Which documents mention renewal?"
 
 #: src/pages/Shell.tsx
 msgid "Who are our investors?"
