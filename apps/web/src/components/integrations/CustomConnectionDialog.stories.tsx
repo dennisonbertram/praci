@@ -45,6 +45,16 @@ export const FirstPartySignIn: Story = {
   args: { initialUrl: "https://mcp.app.carta.com/mcp", service: "Carta" },
 };
 
+/** A first-party service that takes an API key: only the key is asked for. */
+export const FirstPartyApiKey: Story = {
+  args: {
+    initialUrl: "https://mcp.devin.ai/mcp",
+    service: "Devin",
+    apiKey: true,
+    keyHint: "A Devin service-user key (starts with cog_).",
+  },
+};
+
 export const AdvancedOpen: Story = {
   play: async () => {
     await userEvent.click(await screen().findByText("Advanced"));

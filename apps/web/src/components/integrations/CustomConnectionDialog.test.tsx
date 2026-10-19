@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { CARTA_MCP_ENDPOINT, type McpServer } from "@rakazo/contracts";
+import { CARTA_MCP_ENDPOINT, DEVIN_MCP_ENDPOINT, type McpServer } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -42,7 +42,14 @@ const data = {
 } as unknown as IntegrationsData;
 
 async function mount(
-  props: { oauthClient?: boolean; oauthScope?: string; service?: string; initialUrl?: string } = {},
+  props: {
+    apiKey?: boolean;
+    keyHint?: string;
+    oauthClient?: boolean;
+    oauthScope?: string;
+    service?: string;
+    initialUrl?: string;
+  } = {},
 ) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
@@ -189,4 +196,28 @@ it("removes a connection it just added when the server cannot be reached", async
   );
   expect(document.body.textContent).not.toContain("ENOTFOUND");
   expect(document.body.textContent).not.toContain("Needs reconnect");
+});
+
+it("asks only for an API key and stores it as the bearer secret, with no sign-in", async () => {
+  await mount({
+    apiKey: true,
+    service: "Devin",
+    initialUrl: DEVIN_MCP_ENDPOINT,
+    keyHint: "A Devin service-user key (starts with cog_).",
+  });
+  expect(document.body.textContent).toContain("A Devin service-user key (starts with cog_).");
+  expect(field("Server URL")).toBeNull();
+  expect(field("API key").type).toBe("password");
+  const connect = [...document.querySelectorAll("button")].find((b) => b.textContent === "Connect");
+  expect(connect?.disabled).toBe(true);
+  await type("API key", "cog_placeholder");
+  await click("Connect");
+  expect(api.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      endpoint: DEVIN_MCP_ENDPOINT,
+      secret: "cog_placeholder",
+      headers: {},
+    }),
+  );
+  expect(api.begin).not.toHaveBeenCalled();
 });

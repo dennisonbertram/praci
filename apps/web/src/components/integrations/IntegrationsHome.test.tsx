@@ -188,6 +188,16 @@ it("offers Carta and opens its sign-in dialog", async () => {
   expect(document.body.textContent).toContain("Sign in with Carta");
 });
 
+it("offers Devin and opens the API key form", async () => {
+  await show(data(true, false));
+  const connect = container.querySelector<HTMLButtonElement>('[aria-label="Connect Devin"]');
+  expect(connect).not.toBeNull();
+  await act(async () => connect?.click());
+  expect(document.body.textContent).toContain("A Devin service-user key (starts with cog_).");
+  expect(document.querySelector('[aria-label="API key"]')).not.toBeNull();
+  expect(document.body.textContent).not.toContain("Sign in with Devin");
+});
+
 it("shows Carta but not Zernio under the Finance chip", async () => {
   await show(data(true, true));
   const chip = [...container.querySelectorAll<HTMLButtonElement>("button[aria-pressed]")].find(

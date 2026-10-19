@@ -63,6 +63,8 @@ export function CustomConnectionDialog({
   initialUrl = "",
   service,
   tokenSource = false,
+  apiKey = false,
+  keyHint,
   oauthClient = false,
   oauthScope,
   onClose,
@@ -75,6 +77,9 @@ export function CustomConnectionDialog({
   service?: string;
   /** Open on the Treg token form (the one way to connect Treg) instead of the URL form. */
   tokenSource?: boolean;
+  /** Ask only for an API key, sent as a bearer token, instead of a sign-in. `keyHint` says which key. */
+  apiKey?: boolean;
+  keyHint?: string;
   /** Show the OAuth client ID fields up front, for servers that refuse dynamic registration. */
   oauthClient?: boolean;
   oauthScope?: string;
@@ -475,7 +480,9 @@ export function CustomConnectionDialog({
               {service ? <Trans>Connect {service}</Trans> : <Trans>Add a custom connection</Trans>}
             </DialogTitle>
             <DialogDescription>
-              {service ? (
+              {service && apiKey ? (
+                keyHint
+              ) : service ? (
                 <Trans>
                   Click Sign in with {service}. A {service} window opens for you to approve access.
                 </Trans>
@@ -500,6 +507,21 @@ export function CustomConnectionDialog({
                 />
               </div>
             )}
+            {apiKey ? (
+              <div className="mt-3 text-xs text-muted-foreground">
+                <Trans>API key</Trans>
+                <Input
+                  aria-label={t`API key`}
+                  autoFocus
+                  className="mt-1 font-mono text-sm"
+                  type="password"
+                  autoComplete="new-password"
+                  value={token}
+                  onChange={(event) => setToken(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && void connectUrl()}
+                />
+              </div>
+            ) : null}
             {needsClient ? (
               <div className="mt-3 space-y-3 text-xs text-muted-foreground">
                 <div>
@@ -645,12 +667,17 @@ export function CustomConnectionDialog({
                 <Trans>Cancel</Trans>
               </Button>
               <Button
-                disabled={busy || !url.trim() || (needsClient && !clientId.trim())}
+                disabled={
+                  busy ||
+                  !url.trim() ||
+                  (apiKey && !token.trim()) ||
+                  (needsClient && !clientId.trim())
+                }
                 onClick={() => void connectUrl()}
               >
                 {busy ? (
                   <Trans>Connecting…</Trans>
-                ) : service ? (
+                ) : service && !apiKey ? (
                   <Trans>Sign in with {service}</Trans>
                 ) : (
                   <Trans>Connect</Trans>

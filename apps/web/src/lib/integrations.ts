@@ -4,6 +4,7 @@ import type {
   ConnectionCategory,
   McpServer,
 } from "@rakazo/contracts";
+import { DEVIN_MCP_ENDPOINT } from "@rakazo/contracts";
 import { matchFeaturedConnectorId } from "@rakazo/core";
 
 export type CategoryFilter = "all" | Exclude<ConnectionCategory, "other">;
@@ -142,6 +143,17 @@ export const FIRST_PARTY_MCP = [
     section: "tools",
     category: "developer",
   },
+  {
+    id: "devin",
+    name: "Devin",
+    // No official Devin logo is vendored yet: the tile shows the AppLogo letter fallback.
+    logo: null,
+    endpoint: DEVIN_MCP_ENDPOINT,
+    section: "tools",
+    category: "developer",
+    // Devin takes a service-user key, sent as a bearer token, not a sign-in.
+    apiKey: true,
+  },
 ] as const satisfies readonly {
   id: string;
   name: string;
@@ -151,6 +163,7 @@ export const FIRST_PARTY_MCP = [
   category: string | null;
   oauthClient?: boolean;
   scope?: string;
+  apiKey?: boolean;
 }[];
 
 const FIRST_PARTY_SLUGS: ReadonlySet<string> = new Set([

@@ -333,6 +333,8 @@ export function IntegrationsHome({
     oauthClient?: boolean;
     scope?: string;
     token?: boolean;
+    apiKey?: boolean;
+    keyHint?: string;
   } | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
@@ -360,6 +362,7 @@ export function IntegrationsHome({
     carta: t`Cap table, equity and investors`,
     x: t`Read posts, DMs and bookmarks`,
     treg: t`Live data, enrichment and generation tools`,
+    devin: t`Coding sessions and repo docs`,
   };
   const financeStatus = useFinanceStatus();
   const connectedKeys = connectedFinanceKeys(data.financeSources, financeStatus);
@@ -421,6 +424,9 @@ export function IntegrationsHome({
       service: entry.name,
       // Treg takes an API token, not a sign-in.
       ...(entry.id === "treg" ? { token: true } : {}),
+      ...("apiKey" in entry
+        ? { apiKey: true, keyHint: t`A Devin service-user key (starts with cog_).` }
+        : {}),
       ...("oauthClient" in entry ? { oauthClient: true, scope: entry.scope } : {}),
     });
   }
@@ -756,6 +762,8 @@ export function IntegrationsHome({
           initialUrl={custom.url}
           service={custom.service}
           tokenSource={custom.token}
+          apiKey={custom.apiKey}
+          keyHint={custom.keyHint}
           oauthClient={custom.oauthClient}
           oauthScope={custom.scope}
           onClose={() => {

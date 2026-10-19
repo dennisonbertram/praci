@@ -130,11 +130,6 @@ msgstr "{0} (overdue)"
 msgid "{0} {unitLabel}"
 msgstr "{0} {unitLabel}"
 
-#. placeholder {0}: server.name
-#: src/components/integrations/McpDetail.tsx
-msgid "{0} agent"
-msgstr "{0} agent"
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -367,6 +362,10 @@ msgstr "{monthlyTotal}/mo"
 msgid "{name} accounts"
 msgstr "{name} accounts"
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} agent"
+msgstr "{name} agent"
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -421,6 +420,10 @@ msgstr "{seats, plural, one {# seat} other {# seats}}"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "{serverName} connected"
 msgstr "{serverName} connected"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "{service} agent"
+msgstr "{service} agent"
 
 #: src/lib/format-bytes.ts
 msgid "{size} B"
@@ -508,6 +511,10 @@ msgstr "A bit of everything"
 #: src/components/finance/WalletDialog.tsx
 msgid "A deposit address at an exchange."
 msgstr "A deposit address at an exchange."
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "A Devin service-user key (starts with cog_)."
+msgstr "A Devin service-user key (starts with cog_)."
 
 #: src/components/finance/WalletDialog.tsx
 msgid "A Safe multisig. Its owners and threshold are shown."
@@ -885,9 +892,15 @@ msgstr "Allow access above to start. The Legal agent then reads your Data room f
 msgid "Allow access below first."
 msgstr "Allow access below first."
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
 msgstr "Allow changes"
+
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "Allow changes in {0}?"
+msgstr "Allow changes in {0}?"
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Allow changes in {service}"
@@ -1012,6 +1025,7 @@ msgstr "API is back, but the update did not finish. Check the host logs."
 #: src/components/AskCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
@@ -1977,6 +1991,10 @@ msgstr "Cloud"
 msgid "Code"
 msgstr "Code"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Coding sessions and repo docs"
+msgstr "Coding sessions and repo docs"
+
 #. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
 #: src/pages/Shell.tsx
@@ -2432,6 +2450,7 @@ msgstr "Could not connect to the computer screen"
 msgid "Could not continue"
 msgstr "Could not continue"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not create agent"
 msgstr "Could not create agent"
@@ -2841,6 +2860,7 @@ msgstr "Could not take control"
 msgid "Could not update"
 msgstr "Could not update"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update access"
 msgstr "Could not update access"
@@ -2850,6 +2870,7 @@ msgstr "Could not update access"
 msgid "Could not update bot access"
 msgstr "Could not update bot access"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update changes"
 msgstr "Could not update changes"
@@ -2959,6 +2980,7 @@ msgstr "Create a section and move {0} into it."
 msgid "Create account"
 msgstr "Create account"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr "Create agent"
@@ -5687,10 +5709,6 @@ msgstr "Obligation"
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 
-#: src/components/integrations/McpDetail.tsx
-msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
-msgstr "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
-
 #. placeholder {0}: call.botName
 #: src/components/call/CallCard.tsx
 msgid "On a call with {0}"
@@ -7879,6 +7897,11 @@ msgstr "That folder no longer exists"
 msgid "the {month} statement"
 msgstr "the {month} statement"
 
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "The agent will be able to change your {0} data. It asks before each change."
+msgstr "The agent will be able to change your {0} data. It asks before each change."
+
 #: src/components/integrations/McpDetail.tsx
 msgid "The agent will be able to change your {service} data. It asks before each change."
 msgstr "The agent will be able to change your {service} data. It asks before each change."
@@ -8270,10 +8293,6 @@ msgstr "Try sorting again"
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "Try the test again."
-
-#: src/pages/Inbox.tsx
-msgid "Trying again…"
-msgstr "Trying again…"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"

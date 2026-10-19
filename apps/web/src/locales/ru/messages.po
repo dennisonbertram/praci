@@ -130,11 +130,6 @@ msgstr ""
 msgid "{0} {unitLabel}"
 msgstr "{0} {unitLabel}"
 
-#. placeholder {0}: server.name
-#: src/components/integrations/McpDetail.tsx
-msgid "{0} agent"
-msgstr ""
-
 #. placeholder {0}: bot.name
 #: src/components/integrations/parts.tsx
 msgid "{0} can use {appName}"
@@ -367,6 +362,10 @@ msgstr ""
 msgid "{name} accounts"
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
+msgid "{name} agent"
+msgstr ""
+
 #. js-lingui-explicit-id
 #: src/lib/browser-notifications.ts
 msgid "{name} failed"
@@ -420,6 +419,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "{serverName} connected"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "{service} agent"
 msgstr ""
 
 #: src/lib/format-bytes.ts
@@ -507,6 +510,10 @@ msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "A deposit address at an exchange."
+msgstr ""
+
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "A Devin service-user key (starts with cog_)."
 msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
@@ -885,8 +892,14 @@ msgstr ""
 msgid "Allow access below first."
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
+msgstr ""
+
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "Allow changes in {0}?"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -1012,6 +1025,7 @@ msgstr "API вернулся, но обновление не завершило�
 #: src/components/AskCard.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
@@ -1977,6 +1991,10 @@ msgstr "Облако"
 msgid "Code"
 msgstr "Код"
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Coding sessions and repo docs"
+msgstr ""
+
 #. placeholder {0}: group.title
 #. placeholder {0}: item.chat.name
 #: src/pages/Shell.tsx
@@ -2432,6 +2450,7 @@ msgstr "Не удалось подключиться к экрану компь�
 msgid "Could not continue"
 msgstr "Не удалось продолжить"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not create agent"
 msgstr ""
@@ -2841,6 +2860,7 @@ msgstr "Не смог взять под контроль"
 msgid "Could not update"
 msgstr "Не удалось обновить"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update access"
 msgstr ""
@@ -2850,6 +2870,7 @@ msgstr ""
 msgid "Could not update bot access"
 msgstr ""
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not update changes"
 msgstr ""
@@ -2959,6 +2980,7 @@ msgstr "Создайте раздел и переместите в него {0}.
 msgid "Create account"
 msgstr "Зарегистрироваться"
 
+#: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr ""
@@ -3979,7 +4001,7 @@ msgid "Gmail didn't respond. Try again."
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts
-msgid "Gmail is limiting requests right now. Try again in a minute."
+msgid "Gmail is limiting requests right now. Try again in a few seconds."
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
@@ -5685,10 +5707,6 @@ msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
-msgstr ""
-
-#: src/components/integrations/McpDetail.tsx
-msgid "Off: the Carta agent only reads Carta. On: it can also make changes, such as option grants, and asks you before each one."
 msgstr ""
 
 #. placeholder {0}: call.botName
@@ -7879,6 +7897,11 @@ msgstr ""
 msgid "the {month} statement"
 msgstr ""
 
+#. placeholder {0}: confirmingWrites?.displayName ?? name
+#: src/components/integrations/AppDetail.tsx
+msgid "The agent will be able to change your {0} data. It asks before each change."
+msgstr ""
+
 #: src/components/integrations/McpDetail.tsx
 msgid "The agent will be able to change your {service} data. It asks before each change."
 msgstr ""
@@ -8270,10 +8293,6 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Try the test again."
 msgstr "Повторите тест."
-
-#: src/pages/Inbox.tsx
-msgid "Trying again…"
-msgstr ""
 
 #: src/components/MailApprovalCard.tsx
 msgid "Turn off"
