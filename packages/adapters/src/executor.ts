@@ -3545,6 +3545,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               allAgents: true,
               writesEnabled: true,
               agentBotId: true,
+              agentProvisionedAt: true,
               botAccess: { where: { botId: run.botId }, select: { botId: true } },
             },
           }),
@@ -4265,6 +4266,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               allAgents: true,
               writesEnabled: true,
               agentBotId: true,
+              agentProvisionedAt: true,
               botAccess: { where: { botId: bot.id }, select: { botId: true } },
             },
           });
@@ -7288,6 +7290,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                       status: true,
                       allAgents: true,
                       agentBotId: true,
+                      agentProvisionedAt: true,
                       botAccess: {
                         where: { botId: bot.id, spaceId: run.spaceId, userId: run.userId },
                         select: { botId: true },

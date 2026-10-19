@@ -72,6 +72,7 @@ export async function ensureConnectedAppAgent(
   },
   actor: Actor,
   connectionId: string,
+  options: { provision?: boolean } = {},
 ): Promise<{ connection: Awaited<ReturnType<typeof loadConnectedApp>>; bot: Bot }> {
   const initial = await loadConnectedApp(deps.prisma, actor, connectionId);
   // A Gmail account is read and answered by the user's one Inbox agent, so it links there.
@@ -120,10 +121,27 @@ export async function ensureConnectedAppAgent(
           status: "connected",
           OR: [{ agentBotId: null }, { agentBotId: bot.id }],
         },
-        data: { agentBotId: bot.id, ...(inbox && firstLink ? { writesEnabled: true } : {}) },
+        data: {
+          agentBotId: bot.id,
+          ...(inbox && firstLink ? { writesEnabled: true } : {}),
+          // Made in the same transaction as the link, which holds the agent's row: an archive
+          // either comes first (no link) or after (and then sees the marker and keeps it private).
+          ...(options.provision && !current.agentProvisionedAt
+            ? { agentProvisionedAt: new Date(), allAgents: false }
+            : {}),
+        },
       });
       if (!updated.count)
         throw new ORPCError("CONFLICT", { message: "The connection changed; retry" });
+      if (options.provision && !current.agentProvisionedAt)
+        await tx.botConnectionAccess.deleteMany({
+          where: {
+            connectionId,
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            botId: { not: bot.id },
+          },
+        });
       return tx.connection.findFirstOrThrow({ where: scope(actor, connectionId) });
     });
 
@@ -167,35 +185,21 @@ export async function provisionConnectionAgent(
   actor: Actor,
   connectionId: string,
 ): Promise<void> {
-  try {
-    const row = await deps.prisma.connection.findFirst({
-      where: { ...scope(actor, connectionId), status: "connected" },
-      select: { agentProvisionedAt: true },
-    });
-    if (!row || row.agentProvisionedAt) return;
-    const { bot } = await ensureConnectedAppAgent(deps, actor, connectionId);
-    await deps.prisma.$transaction(async (tx) => {
-      const claimed = await tx.connection.updateMany({
-        where: {
-          ...scope(actor, connectionId),
-          status: "connected",
-          agentBotId: bot.id,
-          agentProvisionedAt: null,
-        },
-        data: { agentProvisionedAt: new Date(), allAgents: false },
+  // Two requests can race to provision the same connection; the loser's link conflicts, so it
+  // looks again and finds the winner's agent and marker.
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const row = await deps.prisma.connection.findFirst({
+        where: { ...scope(actor, connectionId), status: "connected" },
+        select: { agentProvisionedAt: true },
       });
-      if (!claimed.count) return;
-      await tx.botConnectionAccess.deleteMany({
-        where: {
-          connectionId,
-          spaceId: actor.spaceId,
-          userId: actor.userId,
-          botId: { not: bot.id },
-        },
-      });
-    });
-  } catch (error) {
-    getLogger().error("connection agent provisioning failed", error, { connectionId });
+      if (!row || row.agentProvisionedAt) return;
+      await ensureConnectedAppAgent(deps, actor, connectionId, { provision: true });
+      return;
+    } catch (error) {
+      if (attempt === 2)
+        getLogger().error("connection agent provisioning failed", error, { connectionId });
+    }
   }
 }
 

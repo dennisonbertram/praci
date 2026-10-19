@@ -52,9 +52,10 @@ export async function completeNativeOAuth(options: {
   if (!secretId)
     throw new ORPCError("BAD_REQUEST", { message: "Connection did not return a credential" });
 
+  let replaced = false;
+  let row: Awaited<ReturnType<typeof prisma.connection.update>>;
   try {
-    let replaced = false;
-    const row = await prisma.$transaction(
+    row = await prisma.$transaction(
       async (tx) => {
         await options.lock(tx, connectorId, pending.provider);
         const current = await tx.connection.findFirst({
@@ -95,6 +96,14 @@ export async function completeNativeOAuth(options: {
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
           // The agent, its access and its settings move too. A Calendar or Drive agent is keyed by
           // its connection, so it follows the new id; the Inbox agent keeps its per-user key.
+          // A grant the new row already has is dropped, not moved twice (unique per bot).
+          const already = await tx.botConnectionAccess.findMany({
+            where: { connectionId: current.id },
+            select: { botId: true },
+          });
+          await tx.botConnectionAccess.deleteMany({
+            where: { connectionId: taken.id, botId: { in: already.map((a) => a.botId) } },
+          });
           await tx.botConnectionAccess.updateMany({
             where: { connectionId: taken.id },
             data: next,
@@ -127,22 +136,6 @@ export async function completeNativeOAuth(options: {
       },
       { timeout: 60_000 },
     );
-    if (!replaced) await options.provision?.(row.id).catch(() => undefined);
-    const final = replaced
-      ? row
-      : ((await prisma.connection.findFirst({ where: { id: row.id, ...owner } })) ?? row);
-    return {
-      id: final.id,
-      connectorId: row.connectorId,
-      provider: row.provider,
-      displayName: row.displayName,
-      status: row.status as "pending" | "connected" | "revoked" | "error",
-      error: connectionError(row),
-      writesEnabled: final.writesEnabled,
-      agentBotId: final.agentBotId,
-      capabilities: [],
-      createdAt: row.createdAt.toISOString(),
-    };
   } catch (error) {
     // The transaction rolled back, so nothing references the new credential. Google keeps
     // the token valid; it is not revoked here because revoking one token of a grant can
@@ -150,6 +143,24 @@ export async function completeNativeOAuth(options: {
     await prisma.secret.deleteMany({ where: { id: secretId, ...owner } });
     throw error;
   }
+
+  if (!replaced) await options.provision?.(row.id).catch(() => undefined);
+  const final = replaced
+    ? row
+    : ((await prisma.connection.findFirst({ where: { id: row.id, ...owner } }).catch(() => null)) ??
+      row);
+  return {
+    id: final.id,
+    connectorId: row.connectorId,
+    provider: row.provider,
+    displayName: row.displayName,
+    status: row.status as "pending" | "connected" | "revoked" | "error",
+    error: connectionError(row),
+    writesEnabled: final.writesEnabled,
+    agentBotId: final.agentBotId,
+    capabilities: [],
+    createdAt: row.createdAt.toISOString(),
+  };
 }
 
 /** Short user-safe reason for a failed connection; never provider internals. */

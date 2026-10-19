@@ -678,6 +678,7 @@ async function allEffectiveAccess(prisma: PrismaClient, actor: Actor) {
         status: true,
         allAgents: true,
         agentBotId: true,
+        agentProvisionedAt: true,
         botAccess: { where: scope, select: { botId: true } },
       },
     }),
@@ -5541,6 +5542,8 @@ export function createRouter(deps: RouterDeps) {
             }
             throw new IsolationError();
           }
+          // An app that needs no sign-in is connected right here.
+          if (!auth.authorizationUrl) await provisionForActor(context.actor, row.id);
           return { connectionId: row.id, authorizationUrl: auth.authorizationUrl };
         } catch (error) {
           if (error instanceof IsolationError) throw error;
@@ -5884,7 +5887,14 @@ export function createRouter(deps: RouterDeps) {
             { timeout: 60_000 },
           );
         }
-        if (row.status === "connected" && existing.status !== "connected") {
+        // A poll that lost the race to the winning poll sees the row already connected, so a row
+        // connected moments ago and not yet provisioned counts too. Older connected rows are never
+        // touched. ponytail: a time window, since a plain flag would need another column.
+        if (
+          row.status === "connected" &&
+          !row.agentProvisionedAt &&
+          (existing.status !== "connected" || Date.now() - existing.updatedAt.getTime() < 120_000)
+        ) {
           await provisionForActor(context.actor, row.id);
           row =
             (await deps.prisma.connection.findFirst({
@@ -5920,7 +5930,13 @@ export function createRouter(deps: RouterDeps) {
         await deps.prisma.$transaction(async (tx) => {
           const connection = await tx.connection.findFirst({
             where: { id: input.connectionId, spaceId: actor.spaceId, userId: actor.userId },
-            select: { id: true, connectorId: true, provider: true, agentBotId: true },
+            select: {
+              id: true,
+              connectorId: true,
+              provider: true,
+              agentBotId: true,
+              agentProvisionedAt: true,
+            },
           });
           if (!connection) throw new IsolationError();
           if (connection.agentBotId) {
@@ -5953,18 +5969,20 @@ export function createRouter(deps: RouterDeps) {
             where: { id: { in: botIds }, spaceId: actor.spaceId, userId: actor.userId },
           });
           if (bots !== botIds.length) throw new IsolationError();
-          const siblings = connection.agentBotId
-            ? [{ id: connection.id }]
-            : await tx.connection.findMany({
-                where: {
-                  spaceId: actor.spaceId,
-                  userId: actor.userId,
-                  connectorId: connection.connectorId,
-                  provider: connection.provider,
-                  agentBotId: null,
-                },
-                select: { id: true },
-              });
+          const siblings =
+            connection.agentBotId || connection.agentProvisionedAt
+              ? [{ id: connection.id }]
+              : await tx.connection.findMany({
+                  where: {
+                    spaceId: actor.spaceId,
+                    userId: actor.userId,
+                    connectorId: connection.connectorId,
+                    provider: connection.provider,
+                    agentBotId: null,
+                    agentProvisionedAt: null,
+                  },
+                  select: { id: true },
+                });
           const ids = siblings.map((row) => row.id);
           if (ids.length === 0)
             throw new ORPCError("CONFLICT", { message: "The connection changed; retry" });
@@ -6067,6 +6085,7 @@ export function createRouter(deps: RouterDeps) {
         const prepared = configured
           ? await prepareManagedConnectorForTransaction(configured)
           : undefined;
+        let agentToArchive: string | null = null;
         const outcome = await deps.prisma.$transaction(
           async (tx) => {
             const row = await tx.connection.findFirst({
@@ -6110,6 +6129,23 @@ export function createRouter(deps: RouterDeps) {
                 remote: null as null | RemoteRevoke,
                 previousStatus: null as string | null,
               };
+            }
+            // Unlink a provisioned agent under the same lock, so a begin that reuses the row
+            // right after sees a clean row. The agent itself is archived once this commits.
+            if (row.agentProvisionedAt) {
+              const agent = row.agentBotId
+                ? await tx.bot.findFirst({
+                    where: { id: row.agentBotId, spaceId: row.spaceId, userId: row.userId },
+                    select: { spawnKey: true },
+                  })
+                : null;
+              agentToArchive =
+                agent?.spawnKey === integrationAgentSpawnKey(row.id) ? row.agentBotId : null;
+              await tx.connection.update({
+                where: { id: row.id },
+                data: { agentBotId: null, agentProvisionedAt: null, writesEnabled: false },
+              });
+              await tx.botConnectionAccess.deleteMany({ where: { connectionId: row.id } });
             }
             // Revoking only marks the row, so no cascade fires; mail data goes explicitly.
             await deleteMailConnectionData(tx, {
@@ -6247,31 +6283,12 @@ export function createRouter(deps: RouterDeps) {
             throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
           }
         }
-        // The connection's own agent goes with it. The Inbox agent serves every Gmail account, so
-        // it only loses this one.
-        const revoked = await deps.prisma.connection.findFirst({
-          where: {
-            id: input.connectionId,
-            spaceId: context.actor.spaceId,
-            userId: context.actor.userId,
-            status: "revoked",
-            agentProvisionedAt: { not: null },
-          },
-          include: { agentBot: { select: { spawnKey: true } } },
-        });
-        if (revoked) {
-          if (
-            revoked.agentBotId &&
-            revoked.agentBot?.spawnKey === integrationAgentSpawnKey(revoked.id)
-          )
-            await archiveActorBot(context.actor, revoked.agentBotId).catch((error) =>
-              getLogger().error("connection agent archive failed", error),
-            );
-          await deps.prisma.connection.updateMany({
-            where: { id: revoked.id, status: "revoked" },
-            data: { agentBotId: null, agentProvisionedAt: null, writesEnabled: false },
-          });
-        }
+        // The connection's own agent goes with it, archived after the revoke committed. The Inbox
+        // agent serves every Gmail account, so it only loses this one.
+        if (agentToArchive)
+          await archiveActorBot(context.actor, agentToArchive).catch((error) =>
+            getLogger().error("connection agent archive failed", error),
+          );
         return { ok: true as const };
       }),
       tools: authed.connections.tools.handler(async ({ context, input }) => {

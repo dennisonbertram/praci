@@ -221,3 +221,16 @@ describe("effectiveAccessByConnection for Google agents", () => {
     expect(result["cal-1"]?.botIds).toEqual(["chief", "inbox", "cal"]);
   });
 });
+
+describe("provisioned connections that lost their agent", () => {
+  it.each(["composio", "google"])("do not deny shared siblings (%s)", (connectorId) => {
+    const rows = [
+      row("private", "connected", false, {
+        connectorId,
+        agentProvisionedAt: new Date(),
+      }),
+      row("legacy", "connected", true, { connectorId }),
+    ];
+    expect([...deniedConnectionIds(rows)]).toEqual(["private"]);
+  });
+});

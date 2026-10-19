@@ -71,7 +71,8 @@ it("renders a native table in the Cap table style, with the header hidden on a p
   const rows = [item("lease", "f-legal")].map((i) => ({ item: i, snippets: [] }));
   act(() => root.render(<ListView rows={rows} o={o()} />));
   const table = container.querySelector("table");
-  for (const cls of ["w-full", "table-fixed", "text-sm"]) expect(table?.classList.contains(cls)).toBe(true);
+  for (const cls of ["w-full", "table-fixed", "text-sm"])
+    expect(table?.classList.contains(cls)).toBe(true);
   const row = container.querySelector("[data-row]");
   expect(row?.tagName).toBe("TR");
   expect(row?.className).toContain(
