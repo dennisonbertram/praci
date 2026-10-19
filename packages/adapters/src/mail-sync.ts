@@ -15,9 +15,14 @@ const WINDOW_MS = 14 * 86_400_000;
 const PAGE_SIZE = 100;
 /** Most messages kept from one list; Gmail pages are 100, so this is two pages. */
 const MAX_MESSAGES = 200;
+/** Incremental syncs fetch a few messages. */
 const DEADLINE_MS = 90_000;
-/** A re-list chain older than this starts over, since its cursor may no longer be replayable. */
-const CHAIN_MAX_MS = 60 * 60_000;
+/**
+ * Listing the whole window again hydrates up to 400 messages. Gmail requests are paced to about
+ * four a second, which takes roughly 100 seconds, so this leaves margin. It stays under the
+ * 5-minute stale claim.
+ */
+const RELIST_DEADLINE_MS = 240_000;
 const TEXT_CAP = 500;
 const UPSERT_CHUNK = 200;
 /** Most changes applied one by one; more than this is cheaper to take from the window lists. */
@@ -35,7 +40,7 @@ export interface MailSyncDeps {
   jobs: JobPublisher;
   /** Clock for the 14-day window; defaults to the system clock. */
   now?: () => Date;
-  /** Provider deadline; defaults to 90 seconds, which is shorter than the 2-minute stale claim. */
+  /** Caps every provider call of a sync. Without it an incremental sync gets 90 seconds and a full window re-list 240, both shorter than the 5-minute stale claim. */
   deadlineMs?: number;
 }
 
@@ -77,12 +82,7 @@ export async function syncMailbox(
       AND status = 'connected'
     ON CONFLICT DO NOTHING`;
   const claimed = await prisma.$queryRaw<
-    Array<{
-      connectionId: string;
-      changeCursor?: string | null;
-      resumeCursor?: string | null;
-      resumeStartedAt?: Date | null;
-    }>
+    Array<{ connectionId: string; changeCursor?: string | null }>
   >`
     UPDATE mail_sync_states s
     SET "syncStartedAt" = ${DB_NOW}, "claimToken" = ${token}
@@ -91,12 +91,10 @@ export async function syncMailbox(
       AND c."spaceId" = ${spaceId} AND c."userId" = ${userId} AND c.status = 'connected'
       AND (s."lastSyncedAt" IS NULL OR s."lastSyncedAt" < ${DB_NOW} - interval '60 seconds')
       AND (s."backoffUntil" IS NULL OR s."backoffUntil" < ${DB_NOW})
-      AND (s."syncStartedAt" IS NULL OR s."syncStartedAt" < ${DB_NOW} - interval '2 minutes')
-    RETURNING s."connectionId", s."changeCursor", s."resumeCursor", s."resumeStartedAt"`;
+      AND (s."syncStartedAt" IS NULL OR s."syncStartedAt" < ${DB_NOW} - interval '5 minutes')
+    RETURNING s."connectionId", s."changeCursor"`;
   if (claimed.length === 0) return "skipped";
   const previousCursor = claimed[0]?.changeCursor ?? null;
-  const resumeCursor = claimed[0]?.resumeCursor ?? null;
-  const resumeStartedAt = claimed[0]?.resumeStartedAt ?? null;
 
   const fail = async (error: unknown): Promise<"failed" | "skipped"> => {
     // The token check keeps a sync that lost its claim from clearing its replacement's.
@@ -139,7 +137,21 @@ export async function syncMailbox(
   const now = (deps.now ?? (() => new Date()))();
   const windowStart = new Date(now.getTime() - WINDOW_MS);
   const after = windowStart.toISOString().slice(0, 10);
-  const deadline = AbortSignal.timeout(deps.deadlineMs ?? DEADLINE_MS);
+  // An injected deadline caps every kind of sync (the inbox overview waits 8 seconds).
+  const deadlineController = new AbortController();
+  const deadline = deadlineController.signal;
+  const startDeadline = (ms: number) => {
+    const timer = setTimeout(() => deadlineController.abort(), ms);
+    timer.unref();
+    return timer;
+  };
+  let deadlineTimer = startDeadline(deps.deadlineMs ?? DEADLINE_MS);
+  /** Listing the window again takes longer than an incremental sync, so it gets more time. */
+  const lengthenDeadline = () => {
+    if (deps.deadlineMs !== undefined) return;
+    clearTimeout(deadlineTimer);
+    deadlineTimer = startDeadline(RELIST_DEADLINE_MS - (Date.now() - started));
+  };
   const timed: AdapterContext = { ...context, signal: AbortSignal.any([context.signal, deadline]) };
 
   const merged = new Map<
@@ -152,8 +164,6 @@ export async function syncMailbox(
   /** Set when the window was listed, also to refill a full inbox: clears messages no longer in it. */
   let inbox: Listed | undefined;
   let partial = false;
-  /** The change cursor and start time of the window re-list chain this run belongs to. */
-  let chain: { cursor: string; startedAt: Date } | undefined;
   /** True when the labels of the fetched messages are the truth, as in a change sync. */
   let incremental = false;
   try {
@@ -217,28 +227,14 @@ export async function syncMailbox(
       // Taken before the lists, so mail that arrives while they run is replayed next time.
       // Deletions the changes already name are not lost when the window is listed instead.
       if (changes) deletedIds.push(...changes.deletedIds);
-      // An interrupted re-list resumes under the cursor its first run took, so the incremental sync
-      // that follows replays every change since mail was first stored, and that mail can be reused.
-      chain =
-        resumeCursor && resumeStartedAt && now.getTime() - resumeStartedAt.getTime() < CHAIN_MAX_MS
-          ? { cursor: resumeCursor, startedAt: resumeStartedAt }
-          : { cursor: await deps.mail.getCursor(account, timed), startedAt: now };
-      nextCursor = chain.cursor;
-      const reuseSince = chain.startedAt;
-      inbox = await listWindow(
-        deps.mail,
-        account,
-        timed,
-        "in:inbox",
-        after,
-        windowStart,
-        reuseSince,
-      );
+      lengthenDeadline();
+      nextCursor = await deps.mail.getCursor(account, timed);
+      inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
       // Out of time: keep what loaded and list sent mail on a later run.
       const sent: Listed =
         inbox.partial || timed.signal.aborted
           ? { messages: [], capped: false, partial: true }
-          : await listWindow(deps.mail, account, timed, "in:sent", after, windowStart, reuseSince);
+          : await listWindow(deps.mail, account, timed, "in:sent", after, windowStart);
       partial = inbox.partial || sent.partial;
       for (const [listed, flag] of [
         [inbox, "inInbox"],
@@ -347,8 +343,6 @@ export async function syncMailbox(
             UPDATE mail_sync_states
             SET "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL,
                 "backoffUntil" = ${DB_NOW} + ${RATE_LIMIT_BACKOFF},
-                "resumeCursor" = COALESCE(${chain?.cursor ?? null}::text, "resumeCursor"),
-                "resumeStartedAt" = COALESCE(${chain?.startedAt ?? null}, "resumeStartedAt"),
                 "syncStartedAt" = NULL, "claimToken" = NULL
             WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
           return "failed" as const;
@@ -357,7 +351,6 @@ export async function syncMailbox(
           UPDATE mail_sync_states
           SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL, "backoffUntil" = NULL,
               "changeCursor" = COALESCE(${nextCursor ?? null}::text, "changeCursor"),
-              "resumeCursor" = NULL, "resumeStartedAt" = NULL,
               "syncStartedAt" = NULL, "claimToken" = NULL
           WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
         return "synced" as const;
@@ -398,7 +391,6 @@ async function listWindow(
   query: string,
   after: string,
   windowStart: Date,
-  reuseSince?: Date,
 ): Promise<Listed> {
   const messages: MailMessageSummary[] = [];
   let pageToken: string | undefined;
@@ -412,7 +404,6 @@ async function listWindow(
         pageSize: PAGE_SIZE,
         pageToken,
         useCache: false,
-        ...(reuseSince ? { reuseCachedSince: reuseSince } : {}),
       },
       context,
     );

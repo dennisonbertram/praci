@@ -10,7 +10,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import { deleteMailConnectionData, syncMailbox } from "./mail-sync.js";
@@ -504,7 +504,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(listCalls()).toBe(2);
   });
 
-  it("takes over a claim older than 2 minutes and the old sync then writes nothing", async () => {
+  it("takes over a claim older than 5 minutes and the old sync then writes nothing", async () => {
     seed("stale", [message("a", 1, ["INBOX"])]);
     const account = await connect("stale");
     let releaseOld!: () => void;
@@ -515,7 +515,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     const oldSync = sync(account, "stale-old");
     await expect.poll(async () => (await state(account.id)).claimToken).not.toBeNull();
     const oldToken = (await state(account.id)).claimToken;
-    await prisma.$executeRaw`UPDATE mail_sync_states SET "syncStartedAt" = now() - interval '3 minutes' WHERE "connectionId" = ${account.id}`;
+    await prisma.$executeRaw`UPDATE mail_sync_states SET "syncStartedAt" = now() - interval '6 minutes' WHERE "connectionId" = ${account.id}`;
 
     const newSync = sync(account, "stale-new");
     await expect.poll(async () => (await state(account.id)).claimToken).not.toBe(oldToken);
@@ -576,8 +576,6 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       getDelayMs = 0;
       answerLateUrl = undefined;
     });
-    const byUnread = async (connectionId: string) =>
-      new Map((await rows(connectionId)).map((r) => [r.providerMessageId, r.unread]));
     const nextRun = (connectionId: string) =>
       prisma.mailSyncState.updateMany({ where: { connectionId }, data: { backoffUntil: null } });
 
@@ -595,62 +593,6 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       expect(after.claimToken).toBeNull();
       expect(gmail.requests.some((r) => /messages\?.*sent/.test(r.url))).toBe(false);
       expect((await rows(account.id)).length).toBeGreaterThan(0);
-    });
-
-    it("is not complete when the deadline stops paging after a fully cached page", async () => {
-      seed("cached-page", [...bulk(5, "in"), ...bulk(150, "sent")]);
-      const account = await connect("cached-page");
-      expect(await sync(account)).toBe("synced");
-      // Pretend that was the first run of an interrupted re-list: its mail is reusable.
-      await prisma.mailSyncState.update({
-        where: { connectionId: account.id },
-        data: {
-          lastSyncedAt: null,
-          changeCursor: null,
-          resumeCursor: "1000",
-          resumeStartedAt: new Date(Date.now() - 5 * 60_000),
-        },
-      });
-      answerLateUrl = "in%3Asent";
-
-      expect(await sync(account, "op", { deadlineMs: 150 })).toBe("failed");
-
-      const after = await state(account.id);
-      expect(after.lastSyncedAt).toBeNull();
-      expect(after.changeCursor).toBeNull();
-      expect(after.resumeCursor).toBe("1000");
-    });
-
-    it("repairs the labels of mail reused from an interrupted run once the sync completes", async () => {
-      seed(
-        "stale",
-        Array.from({ length: 150 }, (_, i) =>
-          message(`in-${i}`, 1 + i / 1000, ["INBOX", "UNREAD"]),
-        ),
-      );
-      const account = await connect("stale");
-      getDelayMs = 10;
-      expect(await sync(account, "op", { deadlineMs: 300 })).toBe("failed");
-      expect((await state(account.id)).resumeCursor).not.toBeNull();
-      expect((await byUnread(account.id)).get("in-0")).toBe(true);
-
-      // The newest message is read in Gmail between two runs.
-      gmail.handle(
-        "stale",
-        "https://gmail.googleapis.com/gmail/v1/users/me/messages/in-0/modify",
-        "POST",
-        { removeLabelIds: ["UNREAD"] },
-      );
-      let runs = 0;
-      while (!(await state(account.id)).lastSyncedAt && runs++ < 10) {
-        await nextRun(account.id);
-        await sync(account, "op", { deadlineMs: 300 });
-      }
-      expect((await state(account.id)).lastSyncedAt).not.toBeNull();
-
-      await expireThrottle(account.id);
-      expect(await sync(account)).toBe("synced");
-      expect((await byUnread(account.id)).get("in-0")).toBe(false);
     });
 
     it("records an auth failure that arrives after the deadline", async () => {
@@ -683,32 +625,76 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       const after = await state(account.id);
       expect(after.lastErrorAt).toBeNull();
       expect(after.backoffUntil).toBeNull();
-      expect(after.resumeCursor).toBeNull();
       expect(after.claimToken).toBeNull();
     });
 
-    it("finishes within a few runs, fetching each message about once", async () => {
-      seed("converge", [...bulk(200, "in"), ...bulk(200, "sent")]);
-      const account = await connect("converge");
+    it("records a 503 that arrives after the deadline while hydrating", async () => {
+      seed("late-503", bulk(5, "in"));
+      const account = await connect("late-503");
+      answerLateUrl = "messages/in-0";
+      gmail.failNext(503, { times: 1000, urlIncludes: "messages/in-0" });
+
+      expect(await sync(account, "op", { deadlineMs: 100 })).toBe("failed");
+
+      const after = await state(account.id);
+      expect(after.lastErrorKind).toBe("unavailable");
+      expect(after.lastErrorAt).not.toBeNull();
+    });
+
+    it("gives a full window re-list a longer deadline than an incremental sync", async () => {
+      seed("long", [...bulk(200, "in"), ...bulk(200, "sent")]);
+      const account = await connect("long");
       getDelayMs = 10;
+      const timers: number[] = [];
+      const realSetTimeout = globalThis.setTimeout;
+      const spy = vi.spyOn(globalThis, "setTimeout").mockImplementation(((
+        fn: () => void,
+        ms?: number,
+        ...rest: unknown[]
+      ) => {
+        if (ms && ms >= 90_000) timers.push(ms);
+        return realSetTimeout(fn, ms, ...rest);
+      }) as typeof setTimeout);
+      try {
+        expect(await sync(account)).toBe("synced");
+        expect(await rows(account.id)).toHaveLength(400);
+        expect(timers[0]).toBe(90_000);
+        expect(timers[1]).toBeGreaterThan(230_000);
+        expect(timers[1]).toBeLessThanOrEqual(240_000);
 
-      let runs = 0;
-      do {
-        runs++;
-        await prisma.mailSyncState.updateMany({
-          where: { connectionId: account.id },
-          data: { backoffUntil: null },
-        });
-        await sync(account, "op", { deadlineMs: 600 });
-        expect((await state(account.id)).lastErrorKind).toBeNull();
-      } while (!(await state(account.id)).lastSyncedAt && runs < 10);
+        timers.length = 0;
+        await expireThrottle(account.id);
+        expect(await sync(account)).toBe("synced");
+        expect(timers).toEqual([90_000]);
+      } finally {
+        spy.mockRestore();
+      }
+    });
 
+    it("stays incomplete without an error when too slow, then finishes with fresh labels", async () => {
+      seed("slow-window", [...bulk(200, "in"), ...bulk(200, "sent")]);
+      const account = await connect("slow-window");
+      getDelayMs = 10;
+      expect(await sync(account, "op", { deadlineMs: 300 })).toBe("failed");
+      const first = await state(account.id);
+      expect(first.lastErrorKind).toBeNull();
+      expect(first.lastErrorAt).toBeNull();
+      expect(first.lastSyncedAt).toBeNull();
+
+      gmail.handle(
+        "slow-window",
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/in-0/modify",
+        "POST",
+        { addLabelIds: ["STARRED"], removeLabelIds: ["INBOX"] },
+      );
+      await nextRun(account.id);
+      expect(await sync(account)).toBe("synced");
       expect((await state(account.id)).lastSyncedAt).not.toBeNull();
-      expect(runs).toBeGreaterThan(1);
-      expect(runs).toBeLessThan(10);
-      expect(await rows(account.id)).toHaveLength(400);
-      // Messages stored by an earlier run are not fetched again; only requests cut off mid-flight repeat.
-      expect(getCalls()).toBeLessThan(400 + runs * 4);
+      const inboxFlags = new Map(
+        (await rows(account.id)).map((r) => [r.providerMessageId, r.inInbox]),
+      );
+      expect(inboxFlags.get("in-0")).toBe(false);
+      expect(inboxFlags.get("in-1")).toBe(true);
     });
   });
 
