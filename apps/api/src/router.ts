@@ -65,7 +65,6 @@ import {
   defaultCatalogModelId,
   deleteMailConnectionData,
   deleteMailSearches,
-  deletePushToken,
   deploymentAutoReviewDefault,
   destroyBot,
   displayBotWorkspacePath,
@@ -94,7 +93,6 @@ import {
   normalizeSecretDestination,
   PageValidationError,
   PinsValidationError,
-  PushSessionEndedError,
   parseModelSecret,
   persistPreparedSecret,
   pickReusableConnection,
@@ -121,7 +119,6 @@ import {
   sanitizeComposioError,
   saveBotPage,
   saveBotPins,
-  savePushToken,
   scheduleComputerControlExpiry,
   scheduleComputerSleep,
   screenLeaseIdForRun,
@@ -213,6 +210,7 @@ import {
   defaultModelCredentialCandidates,
   deleteContact,
   deleteEmptySpaceForMember,
+  deletePushTokens,
   deleteUnreferencedCredentialSecret,
   ensureBoard,
   findDefaultModelCredential,
@@ -236,6 +234,7 @@ import {
   newestModelCredentialOrder,
   newestVoiceCredentialOrder,
   Prisma,
+  PushSessionEndedError,
   parseComputerMode,
   pushSessionExpiresAt,
   releaseSpaceDeletionClaim,
@@ -251,6 +250,7 @@ import {
   SpaceNotEmptyError,
   SpaceNotFoundError,
   saveContact,
+  savePushToken,
   selectSpaceModelPreference,
   selectSpaceVoicePreference,
   toBoardDto,
@@ -7106,7 +7106,7 @@ export function createRouter(deps: RouterDeps) {
         const sessionId = context.sessionId;
         if (!sessionId) throw new ORPCError("UNAUTHORIZED");
         try {
-          await savePushToken(deps.dataDir, context.actor.userId, input.token, sessionId, {
+          await savePushToken(deps.prisma, context.actor.userId, input.token, sessionId, {
             sessionActive: async () => {
               const expiresAt = await pushSessionExpiresAt(deps.prisma, sessionId);
               return expiresAt !== null && expiresAt.getTime() > Date.now();
@@ -7119,7 +7119,7 @@ export function createRouter(deps: RouterDeps) {
         return { ok: true as const };
       }),
       unregisterPush: authed.notifications.unregisterPush.handler(async ({ context }) => {
-        await deletePushToken(deps.dataDir, context.actor.userId);
+        await deletePushTokens(deps.prisma, context.actor.userId, context.sessionId);
         return { ok: true as const };
       }),
     },
