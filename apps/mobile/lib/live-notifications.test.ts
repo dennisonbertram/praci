@@ -60,6 +60,33 @@ describe("notification thread targeting", () => {
       handler?.handleNotification({
         request: { content: { data: { notificationId: "n1", surface } } },
       } as never);
+    // Unified and legacy thread pushes are both hidden for the open thread.
+    await setOpenNotificationThread({ botId: "bot-1", threadId: "t-1" });
+    const thread = (data: Record<string, unknown>) =>
+      handler?.handleNotification({ request: { content: { data } } } as never);
+    await expect(
+      thread({
+        kind: "notification",
+        notificationId: "n2",
+        surface: "thread",
+        botId: "bot-1",
+        threadId: "t-1",
+      }),
+    ).resolves.toMatchObject({ shouldShowBanner: false });
+    await expect(
+      thread({ kind: "completion", botId: "bot-1", threadId: "t-1" }),
+    ).resolves.toMatchObject({ shouldShowBanner: false });
+    await expect(
+      thread({
+        kind: "notification",
+        notificationId: "n3",
+        surface: "thread",
+        botId: "bot-1",
+        threadId: "t-9",
+      }),
+    ).resolves.toMatchObject({ shouldShowBanner: true });
+    await setOpenNotificationThread(null);
+
     setOpenSurface("inbox");
     await expect(show("inbox")).resolves.toMatchObject({ shouldShowBanner: false });
     await expect(show("finance")).resolves.toMatchObject({ shouldShowBanner: true });

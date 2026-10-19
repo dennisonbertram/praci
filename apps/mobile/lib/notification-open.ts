@@ -78,6 +78,11 @@ export function notificationOpenTargetFromLink(url: string): NotificationRoute |
   return notificationOpenTarget(data);
 }
 
+export function notificationSpaceId(data: unknown): string | undefined {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
+  return notificationField(data as Record<string, unknown>, "spaceId");
+}
+
 /** The page surface a notification belongs to, for marking it seen. Threads track their own unread. */
 export function notificationSurface(data: unknown): string | null {
   if (!data || typeof data !== "object" || Array.isArray(data)) return null;

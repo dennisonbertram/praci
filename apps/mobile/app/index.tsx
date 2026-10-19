@@ -81,7 +81,7 @@ import {
   currentSessionGeneration,
   subscribeSessionGeneration,
 } from "../lib/session";
-import { useUnseenCount } from "../lib/unseen-notifications";
+import { refreshUnseenCounts, useUnseenCount } from "../lib/unseen-notifications";
 import { useInboxDay } from "../lib/use-inbox-day";
 import { errorText } from "../lib/user-error";
 
@@ -257,7 +257,10 @@ function Home() {
       let cancelled = false;
       let timer: ReturnType<typeof setTimeout> | undefined;
       const tick = async () => {
-        if (AppState.currentState === "active") await loadBots();
+        if (AppState.currentState === "active") {
+          void refreshUnseenCounts();
+          await loadBots();
+        }
         if (!cancelled) timer = setTimeout(() => void tick(), 5_000);
       };
       void tick();
@@ -958,6 +961,7 @@ function MailInboxRow({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={unseen ? `${t("Inbox")}, ${t("unread")}` : t("Inbox")}
       onPress={onPress}
       style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
     >
