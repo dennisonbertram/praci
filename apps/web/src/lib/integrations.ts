@@ -298,7 +298,13 @@ export function popularApps(
   const open = catalog.filter(
     (item) =>
       !used.has(appKey(item)) &&
-      !FIRST_PARTY_SLUGS.has(item.slug.toLowerCase().replace(/[^a-z0-9]+/g, "")),
+      // A toolkit named "<service>_mcp" is the same service as its first-party tile.
+      !FIRST_PARTY_SLUGS.has(
+        item.slug
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, "")
+          .replace(/mcp$/, ""),
+      ),
   );
   const featured = (item: ConnectionCatalogItem) =>
     matchFeaturedConnectorId(item.slug) !== null || matchFeaturedConnectorId(item.name) !== null;
