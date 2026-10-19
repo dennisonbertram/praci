@@ -16,6 +16,13 @@ import {
   PopoverTitle,
   PopoverTrigger,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -43,9 +50,7 @@ import {
   Kv,
   KvRow,
   PeriodTabs,
-  rowClass,
   Section,
-  Th,
   toneClass,
   useFinanceQuery,
   useRowNavigate,
@@ -885,31 +890,35 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
   useHideAmounts();
   const rowProps = useRowNavigate();
   return (
-    <table className="w-full border-collapse">
-      <thead>
-        <tr>
-          <Th>
+    <Table compact>
+      <TableHeader>
+        <TableHeadRow>
+          <TableHead>
             <Trans>Vendor</Trans>
-          </Th>
-          <Th right>
+          </TableHead>
+          <TableHead className="text-end">
             <Trans>Monthly</Trans>
-          </Th>
-          <Th right className="hidden @md:table-cell">
+          </TableHead>
+          <TableHead className="text-end hidden @md:table-cell">
             <Trans>3-mo change</Trans>
-          </Th>
-          <Th right className="hidden @md:table-cell">
+          </TableHead>
+          <TableHead className="text-end hidden @md:table-cell">
             <Trans>Last charge</Trans>
-          </Th>
-          <Th />
-        </tr>
-      </thead>
-      <tbody>
+          </TableHead>
+          <TableHead />
+        </TableHeadRow>
+      </TableHeader>
+      <TableBody>
         {subs.items.map((sub) => {
           const paidWith = paidWithLabel(sub.paidWith);
           const name = sub.name;
           return (
-            <tr key={sub.key} className={rowClass} {...rowProps(financePath.vendor(sub.key))}>
-              <td className="font-semibold">
+            <TableRow
+              key={sub.key}
+              className="group/row cursor-pointer"
+              {...rowProps(financePath.vendor(sub.key))}
+            >
+              <TableCell className="font-semibold">
                 <HereLink
                   to={financePath.vendor(sub.key)}
                   aria-label={paidWith ? t`${name}, paid with ${paidWith}` : name}
@@ -930,19 +939,19 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
                     {paidWith}
                   </span>
                 ) : null}
-              </td>
-              <td className="text-end tabular-nums">{money(sub.monthlyCents)}</td>
-              <td className="hidden w-[90px] whitespace-nowrap text-end tabular-nums text-muted-foreground @md:table-cell">
+              </TableCell>
+              <TableCell className="text-end tabular-nums">{money(sub.monthlyCents)}</TableCell>
+              <TableCell className="hidden w-[90px] whitespace-nowrap text-end tabular-nums text-muted-foreground @md:table-cell">
                 {trendText(sub.trendCents) ?? "—"}
-              </td>
-              <td className="hidden whitespace-nowrap text-end text-muted-foreground @md:table-cell">
+              </TableCell>
+              <TableCell className="hidden whitespace-nowrap text-end text-muted-foreground @md:table-cell">
                 {shortDay(sub.lastChargeAt)}
-              </td>
+              </TableCell>
               <Chevron />
-            </tr>
+            </TableRow>
           );
         })}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }

@@ -16,6 +16,13 @@ import {
   NativeSelect,
   NativeSelectOption,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -884,35 +891,31 @@ export function CapTablePage({
       ) : (
         // Fixed widths: the same columns, in the same places, with or without Carta and the panel.
         // Without Carta's Shares and Ownership columns, Kind takes the space Email would leave empty.
-        <table className="w-full table-fixed text-sm">
-          <thead className="text-start text-xs text-muted-foreground">
-            <tr>
-              <th className="py-2 pe-3 text-start font-medium @md:w-[48%] @lg:w-[25%]">
+        <Table>
+          <TableHeader>
+            <TableHeadRow>
+              <TableHead className="@md:w-[48%] @lg:w-[25%]">
                 <Trans>Name</Trans>
-              </th>
-              <th
-                className={`hidden py-2 pe-3 text-start font-medium @md:table-cell ${snapshot ? "" : "@lg:w-[45%]"}`}
-              >
+              </TableHead>
+              <TableHead className={`hidden @md:table-cell ${snapshot ? "" : "@lg:w-[45%]"}`}>
                 <Trans>Email</Trans>
-              </th>
-              <th
-                className={`hidden py-2 pe-3 text-start font-medium @lg:table-cell ${snapshot ? "w-28" : ""}`}
-              >
+              </TableHead>
+              <TableHead className={`hidden @lg:table-cell ${snapshot ? "w-28" : ""}`}>
                 <Trans>Kind</Trans>
-              </th>
+              </TableHead>
               {snapshot ? (
                 <>
-                  <th className="hidden w-20 py-2 pe-3 text-end font-medium @2xl:table-cell">
+                  <TableHead className="hidden w-20 text-end @2xl:table-cell">
                     <Trans>Shares</Trans>
-                  </th>
-                  <th className="w-20 py-2 text-end font-medium">
+                  </TableHead>
+                  <TableHead className="w-20 pe-0 text-end">
                     <Trans>Ownership</Trans>
-                  </th>
+                  </TableHead>
                 </>
               ) : null}
-            </tr>
-          </thead>
-          <tbody>
+            </TableHeadRow>
+          </TableHeader>
+          <TableBody>
             {shown.map(({ key, contact, holder }) => {
               const name = contact?.name ?? holder?.name ?? "";
               const organization = contact?.organization ?? holder?.organization ?? null;
@@ -951,12 +954,12 @@ export function CapTablePage({
                 holder.email
               ) : null;
               return (
-                <tr
+                <TableRow
                   key={key}
                   data-contact-id={contact?.id}
-                  className={`h-14 border-t border-border transition-colors hover:bg-muted/50 ${contact && contact.id === savedId ? "bg-muted" : ""}`}
+                  className={contact && contact.id === savedId ? "bg-muted" : ""}
                 >
-                  <td className="py-2 pe-3">
+                  <TableCell>
                     {contact ? (
                       <button
                         type="button"
@@ -992,37 +995,37 @@ export function CapTablePage({
                         {email}
                       </div>
                     ) : null}
-                  </td>
-                  <td
+                  </TableCell>
+                  <TableCell
                     data-testid="cap-table-email-cell"
-                    className="hidden truncate py-2 pe-3 text-muted-foreground @md:table-cell"
+                    className="hidden truncate text-muted-foreground @md:table-cell"
                     title={contact?.email ?? holder?.email ?? undefined}
                   >
                     {email ?? empty}
-                  </td>
-                  <td className="hidden py-2 pe-3 @lg:table-cell">
+                  </TableCell>
+                  <TableCell className="hidden @lg:table-cell">
                     <div className="truncate">{names[kind]}</div>
                     {holding ? (
                       <div className="truncate text-xs text-muted-foreground" title={holding}>
                         {holding}
                       </div>
                     ) : null}
-                  </td>
+                  </TableCell>
                   {snapshot ? (
                     <>
-                      <td className="hidden py-2 pe-3 text-end tabular-nums @2xl:table-cell">
+                      <TableCell className="hidden text-end tabular-nums @2xl:table-cell">
                         {holder?.shares != null ? num(holder.shares) : empty}
-                      </td>
-                      <td className="py-2 text-end tabular-nums">
+                      </TableCell>
+                      <TableCell className="pe-0 text-end tabular-nums">
                         {holder?.percent != null ? pct(holder.percent) : empty}
-                      </td>
+                      </TableCell>
                     </>
                   ) : null}
-                </tr>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
 
       {/* Pinned to the bottom of the page column and after the table in the page flow: showing or

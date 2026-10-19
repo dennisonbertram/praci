@@ -88,6 +88,7 @@ it("adds Brex to By account so the shares cover all spend, and hides months befo
     ),
   );
   await act(async () => {});
+  expect(container.querySelector('table[data-slot="table"]')).not.toBeNull();
   const page = container.textContent ?? "";
   expect(page).toContain("Checking$2,00067%");
   expect(page).toContain("Brex$1,00033%");

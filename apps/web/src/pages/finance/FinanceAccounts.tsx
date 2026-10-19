@@ -8,7 +8,17 @@ import type {
   FinanceExchange,
   FinanceProvider,
 } from "@rakazo/contracts";
-import { Badge, Button } from "@rakazo/ui-web";
+import {
+  Badge,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
+} from "@rakazo/ui-web";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AddAccountDialog } from "../../components/finance/AddAccountDialog";
@@ -22,9 +32,7 @@ import {
   HereLink,
   Kpi,
   PeriodTabs,
-  rowClass,
   Section,
-  Th,
   TransactionsSection,
   useFinanceQuery,
   useRowNavigate,
@@ -53,17 +61,17 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
   useHideAmounts();
   const rowProps = useRowNavigate();
   return (
-    <table className="w-full border-collapse">
-      <tbody>
+    <Table compact>
+      <TableBody>
         {rows.map((account) => {
           const pct = yieldText(account.annualYieldPct);
           return (
-            <tr
+            <TableRow
               key={account.id}
-              className={rowClass}
+              className="group/row cursor-pointer"
               {...rowProps(financePath.account(account.id))}
             >
-              <td className="font-semibold">
+              <TableCell className="font-semibold">
                 <HereLink
                   to={financePath.account(account.id)}
                   className="outline-none hover:underline focus-visible:underline"
@@ -80,16 +88,19 @@ function AccountTable({ rows, owed }: { rows: AccountRow[]; owed?: boolean }) {
                     {t`${pct} yield`}
                   </span>
                 ) : null}
-              </td>
-              <td className="text-end tabular-nums" aria-label={owed ? t`Balance owed` : undefined}>
+              </TableCell>
+              <TableCell
+                className="text-end tabular-nums"
+                aria-label={owed ? t`Balance owed` : undefined}
+              >
                 {money(account.balanceCents)}
-              </td>
+              </TableCell>
               <Chevron />
-            </tr>
+            </TableRow>
           );
         })}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }
 
@@ -107,11 +118,15 @@ function CryptoGroup({
   const cents = new Map(crypto.summary.byWallet.map((row) => [row.walletId, row.cents]));
   return (
     <Section title={<Trans>Crypto</Trans>}>
-      <table className="w-full border-collapse">
-        <tbody>
+      <Table compact>
+        <TableBody>
           {crypto.wallets.map((wallet) => (
-            <tr key={wallet.id} className={rowClass} {...rowProps(financePath.crypto())}>
-              <td className="font-semibold">
+            <TableRow
+              key={wallet.id}
+              className="group/row cursor-pointer"
+              {...rowProps(financePath.crypto())}
+            >
+              <TableCell className="font-semibold">
                 <Link
                   to={financePath.crypto()}
                   className="outline-none hover:underline focus-visible:underline"
@@ -121,14 +136,20 @@ function CryptoGroup({
                 <span className="ms-1.5 font-normal text-muted-foreground">
                   {typeNames[wallet.type]}
                 </span>
-              </td>
-              <td className="text-end tabular-nums">{money(cents.get(wallet.id) ?? 0)}</td>
+              </TableCell>
+              <TableCell className="text-end tabular-nums">
+                {money(cents.get(wallet.id) ?? 0)}
+              </TableCell>
               <Chevron />
-            </tr>
+            </TableRow>
           ))}
           {exchanges.map((exchange) => (
-            <tr key={exchange.id} className={rowClass} {...rowProps(financePath.crypto())}>
-              <td className="font-semibold">
+            <TableRow
+              key={exchange.id}
+              className="group/row cursor-pointer"
+              {...rowProps(financePath.crypto())}
+            >
+              <TableCell className="font-semibold">
                 <Link
                   to={financePath.crypto()}
                   className="outline-none hover:underline focus-visible:underline"
@@ -138,13 +159,13 @@ function CryptoGroup({
                 <span className="ms-1.5 font-normal text-muted-foreground">
                   <Trans>Exchange</Trans>
                 </span>
-              </td>
-              <td className="text-end tabular-nums">{money(exchange.totalCents)}</td>
+              </TableCell>
+              <TableCell className="text-end tabular-nums">{money(exchange.totalCents)}</TableCell>
               <Chevron />
-            </tr>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </Section>
   );
 }
@@ -439,39 +460,40 @@ export function FinanceAccountPage({ id }: { id: string }) {
           </Section>
           {data.treasuryYield.length > 0 ? (
             <Section title={<Trans>Yield</Trans>}>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <Th>
+              <Table compact>
+                <TableHeader>
+                  <TableHeadRow>
+                    <TableHead>
                       <Trans>Month</Trans>
-                    </Th>
-                    <Th right>
+                    </TableHead>
+                    <TableHead className="text-end">
                       <Trans>Dividends</Trans>
-                    </Th>
-                    <Th right>
+                    </TableHead>
+                    <TableHead className="text-end">
                       <Trans>Fee</Trans>
-                    </Th>
-                    <Th right>
+                    </TableHead>
+                    <TableHead className="text-end">
                       <Trans>Net</Trans>
-                    </Th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </TableHead>
+                  </TableHeadRow>
+                </TableHeader>
+                <TableBody>
                   {data.treasuryYield.map((row) => (
-                    <tr
-                      key={`${row.accountExternalId}:${row.month}`}
-                      className="border-t border-border [&>td]:py-2"
-                    >
-                      <td>{monthLabel(row.month)}</td>
-                      <td className="text-end tabular-nums">{moneyExact(row.dividendsCents)}</td>
-                      <td className="text-end tabular-nums text-muted-foreground">
+                    <TableRow key={`${row.accountExternalId}:${row.month}`}>
+                      <TableCell>{monthLabel(row.month)}</TableCell>
+                      <TableCell className="text-end tabular-nums">
+                        {moneyExact(row.dividendsCents)}
+                      </TableCell>
+                      <TableCell className="text-end tabular-nums text-muted-foreground">
                         {moneyExact(row.feeCents)}
-                      </td>
-                      <td className="text-end tabular-nums">{moneyExact(row.netCents)}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="text-end tabular-nums">
+                        {moneyExact(row.netCents)}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </Section>
           ) : null}
           <TransactionsSection

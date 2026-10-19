@@ -59,6 +59,7 @@ it("shows a new vendor's steady spend as 0% against the month it compares with",
     ),
   );
   await act(async () => {});
+  expect(container.querySelector('table[data-slot="table"]')).not.toBeNull();
   const page = container.textContent ?? "";
   // It names both months compared, not only the earlier one.
   expect(page).toContain("Change0%Sep vs Jul");

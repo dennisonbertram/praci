@@ -1,9 +1,24 @@
 import { cn } from "@rakazo/ui-web/lib/utils";
 import type * as React from "react";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+// `compact` is for dense lists of short rows: columns size to their content (no fixed layout, so
+// give columns widths only where they need them) and rows are as tall as their content.
+function Table({
+  className,
+  compact,
+  ...props
+}: React.ComponentProps<"table"> & { compact?: boolean }) {
   return (
-    <table data-slot="table" className={cn("w-full table-fixed text-sm", className)} {...props} />
+    <table
+      data-slot="table"
+      data-compact={compact ? "" : undefined}
+      className={cn(
+        "group/table w-full text-sm",
+        compact ? "table-auto" : "table-fixed",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
@@ -20,7 +35,7 @@ function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
     <tr
       data-slot="table-row"
       className={cn(
-        "h-14 border-t border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        "h-14 group-data-[compact]/table:h-auto border-t border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
         className,
       )}
       {...props}
@@ -37,6 +52,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return (
     <th
       data-slot="table-head"
+      scope="col"
       className={cn("py-2 pe-3 text-start text-xs font-medium text-muted-foreground", className)}
       {...props}
     />

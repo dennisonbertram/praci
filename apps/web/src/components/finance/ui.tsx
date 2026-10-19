@@ -18,6 +18,13 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Skeleton,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -630,35 +637,11 @@ export function previewFrom(state: unknown, id: string): FinanceTransaction | nu
   return preview && preview.id === id && typeof preview.counterparty === "string" ? preview : null;
 }
 
-export const Th = ({
-  children,
-  right,
-  className,
-}: {
-  children?: ReactNode;
-  right?: boolean;
-  className?: string;
-}) => (
-  <th
-    scope="col"
-    className={cn(
-      "pb-1.5 pt-1 text-xs font-medium text-muted-foreground",
-      right ? "text-end" : "text-start",
-      className,
-    )}
-  >
-    {children}
-  </th>
-);
-
 export const Chevron = () => (
-  <td className="w-4 text-end text-muted-foreground group-hover/row:text-foreground">
+  <TableCell className="w-4 pe-0 text-end text-muted-foreground group-hover/row:text-foreground">
     <ChevronRight aria-hidden="true" className="ms-auto size-3.5" />
-  </td>
+  </TableCell>
 );
-
-export const rowClass =
-  "group/row cursor-pointer border-t border-border hover:bg-background [&>td]:py-2";
 
 /** A transaction's category, or what it is when it is not spend: a card payoff or a transfer
  * between the company's own accounts, which Finance leaves out of spend. */
@@ -675,14 +658,14 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
   const rowProps = useRowNavigate();
   const back = useBackState();
   return (
-    <tr
-      className={rowClass}
+    <TableRow
+      className="group/row cursor-pointer"
       {...rowProps(financePath.transaction(row.id), { ...back, preview: row })}
     >
-      <td className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
+      <TableCell className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
         {shortDay(txnDay(row))}
-      </td>
-      <td className="min-w-0 break-words">
+      </TableCell>
+      <TableCell className="min-w-0 break-words">
         <Link
           state={{ ...back, preview: row }}
           to={financePath.transaction(row.id)}
@@ -695,18 +678,18 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
             {maskCurrencyWhenHidden(row.memo)}
           </div>
         ) : null}
-      </td>
-      <td className="hidden truncate text-muted-foreground @2xl:table-cell">
+      </TableCell>
+      <TableCell className="hidden truncate text-muted-foreground @2xl:table-cell">
         {categoryLabel(row)}
-      </td>
-      <td className="whitespace-nowrap ps-3 text-end tabular-nums">
+      </TableCell>
+      <TableCell className="whitespace-nowrap ps-3 text-end tabular-nums">
         {listAmount(row.amountCents, undefined, row.currency)}
-      </td>
-      <td className="hidden w-24 ps-4 text-muted-foreground @2xl:table-cell">
+      </TableCell>
+      <TableCell className="hidden w-24 ps-4 text-muted-foreground @2xl:table-cell">
         {statusLabel(row.status)}
-      </td>
+      </TableCell>
       <Chevron />
-    </tr>
+    </TableRow>
   );
 }
 
@@ -719,17 +702,14 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
   return (
     <>
       {/* The whole row toggles; the vendor button carries the accessible name and keyboard focus (its click bubbles here). */}
-      <tr
-        className="group/row cursor-pointer border-t border-border hover:bg-background [&>td]:py-2"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <td className="w-[4.5rem] pe-2">
+      <TableRow className="group/row cursor-pointer" onClick={() => setOpen((v) => !v)}>
+        <TableCell className="w-[4.5rem] pe-2">
           <ChevronRight
             aria-hidden="true"
             className={cn("size-3.5 text-muted-foreground", open && "rotate-90")}
           />
-        </td>
-        <td className="min-w-0 break-words">
+        </TableCell>
+        <TableCell className="min-w-0 break-words">
           <button
             type="button"
             aria-expanded={open}
@@ -740,16 +720,16 @@ function VendorGroupRows({ group }: { group: VendorGroup }) {
           <div className="text-[11px] text-muted-foreground">
             {plural(count, { one: "# transaction", other: "# transactions" })}
           </div>
-        </td>
-        <td className="hidden truncate text-muted-foreground @2xl:table-cell">
+        </TableCell>
+        <TableCell className="hidden truncate text-muted-foreground @2xl:table-cell">
           {group.mixed ? t`Mixed` : categoryLabel(group.rows[0] as FinanceTransaction)}
-        </td>
-        <td className="whitespace-nowrap ps-3 text-end tabular-nums">
+        </TableCell>
+        <TableCell className="whitespace-nowrap ps-3 text-end tabular-nums">
           {listAmount(Number(group.totalCents), undefined, group.currency)}
-        </td>
-        <td className="hidden w-24 @2xl:table-cell" />
-        <td />
-      </tr>
+        </TableCell>
+        <TableCell className="hidden w-24 @2xl:table-cell" />
+        <TableCell />
+      </TableRow>
       {open ? group.rows.map((row) => <TransactionRow key={row.id} row={row} />) : null}
     </>
   );
@@ -769,41 +749,41 @@ export function TransactionTable({
   return (
     // A fixed layout: every column but Counterparty has a set width, so opening a vendor, hiding
     // amounts or a longer name moves no column.
-    <table className="w-full table-fixed border-collapse">
-      <thead>
-        <tr>
+    <Table compact className="table-fixed">
+      <TableHeader>
+        <TableHeadRow>
           {/* Named in both views: an opened vendor's rows show their dates and status here. */}
-          <Th className="w-[4.5rem]">
+          <TableHead className="w-[4.5rem]">
             <Trans>Date</Trans>
-          </Th>
-          <Th>
+          </TableHead>
+          <TableHead>
             <Trans>Counterparty</Trans>
-          </Th>
-          <Th className="hidden w-48 @2xl:table-cell">
+          </TableHead>
+          <TableHead className="hidden w-48 @2xl:table-cell">
             <Trans>Category</Trans>
-          </Th>
-          <Th right className="w-24 ps-3">
+          </TableHead>
+          <TableHead className="text-end w-24 ps-3">
             <Trans>Amount</Trans>
-          </Th>
-          <Th className="hidden w-24 ps-4 @2xl:table-cell">
+          </TableHead>
+          <TableHead className="hidden w-24 ps-4 @2xl:table-cell">
             <Trans>Status</Trans>
-          </Th>
-          <Th className="w-5" />
-        </tr>
-      </thead>
-      <tbody>
+          </TableHead>
+          <TableHead className="w-5" />
+        </TableHeadRow>
+      </TableHeader>
+      <TableBody>
         {rows.length === 0 ? (
-          <tr className="border-t border-border">
-            <td colSpan={6} className="py-3 text-muted-foreground">
+          <TableRow className="hover:bg-transparent">
+            <TableCell colSpan={6} className="py-3 text-muted-foreground">
               {empty ?? <Trans>No transactions in this period</Trans>}
-            </td>
-          </tr>
+            </TableCell>
+          </TableRow>
         ) : null}
         {grouped
           ? groupByVendor(rows).map((group) => <VendorGroupRows key={group.key} group={group} />)
           : rows.map((row) => <TransactionRow key={row.id} row={row} />)}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }
 
