@@ -12,7 +12,8 @@ export const PAGE_HEADER_ROW = "h-10";
  * A page's title row: the h1, optional meta (status, "Updated …", eye toggle, search), and
  * trailing actions. The first line is always PAGE_HEADER_ROW tall. Where the page is wide enough
  * the meta sits inline after the title; where it is not, the meta wraps onto its own line below
- * and never overlaps the actions. Long titles truncate.
+ * and never overlaps the actions. Long titles truncate. Actions that do not fit beside the title
+ * move to their own line below it and wrap there.
  */
 export function PageHeader({
   title,
@@ -49,8 +50,9 @@ export function PageHeader({
       {actions ? (
         <div
           className={cn(
-            PAGE_HEADER_ROW,
-            "order-2 ms-auto flex shrink-0 items-center gap-2 @2xl/ph:order-3",
+            // min-h, not h: when the actions cannot share the title's line they drop to their own
+            // line and wrap there, right-aligned.
+            "order-2 ms-auto flex min-h-10 min-w-0 max-w-full flex-wrap items-center justify-end gap-2 @2xl/ph:order-3",
           )}
         >
           {actions}

@@ -30,5 +30,10 @@ it("renders the title as h1 with meta and actions in a fixed-height row", () => 
   // jsdom cannot measure layout; the wrapping rules are checked in Storybook at 375px.
   expect(host.querySelector("[data-page-header-meta]")?.className).toContain("flex-wrap");
   expect(row?.className).toContain("flex-wrap");
+  const actions = host.querySelector("button")?.parentElement;
+  expect(actions?.className).toContain("flex-wrap");
+  expect(actions?.className).toContain("justify-end");
+  expect(actions?.className).toContain("min-w-0");
+  expect(actions?.className).not.toContain("shrink-0");
   expect(PAGE_HEADER_ROW).toContain("h-10");
 });
