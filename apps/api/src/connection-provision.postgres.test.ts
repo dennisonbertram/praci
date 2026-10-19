@@ -1,0 +1,325 @@
+import { createRouterClient } from "@orpc/server";
+import { archiveBot } from "@rakazo/adapters";
+import type { Actor } from "@rakazo/contracts";
+import { inboxAgentSpawnKey, integrationAgentSpawnKey } from "@rakazo/contracts";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb, createRepos } from "@rakazo/db";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { completeNativeOAuth } from "./connection-oauth.js";
+import { createRouter, type RouterDeps } from "./router.js";
+
+const databaseUrl = process.env.DATABASE_URL;
+const describePostgres =
+  process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
+
+describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
+  const suffix = `${process.pid}-${Date.now()}`;
+  const id = (name: string) => `cp-${name}-${suffix}`;
+  const orgId = id("org");
+  const spaceId = id("space");
+  const userId = id("user");
+  const otherUserId = id("other");
+  const actor = (user: string): Actor => ({
+    userId: user,
+    spaceId,
+    email: `${user}@rakazo.test`,
+    isDeploymentOwner: false,
+  });
+  const owner = actor(userId);
+  const other = actor(otherUserId);
+  let prisma: PrismaClient;
+  let close: () => Promise<void>;
+
+  const connector = {
+    describe: () => ({ id: "composio" }),
+    begin: async () => ({ authorizationUrl: "https://example.test/auth", state: "st" }),
+    complete: async () => undefined,
+    connectionReady: async () => true,
+    revoke: async () => undefined,
+  };
+  const client = (who: Actor) =>
+    createRouterClient(
+      createRouter({
+        prisma,
+        env: { webOrigin: "http://localhost" },
+        connectors: { managed: () => connector, managedProviders: () => [connector] },
+      } as unknown as RouterDeps),
+      { context: { actor: who } as never },
+    );
+  const row = (connectionId: string) =>
+    prisma.connection.findUniqueOrThrow({ where: { id: connectionId } });
+  const create = (
+    data: Partial<{
+      connectorId: string;
+      provider: string;
+      status: string;
+      allAgents: boolean;
+      userId: string;
+    }> = {},
+  ) =>
+    prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "composio",
+        provider: "notion",
+        displayName: "Notion",
+        status: "pending",
+        providerRef: `ref-${Math.random().toString(36).slice(2)}`,
+        ...data,
+      },
+    });
+  const access = (connectionId: string) =>
+    prisma.botConnectionAccess.findMany({ where: { connectionId }, select: { botId: true } });
+  const complete = (connectionId: string, who = owner) =>
+    client(who).connections.complete({ connectionId });
+
+  beforeAll(async () => {
+    const db = createDb(databaseUrl as string);
+    prisma = db.prisma;
+    close = async () => {
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    };
+    for (const user of [userId, otherUserId])
+      await prisma.user.create({
+        data: { id: user, name: user, email: `${user}@rakazo.test`, emailVerified: false },
+      });
+    await prisma.organization.create({
+      data: { id: orgId, name: orgId, slug: orgId, createdAt: new Date() },
+    });
+    await prisma.space.create({
+      data: { id: spaceId, organizationId: orgId, name: "General", isDefault: true },
+    });
+    for (const user of [userId, otherUserId])
+      await prisma.member.create({
+        data: {
+          id: id(`m-${user}`),
+          organizationId: orgId,
+          userId: user,
+          role: "member",
+          createdAt: new Date(),
+        },
+      });
+  });
+
+  afterAll(async () => {
+    if (!prisma) return;
+    await prisma.connection.deleteMany({ where: { spaceId } });
+    await prisma.bot.deleteMany({ where: { spaceId } });
+    await prisma.organization.deleteMany({ where: { id: orgId } });
+    await prisma.user.deleteMany({ where: { id: { in: [userId, otherUserId] } } });
+    await close();
+  });
+
+  it("begin creates a private pending row without an agent and leaves a shared sibling alone", async () => {
+    await createRepos(prisma).createBot(owner, {
+      name: "Helper",
+      title: "",
+      description: "",
+      instructions: "",
+    });
+    const sibling = await create({ status: "connected", allAgents: true, provider: "slack" });
+    const begun = await client(owner).connections.begin({
+      connectorId: "composio",
+      provider: "slack",
+      displayName: "Slack",
+    });
+    expect(await row(begun.connectionId)).toMatchObject({
+      allAgents: false,
+      agentBotId: null,
+      agentProvisionedAt: null,
+    });
+    expect(await access(begun.connectionId)).toEqual([]);
+    expect(await row(sibling.id)).toMatchObject({ allAgents: true, agentBotId: null });
+    // The abandoned pending row neither gets an agent nor denies the shared sibling.
+    const effective = await client(owner).connections.effectiveAccess();
+    expect(effective[sibling.id]?.shared).toBe("all");
+    expect(
+      await prisma.bot.count({
+        where: { spaceId, spawnKey: integrationAgentSpawnKey(begun.connectionId) },
+      }),
+    ).toBe(0);
+  });
+
+  it("complete gives a connected app its own private agent once, and never re-privatizes", async () => {
+    const pending = await create();
+    const done = await complete(pending.id);
+    const again = await complete(pending.id);
+    const current = await row(pending.id);
+    expect(done.agentBotId).toBeTruthy();
+    expect(again.agentBotId).toBe(done.agentBotId);
+    expect(current).toMatchObject({
+      status: "connected",
+      allAgents: false,
+      writesEnabled: false,
+      agentBotId: done.agentBotId,
+    });
+    expect(current.agentProvisionedAt).not.toBeNull();
+    expect((await access(pending.id)).map((a) => a.botId)).toEqual([done.agentBotId]);
+
+    // The user shares it; completing again must not take the share back.
+    await client(owner).connections.setAccess({
+      connectionId: pending.id,
+      allAgents: true,
+      botIds: [],
+    });
+    await complete(pending.id);
+    expect(await row(pending.id)).toMatchObject({ allAgents: true });
+  });
+
+  it("parallel completes of one connection yield one agent", async () => {
+    const pending = await create();
+    await Promise.all(Array.from({ length: 5 }, () => complete(pending.id)));
+    const agentBotId = (await row(pending.id)).agentBotId;
+    expect(agentBotId).toBeTruthy();
+    expect(await access(pending.id)).toEqual([{ botId: agentBotId }]);
+    expect(
+      await prisma.bot.count({
+        where: { spaceId, spawnKey: integrationAgentSpawnKey(pending.id) },
+      }),
+    ).toBe(1);
+  });
+
+  it("a pre-existing shared connection is unchanged through begin and setAccess", async () => {
+    const legacy = await create({ status: "connected", allAgents: true, provider: "linear" });
+    await client(owner).connections.begin({
+      connectorId: "composio",
+      provider: "linear",
+      displayName: "Linear",
+    });
+    await client(owner).connections.setAccess({
+      connectionId: legacy.id,
+      allAgents: true,
+      botIds: [],
+    });
+    expect(await row(legacy.id)).toMatchObject({
+      allAgents: true,
+      agentBotId: null,
+      agentProvisionedAt: null,
+    });
+  });
+
+  it("Gmail links to the Inbox agent with changes on; Calendar gets its own agent", async () => {
+    const gmail = await create({ connectorId: "google", provider: "gmail" });
+    const calendar = await create({ connectorId: "google", provider: "googlecalendar" });
+    const g = await complete(gmail.id);
+    const c = await complete(calendar.id);
+    expect(
+      await prisma.bot.findUniqueOrThrow({ where: { id: g.agentBotId as string } }),
+    ).toMatchObject({
+      spawnKey: inboxAgentSpawnKey(userId),
+    });
+    expect(await row(gmail.id)).toMatchObject({ allAgents: false, writesEnabled: true });
+    expect(
+      await prisma.bot.findUniqueOrThrow({ where: { id: c.agentBotId as string } }),
+    ).toMatchObject({
+      spawnKey: integrationAgentSpawnKey(calendar.id),
+    });
+    expect(await row(calendar.id)).toMatchObject({ allAgents: false, writesEnabled: false });
+  });
+
+  it("Google replace carries the agent over and re-keys Calendar; Inbox keeps its key", async () => {
+    const google = (provider: string) => {
+      const state = `state-${provider}-${suffix}`;
+      return { provider, state, ref: `acct-${provider}-${suffix}` };
+    };
+    for (const provider of ["googlecalendar", "gmail"]) {
+      const g = google(provider);
+      const old = await create({ connectorId: "google", provider });
+      await prisma.connection.update({ where: { id: old.id }, data: { providerRef: g.ref } });
+      const oldDone = await complete(old.id);
+      await prisma.connection.update({ where: { id: old.id }, data: { writesEnabled: true } });
+      const next = await create({ connectorId: "google", provider });
+      await prisma.connection.update({
+        where: { id: next.id },
+        data: { providerRef: g.state, metadata: { replacesConnectionId: old.id } },
+      });
+      const google2 = {
+        begin: async () => undefined,
+        complete: async () => ({ connectionRef: g.ref, secretId: `secret-${provider}-${suffix}` }),
+      };
+      const done = await completeNativeOAuth({
+        prisma,
+        actor: owner,
+        connector: google2 as never,
+        connectorId: "google",
+        state: g.state,
+        code: "c",
+        context: {} as never,
+        lock: async () => undefined,
+        provision: async () => {
+          throw new Error("must not provision a replacement");
+        },
+      });
+      expect(done.agentBotId).toBe(oldDone.agentBotId);
+      expect(await row(next.id)).toMatchObject({
+        allAgents: false,
+        writesEnabled: true,
+        agentBotId: oldDone.agentBotId,
+      });
+      expect((await access(next.id)).map((a) => a.botId)).toEqual([oldDone.agentBotId]);
+      expect(await prisma.connection.findUnique({ where: { id: old.id } })).toBeNull();
+      const bot = await prisma.bot.findUniqueOrThrow({
+        where: { id: oldDone.agentBotId as string },
+      });
+      expect(bot.spawnKey).toBe(
+        provider === "gmail" ? inboxAgentSpawnKey(userId) : integrationAgentSpawnKey(next.id),
+      );
+    }
+  });
+
+  it("revoke archives the connection's agent but never the Inbox agent", async () => {
+    const app = await create({ provider: "asana" });
+    const gmail = await create({ connectorId: "google", provider: "gmail" });
+    const a = await complete(app.id);
+    const g = await complete(gmail.id);
+    await client(owner).connections.revoke({ connectionId: app.id });
+    await client(owner).connections.revoke({ connectionId: gmail.id });
+    expect(
+      (await prisma.bot.findUniqueOrThrow({ where: { id: a.agentBotId as string } })).archivedAt,
+    ).not.toBeNull();
+    expect(
+      (await prisma.bot.findUniqueOrThrow({ where: { id: g.agentBotId as string } })).archivedAt,
+    ).toBeNull();
+    expect(await row(app.id)).toMatchObject({
+      status: "revoked",
+      agentBotId: null,
+      agentProvisionedAt: null,
+    });
+  });
+
+  it("an archived agent leaves a provisioned connection private, a legacy one shared", async () => {
+    const provisioned = await create({ provider: "hubspot" });
+    const p = await complete(provisioned.id);
+    const legacy = await create({ status: "connected", provider: "zendesk" });
+    const legacyAgent = await client(owner).connections.createAgent({ connectionId: legacy.id });
+    await client(owner).connections.setExclusive({ connectionId: legacy.id, exclusive: true });
+    for (const botId of [p.agentBotId as string, legacyAgent.botId]) {
+      const bot = await prisma.bot.findUniqueOrThrow({ where: { id: botId } });
+      await archiveBot(
+        {
+          prisma,
+          sandbox: {} as never,
+          home: {} as never,
+          jobs: { cancel: async () => undefined } as never,
+          dataDir: undefined,
+        },
+        bot,
+        { userId, spaceId } as never,
+      );
+    }
+    expect(await row(provisioned.id)).toMatchObject({ agentBotId: null, allAgents: false });
+    expect(await access(provisioned.id)).toEqual([]);
+    expect((await client(owner).connections.effectiveAccess())[provisioned.id]?.shared).toBe(
+      "none",
+    );
+    expect(await row(legacy.id)).toMatchObject({ agentBotId: null, allAgents: true });
+  });
+
+  it("does not provision for another owner's connection", async () => {
+    const mine = await create({ provider: "intercom" });
+    await expect(complete(mine.id, other)).rejects.toBeTruthy();
+    expect(await row(mine.id)).toMatchObject({ status: "pending", agentBotId: null });
+  });
+});

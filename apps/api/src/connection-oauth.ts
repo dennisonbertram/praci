@@ -2,6 +2,7 @@ import { ORPCError } from "@orpc/server";
 import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-kit";
 import { prepareManagedConnectorForTransaction, sanitizeComposioError } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
+import { integrationAgentSpawnKey } from "@rakazo/contracts";
 import type { Prisma, PrismaClient } from "@rakazo/db";
 
 /**
@@ -19,6 +20,8 @@ export async function completeNativeOAuth(options: {
   context: AdapterContext;
   /** The same per-provider advisory lock `connections.begin` and `connections.revoke` take. */
   lock: (tx: Prisma.TransactionClient, connectorId: string, provider: string) => Promise<void>;
+  /** Gives a newly connected account its agent. Not called when the account replaces an old one. */
+  provision?: (connectionId: string) => Promise<void>;
 }) {
   const { prisma, actor, connectorId, state } = options;
   const owner = { spaceId: actor.spaceId, userId: actor.userId };
@@ -50,6 +53,7 @@ export async function completeNativeOAuth(options: {
     throw new ORPCError("BAD_REQUEST", { message: "Connection did not return a credential" });
 
   try {
+    let replaced = false;
     const row = await prisma.$transaction(
       async (tx) => {
         await options.lock(tx, connectorId, pending.provider);
@@ -68,11 +72,20 @@ export async function completeNativeOAuth(options: {
             status: { in: ["connected", "pending", "error"] },
             providerRef: connectionRef,
           },
-          select: { id: true, secretId: true },
+          select: {
+            id: true,
+            secretId: true,
+            agentBotId: true,
+            writesEnabled: true,
+            allAgents: true,
+            agentProvisionedAt: true,
+          },
         });
+        let carried: Prisma.ConnectionUncheckedUpdateInput = {};
         const replaces = (current.metadata as { replacesConnectionId?: unknown } | null)
           ?.replacesConnectionId;
         if (taken && taken.id === replaces) {
+          replaced = true;
           // The same account signing in again replaces its old connection: the Inbox's to-dos and
           // cached mail move over, so reconnecting loses nothing. Not revoked remotely, since that
           // could invalidate the new token of the same grant.
@@ -80,6 +93,22 @@ export async function completeNativeOAuth(options: {
           await tx.cachedMailMessage.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.inboxTodo.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
+          // The agent, its access and its settings move too. A Calendar or Drive agent is keyed by
+          // its connection, so it follows the new id; the Inbox agent keeps its per-user key.
+          await tx.botConnectionAccess.updateMany({
+            where: { connectionId: taken.id },
+            data: next,
+          });
+          await tx.bot.updateMany({
+            where: { ...owner, spawnKey: integrationAgentSpawnKey(taken.id), archivedAt: null },
+            data: { spawnKey: integrationAgentSpawnKey(current.id) },
+          });
+          carried = {
+            agentBotId: taken.agentBotId,
+            writesEnabled: taken.writesEnabled,
+            allAgents: taken.allAgents,
+            agentProvisionedAt: taken.agentProvisionedAt,
+          };
           await tx.connection.delete({ where: { id: taken.id } });
           if (taken.secretId)
             await tx.secret.deleteMany({ where: { id: taken.secretId, ...owner } });
@@ -87,20 +116,30 @@ export async function completeNativeOAuth(options: {
           throw new ORPCError("CONFLICT", { message: "This Google account is already connected." });
         return tx.connection.update({
           where: { id: current.id },
-          data: { status: "connected", providerRef: connectionRef, secretId, metadata: {} },
+          data: {
+            status: "connected",
+            providerRef: connectionRef,
+            secretId,
+            metadata: {},
+            ...carried,
+          },
         });
       },
       { timeout: 60_000 },
     );
+    if (!replaced) await options.provision?.(row.id).catch(() => undefined);
+    const final = replaced
+      ? row
+      : ((await prisma.connection.findFirst({ where: { id: row.id, ...owner } })) ?? row);
     return {
-      id: row.id,
+      id: final.id,
       connectorId: row.connectorId,
       provider: row.provider,
       displayName: row.displayName,
       status: row.status as "pending" | "connected" | "revoked" | "error",
       error: connectionError(row),
-      writesEnabled: row.writesEnabled,
-      agentBotId: row.agentBotId,
+      writesEnabled: final.writesEnabled,
+      agentBotId: final.agentBotId,
       capabilities: [],
       createdAt: row.createdAt.toISOString(),
     };

@@ -956,6 +956,9 @@ model Connection {
   writesEnabled      Boolean               @default(false)
   agentBotId         String?
   agentBot           Bot?                  @relation("ConnectionAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
+  /// Set when Rakazo made this connection private to its own agent on connect. Such a connection
+  /// stays private when the agent goes away; rows without it keep the old release-to-shared rule.
+  agentProvisionedAt DateTime?
 
   @@index([spaceId, userId, connectorId])
   @@index([agentBotId])

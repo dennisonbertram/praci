@@ -9,6 +9,7 @@ import {
   isIntegrationAgentForServer,
 } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
+import { getLogger } from "@rakazo/logging";
 import { ensureCartaAgent } from "./carta-agent.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
 
@@ -153,6 +154,49 @@ export async function ensureConnectedAppAgent(
   throw new ORPCError("CONFLICT", {
     message: "The agent was archived while it was created; retry",
   });
+}
+
+/**
+ * Gives a connection that just became connected its own agent and makes it private to that agent
+ * (writes stay as the link set them: off, except Gmail on the Inbox agent). Runs once per
+ * connection: the agentProvisionedAt claim means a second completion, or a connection the user
+ * has since shared, is left alone. Best-effort: Create agent is the repair path.
+ */
+export async function provisionConnectionAgent(
+  deps: Parameters<typeof ensureConnectedAppAgent>[0],
+  actor: Actor,
+  connectionId: string,
+): Promise<void> {
+  try {
+    const row = await deps.prisma.connection.findFirst({
+      where: { ...scope(actor, connectionId), status: "connected" },
+      select: { agentProvisionedAt: true },
+    });
+    if (!row || row.agentProvisionedAt) return;
+    const { bot } = await ensureConnectedAppAgent(deps, actor, connectionId);
+    await deps.prisma.$transaction(async (tx) => {
+      const claimed = await tx.connection.updateMany({
+        where: {
+          ...scope(actor, connectionId),
+          status: "connected",
+          agentBotId: bot.id,
+          agentProvisionedAt: null,
+        },
+        data: { agentProvisionedAt: new Date(), allAgents: false },
+      });
+      if (!claimed.count) return;
+      await tx.botConnectionAccess.deleteMany({
+        where: {
+          connectionId,
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          botId: { not: bot.id },
+        },
+      });
+    });
+  } catch (error) {
+    getLogger().error("connection agent provisioning failed", error, { connectionId });
+  }
 }
 
 /** The identities that may own a connection: its own agent, or the Inbox agent for Gmail. */

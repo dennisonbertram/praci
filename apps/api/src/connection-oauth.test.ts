@@ -62,6 +62,8 @@ function setup(replacesConnectionId?: string) {
     cachedMailMessage: { updateMany: move(messages) },
     inboxTodo: { updateMany: move(todos) },
     composeSend: { updateMany: vi.fn(async () => ({ count: 0 })) },
+    botConnectionAccess: { updateMany: vi.fn(async () => ({ count: 0 })) },
+    bot: { updateMany: vi.fn(async () => ({ count: 0 })) },
     secret: {
       deleteMany: vi.fn(async ({ where }: { where: { id: string } }) => {
         secrets.delete(where.id);

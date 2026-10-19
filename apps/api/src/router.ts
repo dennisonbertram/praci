@@ -160,6 +160,7 @@ import {
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
   IntegrationProviderIdSchema,
+  integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
@@ -355,6 +356,7 @@ import {
   connectionAgentSpawnKeys,
   ensureConnectedAppAgent,
   ensureIntegrationAgent,
+  provisionConnectionAgent,
   setConnectedAppExclusive,
   setConnectedAppWrites,
   setIntegrationAgentWrites,
@@ -1010,6 +1012,12 @@ export function createRouter(deps: RouterDeps) {
     stillAuthorized?: () => Promise<boolean>;
   }>();
   const repos = createRepos(deps.prisma);
+  const provisionForActor = (actor: Actor, connectionId: string) =>
+    provisionConnectionAgent(
+      { prisma: deps.prisma, repos, archiveBot: (botId) => archiveActorBot(actor, botId) },
+      actor,
+      connectionId,
+    );
   const archiveActorBot = async (actor: Actor, botId: string) => {
     const bot = await repos.getBot(actor, botId, { includeArchived: true });
     await archiveBot(
@@ -5303,8 +5311,7 @@ export function createRouter(deps: RouterDeps) {
               },
             });
           }
-          // Linked accounts are private to their agent; ordinary accounts share app access.
-          const inherited = existing.find((row) => row.agentBotId === null);
+          // New accounts start private; connecting gives them an agent, and sharing is opt-in.
           const created = await tx.connection.create({
             data: {
               spaceId: context.actor.spaceId,
@@ -5313,19 +5320,9 @@ export function createRouter(deps: RouterDeps) {
               provider: input.provider,
               displayName: input.displayName,
               status: "pending",
-              allAgents: inherited?.allAgents ?? true,
+              allAgents: false,
             },
           });
-          if (inherited && inherited.botAccess.length > 0) {
-            await tx.botConnectionAccess.createMany({
-              data: inherited.botAccess.map((entry) => ({
-                connectionId: created.id,
-                botId: entry.botId,
-                spaceId: context.actor.spaceId,
-                userId: context.actor.userId,
-              })),
-            });
-          }
           return created;
         });
         try {
@@ -5501,6 +5498,7 @@ export function createRouter(deps: RouterDeps) {
             context: connectionContext(context.actor, "connections.complete", context.signal),
             lock: (tx, connectorId, provider) =>
               lockProviderConnectionScope(tx, context.actor, connectorId, provider),
+            provision: (connectionId) => provisionForActor(context.actor, connectionId),
           });
         }
         // An undefined id would match any of the caller's rows; the input schema forbids it.
@@ -5811,6 +5809,13 @@ export function createRouter(deps: RouterDeps) {
             },
             { timeout: 60_000 },
           );
+        }
+        if (row.status === "connected" && existing.status !== "connected") {
+          await provisionForActor(context.actor, row.id);
+          row =
+            (await deps.prisma.connection.findFirst({
+              where: { id: row.id, spaceId: context.actor.spaceId, userId: context.actor.userId },
+            })) ?? row;
         }
         return connectionDto(row);
       }),
@@ -6167,6 +6172,31 @@ export function createRouter(deps: RouterDeps) {
             if (error instanceof ORPCError) throw error;
             throw new ORPCError("BAD_REQUEST", { message: sanitizeComposioError(error) });
           }
+        }
+        // The connection's own agent goes with it. The Inbox agent serves every Gmail account, so
+        // it only loses this one.
+        const revoked = await deps.prisma.connection.findFirst({
+          where: {
+            id: input.connectionId,
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            status: "revoked",
+            agentProvisionedAt: { not: null },
+          },
+          include: { agentBot: { select: { spawnKey: true } } },
+        });
+        if (revoked) {
+          if (
+            revoked.agentBotId &&
+            revoked.agentBot?.spawnKey === integrationAgentSpawnKey(revoked.id)
+          )
+            await archiveActorBot(context.actor, revoked.agentBotId).catch((error) =>
+              getLogger().error("connection agent archive failed", error),
+            );
+          await deps.prisma.connection.updateMany({
+            where: { id: revoked.id, status: "revoked" },
+            data: { agentBotId: null, agentProvisionedAt: null, writesEnabled: false },
+          });
         }
         return { ok: true as const };
       }),

@@ -290,10 +290,18 @@ async function releaseAgentServers(
         select: { id: true },
       });
       if (linked.length === 0) return { count: 0 };
+      // A connection Rakazo made private on connect stays private with no agent; older ones
+      // go back to shared.
+      const stayPrivate = { ...scope, agentProvisionedAt: { not: null } };
       const released = await tx.connection.updateMany({
+        where: stayPrivate,
+        data: { agentBotId: null, writesEnabled: false, allAgents: false },
+      });
+      const shared = await tx.connection.updateMany({
         where: scope,
         data: { agentBotId: null, writesEnabled: false, allAgents: true },
       });
+      released.count += shared.count;
       await tx.botConnectionAccess.deleteMany({
         where: {
           botId: bot.id,
