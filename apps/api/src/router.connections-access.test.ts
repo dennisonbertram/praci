@@ -35,6 +35,7 @@ const conn = (id: string, status: string, extra: Row = {}): Row => ({
   status,
   allAgents: true,
   agentBotId: null,
+  privateByDefault: false,
   createdAt: new Date("2026-10-01T00:00:00Z"),
   ...extra,
 });
@@ -70,6 +71,7 @@ function harness(connections: Row[], bots: Row[], access: Row[] = []) {
       }),
     },
     $executeRaw: vi.fn(async () => 0),
+    $queryRaw: vi.fn(async () => []),
     bot: {
       findMany: vi.fn(async ({ where }: { where: Row }) => {
         const { archivedAt: _archived, ...scope } = where;
@@ -317,7 +319,7 @@ describe("connections.access and setAccess", () => {
     expect(h.access).toEqual([{ connectionId: "a", botId: "agent", userId: "u1", spaceId: "s1" }]);
   });
 
-  it("gives a new account the ordinary app setting without inheriting a linked sibling", async () => {
+  it("starts a new account private and copies no sibling's access", async () => {
     const h = harness(
       [
         conn("a", "connected", { allAgents: false }),
@@ -335,11 +337,10 @@ describe("connections.access and setAccess", () => {
       displayName: "Second",
     });
     const created = h.connections.at(-1) as Row;
-    expect(created.allAgents).toBe(false);
+    expect(created).toMatchObject({ allAgents: false, privateByDefault: true });
     expect(h.access.map((r) => [r.connectionId, r.botId])).toEqual([
       ["a", "b1"],
       ["linked", "linked-agent"],
-      [created.id, "b1"],
     ]);
   });
 });

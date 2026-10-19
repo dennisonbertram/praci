@@ -80,7 +80,7 @@ export function ConnectAppDialog({
         .appConnected({ botId: activeBotId, provider: item.slug, connectorId: item.connectorId })
         .catch(() => undefined);
     }
-    // A connection with its own agent is private to it; only agentless rows ask which bots get it.
+    // A connection that got its own agent is private to it; sharing is chosen on its page.
     setPhase(
       connection.agentBotId
         ? { kind: "done", agents: "skipped" }

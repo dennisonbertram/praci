@@ -956,6 +956,10 @@ model Connection {
   writesEnabled      Boolean               @default(false)
   agentBotId         String?
   agentBot           Bot?                  @relation("ConnectionAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
+  /// Set once, when begin creates a brand-new row (never on reuse, never cleared): the connection
+  /// is private to its own agent from the start, stays private when the agent goes away, and is
+  /// always scoped on its own. Older rows keep the shared-by-default rules.
+  privateByDefault   Boolean               @default(false)
 
   @@index([spaceId, userId, connectorId])
   @@index([agentBotId])

@@ -45,9 +45,11 @@ function setup(replacesConnectionId?: string) {
       },
     );
   const tx = {
+    $queryRaw: vi.fn(async () => []),
     connection: {
       findFirst: vi.fn(async ({ where }: { where: Record<string, unknown> }) => {
         if (where.id === "pending") return rows.pending;
+        if (where.id === "old") return rows.old ?? null;
         if (where.providerRef === "acct-1") return rows.old ?? null;
         return null;
       }),
@@ -62,6 +64,12 @@ function setup(replacesConnectionId?: string) {
     cachedMailMessage: { updateMany: move(messages) },
     inboxTodo: { updateMany: move(todos) },
     composeSend: { updateMany: vi.fn(async () => ({ count: 0 })) },
+    botConnectionAccess: {
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+      updateMany: vi.fn(async () => ({ count: 0 })),
+    },
+    bot: { updateMany: vi.fn(async () => ({ count: 0 })) },
     secret: {
       deleteMany: vi.fn(async ({ where }: { where: { id: string } }) => {
         secrets.delete(where.id);
@@ -88,8 +96,22 @@ function setup(replacesConnectionId?: string) {
       context: {} as never,
       lock: async () => undefined,
     });
-  return { rows, todos, messages, secrets, run };
+  return { rows, todos, messages, secrets, run, prisma };
 }
+
+describe("completeNativeOAuth, after the commit", () => {
+  it("keeps the committed credential when the follow-up read fails", async () => {
+    const f = setup();
+    f.rows.old = undefined as never;
+    delete f.rows.old;
+    f.prisma.connection.findFirst
+      .mockResolvedValueOnce(f.rows.pending as never)
+      .mockRejectedValue(new Error("db down"));
+    const done = await f.run();
+    expect(done.status).toBe("connected");
+    expect(f.prisma.secret.deleteMany).not.toHaveBeenCalled();
+  });
+});
 
 describe("completeNativeOAuth, same account again", () => {
   it("rejects a second sign-in of an account that is already connected", async () => {
