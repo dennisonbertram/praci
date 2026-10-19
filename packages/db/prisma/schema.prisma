@@ -1344,7 +1344,7 @@ model NotificationEndpoint {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, channel, deviceId])
-  @@index([channel, address])
+  @@unique([channel, address])
   @@index([sessionId])
   @@map("notification_endpoints")
 }

@@ -535,3 +535,21 @@ describe("expo push", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("expo push handover", () => {
+  it("does not send the previous owner's push to a device that moved to another account", async () => {
+    const store = fakeStore();
+    store.add("user-1", "ExponentPushToken[device]");
+    store.add("user-2", "ExponentPushToken[device]");
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    const push = new ExpoPushProvider(store.prisma);
+    await expect(
+      push.deliver(
+        { kind: "completion", title: "done", body: "private", botId: "b", threadId: "t" },
+        notifyContext,
+      ),
+    ).resolves.toBe("undeliverable");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
