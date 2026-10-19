@@ -367,6 +367,7 @@ import {
   ChoiceCard,
   McpApprovalCard,
 } from "./shell/message-cards";
+import { SidebarHeaderRow } from "./shell/sidebar-header-row";
 import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
 import { WindowChrome } from "./WindowChrome";
 
@@ -3651,136 +3652,134 @@ export function ShellPage() {
             : "md:w-[316px]"
         }`}
       >
-        <div className="app-drag flex items-center gap-1 px-2.5 pb-3 pt-3">
-          {/* Desktop only: window controls (or their macOS gap) lead the row; the rest stays no-drag. */}
-          {desktopBridge() ? (
-            <div className="shrink-0 pe-1.5">
-              <WindowChrome />
-            </div>
-          ) : null}
-          <InputGroup
-            data-testid="sidebar-search"
-            className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
-          >
-            <InputGroupAddon>
-              <Search size={16} strokeWidth={1.8} aria-hidden="true" />
-            </InputGroupAddon>
-            <InputGroupInput
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape" && query) {
-                  e.preventDefault();
-                  setQuery("");
-                }
-              }}
-              // Chats, documents and mail, so the box says only "Search".
-              placeholder={t`Search`}
-              autoComplete="off"
-              name="sidebar-search"
-            />
-            {query ? (
-              <InputGroupAddon align="inline-end">
-                <InputGroupButton
-                  size="icon-xs"
-                  aria-label={t`Clear search`}
-                  onClick={() => setQuery("")}
-                >
-                  <X aria-hidden="true" />
-                </InputGroupButton>
+        <SidebarHeaderRow
+          search={
+            <InputGroup
+              data-testid="sidebar-search"
+              className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
+            >
+              <InputGroupAddon>
+                <Search size={16} strokeWidth={1.8} aria-hidden="true" />
               </InputGroupAddon>
-            ) : null}
-          </InputGroup>
-          <div className="relative flex shrink-0 items-center gap-1">
-            <button
-              type="button"
-              aria-label={t`Activity`}
-              aria-pressed={activityMode}
-              title={t`Activity`}
-              data-activity-mode={activityMode ? "on" : "off"}
-              onClick={toggleActivityMode}
-              className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
-                activityMode
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground/70 hover:text-foreground/75"
-              }`}
-            >
-              {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
-              <History size={15} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:inline-flex"
-              aria-label={t`Hide sidebar`}
-              title={t`Hide sidebar`}
-              data-testid="minimize-bots-sidebar"
-              onClick={() => setBotsSidebarCollapsedPref(true)}
-            >
-              <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="app-no-drag md:hidden"
-              aria-label={t`Close menu`}
-              title={t`Close menu`}
-              data-testid="close-mobile-sidebar"
-              onClick={() => setMobileSidebarOpen(false)}
-            >
-              <X size={16} strokeWidth={1.8} aria-hidden="true" />
-            </Button>
-            <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
-              <PopoverTrigger
-                className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
-                title={t`Create`}
-                data-testid="create-menu-trigger"
-              >
-                +
-              </PopoverTrigger>
-              {/* Unmount with the state change so the panel it opens never coexists with the menu. */}
-              {createMenuOpen ? (
-                <PopoverContent
-                  align="end"
-                  className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
-                >
-                  <BotCreatePicker
-                    bots={bots}
-                    onCreateBot={() => {
-                      setCreateMenuOpen(false);
-                      setMobileSidebarOpen(false);
-                      void createBot();
-                    }}
-                    onOpenBot={(id) => {
-                      setCreateMenuOpen(false);
-                      setMobileSidebarOpen(false);
-                      navigate(`/app/${id}`);
-                    }}
-                    onCreateGroup={() => {
-                      setCreateMenuOpen(false);
-                      setMobileSidebarOpen(false);
-                      setPanel("create-group");
-                    }}
-                    onCreateSpace={() => {
-                      setCreateMenuOpen(false);
-                      setMobileSidebarOpen(false);
-                      setNewSpaceOpen(true);
-                    }}
-                    onShowGroupInfo={() => {
-                      setCreateMenuOpen(false);
-                      setMobileSidebarOpen(false);
-                      setPickerInfoTopic("group");
-                    }}
-                    onShowSpaceInfo={() => {
-                      setCreateMenuOpen(false);
-                      setMobileSidebarOpen(false);
-                      setPickerInfoTopic("space");
-                    }}
-                  />
-                </PopoverContent>
+              <InputGroupInput
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Escape" && query) {
+                    e.preventDefault();
+                    setQuery("");
+                  }
+                }}
+                // Chats, documents and mail, so the box says only "Search".
+                placeholder={t`Search`}
+                autoComplete="off"
+                name="sidebar-search"
+              />
+              {query ? (
+                <InputGroupAddon align="inline-end">
+                  <InputGroupButton
+                    size="icon-xs"
+                    aria-label={t`Clear search`}
+                    onClick={() => setQuery("")}
+                  >
+                    <X aria-hidden="true" />
+                  </InputGroupButton>
+                </InputGroupAddon>
               ) : null}
-            </Popover>
-          </div>
-        </div>
+            </InputGroup>
+          }
+          actions={
+            <div className="relative flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                aria-label={t`Activity`}
+                aria-pressed={activityMode}
+                title={t`Activity`}
+                data-activity-mode={activityMode ? "on" : "off"}
+                onClick={toggleActivityMode}
+                className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
+                  activityMode
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground/70 hover:text-foreground/75"
+                }`}
+              >
+                {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
+                <History size={15} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+              <button
+                type="button"
+                className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 md:inline-flex"
+                aria-label={t`Hide sidebar`}
+                title={t`Hide sidebar`}
+                data-testid="minimize-bots-sidebar"
+                onClick={() => setBotsSidebarCollapsedPref(true)}
+              >
+                <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
+              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="app-no-drag md:hidden"
+                aria-label={t`Close menu`}
+                title={t`Close menu`}
+                data-testid="close-mobile-sidebar"
+                onClick={() => setMobileSidebarOpen(false)}
+              >
+                <X size={16} strokeWidth={1.8} aria-hidden="true" />
+              </Button>
+              <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
+                <PopoverTrigger
+                  className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
+                  title={t`Create`}
+                  data-testid="create-menu-trigger"
+                >
+                  +
+                </PopoverTrigger>
+                {/* Unmount with the state change so the panel it opens never coexists with the menu. */}
+                {createMenuOpen ? (
+                  <PopoverContent
+                    align="end"
+                    className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
+                  >
+                    <BotCreatePicker
+                      bots={bots}
+                      onCreateBot={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        void createBot();
+                      }}
+                      onOpenBot={(id) => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        navigate(`/app/${id}`);
+                      }}
+                      onCreateGroup={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        setPanel("create-group");
+                      }}
+                      onCreateSpace={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        setNewSpaceOpen(true);
+                      }}
+                      onShowGroupInfo={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        setPickerInfoTopic("group");
+                      }}
+                      onShowSpaceInfo={() => {
+                        setCreateMenuOpen(false);
+                        setMobileSidebarOpen(false);
+                        setPickerInfoTopic("space");
+                      }}
+                    />
+                  </PopoverContent>
+                ) : null}
+              </Popover>
+            </div>
+          }
+        />
         <div className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {/* While searching, matching pages are listed with the results instead. */}
           {showSpaceSearch ? null : (
@@ -3908,9 +3907,9 @@ export function ShellPage() {
                   );
                 const hasSpaceActions = group.canRenameSpace || group.canDeleteSpace;
                 // "Personnel" replaces the lone space's name, so the name stays in the label.
-                const sidebarTitleName = group.relabeled
-                  ? `${group.title} (${group.spaceName})`
-                  : group.title;
+                const sidebarHeader = {
+                  name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
+                };
                 return (
                   <div
                     key={group.key}
@@ -3976,8 +3975,8 @@ export function ShellPage() {
                               group.emptySpaceId
                                 ? t`Open ${group.title}`
                                 : collapsed
-                                  ? t`Expand ${sidebarTitleName}`
-                                  : t`Collapse ${sidebarTitleName}`
+                                  ? t`Expand ${sidebarHeader.name}`
+                                  : t`Collapse ${sidebarHeader.name}`
                             }
                           >
                             <span className="flex min-w-0 items-center gap-1.5">

@@ -1987,12 +1987,9 @@ msgid "Code"
 msgstr "कोड"
 
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Collapse {sidebarTitleName}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3695,12 +3692,9 @@ msgid "Expand"
 msgstr "विस्तृत करें"
 
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Expand {sidebarTitleName}"
 msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx

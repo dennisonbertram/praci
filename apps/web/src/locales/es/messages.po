@@ -1987,13 +1987,10 @@ msgid "Code"
 msgstr "Código"
 
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
 msgstr "Contraer {0}"
-
-#: src/pages/Shell.tsx
-msgid "Collapse {sidebarTitleName}"
-msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Collapse Carta agent"
@@ -3695,13 +3692,10 @@ msgid "Expand"
 msgstr "Expandir"
 
 #. placeholder {0}: item.chat.name
+#. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "Expandir {0}"
-
-#: src/pages/Shell.tsx
-msgid "Expand {sidebarTitleName}"
-msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
