@@ -1470,6 +1470,10 @@ msgstr ""
 msgid "Bots with their own computer and browser"
 msgstr ""
 
+#: src/components/data-room/FilterBar.tsx
+msgid "Box"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Brain label"
 msgstr "Libellé du cerveau"
@@ -4232,6 +4236,10 @@ msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "Import anyway"
+msgstr ""
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Import from Box"
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -7068,6 +7076,10 @@ msgstr ""
 msgid "Search all items"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+msgid "Search and read files and folders"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -7077,6 +7089,10 @@ msgstr "Rechercher des applications"
 #: src/pages/Artifacts.tsx
 msgid "Search artifacts…"
 msgstr "Rechercher des artefacts…"
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Search Box"
+msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search by domain"

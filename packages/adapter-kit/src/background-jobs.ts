@@ -60,6 +60,29 @@ const payloadSchemas = {
     externalId: z.string().min(1),
     folderId: z.string().min(1).nullable(),
   }),
+  "dataroom.box.import": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    connectionId: z.string().min(1),
+    folderId: z.string().min(1).nullable(),
+    folders: z
+      .array(
+        z.object({ name: z.string().min(1).max(255), parent: z.number().int().min(0).nullable() }),
+      )
+      .max(500),
+    files: z
+      .array(
+        z.object({ id: z.string().min(1).max(200), folder: z.number().int().min(0).nullable() }),
+      )
+      .max(500),
+  }),
+  "dataroom.box.file": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    connectionId: z.string().min(1),
+    externalId: z.string().min(1),
+    folderId: z.string().min(1).nullable(),
+  }),
 } satisfies { [Name in BackgroundJobName]: z.ZodType<BackgroundJobPayloads[Name]> };
 
 export function parseBackgroundJob(name: string, payload: unknown): BackgroundJob {
@@ -294,4 +317,26 @@ export function dataRoomDriveImportJob(
   payload: BackgroundJobPayloads["dataroom.drive.import"],
 ): BackgroundJob {
   return { name: "dataroom.drive.import", payload, maxAttempts: DATA_ROOM_JOB_ATTEMPTS };
+}
+
+/** One queued job per Box file and connection: queueing an import again replaces the first. */
+export function dataRoomBoxFileJob(
+  scope: { spaceId: string; userId: string },
+  connectionId: string,
+  externalId: string,
+  folderId: string | null,
+): BackgroundJob {
+  return {
+    name: "dataroom.box.file",
+    payload: { spaceId: scope.spaceId, userId: scope.userId, connectionId, externalId, folderId },
+    replaceKey: `dataroom.box.file:${scope.spaceId}:${scope.userId}:${connectionId}:${externalId}`,
+    maxAttempts: DATA_ROOM_JOB_ATTEMPTS,
+  };
+}
+
+/** A planned Box folder import, held in the queue until its folders and file jobs are written. */
+export function dataRoomBoxImportJob(
+  payload: BackgroundJobPayloads["dataroom.box.import"],
+): BackgroundJob {
+  return { name: "dataroom.box.import", payload, maxAttempts: DATA_ROOM_JOB_ATTEMPTS };
 }

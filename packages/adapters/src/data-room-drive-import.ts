@@ -1,4 +1,9 @@
-import type { AdapterContext, ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  ArtifactStore,
+  BackgroundJob,
+  JobPublisher,
+} from "@rakazo/adapter-kit";
 import { dataRoomDriveFileJob } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
 import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
@@ -32,45 +37,49 @@ export type DrivePlan = {
   skipped: number;
 };
 
+/** Where a folder import reads from: a provider's folders, with the files it can import marked. */
+export type FolderSource = {
+  /** The folder's name, or null when the id is gone or not a folder. */
+  folder(id: string): Promise<{ id: string; name: string } | null>;
+  list(
+    folderId: string,
+    pageToken?: string,
+  ): Promise<{
+    children: { id: string; name: string; isFolder: boolean; importable: boolean }[];
+    nextPageToken?: string;
+  }>;
+  /** The error for a selection over the limits. */
+  limitError(message: string): Error;
+};
+
 /**
- * Walks the selected Drive folders and all their subfolders, read-only. Throws `too_many` before
- * anything is written when the selection is over the limit. Shortcuts and other Google files with
- * nothing to download are skipped and counted, never followed. A selected folder inside another
+ * Walks the selected folders and all their subfolders, read-only. Throws `limitError` before
+ * anything is written when the selection is over the limit. Children that cannot be imported
+ * (type, size, shortcuts) are skipped and counted, never followed. A selected folder inside another
  * selected folder stays nested; a directly picked file inside a selected folder goes to that
  * folder, and the other direct picks go to the import target.
  */
-export async function planDriveFolders(
-  deps: DriveFilesDeps,
-  context: AdapterContext,
+export async function planFolders(
+  source: FolderSource,
   input: {
-    connectionId: string;
     folderIds: string[];
     /** Files picked directly; they count toward the limit with the folders' files. */
     directFileIds?: string[];
-    maxBytes: number;
     maxScanned?: number;
   },
 ): Promise<DrivePlan> {
-  const target = { connectionId: input.connectionId };
   const tooMany = () =>
-    new DriveFileError(
-      "too_many",
-      `Folder imports are limited to ${DRIVE_IMPORT_MAX_FILES} files.`,
-    );
+    source.limitError(`Folder imports are limited to ${DRIVE_IMPORT_MAX_FILES} files.`);
   const maxScanned = input.maxScanned ?? DRIVE_IMPORT_MAX_SCANNED;
   const tooManyScanned = (max: number) =>
-    new DriveFileError("too_many", `Folder imports are limited to ${max} items.`);
+    source.limitError(`Folder imports are limited to ${max} items.`);
   let skippedSelected = 0;
   const selected: { id: string; name: string }[] = [];
   for (const id of new Set(input.folderIds)) {
-    const root = await getDriveFile(deps, context, id, target).catch((error: unknown) => {
-      if (error instanceof DriveFileError && error.code === "not_found") return null;
-      throw error;
-    });
-    if (root?.isFolder) selected.push({ id: root.id, name: root.name });
+    const root = await source.folder(id);
+    if (root) selected.push(root);
     else skippedSelected += 1;
   }
-
   const walk = async (roots: { id: string; name: string }[]) => {
     const plan: DrivePlan = { folders: [], files: [], skipped: skippedSelected };
     const rootIds = new Set(roots.map((root) => root.id));
@@ -111,14 +120,10 @@ export async function planDriveFolders(
       do {
         // An empty folder still costs a request, so a request counts as an entry.
         if (++scanned > maxScanned) throw tooManyScanned(maxScanned);
-        const page = await listDriveFiles(deps, context, {
-          ...target,
-          folderId: current.id,
-          ...(pageToken ? { pageToken } : {}),
-        });
-        scanned += page.files.length;
+        const page = await source.list(current.id, pageToken);
+        scanned += page.children.length;
         if (scanned > maxScanned) throw tooManyScanned(maxScanned);
-        for (const child of page.files) {
+        for (const child of page.children) {
           if (child.isFolder) {
             if (rootIds.has(child.id)) covered.add(child.id);
             if (seenFolders.has(child.id)) continue;
@@ -126,11 +131,7 @@ export async function planDriveFolders(
             add(child.id, child.name, current.index);
           } else if (!seenFiles.has(child.id)) {
             seenFiles.add(child.id);
-            const tooBig = child.size !== undefined && child.size > input.maxBytes;
-            if (
-              !isImportableDriveFile(child) ||
-              (tooBig && !child.mimeType.startsWith("application/vnd.google-apps."))
-            ) {
+            if (!child.importable) {
               plan.skipped += 1;
             } else {
               if (plan.files.length >= DRIVE_IMPORT_MAX_FILES) throw tooMany();
@@ -156,7 +157,56 @@ export async function planDriveFolders(
   return (await walk(selected.filter((root) => !first.covered.has(root.id)))).plan;
 }
 
-type Scope = { spaceId: string; userId: string; connectionId: string };
+/** Plans a Drive folder import; see `planFolders`. */
+export function planDriveFolders(
+  deps: DriveFilesDeps,
+  context: AdapterContext,
+  input: {
+    connectionId: string;
+    folderIds: string[];
+    directFileIds?: string[];
+    maxBytes: number;
+    maxScanned?: number;
+  },
+): Promise<DrivePlan> {
+  const target = { connectionId: input.connectionId };
+  return planFolders(
+    {
+      folder: async (id) => {
+        const root = await getDriveFile(deps, context, id, target).catch((error: unknown) => {
+          if (error instanceof DriveFileError && error.code === "not_found") return null;
+          throw error;
+        });
+        return root?.isFolder ? { id: root.id, name: root.name } : null;
+      },
+      list: async (folderId, pageToken) => {
+        const page = await listDriveFiles(deps, context, {
+          ...target,
+          folderId,
+          ...(pageToken ? { pageToken } : {}),
+        });
+        return {
+          children: page.files.map((child) => {
+            const tooBig = child.size !== undefined && child.size > input.maxBytes;
+            return {
+              id: child.id,
+              name: child.name,
+              isFolder: child.isFolder,
+              importable:
+                isImportableDriveFile(child) &&
+                !(tooBig && !child.mimeType.startsWith("application/vnd.google-apps.")),
+            };
+          }),
+          ...(page.nextPageToken ? { nextPageToken: page.nextPageToken } : {}),
+        };
+      },
+      limitError: (message) => new DriveFileError("too_many", message),
+    },
+    input,
+  );
+}
+
+export type Scope = { spaceId: string; userId: string; connectionId: string };
 
 /**
  * Queued jobs outlive the request that made them, so each re-checks, when it runs, that the user
@@ -172,7 +222,7 @@ async function stillAuthorized(deps: { prisma: PrismaClient }, scope: Scope): Pr
   return accounts.some((account) => account.id === scope.connectionId);
 }
 
-const actorFor = (scope: { spaceId: string; userId: string }): Actor => ({
+export const actorFor = (scope: { spaceId: string; userId: string }): Actor => ({
   spaceId: scope.spaceId,
   userId: scope.userId,
   email: "",
@@ -267,15 +317,15 @@ async function ensureFolder(
  * Writes a planned import: the Data room folders (a same-named folder is reused), then one file
  * job per file. Every step is repeatable, so a failure part-way is finished by the retry.
  */
-export async function runDriveImport(
+export async function runFolderImport(
   deps: { prisma: PrismaClient; jobs: JobPublisher },
   payload: Scope & {
     folderId: string | null;
     folders: { name: string; parent: number | null }[];
     files: { id: string; folder: number | null }[];
   },
+  fileJob: (actor: Actor, externalId: string, folderId: string | null) => BackgroundJob,
 ): Promise<void> {
-  if (!(await stillAuthorized(deps, payload))) return;
   const actor = actorFor(payload);
   const roomFolders: string[] = [];
   try {
@@ -290,12 +340,22 @@ export async function runDriveImport(
   }
   for (const file of payload.files) {
     await deps.jobs.enqueue(
-      dataRoomDriveFileJob(
+      fileJob(
         actor,
-        payload.connectionId,
         file.id,
         file.folder === null ? payload.folderId : (roomFolders[file.folder] ?? null),
       ),
     );
   }
+}
+
+/** Writes a planned Drive import; see `runFolderImport`. */
+export async function runDriveImport(
+  deps: { prisma: PrismaClient; jobs: JobPublisher },
+  payload: Parameters<typeof runFolderImport>[1],
+): Promise<void> {
+  if (!(await stillAuthorized(deps, payload))) return;
+  await runFolderImport(deps, payload, (actor, id, folderId) =>
+    dataRoomDriveFileJob(actor, payload.connectionId, id, folderId),
+  );
 }

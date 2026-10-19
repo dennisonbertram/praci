@@ -32,6 +32,7 @@ import { naturalSort } from "./use-data-room-list";
 export const sourceLabels = () => ({
   upload: t`Upload`,
   drive: t`Google Drive`,
+  box: t`Box`,
   gmail: t`Gmail`,
   chat: t`Chat`,
   finance: t`Finance`,
