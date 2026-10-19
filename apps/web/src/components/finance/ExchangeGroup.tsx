@@ -13,6 +13,13 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
@@ -22,7 +29,7 @@ import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { EXCHANGES } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-import { Section, Th } from "./ui";
+import { Section } from "./ui";
 
 export const exchangeName = (provider: FinanceExchange["provider"]) =>
   EXCHANGES.find((e) => e.provider === provider)?.name ?? provider;
@@ -78,32 +85,32 @@ export function ExchangeGroup({
         </p>
       ) : null}
       {exchange.balances.length > 0 ? (
-        <table className="w-full border-collapse">
-          <thead>
-            <tr>
-              <Th>
+        <Table compact>
+          <TableHeader>
+            <TableHeadRow>
+              <TableHead>
                 <Trans>Asset</Trans>
-              </Th>
-              <Th right>
+              </TableHead>
+              <TableHead className="text-end">
                 <Trans>Balance</Trans>
-              </Th>
-              <Th right>
+              </TableHead>
+              <TableHead className="text-end">
                 <Trans>Value</Trans>
-              </Th>
-            </tr>
-          </thead>
-          <tbody>
+              </TableHead>
+            </TableHeadRow>
+          </TableHeader>
+          <TableBody>
             {exchange.balances.map((b) => (
-              <tr key={b.asset} className="border-t border-border [&>td]:py-2">
-                <td className="font-semibold">{b.asset}</td>
-                <td className="text-end tabular-nums">{decimalAmount(b.amount)}</td>
-                <td className="text-end tabular-nums">
+              <TableRow key={b.asset}>
+                <TableCell className="font-semibold">{b.asset}</TableCell>
+                <TableCell className="text-end tabular-nums">{decimalAmount(b.amount)}</TableCell>
+                <TableCell className="text-end tabular-nums">
                   {b.usdValueCents === null ? "—" : money(b.usdValueCents)}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       ) : null}
       <AlertDialog open={confirming} onOpenChange={(open) => !open && setConfirming(false)}>
         <AlertDialogContent>

@@ -1,7 +1,16 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { FinanceProvider, FinanceRecurringOutput, SpendPeriod } from "@rakazo/contracts";
-import { Badge } from "@rakazo/ui-web";
+import {
+  Badge,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
+} from "@rakazo/ui-web";
 import { Link, useNavigate } from "react-router-dom";
 import { MonthBars } from "../../components/finance/charts";
 import {
@@ -13,9 +22,7 @@ import {
   Kv,
   KvRow,
   PeriodTabs,
-  rowClass,
   Section,
-  Th,
   TransactionsSection,
   toneClass,
   useFinanceQuery,
@@ -197,28 +204,28 @@ export function FinanceCategoryPage({ slug, window }: { slug: string; window?: C
             </Section>
           ) : null}
           <Section title={t`Vendors · ${windowName}`}>
-            <table className="w-full border-collapse">
-              <tbody>
+            <Table compact>
+              <TableBody>
                 {data.vendors.map((vendor) => (
-                  <tr
+                  <TableRow
                     key={vendor.key}
-                    className={rowClass}
+                    className="group/row cursor-pointer"
                     {...rowProps(financePath.vendor(vendor.key))}
                   >
-                    <td className="font-semibold">
+                    <TableCell className="font-semibold">
                       <HereLink
                         to={financePath.vendor(vendor.key)}
                         className="outline-none hover:underline focus-visible:underline"
                       >
                         {vendor.label}
                       </HereLink>
-                    </td>
-                    <td className="text-end tabular-nums">{money(vendor.cents)}</td>
+                    </TableCell>
+                    <TableCell className="text-end tabular-nums">{money(vendor.cents)}</TableCell>
                     <Chevron />
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </Section>
           <TransactionsSection title={t`Transactions · ${windowName}`} rows={data.recent} />
         </>
@@ -348,51 +355,53 @@ export function FinanceVendorPage({ keyName }: { keyName: string }) {
           <Section
             title={charged[0] ? t`Charges since ${shortDay(`${charged[0].month}-01`)}` : t`Charges`}
           >
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <Th>
+            <Table compact>
+              <TableHeader>
+                <TableHeadRow>
+                  <TableHead>
                     <Trans>Date</Trans>
-                  </Th>
-                  <Th>
+                  </TableHead>
+                  <TableHead>
                     <Trans>Description</Trans>
-                  </Th>
-                  <Th right>
+                  </TableHead>
+                  <TableHead className="text-end">
                     <Trans>Amount</Trans>
-                  </Th>
-                  <Th right>
+                  </TableHead>
+                  <TableHead className="text-end">
                     <Trans>Receipt</Trans>
-                  </Th>
-                  <Th />
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead />
+                </TableHeadRow>
+              </TableHeader>
+              <TableBody>
                 {data.charges.map((charge) => (
-                  <tr
+                  <TableRow
                     key={charge.id}
-                    className={rowClass}
+                    className="group/row cursor-pointer"
                     {...rowProps(financePath.transaction(charge.id))}
                   >
-                    <td className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
+                    <TableCell className="w-[4.5rem] whitespace-nowrap pe-2 text-muted-foreground">
                       {shortDay(txnDay(charge))}
-                    </td>
-                    <td>
+                    </TableCell>
+                    <TableCell>
                       <HereLink
                         to={financePath.transaction(charge.id)}
                         className="outline-none hover:underline focus-visible:underline"
                       >
                         {charge.memo ?? charge.counterparty}
                       </HereLink>
-                    </td>
-                    <td className="text-end tabular-nums">{money(charge.amountCents)}</td>
-                    <td className="text-end text-muted-foreground">
+                    </TableCell>
+                    <TableCell className="text-end tabular-nums">
+                      {money(charge.amountCents)}
+                    </TableCell>
+                    <TableCell className="text-end text-muted-foreground">
                       {charge.hasReceipt ? <ReceiptIcon /> : "—"}
-                    </td>
+                    </TableCell>
                     <Chevron />
-                  </tr>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </Section>
         </>
       ) : null}

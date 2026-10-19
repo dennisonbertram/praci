@@ -1,9 +1,17 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { LegalContract, LegalContractStatus } from "@rakazo/contracts";
-import { cn } from "@rakazo/ui-web";
+import {
+  cn,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
+} from "@rakazo/ui-web";
 import { Link } from "react-router-dom";
-import { Th } from "../../components/finance/ui";
 import { DATA_ROOM_PATH } from "../../lib/data-room";
 import { fullDay, hiddenOr } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
@@ -114,7 +122,7 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           </li>
         ))}
       </ul>
-      <table className="hidden w-full table-fixed border-collapse text-sm @4xl:table">
+      <Table className="hidden @4xl:table">
         <caption className="sr-only">
           <Trans>Contracts</Trans>
         </caption>
@@ -127,52 +135,49 @@ export function LegalContracts({ contracts }: { contracts: LegalContract[] }) {
           <col className="w-[9%]" />
           <col className="w-[10%]" />
         </colgroup>
-        <thead>
-          <tr>
-            <Th>
+        <TableHeader>
+          <TableHeadRow>
+            <TableHead>
               <Trans>Contract</Trans>
-            </Th>
-            <Th>
+            </TableHead>
+            <TableHead>
               <Trans>Parties</Trans>
-            </Th>
-            <Th>
+            </TableHead>
+            <TableHead>
               <Trans>Status</Trans>
-            </Th>
-            <Th>
+            </TableHead>
+            <TableHead>
               <Trans>Term</Trans>
-            </Th>
-            <Th>
+            </TableHead>
+            <TableHead>
               <Trans>Renewal</Trans>
-            </Th>
-            <Th right className="pe-3">
+            </TableHead>
+            <TableHead className="text-end pe-3">
               <Trans>Value</Trans>
-            </Th>
-            <Th>
+            </TableHead>
+            <TableHead>
               <Trans>Next deadline</Trans>
-            </Th>
-          </tr>
-        </thead>
-        <tbody>
+            </TableHead>
+          </TableHeadRow>
+        </TableHeader>
+        <TableBody>
           {contracts.map((contract) => (
-            <tr
-              key={contract.id}
-              className="border-t border-border align-top [&>td]:py-2 [&>td]:pe-3"
-            >
-              <td>
+            <TableRow key={contract.id} className="align-top">
+              <TableCell>
                 <Title contract={contract} />
-              </td>
-              <td>{contract.counterparties.join(", ") || dash}</td>
-              <td>
+              </TableCell>
+              <TableCell>{contract.counterparties.join(", ") || dash}</TableCell>
+              <TableCell>
                 <Status status={contract.status} />
-              </td>
-              <td className="tabular-nums">{term(contract)}</td>
-              <td>{renewal(contract)}</td>
-              <td className="text-end tabular-nums">{value(contract)}</td>
-              <td className="tabular-nums">{nextDeadline(contract)}</td>
-            </tr>
+              </TableCell>
+              <TableCell className="tabular-nums">{term(contract)}</TableCell>
+              <TableCell>{renewal(contract)}</TableCell>
+              <TableCell className="text-end tabular-nums">{value(contract)}</TableCell>
+              <TableCell className="tabular-nums">{nextDeadline(contract)}</TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </>
   );
 }

@@ -1,5 +1,14 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
+} from "@rakazo/ui-web";
 import { useNavigate } from "react-router-dom";
 import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
 import { BurnBars, LineChart, StackBar } from "../../components/finance/charts";
@@ -12,9 +21,7 @@ import {
   Kpi,
   Kv,
   KvRow,
-  rowClass,
   Section,
-  Th,
   TransactionsSection,
   useFinanceQuery,
   useRowNavigate,
@@ -129,100 +136,102 @@ export function FinanceBurnPage() {
               />
             </Section>
             <Section title={<Trans>By account</Trans>}>
-              <table className="w-full border-collapse">
-                <tbody>
+              <Table compact>
+                <TableBody>
                   {spentAccounts.map(({ account, cents }) => (
-                    <tr
+                    <TableRow
                       key={account.id}
-                      className={rowClass}
+                      className="group/row cursor-pointer"
                       {...rowProps(financePath.account(account.id))}
                     >
-                      <td className="font-semibold">
+                      <TableCell className="font-semibold">
                         <HereLink
                           to={financePath.account(account.id)}
                           className="outline-none hover:underline focus-visible:underline"
                         >
                           {account.name}
                         </HereLink>
-                      </td>
-                      <td className="text-end tabular-nums">{money(cents)}</td>
-                      <td className="text-end text-muted-foreground tabular-nums">
+                      </TableCell>
+                      <TableCell className="text-end tabular-nums">{money(cents)}</TableCell>
+                      <TableCell className="text-end text-muted-foreground tabular-nums">
                         {shareText(cents, accountTotal)}
-                      </td>
+                      </TableCell>
                       <Chevron />
-                    </tr>
+                    </TableRow>
                   ))}
                   {brexCents > 0 ? (
-                    <tr className={rowClass} {...rowProps(brexSpend)}>
-                      <td className="font-semibold">
+                    <TableRow className="group/row cursor-pointer" {...rowProps(brexSpend)}>
+                      <TableCell className="font-semibold">
                         <HereLink
                           to={brexSpend}
                           className="outline-none hover:underline focus-visible:underline"
                         >
                           Brex
                         </HereLink>
-                      </td>
-                      <td className="text-end tabular-nums">{money(brexCents)}</td>
-                      <td className="text-end text-muted-foreground tabular-nums">
+                      </TableCell>
+                      <TableCell className="text-end tabular-nums">{money(brexCents)}</TableCell>
+                      <TableCell className="text-end text-muted-foreground tabular-nums">
                         {shareText(brexCents, accountTotal)}
-                      </td>
+                      </TableCell>
                       <Chevron />
-                    </tr>
+                    </TableRow>
                   ) : null}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </Section>
           </div>
           <Section title={<Trans>By month</Trans>}>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr>
-                  <Th>
+            <Table compact>
+              <TableHeader>
+                <TableHeadRow>
+                  <TableHead>
                     <Trans>Month</Trans>
-                  </Th>
-                  <Th right>
+                  </TableHead>
+                  <TableHead className="text-end">
                     <Trans>Out</Trans>
-                  </Th>
-                  <Th right>
+                  </TableHead>
+                  <TableHead className="text-end">
                     <Trans>In</Trans>
-                  </Th>
-                  <Th right>
+                  </TableHead>
+                  <TableHead className="text-end">
                     <Trans>Net</Trans>
-                  </Th>
-                  <Th />
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead />
+                </TableHeadRow>
+              </TableHeader>
+              <TableBody>
                 {[...series].reverse().map((m) => {
                   const inCents = m.revenueCents + m.financingCents;
                   const net = inCents - m.outCents;
                   return (
-                    <tr
+                    <TableRow
                       key={m.month}
-                      className={rowClass}
+                      className="group/row cursor-pointer"
                       {...rowProps(financePath.month(m.month))}
                     >
-                      <td>
+                      <TableCell>
                         <HereLink
                           to={financePath.month(m.month)}
                           className="outline-none hover:underline focus-visible:underline"
                         >
                           {monthLabel(m.month)}
                         </HereLink>
-                      </td>
-                      <td className="text-end tabular-nums">{money(m.outCents)}</td>
-                      <td className="text-end tabular-nums">{inCents ? money(inCents) : "—"}</td>
-                      <td
+                      </TableCell>
+                      <TableCell className="text-end tabular-nums">{money(m.outCents)}</TableCell>
+                      <TableCell className="text-end tabular-nums">
+                        {inCents ? money(inCents) : "—"}
+                      </TableCell>
+                      <TableCell
                         className={`text-end tabular-nums ${net < 0 ? "text-destructive" : "text-success"}`}
                       >
                         {netText(net)}
-                      </td>
+                      </TableCell>
                       <Chevron />
-                    </tr>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </Section>
         </>
       ) : null}

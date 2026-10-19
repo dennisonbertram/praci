@@ -13,12 +13,19 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableHeadRow,
+  TableRow,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
 import { useState } from "react";
 import { LineChart } from "../../components/finance/charts";
 import { ExchangeGroup } from "../../components/finance/ExchangeGroup";
-import { DetailPage, Section, Th, useFinanceQuery } from "../../components/finance/ui";
+import { DetailPage, Section, useFinanceQuery } from "../../components/finance/ui";
 import { useTypeNames, WalletDialog, walletName } from "../../components/finance/WalletDialog";
 import { chainName, shortAddress, tokenAmount } from "../../lib/crypto-format";
 import { dayMonth, money } from "../../lib/finance-format";
@@ -27,8 +34,6 @@ import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatRelativeTime } from "../../lib/relative-time";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-
-const rowBorder = "border-t border-border first:border-t-0 [&>td]:py-2";
 
 function RemoveDialog({
   wallet,
@@ -85,8 +90,8 @@ function WalletRows({
   const typeNames = useTypeNames();
   const cents = new Map(data.summary.byWallet.map((row) => [row.walletId, row.cents]));
   return (
-    <table className="w-full border-collapse">
-      <tbody>
+    <Table compact>
+      <TableBody>
         {data.wallets.map((wallet) => {
           const name = walletName(wallet);
           const threshold =
@@ -94,8 +99,8 @@ function WalletRows({
               ? t`${wallet.safeThreshold} of ${wallet.safeOwners.length}`
               : null;
           return (
-            <tr key={wallet.id} className={rowBorder}>
-              <td>
+            <TableRow key={wallet.id} className="first:border-t-0">
+              <TableCell>
                 <span className="font-semibold">{name}</span>
                 <span className="ms-1.5 text-muted-foreground">
                   {typeNames[wallet.type]}
@@ -107,9 +112,11 @@ function WalletRows({
                     {wallet.ensName ?? shortAddress(wallet.address)}
                   </div>
                 ) : null}
-              </td>
-              <td className="text-end tabular-nums">{money(cents.get(wallet.id) ?? 0)}</td>
-              <td className="w-8 text-end">
+              </TableCell>
+              <TableCell className="text-end tabular-nums">
+                {money(cents.get(wallet.id) ?? 0)}
+              </TableCell>
+              <TableCell className="w-8 text-end">
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     render={
@@ -127,12 +134,12 @@ function WalletRows({
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           );
         })}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
   );
 }
 
@@ -225,66 +232,65 @@ export function FinanceCryptoPage() {
           {/* One chain would only repeat the wallet total. */}
           {data.summary.byChain.length > 1 ? (
             <Section title={<Trans>Chains</Trans>}>
-              <table className="w-full border-collapse">
-                <tbody>
+              <Table compact>
+                <TableBody>
                   {data.summary.byChain.map((row) => (
-                    <tr key={row.chainId} className={rowBorder}>
-                      <td>{chainName(row.chainId)}</td>
-                      <td className="text-end tabular-nums">{money(row.cents)}</td>
-                    </tr>
+                    <TableRow key={row.chainId} className="first:border-t-0">
+                      <TableCell>{chainName(row.chainId)}</TableCell>
+                      <TableCell className="text-end tabular-nums">{money(row.cents)}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </Section>
           ) : null}
           {holdings.length > 0 ? (
             <Section title={<Trans>Holdings</Trans>}>
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr>
-                    <Th>
+              <Table compact>
+                <TableHeader>
+                  <TableHeadRow>
+                    <TableHead>
                       <Trans>Token</Trans>
-                    </Th>
+                    </TableHead>
                     {/* With more than one wallet, the same token can appear once per wallet. */}
                     {data.wallets.length > 1 ? (
-                      <Th>
+                      <TableHead>
                         <Trans>Wallet</Trans>
-                      </Th>
+                      </TableHead>
                     ) : null}
-                    <Th>
+                    <TableHead>
                       <Trans>Chain</Trans>
-                    </Th>
-                    <Th right>
+                    </TableHead>
+                    <TableHead className="text-end">
                       <Trans>Balance</Trans>
-                    </Th>
-                    <Th right>
+                    </TableHead>
+                    <TableHead className="text-end">
                       <Trans>Value</Trans>
-                    </Th>
-                  </tr>
-                </thead>
-                <tbody>
+                    </TableHead>
+                  </TableHeadRow>
+                </TableHeader>
+                <TableBody>
                   {holdings.map((h) => (
-                    <tr
-                      key={`${h.walletId}:${h.chainId}:${h.tokenAddress ?? ""}`}
-                      className="border-t border-border [&>td]:py-2"
-                    >
-                      <td className="font-semibold">{h.symbol}</td>
+                    <TableRow key={`${h.walletId}:${h.chainId}:${h.tokenAddress ?? ""}`}>
+                      <TableCell className="font-semibold">{h.symbol}</TableCell>
                       {data.wallets.length > 1 ? (
-                        <td className="text-muted-foreground">
+                        <TableCell className="text-muted-foreground">
                           {walletById.get(h.walletId) ?? ""}
-                        </td>
+                        </TableCell>
                       ) : null}
-                      <td className="text-muted-foreground">{chainName(h.chainId)}</td>
-                      <td className="text-end tabular-nums">
+                      <TableCell className="text-muted-foreground">
+                        {chainName(h.chainId)}
+                      </TableCell>
+                      <TableCell className="text-end tabular-nums">
                         {tokenAmount(h.rawBalance, h.decimals)}
-                      </td>
-                      <td className="text-end tabular-nums">
+                      </TableCell>
+                      <TableCell className="text-end tabular-nums">
                         {h.usdValueCents === null ? "—" : money(h.usdValueCents)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </Section>
           ) : null}
           <WalletDialog

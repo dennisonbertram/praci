@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 190 of 190
-- Web and shared components: 550
+- Web and shared components: 549
 - Mobile components: 124 in 85 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -153,7 +153,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | StatementImport | [apps/web/src/components/finance/StatementImport.tsx](../../apps/web/src/components/finance/StatementImport.tsx) | [StatementImport.stories.tsx](../../apps/web/src/components/finance/StatementImport.stories.tsx) | web |
 | StatementReminderBanner | [apps/web/src/components/finance/StatementReminderBanner.tsx](../../apps/web/src/components/finance/StatementReminderBanner.tsx) | [StatementReminderBanner.stories.tsx](../../apps/web/src/components/finance/StatementReminderBanner.stories.tsx) | web |
 | CheckLine, Row, StatementGroup | [apps/web/src/components/finance/StatementReviewCard.tsx](../../apps/web/src/components/finance/StatementReviewCard.tsx) | [StatementReviewCard.stories.tsx](../../apps/web/src/components/finance/StatementReviewCard.stories.tsx) | web |
-| SpaceName, AskAgentButton, WithEndings, HereLink, DetailHead, CompanyAndEye, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Th, Chevron, TransactionRow, VendorGroupRows, TransactionTable, TransactionsSection, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
+| SpaceName, AskAgentButton, WithEndings, HereLink, DetailHead, CompanyAndEye, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Chevron, TransactionRow, VendorGroupRows, TransactionTable, TransactionsSection, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
 | WalletDialog | [apps/web/src/components/finance/WalletDialog.tsx](../../apps/web/src/components/finance/WalletDialog.tsx) | [WalletDialog.stories.tsx](../../apps/web/src/components/finance/WalletDialog.stories.tsx) | web |
 
 ## Web components/inbox
@@ -208,7 +208,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | --- | --- | --- | --- |
 | GeneralSettingsPanels, UsageSettingsPanel, ComputerSettingsPanel, UpdatesSettingsPanel, ChangePasswordSection, SettingsPasswordInput, AppearancePicker, UiLocalePicker | [apps/web/src/pages/AccountSettingsOverlay.tsx](../../apps/web/src/pages/AccountSettingsOverlay.tsx) | [AccountSettingsOverlay.stories.tsx](../../apps/web/src/pages/AccountSettingsOverlay.stories.tsx) | web |
 | ActivityList, ActivitySection, ActivityError, ActivityFilters, FilterChip, ActivityRow | [apps/web/src/pages/ActivityList.tsx](../../apps/web/src/pages/ActivityList.tsx) | [ActivityList.stories.tsx](../../apps/web/src/pages/ActivityList.stories.tsx) | web |
-| ArtifactsPage, BrowsingPane, LoadMoreButton, EmptyArtifacts, IndexPane, FilterChip, BotFilterChip, ViewModeButton, ArtifactCard, ArtifactRow, ArtifactMimeIcon, PreviewPane, ArtifactPreview, ImagePreview | [apps/web/src/pages/Artifacts.tsx](../../apps/web/src/pages/Artifacts.tsx) | [Artifacts.stories.tsx](../../apps/web/src/pages/Artifacts.stories.tsx) | web |
+| ArtifactsPage, BrowsingPane, ArtifactTable, LoadMoreButton, EmptyArtifacts, IndexPane, FilterChip, BotFilterChip, ArtifactCard, ArtifactRow, ArtifactMimeIcon, PreviewPane, ArtifactPreview, ImagePreview | [apps/web/src/pages/Artifacts.tsx](../../apps/web/src/pages/Artifacts.tsx) | [Artifacts.stories.tsx](../../apps/web/src/pages/Artifacts.stories.tsx) | web |
 | AuthPage, PasswordResetPage, AuthFrame, PasswordField | [apps/web/src/pages/Auth.tsx](../../apps/web/src/pages/Auth.tsx) | [Auth.stories.tsx](../../apps/web/src/pages/Auth.stories.tsx) | web |
 | BillingSettingsPanel | [apps/web/src/pages/BillingSettingsPanel.tsx](../../apps/web/src/pages/BillingSettingsPanel.tsx) | [BillingSettingsPanel.stories.tsx](../../apps/web/src/pages/BillingSettingsPanel.stories.tsx) | web |
 | BoardPage, TicketDialog | [apps/web/src/pages/Board.tsx](../../apps/web/src/pages/Board.tsx) | [Board.stories.tsx](../../apps/web/src/pages/Board.stories.tsx) | web |

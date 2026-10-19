@@ -130,6 +130,7 @@ afterEach(() => {
 });
 
 it("lists wallets in their own Crypto group and keeps them out of total cash", () => {
+  expect(container.querySelector('table[data-slot="table"]')).not.toBeNull();
   const page = container.textContent ?? "";
   expect(page).toContain("Crypto");
   expect(page).toContain("alice.eth");

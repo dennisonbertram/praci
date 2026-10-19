@@ -118,3 +118,26 @@ export const Empty: Story = {
     </Table>
   ),
 };
+
+export const Compact: Story = {
+  render: () => (
+    <Table compact>
+      <TableHeader>
+        <TableHeadRow>
+          <TableHead>Name</TableHead>
+          <TableHead className="text-end">Amount</TableHead>
+        </TableHeadRow>
+      </TableHeader>
+      <TableBody>
+        {rows.map((r) => (
+          <TableRow key={r.id} className="cursor-pointer">
+            <TableCell className="font-medium">{r.name}</TableCell>
+            <TableCell className="text-end tabular-nums">
+              {r.amount == null ? dash : r.amount.toLocaleString("en")}
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  ),
+};

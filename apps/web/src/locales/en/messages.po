@@ -760,6 +760,7 @@ msgstr "Add your OpenRouter key above to start. The Legal agent then reads your 
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
+#: src/pages/Artifacts.tsx
 msgid "Added"
 msgstr "Added"
 
@@ -1422,6 +1423,7 @@ msgstr "Booting up {0}’s computer"
 msgid "bot"
 msgstr "bot"
 
+#: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Bot"
@@ -1623,10 +1625,6 @@ msgstr "card bill"
 #: src/components/finance/ui.tsx
 msgid "Card payment · not spend"
 msgstr "Card payment · not spend"
-
-#: src/pages/Artifacts.tsx
-msgid "Card view"
-msgstr "Card view"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Cardholder"
@@ -4053,6 +4051,7 @@ msgstr "Google Drive"
 msgid "Graph"
 msgstr "Graph"
 
+#: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 msgid "Grid view"
 msgstr "Grid view"
@@ -5140,6 +5139,7 @@ msgstr "Mute"
 #: src/components/data-room/ItemRows.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/components/teach/SkillDraftCard.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/GroupPanel.tsx
@@ -7498,6 +7498,7 @@ msgid "Site"
 msgstr "Site"
 
 #: src/components/data-room/Preview.tsx
+#: src/pages/Artifacts.tsx
 msgid "Size"
 msgstr "Size"
 
@@ -8643,6 +8644,7 @@ msgid "via MCP · {host}"
 msgstr "via MCP · {host}"
 
 #: src/components/data-room/DropZone.tsx
+#: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Legal.tsx
 msgid "View"
