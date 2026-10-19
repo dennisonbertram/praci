@@ -1,0 +1,18 @@
+[
+  {
+    "id": "F-NA-5-1",
+    "story_id": "STORY-NA-5",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Duplicate information",
+    "score": "warn",
+    "description": "The Slack tile description is just 'Slack' under the name 'Slack' (mock data after connecting via the mock emulator).",
+    "expected": "A description that adds information, or none.",
+    "actual": "Name 'Slack', description 'Slack'.",
+    "screenshot": "docs/ux-walker/stories/STORY-NA-5/screenshots/step-4.png",
+    "suggested_fix": "Fall back to the catalog description when the connection has none.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/"
+    ]
+  }
+]

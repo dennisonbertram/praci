@@ -1,0 +1,50 @@
+[
+  {
+    "id": "F-IA-2-01",
+    "story_id": "IA-2",
+    "severity": "medium",
+    "category": "happy-path",
+    "criterion": "Primary goal",
+    "score": "warn",
+    "description": "A read question about transactions (listTransactions) was sent to the Finance agent instead of being answered by the Mercury agent, with an Open Finance link that does not answer anything. Unknown whether this is the demo model or the agent setup.",
+    "expected": "Agent answers from Mercury transactions.",
+    "actual": "Deflects to another agent.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-2/screenshots/step-2.png",
+    "suggested_fix": "Check that listTransactions is offered to the agent and mentioned in its instructions.",
+    "files_likely_involved": [
+      "apps/api/src/integration-agent.ts"
+    ]
+  },
+  {
+    "id": "F-IA-2-02",
+    "story_id": "IA-2",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Error messages",
+    "score": "warn",
+    "description": "With changes off the agent says to make the payment in Mercury itself. It never says that Maya can turn on Allow changes, so the agent looks incapable rather than switched off.",
+    "expected": "Refusal names the setting that would enable it.",
+    "actual": "I can't initiate payments from here. Please create the $50 payment to Sam in Mercury and approve it there.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-2/screenshots/step-3.png",
+    "suggested_fix": "Agent instruction: when a write tool is missing, say changes are off and where to turn them on.",
+    "files_likely_involved": [
+      "apps/api/src/integration-agent.ts"
+    ]
+  },
+  {
+    "id": "F-IA-2-03",
+    "story_id": "IA-2",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Mock labelling",
+    "score": "warn",
+    "description": "The balance answer names no mock marker (account ending 1111, no (Mock) name), and the as-of date is five days old with no explanation.",
+    "expected": "Mock name in the answer per the story's edge case.",
+    "actual": "Plain figure.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-2/screenshots/step-1.png",
+    "suggested_fix": "Return the account name from the tool result.",
+    "files_likely_involved": [
+      "packages/testkit/src/cli/demo/data.ts"
+    ]
+  }
+]

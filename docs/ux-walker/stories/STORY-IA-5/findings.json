@@ -1,0 +1,18 @@
+[
+  {
+    "id": "F-IA-5-01",
+    "story_id": "IA-5",
+    "severity": "low",
+    "category": "error-handling",
+    "criterion": "Error messages",
+    "score": "warn",
+    "description": "After turning changes off, the refusal says the payment action isn't available here and to submit it in Mercury, with no mention that Maya turned it off or how to turn it on again. Same wording issue as IA-2.",
+    "expected": "Agent says changes are off, and where to enable.",
+    "actual": "I can't submit the $500 payment request from this chat because the payment action isn't available here.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-5/screenshots/step-2.png",
+    "suggested_fix": "Same agent-instruction fix as F-IA-2-02.",
+    "files_likely_involved": [
+      "apps/api/src/integration-agent.ts"
+    ]
+  }
+]

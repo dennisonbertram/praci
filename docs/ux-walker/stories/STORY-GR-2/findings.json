@@ -1,0 +1,34 @@
+[
+  {
+    "id": "F-GR-2-001",
+    "story_id": "GR-2",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Loading states: spinner or context for a long wait",
+    "score": "warn",
+    "description": "After clicking Try again the only feedback is the label changing to a disabled, dimmed 'Trying again\u2026' for about 13 s in my run (up to 30 s possible per the story). No spinner, no explanation; the notice text above stays unchanged. The button grows from 82x32 to about 108 px wide, so it shifts. Timeline (fetch hook): click at 3.4 s, inbox/refresh sent 3.5 s, answered 16.7 s, button back to 'Try again' at 16.7 s.",
+    "expected": "Visible progress (spinner) and some sign that it is waiting for Gmail; stable button width.",
+    "actual": "Looks like a dimmed button with static text; could look stuck on a longer wait.",
+    "screenshot": "docs/ux-walker/stories/STORY-GR-2/screenshots/step-2b-trying.png",
+    "suggested_fix": "Add the existing small spinner to the button and set a min-width; optionally change the line to 'Waiting for Gmail\u2026' while retrying.",
+    "files_likely_involved": [
+      "apps/web/src/pages/Inbox.tsx"
+    ]
+  },
+  {
+    "id": "F-GR-2-002",
+    "story_id": "GR-2",
+    "severity": "low",
+    "category": "happy-path",
+    "criterion": "Feedback: result of the action is visible",
+    "score": "warn",
+    "description": "When the retry fails again, the screen returns to exactly the prior state (same title, same text, same button), so the user cannot tell a retry happened.",
+    "expected": "Small confirmation of the new failed attempt, or a changed hint.",
+    "actual": "Identical screen (step-3-after.png vs step-1-notice.png).",
+    "screenshot": "docs/ux-walker/stories/STORY-GR-2/screenshots/step-3-after.png",
+    "suggested_fix": "Show 'Still limited, tried just now' or similar for a moment.",
+    "files_likely_involved": [
+      "apps/web/src/pages/Inbox.tsx"
+    ]
+  }
+]

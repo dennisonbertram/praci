@@ -860,6 +860,7 @@ const DEMO_FINANCE_TOOLS = {
   mercury: {
     getAccounts: obj({}),
     getTreasury: obj({}),
+    getRecipients: obj({ limit: { type: "number" } }),
     listTransactions: obj(
       {
         accountId: { type: "array", items: str },
@@ -871,6 +872,11 @@ const DEMO_FINANCE_TOOLS = {
     ),
     getTransactionById: obj({ transactionId: str }, ["transactionId"]),
     getAttachment: obj({ attachmentId: str }, ["attachmentId"]),
+    // The emulated Mercury only records this call, so a Mercury agent's write approval can be tried.
+    requestSendMoney: obj(
+      { accountId: str, recipientId: str, amount: { type: "number" }, note: str },
+      ["accountId", "recipientId", "amount"],
+    ),
   },
   brex: {
     list_business_accounts: obj({ intent: str }, ["intent"]),

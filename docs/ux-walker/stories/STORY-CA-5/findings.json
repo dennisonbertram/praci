@@ -1,0 +1,50 @@
+[
+  {
+    "id": "F-CA-5-1",
+    "story_id": "STORY-CA-5",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Feedback / state sync",
+    "score": "warn",
+    "description": "Right after Allow changes in Carta was on (switch stayed on after reload), the Carta agent replied 'I can't create the grant in Carta while changes are off...'. Could be canned demo-model text; not confirmed with a real model.",
+    "expected": "Agent follows the saved setting.",
+    "actual": "Agent said changes were off while the switch was on.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-5/screenshots/step-3.png",
+    "suggested_fix": "Check that the agent reads the current setting per turn.",
+    "files_likely_involved": [
+      "apps/api/src/carta-agent.ts"
+    ]
+  },
+  {
+    "id": "F-CA-5-2",
+    "story_id": "STORY-CA-5",
+    "severity": "low",
+    "category": "layout",
+    "criterion": "Alignment",
+    "score": "warn",
+    "description": "On mobile the dialog bullet sits at the left edge while its text is centered.",
+    "expected": "Left-aligned text with the bullet, or no bullet for a single sentence.",
+    "actual": "Bullet and centered text misaligned.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-5/screenshots/mobile-check.png",
+    "suggested_fix": "Drop the single bullet or left-align on mobile.",
+    "files_likely_involved": [
+      "Allow changes dialog"
+    ]
+  },
+  {
+    "id": "F-CA-5-3",
+    "story_id": "STORY-CA-5",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "Dialog says 'The Carta agent will be able...' on Carta but 'The agent will be able...' on Gmail; the confirm button is red as for a destructive action.",
+    "expected": "Same sentence form; neutral confirm style.",
+    "actual": "Copy differs per page; red 'Allow changes'.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-5/screenshots/step-1.png",
+    "suggested_fix": "Use one template and a non-destructive button.",
+    "files_likely_involved": [
+      "IntegrationAgentSection.tsx"
+    ]
+  }
+]

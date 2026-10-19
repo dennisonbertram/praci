@@ -1,0 +1,36 @@
+[
+  {
+    "id": "F-CA-7-1",
+    "story_id": "STORY-CA-7",
+    "severity": "medium",
+    "category": "consistency",
+    "criterion": "Component consistency",
+    "score": "warn",
+    "description": "Same Agent card, different placement: on Gmail it is nested in the account row below Rename and Create agent; on Carta it is a top-level block under the action row. Used by: Gmail linked row has none; Carta keeps it.",
+    "expected": "One layout for both.",
+    "actual": "See the two screenshots.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-7/screenshots/step-1-gmail.png",
+    "suggested_fix": "Use one structure.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/AppDetail.tsx",
+      "McpDetail.tsx",
+      "IntegrationAgentSection.tsx"
+    ]
+  },
+  {
+    "id": "F-CA-7-2",
+    "story_id": "STORY-CA-7",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "Service names differ: switch label uses the account name on Gmail ('Allow changes in Sales mail (Mock)') and 'Carta' (not 'Carta (MOCK DEMO)') on Carta; Only this agent default is off on Gmail and on for Carta.",
+    "expected": "Same naming rule; documented difference in defaults.",
+    "actual": "As described.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-7/screenshots/step-2-carta.png",
+    "suggested_fix": "Use the display name rule consistently.",
+    "files_likely_involved": [
+      "IntegrationAgentSection.tsx"
+    ]
+  }
+]

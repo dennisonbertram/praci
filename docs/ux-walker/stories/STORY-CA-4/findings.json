@@ -1,0 +1,51 @@
+[
+  {
+    "id": "F-CA-4-1",
+    "story_id": "STORY-CA-4",
+    "severity": "medium",
+    "category": "consistency",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "Carta's Used by lists only the Carta agent with its own toggle, repeating what Agent card and Only this agent already say; the toggle can be turned off for the agent that owns the page.",
+    "expected": "Used by hidden or read-only when Only this agent is on.",
+    "actual": "Single-row Used by list with an active switch under an Agent card that already says 'Only this agent' on.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-4/screenshots/step-1.png",
+    "suggested_fix": "Hide Used by when exclusive, or show it read-only.",
+    "files_likely_involved": [
+      "McpDetail.tsx"
+    ]
+  },
+  {
+    "id": "F-CA-4-2",
+    "story_id": "STORY-CA-4",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "Destructive wording differs: Carta page has 'Disconnect sign-in' (top row) and 'Remove Carta (MOCK DEMO)' (bottom); Gmail has 'Remove account' per row and 'Disconnect Gmail' at the bottom.",
+    "expected": "Same verbs for the same actions.",
+    "actual": "Two verbs (Disconnect, Remove) with different scopes on each page.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-4/screenshots/step-1.png",
+    "suggested_fix": "Align verbs and positions.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/AppDetail.tsx",
+      "McpDetail.tsx"
+    ]
+  },
+  {
+    "id": "F-CA-4-3",
+    "story_id": "STORY-CA-4",
+    "severity": "low",
+    "category": "simplicity",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "The Carta agent chat shows an intro twice ('The Carta agent reads your cap table...' at top, 'I keep your cap table...' above the input) and the chip 'Draft this month's investor update' twice.",
+    "expected": "One intro, one chip.",
+    "actual": "Two intros and a duplicated chip.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-4/screenshots/step-3.png",
+    "suggested_fix": "Remove one empty-state block.",
+    "files_likely_involved": [
+      "apps/web chat empty state"
+    ]
+  }
+]

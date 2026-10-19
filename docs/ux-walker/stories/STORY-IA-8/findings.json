@@ -1,0 +1,36 @@
+[
+  {
+    "id": "F-IA-8-01",
+    "story_id": "IA-8",
+    "severity": "medium",
+    "category": "disclosure",
+    "criterion": "Advanced options / risk",
+    "score": "warn",
+    "description": "Used by and Create agent are two ways to give a bot Brex access and the page does not say how they differ. A plain switch gives a bot every tool the server offers; nothing marks it as the riskier route.",
+    "expected": "A one-line difference, or the agent offer shown first.",
+    "actual": "Switches and Create agent with no copy.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-8/screenshots/step-1.png",
+    "suggested_fix": "Add one line under Used by, or order Create agent first.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/McpDetail.tsx",
+      "apps/web/src/components/integrations/IntegrationAgentSection.tsx"
+    ]
+  },
+  {
+    "id": "F-IA-8-02",
+    "story_id": "IA-8",
+    "severity": "low",
+    "category": "flow",
+    "criterion": "Feedback",
+    "score": "warn",
+    "description": "After Create agent, Chief and Finance helper remain switched on in Used by. Nothing shows they now read only (the story says non-agents become read-only).",
+    "expected": "Rows show a read-only note.",
+    "actual": "Unchanged switches.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-8/screenshots/step-5.png",
+    "suggested_fix": "Show read-only next to non-agent rows.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/McpDetail.tsx",
+      "apps/web/src/components/integrations/IntegrationAgentSection.tsx"
+    ]
+  }
+]

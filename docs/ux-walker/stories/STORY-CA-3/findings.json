@@ -1,0 +1,36 @@
+[
+  {
+    "id": "F-CA-3-1",
+    "story_id": "STORY-CA-3",
+    "severity": "medium",
+    "category": "consistency",
+    "criterion": "One way per task / Dead ends",
+    "score": "warn",
+    "description": "With an agent linked, the Sales row has no Used by list, so there is no way to see which bots can use that account. Carta's page keeps Used by under the Agent card. Founder row (no agent) keeps it.",
+    "expected": "Same disclosure on both pages.",
+    "actual": "Sales row shows only Agent card (step-1/2); Carta shows Used by (STORY-CA-4 step-1).",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-3/screenshots/step-1.png",
+    "suggested_fix": "Show Used by under the Agent card on app pages too, or hide it on both.",
+    "files_likely_involved": [
+      "apps/web/src/components/integrations/AppDetail.tsx",
+      "IntegrationAgentSection.tsx",
+      "McpDetail.tsx"
+    ]
+  },
+  {
+    "id": "F-CA-3-2",
+    "story_id": "STORY-CA-3",
+    "severity": "low",
+    "category": "simplicity",
+    "criterion": "Information stated once",
+    "score": "warn",
+    "description": "Only this agent and the Used by toggles both control who can use the account, but they live in different places (and replace each other on app pages).",
+    "expected": "One place to see and change access.",
+    "actual": "Two controls; no indication of how they interact when Only this agent is off.",
+    "screenshot": "docs/ux-walker/stories/STORY-CA-3/screenshots/step-2.png",
+    "suggested_fix": "Show a short 'Shared with N agents' summary when off.",
+    "files_likely_involved": [
+      "IntegrationAgentSection.tsx"
+    ]
+  }
+]

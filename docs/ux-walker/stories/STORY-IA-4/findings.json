@@ -1,0 +1,36 @@
+[
+  {
+    "id": "F-IA-4-01",
+    "story_id": "IA-4",
+    "severity": "medium",
+    "category": "consistency",
+    "criterion": "Component consistency / confirmations",
+    "score": "warn",
+    "description": "Two different approval cards for one payment: the agent's own (clear text with account and payee, buttons Approve once and Cancel) and then the mandatory one (raw JSON, buttons Allow once and Deny). Different words for the same decision, and Maya approves twice. The agent's own card is the clearer one.",
+    "expected": "One card, one vocabulary.",
+    "actual": "Approve once/Cancel, then Allow once/Deny.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-4/screenshots/step-4.png",
+    "suggested_fix": "Make the mandatory card carry the readable sentence and stop the agent from asking itself.",
+    "files_likely_involved": [
+      "apps/web/src/components/AskCard.tsx",
+      "packages/adapters/src/approval-ask.ts"
+    ]
+  },
+  {
+    "id": "F-IA-4-02",
+    "story_id": "IA-4",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Duplicate information / noise",
+    "score": "warn",
+    "description": "The approved first card carries an empty argument, note: \"\", added by the agent.",
+    "expected": "Only meaningful arguments shown.",
+    "actual": "Empty note field in the card.",
+    "screenshot": "docs/ux-walker/stories/STORY-IA-4/screenshots/step-2.png",
+    "suggested_fix": "Hide empty arguments.",
+    "files_likely_involved": [
+      "apps/web/src/components/AskCard.tsx",
+      "packages/adapters/src/approval-ask.ts"
+    ]
+  }
+]

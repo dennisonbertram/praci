@@ -452,6 +452,14 @@ describe("mock demo data", () => {
     expect(spanDays).toBeGreaterThan(60);
   });
 
+  it("lists a mock Mercury recipient a payment can name", async () => {
+    const { callToolFor } = demoFinance(new Date("2026-10-16T12:00:00Z"));
+    const mercury = await callToolFor({ id: "s", provider: "mercury", endpoint: "" } as never);
+    expect(await mercury("getRecipients", {})).toMatchObject({
+      recipients: [{ id: "recipient_mock_acme", name: "Acme (Mock)", status: "active" }],
+    });
+  });
+
   it("reads the mock wallet's ETH and USDC offline, priced, through the real RPC reader", async () => {
     const rpc = createRpcClient({ fetch: demoCrypto().fetch, gapMs: 0 });
     const { holdings } = await fetchChainSnapshot(rpc, 1, DEMO_WALLET.address);

@@ -8575,3 +8575,129 @@ Each area section above ends with its own "Redundancy Candidates (this area)" an
 - **Adding a file to the Data room** has five routes on main; none link back to an email (STORY-INB-016, 022, 024; STORY-DRM-020).
 - **Two intros stacked** in the empty Inbox agent panel (see the Inbox "Suspected problems").
 - **Sign-in and routing**: saved deep links are lost at sign-in; unknown `/app/...` paths redirect or render blank (STORY-APP-106, 140).
+
+---
+
+## New features (2026-10-19)
+
+Thirty stories for five features, kept under their own IDs (not renumbered to STORY-NNN) because other files refer to them. The full story text lives in the topic files; this section only indexes them. Nothing here was walked; status comes from each file's preconditions.
+
+Topic files:
+
+- [Connect apps pill](topics/new-connect-apps.md) (STORY-NA-1..6)
+- [Integration agents on Mercury and Brex](topics/new-integration-agents.md) (STORY-IA-1..8)
+- [Connected-app agents and Carta](topics/new-connected-app-agents.md) (STORY-CA-1..7)
+- [Elio voice agent](topics/new-elio-voice.md) (STORY-EL-1..5)
+- [Gmail rate limit notice](topics/new-gmail-rate-limit.md) (STORY-GR-1..4)
+
+### Summary
+
+| Feature | Short | Medium | Long | Total |
+|---|---|---|---|---|
+| Connect apps pill (NA) | 4 | 2 | 0 | 6 |
+| Integration agents (IA) | 5 | 2 | 1 | 8 |
+| Connected-app agents and Carta (CA) | 3 | 2 | 2 | 7 |
+| Elio voice (EL) | 2 | 2 | 1 | 5 |
+| Gmail rate limit (GR) | 4 | 0 | 0 | 4 |
+| **Total** | **18** | **8** | **4** | **30** |
+
+### Coverage matrix
+
+| Feature | Covered | Gaps |
+|---|---|---|
+| NA | First visit, click-through, plain row on the Integrations page, update after connect, slow/failed load, one logo per app | No story for the all-connected state on the demo; the "needs reconnecting counts as connected" rule is untested; mobile sidebar close on click; offline logo fallback (letter tile) |
+| IA | Create, read question, allow changes, deny, approve, turn off, Only this agent via Chief, archive and recreate, manual Used by | Brex has no write tool, so no Brex write walk; no signed-out server story; no mobile (the plan has none); rename after agent creation is UNVERIFIED |
+| CA | Notion agent create, allow changes and approve, Only this agent vs Used by, Carta defaults, Carta changes on, Carta investor email, App page vs MCP page comparison | Notion is not seeded or emulated; no multi-account app story; no disconnect or remove-account story; Carta writes unobservable (read-only emulator) |
+| EL | First call, hang up and re-call, delegate to another agent, private-history denial, call fails to start | No real speech (mic and recognition cannot be driven offline); no group-chat or mobile story; Data room tools for Elio only named as an alternate path |
+| GR | Notice in the throttled space, Try again during the pause, notice clearing, Reply fallback | Populated inbox with a throttled account (red line plus Try again) has no story; search while throttled only an alternate path; Forward and Reply all are variations only |
+
+### Dependency graph
+
+```
+NA-1 (empty space, pill) -> NA-2 (click) -> NA-4 (connect, pill updates)
+NA-3 (plain row)   needs all five featured apps connected (after NA-4 style connects)
+NA-5, NA-6         independent
+
+IA-1 create agent -> IA-2 read question
+IA-1 -> IA-3 allow changes + deny -> IA-4 approve
+IA-3 -> IA-5 turn changes off
+IA-1 -> IA-6 Only this agent (Chief asks the agent; write part needs IA-3)
+IA-1 (+ IA-3, IA-6 for the full reset) -> IA-7 archive and recreate
+IA-8 independent (needs no agent); alternative to IA-1
+
+CA-1 create Notion agent -> CA-2 allow changes + approve
+CA-1 -> CA-3 Only this agent vs Used by
+CA-4 Carta defaults -> CA-5 Carta changes on
+CA-6 Carta investor email   needs Carta agent + Gmail emulator + model
+CA-7 compare pages          needs a connected app (Gmail Sales) and Carta; can be compared with CA-1/CA-4
+
+Scripted voice provider (Settings, Voice) -> EL-1 first call -> EL-2 hang up and re-call
+Scripted voice provider + model key (pi) -> EL-3 delegate -> EL-4 private history (seed a Finance chat first)
+EL-5 runs with NO provider (case A) or a blocked /rpc/voice/agent (case B); do it before connecting Scripted
+
+GR-1 (throttled space) -> GR-2 Try again
+GR-3 needs a 429 that stops (failNext hook, not on the demo)
+GR-4 needs a cached message + failing single fetch (not on the demo)
+```
+
+Cross-feature ordering: IA-6 and CA-3 share the Only this agent switch; reset state between walks (IA-5, IA-6, IA-7 change shared server state). CA-4/CA-5 use the same Agent section component as IA-*.
+
+### Walkable on the mock demo (DEMO_SLOT=7, http://127.0.0.1:5380)
+
+The emulated Mercury now offers `requestSendMoney` in the demo, so the IA approval stories (IA-3, IA-4, IA-6 write part) are walkable; a scripted model may still need to be told to call it. Brex has no write tool, and Carta and Notion writes cannot be tried.
+
+| Story | Status | Reason |
+|---|---|---|
+| NA-1 | Walkable | Empty demo space has no connections |
+| NA-2 | Walkable | Main space shows Calendar, Drive, Slack logos |
+| NA-3 | Partly | Only Gmail is connected; plain row shows only while Integrations is open; all-five state is not seeded |
+| NA-4 | Partly | Slack sign-in is a real third-party step; pending state only unless the emulator marks it connected |
+| NA-5 | Walkable | Throttle or block `connections.featured` / `connections.list` in the browser |
+| NA-6 | Partly | Demo catalog has only `SLACK`; alias case covered by a unit test only |
+| IA-1 | Walkable | Mercury and Brex seeded, no agent |
+| IA-2 | Walkable | Read tools exist in the demo |
+| IA-3 | Walkable | `requestSendMoney` is now served; the model must call it |
+| IA-4 | Walkable | Follows IA-3 |
+| IA-5 | Walkable | Follows IA-3 |
+| IA-6 | Walkable | Finance agent seeded; write part uses `requestSendMoney` |
+| IA-7 | Walkable | Re-seed first |
+| IA-8 | Walkable | Mercury seeded, no agent needed |
+| CA-1 | Partly | Notion not seeded or emulated; substitute the Gmail "Sales" account (Create agent button there is UNVERIFIED) |
+| CA-2 | Not walkable | Notion writes cannot be tried |
+| CA-3 | Partly | Needs a Notion or Gmail Sales agent from CA-1 and two other bots |
+| CA-4 | Walkable | Carta (MOCK DEMO) and its agent are seeded |
+| CA-5 | Partly | Switch and confirmation dialog work; Carta emulator is read-only so a write cannot be observed |
+| CA-6 | Walkable | Gmail emulator and finance data are seeded; needs a configured model |
+| CA-7 | Walkable | Gmail Sales and Carta are both seeded |
+| EL-1 | Walkable | After connecting the Scripted voice provider in Settings, Voice |
+| EL-2 | Walkable | Follows EL-1 |
+| EL-3 | Partly | Needs a model key (runtime `pi`); scripted runtime will not call `message_bot` |
+| EL-4 | Partly | Same model-key need, plus a seeded Finance chat |
+| EL-5 | Walkable | Default demo has no voice provider (case A); case B by blocking the request |
+| GR-1 | Walkable | "Mail rate-limited" space always answers 429 |
+| GR-2 | Walkable | Same space, within 30 seconds of a failed sync |
+| GR-3 | Not walkable | The throttled account never recovers; no `failNext` hook in the demo |
+| GR-4 | Not walkable | No cached message in the throttled space; other spaces never fail |
+
+Totals: 19 walkable, 8 partly walkable, 3 not walkable.
+
+### Redundancy candidates
+
+From the files' Alternate paths and multi-surface notes. All are suspected, none walked.
+
+- **Agent controls on two page layouts (CA-7).** `AppDetail` (Notion and other apps) and `McpDetail` (Carta, Mercury, Brex) use the same `IntegrationAgentSection` text but differ as follows:
+  - Create agent: inside each account row beside Rename (app page) versus the top action row beside Reconnect and Rename (MCP page).
+  - Agent section: nested in the account row versus a top-level block.
+  - Used by: replaced by Agent for a linked account (app page) versus always shown and filtered to the agent (MCP page).
+  - Tools list with Read and Write groups: app page only.
+  - Remove: Disconnect {app} plus Remove account versus Remove {server} plus Disconnect sign-in.
+  - Service word and confirm title/body: account name or app name versus "Carta" or server name; confirm text differs slightly.
+  - Open Cap table button: Carta only.
+- **Three ways to give an app to a bot (IA-8, IA-6, CA-3).** Create an agent, tick Used by per bot, or turn on Only this agent. Used by remains visible on MCP pages even when Only this agent is on.
+- **Three ways into Integrations (NA-1, NA-2, NA-3).** The pill, the plain row, and the page search entry plus `/app/integrations`. The sidebar changes look depending on state.
+- **Featured-app status shown in three places (NA).** Pill logos, the Popular grid, and per-app status on the Integrations page; connected Gmail also appears in the Inbox.
+- **Talking to the Mercury or Brex data from several agents (IA-2, IA-6).** The Mercury agent, the Finance agent (synced data, may differ in freshness) and Chief via Only this agent.
+- **Four ways to reach Elio (EL-1).** Call Elio on a bot chat, the same button in the Elio chat, the Elio sidebar entry, and mobile's own entry; before voice is connected the same button goes to Settings, Voice. Ending a call also has Hang up, Escape and a spoken request.
+- **Talking to another agent (EL-3).** Via Elio, directly in that agent's chat, or by mentioning the bot in the Elio composer.
+- **Retry paths for a throttled inbox (GR-2).** The Try again button, a tab visibility change, and the one-minute new-mail poll all re-run the sync; Forward, Reply and Reply all share one fallback (GR-4).
+- **Opening a Carta agent (CA-4).** The Carta page, the Cap table page link and the agent chat.
