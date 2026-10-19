@@ -6,7 +6,7 @@ import type {
   MailMessageSummary,
   MailProvider,
 } from "@rakazo/adapter-kit";
-import { inboxTriageJob, MailProviderError } from "@rakazo/adapter-kit";
+import { inboxTriageJob, MAIL_REQUEST_ABORTED, MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -15,7 +15,14 @@ const WINDOW_MS = 14 * 86_400_000;
 const PAGE_SIZE = 100;
 /** Most messages kept from one list; Gmail pages are 100, so this is two pages. */
 const MAX_MESSAGES = 200;
+/** Incremental syncs fetch a few messages. */
 const DEADLINE_MS = 90_000;
+/**
+ * Listing the whole window again hydrates up to 400 messages. Gmail requests are paced to about
+ * four a second, which takes roughly 100 seconds, so this leaves margin. It stays under the
+ * 5-minute stale claim.
+ */
+const RELIST_DEADLINE_MS = 240_000;
 const TEXT_CAP = 500;
 const UPSERT_CHUNK = 200;
 /** Most changes applied one by one; more than this is cheaper to take from the window lists. */
@@ -33,7 +40,7 @@ export interface MailSyncDeps {
   jobs: JobPublisher;
   /** Clock for the 14-day window; defaults to the system clock. */
   now?: () => Date;
-  /** Provider deadline; defaults to 90 seconds, which is shorter than the 2-minute stale claim. */
+  /** Caps every provider call of a sync. Without it an incremental sync gets 90 seconds and a full window re-list 240, both shorter than the 5-minute stale claim. */
   deadlineMs?: number;
 }
 
@@ -84,7 +91,7 @@ export async function syncMailbox(
       AND c."spaceId" = ${spaceId} AND c."userId" = ${userId} AND c.status = 'connected'
       AND (s."lastSyncedAt" IS NULL OR s."lastSyncedAt" < ${DB_NOW} - interval '60 seconds')
       AND (s."backoffUntil" IS NULL OR s."backoffUntil" < ${DB_NOW})
-      AND (s."syncStartedAt" IS NULL OR s."syncStartedAt" < ${DB_NOW} - interval '2 minutes')
+      AND (s."syncStartedAt" IS NULL OR s."syncStartedAt" < ${DB_NOW} - interval '5 minutes')
     RETURNING s."connectionId", s."changeCursor"`;
   if (claimed.length === 0) return "skipped";
   const previousCursor = claimed[0]?.changeCursor ?? null;
@@ -118,7 +125,11 @@ export async function syncMailbox(
       durationMs: Date.now() - started,
       reason: error instanceof MailProviderError ? error.kind : "error",
       ...(error instanceof MailProviderError && error.detail ? { detail: error.detail } : {}),
-      ...(error instanceof MailProviderError ? {} : { errorName: errorName(error) }),
+      ...(error instanceof MailProviderError
+        ? error.kind === "unavailable" && !error.detail
+          ? { errorMessage: error.message }
+          : {}
+        : { errorName: errorName(error) }),
     });
     return "failed";
   };
@@ -126,129 +137,187 @@ export async function syncMailbox(
   const now = (deps.now ?? (() => new Date()))();
   const windowStart = new Date(now.getTime() - WINDOW_MS);
   const after = windowStart.toISOString().slice(0, 10);
-  const timed: AdapterContext = {
-    ...context,
-    signal: AbortSignal.any([context.signal, AbortSignal.timeout(deps.deadlineMs ?? DEADLINE_MS)]),
+  // An injected deadline caps every kind of sync (the inbox overview waits 8 seconds).
+  const deadlineController = new AbortController();
+  const deadline = deadlineController.signal;
+  const startDeadline = (ms: number) => {
+    const timer = setTimeout(() => deadlineController.abort(), ms);
+    timer.unref();
+    return timer;
   };
-
-  const merged = new Map<
-    string,
-    { message: MailMessageSummary; inInbox: boolean; fromSelf: boolean }
-  >();
-  const deletedIds: string[] = [];
-  /** Stored after a complete sync; undefined keeps the stored one. */
-  let nextCursor: string | undefined;
-  /** Set when the window was listed, also to refill a full inbox: clears messages no longer in it. */
-  let inbox: Listed | undefined;
-  let partial = false;
-  /** True when the labels of the fetched messages are the truth, as in a change sync. */
-  let incremental = false;
+  let deadlineTimer = startDeadline(deps.deadlineMs ?? DEADLINE_MS);
+  // Every exit path clears the current timer, so repeated syncs leave nothing behind.
   try {
-    const changes = previousCursor
-      ? await deps.mail.listChanges(account, previousCursor, timed)
-      : null;
-    if (changes && changes.changedIds.length + changes.deletedIds.length <= MAX_CHANGES) {
-      // Only what changed since the last sync: fetch the new and relabelled messages.
-      const page = changes.changedIds.length
-        ? await deps.mail.listMessages(
+    /** Listing the window again takes longer than an incremental sync, so it gets more time. */
+    const lengthenDeadline = () => {
+      if (deps.deadlineMs !== undefined) return;
+      clearTimeout(deadlineTimer);
+      deadlineTimer = startDeadline(RELIST_DEADLINE_MS - (Date.now() - started));
+    };
+    /** Our own deadline ended the request; the caller leaving and every other error are not this. */
+    const ranOutOfTime = (error: unknown) =>
+      deadline.aborted &&
+      !context.signal.aborted &&
+      error instanceof MailProviderError &&
+      error.kind === "unavailable" &&
+      error.message === MAIL_REQUEST_ABORTED;
+    const timed: AdapterContext = {
+      ...context,
+      signal: AbortSignal.any([context.signal, deadline]),
+    };
+
+    const merged = new Map<
+      string,
+      { message: MailMessageSummary; inInbox: boolean; fromSelf: boolean }
+    >();
+    const deletedIds: string[] = [];
+    /** Stored after a complete sync; undefined keeps the stored one. */
+    let nextCursor: string | undefined;
+    /** Set when the window was listed, also to refill a full inbox: clears messages no longer in it. */
+    let inbox: Listed | undefined;
+    let partial = false;
+    /** True when the labels of the fetched messages are the truth, as in a change sync. */
+    let incremental = false;
+    try {
+      const changes = previousCursor
+        ? await deps.mail.listChanges(account, previousCursor, timed)
+        : null;
+      if (changes && changes.changedIds.length + changes.deletedIds.length <= MAX_CHANGES) {
+        // Only what changed since the last sync: fetch the new and relabelled messages.
+        const page = changes.changedIds.length
+          ? await deps.mail.listMessages(
+              account,
+              { query: "", pageSize: PAGE_SIZE, ids: changes.changedIds, useCache: false },
+              timed,
+            )
+          : { messages: [], unhydratedIds: [] };
+        const unhydrated = new Set(page.unhydratedIds ?? []);
+        const returned = new Set(page.messages.map((m) => m.id));
+        partial = unhydrated.size > 0;
+        for (const message of page.messages) {
+          // The window lists skip trash and spam, so a message moved there is gone from the cache.
+          if (message.labelIds.includes("TRASH") || message.labelIds.includes("SPAM"))
+            deletedIds.push(message.id);
+          else
+            merged.set(message.id, {
+              message,
+              inInbox: message.labelIds.includes("INBOX"),
+              fromSelf: message.labelIds.includes("SENT"),
+            });
+        }
+        // Deleted since it was listed: the provider no longer has it.
+        deletedIds.push(
+          ...changes.deletedIds,
+          ...changes.changedIds.filter((id) => !returned.has(id) && !unhydrated.has(id)),
+        );
+        nextCursor = changes.cursor;
+        incremental = true;
+        // The first sync keeps at most 200 inbox messages, so a full cache may hide older ones.
+        // When mail leaves a full inbox, list the window again to bring the next ones in.
+        const leaving = deletedIds.length > 0 || [...merged.values()].some((e) => !e.inInbox);
+        if (
+          leaving &&
+          (await deps.prisma.cachedMailMessage.count({
+            where: { connectionId: account.id, spaceId, userId, inInbox: true },
+          })) >= MAX_MESSAGES
+        ) {
+          inbox = await listWindow(
+            deps.mail,
             account,
-            { query: "", pageSize: PAGE_SIZE, ids: changes.changedIds, useCache: false },
             timed,
-          )
-        : { messages: [], unhydratedIds: [] };
-      const unhydrated = new Set(page.unhydratedIds ?? []);
-      const returned = new Set(page.messages.map((m) => m.id));
-      partial = unhydrated.size > 0;
-      for (const message of page.messages) {
-        // The window lists skip trash and spam, so a message moved there is gone from the cache.
-        if (message.labelIds.includes("TRASH") || message.labelIds.includes("SPAM"))
-          deletedIds.push(message.id);
-        else
-          merged.set(message.id, {
-            message,
-            inInbox: message.labelIds.includes("INBOX"),
-            fromSelf: message.labelIds.includes("SENT"),
+            "in:inbox",
+            after,
+            windowStart,
+            ranOutOfTime,
+          );
+          partial = partial || inbox.partial;
+          for (const message of inbox.messages)
+            merged.set(message.id, {
+              message,
+              inInbox: true,
+              fromSelf: merged.get(message.id)?.fromSelf ?? false,
+            });
+        }
+      } else {
+        if (previousCursor)
+          getLogger().info("mail sync is listing the window again", {
+            connectionId: account.id,
+            reason: changes ? "many changes" : "cursor expired",
           });
-      }
-      // Deleted since it was listed: the provider no longer has it.
-      deletedIds.push(
-        ...changes.deletedIds,
-        ...changes.changedIds.filter((id) => !returned.has(id) && !unhydrated.has(id)),
-      );
-      nextCursor = changes.cursor;
-      incremental = true;
-      // The first sync keeps at most 200 inbox messages, so a full cache may hide older ones.
-      // When mail leaves a full inbox, list the window again to bring the next ones in.
-      const leaving = deletedIds.length > 0 || [...merged.values()].some((e) => !e.inInbox);
-      if (
-        leaving &&
-        (await deps.prisma.cachedMailMessage.count({
-          where: { connectionId: account.id, spaceId, userId, inInbox: true },
-        })) >= MAX_MESSAGES
-      ) {
-        inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
-        partial = partial || inbox.partial;
-        for (const message of inbox.messages)
-          merged.set(message.id, {
-            message,
-            inInbox: true,
-            fromSelf: merged.get(message.id)?.fromSelf ?? false,
-          });
-      }
-    } else {
-      if (previousCursor)
-        getLogger().info("mail sync is listing the window again", {
-          connectionId: account.id,
-          reason: changes ? "many changes" : "cursor expired",
-        });
-      // Taken before the lists, so mail that arrives while they run is replayed next time.
-      // Deletions the changes already name are not lost when the window is listed instead.
-      if (changes) deletedIds.push(...changes.deletedIds);
-      nextCursor = await deps.mail.getCursor(account, timed);
-      inbox = await listWindow(deps.mail, account, timed, "in:inbox", after, windowStart);
-      const sent = await listWindow(deps.mail, account, timed, "in:sent", after, windowStart);
-      partial = inbox.partial || sent.partial;
-      for (const [listed, flag] of [
-        [inbox, "inInbox"],
-        [sent, "fromSelf"],
-      ] as const) {
-        for (const message of listed.messages) {
-          const entry = merged.get(message.id) ?? { message, inInbox: false, fromSelf: false };
-          entry[flag] = true;
-          merged.set(message.id, entry);
+        // Taken before the lists, so mail that arrives while they run is replayed next time.
+        // Deletions the changes already name are not lost when the window is listed instead.
+        if (changes) deletedIds.push(...changes.deletedIds);
+        lengthenDeadline();
+        nextCursor = await deps.mail.getCursor(account, timed);
+        inbox = await listWindow(
+          deps.mail,
+          account,
+          timed,
+          "in:inbox",
+          after,
+          windowStart,
+          ranOutOfTime,
+        );
+        // Out of time: keep what loaded and list sent mail on a later run.
+        const sent: Listed =
+          inbox.partial || timed.signal.aborted
+            ? { messages: [], capped: false, partial: true }
+            : await listWindow(
+                deps.mail,
+                account,
+                timed,
+                "in:sent",
+                after,
+                windowStart,
+                ranOutOfTime,
+              );
+        partial = inbox.partial || sent.partial;
+        for (const [listed, flag] of [
+          [inbox, "inInbox"],
+          [sent, "fromSelf"],
+        ] as const) {
+          for (const message of listed.messages) {
+            const entry = merged.get(message.id) ?? { message, inInbox: false, fromSelf: false };
+            entry[flag] = true;
+            merged.set(message.id, entry);
+          }
         }
       }
+    } catch (error) {
+      // Running out of our own time is an incomplete sync, not a provider failure: store what loaded.
+      // Any other error, even one that arrives after the deadline, is a failure.
+      if (!ranOutOfTime(error)) return fail(error);
+      partial = true;
     }
-  } catch (error) {
-    return fail(error);
-  }
+    // The caller left, wherever that landed (a hydrate returns a partial page instead of throwing).
+    if (context.signal.aborted) return fail(undefined);
 
-  try {
-    const outcome = await prisma.$transaction(
-      async (tx) => {
-        const owned = await tx.$queryRaw<unknown[]>`
+    try {
+      const outcome = await prisma.$transaction(
+        async (tx) => {
+          const owned = await tx.$queryRaw<unknown[]>`
           SELECT 1 FROM mail_sync_states
           WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}
           FOR UPDATE`;
-        if (owned.length === 0) return "skipped" as const;
+          if (owned.length === 0) return "skipped" as const;
 
-        // A window sync turns the flag on here and clears it below for mail that left the list.
-        // A change sync sees every label change, so the labels are the truth.
-        const inInboxUpdate = !incremental
-          ? Prisma.sql`mail_messages."inInbox" OR EXCLUDED."inInbox"`
-          : Prisma.sql`EXCLUDED."inInbox"`;
-        const entries = [...merged.values()];
-        for (let i = 0; i < entries.length; i += UPSERT_CHUNK) {
-          const values = entries.slice(i, i + UPSERT_CHUNK).map(
-            ({ message: m, inInbox, fromSelf }) => Prisma.sql`(
+          // A window sync turns the flag on here and clears it below for mail that left the list.
+          // A change sync sees every label change, so the labels are the truth.
+          const inInboxUpdate = !incremental
+            ? Prisma.sql`mail_messages."inInbox" OR EXCLUDED."inInbox"`
+            : Prisma.sql`EXCLUDED."inInbox"`;
+          const entries = [...merged.values()];
+          for (let i = 0; i < entries.length; i += UPSERT_CHUNK) {
+            const values = entries.slice(i, i + UPSERT_CHUNK).map(
+              ({ message: m, inInbox, fromSelf }) => Prisma.sql`(
               ${randomUUID()}, ${spaceId}, ${userId}, ${account.id}, ${m.id}, ${m.threadId},
               ${m.from?.name ?? null}, ${m.from?.address ?? ""},
               ${m.to.map((a) => a.address)}::text[], ${m.cc.map((a) => a.address)}::text[],
               ${m.subject.slice(0, TEXT_CAP)}, ${m.snippet.slice(0, TEXT_CAP)},
               ${new Date(m.date)}, ${m.unread}, ${inInbox}, ${fromSelf}, ${now})`,
-          );
-          // Metadata only: triage columns are never in the update list, and the flags only turn on.
-          await tx.$executeRaw`
+            );
+            // Metadata only: triage columns are never in the update list, and the flags only turn on.
+            await tx.$executeRaw`
             INSERT INTO mail_messages (
               id, "spaceId", "userId", "connectionId", "providerMessageId", "threadId",
               "fromName", "fromAddress", "toAddresses", "ccAddresses", subject, snippet,
@@ -267,77 +336,80 @@ export async function syncMailbox(
               "inInbox" = ${inInboxUpdate},
               "fromSelf" = mail_messages."fromSelf" OR EXCLUDED."fromSelf",
               "seenAt" = EXCLUDED."seenAt"`;
-        }
+          }
 
-        const scope = { connectionId: account.id, spaceId, userId };
-        if (deletedIds.length) {
-          await tx.cachedMailMessage.deleteMany({
-            where: { ...scope, providerMessageId: { in: deletedIds } },
-          });
-        }
-        await tx.cachedMailMessage.updateMany({
-          where: { ...scope, inInbox: true, receivedAt: { lt: windowStart } },
-          data: { inInbox: false },
-        });
-        if (inbox && !partial) {
-          // A capped list shows only the newest 200, so older rows cannot be judged.
-          const oldest = inbox.messages.at(-1);
+          const scope = { connectionId: account.id, spaceId, userId };
+          if (deletedIds.length) {
+            await tx.cachedMailMessage.deleteMany({
+              where: { ...scope, providerMessageId: { in: deletedIds } },
+            });
+          }
           await tx.cachedMailMessage.updateMany({
-            where: {
-              ...scope,
-              inInbox: true,
-              providerMessageId: { notIn: inbox.messages.map((m) => m.id) },
-              ...(inbox.capped && oldest ? { receivedAt: { gte: new Date(oldest.date) } } : {}),
-            },
+            where: { ...scope, inInbox: true, receivedAt: { lt: windowStart } },
             data: { inInbox: false },
           });
-        }
-        // Also expires metadata that mail searches cached.
-        await tx.cachedMailMessage.deleteMany({
-          where: { ...scope, inInbox: false, seenAt: { lt: windowStart } },
-        });
+          if (inbox && !partial) {
+            // A capped list shows only the newest 200, so older rows cannot be judged.
+            const oldest = inbox.messages.at(-1);
+            await tx.cachedMailMessage.updateMany({
+              where: {
+                ...scope,
+                inInbox: true,
+                providerMessageId: { notIn: inbox.messages.map((m) => m.id) },
+                ...(inbox.capped && oldest ? { receivedAt: { gte: new Date(oldest.date) } } : {}),
+              },
+              data: { inInbox: false },
+            });
+          }
+          // Also expires metadata that mail searches cached.
+          await tx.cachedMailMessage.deleteMany({
+            where: { ...scope, inInbox: false, seenAt: { lt: windowStart } },
+          });
 
-        // An incomplete sync is not an error: the mail that loaded is shown. It leaves lastSyncedAt
-        // alone, so the 60-second throttle does not start, but it is usually a rate limit, so the
-        // next sync waits out a short pause instead of retrying at once.
-        if (partial) {
-          await tx.$executeRaw`
+          // An incomplete sync is not an error: the mail that loaded is shown. It leaves lastSyncedAt
+          // alone, so the 60-second throttle does not start, but it is usually a rate limit, so the
+          // next sync waits out a short pause instead of retrying at once.
+          if (partial) {
+            await tx.$executeRaw`
             UPDATE mail_sync_states
             SET "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL,
                 "backoffUntil" = ${DB_NOW} + ${RATE_LIMIT_BACKOFF},
                 "syncStartedAt" = NULL, "claimToken" = NULL
             WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
-          return "failed" as const;
-        }
-        await tx.$executeRaw`
+            return "failed" as const;
+          }
+          await tx.$executeRaw`
           UPDATE mail_sync_states
           SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL, "backoffUntil" = NULL,
               "changeCursor" = COALESCE(${nextCursor ?? null}::text, "changeCursor"),
               "syncStartedAt" = NULL, "claimToken" = NULL
           WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
-        return "synced" as const;
-      },
-      { timeout: 60_000, maxWait: 10_000 },
-    );
-    if (outcome === "failed") {
-      getLogger().warn("mail sync was incomplete", {
-        connectionId: account.id,
-        durationMs: Date.now() - started,
-      });
-    }
-    // Rows an incomplete sync stored are usable, so they are triaged too.
-    if (outcome === "synced" || (outcome === "failed" && merged.size > 0)) {
-      // The mail is already cached; a lost enqueue only delays triage until the next sync.
-      await deps.jobs.enqueue(inboxTriageJob(userId, spaceId)).catch((error) => {
-        getLogger().warn("inbox triage enqueue failed", {
+          return "synced" as const;
+        },
+        { timeout: 60_000, maxWait: 10_000 },
+      );
+      if (outcome === "failed") {
+        getLogger().warn("mail sync was incomplete", {
           connectionId: account.id,
-          reason: error instanceof Error ? error.name : "error",
+          durationMs: Date.now() - started,
         });
-      });
+      }
+      // Rows an incomplete sync stored are usable, so they are triaged too.
+      if (outcome === "synced" || (outcome === "failed" && merged.size > 0)) {
+        // The mail is already cached; a lost enqueue only delays triage until the next sync.
+        await deps.jobs.enqueue(inboxTriageJob(userId, spaceId)).catch((error) => {
+          getLogger().warn("inbox triage enqueue failed", {
+            connectionId: account.id,
+            reason: error instanceof Error ? error.name : "error",
+          });
+        });
+      }
+      return outcome;
+    } catch (error) {
+      return fail(error);
     }
-    return outcome;
-  } catch (error) {
-    return fail(error);
+  } finally {
+    clearTimeout(deadlineTimer);
   }
 }
 
@@ -353,20 +425,31 @@ async function listWindow(
   query: string,
   after: string,
   windowStart: Date,
+  ranOutOfTime: (error: unknown) => boolean,
 ): Promise<Listed> {
   const messages: MailMessageSummary[] = [];
   let pageToken: string | undefined;
   let partial = false;
   do {
-    const page = await mail.listMessages(
-      account,
-      { query, after, pageSize: PAGE_SIZE, pageToken, useCache: false },
-      context,
-    );
+    let page: Awaited<ReturnType<MailProvider["listMessages"]>>;
+    try {
+      page = await mail.listMessages(
+        account,
+        { query, after, pageSize: PAGE_SIZE, pageToken, useCache: false },
+        context,
+      );
+    } catch (error) {
+      // Out of time: keep the pages already fetched and finish on a later run.
+      if (!ranOutOfTime(error)) throw error;
+      partial = true;
+      break;
+    }
     messages.push(...page.messages);
     partial = (page.unhydratedIds?.length ?? 0) > 0;
     pageToken = page.nextPageToken;
-  } while (pageToken && !partial && messages.length < MAX_MESSAGES);
+  } while (pageToken && !partial && !context.signal.aborted && messages.length < MAX_MESSAGES);
+  // Stopped by the deadline with pages left, which the provider cannot report as unhydrated.
+  if (pageToken && context.signal.aborted && messages.length < MAX_MESSAGES) partial = true;
 
   const capped = messages.length > MAX_MESSAGES || (messages.length >= MAX_MESSAGES && !!pageToken);
   const inWindow = messages

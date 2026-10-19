@@ -196,12 +196,14 @@ export class GoogleApiClient {
         };
       } catch (cause) {
         if (refused !== undefined && cause === refused) throw cause;
-        failure = context.signal.aborted
-          ? { error: new GoogleApiError("aborted"), retry: false }
-          : {
-              error: new GoogleApiError("transport", undefined, describeProxyError(cause)),
-              retry: repeatable && cause instanceof ConnectorProxyError && cause.transient,
-            };
+        // Only a real cancellation is an abort; any other error stays what it was.
+        failure =
+          context.signal.aborted && isAbort(cause, context.signal)
+            ? { error: new GoogleApiError("aborted"), retry: false }
+            : {
+                error: new GoogleApiError("transport", undefined, describeProxyError(cause)),
+                retry: repeatable && cause instanceof ConnectorProxyError && cause.transient,
+              };
       }
       if (!failure.retry || attempt >= MAX_ATTEMPTS || context.signal.aborted) throw failure.error;
       const wait = failure.retryAfterMs ?? BASE_DELAY_MS * 2 ** (attempt - 1) + this.random() * 250;
@@ -235,4 +237,13 @@ export class GoogleApiClient {
       else if (--mine.active === 0 && mine.nextStartAt <= this.now()) this.slots.delete(key);
     }
   }
+}
+
+function isAbort(cause: unknown, signal: AbortSignal, depth = 0): boolean {
+  if (cause === signal.reason) return true;
+  if (typeof cause !== "object" || cause === null) return false;
+  if ("name" in cause && (cause.name === "AbortError" || cause.name === "TimeoutError"))
+    return true;
+  // A connector may wrap the cancellation; the original stays on the cause chain.
+  return depth < 5 && "cause" in cause && isAbort(cause.cause, signal, depth + 1);
 }

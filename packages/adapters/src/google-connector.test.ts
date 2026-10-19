@@ -4,6 +4,7 @@ import { GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { GmailMailProvider } from "./gmail-mail-provider.js";
+import { GoogleApiClient } from "./google-api-request.js";
 import { GoogleConnector } from "./google-connector.js";
 import { EncryptedSecretStore } from "./secrets.js";
 import {
@@ -1126,5 +1127,60 @@ describe("GoogleConnector providers", () => {
       "gmail",
       "googledrive",
     ]);
+  });
+});
+
+describe("GoogleConnector cancellation", () => {
+  async function call(fail: (signal: AbortSignal, abort: () => void) => Promise<never>) {
+    const s = setup();
+    const controller = new AbortController();
+    await connect(s);
+    const base = s.google.fetch;
+    const connector = new GoogleConnector({
+      clientId: "fake-client-id.apps.example.test",
+      clientSecret: CLIENT_SECRET,
+      identitySecret: IDENTITY,
+      redirectUri: REDIRECT,
+      prisma: s.db.prisma,
+      secrets: s.secrets,
+      fetch: (async (input: string | URL | Request, init?: RequestInit) =>
+        String(input).startsWith("https://gmail.googleapis.com")
+          ? fail(init?.signal as AbortSignal, () => controller.abort())
+          : base(input, init)) as typeof fetch,
+    });
+    return {
+      request: () =>
+        new GoogleApiClient({
+          sleep: async () => undefined,
+          random: () => 0,
+          startGapMs: 0,
+        }).request({
+          connector,
+          account: { connectorId: "google", providerRef: "sub-1", app: "gmail" },
+          method: "GET",
+          url: GMAIL_URL,
+          context: { ...context, signal: controller.signal },
+        }),
+    };
+  }
+
+  it("reports a deadline abort in flight as an abort, not a transport failure", async () => {
+    const { request } = await call(
+      (signal, abort) =>
+        new Promise<never>((_, reject) => {
+          signal.addEventListener("abort", () => reject(new TypeError("fetch failed")), {
+            once: true,
+          });
+          abort();
+        }),
+    );
+    await expect(request()).rejects.toMatchObject({ kind: "aborted" });
+  });
+
+  it("still reports a genuine network error as a transport failure", async () => {
+    const { request } = await call(async () => {
+      throw new TypeError("fetch failed");
+    });
+    await expect(request()).rejects.toMatchObject({ kind: "transport" });
   });
 });

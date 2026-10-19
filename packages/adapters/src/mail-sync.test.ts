@@ -2,7 +2,7 @@ import type { AdapterContext, JobPublisher, MailAccount, MailProvider } from "@r
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { createLogger, createTestSink, getLogger, installLogger } from "@rakazo/logging";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { syncMailbox } from "./mail-sync.js";
 
 const account: MailAccount = {
@@ -69,15 +69,16 @@ describe("syncMailbox provider failures", () => {
     });
   });
 
-  it("still records a failure when only the sync deadline expired", async () => {
-    const { run, lastUpdate } = setup(async (_account, _request, context) => {
-      await new Promise<void>((resolve) =>
-        context.signal.addEventListener("abort", () => resolve(), { once: true }),
-      );
-      throw new MailProviderError("unavailable", "Mail request aborted");
+  it("records a provider outage that is not the sync deadline", async () => {
+    const { run, lastUpdate } = setup(async () => {
+      throw new MailProviderError("unavailable", "Mail request failed");
     });
-    expect(await run(new AbortController().signal, { deadlineMs: 20 })).toBe("failed");
-    expect(lastUpdate()).toContain('"lastErrorAt" =');
+    expect(await run(new AbortController().signal, { deadlineMs: 60_000 })).toBe("failed");
+    expect(lastUpdate()).toContain('"lastErrorAt" = ?');
+    expect(sink.events.find((e) => e.message === "mail sync failed")).toMatchObject({
+      reason: "unavailable",
+      errorMessage: "Mail request failed",
+    });
   });
 
   it("does not record a failure when the caller went away, and frees the claim", async () => {
@@ -93,5 +94,35 @@ describe("syncMailbox provider failures", () => {
     expect(sink.events.find((e) => e.message === "mail sync cancelled")).toMatchObject({
       level: "info",
     });
+  });
+});
+
+describe("syncMailbox deadline timers", () => {
+  afterEach(() => vi.useRealTimers());
+  const outcomes = {
+    success: async () => ({ messages: [], unhydratedIds: [] }),
+    failure: async () => {
+      throw new MailProviderError("unavailable", "Mail request failed");
+    },
+  };
+
+  for (const [name, list] of Object.entries(outcomes)) {
+    it(`leaves no timer pending after a ${name}`, async () => {
+      vi.useFakeTimers();
+      const { run } = setup(list);
+      await run(new AbortController().signal);
+      expect(vi.getTimerCount()).toBe(0);
+    });
+  }
+
+  it("leaves no timer pending after the caller cancels", async () => {
+    vi.useFakeTimers();
+    const controller = new AbortController();
+    const { run } = setup(async () => {
+      controller.abort();
+      throw new MailProviderError("unavailable", "Mail request aborted");
+    });
+    await run(controller.signal);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

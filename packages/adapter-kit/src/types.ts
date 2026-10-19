@@ -1032,6 +1032,9 @@ export type MailErrorKind =
   | "invalid"
   | "unknown";
 
+/** Message of the `unavailable` error a provider throws when the request's signal aborted. */
+export const MAIL_REQUEST_ABORTED = "Mail request aborted";
+
 export class MailProviderError extends Error {
   constructor(
     readonly kind: MailErrorKind,

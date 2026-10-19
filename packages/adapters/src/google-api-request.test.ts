@@ -63,3 +63,28 @@ it("asks the write check before every attempt, so a retry after a rate limit can
   await expect(call("GET")).rejects.toMatchObject({ kind: "response" });
   expect(proxied).toBe(3);
 });
+
+it("treats a wrapped cancellation as an abort, and a wrapped network error as transport", async () => {
+  const failing = (error: unknown) => {
+    const controller = new AbortController();
+    return new GoogleApiClient({ sleep: async () => undefined, random: () => 0 }).request({
+      connector: {
+        proxy: async () => {
+          controller.abort();
+          throw error;
+        },
+      } as unknown as ManagedConnectorProvider,
+      account: { connectorId: "c", providerRef: "A", app: "gmail" },
+      method: "GET",
+      url: "https://example.test/x",
+      context: { signal: controller.signal } as AdapterContext,
+    });
+  };
+  const aborted = new DOMException("stopped", "AbortError");
+  await expect(failing(new Error("wrapped", { cause: aborted }))).rejects.toMatchObject({
+    kind: "aborted",
+  });
+  await expect(failing(new Error("wrapped", { cause: new TypeError("x") }))).rejects.toMatchObject({
+    kind: "transport",
+  });
+});

@@ -871,12 +871,15 @@ export class ComposioConnector implements ComposioProvider {
       // Network failures have no status; 5xx and 408 are the provider's. Anything else is final.
       const transient =
         !context.signal.aborted && (status === undefined || status >= 500 || status === 408);
-      throw new ConnectorProxyError(
+      const wrapped = new ConnectorProxyError(
         sanitizeComposioError(error),
         transient,
         status,
         error instanceof Error ? error.constructor.name : undefined,
       );
+      // A cancellation is not an upstream failure: keep it on the cause chain for callers to find.
+      if (context.signal.aborted) wrapped.cause = context.signal.reason;
+      throw wrapped;
     }
     const retryAfter = Number(
       Object.entries(response.headers ?? {}).find(
