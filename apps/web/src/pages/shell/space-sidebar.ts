@@ -60,6 +60,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
   const needle = query.toLowerCase();
   const showSpaceNames = spaces.length > 1;
   return spaces.flatMap((space) => {
+    const spaceLabel = showSpaceNames ? space.name : (soleSpaceTitle ?? space.name);
     const visibleBots = space.bots.filter((bot) =>
       `${bot.name} ${bot.title ?? ""} ${bot.preview ?? ""}`.toLowerCase().includes(needle),
     );
@@ -82,14 +83,11 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       ...group,
       sectionId: group.key.startsWith("section:") ? group.key.slice("section:".length) : null,
       key: showSpaceNames ? `space:${space.id}:${group.key}` : group.key,
-      // The only space is labelled on its first, untitled header too, so its actions button is
-      // not left floating beside an empty label.
-      title: showSpaceNames
-        ? group.title
-          ? `${space.name} · ${group.title}`
-          : space.name
-        : group.title || (index === 0 ? (soleSpaceTitle ?? space.name) : group.title),
-      relabeled: !showSpaceNames && !group.title && index === 0 && soleSpaceTitle !== undefined,
+      // Groups carry the space label as in multi-space mode. The only space is labelled with
+      // soleSpaceTitle (its name stays in spaceName), so its actions button never floats beside an
+      // empty label and the title survives pinned and sectioned groups.
+      title: (group.title ? `${spaceLabel} · ${group.title}` : spaceLabel) as string | null,
+      relabeled: !showSpaceNames && soleSpaceTitle !== undefined,
       showLock: showSpaceNames,
       emptySpaceId: undefined as string | undefined,
       current: showSpaceNames && space.id === currentSpaceId,
