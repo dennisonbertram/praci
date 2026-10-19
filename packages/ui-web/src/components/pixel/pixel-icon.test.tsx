@@ -46,3 +46,10 @@ describe("PixelIcon movement", () => {
     expect(renderToString(<FireIcon />)).not.toContain("pixel-mover");
   });
 });
+
+describe("PixelIcon size", () => {
+  it("renders the requested height, including below the box height", () => {
+    expect(renderToString(<FireIcon size={8} />)).toContain('height="8"');
+    expect(renderToString(<FireIcon size={32} />)).toContain('height="32"');
+  });
+});

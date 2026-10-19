@@ -1,9 +1,10 @@
 import type { CSSProperties } from "react";
-import { PIXEL_COLORS, PIXEL_ICONS, type PixelSprite } from "./sprites";
+import type { PixelSprite } from "./sprites";
+import { PIXEL_COLORS, PIXEL_ICONS } from "./sprites";
 
 type PixelIconProps = {
   sprite: PixelSprite;
-  /** Rendered height in px; snapped down to a whole multiple of the box height. */
+  /** Rendered height in px. At or above the box height it snaps down to a whole multiple; below it, the sprite is scaled down to fit. */
   size?: number;
   /** Decorative (aria-hidden) unless a label is given. */
   label?: string;
@@ -17,7 +18,7 @@ export function PixelIcon({ sprite, size = 16, label, animate = true, className 
   const w = first[0]?.length ?? 0;
   const h = first.length;
   const box = sprite.box ?? { w, h };
-  const scale = Math.max(1, Math.floor(size / box.h));
+  const scale = size >= box.h ? Math.floor(size / box.h) : size / box.h;
   const travel = box.w - w;
   const x = sprite.driveMs !== undefined ? 0 : Math.floor(travel / 2);
   const y = box.h - h;
