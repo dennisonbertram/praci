@@ -1,4 +1,4 @@
-import { Trans } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { Connection, ConnectionCatalogItem } from "@rakazo/contracts";
 import { preferNativeGoogle } from "@rakazo/contracts";
 import { matchFeaturedConnectorId } from "@rakazo/core";
@@ -8,6 +8,7 @@ import { desktopBridge, nativeGoogleAvailable } from "../lib/desktop";
 import { popularApps } from "../lib/integrations";
 import { rpc } from "../lib/rpc";
 import { AppLogo } from "./integrations/AppLogo";
+import { SidebarPageLink } from "./SidebarPageLink";
 
 /** Featured apps this space has not connected yet, at most three. */
 export function unconnectedFeatured(
@@ -34,7 +35,16 @@ export function unconnectedFeatured(
  * The sidebar's Integrations row. While featured apps are unconnected it is a "Connect apps" pill
  * with their logos; once they are connected, and while loading or on failure, it is the plain row.
  */
-export function ConnectAppsButton({ active, onClick }: { active: boolean; onClick: () => void }) {
+export function ConnectAppsButton({
+  active,
+  onClick,
+  rail = false,
+}: {
+  active: boolean;
+  onClick: () => void;
+  rail?: boolean;
+}) {
+  const { t } = useLingui();
   const [apps, setApps] = useState<ConnectionCatalogItem[]>([]);
   // Reload on mount and when leaving the Integrations page, where apps get connected.
   useEffect(() => {
@@ -55,6 +65,18 @@ export function ConnectAppsButton({ active, onClick }: { active: boolean; onClic
     };
   }, [active]);
 
+  if (rail) {
+    return (
+      <SidebarPageLink
+        rail
+        testId="sidebar-integrations"
+        current={active}
+        icon={<LayoutGrid size={15} strokeWidth={1.8} aria-hidden="true" />}
+        label={t`Integrations`}
+        onOpen={onClick}
+      />
+    );
+  }
   if (apps.length > 0 && !active) {
     return (
       <button

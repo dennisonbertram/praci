@@ -37,6 +37,30 @@ describe("bots sidebar collapse preference", () => {
   });
 });
 
+describe("rail preference migration", () => {
+  it("reads the old hidden value as the rail and writes the rail value", () => {
+    const store = new Map<string, string>([["rakazo:bots-sidebar-collapsed:user-1", "1"]]);
+    vi.stubGlobal("window", {
+      localStorage: {
+        getItem: (key: string) => store.get(key) ?? null,
+        setItem: (key: string, value: string) => {
+          store.set(key, value);
+        },
+        removeItem: (key: string) => {
+          store.delete(key);
+        },
+      },
+    });
+    expect(readBotsSidebarCollapsed("user-1")).toBe(true);
+    writeBotsSidebarCollapsed("user-1", true);
+    expect(store.get("rakazo:bots-sidebar-collapsed:user-1")).toBe("rail");
+    expect(readBotsSidebarCollapsed("user-1")).toBe(true);
+    writeInboxAgentCollapsed("user-1", false);
+    expect(store.get("rakazo:inbox-agent-open:user-1")).toBe("1");
+    vi.unstubAllGlobals();
+  });
+});
+
 describe("Inbox agent panel collapse preference", () => {
   it("is stored per user, apart from the bots sidebar", () => {
     const store = new Map<string, string>();
