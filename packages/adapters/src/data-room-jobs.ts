@@ -20,12 +20,16 @@ import { createDataRoomRepos, DataRoomStaleError, IsolationError, recordUsage } 
 import type { DataRoomAi } from "./data-room-models.js";
 import { LlmDataRoomClassifier } from "./llm-data-room-classifier.js";
 import { modelAcceptsImageInput } from "./model-vision.js";
-import { extractPdfText } from "./statements/pdf-text.js";
+import { extractOfficeText, OFFICE_TYPES } from "./office-text.js";
+import { extractPdfText, pdfPageCount } from "./statements/pdf-text.js";
 
 /** Stored text per item; longer documents are cut. */
 export const DATA_ROOM_TEXT_MAX_CHARS = 1_000_000;
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const TEXT_MAX_BYTES = 5 * 1024 * 1024;
+const PDF_SCAN_MAX_PAGES = 20;
+const PDF_SCAN_MIN_CHARS_PER_PAGE = 20;
+const PDF_SCAN_MAX_BYTES = 40 * 1024 * 1024;
 const FOLDER_PATHS_MAX = 200;
 const STEP_TIMEOUT_MS = 120_000;
 
@@ -41,6 +45,11 @@ export interface DataRoomJobDeps {
   resolveAi: (scope: { userId: string; spaceId: string }) => Promise<DataRoomAi>;
   /** Runs the vision model. Without a runtime, images are not read. */
   runtime?: AgentRuntime;
+  /**
+   * Renders the first `maxPages` pages of a PDF to PNG images, for scanned PDFs. Without it,
+   * scanned PDFs are not read. The composition root supplies it so no native canvas is required.
+   */
+  renderPdfPages?: (bytes: Uint8Array, maxPages: number) => Promise<Uint8Array[]>;
   /** Test seam; the default is the space's chat model. */
   classifier?: (ai: DataRoomAi) => DataRoomClassifier;
 }
@@ -164,6 +173,9 @@ const EXTENSION_TYPES: Record<string, string> = {
   htm: "text/html",
   json: "application/json",
   pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
@@ -258,9 +270,52 @@ async function readImageText(
 }
 
 /**
- * Text of a stored document. PDFs use their text layer. Text formats are decoded as UTF-8. Images
- * go to the vision model when one accepts them and the user has consented. Office documents and
- * scanned PDFs yield no text in this version.
+ * Scanned PDF: renders the pages, reads each through the vision path (same consent, model and
+ * size checks as an image) and joins the page texts. A page past the byte budget ends the read.
+ */
+async function readScannedPdf(
+  deps: DataRoomJobDeps,
+  ai: DataRoomAi,
+  item: DataRoomItemRecord,
+  bytes: Uint8Array,
+  ctx: AdapterContext,
+): Promise<string> {
+  const { model } = ai;
+  if (
+    !deps.renderPdfPages ||
+    !deps.runtime ||
+    !model ||
+    !ai.allowed ||
+    !modelAcceptsImageInput(model.provider, model.id, model.acceptsImages)
+  ) {
+    return "";
+  }
+  const pages: string[] = [];
+  let total = 0;
+  const images = await deps.renderPdfPages(bytes, PDF_SCAN_MAX_PAGES).catch(() => []);
+  for (const [i, png] of images.slice(0, PDF_SCAN_MAX_PAGES).entries()) {
+    total += png.byteLength;
+    if (total > PDF_SCAN_MAX_BYTES) break;
+    // Consent can be revoked between pages.
+    if (i > 0 && !(await deps.resolveAi(ctx)).allowed) return "";
+    const page = await readImageText(
+      deps,
+      ai,
+      { ...item, name: `${item.name} page ${i + 1}` },
+      png,
+      "image/png",
+      ctx,
+    );
+    if (page.trim()) pages.push(page.trim());
+  }
+  return pages.join("\n\n");
+}
+
+/**
+ * Text of a stored document. PDFs use their text layer, and a PDF with almost none is rendered
+ * and read as images. Text formats are decoded as UTF-8. Images go to the vision model when one
+ * accepts them and the user has consented. .docx, .xlsx and .pptx are read locally from their
+ * XML. Legacy binary .doc, .xls and .ppt yield no text.
  */
 export async function extractItemText(
   deps: DataRoomJobDeps,
@@ -283,6 +338,14 @@ export async function extractItemText(
             : "This file isn't a readable PDF.",
       );
     });
+    if (text.trim().length < PDF_SCAN_MIN_CHARS_PER_PAGE * 400 && deps.renderPdfPages) {
+      const pageCount = await pdfPageCount(bytes).catch(() => 1);
+      if (text.trim().length < PDF_SCAN_MIN_CHARS_PER_PAGE * pageCount) {
+        text = await readScannedPdf(deps, ai, item, bytes, ctx);
+      }
+    }
+  } else if (type in OFFICE_TYPES) {
+    text = extractOfficeText(bytes, OFFICE_TYPES[type as keyof typeof OFFICE_TYPES]);
   } else if (type === "text/html" || type === "application/xhtml+xml")
     text = stripHtml(decodeUtf8(bytes));
   else if (TEXT_TYPES.has(type)) text = decodeUtf8(bytes);
@@ -299,10 +362,11 @@ export async function runDataRoomIngest(deps: DataRoomJobDeps, payload: Payload)
     if (item.storageKey) {
       const bytes = await deps.artifacts.get(item.storageKey, ctx);
       const type = effectiveType(item.mimeType, item.name);
-      // Only an image needs the model, so only an image needs the model lookup.
-      const ai = IMAGE_TYPES.has(type)
-        ? await deps.resolveAi(payload)
-        : ({ model: null, allowed: false } as DataRoomAi);
+      // Only images and PDFs (which may be scans) need the model, so only they need the lookup.
+      const ai =
+        IMAGE_TYPES.has(type) || type === "application/pdf"
+          ? await deps.resolveAi(payload)
+          : ({ model: null, allowed: false } as DataRoomAi);
       text = await extractItemText(deps, ai, item, bytes, ctx);
       // The vision call can take a while: if consent was revoked meanwhile, discard the output.
       if (text && IMAGE_TYPES.has(type) && !(await deps.resolveAi(payload)).allowed) text = "";

@@ -18,7 +18,6 @@ import {
   downloadDriveFile,
   listDriveAccounts,
   listDriveFiles,
-  modelAcceptsImageInput,
   planDriveFolders,
 } from "@rakazo/adapters";
 import type {
@@ -357,9 +356,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
           await deps.jobs.enqueue(dataRoomStepJob(`dataroom.${step}`, actor, id));
         }
       };
-      const visionReady =
-        ai.model && modelAcceptsImageInput(ai.model.provider, ai.model.id, ai.model.acceptsImages);
-      if (visionReady) await queue("ingest");
+      await queue("ingest");
       await queue("classify");
       if (ai.embeddingModel) await queue("index", ai.embeddingModel);
       return { ...status, allowed: true };

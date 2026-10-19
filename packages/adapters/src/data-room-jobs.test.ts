@@ -1,4 +1,5 @@
 import type { DataRoomItemRecord } from "@rakazo/db";
+import { strToU8, zipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import type { DataRoomJobDeps } from "./data-room-jobs.js";
 import {
@@ -110,10 +111,99 @@ describe("extractItemText", () => {
     expect(text).not.toMatch(/alert|color:red|<p>/);
   });
 
-  it("stores no text for Office documents and unknown types", async () => {
-    const docx = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-    expect(await extract("a.docx", docx, "PK\u0003\u0004 not really")).toBe("");
+  const OFFICE = "application/vnd.openxmlformats-officedocument";
+  const zip = (files: Record<string, string>) =>
+    zipSync(Object.fromEntries(Object.entries(files).map(([k, v]) => [k, strToU8(v)])));
+
+  it("reads .docx paragraphs in order", async () => {
+    const xml =
+      "<w:document><w:body><w:p><w:r><w:t>First &amp; </w:t></w:r><w:r><w:t>part</w:t></w:r></w:p><w:p><w:r><w:t>Second</w:t></w:r></w:p></w:body></w:document>";
+    const bytes = zip({ "word/document.xml": xml, "word/styles.xml": "<x>ignored</x>" });
+    expect(await extract("a.docx", `${OFFICE}.wordprocessingml.document`, bytes)).toBe(
+      "First & part\nSecond",
+    );
+  });
+
+  it("reads .xlsx cells as rows, resolving shared strings", async () => {
+    const bytes = zip({
+      "xl/sharedStrings.xml": "<sst><si><t>Name</t></si><si><t>Total</t></si></sst>",
+      "xl/worksheets/sheet1.xml":
+        '<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1" t="s"><v>1</v></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>Acme</t></is></c><c r="B2"><v>42</v></c></row></sheetData></worksheet>',
+      "xl/worksheets/sheet2.xml":
+        '<worksheet><sheetData><row><c t="inlineStr"><is><t>Second sheet</t></is></c></row></sheetData></worksheet>',
+    });
+    expect(await extract("a.xlsx", `${OFFICE}.spreadsheetml.sheet`, bytes)).toBe(
+      "Name\tTotal\nAcme\t42\n\nSecond sheet",
+    );
+  });
+
+  it("reads .pptx slides in numeric order", async () => {
+    const slide = (t: string) => `<p:sld><a:p><a:r><a:t>${t}</a:t></a:r></a:p></p:sld>`;
+    const bytes = zip({
+      "ppt/slides/slide10.xml": slide("Ten"),
+      "ppt/slides/slide2.xml": slide("Two"),
+      "ppt/slides/slide1.xml": slide("One"),
+    });
+    expect(await extract("a.pptx", `${OFFICE}.presentationml.presentation`, bytes)).toBe(
+      "One\n\nTwo\n\nTen",
+    );
+  });
+
+  it("stops at the decompressed-size cap instead of expanding a zip bomb", async () => {
+    const bomb = zip({
+      "word/document.xml": `<w:p><w:t>${"a".repeat(60 * 1024 * 1024)}</w:t></w:p>`,
+    });
+    expect(bomb.byteLength).toBeLessThan(1024 * 1024);
+    expect(await extract("a.docx", `${OFFICE}.wordprocessingml.document`, bomb)).toBe("");
+  });
+
+  it("gives no text for legacy Office files, corrupt zips and unknown types", async () => {
+    expect(await extract("a.doc", "application/msword", "ÐÏ\u0011à")).toBe("");
+    expect(
+      await extract("a.docx", `${OFFICE}.wordprocessingml.document`, "PK\u0003\u0004 no"),
+    ).toBe("");
     expect(await extract("a.bin", "application/x-unknown", "abc")).toBe("");
+  });
+
+  describe("scanned PDFs", () => {
+    const seen: string[] = [];
+    const runtime = {
+      run: async function* (request: { currentTurnImages?: { data: Uint8Array }[] }) {
+        const page = request.currentTurnImages?.[0]?.data[0];
+        seen.push(String(page));
+        yield { type: "done", text: `page ${page}` };
+      },
+    };
+    const rendered: number[] = [];
+    const seeing = fakeAi({
+      model: { provider: "openai-compatible", id: "vis", acceptsImages: true } as never,
+    });
+    const scanDeps = {
+      ...deps,
+      runtime,
+      prisma: { usageRecord: { create: async () => ({}) } },
+      resolveAi: async () => seeing,
+      renderPdfPages: async (_bytes: Uint8Array, max: number) => {
+        rendered.push(max);
+        return [new Uint8Array([1]), new Uint8Array([2]), new Uint8Array([3])];
+      },
+    } as unknown as DataRoomJobDeps;
+    const scan = (ai: ReturnType<typeof fakeAi>, pdf = makePdf("")) =>
+      extractItemText(scanDeps, ai, item("scan.pdf", "application/pdf"), pdf, ctx);
+
+    it("sends the rendered pages of a PDF without a text layer to vision and joins them", async () => {
+      expect(await scan(seeing)).toBe("page 1\n\npage 2\n\npage 3");
+      expect(seen).toEqual(["1", "2", "3"]);
+      expect(rendered).toEqual([20]);
+    });
+
+    it("makes no vision call when consent is off or the PDF has a text layer", async () => {
+      seen.length = 0;
+      expect(await scan({ ...seeing, allowed: false })).toBe("");
+      const layered = makePdf("A real text layer, long enough.");
+      expect(await scan(seeing, layered)).toBe("A real text layer, long enough.");
+      expect(seen).toEqual([]);
+    });
   });
 
   it("does not read an image without a model, consent or image support", async () => {

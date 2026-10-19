@@ -55,3 +55,8 @@ function layoutRow(row: Item[]): string {
   }
   return line;
 }
+
+/** Page count of a PDF, for deciding whether its text layer is empty. */
+export async function pdfPageCount(bytes: Uint8Array): Promise<number> {
+  return (await getDocumentProxy(new Uint8Array(bytes))).numPages;
+}

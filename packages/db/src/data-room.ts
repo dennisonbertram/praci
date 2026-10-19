@@ -920,8 +920,8 @@ export function createDataRoomRepos(prisma: PrismaClient) {
     },
 
     /**
-     * Sends ready items back to a pipeline step and returns their ids. "ingest": image items with
-     * no text (vision was skipped). "classify": items whose
+     * Sends ready items back to a pipeline step and returns their ids. "ingest": image, PDF and
+     * Office items with no text (vision was skipped, or the type was not readable before). "classify": items whose
      * classification was skipped and that have no type, date or parties (facets already there are
      * never replaced). "index": items with a chunk that has no embedding, or (when
      * `embeddingModel` is given) one embedded by another model.
@@ -936,8 +936,10 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           ? await prisma.$queryRaw<{ id: string }[]>`
               SELECT i.id FROM data_room_items i
               WHERE ${eligibleSql(actor, { status: "ready" })} AND (i."mimeType" LIKE 'image/%'
+                  OR i."mimeType" = 'application/pdf'
+                  OR i."mimeType" LIKE 'application/vnd.openxmlformats-officedocument.%'
                   OR (lower(i."mimeType") IN ('', 'application/octet-stream')
-                    AND lower(i.name) ~ '\.(jpe?g|png|webp|gif)$'))
+                    AND lower(i.name) ~ '\.(jpe?g|png|webp|gif|pdf|docx|xlsx|pptx)$'))
                 AND EXISTS (SELECT 1 FROM data_room_item_texts t WHERE t."itemId" = i.id
                   AND t.text = '')`
           : step === "classify"
