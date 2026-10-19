@@ -7,6 +7,8 @@ import { deliverNotification } from "../lib/notification-delivery";
 import { followNotifications } from "../lib/notification-stream";
 import { rpc } from "../lib/rpc";
 
+const announceChange = () => window.dispatchEvent(new CustomEvent("rakazo:notifications-changed"));
+
 /** The server already reports `shownAt`/`seenAt`; look the notification up again to see them. */
 async function wasShown(n: NotificationDto): Promise<boolean> {
   const since = new Date(Date.parse(n.createdAt) - 1).toISOString();
@@ -24,6 +26,7 @@ export function AppToaster() {
       {
         subscribe: (signal) => rpc.notifications.subscribe(undefined, { signal }),
         list: (since) => rpc.notifications.list({ since }),
+        changed: announceChange,
         sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
         deliver: (n) =>
           void deliverNotification(
@@ -33,11 +36,14 @@ export function AppToaster() {
               body: n.body ?? undefined,
               href: n.link ?? undefined,
               onSeen: () =>
-                void rpc.notifications.markSeen({ surface: n.surface }).catch(() => undefined),
+                void rpc.notifications
+                  .markSeen({ surface: n.surface })
+                  .then(announceChange, () => undefined),
             },
             {
               onShown: async (id) => {
                 await rpc.notifications.markShown({ id });
+                announceChange();
               },
               wasShown: () => wasShown(n),
             },

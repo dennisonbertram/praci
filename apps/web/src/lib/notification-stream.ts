@@ -10,6 +10,8 @@ export type NotificationStreamDeps = {
   /** Called once per new, unseen, unshown `attention` notification. */
   deliver: (n: NotificationDto) => void;
   sleep: (ms: number) => Promise<unknown>;
+  /** Called after every catch-up, so other views can refresh unseen counts. */
+  changed?: () => void;
   now?: () => Date;
 };
 
@@ -35,8 +37,9 @@ export async function followNotifications(deps: NotificationStreamDeps, signal: 
         if (n.importance === "attention" && !n.seenAt && !n.shownAt) deps.deliver(n);
       }
       // `since` only moves forward, so a full page of one timestamp cannot loop forever.
-      if (!page.nextCursor || page.notifications.length === 0) return;
+      if (!page.nextCursor || page.notifications.length === 0) break;
     }
+    deps.changed?.();
   };
   let failures = 0;
   while (!signal.aborted) {
