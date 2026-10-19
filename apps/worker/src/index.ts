@@ -43,6 +43,7 @@ import {
   PipedreamConnector,
   PostgresRealtimeFanout,
   pipedreamConfigFromEnv,
+  RECURRING_JOBS,
   reconcileCloudAgents,
   reconcileComputerUpdates,
   reconcileDataRoom,
@@ -185,8 +186,7 @@ async function main() {
     inMemoryJobs ??
     new GraphileJobWorkerHost(pool, {
       concurrency: parsePositiveInteger(process.env.GRAPHILE_WORKER_CONCURRENCY, 4),
-      // Outbox every minute (deliveries are due 30 seconds after creation); retention at 03:17.
-      crontab: "* * * * * notifications.deliver\n17 3 * * * notifications.retention",
+      cron: RECURRING_JOBS,
     });
   // One provider instance so emulator launches and polls share the same Map.
   const cloudAgent = createCloudAgentConnection();

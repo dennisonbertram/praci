@@ -7,7 +7,14 @@ import {
 } from "@rakazo/adapter-kit";
 import { isTooManyDatabaseConnections } from "@rakazo/db";
 import { runCorrelatedJob, unwrapJobPayload, wrapJobPayload } from "@rakazo/logging";
-import { makeWorkerUtils, type Runner, run, type WorkerUtils } from "graphile-worker";
+import {
+  type CronItem,
+  makeWorkerUtils,
+  parseCronItems,
+  type Runner,
+  run,
+  type WorkerUtils,
+} from "graphile-worker";
 import type { Pool } from "pg";
 import { recordHistoryCompactAttemptsExhausted } from "./history-compaction.js";
 
@@ -89,6 +96,13 @@ export function databaseCapacityBackoffMs(attempt: number): number {
   return Math.min(30_000, 200 * 2 ** Math.min(attempt, 8));
 }
 
+/** Recurring jobs. Cron items, not crontab text: crontab text rejects dotted task names. */
+export const RECURRING_JOBS: CronItem[] = [
+  // Outbox every minute (deliveries are due 30 seconds after creation); retention at 03:17.
+  { task: "notifications.deliver", match: "* * * * *" },
+  { task: "notifications.retention", match: "17 3 * * *" },
+];
+
 export class GraphileJobWorkerHost implements JobWorkerHost {
   private runner: Runner | undefined;
   private handlers: BackgroundJobHandlers | undefined;
@@ -101,8 +115,8 @@ export class GraphileJobWorkerHost implements JobWorkerHost {
     private readonly options: {
       concurrency?: number;
       pollInterval?: number;
-      /** graphile-worker crontab text for recurring tasks, e.g. "* * * * * task". */
-      crontab?: string;
+      /** Recurring tasks, e.g. RECURRING_JOBS. */
+      cron?: CronItem[];
       noHandleSignals?: boolean;
       /** Test seam: delay between 53300 restart attempts. */
       sleep?: (ms: number) => Promise<void>;
@@ -156,7 +170,7 @@ export class GraphileJobWorkerHost implements JobWorkerHost {
       pollInterval: this.options.pollInterval ?? 500,
       noHandleSignals: this.options.noHandleSignals,
       taskList,
-      ...(this.options.crontab ? { crontab: this.options.crontab } : {}),
+      ...(this.options.cron ? { parsedCronItems: parseCronItems(this.options.cron) } : {}),
     });
     runner.events.on("job:failed", ({ job, error }) => {
       recordHistoryCompactAttemptsExhausted(job, error);
