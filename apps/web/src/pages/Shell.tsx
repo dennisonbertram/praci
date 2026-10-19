@@ -187,7 +187,7 @@ import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
-import { SidebarPageLink } from "../components/SidebarPageLink";
+import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
 import {
@@ -285,6 +285,7 @@ import {
   SIDEBAR_DOCKED_QUERY,
   showHeaderWindowChrome,
   sidebarInert,
+  sidebarRail,
   useDrawerFocus,
   useSidebarDocked,
 } from "../lib/shell-layout";
@@ -753,6 +754,14 @@ export function ShellPage() {
   const [focusComposerBotId, setFocusComposerBotId] = useState<string | null>(null);
   const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [botsSidebarCollapsed, setBotsSidebarCollapsed] = useState(false);
+  // Collapsed on a docked sidebar is the icon rail; below the dock width the drawer is unchanged.
+  const rail = sidebarRail(botsSidebarCollapsed, sidebarDocked);
+  const focusSearchOnExpand = useRef(false);
+  useEffect(() => {
+    if (botsSidebarCollapsed || !focusSearchOnExpand.current) return;
+    focusSearchOnExpand.current = false;
+    document.querySelector<HTMLInputElement>('[data-testid="sidebar-search"] input')?.focus();
+  }, [botsSidebarCollapsed]);
   const botsSidebarEdgeDragRef = useRef<{ startX: number; mode: "expand" | "collapse" } | null>(
     null,
   );
@@ -3655,175 +3664,193 @@ export function ShellPage() {
         data-testid="bots-sidebar"
         data-bots-sidebar-density={botsSidebarDensity}
         data-collapsed={botsSidebarCollapsed ? "true" : "false"}
-        inert={
-          sidebarInert(botsSidebarCollapsed, sidebarDocked, mobileSidebarOpen) ? true : undefined
-        }
+        data-rail={rail ? "true" : "false"}
+        inert={sidebarInert(sidebarDocked, mobileSidebarOpen) ? true : undefined}
         className={`absolute inset-y-0 start-0 z-40 flex w-[calc(100%-48px)] max-w-[316px] shrink-0 flex-col border-e border-sidebar-border bg-sidebar transition-[transform,width,opacity] lg:static lg:z-auto lg:translate-x-0 ${
           mobileSidebarOpen ? "translate-x-0" : "-translate-x-full rtl:translate-x-full"
-        } ${
-          botsSidebarCollapsed
-            ? "lg:w-0 lg:max-w-0 lg:overflow-hidden lg:border-e-0 lg:opacity-0 lg:pointer-events-none"
-            : "lg:w-[316px]"
-        }`}
+        } ${botsSidebarCollapsed ? "lg:w-14 lg:max-w-14" : "lg:w-[316px]"}`}
       >
         <SidebarHeaderRow
+          rail={rail}
           search={
-            <InputGroup
-              data-testid="sidebar-search"
-              className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
-            >
-              <InputGroupAddon>
-                <Search size={16} strokeWidth={1.8} aria-hidden="true" />
-              </InputGroupAddon>
-              <InputGroupInput
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Escape" && query) {
-                    e.preventDefault();
-                    setQuery("");
-                  }
-                }}
-                // Chats, documents and mail, so the box says only "Search".
-                placeholder={t`Search`}
-                autoComplete="off"
-                name="sidebar-search"
-              />
-              {query ? (
-                <InputGroupAddon align="inline-end">
-                  <InputGroupButton
-                    size="icon-xs"
-                    aria-label={t`Clear search`}
-                    onClick={() => setQuery("")}
-                  >
-                    <X aria-hidden="true" />
-                  </InputGroupButton>
+            rail ? (
+              <RailTip rail label={t`Search`}>
+                <button
+                  type="button"
+                  aria-label={t`Search`}
+                  data-testid="sidebar-search-rail"
+                  onClick={() => {
+                    focusSearchOnExpand.current = true;
+                    setBotsSidebarCollapsedPref(false);
+                  }}
+                  className="app-no-drag mx-auto grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                >
+                  <Search size={16} strokeWidth={1.8} aria-hidden="true" />
+                </button>
+              </RailTip>
+            ) : (
+              <InputGroup
+                data-testid="sidebar-search"
+                className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
+              >
+                <InputGroupAddon>
+                  <Search size={16} strokeWidth={1.8} aria-hidden="true" />
                 </InputGroupAddon>
-              ) : null}
-            </InputGroup>
+                <InputGroupInput
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && query) {
+                      e.preventDefault();
+                      setQuery("");
+                    }
+                  }}
+                  // Chats, documents and mail, so the box says only "Search".
+                  placeholder={t`Search`}
+                  autoComplete="off"
+                  name="sidebar-search"
+                />
+                {query ? (
+                  <InputGroupAddon align="inline-end">
+                    <InputGroupButton
+                      size="icon-xs"
+                      aria-label={t`Clear search`}
+                      onClick={() => setQuery("")}
+                    >
+                      <X aria-hidden="true" />
+                    </InputGroupButton>
+                  </InputGroupAddon>
+                ) : null}
+              </InputGroup>
+            )
           }
           actions={
-            <div className="relative flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                aria-label={t`Activity`}
-                aria-pressed={activityMode}
-                title={t`Activity`}
-                data-activity-mode={activityMode ? "on" : "off"}
-                onClick={toggleActivityMode}
-                className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
-                  activityMode
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground/70 hover:text-foreground/75"
-                }`}
-              >
-                {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
-                <History size={15} strokeWidth={1.8} aria-hidden="true" />
-              </button>
-              <button
-                type="button"
-                className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 lg:inline-flex"
-                aria-label={t`Hide sidebar`}
-                title={t`Hide sidebar`}
-                data-testid="minimize-bots-sidebar"
-                onClick={() => setBotsSidebarCollapsedPref(true)}
-              >
-                <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
-              </button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="app-no-drag lg:hidden"
-                aria-label={t`Close menu`}
-                title={t`Close menu`}
-                data-testid="close-mobile-sidebar"
-                onClick={() => setMobileSidebarOpen(false)}
-              >
-                <X size={16} strokeWidth={1.8} aria-hidden="true" />
-              </Button>
-              <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
-                <PopoverTrigger
-                  className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
-                  title={t`Create`}
-                  data-testid="create-menu-trigger"
+            rail ? null : (
+              <div className="relative flex shrink-0 items-center gap-1">
+                <button
+                  type="button"
+                  aria-label={t`Activity`}
+                  aria-pressed={activityMode}
+                  title={t`Activity`}
+                  data-activity-mode={activityMode ? "on" : "off"}
+                  onClick={toggleActivityMode}
+                  className={`app-no-drag flex h-8 w-8 items-center justify-center rounded-full ${
+                    activityMode
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground/70 hover:text-foreground/75"
+                  }`}
                 >
-                  +
-                </PopoverTrigger>
-                {/* Unmount with the state change so the panel it opens never coexists with the menu. */}
-                {createMenuOpen ? (
-                  <PopoverContent
-                    align="end"
-                    className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
+                  {/* A history clock, not a bell: this lists recent bot runs, not notifications. */}
+                  <History size={15} strokeWidth={1.8} aria-hidden="true" />
+                </button>
+                <button
+                  type="button"
+                  className="app-no-drag hidden h-8 w-8 items-center justify-center rounded-full text-muted-foreground/70 hover:text-foreground/75 lg:inline-flex"
+                  aria-label={t`Hide sidebar`}
+                  title={t`Hide sidebar`}
+                  data-testid="minimize-bots-sidebar"
+                  onClick={() => setBotsSidebarCollapsedPref(true)}
+                >
+                  <PanelLeftClose size={15} strokeWidth={1.8} aria-hidden="true" />
+                </button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="app-no-drag lg:hidden"
+                  aria-label={t`Close menu`}
+                  title={t`Close menu`}
+                  data-testid="close-mobile-sidebar"
+                  onClick={() => setMobileSidebarOpen(false)}
+                >
+                  <X size={16} strokeWidth={1.8} aria-hidden="true" />
+                </Button>
+                <Popover open={createMenuOpen} onOpenChange={setCreateMenuOpen}>
+                  <PopoverTrigger
+                    className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
+                    title={t`Create`}
+                    data-testid="create-menu-trigger"
                   >
-                    <BotCreatePicker
-                      bots={bots}
-                      onCreateBot={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        void createBot();
-                      }}
-                      onOpenBot={(id) => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        navigate(`/app/${id}`);
-                      }}
-                      onCreateGroup={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        setPanel("create-group");
-                      }}
-                      onCreateSpace={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        setNewSpaceOpen(true);
-                      }}
-                      onShowGroupInfo={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        setPickerInfoTopic("group");
-                      }}
-                      onShowSpaceInfo={() => {
-                        setCreateMenuOpen(false);
-                        setMobileSidebarOpen(false);
-                        setPickerInfoTopic("space");
-                      }}
-                    />
-                  </PopoverContent>
-                ) : null}
-              </Popover>
-            </div>
+                    +
+                  </PopoverTrigger>
+                  {/* Unmount with the state change so the panel it opens never coexists with the menu. */}
+                  {createMenuOpen ? (
+                    <PopoverContent
+                      align="end"
+                      className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
+                    >
+                      <BotCreatePicker
+                        bots={bots}
+                        onCreateBot={() => {
+                          setCreateMenuOpen(false);
+                          setMobileSidebarOpen(false);
+                          void createBot();
+                        }}
+                        onOpenBot={(id) => {
+                          setCreateMenuOpen(false);
+                          setMobileSidebarOpen(false);
+                          navigate(`/app/${id}`);
+                        }}
+                        onCreateGroup={() => {
+                          setCreateMenuOpen(false);
+                          setMobileSidebarOpen(false);
+                          setPanel("create-group");
+                        }}
+                        onCreateSpace={() => {
+                          setCreateMenuOpen(false);
+                          setMobileSidebarOpen(false);
+                          setNewSpaceOpen(true);
+                        }}
+                        onShowGroupInfo={() => {
+                          setCreateMenuOpen(false);
+                          setMobileSidebarOpen(false);
+                          setPickerInfoTopic("group");
+                        }}
+                        onShowSpaceInfo={() => {
+                          setCreateMenuOpen(false);
+                          setMobileSidebarOpen(false);
+                          setPickerInfoTopic("space");
+                        }}
+                      />
+                    </PopoverContent>
+                  ) : null}
+                </Popover>
+              </div>
+            )
           }
         />
         <div className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
           {/* While searching, matching pages are listed with the results instead. */}
-          {showSpaceSearch ? null : (
+          {showSpaceSearch && !rail ? null : (
             // Inside the scroll area, so on a short screen the chats are never squeezed out.
             <div className="flex shrink-0 flex-col">
               <SidebarPageLink
                 testId="sidebar-inbox"
                 current={inboxMode}
                 icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={<Trans>Inbox</Trans>}
+                label={t`Inbox`}
+                rail={rail}
                 onOpen={() => {
                   setMobileSidebarOpen(false);
                   navigate("/app/inbox");
                 }}
-              >
-                {inboxUnread > 0 ? (
-                  <span
-                    role="img"
-                    aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
-                    className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
-                  >
-                    {inboxUnread}
-                  </span>
-                ) : null}
-              </SidebarPageLink>
+                badge={
+                  inboxUnread > 0 ? (
+                    <span
+                      role="img"
+                      aria-label={plural(inboxUnread, { one: "# unread", other: "# unread" })}
+                      className="ms-auto text-[11.5px] text-muted-foreground tabular-nums"
+                    >
+                      {inboxUnread}
+                    </span>
+                  ) : null
+                }
+              />
               <SidebarPageLink
                 testId="sidebar-finance"
                 current={financeMode}
                 icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={<Trans>Finance</Trans>}
+                label={t`Finance`}
+                rail={rail}
                 onOpen={() => {
                   setMobileSidebarOpen(false);
                   navigate("/app/finance");
@@ -3833,7 +3860,8 @@ export function ShellPage() {
                 testId="sidebar-legal"
                 current={legalMode}
                 icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={<Trans>Legal</Trans>}
+                label={t`Legal`}
+                rail={rail}
                 onOpen={() => {
                   setMobileSidebarOpen(false);
                   navigate("/app/legal");
@@ -3843,7 +3871,8 @@ export function ShellPage() {
                 testId="sidebar-cap-table"
                 current={capTableMode}
                 icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={<Trans>Cap table</Trans>}
+                label={t`Cap table`}
+                rail={rail}
                 onOpen={() => {
                   setMobileSidebarOpen(false);
                   navigate("/app/cap-table");
@@ -3853,7 +3882,8 @@ export function ShellPage() {
                 testId="sidebar-data-room"
                 current={dataRoomMode}
                 icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={<Trans>Data room</Trans>}
+                label={t`Data room`}
+                rail={rail}
                 onOpen={() => {
                   setMobileSidebarOpen(false);
                   navigate("/app/data-room");
@@ -3864,16 +3894,17 @@ export function ShellPage() {
                 current={artifactsMode}
                 // Not the Data room's folder icon: these are files bots made.
                 icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={<Trans>Artifacts</Trans>}
+                label={t`Artifacts`}
+                rail={rail}
                 onOpen={() => {
                   setMobileSidebarOpen(false);
                   navigate("/app/artifacts");
                 }}
               />
-              <SidebarPages onOpen={() => setMobileSidebarOpen(false)} />
+              <SidebarPages rail={rail} onOpen={() => setMobileSidebarOpen(false)} />
             </div>
           )}
-          {showSpaceSearch ? (
+          {showSpaceSearch && !rail ? (
             <SpaceSearchResults
               query={spaceQuery}
               hits={searchHits}
@@ -3895,7 +3926,7 @@ export function ShellPage() {
             />
           ) : (
             <>
-              {activityMode ? (
+              {activityMode && !rail ? (
                 <ActivityList
                   onOpenRun={(run) => {
                     setMobileSidebarOpen(false);
@@ -3930,7 +3961,14 @@ export function ShellPage() {
                     data-sidebar-group={group.key}
                     data-sidebar-current={group.current ? "" : undefined}
                   >
-                    {group.title || hasSpaceActions ? (
+                    {rail ? (
+                      <div
+                        className={
+                          group.title ? "mx-2 mt-2 mb-1 border-t border-border" : undefined
+                        }
+                      />
+                    ) : null}
+                    {!rail && (group.title || hasSpaceActions) ? (
                       <div
                         className={
                           group.title && hasSpaceActions
@@ -4046,7 +4084,7 @@ export function ShellPage() {
                         ) : null}
                       </div>
                     ) : null}
-                    {!collapsed &&
+                    {(rail || !collapsed) &&
                       nestedRows.map(({ item, depth, hasChildren, parentId }) => {
                         const parentCollapsed =
                           hasChildren && collapsedRosterParents.has(item.chat.id);
@@ -4089,7 +4127,7 @@ export function ShellPage() {
                                 item.kind === "bot" && draggedBotId === item.chat.id ? 0.55 : 1,
                             }}
                           >
-                            {hasChildren ? (
+                            {hasChildren && !rail ? (
                               <span
                                 className="absolute inset-y-0 z-10 flex w-3.5 items-center justify-center"
                                 style={{ insetInlineStart: `${10 + depth * 14}px` }}
@@ -4116,213 +4154,234 @@ export function ShellPage() {
                                 </button>
                               </span>
                             ) : null}
-                            <button
-                              type="button"
-                              draggable={item.kind === "bot"}
-                              data-roster-bot-id={item.kind === "bot" ? item.chat.id : undefined}
-                              data-roster-unread={item.chat.unread ? "true" : undefined}
-                              data-file-drop={fileDropBotId === item.chat.id ? "" : undefined}
-                              data-roster-error={rowError && compact ? "true" : undefined}
-                              data-roster-depth={
-                                item.kind === "bot" && treeActive ? depth : undefined
-                              }
-                              aria-current={selected ? "page" : undefined}
-                              aria-keyshortcuts={
-                                item.kind === "bot" ? "Alt+ArrowUp Alt+ArrowDown" : undefined
-                              }
-                              onDragStart={(event) => {
-                                if (item.kind !== "bot") return;
-                                setDraggedBotId(item.chat.id);
-                                event.dataTransfer.effectAllowed = "move";
-                                event.dataTransfer.setData("text/plain", item.chat.id);
-                              }}
-                              onDragEnter={(event) => {
-                                if (item.kind === "bot") rowFileDrag(event, item.chat);
-                              }}
-                              onDragOver={(event) => {
-                                if (item.kind === "bot" && rowFileDrag(event, item.chat)) return;
-                                if (
-                                  item.kind === "bot" &&
-                                  draggedBotId &&
-                                  groupBotIds.includes(draggedBotId) &&
-                                  rosterParent.get(draggedBotId) === parentId
-                                ) {
-                                  event.preventDefault();
-                                  event.dataTransfer.dropEffect = "move";
+                            <RailTip rail={rail} label={item.chat.name}>
+                              <button
+                                type="button"
+                                aria-label={rail ? item.chat.name : undefined}
+                                draggable={item.kind === "bot"}
+                                data-roster-bot-id={item.kind === "bot" ? item.chat.id : undefined}
+                                data-roster-unread={item.chat.unread ? "true" : undefined}
+                                data-file-drop={fileDropBotId === item.chat.id ? "" : undefined}
+                                data-roster-error={rowError && compact ? "true" : undefined}
+                                data-roster-depth={
+                                  item.kind === "bot" && treeActive ? depth : undefined
                                 }
-                              }}
-                              onDragLeave={(event) => {
-                                if (
-                                  !event.currentTarget.contains(event.relatedTarget as Node | null)
-                                )
-                                  setFileDropBotId(null);
-                              }}
-                              onDrop={(event) => {
-                                if (item.kind === "bot" && isUnclaimedFileDrag(event)) {
-                                  event.preventDefault();
-                                  setFileDropBotId(null);
-                                  if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
-                                  // Keep the "Skipped ..." notice through the thread-change reset.
-                                  if (item.chat.id !== active?.id)
-                                    keepNoticeFor.current = item.chat.id;
-                                  onAttachmentPick(event.dataTransfer.files, item.chat.id);
-                                  setFocusComposerBotId(item.chat.id);
-                                  setMobileSidebarOpen(false);
-                                  openBot(item.chat.id);
-                                  return;
+                                aria-current={selected ? "page" : undefined}
+                                aria-keyshortcuts={
+                                  item.kind === "bot" ? "Alt+ArrowUp Alt+ArrowDown" : undefined
                                 }
-                                if (
-                                  item.kind !== "bot" ||
-                                  !draggedBotId ||
-                                  rosterParent.get(draggedBotId) !== parentId
-                                )
-                                  return;
-                                event.preventDefault();
-                                reorderRosterBot(draggedBotId, item.chat.id, groupBotIds);
-                                setDraggedBotId(null);
-                              }}
-                              onDragEnd={() => setDraggedBotId(null)}
-                              onKeyDown={(event) => {
-                                if (
-                                  item.kind !== "bot" ||
-                                  !event.altKey ||
-                                  (event.key !== "ArrowUp" && event.key !== "ArrowDown")
-                                )
-                                  return;
-                                const siblings = siblingBotIds(parentId);
-                                const index = siblings.indexOf(item.chat.id);
-                                const target = siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
-                                if (!target) return;
-                                event.preventDefault();
-                                reorderRosterBot(item.chat.id, target, groupBotIds);
-                              }}
-                              onClick={() => {
-                                openSpaceChat(
-                                  item.chat.spaceId,
-                                  item.kind === "bot"
-                                    ? `/app/${item.chat.id}`
-                                    : `/app/g/${item.chat.id}`,
-                                );
-                              }}
-                              onContextMenu={(event) => {
-                                if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
-                                event.preventDefault();
-                                botMenuAnchor.current = event.currentTarget;
-                                setBotMenu({
-                                  kind: item.kind,
-                                  id: item.chat.id,
-                                  position: { x: event.clientX, y: event.clientY },
-                                });
-                              }}
-                              className={`flex w-full items-center ${
-                                compact
-                                  ? "gap-2.5 rounded-xl px-2.5 py-1"
-                                  : "gap-3 rounded-xl px-2.5 py-2"
-                              } text-start ${
-                                item.kind === "bot" ? "cursor-grab active:cursor-grabbing" : ""
-                              } ${
-                                selected ? "bg-sidebar-accent" : "group-hover/row:bg-sidebar-accent"
-                              } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
-                              style={
-                                treeActive
-                                  ? { paddingInlineStart: `${24 + depth * 14}px` }
-                                  : undefined
-                              }
-                            >
-                              {item.kind === "bot" ? (
-                                <BotAvatar
-                                  color={item.chat.color}
-                                  identity={item.chat.id}
-                                  size={36}
-                                  status={item.chat.status}
-                                />
-                              ) : (
-                                <GroupAvatar
-                                  members={
-                                    item.chat.id === activeSnapshot?.groupId
-                                      ? (activeSnapshot.members ?? item.chat.members)
-                                      : item.chat.members
+                                onDragStart={(event) => {
+                                  if (item.kind !== "bot") return;
+                                  setDraggedBotId(item.chat.id);
+                                  event.dataTransfer.effectAllowed = "move";
+                                  event.dataTransfer.setData("text/plain", item.chat.id);
+                                }}
+                                onDragEnter={(event) => {
+                                  if (item.kind === "bot") rowFileDrag(event, item.chat);
+                                }}
+                                onDragOver={(event) => {
+                                  if (item.kind === "bot" && rowFileDrag(event, item.chat)) return;
+                                  if (
+                                    item.kind === "bot" &&
+                                    draggedBotId &&
+                                    groupBotIds.includes(draggedBotId) &&
+                                    rosterParent.get(draggedBotId) === parentId
+                                  ) {
+                                    event.preventDefault();
+                                    event.dataTransfer.dropEffect = "move";
                                   }
-                                  size={36}
-                                />
-                              )}
-                              <div className="min-w-0 flex-1">
-                                <div className="flex items-start justify-between gap-1.5">
-                                  <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                                    <span
-                                      dir="auto"
-                                      data-roster-bot-name={item.kind === "bot" ? "" : undefined}
-                                      title={item.chat.name}
-                                      className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
-                                        item.chat.unread ? "font-medium" : ""
-                                      }`}
-                                    >
-                                      {item.chat.name}
-                                    </span>
-                                    {item.chat.unread ? (
-                                      <span className="sr-only">
-                                        <Trans> (unread)</Trans>
-                                      </span>
-                                    ) : null}
-                                  </div>
-                                  <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
-                                    {!compact ? (
-                                      <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
-                                        {formatRosterTime(item.chat.updatedAt)}
-                                      </span>
-                                    ) : null}
-                                    {item.chat.unread ? (
-                                      <span
-                                        aria-hidden="true"
-                                        className="inline-block h-2 w-2 rounded-full bg-foreground"
-                                      />
-                                    ) : null}
-                                  </div>
-                                </div>
-                                {compact ? (
-                                  compactStatusLabel ? (
-                                    <div
-                                      dir="auto"
-                                      data-roster-status={
-                                        rowError
-                                          ? "error"
-                                          : item.kind === "bot"
-                                            ? item.chat.status
-                                            : undefined
-                                      }
-                                      className={`flex items-center gap-1 text-[12px] leading-[18px] ${
-                                        rowError
-                                          ? "font-medium text-destructive"
-                                          : workStatusLabel
-                                            ? "font-semibold text-status-working"
-                                            : "font-medium text-foreground/75"
-                                      }`}
-                                    >
-                                      {rowError ? (
-                                        <CircleAlert size={12} aria-hidden="true" />
-                                      ) : null}
-                                      <span>{compactStatusLabel}</span>
-                                    </div>
-                                  ) : null
+                                }}
+                                onDragLeave={(event) => {
+                                  if (
+                                    !event.currentTarget.contains(
+                                      event.relatedTarget as Node | null,
+                                    )
+                                  )
+                                    setFileDropBotId(null);
+                                }}
+                                onDrop={(event) => {
+                                  if (item.kind === "bot" && isUnclaimedFileDrag(event)) {
+                                    event.preventDefault();
+                                    setFileDropBotId(null);
+                                    if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
+                                    // Keep the "Skipped ..." notice through the thread-change reset.
+                                    if (item.chat.id !== active?.id)
+                                      keepNoticeFor.current = item.chat.id;
+                                    onAttachmentPick(event.dataTransfer.files, item.chat.id);
+                                    setFocusComposerBotId(item.chat.id);
+                                    setMobileSidebarOpen(false);
+                                    openBot(item.chat.id);
+                                    return;
+                                  }
+                                  if (
+                                    item.kind !== "bot" ||
+                                    !draggedBotId ||
+                                    rosterParent.get(draggedBotId) !== parentId
+                                  )
+                                    return;
+                                  event.preventDefault();
+                                  reorderRosterBot(draggedBotId, item.chat.id, groupBotIds);
+                                  setDraggedBotId(null);
+                                }}
+                                onDragEnd={() => setDraggedBotId(null)}
+                                onKeyDown={(event) => {
+                                  if (
+                                    item.kind !== "bot" ||
+                                    !event.altKey ||
+                                    (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+                                  )
+                                    return;
+                                  const siblings = siblingBotIds(parentId);
+                                  const index = siblings.indexOf(item.chat.id);
+                                  const target =
+                                    siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
+                                  if (!target) return;
+                                  event.preventDefault();
+                                  reorderRosterBot(item.chat.id, target, groupBotIds);
+                                }}
+                                onClick={() => {
+                                  openSpaceChat(
+                                    item.chat.spaceId,
+                                    item.kind === "bot"
+                                      ? `/app/${item.chat.id}`
+                                      : `/app/g/${item.chat.id}`,
+                                  );
+                                }}
+                                onContextMenu={(event) => {
+                                  if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
+                                  event.preventDefault();
+                                  botMenuAnchor.current = event.currentTarget;
+                                  setBotMenu({
+                                    kind: item.kind,
+                                    id: item.chat.id,
+                                    position: { x: event.clientX, y: event.clientY },
+                                  });
+                                }}
+                                className={`relative flex w-full items-center ${
+                                  rail
+                                    ? "justify-center rounded-xl px-0 py-1"
+                                    : compact
+                                      ? "gap-2.5 rounded-xl px-2.5 py-1"
+                                      : "gap-3 rounded-xl px-2.5 py-2"
+                                } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring text-start ${
+                                  item.kind === "bot" ? "cursor-grab active:cursor-grabbing" : ""
+                                } ${
+                                  selected
+                                    ? "bg-sidebar-accent"
+                                    : "group-hover/row:bg-sidebar-accent"
+                                } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
+                                style={
+                                  treeActive && !rail
+                                    ? { paddingInlineStart: `${24 + depth * 14}px` }
+                                    : undefined
+                                }
+                              >
+                                {item.kind === "bot" ? (
+                                  <BotAvatar
+                                    color={item.chat.color}
+                                    identity={item.chat.id}
+                                    size={36}
+                                    status={item.chat.status}
+                                  />
                                 ) : (
-                                  <div
-                                    dir="auto"
-                                    data-roster-preview={!workStatusLabel ? "true" : undefined}
-                                    className={`truncate text-[12px] leading-[18px] ${
-                                      workStatusLabel
-                                        ? "font-semibold text-status-working"
-                                        : item.chat.unread
-                                          ? "font-medium text-foreground/75"
-                                          : "text-muted-foreground"
-                                    }`}
-                                  >
-                                    {rosterLine}
+                                  <GroupAvatar
+                                    members={
+                                      item.chat.id === activeSnapshot?.groupId
+                                        ? (activeSnapshot.members ?? item.chat.members)
+                                        : item.chat.members
+                                    }
+                                    size={36}
+                                  />
+                                )}
+                                {rail && item.chat.unread ? (
+                                  <span
+                                    data-testid="rail-badge"
+                                    aria-hidden="true"
+                                    className="absolute end-1 top-0.5 size-2.5 rounded-full border-2 border-sidebar bg-primary"
+                                  />
+                                ) : null}
+                                {rail ? null : (
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-start justify-between gap-1.5">
+                                      <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+                                        <span
+                                          dir="auto"
+                                          data-roster-bot-name={
+                                            item.kind === "bot" ? "" : undefined
+                                          }
+                                          title={item.chat.name}
+                                          className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                            item.chat.unread ? "font-medium" : ""
+                                          }`}
+                                        >
+                                          {item.chat.name}
+                                        </span>
+                                        {item.chat.unread ? (
+                                          <span className="sr-only">
+                                            <Trans> (unread)</Trans>
+                                          </span>
+                                        ) : null}
+                                      </div>
+                                      <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
+                                        {!compact ? (
+                                          <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
+                                            {formatRosterTime(item.chat.updatedAt)}
+                                          </span>
+                                        ) : null}
+                                        {item.chat.unread ? (
+                                          <span
+                                            aria-hidden="true"
+                                            className="inline-block h-2 w-2 rounded-full bg-foreground"
+                                          />
+                                        ) : null}
+                                      </div>
+                                    </div>
+                                    {compact ? (
+                                      compactStatusLabel ? (
+                                        <div
+                                          dir="auto"
+                                          data-roster-status={
+                                            rowError
+                                              ? "error"
+                                              : item.kind === "bot"
+                                                ? item.chat.status
+                                                : undefined
+                                          }
+                                          className={`flex items-center gap-1 text-[12px] leading-[18px] ${
+                                            rowError
+                                              ? "font-medium text-destructive"
+                                              : workStatusLabel
+                                                ? "font-semibold text-status-working"
+                                                : "font-medium text-foreground/75"
+                                          }`}
+                                        >
+                                          {rowError ? (
+                                            <CircleAlert size={12} aria-hidden="true" />
+                                          ) : null}
+                                          <span>{compactStatusLabel}</span>
+                                        </div>
+                                      ) : null
+                                    ) : (
+                                      <div
+                                        dir="auto"
+                                        data-roster-preview={!workStatusLabel ? "true" : undefined}
+                                        className={`truncate text-[12px] leading-[18px] ${
+                                          workStatusLabel
+                                            ? "font-semibold text-status-working"
+                                            : item.chat.unread
+                                              ? "font-medium text-foreground/75"
+                                              : "text-muted-foreground"
+                                        }`}
+                                      >
+                                        {rosterLine}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
-                              </div>
-                            </button>
+                              </button>
+                            </RailTip>
                             {/* The right-click menu, also reachable on hover or by keyboard. */}
-                            {item.chat.spaceId === bootstrapMe?.spaceId ? (
+                            {!rail && item.chat.spaceId === bootstrapMe?.spaceId ? (
                               <Button
                                 type="button"
                                 variant="ghost"
@@ -4354,7 +4413,7 @@ export function ShellPage() {
               })}
             </>
           )}
-          {archivedBots.length + archivedGroups.length > 0 && !showSpaceSearch ? (
+          {archivedBots.length + archivedGroups.length > 0 && !showSpaceSearch && !rail ? (
             <div className="mt-2 border-t border-border pt-2">
               <button
                 type="button"
@@ -4442,6 +4501,7 @@ export function ShellPage() {
         {/* The top border shows that the list above scrolls under this row. */}
         <div className="border-t border-sidebar-border px-2.5 pt-1">
           <ConnectAppsButton
+            rail={rail}
             active={integrationsMode}
             onClick={() => {
               setMobileSidebarOpen(false);
@@ -4452,12 +4512,15 @@ export function ShellPage() {
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger
             data-testid="user-menu-trigger"
-            className="flex items-center gap-[11px] rounded-lg px-[18px] py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+            aria-label={rail ? userName : undefined}
+            className={`flex items-center gap-[11px] rounded-lg py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+              rail ? "justify-center px-0" : "px-[18px]"
+            }`}
           >
             <span className="grid h-8 w-8 place-items-center rounded-full bg-accent text-[12px] text-foreground/75">
               {initials}
             </span>
-            <span className="text-[14.5px] text-foreground/90">{userName}</span>
+            {rail ? null : <span className="text-[14.5px] text-foreground/90">{userName}</span>}
           </PopoverTrigger>
           {menuOpen ? (
             <PopoverContent
@@ -4531,7 +4594,7 @@ export function ShellPage() {
           aria-label={botsSidebarCollapsed ? t`Show sidebar` : t`Hide sidebar`}
           aria-pressed={!botsSidebarCollapsed}
           className={`absolute inset-y-0 z-50 hidden w-2 cursor-ew-resize touch-none border-0 bg-transparent p-0 lg:block ${
-            botsSidebarCollapsed ? "start-0" : "start-[308px]"
+            botsSidebarCollapsed ? "start-12" : "start-[308px]"
           }`}
           onPointerDown={(event) => {
             event.currentTarget.setPointerCapture(event.pointerId);
