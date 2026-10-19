@@ -264,6 +264,15 @@ Design: [mockup.html](mockup.html) (sample data only).
    point to the original with `duplicateOfId`. A debounced per-owner
    `dataroom.organize` job runs about 2 minutes after ingest. Undo from the change
    log is an optional follow-up.
+   **Auto-sort** (web): the folder list's footer (a button beside the search bar on narrow pages)
+   opens a preview of a tidy-up, grouped as Merge, Move and Rename. With AI consent, one model call
+   sees each classified item's name, folder, type, parties, date, tags and a short summary (never the
+   text) and proposes a target folder per item and better names for meaningless ones (screenshot,
+   camera and scanner names; the extension is kept). Without consent or a model, only duplicate
+   folders ("Name (2)") are merged. Applying runs in one transaction, skips anything that changed
+   since the preview, never deletes an item, and logs each step in `data_room_changes` under a batch
+   id; the toast's Undo reverses that batch. The Data room agent does not call it yet; letting it do
+   so (same plan and apply path) is a follow-up.
 4. Google Drive sync.
 5. Gmail bodies for important mail (decision 6).
 6. Chat history and finance records. Both already live in Postgres; decide then

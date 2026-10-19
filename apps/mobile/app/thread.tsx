@@ -2067,6 +2067,21 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     }
   }
 
+  async function rememberMessage(message: MobileMessage) {
+    const targetBotId = botId;
+    const targetGroupId = groupId;
+    if (!targetBotId && !targetGroupId) return;
+    try {
+      await rpc("threads/remember", {
+        ...(targetGroupId ? { groupId: targetGroupId } : { botId: targetBotId! }),
+        messageId: message.id,
+      });
+    } catch (err) {
+      if (!isCurrentTarget(targetBotId, targetGroupId)) return;
+      Alert.alert(t("Could not remember"), errorText(err, t("Try again.")));
+    }
+  }
+
   // Event actions read the latest committed screen state without invalidating settled rows.
   const currentRowActions: MessageRowActions = {
     reply: (message) => {
@@ -2077,6 +2092,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     select: setSelectableText,
     speak,
     react: (message, reaction) => void reactToMessage(message, reaction),
+    remember: (message) => void rememberMessage(message),
     answer: answerMessage,
     openBot,
     openComputer,
@@ -2124,6 +2140,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       select: (text) => rowActionsRef.current.select(text),
       speak: (message) => rowActionsRef.current.speak(message),
       react: (message, reaction) => rowActionsRef.current.react(message, reaction),
+      remember: (message) => rowActionsRef.current.remember(message),
       answer: (message, answer, username) =>
         rowActionsRef.current.answer(message, answer, username),
       openBot: (id, name) => rowActionsRef.current.openBot(id, name),
@@ -2876,6 +2893,7 @@ type MessageRowActions = {
   select: (text: string) => void;
   speak: (message: MobileMessage) => void;
   react: (message: MobileMessage, reaction: MessageReaction) => void;
+  remember: (message: MobileMessage) => void;
   answer: (message: MobileMessage, answer: string, username?: string) => Promise<void>;
   openBot: (id: string, name: string) => void;
   openComputer: (id: string, name: string) => void;
@@ -2970,6 +2988,11 @@ const MessageRow = memo(function MessageRow({
     // The call already reads replies aloud; a second voice would talk over it.
     const includeSpeak = message.role === "bot" && !onCall && Boolean(blockText(message));
     const includeSelect = messageText.trim().length > 0;
+    const includeRemember =
+      !readOnly &&
+      message.role === "bot" &&
+      canReactToThreadMessage(message) &&
+      messageText.trim().length > 0;
     const reply = () => actions.reply(message);
     const quote = () => actions.quote(message);
     const speakMessage = () => actions.speak(message);
@@ -2982,6 +3005,7 @@ const MessageRow = memo(function MessageRow({
       if (text) void Clipboard.setStringAsync(text).catch(() => undefined);
     };
     const react = (reaction: MessageReaction) => actions.react(message, reaction);
+    const remember = () => actions.remember(message);
     const menuActions = [
       ...(!readOnly ? [{ name: "reply", text: t("Reply"), onPress: reply }] : []),
       ...(includeQuote ? [{ name: "quote", text: t("Quote"), onPress: quote }] : []),
@@ -3005,6 +3029,7 @@ const MessageRow = memo(function MessageRow({
         : []),
       ...(includeSpeak ? [{ name: "speak", text: t("Speak message"), onPress: speakMessage }] : []),
       ...(includeSelect ? [{ name: "select", text: t("Select text"), onPress: select }] : []),
+      ...(includeRemember ? [{ name: "remember", text: t("Remember"), onPress: remember }] : []),
       { name: "copy", text: t("Copy"), onPress: copy },
     ];
     const menu = buildMessageContextMenu({
@@ -3015,6 +3040,7 @@ const MessageRow = memo(function MessageRow({
         quote: t("Quote"),
         speak: t("Speak message"),
         select: t("Select text"),
+        remember: t("Remember"),
       },
       reactions: MESSAGE_REACTIONS,
       include: {
@@ -3023,6 +3049,7 @@ const MessageRow = memo(function MessageRow({
         react: includeReact,
         speak: includeSpeak,
         select: includeSelect,
+        remember: includeRemember,
       },
     });
     const openSheet = () =>
@@ -3048,6 +3075,7 @@ const MessageRow = memo(function MessageRow({
         if (id === "quote") quote();
         if (id === "speak") speakMessage();
         if (id === "select") select();
+        if (id === "remember") remember();
       },
       actionProps: {
         onLongPress: Platform.OS === "ios" ? undefined : openSheet,

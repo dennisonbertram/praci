@@ -87,6 +87,11 @@ msgstr "{0, plural, one {# task done by your bots} other {# tasks done by your b
 msgid "{0, plural, one {#+ result} other {#+ results}}"
 msgstr "{0, plural, one {#+ result} other {#+ results}}"
 
+#. placeholder {0}: picks.size
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "{0, plural, one {Import # file} other {Import # files}}"
+msgstr "{0, plural, one {Import # file} other {Import # files}}"
+
 #. placeholder {0}: confirming?.statement.transactionCount ?? 0
 #: src/components/finance/StatementImport.tsx
 msgid "{0, plural, one {Its # transaction will be removed from Finance.} other {Its # transactions will be removed from Finance.}}"
@@ -111,6 +116,11 @@ msgstr "{0, plural, one {Show all # open deadline} other {Show all # open deadli
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
 msgstr "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
+
+#. placeholder {0}: state.count
+#: src/components/data-room/DropZone.tsx
+msgid "{0, plural, one {Sorted # item} other {Sorted # items}}"
+msgstr "{0, plural, one {Sorted # item} other {Sorted # items}}"
 
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
 #: src/pages/ModelSettingsOverlay.tsx
@@ -971,6 +981,10 @@ msgstr "Already in your Data room"
 msgid "Already in your Data room as {name}"
 msgstr "Already in your Data room as {name}"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Already tidy."
+msgstr "Already tidy."
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr "Always act"
@@ -1069,6 +1083,7 @@ msgid "Appearance"
 msgstr "Appearance"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr "Apply"
@@ -1286,6 +1301,12 @@ msgstr "Auto-renews"
 #: src/pages/legal/LegalContracts.tsx
 msgid "Auto-renews, {notice} days notice"
 msgstr "Auto-renews, {notice} days notice"
+
+#: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderTree.tsx
+msgid "Auto-sort"
+msgstr "Auto-sort"
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Automated senders"
@@ -1569,6 +1590,7 @@ msgstr "Can't reach the server."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
@@ -2015,6 +2037,10 @@ msgstr "Coding sessions and repo docs"
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
 msgstr "Collapse {0}"
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Collapse {title}"
+msgstr "Collapse {title}"
 
 #: src/pages/Shell.tsx
 msgid "Collapse Carta agent"
@@ -2728,6 +2754,10 @@ msgstr "Could not refresh from Carta"
 #: src/pages/Legal.tsx
 msgid "Could not refresh: {0}"
 msgstr "Could not refresh: {0}"
+
+#: src/pages/Shell.tsx
+msgid "Could not remember"
+msgstr "Could not remember"
 
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/ScratchpadSection.tsx
@@ -3738,6 +3768,10 @@ msgstr "Expand"
 msgid "Expand {0}"
 msgstr "Expand {0}"
 
+#: src/components/SidebarPagesGroup.tsx
+msgid "Expand {title}"
+msgstr "Expand {title}"
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
 msgstr "Expected"
@@ -4311,6 +4345,10 @@ msgstr "In"
 msgid "In cash, not counted as burn"
 msgstr "In cash, not counted as burn"
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "In Data room"
+msgstr "In Data room"
+
 #: src/lib/ticket-status.ts
 msgid "In progress"
 msgstr "In progress"
@@ -4702,6 +4740,7 @@ msgid "Loading voice providers…"
 msgstr "Loading voice providers…"
 
 #: src/App.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
@@ -4945,6 +4984,10 @@ msgstr "Mentions only"
 msgid "Merchant"
 msgstr "Merchant"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Merge"
+msgstr "Merge"
+
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -5127,6 +5170,7 @@ msgstr "More Blockscout actions"
 msgid "More computer actions"
 msgstr "More computer actions"
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
 msgstr "Move"
@@ -6055,6 +6099,7 @@ msgstr "Page options"
 msgid "PagerDuty incident"
 msgstr "PagerDuty incident"
 
+#: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Pages"
@@ -6591,6 +6636,14 @@ msgstr "Release interrupted computer?"
 msgid "Relevance"
 msgstr "Relevance"
 
+#: src/pages/Shell.tsx
+msgid "Remember"
+msgstr "Remember"
+
+#: src/pages/Shell.tsx
+msgid "Remembered"
+msgstr "Remembered"
+
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/StatementImport.tsx
@@ -6712,6 +6765,7 @@ msgstr "Removes the account and bot access."
 msgid "Removes the connection and bot access."
 msgstr "Removes the connection and bot access."
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -6858,6 +6912,7 @@ msgid "Restoring your workspace"
 msgstr "Restoring your workspace"
 
 #: src/components/AccountAccess.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -7239,7 +7294,9 @@ msgid "See who owns your company"
 msgstr "See who owns your company"
 
 #. placeholder {0}: file.name
+#. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Select {0}"
 msgstr "Select {0}"
 
@@ -8045,6 +8102,10 @@ msgstr "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: ch
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 msgstr "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model could not sort your files."
+msgstr "The model could not sort your files."
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr "The model provider did not accept your API key. Check it in Settings > Models."
@@ -8376,6 +8437,10 @@ msgstr "Turn off drafts for {botName}?"
 msgid "Turn off sending for {botName}?"
 msgstr "Turn off sending for {botName}?"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Turn on a model and allow AI access to sort files."
+msgstr "Turn on a model and allow AI access to sort files."
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -8412,6 +8477,15 @@ msgstr "Uncategorized"
 msgid "Underline"
 msgstr "Underline"
 
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}"
+msgstr "Undid {restored}"
+
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}, skipped {skipped}"
+msgstr "Undid {restored}, skipped {skipped}"
+
+#: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
 #: src/pages/CapTable.tsx

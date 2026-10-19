@@ -87,6 +87,11 @@ msgstr ""
 msgid "{0, plural, one {#+ result} other {#+ results}}"
 msgstr ""
 
+#. placeholder {0}: picks.size
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "{0, plural, one {Import # file} other {Import # files}}"
+msgstr ""
+
 #. placeholder {0}: confirming?.statement.transactionCount ?? 0
 #: src/components/finance/StatementImport.tsx
 msgid "{0, plural, one {Its # transaction will be removed from Finance.} other {Its # transactions will be removed from Finance.}}"
@@ -110,6 +115,11 @@ msgstr ""
 #. placeholder {0}: open.length
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "{0, plural, one {Showing # overdue deadline.} other {Showing # overdue deadlines.}}"
+msgstr ""
+
+#. placeholder {0}: state.count
+#: src/components/data-room/DropZone.tsx
+msgid "{0, plural, one {Sorted # item} other {Sorted # items}}"
 msgstr ""
 
 #. placeholder {0}: Math.ceil(oauth.expiresInSeconds / 60)
@@ -971,6 +981,10 @@ msgstr ""
 msgid "Already in your Data room as {name}"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Already tidy."
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -1069,6 +1083,7 @@ msgid "Appearance"
 msgstr "Erscheinungsbild"
 
 #: src/components/compose/RichTextEditor.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -1285,6 +1300,12 @@ msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
 msgid "Auto-renews, {notice} days notice"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/FolderTree.tsx
+msgid "Auto-sort"
 msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
@@ -1569,6 +1590,7 @@ msgstr "Server nicht erreichbar."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/ExchangeGroup.tsx
@@ -2014,6 +2036,10 @@ msgstr ""
 #. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
+msgstr ""
+
+#: src/components/SidebarPagesGroup.tsx
+msgid "Collapse {title}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2727,6 +2753,10 @@ msgstr ""
 #. placeholder {0}: overview.error
 #: src/pages/Legal.tsx
 msgid "Could not refresh: {0}"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not remember"
 msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
@@ -3738,6 +3768,10 @@ msgstr "Erweitern"
 msgid "Expand {0}"
 msgstr ""
 
+#: src/components/SidebarPagesGroup.tsx
+msgid "Expand {title}"
+msgstr ""
+
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Expected"
 msgstr ""
@@ -4311,6 +4345,10 @@ msgstr ""
 msgid "In cash, not counted as burn"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "In Data room"
+msgstr ""
+
 #: src/lib/ticket-status.ts
 msgid "In progress"
 msgstr ""
@@ -4702,6 +4740,7 @@ msgid "Loading voice providers…"
 msgstr "Stimmanbieter werden geladen…"
 
 #: src/App.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
@@ -4945,6 +4984,10 @@ msgstr ""
 msgid "Merchant"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Merge"
+msgstr ""
+
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -5127,6 +5170,7 @@ msgstr ""
 msgid "More computer actions"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
 msgstr ""
@@ -6055,6 +6099,7 @@ msgstr ""
 msgid "PagerDuty incident"
 msgstr ""
 
+#: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Pages"
@@ -6591,6 +6636,14 @@ msgstr ""
 msgid "Relevance"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Remember"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Remembered"
+msgstr ""
+
 #: src/components/ApprovalRulesSettings.tsx
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/finance/StatementImport.tsx
@@ -6712,6 +6765,7 @@ msgstr ""
 msgid "Removes the connection and bot access."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -6858,6 +6912,7 @@ msgid "Restoring your workspace"
 msgstr ""
 
 #: src/components/AccountAccess.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -7239,7 +7294,9 @@ msgid "See who owns your company"
 msgstr ""
 
 #. placeholder {0}: file.name
+#. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 msgid "Select {0}"
 msgstr ""
 
@@ -8045,6 +8102,10 @@ msgstr ""
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model could not sort your files."
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr ""
@@ -8376,6 +8437,10 @@ msgstr ""
 msgid "Turn off sending for {botName}?"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Turn on a model and allow AI access to sort files."
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -8412,6 +8477,15 @@ msgstr ""
 msgid "Underline"
 msgstr ""
 
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}"
+msgstr ""
+
+#: src/components/data-room/upload-toasts.ts
+msgid "Undid {restored}, skipped {skipped}"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
 #: src/pages/CapTable.tsx

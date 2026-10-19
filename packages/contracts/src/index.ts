@@ -12,6 +12,7 @@ export * from "./cloudflare-ai-gateway.js";
 export * from "./contacts.js";
 export * from "./data-room.js";
 export * from "./data-room-api.js";
+export * from "./data-room-autosort.js";
 export * from "./desktop.js";
 export * from "./devin.js";
 export * from "./domain.js";

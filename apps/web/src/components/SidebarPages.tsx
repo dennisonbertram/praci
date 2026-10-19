@@ -16,6 +16,7 @@ import { sidebarPageCopy } from "../lib/sidebar-page-copy";
 import { errorText } from "../lib/user-error";
 import { AddSidebarPage } from "./AddSidebarPage";
 import { SidebarPageLink } from "./SidebarPageLink";
+import { usePagesCollapsed } from "./SidebarPagesGroup";
 
 /** The user's added sidebar pages, then the "+ Add page" row. */
 export function SidebarPages({
@@ -28,6 +29,7 @@ export function SidebarPages({
   rail?: boolean;
 }) {
   const { t } = useLingui();
+  const collapsed = usePagesCollapsed();
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const [state, setState] = useState<SidebarPagesState | null>(null);
@@ -86,42 +88,46 @@ export function SidebarPages({
     const template = templates.find((candidate) => candidate.key === key);
     return template?.available && template.platforms.includes(surface) ? template : [];
   });
+  const isCurrent = (template: SidebarPageTemplate) =>
+    matchPath({ path: template.route, end: false }, pathname) != null;
   const addable = templates.filter((template) => state?.addable.includes(template.key));
 
   return (
     <>
-      {rows.map((template) => (
-        <div key={template.key} className="group relative">
-          <SidebarPageLink
-            testId={`sidebar-page-${template.key}`}
-            current={matchPath({ path: template.route, end: false }, pathname) != null}
-            icon={<LayoutDashboard size={15} strokeWidth={1.8} aria-hidden="true" />}
-            label={t(sidebarPageCopy(template.key).label)}
-            rail={rail}
-            onOpen={() => {
-              onOpen?.();
-              navigate(template.route);
-            }}
-          />
-          {rail ? null : (
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                aria-label={t`Page options`}
-                className="absolute end-4 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground opacity-0 pointer-coarse:opacity-100 hover:bg-accent focus-visible:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100"
-              >
-                <Ellipsis size={15} strokeWidth={1.8} aria-hidden="true" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => void remove(template)}>
-                  <Trans>Remove from sidebar</Trans>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-      ))}
+      {rows.map((template) =>
+        collapsed && !isCurrent(template) ? null : (
+          <div key={template.key} className="group relative">
+            <SidebarPageLink
+              testId={`sidebar-page-${template.key}`}
+              current={isCurrent(template)}
+              icon={<LayoutDashboard size={15} strokeWidth={1.8} aria-hidden="true" />}
+              label={t(sidebarPageCopy(template.key).label)}
+              rail={rail}
+              onOpen={() => {
+                onOpen?.();
+                navigate(template.route);
+              }}
+            />
+            {rail ? null : (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  aria-label={t`Page options`}
+                  className="absolute end-4 top-1/2 grid h-6 w-6 -translate-y-1/2 place-items-center rounded-md text-muted-foreground opacity-0 pointer-coarse:opacity-100 hover:bg-accent focus-visible:opacity-100 group-hover:opacity-100 data-[popup-open]:opacity-100"
+                >
+                  <Ellipsis size={15} strokeWidth={1.8} aria-hidden="true" />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => void remove(template)}>
+                    <Trans>Remove from sidebar</Trans>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        ),
+      )}
       <AddSidebarPage
-        templates={rail ? [] : addable}
+        templates={rail || collapsed ? [] : addable}
         onAdd={(key) => {
           const template = templates.find((candidate) => candidate.key === key);
           if (template) void add(template);

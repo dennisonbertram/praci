@@ -1,6 +1,12 @@
 import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
-import type { ArtifactStore, JobPublisher, MailProvider } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  AgentRunModel,
+  ArtifactStore,
+  JobPublisher,
+  MailProvider,
+} from "@rakazo/adapter-kit";
 import {
   dataRoomBlobDeleteJob,
   dataRoomBoxImportJob,
@@ -9,9 +15,13 @@ import {
 } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
 import {
+  AUTO_SORT_ITEM_LIMIT,
+  type AutoSortItem,
+  autoSortFolderPaths,
   BoxFileError,
   type BoxFilesDeps,
   boxExternalId,
+  buildAutoSortPlan,
   createFileDataRoomItem as createFileItem,
   DATA_ROOM_MIME,
   DriveFileError,
@@ -31,6 +41,7 @@ import {
 } from "@rakazo/adapters";
 import type {
   Actor,
+  AutoSortOperation,
   DataRoomApiFolder,
   DataRoomApiItem,
   DataRoomApiUploadResponse,
@@ -50,6 +61,7 @@ import type {
   PrismaClient,
 } from "@rakazo/db";
 import {
+  createDataRoomAutoSortRepos,
   createDataRoomImport,
   createDataRoomRepos,
   DataRoomConflictError,
@@ -72,6 +84,15 @@ export interface DataRoomDeps {
    * search is keyword-only.
    */
   resolveAi?: (scope: { userId: string; spaceId: string }) => Promise<DataRoomAi>;
+  /**
+   * One model call that places the items of a tidy-up; returns the raw answer, which is validated
+   * against the known item ids. Without it, or when it throws, a tidy-up only merges duplicate folders.
+   */
+  proposeSort?: (
+    model: AgentRunModel,
+    input: { folders: string[][]; items: (AutoSortItem & { folder: string })[] },
+    context: AdapterContext,
+  ) => Promise<unknown>;
   /** Needed only to import mail attachments. */
   mail?: MailProvider;
   /** Needed only to import from Google Drive. */
@@ -246,6 +267,7 @@ const REINDEX_BATCH = 200;
 /** Procedure bodies for `dataRoom.*`; the router adds the Actor. */
 export function createDataRoomService(deps: DataRoomDeps) {
   const repo = createDataRoomRepos(deps.prisma);
+  const sortRepo = createDataRoomAutoSortRepos(deps.prisma);
   const { fileItem, known } = createFileDataRoomItem(deps, repo);
 
   /** The name and folder path live in the item's metadata chunk, so a change re-indexes it. */
@@ -262,6 +284,16 @@ export function createDataRoomService(deps: DataRoomDeps) {
       const ids = await repo.reindexFolder(actor, folderId, REINDEX_BATCH);
       await enqueueIndex(actor, ids);
       if (ids.length < REINDEX_BATCH) return;
+    }
+  };
+
+  /** Items whose name or folder path changed go back through indexing. */
+  const reindexAfterSort = async (actor: Actor, done: { itemIds: string[] }) => {
+    // The change is committed: a failure here must not hide the batch id the caller needs to undo it.
+    try {
+      await enqueueIndex(actor, await repo.reindexItems(actor, done.itemIds));
+    } catch (error) {
+      getLogger().error("data room re-index after auto-sort failed", error);
     }
   };
 
@@ -356,6 +388,65 @@ export function createDataRoomService(deps: DataRoomDeps) {
         await deps.jobs.enqueue(dataRoomStepJob("dataroom.ingest", actor, id));
         return itemDto(await repo.getItem(actor, id));
       }),
+    autoSort: {
+      /** Proposes a tidy-up and changes nothing. The model sees names and facets, never full text. */
+      plan: async (actor: Actor) => {
+        const [folders, items, ai] = await Promise.all([
+          repo.listFolders(actor),
+          repo.listForSort(actor, AUTO_SORT_ITEM_LIMIT),
+          deps.resolveAi?.(actor),
+        ]);
+        let proposal: unknown = null;
+        let asked = false;
+        if (ai?.model && ai.allowed && deps.proposeSort && items.length) {
+          asked = true;
+          const paths = autoSortFolderPaths(folders);
+          const operationId = `data-room-sort:${actor.spaceId}:${Date.now()}`;
+          try {
+            proposal = await deps.proposeSort(
+              ai.model,
+              {
+                folders: [...paths.values()],
+                items: items.map((item) => ({
+                  ...item,
+                  folder: (item.folderId ? paths.get(item.folderId) : undefined)?.join(" / ") ?? "",
+                })),
+              },
+              {
+                operationId,
+                traceId: operationId,
+                spaceId: actor.spaceId,
+                userId: actor.userId,
+                signal: AbortSignal.timeout(120_000),
+              },
+            );
+          } catch (error) {
+            getLogger().warn("data room auto-sort model failed; merging duplicates only", {
+              error: error instanceof Error ? error.message : "unknown",
+            });
+          }
+        }
+        const plan = buildAutoSortPlan({ folders, items, proposal });
+        if (plan.mode === "ai" || plan.reason || !items.length) return plan;
+        return { ...plan, reason: asked ? ("ai_failed" as const) : ("ai_unavailable" as const) };
+      },
+      apply: (actor: Actor, input: { operations: AutoSortOperation[] }) =>
+        dataRoomCall(async () => {
+          const done = await sortRepo.apply(actor, input.operations);
+          await reindexAfterSort(actor, done);
+          return {
+            batchId: done.batchId,
+            items: done.itemIds.length,
+            skipped: done.skipped.length,
+          };
+        }),
+      undo: (actor: Actor, batchId: string) =>
+        dataRoomCall(async () => {
+          const done = await sortRepo.undo(actor, batchId);
+          await reindexAfterSort(actor, done);
+          return { restored: done.restored, skipped: done.skipped };
+        }),
+    },
     consent: async (actor: Actor): Promise<DataRoomConsentStatus> => {
       const { ai: _ai, ...status } = await consentStatus(actor);
       return status;
@@ -418,6 +509,37 @@ export function createDataRoomService(deps: DataRoomDeps) {
         throw new ORPCError("CONFLICT", { message: "Choose a default model first." });
       }
       return { modelId };
+    },
+
+    /** The attachments of the caller's own messages that an email import already filed. */
+    emailImported: async (actor: Actor, input: { messageIds: string[] }) => {
+      const messages = await deps.prisma.cachedMailMessage.findMany({
+        where: { id: { in: input.messageIds }, spaceId: actor.spaceId, userId: actor.userId },
+        select: { id: true, connectionId: true, providerMessageId: true },
+      });
+      if (messages.length === 0) return { files: [] };
+      const items = await deps.prisma.dataRoomItem.findMany({
+        where: {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          source: "gmail",
+          OR: messages.map((m) => ({
+            sourceConnectionId: m.connectionId,
+            externalId: { startsWith: `gmail:${m.providerMessageId}:` },
+          })),
+        },
+        select: { externalId: true, sourceConnectionId: true },
+      });
+      const files: { messageId: string; attachmentId: string }[] = [];
+      for (const m of messages) {
+        const prefix = `gmail:${m.providerMessageId}:`;
+        for (const item of items) {
+          if (item.sourceConnectionId === m.connectionId && item.externalId?.startsWith(prefix)) {
+            files.push({ messageId: m.id, attachmentId: item.externalId.slice(prefix.length) });
+          }
+        }
+      }
+      return { files };
     },
 
     /**

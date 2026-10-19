@@ -1,4 +1,4 @@
-import { t } from "@lingui/core/macro";
+import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { InboxListOutput, InboxMessage, MailRow } from "@rakazo/contracts";
 import { isBoxEndpoint } from "@rakazo/contracts";
@@ -19,8 +19,9 @@ import { dataRoomImportStarted } from "../../lib/data-room";
 import { syncErrorText } from "../../lib/inbox-sync-error";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { DriveRow } from "./DriveRow";
 import { TOOLBAR_BUTTON, TOOLBAR_LABEL, ToolbarTip } from "./FilterBar";
-import { failedText, importedText, sizeText } from "./format";
+import { dateText, failedText, importedText, isNoiseImage } from "./format";
 import { BoxImportButton, DriveImportButton } from "./ImportFromDrive";
 
 const SEARCH_DEBOUNCE_MS = 300;
@@ -29,66 +30,93 @@ const MAX_PICKS = 20;
 const GMAIL_PAGE = "/app/integrations/app/google/gmail";
 
 type Attachment = InboxMessage["attachments"][number];
+/** A message with the documents it carries; `filed` names those already in the Data room. */
+type Item = { row: MailRow; files: Attachment[]; filed: Set<string> };
 type Picks = Map<string, { messageId: string; attachmentId: string }>;
 const pickKey = (messageId: string, attachmentId: string) => `${messageId}\u0000${attachmentId}`;
 
+/**
+ * The messages that carry real documents. Every page costs one `inbox.get` per message (attachment
+ * lists are not in the list rows); messages with only signature pictures are left out.
+ * ponytail: one call per row; a list-level attachment field would remove them.
+ */
+async function loadItems(rows: MailRow[]): Promise<Item[]> {
+  if (rows.length === 0) return [];
+  const [messages, imported] = await Promise.all([
+    Promise.all(rows.map((row) => rpc.inbox.get({ messageId: row.id }))),
+    rpc.dataRoom.emailImported({ messageIds: rows.map((row) => row.id) }),
+  ]);
+  const filed = new Set(imported.files.map((f) => pickKey(f.messageId, f.attachmentId)));
+  return rows
+    .map((row, i) => ({
+      row,
+      files: (messages[i]?.attachments ?? []).filter((file) => !isNoiseImage(file)),
+      filed,
+    }))
+    .filter((item) => item.files.length > 0);
+}
+
 function MessageRow({
-  row,
+  item,
   picks,
   full,
   onToggle,
 }: {
-  row: MailRow;
+  item: Item;
   picks: Picks;
   /** No more files can be ticked. */
   full: boolean;
-  onToggle: (messageId: string, attachmentId: string) => void;
+  onToggle: (messageId: string, attachmentIds: string[], on: boolean) => void;
 }) {
-  const [files, setFiles] = useState<Attachment[] | null>(null);
-  const [open, setOpen] = useState(false);
-  const [error, setError] = useState("");
-  function toggle() {
-    setOpen(!open);
-    if (files || open) return;
-    setError("");
-    rpc.inbox
-      .get({ messageId: row.id })
-      .then((message) => setFiles(message.attachments))
-      .catch((cause) => setError(errorText(cause)));
-  }
+  const { row, files, filed } = item;
+  const free = files.filter((file) => !filed.has(pickKey(row.id, file.id)));
+  const all = free.length > 0 && free.every((file) => picks.has(pickKey(row.id, file.id)));
   return (
     <li className="border-b border-border">
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={toggle}
-        className="flex w-full flex-col items-start px-3 py-2 text-start text-sm hover:bg-muted"
-      >
-        <span className="max-w-full truncate font-medium">{row.subject}</span>
-        <span className="max-w-full truncate text-xs text-muted-foreground">{row.from}</span>
-      </button>
-      {open ? (
-        <div className="flex flex-col gap-1 px-3 pb-2">
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
-          {files?.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              <Trans>No files found</Trans>
-            </p>
-          ) : null}
-          {files?.map((file) => (
-            <div key={file.id} className="flex items-center gap-2 text-sm">
-              <Checkbox
-                aria-label={file.filename}
-                disabled={full && !picks.has(pickKey(row.id, file.id))}
-                checked={picks.has(pickKey(row.id, file.id))}
-                onCheckedChange={() => onToggle(row.id, file.id)}
-              />
-              <span className="min-w-0 flex-1 truncate">{file.filename}</span>
-              <span className="text-xs text-muted-foreground">{sizeText(file.size)}</span>
-            </div>
-          ))}
+      <div className="flex items-start gap-2 px-3 py-2 text-sm">
+        <Checkbox
+          aria-label={t`Select ${row.subject}`}
+          className="mt-0.5"
+          disabled={free.length === 0 || (full && !all)}
+          checked={all || free.length === 0}
+          onCheckedChange={(on) =>
+            onToggle(
+              row.id,
+              free.map((file) => file.id),
+              on,
+            )
+          }
+        />
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-medium">{row.subject}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {row.from} · {dateText(row.receivedAt)}
+          </p>
         </div>
-      ) : null}
+      </div>
+      <div className="ps-6">
+        {files.map((file) => {
+          const done = filed.has(pickKey(row.id, file.id));
+          return (
+            <DriveRow
+              key={file.id}
+              file={{
+                id: file.id,
+                name: file.filename,
+                mimeType: file.mimeType,
+                size: file.size,
+                isFolder: false,
+              }}
+              showCheckbox
+              checked={done || picks.has(pickKey(row.id, file.id))}
+              disabled={done || (full && !picks.has(pickKey(row.id, file.id)))}
+              note={done ? t`In Data room` : undefined}
+              onToggle={() => onToggle(row.id, [file.id], !picks.has(pickKey(row.id, file.id)))}
+              onOpen={() => undefined}
+            />
+          );
+        })}
+      </div>
     </li>
   );
 }
@@ -104,7 +132,7 @@ function EmailPicker({
 }) {
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
-  const [rows, setRows] = useState<MailRow[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [next, setNext] = useState<string | undefined>();
   const [mailProblem, setMailProblem] = useState<Pick<
     InboxListOutput,
@@ -141,9 +169,10 @@ function EmailPicker({
     setMailProblem(null);
     rpc.inbox
       .list(listInput())
-      .then((page) => {
+      .then(async (page) => {
+        const loaded = await loadItems(page.rows);
         if (mine !== search.current) return;
-        setRows(page.rows);
+        setItems(loaded);
         setNext(page.nextPageToken);
         setMailProblem(problemOf(page));
       })
@@ -156,8 +185,9 @@ function EmailPicker({
     setLoading(true);
     try {
       const page = await rpc.inbox.list(listInput(next));
+      const loaded = await loadItems(page.rows);
       if (mine !== search.current) return;
-      setRows((prev) => [...prev, ...page.rows]);
+      setItems((prev) => [...prev, ...loaded]);
       setNext(page.nextPageToken);
     } catch (cause) {
       if (mine === search.current) setError(errorText(cause));
@@ -166,12 +196,15 @@ function EmailPicker({
     }
   }
 
-  function toggle(messageId: string, attachmentId: string) {
+  /** Ticks or unticks files of one message; a tick stops at the import limit. */
+  function toggle(messageId: string, attachmentIds: string[], on: boolean) {
     setPicks((prev) => {
       const copy = new Map(prev);
-      const key = pickKey(messageId, attachmentId);
-      if (copy.has(key)) copy.delete(key);
-      else copy.set(key, { messageId, attachmentId });
+      for (const attachmentId of attachmentIds) {
+        const key = pickKey(messageId, attachmentId);
+        if (!on) copy.delete(key);
+        else if (copy.size < MAX_PICKS) copy.set(key, { messageId, attachmentId });
+      }
       return copy;
     });
   }
@@ -225,16 +258,20 @@ function EmailPicker({
               ) : null}
             </p>
           ) : null}
-          {!loading && !error && !mailProblem && rows.length === 0 ? (
+          {loading && items.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted-foreground" role="status">
+              <Trans>Loading…</Trans>
+            </p>
+          ) : !loading && !error && !mailProblem && items.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted-foreground">
               <Trans>No files found</Trans>
             </p>
           ) : (
             <ul>
-              {rows.map((row) => (
+              {items.map((item) => (
                 <MessageRow
-                  key={row.id}
-                  row={row}
+                  key={item.row.id}
+                  item={item}
                   picks={picks}
                   full={picks.size >= MAX_PICKS}
                   onToggle={toggle}
@@ -257,7 +294,9 @@ function EmailPicker({
         </div>
         <DialogFooter>
           <Button disabled={busy || picks.size === 0} onClick={() => void submit()}>
-            <Trans>Import</Trans>
+            {picks.size > 0
+              ? plural(picks.size, { one: "Import # file", other: "Import # files" })
+              : t`Import`}
           </Button>
         </DialogFooter>
       </DialogContent>

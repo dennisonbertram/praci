@@ -7,10 +7,19 @@ import type {
   AgentRuntimeEvent,
   DataRoomClassifier,
 } from "@rakazo/adapter-kit";
-import type { DataRoomClassification, DataRoomQueryPlan } from "@rakazo/contracts";
-import { DataRoomClassificationSchema, DataRoomQueryPlanSchema } from "@rakazo/contracts";
+import type {
+  AutoSortProposal,
+  DataRoomClassification,
+  DataRoomQueryPlan,
+} from "@rakazo/contracts";
+import {
+  AutoSortProposalSchema,
+  DataRoomClassificationSchema,
+  DataRoomQueryPlanSchema,
+} from "@rakazo/contracts";
 import type { UsageAttribution } from "@rakazo/db";
 import type { z } from "zod";
+import { AUTO_SORT_INSTRUCTIONS, type AutoSortItem, autoSortPrompt } from "./data-room-autosort.js";
 
 /** Characters of document text sent to the model: the head and tail halves of this budget. */
 export const DATA_ROOM_TEXT_LIMIT = 24_000;
@@ -151,6 +160,21 @@ export class LlmDataRoomClassifier implements DataRoomClassifier {
       input.question,
       DataRoomQueryPlanSchema,
       cleanPlan,
+      context,
+    );
+  }
+
+  /** One call that places the library's items; the caller validates the answer against known ids. */
+  proposeSort(
+    input: { folders: string[][]; items: (AutoSortItem & { folder: string })[] },
+    context: AdapterContext,
+  ): Promise<AutoSortProposal> {
+    return this.ask(
+      "sort",
+      AUTO_SORT_INSTRUCTIONS,
+      autoSortPrompt(input),
+      AutoSortProposalSchema,
+      (raw) => raw,
       context,
     );
   }

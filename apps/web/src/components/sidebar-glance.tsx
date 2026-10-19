@@ -21,6 +21,7 @@ export function glanceBadge({
 }) {
   if (unseen > 0) {
     return {
+      notified: true,
       badgeLabel: t`new`,
       badge: (
         <span
