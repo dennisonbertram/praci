@@ -36,6 +36,7 @@ import { expireMailSearch } from "./mail-tools.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
 import { deliverDueNotifications } from "./notification-outbox.js";
+import { renderPdfPages } from "./pdf-render.js";
 import { syncCryptoHoldings } from "./rpc-crypto-sync.js";
 import { expireTaughtSkillTeaching } from "./teaching-session.js";
 
@@ -87,6 +88,7 @@ export function createBackgroundJobHandlers(deps: {
       jobs: deps.jobs,
       artifacts: deps.artifacts,
       runtime: deps.runtime,
+      renderPdfPages,
       resolveAi: (scope) =>
         resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.executor.resolveModel }, scope),
     };

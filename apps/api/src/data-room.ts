@@ -19,13 +19,13 @@ import {
   dataRoomBlobContext,
   dataRoomFileFields,
   dataRoomQueryVector,
+  dataRoomVisionKey,
   downloadBoxFile,
   downloadDriveFile,
   listBoxAccounts,
   listBoxFiles,
   listDriveAccounts,
   listDriveFiles,
-  modelAcceptsImageInput,
   planBoxFolders,
   planDriveFolders,
 } from "@rakazo/adapters";
@@ -381,14 +381,13 @@ export function createDataRoomService(deps: DataRoomDeps) {
         },
         update: { version: status.version, grantedAt: new Date() },
       });
+      const visionKey = dataRoomVisionKey({ ...ai, allowed: true });
       const queue = async (step: "ingest" | "classify" | "index", embeddingModel?: string) => {
-        for (const id of await repo.requeueReady(actor, step, embeddingModel)) {
+        for (const id of await repo.requeueReady(actor, step, embeddingModel, visionKey)) {
           await deps.jobs.enqueue(dataRoomStepJob(`dataroom.${step}`, actor, id));
         }
       };
-      const visionReady =
-        ai.model && modelAcceptsImageInput(ai.model.provider, ai.model.id, ai.model.acceptsImages);
-      if (visionReady) await queue("ingest");
+      await queue("ingest");
       await queue("classify");
       if (ai.embeddingModel) await queue("index", ai.embeddingModel);
       return { ...status, allowed: true };
