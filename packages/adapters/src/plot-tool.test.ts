@@ -1,10 +1,10 @@
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
+import type { PlotSpec } from "./plot-tool.js";
 import {
   buildPlotParts,
   CHART_CATALOG,
   PLOT_TOOL_GUIDE,
-  type PlotSpec,
   parsePlotData,
   renderPlotSpecToSvg,
   searchChartCatalog,

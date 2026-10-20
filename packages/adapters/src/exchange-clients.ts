@@ -33,7 +33,7 @@ export class ExchangeError extends Error {
 const NAMES: Record<ExchangeProvider, string> = { coinbase: "Coinbase", kraken: "Kraken" };
 
 /** Short and user-facing; never a payload, a key or a signature. */
-export function exchangeFailureMessage(provider: ExchangeProvider, kind: ExchangeFailureKind) {
+function exchangeFailureMessage(provider: ExchangeProvider, kind: ExchangeFailureKind) {
   const name = NAMES[provider];
   switch (kind) {
     case "invalid_key":

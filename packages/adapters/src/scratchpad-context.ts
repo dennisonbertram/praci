@@ -1,6 +1,7 @@
 import { byteLength, escapePromptData, truncateUtf8 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
-import { listScratchpadItems, type ScratchpadToolDeps } from "./scratchpad-tools.js";
+import type { ScratchpadToolDeps } from "./scratchpad-tools.js";
+import { listScratchpadItems } from "./scratchpad-tools.js";
 
 const MAX_SCRATCHPAD_CONTEXT_BYTES = 4 * 1024;
 const MAX_OPEN_ITEMS = 40;

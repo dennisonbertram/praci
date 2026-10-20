@@ -2,6 +2,7 @@ import type { Credential, OAuthCredential } from "@earendil-works/pi-ai";
 import type { ModelCredentialFailedState, ModelCredentialRetireReason } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { PiOAuthBegin } from "./pi-oauth.js";
 import {
   CHATGPT_OAUTH_PROVIDER,
   COPILOT_OAUTH_PROVIDER,
@@ -10,7 +11,6 @@ import {
   matchesFailedOAuthSecret,
   OAUTH_ACCOUNT_CHANGED_ERROR,
   oauthCredentialAccountId,
-  type PiOAuthBegin,
   PiOAuthLogins,
   parseModelSecret,
   RetiredModelCredentialError,

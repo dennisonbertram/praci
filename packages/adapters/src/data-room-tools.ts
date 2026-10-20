@@ -19,7 +19,8 @@ import {
   dataRoomQueryVector,
 } from "./data-room-files.js";
 import type { DataRoomAi } from "./data-room-models.js";
-import { DriveFileError, type DriveFilesDeps, downloadDriveFile } from "./drive-files.js";
+import type { DriveFilesDeps } from "./drive-files.js";
+import { DriveFileError, downloadDriveFile } from "./drive-files.js";
 import type { DriveAccount } from "./drive-tools.js";
 import { mailToolsAllowed } from "./mail-tools.js";
 

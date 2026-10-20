@@ -1,9 +1,9 @@
 import type { PrismaClient } from "@rakazo/db";
 
-export const SCRATCHPAD_STATUSES = ["open", "parked", "done"] as const;
-export type ScratchpadStatus = (typeof SCRATCHPAD_STATUSES)[number];
+const SCRATCHPAD_STATUSES = ["open", "parked", "done"] as const;
+type ScratchpadStatus = (typeof SCRATCHPAD_STATUSES)[number];
 
-export const OPEN_SCRATCHPAD_STATUSES: ScratchpadStatus[] = ["open", "parked"];
+const OPEN_SCRATCHPAD_STATUSES: ScratchpadStatus[] = ["open", "parked"];
 
 const TITLE_MAX = 200;
 const NOTES_MAX = 4_000;
@@ -12,7 +12,7 @@ export type ScratchpadToolDeps = {
   prisma: PrismaClient;
 };
 
-export type ScratchpadRow = {
+type ScratchpadRow = {
   id: string;
   botId: string;
   title: string;
@@ -38,7 +38,7 @@ export function isScratchpadStatus(value: unknown): value is ScratchpadStatus {
   return typeof value === "string" && (SCRATCHPAD_STATUSES as readonly string[]).includes(value);
 }
 
-export function coerceScratchpadStatus(value: unknown): ScratchpadStatus {
+function coerceScratchpadStatus(value: unknown): ScratchpadStatus {
   return isScratchpadStatus(value) ? value : "open";
 }
 

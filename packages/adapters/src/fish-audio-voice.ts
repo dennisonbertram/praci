@@ -214,7 +214,7 @@ export function asrLanguageHint(language: string | undefined): string | undefine
  * `transcribe-1-pro` marks speaker turns inline (`<|speaker:0|>`) on every response.
  * Dictation wants the words only, so drop the control markers.
  */
-export function stripFishAsrTags(text: string): string {
+function stripFishAsrTags(text: string): string {
   return text
     .replace(/<\|[^|>]*\|>/g, " ")
     .replace(/\s+/g, " ")

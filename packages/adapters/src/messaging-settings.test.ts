@@ -63,6 +63,15 @@ describe("MessagingSettings", () => {
     expect(JSON.stringify(second.fields)).not.toContain("pw-1");
   });
 
+  it("ignores a saved row whose values are not all strings", async () => {
+    const { rows, prisma, secrets } = fakes();
+    rows.set("bluebubbles", `enc:${JSON.stringify({ password: 123, serverUrl: "http://x" })}`);
+    const settings = new MessagingSettings(prisma, secrets, { env: {} });
+    const merged = await settings.withSaved();
+    expect(merged.bluebubblesPassword).toBeUndefined();
+    expect(merged.bluebubblesUrl).toBeUndefined();
+  });
+
   it("requires a password the first time and a long enough token", async () => {
     const { prisma, secrets } = fakes();
     const settings = new MessagingSettings(prisma, secrets, { env: {} });

@@ -2,10 +2,8 @@ import { createHmac } from "node:crypto";
 import type { AdapterContext, MessagingInboundMessage } from "@rakazo/adapter-kit";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatSdkMessagingSurface } from "./chat-sdk-surface.js";
-import {
-  type MessagingEnvironmentValues,
-  messagingPlatformsFromEnv,
-} from "./messaging-platforms.js";
+import type { MessagingEnvironmentValues } from "./messaging-platforms.js";
+import { messagingPlatformsFromEnv } from "./messaging-platforms.js";
 import { PhotonAdapter, PhotonError, verifySpectrumSignature } from "./photon-adapter.js";
 import { createEmulatedPhotonPlatform, PhotonEmulator } from "./photon-emulator.js";
 

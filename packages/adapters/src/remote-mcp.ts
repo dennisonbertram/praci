@@ -6,6 +6,7 @@ import type { ConnectorTool } from "@rakazo/adapter-kit";
 import { isCloudMetadataHost, isLocalMcpHost, isPrivateNetworkHost } from "@rakazo/contracts";
 import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
+import type { ResolvedAddress, ResolveHostname } from "./network-address.js";
 import {
   createAddressCheckedLookup,
   defaultResolveHostname,
@@ -14,8 +15,6 @@ import {
   isLoopbackAddress,
   isPrivateAddress,
   isTailscaleAddress,
-  type ResolvedAddress,
-  type ResolveHostname,
   withPinnedDnsLookup,
 } from "./network-address.js";
 import { dispatcherFetch, fetchPairedWithDispatcher } from "./undici-fetch.js";

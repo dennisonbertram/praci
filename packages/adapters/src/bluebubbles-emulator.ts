@@ -1,9 +1,5 @@
-import {
-  BlueBubblesAdapter,
-  type BlueBubblesAdapterConfig,
-  type BlueBubblesRawMessage,
-  bluebubblesTransport,
-} from "./bluebubbles-adapter.js";
+import type { BlueBubblesAdapterConfig, BlueBubblesRawMessage } from "./bluebubbles-adapter.js";
+import { BlueBubblesAdapter, bluebubblesTransport } from "./bluebubbles-adapter.js";
 import type { MessagingPlatform } from "./chat-sdk-surface.js";
 
 export interface BlueBubblesEmulatorMessage {

@@ -45,7 +45,7 @@ export type ExchangeSyncResult = { ok: true } | { ok: false; message: string };
 const STALE_MS = 15 * 60_000;
 
 /** Reads, merges (staked/earn suffixes fold into the base asset) and prices one exchange's balances. */
-export async function readExchangeBalances(
+async function readExchangeBalances(
   deps: Pick<ExchangeSyncDeps, "fetch" | "now">,
   provider: ExchangeProvider,
   creds: ExchangeCredentials,

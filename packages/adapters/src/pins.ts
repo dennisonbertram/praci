@@ -25,30 +25,30 @@ import { unwrapToolResult } from "./finance-call-tool.js";
 import type { McpConnector } from "./mcp-connector.js";
 import { assignmentAllowsTool } from "./mcp-connector.js";
 
-export const PIN_SOURCE_TIMEOUT_MS = 15_000;
+const PIN_SOURCE_TIMEOUT_MS = 15_000;
 const REFRESH_PROMPT = "Update your pinned numbers.";
 
-export interface PinsDeps {
+interface PinsDeps {
   prisma: PrismaClient;
   events: Pick<ThreadEvents, "append">;
   /** Lists a server's tools so a source can be checked against the tool's annotations. */
   mcp?: Pick<McpConnector, "listServerTools">;
 }
 
-export interface PinsRefreshDeps extends PinsDeps {
+interface PinsRefreshDeps extends PinsDeps {
   events: Pick<ThreadEvents, "append" | "sendUserMessage">;
   jobs: Pick<JobPublisher, "enqueue">;
   mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
 }
 
-export interface PinsScope {
+interface PinsScope {
   spaceId: string;
   botId: string;
   /** The bot's owner; the caller has already checked the bot belongs to this space and user. */
   userId: string;
 }
 
-export interface PinsSaveInput {
+interface PinsSaveInput {
   /** Only the sections given are replaced. */
   stats?: PinStat[];
   list?: PinList | null;
@@ -59,7 +59,7 @@ export interface PinsSaveInput {
   sourceRunId?: string;
 }
 
-export type PinsSaveResult =
+type PinsSaveResult =
   | { ok: true; pins: BotPins }
   | { ok: false; reason: "conflict"; pins: BotPins | null };
 
@@ -335,7 +335,7 @@ async function savePins(
   return { ok: true, pins: toBotPins(saved) };
 }
 
-export interface PinsToolScope extends PinsScope {
+interface PinsToolScope extends PinsScope {
   runId: string;
 }
 

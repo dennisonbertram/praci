@@ -4,7 +4,8 @@ import type {
   NotificationEnvelope,
   NotificationSendResult,
 } from "@rakazo/adapter-kit";
-import { createDb, createNotification, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb, createNotification } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   deliverDueNotifications,

@@ -9,6 +9,7 @@ import type {
   SemanticMemoryResult,
   SemanticMemorySaveRequest,
 } from "@rakazo/adapter-kit";
+import type { SerenityConnectionConfig, SerenityNetworkDependencies } from "./serenity-client.js";
 import {
   classifySerenityEndpointTrust,
   forgetSerenity,
@@ -17,8 +18,6 @@ import {
   probeSerenity,
   recallSerenity,
   rememberSerenity,
-  type SerenityConnectionConfig,
-  type SerenityNetworkDependencies,
   serenityEndpointRequiresDeploymentOwner,
 } from "./serenity-client.js";
 

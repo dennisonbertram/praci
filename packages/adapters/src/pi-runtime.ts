@@ -138,7 +138,7 @@ export function maxToolCallsPerTurn(env: NodeJS.ProcessEnv = process.env): numbe
   return Math.floor(parsed);
 }
 
-export interface PiAgentRuntimeOptions {
+interface PiAgentRuntimeOptions {
   /** Directory where Pi JSONL sessions are written. Omit to disable recording. */
   sessionRoot?: string;
   modelCallObserver?: ModelCallObserver;
@@ -847,7 +847,7 @@ function toAgentTools(toolDefs: readonly ConnectorTool[], host: ToolHost): Agent
  * Normalize connector names only at the boundary where they are exposed to Pi.
  * Connector execution continues to use the original name captured by toAgentTool.
  */
-export function normalizeAgentToolName(name: string): string {
+function normalizeAgentToolName(name: string): string {
   if (isProviderSafeAgentToolName(name)) return name;
   const normalized = name
     .normalize("NFKD")
@@ -912,7 +912,7 @@ export function describeToolActivity(toolName: string, args: unknown): string {
   return toolPhrase(toolName, "activity") || "Working";
 }
 
-export function normalizeAgentToolNames(tools: readonly ConnectorTool[]): string[] {
+function normalizeAgentToolNames(tools: readonly ConnectorTool[]): string[] {
   const reservedValidNames = new Set(
     tools.filter((tool) => isProviderSafeAgentToolName(tool.name)).map((tool) => tool.name),
   );
@@ -2714,14 +2714,14 @@ function createQueue(): EventQueue {
   };
 }
 
-export function isCodexModel(model: Pick<Model<Api>, "api" | "provider">): boolean {
+function isCodexModel(model: Pick<Model<Api>, "api" | "provider">): boolean {
   return model.provider === "openai-codex" || model.api === "openai-codex-responses";
 }
 
 /** Abort reason recorded when a Codex stream goes silent past the idle bound. */
 export const CODEX_STREAM_IDLE_TIMEOUT_MESSAGE = "Codex stream idle timeout";
 
-export interface StreamIdleWatchdog {
+interface StreamIdleWatchdog {
   /** Composed abort signal to hand to the provider request. */
   signal: AbortSignal;
   /** Re-arms the idle bound; invoke on response headers and each delivered event. */

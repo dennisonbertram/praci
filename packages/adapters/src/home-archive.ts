@@ -1,7 +1,7 @@
 import { constants, createReadStream, createWriteStream } from "node:fs";
+import type { FileHandle } from "node:fs/promises";
 import {
   chmod,
-  type FileHandle,
   lstat,
   mkdir,
   open,

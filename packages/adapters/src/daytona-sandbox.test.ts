@@ -1,6 +1,7 @@
 import type { Sandbox } from "@daytona/sdk";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DaytonaSandboxProvider, type DaytonaSandboxSdk } from "./daytona-sandbox.js";
+import type { DaytonaSandboxSdk } from "./daytona-sandbox.js";
+import { DaytonaSandboxProvider } from "./daytona-sandbox.js";
 import { desktopCommandResponder } from "./linux-desktop.test-support.js";
 
 const context = {

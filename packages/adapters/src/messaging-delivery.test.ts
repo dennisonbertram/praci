@@ -1,13 +1,13 @@
 import type { AdapterContext, MessagingSurface } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import type { MessagingDeliveryDeps } from "./messaging-delivery.js";
 import {
   applyMessagingOutboundStatus,
   deliverMessagingOutbound,
   MESSAGING_AI_DISCLOSURE,
   MESSAGING_DM_OUTBOUND_CAP,
   MESSAGING_OUTBOUND_MAX_ATTEMPTS,
-  type MessagingDeliveryDeps,
 } from "./messaging-delivery.js";
 
 const context: AdapterContext = {

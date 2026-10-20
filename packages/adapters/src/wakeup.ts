@@ -1,20 +1,14 @@
-import {
-  type BackgroundJob,
-  type BackgroundJobHandlers,
-  dispatchBackgroundJob,
-  type JobPublisher,
-  type JobWorkerHost,
+import type {
+  BackgroundJob,
+  BackgroundJobHandlers,
+  JobPublisher,
+  JobWorkerHost,
 } from "@rakazo/adapter-kit";
+import { dispatchBackgroundJob } from "@rakazo/adapter-kit";
 import { isTooManyDatabaseConnections } from "@rakazo/db";
 import { runCorrelatedJob, unwrapJobPayload, wrapJobPayload } from "@rakazo/logging";
-import {
-  type CronItem,
-  makeWorkerUtils,
-  parseCronItems,
-  type Runner,
-  run,
-  type WorkerUtils,
-} from "graphile-worker";
+import type { CronItem, Runner, WorkerUtils } from "graphile-worker";
+import { makeWorkerUtils, parseCronItems, run } from "graphile-worker";
 import type { Pool } from "pg";
 import { recordHistoryCompactAttemptsExhausted } from "./history-compaction.js";
 
