@@ -27,7 +27,7 @@ const github = "https://github.com/dennisonbertram/praci";
         <li>Inbox, cash, cap table and investor documents in one place.</li>
       </ul>
       <figure class="shot">
-        <img src="/app.webp" width="1440" height="900" alt="The Praci Finance page with cash, burn, runway and upcoming payments" />
+        <iframe id="demo" src="/demo/" title="Praci, running on invented data" width="1440" height="900" loading="lazy" tabindex="-1"></iframe>
       </figure>
       <section id="hosted">
         <h2>Get Praci Cloud</h2>
@@ -45,6 +45,10 @@ const github = "https://github.com/dennisonbertram/praci";
       <a href={github}>GitHub</a>
     </footer>
     <script>
+      // The demo is laid out at 1440x900 and scaled down to the width of its box.
+      const shot = document.querySelector<HTMLElement>(".shot")!;
+      new ResizeObserver(() => shot.style.setProperty("--scale", String(shot.clientWidth / 1440))).observe(shot);
+
       const form = document.querySelector<HTMLFormElement>("#join")!;
       const status = document.querySelector<HTMLElement>("#status")!;
       const field = (name: string) => (form.elements.namedItem(name) as HTMLInputElement).value;
