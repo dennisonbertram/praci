@@ -84,6 +84,7 @@ vi.mock("../components/AccountAccess", () => ({
 
 vi.mock("../components/AiDataSharing", () => ({ AiDataSharingSection: () => null }));
 vi.mock("../components/NotificationSettings", () => ({ NotificationSettingsSection: () => null }));
+vi.mock("../components/DataExport", () => ({ DataExportSection: () => null }));
 vi.mock("../components/ApprovalRulesSettings", () => ({ ApprovalRulesSettings: () => null }));
 vi.mock("../components/ai/primitives", () => ({ SuccessPop: () => null }));
 vi.mock("../components/ComputersUnavailableHint", () => ({

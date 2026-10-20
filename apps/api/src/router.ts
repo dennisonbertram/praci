@@ -86,6 +86,7 @@ import {
   isSandboxGoneError,
   isScratchpadStatus,
   kickModelCredentialRefresh,
+  latestAccountExport,
   listAvailablePiCatalog,
   listBotSecretMetadata,
   listPiCatalog,
@@ -113,6 +114,7 @@ import {
   releaseComputerExecutionLease,
   renderPageChartSvg,
   replaceComputer,
+  requestAccountExport,
   resolveAutoReviewChecker,
   resolveBotUploadPath,
   resolveBotWorkspaceCwd,
@@ -7569,6 +7571,14 @@ export function createRouter(deps: RouterDeps) {
           runs,
         };
       }),
+    },
+    account: {
+      exportRequest: authed.account.exportRequest.handler(({ context }) =>
+        requestAccountExport({ prisma: deps.prisma, jobs: deps.jobs }, context.actor),
+      ),
+      exportLatest: authed.account.exportLatest.handler(({ context }) =>
+        latestAccountExport(deps.prisma, context.actor.userId),
+      ),
     },
     export: {
       bot: authed.export.bot.handler(async ({ context, input }) => {

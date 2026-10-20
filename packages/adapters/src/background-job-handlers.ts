@@ -14,6 +14,7 @@ import { messagingDeliverJob } from "@rakazo/adapter-kit";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { deleteExpiredMessagingTransport, deleteExpiredNotifications } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { cleanupAccountExports, runAccountExport } from "./account-export.js";
 import type { BoxFilesDeps } from "./box-files.js";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
 import { pollCloudAgent } from "./cloud-agent-poll.js";
@@ -158,6 +159,14 @@ export function createBackgroundJobHandlers(deps: {
     },
     "notifications.retention": async () => {
       await deleteExpiredNotifications(deps.prisma);
+    },
+    "account.export": async (payload) => {
+      if (!deps.artifacts) throw new Error("Data export is not configured");
+      await runAccountExport({ prisma: deps.prisma, artifacts: deps.artifacts }, payload.exportId);
+    },
+    "account.export.cleanup": async () => {
+      if (!deps.artifacts) throw new Error("Data export is not configured");
+      await cleanupAccountExports({ prisma: deps.prisma, artifacts: deps.artifacts });
     },
     "messaging.retention": async () => {
       await deleteExpiredMessagingTransport(deps.prisma);

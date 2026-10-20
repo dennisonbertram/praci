@@ -30,6 +30,8 @@ const payloadSchemas = {
   "notifications.deliver": z.object({}),
   "notifications.retention": z.object({}),
   "messaging.retention": z.object({}),
+  "account.export": z.object({ exportId: z.string().min(1) }),
+  "account.export.cleanup": z.object({}),
   "cloud_agent.poll": z.object({ agentId: z.string().min(1) }),
   "mail.search.expire": z.object({ searchId: z.string().min(1) }),
   "inbox.triage": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
@@ -154,6 +156,16 @@ export function computerControlExpireJobKey(computerId: string, leaseId?: string
 
 export function skillTeachingExpireJobKey(skillId: string): string {
   return `skill.teaching-expire:${skillId}`;
+}
+
+/** One build per export row; a retry replaces the queued job. */
+export function accountExportJob(exportId: string): BackgroundJob {
+  return {
+    name: "account.export",
+    payload: { exportId },
+    replaceKey: `account.export:${exportId}`,
+    maxAttempts: 1,
+  };
 }
 
 export function runContinueJob(runId: string): BackgroundJob {

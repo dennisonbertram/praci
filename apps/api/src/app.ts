@@ -74,6 +74,7 @@ import {
   piSessionsRoot,
   reconcileCloudAgents,
   reconcileComputerUpdates,
+  removeAccountExportBlobs,
   removePiUserSessions,
   resolveEnsName,
   ScriptedAgentRuntime,
@@ -118,6 +119,7 @@ import { requestLogging } from "@rakazo/logging/hono";
 import { MarkdownMemoryStore } from "@rakazo/memory";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
+import { mountAccountExportDownload } from "./account-export.js";
 import { createBillingService } from "./billing.js";
 import { mountBillingRoutes } from "./billing-webhook.js";
 import { mountDataRoomRoutes } from "./data-room.js";
@@ -473,6 +475,7 @@ export async function createApp(
           ),
         ),
       );
+      await removeAccountExportBlobs({ prisma, artifacts }, userId);
       await removePiUserSessions(env.dataDir, userId);
     },
     afterDeleteUserData: async (blobs, homes, userId) => {
@@ -821,6 +824,7 @@ export async function createApp(
   mountEmailImageProxy(app, { secret: env.authSecret }, async (request) => sessionActor(request));
   mountInboxAttachment(app, { prisma, mail }, loggedActor);
   mountDataRoomRoutes(app, { prisma, artifacts, jobs }, loggedActor);
+  mountAccountExportDownload(app, { prisma, artifacts }, loggedActor);
   mountVoiceHttpRoutes(app, { prisma, secrets }, (c) => loggedActor(c.req.raw));
   mountWebhookHttpRoutes(app, { prisma, secrets, events, jobs });
   // Gmail push is off unless the deployment sets a Pub/Sub topic and service account.
