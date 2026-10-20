@@ -6,16 +6,20 @@ import {
   dataRoomStepJob,
 } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
+import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
+import { inferAttachmentMimeType } from "@rakazo/core";
 import type { createDataRoomRepos, DataRoomItemRecord, PrismaClient } from "@rakazo/db";
+import { createDataRoomImport, recordImportSkips } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { DataRoomAi } from "./data-room-models.js";
+import { isZipFile, listZip, readZipEntry, ZipRefusal } from "./zip-unpack.js";
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: names must not hold control characters.
 const PATH_OR_CONTROL = /[/\\\u0000-\u001f\u007f]/g;
 export const DATA_ROOM_MIME = /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/i;
 
 export interface FileDataRoomDeps {
-  prisma: Pick<PrismaClient, "dataRoomItem">;
+  prisma: Pick<PrismaClient, "dataRoomItem" | "dataRoomFolder" | "dataRoomImport">;
   artifacts: ArtifactStore;
   jobs: JobPublisher;
 }
@@ -94,7 +98,7 @@ export function createFileDataRoomItem(
     return item;
   };
 
-  const fileItem = async (actor: Actor, input: FileDataRoomInput) => {
+  const fileOne = async (actor: Actor, input: FileDataRoomInput) => {
     const { bytes, ...fields } = input;
     const stored = await deps.artifacts.put(
       { name: input.name, mimeType: input.mimeType, bytes },
@@ -121,6 +125,89 @@ export function createFileDataRoomItem(
     }
     return { item, created };
   };
+
+  /** The folder at `path` under `rootId`, made when it is missing. */
+  const folderAt = async (actor: Actor, rootId: string | null, path: string[]) => {
+    let parentId = rootId;
+    for (const raw of path) {
+      const name = dataRoomSafeName(raw, "folder");
+      const existing = await deps.prisma.dataRoomFolder.findFirst({
+        where: { spaceId: actor.spaceId, userId: actor.userId, parentId, name },
+        select: { id: true },
+      });
+      parentId = existing?.id ?? (await repo.createFolder(actor, { name, parentId })).id;
+    }
+    return parentId;
+  };
+
+  /**
+   * Files each file of a zip as its own item, in the folders the zip names under `input.folderId`.
+   * The zip itself is not kept. Progress shows in the import row: `input.importId` when the caller
+   * tracks one (the zip counted as one file there), else a new one. Throws `ZipRefusal` when the
+   * whole zip is refused, before anything is filed.
+   */
+  const unpackZip = async (actor: Actor, input: FileDataRoomInput) => {
+    const { entries, oversized } = listZip(input.bytes, {
+      maxEntryBytes: DATA_ROOM_UPLOAD_MAX_BYTES,
+    });
+    if (entries.length === 0) throw new ZipRefusal("invalid");
+    const prisma = deps.prisma as PrismaClient;
+    let importId = input.importId;
+    if (importId) {
+      await prisma.dataRoomImport.update({
+        where: { id: importId },
+        data: { total: { increment: entries.length + oversized - 1 } },
+      });
+    } else {
+      importId = (
+        await createDataRoomImport(prisma, actor, {
+          source: "upload",
+          total: entries.length + oversized,
+        })
+      ).id;
+    }
+    let first: DataRoomItemRecord | undefined;
+    let created = 0;
+    let duplicates = 0;
+    let rejected = oversized;
+    for (const entry of entries) {
+      try {
+        const bytes = readZipEntry(input.bytes, entry);
+        const fullPath = [...entry.folders, entry.name].join("/");
+        const result = await fileOne(actor, {
+          source: input.source,
+          ...dataRoomFileFields(
+            {
+              name: entry.name,
+              mimeType: inferAttachmentMimeType(entry.name) ?? "application/octet-stream",
+              bytes,
+            },
+            "file",
+          ),
+          folderId: await folderAt(actor, input.folderId, entry.folders),
+          importId,
+          ...(input.sourceConnectionId ? { sourceConnectionId: input.sourceConnectionId } : {}),
+          ...(input.externalId ? { externalId: `${input.externalId}#${fullPath}` } : {}),
+          ...(input.sourceUrl ? { sourceUrl: input.sourceUrl } : {}),
+        });
+        first ??= result.item;
+        if (result.created) created += 1;
+        else duplicates += 1;
+      } catch (error) {
+        // One bad entry does not stop the rest; each is bounded on its own.
+        getLogger().warn("data room zip entry failed", {
+          reason: error instanceof Error ? error.message : "unknown",
+        });
+        rejected += 1;
+      }
+    }
+    await recordImportSkips(prisma, importId, { duplicates, rejected });
+    if (!first) throw new ZipRefusal("invalid");
+    return { item: first, created: created > 0 };
+  };
+
+  const fileItem = (actor: Actor, input: FileDataRoomInput) =>
+    isZipFile(input.name, input.mimeType) ? unpackZip(actor, input) : fileOne(actor, input);
   return { fileItem, requeueStuck, known };
 }
 

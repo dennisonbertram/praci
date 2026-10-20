@@ -8687,6 +8687,22 @@ msgstr "이 구독 로그인 방식은 아직 Rakazo에서 지원되지 않습�
 msgid "This week"
 msgstr ""
 
+#: src/components/data-room/DropZone.tsx
+msgid "This zip can't be read"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip has unsafe file paths"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip is password-protected"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip is too large to unpack"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
 msgstr ""
