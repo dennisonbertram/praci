@@ -48,7 +48,7 @@ managed keystore, and replaces the rolling `android` GitHub release, so the
 download link stays the same:
 
 ```text
-https://github.com/dennisonbertram/praci/releases
+https://github.com/elie222/rakazo/releases
 ```
 
 The APK uses the production update channel, so JavaScript changes reach it

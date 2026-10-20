@@ -301,7 +301,7 @@ async function releaseAgentServers(
         select: { id: true },
       });
       if (linked.length === 0) return { count: 0 };
-      // A connection Rakazo made private on connect stays private with no agent; older ones
+      // A connection Praci made private on connect stays private with no agent; older ones
       // go back to shared.
       const stayPrivate = { ...scope, privateByDefault: true };
       const released = await tx.connection.updateMany({

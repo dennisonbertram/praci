@@ -638,7 +638,7 @@ test("Inbox asks before a model sorts the mail, and Allow starts triage", async 
 
   const main = page.getByRole("main");
   await expect(main.getByRole("button", { name: /Offsite dates/ })).toBeVisible();
-  const prompt = main.getByRole("region", { name: "Let Rakazo sort your mail" });
+  const prompt = main.getByRole("region", { name: "Let Praci sort your mail" });
   await expect(prompt).toBeVisible();
   await expect(prompt).toContainText(
     "are sent to the AI service that runs your bots (OpenRouter).",

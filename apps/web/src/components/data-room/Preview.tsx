@@ -236,8 +236,8 @@ export function Preview({
       ) : isSettled(item.status) && !facets.docType ? (
         <p className="text-xs text-muted-foreground">
           <Trans>
-            Not tagged yet. Files are tagged once you let Rakazo read documents; you can still
-            search it by name and text.
+            Not tagged yet. Files are tagged once you let Praci read documents; you can still search
+            it by name and text.
           </Trans>
         </p>
       ) : null}

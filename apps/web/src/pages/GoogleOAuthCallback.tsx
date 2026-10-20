@@ -52,7 +52,7 @@ export function GoogleOAuthCallbackPage() {
         {error ? <p className="mt-2 max-w-md text-sm text-muted-foreground">{error}</p> : null}
         {error && !isPopup ? (
           <Button type="button" className="mt-5" onClick={() => navigate("/app")}>
-            <Trans>Return to Rakazo</Trans>
+            <Trans>Return to Praci</Trans>
           </Button>
         ) : error || done ? (
           <p className="mt-2 text-sm text-muted-foreground">

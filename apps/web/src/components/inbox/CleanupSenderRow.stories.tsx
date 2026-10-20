@@ -49,12 +49,12 @@ export const RuleActive: Story = {
   args: { sender: { ...sender, skipInbox: true, rule: "active" }, onStop: () => undefined },
 };
 
-/** Skipped in Rakazo, but Gmail's 1,000 filter limit is used up. */
+/** Skipped in Praci, but Gmail's 1,000 filter limit is used up. */
 export const RuleFull: Story = {
   args: { sender: { ...sender, skipInbox: true, rule: "full" }, onStop: () => undefined },
 };
 
-/** Skipped in Rakazo, but Gmail did not accept the filter. */
+/** Skipped in Praci, but Gmail did not accept the filter. */
 export const RuleFailed: Story = {
   args: { sender: { ...sender, skipInbox: true, rule: "failed" }, onStop: () => undefined },
 };

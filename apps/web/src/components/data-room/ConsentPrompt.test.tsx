@@ -108,7 +108,7 @@ it("shrinks to one line on Not now, without allowing, with a way to be asked aga
   expect(rpc.consentGrant).not.toHaveBeenCalled();
   expect(onAllowed).not.toHaveBeenCalled();
   const askAgain = [...container.querySelectorAll("button")].find(
-    (b) => b.textContent === "Let Rakazo read documents",
+    (b) => b.textContent === "Let Praci read documents",
   );
   await act(async () => askAgain?.click());
   expect(container.textContent).toContain("Example Model");
@@ -129,5 +129,5 @@ it("remembers Not now across visits, and asks again for a new version", async ()
   root = createRoot(container);
   rpc.consent.mockResolvedValue(status({ version: "2027-01-01" }));
   await render();
-  expect(container.textContent).toContain("Let Rakazo read your documents");
+  expect(container.textContent).toContain("Let Praci read your documents");
 });

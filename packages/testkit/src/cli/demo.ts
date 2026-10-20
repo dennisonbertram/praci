@@ -42,7 +42,7 @@ import {
 import { seedDemo } from "./demo/seed.js";
 
 /**
- * `pnpm demo:up` / `pnpm demo:down`: an isolated, mock-data Rakazo stack for UX testers.
+ * `pnpm demo:up` / `pnpm demo:down`: an isolated, mock-data Praci stack for UX testers.
  * The API runs in this repo's e2e wiring (every emulator, canned Mercury and Brex tools), on
  * its own Postgres container and ports, and one demo account is seeded. `serve` is the API
  * process `up` starts; it is not meant to be run by hand.

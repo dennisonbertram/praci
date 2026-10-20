@@ -4302,7 +4302,7 @@ msgid "Go to"
 msgstr ""
 
 #: src/pages/NotFound.tsx
-msgid "Go to Rakazo"
+msgid "Go to Praci"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -4845,15 +4845,15 @@ msgid "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's s
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "Let Rakazo read documents"
+msgid "Let Praci read documents"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "Let Rakazo read your documents"
+msgid "Let Praci read your documents"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
-msgid "Let Rakazo sort your mail"
+msgid "Let Praci sort your mail"
 msgstr ""
 
 #: src/components/legal/ConsentPrompt.tsx
@@ -5030,11 +5030,11 @@ msgid "Mail"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
-msgid "Mail data from this account that Rakazo cached is removed."
+msgid "Mail data from this account that Praci cached is removed."
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
-msgid "Mail data Rakazo cached from these accounts is removed."
+msgid "Mail data Praci cached from these accounts is removed."
 msgstr ""
 
 #. placeholder {0}: status.sender
@@ -6037,7 +6037,7 @@ msgid "Not tagged"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
-msgid "Not tagged yet. Files are tagged once you let Rakazo read documents; you can still search it by name and text."
+msgid "Not tagged yet. Files are tagged once you let Praci read documents; you can still search it by name and text."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -6489,8 +6489,8 @@ msgid "Paste the MCP server URL from the app's documentation."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-msgid "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed."
-msgstr "서버의 OpenAI 호환 주소를 붙여넣으세요. 필요하면 Rakazo가 /v1을 추가합니다."
+msgid "Paste the OpenAI-compatible address from your server. Praci adds /v1 if needed."
+msgstr "서버의 OpenAI 호환 주소를 붙여넣으세요. 필요하면 Praci가 /v1을 추가합니다."
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Paste the web address an app gives you"
@@ -6612,6 +6612,22 @@ msgstr "POST 대상"
 msgid "Posted"
 msgstr ""
 
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Praci can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
+msgstr ""
+
+#: src/components/data-room/ConsentPrompt.tsx
+msgid "Praci doesn't tag new files."
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Praci finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
+msgstr ""
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Press Scan now to read your Data room for contracts and deadlines."
 msgstr ""
@@ -6717,22 +6733,6 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Quote"
-msgstr ""
-
-#: src/components/data-room/ConsentPrompt.tsx
-msgid "Rakazo can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
-msgstr ""
-
-#: src/components/data-room/ConsentPrompt.tsx
-msgid "Rakazo doesn't tag new files."
-msgstr ""
-
-#: src/components/AiDataSharing.tsx
-msgid "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
-msgstr ""
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Rakazo keeps itself up to date. If an update ever needs you, it shows here."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -7242,7 +7242,7 @@ msgid "Resize panel"
 msgstr "패널 크기 조절"
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "Restart the Rakazo server to start using iMessage."
+msgid "Restart the Praci server to start using iMessage."
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -7296,8 +7296,8 @@ msgstr ""
 
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
-msgid "Return to Rakazo"
-msgstr "Rakazo로 돌아가기"
+msgid "Return to Praci"
+msgstr "Praci로 돌아가기"
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
@@ -7952,8 +7952,8 @@ msgid "Sign in to Carta again to see who owns your company"
 msgstr ""
 
 #: src/pages/Auth.tsx
-msgid "Sign in to Rakazo"
-msgstr "Rakazo 로그인"
+msgid "Sign in to Praci"
+msgstr "Praci 로그인"
 
 #: src/lib/user-error.ts
 msgid "Sign in to your existing account to link SSO"
@@ -8724,8 +8724,8 @@ msgid "This space already uses {selectedProviderName}."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-msgid "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider."
-msgstr "이 구독 로그인 방식은 아직 Rakazo에서 지원되지 않습니다. 서버에 설정된 인증 정보를 사용하거나 다른 서비스를 선택하세요."
+msgid "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider."
+msgstr "이 구독 로그인 방식은 아직 Praci에서 지원되지 않습니다. 서버에 설정된 인증 정보를 사용하거나 다른 서비스를 선택하세요."
 
 #: src/components/EmailCards.tsx
 #: src/pages/Artifacts.tsx
@@ -9602,7 +9602,7 @@ msgid "You'll sign in to {0} in a new window."
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
-msgid "Your bots always answer through the AI service chosen in Models. A switch below also lets that service read your mail and documents, so Rakazo can sort your Inbox and read Data room files."
+msgid "Your bots always answer through the AI service chosen in Models. A switch below also lets that service read your mail and documents, so Praci can sort your Inbox and read Data room files."
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx

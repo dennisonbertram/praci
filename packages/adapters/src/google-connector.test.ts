@@ -967,7 +967,7 @@ describe("GoogleConnector providers", () => {
 
   it.each([
     ["another space", { spaceId: "space-2" }],
-    ["another Rakazo user", { userId: "user-2" }],
+    ["another Praci user", { userId: "user-2" }],
   ])(
     "keeps Google's grant when the same Google account is connected in %s",
     async (_name, other) => {

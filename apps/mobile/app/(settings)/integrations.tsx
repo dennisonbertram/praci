@@ -234,7 +234,7 @@ export default function Integrations() {
         rpc<ConnectionCatalogItem[]>("connections/catalog"),
         rpc<Connection[]>("connections/list"),
       ]);
-      // Native Google needs the Rakazo session, which this app's auth browser does not have.
+      // Native Google needs the Praci session, which this app's auth browser does not have.
       next = { catalog: preferNativeGoogle(catalog, { nativeGoogle: false }), connections };
     } catch (reason) {
       if (!mounted.current || focus !== focusGeneration.current) return;

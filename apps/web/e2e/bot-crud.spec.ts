@@ -179,7 +179,7 @@ test("bot creation, editing, and deletion persist", async ({ page }, testInfo) =
   await page.goto(deletedBotPath);
   await expect(page.getByText("Page not found", { exact: true })).toBeVisible();
   expect(new URL(page.url()).pathname).toBe(deletedBotPath);
-  await page.getByRole("link", { name: "Go to Rakazo" }).click();
+  await page.getByRole("link", { name: "Go to Praci" }).click();
   await expect(botList.getByText(longUnbrokenName, { exact: true })).toHaveCount(0);
   await expect(botList.getByRole("button", { name: /^Chief/ })).toBeVisible();
   await expect(page.getByPlaceholder("Message Chief")).toBeVisible();
