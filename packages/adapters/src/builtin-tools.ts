@@ -301,6 +301,32 @@ export const builtinAgentTools: ConnectorTool[] = [
     },
   },
   {
+    name: "show_image",
+    description:
+      "Show the user one or more images inline in the chat (up to 6). Each image has exactly one source: artifact_id (an earlier screenshot or attachment), item_id (a Data room image, where the Data room is available), path (an image file in this bot's home), or url (an https image the server downloads; PNG, JPEG, GIF or WebP, up to 10 MiB, no SVG). Add alt (what the image shows) and an optional short caption.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        images: {
+          type: "array",
+          maxItems: 6,
+          items: {
+            type: "object",
+            properties: {
+              artifact_id: { type: "string" },
+              item_id: { type: "string" },
+              path: { type: "string" },
+              url: { type: "string" },
+              alt: { type: "string" },
+              caption: { type: "string" },
+            },
+          },
+        },
+      },
+      required: ["images"],
+    },
+  },
+  {
     name: "shell",
     description:
       "Run a command inside this bot's computer. cwd defaults to the bot's folder on a Team Computer and the workspace root on a Private Computer. Output can arrive while the command is still running; tell the user any one-time code or sign-in URL in that output.",

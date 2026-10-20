@@ -11,6 +11,7 @@ export const BUILTIN_TOOL_NAMES = [
   "read_file",
   "write_file",
   "attach_file",
+  "show_image",
   "shell",
   "open_path",
   "launch_app",

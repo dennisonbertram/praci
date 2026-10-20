@@ -423,6 +423,7 @@ import {
   observeShellCommand,
   SHELL_STILL_RUNNING_NOTICE,
 } from "./shell-command-stream.js";
+import { showImages } from "./show-image.js";
 import { isExactNoResponse, NO_RESPONSE, stripNoResponseReply } from "./silent-reply.js";
 import {
   listAgentSkillRecords,
@@ -5799,6 +5800,37 @@ export function createRunExecutor(deps: ExecutorDeps) {
               return failAttach(error instanceof Error ? error.message : "could not attach file");
             }
           }
+          if (name === "show_image") {
+            if (!deps.artifacts) return finish({ error: "artifact storage unavailable" });
+            const shown = await showImages(
+              {
+                prisma: deps.prisma,
+                artifacts: deps.artifacts,
+                scope: {
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  botId: bot.id,
+                  groupId: thread.groupId ?? undefined,
+                  runId: run.id,
+                  operationId: executionId,
+                },
+                readWorkspaceFile: (filePath) =>
+                  deps.sandbox.readFile(
+                    computer,
+                    resolveBotWorkspacePath(computerMode, bot.id, filePath),
+                    context,
+                    { maxBytes: ATTACHMENT_MAX_BYTES },
+                  ),
+                dataRoom:
+                  dataRoomEnabled && !legalOnly
+                    ? { deniedConnectionIds: [...deniedIds] }
+                    : undefined,
+              },
+              args,
+            );
+            if (shown.blocks.length) await publishMessage(deps, run, "bot", shown.blocks);
+            return finish(shown.result);
+          }
           if (name === "create_spreadsheet") {
             if (!deps.artifacts) return finish({ error: "artifact storage unavailable" });
             const built = createSpreadsheetBytes(args);
@@ -9250,6 +9282,11 @@ export function userTurnInstructions(parts: {
     parts.agentSkillsLine,
     parts.taughtSkillsLine,
     offeredBuiltinClause(parts.disabledBuiltinTools, "read_spreadsheet", SPREADSHEET_GUIDANCE),
+    offeredBuiltinClause(
+      parts.disabledBuiltinTools,
+      "show_image",
+      "To show the user an image, call show_image; never paste image URLs.",
+    ),
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "render_plot",

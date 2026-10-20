@@ -350,6 +350,9 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     artifactId: Id,
     mimeType: z.string(),
     name: z.string(),
+    /** Set by show_image: text for screen readers and the failed-load state. */
+    alt: z.string().max(500).optional(),
+    caption: z.string().max(500).optional(),
   }),
   z.object({
     kind: z.literal("file"),

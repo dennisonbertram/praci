@@ -20,6 +20,8 @@ export function InlineImageAttachment({
   artifactId,
   name,
   mimeType,
+  alt,
+  caption,
   onOpen,
   pressableProps,
   labelColor,
@@ -28,6 +30,9 @@ export function InlineImageAttachment({
   artifactId: string;
   name: string;
   mimeType: string;
+  /** Text for screen readers; falls back to the file name. */
+  alt?: string;
+  caption?: string;
   onOpen: () => void;
   pressableProps?: Omit<PressableProps, "onPress" | "children" | "style">;
   labelColor: string;
@@ -62,18 +67,23 @@ export function InlineImageAttachment({
   if (state.status === "ready") {
     const size = fitImageSize(state.size, maxWidth, MAX_INLINE_HEIGHT);
     return (
-      <Pressable
-        {...pressableProps}
-        accessibilityRole="imagebutton"
-        accessibilityLabel={t("Open image {name}", { name })}
-        onPress={onOpen}
-      >
-        <Image
-          source={{ uri: state.uri }}
-          style={[styles.image, size, { backgroundColor: tokens.muted }]}
-          accessibilityIgnoresInvertColors
-        />
-      </Pressable>
+      <View style={styles.figure}>
+        <Pressable
+          {...pressableProps}
+          accessibilityRole="imagebutton"
+          accessibilityLabel={t("Open image {name}", { name: alt || name })}
+          onPress={onOpen}
+        >
+          <Image
+            source={{ uri: state.uri }}
+            style={[styles.image, size, { backgroundColor: tokens.muted }]}
+            accessibilityIgnoresInvertColors
+          />
+        </Pressable>
+        {caption ? (
+          <Text style={[styles.hint, { color: tokens.mutedForeground }]}>{caption}</Text>
+        ) : null}
+      </View>
     );
   }
   return (
@@ -89,6 +99,7 @@ export function InlineImageAttachment({
 }
 
 const styles = StyleSheet.create({
+  figure: { gap: 4 },
   image: { borderRadius: 12 },
   placeholder: {
     minHeight: 44,
