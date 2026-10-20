@@ -384,6 +384,18 @@ msgstr ""
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr ""
 
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "{item} dropped on {target}."
+msgstr ""
+
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "{item} dropped."
+msgstr ""
+
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "{item} is over {target}."
+msgstr ""
+
 #: src/components/data-room/folders.ts
 msgid "{items, plural, one {# item} other {# items}}"
 msgstr ""
@@ -625,6 +637,7 @@ msgid "Actions for {0}"
 msgstr "{0} 的操作"
 
 #: src/components/finance/ExchangeGroup.tsx
+#: src/components/sidebar-folders/FolderHeader.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Actions for {name}"
 msgstr ""
@@ -909,6 +922,7 @@ msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
+#: src/components/AskCard.tsx
 #: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr ""
@@ -976,6 +990,10 @@ msgstr "允许购买操作，无需询问"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Allow writing"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Allowed"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -1328,6 +1346,14 @@ msgstr "授权"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Authorize this server so bots can use its tools. A popup opens."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Auto-group"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Auto-grouped"
 msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
@@ -2087,6 +2113,10 @@ msgstr ""
 msgid "Collapse {0}"
 msgstr "折叠 {0}"
 
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "Collapse {name}"
+msgstr ""
+
 #: src/components/SidebarPagesGroup.tsx
 msgid "Collapse {title}"
 msgstr ""
@@ -2553,13 +2583,13 @@ msgstr "无法继续"
 msgid "Could not create agent"
 msgstr ""
 
+#: src/pages/shell/dialogs.tsx
+msgid "Could not create folder"
+msgstr ""
+
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "无法创建群组"
-
-#: src/pages/shell/dialogs.tsx
-msgid "Could not create section"
-msgstr "无法创建分组"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not create space"
@@ -2841,8 +2871,8 @@ msgid "Could not rename"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
-msgid "Could not rename section"
-msgstr "无法重命名分组"
+msgid "Could not rename folder"
+msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not rename space"
@@ -3079,6 +3109,11 @@ msgstr ""
 msgid "Create"
 msgstr "创建"
 
+#. placeholder {0}: bot.name
+#: src/pages/shell/dialogs.tsx
+msgid "Create a folder and move {0} into it."
+msgstr ""
+
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Create a key with only Query Funds"
 msgstr ""
@@ -3086,11 +3121,6 @@ msgstr ""
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Create a read-only key"
 msgstr ""
-
-#. placeholder {0}: bot.name
-#: src/pages/shell/dialogs.tsx
-msgid "Create a section and move {0} into it."
-msgstr "创建分组并把 {0} 移入。"
 
 #: src/pages/Auth.tsx
 msgid "Create account"
@@ -3305,6 +3335,10 @@ msgstr "删除账户"
 
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Delete chart"
+msgstr ""
+
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "Delete folder"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
@@ -3833,6 +3867,10 @@ msgstr "展开"
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
 msgstr "展开 {0}"
+
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "Expand {name}"
+msgstr ""
 
 #: src/components/SidebarPagesGroup.tsx
 msgid "Expand {title}"
@@ -5273,6 +5311,10 @@ msgstr "将 {full} 下移"
 msgid "Move {full} up"
 msgstr "将 {full} 上移"
 
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "Move of {item} cancelled."
+msgstr ""
+
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Move or delete what is in this folder first."
 msgstr ""
@@ -5412,6 +5454,9 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/pages/BotContextMenu.tsx
+#: src/pages/Shell.tsx
+#: src/pages/shell/dialogs.tsx
 msgid "New folder"
 msgstr ""
 
@@ -5440,11 +5485,6 @@ msgstr "新的待办"
 #: src/pages/Auth.tsx
 msgid "New password"
 msgstr "新密码"
-
-#: src/pages/BotContextMenu.tsx
-#: src/pages/shell/dialogs.tsx
-msgid "New section"
-msgstr "新建分组"
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "New skill"
@@ -5807,6 +5847,7 @@ msgid "Not in runway"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
+#: src/components/AskCard.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "暂不"
@@ -6331,6 +6372,10 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Pick when this runs, for example every Monday morning."
+msgstr ""
+
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "Picked up {item}."
 msgstr ""
 
 #: src/pages/BotContextMenu.tsx
@@ -6874,7 +6919,10 @@ msgstr ""
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/components/sidebar-folders/FolderHeader.tsx
+#: src/pages/BotContextMenu.tsx
 #: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/shell/dialogs.tsx
 msgid "Rename"
 msgstr ""
 
@@ -6886,12 +6934,6 @@ msgstr ""
 #: src/components/finance/RenameAccountDialog.tsx
 msgid "Rename account"
 msgstr ""
-
-#: src/pages/BotContextMenu.tsx
-#: src/pages/Shell.tsx
-#: src/pages/shell/dialogs.tsx
-msgid "Rename section"
-msgstr "重命名分组"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -8484,6 +8526,10 @@ msgstr ""
 msgid "To do"
 msgstr ""
 
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "To pick up, press space. Use the arrow keys to move, space to drop, escape to cancel."
+msgstr ""
+
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
 msgstr "至:"
@@ -8667,6 +8713,7 @@ msgstr ""
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
+#: src/components/sidebar-folders/SidebarUndoNotice.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -8727,6 +8774,10 @@ msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
 msgid "Until {to}"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Untitled folder"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx

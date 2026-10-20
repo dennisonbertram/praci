@@ -1,5 +1,5 @@
 import type { RealtimeFanout } from "@rakazo/adapter-kit";
-import { encodeLoginSecret } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION, encodeLoginSecret } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type { PrismaClient } from "./client.js";
 import {
@@ -3393,5 +3393,121 @@ describe("setMailApprovalOutcome", () => {
       data: { result: { note: "nothing was sent", outcome: "failed" } },
     });
     expect(tx.message.update.mock.calls[0]?.[0].data.blocks[0].mail.outcome).toBe("failed");
+  });
+});
+
+describe("answerRunInput on an AI data sharing request", () => {
+  const consentTx = (
+    request: unknown = { recipientKey: "key-1", version: AI_DISCLOSURE_VERSION },
+  ) => {
+    const tx = {
+      $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
+      message: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "message-1",
+          blocks: [
+            {
+              kind: "ask",
+              approvalEffectId: "effect-1",
+              text: "Allow your mail to be sent to Example?",
+              consent: { version: AI_DISCLOSURE_VERSION },
+              status: "pending",
+              actions: [
+                { id: "allow", label: "Allow" },
+                { id: "deny", label: "Not now" },
+              ],
+            },
+          ],
+        }),
+        update: vi.fn().mockResolvedValue({ id: "message-1" }),
+      },
+      run: {
+        findFirst: vi.fn().mockResolvedValue({ botId: "bot-1", userId: "owner-1" }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({ status: "queued" }),
+      },
+      task: { updateMany: vi.fn() },
+      externalEffect: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ id: "effect-1", kind: "ai_consent", status: "intended", request }),
+        update: vi.fn().mockResolvedValue({ id: "effect-1" }),
+      },
+      aiDataConsent: { upsert: vi.fn().mockResolvedValue({}) },
+      actionApprovalRule: { upsert: vi.fn() },
+      thread: { update: vi.fn().mockResolvedValue({ nextEventSeq: 10 }) },
+      event: {
+        create: vi.fn(async ({ data }: { data: { seq: number; type: string } }) => ({
+          ...event(data.seq),
+          type: data.type,
+        })),
+      },
+    };
+    const prisma = {
+      $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) => callback(tx)),
+    } as unknown as PrismaClient;
+    const answer = (answeredByUserId: string, answerId: string) =>
+      answerRunInput(prisma, {
+        spaceId: "workspace-1",
+        threadId: "thread-1",
+        runId: "run-1",
+        messageId: "message-1",
+        answeredByUserId,
+        answer: answerId,
+      });
+    return { tx, answer };
+  };
+
+  it("records consent for the stored recipient, for the owner and the space, when the owner allows", async () => {
+    const { tx, answer } = consentTx();
+    await expect(answer("owner-1", "allow")).resolves.toBe(true);
+    expect(tx.aiDataConsent.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId_spaceId_recipientKey: {
+            userId: "owner-1",
+            spaceId: "workspace-1",
+            recipientKey: "key-1",
+          },
+        },
+        create: {
+          userId: "owner-1",
+          spaceId: "workspace-1",
+          recipientKey: "key-1",
+          version: AI_DISCLOSURE_VERSION,
+        },
+      }),
+    );
+    expect(tx.externalEffect.update).toHaveBeenCalledWith({
+      where: { id: "effect-1" },
+      data: { status: "approved" },
+    });
+    expect(tx.run.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "queued" }) }),
+    );
+  });
+
+  it("records nothing and resumes the run when the owner answers Not now", async () => {
+    const { tx, answer } = consentTx();
+    await expect(answer("owner-1", "deny")).resolves.toBe(true);
+    expect(tx.aiDataConsent.upsert).not.toHaveBeenCalled();
+    expect(tx.externalEffect.update).toHaveBeenCalledWith({
+      where: { id: "effect-1" },
+      data: { status: "denied" },
+    });
+  });
+
+  it.each(["allow", "deny"])("refuses %s from anyone but the owner of the run", async (id) => {
+    const { tx, answer } = consentTx();
+    await expect(answer("teammate-1", id)).resolves.toBe(false);
+    expect(tx.aiDataConsent.upsert).not.toHaveBeenCalled();
+    expect(tx.externalEffect.update).not.toHaveBeenCalled();
+    expect(tx.run.updateMany).not.toHaveBeenCalled();
+  });
+
+  it("refuses a request made under an older disclosure version", async () => {
+    const { tx, answer } = consentTx({ recipientKey: "key-1", version: "2020-01-01" });
+    await expect(answer("owner-1", "allow")).resolves.toBe(false);
+    expect(tx.aiDataConsent.upsert).not.toHaveBeenCalled();
   });
 });
