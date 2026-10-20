@@ -24,10 +24,17 @@ import type {
   InboxListOutput,
   InboxMark,
   InboxRefreshOutput,
+  InboxPile,
+  InboxPileCounts,
   InboxTodo,
   MailRow,
 } from "@rakazo/contracts";
-import { InboxCategorySchema, InboxPrioritySchema, inboxAgentSpawnKey } from "@rakazo/contracts";
+import {
+  InboxCategorySchema,
+  InboxPileSchema,
+  InboxPrioritySchema,
+  inboxAgentSpawnKey,
+} from "@rakazo/contracts";
 import { applySenderMark, senderMarkMap, TRIAGE_VERSION } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
@@ -46,6 +53,8 @@ export interface InboxDeps {
 
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_ROWS = 200;
+/** Updates and Newsletters group by sender, so a noisy sender must not be cut off at 200 rows. */
+const MAX_GROUPED_ROWS = 500;
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 /** Messages asked of Gmail per account for one page of a filtered or searched list. */
 const SEARCH_PAGE_SIZE = 50;
@@ -118,6 +127,24 @@ async function enqueueTriage(deps: InboxDeps, actor: Actor): Promise<void> {
 
 const asPriority = (value: string | null) =>
   InboxPrioritySchema.options.find((p) => p === value) ?? null;
+const asPile = (value: string | null) => InboxPileSchema.options.find((p) => p === value) ?? null;
+
+/**
+ * The messages of a pile. Important also takes undecided mail (null), so nothing is hidden.
+ * Spam is the only pile that includes mail outside the inbox (Gmail's own spam).
+ * ponytail: the pile is stored per message and the list keeps the newest matching message of a thread,
+ * so a thread whose messages sit in two piles can show in both; a per-thread pile would fix that.
+ */
+const PILE_WHERE: Record<InboxPile, Prisma.CachedMailMessageWhereInput> = {
+  important: {
+    inInbox: true,
+    isSpam: false,
+    OR: [{ pile: null }, { pile: { notIn: ["updates", "newsletters", "spam"] } }],
+  },
+  updates: { inInbox: true, isSpam: false, pile: "updates" },
+  newsletters: { inInbox: true, isSpam: false, pile: "newsletters" },
+  spam: { OR: [{ isSpam: true }, { inInbox: true, pile: "spam" }] },
+};
 
 /** True when the triage job would run for this user: the one check the job itself makes. */
 async function triageEnabled(deps: InboxDeps, actor: Actor): Promise<boolean> {
@@ -182,6 +209,8 @@ function toMailRow(m: CachedMessage, enabled: boolean, marks: Map<string, InboxM
     category: enabled ? (InboxCategorySchema.options.find((c) => c === m.category) ?? null) : null,
     feedback: mark,
     ...(m.fromSelf ? { fromSelf: true } : {}),
+    fromAddress: m.fromAddress.toLowerCase(),
+    pile: m.isSpam ? "spam" : asPile(m.pile),
   };
 }
 
@@ -303,6 +332,11 @@ export async function inboxList(
       message: "A view or category cannot be combined with a filter or search",
     });
   }
+  if (input.pile && (input.view || input.category || search)) {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "A pile cannot be combined with a view, category, filter or search",
+    });
+  }
   const connections = await connectedMailConnections(prisma, actor);
   if (input.connectionId && !connections.some((c) => c.id === input.connectionId)) {
     throw notFound();
@@ -368,6 +402,8 @@ export async function inboxList(
 
   // The views read the whole cache window, not the newest rows of it. Triage must be on for them.
   const narrow: Prisma.CachedMailMessageWhereInput[] = [];
+  // Piles come from the free rules, so they do not wait for triage.
+  if (input.pile) narrow.push(PILE_WHERE[input.pile]);
   if (enabled && input.category) narrow.push({ category: input.category });
   if (enabled && important) {
     const marked = (mark: InboxMark) =>
@@ -384,18 +420,19 @@ export async function inboxList(
     if (noise.length > 0) narrow.push({ NOT: { OR: fromAddressIs(noise) } });
   }
 
-  const [messages, states, untriaged] = await Promise.all([
+  const [messages, states, untriaged, counts] = await Promise.all([
     prisma.cachedMailMessage.findMany({
       where: {
         spaceId: actor.spaceId,
         userId: actor.userId,
         connectionId: { in: ids },
-        inInbox: true,
+        // The pile filter sets inInbox itself: the Spam pile also lists Gmail's spam, which is not in the inbox.
+        ...(input.pile ? {} : { inInbox: true }),
         receivedAt: { gte: new Date(Date.now() - WINDOW_MS) },
         AND: narrow,
       },
       orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
-      take: MAX_ROWS,
+      take: input.pile === "updates" || input.pile === "newsletters" ? MAX_GROUPED_ROWS : MAX_ROWS,
     }),
     prisma.mailSyncState.findMany({ where: { connectionId: { in: ids } } }),
     // The rows Job flow step 4 of the triage job would select, across all the user's accounts.
@@ -406,6 +443,7 @@ export async function inboxList(
           connections.map((c) => c.id),
         )
       : false,
+    pileCounts(prisma, actor, ids),
   ]);
 
   const rows = oneRowPerThread(messages).map((m) => toMailRow(m, enabled, marks));
@@ -426,7 +464,32 @@ export async function inboxList(
     enabled,
     triageBlocked,
     triagePending: untriaged,
+    pileCounts: counts,
   };
+}
+
+/** Threads per pile in the window for the selected accounts, from Postgres only. */
+async function pileCounts(
+  prisma: PrismaClient,
+  actor: Actor,
+  connectionIds: string[],
+): Promise<InboxPileCounts> {
+  const since = new Date(Date.now() - WINDOW_MS);
+  const rows = await prisma.$queryRaw<Array<{ pile: InboxPile; count: number }>>(Prisma.sql`
+    SELECT CASE
+        WHEN "isSpam" OR pile = 'spam' THEN 'spam'
+        WHEN pile = 'updates' THEN 'updates'
+        WHEN pile = 'newsletters' THEN 'newsletters'
+        ELSE 'important' END AS pile,
+      COUNT(DISTINCT ("connectionId", "threadId"))::int AS count
+    FROM mail_messages
+    WHERE "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId}
+      AND "connectionId" IN (${Prisma.join(connectionIds)})
+      AND "receivedAt" >= ${since} AND ("inInbox" OR "isSpam")
+    GROUP BY 1`);
+  const counts = { important: 0, updates: 0, newsletters: 0, spam: 0 };
+  for (const row of rows) counts[row.pile] = row.count;
+  return counts;
 }
 
 /**
