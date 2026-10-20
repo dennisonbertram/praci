@@ -13,7 +13,7 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { Plus } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ContactDialog, contactKindNames } from "../components/ContactDialog";
 import { PickFilter, SearchField } from "../components/ListControls";
 import { PageHeader } from "../components/PageHeader";
@@ -34,14 +34,19 @@ export function ContactsPage() {
   const [editing, setEditing] = useState<Contact | "new" | null>(null);
   const names = contactKindNames();
 
+  const latestLoad = useRef(0);
   const load = useCallback(() => {
+    const request = ++latestLoad.current;
     rpc.contacts
       .list({})
       .then((list) => {
+        if (request !== latestLoad.current) return;
         setContacts(list);
         setError("");
       })
-      .catch((cause) => setError(errorText(cause, t`Could not load contacts`)));
+      .catch((cause) => {
+        if (request === latestLoad.current) setError(errorText(cause, t`Could not load contacts`));
+      });
   }, []);
   useEffect(load, [load]);
 

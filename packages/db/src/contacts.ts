@@ -69,8 +69,8 @@ export async function deleteContact(prisma: Db, actor: Scope, id: string): Promi
 
 /**
  * Saves a contact without ever changing an existing one: a contact with the same email
- * (case-insensitive) or, without an email, the same name and organization (case-insensitive)
- * is returned as is. Safe for unattended callers.
+ * or, without an email, the same name and organization (case-insensitive) is returned as is.
+ * Safe for unattended callers.
  */
 export async function addContactIfNew(
   prisma: Db,
@@ -78,32 +78,32 @@ export async function addContactIfNew(
   input: Omit<ContactSaveInput, "id">,
 ): Promise<{ contact: Contact; created: boolean }> {
   const scope = ownerOf(actor);
-  const insensitive = (value: string) => ({ equals: value, mode: "insensitive" as const });
-  const organization = input.organization?.trim() || null;
-  const existing = await prisma.contact.findFirst({
-    where: {
-      ...scope,
-      ...(input.email
-        ? { email: insensitive(input.email) }
-        : {
-            name: insensitive(input.name),
-            organization: organization ? insensitive(organization) : null,
-          }),
-    },
-    orderBy: { id: "asc" },
+  // Prisma turns an insensitive equals into ILIKE, so escape its wildcards.
+  const insensitive = (value: string) => ({
+    equals: value.replace(/[\\%_]/g, "\\$&"),
+    mode: "insensitive" as const,
   });
+  const name = input.name.trim();
+  const organization = input.organization?.trim() || null;
+  // The schema lowercases email, so it matches exactly.
+  const where = input.email
+    ? { ...scope, email: input.email }
+    : {
+        ...scope,
+        name: insensitive(name),
+        organization: organization ? insensitive(organization) : null,
+      };
+  const existing = await prisma.contact.findFirst({ where, orderBy: { id: "asc" } });
   if (existing) return { contact: toContact(existing), created: false };
+  // ponytail: only email is unique, so concurrent no-email adds can both insert a duplicate row;
+  // upgrade to a unique index on lower(name) plus organization, or an advisory lock.
   try {
-    return {
-      contact: toContact(await prisma.contact.create({ data: { ...scope, ...input } })),
-      created: true,
-    };
+    const row = await prisma.contact.create({ data: { ...scope, ...input, name, organization } });
+    return { contact: toContact(row), created: true };
   } catch (error) {
     // A concurrent run saved the same email first.
     if (isUniqueViolation(error) && input.email) {
-      const row = await prisma.contact.findFirst({
-        where: { ...scope, email: insensitive(input.email) },
-      });
+      const row = await prisma.contact.findFirst({ where: { ...scope, email: input.email } });
       if (row) return { contact: toContact(row), created: false };
     }
     throw error;

@@ -65,7 +65,7 @@ describePostgres("contacts (PostgreSQL)", () => {
     expect(first.created).toBe(true);
     const again = await addContactIfNew(prisma, mine, {
       name: "Renamed",
-      email: "ADD-ONE@example.test",
+      email: "add-one@example.test",
       kind: "other",
       notes: "new note",
     });
@@ -98,6 +98,25 @@ describePostgres("contacts (PostgreSQL)", () => {
       [sameSpace, other.contact.id],
     ] as const)
       await deleteContact(prisma, owner, id);
+  });
+
+  it("addContactIfNew matches an email exactly and an empty organization as none", async () => {
+    const dotted = await addContactIfNew(prisma, mine, {
+      name: "Dot",
+      email: "al.ice@example.test",
+    });
+    const underscore = await addContactIfNew(prisma, mine, {
+      name: "Under",
+      email: "al_ice@example.test",
+    });
+    expect(underscore.created).toBe(true);
+    const first = await addContactIfNew(prisma, mine, { name: "Blank Org", organization: "" });
+    const again = await addContactIfNew(prisma, mine, { name: "Blank Org", organization: "" });
+    expect(first.created).toBe(true);
+    expect(again.created).toBe(false);
+    expect(again.contact.id).toBe(first.contact.id);
+    for (const row of [dotted, underscore, first])
+      await deleteContact(prisma, mine, row.contact.id);
   });
 
   it("refuses to create a contact whose email another contact has, and leaves it unchanged", async () => {
