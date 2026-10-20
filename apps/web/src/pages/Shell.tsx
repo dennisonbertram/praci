@@ -290,7 +290,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-pref
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
 import { findLegalAgent } from "../lib/legal-agent";
-import { localTimezone } from "../lib/local-timezone";
+import { localTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
 import { messageProviderLabel } from "../lib/messaging";
 import { parseModelOptionKey } from "../lib/model-catalog";
@@ -1442,6 +1442,17 @@ export function ShellPage() {
         if (cancelled) return;
         const groupList = bootstrap.groups;
         setBootstrapMe(bootstrap.me);
+        // Agents and new schedules use the user's zone; follow the browser without asking.
+        const zone = timezoneToReport(bootstrap.me);
+        if (zone) {
+          void rpc.preferences
+            .update({ timezone: zone })
+            .then((nextMe) => {
+              markTimezoneReported(nextMe.userId, zone);
+              if (!cancelled) setBootstrapMe(nextMe);
+            })
+            .catch(() => undefined);
+        } else markTimezoneReported(bootstrap.me.userId);
         // Skip list/route writes only if a later refreshBots() successfully
         // committed (failed refreshes bump epoch but not botsRefreshApplied).
         const applyBotLists = appliedAtStart === botsRefreshApplied.current;
@@ -6146,6 +6157,10 @@ export function ShellPage() {
             onAvatarStyleChange={async (avatarStyle) => {
               const nextMe = await rpc.preferences.update({ avatarStyle });
               setBootstrapMe(nextMe);
+            }}
+            timezone={bootstrapMe?.timezone ?? localTimezone()}
+            onTimezoneChange={async (timezone) => {
+              setBootstrapMe(await rpc.preferences.update({ timezone }));
             }}
             memoryConfig={memoryProviderConfig}
             onMemoryConfigChange={(config) => {

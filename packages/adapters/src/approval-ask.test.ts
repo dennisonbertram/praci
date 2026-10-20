@@ -42,6 +42,29 @@ describe("buildApprovalAskBlock tool identity", () => {
   });
 });
 
+describe("buildApprovalAskBlock schedule card", () => {
+  it("shows the schedule in words and the whole prompt, uncut", () => {
+    const prompt = `Summarize my mail. ${"x".repeat(5_000)}`;
+    const block = buildApprovalAskBlock(
+      "effect-1",
+      "schedule_create",
+      { name: "Digest", prompt, cron: "0 8 * * *" },
+      [],
+      {
+        schedule: {
+          summary: "creating the repeating schedule “Digest”",
+          detail: `repeats: Every day at 8:00 AM (America/New_York)\nprompt: ${prompt}`,
+        },
+      },
+    );
+    if (block.kind !== "ask") throw new Error("expected an ask block");
+    expect(block.text).toBe("Review before creating the repeating schedule “Digest”");
+    expect(block.detail).toContain("repeats: Every day at 8:00 AM (America/New_York)");
+    expect(block.detail).toContain(prompt);
+    expect(block.actions?.map((action) => action.id)).toEqual(["allow", "always", "deny"]);
+  });
+});
+
 describe("buildApprovalAskBlock", () => {
   it("binds the approval to its effect and redacts secrets", () => {
     const block = buildApprovalAskBlock(

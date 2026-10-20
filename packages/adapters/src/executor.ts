@@ -433,6 +433,10 @@ import {
   filterBuiltinToolsForRun,
   filterBuiltinToolsForThread,
   listSchedulesFromTool,
+  loadUserTimezone,
+  scheduleApproval,
+  scheduleRunsFromTool,
+  updateScheduleFromTool,
 } from "./schedule-tools.js";
 import { loadAgentScratchpadContext } from "./scratchpad-context.js";
 import {
@@ -521,6 +525,7 @@ export const READ_ONLY_AGENT_TOOLS = new Set([
   "task_catalog",
   "recall_memory",
   "schedule_list",
+  "schedule_runs",
   "scratchpad_list",
   "board_tickets",
   "ticket_get",
@@ -1395,6 +1400,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           include: { computer: true },
         });
         const voiceAgent = isVoiceAgentSpawnKey(bot.spawnKey);
+        // The owner's zone: shown in the per-turn time line and the default for new schedules.
+        const userTimezone = await loadUserTimezone(deps.prisma, run.userId);
         const [
           thread,
           loadedMessages,
@@ -3029,8 +3036,23 @@ export function createRunExecutor(deps: ExecutorDeps) {
             viaConnector,
             declaredReadOnly,
           );
+          // Only a repeating schedule asks; a one-off reminder fires once and stays free.
+          const scheduleScope = {
+            spaceId: run.spaceId,
+            botId: bot.id,
+            userId: run.userId,
+            ...(thread.groupId ? { threadId: thread.id } : {}),
+          };
+          const scheduleCard = await scheduleApproval(
+            deps,
+            scheduleScope,
+            name,
+            args,
+            userTimezone,
+          );
           const requiresApprovalByDefault =
             requiresUnattendedApproval ||
+            scheduleCard !== undefined ||
             toolRequiresApproval(name, viaConnector, declaredReadOnly);
           const callRoute = (resolvedTool ?? connectorTools.get(name))?.route;
           // Integration-agent writes use the shared preset classification and always show the full call.
@@ -3085,14 +3107,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     ),
                   )
                 : false));
-          const plan = requiresMandatoryApproval
-            ? "ask"
-            : planActionGate({
-                resolved: approvalResolved,
-                consequential: requiresApprovalByDefault,
-                autoReviewEnabled: autoReviewPref,
-                checkerConfigured,
-              });
+          const plan =
+            requiresMandatoryApproval ||
+            // A repeating schedule asks unless the owner chose "Always allow" for this tool; Auto
+            // Review never clears it, because the saved prompt would run on every fire.
+            (scheduleCard !== undefined && approvalResolved.source !== "always_allow")
+              ? "ask"
+              : planActionGate({
+                  resolved: approvalResolved,
+                  consequential: requiresApprovalByDefault,
+                  autoReviewEnabled: autoReviewPref,
+                  checkerConfigured,
+                });
           let reviewReason: string | undefined;
           let gateDecision: "ask" | "allow" = plan === "ask" ? "ask" : "allow";
           const needsApprovalEarly = plan === "ask" || plan === "judge";
@@ -3364,9 +3390,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 serviceName: callRoute?.serverName,
                 mailAccount: await approvalMailAccount(),
                 imessage: imessageCard,
+                schedule: scheduleCard,
               }),
               redactSecrets(
-                `Review before ${describeApprovalAction(name, args, callRoute?.serverName)}`,
+                `Review before ${scheduleCard?.summary ?? describeApprovalAction(name, args, callRoute?.serverName)}`,
                 runSecrets,
               ),
             );
@@ -4578,6 +4605,25 @@ export function createRunExecutor(deps: ExecutorDeps) {
               ...(thread.groupId ? { threadId: thread.id } : {}),
             });
           }
+          if (name === "schedule_update") {
+            return finish(
+              await updateScheduleFromTool(deps, {
+                ...scheduleScope,
+                id: String(args.id ?? ""),
+                prompt: args.prompt,
+                schedule: args.schedule,
+                timezone: args.timezone,
+                enabled: args.enabled,
+              }),
+            );
+          }
+          if (name === "schedule_runs") {
+            return scheduleRunsFromTool(deps, {
+              ...scheduleScope,
+              id: String(args.id ?? ""),
+              limit: args.limit,
+            });
+          }
           if (name === "schedule_cancel") {
             const cancelled = await cancelScheduleFromTool(deps, {
               spaceId: run.spaceId,
@@ -5734,7 +5780,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           // A hang-up turn is read, not heard: no spoken-reply constraint.
           voiceCall && !callEndRun ? voiceCallInstruction(disabledBuiltinTools) : undefined,
           // Per-turn, not in the system prompt: the timestamp changes every call and would break the cacheable prefix.
-          formatCurrentTimeInstruction(),
+          formatCurrentTimeInstruction(new Date(), userTimezone),
         ]
           .filter(Boolean)
           .join("\n\n");

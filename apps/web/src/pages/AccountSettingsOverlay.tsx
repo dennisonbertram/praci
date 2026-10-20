@@ -1,6 +1,17 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
 import type { AccountSecurity, AvatarStyle } from "@rakazo/contracts";
-import { BotAvatar, Button, Field, FieldLabel, Input, Label, Switch, Toggle } from "@rakazo/ui-web";
+import {
+  BotAvatar,
+  Button,
+  Field,
+  FieldLabel,
+  Input,
+  Label,
+  NativeSelect,
+  NativeSelectOption,
+  Switch,
+  Toggle,
+} from "@rakazo/ui-web";
 import { ChevronDown } from "lucide-react";
 import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
@@ -43,6 +54,9 @@ export type SettingsGeneralProps = {
   name: string;
   avatarStyle: AvatarStyle;
   onAvatarStyleChange: (style: AvatarStyle) => Promise<void>;
+  /** The zone agents and new schedules use; the section is hidden without it. */
+  timezone?: string;
+  onTimezoneChange?: (timezone: string) => Promise<void>;
   messagingEnabled?: boolean;
   onOpenMessaging?: () => void;
   isDeploymentOwner?: boolean;
@@ -53,6 +67,8 @@ export function GeneralSettingsPanels({
   name,
   avatarStyle,
   onAvatarStyleChange,
+  timezone,
+  onTimezoneChange,
   messagingEnabled = false,
   onOpenMessaging,
   isDeploymentOwner = false,
@@ -186,6 +202,26 @@ export function GeneralSettingsPanels({
         </h3>
         <UiLocalePicker value={locale} onChange={chooseLocale} />
       </section>
+
+      {timezone && onTimezoneChange ? (
+        <section className="rounded-xl border border-border px-4 py-4">
+          <h3 className="text-[15px] font-medium text-foreground">
+            <Trans>Time zone</Trans>
+          </h3>
+          <NativeSelect
+            aria-label={t`Time zone`}
+            className="mt-3 w-full"
+            value={timezone}
+            onChange={(event) => void onTimezoneChange(event.target.value).catch(() => undefined)}
+          >
+            {timezoneOptions(timezone).map((zone) => (
+              <NativeSelectOption key={zone} value={zone}>
+                {zone.replaceAll("_", " ")}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </section>
+      ) : null}
 
       <section
         className="rounded-xl border border-border px-4 py-4"
@@ -558,6 +594,11 @@ function AppearancePicker({
       ))}
     </fieldset>
   );
+}
+
+function timezoneOptions(current: string): string[] {
+  const zones = Intl.supportedValuesOf("timeZone");
+  return zones.includes(current) ? zones : [current, ...zones];
 }
 
 function UiLocalePicker({

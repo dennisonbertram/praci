@@ -84,6 +84,7 @@ import {
   currentSessionGeneration,
   subscribeSessionGeneration,
 } from "../lib/session";
+import { reportTimezone } from "../lib/timezone";
 import { refreshUnseenCounts, useUnseenCount } from "../lib/unseen-notifications";
 import { useInboxDay } from "../lib/use-inbox-day";
 import { errorText } from "../lib/user-error";
@@ -235,6 +236,7 @@ function Home() {
   useEffect(() => {
     if (!hasSession) return;
     void registerPushToken().catch(() => undefined);
+    void reportTimezone().catch(() => undefined);
   }, [hasSession]);
 
   // Show the inbox saved on this device until the first live load replaces it.

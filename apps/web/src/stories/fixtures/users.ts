@@ -3,6 +3,7 @@ import type { Me } from "@rakazo/contracts";
 export const mockMe: Me = {
   ticketBoardEnabled: false,
   userId: "user_demo",
+  timezone: null,
   email: "demo@example.test",
   name: "Demo User",
   spaceId: "space_demo",

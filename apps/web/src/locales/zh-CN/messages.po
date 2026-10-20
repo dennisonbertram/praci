@@ -8771,6 +8771,10 @@ msgstr ""
 msgid "Time of day"
 msgstr "时间"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Time zone"
+msgstr ""
+
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Title"

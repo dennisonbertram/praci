@@ -14,6 +14,22 @@ describe("formatCurrentTimeInstruction", () => {
     expect(line).toContain("write absolute dates");
   });
 
+  it("adds the user's local date, time and zone when a zone is known", () => {
+    const line = formatCurrentTimeInstruction(new Date("2026-01-15T01:30:00Z"), "America/New_York");
+    expect(line).toContain("Current date and time: Thursday, 2026-01-15T01:30:00Z (UTC).");
+    expect(line).toContain(
+      "User's local time: Wednesday, January 14, 2026 at 8:30 PM in America/New_York (UTC-5).",
+    );
+  });
+
+  it("ignores a missing or invalid zone", () => {
+    for (const zone of [undefined, null, "Not/AZone"]) {
+      expect(formatCurrentTimeInstruction(new Date("2026-01-15T01:30:00Z"), zone)).not.toContain(
+        "local time",
+      );
+    }
+  });
+
   it("defaults to the real clock", () => {
     const before = Date.now();
     const line = formatCurrentTimeInstruction();

@@ -194,6 +194,7 @@ import {
   expandSkillReferencesInPrompt,
   hasMixedOneShotSchedule,
   isOneShotRoutineCrons,
+  isValidTimezone,
   MESSAGING_PHOTON_BLOCKED_MESSAGE,
   matchFeaturedConnectorId,
   messagingProviderBlocksBot,
@@ -1296,9 +1297,12 @@ export function createRouter(deps: RouterDeps) {
     },
     preferences: {
       update: authed.preferences.update.handler(async ({ context, input }): Promise<Me> => {
+        if (input.timezone !== undefined && !isValidTimezone(input.timezone)) {
+          throw new ORPCError("BAD_REQUEST", { message: "Unknown time zone" });
+        }
         await deps.prisma.user.update({
           where: { id: context.actor.userId },
-          data: { avatarStyle: input.avatarStyle },
+          data: { avatarStyle: input.avatarStyle, timezone: input.timezone },
         });
         return meDto(deps, context.actor);
       }),
@@ -3868,10 +3872,19 @@ export function createRouter(deps: RouterDeps) {
         }
         const bot = await repos.getBot(context.actor, input.botId);
         await assertRoutineModel(deps, context.actor, input);
+        const timezone =
+          input.timezone ??
+          (
+            await deps.prisma.user.findUnique({
+              where: { id: context.actor.userId },
+              select: { timezone: true },
+            })
+          )?.timezone ??
+          "UTC";
         // Validate every recurring cron even when inactive; @once and webhook-only have no next date.
         let nextRunAt: Date | null = null;
         if (input.crons.length > 0 && !isOneShotRoutineCrons(input.crons)) {
-          const computedNextRunAt = nextRoutineDate(input.crons, input.timezone);
+          const computedNextRunAt = nextRoutineDate(input.crons, timezone);
           nextRunAt = input.active ? computedNextRunAt : null;
         }
         const row = await deps.prisma.routine.create({
@@ -3882,7 +3895,7 @@ export function createRouter(deps: RouterDeps) {
             name: input.name,
             prompt: input.prompt,
             crons: input.crons,
-            timezone: input.timezone,
+            timezone,
             notify: input.notify,
             active: input.active,
             webhookEnabled: input.webhookEnabled,
@@ -8051,6 +8064,7 @@ async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     canChooseHostComputer: actor.isDeploymentOwner && deps.env.sandboxProvider === "docker",
     sandboxProvider: deps.env.sandboxProvider,
     avatarStyle: user.avatarStyle === "robot" ? "robot" : "organic",
+    timezone: user.timezone ?? null,
     billingEnabled: Boolean(deps.billing) && !actor.isDeploymentOwner,
   };
 }

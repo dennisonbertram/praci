@@ -467,7 +467,8 @@ export const CreateRoutineInput = z
     name: z.string().min(1).max(80),
     prompt: z.string().min(1),
     crons: z.array(z.string().min(1)).default([]),
-    timezone: z.string().default("UTC"),
+    /** Defaults to the user's stored time zone, then UTC. */
+    timezone: z.string().optional(),
     notify: z.boolean().default(true),
     active: z.boolean().default(false),
     webhookEnabled: z.boolean().default(false),
@@ -1532,6 +1533,8 @@ export const MeSchema = z.object({
   canChooseHostComputer: z.boolean(),
   sandboxProvider: z.string(),
   avatarStyle: AvatarStyleSchema,
+  /** IANA time zone last reported by one of the user's clients; null before the first report. */
+  timezone: z.string().nullable(),
   /** True when this deployment bills and the user is not the deployment owner. */
   billingEnabled: z.boolean(),
 });
