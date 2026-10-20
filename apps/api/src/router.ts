@@ -1,16 +1,9 @@
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import { implement, ORPCError } from "@orpc/server";
+import { ORPCError } from "@orpc/server";
 import type {
   AdapterContext,
-  AgentHomeStore,
-  ArtifactStore,
   ConnectorCatalogItem,
-  JobPublisher,
-  MailProvider,
-  MailUnsubscriber,
-  MemoryStore,
   SandboxProvider,
-  SecretStore,
   UsageOperationKind,
 } from "@rakazo/adapter-kit";
 import {
@@ -24,22 +17,9 @@ import {
   SecretStoreUnavailableError,
 } from "@rakazo/adapter-kit";
 import type {
-  CloudAgentConnection,
   CodexLiveCatalog,
-  ComposioProvider,
   ComputerExecutionLease,
-  ConnectorRegistry,
-  FaviconResolver,
-  FinanceSyncDeps,
   getBotSecretMetadata,
-  IntegrationProviderSettings,
-  McpConnector,
-  MemoryProviderResolver,
-  MessagingSettings,
-  PiOAuthLogins,
-  RemoteConnectorDependencies,
-  TicketChangeNotifier,
-  TriageReadinessDeps,
 } from "@rakazo/adapters";
 import {
   acquireComputerExecutionLease,
@@ -143,7 +123,6 @@ import {
   validateStoredModelAuth,
   verifyMcpInstall,
 } from "@rakazo/adapters";
-import type { Auth } from "@rakazo/auth";
 import type {
   Actor,
   Bot,
@@ -160,7 +139,6 @@ import type {
 import {
   ATTACHMENT_MAX_BYTES,
   actorScope,
-  appContract,
   BotSecretAuth,
   ComputerCommandSchema,
   foldComputerCommands,
@@ -204,14 +182,7 @@ import {
   splitPage,
   withAppDirectory,
 } from "@rakazo/core";
-import type {
-  BoardEvents,
-  Board as BoardRow,
-  Notification,
-  NotificationEvents,
-  PrismaClient,
-  ThreadEvents,
-} from "@rakazo/db";
+import type { Board as BoardRow, Notification, PrismaClient } from "@rakazo/db";
 import {
   addSidebarFolder,
   addSidebarPage,
@@ -297,7 +268,6 @@ import {
   updateNotificationPreferences,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
-import { deleteAgentSecret, listAgentSecrets, putAgentSecret } from "./agent-secrets.js";
 import { createAgentSkillsService } from "./agent-skills.js";
 import { aiConsentStatus, allowAiConsent } from "./ai-consent.js";
 import {
@@ -310,7 +280,6 @@ import {
   listArtifactVersions,
   listSpaceArtifacts,
 } from "./artifacts.js";
-import type { BillingService } from "./billing.js";
 import { botProfileLabelsChanged, commitBotUpdate } from "./bot-update.js";
 import type { CartaSyncDeps } from "./carta-agent.js";
 import {
@@ -332,7 +301,6 @@ import {
 } from "./connection-oauth.js";
 import { createDataRoomService } from "./data-room.js";
 import { ensureDataRoomAgent } from "./data-room-agent.js";
-import type { FinanceCryptoDeps } from "./finance.js";
 import {
   financeAccountDetail,
   financeAccounts,
@@ -370,7 +338,6 @@ import {
   financeExchangeRemove,
   financeExchanges,
 } from "./finance-exchange.js";
-import type { ParseStatement } from "./finance-statements.js";
 import {
   financeStatementAccountRename,
   financeStatementConfirm,
@@ -457,18 +424,17 @@ import {
   OpenRouterOAuthError,
 } from "./openrouter-oauth.js";
 import { rememberedMessageIds, rememberThreadMessage } from "./remember-message.js";
+import { createAgentSecretsRoutes } from "./routes/agent-secrets.js";
+import { createBillingRoutes } from "./routes/billing.js";
+import type { RouterDeps } from "./routes/context.js";
+import { createRouteContext } from "./routes/context.js";
+import { createUpdaterRoutes } from "./routes/updater.js";
+
 import { listRoutineRuns } from "./routine-runs.js";
 import { listSpaceRuns } from "./runs.js";
 import { addScreenProxyCapability } from "./screen-proxy.js";
 import { querySpaceSearch } from "./search.js";
 import { withSerializableRetry } from "./serializable-retry.js";
-import type { UpdaterProxyConfig } from "./server-update.js";
-import {
-  applyServerUpdate,
-  checkServerUpdate,
-  readServerUpdateStatus,
-  UpdaterProxyError,
-} from "./server-update.js";
 import { spreadsheetPreview } from "./spreadsheet-preview.js";
 import { HEARTBEAT, withHeartbeat } from "./stream.js";
 import { assertTeachingSendAllowed, createTaughtSkillsService } from "./taught-skills.js";
@@ -502,6 +468,8 @@ import {
   voiceContext,
 } from "./voice.js";
 import { ensureVoiceAgent } from "./voice-agent.js";
+
+export type { RouterDeps } from "./routes/context.js";
 
 const MAX_COMPUTER_TEXT_FILE_BYTES = 2 * 1024 * 1024;
 /** Each command writes a running and a done event, so this keeps about 100 commands. */
@@ -863,92 +831,6 @@ function toNotificationDto(row: Notification): NotificationDto {
   };
 }
 
-export interface RouterDeps {
-  /** Sends one-click unsubscribe POSTs; without it a one-click sender degrades to its link. */
-  unsubscriber?: MailUnsubscriber;
-  /** The model call behind Data room auto-sort; without it only duplicate folders are merged. */
-  proposeSort?: Parameters<typeof createDataRoomService>[0]["proposeSort"];
-  cloudAgent?: CloudAgentConnection | null;
-  prisma: PrismaClient;
-  events: ThreadEvents;
-  boardEvents: BoardEvents;
-  notificationEvents: NotificationEvents;
-  ticketChanges: TicketChangeNotifier;
-  auth: Auth;
-  jobs: JobPublisher;
-  sandbox: SandboxProvider;
-  memory: MemoryStore;
-  memoryProviders: MemoryProviderResolver;
-  home: AgentHomeStore;
-  secrets: SecretStore;
-  oauthLogins: PiOAuthLogins;
-  /** Live Codex catalog seam; defaults to the shared per-process cache. */
-  codexCatalog?: CodexLiveCatalog;
-  /** Site icons for links; defaults to the per-process cache that fetches them. */
-  favicons?: FaviconResolver;
-  /**
-   * Detached refresh for a stored credential whose bearer expired — the live
-   * catalog path calls it instead of refreshing inline. Defaults to the
-   * runtime's locked `kickModelCredentialRefresh`; injectable for tests so a
-   * catalog read never reaches the real OAuth refresh endpoint.
-   */
-  refreshExpiredModelCredential?: (
-    scope: { userId: string; spaceId: string },
-    secretId: string,
-    provider: string,
-  ) => void;
-  integrationSettings?: IntegrationProviderSettings;
-  messagingSettings?: MessagingSettings;
-  composio?: ComposioProvider;
-  mcpOAuth?: McpOAuthBroker;
-  /** Replaces the network for Box calls; tests point it at the Box emulator. */
-  boxFetch?: typeof fetch;
-  /** Builds the read-tool caller for finance servers (refresh, receipts); unset where finance sync is off. */
-  financeCallToolFor?: FinanceSyncDeps["callToolFor"];
-  /** Reruns a pin's saved read-only tool call on refresh; unset where MCP is off. */
-  mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
-  /** Reads an uploaded bank statement; wired in app.ts. */
-  parseStatement?: ParseStatement;
-  financeCrypto?: FinanceCryptoDeps;
-  /** Replaces the network for Coinbase and Kraken reads (offline stacks). */
-  exchangeFetch?: typeof fetch;
-  connectors: ConnectorRegistry;
-  remoteConnectors?: RemoteConnectorDependencies;
-  artifacts: ArtifactStore;
-  /** Provider-neutral mail access; the Inbox handlers read and sync through it. */
-  mail: MailProvider;
-  /** Signs email image links; the deployment auth secret. */
-  imageProxySecret?: string;
-  /** The executor's model resolver; the Inbox `enabled` flag asks the same question as the triage job. */
-  resolveModel?: TriageReadinessDeps["resolveModel"];
-  dataDir: string;
-  /** Present when the external messaging surface is enabled. */
-  messaging?: { enabled: boolean; providers: string[]; openSignup: boolean };
-  /** Present only when the deployment bills; self-hosted installs leave it unset. */
-  billing?: BillingService;
-  env: {
-    ticketBoardEnabled?: boolean;
-    agentRuntime: string;
-    teamChatJudgeProvider?: string;
-    teamChatJudgeModel?: string;
-    defaultProvider: string;
-    defaultModel: string;
-    deploymentModelConfigured?: boolean;
-    deploymentModelHostCredentials?: boolean;
-    webOrigin: string;
-    privacyPolicyUrl?: string;
-    screenProxySecret: string;
-    sandboxProvider: string;
-    gitSha?: string;
-    updaterUrl?: string;
-    updaterToken?: string;
-    imageTag?: string;
-    integrationsCatalogUrl?: string;
-    mcpAllowPrivateEndpoint?: boolean;
-    mailWritesDisabled?: boolean;
-  };
-}
-
 /** Bound for one provider sandbox destroy during Space deletion. Providers may
  * ignore the request abort signal, so without a deadline a hung destroy would
  * keep the deletion claim renewed forever and block stale-claim recovery. */
@@ -1116,14 +998,8 @@ async function resolveSpaceBoard(
 }
 
 export function createRouter(deps: RouterDeps) {
-  const os = implement(appContract).$context<{
-    actor: Actor | null;
-    /** The signed-in session, so a push token ends with the session that registered it. */
-    sessionId?: string;
-    signal?: AbortSignal;
-    /** Re-runs the request's auth so a long-lived stream notices sign-out and revocation. */
-    stillAuthorized?: () => Promise<boolean>;
-  }>();
+  const routeContext = createRouteContext(deps);
+  const { os, authed } = routeContext;
   const repos = createRepos(deps.prisma);
   /**
    * Moves a bot to another computer (or onto the same one under a different provider) while it is
@@ -1316,11 +1192,6 @@ export function createRouter(deps: RouterDeps) {
     proposeSort: deps.proposeSort,
   });
 
-  const authed = os.use(async ({ context, next }) => {
-    if (!context.actor) throw new ORPCError("UNAUTHORIZED");
-    return next({ context: { ...context, actor: context.actor } });
-  });
-
   const boardEnabled = os
     .use(async ({ next }) => {
       if (!deps.env?.ticketBoardEnabled) throw new ORPCError("NOT_FOUND");
@@ -1357,17 +1228,7 @@ export function createRouter(deps: RouterDeps) {
     },
     health: os.health.handler(async () => ({ ok: true as const, version: "0.1.0" })),
     me: authed.me.handler(async ({ context }): Promise<Me> => meDto(deps, context.actor)),
-    billing: {
-      status: authed.billing.status.handler(async ({ context }) =>
-        requireBilling(deps).status(context.actor),
-      ),
-      checkout: authed.billing.checkout.handler(async ({ context }) =>
-        requireBilling(deps).checkout(context.actor),
-      ),
-      portal: authed.billing.portal.handler(async ({ context }) =>
-        requireBilling(deps).portal(context.actor),
-      ),
-    },
+    billing: createBillingRoutes(routeContext),
     preferences: {
       update: authed.preferences.update.handler(async ({ context, input }): Promise<Me> => {
         if (input.timezone !== undefined && !isValidTimezone(input.timezone)) {
@@ -1636,28 +1497,7 @@ export function createRouter(deps: RouterDeps) {
         return deploymentDto(deps.prisma, deps.env.sandboxProvider);
       }),
     },
-    updater: {
-      status: authed.updater.status.handler(async ({ context }) => {
-        if (!context.actor.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
-        return readServerUpdateStatus(updaterConfig(deps));
-      }),
-      check: authed.updater.check.handler(async ({ context, input }) => {
-        if (!context.actor.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
-        try {
-          return await checkServerUpdate(updaterConfig(deps), input);
-        } catch (error) {
-          mapUpdaterError(error);
-        }
-      }),
-      apply: authed.updater.apply.handler(async ({ context, input }) => {
-        if (!context.actor.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
-        try {
-          return await applyServerUpdate(updaterConfig(deps), input);
-        } catch (error) {
-          mapUpdaterError(error);
-        }
-      }),
-    },
+    updater: createUpdaterRoutes(routeContext),
     models: {
       embeddingModel: authed.models.embeddingModel.handler(({ context }) =>
         dataRoom.embeddingModel(context.actor),
@@ -6979,22 +6819,7 @@ export function createRouter(deps: RouterDeps) {
         },
       ),
     },
-    agentSecrets: {
-      list: authed.agentSecrets.list.handler(async ({ context }) =>
-        listAgentSecrets({ prisma: deps.prisma, secrets: deps.secrets }, context.actor),
-      ),
-      put: authed.agentSecrets.put.handler(async ({ context, input, signal }) =>
-        putAgentSecret(
-          { prisma: deps.prisma, secrets: deps.secrets },
-          context.actor,
-          input,
-          signal,
-        ),
-      ),
-      remove: authed.agentSecrets.remove.handler(async ({ context, input }) =>
-        deleteAgentSecret({ prisma: deps.prisma, secrets: deps.secrets }, context.actor, input.id),
-      ),
-    },
+    agentSecrets: createAgentSecretsRoutes(routeContext),
     botSecrets: {
       list: authed.botSecrets.list.handler(async ({ context, input }) => {
         const bot = await repos.getBot(context.actor, input.botId);
@@ -7963,30 +7788,6 @@ export function createRouter(deps: RouterDeps) {
   });
 }
 
-function updaterConfig(deps: RouterDeps): UpdaterProxyConfig {
-  return {
-    url: deps.env.updaterUrl ?? null,
-    token: deps.env.updaterToken ?? null,
-    gitSha: deps.env.gitSha,
-    imageTag: deps.env.imageTag ?? null,
-  };
-}
-
-function mapUpdaterError(error: unknown): never {
-  if (error instanceof UpdaterProxyError) {
-    if (error.status === 401 || error.status === 403) {
-      throw new ORPCError("FORBIDDEN", { message: error.message });
-    }
-    if (error.status >= 500) {
-      throw new ORPCError("INTERNAL_SERVER_ERROR", { message: error.message });
-    }
-    throw new ORPCError("BAD_REQUEST", { message: error.message });
-  }
-  throw new ORPCError("INTERNAL_SERVER_ERROR", {
-    message: error instanceof Error ? error.message : "Update failed.",
-  });
-}
-
 async function spaceNavigationDto(
   deps: RouterDeps,
   actor: Actor,
@@ -8193,11 +7994,6 @@ async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     hiddenPages: user.hiddenPages ?? [],
     billingEnabled: Boolean(deps.billing) && !actor.isDeploymentOwner,
   };
-}
-
-function requireBilling(deps: RouterDeps): BillingService {
-  if (!deps.billing) throw new ORPCError("NOT_FOUND", { message: "Billing is not enabled" });
-  return deps.billing;
 }
 
 async function modelSetup(deps: RouterDeps, actor: Actor) {
