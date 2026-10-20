@@ -27,6 +27,7 @@ const setup = () => {
     "memory.list": [],
     "agentSkills.list": [],
     "agentSkills.forBot": manySkills,
+    "agentSkills.drafts": [],
   });
 };
 
@@ -60,7 +61,6 @@ export const ConnectedModelPicker: Story = {
     mockRpc({
       "models.credentials": mockModelCredentials,
       "models.list": mockModelCatalog,
-      "agentSkills.drafts": [],
       me: mockMe,
     });
   },

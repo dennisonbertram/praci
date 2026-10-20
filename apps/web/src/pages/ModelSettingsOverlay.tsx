@@ -759,7 +759,11 @@ export function ModelSettingsOverlay({
             <Trans>Model</Trans>
           </span>
           <ModelPicker
-            options={modelsForProvider.map((entry) => ({ ...entry, value: entry.id }))}
+            options={modelsForProvider.map((entry) => ({
+              ...entry,
+              value: entry.id,
+              badgeLabel: entry.billing.toLowerCase().includes("free") ? t`Free` : undefined,
+            }))}
             label={t`Model`}
             searchLabel={t`Search models`}
             emptyLabel={t`No matching models`}

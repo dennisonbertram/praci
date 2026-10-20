@@ -4279,6 +4279,10 @@ msgstr "Forward"
 msgid "Found {total} files"
 msgstr "Found {total} files"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Free"
+msgstr "Free"
+
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx

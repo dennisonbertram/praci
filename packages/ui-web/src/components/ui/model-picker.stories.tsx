@@ -8,6 +8,7 @@ const options = Array.from({ length: 387 }, (_, index) => ({
   label: `Sample model ${index}`,
   provider: `sample-${index % 3}`,
   providerName: `Sample provider ${(index % 3) + 1}`,
+  badgeLabel: index === 0 ? "Free" : undefined,
 }));
 
 const meta = {

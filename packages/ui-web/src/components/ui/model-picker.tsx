@@ -19,6 +19,7 @@ export type ModelPickerOption = {
   id?: string;
   provider?: string;
   providerName?: string;
+  badgeLabel?: string;
 };
 
 export function ModelPicker({
@@ -87,8 +88,13 @@ export function ModelPicker({
           setOpen(false);
         }}
       >
-        <span className="min-w-0 truncate" title={option.label}>
-          {option.label}
+        <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+          <span className="min-w-0 truncate" title={option.label}>
+            {option.label}
+          </span>
+          {option.badgeLabel ? (
+            <span className="shrink-0 text-[11px] text-muted-foreground">{option.badgeLabel}</span>
+          ) : null}
         </span>
       </CommandItem>
     );
@@ -126,7 +132,7 @@ export function ModelPicker({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className="w-(--anchor-width) max-w-[calc(100vw-2rem)] gap-0 p-0"
+        className="w-(--anchor-width) min-w-64 max-w-[calc(100vw-2rem)] gap-0 p-0"
       >
         <Command shouldFilter={false} defaultValue={`model:${value}`} loop>
           <CommandInput
