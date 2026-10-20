@@ -288,6 +288,7 @@ async function main() {
         : []),
     ],
     mail,
+    mailWritesDisabled: process.env.MAIL_WRITES_DISABLED === "true",
     gmailPush,
   });
   // graphile-worker run() connects through the shared pool. createPool already
