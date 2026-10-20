@@ -65,7 +65,9 @@ describePostgres("company foundation (PostgreSQL)", () => {
     evidence: evidence(sourceItemId, contentHash),
   });
   const entityId = (result: CompanyWriteResult): string => {
-    if ("suppressed" in result) throw new Error("Expected a company entity");
+    if ("suppressed" in result || "deferred" in result) {
+      throw new Error("Expected a company entity");
+    }
     return result.id;
   };
   const persisted = <T extends object>(
@@ -424,6 +426,17 @@ describePostgres("company foundation (PostgreSQL)", () => {
       }),
     );
     expect(newEmailImport.id).toBe(original.id);
+    await company.edit({
+      entityId: original.id,
+      kind: "person",
+      attrs: { workEmails: [newEmail, newEmail.toUpperCase()] },
+    });
+    expect(
+      await prisma.companyIdentity.findMany({
+        where: { spaceId, ownerUserId: userId, entityId: original.id, identityType: "email" },
+        select: { identityValue: true },
+      }),
+    ).toEqual([{ identityValue: newEmail }]);
 
     const collisionEmail = `identity-collision-${suffix}@example.test`;
     const collisionTarget = persisted(
@@ -446,7 +459,9 @@ describePostgres("company foundation (PostgreSQL)", () => {
         attrs: { workEmails: [collisionEmail] },
       }),
     ).rejects.toThrow(/email identity.*already belongs/i);
-    expect((await company.detail(original.id))?.attrs).toMatchObject({ workEmails: [newEmail] });
+    expect((await company.detail(original.id))?.attrs).toMatchObject({
+      workEmails: [newEmail, newEmail],
+    });
     expect(
       await prisma.companyIdentity.findMany({
         where: { spaceId, ownerUserId: userId, entityId: original.id, identityType: "email" },
@@ -489,7 +504,39 @@ describePostgres("company foundation (PostgreSQL)", () => {
       "rejected-name-original-hash",
     );
     const rejected = persisted(await company.importEntity(rejectedInput));
+    const sameDocumentNameOnly = persisted(
+      await company.importEntity({
+        ...rejectedInput,
+        evidence: {
+          ...evidence("rejected-name-source", "rejected-name-exact-hash"),
+          quote: "A separate exact same-document quote.",
+        },
+      }),
+    );
+    expect(sameDocumentNameOnly.id).not.toBe(rejected.id);
     await company.reject(rejected.id, "Synthetic name-only rejection");
+    expect(
+      persisted(
+        await company.importEntity({
+          ...rejectedInput,
+          evidence: {
+            ...evidence("rejected-name-source", "rejected-name-exact-hash"),
+            quote: "A separate exact same-document quote.",
+          },
+        }),
+      ).id,
+    ).toBe(sameDocumentNameOnly.id);
+    const sameNameStrongIdentity = persisted(
+      await company.importEntity({
+        ...rejectedInput,
+        entity: {
+          ...rejectedInput.entity,
+          attrs: { workEmails: [`same-name-strong-${suffix}@example.test`] },
+        },
+        evidence: evidence("rejected-name-source", "rejected-name-strong-hash"),
+      }),
+    );
+    expect(sameNameStrongIdentity.id).not.toBe(rejected.id);
     const otherSource = persisted(
       await company.importEntity({
         ...rejectedInput,
@@ -508,7 +555,7 @@ describePostgres("company foundation (PostgreSQL)", () => {
           contentHash: "rejected-name-after-disconnect-hash",
         },
       }),
-    ).toMatchObject({ suppressed: true });
+    ).toMatchObject({ deferred: true, record: null, candidateId: expect.any(String) });
     const differentNameSameDocument = persisted(
       await company.importEntity({
         ...rejectedInput,
@@ -1887,10 +1934,7 @@ describePostgres("company foundation (PostgreSQL)", () => {
         ...childEventInput.event,
         entityIds: [entityId(secondMergeChild)],
       },
-      evidence: evidence(
-        "canonical-subject-child-second-source",
-        "canonical-subject-child-second-hash",
-      ),
+      evidence: evidence("canonical-subject-child-source", "canonical-subject-child-second-hash"),
     };
     const secondChildEvent = persisted(await company.importEvent(secondChildEventInput));
     expect(secondChildEvent.id).not.toBe(childEvent.id);
@@ -1937,11 +1981,30 @@ describePostgres("company foundation (PostgreSQL)", () => {
       ]),
     );
     expect(await company.importEvent(ambiguousMergeInput)).toEqual(deferred);
+    const refreshedAmbiguousMergeInput = {
+      ...ambiguousMergeInput,
+      evidence: {
+        ...ambiguousMergeInput.evidence,
+        quote: "The company source has refreshed this event extraction.",
+        contentHash: "canonical-subject-new-refreshed-hash",
+      },
+    };
+    expect(await company.importEvent(refreshedAmbiguousMergeInput)).toEqual(deferred);
     expect(
       (await company.candidates()).filter(
         (candidate) => candidate.reason === "ambiguous_event_subjects",
       ),
     ).toHaveLength(1);
+    expect(
+      await prisma.companyCandidate.findFirst({
+        where: { spaceId, ownerUserId: userId, id: deferred.candidateId },
+        select: { quote: true, contentHash: true, proposedFact: true },
+      }),
+    ).toMatchObject({
+      quote: "The company source has refreshed this event extraction.",
+      contentHash: "canonical-subject-new-refreshed-hash",
+      proposedFact: expect.objectContaining({ event: ambiguousMergeInput.event }),
+    });
     const originalChildReplay = persisted(
       await company.importEvent({
         ...childEventInput,
