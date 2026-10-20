@@ -47,24 +47,34 @@ export function rankCleanupSenders<T extends CleanupSender>(senders: T[]): T[] {
   );
 }
 
+/** The selected senders a choice applies to: skip inbox leaves out spam-like senders, unsubscribe those with no way to. */
+export function cleanupTargets(
+  kind: CleanupKind,
+  senders: CleanupSender[],
+  selected: ReadonlySet<string>,
+): CleanupSender[] {
+  return senders.filter(
+    (sender) =>
+      selected.has(senderKey(sender.connectionId, sender.address)) &&
+      (kind === "skip_inbox"
+        ? !sender.spamLike
+        : kind === "unsubscribe"
+          ? ["one_click", "link", "mailto"].includes(sender.unsubscribe)
+          : true),
+  );
+}
+
 /** Conversations each choice would touch for the selected senders. */
 export function cleanupChoiceCounts(
   senders: CleanupSender[],
   selected: ReadonlySet<string>,
 ): Record<CleanupKind, number> {
-  const counts: Record<CleanupKind, number> = {
-    archive: 0,
-    skip_inbox: 0,
-    unsubscribe: 0,
-    spam: 0,
+  const count = (kind: CleanupKind) =>
+    cleanupTargets(kind, senders, selected).reduce((sum, sender) => sum + sender.inboxThreads, 0);
+  return {
+    archive: count("archive"),
+    skip_inbox: count("skip_inbox"),
+    unsubscribe: count("unsubscribe"),
+    spam: count("spam"),
   };
-  for (const sender of senders) {
-    if (!selected.has(senderKey(sender.connectionId, sender.address))) continue;
-    counts.archive += sender.inboxThreads;
-    counts.spam += sender.inboxThreads;
-    if (!sender.spamLike) counts.skip_inbox += sender.inboxThreads;
-    if (["one_click", "link", "mailto"].includes(sender.unsubscribe))
-      counts.unsubscribe += sender.inboxThreads;
-  }
-  return counts;
 }

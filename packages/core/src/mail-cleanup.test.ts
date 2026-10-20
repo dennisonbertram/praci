@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type CleanupCandidate,
   cleanupChoiceCounts,
+  cleanupTargets,
   isCleanupPreselected,
   rankCleanupSenders,
   senderKey,
@@ -115,5 +116,23 @@ describe("cleanupChoiceCounts", () => {
       unsubscribe: 0,
       spam: 0,
     });
+  });
+});
+
+describe("cleanupTargets", () => {
+  const list = [
+    sender({ address: "a@example.test", unsubscribe: "link" }),
+    sender({ address: "b@example.test", unsubscribe: "none" }),
+    sender({ address: "c@example.test", unsubscribe: "refused", spamLike: true }),
+  ];
+  const all = new Set(list.map((s) => senderKey(s.connectionId, s.address)));
+  const names = (kind: Parameters<typeof cleanupTargets>[0]) =>
+    cleanupTargets(kind, list, all).map((s) => s.address);
+
+  it("leaves out the senders a choice cannot apply to", () => {
+    expect(names("archive")).toEqual(["a@example.test", "b@example.test", "c@example.test"]);
+    expect(names("spam")).toHaveLength(3);
+    expect(names("skip_inbox")).toEqual(["a@example.test", "b@example.test"]);
+    expect(names("unsubscribe")).toEqual(["a@example.test"]);
   });
 });

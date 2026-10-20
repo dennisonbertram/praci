@@ -46,6 +46,7 @@ export * from "./inbox-label.js";
 export * from "./inbox-sender-groups.js";
 export * from "./inbox-triage.js";
 export * from "./mail-cleanup.js";
+export * from "./mail-cleanup-run.js";
 export * from "./mail-piles.js";
 export * from "./mail-results.js";
 export * from "./mail-unsubscribe.js";
