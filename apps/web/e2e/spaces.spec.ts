@@ -9,13 +9,9 @@ test("spaces stay invisible by default and chat creation requires approval", asy
   await completeOnboarding(page);
 
   const sidebar = page.locator("aside").first();
-  // The only space is headed "Personnel", so its actions button has a label beside it; the
-  // space's own name stays in the actions button and the header's accessible name.
-  await expect(sidebar.getByText("Personnel", { exact: true })).toHaveCount(1);
-  await expect(sidebar.getByText("Personal", { exact: true })).toHaveCount(0);
-  await expect(
-    sidebar.getByRole("button", { name: "Collapse Personnel (Personal)" }),
-  ).toBeVisible();
+  // The only space is headed "Personal", which is also its name, so the header is not relabeled.
+  await expect(sidebar.getByText("Personal", { exact: true })).toHaveCount(1);
+  await expect(sidebar.getByRole("button", { name: "Collapse Personal" })).toBeVisible();
   await expect(sidebar.getByRole("button", { name: /^Chief/ })).toHaveCount(1);
   await sidebar.getByRole("button", { name: "Actions for Personal" }).click();
   await expect(page.getByRole("menuitem", { name: "Rename space" })).toBeVisible();

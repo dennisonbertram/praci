@@ -43,7 +43,7 @@ const bots = [
 ];
 
 /**
- * The Personnel list built from the same parts the app uses: folder headers, sortable rows and the
+ * The Personal list built from the same parts the app uses: folder headers, sortable rows and the
  * drop handling. Drag with the mouse, or focus a row and press space, the arrow keys, then space.
  */
 export function FolderListDemo({
@@ -85,7 +85,7 @@ export function FolderListDemo({
     (dragId: string) =>
       folders.find((folder) => `folder:${folder.id}` === dragId)?.name ??
       entries.find((item) => itemDragId(item) === dragId)?.name ??
-      "Personnel",
+      "Personal",
     [entries, folders],
   );
   const onDrop = (result: DropResult) => {
@@ -139,7 +139,7 @@ export function FolderListDemo({
   return (
     <div className="w-[316px] bg-sidebar p-2">
       <div className="px-2.5 pt-1 pb-0.5 text-[11px] font-semibold tracking-wider text-muted-foreground/60 uppercase">
-        Personnel
+        Personal
       </div>
       <SidebarDnd
         layout={layout}
@@ -199,6 +199,9 @@ export function FolderListDemo({
             </div>
           );
         })}
+        {root.length > 0 && folders.length > 0 ? (
+          <div className="mt-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground/80">Chats</div>
+        ) : null}
         <SortableList ids={root.map(itemDragId)}>{root.map(row)}</SortableList>
         <RootEnd />
       </SidebarDnd>
@@ -207,7 +210,7 @@ export function FolderListDemo({
 }
 
 const meta = {
-  title: "Shell/Sidebar folders/Personnel list",
+  title: "Shell/Sidebar folders/Personal list",
   component: FolderListDemo,
   parameters: { layout: "centered" },
 } satisfies Meta<typeof FolderListDemo>;

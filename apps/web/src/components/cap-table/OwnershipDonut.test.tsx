@@ -30,7 +30,7 @@ async function mount(ui: React.ReactElement) {
 it("sums to exactly 100 after rounding", () => {
   const out = groupClasses([1, 1, 1].map((shares, i) => ({ name: `C${i}`, shares })));
   expect(out.reduce((n, s) => n + s.percent, 0)).toBeCloseTo(100, 5);
-  expect(out.map((s) => s.percent).sort()).toEqual([33.3, 33.3, 33.4]);
+  expect(out.map((s) => s.percent).sort()).toEqual([33.33, 33.33, 33.34]);
 });
 
 it("keeps five classes and merges the rest into Other", () => {
@@ -45,7 +45,7 @@ it("describes the top classes and lists every value in a hidden table", async ()
   setHideAmounts(true); // not money: still shown
   const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={1000} />);
   expect(el.querySelector("[role=img]")?.getAttribute("aria-label")).toBe(
-    "Ownership: Common 60.0%, Series A Preferred 30.0%, Options 10.0%",
+    "Ownership: Common 60.00%, Series A Preferred 30.00%, Options 10.00%",
   );
   expect(el.querySelectorAll("table.sr-only tbody tr")).toHaveLength(3);
   expect(el.textContent).toContain("1,000");
@@ -61,7 +61,7 @@ it("shows a tooltip on hover and on focus", async () => {
     );
   });
   expect(el.querySelector("[role=tooltip]")?.textContent).toContain("Series A Preferred");
-  expect(el.querySelector("[role=tooltip]")?.textContent).toContain("30.0%");
+  expect(el.querySelector("[role=tooltip]")?.textContent).toContain("30.00%");
   await act(async () => {
     el.querySelectorAll("li > div")[2]?.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
   });

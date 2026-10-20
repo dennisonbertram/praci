@@ -119,6 +119,26 @@ describePostgres("inbox cleanup (PostgreSQL + Gmail emulator)", () => {
       );
     });
 
+    it("never preselects a high-volume, unread updates-pile sender (invoices, alerts)", async () => {
+      await f.wipe();
+      await sender(f.a, f.connA, "invoices@billing.example.test", {
+        count: 12,
+        extra: { pile: "updates" },
+      });
+      await sender(f.a, f.connA, "weekly@lists.example.test", {
+        count: 4,
+        extra: { pile: "newsletters" },
+      });
+
+      const out = await inboxCleanupList(f.deps, f.a, {});
+
+      const preselected = Object.fromEntries(out.senders.map((s) => [s.address, s.preselected]));
+      expect(preselected).toEqual({
+        "invoices@billing.example.test": false,
+        "weekly@lists.example.test": true,
+      });
+    });
+
     it("never preselects spam-like senders and offers no unsubscribe for them", async () => {
       await f.wipe();
       await sender(f.a, f.connA, "forged@lists.example.test", { extra: { signals: failedAuth } });
@@ -423,6 +443,81 @@ describePostgres("inbox cleanup (PostgreSQL + Gmail emulator)", () => {
       });
 
       expect(out).toMatchObject({ remaining: 0 });
+    });
+  });
+
+  describe("learned senders", () => {
+    const learn = (connectionId: string, address: string) =>
+      f.prisma.mailSenderStat.update({
+        where: { connectionId_senderAddress: { connectionId, senderAddress: address } },
+        data: { learnedPile: "newsletters", learnedCount: 3, learnedAt: new Date() },
+      });
+    const learnedOf = (connectionId: string, address = NEWS) =>
+      f.prisma.mailSenderStat.findUniqueOrThrow({
+        where: { connectionId_senderAddress: { connectionId, senderAddress: address } },
+        select: {
+          learnedPile: true,
+          learnedCount: true,
+          learnedAt: true,
+          learnedForgottenAt: true,
+        },
+      });
+
+    it("lists the learned pile, and keeps a learned sender listed after its mail left the inbox", async () => {
+      await f.wipe();
+      await sender(f.a, f.connA, NEWS);
+      await sender(f.a, f.connA, "plain@lists.example.test");
+      await sender(f.a, f.connA, "gone@lists.example.test", { extra: { inInbox: false } });
+      await learn(f.connA, NEWS);
+      await learn(f.connA, "gone@lists.example.test");
+
+      const out = await inboxCleanupList(f.deps, f.a, {});
+
+      const learned = Object.fromEntries(out.senders.map((s) => [s.address, s.learnedPile]));
+      expect(learned).toEqual({
+        [NEWS]: "newsletters",
+        "plain@lists.example.test": null,
+        "gone@lists.example.test": "newsletters",
+      });
+    });
+
+    it("forgets only the learned decision, keeps a skip decision, and ignores another user's sender", async () => {
+      await f.wipe();
+      await sender(f.a, f.connA, NEWS);
+      await sender(f.b, f.connB, NEWS);
+      await learn(f.connA, NEWS);
+      await learn(f.connB, NEWS);
+      await f.prisma.mailSenderDecision.create({
+        data: {
+          spaceId: f.a.spaceId,
+          userId: f.a.userId,
+          connectionId: f.connA,
+          senderAddress: NEWS,
+          skipInboxAt: new Date(),
+        },
+      });
+
+      await inboxCleanupForget(f.deps, f.a, {
+        connectionId: f.connA,
+        address: NEWS.toUpperCase(),
+        learned: true,
+      });
+      // Another user's account is not touched even when named.
+      await inboxCleanupForget(f.deps, f.a, {
+        connectionId: f.connB,
+        address: NEWS,
+        learned: true,
+      });
+
+      const mine = await learnedOf(f.connA);
+      expect(mine).toMatchObject({ learnedPile: null, learnedCount: 0, learnedAt: null });
+      expect(mine.learnedForgottenAt).not.toBeNull();
+      expect(await learnedOf(f.connB)).toMatchObject({
+        learnedPile: "newsletters",
+        learnedCount: 3,
+        learnedForgottenAt: null,
+      });
+      expect(await f.prisma.mailSenderDecision.count({ where: { connectionId: f.connA } })).toBe(1);
     });
   });
 

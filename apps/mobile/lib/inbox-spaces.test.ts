@@ -8,9 +8,11 @@ import {
 } from "./api";
 import {
   canDeleteInboxSpace,
+  canRenameInboxSpace,
   type InboxSpace,
   inboxNeedsCreateHint,
   removeInboxSpace,
+  renameInboxSpace,
   retryInboxSpaceFallback,
   selectInboxSpace,
   spaceInboxItems,
@@ -159,7 +161,42 @@ describe("spaceInboxItems", () => {
       item.type === "heading" ? item.title : item.type === "bot" ? item.bot.id : item.group.id,
     );
     // Beta holds the group first (position 0) and then bot b2; empty folders have no heading.
-    expect(rows).toEqual(["Beta", "group-1", "b2", "Alpha", "a1", "Unassigned", "loose"]);
+    // Alpha was collapsed (on web), so its chats stay hidden until toggled locally.
+    expect(rows).toEqual(["Beta", "group-1", "b2", "Alpha", "Unassigned", "loose"]);
+    const expanded = spaceInboxItems([work], new Set(["space-work:section:folder-a"])).map(
+      (item) =>
+        item.type === "heading" ? item.title : item.type === "bot" ? item.bot.id : item.group.id,
+    );
+    expect(expanded).toEqual(["Beta", "group-1", "b2", "Alpha", "a1", "Unassigned", "loose"]);
+    // The same toggle collapses a folder that was expanded.
+    const beta = spaceInboxItems([work], new Set(["space-work:section:folder-b"]));
+    expect(beta.some((item) => item.type === "group")).toBe(false);
+  });
+
+  it("tags headings with a kind so fixed ones can be translated at render", () => {
+    const stamp = "2026-01-01T00:00:00.000Z";
+    const work = space({
+      isDefault: true,
+      bots: [
+        { ...bot, id: "p", pinned: true },
+        { ...bot, id: "f", sectionId: "s1" },
+        { ...bot, id: "u" },
+      ],
+      botSections: [
+        {
+          id: "s1",
+          name: "Research",
+          position: 0,
+          collapsed: false,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+    });
+    const kinds = spaceInboxItems([work])
+      .filter((item) => item.type === "heading")
+      .map((item) => item.kind);
+    expect(kinds).toEqual(["pinned", "folder", "unassigned"]);
   });
 
   it("keeps populated default-space chrome minimal and retains group rows", () => {
@@ -214,8 +251,37 @@ describe("spaceInboxItems", () => {
     expect(canDeleteInboxSpace(space())).toBe(true);
   });
 
+  it.each([undefined, false])("hides renaming unless explicit (%s)", (canRename) => {
+    expect(canRenameInboxSpace(space({ canRename }))).toBe(false);
+  });
+
+  it("offers renaming when the server allows it, even for the default space", () => {
+    expect(canRenameInboxSpace(space({ canRename: true, isDefault: true }))).toBe(true);
+  });
+
   it("hides deletion while a space still has content", () => {
     expect(canDeleteInboxSpace(space({ hasContent: true }))).toBe(false);
+  });
+});
+
+describe("renameInboxSpace", () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  it("renames through the server and refreshes", async () => {
+    vi.mocked(rpc).mockResolvedValue({ id: "space-work", name: "Ops" });
+    const refresh = vi.fn(async () => undefined);
+    await renameInboxSpace("space-work", "  Ops ", refresh);
+    expect(rpc).toHaveBeenCalledWith("spaces/rename", { spaceId: "space-work", name: "Ops" });
+    expect(refresh).toHaveBeenCalledOnce();
+  });
+
+  it("ignores an empty name and does not refresh when the server rejects", async () => {
+    const refresh = vi.fn(async () => undefined);
+    await renameInboxSpace("space-work", "   ", refresh);
+    expect(rpc).not.toHaveBeenCalled();
+    vi.mocked(rpc).mockRejectedValue(new Error("Forbidden"));
+    await expect(renameInboxSpace("space-work", "Ops", refresh)).rejects.toThrow("Forbidden");
+    expect(refresh).not.toHaveBeenCalled();
   });
 });
 

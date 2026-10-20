@@ -162,7 +162,7 @@ const agent = (
   over: Partial<ReturnType<typeof makeBot>> = {},
 ) => makeBot({ id, name, title: "", color, threadId: `thread_${id}`, ...over });
 const folderBots = [
-  agent("bot_chief", "Chief", "#6366f1", { position: 0 }),
+  agent("bot_chief", "Chief", "#6366f1", { position: 0, pinned: true }),
   agent("bot_ledger", "Ledger agent", BOT_COLORS[2], {
     sectionId: "folder_workspace",
     position: 0,
@@ -225,8 +225,8 @@ const demoMe = {
   billingEnabled: false,
 };
 
-/** The Personnel list with two folders (Apps closed, its needs-input status still showing), a chat and a group at the root. */
-export const PersonnelFolders: Story = {
+/** The Personal list: a pinned agent, two folders (Apps closed, its needs-input status still showing), then the unfiled chats under a Chats header. */
+export const PersonalFolders: Story = {
   decorators: [at("/app/bot_chief")],
   beforeEach: () => {
     loadedWith(folderBots[0] as ReturnType<typeof makeBot>)();
