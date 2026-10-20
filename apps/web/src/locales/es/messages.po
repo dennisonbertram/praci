@@ -548,10 +548,6 @@ msgstr ""
 msgid "3-mo avg, after revenue"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "3-mo change"
-msgstr ""
-
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr ""
@@ -4644,6 +4640,10 @@ msgid "Language"
 msgstr "Idioma"
 
 #: src/pages/Finance.tsx
+msgid "Last 3 months"
+msgstr ""
+
+#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last 90 days"
 msgstr ""
@@ -5237,7 +5237,6 @@ msgstr ""
 msgid "Month to date"
 msgstr ""
 
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
@@ -8679,6 +8678,10 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Type your answer"
 msgstr "Escribe tu respuesta"
+
+#: src/pages/Finance.tsx
+msgid "Typical month"
+msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Unallocated pool"

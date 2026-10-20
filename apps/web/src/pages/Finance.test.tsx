@@ -573,6 +573,37 @@ it("shows the figures, syncs once, and lets the period chips change the spend nu
   );
 });
 
+it("keeps the period in the URL, also when the breakdown mode changes", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  await show("/app/finance?period=quarter");
+  await flush();
+  const selected = () => container.querySelector('[role="tab"][aria-selected="true"]')?.textContent;
+  expect(selected()).toBe("Quarter");
+  await act(async () => button("Vendor")?.click());
+  expect(selected()).toBe("Quarter");
+  const week = [...container.querySelectorAll('[role="tab"]')].find(
+    (n) => n.textContent === "Week",
+  );
+  await act(async () => (week as HTMLElement).click());
+  expect(selected()).toBe("Week");
+  expect(container.querySelector('a[href="/app/finance/spend?period=week"]')).not.toBeNull();
+});
+
+it("leaves out the comparison when nothing was spent in the previous range", async () => {
+  const base = connectedOverview();
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    spendTotals: {
+      ...base.spendTotals,
+      week: { ...base.spendTotals.week, previousCents: 0, changePct: null },
+    },
+  });
+  await show("/app/finance?period=week");
+  await flush();
+  expect(container.textContent).toContain("Spent Oct");
+  expect(container.textContent).not.toMatch(/ vs /);
+});
+
 it("switches the breakdown between category and vendor", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
