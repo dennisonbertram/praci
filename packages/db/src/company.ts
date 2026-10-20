@@ -67,10 +67,80 @@ const ENTITY_INCLUDE = {
   identities: { select: { id: true, identityType: true, identityValue: true } },
 } as const;
 
+type EntityGroupMember = Pick<
+  Prisma.CompanyEntityGetPayload<object>,
+  "id" | "displayName" | "attrs" | "lockedFields"
+>;
+
 const ownerOf = (actor: Pick<Actor, "spaceId" | "userId">): Scope => ({
   spaceId: actor.spaceId,
   ownerUserId: actor.userId,
 });
+
+function composeEntityGroup(root: EntityGroupMember, members: readonly EntityGroupMember[]) {
+  const rootAttrs = root.attrs as Record<string, unknown>;
+  const attrs: Record<string, unknown> = {};
+  const childMembers = members.filter((member) => member.id !== root.id);
+  const attrKeys = new Set(
+    members.flatMap((member) => Object.keys(member.attrs as Record<string, unknown>)),
+  );
+  for (const key of attrKeys) {
+    const fieldPath = `attrs.${key}`;
+    const rootHasValue = Object.hasOwn(rootAttrs, key);
+    const rootValue = rootAttrs[key];
+    const lockedChild = childMembers.find((member) => {
+      const memberAttrs = member.attrs as Record<string, unknown>;
+      return member.lockedFields.includes(fieldPath) && Object.hasOwn(memberAttrs, key);
+    });
+    if (root.lockedFields.includes(fieldPath) && rootHasValue) {
+      attrs[key] = rootValue;
+    } else if (lockedChild) {
+      attrs[key] = (lockedChild.attrs as Record<string, unknown>)[key];
+    } else if (rootHasValue && Array.isArray(rootValue)) {
+      attrs[key] = [
+        ...new Set([
+          ...childMembers.flatMap((member) => {
+            const value = (member.attrs as Record<string, unknown>)[key];
+            return Array.isArray(value) ? value : [];
+          }),
+          ...rootValue,
+        ]),
+      ];
+    } else if (rootHasValue) {
+      attrs[key] = rootValue;
+    } else {
+      const firstChild = childMembers.find((member) =>
+        Object.hasOwn(member.attrs as Record<string, unknown>, key),
+      );
+      const value = firstChild && (firstChild.attrs as Record<string, unknown>)[key];
+      if (Array.isArray(value)) {
+        attrs[key] = [
+          ...new Set(
+            childMembers.flatMap((member) => {
+              const memberValue = (member.attrs as Record<string, unknown>)[key];
+              return Array.isArray(memberValue) ? memberValue : [];
+            }),
+          ),
+        ];
+      } else if (firstChild) {
+        attrs[key] = value;
+      }
+    }
+  }
+  const lockedChildName = childMembers.find((member) =>
+    member.lockedFields.includes("displayName"),
+  );
+  const displayName =
+    root.lockedFields.includes("displayName") || !lockedChildName
+      ? root.displayName
+      : lockedChildName.displayName;
+  return {
+    displayName,
+    normalizedName: normalizeCompanyName(displayName),
+    attrs,
+    lockedFields: [...new Set(members.flatMap((member) => member.lockedFields))],
+  };
+}
 
 function hash(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value)).digest("hex");
@@ -254,62 +324,7 @@ async function mapEntity(
     select: { id: true, identityType: true, identityValue: true },
     orderBy: [{ identityType: "asc" }, { identityValue: "asc" }],
   });
-  const rootAttrs = row.attrs as Record<string, unknown>;
-  const attrs: Record<string, unknown> = {};
-  const childMembers = members.filter((member) => member.id !== row.id);
-  const attrKeys = new Set(
-    members.flatMap((member) => Object.keys(member.attrs as Record<string, unknown>)),
-  );
-  for (const key of attrKeys) {
-    const fieldPath = `attrs.${key}`;
-    const rootHasValue = Object.hasOwn(rootAttrs, key);
-    const rootValue = rootAttrs[key];
-    const lockedChild = childMembers.find((member) => {
-      const memberAttrs = member.attrs as Record<string, unknown>;
-      return member.lockedFields.includes(fieldPath) && Object.hasOwn(memberAttrs, key);
-    });
-    if (row.lockedFields.includes(fieldPath) && rootHasValue) {
-      attrs[key] = rootValue;
-    } else if (lockedChild) {
-      attrs[key] = (lockedChild.attrs as Record<string, unknown>)[key];
-    } else if (rootHasValue && Array.isArray(rootValue)) {
-      attrs[key] = [
-        ...new Set([
-          ...childMembers.flatMap((member) => {
-            const value = (member.attrs as Record<string, unknown>)[key];
-            return Array.isArray(value) ? value : [];
-          }),
-          ...rootValue,
-        ]),
-      ];
-    } else if (rootHasValue) {
-      attrs[key] = rootValue;
-    } else {
-      const firstChild = childMembers.find((member) =>
-        Object.hasOwn(member.attrs as Record<string, unknown>, key),
-      );
-      const value = firstChild && (firstChild.attrs as Record<string, unknown>)[key];
-      if (Array.isArray(value)) {
-        attrs[key] = [
-          ...new Set(
-            childMembers.flatMap((member) => {
-              const memberValue = (member.attrs as Record<string, unknown>)[key];
-              return Array.isArray(memberValue) ? memberValue : [];
-            }),
-          ),
-        ];
-      } else if (firstChild) {
-        attrs[key] = value;
-      }
-    }
-  }
-  const lockedChildName = childMembers.find((member) =>
-    member.lockedFields.includes("displayName"),
-  );
-  const displayName =
-    row.lockedFields.includes("displayName") || !lockedChildName
-      ? row.displayName
-      : lockedChildName.displayName;
+  const composed = composeEntityGroup(row, members);
   const rootLinks = {
     contactId: row.contactId,
     legalContractId: row.legalContractId,
@@ -404,13 +419,13 @@ async function mapEntity(
   return {
     id: row.id,
     kind: CompanyEntityKindSchema.parse(row.kind),
-    displayName,
-    normalizedName: normalizeCompanyName(displayName),
-    attrs,
+    displayName: composed.displayName,
+    normalizedName: composed.normalizedName,
+    attrs: composed.attrs,
     confidence: row.confidence,
     status: CompanyStatusSchema.parse(row.status),
     visibility: CompanyVisibilitySchema.parse(row.visibility),
-    lockedFields: [...new Set(members.flatMap((member) => member.lockedFields))],
+    lockedFields: composed.lockedFields,
     confirmedAt: row.confirmedAt?.toISOString() ?? null,
     confirmedByUserId: row.confirmedByUserId,
     identities: memberIdentities.map((identity) => ({
@@ -780,30 +795,42 @@ async function importEntity(
 
   if (entityId) {
     const originalEntityId = entityId;
-    const survivorEntityId = matchedGroups[0] ?? entityId;
     const existingEntity = await db.companyEntity.findFirstOrThrow({
       where: { ...scope, id: originalEntityId },
       select: { attrs: true, displayName: true, lockedFields: true },
     });
-    const survivorEntity =
-      survivorEntityId === originalEntityId
-        ? existingEntity
-        : await db.companyEntity.findFirstOrThrow({
-            where: { ...scope, id: survivorEntityId },
-            select: { attrs: true, displayName: true, lockedFields: true },
-          });
-    const effectiveLocks = new Set([
-      ...existingEntity.lockedFields,
-      ...survivorEntity.lockedFields,
-    ]);
+    const existingMerge = await db.companyMerge.findFirst({
+      where: { ...scope, sourceEntityId: originalEntityId },
+      select: { survivorEntityId: true },
+    });
+    const survivorEntityId =
+      (matchedGroups.length === 1 ? matchedGroups[0] : undefined) ??
+      existingMerge?.survivorEntityId ??
+      originalEntityId;
+    const mergedChildren = await db.companyMerge.findMany({
+      where: { ...scope, survivorEntityId },
+      select: { sourceEntityId: true },
+    });
+    const groupMembers = await db.companyEntity.findMany({
+      where: {
+        ...scope,
+        id: {
+          in: [survivorEntityId, ...mergedChildren.map((merge) => merge.sourceEntityId)],
+        },
+      },
+      select: { id: true, displayName: true, attrs: true, lockedFields: true },
+      orderBy: { id: "asc" },
+    });
+    const survivorEntity = groupMembers.find((member) => member.id === survivorEntityId);
+    if (!survivorEntity) throw new IsolationError("Merged entity root not found");
+    const effectiveEntity = composeEntityGroup(survivorEntity, groupMembers);
     const contradictsLockedValue =
-      (effectiveLocks.has("displayName") &&
-        survivorEntity.displayName !== input.entity.displayName) ||
+      (effectiveEntity.lockedFields.includes("displayName") &&
+        effectiveEntity.displayName !== input.entity.displayName) ||
       Object.entries(input.entity.attrs).some(([key, value]) => {
         return (
-          effectiveLocks.has(`attrs.${key}`) &&
-          JSON.stringify((survivorEntity.attrs as Record<string, unknown>)[key]) !==
-            JSON.stringify(value)
+          effectiveEntity.lockedFields.includes(`attrs.${key}`) &&
+          JSON.stringify(effectiveEntity.attrs[key]) !== JSON.stringify(value)
         );
       });
     const replayEvidence = await evidenceCreateData(
@@ -1876,11 +1903,14 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
       } = {},
     ) => {
       await requireMember(prisma, scope);
+      const baseWhere = {
+        ...scope,
+        ...(filter.includeRejected ? {} : { status: { not: "rejected" } }),
+        ...(filter.kind ? { kind: filter.kind } : {}),
+      };
       const rows = await prisma.companyEntity.findMany({
         where: {
-          ...scope,
-          ...(filter.includeRejected ? {} : { status: { not: "rejected" } }),
-          ...(filter.kind ? { kind: filter.kind } : {}),
+          ...baseWhere,
           ...(filter.text
             ? {
                 OR: [
@@ -1893,12 +1923,35 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
         include: ENTITY_INCLUDE,
         orderBy: [{ normalizedName: "asc" }, { id: "asc" }],
       });
+      const expandedRows = [...rows];
+      if (filter.text && rows.length > 0) {
+        const matchedIds = new Set(rows.map((row) => row.id));
+        const merges = await prisma.companyMerge.findMany({
+          where: { ...scope, sourceEntityId: { in: [...matchedIds] } },
+          select: { survivorEntityId: true },
+        });
+        const missingSurvivorIds = [
+          ...new Set(
+            merges.map((merge) => merge.survivorEntityId).filter((id) => !matchedIds.has(id)),
+          ),
+        ];
+        if (missingSurvivorIds.length > 0) {
+          expandedRows.push(
+            ...(await prisma.companyEntity.findMany({
+              where: { ...baseWhere, id: { in: missingSurvivorIds } },
+              include: ENTITY_INCLUDE,
+              orderBy: [{ normalizedName: "asc" }, { id: "asc" }],
+            })),
+          );
+        }
+      }
       const hidden = filter.includeMerged ? new Set<string>() : await hiddenIds(prisma, scope);
-      return Promise.all(
-        rows
+      const records = await Promise.all(
+        expandedRows
           .filter((row) => !hidden.has(row.id))
           .map((row) => mapEntity(prisma, scope, row, { includeRejected: filter.includeRejected })),
       );
+      return [...new Map(records.map((record) => [record.id, record])).values()];
     },
     search: async (text: string, options: { includeRejected?: boolean } = {}) => {
       const records = await companyForActor(prisma, actor).list({ text, ...options });

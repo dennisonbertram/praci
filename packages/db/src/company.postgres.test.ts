@@ -1,4 +1,4 @@
-import { CompanyEntityRecordSchema } from "@rakazo/contracts";
+import { CompanyEntityRecordSchema, normalizeCompanyName } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createNorthwindCompanyFixture } from "../../testkit/src/fixtures/company/corpus.js";
 import { northwindGroundTruth } from "../../testkit/src/fixtures/company/ground-truth.js";
@@ -1378,49 +1378,184 @@ describePostgres("company foundation (PostgreSQL)", () => {
 
   it("preserves locked child values in merged views and rejects conflicting locks", async () => {
     const company = companyForActor(prisma, actor);
+    const rootName = `Manual Root ${suffix}`;
+    const childName = `Owner Corrected Child ${suffix}`;
     const root = await company.importEntity({
       entity: {
         kind: "person",
-        displayName: "Unlocked merge root",
+        displayName: rootName,
         attrs: { aliases: ["Root alias"], timezone: "UTC" },
         confidence: 0.9,
       },
       evidence: evidence("locked-child-root", "locked-child-root-hash"),
     });
-    const child = await company.importEntity({
+    const childInput = {
       entity: {
-        kind: "person",
+        kind: "person" as const,
         displayName: "Original child name",
-        attrs: { aliases: ["Child alias"], timezone: "Asia/Tokyo" },
+        attrs: { aliases: ["Child alias"], timezone: "UTC" },
         confidence: 0.9,
       },
       evidence: evidence("locked-child-source", "locked-child-source-hash"),
-    });
+    };
+    const child = await company.importEntity(childInput);
     await company.edit({
       entityId: entityId(child),
       kind: "person",
-      displayName: "Locked child name",
+      displayName: childName,
       attrs: { aliases: [], timezone: "Europe/London" },
     });
     const merged = await company.merge(entityId(child), entityId(root));
     expect(merged).toMatchObject({
-      displayName: "Locked child name",
-      normalizedName: "locked child name",
+      displayName: childName,
+      normalizedName: normalizeCompanyName(childName),
       attrs: { aliases: [], timezone: "Europe/London" },
       lockedFields: expect.arrayContaining(["displayName", "attrs.aliases", "attrs.timezone"]),
       mergedFrom: [entityId(child)],
     });
+
+    expect((await company.search(rootName)).map((record) => record.id)).toEqual([entityId(root)]);
+    expect((await company.search(childName)).map((record) => record.id)).toEqual([entityId(root)]);
+    expect(
+      (await company.search(childName.replaceAll(" ", "   "))).map((record) => record.id),
+    ).toEqual([entityId(root)]);
+    expect((await company.search(suffix)).map((record) => record.id)).toEqual([entityId(root)]);
+    expect(await company.list({ kind: "company", text: childName })).toEqual([]);
+    expect(await companyForActor(prisma, otherActor).search(suffix)).toEqual([]);
+
     await company.split(entityId(child));
     expect(await company.detail(entityId(child))).toMatchObject({
       id: entityId(child),
-      displayName: "Locked child name",
-      normalizedName: "locked child name",
+      displayName: childName,
+      normalizedName: normalizeCompanyName(childName),
       attrs: { aliases: [], timezone: "Europe/London" },
     });
     expect(await company.detail(entityId(root))).toMatchObject({
-      displayName: "Unlocked merge root",
-      normalizedName: "unlocked merge root",
+      displayName: rootName,
+      normalizedName: normalizeCompanyName(rootName),
       attrs: { aliases: ["Root alias"], timezone: "UTC" },
+    });
+
+    const replayRootName = `Locked Value Root ${suffix}`;
+    const replayChildName = `Locked Value Child ${suffix}`;
+    const replayRootEmail = `locked-value-root-${suffix}@example.test`;
+    const replayRoot = await company.importEntity({
+      entity: {
+        kind: "person",
+        displayName: replayRootName,
+        attrs: { timezone: "UTC", workEmails: [replayRootEmail] },
+        confidence: 0.9,
+      },
+      evidence: evidence("locked-value-root", "locked-value-root-hash"),
+    });
+    const replayChildInput = {
+      entity: {
+        kind: "person" as const,
+        displayName: replayChildName,
+        attrs: { timezone: "UTC" },
+        confidence: 0.9,
+      },
+      evidence: evidence("locked-value-child", "locked-value-child-hash"),
+    };
+    const replayChild = await company.importEntity(replayChildInput);
+    await company.edit({
+      entityId: entityId(replayChild),
+      kind: "person",
+      attrs: { timezone: "Europe/London" },
+    });
+    const replayMerge = await company.merge(entityId(replayChild), entityId(replayRoot));
+    expect(replayMerge).toMatchObject({
+      attrs: { timezone: "Europe/London" },
+      lockedFields: expect.arrayContaining(["attrs.timezone"]),
+    });
+
+    const rootConflictHash = "locked-child-root-utc-replay-hash";
+    const rootConflict = persisted(
+      await company.importEntity({
+        entity: {
+          kind: "person",
+          displayName: replayRootName,
+          attrs: { timezone: "UTC", workEmails: [replayRootEmail] },
+          confidence: 0.9,
+        },
+        evidence: evidence("locked-child-root-utc-replay", rootConflictHash),
+      }),
+    );
+    expect(rootConflict.id).toBe(entityId(replayRoot));
+    expect(rootConflict.attrs).toMatchObject({ timezone: "Europe/London" });
+    expect(
+      await prisma.companyEvidence.findFirst({
+        where: {
+          spaceId,
+          ownerUserId: userId,
+          factKind: "entity",
+          factId: entityId(replayRoot),
+          contentHash: rootConflictHash,
+        },
+        select: { stance: true },
+      }),
+    ).toEqual({ stance: "contradicts" });
+
+    const rootSupportHash = "locked-child-root-london-replay-hash";
+    const rootSupport = persisted(
+      await company.importEntity({
+        entity: {
+          kind: "person",
+          displayName: replayRootName,
+          attrs: { timezone: "Europe/London", workEmails: [replayRootEmail] },
+          confidence: 0.9,
+        },
+        evidence: evidence("locked-child-root-london-replay", rootSupportHash),
+      }),
+    );
+    expect(rootSupport.id).toBe(entityId(replayRoot));
+    expect(
+      await prisma.companyEvidence.findFirst({
+        where: {
+          spaceId,
+          ownerUserId: userId,
+          factKind: "entity",
+          factId: entityId(replayRoot),
+          contentHash: rootSupportHash,
+        },
+        select: { stance: true },
+      }),
+    ).toEqual({ stance: "supports" });
+
+    const childSupportHash = "locked-child-name-only-replay-hash";
+    const childReplay = persisted(
+      await company.importEntity({
+        ...replayChildInput,
+        entity: { ...replayChildInput.entity, attrs: { timezone: "Europe/London" } },
+        evidence: { ...replayChildInput.evidence, contentHash: childSupportHash },
+      }),
+    );
+    expect(childReplay.id).toBe(entityId(replayRoot));
+    expect(
+      await prisma.companyEvidence.findFirst({
+        where: {
+          spaceId,
+          ownerUserId: userId,
+          factKind: "entity",
+          factId: entityId(replayChild),
+          contentHash: childSupportHash,
+        },
+        select: { stance: true },
+      }),
+    ).toEqual({ stance: "supports" });
+
+    await company.split(entityId(replayChild));
+    expect(await company.detail(entityId(replayChild))).toMatchObject({
+      id: entityId(replayChild),
+      displayName: replayChildName,
+      normalizedName: normalizeCompanyName(replayChildName),
+      attrs: { timezone: "Europe/London" },
+    });
+    expect(await company.detail(entityId(replayRoot))).toMatchObject({
+      id: entityId(replayRoot),
+      displayName: replayRootName,
+      normalizedName: normalizeCompanyName(replayRootName),
+      attrs: { timezone: "Europe/London", workEmails: [replayRootEmail] },
     });
 
     const conflictingRoot = await company.importEntity({
