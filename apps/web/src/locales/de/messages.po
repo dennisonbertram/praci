@@ -1471,6 +1471,7 @@ msgstr ""
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/tour/TourPopover.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/RoutineEditor.tsx
@@ -1935,6 +1936,10 @@ msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Chat with Chief here. Agents ask before they send, pay or change anything."
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -2449,6 +2454,10 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "MCP-Server „{name}“ verbinden"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Connect the apps you already use."
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
@@ -3298,6 +3307,10 @@ msgstr ""
 msgid "Create your account"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Create your own agent, group or space."
+msgstr ""
+
 #: src/components/AskCard.tsx
 msgid "Created"
 msgstr ""
@@ -3703,6 +3716,7 @@ msgstr "Du hast noch kein Konto?"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -4150,6 +4164,10 @@ msgstr ""
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/Shell.tsx
 msgid "Finance"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Finance shows cash, burn and runway from your bank."
 msgstr ""
 
 #: src/components/finance/charts.tsx
@@ -4696,6 +4714,10 @@ msgstr ""
 msgid "Inbox & email"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Inbox sorts your mail and drafts replies you approve."
+msgstr ""
+
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Indexing"
 msgstr ""
@@ -4929,6 +4951,10 @@ msgstr ""
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Legal and Cap table keep contracts and ownership in one place."
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -5755,6 +5781,7 @@ msgstr ""
 msgid "Newsletters"
 msgstr ""
 
+#: src/components/tour/TourPopover.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Next"
 msgstr ""
@@ -7746,6 +7773,10 @@ msgstr ""
 msgid "Search by domain"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Search chats, files and mail."
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
 msgstr ""
@@ -7995,6 +8026,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Settings"
 msgstr "Einstellungen"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Settings, backups and Export my data are here, and so is Take the tour."
+msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8255,6 +8290,10 @@ msgstr "Überspringen oder Deploy-Key"
 
 #: src/components/SkipToContent.tsx
 msgid "Skip to content"
+msgstr ""
+
+#: src/components/tour/TourPopover.tsx
+msgid "Skip tour"
 msgstr ""
 
 #. placeholder {0}: failed.join(", ")
@@ -8596,6 +8635,10 @@ msgstr ""
 msgid "Take control"
 msgstr "Kontrolle übernehmen"
 
+#: src/pages/Shell.tsx
+msgid "Take the tour"
+msgstr ""
+
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 msgid "Task board"
@@ -8743,6 +8786,10 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "Zeitüberschreitung der Verbindung."
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "The Data room holds your files. Artifacts holds what agents make."
+msgstr ""
 
 #: src/components/finance/StatementImport.tsx
 msgid "The file is too large"
@@ -9075,6 +9122,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Total incl. crypto"
+msgstr ""
+
+#: src/components/tour/TourPopover.tsx
+msgid "Tour"
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx

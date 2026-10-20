@@ -89,6 +89,14 @@ h2 {
   max-width: 52ch;
   font-size: 18px;
 }
+.thesis {
+  margin: 8px 0 40px;
+  color: var(--fg);
+  font-size: clamp(22px, 3.2vw, 30px);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+}
 p {
   margin: 0 0 24px;
   color: var(--muted);
@@ -183,4 +191,71 @@ button:focus-visible {
 }
 .star:hover {
   border-color: var(--fg);
+}
+
+.thesis span {
+  color: var(--muted);
+}
+
+header nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-size: 15px;
+}
+header nav a:not(.star) {
+  text-decoration: none;
+  color: var(--muted);
+}
+header nav a:not(.star):hover {
+  color: var(--fg);
+}
+@media (max-width: 420px) {
+  header nav {
+    gap: 12px;
+  }
+  .star svg {
+    display: none;
+  }
+}
+
+section.works {
+  max-width: none;
+  margin-top: 72px;
+}
+.works h2 {
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 500;
+}
+.works ul {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 24px 36px;
+  max-width: none;
+  margin: 0;
+}
+.works li {
+  display: flex;
+  align-items: center;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  color: var(--muted);
+}
+.works li:hover {
+  color: var(--fg);
+}
+.works svg {
+  display: block;
+  width: auto;
+  height: 24px;
+}
+.wordmark {
+  font-family: "Vault Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 24px;
 }

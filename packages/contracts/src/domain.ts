@@ -1541,6 +1541,8 @@ export const MeSchema = z.object({
   avatarStyle: AvatarStyleSchema,
   /** IANA time zone last reported by one of the user's clients; null before the first report. */
   timezone: z.string().nullable(),
+  /** True once the user has finished or skipped the first-run tour. */
+  tourSeen: z.boolean(),
   /** Sidebar page keys this user hid; the pages stay reachable by URL and search. */
   hiddenPages: z.array(z.string()).optional(),
   /** True when this deployment bills and the user is not the deployment owner. */

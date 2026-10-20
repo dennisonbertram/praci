@@ -731,6 +731,7 @@ export function ShellPage() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [initialBotsLoaded, setInitialBotsLoaded] = useState(false);
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
+  const [tourRestart, setTourRestart] = useState(false);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -3833,6 +3834,9 @@ export function ShellPage() {
         userName={userName}
         initials={initials}
         openSettings={openSettings}
+        tourRestart={tourRestart}
+        setTourRestart={setTourRestart}
+        setBootstrapMe={setBootstrapMe}
       />
 
       {/* The full-screen computer covers the sidebar, so its edge must not catch clicks there. */}

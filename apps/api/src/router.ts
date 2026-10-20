@@ -1378,6 +1378,8 @@ export function createRouter(deps: RouterDeps) {
           data: {
             avatarStyle: input.avatarStyle,
             timezone: input.timezone,
+            tourSeenAt:
+              input.tourSeen === undefined ? undefined : input.tourSeen ? new Date() : null,
             hiddenPages: input.hiddenPages && [...new Set(input.hiddenPages)],
           },
         });
@@ -8187,6 +8189,7 @@ async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     sandboxProvider: deps.env.sandboxProvider,
     avatarStyle: user.avatarStyle === "robot" ? "robot" : "organic",
     timezone: user.timezone ?? null,
+    tourSeen: Boolean(user.tourSeenAt),
     hiddenPages: user.hiddenPages ?? [],
     billingEnabled: Boolean(deps.billing) && !actor.isDeploymentOwner,
   };

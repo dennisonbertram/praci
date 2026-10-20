@@ -1,0 +1,67 @@
+---
+import "../styles/docs.css";
+import { getCollection } from "astro:content";
+
+interface Props {
+  title: string;
+  description: string;
+  /** Show the docs navigation to the left of the page. */
+  nav?: boolean;
+  current?: string;
+}
+const { title, description, nav = false, current } = Astro.props;
+const github = "https://github.com/dennisonbertram/praci";
+const groups = ["Start", "Your company", "Agents and apps", "Run it"] as const;
+const pages = nav ? (await getCollection("docs")).sort((a, b) => a.data.order - b.data.order) : [];
+const full = title === "Praci" ? title : `${title} | Praci`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{full}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">praci</a>
+      <nav aria-label="Site">
+        <a href="/docs" aria-current={Astro.url.pathname.startsWith("/docs") ? "page" : undefined}>Docs</a>
+        <a href="/blog" aria-current={Astro.url.pathname.startsWith("/blog") ? "page" : undefined}>Blog</a>
+        <a class="star" href={github}>GitHub</a>
+      </nav>
+    </header>
+    <div class={nav ? "shell with-nav" : "shell"}>
+      {
+        nav && (
+          <nav class="side" aria-label="Docs">
+            <a class:list={["side-home", { active: current === undefined }]} href="/docs">All docs</a>
+            {groups.map((group) => (
+              <>
+                <h2>{group}</h2>
+                <ul>
+                  {pages
+                    .filter((page) => page.data.group === group)
+                    .map((page) => (
+                      <li>
+                        <a href={`/docs/${page.id}`} aria-current={current === page.id ? "page" : undefined}>
+                          {page.data.title}
+                        </a>
+                      </li>
+                    ))}
+                </ul>
+              </>
+            ))}
+          </nav>
+        )
+      }
+      <main><slot /></main>
+    </div>
+    <footer>
+      <span>Praci is an opinionated fork of <a href="https://github.com/elie222/rakazo">Rakazo</a>.</span>
+      <a href={github}>GitHub</a>
+    </footer>
+  </body>
+</html>
