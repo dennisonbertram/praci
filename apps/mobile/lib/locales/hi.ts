@@ -1,4 +1,8 @@
 export const HI_MESSAGES: Record<string, string> = {
+  Sheets: "शीट",
+  "This sheet is empty.": "यह शीट खाली है।",
+  "Load more": "और लोड करें",
+  "Could not load more rows.": "और पंक्तियाँ लोड नहीं हो सकीं।",
   "Phone notifications": "फ़ोन सूचनाएँ",
   "Share with all agents": "सभी एजेंटों के साथ साझा करें",
   "Couldn't refresh — showing the last loaded messages.":

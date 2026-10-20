@@ -1,4 +1,8 @@
 export const TR_MESSAGES: Record<string, string> = {
+  Sheets: "Sayfalar",
+  "This sheet is empty.": "Bu sayfa boş.",
+  "Load more": "Daha fazla yükle",
+  "Could not load more rows.": "Daha fazla satır yüklenemedi.",
   "Phone notifications": "Telefon bildirimleri",
   "Share with all agents": "Tüm ajanlarla paylaş",
   "Couldn't refresh — showing the last loaded messages.":
