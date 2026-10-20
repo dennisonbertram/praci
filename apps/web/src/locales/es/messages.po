@@ -444,6 +444,10 @@ msgstr ""
 msgid "{pickedCount} selected"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "{readPercent}% read"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "Quedan {remaining} · el bot observa, no actúa"
@@ -462,6 +466,10 @@ msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "{seats, plural, one {# seat} other {# seats}}"
+msgstr ""
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "{senderCount, plural, one {Skipping inbox for # sender} other {Skipping inbox for # senders}}"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -819,7 +827,7 @@ msgstr ""
 msgid "Added"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Adding a contact"
 msgstr ""
 
@@ -922,6 +930,7 @@ msgid "All time"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
+#: src/components/AskCard.tsx
 #: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr ""
@@ -989,6 +998,10 @@ msgstr "Permitir acciones de compra sin preguntar"
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Allow writing"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Allowed"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -1161,6 +1174,11 @@ msgstr ""
 msgid "Archive"
 msgstr "Archivar"
 
+#. placeholder {0}: counts.archive
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Archive {0}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "archived"
 msgstr "archivado"
@@ -1179,8 +1197,17 @@ msgstr "Archivado"
 msgid "Archived \"{0}\""
 msgstr ""
 
+#. placeholder {0}: result.done
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Archived {0}"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Archived {count}"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Archived {n}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1255,6 +1282,10 @@ msgstr ""
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Asking {agentName}"
 msgstr ""
 
 #: src/pages/shell/working-label.ts
@@ -1377,6 +1408,10 @@ msgstr ""
 msgid "Automated senders will appear after they post here."
 msgstr ""
 
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Automatic"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Available after the routine is saved"
 msgstr "Disponible después de guardar la rutina"
@@ -1396,6 +1431,7 @@ msgstr "Avatares"
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -1659,6 +1695,7 @@ msgstr "No se puede alcanzar el servidor."
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
@@ -1948,8 +1985,14 @@ msgstr ""
 msgid "Choose when it runs"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+#: src/components/inbox/InboxCleanup.tsx
+#: src/pages/Inbox.tsx
+msgid "Cleanup"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3057,6 +3100,10 @@ msgstr ""
 msgid "Couldn't load messaging settings"
 msgstr "No se pudo cargar la configuración de mensajería"
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Couldn't load senders"
+msgstr ""
+
 #: src/lib/inbox-sync-error.ts
 msgid "Couldn't reach Gmail."
 msgstr ""
@@ -3071,6 +3118,14 @@ msgstr ""
 
 #: src/pages/shell/bot-pins.tsx
 msgid "Couldn't save. Try again."
+msgstr ""
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Couldn't unsubscribe from {name}"
+msgstr ""
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Couldn't update {name}"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -4324,6 +4379,10 @@ msgstr "Alto"
 msgid "High"
 msgstr "Alto"
 
+#: src/components/inbox/CleanupHistory.tsx
+msgid "History"
+msgstr ""
+
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
 msgstr ""
@@ -4901,6 +4960,10 @@ msgstr ""
 msgid "Log out"
 msgstr "Cerrar sesión"
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Looks like spam"
+msgstr ""
+
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5004,9 +5067,29 @@ msgstr ""
 msgid "Mark unread"
 msgstr ""
 
+#. placeholder {0}: status.count
+#: src/pages/Inbox.tsx
+msgid "Marked {0} as not spam"
+msgstr ""
+
+#. placeholder {0}: result.done
+#. placeholder {0}: status.count
+#: src/components/inbox/InboxCleanup.tsx
+#: src/pages/Inbox.tsx
+msgid "Marked {0} as spam"
+msgstr ""
+
 #. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Marked {0} done."
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Marked {n} as not spam"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Marked {n} as spam"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -5145,6 +5228,10 @@ msgstr "Mensaje enviado a {peer}"
 msgid "Messaging"
 msgstr "Mensajería"
 
+#: src/pages/shell/working-label.ts
+msgid "Messaging you"
+msgstr ""
+
 #: src/lib/call-session.ts
 msgid "Microphone failed"
 msgstr "Falló el micrófono"
@@ -5272,6 +5359,7 @@ msgstr ""
 msgid "Monthly spend · {0} – {1}"
 msgstr ""
 
+#: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -5332,6 +5420,15 @@ msgstr ""
 #. placeholder {0}: maskCurrencyWhenHidden(status.subject)
 #: src/pages/Inbox.tsx
 msgid "Moved \"{0}\" to Inbox"
+msgstr ""
+
+#. placeholder {0}: status.count
+#: src/pages/Inbox.tsx
+msgid "Moved {0} to trash"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Moved {n} to trash"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
@@ -5845,6 +5942,7 @@ msgid "Not in runway"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
+#: src/components/AskCard.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Ahora no"
@@ -5867,6 +5965,11 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
+msgstr ""
+
+#: src/components/inbox/InboxRow.tsx
+#: src/pages/Inbox.tsx
+msgid "Not spam"
 msgstr ""
 
 #: src/components/data-room/ItemRows.tsx
@@ -5908,6 +6011,10 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
 msgstr "Aún no hay recuerdos"
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Nothing to clean up"
+msgstr ""
 
 #: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
@@ -6069,6 +6176,10 @@ msgstr ""
 msgid "Open Legal"
 msgstr ""
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Open link"
+msgstr ""
+
 #: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
 msgstr ""
@@ -6114,7 +6225,7 @@ msgstr ""
 msgid "Opened its thread."
 msgstr "Se abrió su hilo."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Opening an email"
 msgstr ""
 
@@ -6589,7 +6700,7 @@ msgstr ""
 msgid "Reading {0} again"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr ""
 
@@ -6597,7 +6708,7 @@ msgstr ""
 msgid "Reading Carta…"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading the cap table"
 msgstr ""
 
@@ -6605,15 +6716,15 @@ msgstr ""
 msgid "Reading this file. You can keep working while it finishes."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your cap table from Carta"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your contacts"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr ""
 
@@ -7287,7 +7398,7 @@ msgstr "Guardado."
 msgid "Saved. Rotate to reveal."
 msgstr "Guardado. Rota para revelar."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Saving a contact"
 msgstr ""
 
@@ -7446,7 +7557,7 @@ msgstr ""
 msgid "Searching in {openFolderPath}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr ""
 
@@ -7475,8 +7586,10 @@ msgstr ""
 
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
+#. placeholder {0}: sender.name
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/inbox/CleanupSenderRow.tsx
 msgid "Select {0}"
 msgstr ""
 
@@ -7497,6 +7610,7 @@ msgid "Self-custody"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -7509,6 +7623,11 @@ msgstr "Envía <0>{linkCode}</0> a la línea desde tu app de chat en un plazo de
 
 #: src/pages/Auth.tsx
 msgid "Send again"
+msgstr ""
+
+#. placeholder {0}: confirming[0]?.mailTo ?? ""
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Send an unsubscribe email to {0}?"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -7710,7 +7829,7 @@ msgstr "Mostrar la transcripción"
 msgid "Showing the {shown} most connected of {total} items."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Showing the emails it found"
 msgstr ""
 
@@ -7826,6 +7945,15 @@ msgstr ""
 msgid "Skip"
 msgstr "Omitir"
 
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Skip inbox"
+msgstr ""
+
+#. placeholder {0}: counts.skip_inbox
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Skip inbox {0}"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "Omitir o desplegar clave"
@@ -7839,6 +7967,14 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"
 msgstr "Se omitió {0}"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Skipped inbox for {n}"
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Skipping"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
@@ -7910,7 +8046,13 @@ msgstr ""
 
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/pages/Inbox.tsx
 msgid "Spam"
+msgstr ""
+
+#. placeholder {0}: counts.spam
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Spam {0}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -8036,6 +8178,7 @@ msgstr "Pasos"
 msgid "Still waiting on {service}"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 msgid "Stop"
 msgstr "Detener"
@@ -8609,6 +8752,11 @@ msgstr ""
 msgid "Transport"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+#: src/pages/Inbox.tsx
+msgid "Trash"
+msgstr ""
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Treasury yield"
@@ -8635,6 +8783,7 @@ msgstr ""
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8718,6 +8867,8 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
+#: src/components/inbox/CleanupHistory.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
 #: src/pages/CapTable.tsx
@@ -8758,6 +8909,19 @@ msgstr "Desfijar"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
+msgstr ""
+
+#. placeholder {0}: counts.unsubscribe
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Unsubscribe {0}"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Unsubscribed and archived {n}"
+msgstr ""
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Unsubscribed from {senderCount}"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx
@@ -8856,7 +9020,7 @@ msgstr ""
 msgid "Updating Team Computer"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Updating the cap table"
 msgstr ""
 
@@ -9257,7 +9421,7 @@ msgstr ""
 msgid "Writing"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Writing a draft email"
 msgstr ""
 

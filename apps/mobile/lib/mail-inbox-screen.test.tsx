@@ -27,7 +27,9 @@ vi.mock("./appearance", () => ({
 vi.mock("./native", () => ({
   native: {},
   useThemedStyles: (factory: () => unknown) => factory(),
+  useResolvedAppearance: () => "light",
 }));
+vi.mock("@expo/ui/community/menu", () => ({ MenuView: () => null }));
 vi.mock("./i18n", () => {
   // The real t is one module-level function; a fresh one per render would retrigger focus effects.
   const t = (text: string, values?: Record<string, string | number>) =>
@@ -61,14 +63,41 @@ vi.mock("../components/native-segmented-control", () => ({
     </div>
   ),
 }));
-// The system menu is native; this stand-in renders its Archive action as a button beside the row.
+// The system menu is native; this stand-in renders its actions as buttons beside the row.
 vi.mock("../components/mail-row-menu", () => ({
-  MailRowMenu: ({ onArchive, children }: { onArchive: () => void; children: ReactNode }) => (
+  MailRowMenu: ({
+    onArchive,
+    onSpam,
+    onNotSpam,
+    onTrash,
+    children,
+  }: {
+    onArchive: () => void;
+    onSpam?: () => void;
+    onNotSpam?: () => void;
+    onTrash?: () => void;
+    children: ReactNode;
+  }) => (
     <div>
       {children}
       <button type="button" data-menu="archive" onClick={onArchive}>
         Archive
       </button>
+      {onSpam ? (
+        <button type="button" data-menu="spam" onClick={onSpam}>
+          Spam
+        </button>
+      ) : null}
+      {onNotSpam ? (
+        <button type="button" data-menu="notSpam" onClick={onNotSpam}>
+          Not spam
+        </button>
+      ) : null}
+      {onTrash ? (
+        <button type="button" data-menu="trash" onClick={onTrash}>
+          Trash
+        </button>
+      ) : null}
     </div>
   ),
 }));
@@ -200,18 +229,21 @@ let listReply: () => unknown;
 let todosReply: () => unknown;
 let setDoneReply: () => Promise<unknown>;
 let archiveReply: (body: { messageIds: string[] }) => unknown;
+let moveReply: (body: { op: string; messageIds: string[] }) => unknown;
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   listReply = () => inboxList();
   todosReply = () => ({ enabled: true, todos: [] });
   setDoneReply = () => Promise.resolve({});
   archiveReply = (body) => ({ done: body.messageIds, failed: [] });
+  moveReply = (body) => ({ done: body.messageIds, failed: [], batchId: "batch-1" });
   state.push.mockReset();
   state.setOptions.mockReset();
   state.alert.mockReset();
   state.rpc.mockReset().mockImplementation(async (proc: string, body?: unknown) => {
     if (proc === "inbox/list") return listReply();
     if (proc === "inbox/archiveMany") return archiveReply(body as { messageIds: string[] });
+    if (proc === "inbox/moveMany") return moveReply(body as { op: string; messageIds: string[] });
     if (proc === "inbox/refresh") return { ok: true };
     if (proc === "inbox/todos/list") return todosReply();
     if (proc === "inbox/todos/setDone") return setDoneReply();
@@ -237,7 +269,12 @@ const headerItems = () => {
   const options = state.setOptions.mock.calls.at(-1)?.[0] as
     | undefined
     | {
-        unstable_headerRightItems?: () => { accessibilityLabel: string; onPress: () => void }[];
+        unstable_headerRightItems?: () => {
+          type: string;
+          accessibilityLabel: string;
+          onPress: () => void;
+          menu?: { items: { label: string; onPress: () => void }[] };
+        }[];
       };
   return options?.unstable_headerRightItems?.() ?? [];
 };
@@ -359,6 +396,20 @@ it("opens the Inbox agent as a normal thread from the header item", async () => 
     params: { botId: "bot-1", name: "Mail helper" },
   });
   expect(procs()).not.toContain("inbox/agent");
+});
+
+it("offers Cleanup in a header menu that opens the cleanup screen", async () => {
+  await render();
+  const menu = headerItems().find((item) => item.type === "menu");
+  expect(menu?.menu?.items.map((item) => item.label)).toEqual(["Cleanup"]);
+  await act(async () => menu?.menu?.items[0]?.onPress());
+  expect(state.push).toHaveBeenCalledWith("/inbox-cleanup");
+});
+
+it("hides the header items until an account is connected", async () => {
+  listReply = () => inboxList({ accounts: [], agent: null });
+  await render();
+  expect(headerItems()).toEqual([]);
 });
 
 it("creates the Inbox agent first when the list returned none", async () => {
@@ -711,5 +762,56 @@ describe("piles", () => {
     listReply = () => pileList("updates", updates);
     await act(async () => button("Updates")?.click());
     expect(procs()).not.toContain("inbox/todos/list");
+  });
+});
+
+describe("spam and trash from the row menu", () => {
+  const menuButton = (name: string) =>
+    container.querySelector<HTMLButtonElement>(`button[data-menu="${name}"]`);
+
+  it("offers Spam and Trash on an inbox row, reports spam at once, and reloads for the counts", async () => {
+    listReply = () => inboxList({ rows: [mailRow("r1")] });
+    await render();
+    expect(menuButton("notSpam")).toBeNull();
+    state.rpc.mockClear();
+    listReply = () => inboxList({ rows: [] });
+    await act(async () => menuButton("spam")?.click());
+    expect(state.rpc).toHaveBeenCalledWith("inbox/moveMany", { op: "spam", messageIds: ["r1"] });
+    expect(container.textContent).not.toContain("Subject r1");
+    expect(procs()).toContain("inbox/list");
+  });
+
+  it("moves a row to trash", async () => {
+    listReply = () => inboxList({ rows: [mailRow("r1")] });
+    await render();
+    await act(async () => menuButton("trash")?.click());
+    expect(state.rpc).toHaveBeenCalledWith("inbox/moveMany", { op: "trash", messageIds: ["r1"] });
+  });
+
+  it("offers Not spam, not Spam, in the Spam pile and sends notSpam", async () => {
+    listReply = () => inboxList({ rows: [mailRow("g1", { pile: "spam", inInbox: false })] });
+    await render();
+    await act(async () => button("Spam")?.click());
+    listReply = () => inboxList({ rows: [mailRow("g1", { pile: "spam", inInbox: false })] });
+    await act(async () => root.render(<InboxScreen key="spam" />));
+    expect(menuButton("spam")).toBeNull();
+    await act(async () => menuButton("notSpam")?.click());
+    expect(state.rpc).toHaveBeenCalledWith("inbox/moveMany", {
+      op: "notSpam",
+      messageIds: ["g1"],
+    });
+  });
+
+  it("brings the list back and says how many failed", async () => {
+    listReply = () => inboxList({ rows: [mailRow("r1")] });
+    moveReply = (body) => ({
+      done: [],
+      failed: body.messageIds.map((messageId) => ({ messageId, reason: "unavailable" })),
+      batchId: "batch-1",
+    });
+    await render();
+    await act(async () => menuButton("trash")?.click());
+    expect(state.alert).toHaveBeenCalledWith("Could not move 1");
+    expect(container.textContent).toContain("Subject r1");
   });
 });

@@ -7,6 +7,7 @@ import type {
   ConnectorCatalogItem,
   JobPublisher,
   MailProvider,
+  MailUnsubscriber,
   MemoryStore,
   SandboxProvider,
   SecretStore,
@@ -384,7 +385,9 @@ import {
   inboxTodosList,
   inboxUnreadCount,
 } from "./inbox.js";
+import { inboxActionsList, inboxActionsUndo } from "./inbox-actions.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
+import { inboxCleanupArchive, inboxCleanupForget, inboxCleanupList } from "./inbox-cleanup.js";
 import {
   inboxComposeDiscard,
   inboxComposeDraftSave,
@@ -395,9 +398,11 @@ import {
   inboxArchive,
   inboxArchiveMany,
   inboxMarkRead,
+  inboxMoveMany,
   inboxUnarchive,
   inboxUnarchiveMany,
 } from "./inbox-modify.js";
+import { inboxUnsubscribe } from "./inbox-unsubscribe.js";
 import {
   connectionAgentSpawnKeys,
   ensureConnectedAppAgent,
@@ -848,6 +853,8 @@ function toNotificationDto(row: Notification): NotificationDto {
 }
 
 export interface RouterDeps {
+  /** Sends one-click unsubscribe POSTs; without it a one-click sender degrades to its link. */
+  unsubscriber?: MailUnsubscriber;
   /** The model call behind Data room auto-sort; without it only duplicate folders are merged. */
   proposeSort?: Parameters<typeof createDataRoomService>[0]["proposeSort"];
   cloudAgent?: CloudAgentConnection | null;
@@ -7316,6 +7323,51 @@ export function createRouter(deps: RouterDeps) {
           context.signal,
         ),
       ),
+      moveMany: authed.inbox.moveMany.handler(({ context, input }) =>
+        inboxMoveMany(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
+      unsubscribe: authed.inbox.unsubscribe.handler(({ context, input }) =>
+        inboxUnsubscribe(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
+      cleanup: {
+        list: authed.inbox.cleanup.list.handler(({ context, input }) =>
+          inboxCleanupList(deps, context.actor, input),
+        ),
+        archive: authed.inbox.cleanup.archive.handler(({ context, input }) =>
+          inboxCleanupArchive(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+            context.signal,
+          ),
+        ),
+        forget: authed.inbox.cleanup.forget.handler(({ context, input }) =>
+          inboxCleanupForget(deps, context.actor, input),
+        ),
+      },
+      actions: {
+        list: authed.inbox.actions.list.handler(({ context }) =>
+          inboxActionsList(deps, context.actor),
+        ),
+        undo: authed.inbox.actions.undo.handler(({ context, input }) =>
+          inboxActionsUndo(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+            context.signal,
+          ),
+        ),
+      },
       compose: {
         prefill: authed.inbox.compose.prefill.handler(({ context, input }) =>
           inboxComposePrefill(deps, context.actor, input, context.signal),
