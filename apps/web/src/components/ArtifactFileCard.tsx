@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { UI_ARTIFACT_MIME_TYPE } from "@rakazo/contracts";
 import { Button, Dialog, DialogClose, DialogContent, DialogTitle } from "@rakazo/ui-web";
-import { Code2, Download, FileText, X } from "lucide-react";
+import { Code2, Download, FileArchive, FileText, X } from "lucide-react";
 import type { RefObject } from "react";
 import { useEffect, useRef, useState } from "react";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -51,6 +51,8 @@ export function ArtifactFileCard(props: ArtifactFileCardProps) {
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-muted text-foreground">
               {props.mimeType === "text/html" ? (
                 <Code2 size={21} strokeWidth={1.8} />
+              ) : props.mimeType === "application/zip" ? (
+                <FileArchive size={21} strokeWidth={1.8} />
               ) : (
                 <FileText size={21} strokeWidth={1.8} />
               )}

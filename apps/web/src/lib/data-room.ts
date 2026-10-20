@@ -125,7 +125,16 @@ export function uploadToDataRoom(
     request.onerror = () => reject(new DataRoomUploadError("failed"));
     request.onload = () => {
       if (request.status === 413) return reject(new DataRoomUploadError("too-large"));
-      if (request.status === 400) return reject(new DataRoomUploadError("invalid"));
+      if (request.status === 400) {
+        // A zip that could not be unpacked says why; any other 400 is a bad file name.
+        try {
+          const { code } = JSON.parse(request.responseText) as { code?: string };
+          if (code) return reject(new DataRoomUploadError(`zip-${code}`));
+        } catch {
+          // Not JSON: treated as an invalid name.
+        }
+        return reject(new DataRoomUploadError("invalid"));
+      }
       // The only 404 is the folder: deleted since the page loaded it.
       if (request.status === 404) return reject(new DataRoomUploadError("folder-gone"));
       if (request.status < 200 || request.status >= 300) {

@@ -79,6 +79,18 @@ it("dismisses a failed upload by itself after a while", async () => {
   expect(names()).toEqual([]);
 });
 
+it("reports why a zip was refused and shows the import row for it", async () => {
+  setUploadScope("u1");
+  const started = vi.fn();
+  window.addEventListener("rakazo:data-room-import-started", started);
+  hoisted.upload.mockRejectedValue(new DataRoomUploadError("zip-encrypted"));
+  uploadFilesToDataRoom([file("locked.zip")]);
+  await flush();
+  expect(getUploadToasts()[0]?.state).toMatchObject({ kind: "error", reason: "zip-encrypted" });
+  expect(started).toHaveBeenCalled();
+  window.removeEventListener("rakazo:data-room-import-started", started);
+});
+
 it("uploads into the folder the Data room page has open, else the root", async () => {
   setUploadScope("u1");
   hoisted.upload.mockResolvedValue({ item: { id: "i1", name: "a.txt" }, duplicate: false });
