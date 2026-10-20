@@ -1,4 +1,6 @@
 export const ZH_MESSAGES: Record<string, string> = {
+  "Hide amounts": "隐藏金额",
+  "Show amounts": "显示金额",
   Sheets: "工作表",
   "This sheet is empty.": "此工作表为空。",
   "Load more": "加载更多",

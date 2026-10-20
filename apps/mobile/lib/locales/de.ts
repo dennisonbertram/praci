@@ -1,4 +1,6 @@
 export const DE_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Beträge ausblenden",
+  "Show amounts": "Beträge anzeigen",
   Sheets: "Tabellen",
   "This sheet is empty.": "Diese Tabelle ist leer.",
   "Load more": "Mehr laden",

@@ -1,4 +1,6 @@
 export const TR_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Tutarları gizle",
+  "Show amounts": "Tutarları göster",
   Sheets: "Sayfalar",
   "This sheet is empty.": "Bu sayfa boş.",
   "Load more": "Daha fazla yükle",

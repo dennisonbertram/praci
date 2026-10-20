@@ -1,4 +1,6 @@
 export const ES_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Ocultar importes",
+  "Show amounts": "Mostrar importes",
   Sheets: "Hojas",
   "This sheet is empty.": "Esta hoja está vacía.",
   "Load more": "Cargar más",

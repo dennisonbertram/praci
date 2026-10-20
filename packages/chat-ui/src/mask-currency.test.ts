@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { maskCurrencyText } from "./mask-currency";
+import { maskCurrencyText, maskPinFigures } from "./mask-currency";
 
 it.each([
   ["You spent $73,781.83 in Sep", "You spent $••• in Sep"],
@@ -52,3 +52,9 @@ it.each([
 ])("leaves months and dates outside a runway sentence alone: %s", (input) =>
   expect(maskCurrencyText(input)).toBe(input),
 );
+
+it("masks every figure in a pin and keeps its unit", () => {
+  expect(maskPinFigures("$1,234.50")).toBe("$•••");
+  expect(maskPinFigures("9.2 mo")).toBe("••• mo");
+  expect(maskPinFigures("Runway")).toBe("Runway");
+});

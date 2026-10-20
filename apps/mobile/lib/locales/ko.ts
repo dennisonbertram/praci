@@ -1,4 +1,6 @@
 export const KO_MESSAGES: Record<string, string> = {
+  "Hide amounts": "금액 숨기기",
+  "Show amounts": "금액 표시",
   Sheets: "시트",
   "This sheet is empty.": "이 시트는 비어 있습니다.",
   "Load more": "더 불러오기",

@@ -1,4 +1,6 @@
 export const HI_MESSAGES: Record<string, string> = {
+  "Hide amounts": "राशियाँ छिपाएँ",
+  "Show amounts": "राशियाँ दिखाएँ",
   Sheets: "शीट",
   "This sheet is empty.": "यह शीट खाली है।",
   "Load more": "और लोड करें",

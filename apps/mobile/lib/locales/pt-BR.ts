@@ -1,4 +1,6 @@
 export const PT_BR_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Ocultar valores",
+  "Show amounts": "Mostrar valores",
   Sheets: "Planilhas",
   "This sheet is empty.": "Esta planilha está vazia.",
   "Load more": "Carregar mais",

@@ -1,4 +1,6 @@
 export const RU_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Скрыть суммы",
+  "Show amounts": "Показать суммы",
   Sheets: "Листы",
   "This sheet is empty.": "Этот лист пуст.",
   "Load more": "Загрузить ещё",
