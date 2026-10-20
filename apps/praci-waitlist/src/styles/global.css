@@ -37,6 +37,8 @@ body {
 header,
 footer {
   display: flex;
+  align-items: center;
+  gap: 16px;
   justify-content: space-between;
   width: 100%;
   max-width: 880px;
@@ -167,4 +169,18 @@ button:focus-visible {
   height: auto;
   border-radius: 12px;
   border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+}
+
+.star {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  text-decoration: none;
+}
+.star:hover {
+  border-color: var(--fg);
 }
