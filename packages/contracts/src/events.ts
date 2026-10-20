@@ -196,6 +196,8 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     approvalEffectId: Id.optional(),
     detail: z.string().optional(),
     mail: MailApprovalSchema.optional(),
+    /** An AI data sharing request: the card's Allow records consent for the disclosure `version`. */
+    consent: z.object({ version: z.string() }).optional(),
     input: z.enum(["text", "secret"]).optional(),
     /** Why the secret is needed; drives field label on the masked card. */
     purpose: SecretAskPurpose.optional(),

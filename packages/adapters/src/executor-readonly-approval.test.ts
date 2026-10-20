@@ -7,13 +7,15 @@ import type {
 } from "@rakazo/adapter-kit";
 import { MEMORY_REVISION_CONFLICT_ERROR } from "@rakazo/adapter-kit";
 import {
+  AI_DISCLOSURE_VERSION,
   cartaAgentSpawnKey,
   inboxAgentSpawnKey,
   integrationAgentSpawnKey,
 } from "@rakazo/contracts";
 import type { ActionApprovalRule } from "@rakazo/core";
 import { approvalEffectKey, toolEffectIdempotencyKey } from "@rakazo/core/node/approval-effect-key";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type * as AiConsentModule from "./ai-consent.js";
 import { isApprovalPausedResult } from "./approval-effect.js";
 import { BlueBubblesEmulator, createEmulatedBlueBubblesPlatform } from "./bluebubbles-emulator.js";
 import { MAX_SHARED_MEMORY_CHARS } from "./builtin-tools.js";
@@ -22,7 +24,7 @@ import { ConnectorRegistry } from "./composio-connector.js";
 import { ComposioEmulator } from "./composio-emulator.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
 import { DestinationEmulator } from "./destination-emulator.js";
-import { createRunExecutor, MAIL_CONSENT_OFF } from "./executor.js";
+import { createRunExecutor, MAIL_CONSENT_DECLINED, MAIL_CONSENT_OFF } from "./executor.js";
 import { fakeMercury, fakeMercuryMcpFetch } from "./finance-fake-tools.js";
 import type * as InboxTriageModule from "./inbox-triage.js";
 import { catalogEntries, DIRECT_TOOL_LIMIT, resolveCatalogCall } from "./lazy-tool-catalog.js";
@@ -38,7 +40,20 @@ vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
 }));
 
 /** What the Inbox's consent check reports; by default mail may be read. */
-const triage = vi.hoisted(() => ({ needsConsent: false }));
+const triage = vi.hoisted(() => ({
+  needsConsent: false,
+  /** Whether the model running the chat lacks consent, and the key that model's recipient has. */
+  chatNeedsConsent: false,
+  chatKey: "run-key",
+  chatRecipientThrows: false,
+}));
+vi.mock("./ai-consent.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof AiConsentModule>()),
+  aiRecipient: () => {
+    if (triage.chatRecipientThrows) throw new Error("bad endpoint");
+    return { key: triage.chatKey, name: "M", detail: "d", use: "model" };
+  },
+}));
 vi.mock("./inbox-triage.js", async (importOriginal) => ({
   ...(await importOriginal<typeof InboxTriageModule>()),
   triageStatus: async () =>
@@ -127,7 +142,10 @@ function fixture({
   googleConnectors = false,
   availableTools,
   executeToolName = "demo_execute_tool",
+  parallel = false,
 }: {
+  /** The model's calls arrive together, as the pi runtime runs them. */
+  parallel?: boolean;
   /** The catalog wrapper the model calls when `catalog` is set. */
   executeToolName?: string;
   /** A bot_message run started by bot `peer-1`: whether that bot is in the run's space and user, and whether the bot is its server's agent. */
@@ -213,11 +231,12 @@ function fixture({
       async ({
         where,
       }: {
-        where?: { id?: string; runId?: string; status?: string; kind?: string };
+        where?: { id?: string; runId?: string; status?: string; kind?: string | { not: string } };
       } = {}) =>
         effects.filter((effect) => {
           if (where?.status && effect.status !== where.status) return false;
-          if (where?.kind && effect.kind !== where.kind) return false;
+          if (typeof where?.kind === "string" && effect.kind !== where.kind) return false;
+          if (typeof where?.kind === "object" && effect.kind === where.kind.not) return false;
           if (where?.runId && effect.runId && effect.runId !== where.runId) return false;
           if (where?.id && effect.id !== where.id) return false;
           return true;
@@ -318,6 +337,9 @@ function fixture({
       findMany: vi.fn(async () => [{ id: "cached-1" }]),
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
+    aiDataConsent: {
+      findFirst: vi.fn(async () => (triage.chatNeedsConsent ? null : { userId: "user-1" })),
+    },
     spaceModelPreference: { findFirst: vi.fn(async () => null) },
     userModelCredential: { findFirst: vi.fn(async () => null) },
     deploymentSettings: {
@@ -350,7 +372,14 @@ function fixture({
   const offeredTools: string[] = [];
   const runtimeRun = vi.fn(async function* (request: AgentRunRequest) {
     offeredTools.push(...(request.tools ?? []).map((t) => t.name));
-    for (const [index, call] of calls.entries()) {
+    if (parallel) {
+      const settled = await Promise.all(
+        calls.map((call) => request.executeTool!(name, call.args, call.executionId)),
+      );
+      results.push(...settled);
+      if (settled.some(isApprovalPausedResult)) return;
+    }
+    for (const [index, call] of parallel ? [] : calls.entries()) {
       beforeToolCall?.(index);
       const result = await request.executeTool!(
         catalog ? executeToolName : name,
@@ -1058,10 +1087,11 @@ describe("built-in mail on a connection with an integration agent", () => {
 });
 
 describe("Inbox agent mail without AI data sharing consent", () => {
-  const mailFixture = () => {
+  const mailFixture = (trigger = "routine") => {
     const f = fixture({
       name: "mail_search",
       builtin: true,
+      trigger,
       spawnKey: inboxAgentSpawnKey("user-1"),
       mail: { listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]) },
     });
@@ -1077,6 +1107,131 @@ describe("Inbox agent mail without AI data sharing consent", () => {
     triage.needsConsent = false;
   });
 
+  describe("asking for consent in the chat", () => {
+    afterEach(() => {
+      triage.needsConsent = false;
+      triage.chatNeedsConsent = false;
+      triage.chatKey = "run-key";
+      triage.chatRecipientThrows = false;
+    });
+
+    it("pauses on a card for the model running the chat, not the Inbox model", async () => {
+      // The Inbox model (key "k") is already allowed; the chat model is not.
+      triage.chatNeedsConsent = true;
+      const f = mailFixture("user");
+      await f.run();
+      expect(isApprovalPausedResult(f.results[0])).toBe(true);
+      const [effect] = f.effects;
+      // The recipient key is the server's own, stored on the effect and not on the card.
+      expect(effect).toMatchObject({
+        kind: "ai_consent",
+        status: "intended",
+        request: { recipientKey: "run-key", version: AI_DISCLOSURE_VERSION },
+      });
+      const [{ blocks }] = f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }];
+      expect(blocks).toEqual([
+        expect.objectContaining({
+          kind: "ask",
+          approvalEffectId: effect!.id,
+          text: "Allow your mail to be sent to M (d)?",
+          detail: expect.stringContaining("stays on until you turn it off"),
+          consent: { version: AI_DISCLOSURE_VERSION },
+          actions: [
+            { id: "allow", label: "Allow" },
+            { id: "deny", label: "Not now" },
+          ],
+        }),
+      ]);
+      expect(JSON.stringify(blocks)).not.toContain("run-key");
+    });
+
+    it("reads mail in a chat when the chat model is allowed, whatever the Inbox model says", async () => {
+      triage.needsConsent = true;
+      const f = mailFixture("user");
+      await f.run();
+      expect(f.pauseRunForInput).not.toHaveBeenCalled();
+      expect(f.results[0]).not.toEqual({ error: MAIL_CONSENT_OFF });
+    });
+
+    it("refuses without a card or an effect when the recipient cannot be computed", async () => {
+      triage.chatRecipientThrows = true;
+      const f = mailFixture("user");
+      await f.run();
+      expect(f.results[0]).toEqual({ error: MAIL_CONSENT_OFF });
+      expect(f.pauseRunForInput).not.toHaveBeenCalled();
+      expect(f.effects).toEqual([]);
+    });
+
+    it("shows one card for mail calls that arrive together", async () => {
+      triage.chatNeedsConsent = true;
+      const f = fixture({
+        name: "mail_search",
+        builtin: true,
+        parallel: true,
+        mail: { listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]) },
+      });
+      f.setCalls([
+        { args: { queries: ["from:priya"] }, executionId: "call-1" },
+        { args: { queries: ["from:sam"] }, executionId: "call-2" },
+      ]);
+      await f.run();
+      expect(f.results.every(isApprovalPausedResult)).toBe(true);
+      expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+      expect(f.effects.filter((effect) => effect.kind === "ai_consent")).toHaveLength(1);
+    });
+
+    it("runs the search once the owner has allowed it", async () => {
+      triage.chatNeedsConsent = true;
+      const f = mailFixture("user");
+      await f.run();
+      // Allow records the consent and settles the effect in one transaction.
+      triage.chatNeedsConsent = false;
+      f.effects[0]!.status = "approved";
+      await f.run();
+      expect(f.results[1]).not.toEqual({ error: MAIL_CONSENT_OFF });
+      expect(isApprovalPausedResult(f.results[1])).toBe(false);
+      expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    });
+
+    it("tells the agent not to send the user elsewhere after Not now, and does not ask again", async () => {
+      triage.chatNeedsConsent = true;
+      const f = mailFixture("user");
+      await f.run();
+      f.effects[0]!.status = "denied";
+      await f.run();
+      expect(f.results[1]).toEqual({ error: MAIL_CONSENT_DECLINED });
+      expect(MAIL_CONSENT_DECLINED).not.toContain("Inbox");
+      expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    });
+
+    it.each(["routine", "webhook", "messaging", "bot_message"])(
+      "does not pause a %s run",
+      async (trigger) => {
+        triage.needsConsent = true;
+        triage.chatNeedsConsent = true;
+        const f = mailFixture(trigger);
+        await f.run();
+        expect(f.pauseRunForInput).not.toHaveBeenCalled();
+        expect(f.effects).toEqual([]);
+        expect(f.results[0]).not.toSatisfy(isApprovalPausedResult);
+      },
+    );
+
+    it("does not ask for a mail write, which already has its own approval", async () => {
+      triage.chatNeedsConsent = true;
+      const f = fixture({
+        name: "mail_modify",
+        builtin: true,
+        spawnKey: inboxAgentSpawnKey("user-1"),
+        rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "mail_modify" }],
+        mail: { listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]) },
+      });
+      f.setCalls([{ args: { ids: ["m1"], action: "archive" }, executionId: "call-1" }]);
+      await f.run();
+      expect(f.effects.map((effect) => effect.kind)).not.toContain("ai_consent");
+    });
+  });
+
   it("reads mail while consent is given", async () => {
     const f = mailFixture();
     await f.run();
@@ -1084,7 +1239,7 @@ describe("Inbox agent mail without AI data sharing consent", () => {
   });
 
   it("settles a claimed send as failed instead of leaving it executing", async () => {
-    triage.needsConsent = true;
+    triage.chatNeedsConsent = true;
     try {
       const f = fixture({
         name: "mail_send",
@@ -1107,7 +1262,7 @@ describe("Inbox agent mail without AI data sharing consent", () => {
       expect(f.results[1]).toEqual({ error: MAIL_CONSENT_OFF });
       expect(f.effects[0]?.status).toBe("completed");
     } finally {
-      triage.needsConsent = false;
+      triage.chatNeedsConsent = false;
     }
   });
 
@@ -1117,6 +1272,7 @@ describe("Inbox agent mail without AI data sharing consent", () => {
       const f = fixture({
         name: "mail_search",
         builtin: true,
+        trigger: "routine",
         spawnKey: inboxAgentSpawnKey("user-1"),
         mail: { listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]) },
         afterCall: (index) => {
@@ -1215,6 +1371,7 @@ describe("Google agents and linked accounts", () => {
       const f = fixture({
         name: "mail_search",
         builtin: true,
+        trigger: "routine",
         mail: mailStub(),
       });
       f.setCalls([{ args: { queries: ["from:priya"] }, executionId: "call-1" }]);

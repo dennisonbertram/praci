@@ -1,11 +1,21 @@
 import { ORPCError } from "@orpc/server";
 import type { MailLabelChange } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
-import type { Actor, InboxBulkInput, InboxBulkResult, InboxMarkReadInput } from "@rakazo/contracts";
+import { logMailAction } from "@rakazo/adapters";
+import type {
+  Actor,
+  InboxBulkInput,
+  InboxBulkResult,
+  InboxMarkReadInput,
+  InboxMoveInput,
+  InboxMoveOutput,
+  MailActionKind,
+} from "@rakazo/contracts";
 import type { Prisma } from "@rakazo/db";
 import type { InboxDeps } from "./inbox.js";
 import { mailContext, notFound, providerFailure } from "./inbox.js";
 import { flagReconnect } from "./inbox-compose.js";
+import { removeFiltersOfSender } from "./inbox-sender-rules.js";
 
 export type ModifyDeps = InboxDeps & { mailWritesDisabled?: boolean };
 
@@ -14,7 +24,13 @@ interface Change {
   /** The label change sent to the provider for each message. */
   label: MailLabelChange;
   /** What the cache row says afterwards. */
-  cache: { unread?: boolean; inInbox?: boolean };
+  cache: {
+    unread?: boolean;
+    inInbox?: boolean;
+    isSpam?: boolean;
+    pile?: null;
+    notSpamAt?: Date | null;
+  };
   /** Messages of the thread that still need the change; the rest are skipped. */
   pending: Prisma.CachedMailMessageWhereInput;
   /** Change the whole thread, not just the message the row stands for. */
@@ -53,11 +69,13 @@ async function modify(
       await deps.mail.modifyThread(account, row.threadId, change.label, context);
     else await deps.mail.modifyMessage(account, row.providerMessageId, change.label, context);
   } catch (error) {
-    // Deleted in Gmail since the last sync: nothing left to change, and the next sync prunes it.
-    if (error instanceof MailProviderError && error.kind === "not_found") return { ok: true };
-    if (error instanceof MailProviderError && error.kind === "auth")
-      await flagReconnect(deps, account.id);
-    providerFailure(error, change.operation, account.id);
+    // Deleted in Gmail since the last sync: nothing to change there. The cache still records the
+    // change, so a bulk run does not meet the same row again, and the next sync prunes it.
+    if (!(error instanceof MailProviderError && error.kind === "not_found")) {
+      if (error instanceof MailProviderError && error.kind === "auth")
+        await flagReconnect(deps, account.id);
+      providerFailure(error, change.operation, account.id);
+    }
   }
   await deps.prisma.cachedMailMessage.updateMany({
     where: {
@@ -154,43 +172,59 @@ export function inboxUnarchive(
 const BULK_CONCURRENCY = 4;
 type BulkOutcome = "done" | InboxBulkResult["failed"][number]["reason"];
 
+interface BulkRow {
+  id: string;
+  connectionId: string;
+  threadId: string;
+  fromAddress: string;
+  inInbox: boolean;
+  pile: string | null;
+  isSpam: boolean;
+}
+
 /**
- * Archives or unarchives many of the caller's threads, one outcome per id. A failure on one id never
- * stops the others. Each id goes through the single-thread procedure, so scope, permission, reconnect
- * flagging and the cache update are the same as for one click.
+ * Runs `apply` on many of the caller's cached messages, one outcome per id. A failure on one id never
+ * stops the others. `skip` names why a known row is left out. Each id goes through the single-thread
+ * procedure, so scope, permission, reconnect flagging and the cache update are the same as for one click.
  * ponytail: that is one account lookup and one Gmail call per id (at most 50, four at a time);
  * switch to a single batchModify per account if Gmail rate limits show up.
  */
 async function bulk(
-  op: "archive" | "unarchive",
   deps: ModifyDeps,
   actor: Actor,
-  input: InboxBulkInput,
+  messageIds: string[],
+  skip: (row: BulkRow) => BulkOutcome | null,
+  apply: (messageId: string) => Promise<unknown>,
   signal?: AbortSignal,
-): Promise<InboxBulkResult> {
+): Promise<{ result: InboxBulkResult; rows: Map<string, BulkRow> }> {
   if (deps.mailWritesDisabled)
     throw new ORPCError("BAD_REQUEST", { message: "Changing mail is turned off." });
-  const ids = [...new Set(input.messageIds)];
-  const rows = await deps.prisma.cachedMailMessage.findMany({
+  const ids = [...new Set(messageIds)];
+  const found = await deps.prisma.cachedMailMessage.findMany({
     where: { id: { in: ids }, spaceId: actor.spaceId, userId: actor.userId },
-    select: { id: true, pile: true, isSpam: true },
+    select: {
+      id: true,
+      connectionId: true,
+      threadId: true,
+      fromAddress: true,
+      inInbox: true,
+      pile: true,
+      isSpam: true,
+    },
   });
-  const known = new Map(rows.map((row) => [row.id, row]));
+  const known = new Map(found.map((row) => [row.id, row]));
   const outcomes = new Map<string, BulkOutcome>();
   const queue: string[] = [];
   for (const id of ids) {
     const row = known.get(id);
-    if (!row) outcomes.set(id, "not_found");
-    // The client leaves spam out of a group archive; this keeps a forged call from archiving it.
-    else if (op === "archive" && !input.allowSpam && (row.isSpam || row.pile === "spam"))
-      outcomes.set(id, "spam");
+    const left = row ? skip(row) : "not_found";
+    if (left) outcomes.set(id, left);
     else queue.push(id);
   }
-  const change = op === "archive" ? inboxArchive : inboxUnarchive;
   const worker = async () => {
     for (let id = queue.shift(); id !== undefined && !signal?.aborted; id = queue.shift()) {
       try {
-        await change(deps, actor, { messageId: id }, signal);
+        await apply(id);
         outcomes.set(id, "done");
       } catch (error) {
         if (!(error instanceof ORPCError)) throw error;
@@ -207,25 +241,167 @@ async function bulk(
   };
   await Promise.all(Array.from({ length: Math.min(BULK_CONCURRENCY, queue.length) }, worker));
   return {
-    done: ids.filter((id) => outcomes.get(id) === "done"),
-    // An id left in the queue by an aborted request is reported as unavailable.
-    failed: ids.flatMap((id) => {
-      const outcome = outcomes.get(id) ?? "unavailable";
-      return outcome === "done" ? [] : [{ messageId: id, reason: outcome }];
-    }),
+    rows: known,
+    result: {
+      done: ids.filter((id) => outcomes.get(id) === "done"),
+      // An id left in the queue by an aborted request is reported as unavailable.
+      failed: ids.flatMap((id) => {
+        const outcome = outcomes.get(id) ?? "unavailable";
+        return outcome === "done" ? [] : [{ messageId: id, reason: outcome }];
+      }),
+    },
   };
 }
 
-export const inboxArchiveMany = (
-  deps: ModifyDeps,
-  actor: Actor,
-  input: InboxBulkInput,
-  signal?: AbortSignal,
-) => bulk("archive", deps, actor, input, signal);
+/** The client leaves spam out of a group archive; this keeps a forged call from archiving it. */
+const archiveSkip = (input: InboxBulkInput) => (row: BulkRow) =>
+  !input.allowSpam && (row.isSpam || row.pile === "spam") ? ("spam" as const) : null;
 
-export const inboxUnarchiveMany = (
+export const inboxArchiveMany = async (
   deps: ModifyDeps,
   actor: Actor,
   input: InboxBulkInput,
   signal?: AbortSignal,
-) => bulk("unarchive", deps, actor, input, signal);
+) =>
+  (
+    await bulk(
+      deps,
+      actor,
+      input.messageIds,
+      archiveSkip(input),
+      (messageId) => inboxArchive(deps, actor, { messageId }, signal),
+      signal,
+    )
+  ).result;
+
+export const inboxUnarchiveMany = async (
+  deps: ModifyDeps,
+  actor: Actor,
+  input: InboxBulkInput,
+  signal?: AbortSignal,
+) =>
+  (
+    await bulk(
+      deps,
+      actor,
+      input.messageIds,
+      () => null,
+      (messageId) => inboxUnarchive(deps, actor, { messageId }, signal),
+      signal,
+    )
+  ).result;
+
+/**
+ * Spam and trash are label changes the user asks for by clicking; the agent's `mail_modify` still
+ * refuses both. Each puts the whole conversation in or out of the spam or trash label, as Gmail does.
+ */
+const MOVES: Record<InboxMoveInput["op"], Omit<Change, "thread"> & { kind: MailActionKind }> = {
+  spam: {
+    kind: "spam",
+    operation: "inbox.spam",
+    label: { addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] },
+    cache: { inInbox: false, isSpam: true, notSpamAt: null },
+    pending: { inInbox: true },
+  },
+  notSpam: {
+    kind: "not_spam",
+    operation: "inbox.notSpam",
+    label: { addLabelIds: ["INBOX"], removeLabelIds: ["SPAM"] },
+    // The pile is cleared too, so the row leaves the Spam pile at once; the next sync recomputes it.
+    // A getter, so the time is the click's, not the module's. The model's spam verdict no longer applies to this message.
+    get cache() {
+      return { inInbox: true, isSpam: false, pile: null, notSpamAt: new Date() };
+    },
+    pending: { OR: [{ isSpam: true }, { pile: "spam" }] },
+  },
+  // Sync drops the row once Gmail reports it in the trash.
+  trash: {
+    kind: "trash",
+    operation: "inbox.trash",
+    label: { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] },
+    cache: { inInbox: false },
+    pending: { inInbox: true },
+  },
+};
+
+/** Archives, or marks as spam, the threads of these cached messages for a sender cleanup page. */
+export async function inboxCleanupMove(
+  deps: ModifyDeps,
+  actor: Actor,
+  op: "archive" | "spam",
+  messageIds: string[],
+  signal?: AbortSignal,
+) {
+  return bulk(
+    deps,
+    actor,
+    messageIds,
+    () => null,
+    (messageId) =>
+      op === "archive"
+        ? inboxArchive(deps, actor, { messageId }, signal)
+        : modify(deps, actor, messageId, { ...MOVES.spam, thread: true }, signal),
+    signal,
+  );
+}
+
+/** Spam and trash apply to inbox mail; not spam to mail that is spam. Anything else is reported not_found. */
+export async function inboxMoveMany(
+  deps: ModifyDeps,
+  actor: Actor,
+  input: InboxMoveInput,
+  signal?: AbortSignal,
+): Promise<InboxMoveOutput> {
+  const move = MOVES[input.op];
+  const { result, rows } = await bulk(
+    deps,
+    actor,
+    input.messageIds,
+    (row) =>
+      (input.op === "notSpam" ? row.isSpam || row.pile === "spam" : row.inInbox)
+        ? null
+        : "not_found",
+    (messageId) => modify(deps, actor, messageId, { ...move, thread: true }, signal),
+    signal,
+  );
+  const batchId = crypto.randomUUID();
+  if (input.op === "notSpam") {
+    // Mail the rules (not Gmail) called spam would be put back by the next sync, so the user's
+    // decision is kept as an "important" mark on the sender, which the pile rules respect.
+    const senders = new Set<string>();
+    for (const id of result.done) {
+      const row = rows.get(id) as BulkRow;
+      if (!row.isSpam) senders.add(row.fromAddress.trim().toLowerCase());
+    }
+    for (const senderAddress of senders) {
+      if (!senderAddress) continue;
+      const key = { spaceId: actor.spaceId, userId: actor.userId, senderAddress };
+      await deps.prisma.inboxSenderFeedback.upsert({
+        where: { spaceId_userId_senderAddress: key },
+        create: { ...key, mark: "important" },
+        update: { mark: "important" },
+      });
+      // Best effort: the mail is already moved, and a filter that stays is listed in Cleanup.
+      await removeFiltersOfSender(deps, actor, senderAddress, "inbox.notSpam", signal);
+    }
+  }
+  const byConnection = new Map<string, BulkRow[]>();
+  for (const id of result.done) {
+    const row = rows.get(id) as BulkRow;
+    byConnection.set(row.connectionId, [...(byConnection.get(row.connectionId) ?? []), row]);
+  }
+  for (const [connectionId, done] of byConnection)
+    await logMailAction(
+      deps.prisma,
+      { spaceId: actor.spaceId, userId: actor.userId, connectionId },
+      {
+        batchId,
+        kind: move.kind,
+        source: "user",
+        reason: "selection",
+        senders: [...new Set(done.map((row) => row.fromAddress.toLowerCase()))],
+        threadIds: [...new Set(done.map((row) => row.threadId))],
+      },
+    );
+  return { ...result, batchId };
+}
