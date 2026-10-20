@@ -755,6 +755,95 @@ describe("piles", () => {
     expect(container.textContent).not.toContain("Snippet r1");
   });
 
+  describe("newsletter digest", () => {
+    const issues = [
+      mailRow("old", {
+        ...sender("a", "weekly@news.example"),
+        pile: "newsletters",
+        receivedAt: daysAgo(10),
+      }),
+      mailRow("d2", {
+        ...sender("a", "weekly@news.example"),
+        pile: "newsletters",
+        receivedAt: daysAgo(2),
+      }),
+      mailRow("d1", {
+        ...sender("b"),
+        pile: "newsletters",
+        receivedAt: daysAgo(1),
+        reason: "Fresh issue",
+      }),
+    ];
+    const views = () => container.querySelector('[data-testid="segments"]');
+    const openNewsletters = async () => {
+      listReply = () => pileList("important", [mailRow("r1")]);
+      await render();
+      listReply = () => pileList("newsletters", issues);
+      await act(async () => button("Newsletters")?.click());
+    };
+
+    it("offers Senders and Digest on the Newsletters pile only", async () => {
+      listReply = () => pileList("important", [mailRow("r1")]);
+      await render();
+      expect(views()).toBeNull();
+      listReply = () => pileList("updates", updates);
+      await act(async () => button("Updates")?.click());
+      expect(views()).toBeNull();
+      listReply = () => pileList("newsletters", issues);
+      await act(async () => button("Newsletters")?.click());
+      expect(views()?.textContent).toBe("SendersDigest");
+    });
+
+    it("lists the issues from the last 7 days, newest first, one row each", async () => {
+      await openNewsletters();
+      await act(async () => button("Digest")?.click());
+      const text = container.textContent ?? "";
+      expect(text).toContain("Subject d1");
+      expect(text).toContain("Subject d2");
+      expect(text).not.toContain("Subject old");
+      expect(text.indexOf("Subject d1")).toBeLessThan(text.indexOf("Subject d2"));
+      expect(text).toContain("Fresh issue");
+      // Two issues from one sender are two rows, not a group.
+      expect(text).not.toContain("Sender: ");
+    });
+
+    it("opens an issue in the message screen", async () => {
+      await openNewsletters();
+      await act(async () => button("Digest")?.click());
+      const row = [...container.querySelectorAll("button")].find((b) =>
+        b.textContent?.includes("Subject d2"),
+      );
+      await act(async () => row?.click());
+      expect(state.push).toHaveBeenCalledWith({
+        pathname: "/inbox-message",
+        params: { messageId: "d2" },
+      });
+    });
+
+    it("asks before archiving all, then archives only the issues shown", async () => {
+      await openNewsletters();
+      await act(async () => button("Digest")?.click());
+      await act(async () => button("Archive all")?.click());
+      expect(state.alert.mock.calls[0]?.[0]).toBe("Archive all");
+      expect(procs()).not.toContain("inbox/archiveMany");
+      await act(async () => alertButtons()[1]?.onPress?.());
+      expect(state.rpc).toHaveBeenCalledWith("inbox/archiveMany", { messageIds: ["d1", "d2"] });
+      expect(container.textContent).not.toContain("Subject d1");
+    });
+
+    it("goes back to the senders and leaves the digest when another pile opens", async () => {
+      await openNewsletters();
+      await act(async () => button("Digest")?.click());
+      expect(button("Archive all")).toBeDefined();
+      await act(async () => button("Senders")?.click());
+      expect(button("Archive all")).toBeUndefined();
+      await act(async () => button("Digest")?.click());
+      await act(async () => button("Updates")?.click());
+      await act(async () => button("Newsletters")?.click());
+      expect(button("Archive all")).toBeUndefined();
+    });
+  });
+
   it("fetches to-dos only in the Important pile", async () => {
     await render();
     expect(procs()).toContain("inbox/todos/list");

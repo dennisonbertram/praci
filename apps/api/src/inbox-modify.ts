@@ -15,6 +15,7 @@ import type { Prisma } from "@rakazo/db";
 import type { InboxDeps } from "./inbox.js";
 import { mailContext, notFound, providerFailure } from "./inbox.js";
 import { flagReconnect } from "./inbox-compose.js";
+import { removeFiltersOfSender } from "./inbox-sender-rules.js";
 
 export type ModifyDeps = InboxDeps & { mailWritesDisabled?: boolean };
 
@@ -380,6 +381,8 @@ export async function inboxMoveMany(
         create: { ...key, mark: "important" },
         update: { mark: "important" },
       });
+      // Best effort: the mail is already moved, and a filter that stays is listed in Cleanup.
+      await removeFiltersOfSender(deps, actor, senderAddress, "inbox.notSpam", signal);
     }
   }
   const byConnection = new Map<string, BulkRow[]>();

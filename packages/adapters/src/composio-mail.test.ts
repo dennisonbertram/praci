@@ -11,6 +11,7 @@ import {
   assertMailChangesConformance,
   assertMailConformance,
   assertMailModifyConformance,
+  assertMailSenderRuleConformance,
   assertMailSignalsConformance,
   assertMailWriteConformance,
 } from "./testing/mail-conformance.js";
@@ -98,6 +99,7 @@ describe("ComposioConnector.proxy", () => {
     await assertMailWriteConformance(provider, { gmail: emulator.gmail, accounts });
     await assertMailModifyConformance(provider, { gmail: emulator.gmail, accounts });
     await assertMailChangesConformance(provider, { gmail: emulator.gmail, accounts });
+    await assertMailSenderRuleConformance(provider, { gmail: emulator.gmail, accounts });
     await assertMailSignalsConformance(provider, { gmail: emulator.gmail, accounts });
   });
 
