@@ -207,16 +207,6 @@ msgstr "Gestion de {0}"
 msgid "{0} is ready."
 msgstr ""
 
-#. placeholder {0}: format(size / 1024)
-#: src/lib/format-bytes.ts
-msgid "{0} KB"
-msgstr "{0} Ko"
-
-#. placeholder {0}: format(size / (1024 * 1024))
-#: src/lib/format-bytes.ts
-msgid "{0} MB"
-msgstr "{0} Mo"
-
 #. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
@@ -480,10 +470,6 @@ msgstr ""
 #: src/components/integrations/McpDetail.tsx
 msgid "{service} agent"
 msgstr ""
-
-#: src/lib/format-bytes.ts
-msgid "{size} B"
-msgstr "{size} o"
 
 #: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
@@ -2037,6 +2023,7 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
@@ -6582,8 +6569,8 @@ msgstr ""
 msgid "Preview {0}"
 msgstr "Aperçu de {0}"
 
+#: src/components/ArtifactPreview.tsx
 #: src/components/SheetPreview.tsx
-#: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr "L'aperçu n'est pas disponible pour ce type de fichier — téléchargez-le pour le consulter."
 

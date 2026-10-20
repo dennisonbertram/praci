@@ -12,4 +12,8 @@ describe("formatBytes", () => {
       "3.0 MB",
     ]);
   });
+
+  it("shows GB and TB above MB", () => {
+    expect([formatBytes(2 * 1024 ** 3), formatBytes(3 * 1024 ** 4)]).toEqual(["2.0 GB", "3.0 TB"]);
+  });
 });
