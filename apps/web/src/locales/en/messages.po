@@ -293,6 +293,10 @@ msgstr "{commandVariable} is reserved and cannot be used as a command variable. 
 msgid "{count, plural, one {# bank account} other {# bank accounts}}"
 msgstr "{count, plural, one {# bank account} other {# bank accounts}}"
 
+#: src/components/MailThreadCard.tsx
+msgid "{count, plural, one {# message} other {# messages}}"
+msgstr "{count, plural, one {# message} other {# messages}}"
+
 #: src/components/finance/ui.tsx
 msgid "{count, plural, one {# transaction} other {# transactions}}"
 msgstr "{count, plural, one {# transaction} other {# transactions}}"
@@ -1224,6 +1228,10 @@ msgstr "Ask {botName}"
 #: src/components/FinanceCards.tsx
 msgid "Ask about this"
 msgstr "Ask about this"
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Ask agent"
+msgstr "Ask agent"
 
 #. placeholder {0}: rule.matchValue
 #: src/components/ApprovalRulesSettings.tsx
@@ -3778,6 +3786,10 @@ msgstr "Email is not allowed to register"
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Email not found"
 msgstr "Email not found"
+
+#: src/components/MailThreadCard.tsx
+msgid "Email thread"
+msgstr "Email thread"
 
 #: src/lib/user-error.ts
 msgid "Email verification required"

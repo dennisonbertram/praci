@@ -7,6 +7,13 @@ export const inboxAgentSpawnKey = (userId: string) => `inbox-agent:${userId}`;
 export const isInboxAgentSpawnKey = (spawnKey: string | null | undefined) =>
   Boolean(spawnKey?.startsWith(inboxAgentSpawnKey("")));
 
+/** One agent per mail conversation, so asking twice about the same thread opens the same chat. */
+export const mailThreadAgentSpawnKey = (connectionId: string, threadId: string) =>
+  `mail-thread:${connectionId}:${threadId}`;
+
+export const isMailThreadAgentSpawnKey = (spawnKey: string | null | undefined) =>
+  Boolean(spawnKey?.startsWith("mail-thread:"));
+
 /** Connection.displayName labels the account tab. */
 export const MailAccountSchema = z.object({
   connectionId: Id,

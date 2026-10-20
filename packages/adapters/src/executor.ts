@@ -100,6 +100,7 @@ import {
   isMessagingChannelRun,
   isOneShotRoutineCrons,
   isTerminal,
+  mailThreadPromptText,
   messagingChannelId,
   messagingChannelPrivacyBlock,
   messagingDmSurfaceNote,
@@ -2210,6 +2211,23 @@ export function createRunExecutor(deps: ExecutorDeps) {
             (): { recipient?: { key: string; name: string; detail?: string } } => ({}),
           );
         };
+        // An "Ask agent" chat opens with the mail thread as its first message. History carries only
+        // a placeholder for it until mail consent covers this run's model: the same check mail tools
+        // make, read on every run so revoking consent applies at once.
+        const mailThreadTexts = new Map<string, string>();
+        for (const message of messages) {
+          for (const block of message.blocks as MessageBlock[]) {
+            if (block.kind === "mail_thread") {
+              mailThreadTexts.set(message.id, mailThreadPromptText(block));
+            }
+          }
+        }
+        if (mailThreadTexts.size > 0 && !(await inboxMailConsentBlock())) {
+          history = history.map((item) => {
+            const text = item.id ? mailThreadTexts.get(item.id) : undefined;
+            return text === undefined ? item : { ...item, content: text };
+          });
+        }
         // Connected Google Drive accounts of the bot owner, looked up once per run.
         let driveAccountsPromise: ReturnType<typeof listDriveAccounts> | undefined;
         const driveAccounts = () => {

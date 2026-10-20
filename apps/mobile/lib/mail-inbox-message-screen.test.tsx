@@ -110,6 +110,7 @@ beforeEach(() => {
   state.rpc.mockReset().mockImplementation(async (proc: string) => {
     if (proc === "inbox/get") return getReply();
     if (proc === "inbox/agent") return { id: "bot-9", name: "Inbox agent" };
+    if (proc === "inbox/askAgent") return { id: "bot-10", name: "Quarterly plan" };
     throw new Error(`unexpected rpc ${proc}`);
   });
   container = document.createElement("div");
@@ -190,6 +191,17 @@ it("opens the Inbox agent thread from the header item", async () => {
   expect(state.push).toHaveBeenCalledWith({
     pathname: "/thread",
     params: { botId: "bot-9", name: "Inbox agent" },
+  });
+});
+
+it("opens the agent made for this conversation from the Ask agent header item", async () => {
+  await render();
+  const item = headerItems().find((entry) => entry.accessibilityLabel === "Ask agent");
+  await act(async () => item?.onPress());
+  expect(state.rpc).toHaveBeenCalledWith("inbox/askAgent", { messageId: "m1" });
+  expect(state.push).toHaveBeenCalledWith({
+    pathname: "/thread",
+    params: { botId: "bot-10", name: "Quarterly plan" },
   });
 });
 

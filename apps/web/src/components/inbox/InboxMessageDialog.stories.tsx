@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { expect, userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { withPageBehind } from "../../stories/decorators";
 import { InboxMessageDialog } from "./InboxMessageDialog";
@@ -99,6 +100,35 @@ export const WithInboxActions: Story = {
     notice: <span className="rounded-md bg-muted px-3 py-1 text-xs">Archived. Undo</span>,
   },
   beforeEach: () => mockRpc({ "inbox.get": message }),
+};
+
+/** Ask agent sits with Reply, Forward and Archive; it opens a chat made for this conversation. */
+export const WithAskAgent: Story = {
+  name: "With Ask agent",
+  args: {
+    messageId: "msg_ask",
+    unread: false,
+    onNavigate: () => undefined,
+    onArchive: () => undefined,
+    onRead: () => undefined,
+    onAskAgent: async () => undefined,
+  },
+  beforeEach: () => mockRpc({ "inbox.get": message }),
+};
+
+export const AskAgentFailed: Story = {
+  args: {
+    messageId: "msg_ask_failed",
+    onAskAgent: async () => {
+      throw new Error("Mail is unavailable");
+    },
+  },
+  beforeEach: () => mockRpc({ "inbox.get": message }),
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    await userEvent.click(await body.findByRole("button", { name: "Ask agent" }));
+    await expect(await body.findByRole("alert")).toHaveTextContent("Mail is unavailable");
+  },
 };
 
 export const Conversation: Story = {

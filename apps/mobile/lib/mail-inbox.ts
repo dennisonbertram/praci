@@ -84,6 +84,10 @@ export const completeMailTodo = (id: string) =>
 /** The only way to create the Inbox agent; it returns the same bot every time. */
 export const ensureMailAgent = () => rpc<{ id: string; name: string }>("inbox/agent");
 
+/** Opens the agent made for this message's conversation, creating it on the first ask. */
+export const askMailThreadAgent = (messageId: string) =>
+  rpc<{ id: string; name: string }>("inbox/askAgent", { messageId });
+
 /** "Today", a weekday within the next six days, otherwise month and day. */
 export function todoDueLabel(dueOn: string, days: number): string {
   if (days === 0) return t("Today");

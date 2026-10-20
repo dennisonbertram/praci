@@ -762,6 +762,7 @@ export const KO_MESSAGES: Record<string, string> = {
     "SSO를 일시적으로 사용할 수 없습니다. 다시 시도하세요.",
   Inbox: "받은 편지함",
   "Inbox agent": "받은 편지함 에이전트",
+  "Ask agent": "에이전트에게 묻기",
   Sent: "보냄",
   "Could not load mail.": "메일을 불러올 수 없습니다.",
   "Needs reply": "답장 필요",

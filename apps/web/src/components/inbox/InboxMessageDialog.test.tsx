@@ -241,6 +241,31 @@ it("archives with the button or e, and marks read or unread, when the page allow
   expect(onRead).toHaveBeenLastCalledWith(false);
 });
 
+it("Ask agent runs the page's action, and shows why it failed", async () => {
+  get.mockImplementation(async ({ messageId }) => message(messageId));
+  const onAskAgent = vi.fn().mockResolvedValue(undefined);
+  act(() =>
+    root.render(<InboxMessageDialog messageId="m2" onAskAgent={onAskAgent} onClose={() => {}} />),
+  );
+  await flush();
+  const button = () =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Ask agent");
+  await act(async () => button()?.click());
+  expect(onAskAgent).toHaveBeenCalledTimes(1);
+  expect(document.querySelector('[role="alert"]')).toBeNull();
+  onAskAgent.mockRejectedValueOnce(new Error("Mail is unavailable"));
+  await act(async () => button()?.click());
+  expect(document.querySelector('[role="alert"]')?.textContent).toContain("Mail is unavailable");
+  expect(button()?.disabled).toBe(false);
+});
+
+it("shows no Ask agent button when the page gives no action", async () => {
+  await open();
+  expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Ask agent")).toBe(
+    false,
+  );
+});
+
 it("shows no archive or read buttons and ignores e without them", async () => {
   await open();
   await press("e");

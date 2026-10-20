@@ -764,6 +764,7 @@ export const TR_MESSAGES: Record<string, string> = {
     "SSO geçici olarak kullanılamıyor. Yeniden deneyin.",
   Inbox: "Gelen kutusu",
   "Inbox agent": "Gelen kutusu agent'ı",
+  "Ask agent": "Agent'a sor",
   Sent: "Gönderildi",
   "Could not load mail.": "E-postalar yüklenemedi.",
   "Needs reply": "Yanıt bekliyor",
