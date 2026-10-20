@@ -918,6 +918,7 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/PathBar.tsx
 msgid "All items"
 msgstr ""
 
@@ -4425,6 +4426,10 @@ msgstr "샘플 듣기"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "안녕하세요. 답변을 소리 내어 읽을 때 이런 목소리로 들립니다."
 
+#: src/components/data-room/PathBar.tsx
+msgid "Hidden folders"
+msgstr ""
+
 #: src/components/data-room/Preview.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
@@ -6559,6 +6564,10 @@ msgstr "API 키를 붙여넣으세요"
 msgid "Paste your API key, then test again."
 msgstr "API 키를 붙여넣은 뒤 다시 테스트하세요."
 
+#: src/components/data-room/PathBar.tsx
+msgid "Path"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Paused"
 msgstr "일시 중지됨"
@@ -7295,6 +7304,10 @@ msgstr "비밀번호를 재설정하세요"
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Resetting…"
 msgstr "재설정 중…"
+
+#: src/components/data-room/ResizableFolders.tsx
+msgid "Resize folders"
+msgstr ""
 
 #: src/components/data-room/Preview.tsx
 #: src/pages/ResizableSidePanel.tsx

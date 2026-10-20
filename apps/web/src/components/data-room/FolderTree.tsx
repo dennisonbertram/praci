@@ -102,7 +102,7 @@ export function FolderTree({
     );
   };
   return (
-    <div className={cn("flex w-61 shrink-0 flex-col", PAGE_GUTTER_START)}>
+    <div className={cn("flex w-full min-w-0 flex-col", PAGE_GUTTER_START)}>
       <div
         role="tree"
         aria-label={t`Folders`}

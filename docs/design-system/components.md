@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 227 of 227
-- Web and shared components: 630
+- Web and shared component files with stories: 230 of 230
+- Web and shared components: 638
 - Mobile components: 136 in 93 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -21,6 +21,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | --- | --- | --- | --- |
 | AlertDialog, AlertDialogTrigger, AlertDialogPortal, AlertDialogOverlay, AlertDialogContent, AlertDialogHeader, AlertDialogFooter, AlertDialogMedia, AlertDialogTitle, AlertDialogDescription, AlertDialogAction, AlertDialogCancel | [packages/ui-web/src/components/ui/alert-dialog.tsx](../../packages/ui-web/src/components/ui/alert-dialog.tsx) | [alert-dialog.stories.tsx](../../packages/ui-web/src/components/ui/alert-dialog.stories.tsx) | shared |
 | Badge | [packages/ui-web/src/components/ui/badge.tsx](../../packages/ui-web/src/components/ui/badge.tsx) | [badge.stories.tsx](../../packages/ui-web/src/components/ui/badge.stories.tsx) | shared |
+| Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbPage, BreadcrumbSeparator, BreadcrumbEllipsis | [packages/ui-web/src/components/ui/breadcrumb.tsx](../../packages/ui-web/src/components/ui/breadcrumb.tsx) | [breadcrumb.stories.tsx](../../packages/ui-web/src/components/ui/breadcrumb.stories.tsx) | shared |
 | Button | [packages/ui-web/src/components/ui/button.tsx](../../packages/ui-web/src/components/ui/button.tsx) | [alert-dialog.stories.tsx](../../packages/ui-web/src/components/ui/alert-dialog.stories.tsx), [button.stories.tsx](../../packages/ui-web/src/components/ui/button.stories.tsx), [card.stories.tsx](../../packages/ui-web/src/components/ui/card.stories.tsx), [dialog.stories.tsx](../../packages/ui-web/src/components/ui/dialog.stories.tsx), [dropdown-menu.stories.tsx](../../packages/ui-web/src/components/ui/dropdown-menu.stories.tsx), [popover.stories.tsx](../../packages/ui-web/src/components/ui/popover.stories.tsx), [table.stories.tsx](../../packages/ui-web/src/components/ui/table.stories.tsx), [tooltip.stories.tsx](../../packages/ui-web/src/components/ui/tooltip.stories.tsx) | shared |
 | Card, CardHeader, CardTitle, CardDescription, CardAction, CardContent, CardFooter | [packages/ui-web/src/components/ui/card.tsx](../../packages/ui-web/src/components/ui/card.tsx) | [card.stories.tsx](../../packages/ui-web/src/components/ui/card.stories.tsx) | shared |
 | Checkbox | [packages/ui-web/src/components/ui/checkbox.tsx](../../packages/ui-web/src/components/ui/checkbox.tsx) | [checkbox.stories.tsx](../../packages/ui-web/src/components/ui/checkbox.stories.tsx) | shared |
@@ -164,9 +165,11 @@ Every rendered React component, grouped by area. A web or shared component file 
 | NameInput, FolderOptions, NewFolderDialog, ItemDialog, DeleteDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
 | ItemMenuItems, ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx), [ItemMenu.stories.tsx](../../apps/web/src/components/data-room/ItemMenu.stories.tsx) | web |
 | FileContext, Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, ThumbnailImage, TextPreview, TilePreview, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
+| PathBar | [apps/web/src/components/data-room/PathBar.tsx](../../apps/web/src/components/data-room/PathBar.tsx) | [PathBar.stories.tsx](../../apps/web/src/components/data-room/PathBar.stories.tsx) | web |
 | Field, Tag, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
 | FileViewer, IconAction, PreviewActions, FullScreenPreview | [apps/web/src/components/data-room/PreviewActions.tsx](../../apps/web/src/components/data-room/PreviewActions.tsx) | [PreviewActions.stories.tsx](../../apps/web/src/components/data-room/PreviewActions.stories.tsx) | web |
 | ProcessingStrip | [apps/web/src/components/data-room/ProcessingStrip.tsx](../../apps/web/src/components/data-room/ProcessingStrip.tsx) | [ProcessingStrip.stories.tsx](../../apps/web/src/components/data-room/ProcessingStrip.stories.tsx) | web |
+| ResizableFolders | [apps/web/src/components/data-room/ResizableFolders.tsx](../../apps/web/src/components/data-room/ResizableFolders.tsx) | [FolderTree.stories.tsx](../../apps/web/src/components/data-room/FolderTree.stories.tsx) | web |
 | SendToAgentMenu | [apps/web/src/components/data-room/SendToAgent.tsx](../../apps/web/src/components/data-room/SendToAgent.tsx) | [SendToAgent.stories.tsx](../../apps/web/src/components/data-room/SendToAgent.stories.tsx) | web |
 
 ## Web components/finance
