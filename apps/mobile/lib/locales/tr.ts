@@ -820,6 +820,11 @@ export const TR_MESSAGES: Record<string, string> = {
   Skipping: "Atlanıyor",
   "Gmail filter limit reached": "Gmail filtre sınırına ulaşıldı",
   "Couldn't add Gmail filter": "Gmail filtresi eklenemedi",
+  Learned: "Öğrenildi",
+  Forget: "Unut",
+  Senders: "Gönderenler",
+  Digest: "Özet",
+  "Archive all": "Tümünü arşivle",
   History: "Geçmiş",
   Undo: "Geri al",
   "Send an unsubscribe email to {address}?":
