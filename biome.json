@@ -36,7 +36,8 @@
     "rules": {
       "preset": "recommended",
       "style": {
-        "noNonNullAssertion": "off"
+        "noNonNullAssertion": "off",
+        "useImportType": { "level": "error", "options": { "style": "separatedType" } }
       },
       "correctness": {
         "useExhaustiveDependencies": "off"
