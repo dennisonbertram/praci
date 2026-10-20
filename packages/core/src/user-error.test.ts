@@ -3,6 +3,7 @@ import {
   authErrorMessage,
   credentialIssue,
   dismissedThreadRunError,
+  isInternalRunError,
   isNetworkFailure,
   isServerUnreachable,
   isTechnicalErrorMessage,
@@ -212,5 +213,18 @@ describe("run errors", () => {
     expect(dismissedThreadRunError(snap, describeError, new Set(["r1"]))).toBe("key rejected");
     expect(dismissedThreadRunError(snap, describeError, new Set())).toBeNull();
     expect(threadRunError(snapshot(null, "running"), describeError)).toBeNull();
+  });
+});
+
+describe("isInternalRunError", () => {
+  it("flags database and stack-trace text, keeps readable errors", () => {
+    expect(
+      isInternalRunError(
+        "Invalid `tx.run.findUnique()` invocation in /app/packages/db/src/messages.ts:108:28\n\n  105 where: {",
+      ),
+    ).toBe(true);
+    expect(isInternalRunError("boom\n    at Object.run (/srv/app/index.js:10:5)")).toBe(true);
+    expect(isInternalRunError("x".repeat(301))).toBe(true);
+    expect(isInternalRunError("Couldn't reach muse-spark-1.3. Try again.")).toBe(false);
   });
 });
