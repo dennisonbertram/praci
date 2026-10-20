@@ -317,3 +317,27 @@ it("shows the API error when Devin rejects the key", async () => {
   expect(document.body.textContent).toContain("Could not connect to Devin.");
   expect(document.body.textContent).not.toContain("connected");
 });
+
+it("puts the callback URL before the client ID and says where to register the app", async () => {
+  await mount({ oauthClient: true, service: "X" });
+  const text = document.body.textContent ?? "";
+  expect(text).not.toContain("Click Sign in with");
+  expect(text).toContain("Create an app in X's developer settings");
+  const order = ["Callback URL", "Client ID", "Client secret (optional)"].map((label) =>
+    [...document.querySelectorAll("[aria-label]")].indexOf(field(label)),
+  );
+  expect(order).toEqual([...order].sort((a, b) => a - b));
+  expect(text).toContain("Enter a Client ID to sign in.");
+  await type("Client ID", "abc");
+  expect(document.body.textContent).not.toContain("Enter a Client ID to sign in.");
+});
+
+it("says nothing extra before a one-click sign-in and after it succeeds", async () => {
+  api.begin.mockResolvedValue({ status: "already_connected" });
+  await mount({ service: "Granola" });
+  expect(document.body.textContent).not.toContain("Click Sign in with");
+  await click("Sign in with Granola");
+  await click("Skip");
+  expect(document.body.textContent).toContain("Example connected");
+  expect(document.body.textContent).not.toContain("now appears under Connected");
+});
