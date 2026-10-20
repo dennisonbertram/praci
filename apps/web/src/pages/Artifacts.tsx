@@ -186,6 +186,24 @@ export function ArtifactsPage() {
   }, [items, searchQuery, dateFilter]);
 
   const clientFilterActive = searchQuery.trim().length > 0 || dateFilter !== "all";
+  const filterActive = clientFilterActive || activeBotId !== null;
+
+  function clearFilters() {
+    setSearchQuery("");
+    setDateFilter("all");
+    setActiveBotId(null);
+  }
+
+  // A filter that hides the open artifact closes it, so the list never sits beside an unrelated preview.
+  useEffect(() => {
+    if (
+      artifactId &&
+      filterActive &&
+      filteredItems &&
+      !filteredItems.some((i) => i.id === artifactId)
+    )
+      navigate("/app/artifacts");
+  }, [artifactId, filterActive, filteredItems, navigate]);
   const autoFetchedCursorRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -237,10 +255,14 @@ export function ArtifactsPage() {
                   pressed={filtersOpen}
                   onPressedChange={setFiltersOpen}
                   data-testid="artifacts-filters"
+                  data-active={filterActive || undefined}
                   className={artifactId ? "hidden md:flex" : undefined}
                 >
                   <Filter aria-hidden="true" />
                   <Trans>Filters</Trans>
+                  {filterActive ? (
+                    <span aria-hidden="true" className="size-1.5 rounded-full bg-primary" />
+                  ) : null}
                 </Toggle>
               )}
               {!artifactId ? (
@@ -319,7 +341,8 @@ export function ArtifactsPage() {
             {!maximized ? (
               <IndexPane
                 items={filteredItems}
-                filtered={clientFilterActive || activeBotId !== null}
+                filtered={filterActive}
+                onClearFilters={clearFilters}
                 loadError={loadError}
                 botsById={botsById}
                 selectedId={artifactId}
@@ -339,7 +362,8 @@ export function ArtifactsPage() {
         ) : (
           <BrowsingPane
             items={filteredItems}
-            filtered={clientFilterActive || activeBotId !== null}
+            filtered={filterActive}
+            onClearFilters={clearFilters}
             loadError={loadError}
             viewMode={viewMode}
             botsById={botsById}
@@ -397,6 +421,7 @@ export function ArtifactsPage() {
 function BrowsingPane({
   items,
   filtered,
+  onClearFilters,
   loadError,
   viewMode,
   botsById,
@@ -407,6 +432,7 @@ function BrowsingPane({
 }: {
   items: ArtifactSummary[] | null;
   filtered: boolean;
+  onClearFilters: () => void;
   loadError: string | null;
   viewMode: ViewMode;
   botsById: Map<string, Bot>;
@@ -436,6 +462,7 @@ function BrowsingPane({
     return (
       <EmptyArtifacts
         filtered={filtered}
+        onClearFilters={onClearFilters}
         className="grid flex-1 place-items-center text-sm text-muted-foreground/80"
         nextCursor={nextCursor}
         loadingMore={loadingMore}
@@ -618,6 +645,7 @@ function LoadMoreButton({ loading, onClick }: { loading: boolean; onClick: () =>
 function EmptyArtifacts({
   className,
   filtered,
+  onClearFilters,
   nextCursor,
   loadingMore,
   onLoadMore,
@@ -625,6 +653,7 @@ function EmptyArtifacts({
   className: string;
   /** A search, date or bot filter is narrowing the list. */
   filtered: boolean;
+  onClearFilters: () => void;
   nextCursor: string | null;
   loadingMore: boolean;
   onLoadMore: () => void;
@@ -651,7 +680,12 @@ function EmptyArtifacts({
   if (!nextCursor) {
     return (
       <div className={className}>
-        <Trans>No artifacts match these filters.</Trans>
+        <div className="flex flex-col items-center gap-3">
+          <Trans>No artifacts match these filters.</Trans>
+          <Button variant="outline" size="sm" onClick={onClearFilters}>
+            <Trans>Clear filters</Trans>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -666,6 +700,9 @@ function EmptyArtifacts({
           )}
         </span>
         <LoadMoreButton loading={loadingMore} onClick={onLoadMore} />
+        <Button variant="outline" size="sm" onClick={onClearFilters}>
+          <Trans>Clear filters</Trans>
+        </Button>
       </div>
     </div>
   );
@@ -674,6 +711,7 @@ function EmptyArtifacts({
 function IndexPane({
   items,
   filtered,
+  onClearFilters,
   loadError,
   botsById,
   selectedId,
@@ -684,6 +722,7 @@ function IndexPane({
 }: {
   items: ArtifactSummary[] | null;
   filtered: boolean;
+  onClearFilters: () => void;
   loadError: string | null;
   botsById: Map<string, Bot>;
   selectedId: string;
@@ -702,6 +741,7 @@ function IndexPane({
       ) : items.length === 0 ? (
         <EmptyArtifacts
           filtered={filtered}
+          onClearFilters={onClearFilters}
           className="grid flex-1 place-items-center p-6 text-center text-sm text-muted-foreground/80"
           nextCursor={nextCursor}
           loadingMore={loadingMore}
@@ -850,7 +890,7 @@ function ArtifactCard({
           event.stopPropagation();
           onRequestDelete(artifact);
         }}
-        className="absolute bottom-3 end-3 grid h-7 w-7 place-items-center rounded-lg bg-card text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 group-focus-within:opacity-100"
+        className="absolute bottom-3 end-3 grid h-7 w-7 place-items-center rounded-lg bg-card text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100"
       >
         <Trash2 size={14} strokeWidth={1.9} />
       </button>
@@ -909,7 +949,7 @@ function ArtifactRow({
           event.stopPropagation();
           onRequestDelete(artifact);
         }}
-        className="absolute end-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 group-focus-within:opacity-100"
+        className="absolute end-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-lg text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100 group-focus-within:opacity-100 pointer-coarse:opacity-100"
       >
         <Trash2 size={14} strokeWidth={1.9} />
       </button>
@@ -1052,6 +1092,17 @@ function PreviewPane({
         ) : null}
         {state.status === "ready" ? (
           <>
+            {state.artifact.mimeType === "text/html" ? (
+              <Tip label={t`Isolated preview — no access to your account`}>
+                <span
+                  role="img"
+                  aria-label={t`Isolated preview — no access to your account`}
+                  className="grid h-8 w-8 shrink-0 place-items-center text-muted-foreground"
+                >
+                  <Lock size={15} strokeWidth={1.9} />
+                </span>
+              </Tip>
+            ) : null}
             <Button
               variant="outline"
               size="sm"
@@ -1094,14 +1145,6 @@ function PreviewPane({
         ) : (
           <div className="relative h-full overflow-hidden rounded-2xl border border-border">
             <ArtifactPreview artifact={state.artifact} bytes={state.bytes} />
-            {state.artifact.mimeType === "text/html" ? (
-              <div className="absolute bottom-3 end-3 flex items-center gap-1.5 rounded-full bg-black/70 px-2.5 py-1.5 text-[11px] text-white">
-                <Lock size={12} strokeWidth={2} />
-                <span>
-                  <Trans>Isolated preview — no access to your account</Trans>
-                </span>
-              </div>
-            ) : null}
           </div>
         )}
       </div>
@@ -1109,7 +1152,27 @@ function PreviewPane({
   );
 }
 
-function ArtifactPreview({ artifact, bytes }: { artifact: Artifact; bytes: Uint8Array }) {
+type PreviewTarget = Pick<Artifact, "id" | "name" | "mimeType">;
+
+/** The one rule for which files open in a preview; everything else is download-only. */
+export function canPreviewArtifact({ name, mimeType }: Pick<Artifact, "name" | "mimeType">) {
+  return (
+    mimeType === "text/html" ||
+    mimeType === UI_ARTIFACT_MIME_TYPE ||
+    mimeType === "text/markdown" ||
+    mimeType === "application/pdf" ||
+    isAttachmentImageMimeType(mimeType) ||
+    canPreviewSpreadsheet(name, mimeType)
+  );
+}
+
+export function ArtifactPreview({
+  artifact,
+  bytes,
+}: {
+  artifact: PreviewTarget;
+  bytes: Uint8Array;
+}) {
   if (artifact.mimeType === "text/html") {
     const html = new TextDecoder("utf-8").decode(bytes);
     return <SandboxedHtmlViewer html={html} title={artifact.name} />;
