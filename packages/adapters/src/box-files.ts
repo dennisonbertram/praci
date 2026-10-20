@@ -44,18 +44,24 @@ type Scope = { spaceId: string; userId: string };
 export type BoxFilesDeps = {
   prisma: Pick<PrismaClient, "mcpServer">;
   /** A current access token for one of the caller's Box connections; null when it needs signing in again. */
-  accessToken: (account: BoxAccount, scope: Scope) => Promise<string | null>;
+  accessToken: (
+    account: BoxAccount,
+    scope: Scope,
+    /** The token Box just refused: renew it even if its stored lifetime has not run out. */
+    options?: { rejected?: string },
+  ) => Promise<string | null>;
   fetch?: typeof fetch;
   /** Waits between download retries; tests pass an instant one. */
   sleep?: (ms: number) => Promise<void>;
 };
 
-/** Reads the user's own Box sign-in, the one made for the Box MCP connection. */
+/** Reads the user's own Box sign-in, the one made for the Box MCP connection, renewing it when due. */
 export function boxAccessToken(
   broker: Pick<McpOAuthBroker, "providerFor">,
 ): BoxFilesDeps["accessToken"] {
-  return async (account, scope) => {
+  return async (account, scope, options) => {
     const provider = await broker.providerFor(account, scope);
+    if (options?.rejected) await provider?.renew(options.rejected);
     return (await provider?.tokens())?.access_token ?? null;
   };
 }
@@ -144,18 +150,26 @@ async function connect(deps: BoxFilesDeps, scope: Scope, connectionId?: string) 
     );
   const doFetch = deps.fetch ?? fetch;
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((done) => setTimeout(done, ms)));
-  /** One authorized request to the Box API; the token is read fresh so a refresh is picked up. */
-  const call = async (url: string, signal: AbortSignal): Promise<Response> => {
-    const token = await deps.accessToken(account, scope);
-    if (!token) throw new BoxFileError("reconnect", "The Box account needs to be reconnected");
+  const send = (url: string, token: string, signal: AbortSignal) =>
     // Never a BoxApi shared-link header: only the user's own content is reachable.
-    return doFetch(url, {
+    doFetch(url, {
       headers: { authorization: `Bearer ${token}` },
       redirect: "manual",
       signal,
     }).catch(() => {
       throw new BoxFileError("failed", "Box request failed");
     });
+  /** One authorized request to the Box API. A 401 renews the token and retries once. */
+  const call = async (url: string, signal: AbortSignal): Promise<Response> => {
+    const token = await deps.accessToken(account, scope);
+    if (!token) throw new BoxFileError("reconnect", "The Box account needs to be reconnected");
+    const response = await send(url, token, signal);
+    if (response.status !== 401) return response;
+    await response.body?.cancel().catch(() => undefined);
+    const renewed = await deps.accessToken(account, scope, { rejected: token });
+    if (!renewed || renewed === token)
+      throw new BoxFileError("reconnect", "The Box account needs to be reconnected");
+    return send(url, renewed, signal);
   };
   const json = async (path: string, signal: AbortSignal): Promise<unknown> => {
     const response = await call(`${API}${path}`, signal);

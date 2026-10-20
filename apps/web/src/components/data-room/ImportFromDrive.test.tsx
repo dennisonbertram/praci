@@ -102,7 +102,7 @@ async function render(
   else rpcMock.catalog.mockResolvedValue(catalog);
   await act(async () => {
     root.render(
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/app/data-room"]}>
         <ImportSources folderId="room1" onDone={onDone} />
         <Where />
       </MemoryRouter>,
@@ -362,10 +362,41 @@ it("imports ticked Box files and folders through the Box endpoints, into the ope
   expect(rpcMock.importDrive).not.toHaveBeenCalled();
 });
 
-it("shows the reconnect error when Box refuses the sign-in", async () => {
+const reconnectLink = () =>
+  Array.from(document.body.querySelectorAll("a")).find((a) => a.textContent === "Reconnect");
+
+it("offers Reconnect when Box refuses the sign-in, and returns to the Data room afterwards", async () => {
   rpcMock.servers.mockResolvedValue([boxServer]);
   rpcMock.boxList.mockRejectedValue(new Error("The Box account needs to be reconnected"));
   await render([]);
   await choose("Box");
-  expect(document.body.textContent).toContain("reconnected");
+  expect(document.body.textContent).toContain("needs to be reconnected");
+  await click(reconnectLink());
+  expect(document.querySelector('[data-testid="where"]')?.textContent).toBe("/app/integrations");
+  expect(document.querySelector('[data-testid="search"]')?.textContent).toBe(
+    "?connect=box&returnTo=%2Fapp%2Fdata-room",
+  );
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+});
+
+it("offers Reconnect to the Drive page when Drive refuses the sign-in", async () => {
+  rpcMock.driveList.mockRejectedValue(new Error("The Drive account needs to be reconnected"));
+  await render([{ connectorId: "google", provider: "googledrive", status: "connected" }]);
+  await choose("Google Drive");
+  await click(reconnectLink());
+  expect(document.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/app/google/googledrive",
+  );
+  expect(document.querySelector('[data-testid="search"]')?.textContent).toBe(
+    "?next=%2Fapp%2Fdata-room",
+  );
+});
+
+it("shows other Box errors without a Reconnect link", async () => {
+  rpcMock.servers.mockResolvedValue([boxServer]);
+  rpcMock.boxList.mockRejectedValue(new Error("Box rate limit reached; try again later"));
+  await render([]);
+  await choose("Box");
+  expect(document.body.textContent).toContain("rate limit");
+  expect(reconnectLink()).toBeUndefined();
 });

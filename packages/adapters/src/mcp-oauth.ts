@@ -193,6 +193,10 @@ type ProviderOptions = {
   onPersisted?: (record: { id: string; ref: string; material: OAuthMaterial }) => void;
   /** Network for renewing an expired access token through its stored refresh token. */
   refreshNetwork?: () => Promise<{ fetch: typeof fetch; close: () => Promise<void> }>;
+  /** Runs `fn` while holding a lock shared by every process that renews this server's token. */
+  refreshLock?: <T>(fn: () => Promise<T>) => Promise<T>;
+  /** The latest stored sign-in, which another process may have renewed since this provider loaded. */
+  reloadOAuth?: () => Promise<OAuthState | undefined>;
 };
 
 /** Refresh before expiry to cover clock skew and request time. */
@@ -259,13 +263,31 @@ export class StoredMcpOAuthProvider implements OAuthClientProvider {
    */
   async tokens(): Promise<OAuthTokens | undefined> {
     if (this.reauthorizing) return undefined;
-    if (this.options.refreshNetwork && this.accessTokenExpired()) {
-      this.refreshing ??= this.refreshExpiredToken().finally(() => {
-        this.refreshing = undefined;
-      });
-      await this.refreshing;
-    }
+    if (this.options.refreshNetwork && this.accessTokenExpired()) await this.renew();
     return this.material.oauth?.tokens;
+  }
+
+  /**
+   * Renews the access token. Pass the token a server just rejected to renew it even though its
+   * stored lifetime has not run out; if another process already replaced it, that one is used.
+   * Box refresh tokens work once, so the renewal runs under a lock after re-reading the store.
+   */
+  async renew(rejected?: string): Promise<void> {
+    if (!this.options.refreshNetwork) return;
+    this.refreshing ??= (this.options.refreshLock ?? ((fn) => fn()))(async () => {
+      const latest = await this.options.reloadOAuth?.();
+      if (
+        latest?.tokens &&
+        latest.tokens.access_token !== this.material.oauth?.tokens?.access_token
+      )
+        this.material.oauth = { ...this.material.oauth, ...latest };
+      const current = this.material.oauth?.tokens?.access_token;
+      if (rejected === undefined ? this.accessTokenExpired() : current === rejected)
+        await this.refreshExpiredToken();
+    }).finally(() => {
+      this.refreshing = undefined;
+    });
+    await this.refreshing;
   }
 
   private accessTokenExpired(): boolean {
@@ -585,7 +607,7 @@ export class McpOAuthBroker {
     context: ActorRef,
     loaded?: { material: OAuthMaterial; secretId?: string },
     onPersisted?: ProviderOptions["onPersisted"],
-  ): Promise<OAuthClientProvider | undefined> {
+  ): Promise<StoredMcpOAuthProvider | undefined> {
     const material = loaded ?? (await this.loadMaterial(server, context));
     if (!material.material.oauth) return undefined;
     return this.createProvider(server, context, material, { onPersisted });
@@ -946,6 +968,22 @@ export class McpOAuthBroker {
                 ),
             }
           : {}),
+        refreshLock: (fn) =>
+          this.prisma.$transaction(
+            async (tx) => {
+              await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('mcp-oauth-refresh'), hashtext(${server.id}))`;
+              return fn();
+            },
+            { maxWait: 15_000, timeout: 45_000 },
+          ),
+        reloadOAuth: async () => {
+          const row = await this.prisma.mcpServer.findFirst({
+            where: { id: server.id, spaceId: context.spaceId, userId: context.userId },
+            select: { secretId: true },
+          });
+          return (await this.loadMaterial({ ...server, secretId: row?.secretId ?? null }, context))
+            .material.oauth;
+        },
         ...options,
       },
     );

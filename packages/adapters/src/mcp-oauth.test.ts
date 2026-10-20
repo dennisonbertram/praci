@@ -278,6 +278,39 @@ describe("MCP OAuth", () => {
     expect(close).toHaveBeenCalledOnce();
   });
 
+  it("renews a rejected token early, but adopts a token another process already stored", async () => {
+    const tokenRequests: URLSearchParams[] = [];
+    const network = {
+      refreshNetwork: async () => ({
+        fetch: async (_input: string | URL | Request, init?: RequestInit) => {
+          tokenRequests.push(new URLSearchParams(String(init?.body)));
+          return new Response(
+            JSON.stringify({ access_token: "new-access", token_type: "Bearer", expires_in: 3600 }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        },
+        close: async () => undefined,
+      }),
+    };
+    const fresh = () => expiringMaterial(Date.now());
+    const early = new StoredMcpOAuthProvider("server-1", fresh(), async () => undefined, network);
+    await early.renew("old-access");
+    await expect(early.tokens()).resolves.toMatchObject({ access_token: "new-access" });
+    expect(tokenRequests).toHaveLength(1);
+
+    const storedElsewhere = {
+      ...fresh().oauth,
+      tokens: { access_token: "other-access", token_type: "Bearer", expires_in: 3600 },
+    };
+    const adopting = new StoredMcpOAuthProvider("server-1", fresh(), async () => undefined, {
+      ...network,
+      reloadOAuth: async () => storedElsewhere,
+    });
+    await adopting.renew("old-access");
+    await expect(adopting.tokens()).resolves.toMatchObject({ access_token: "other-access" });
+    expect(tokenRequests).toHaveLength(1);
+  });
+
   it("does not renew a token that is still inside its lifetime", async () => {
     const refreshNetwork = vi.fn(async () => ({
       fetch: async () => new Response(),

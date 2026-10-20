@@ -6,7 +6,12 @@ import { DrivePicker } from "./ImportFromDrive";
 const meta = {
   title: "Data room/DrivePicker",
   component: DrivePicker,
-  args: { folderId: null, onClose: () => undefined, onDone: () => undefined },
+  args: {
+    folderId: null,
+    reconnectPath: "/app/integrations?connect=box",
+    onClose: () => undefined,
+    onDone: () => undefined,
+  },
   // The picker is a dialog in a portal, so the story root needs a frame of its own.
   decorators: [
     (Story) => (
@@ -54,6 +59,7 @@ export const Box: Story = {
   },
 };
 
+/** A lapsed sign-in: muted message with a Reconnect link to the integration page. */
 export const BoxReconnect: Story = {
   args: { box: true },
   beforeEach: () =>

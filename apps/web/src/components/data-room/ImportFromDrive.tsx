@@ -12,6 +12,7 @@ import {
 } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { dataRoomImportStarted } from "../../lib/data-room";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -19,6 +20,8 @@ import { DriveRow } from "./DriveRow";
 import { failedText, importedText, importingText } from "./format";
 
 const SEARCH_DEBOUNCE_MS = 300;
+/** The server's message when a stored sign-in no longer works (only its text reaches the page). */
+const RECONNECT = /needs to be reconnected/i;
 /** The most files, and the most folders, the server takes in one import. */
 const MAX_PICKS = 20;
 const GOOGLE_APPS = "application/vnd.google-apps.";
@@ -32,12 +35,15 @@ const importable = (file: DataRoomApiDriveFile) =>
 export function DrivePicker({
   box = false,
   folderId,
+  reconnectPath,
   onClose,
   onDone,
 }: {
   /** Browse and import the user's Box instead of Google Drive; the picker is the same. */
   box?: boolean;
   folderId: string | null;
+  /** Where the user signs in to this account again, when the server says the sign-in has lapsed. */
+  reconnectPath: string;
   onClose: () => void;
   onDone: (message: string, changed: boolean) => void;
 }) {
@@ -171,7 +177,16 @@ export function DrivePicker({
           />
         </div>
         <div className="rk-scroll max-h-80 overflow-y-auto rounded-md border border-border">
-          {error ? <p className="p-3 text-sm text-destructive">{error}</p> : null}
+          {error && RECONNECT.test(error) ? (
+            <p className="p-3 text-sm text-muted-foreground">
+              {error}{" "}
+              <Link to={reconnectPath} onClick={onClose} className="underline underline-offset-2">
+                <Trans>Reconnect</Trans>
+              </Link>
+            </p>
+          ) : error ? (
+            <p className="p-3 text-sm text-destructive">{error}</p>
+          ) : null}
           {!loading && !error && files.length === 0 ? (
             <p className="p-6 text-center text-sm text-muted-foreground">
               <Trans>No files found</Trans>
