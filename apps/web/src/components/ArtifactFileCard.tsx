@@ -8,7 +8,7 @@ import type { ArtifactTarget } from "../lib/artifact-open";
 import { downloadArtifact, downloadArtifactBytes, fetchArtifactBytes } from "../lib/artifact-open";
 import { formatBytes } from "../lib/format-bytes";
 import { errorText } from "../lib/user-error";
-import { ArtifactPreview, canPreviewArtifact } from "../pages/Artifacts";
+import { ArtifactPreview, canPreviewArtifact } from "./ArtifactPreview";
 
 type ArtifactFileCardProps = {
   target: ArtifactTarget;
