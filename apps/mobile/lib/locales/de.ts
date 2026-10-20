@@ -1,4 +1,6 @@
 export const DE_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Beträge ausblenden",
+  "Show amounts": "Beträge anzeigen",
   "Phone notifications": "Handybenachrichtigungen",
   "Share with all agents": "Mit allen Agenten teilen",
   "Couldn't refresh — showing the last loaded messages.":

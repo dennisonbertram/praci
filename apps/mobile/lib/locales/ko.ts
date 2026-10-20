@@ -1,4 +1,6 @@
 export const KO_MESSAGES: Record<string, string> = {
+  "Hide amounts": "금액 숨기기",
+  "Show amounts": "금액 표시",
   "Phone notifications": "휴대폰 알림",
   "Share with all agents": "모든 에이전트와 공유",
   "Couldn't refresh — showing the last loaded messages.":

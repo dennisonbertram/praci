@@ -1,4 +1,6 @@
 export const ES_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Ocultar importes",
+  "Show amounts": "Mostrar importes",
   "Phone notifications": "Notificaciones del teléfono",
   "Share with all agents": "Compartir con todos los agentes",
   "Couldn't refresh — showing the last loaded messages.":

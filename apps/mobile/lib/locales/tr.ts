@@ -1,4 +1,6 @@
 export const TR_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Tutarları gizle",
+  "Show amounts": "Tutarları göster",
   "Phone notifications": "Telefon bildirimleri",
   "Share with all agents": "Tüm ajanlarla paylaş",
   "Couldn't refresh — showing the last loaded messages.":

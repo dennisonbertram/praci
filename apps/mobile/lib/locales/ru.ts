@@ -1,4 +1,6 @@
 export const RU_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Скрыть суммы",
+  "Show amounts": "Показать суммы",
   "Phone notifications": "Уведомления на телефоне",
   "Share with all agents": "Поделиться со всеми агентами",
   "Couldn't refresh — showing the last loaded messages.":

@@ -1,4 +1,6 @@
 export const HI_MESSAGES: Record<string, string> = {
+  "Hide amounts": "राशियाँ छिपाएँ",
+  "Show amounts": "राशियाँ दिखाएँ",
   "Phone notifications": "फ़ोन सूचनाएँ",
   "Share with all agents": "सभी एजेंटों के साथ साझा करें",
   "Couldn't refresh — showing the last loaded messages.":

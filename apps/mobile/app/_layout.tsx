@@ -1,5 +1,6 @@
 import type { LinkFavicons } from "@rakazo/chat-ui/native";
 import {
+  HideAmountsContext,
   LinkFaviconsContext,
   MarkdownLinkPromptProvider,
   RemoteImagesContext,
@@ -31,6 +32,7 @@ import {
 import { loadAppearancePreference, mobileTokens } from "../lib/appearance";
 import { replaceWithSignIn } from "../lib/auth-routing";
 import { loadAvatarStyle } from "../lib/avatar-style";
+import { loadHideAmounts, useHideAmounts } from "../lib/hide-amounts";
 import { bootstrapI18n, useI18n } from "../lib/i18n";
 import { loadLinkFavicon } from "../lib/link-favicons";
 import {
@@ -70,6 +72,7 @@ function ChatContentProviders({
   children: ReactNode;
 }) {
   const { t } = useI18n();
+  const hideAmounts = useHideAmounts();
   const endpoint = useSyncExternalStore(subscribeApiBase, currentApiBase, currentApiBase);
   const linkFavicons = useMemo<LinkFavicons>(
     () => ({ endpoint, load: (origin) => loadLinkFavicon(origin, endpoint), globe: <LinkGlobe /> }),
@@ -80,9 +83,13 @@ function ChatContentProviders({
       appOrigin={endpoint}
       copy={{ title: t("Open external link?"), cancel: t("Cancel"), open: t("Open") }}
     >
-      <RemoteImagesContext.Provider value={loadRemoteImages}>
-        <LinkFaviconsContext.Provider value={linkFavicons}>{children}</LinkFaviconsContext.Provider>
-      </RemoteImagesContext.Provider>
+      <HideAmountsContext.Provider value={hideAmounts}>
+        <RemoteImagesContext.Provider value={loadRemoteImages}>
+          <LinkFaviconsContext.Provider value={linkFavicons}>
+            {children}
+          </LinkFaviconsContext.Provider>
+        </RemoteImagesContext.Provider>
+      </HideAmountsContext.Provider>
     </MarkdownLinkPromptProvider>
   );
 }
@@ -145,6 +152,7 @@ export default function Layout() {
         loadAppearancePreference().finally(() => setAppearanceReady(true)),
         loadResponseStreamingPreference(),
         loadRemoteImagesPreference(),
+        loadHideAmounts(),
         loadAvatarStyle(),
       ])
         .then(async () =>
