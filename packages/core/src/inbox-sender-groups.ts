@@ -1,3 +1,6 @@
+import type { InboxBulkResult } from "@rakazo/contracts";
+import { MAX_BULK_ARCHIVE } from "@rakazo/contracts";
+
 /** The row fields grouping needs; the web and mobile list rows both have them. */
 export interface SenderGroupRow {
   id: string;
@@ -64,4 +67,21 @@ export function archivableIds(rows: SenderGroupRow[], allowSpam: boolean): strin
   return rows
     .filter((row) => row.inInbox && (allowSpam || row.pile !== "spam"))
     .map((row) => row.id);
+}
+
+/**
+ * Runs a bulk archive or unarchive in slices the API accepts, one after another, and merges the results.
+ * ponytail: a slice that throws ends the run and the caller sees only the error; the reloaded list shows what was done.
+ */
+export async function bulkInChunks(
+  messageIds: string[],
+  call: (messageIds: string[]) => Promise<InboxBulkResult>,
+): Promise<InboxBulkResult> {
+  const merged: InboxBulkResult = { done: [], failed: [] };
+  for (let i = 0; i < messageIds.length; i += MAX_BULK_ARCHIVE) {
+    const result = await call(messageIds.slice(i, i + MAX_BULK_ARCHIVE));
+    merged.done.push(...result.done);
+    merged.failed.push(...result.failed);
+  }
+  return merged;
 }

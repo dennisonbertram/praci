@@ -388,17 +388,17 @@ test("Inbox fills in Needs reply and the To do card once triage has run", async 
   expect(lists).toBe(seen);
 });
 
-test("Inbox narrows to Important and to a category, flags suspicious mail, and takes marks with undo", async ({
+test("Inbox switches piles, narrows to a category, flags suspicious mail, and takes marks with undo", async ({
   page,
 }, testInfo) => {
   await signup(page, `inbox-views-${Date.now()}@rakazo.test`, "password12", "Inbox Views");
   await completeOnboarding(page);
 
   // Real: the Gmail emulator, the sync into Postgres, and the real inbox.list, which validates every
-  // request below (including view and category). Stubbed: the triage results and the server's view and
+  // request below (including pile and category). Stubbed: the triage results and the server's pile and
   // mark logic, because the e2e stack has no allowed model so the real list reports triage disabled.
   // The Postgres tests in apps/api cover that logic against the real endpoint.
-  type ListInput = { connectionId?: string; view?: string; category?: string; filter?: string };
+  type ListInput = { connectionId?: string; pile?: string; category?: string; filter?: string };
   type Row = {
     id: string;
     connectionId: string;
@@ -443,15 +443,9 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
     });
     if (!input.filter) {
       if (input.connectionId) rows = rows.filter((row) => row.connectionId === input.connectionId);
-      if (input.view === "important") {
-        rows = rows.filter(
-          (row) =>
-            row.feedback !== "noise" &&
-            (row.feedback === "important" ||
-              row.needsReply === true ||
-              ["critical", "important"].includes(row.priority ?? "")),
-        );
-      }
+      // The real server leaves undecided mail in Important; the stub puts only the CI notice in Updates.
+      if (input.pile === "updates")
+        rows = rows.filter((row) => row.subject === "CI passed on main");
       if (input.category) rows = rows.filter((row) => row.category === input.category);
     }
     await route.fulfill({
@@ -476,7 +470,7 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
 
   const main = page.getByRole("main");
   const row = (name: string | RegExp) => main.getByRole("button", { name });
-  const important = main.getByRole("button", { name: "Important", exact: true });
+  const pileTab = (name: string) => page.getByRole("tab", { name, exact: true });
   await expect(row(/Offsite dates/)).toBeVisible();
 
   // Suspicious mail carries a named warning and stays in the list.
@@ -486,28 +480,28 @@ test("Inbox narrows to Important and to a category, flags suspicious mail, and t
   await expect(row(/Verify your account/).getByRole("img", { name: "Suspicious" })).toBeVisible();
   await captureScreenshot(page, testInfo, "inbox-suspicious-badge");
 
-  // Important view: the server narrows the list; the URL and the account tab are kept.
-  await expect(important).toHaveAttribute("aria-pressed", "false");
-  await important.click();
-  await expect(page).toHaveURL(/[?&]view=important/);
-  await expect(important).toHaveAttribute("aria-pressed", "true");
-  await expect(row(/Offsite dates/)).toBeVisible();
-  await expect(row(/Invoice #1043/)).toHaveCount(0);
-  await expect(row(/CI passed on main/)).toHaveCount(0);
-  await expect.poll(() => requests.at(-1)).toMatchObject({ view: "important" });
-  await captureScreenshot(page, testInfo, "inbox-important-view");
-  await page.getByRole("tablist").getByRole("tab", { name: "Work" }).click();
+  // Updates pile: the server narrows the list; the URL and the account tab are kept.
+  await expect(pileTab("Important")).toHaveAttribute("aria-selected", "true");
+  await pileTab("Updates").click();
+  await expect(page).toHaveURL(/[?&]pile=updates/);
+  await expect(pileTab("Updates")).toHaveAttribute("aria-selected", "true");
+  await expect(row(/CI passed on main/)).toBeVisible();
   await expect(row(/Offsite dates/)).toHaveCount(0);
-  await expect(main.getByText("No mail matches this filter", { exact: true })).toBeVisible();
+  await expect(row(/Invoice #1043/)).toHaveCount(0);
+  await expect.poll(() => requests.at(-1)).toMatchObject({ pile: "updates" });
+  await captureScreenshot(page, testInfo, "inbox-updates-pile");
+  await page.getByRole("tablist").getByRole("tab", { name: "Work" }).click();
+  await expect(row(/CI passed on main/)).toHaveCount(0);
+  await expect(main.getByText("No mail", { exact: true })).toBeVisible();
   await expect
     .poll(() => requests.at(-1))
-    .toMatchObject({ view: "important", connectionId: expect.any(String) });
+    .toMatchObject({ pile: "updates", connectionId: expect.any(String) });
   await page.getByRole("tablist").getByRole("tab", { name: "All" }).click();
-  await important.click();
-  await expect(page).not.toHaveURL(/view=/);
+  await pileTab("Important").click();
+  await expect(page).not.toHaveURL(/pile=/);
   await expect(row(/Invoice #1043/)).toBeVisible();
 
-  // A category from the filter menu replaces the Important view and shows in the trigger.
+  // A category from the filter menu replaces the pile and shows in the trigger.
   const filterMenu = page.getByTestId("inbox-filter");
   await filterMenu.click();
   await expect(page.getByRole("menuitemradio", { name: "Bills", exact: true })).toBeVisible();
@@ -845,23 +839,26 @@ test("Inbox rows show one triage label and keep the header and rows on their lin
       description: `${layout.scheme} pane ${Math.round(pane.width)}px`,
     });
 
-    // Title, Important and the filter share a vertical center. A narrow pane moves the search to
-    // its own row under them; a wide one keeps it on the same line, left of Important.
+    // Title and the filter share a vertical center. A narrow pane moves the search to its own row
+    // under them; a wide one keeps it on the same line, left of the filter.
     const title = await box(main.getByRole("heading", { name: "Inbox", level: 1 }));
     const center = (found: { y: number; height: number }) => found.y + found.height / 2;
     const search = await box(main.getByRole("searchbox", { name: "Search mail" }));
-    const important = await box(main.getByRole("button", { name: "Important", exact: true }));
-    for (const found of [important, await box(page.getByTestId("inbox-filter"))]) {
-      expect(Math.abs(center(found) - center(title))).toBeLessThan(8);
-    }
+    const filter = await box(page.getByTestId("inbox-filter"));
+    expect(Math.abs(center(filter) - center(title))).toBeLessThan(8);
     if (Math.abs(center(search) - center(title)) < 8) {
-      expect(search.x + search.width).toBeLessThanOrEqual(important.x);
+      expect(search.x + search.width).toBeLessThanOrEqual(filter.x);
     } else {
       expect(search.y).toBeGreaterThanOrEqual(title.y + title.height);
     }
 
-    // Account tabs sit under the header, starting at the content's left edge.
-    const tabs = await box(page.getByRole("tablist"));
+    // Pile tabs, then account tabs, sit under the header, starting at the content's left edge.
+    const pileTabs = await box(page.getByRole("tablist").first());
+    expect(pileTabs.y).toBeGreaterThan(title.y + title.height);
+    expect(Math.abs(pileTabs.x - title.x)).toBeLessThanOrEqual(1);
+    const tabs = await box(
+      page.getByRole("tablist").filter({ has: page.getByRole("tab", { name: "All" }) }),
+    );
     expect(tabs.y).toBeGreaterThan(title.y + title.height);
     expect(Math.abs(tabs.x - title.x)).toBeLessThanOrEqual(1);
 

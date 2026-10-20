@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   archivableIds,
+  bulkInChunks,
   groupBySender,
   rowSummary,
   type SenderGroupRow,
@@ -98,5 +99,19 @@ describe("archivableIds", () => {
   });
   it("keeps the spam-pile inbox rows when allowSpam is set", () => {
     expect(archivableIds(rows, true)).toEqual(["inbox", "spam"]);
+  });
+});
+
+describe("bulkInChunks", () => {
+  it("sends 120 ids as slices of at most 50 in order and merges the results", async () => {
+    const ids = Array.from({ length: 120 }, (_, i) => `m${i}`);
+    const call = vi.fn(async (slice: string[]) => ({
+      done: slice.filter((id) => id !== "m60"),
+      failed: slice.includes("m60") ? [{ messageId: "m60", reason: "unavailable" as const }] : [],
+    }));
+    const result = await bulkInChunks(ids, call);
+    expect(call.mock.calls.map(([slice]) => slice.length)).toEqual([50, 50, 20]);
+    expect(result.done).toHaveLength(119);
+    expect(result.failed).toEqual([{ messageId: "m60", reason: "unavailable" }]);
   });
 });

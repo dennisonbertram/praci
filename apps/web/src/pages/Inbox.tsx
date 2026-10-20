@@ -8,7 +8,7 @@ import type {
   MailRow,
 } from "@rakazo/contracts";
 import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
-import { archivableIds, groupBySender, groupInbox } from "@rakazo/core";
+import { archivableIds, bulkInChunks, groupBySender, groupInbox } from "@rakazo/core";
 import {
   Button,
   DropdownMenu,
@@ -591,7 +591,7 @@ export function InboxPage({
     if (isSenderGroupId(id)) togglePicked(groupRows(id).map((row) => row.id));
     else pick(id, { shift: false });
   };
-  // One call archives the whole selection or group; Undo puts back what it archived.
+  // One action archives the whole selection or group (50 threads per call); Undo puts back what it archived.
   const archiveMany = (candidates: MailRow[]) => {
     const messageIds = archivableIds(candidates, spamView);
     if (messageIds.length === 0) return;
@@ -615,7 +615,9 @@ export function InboxPage({
     setError("");
     // A pending Move to Inbox finishes first, so the archive is not overtaken by it.
     const call = Promise.all(messageIds.map((id) => archiving.current.get(id))).then(() =>
-      rpc.inbox.archiveMany({ messageIds, ...(spamView ? { allowSpam: true } : {}) }),
+      bulkInChunks(messageIds, (slice) =>
+        rpc.inbox.archiveMany({ messageIds: slice, ...(spamView ? { allowSpam: true } : {}) }),
+      ),
     );
     // Each id resolves to whether it was archived, so Undo never overtakes the call or restores a failure.
     for (const id of messageIds)
@@ -646,8 +648,7 @@ export function InboxPage({
     const restore = messageIds.filter((_, index) => saved[index] !== false);
     if (restore.length === 0) return;
     setError("");
-    rpc.inbox
-      .unarchiveMany({ messageIds: restore })
+    bulkInChunks(restore, (slice) => rpc.inbox.unarchiveMany({ messageIds: slice }))
       // A thread Gmail could not put back stays archived, and the reloaded list shows that.
       .then(onRefreshed)
       .catch((cause) => setError(errorText(cause)))

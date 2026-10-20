@@ -255,6 +255,23 @@ describe("Updates and Newsletters pile", () => {
     expect(rpcMock.unarchiveMany).toHaveBeenCalledWith({ messageIds: ["a1", "a2", "a3"] });
   });
 
+  it("archives a group of 120 messages in calls of at most 50, and Undo restores them the same way", async () => {
+    const many = Array.from({ length: 120 }, (_, i) =>
+      row(`n${i}`, { receivedAt: minutesAgo(i + 1) }),
+    );
+    rpcMock.list.mockResolvedValue(list(many));
+    const c = await render("/app/inbox?pile=updates");
+    await click(header(c)?.parentElement?.querySelector('button[aria-label="Archive"]'));
+    expect(rpcMock.archiveMany.mock.calls.map(([input]) => input.messageIds.length)).toEqual([
+      50, 50, 20,
+    ]);
+    const toast = c.querySelector('[role="status"]') as HTMLElement;
+    await click(byText(toast, "Undo"));
+    expect(rpcMock.unarchiveMany.mock.calls.map(([input]) => input.messageIds.length)).toEqual([
+      50, 50, 20,
+    ]);
+  });
+
   it("archives a group from its own Archive button", async () => {
     const c = await render("/app/inbox?pile=updates");
     await click(header(c)?.parentElement?.querySelector('button[aria-label="Archive"]'));

@@ -5,6 +5,7 @@ import type {
   InboxPile,
   InboxTodo,
 } from "@rakazo/contracts";
+import { bulkInChunks } from "@rakazo/core";
 import { rpc } from "./api";
 import { dateLocaleForUi, t } from "./i18n";
 
@@ -17,9 +18,14 @@ export const listMailInbox = (connectionId?: string, pile?: InboxPile) =>
     ...(pile ? { pile } : {}),
   });
 
-/** Archives whole threads in one call; spam-pile mail only with `allowSpam`, which the Spam pile sets. */
+/** Archives whole threads, 50 per call; spam-pile mail only with `allowSpam`, which the Spam pile sets. */
 export const archiveMailMessages = (messageIds: string[], allowSpam = false) =>
-  rpc<InboxBulkResult>("inbox/archiveMany", { messageIds, ...(allowSpam ? { allowSpam } : {}) });
+  bulkInChunks(messageIds, (slice) =>
+    rpc<InboxBulkResult>("inbox/archiveMany", {
+      messageIds: slice,
+      ...(allowSpam ? { allowSpam } : {}),
+    }),
+  );
 
 // Refresh can wait out a rate-limit backoff (up to 30 s) and then sync (24 s seen), over the 8 s default.
 const REFRESH_TIMEOUT_MS = 90_000;
