@@ -1,9 +1,18 @@
 import type {
+  CleanupArchiveInput,
+  CleanupArchiveOutput,
+  CleanupListOutput,
   InboxBulkResult,
   InboxListOutput,
   InboxMessage,
+  InboxMoveInput,
+  InboxMoveOutput,
   InboxPile,
   InboxTodo,
+  MailActionsListOutput,
+  MailActionUndoOutput,
+  UnsubscribeInput,
+  UnsubscribeOutput,
 } from "@rakazo/contracts";
 import { bulkInChunks } from "@rakazo/core";
 import { rpc } from "./api";
@@ -26,6 +35,34 @@ export const archiveMailMessages = (messageIds: string[], allowSpam = false) =>
       ...(allowSpam ? { allowSpam } : {}),
     }),
   );
+
+/** Reports spam, clears the spam flag or trashes whole threads, 50 per call; the batch ids undo them. */
+export async function moveMailMessages(op: InboxMoveInput["op"], messageIds: string[]) {
+  const batchIds: string[] = [];
+  const result = await bulkInChunks(messageIds, async (slice) => {
+    const out = await rpc<InboxMoveOutput>("inbox/moveMany", { op, messageIds: slice });
+    batchIds.push(out.batchId);
+    return out;
+  });
+  return { ...result, batchIds };
+}
+
+export const listCleanup = (connectionId?: string) =>
+  rpc<CleanupListOutput>("inbox/cleanup/list", connectionId ? { connectionId } : {});
+
+export const cleanupArchive = (input: CleanupArchiveInput) =>
+  rpc<CleanupArchiveOutput>("inbox/cleanup/archive", input);
+
+export const forgetCleanupSender = (connectionId: string, address: string) =>
+  rpc<{ ok: true }>("inbox/cleanup/forget", { connectionId, address });
+
+export const unsubscribeSender = (input: UnsubscribeInput) =>
+  rpc<UnsubscribeOutput>("inbox/unsubscribe", input);
+
+export const listMailActions = () => rpc<MailActionsListOutput>("inbox/actions/list", {});
+
+export const undoMailAction = (batchId: string) =>
+  rpc<MailActionUndoOutput>("inbox/actions/undo", { batchId });
 
 // Refresh can wait out a rate-limit backoff (up to 30 s) and then sync (24 s seen), over the 8 s default.
 const REFRESH_TIMEOUT_MS = 90_000;

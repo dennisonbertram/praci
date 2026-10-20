@@ -205,3 +205,41 @@ it("hides the Newsletter label inside the Newsletters pile only", async () => {
   await show({ row: { ...row, category: "spam" }, hideNewsletter: true });
   expect(document.querySelector("[data-label-dot]")?.getAttribute("data-label-dot")).toBe("spam");
 });
+
+const menuItems = async () => {
+  await act(async () => document.querySelector<HTMLElement>('button[aria-label="More"]')?.click());
+  return [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+};
+
+it("offers Spam and Trash in the More menu of an inbox row when the list can move mail", async () => {
+  const onMove = vi.fn();
+  await show({ onMove });
+  const items = await menuItems();
+  expect(items.map((el) => el.textContent)).toEqual(["Archive", "Mark read", "Spam", "Trash"]);
+  await act(async () => items[2]?.click());
+  expect(onMove).toHaveBeenLastCalledWith("spam");
+});
+
+it("keeps Spam and Trash out of the inline hover buttons", async () => {
+  await show({ onMove: () => {} });
+  const inline = [...document.querySelectorAll("div.absolute button[aria-label]")].map((el) =>
+    el.getAttribute("aria-label"),
+  );
+  expect(inline).not.toContain("Spam");
+  expect(inline).not.toContain("Trash");
+});
+
+it("offers Not spam, not Spam, for a row in the Spam pile", async () => {
+  const onMove = vi.fn();
+  await show({ row: { ...row, inInbox: false, pile: "spam" }, onMove });
+  const items = await menuItems();
+  expect(items.map((el) => el.textContent)).toEqual(["Mark read", "Not spam"]);
+  await act(async () => items[1]?.click());
+  expect(onMove).toHaveBeenLastCalledWith("notSpam");
+});
+
+it("offers no spam or trash items without a move handler", async () => {
+  await show();
+  const items = await menuItems();
+  expect(items.map((el) => el.textContent)).toEqual(["Archive", "Mark read"]);
+});

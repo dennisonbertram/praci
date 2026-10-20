@@ -243,6 +243,15 @@ export interface ManagedConnectorProvider
   proxy?(request: ConnectorProxyRequest, context: AdapterContext): Promise<ConnectorProxyResponse>;
 }
 
+/**
+ * Sends the RFC 8058 one-click unsubscribe POST. It is not tied to a mailbox. Throws
+ * `MailProviderError("invalid")` for a URL it refuses and `"unavailable"` for any failure
+ * (redirect, non-2xx, timeout, oversized answer, network).
+ */
+export interface MailUnsubscriber {
+  oneClick(url: string, context: AdapterContext): Promise<void>;
+}
+
 /** Read access to a user's mailboxes, whichever connector authenticated them. */
 export interface MailProvider {
   listAccounts(
