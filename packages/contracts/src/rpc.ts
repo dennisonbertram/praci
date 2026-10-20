@@ -419,6 +419,11 @@ export const appContract = {
     setEmbeddingModel: oc
       .input(z.object({ modelId: z.string().trim().max(200).nullable() }))
       .output(z.object({ modelId: z.string().nullable() })),
+    /** Whether new mail attachments are filed into the Data room automatically. */
+    autoFileEmail: oc.output(z.object({ enabled: z.boolean() })),
+    setAutoFileEmail: oc
+      .input(z.object({ enabled: z.boolean() }))
+      .output(z.object({ enabled: z.boolean() })),
     setBackups: oc.input(ModelBackupListSchema).output(z.object({ ok: z.literal(true) })),
     connect: oc.input(ModelConnectInputSchema).output(ModelCredentialSchema),
     probeOpenAiCompatible: oc

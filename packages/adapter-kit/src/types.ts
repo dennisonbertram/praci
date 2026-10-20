@@ -699,6 +699,14 @@ export interface BackgroundJobPayloads {
   "inbox.triage": { userId: string; spaceId: string };
   /** Syncs one mail connection into the cache; one queued job per connection. */
   "mail.sync": { spaceId: string; userId: string; connectionId: string };
+  /** Files the document attachments of one newly synced message into the Data room; one queued job per message. */
+  "mail.attachments": {
+    spaceId: string;
+    userId: string;
+    connectionId: string;
+    /** The provider's message id. */
+    messageId: string;
+  };
   /** Renews the Gmail push watches that are close to expiring; run daily by the worker's cron. */
   "mail.watch.renew": Record<string, never>;
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */

@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 224 of 224
-- Web and shared components: 624
+- Web and shared component files with stories: 225 of 225
+- Web and shared components: 626
 - Mobile components: 136 in 93 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -86,6 +86,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Tip, SearchField, PickFilter, SortControl | [apps/web/src/components/ListControls.tsx](../../apps/web/src/components/ListControls.tsx) | [ListControls.stories.tsx](../../apps/web/src/components/ListControls.stories.tsx) | web |
 | Row, MailApprovalCard | [apps/web/src/components/MailApprovalCard.tsx](../../apps/web/src/components/MailApprovalCard.tsx) | [MailApprovalCard.stories.tsx](../../apps/web/src/components/MailApprovalCard.stories.tsx) | web |
 | MailOutbox | [apps/web/src/components/MailOutbox.tsx](../../apps/web/src/components/MailOutbox.tsx) | [MailOutbox.stories.tsx](../../apps/web/src/components/MailOutbox.stories.tsx) | web |
+| MailThreadCard | [apps/web/src/components/MailThreadCard.tsx](../../apps/web/src/components/MailThreadCard.tsx) | [MailThreadCard.stories.tsx](../../apps/web/src/components/MailThreadCard.stories.tsx) | web |
 | MarkdownLinkPrompt | [apps/web/src/components/markdown-link-prompt.tsx](../../apps/web/src/components/markdown-link-prompt.tsx) | [markdown-link-prompt.stories.tsx](../../apps/web/src/components/markdown-link-prompt.stories.tsx) | web |
 | MessageHoverMetadata | [apps/web/src/components/MessageHoverMetadata.tsx](../../apps/web/src/components/MessageHoverMetadata.tsx) | [MessageHoverMetadata.stories.tsx](../../apps/web/src/components/MessageHoverMetadata.stories.tsx) | web |
 | ModelPreflightFeedback | [apps/web/src/components/ModelConnectionPreflightNotice.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.tsx) | [ModelConnectionPreflightNotice.stories.tsx](../../apps/web/src/components/ModelConnectionPreflightNotice.stories.tsx) | web |
@@ -283,7 +284,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ScopePicker, MemorySettingsOverlay | [apps/web/src/pages/MemorySettingsOverlay.tsx](../../apps/web/src/pages/MemorySettingsOverlay.tsx) | [MemorySettingsOverlay.stories.tsx](../../apps/web/src/pages/MemorySettingsOverlay.stories.tsx) | web |
 | MessagingSettingsOverlay | [apps/web/src/pages/MessagingSettingsOverlay.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.tsx) | [MessagingSettingsOverlay.stories.tsx](../../apps/web/src/pages/MessagingSettingsOverlay.stories.tsx) | web |
 | ModelBackupsSettings | [apps/web/src/pages/ModelBackupsSettings.tsx](../../apps/web/src/pages/ModelBackupsSettings.tsx) | [ModelBackupsSettings.stories.tsx](../../apps/web/src/pages/ModelBackupsSettings.stories.tsx) | web |
-| ModelSettingsOverlay, EmbeddingModelField, ModelPicker, ModelOption | [apps/web/src/pages/ModelSettingsOverlay.tsx](../../apps/web/src/pages/ModelSettingsOverlay.tsx) | [ModelSettingsOverlay.stories.tsx](../../apps/web/src/pages/ModelSettingsOverlay.stories.tsx) | web |
+| ModelSettingsOverlay, EmbeddingModelField, AutoFileEmailField, ModelPicker, ModelOption | [apps/web/src/pages/ModelSettingsOverlay.tsx](../../apps/web/src/pages/ModelSettingsOverlay.tsx) | [ModelSettingsOverlay.stories.tsx](../../apps/web/src/pages/ModelSettingsOverlay.stories.tsx) | web |
 | NotFoundPage | [apps/web/src/pages/NotFound.tsx](../../apps/web/src/pages/NotFound.tsx) | [NotFound.stories.tsx](../../apps/web/src/pages/NotFound.stories.tsx) | web |
 | OnboardingPage | [apps/web/src/pages/Onboarding.tsx](../../apps/web/src/pages/Onboarding.tsx) | [Onboarding.stories.tsx](../../apps/web/src/pages/Onboarding.stories.tsx) | web |
 | PaywallPage | [apps/web/src/pages/Paywall.tsx](../../apps/web/src/pages/Paywall.tsx) | [Paywall.stories.tsx](../../apps/web/src/pages/Paywall.stories.tsx) | web |

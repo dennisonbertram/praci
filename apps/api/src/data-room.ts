@@ -16,6 +16,7 @@ import {
 import type { AutoSortItem, BoxFilesDeps, DataRoomAi, DriveFilesDeps } from "@rakazo/adapters";
 import {
   AUTO_SORT_ITEM_LIMIT,
+  autoFileEmailEnabled,
   autoSortFolderPaths,
   BoxFileError,
   boxExternalId,
@@ -528,6 +529,20 @@ export function createDataRoomService(deps: DataRoomDeps) {
         throw new ORPCError("CONFLICT", { message: "Choose a default model first." });
       }
       return { modelId };
+    },
+
+    autoFileEmail: async (actor: Actor) => ({
+      enabled: await autoFileEmailEnabled(deps.prisma, actor),
+    }),
+
+    setAutoFileEmail: async (actor: Actor, input: { enabled: boolean }) => {
+      const { spaceId, userId } = actor;
+      await deps.prisma.dataRoomPreference.upsert({
+        where: { spaceId_userId: { spaceId, userId } },
+        create: { spaceId, userId, autoFileEmail: input.enabled },
+        update: { autoFileEmail: input.enabled },
+      });
+      return { enabled: input.enabled };
     },
 
     /** The attachments of the caller's own messages that an email import already filed. */

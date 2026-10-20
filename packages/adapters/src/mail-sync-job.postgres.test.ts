@@ -353,7 +353,9 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
       const after = await state(account.id);
       expect(after.lastSyncedAt).not.toBeNull();
       expect(after.syncRequestedAt).toBeNull();
-      expect(enqueued.map((j) => j.name)).toEqual(["inbox.triage"]);
+      expect(enqueued.filter((j) => j.name !== "mail.attachments").map((j) => j.name)).toEqual([
+        "inbox.triage",
+      ]);
     });
 
     it("syncs once more when a request arrives while the job runs, so a sent message is not left for the next poll", async () => {

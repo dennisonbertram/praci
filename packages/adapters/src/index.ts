@@ -115,6 +115,7 @@ export * from "./legal-tools.js";
 export { LlmDataRoomClassifier } from "./llm-data-room-classifier.js";
 export * from "./mail-action-log.js";
 export * from "./mail-approval-recovery.js";
+export * from "./mail-attachment-filing.js";
 export * from "./mail-compose.js";
 export * from "./mail-sender-rules.js";
 export * from "./mail-skip-inbox.js";

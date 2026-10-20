@@ -1579,6 +1579,12 @@ export function createRouter(deps: RouterDeps) {
       embeddingModel: authed.models.embeddingModel.handler(({ context }) =>
         dataRoom.embeddingModel(context.actor),
       ),
+      autoFileEmail: authed.models.autoFileEmail.handler(({ context }) =>
+        dataRoom.autoFileEmail(context.actor),
+      ),
+      setAutoFileEmail: authed.models.setAutoFileEmail.handler(({ context, input }) =>
+        dataRoom.setAutoFileEmail(context.actor, input),
+      ),
       setEmbeddingModel: authed.models.setEmbeddingModel.handler(({ context, input }) =>
         dataRoom.setEmbeddingModel(context.actor, input),
       ),

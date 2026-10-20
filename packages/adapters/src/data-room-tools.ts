@@ -272,55 +272,96 @@ async function add(
   const accounts = await deps.mailAccounts();
   if (!deps.mail || !accounts.length) return { error: "No connected mail account" };
   for (const account of accounts) {
-    let message: Awaited<ReturnType<MailProvider["getMessage"]>>;
+    const result = await fileMailAttachment(
+      { ...deps, mail: deps.mail, maxBytes },
+      actor,
+      context,
+      account,
+      messageId,
+      attachmentId,
+    );
+    if (result.kind === "filed") return filed(result);
+    if (result.kind === "no_message") continue;
+    if (result.kind === "no_attachment") return { error: "Attachment not found on that message" };
+    if (result.kind === "not_a_document") return { text: NOT_A_DOCUMENT };
+    return { error: "The attachment is too large to add." };
+  }
+  return { error: "Message not found" };
+}
+
+/**
+ * Files one attachment of a mail message into the owner's Data room: the single path behind
+ * `add_to_data_room` and the automatic filing of new mail. It reads the message and the bytes
+ * only for the actor's own account, and a repeat (`gmail:<message>:<attachment>`) returns the
+ * existing item. It does not check Data room consent; the callers decide that.
+ */
+export async function fileMailAttachment(
+  deps: Pick<DataRoomToolDeps, "prisma" | "artifacts" | "jobs" | "scope"> & {
+    mail: MailProvider;
+    maxBytes?: number;
+  },
+  actor: Actor,
+  context: AdapterContext,
+  account: MailAccount,
+  messageId: string,
+  attachmentId: string,
+  /** The message, when the caller already read it. */
+  loaded?: Awaited<ReturnType<MailProvider["getMessage"]>>,
+): Promise<
+  | { kind: "filed"; item: { name: string }; created: boolean }
+  | { kind: "no_message" | "no_attachment" | "not_a_document" | "too_large" }
+> {
+  const maxBytes = deps.maxBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES;
+  const files = createFileDataRoomItem(deps, createDataRoomRepos(deps.prisma));
+  let message = loaded;
+  if (!message) {
     try {
       message = await deps.mail.getMessage(account, messageId, context);
     } catch (error) {
-      if (error instanceof MailProviderError && error.kind === "not_found") continue;
+      if (error instanceof MailProviderError && error.kind === "not_found")
+        return { kind: "no_message" };
       throw error;
     }
-    const info = message.attachments.find((part) => part.id === attachmentId);
-    if (!info) return { error: "Attachment not found on that message" };
-    if (info.inline || isNotADocument({ ...info, name: info.filename })) {
-      return { text: NOT_A_DOCUMENT };
-    }
-    const externalId = `gmail:${messageId}:${attachmentId}`;
-    const existing = await files.known(actor, externalId, account.id);
-    if (existing) return filed({ item: existing, created: false });
-    let file: Awaited<ReturnType<MailProvider["getAttachment"]>>;
-    try {
-      file = await deps.mail.getAttachment(account, messageId, attachmentId, maxBytes, context);
-    } catch (error) {
-      if (error instanceof MailProviderError && error.kind === "too_large") {
-        return { error: "The attachment is too large to add." };
-      }
-      throw error;
-    }
-    if (isNotADocument({ ...file, name: file.filename, size: file.bytes.byteLength })) {
-      return { text: NOT_A_DOCUMENT };
-    }
-    const cached = await deps.prisma.cachedMailMessage.findFirst({
-      where: {
-        spaceId: deps.scope.spaceId,
-        userId: deps.scope.userId,
-        connectionId: account.id,
-        providerMessageId: messageId,
-      },
-      select: { id: true },
-    });
-    return filed(
-      await files.fileItem(actor, {
-        source: "gmail",
-        ...dataRoomFileFields(
-          { name: file.filename, mimeType: file.mimeType, bytes: file.bytes },
-          "attachment",
-        ),
-        folderId: null,
-        sourceConnectionId: account.id,
-        externalId,
-        ...(cached ? { sourceUrl: `/app/inbox?mail=${cached.id}` } : {}),
-      }),
-    );
   }
-  return { error: "Message not found" };
+  const info = message.attachments.find((part) => part.id === attachmentId);
+  if (!info) return { kind: "no_attachment" };
+  if (info.inline || isNotADocument({ ...info, name: info.filename })) {
+    return { kind: "not_a_document" };
+  }
+  const externalId = `gmail:${messageId}:${attachmentId}`;
+  const existing = await files.known(actor, externalId, account.id);
+  if (existing) return { kind: "filed", item: existing, created: false };
+  let file: Awaited<ReturnType<MailProvider["getAttachment"]>>;
+  try {
+    file = await deps.mail.getAttachment(account, messageId, attachmentId, maxBytes, context);
+  } catch (error) {
+    if (error instanceof MailProviderError && error.kind === "too_large") {
+      return { kind: "too_large" };
+    }
+    throw error;
+  }
+  if (isNotADocument({ ...file, name: file.filename, size: file.bytes.byteLength })) {
+    return { kind: "not_a_document" };
+  }
+  const cached = await deps.prisma.cachedMailMessage.findFirst({
+    where: {
+      spaceId: deps.scope.spaceId,
+      userId: deps.scope.userId,
+      connectionId: account.id,
+      providerMessageId: messageId,
+    },
+    select: { id: true },
+  });
+  const result = await files.fileItem(actor, {
+    source: "gmail",
+    ...dataRoomFileFields(
+      { name: file.filename, mimeType: file.mimeType, bytes: file.bytes },
+      "attachment",
+    ),
+    folderId: null,
+    sourceConnectionId: account.id,
+    externalId,
+    ...(cached ? { sourceUrl: `/app/inbox?mail=${cached.id}` } : {}),
+  });
+  return { kind: "filed", ...result };
 }
