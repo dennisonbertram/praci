@@ -25,7 +25,7 @@
     "test:e2e": "tsx packages/testkit/src/cli/harness.ts --e2e",
     "test:mobile-screenshots": "pnpm --filter @rakazo/db generate && tsx packages/testkit/src/cli/mobile-screenshots.ts",
     "ios:screenshots": "pnpm --filter @rakazo/db generate && tsx packages/testkit/src/cli/ios-app-screenshots.ts",
-    "demo:up": "tsx packages/testkit/src/cli/demo.ts up",
+    "demo:up": "pnpm --filter @rakazo/db generate && tsx packages/testkit/src/cli/demo.ts up",
     "demo:down": "tsx packages/testkit/src/cli/demo.ts down",
     "test:topology": "tsx packages/testkit/src/cli/topology.ts",
     "test:canary": "tsx packages/testkit/src/cli/canary.ts",
