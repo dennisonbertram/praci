@@ -5,7 +5,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 - Web and shared component files with stories: 220 of 220
 - Web and shared components: 614
-- Mobile components: 133 in 91 files, mobile — native story pending
+- Mobile components: 134 in 92 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -339,6 +339,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Computer, ComputerReleaseActions, ScreenWebView | [apps/mobile/app/computer.tsx](../../apps/mobile/app/computer.tsx) | mobile — native story pending | mobile |
 | GroupSettingsScreen | [apps/mobile/app/group-settings.tsx](../../apps/mobile/app/group-settings.tsx) | mobile — native story pending | mobile |
 | ImageScreen | [apps/mobile/app/image.tsx](../../apps/mobile/app/image.tsx) | mobile — native story pending | mobile |
+| InboxCleanupScreen | [apps/mobile/app/inbox-cleanup.tsx](../../apps/mobile/app/inbox-cleanup.tsx) | mobile — native story pending | mobile |
 | InboxMessageScreen | [apps/mobile/app/inbox-message.tsx](../../apps/mobile/app/inbox-message.tsx) | mobile — native story pending | mobile |
 | InboxScreen, TodoCard, MailGroupRow, MailListRow | [apps/mobile/app/inbox.tsx](../../apps/mobile/app/inbox.tsx) | mobile — native story pending | mobile |
 | HomeSession, Home, ActivitySection, ActivityRow, MailInboxRow, HeaderButton | [apps/mobile/app/index.tsx](../../apps/mobile/app/index.tsx) | mobile — native story pending | mobile |
