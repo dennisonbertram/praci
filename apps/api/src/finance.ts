@@ -511,12 +511,17 @@ export async function financeOverview(
       ? runway(cash.bankCashCents ?? 0, burn.monthlyCents, now)
       : { months: null, runOutDate: null },
     spendTotals: totals,
-    // The chart covers the same days as the total above it.
+    // The tab sets the bucket size: weeks, months, quarters, years, each over a recent lookback.
     cashSeries: {
-      week: cashSeries(txns, { granularity: "day", from: totals.week.start, now }),
-      month: cashSeries(txns, { granularity: "day", from: totals.month.start, now }),
-      quarter: cashSeries(txns, { granularity: "week", from: totals.quarter.start, now }),
-      year: cashSeries(txns, { granularity: "month", from: totals.year.start, now }),
+      week: cashSeries(txns, { granularity: "week", buckets: 12, now }),
+      month: cashSeries(txns, { granularity: "month", buckets: 12, now }),
+      quarter: cashSeries(txns, { granularity: "quarter", buckets: 8, now }),
+      // Every year with data, and at least two so a line has something to connect.
+      year: cashSeries(txns, {
+        granularity: "year",
+        buckets: Math.max(2, since ? now.getUTCFullYear() - Number(since.slice(0, 4)) + 1 : 0),
+        now,
+      }),
     },
     breakdown: breakdownOver(range),
     breakdownByPeriod: {
