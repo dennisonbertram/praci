@@ -14,6 +14,8 @@ export * from "./auto-review-factory.js";
 export * from "./background-job-handlers.js";
 export * from "./billing-emulator.js";
 export * from "./blockscout-crypto-call-tool.js";
+export * from "./bluebubbles-adapter.js";
+export * from "./bluebubbles-emulator.js";
 export * from "./bot-avatar.js";
 export * from "./bot-messages.js";
 export {

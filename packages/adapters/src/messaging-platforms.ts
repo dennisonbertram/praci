@@ -6,6 +6,7 @@ import { asRecord } from "@rakazo/core";
 import type { Adapter } from "chat";
 import { createLarkAdapter, Domain } from "chat-adapter-lark";
 import { createSendblueAdapter } from "chat-adapter-sendblue";
+import { BlueBubblesAdapter, bluebubblesTransport } from "./bluebubbles-adapter.js";
 import type { MessagingPlatform } from "./chat-sdk-surface.js";
 import { isVitestRuntime } from "./test-runtime.js";
 
@@ -18,6 +19,9 @@ export interface MessagingEnvironmentValues {
   sendblueApiSecret?: string | undefined;
   sendblueSigningSecret?: string | undefined;
   sendbluePhoneNumber?: string | undefined;
+  bluebubblesUrl?: string | undefined;
+  bluebubblesPassword?: string | undefined;
+  bluebubblesWebhookToken?: string | undefined;
   slackBotToken?: string | undefined;
   slackSigningSecret?: string | undefined;
   whatsappAccessToken?: string | undefined;
@@ -44,6 +48,9 @@ export function messagingEnvFromProcess(
     sendblueApiSecret: clean(env.SENDBLUE_API_SECRET),
     sendblueSigningSecret: clean(env.SENDBLUE_SIGNING_SECRET),
     sendbluePhoneNumber: clean(env.SENDBLUE_PHONE_NUMBER),
+    bluebubblesUrl: clean(env.BLUEBUBBLES_URL),
+    bluebubblesPassword: clean(env.BLUEBUBBLES_PASSWORD),
+    bluebubblesWebhookToken: clean(env.BLUEBUBBLES_WEBHOOK_TOKEN),
     slackBotToken: clean(env.SLACK_BOT_TOKEN),
     slackSigningSecret: clean(env.SLACK_SIGNING_SECRET),
     whatsappAccessToken: clean(env.WHATSAPP_ACCESS_TOKEN),
@@ -192,6 +199,26 @@ export function messagingPlatformsFromEnv(
         encryptKey: env.larkEncryptKey ?? "",
         domain: env.larkDomain?.toLowerCase() === "lark" ? Domain.Lark : Domain.Feishu,
       }),
+    });
+  }
+
+  // All three required: without the webhook token anyone could post fake
+  // inbound messages, and without the password the server refuses every call.
+  // Polling for missed webhooks runs only in the process that owns the inbound
+  // sink (same rule as Telegram's long-poll above).
+  if (env.bluebubblesUrl && env.bluebubblesPassword && env.bluebubblesWebhookToken) {
+    const adapter = new BlueBubblesAdapter({
+      serverUrl: env.bluebubblesUrl,
+      password: env.bluebubblesPassword,
+      webhookToken: env.bluebubblesWebhookToken,
+      pollIntervalMs: options.pollInboundMessages ? 60_000 : 0,
+    });
+    platforms.push({
+      provider: "bluebubbles",
+      capabilities: { direct: true, groups: false, typing: false },
+      adapter,
+      directThreadId: (address) => adapter.directThreadId(address),
+      transport: bluebubblesTransport,
     });
   }
 

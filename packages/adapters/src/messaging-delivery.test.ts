@@ -190,7 +190,7 @@ describe("deliverMessagingOutbound", () => {
     await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
 
     expect(deps.sendToThread).toHaveBeenCalledWith(
-      { threadId: "sendblue:dm-1", body: "Hello from your bot" },
+      { threadId: "sendblue:dm-1", body: "Hello from your bot", idempotencyKey: "msg:m-1" },
       context,
     );
     expect(deps.rows).toEqual([
@@ -230,12 +230,12 @@ describe("deliverMessagingOutbound", () => {
     });
     expect(deps.sendToThread).toHaveBeenNthCalledWith(
       1,
-      { threadId: "sendblue:opened:+15551234567", body: "first" },
+      { threadId: "sendblue:opened:+15551234567", body: "first", idempotencyKey: "msg:m-1" },
       context,
     );
     expect(deps.sendToThread).toHaveBeenNthCalledWith(
       2,
-      { threadId: "sendblue:opened:+15551234567", body: "second" },
+      { threadId: "sendblue:opened:+15551234567", body: "second", idempotencyKey: "msg:m-2" },
       context,
     );
   });
@@ -264,7 +264,7 @@ describe("deliverMessagingOutbound", () => {
     const deps = createDeps({ run: { ...messagingRun, trigger: "bot_message" } });
     await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
     expect(deps.sendToThread).toHaveBeenCalledWith(
-      { threadId: "sendblue:dm-1", body: "Hello from your bot" },
+      { threadId: "sendblue:dm-1", body: "Hello from your bot", idempotencyKey: "msg:m-1" },
       context,
     );
   });
@@ -357,7 +357,7 @@ describe("deliverMessagingOutbound", () => {
     await deliverMessagingOutbound(deps, {}, context);
 
     expect(deps.sendToThread).toHaveBeenCalledWith(
-      { threadId: "sendblue:dm-1", body: "pending earlier" },
+      { threadId: "sendblue:dm-1", body: "pending earlier", idempotencyKey: "invite:ch-1:mi-1" },
       context,
     );
     expect(deps.rows[0]).toEqual(expect.objectContaining({ status: "sent" }));
