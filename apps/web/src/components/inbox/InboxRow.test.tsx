@@ -143,3 +143,65 @@ it("masks amounts in the subject and preview while amounts are hidden", async ()
     setHideAmounts(false);
   }
 });
+
+it("shows the one-line summary after the subject in place of the snippet", async () => {
+  await show({ row: { ...row, reason: "Offsite poll closes Friday" } });
+  const text = document.querySelector("button[data-row-id]")?.textContent ?? "";
+  expect(text).toContain("Offsite dates — Offsite poll closes Friday");
+  expect(text).not.toContain("Can you do the 14th?");
+});
+
+it("falls back to the snippet when there is no summary", async () => {
+  await show({ row: { ...row, reason: null } });
+  expect(document.querySelector("button[data-row-id]")?.textContent).toContain(
+    "Offsite dates — Can you do the 14th?",
+  );
+});
+
+it("offers no checkbox unless the list can check rows", async () => {
+  await show();
+  expect(document.querySelector('[role="checkbox"]')).toBeNull();
+});
+
+it("checks the row from its own checkbox without opening it, and passes the shift key", async () => {
+  const onPick = vi.fn();
+  const onOpen = vi.fn();
+  await show({ onPick, onOpen });
+  const box = document.querySelector<HTMLElement>('[role="checkbox"]');
+  expect(box?.getAttribute("aria-label")).toBe("Select");
+  // The checkbox is a sibling of the row button, never inside it.
+  expect(box?.closest("button[data-row-id]")).toBeNull();
+  await act(async () => box?.click());
+  expect(onPick).toHaveBeenCalledTimes(1);
+  expect(onPick).toHaveBeenLastCalledWith({ shift: false });
+  await act(async () => {
+    box?.dispatchEvent(new MouseEvent("click", { bubbles: true, shiftKey: true }));
+  });
+  expect(onPick).toHaveBeenCalledTimes(2);
+  expect(onPick).toHaveBeenLastCalledWith({ shift: true });
+  expect(onOpen).not.toHaveBeenCalled();
+});
+
+it("shows a checked row's checkbox checked, and every checkbox once any row is checked", async () => {
+  await show({ onPick: () => {}, picked: true, anyPicked: true });
+  const box = document.querySelector('[role="checkbox"]');
+  expect(box?.getAttribute("aria-checked")).toBe("true");
+  expect(box?.className).not.toContain("opacity-0");
+  await show({ onPick: () => {}, picked: false, anyPicked: false });
+  expect(document.querySelector('[role="checkbox"]')?.className).toContain("opacity-0");
+  await show({ onPick: () => {}, picked: false, anyPicked: true });
+  expect(document.querySelector('[role="checkbox"]')?.className).not.toContain("opacity-0");
+});
+
+it("hides the Archived badge when the list says so, as the Spam pile does", async () => {
+  await show({ row: { ...row, inInbox: false }, showArchived: false });
+  expect([...document.querySelectorAll('[data-slot="badge"]')]).toEqual([]);
+});
+
+it("hides the Newsletter label inside the Newsletters pile only", async () => {
+  await show({ hideNewsletter: true });
+  expect(document.querySelector("[data-label-dot]")).toBeNull();
+  expect([...document.querySelectorAll('[data-slot="badge"]')]).toEqual([]);
+  await show({ row: { ...row, category: "spam" }, hideNewsletter: true });
+  expect(document.querySelector("[data-label-dot]")?.getAttribute("data-label-dot")).toBe("spam");
+});

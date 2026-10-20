@@ -1,9 +1,10 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { InboxMark, MailRow } from "@rakazo/contracts";
-import { inboxLabel, isSuspiciousCategory } from "@rakazo/core";
+import { inboxLabel, isSuspiciousCategory, rowSummary } from "@rakazo/core";
 import {
   Badge,
   Button,
+  Checkbox,
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
@@ -25,6 +26,30 @@ const LABEL_DOT = {
   junk: "border-2 border-warning",
 } as const;
 
+/** The checkbox state a list passes to its rows. */
+export interface RowPicking {
+  /** The checked rows. */
+  pickedIds?: ReadonlySet<string>;
+  onPick?: (messageId: string, event: { shift: boolean }) => void;
+  /** Hide the Archived badge, as in the Spam pile where the mail is not in the inbox. */
+  showArchived?: boolean;
+  /** Hide the Newsletter label, as in the Newsletters pile. */
+  hideNewsletter?: boolean;
+}
+
+/** The InboxRow props for one row of a list that passes `RowPicking`. */
+export const rowPicking = (id: string, picking: RowPicking) => ({
+  showArchived: picking.showArchived,
+  hideNewsletter: picking.hideNewsletter,
+  ...(picking.onPick
+    ? {
+        picked: picking.pickedIds?.has(id) ?? false,
+        anyPicked: (picking.pickedIds?.size ?? 0) > 0,
+        onPick: (event: { shift: boolean }) => picking.onPick?.(id, event),
+      }
+    : {}),
+});
+
 export function InboxGroup({
   title,
   rows,
@@ -34,6 +59,7 @@ export function InboxGroup({
   onRead,
   selectedId,
   hideAttention,
+  ...picking
 }: {
   /** Omitted for search results, which show one count instead. */
   title?: React.ReactNode;
@@ -46,7 +72,7 @@ export function InboxGroup({
   selectedId?: string;
   /** Set when the group heading already says the rows need attention. */
   hideAttention?: boolean;
-}) {
+} & RowPicking) {
   if (rows.length === 0) return null;
   return (
     <section className="mb-5">
@@ -67,6 +93,7 @@ export function InboxGroup({
             onRead={onRead}
             selected={row.id === selectedId}
             hideAttention={hideAttention}
+            {...rowPicking(row.id, picking)}
           />
         ))}
       </div>
@@ -82,6 +109,11 @@ export function InboxRow({
   onRead,
   selected = false,
   hideAttention = false,
+  picked = false,
+  anyPicked = false,
+  onPick,
+  showArchived = true,
+  hideNewsletter = false,
 }: {
   row: MailRow;
   onOpen: () => void;
@@ -90,6 +122,14 @@ export function InboxRow({
   onRead?: (messageId: string, read: boolean) => void;
   selected?: boolean;
   hideAttention?: boolean;
+  /** The row's checkbox is checked. */
+  picked?: boolean;
+  /** Some row of the list is checked, so every row shows its checkbox. */
+  anyPicked?: boolean;
+  /** Present when the list can check rows; `shift` extends the check over a range. */
+  onPick?: (event: { shift: boolean }) => void;
+  showArchived?: boolean;
+  hideNewsletter?: boolean;
 }) {
   const { t } = useLingui();
   useHideAmounts();
@@ -100,7 +140,13 @@ export function InboxRow({
     junk: t`Junk`,
   };
   const found = inboxLabel(row);
-  const label = hideAttention && found === "attention" ? null : found;
+  const label =
+    (hideAttention && found === "attention") || (hideNewsletter && found === "newsletter")
+      ? null
+      : found;
+  const summary = rowSummary(row);
+  // The checkbox takes the place of the unread dot while the pointer is on the row or any row is checked.
+  const showPick = picked || anyPicked;
   const muted = row.feedback === "noise";
   // Marks belong to the sender, so the hint says so.
   const markHint = {
@@ -133,7 +179,6 @@ export function InboxRow({
         <button
           type="button"
           aria-haspopup="dialog"
-          title={hideAttention && row.reason ? row.reason : undefined}
           aria-current={selected ? "true" : undefined}
           data-row-id={row.id}
           onClick={onOpen}
@@ -142,7 +187,7 @@ export function InboxRow({
           <span
             aria-hidden="true"
             data-unread-dot={row.unread ? "" : undefined}
-            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""}`}
+            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""} ${onPick ? (showPick ? "invisible" : "group-focus-within/row:invisible group-hover/row:invisible") : ""}`}
           />
           <span
             dir="auto"
@@ -175,11 +220,8 @@ export function InboxRow({
               />
             ) : null}
             {maskCurrencyWhenHidden(row.subject)}
-            {row.snippet ? (
-              <span className="text-muted-foreground">
-                {" "}
-                — {maskCurrencyWhenHidden(row.snippet)}
-              </span>
+            {summary ? (
+              <span className="text-muted-foreground"> — {maskCurrencyWhenHidden(summary)}</span>
             ) : null}
           </span>
           {label && row.inInbox ? (
@@ -191,7 +233,7 @@ export function InboxRow({
             </Badge>
           ) : null}
           {label ? <span className="sr-only @md:hidden">{labelNames[label]}</span> : null}
-          {row.inInbox ? null : (
+          {row.inInbox || !showArchived ? null : (
             // Only search finds archived mail; say so, since it is not in the Inbox list.
             <Badge
               variant="outline"
@@ -207,6 +249,14 @@ export function InboxRow({
             {formatMailTime(row.receivedAt)}
           </time>
         </button>
+        {onPick ? (
+          <Checkbox
+            aria-label={t`Select`}
+            checked={picked}
+            onClick={(event) => onPick({ shift: event.shiftKey })}
+            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
+          />
+        ) : null}
         {marks.length + actions.length ? (
           <>
             <div

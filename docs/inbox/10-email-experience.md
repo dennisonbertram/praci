@@ -196,6 +196,7 @@ stories.
    1–5 without a model. Add the offline evaluation set. No new UI. Mobile: none.
 2. **Three piles and sender groups.** Pile views, grouped rows, summaries,
    multi-select and bulk archive with undo. Mobile: piles and archive.
+   Mockup: [piles-mockup.html](piles-mockup.html).
 3. **Cleanup screen and unsubscribe.** Ranked senders, preselection, one-click
    unsubscribe with the POST-capable safe fetch, spam and trash, action log with undo.
    Mobile: the same screen as a native list.

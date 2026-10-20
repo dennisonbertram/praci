@@ -30,6 +30,7 @@ msgid " (new)"
 msgstr " (new)"
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (unread)"
@@ -426,6 +427,10 @@ msgstr "{newCount, plural, one {# new message} other {# new messages}}"
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
 msgstr "{pct} yield"
+
+#: src/pages/Inbox.tsx
+msgid "{pickedCount} selected"
+msgstr "{pickedCount} selected"
 
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
@@ -1132,8 +1137,10 @@ msgstr "Apps with their own server"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 msgid "Archive"
 msgstr "Archive"
 
@@ -1154,6 +1161,10 @@ msgstr "Archived"
 #: src/pages/Inbox.tsx
 msgid "Archived \"{0}\""
 msgstr "Archived \"{0}\""
+
+#: src/pages/Inbox.tsx
+msgid "Archived {count}"
+msgstr "Archived {count}"
 
 #: src/pages/Shell.tsx
 msgid "Archived. Chat, memory, and files kept."
@@ -2982,6 +2993,10 @@ msgstr "Could not upload file"
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 
+#: src/pages/Inbox.tsx
+msgid "Couldn't archive {count}"
+msgstr "Couldn't archive {count}"
+
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
 msgstr "Couldn't classify"
@@ -4378,6 +4393,7 @@ msgstr "Import from email"
 msgid "Import from Google Drive"
 msgstr "Import from Google Drive"
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr "Important"
@@ -5433,6 +5449,7 @@ msgstr "New ticket"
 msgid "Newsletter"
 msgstr "Newsletter"
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
 msgstr "Newsletters"
@@ -7384,6 +7401,12 @@ msgstr "See usage"
 msgid "See who owns your company"
 msgstr "See who owns your company"
 
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Select"
+msgstr "Select"
+
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
@@ -7822,6 +7845,7 @@ msgstr "Space default"
 msgid "Spaces"
 msgstr "Spaces"
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Spam"
 msgstr "Spam"
@@ -8728,6 +8752,7 @@ msgstr "Updated {0}"
 msgid "Updated {updated}"
 msgstr "Updated {updated}"
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
