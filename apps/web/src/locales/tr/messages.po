@@ -3645,7 +3645,7 @@ msgid "Done"
 msgstr "Bitti"
 
 #: src/components/computer/FilesApp.tsx
-#: src/components/data-room/Preview.tsx
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
 msgid "Download"
@@ -4207,6 +4207,10 @@ msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
+msgstr ""
+
+#: src/components/data-room/PreviewActions.tsx
+msgid "Full screen"
 msgstr ""
 
 #: src/pages/WindowChrome.tsx
@@ -6127,7 +6131,6 @@ msgstr ""
 msgid "Only if the server does not use sign-in"
 msgstr ""
 
-#: src/components/data-room/Preview.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -6223,6 +6226,10 @@ msgstr "Tam pencerede aç"
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open in Mercury"
+msgstr ""
+
+#: src/components/data-room/PreviewActions.tsx
+msgid "Open in new tab"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
