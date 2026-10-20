@@ -5,11 +5,22 @@ import { SpreadsheetPreviewInputSchema } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, IsolationError } from "@rakazo/db";
 import { adapterContext } from "./artifacts.js";
+import type { InboxDeps } from "./inbox.js";
+import { inboxAttachment } from "./inbox.js";
 
-type Deps = { prisma: PrismaClient; artifacts: ArtifactStore };
+type Deps = { prisma: PrismaClient; artifacts: ArtifactStore; mail: InboxDeps["mail"] };
 
 /** The file's bytes, found with the same space, user and isolation checks as its download route. */
 async function load(deps: Deps, actor: Actor, source: SpreadsheetPreviewInput["source"]) {
+  if ("mailAttachment" in source) {
+    // Fetched through the mail account of the signed-in user; another user's message is not found.
+    const file = await inboxAttachment(
+      deps as Pick<InboxDeps, "prisma" | "mail"> as InboxDeps,
+      actor,
+      source.mailAttachment,
+    );
+    return { file: { name: file.filename, mimeType: file.mimeType }, read: async () => file.bytes };
+  }
   if ("artifactId" in source) {
     const row = await deps.prisma.artifact.findFirst({
       where: { id: source.artifactId, spaceId: actor.spaceId, userId: actor.userId },

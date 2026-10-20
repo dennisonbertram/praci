@@ -1,5 +1,5 @@
 import { i18n } from "@lingui/core";
-import { plural, t } from "@lingui/core/macro";
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComposeMode, InboxThreadMessage } from "@rakazo/contracts";
 import {
@@ -17,9 +17,6 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  FileArchive,
-  FileImage,
-  FileText,
   Forward,
   Inbox,
   Mail,
@@ -32,7 +29,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ComposeEmail } from "../../components/ComposeEmail";
 import { recallClosed } from "../../components/compose/draft-memory";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
-import { formatBytes } from "../../lib/format-bytes";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { allowStep } from "../../lib/inbox-keyboard";
 import type { InboxMessageOutput } from "../../lib/inbox-message-cache";
@@ -42,8 +38,8 @@ import {
   prefetchInboxMessage,
 } from "../../lib/inbox-message-cache";
 import { MAIL_SENT_EVENT } from "../../lib/outbox";
-import { withSpaceHeaders } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { MailAttachments } from "./MailAttachments";
 
 /** Opens one cached message in a modal; full screen on phones. Shared by the Inbox and chat email cards. */
 export function InboxMessageDialog({
@@ -434,7 +430,7 @@ function InboxMessage({
           </p>
         )}
         {message?.attachments.length ? (
-          <InboxAttachments messageId={messageId} attachments={message.attachments} />
+          <MailAttachments messageId={messageId} attachments={message.attachments} />
         ) : null}
         {message?.later?.length ? (
           <div className="mt-4">
@@ -488,81 +484,6 @@ function splitSender(from: string): { name: string; address: string } {
   const name = (match[1] ?? "").trim();
   const address = (match[2] ?? "").trim();
   return name ? { name, address } : { name: address, address: "" };
-}
-
-type MailAttachmentItem = InboxMessageOutput["attachments"][number];
-
-function AttachmentIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType.startsWith("image/")) return <FileImage />;
-  if (/zip|compressed|tar/.test(mimeType)) return <FileArchive />;
-  return <FileText />;
-}
-
-/** Fetches with the session and space header, then saves the bytes; the file is never opened in the page. */
-async function saveAttachment(messageId: string, attachment: MailAttachmentItem) {
-  const response = await fetch(
-    `/api/inbox/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachment.id)}`,
-    { headers: withSpaceHeaders(), credentials: "include" },
-  );
-  if (!response.ok) throw new Error(`Attachment download failed (${response.status})`);
-  const url = URL.createObjectURL(await response.blob());
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = attachment.filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
-
-function InboxAttachments({
-  messageId,
-  attachments,
-}: {
-  messageId: string;
-  attachments: MailAttachmentItem[];
-}) {
-  const [result, setResult] = useState<{ ok: boolean; filename: string } | null>(null);
-  return (
-    <div className="mt-3">
-      <ul aria-label={t`Attachments`} className="flex flex-wrap gap-2">
-        {attachments.map((attachment) => (
-          <li key={attachment.id}>
-            <Button
-              variant="outline"
-              className="h-auto max-w-64 justify-start gap-2 px-3 py-2 text-start [&_svg]:size-4 [&_svg]:text-muted-foreground"
-              onClick={() => {
-                setResult(null);
-                saveAttachment(messageId, attachment).then(
-                  () => setResult({ ok: true, filename: attachment.filename }),
-                  () => setResult({ ok: false, filename: attachment.filename }),
-                );
-              }}
-            >
-              <AttachmentIcon mimeType={attachment.mimeType} />
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate">{attachment.filename}</span>
-                <span className="text-xs text-muted-foreground">
-                  {formatBytes(attachment.size)}
-                </span>
-              </span>
-            </Button>
-          </li>
-        ))}
-      </ul>
-      <p
-        role={result && !result.ok ? "alert" : "status"}
-        className={cn(
-          "mt-2 text-sm empty:hidden",
-          result?.ok ? "text-muted-foreground" : "text-destructive",
-        )}
-      >
-        {result
-          ? result.ok
-            ? t`Downloaded ${result.filename}`
-            : t`Couldn't download ${result.filename}`
-          : null}
-      </p>
-    </div>
-  );
 }
 
 /** Shown on a message the user sent; the provider only reports a message as sent once it left. */

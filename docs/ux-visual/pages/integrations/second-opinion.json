@@ -111,7 +111,7 @@
           },
           {
             "level": "page",
-            "element": "Gmail detail: 'ACCOUNTS' (Founder mail (Mock), Sales mail (Mock)) with no email address shown",
+            "element": "Gmail detail: 'ACCOUNTS' (Founder mail, Sales mail) with no email address shown",
             "problem": "Accounts are identified only by editable display nicknames and 'Connected 10/19/2026'. The founder cannot verify which real mailbox (founder@? sales@?) is connected before granting 8 bots access or hitting 'Remove account'. Mock labels hide, rather than demonstrate, the identifying field.",
             "norm": "Account pickers/managers must show the immutable identifier (email address) alongside any nickname.",
             "severity": "P1",
@@ -237,7 +237,7 @@
           },
           {
             "level": "layout",
-            "element": "Left sidebar navigation list above 'MOCK DEMO DATA — NORTHWIND ROBOTICS'",
+            "element": "Left sidebar navigation list above 'NORTHWIND ROBOTICS'",
             "problem": "The upper navigation list in the left sidebar is broken and clipped across viewports: in 768-home.png and 768-mercury-agent.png, the 'Finance' row is sliced in half horizontally right underneath the 'Search' bar; in 1440-home.png and 1440-mercury-agent.png, 'Inbox', 'Finance', 'Legal', and 'Cap table' are completely scrolled out of view; and in 1440-brex-agent.png, even 'Data room' disappears, leaving only 'Artifacts'.",
             "norm": "Primary app navigation in a persistent sidebar must remain consistently visible and never clip mid-row beneath a sticky search input without scroll indicators or proper container padding.",
             "severity": "P0",
@@ -255,7 +255,7 @@
           },
           {
             "level": "page",
-            "element": "ACCOUNTS section ('Founder mail (Mock)', 'Sales mail (Mock)') and USED BY list",
+            "element": "ACCOUNTS section ('Founder mail', 'Sales mail') and USED BY list",
             "problem": "Gmail has two separate connected accounts ('Founder mail' and 'Sales mail'), but the 'USED BY' section below is global and defaults all 8 bots—including 'Investor Relations', 'Carta agent', and 'Mercury agent'—to ON. The founder cannot restrict her personal 'Founder mail' to 'Chief' and 'Inbox agent' while sharing 'Sales mail' more broadly. Additionally, unlike Mercury and Brex, Gmail lacks an 'Allow changes / Allow sending or drafting' switch above the fold, burying tool capabilities in a clipped 'TOOLS · 6' table at the bottom.",
             "norm": "Multi-account integrations must either scope bot access per account or clearly warn that enabling a bot grants access to all connected accounts, and write/draft controls must be surfaced consistently across all app detail pages.",
             "severity": "P1",
@@ -309,7 +309,7 @@
           },
           {
             "level": "group",
-            "element": "ACCOUNTS rows ('Founder mail (Mock)', 'Sales mail (Mock)') action buttons ('Rename', 'Create agent', 'Remove account')",
+            "element": "ACCOUNTS rows ('Founder mail', 'Sales mail') action buttons ('Rename', 'Create agent', 'Remove account')",
             "problem": "Each connected Gmail account row presents three inline pill buttons ('Rename', 'Create agent', 'Remove account'), repeating 'Create agent' per email address without explaining why an account-specific agent would be created when 'Inbox agent' already exists in the sidebar.",
             "norm": "Repeated row actions should prioritize common management tasks and avoid prompting users to spawn duplicate agents without context.",
             "severity": "P2",

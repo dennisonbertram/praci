@@ -1,7 +1,7 @@
 # Walk report GR-1: Gmail rate-limits the sync (notice)
 
 Screenshots cited here are kept locally and not committed; the written findings are the record.
-Result: FAIL (1 high, 1 low). Viewport 1280x800 plus one 390x844 check. Space "MOCK DEMO DATA — Mail rate-limited", session uxw-gr.
+Result: FAIL (1 high, 1 low). Viewport 1280x800 plus one 390x844 check. Space "Mail rate-limited", session uxw-gr.
 
 ## Flow log
 1. Switched space, clicked Inbox (step-0-space.png, step-1-loading.png). First open showed "No mail" with no notice (step-2-notice.png, step-3-after-wait.png); 15 s wait did not change it.

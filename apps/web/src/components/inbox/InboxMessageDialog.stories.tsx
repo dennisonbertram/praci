@@ -22,8 +22,7 @@ const meta = {
   parameters: {
     docs: {
       description: {
-        component:
-          "Also shows: InboxMessage, AttachmentIcon, InboxAttachments, EarlierMessages, EarlierMessage",
+        component: "Also shows: InboxMessage, EarlierMessages, EarlierMessage",
       },
     },
   },

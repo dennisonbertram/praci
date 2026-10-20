@@ -64,9 +64,7 @@ describe("mock demo data", () => {
     expect(DEMO_WAITING_RUN.question.endsWith("?")).toBe(true);
   });
 
-  it("labels the company and every contact and document as mock", () => {
-    expect(DEMO_COMPANY.startsWith("MOCK DEMO DATA —")).toBe(true);
-    expect(DEMO_EMPTY_SPACE.startsWith("MOCK DEMO DATA —")).toBe(true);
+  it("labels every contact and document as mock", () => {
     for (const contact of DEMO_CONTACTS) expect(contact.notes).toContain(MOCK_NOTE);
     expect(DEMO_CHIEF_DRAFT.name).toContain("MOCK");
     expect(DEMO_CHIEF_DRAFT.text).toContain(MOCK_NOTE);
@@ -328,7 +326,6 @@ describe("mock demo data", () => {
     expect(fresh.subject.startsWith(MOCK_SUBJECT_PREFIX)).toBe(true);
     expect(fresh.text).toContain(MOCK_NOTE);
     expect(fresh.labels).toEqual(["INBOX", "UNREAD"]);
-    expect(DEMO_RECONNECT_SPACE.startsWith("MOCK DEMO DATA —")).toBe(true);
   });
 
   it("builds last month's mock statement that names its bank and whose balances add up", async () => {

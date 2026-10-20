@@ -779,6 +779,10 @@ msgstr ""
 msgid "Add skill"
 msgstr ""
 
+#: src/components/inbox/MailAttachments.tsx
+msgid "Add to Data room"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "रूटीन में जोड़ें"
@@ -804,6 +808,7 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
+#: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
 msgid "Added"
 msgstr ""
@@ -1317,7 +1322,7 @@ msgid "Attachment"
 msgstr "अटैचमेंट"
 
 #: src/components/ComposeEmail.tsx
-#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "Attachments"
 msgstr ""
 
@@ -3084,7 +3089,7 @@ msgid "Couldn't classify"
 msgstr ""
 
 #. placeholder {0}: result.filename
-#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "Couldn't download {0}"
 msgstr ""
 
@@ -3633,6 +3638,7 @@ msgstr "पूर्ण"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
 msgid "Download"
 msgstr ""
@@ -3657,7 +3663,7 @@ msgid "Download Executor"
 msgstr ""
 
 #. placeholder {0}: result.filename
-#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "Downloaded {0}"
 msgstr ""
 
@@ -4366,6 +4372,7 @@ msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "नमस्ते, उत्तर पढ़कर सुनाते समय मेरी आवाज़ ऐसी होगी।"
 
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
 msgstr ""
 
@@ -5391,8 +5398,10 @@ msgstr ""
 msgid "More"
 msgstr ""
 
+#. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
 msgstr ""
 
@@ -5639,6 +5648,10 @@ msgstr ""
 
 #: src/components/FinanceCards.tsx
 msgid "Next 30 days"
+msgstr ""
+
+#: src/components/inbox/MailAttachments.tsx
+msgid "Next attachment"
 msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
@@ -6602,8 +6615,13 @@ msgid "Preview {0}"
 msgstr "{0} का प्रीव्यू"
 
 #: src/components/ArtifactPreview.tsx
+#: src/components/inbox/MailAttachments.tsx
 #: src/components/SheetPreview.tsx
 msgid "Preview isn't available for this file type — download it to view it."
+msgstr ""
+
+#: src/components/inbox/MailAttachments.tsx
+msgid "Previous attachment"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -8699,6 +8717,22 @@ msgstr "यह सब्सक्रिप्शन साइन-इन अभ�
 msgid "This week"
 msgstr ""
 
+#: src/components/data-room/DropZone.tsx
+msgid "This zip can't be read"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip has unsafe file paths"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip is password-protected"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip is too large to unpack"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
 msgstr ""
@@ -8753,6 +8787,10 @@ msgstr "आज"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
+msgstr ""
+
+#: src/components/inbox/MailAttachments.tsx
+msgid "Too large to preview"
 msgstr ""
 
 #: src/lib/run-phase.ts

@@ -4,9 +4,9 @@ Source: `docs/ux-paths/dataroom/catalog.md`.
 
 
 Generated: 2026-10-17
-Repository: `/Users/dennison/develop/rakazo-ux` (branch `docs/ux-pass`, code read at HEAD `559a76ad`). PR #109 stories were read from `origin/feat/legal` at commit `f2b8fc1e` ("Legal: regenerate translation catalogs after the e2e fixes").
+Repository: `the repository root` (branch `docs/ux-pass`, code read at HEAD `559a76ad`). PR #109 stories were read from `origin/feat/legal` at commit `f2b8fc1e` ("Legal: regenerate translation catalogs after the e2e fixes").
 Total Stories: 44 (short 26, medium 17, long 1)
-Persona for every story: Maya, a naive first-time founder of Northwind Robotics ("MOCK DEMO DATA — Northwind Robotics") who has never seen Rakazo, does not know its vocabulary ("Data room", "folder", "filing", "agent", "approval", "space"), and wants to keep the company's documents in order and find them again.
+Persona for every story: Maya, a naive first-time founder of Northwind Robotics ("Northwind Robotics") who has never seen Rakazo, does not know its vocabulary ("Data room", "folder", "filing", "agent", "approval", "space"), and wants to keep the company's documents in order and find them again.
 
 ### Changes since the 2026-10-16 catalog
 
@@ -63,7 +63,7 @@ Requires PR #109 (origin/feat/legal, commit `f2b8fc1e`):
 
 Still absent on both branches: sharing with other members, the "Ask agent" button in the preview, the Data room agent and its side panel (the docs describe a "Create Data room agent" button; no code builds it), undo or trash, retry of a failed item, folder menus on the tree, multi-select or bulk download, mobile-specific layout beyond the narrow rules above.
 
-### Mock demo data required (seed for "MOCK DEMO DATA — Northwind Robotics")
+### Mock demo data required (seed for "Northwind Robotics")
 
 Every story names the subset it needs. The full seed is:
 

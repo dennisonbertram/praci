@@ -69,8 +69,8 @@ const ChromeContext = createContext<FinanceChrome>({});
 export const FinanceChromeProvider = ChromeContext.Provider;
 
 /**
- * A space's name without the words every space's name starts with ("MOCK DEMO DATA — Northwind
- * Robotics" beside "MOCK DEMO DATA — Empty space" reads "Northwind Robotics"), so a narrow
+ * A space's name without the words every space's name starts with ("Northwind
+ * Robotics" beside "Empty space" reads "Northwind Robotics"), so a narrow
  * switcher shows which company it is rather than the shared start.
  */
 export function shortSpaceName(name: string, all: readonly string[]): string {
