@@ -9193,10 +9193,6 @@ msgstr "vs {previousRange}"
 msgid "Wait a moment and test again."
 msgstr "Wait a moment and test again."
 
-#: src/lib/run-phase.ts
-msgid "Waiting for {name}"
-msgstr "Waiting for {name}"
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
