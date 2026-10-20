@@ -1,0 +1,104 @@
+:root {
+  --bg: #fff;
+  --fg: #111;
+  --muted: #666;
+  --border: #d4d4d4;
+  --gutter: 16px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0b0b;
+    --fg: #f2f2f2;
+    --muted: #9a9a9a;
+    --border: #333;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 48px var(--gutter);
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    16px / 1.5 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+
+main {
+  width: 100%;
+  max-width: 420px;
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: 40px;
+  letter-spacing: -0.02em;
+}
+p {
+  margin: 0 0 24px;
+  color: var(--muted);
+}
+.big {
+  color: var(--fg);
+  font-size: 24px;
+  font-weight: 600;
+}
+
+form,
+.row {
+  display: flex;
+  gap: 8px;
+}
+input,
+button {
+  font: inherit;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+}
+input {
+  flex: 1;
+  min-width: 0;
+}
+button {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+[hidden] {
+  display: none;
+}
+#status {
+  margin: 12px 0 0;
+  min-height: 1.5em;
+}
