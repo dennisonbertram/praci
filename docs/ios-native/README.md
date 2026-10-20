@@ -128,10 +128,13 @@ The server sends only through Expo's push service and stores Expo push tokens (`
 - App Store: iPhone Duo screenshots (outer 1398×2034, inner 2007×2853) become required from April 2027 for apps built with the 27.1 SDK.
 - Tests: port the behaviours covered by `apps/mobile/lib/*.test.ts` and `packages/core` tests (session-generation safety, 401 recovery, SSE reconnect, outbox, unread divider, consent). Keep the accessibility labels used by the Maestro smoke flow (`apps/mobile/.maestro/smoke.yaml`) so it can drive the native app. Use `docs/mobile-parity/inventory.md` as the feature checklist.
 
-## 13. Open decisions
+## 13. Decisions
 
-1. Native rewrite or Expo plus native modules.
-2. Push: embed the Expo notifications SDK, or add an APNs provider to the server.
+Decided:
+- Build a native SwiftUI rewrite (not Expo plus native modules).
+- Push: add an APNs provider to the server that accepts raw device tokens alongside Expo tokens.
+
+Open:
 3. Minimum iOS version (26 recommended; Textual needs 18+).
 4. Whether to add the OpenAPI export to `packages/contracts` (needed for generated Swift models).
 5. Billing on iOS: in-app purchase or "manage on web".
