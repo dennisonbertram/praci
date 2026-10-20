@@ -25,6 +25,8 @@ permissions:
   contents: read
 
 env:
+  OPENUI_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
   # docker/metadata-action otherwise truncates commit tags to seven collision-prone characters.
   DOCKER_METADATA_SHORT_SHA_LENGTH: 40
 

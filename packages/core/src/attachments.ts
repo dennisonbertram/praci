@@ -4,6 +4,7 @@ import {
   ATTACHMENT_MAX_BYTES,
   isAllowedAttachmentMimeType,
   isAttachmentImageMimeType,
+  UI_ARTIFACT_MIME_TYPE,
 } from "@rakazo/contracts";
 
 export class AttachmentValidationError extends Error {
@@ -148,6 +149,7 @@ const EXTENSION_MIME_TYPES: Record<string, AttachmentMimeType> = {
   ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   ".xlsm": "application/vnd.ms-excel.sheet.macroEnabled.12",
   ".tsv": "text/tab-separated-values",
+  ".rkui": UI_ARTIFACT_MIME_TYPE,
 };
 
 const MIME_TYPE_EXTENSIONS: Record<AttachmentMimeType, string> = {
@@ -165,6 +167,7 @@ const MIME_TYPE_EXTENSIONS: Record<AttachmentMimeType, string> = {
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ".xlsx",
   "application/vnd.ms-excel.sheet.macroEnabled.12": ".xlsm",
   "text/tab-separated-values": ".tsv",
+  [UI_ARTIFACT_MIME_TYPE]: ".rkui",
 };
 
 export function inferAttachmentMimeType(

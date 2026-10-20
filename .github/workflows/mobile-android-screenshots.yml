@@ -10,6 +10,11 @@ concurrency:
   group: mobile-android-screenshots-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # OpenUI's parser package would send an install event otherwise.
+  OPENUI_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
 jobs:
   screenshots:
     name: Capture Android UI

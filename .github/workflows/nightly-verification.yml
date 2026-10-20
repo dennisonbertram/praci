@@ -12,6 +12,11 @@ concurrency:
   group: nightly-verification
   cancel-in-progress: false
 
+env:
+  # OpenUI's parser package would send an install event otherwise.
+  OPENUI_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
 jobs:
   visual-web:
     name: Daily web screenshots

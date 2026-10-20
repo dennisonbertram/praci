@@ -148,6 +148,12 @@ pnpm sandbox:build
 pnpm dev
 ```
 
+`pnpm install` does not run the install script of `@openuidev/lang-core` (the parser behind UI
+artifacts), because the root `package.json` lists it under `pnpm.neverBuiltDependencies`. That script
+sends an install event to its vendor unless `OPENUI_TELEMETRY_DISABLED=1` or `DO_NOT_TRACK=1` is set.
+The Dockerfiles, CI workflows and `.env.example` set both variables as well; keep them set if you
+install with another package manager.
+
 Postgres stays network-internal in the default Compose file (same as published images). The
 `postgres-host` overlay publishes loopback `127.0.0.1:5433` for host-side `pnpm` and DB tools.
 If that port is occupied, change `POSTGRES_HOST_PORT` and the port in `DATABASE_URL` in `.env`.

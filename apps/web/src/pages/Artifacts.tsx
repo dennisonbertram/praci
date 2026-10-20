@@ -1,7 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import type { Artifact, ArtifactVersion, Bot } from "@rakazo/contracts";
-import { isAttachmentImageMimeType } from "@rakazo/contracts";
+import { isAttachmentImageMimeType, UI_ARTIFACT_MIME_TYPE } from "@rakazo/contracts";
 import { matchesArtifactQuery, mimeBadgeLabel } from "@rakazo/core";
 import {
   AlertDialog,
@@ -50,6 +50,7 @@ import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { PdfViewer } from "../components/PdfViewer";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
 import { SheetPreview } from "../components/SheetPreview";
+import { UiArtifactView } from "../components/UiArtifactView";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
 import { takeInitialBootstrap } from "../lib/bootstrap";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -1112,6 +1113,9 @@ function ArtifactPreview({ artifact, bytes }: { artifact: Artifact; bytes: Uint8
   if (artifact.mimeType === "text/html") {
     const html = new TextDecoder("utf-8").decode(bytes);
     return <SandboxedHtmlViewer html={html} title={artifact.name} />;
+  }
+  if (artifact.mimeType === UI_ARTIFACT_MIME_TYPE) {
+    return <UiArtifactView source={new TextDecoder("utf-8").decode(bytes)} />;
   }
   if (artifact.mimeType === "text/markdown") {
     const text = new TextDecoder("utf-8").decode(bytes);

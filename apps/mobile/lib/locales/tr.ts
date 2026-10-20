@@ -199,6 +199,7 @@ export const TR_MESSAGES: Record<string, string> = {
   "No artifacts yet": "Henüz artefakt yok",
   "No matching artifacts": "Eşleşen artefakt yok",
   "No preview for this file type.": "Bu dosya türü için önizleme yok.",
+  "Part of this can't be shown.": "Bunun bir kısmı gösterilemiyor.",
   "Search artifacts…": "Artefakt ara…",
   Share: "Paylaş",
   'Delete "{name}"?': '"{name}" silinsin mi?',

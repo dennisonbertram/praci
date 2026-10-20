@@ -200,6 +200,7 @@ export const ES_MESSAGES: Record<string, string> = {
   "No artifacts yet": "Aún no hay artefactos",
   "No matching artifacts": "No hay artefactos que coincidan",
   "No preview for this file type.": "No hay vista previa para este tipo de archivo.",
+  "Part of this can't be shown.": "No se puede mostrar una parte de esto.",
   "Search artifacts…": "Buscar artefactos…",
   Share: "Compartir",
   'Delete "{name}"?': "¿Eliminar «{name}»?",

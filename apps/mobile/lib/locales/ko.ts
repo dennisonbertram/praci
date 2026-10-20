@@ -198,6 +198,7 @@ export const KO_MESSAGES: Record<string, string> = {
   "No artifacts yet": "아직 아티팩트가 없습니다",
   "No matching artifacts": "일치하는 아티팩트가 없습니다",
   "No preview for this file type.": "이 파일 형식은 미리 볼 수 없습니다.",
+  "Part of this can't be shown.": "일부 내용을 표시할 수 없습니다.",
   "Search artifacts…": "아티팩트 검색…",
   Share: "공유",
   'Delete "{name}"?': '"{name}"을(를) 삭제할까요?',
