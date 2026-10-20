@@ -165,4 +165,32 @@ describe("host-aware sandbox", () => {
     ]);
     await sandbox.destroy(computer, ctx);
   });
+
+  describe("per-bot run location", () => {
+    const kindFor = async (
+      defaultHost: string | null,
+      runsOn: string | null,
+      botId: string | undefined = "bot-1",
+    ) => {
+      const prisma = {
+        deploymentSettings: { findUnique: async () => ({ computerHost: defaultHost }) },
+        bot: { findUnique: async () => (botId ? { runsOn } : null) },
+      } as unknown as PrismaClient;
+      const sandbox = createRunSandbox("docker", { prisma });
+      return sandbox.provisionKind?.({ ...ctx, botId });
+    };
+
+    it("runs a bot set to this-mac on the host and others in the sandbox", async () => {
+      expect(await kindFor("docker", "this-mac")).toBe("desktop");
+      expect(await kindFor("docker", null)).toBe("docker");
+      expect(await kindFor(null, null)).toBe("docker");
+    });
+
+    it("lets a bot opt out of a host default and keeps an existing host default", async () => {
+      expect(await kindFor("this-mac", "docker")).toBe("docker");
+      // An install that chose this Mac before bots had a setting keeps running there.
+      expect(await kindFor("this-mac", null)).toBe("desktop");
+      expect(await kindFor("this-mac", null, undefined)).toBe("desktop");
+    });
+  });
 });

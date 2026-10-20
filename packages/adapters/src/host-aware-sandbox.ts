@@ -40,7 +40,12 @@ export function createRunSandbox(
       root: opts.dataDir,
       hostRoots: [homedir()],
     }),
-    async () => {
+    async (botId) => {
+      // A bot's own choice wins; otherwise the deployment default applies.
+      const bot = botId
+        ? await opts.prisma!.bot.findUnique({ where: { id: botId }, select: { runsOn: true } })
+        : null;
+      if (bot?.runsOn) return bot.runsOn === "this-mac";
       const settings = await opts.prisma!.deploymentSettings.findUnique({
         where: { id: "default" },
       });
@@ -55,7 +60,7 @@ export class HostAwareSandbox implements SandboxProvider {
   constructor(
     private readonly isolated: SandboxProvider,
     private readonly host: SandboxProvider,
-    private readonly hostEnabled: () => Promise<boolean>,
+    private readonly hostEnabled: (botId?: string) => Promise<boolean>,
   ) {
     if (isolated.pageBrowser || host.pageBrowser) {
       this.pageBrowser = (computer, request, context) => {
@@ -89,7 +94,7 @@ export class HostAwareSandbox implements SandboxProvider {
     },
     context: AdapterContext,
   ) {
-    const provider = (await this.hostEnabled()) ? this.host : this.isolated;
+    const provider = (await this.hostEnabled(request.botId)) ? this.host : this.isolated;
     const providerKind = provider.describe().id;
     return provider.provision(
       {
@@ -101,13 +106,13 @@ export class HostAwareSandbox implements SandboxProvider {
   }
 
   async isRunning(computer: ComputerRef, context: AdapterContext) {
-    const provider = (await this.hostEnabled()) ? this.host : this.isolated;
+    const provider = (await this.hostEnabled(context.botId)) ? this.host : this.isolated;
     if (provider.describe().id !== computer.kind) return false;
     return provider.isRunning ? provider.isRunning(computer, context) : false;
   }
 
-  async provisionKind() {
-    const provider = (await this.hostEnabled()) ? this.host : this.isolated;
+  async provisionKind(context?: AdapterContext) {
+    const provider = (await this.hostEnabled(context?.botId)) ? this.host : this.isolated;
     return provider.describe().id as ComputerRef["kind"];
   }
 

@@ -1642,6 +1642,10 @@ msgstr ""
 msgid "Bots lose access to this account."
 msgstr ""
 
+#: src/components/RunsOnPicker.tsx
+msgid "Bots run on"
+msgstr ""
+
 #: src/pages/Welcome.tsx
 msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
 msgstr ""
@@ -1947,7 +1951,6 @@ msgid "Chats"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
 msgstr ""
 
@@ -1991,7 +1994,6 @@ msgstr ""
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "正在检查…"
 
@@ -2993,6 +2995,7 @@ msgstr ""
 msgid "Could not run routine"
 msgstr "无法运行例行任务"
 
+#: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -3031,10 +3034,6 @@ msgstr "无法保存规则"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "无法保存技能"
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Could not save that choice"
-msgstr "无法保存该选择"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not save that speech model"
@@ -3660,17 +3659,9 @@ msgstr "显示名称"
 msgid "Dividends"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker"
-msgstr "Docker"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr ""
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
-msgstr "Docker 限制对你电脑的访问，以提高安全性。使用{hostLabel}时，Bot 可以处理你的本地文件并使用本地工具。"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
@@ -5088,10 +5079,6 @@ msgstr "加载中…"
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Local"
 msgstr "本地"
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Local access lets bots run commands without asking. Avoid it on shared or public servers."
-msgstr "本地访问权限允许 Bot 无需询问就执行命令。请勿在共享或公开服务器上启用。"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Local command"
@@ -7532,6 +7519,14 @@ msgstr "运行中 · 停止"
 msgid "Running…"
 msgstr "正在运行…"
 
+#: src/components/RunsOnPicker.tsx
+msgid "Runs commands without asking. Avoid on shared or public servers."
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Runs on"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr ""
@@ -7556,6 +7551,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
+msgstr ""
+
+#: src/components/RunsOnPicker.tsx
+msgid "Sandbox"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -8824,9 +8823,9 @@ msgstr "此操作无法撤销。"
 msgid "This chat is view-only"
 msgstr "此对话为只读"
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this computer"
-msgstr "这台电脑"
+#: src/components/RunsOnPicker.tsx
+msgid "This computer"
+msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "This connection no longer exists."
@@ -8857,9 +8856,9 @@ msgstr ""
 msgid "This link is wrong or the page is no longer available."
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this Mac"
-msgstr "这台 Mac"
+#: src/components/RunsOnPicker.tsx
+msgid "This Mac"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -9418,10 +9417,6 @@ msgstr "用量"
 msgid "Use {0}"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Use {hostLabel}"
-msgstr "使用 {hostLabel}"
-
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Use a found model"
@@ -9694,10 +9689,6 @@ msgstr ""
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Where it went"
 msgstr ""
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Where should bots run?"
-msgstr "Bot 应在哪里运行？"
 
 #: src/components/PageAgentIntro.tsx
 msgid "Which bills are unpaid?"

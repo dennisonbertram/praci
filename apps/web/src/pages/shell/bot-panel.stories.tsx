@@ -74,6 +74,16 @@ export const AdvancedWithMemoryScopeAndDisabledTools: Story = {
   play: openAdvanced,
 };
 
+/** The deployment owner on the desktop app can aim a bot at the host computer. */
+export const RunsOnThisMac: Story = {
+  beforeEach: setup,
+  args: {
+    hostComputer: { defaultHost: "docker" },
+    bot: { ...scoutBot, runsOn: "this-mac", computerMode: "dedicated" },
+  },
+  play: openAdvanced,
+};
+
 export const NotificationsOff: Story = {
   beforeEach: setup,
   args: { bot: { ...scoutBot, notifyOnFinish: false } },
