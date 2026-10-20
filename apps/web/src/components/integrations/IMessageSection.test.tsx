@@ -67,7 +67,7 @@ it("shows both tiles to the owner and nothing to anyone else", async () => {
   const host = await mount(state());
   expect(host.textContent).toContain("iMessage (Photon)");
   expect(host.textContent).toContain("Chat with your agents over iMessage from your Mac");
-  expect(host.textContent).toContain("Restart required");
+  expect(host.textContent).toContain("Needs a server restart");
   act(() => root?.unmount());
   host.remove();
   const other = await mount({ canConfigure: false, providers: [] });
@@ -93,9 +93,9 @@ it("shows saved and server-set secrets without values, and warns about a public 
   expect(document.body.textContent).toContain(
     "Anyone who can reach this address can talk to your Mac's server. Use a private network or a tunnel.",
   );
-  expect(
-    document.querySelector<HTMLInputElement>('input[aria-label="Webhook URL"]')!.value,
-  ).toContain("token=");
+  expect(document.querySelector<HTMLInputElement>("#messaging-webhook-url")!.value).toContain(
+    "token=",
+  );
 });
 
 it("reports a failed connection test", async () => {
@@ -111,4 +111,48 @@ it("reports a failed connection test", async () => {
   )!;
   await act(async () => test.click());
   expect(document.body.textContent).toContain("BlueBubbles /ping returned 401");
+});
+
+const openEdit = async () =>
+  act(async () =>
+    document
+      .querySelector<HTMLButtonElement>('button[aria-label="Edit iMessage (BlueBubbles)"]')!
+      .click(),
+  );
+const button = (name: string) =>
+  [...document.querySelectorAll("button")].find((b) => b.textContent === name)!;
+
+it("ends a hung connection test with an error", async () => {
+  vi.useFakeTimers();
+  try {
+    await mount(state());
+    messagingSetup.test.mockReturnValue(new Promise(() => undefined));
+    await openEdit();
+    await act(async () => button("Test connection").click());
+    expect(document.body.textContent).toContain("Testing…");
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(10_000);
+    });
+    expect(document.body.textContent).toContain("No response from the server. Check the address.");
+    expect(button("Test connection")).toBeDefined();
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+it("labels every field and the webhook URL, and shows Done after a save", async () => {
+  await mount(state());
+  messagingSetup.save.mockResolvedValue({ ok: true });
+  await openEdit();
+  const labels = [...document.querySelectorAll("label")].map((l) => l.textContent);
+  expect(labels).toContain("Server URL");
+  expect(labels).toContain("Paste this into BlueBubbles");
+  await act(async () => {
+    document.querySelector<HTMLFormElement>("form")!.requestSubmit();
+  });
+  expect(document.body.textContent).toContain("Restart the Rakazo server");
+  expect(button("Done")).toBeDefined();
+  expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Cancel")).toBe(
+    false,
+  );
 });

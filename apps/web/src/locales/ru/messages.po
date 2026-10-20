@@ -3551,6 +3551,7 @@ msgstr "У вас нет учетной записи?"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
@@ -5365,6 +5366,10 @@ msgstr "Назовите эту задачу"
 msgid "Needs a monthly burn"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Needs a server restart"
+msgstr ""
+
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr ""
@@ -5710,6 +5715,10 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr "Удаленные MCP-серверы не найдены"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "No response from the server. Check the address."
+msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
@@ -6304,6 +6313,14 @@ msgstr "Вставьте OpenAI-совместимый адрес со свое�
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Paste the web address an app gives you"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into BlueBubbles"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into Photon"
 msgstr ""
 
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -7037,7 +7054,7 @@ msgid "Resize panel"
 msgstr "Изменить размер панели"
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "Restart required"
+msgid "Restart the Rakazo server to start using iMessage."
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -9105,10 +9122,6 @@ msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Webhook token"
-msgstr ""
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Webhook URL"
 msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx

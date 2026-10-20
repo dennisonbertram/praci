@@ -3551,6 +3551,7 @@ msgstr "Don’t have an account?"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
@@ -5365,6 +5366,10 @@ msgstr "Name this routine"
 msgid "Needs a monthly burn"
 msgstr "Needs a monthly burn"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Needs a server restart"
+msgstr "Needs a server restart"
+
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr "Needs an answer"
@@ -5710,6 +5715,10 @@ msgstr "No relationships yet."
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr "No remote MCP servers found"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "No response from the server. Check the address."
+msgstr "No response from the server. Check the address."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
@@ -6305,6 +6314,14 @@ msgstr "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Paste the web address an app gives you"
 msgstr "Paste the web address an app gives you"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into BlueBubbles"
+msgstr "Paste this into BlueBubbles"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into Photon"
+msgstr "Paste this into Photon"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste your API key"
@@ -7037,8 +7054,8 @@ msgid "Resize panel"
 msgstr "Resize panel"
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "Restart required"
-msgstr "Restart required"
+msgid "Restart the Rakazo server to start using iMessage."
+msgstr "Restart the Rakazo server to start using iMessage."
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
@@ -9106,10 +9123,6 @@ msgstr "Webhook signing secret"
 #: src/components/integrations/IMessageSection.tsx
 msgid "Webhook token"
 msgstr "Webhook token"
-
-#: src/components/integrations/IMessageSection.tsx
-msgid "Webhook URL"
-msgstr "Webhook URL"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Website login"
