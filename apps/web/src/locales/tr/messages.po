@@ -6803,6 +6803,7 @@ msgstr ""
 msgid "Receipts"
 msgstr ""
 
+#: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/FinanceSection.tsx

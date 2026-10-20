@@ -18,7 +18,7 @@ import {
 } from "@rakazo/ui-web";
 import { Box, ChevronDown, Download, HardDrive, Mail } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { dataRoomImportStarted } from "../../lib/data-room";
 import { syncErrorText } from "../../lib/inbox-sync-error";
 import { rpc } from "../../lib/rpc";
@@ -338,6 +338,7 @@ export function ImportSources({
   compact?: boolean;
 }) {
   const navigate = useNavigate();
+  const here = encodeURIComponent(useLocation().pathname);
   const [apps, setApps] = useState<{
     gmail: { connected: boolean; offered: boolean };
     drive: { connected: boolean; offered: boolean };
@@ -427,6 +428,9 @@ export function ImportSources({
       {open === "drive" || open === "box" ? (
         <DrivePicker
           box={open === "box"}
+          reconnectPath={
+            open === "box" ? `${BOX_CONNECT}&returnTo=${here}` : `${DRIVE_PAGE}?next=${here}`
+          }
           folderId={target}
           onClose={() => setOpen(null)}
           onDone={onDone}
