@@ -31,7 +31,7 @@ export const Active: Story = {};
 export const MostlyDone: Story = {
   args: { processing: { ...base, reading: 0, tagging: 0, indexing: 12 }, total: 1_104 },
 };
-/** Failed files appear among the counts when expanded; they do not hold the strip open. */
+/** Failed files get their own line below the count; they do not hold the strip open. */
 export const WithFailures: Story = {
   args: { processing: { ...base, reading: 40, indexing: 0, tagging: 6, failed: 3 }, total: 200 },
 };
@@ -43,4 +43,11 @@ export const Done: Story = {
 /** Imports still running share the line with the processing count. */
 export const WithImport: Story = {
   args: { importing: { done: 399, total: 1_104 } },
+};
+
+/** Only failed files remain: no processing claim, just the failure line. */
+export const OnlyFailed: Story = {
+  args: {
+    processing: { ...base, reading: 0, indexing: 0, tagging: 0, failed: 2, current: null },
+  },
 };
