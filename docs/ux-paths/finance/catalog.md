@@ -40,7 +40,7 @@ optional). All 23 earlier ids still apply; most had labels or steps fixed.
 ### Persona (applies to every story)
 
 A first-time user. Maya, a startup founder at "Northwind Robotics", has never seen
-Rakazo or its code. She does not know its terms ("burn", "runway scope", "MCP", "Blockscout",
+Praci or its code. She does not know its terms ("burn", "runway scope", "MCP", "Blockscout",
 "pins", "Hide amounts"). She wants to run her company clearly and consistently: know how much money
 she has, what she spends it on, and when it runs out. Steps are written in her words.
 **Hesitation** marks a place where a first-timer is likely to stop, misread a label, or pick the
@@ -870,7 +870,7 @@ Kraken/Coinbase "Connect".
    the first paint; the icon is the crossed-out eye. The choice is saved in this browser's local
    storage as `rakazo.hideAmounts = on` (`hide-amounts-preference.ts:3-34`).
 2. Close the browser, open it tomorrow → still hidden.
-3. Open Rakazo on her phone or another computer → amounts are **shown**. The choice is per browser,
+3. Open Praci on her phone or another computer → amounts are **shown**. The choice is per browser,
    not per account, and not synced.
    - Hesitation: she assumed "my account" remembers it. On a new device the numbers are visible until
      she clicks the icon.

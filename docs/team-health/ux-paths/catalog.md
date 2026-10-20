@@ -34,7 +34,7 @@ Generated: 2026-10-16
 | Per-card actions via agent | 401, 402, 403, 404, 408, 410 | Rejected or expired approval; Revenue line "Add second owner" |
 | Not an issue / Done | 405, 406 | Restore after snooze ends |
 | Not revenue / note / roster hide and split | 407, 409, 210, 507 | No UI exists to walk; stories describe the missing control |
-| Teammate self-view, permissions, spaces, mobile, desktop | 501-509 | Real teammate who is not a Rakazo user cannot be walked; mobile page is plan-only |
+| Teammate self-view, permissions, spaces, mobile, desktop | 501-509 | Real teammate who is not a Praci user cannot be walked; mobile page is plan-only |
 
 ## Dependency graph
 
@@ -116,7 +116,7 @@ Format: ID, title, type, verdict.
 - 501 Jonah hears his card exists and tries to find it. medium. Broken
 - 502 Owner approves a "This is me" request. medium. Undefined
 - 503 Jonah sees his own card. long. Broken
-- 504 Member with unverified email, and teammate who is not a Rakazo user. medium. Undefined
+- 504 Member with unverified email, and teammate who is not a Praci user. medium. Undefined
 - 505 Two owners in one space. medium. Confusing
 - 506 Owner is demoted, leaves the space, or has two spaces. long. Undefined
 - 507 Teammate asks to see, delete, or opt out of their data (EU team). long. Undefined
@@ -233,10 +233,10 @@ Ordered by severity (Broken, Undefined, Confusing), then by number of stories af
     - Smallest fix: key `TeamMember`, links and feedback by space and owner. Every read checks current owner role and a live link. On demotion or leaving, delete that owner's rows for the space and hide the row; in phase 1 code, drop owner-only rows for non-owners in `listSidebarPages`.
     - Changes: plan (decisions 4, 8), phase 1 code (small).
 
-14. **Erasure, opt-out and non-user teammates.** "Hide" is cosmetic, so a teammate cannot be removed from collection; non-Rakazo people cannot be told apart.
+14. **Erasure, opt-out and non-user teammates.** "Hide" is cosmetic, so a teammate cannot be removed from collection; non-Praci people cannot be told apart.
     - Stories: 507, 504, 409
     - Where: README decision 4 and Known limits (EU).
-    - Smallest fix: owner action "Exclude {name}" that stops collection and deletes their rows; a one-time acknowledgment before the first sync; a "not a Rakazo user" note on those rows. Full EU legal review stays out of scope.
+    - Smallest fix: owner action "Exclude {name}" that stops collection and deletes their rows; a one-time acknowledgment before the first sync; a "not a Praci user" note on those rows. Full EU legal review stays out of scope.
     - Changes: plan.
 
 15. **What "Remove from sidebar" does to stored data.** Not stated whether data, feedback and snoozes are kept, or what re-add shows.

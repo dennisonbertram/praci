@@ -12,7 +12,7 @@ export const ROUNDUP_DESCRIPTION = ALTERNATIVES_HUB.description;
 
 export const ROUNDUP_TLDR = [
   ALTERNATIVES_HUB.intro,
-  "Rakazo is the open source option you run yourself. Like Grok Bot, it is just chat once it is running: you set up a bot and manage it from that chat. You bring the model key. The license is Apache-2.0, and there is no seat fee.",
+  "Praci is the open source option you run yourself. Like Grok Bot, it is just chat once it is running: you set up a bot and manage it from that chat. You bring the model key. The license is Apache-2.0, and there is no seat fee.",
   "Grok Bot, Meta Muse, OpenAI Dots, Instinct, and Hark Pro are hosted. You do not install their service. Grok Bot comes with paid Cursor plans and SuperGrok. Muse runs on a virtual machine Meta operates. Dots sit on eligible ChatGPT plans. Instinct is the assistant you text or call. Hark Pro has a free tier, with $20 and $100 monthly tiers for more usage.",
   "OpenClaw and Hermes Agent are also open source and self-hosted. Their docs describe installers, config files, and a gateway. Hermes Desktop can reach a first chat without the command line. OpenClaw can chat while its Gateway runs in the terminal.",
 ] as const;
@@ -39,7 +39,7 @@ export type RoundupRow = {
 
 export const ROUNDUP_ROWS: readonly RoundupRow[] = [
   {
-    product: "Rakazo",
+    product: "Praci",
     href: "/",
     license: "Apache-2.0",
     selfHost: "Yes. Docker images or a source checkout.",
@@ -129,29 +129,29 @@ export type RoundupCard = {
 
 const CARD_BODY: Record<string, readonly string[]> = {
   "muse-alternative": [
-    "Meta introduced Muse on September 8, 2026. You talk to it in the Muse app or on WhatsApp, and Meta says it keeps working after you close the app. The computer is Muse Secure VM, a cloud machine Meta operates. The launch post names Muse Spark, so you do not bring a model key. Meta says it checks before sensitive actions such as sending email or paying, and that you can opt out of using interactions to train Meta's models. The posts used here do not list a price. Rakazo is the opposite on hosting: you run the stack, and you pick the model.",
+    "Meta introduced Muse on September 8, 2026. You talk to it in the Muse app or on WhatsApp, and Meta says it keeps working after you close the app. The computer is Muse Secure VM, a cloud machine Meta operates. The launch post names Muse Spark, so you do not bring a model key. Meta says it checks before sensitive actions such as sending email or paying, and that you can opt out of using interactions to train Meta's models. The posts used here do not list a price. Praci is the opposite on hosting: you run the stack, and you pick the model.",
   ],
   "dots-alternative": [
-    "OpenAI announced Dots on September 29, 2026. A dot is an always-on agent with its own cloud computer, and OpenAI says it uses GPT-6 Astra. The first dot is included with eligible Pro and Business Premium plans. Enterprise is in the rollout. Dots are not available under 18. A rules list says what the dot may do, must ask about, or must not do, and Custom Rules cannot turn off core safety checks. Changing a password or transferring money requires you to take over. Rakazo does not include a dot. OpenAI is one model connection you can choose.",
+    "OpenAI announced Dots on September 29, 2026. A dot is an always-on agent with its own cloud computer, and OpenAI says it uses GPT-6 Astra. The first dot is included with eligible Pro and Business Premium plans. Enterprise is in the rollout. Dots are not available under 18. A rules list says what the dot may do, must ask about, or must not do, and Custom Rules cannot turn off core safety checks. Changing a password or transferring money requires you to take over. Praci does not include a dot. OpenAI is one model connection you can choose.",
   ],
   "instinct-alternative": [
-    "Instinct, on this page, is the personal assistant at instinct.com that you text or call. The homepage describes it using your phone and computer the way a person would, with examples such as a bill, gifts, or a trip. The privacy policy and terms were revised August 26, 2026. They do not name a public model. They say Instinct may train on what you submit unless you opt out, and that material flagged for safety review can still be used. Vault materials and Google Workspace data are excluded. Terms let it act in connected services, including a payment method. Rakazo does not text, call, or buy things that way.",
+    "Instinct, on this page, is the personal assistant at instinct.com that you text or call. The homepage describes it using your phone and computer the way a person would, with examples such as a bill, gifts, or a trip. The privacy policy and terms were revised August 26, 2026. They do not name a public model. They say Instinct may train on what you submit unless you opt out, and that material flagged for safety review can still be used. Vault materials and Google Workspace data are excluded. Terms let it act in connected services, including a payment method. Praci does not text, call, or buy things that way.",
   ],
   "hermes-alternative": [
-    "Hermes Agent is Nous Research's MIT-licensed agent, and you can run it on your own machine. The desktop app shares config, keys, sessions, and memory with the command-line install. First-run onboarding can reach a first message without the CLI. The app starts its own local backend. Telegram, Discord, and Slack use a gateway process you start separately. The quickstart says a model needs at least 64,000 tokens of context. Like Grok Bot, Rakazo's ongoing management stays in the chat.",
+    "Hermes Agent is Nous Research's MIT-licensed agent, and you can run it on your own machine. The desktop app shares config, keys, sessions, and memory with the command-line install. First-run onboarding can reach a first message without the CLI. The app starts its own local backend. Telegram, Discord, and Slack use a gateway process you start separately. The quickstart says a model needs at least 64,000 tokens of context. Like Grok Bot, Praci's ongoing management stays in the chat.",
   ],
   "hark-alternative": [
-    "Hark Pro is the personal agent at hark.com, launched October 6, 2026. It is a hosted web, iOS, and Android app. Every feature in that article stays free. Twenty dollars a month is twice the usage, and one hundred dollars a month is ten times. The article describes a messaging-style app. Projects are dedicated chats with their own threads, and Home, Action Buttons, and Panels sit beside that. Hark introduced Handoff on August 5, 2026. It is a virtual computer with a browser, files, and a terminal. The October 6 article says it can run up to six browsers at once, and Hark operates that computer. Training opt-out has exceptions for feedback and safety review. Rakazo uses a computer you run, and you bring the model.",
+    "Hark Pro is the personal agent at hark.com, launched October 6, 2026. It is a hosted web, iOS, and Android app. Every feature in that article stays free. Twenty dollars a month is twice the usage, and one hundred dollars a month is ten times. The article describes a messaging-style app. Projects are dedicated chats with their own threads, and Home, Action Buttons, and Panels sit beside that. Hark introduced Handoff on August 5, 2026. It is a virtual computer with a browser, files, and a terminal. The October 6 article says it can run up to six browsers at once, and Hark operates that computer. Training opt-out has exceptions for feedback and safety review. Praci uses a computer you run, and you bring the model.",
   ],
 };
 
 const DEDICATED_CARDS: readonly RoundupCard[] = [
   {
-    name: "Rakazo",
+    name: "Praci",
     href: SELF_HOST_GUIDE_PATH,
     heading: "Open source AI agent you run yourself",
     paragraphs: [
-      "Rakazo is an open source AI agent for persistent teammates. It is in beta. The clients are the web app, the Electron desktop app, and the Expo mobile app. You bring a model key, including a local server, and each bot can use a different model. The default computer is local Docker. Optional computers include E2B, Daytona, CreateOS, Box, and a trusted local computer. Like Grok Bot, Rakazo is just chat once it is running: a new bot interviews you, and you manage schedules, memory, and approvals from that chat. Routines are readable Markdown. There is no seat fee. Hosted Rakazo Cloud is not generally available.",
+      "Praci is an open source AI agent for persistent teammates. It is in beta. The clients are the web app, the Electron desktop app, and the Expo mobile app. You bring a model key, including a local server, and each bot can use a different model. The default computer is local Docker. Optional computers include E2B, Daytona, CreateOS, Box, and a trusted local computer. Like Grok Bot, Praci is just chat once it is running: a new bot interviews you, and you manage schedules, memory, and approvals from that chat. Routines are readable Markdown. There is no seat fee. Hosted Praci Cloud is not generally available.",
     ],
   },
   {
@@ -159,7 +159,7 @@ const DEDICATED_CARDS: readonly RoundupCard[] = [
     href: GROK_ALTERNATIVE_PATH,
     heading: GROK_ALTERNATIVE_H1,
     paragraphs: [
-      "Grok Bot is xAI's hosted product for named bots that can use a computer, keep routines, and pause for approval. The docs describe a cloud computer on your account, shared by the bots on that account. They do not describe installing the service yourself or connecting your own model provider. Grok Build and the older Grok-1 weights are separate open source releases, not this service. Grok Bot is included with paid Cursor plans and SuperGrok, listed at $30 a month. The free plan on the pricing page does not list it. Rakazo is this shape you host, with a model key you bring.",
+      "Grok Bot is xAI's hosted product for named bots that can use a computer, keep routines, and pause for approval. The docs describe a cloud computer on your account, shared by the bots on that account. They do not describe installing the service yourself or connecting your own model provider. Grok Build and the older Grok-1 weights are separate open source releases, not this service. Grok Bot is included with paid Cursor plans and SuperGrok, listed at $30 a month. The free plan on the pricing page does not list it. Praci is this shape you host, with a model key you bring.",
     ],
   },
 ];
@@ -169,7 +169,7 @@ const OPENCLAW_CARD: RoundupCard = {
   href: OPENCLAW_ALTERNATIVE_PATH,
   heading: OPENCLAW_H1,
   paragraphs: [
-    "OpenClaw is an MIT-licensed agent you run yourself, stewarded by the OpenClaw Foundation. The getting-started guide installs a CLI and runs a wizard. The Gateway can stay in that terminal so you can chat before openclaw gateway install, the later background service. Later changes go through openclaw configure and a JSON config file. Chat apps are the main surface, alongside the Control UI. After Docker or the desktop app, Rakazo is just chat, managed from that chat, like Grok Bot.",
+    "OpenClaw is an MIT-licensed agent you run yourself, stewarded by the OpenClaw Foundation. The getting-started guide installs a CLI and runs a wizard. The Gateway can stay in that terminal so you can chat before openclaw gateway install, the later background service. Later changes go through openclaw configure and a JSON config file. Chat apps are the main surface, alongside the Control UI. After Docker or the desktop app, Praci is just chat, managed from that chat, like Grok Bot.",
   ],
 };
 
@@ -252,24 +252,24 @@ export const ROUNDUP_CHANGELOG = [
 ] as const;
 
 export const ROUNDUP_HOWTO = [
-  "Choose Rakazo when the agent should live on hardware you control, the model key should be one you bring, and the daily surface should stay a chat. That is the Grok Bot shape without the hosted service. The cost is the install: Docker or the desktop app, then an account and a model. After that, routines, memory, and approvals stay in the chat.",
+  "Choose Praci when the agent should live on hardware you control, the model key should be one you bring, and the daily surface should stay a chat. That is the Grok Bot shape without the hosted service. The cost is the install: Docker or the desktop app, then an account and a model. After that, routines, memory, and approvals stay in the chat.",
   "Choose Grok Bot when you already pay for Cursor or SuperGrok and you want xAI to host the computer. Choose Meta Muse for Meta's agent in the Muse app or WhatsApp, on a VM Meta runs. Choose OpenAI Dots when the agent should sit on an eligible ChatGPT plan and follow OpenAI's rules for what it may do alone. Choose Instinct when you want to text or call a hosted assistant. Choose Hark Pro for a hosted conversation with a free tier and a cloud computer Hark operates.",
-  "Choose OpenClaw when the assistant should live in chat apps you already use, and you are willing to run a Gateway and a config file. Choose Hermes Agent for MIT-licensed software and a desktop app that can reach a first message without the CLI. Messaging apps on Hermes still need a separate gateway. Rakazo does not import a Grok Bot account, a Muse VM, a dot, an Instinct thread, or a Hark vault. OpenClaw documents a Hermes migration for config, memory, skills, and, if you accept it, credentials. Read the linked page before you rely on a price, a country, or a connector.",
+  "Choose OpenClaw when the assistant should live in chat apps you already use, and you are willing to run a Gateway and a config file. Choose Hermes Agent for MIT-licensed software and a desktop app that can reach a first message without the CLI. Messaging apps on Hermes still need a separate gateway. Praci does not import a Grok Bot account, a Muse VM, a dot, an Instinct thread, or a Hark vault. OpenClaw documents a Hermes migration for config, memory, skills, and, if you accept it, credentials. Read the linked page before you rely on a price, a country, or a connector.",
 ] as const;
 
 export const ROUNDUP_FAQ: readonly FaqItem[] = [
   {
     question: "Which of these can I self-host?",
     answer:
-      "Rakazo, OpenClaw, and Hermes Agent. Rakazo publishes Docker images and a source checkout. OpenClaw's guide has you run the Gateway. Hermes installs on your machine, and the desktop app can start its own local backend. Grok Bot, Muse, Dots, Instinct, and Hark Pro are hosted. Their pages do not describe installing the service yourself. Hosted Rakazo Cloud is not generally available.",
+      "Praci, OpenClaw, and Hermes Agent. Praci publishes Docker images and a source checkout. OpenClaw's guide has you run the Gateway. Hermes installs on your machine, and the desktop app can start its own local backend. Grok Bot, Muse, Dots, Instinct, and Hark Pro are hosted. Their pages do not describe installing the service yourself. Hosted Praci Cloud is not generally available.",
   },
   {
     question: "Which let me bring my own model?",
     answer:
-      "Rakazo, OpenClaw, and Hermes Agent, including a local or compatible server. Grok Bot's docs do not describe your own provider. Muse's launch post names Muse Spark. Dots use GPT-6 Astra. Instinct's privacy policy and terms do not name a public model. Hark says it trains its own models and prioritizes them.",
+      "Praci, OpenClaw, and Hermes Agent, including a local or compatible server. Grok Bot's docs do not describe your own provider. Muse's launch post names Muse Spark. Dots use GPT-6 Astra. Instinct's privacy policy and terms do not name a public model. Hark says it trains its own models and prioritizes them.",
   },
   {
-    question: "Is Rakazo just chat, like Grok Bot?",
+    question: "Is Praci just chat, like Grok Bot?",
     answer:
       "Yes, after it is running. You install with Docker or the desktop app, create an account, and connect a model. A new bot interviews you, and you manage it from that chat. Grok Bot is also a chat for named bots. OpenClaw adds a command-line setup and a Gateway. Hermes Desktop can reach a first message without the CLI, and messaging apps use a separate gateway. Hark Pro, Muse, Dots, and Instinct are conversations too, on services you do not host.",
   },

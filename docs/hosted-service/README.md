@@ -1,14 +1,14 @@
-# Hosted paid Rakazo: private beta plan
+# Hosted paid Praci: private beta plan
 
 Status: plan, not implemented. Base: `main` at `a6f34f3ee`. Fork: `dennisonbertram/rakazo`
-(`app.rakazo.com` and its CI deploy belong to upstream and are out of scope). Line numbers below are
+(`app.praci.ai` and its CI deploy belong to upstream and are out of scope). Line numbers below are
 at that commit and drift; `~` marks a number confirmed only approximately on later `main`.
 
 The private beta ships exactly the blockers that stop the operator from charging for a shared
 deployment today: server-side subscription enforcement (runs and computer wake), a hard monthly AI
 allowance, hosted bootstrap, a complete authorization sweep, and a deploy runbook. Everything is off
 unless the operator sets the corresponding environment values, so self-hosters see no change
-(VISION.md: "A managed Rakazo service ... does not become a hidden dependency of the self-hosted
+(VISION.md: "A managed Praci service ... does not become a hidden dependency of the self-hosted
 core").
 
 Prices are TBD throughout: per-seat price and allowance amount are operator settings, not code.

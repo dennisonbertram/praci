@@ -1,6 +1,6 @@
 # Brief: Inbox sync-problem states (demo data, all invented)
 
-Rakazo is a founder's AI chief-of-staff app (dark, monochrome UI; status colours only destructive/success/warning;
+Praci is a founder's AI chief-of-staff app (dark, monochrome UI; status colours only destructive/success/warning;
 minimal copy; progressive disclosure). Screenshots show the Inbox page when Gmail sync has a problem.
 
 States in the screenshots:

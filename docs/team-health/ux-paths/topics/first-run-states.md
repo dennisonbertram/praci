@@ -5,7 +5,7 @@ Sources: README decisions 2, 3, 4, 5, 7; mockup states 2 to 5 (`docs/team-health
 ## STORY-201: Owner adds Team health with nothing connected
 **Type**: medium
 **Topic**: First run and data states
-**Persona**: Hana Voss, owner of a 12-person company space, has never connected a work tool to Rakazo.
+**Persona**: Hana Voss, owner of a 12-person company space, has never connected a work tool to Praci.
 **Goal**: Add Team health and find out what to do next.
 **Preconditions**: Hana is `SpaceMember.role == "owner"`. No Slack, Gmail, Calendar, GitHub or Linear connection.
 **Basis**: Mockup state 1 and state 4; README decision 1; Finance empty state ("Connect Mercury", finance README line 21).

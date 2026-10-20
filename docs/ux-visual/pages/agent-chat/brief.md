@@ -1,6 +1,6 @@
 # Brief: agent chat surfaces
 
-App: Rakazo, an AI chief-of-staff for startup founders. Bots (agents) run the founder's inbox, cash, cap table and investor documents. This is a MOCK demo; every name and number is invented.
+App: Praci, an AI chief-of-staff for startup founders. Bots (agents) run the founder's inbox, cash, cap table and investor documents. This is a MOCK demo; every name and number is invented.
 
 Page: the chat thread of a single agent (header with agent name and a "Computer and routines" button, message thread, composer with attach, mic and send). Left sidebar lists agents.
 

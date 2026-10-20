@@ -68,13 +68,13 @@ Undefined at step 1-3. A permission grant with no designed surface. Smallest fix
 ### Does it make sense?
 Broken at steps 2-3 if the owner page is reused: the summary line and group counts leak other people. Confusing at 4-5: owner-only chrome (Ask agent, coverage chips, manager actions). Smallest fix: a separate teammate layout with a server-built summary ("Your last 12 weeks"), no counts of others, no coverage chips, no Ask agent, and only a "Add a note" control, plus a line saying the owner sees notes.
 
-## STORY-504: Member with unverified email, and teammate who is not a Rakazo user
+## STORY-504: Member with unverified email, and teammate who is not a Praci user
 **Type**: medium
 **Topic**: Teammates, permissions and mobile
-**Persona**: Priya Nair signed up with an email that was never verified; Tomas Weber is on the engineering roster (GitHub, Slack) but has no Rakazo account.
+**Persona**: Priya Nair signed up with an email that was never verified; Tomas Weber is on the engineering roster (GitHub, Slack) but has no Praci account.
 **Goal**: Priya wants to see her card. Tomas is simply measured.
 **Preconditions**: Roster from first sync includes both. Deployment allows unverified emails.
-**Basis**: README decision 8 ("only from a verified login email (`emailVerified`)"), decision 4 (roster from tool member lists); discovery "Teammates who are not Rakazo users ... never see the page."
+**Basis**: README decision 8 ("only from a verified login email (`emailVerified`)"), decision 4 (roster from tool member lists); discovery "Teammates who are not Praci users ... never see the page."
 **Ideal path**: 3 steps. Priya verifies email, link is proposed, owner approves.
 **Alternate paths**: owner links manually (not specified).
 ### Steps
@@ -88,7 +88,7 @@ Broken at steps 2-3 if the owner page is reused: the summary line and group coun
 ### Edge Cases
 - An unverified account claiming an address that belongs to a roster person is the impersonation case decision 8 guards against; the guard exists, but the user-facing message does not.
 ### Does it make sense?
-Undefined at step 1-2 and 4. Smallest fix: if `emailVerified` is false, show on the request surface one line "Verify your email to request access" with the existing verify action; and add to the owner's page a roster note, "Tomas Weber is not a Rakazo user", so the owner can decide to tell him.
+Undefined at step 1-2 and 4. Smallest fix: if `emailVerified` is false, show on the request surface one line "Verify your email to request access" with the existing verify action; and add to the owner's page a roster note, "Tomas Weber is not a Praci user", so the owner can decide to tell him.
 
 ## STORY-505: Two owners in one space
 **Type**: medium
@@ -150,7 +150,7 @@ Undefined at steps 2-4. Smallest fix: one rule in decision 8: all reads require 
 4. Maya in the EU turns on the page → template is available; no region warning or acknowledgment is shown. The legal risk is only in a README. Undefined.
 5. Lena's right of access and erasure → no export or delete control; the plan has no purge job per person.
 ### Variations
-- Lena is not a Rakazo user (STORY-504): she has no surface at all.
+- Lena is not a Praci user (STORY-504): she has no surface at all.
 ### Edge Cases
 - The (i) popover says "Each person can see their own view", which is not true for non-users and unlinked members.
 ### Does it make sense?
@@ -159,7 +159,7 @@ Undefined at step 2-5; Confusing at step 3 because "hide" reads like opt-out but
 ## STORY-508: Desktop app
 **Type**: short
 **Topic**: Teammates, permissions and mobile
-**Persona**: Maya on the Rakazo desktop (Electron) app.
+**Persona**: Maya on the Praci desktop (Electron) app.
 **Goal**: Use Team health there as on web.
 **Preconditions**: Page added on web.
 **Basis**: README Goal ("Web and desktop ship first"); `SIDEBAR_PAGE_TEMPLATES` in `contracts/src/sidebar-pages.ts` (`platforms: ["web"]`, `available: false`); AGENTS.md (Electron hosts web UI).
@@ -203,7 +203,7 @@ Confusing at step 1: silent absence. Undefined at step 3-4. Smallest fix: keep v
 2. **Broken - a member cannot reach their card (STORY-501).** Sidebar pages are per user and `team-health` is `ownerOnly`, so linked members never get a row; the "popover" promise "Each person can see their own view" cannot be met. Fix: derive the row from an approved link, not from "+ Add page".
 3. **Undefined - "This is me" request and owner approval have no UI (STORY-501, 502).** Not in the mockup. Fix: Request button on `/app/team-health` for unlinked members; one approval row for the owner showing the linked roster person, with Approve / Decline and an inbox notification.
 4. **Undefined - demotion, leaving, deletion of data (STORY-506).** Fix: every read checks current owner role and live link; on demotion or leaving, delete that owner's rows for the space and hide the row.
-5. **Undefined - erasure, opt-out, EU (STORY-507).** "Hide" is cosmetic. Fix: owner action "Exclude {name}" that stops collection and deletes rows; one-time acknowledgment before first sync; non-user teammates (STORY-504) shown with a "not a Rakazo user" note so the owner can tell them.
+5. **Undefined - erasure, opt-out, EU (STORY-507).** "Hide" is cosmetic. Fix: owner action "Exclude {name}" that stops collection and deletes rows; one-time acknowledgment before first sync; non-user teammates (STORY-504) shown with a "not a Praci user" note so the owner can tell them.
 6. **Undefined - two owners and two spaces (STORY-505, 506).** Roster and feedback keying is unspecified. Fix: key `TeamMember`, links and feedback by space + owner, limit the roster to people relevant to that space, and say "Based on your connections" in the (i) popover.
 7. **Undefined - unverified email (STORY-504).** Fix: one-line "Verify your email to request access".
 8. **Confusing - teammate feedback and notes (STORY-503).** "Not an issue" and "Done" on one's own card would change the owner's view; notes visibility unstated. Fix: teammates get only "Add a note", with a line that the owner sees it.

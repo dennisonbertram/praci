@@ -1,6 +1,6 @@
 # Native SwiftUI iOS app: build brief
 
-What a native SwiftUI client for Rakazo needs, gathered from the current code (API, contracts, Expo app) and Apple's iOS 27.1 and iPhone Duo documentation. The design reference is [docs/design-system/ios](../design-system/ios/README.md).
+What a native SwiftUI client for Praci needs, gathered from the current code (API, contracts, Expo app) and Apple's iOS 27.1 and iPhone Duo documentation. The design reference is [docs/design-system/ios](../design-system/ios/README.md).
 
 Status: research only. Nothing here is built. The phased build plan is in [plan.md](plan.md). Items marked *(inference)* were read from code but not run.
 

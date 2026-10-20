@@ -1,4 +1,4 @@
-# App discovery: Rakazo Team health
+# App discovery: Praci Team health
 
 ## Scope
 The Team health feature only. Sources:
@@ -7,13 +7,13 @@ The Team health feature only. Sources:
 - Phases 2–6 (sync, signals API, page, agent, mobile) exist only as plan + mockup. Stories for them describe the planned behaviour and must cite the README decision or mockup state they rely on.
 
 ## Application type
-Rakazo: one product across web, Electron desktop (hosts the web UI) and Expo mobile. Multi-tenant: organizations → spaces → members (`SpaceMember.role`, "owner" or "member").
+Praci: one product across web, Electron desktop (hosts the web UI) and Expo mobile. Multi-tenant: organizations → spaces → members (`SpaceMember.role`, "owner" or "member").
 
 ## User roles (for this feature)
 - Space owner: adds/removes Team health (owner-only template), sees all cards, takes actions, approves self-view links, uses the Team health agent.
 - Linked teammate (space member whose membership the owner linked to a TeamMember row; verified email only proposes the link): sees only their own card, can add a note, no agent, cannot see others.
 - Unlinked space member: cannot add the page (not offered), sees nothing of Team health.
-- Teammates who are not Rakazo users: appear as people in the data, never see the page.
+- Teammates who are not Praci users: appear as people in the data, never see the page.
 
 ## Feature map
 - Sidebar pages: "+ Add page" row (hidden until list loaded and something is addable), template menu, added row with "…" → "Remove from sidebar", redirect to /app if removing the open page, inline error on failure.

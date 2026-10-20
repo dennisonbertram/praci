@@ -1,4 +1,4 @@
-# Self-hosting Rakazo
+# Self-hosting Praci
 
 The signed-in product is a long-running API, a Graphile Worker, Postgres, and a computer provider (Docker supervisor, E2B, Daytona, CreateOS, or Box). It is not a static site. The marketing site in `apps/www` can be hosted separately.
 
@@ -12,12 +12,12 @@ Compose bot homes mount only their own subdirectory of the application volume us
 
 ## Published images (no checkout)
 
-Pull Postgres and `ghcr.io/elie222/rakazo/app` into any empty folder. No clone or image build.
+Pull Postgres and `ghcr.io/dennisonbertram/praci/app` into any empty folder. No clone or image build.
 Requires Docker Engine 26+ (API 1.45+ for bot home volume subpaths), the Compose plugin, curl, and OpenSSL.
 
 ```bash
 mkdir -p rakazo && cd rakazo &&
-curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/install-images.sh &&
+curl -fsSLO https://raw.githubusercontent.com/dennisonbertram/praci/main/infra/compose/install-images.sh &&
 bash install-images.sh
 ```
 
@@ -29,7 +29,7 @@ optional providers before startup, run `bash install-images.sh --prepare-only`, 
 run `bash install-images.sh`. Flags may be combined in either order: `--prepare-only`, `--local`.
 
 `SANDBOX_PROVIDER` defaults to `docker`. The images Compose file runs a sandbox supervisor
-(from the app image, on the internal network only) and pulls `ghcr.io/elie222/rakazo/computer`.
+(from the app image, on the internal network only) and pulls `ghcr.io/dennisonbertram/praci/computer`.
 Signup and local Docker computers work without an E2B account. Optional remote providers: set
 `SANDBOX_PROVIDER` to `e2b`, `daytona`, `createos`, or `box` and add the matching API key. The published-images
 Compose stack requires `SANDBOX_SUPERVISOR_TOKEN` for every provider; leave it empty and `compose up` fails closed.
@@ -107,7 +107,7 @@ It takes two parts, both opt-in:
    ```
 
    On a no-checkout install, download it first:
-   `curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/restrict-computer-egress.sh`.
+   `curl -fsSLO https://raw.githubusercontent.com/dennisonbertram/praci/main/infra/compose/restrict-computer-egress.sh`.
    The script drops forwarded traffic from `rakazo-c*` bridges to all non-public IPv4/IPv6
    destinations via the `DOCKER-USER` chain, adds an `INPUT` drop so computers cannot open
    connections to the host (established replies to host-initiated control and screen
@@ -203,7 +203,7 @@ AUTH_PASSWORD_ENABLED=true
 OIDC_ALLOW_SIGNUP_BYPASS=false
 ```
 
-The issuer must be HTTPS and exactly match the discovery document's issuer. Rakazo loads
+The issuer must be HTTPS and exactly match the discovery document's issuer. Praci loads
 `<issuer>/.well-known/openid-configuration`, verifies ID tokens against discovery JWKS with
 issuer, audience and nonce checks, and uses authorization codes with PKCE. Additional scopes
 may be space- or comma-separated; `openid email profile` are always requested. `OIDC_NAME`
@@ -261,20 +261,20 @@ invalid, expired or wrong-account codes fail. No password needs to be created fo
 ### Verification and password recovery email
 
 Password changes for signed-in users require no email configuration. Forgotten-password recovery
-appears on sign-in only when a transactional email provider is available. Rakazo uses a
+appears on sign-in only when a transactional email provider is available. Praci uses a
 provider-neutral contract and ships an SMTP adapter, so Amazon SES, Resend, and self-hosted SMTP
 servers use the same configuration:
 
 ```env
 SMTP_URL=smtps://smtp-user:replace-with-password@smtp.example.com:465
-EMAIL_FROM=Rakazo <no-reply@example.com>
+EMAIL_FROM=Praci <no-reply@example.com>
 ```
 
 For Resend, use `smtp.resend.com`, username `resend`, and an API key as the password. For Amazon
 SES, use the regional SMTP endpoint and SES SMTP credentials; these are different from ordinary AWS
 access keys. Verify the sender/domain with the provider before testing delivery. Keep credentials in
 `.env`, never in tracked files. `smtps://` uses implicit TLS; `smtp://` is also supported but requires
-STARTTLS. Rakazo rejects configuration that disables TLS or certificate verification.
+STARTTLS. Praci rejects configuration that disables TLS or certificate verification.
 
 Local source development can use the offline email emulator instead. It captures email without
 contacting a provider:
@@ -356,7 +356,7 @@ RAKAZO_LOCAL_MAX_TOKENS=4096
 RAKAZO_LOCAL_VISION_MODELS=qwen3-vl
 ```
 
-The loopback default is suitable when running Rakazo from a source checkout. From containers,
+The loopback default is suitable when running Praci from a source checkout. From containers,
 prefer a stable LAN RFC1918 address (not Compose service DNS alone). On Docker Desktop,
 `host.docker.internal` also works.
 On Docker Desktop, a bot computer shell can often reach services bound to host `127.0.0.1`
@@ -364,7 +364,7 @@ through that same hostname. Do not run sensitive unauthenticated services on loo
 bots run, or firewall / block that path. Linux does not get `host.docker.internal` the same
 way by default.
 Only configure an endpoint you control: prompts, attachments, and tool results sent to that model
-leave Rakazo through this URL. Leave `RAKAZO_LOCAL_MODELS` blank to disable the provider.
+leave Praci through this URL. Leave `RAKAZO_LOCAL_MODELS` blank to disable the provider.
 
 Each user can also connect their own OpenAI-compatible endpoint from **Connect a model** /
 **Settings → Models** on web and mobile. Choose **OpenAI-compatible**, enter the server base URL
@@ -387,7 +387,7 @@ Existing connections default to disabled. Reconnect former Qwen-list or deployme
 via **Settings → Models** and turn it on; the old environment list is no longer read.
 
 Enabled connections default to medium thinking. Web and desktop expose **Thinking** in a bot's
-advanced settings; mobile inherits the same backend policy. Rakazo sends standard
+advanced settings; mobile inherits the same backend policy. Praci sends standard
 `reasoning_effort` (`minimal`, `low`, `medium`, `high`, or `none` when off); the server owns
 model-specific translation. Leave **Supports thinking** off when the server lacks standard effort
 support. Existing token limits still apply; effort is not a separate reasoning-token budget.
@@ -403,7 +403,7 @@ Photon (photon.codes) runs a hosted iMessage line, so no Mac is needed. Its free
 1. Create a Photon project and copy its project ID and project secret.
 2. Register a webhook for your public API URL, `<public API url>/api/v1/messaging/webhook/photon`, and copy the signing secret Photon shows once.
 3. Set `PHOTON_PROJECT_ID`, `PHOTON_PROJECT_SECRET` and `PHOTON_WEBHOOK_SECRET`, then restart. Photon turns on only when all three are set. A bad value turns off Photon and leaves the other platforms running.
-4. In Rakazo, link an agent to Photon from the messaging settings and text the link code to the Photon number.
+4. In Praci, link an agent to Photon from the messaging settings and text the link code to the Photon number.
 
 What to know before turning it on:
 
@@ -412,7 +412,7 @@ What to know before turning it on:
 - The first reply in a new conversation starts with "You're messaging an AI assistant.", because Photon's terms (3.6) require it. You must also keep your users' consent records and honor opt-outs.
 - The Finance and Legal agents cannot be linked to Photon, because its terms (3.8(b)) forbid automated financial or legal advice without professional supervision.
 - Photon retries a webhook six times and then drops it, so messages sent while the API is down for longer than that are lost.
-- Limits: 5 requests per second per project, 5,000 outbound messages per server per day, and 50 new conversations per line per day. Rakazo only replies; it never starts a conversation.
+- Limits: 5 requests per second per project, 5,000 outbound messages per server per day, and 50 new conversations per line per day. Praci only replies; it never starts a conversation.
 - `PHOTON_IMESSAGE_ADDRESS` is optional and overrides the iMessage endpoint (a host, or an http(s) URL).
 
 ## Choosing a computer provider
@@ -420,23 +420,23 @@ What to know before turning it on:
 The Electron desktop app is a client of the same API. Docker and E2B still apply. On first launch, Electron asks the deployment owner whether bots should keep using Docker or run on this Mac as you. `SANDBOX_PROVIDER=desktop` is a separate, explicit provider that always runs commands on the service host.
 
 - **Published images** (`docker-compose.images.yml`) default to `SANDBOX_PROVIDER=docker` with a
-  local supervisor and published `ghcr.io/elie222/rakazo/computer` image. No E2B account required.
+  local supervisor and published `ghcr.io/dennisonbertram/praci/computer` image. No E2B account required.
   Optional: set `e2b`, `daytona`, `createos`, or `box` plus the matching API key for remote computers.
 - **Docker** is the quick-start default for published images and for a source checkout / full local
   Compose stack. Workspace bots share a persistent Team Computer by default; Private computers are
   optional. Keep the supervisor private, as the included Compose files do.
-- **E2B** runs bot computers away from the Rakazo host and is a good choice for public or multi-user
-  production deployments. Rakazo checkpoints the portable workspace and browser-profile directory to
+- **E2B** runs bot computers away from the Praci host and is a good choice for public or multi-user
+  production deployments. Praci checkpoints the portable workspace and browser-profile directory to
   object storage (see [Object storage](#object-storage-for-artifacts-and-agent-homes)); the E2B disk is
   a runtime cache, not the durable source of truth.
 - **Daytona** provides the same remote-computer contract through Daytona sandboxes. Configure
   `DAYTONA_API_KEY` and optionally `DAYTONA_API_URL` / `DAYTONA_TARGET` / `DAYTONA_SNAPSHOT`.
 - **CreateOS** provides the same remote-computer contract through CreateOS desktop sandboxes.
   Configure `CREATEOS_SANDBOX_API_KEY` and optionally `CREATEOS_SANDBOX_BASE_URL`,
-  `CREATEOS_SANDBOX_SHAPE`, or `CREATEOS_SANDBOX_ROOTFS`. Rakazo defaults to
+  `CREATEOS_SANDBOX_SHAPE`, or `CREATEOS_SANDBOX_ROOTFS`. Praci defaults to
   `https://api.sb.createos.sh`, `s-2vcpu-2gb`, and `desktop:1`.
 - **Box by ASCII** provides a managed Linux desktop through `BOX_API_KEY` and optionally
-  `BOX_API_URL`. Rakazo always creates or resumes boxes with `noEnv: true`, keeps the portable
+  `BOX_API_URL`. Praci always creates or resumes boxes with `noEnv: true`, keeps the portable
   workspace under `/home/user/rakazo-home`, and refreshes a two-hour TTL. Box uses the shared Linux
   desktop runtime and protected port routes for concurrent bot desktops. Each bot has its own
   persistent Chrome profile; logins are not shared between bots.
@@ -465,7 +465,7 @@ with a one-shot `seaweedfs-init` service that creates the bucket. Both belong to
   `bash install-images.sh --enable-bundled-storage`. It appends the profile and generated credentials to
   `.env` (it refuses if `.env` already sets `RAKAZO_S3_*`). Files that were already stored under
   `DATA_DIR/artifacts`, including Data room files, stay readable: when an object is not in the bucket,
-  Rakazo reads the old local file. They are not copied, so keep `DATA_DIR` in your backups.
+  Praci reads the old local file. They are not copied, so keep `DATA_DIR` in your backups.
 - **`docker-compose.prod.yml` and the source-checkout stack** do not edit `.env`. To use the bundled
   store, add `COMPOSE_PROFILES=bundled-s3`, `RAKAZO_S3_ENDPOINT=http://seaweedfs:8333`,
   `RAKAZO_S3_BUCKET=rakazo`, `RAKAZO_S3_FORCE_PATH_STYLE=true` and your own
@@ -488,7 +488,7 @@ variables together; any `RAKAZO_S3_*` variable that is set turns object storage 
 - `RAKAZO_S3_REGION`: defaults to `us-east-1`, which AWS, R2 and SeaweedFS all accept.
 - `RAKAZO_S3_FORCE_PATH_STYLE`: set to `true` for SeaweedFS, MinIO and other stores without bucket subdomains.
 - Give the access key `s3:ListBucket` on the bucket as well as object read, write and delete. Without
-  it, AWS S3 answers 403 instead of 404 for a missing object, and Rakazo treats a 403 as an error
+  it, AWS S3 answers 403 instead of 404 for a missing object, and Praci treats a 403 as an error
   rather than looking for an older copy under `DATA_DIR/artifacts`.
 - `RAKAZO_S3_PREFIX`: optional key prefix.
 
@@ -515,7 +515,7 @@ host that provisions the computer installs the current snapshot there when the f
 while the computer is being started and the supervisor confirms its container is not running (for
 example after the computer ran on another provider); if the supervisor cannot answer, the folder is
 left alone and the workspace is restored through the container instead. A replacement is extracted
-into a new folder beside it and renamed into place; Rakazo never writes a snapshot into a folder a
+into a new folder beside it and renamed into place; Praci never writes a snapshot into a folder a
 container can change. From then on that host saves from the folder. Any other host, and any host
 whose folder is older than the current revision, reads the home from a per-revision copy under
 `DATA_DIR/home-cache` and saves edits from a private copy, never from its own folder, so API and
@@ -524,7 +524,7 @@ keeps itself under 2 GiB; scratch folders a crashed process left behind are remo
 Remote providers (E2B, Daytona and so on) restore from the snapshot.
 
 An existing deployment migrates on its own. The first time a Computer's home is used and it has no
-snapshot, Rakazo uploads the existing `DATA_DIR/homes/<key>` directory and uses the snapshot from then
+snapshot, Praci uploads the existing `DATA_DIR/homes/<key>` directory and uses the snapshot from then
 on. The local directory is not deleted. Set `RAKAZO_AGENT_HOME_STORE=local` to keep homes only on local
 disk; this is a development opt-out and is not safe with more than one API or worker host.
 
@@ -825,9 +825,9 @@ this repository that is:
 
 | Image | Contents |
 | --- | --- |
-| `ghcr.io/elie222/rakazo/app` | api, worker, web, and sandbox supervisor — one image, multiple commands |
-| `ghcr.io/elie222/rakazo/computer` | Linux desktop used as each bot computer |
-| `ghcr.io/elie222/rakazo/updater` | the updater sidecar, plus the Docker CLI |
+| `ghcr.io/dennisonbertram/praci/app` | api, worker, web, and sandbox supervisor — one image, multiple commands |
+| `ghcr.io/dennisonbertram/praci/computer` | Linux desktop used as each bot computer |
+| `ghcr.io/dennisonbertram/praci/updater` | the updater sidecar, plus the Docker CLI |
 
 `infra/compose/docker-compose.images.yml` is the no-checkout path for those app and computer tags
 plus Postgres. The supervisor runs from the app image on the internal network only (not a separate
