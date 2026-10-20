@@ -716,11 +716,20 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await inboxRefresh(deps, a, {});
       expect(await status()).toEqual({ failed: [connA], reconnect: [connA] });
 
+      // A failed sync throttles the next one for 60 seconds, so age the error first.
+      await prisma.mailSyncState.update({
+        where: { connectionId: connA },
+        data: { lastErrorAt: new Date(Date.now() - 120_000) },
+      });
       gmail.failNext(503, { times: 1000 });
       await inboxRefresh(deps, a, {});
       expect(await status()).toEqual({ failed: [connA], reconnect: [] });
 
       // One message cannot be hydrated (rate limit): the rest loaded, so this is not a failure.
+      await prisma.mailSyncState.update({
+        where: { connectionId: connA },
+        data: { lastErrorAt: new Date(Date.now() - 120_000) },
+      });
       gmail.failNext(429, { times: 1000, urlIncludes: "messages/a-1" });
       await inboxRefresh(deps, a, {});
       expect(await status()).toEqual({ failed: [], reconnect: [] });
