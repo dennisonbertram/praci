@@ -291,6 +291,7 @@ import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
+import { appPath } from "../lib/integrations";
 import { findLegalAgent } from "../lib/legal-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
@@ -5170,6 +5171,14 @@ export function ShellPage() {
             onRefreshed={refreshInboxUnread}
             onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
             onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
+            onAllowMailRules={(connectionId) =>
+              navigate(
+                appPath(
+                  { connectorId: "google", slug: "gmail" },
+                  { reconnect: connectionId, next: "/app/inbox?cleanup=1" },
+                ),
+              )
+            }
             spaceName={
               spaces.length > 1
                 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name

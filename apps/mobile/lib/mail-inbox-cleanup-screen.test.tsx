@@ -330,6 +330,27 @@ describe("cleanup screen", () => {
     });
   });
 
+  it("notes a Gmail filter that could not be added, and offers no reconnect", async () => {
+    const skipping = (address: string, rule?: "full" | "failed" | "active" | "pending") =>
+      sender(address, { skipInbox: true, preselected: false, ...(rule ? { rule } : {}) });
+    listReply = () => ({
+      accounts: [{ connectionId: "c1", label: "Me", senderRules: "needs_permission" }],
+      senders: [
+        skipping("full@lists.example.test", "full"),
+        skipping("failed@lists.example.test", "failed"),
+        skipping("active@lists.example.test", "active"),
+        skipping("pending@lists.example.test", "pending"),
+        skipping("plain@lists.example.test"),
+      ],
+      syncedAt: null,
+    });
+    await render();
+    const content = container.textContent ?? "";
+    expect(content.match(/Gmail filter limit reached/g)).toHaveLength(1);
+    expect(content.match(/Couldn't add Gmail filter/g)).toHaveLength(1);
+    expect(content).not.toContain("Also in Gmail");
+  });
+
   it("lists the history and undoes an action after a confirm", async () => {
     historyReply = () => ({
       actions: [

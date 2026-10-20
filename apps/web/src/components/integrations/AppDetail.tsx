@@ -166,6 +166,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   const [removingRow, setRemovingRow] = useState<Connection | null>(null);
   /** The signed-out account a reconnect replaces once the new sign-in succeeds. */
   const [replacing, setReplacing] = useState<Connection | null>(null);
+  /** Set when the sign-in asks for permission to make Gmail filters, on top of the usual ones. */
+  const [permission, setPermission] = useState<"mail_rules" | undefined>();
   const [disconnecting, setDisconnecting] = useState(false);
   const [confirmingWrites, setConfirmingWrites] = useState<Connection | null>(null);
   const [busy, setBusy] = useState(false);
@@ -188,6 +190,27 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       setAdding(true);
     }
   }, [data.loaded, connectedCount, item, next, navigate, search, location.key]);
+
+  // `?reconnect=<connection>&permission=mail_rules` opens the sign-in that replaces that connection,
+  // asking for permission to make Gmail filters. It waits for a click, like `?connect=1`.
+  const reconnectId = search.get("reconnect");
+  useEffect(() => {
+    if (
+      !reconnectId ||
+      search.get("permission") !== "mail_rules" ||
+      !data.loaded ||
+      !item ||
+      handledKey.current === location.key
+    )
+      return;
+    handledKey.current = location.key;
+    const row = connected.find((entry) => entry.id === reconnectId);
+    if (!row) return;
+    setReplacing(row);
+    setPermission("mail_rules");
+    setConfirmFirst(true);
+    setAdding(true);
+  }, [data.loaded, item, connected, reconnectId, search, location.key]);
 
   useEffect(() => {
     if (connectedCount === 0) {
@@ -301,10 +324,12 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
         confirmFirst={confirmFirst}
         accountName={replacing?.displayName}
         replacesConnectionId={replacing?.id}
+        permission={permission}
         onClose={() => {
           setAdding(false);
           setConfirmFirst(false);
           setReplacing(null);
+          setPermission(undefined);
         }}
         onConnected={
           replacing || next
