@@ -868,6 +868,42 @@ export interface MessagingSendResult {
   handle: string;
 }
 
+/** One direct iMessage conversation on the deployment's own line. */
+export interface IMessageConversation {
+  /** Opaque provider-prefixed thread id; pass it to read or send. */
+  threadId: string;
+  /** The other person's E.164 number or email. */
+  handle: string;
+  displayName?: string;
+  /** ISO time of the newest message. */
+  lastMessageAt: string;
+  snippet: string;
+}
+
+export interface IMessageHistoryMessage {
+  id: string;
+  direction: "inbound" | "outbound";
+  /** ISO time. */
+  at: string;
+  /** Message text, untrusted. Attachments appear as `[attachment: <mime type>]`, never as links. */
+  text: string;
+}
+
+/** Read access to the history of a deployment's own iMessage line. Direct iMessage chats only. */
+export interface IMessageHistory {
+  /** Newest conversations first. */
+  listConversations(
+    options: { limit: number },
+    context: AdapterContext,
+  ): Promise<IMessageConversation[]>;
+  /** Newest page first; `cursor` is the previous page's `nextCursor`. */
+  readConversation(
+    threadId: string,
+    options: { limit: number; cursor?: string },
+    context: AdapterContext,
+  ): Promise<{ handle: string; messages: IMessageHistoryMessage[]; nextCursor?: string }>;
+}
+
 /** Provider-neutral inbound message after platform webhook parsing. */
 export type TeamChatMessageKind = "direct" | "mention" | "ambient";
 

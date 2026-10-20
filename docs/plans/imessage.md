@@ -1,6 +1,6 @@
 # iMessage through Photon and BlueBubbles
 
-Status: approved plan; phases 1 and 2 done (phase 2 notes at the end). Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
+Status: approved plan; phases 1, 2 and 7 done (notes at the end). Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
 
 ## Owner answers
 
@@ -218,3 +218,12 @@ All earlier questions are answered in "Owner answers". Remaining: confirm the ex
 - **Disclosure (terms 3.6).** The first outbound message to a Photon conversation is preceded by "You're messaging an AI assistant." The identity's `disclosedAt` records it. The wording still needs the owner's review.
 - **Finance and Legal (terms 3.8(b)).** Refused when a Photon identity is pointed at either agent (`messaging.identities.setBot`), when a link code is issued while Photon is the only provider, and when a code for either agent is sent over Photon (the code is kept and a linked sender is told why).
 - **Not verified live.** Everything above runs against an offline fake; see the PR notes for what needs a real Photon account (the HTTP endpoint address, the inbound payload's transport field, token minting, `clientMessageId` deduplication).
+
+## Phase 7 (agent tools): done
+
+- **Tools.** `imessage_list_conversations` and `imessage_read` (read, no card) and `imessage_send` (write). They act only on the deployment's own line: the second Apple ID on the BlueBubbles Mac, or the Photon line. Direct iMessage chats only; groups and SMS/RCS are never listed, read or sent to.
+- **History.** `BlueBubblesAdapter` and `PhotonAdapter` implement `IMessageHistory` (`packages/adapter-kit/src/types.ts`) and the surface exposes it through `MessagingSurface.history(provider)`. BlueBubbles uses `/chat/query` and `/message/query`. Photon has no chat-list call, so conversations are built from the newest 500 messages (`messages.listRecent`), and a message page comes from `messages.listInChat`.
+- **Approval.** `imessage_send` is in the explicit-approval set (`action-approval.ts`), so no saved rule or Auto Review can allow it and the card has no "Always allow" button. The card shows the recipient, the line and the full text.
+- **Who gets the tools.** Same rule as mail (`mailToolsAllowed`): the owner's own direct run with an owner-initiated trigger. Not on messaging, group, `bot_message` or webhook runs. Photon is withheld from the Finance and Legal agents. Tool results are marked `untrusted` and the shared guidance names text messages as untrusted content.
+- **Sending.** The send reuses the adapter path (plain-text conversion, 2000-character chunks, five-chunk cap) with the run's effect key as the send id, and the effect record makes an approved send run once. On Photon, the first message to a person with no history is preceded by the AI disclosure, and the card says so.
+- **Not covered.** The 140-message consecutive cap and Photon's 50 new conversations per day are not applied to tool sends. BlueBubbles sending to a handle with no existing chat, the real `/chat/query` and `/message/query` response shapes, and Photon's list calls are checked only against offline emulators.

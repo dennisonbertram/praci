@@ -1,6 +1,12 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import { isIP } from "node:net";
+import type {
+  AdapterContext,
+  IMessageConversation,
+  IMessageHistory,
+  IMessageHistoryMessage,
+} from "@rakazo/adapter-kit";
 import { isCloudMetadataHost } from "@rakazo/contracts";
 import type {
   Adapter,
@@ -110,6 +116,28 @@ export interface BlueBubblesRawMessage {
   handle?: BlueBubblesHandle | null;
   chats?: { guid?: string }[];
   attachments?: { guid?: string; mimeType?: string | null; transferName?: string | null }[];
+}
+
+/** A chat as /chat/query returns it with `with: ["lastMessage"]`. */
+interface BlueBubblesRawChat {
+  guid?: string;
+  displayName?: string | null;
+  lastMessage?: BlueBubblesRawMessage | null;
+}
+
+const HISTORY_CHAT_PAGE = 100;
+const HISTORY_SNIPPET_CHARS = 120;
+/** One message of history is cut here so a single long text cannot fill the model's context. */
+export const HISTORY_TEXT_CHARS = 4000;
+
+/** History text on one line, cut at `max` characters. */
+export function clipHistoryText(text: string, max: number): string {
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+/** An offset cursor, as the tool gets it back from the model: anything but a small integer starts over. */
+export function parseOffsetCursor(cursor: string | undefined): number {
+  return cursor && /^\d{1,6}$/.test(cursor) ? Number(cursor) : 0;
 }
 
 export interface BlueBubblesAdapterConfig {
@@ -237,7 +265,9 @@ function sameSecret(given: string | null, expected: string): boolean {
   return timingSafeEqual(a, b);
 }
 
-export class BlueBubblesAdapter implements Adapter<BlueBubblesThreadId, BlueBubblesRawMessage> {
+export class BlueBubblesAdapter
+  implements Adapter<BlueBubblesThreadId, BlueBubblesRawMessage>, IMessageHistory
+{
   readonly name = "bluebubbles";
   readonly userName = "rakazo";
   readonly persistMessageHistory = true;
@@ -499,6 +529,79 @@ export class BlueBubblesAdapter implements Adapter<BlueBubblesThreadId, BlueBubb
       lastGuid = (last as { guid?: string }).guid ?? lastGuid;
     }
     return { id: lastGuid, threadId, raw: last as BlueBubblesRawMessage };
+  }
+
+  // ponytail: one page of 100 chats, so a line with many groups or SMS chats can list fewer than
+  // `limit`; page with `offset` if that bites.
+  async listConversations(
+    options: { limit: number },
+    _context: AdapterContext,
+  ): Promise<IMessageConversation[]> {
+    const chats = await this.api<BlueBubblesRawChat[]>("/chat/query", {
+      method: "POST",
+      body: { limit: HISTORY_CHAT_PAGE, offset: 0, sort: "lastmessage", with: ["lastMessage"] },
+    });
+    const conversations: IMessageConversation[] = [];
+    for (const chat of chats ?? []) {
+      const direct = parseDirectChatGuid(chat.guid);
+      const handle = normalizeIMessageHandle(direct?.id ?? "");
+      if (!chat.guid || direct?.service !== "iMessage" || !handle) continue;
+      const last = chat.lastMessage;
+      const text = last ? this.contentOf(last).replaceAll(/\s+/g, " ") : "";
+      conversations.push({
+        threadId: this.encodeThreadId({ chatGuid: chat.guid }),
+        handle,
+        ...(chat.displayName?.trim() ? { displayName: chat.displayName.trim() } : {}),
+        lastMessageAt: new Date(last?.dateCreated ?? 0).toISOString(),
+        snippet: clipHistoryText(text, HISTORY_SNIPPET_CHARS),
+      });
+      if (conversations.length >= options.limit) break;
+    }
+    return conversations;
+  }
+
+  async readConversation(
+    threadId: string,
+    options: { limit: number; cursor?: string },
+    _context: AdapterContext,
+  ): Promise<{ handle: string; messages: IMessageHistoryMessage[]; nextCursor?: string }> {
+    const { chatGuid } = this.decodeThreadId(threadId);
+    const direct = parseDirectChatGuid(chatGuid);
+    const handle = normalizeIMessageHandle(direct?.id ?? "");
+    if (direct?.service !== "iMessage" || !handle) {
+      throw new BlueBubblesError("BlueBubbles history is limited to direct iMessage chats", false);
+    }
+    const offset = parseOffsetCursor(options.cursor);
+    const rows = await this.api<BlueBubblesRawMessage[]>("/message/query", {
+      method: "POST",
+      body: {
+        chatGuid,
+        limit: options.limit,
+        offset,
+        sort: "DESC",
+        with: ["chat", "handle", "attachment"],
+      },
+    });
+    const messages = (rows ?? [])
+      // Reactions and group events are not conversation text.
+      .filter(
+        (row) => row.guid && !row.itemType && !row.groupActionType && !row.associatedMessageGuid,
+      )
+      .map((row) => ({
+        id: row.guid,
+        direction: row.isFromMe ? ("outbound" as const) : ("inbound" as const),
+        at: new Date(row.dateCreated ?? 0).toISOString(),
+        text: clipHistoryText(this.contentOf(row), HISTORY_TEXT_CHARS),
+      }))
+      .filter((message) => message.text)
+      .reverse();
+    return {
+      handle,
+      messages,
+      ...((rows ?? []).length >= options.limit
+        ? { nextCursor: String(offset + options.limit) }
+        : {}),
+    };
   }
 
   /** Ping plus server info, for setup checks. */

@@ -17,6 +17,19 @@ export interface PhotonEmulatorMessage {
   content?: Record<string, unknown>;
 }
 
+export interface PhotonEmulatorHistoryMessage {
+  from: string;
+  text: string;
+  isFromMe?: boolean;
+  /** "SMS" exercises the transport gate. */
+  service?: "iMessage" | "SMS";
+  /** Defaults to the direct chat `any;-;<from>`. A `;+;` guid is a group. */
+  chatGuid?: string;
+  at?: Date;
+  attachmentMime?: string;
+  reaction?: boolean;
+}
+
 /**
  * Deterministic Photon for offline tests: a loopback HTTP server that speaks
  * the iMessage HTTP routes the SDK calls, a fetch that answers the Spectrum
@@ -28,6 +41,8 @@ export class PhotonEmulator {
   readonly projectSecret = "emulated-project-secret";
   readonly webhookSecret = "a".repeat(64);
   readonly line = "+15550009999";
+  /** Messages the history routes serve. */
+  readonly history: (PhotonEmulatorHistoryMessage & { guid: string; at: Date })[] = [];
   readonly sent: { chatGuid: string; text: string; clientMessageId: string; guid: string }[] = [];
   /** Request paths the iMessage server saw, in order. */
   readonly requests: string[] = [];
@@ -43,7 +58,8 @@ export class PhotonEmulator {
       const chunks: Buffer[] = [];
       request.on("data", (chunk: Buffer) => chunks.push(chunk));
       request.on("end", () => {
-        const path = (request.url ?? "").split("?")[0] ?? "";
+        const url = new URL(request.url ?? "", "http://photon.test");
+        const path = url.pathname;
         this.requests.push(`${request.method} ${path}`);
         if (request.headers.authorization !== "Bearer emulated-line-token") {
           response.writeHead(401).end();
@@ -75,6 +91,42 @@ export class PhotonEmulator {
                 dateCreated: new Date().toISOString(),
                 chatGuids: [body.chatGuid],
               },
+            }),
+          );
+          return;
+        }
+        if (path === "/v1/messages:listRecent" || path === "/v1/messages:listByChat") {
+          const chatGuid = url.searchParams.get("chatGuid");
+          const pageSize = Number(url.searchParams.get("pageSize") ?? 100);
+          const offset = Number(url.searchParams.get("pageToken") || 0);
+          const rows = this.history
+            .filter((m) => path === "/v1/messages:listRecent" || m.chatGuid === chatGuid)
+            .sort((a, b) => b.at.getTime() - a.at.getTime());
+          const page = rows.slice(offset, offset + pageSize);
+          response.writeHead(200, { "content-type": "application/json" }).end(
+            JSON.stringify({
+              messages: page.map((m) => ({
+                guid: m.guid,
+                chatGuids: [m.chatGuid],
+                isFromMe: m.isFromMe ?? false,
+                dateCreated: m.at.toISOString(),
+                sender: {
+                  address: m.from,
+                  service: `CHAT_SERVICE_TYPE_${(m.service ?? "iMessage") === "SMS" ? "SMS" : "IMESSAGE"}`,
+                },
+                ...(m.reaction
+                  ? { reaction: { kind: "MESSAGE_REACTION_KIND_LIKE", emoji: "" } }
+                  : {}),
+                content: {
+                  text: m.text,
+                  attachments: m.attachmentMime
+                    ? [{ guid: "att-1", fileName: "photo.heic", mimeType: m.attachmentMime }]
+                    : [],
+                },
+              })),
+              ...(offset + pageSize < rows.length
+                ? { nextPageToken: String(offset + pageSize) }
+                : {}),
             }),
           );
           return;
@@ -117,6 +169,16 @@ export class PhotonEmulator {
       data: { type: "shared", token: "emulated-line-token", expiresIn: 3600 },
     });
   };
+
+  /** Store a message the history routes will serve. */
+  addMessage(input: PhotonEmulatorHistoryMessage): void {
+    this.history.push({
+      ...input,
+      chatGuid: input.chatGuid ?? `any;-;${input.from}`,
+      at: input.at ?? new Date(),
+      guid: this.nextGuid("hist"),
+    });
+  }
 
   /** Next N sends fail with this HTTP status and no body. */
   failNextSends(count: number, status = 500): void {
@@ -183,6 +245,7 @@ export function createEmulatedPhotonPlatform(
     provider: "photon",
     capabilities: { direct: true, groups: false, typing: true },
     adapter,
+    history: adapter,
     directThreadId: (address) => adapter.directThreadId(address),
     transport: photonTransport,
   };

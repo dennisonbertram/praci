@@ -41,6 +41,7 @@ import type {
   ConnectorProxyResponse,
   ConnectorTool,
   ControlLeaseRef,
+  IMessageHistory,
   InboxClassifierCapabilities,
   InboxClassifierMessage,
   InboxClassifyResult,
@@ -569,6 +570,8 @@ export interface MessagingSurface {
    * message delivery, and silently no-ops on platforms without support.
    */
   sendTyping(threadId: string, context: AdapterContext): Promise<void>;
+  /** History of the provider's iMessage line, or undefined when it cannot be read (agent iMessage tools). */
+  history?(provider: string): IMessageHistory | undefined;
   /**
    * Start the surface eagerly instead of waiting for the first inbound
    * webhook or outbound send to touch it. Needed for adapters that pull

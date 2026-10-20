@@ -31,6 +31,8 @@ describe("toolRequiresApproval", () => {
     expect(toolRequiresApproval("cap_table_update", false)).toBe(false);
     expect(toolRequiresExplicitApproval("contacts_save")).toBe(false);
     expect(toolRequiresExplicitApproval("create_space")).toBe(true);
+    expect(toolRequiresExplicitApproval("imessage_send")).toBe(true);
+    expect(toolRequiresExplicitApproval("imessage_read")).toBe(false);
     expect(toolRequiresExplicitApproval("save_shared_memory")).toBe(false);
     expect(toolRequiresExplicitApproval("archive_bot")).toBe(false);
   });

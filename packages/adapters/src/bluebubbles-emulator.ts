@@ -17,6 +17,8 @@ export interface BlueBubblesEmulatorMessage {
   associatedMessageGuid?: string;
   dateCreated?: number;
   attachmentMime?: string;
+  /** Chat the message belongs to; defaults to the direct chat with `from`. A `;+;` guid is a group. */
+  chatGuid?: string;
 }
 
 /**
@@ -77,13 +79,42 @@ export class BlueBubblesEmulator {
       return Response.json({ status: 200, data: { guid, tempGuid: body.tempGuid } });
     }
     if (path === "/message/query" && method === "POST") {
-      const body = JSON.parse(String(init?.body)) as { after?: number; limit?: number };
+      const body = JSON.parse(String(init?.body)) as {
+        after?: number;
+        limit?: number;
+        offset?: number;
+        chatGuid?: string;
+        sort?: string;
+      };
       this.queries.push(body);
+      const direction = body.sort === "DESC" ? -1 : 1;
       const rows = [...this.messages.values()]
         .filter((m) => (m.dateCreated ?? 0) >= (body.after ?? 0))
-        .sort((a, b) => (a.dateCreated ?? 0) - (b.dateCreated ?? 0))
-        .slice(0, body.limit ?? 100);
+        .filter((m) => !body.chatGuid || m.chats?.[0]?.guid === body.chatGuid)
+        .sort((a, b) => direction * ((a.dateCreated ?? 0) - (b.dateCreated ?? 0)))
+        .slice(body.offset ?? 0, (body.offset ?? 0) + (body.limit ?? 100));
       return Response.json({ status: 200, data: rows });
+    }
+    if (path === "/chat/query" && method === "POST") {
+      const body = JSON.parse(String(init?.body)) as { limit?: number; offset?: number };
+      const newest = new Map<string, BlueBubblesRawMessage>();
+      for (const message of this.messages.values()) {
+        const guid = message.chats?.[0]?.guid ?? "";
+        const known = newest.get(guid);
+        if (!known || (message.dateCreated ?? 0) > (known.dateCreated ?? 0)) {
+          newest.set(guid, message);
+        }
+      }
+      const chats = [...newest.entries()]
+        .sort(([, a], [, b]) => (b.dateCreated ?? 0) - (a.dateCreated ?? 0))
+        .slice(body.offset ?? 0, (body.offset ?? 0) + (body.limit ?? 100))
+        .map(([guid, lastMessage]) => ({
+          guid,
+          displayName: "",
+          chatIdentifier: guid.split(";").at(-1),
+          lastMessage,
+        }));
+      return Response.json({ status: 200, data: chats });
     }
     const single = /^\/message\/([^/]+)$/.exec(path);
     if (single && method === "GET") {
@@ -117,7 +148,7 @@ export class BlueBubblesEmulator {
       groupActionType: 0,
       associatedMessageGuid: input.associatedMessageGuid ?? null,
       handle: { address: input.from, service },
-      chats: [{ guid: `${service};-;${input.from}` }],
+      chats: [{ guid: input.chatGuid ?? `${service};-;${input.from}` }],
       attachments: input.attachmentMime ? [{ guid: "att-1", mimeType: input.attachmentMime }] : [],
     };
     this.messages.set(message.guid, message);
@@ -166,6 +197,7 @@ export function createEmulatedBlueBubblesPlatform(
     provider: "bluebubbles",
     capabilities: { direct: true, groups: false, typing: false },
     adapter,
+    history: adapter,
     directThreadId: (address) => adapter.directThreadId(address),
     transport: bluebubblesTransport,
   };

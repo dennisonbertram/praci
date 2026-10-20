@@ -242,7 +242,7 @@ async function main() {
     events,
     onTicketChange: ticketChanges,
     ticketBoardEnabled,
-    messaging: messaging ? createMessagingContextLoader(prisma) : undefined,
+    messaging: messaging ? createMessagingContextLoader(prisma, messaging) : undefined,
     web: createWebProvider(),
     cloudAgent,
     mail: createMailProvider({ prisma, connectors: stack.connector }),
