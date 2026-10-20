@@ -66,7 +66,13 @@ export function isTooManyDatabaseConnections(error: unknown): boolean {
   return false;
 }
 
-const INTERRUPTION_CODES = new Set(["P1001", "P1008", "P1017", "P2024", "57P01", "ECONNRESET"]);
+/**
+ * Prisma connectivity codes and Postgres shutdown codes only. A bare socket code such as
+ * ECONNRESET is not here: a database reset reaches us as P1017 through the pg adapter, while a
+ * bare one comes from fetch (a model or MCP server), and requeueing on it retried the run
+ * forever without telling anyone.
+ */
+const INTERRUPTION_CODES = new Set(["P1001", "P1008", "P1017", "P2024", "57P01", "57P02", "57P03"]);
 const INTERRUPTION_MESSAGES = [
   "Engine is not yet connected",
   "Response from the Engine was empty",
@@ -74,7 +80,9 @@ const INTERRUPTION_MESSAGES = [
   "Transaction already closed",
   "Transaction API error",
   "Cannot use a pool after calling end",
-  "Connection terminated",
+  // node-postgres client and pool wording; a bare "Connection terminated" can be any socket.
+  "Connection terminated unexpectedly",
+  "Connection terminated due to connection timeout",
   "terminating connection due to administrator command",
 ];
 

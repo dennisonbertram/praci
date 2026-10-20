@@ -546,6 +546,25 @@ describe("classifyRunFailure", () => {
     }
   });
 
+  it("fails, not requeues, a network error from a model or MCP server", () => {
+    // fetch() collapses a reset socket to "fetch failed" with the errno on the cause.
+    const reset = new TypeError("fetch failed", {
+      cause: Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET", syscall: "read" }),
+    });
+    for (const error of [reset, new Error("MCP Connection terminated by the server")]) {
+      expect(classifyRunFailure(error, [])).toMatchObject({ interrupted: false });
+    }
+  });
+
+  it("still treats node-postgres disconnects as interrupted", () => {
+    for (const error of [
+      new Error("Connection terminated unexpectedly"),
+      Object.assign(new Error("terminating connection"), { code: "57P01" }),
+    ]) {
+      expect(classifyRunFailure(error, [])).toEqual({ interrupted: true });
+    }
+  });
+
   it("treats a shutdown abort as interrupted", () => {
     const shutdown = new AbortController();
     shutdown.abort(new Error("Worker shutting down"));
