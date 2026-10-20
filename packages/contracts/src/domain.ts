@@ -856,6 +856,48 @@ export const ArtifactWithContentSchema = ArtifactSchema.extend({
 });
 export type ArtifactWithContent = z.infer<typeof ArtifactWithContentSchema>;
 
+export const SPREADSHEET_PREVIEW_DEFAULT_LIMIT = 200;
+export const SPREADSHEET_PREVIEW_MAX_LIMIT = 1000;
+
+/** A spreadsheet is in an artifact or in a Data room item, never both. */
+export const SpreadsheetPreviewInputSchema = z.object({
+  source: z.union([z.object({ artifactId: Id }), z.object({ dataRoomItemId: Id })]),
+  /** Defaults to the first sheet. */
+  sheet: z.string().min(1).max(200).optional(),
+  /** Data rows to skip after the header row. */
+  offset: z.number().int().min(0).default(0),
+  limit: z
+    .number()
+    .int()
+    .min(1)
+    .max(SPREADSHEET_PREVIEW_MAX_LIMIT)
+    .default(SPREADSHEET_PREVIEW_DEFAULT_LIMIT),
+});
+
+const SpreadsheetCellSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
+
+export const SpreadsheetPreviewSchema = z.discriminatedUnion("status", [
+  /** Legacy .xls, a file that is not a spreadsheet, or one that cannot be read. */
+  z.object({ status: z.literal("unsupported"), message: z.string() }),
+  z.object({
+    status: z.literal("ready"),
+    sheets: z.array(z.object({ name: z.string(), dimension: z.string().nullable() })),
+    sheet: z.string(),
+    /** Column letters, one per cell. */
+    columns: z.array(z.string()),
+    /** The first row of the sheet with values; its sheet row number is headerRow. */
+    headerRow: z.number().int().nullable(),
+    header: z.array(SpreadsheetCellSchema),
+    /** Dates are ISO strings and numbers are raw; cells are cached values, not formulas. */
+    rows: z.array(z.object({ row: z.number().int(), cells: z.array(SpreadsheetCellSchema) })),
+    /** More rows exist than this page holds (or the page was cut short). */
+    truncated: z.boolean(),
+    note: z.string().optional(),
+  }),
+]);
+export type SpreadsheetPreviewInput = z.input<typeof SpreadsheetPreviewInputSchema>;
+export type SpreadsheetPreview = z.infer<typeof SpreadsheetPreviewSchema>;
+
 export const UsageRecordSchema = z.object({
   id: Id,
   botId: Id.nullable(),

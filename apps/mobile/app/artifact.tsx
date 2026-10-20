@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { NativeSymbol } from "../components/native-symbol";
 import { SandboxedHtmlPreview } from "../components/sandboxed-html-preview";
+import { SheetArtifactPreview } from "../components/sheet-artifact-preview";
 import { formatActivityRelativeTime } from "../lib/activity";
 import { mobileTokens } from "../lib/appearance";
 import { shareLocalFile, writeArtifactCacheFile } from "../lib/artifact-open";
@@ -24,6 +25,7 @@ import type { MobileArtifactWithContent } from "../lib/artifacts";
 import {
   artifactThreadTarget,
   getArtifactById,
+  isSpreadsheetArtifact,
   listArtifactVersions,
   removeArtifact,
 } from "../lib/artifacts";
@@ -38,6 +40,7 @@ type PreviewContent =
   | { kind: "html"; html: string }
   | { kind: "markdown"; text: string }
   | { kind: "image"; uri: string }
+  | { kind: "sheet"; artifactId: string }
   | { kind: "unsupported" };
 
 type ContentState =
@@ -45,7 +48,13 @@ type ContentState =
   | { status: "error"; message: string }
   | { status: "ready"; artifact: MobileArtifactWithContent; file: File; preview: PreviewContent };
 
-async function computePreview(mimeType: string, file: File): Promise<PreviewContent> {
+async function computePreview(
+  artifact: Pick<MobileArtifactWithContent, "id" | "name" | "mimeType">,
+  file: File,
+): Promise<PreviewContent> {
+  const { mimeType } = artifact;
+  if (isSpreadsheetArtifact(artifact.name, mimeType))
+    return { kind: "sheet", artifactId: artifact.id };
   if (mimeType === "text/html") return { kind: "html", html: await file.text() };
   if (mimeType === "text/markdown") return { kind: "markdown", text: await file.text() };
   if (isAttachmentImageMimeType(mimeType)) return { kind: "image", uri: file.uri };
@@ -90,7 +99,7 @@ export default function ArtifactDetailScreen() {
     void getArtifactById(selectedVersionId)
       .then(async (artifact) => {
         const file = writeArtifactCacheFile(artifact.id, artifact.mimeType, artifact.contentBase64);
-        const preview = await computePreview(artifact.mimeType, file);
+        const preview = await computePreview(artifact, file);
         if (cancelled) return;
         setContent({ status: "ready", artifact, file, preview });
       })
@@ -302,6 +311,13 @@ function ArtifactPreview({
           {preview.text}
         </ChatMarkdown>
       </ScrollView>
+    );
+  }
+  if (preview.kind === "sheet") {
+    return (
+      <View style={styles.previewCard}>
+        <SheetArtifactPreview artifactId={preview.artifactId} />
+      </View>
     );
   }
   if (preview.kind === "image") {

@@ -132,6 +132,7 @@ import {
   findDefaultModelCredential,
   findModelCredential,
   InvalidSpaceNameError,
+  isDatabaseInterruption,
   isTooManyDatabaseConnections,
   isUniqueViolation,
   loadRunHistoryMessages,
@@ -8305,6 +8306,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
 
           if (approvalPausePending || !leaseValid) return;
+          // An aborted stream ends quietly; surface it so the catch below requeues the run.
+          if (deps.shutdownSignal?.aborted) throw new Error("Run interrupted by shutdown");
           approvedEffectReplays.assertDrained();
           pendingProgress += progressRedactor.finish();
           await flushProgress();
@@ -8473,10 +8476,26 @@ export function createRunExecutor(deps: ExecutorDeps) {
           if (!terminalCheckpointComplete) {
             await workspaceCheckpoint.flush().catch(() => undefined);
           }
-          const message = redactSecrets(
-            error instanceof Error ? error.message : String(error),
-            runSecrets,
-          );
+          const failure = classifyRunFailure(error, runSecrets, deps.shutdownSignal);
+          if (failure.interrupted) {
+            // The process or database went away, not the work. Requeue so run.continue (or lease
+            // expiry, when the database is unreachable) resumes it, and post nothing.
+            getLogger().warn("run interrupted", { runId, error });
+            const released = await writeComputerRunRequeue(
+              deps,
+              runId,
+              workerId,
+              fence,
+              resumeCheckpoint,
+              heldForTakeover,
+            ).catch(() => false);
+            if (released) {
+              await deps.jobs.enqueue(runContinueJob(runId)).catch(() => undefined);
+            }
+            return;
+          }
+          const { message, rawMessage } = failure;
+          if (message !== rawMessage) getLogger().error("run failed", { runId, error: rawMessage });
           const failed = await deps.events.finalizeRun({
             spaceId: run.spaceId,
             threadId: thread.id,
@@ -9581,6 +9600,25 @@ export function subagentMarksUnread(
     (trigger === "bot_message" && userFacingPeerReply) ||
     (trigger !== "routine" && trigger !== "bot_message")
   );
+}
+
+export const GENERIC_RUN_ERROR = "Something went wrong. Try again.";
+
+/** Internal driver text (Prisma "Invalid `x()` invocation") never reaches the thread. */
+export function userFacingRunError(message: string): string {
+  return /Invalid `[^`]*` invocation|PrismaClient|prisma\./i.test(message)
+    ? GENERIC_RUN_ERROR
+    : message;
+}
+
+export function classifyRunFailure(
+  error: unknown,
+  secrets: string[],
+  shutdownSignal?: AbortSignal,
+): { interrupted: true } | { interrupted: false; message: string; rawMessage: string } {
+  if (shutdownSignal?.aborted || isDatabaseInterruption(error)) return { interrupted: true };
+  const rawMessage = redactSecrets(error instanceof Error ? error.message : String(error), secrets);
+  return { interrupted: false, message: userFacingRunError(rawMessage), rawMessage };
 }
 
 function computerRunRequeueData(

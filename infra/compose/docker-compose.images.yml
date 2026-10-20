@@ -100,6 +100,63 @@ services:
       timeout: 5s
       retries: 20
 
+  # Bundled S3-compatible object store (SeaweedFS, Apache-2.0) for artifacts and agent homes. It
+  # runs only when COMPOSE_PROFILES includes bundled-s3, which new installs set in .env. An
+  # upgraded install keeps local-disk artifacts until its admin opts in (docs/self-host.md).
+  # Not published on the host. There are no default credentials: the store refuses to start unless RAKAZO_S3_ACCESS_KEY_ID and RAKAZO_S3_SECRET_ACCESS_KEY are set (letters and digits, at least 8 characters).
+  seaweedfs:
+    image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.48}
+    profiles: ["bundled-s3"]
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ "$${#AWS_ACCESS_KEY_ID}" -lt 8 ] || [ "$${#AWS_SECRET_ACCESS_KEY}" -lt 8 ]; then
+          echo "Set RAKAZO_S3_ACCESS_KEY_ID and RAKAZO_S3_SECRET_ACCESS_KEY (at least 8 characters)" >&2
+          exit 1
+        fi
+        exec weed server -dir=/data -s3 -s3.port=8333 -ip.bind=0.0.0.0 -master.volumeSizeLimitMB=1024
+    restart: unless-stopped
+    environment:
+      AWS_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:-}
+    volumes:
+      - seaweedfsdata:/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://localhost:9333/cluster/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # Creates the bucket (an S3 PUT; an existing bucket answers 409) and exits.
+  seaweedfs-init:
+    image: ${CURL_IMAGE:-curlimages/curl:8.22.0}
+    profiles: ["bundled-s3"]
+    restart: "no"
+    entrypoint:
+      - sh
+      - -c
+      - |
+        if [ "$${#RAKAZO_S3_SECRET_ACCESS_KEY}" -lt 8 ]; then exit 1; fi
+        for attempt in $$(seq 1 60); do
+          code=$$(curl -s -o /dev/null -w '%{http_code}' --aws-sigv4 aws:amz:$${RAKAZO_S3_REGION}:s3 --user "$$RAKAZO_S3_ACCESS_KEY_ID:$$RAKAZO_S3_SECRET_ACCESS_KEY" -X PUT "http://seaweedfs:8333/$$RAKAZO_S3_BUCKET")
+          if [ "$$code" = 200 ] || [ "$$code" = 409 ]; then exit 0; fi
+          sleep 2
+        done
+        exit 1
+    environment:
+      RAKAZO_S3_ACCESS_KEY_ID: ${RAKAZO_S3_ACCESS_KEY_ID:-}
+      RAKAZO_S3_SECRET_ACCESS_KEY: ${RAKAZO_S3_SECRET_ACCESS_KEY:-}
+      RAKAZO_S3_BUCKET: ${RAKAZO_S3_BUCKET:-rakazo}
+      RAKAZO_S3_REGION: ${RAKAZO_S3_REGION:-us-east-1}
+    networks:
+      - data
+    depends_on:
+      seaweedfs:
+        condition: service_healthy
+
   api:
     image: ${RAKAZO_IMAGE:-ghcr.io/elie222/rakazo/app}:${RAKAZO_IMAGE_TAG:-edge}
     restart: unless-stopped
@@ -162,6 +219,9 @@ services:
       - app
       - data
     depends_on:
+      seaweedfs-init:
+        condition: service_completed_successfully
+        required: false
       postgres:
         condition: service_healthy
       data-init:
@@ -229,6 +289,9 @@ services:
       - app
       - data
     depends_on:
+      seaweedfs-init:
+        condition: service_completed_successfully
+        required: false
       postgres:
         condition: service_healthy
       data-init:
@@ -268,6 +331,7 @@ services:
 
 volumes:
   pgdata:
+  seaweedfsdata:
   appdata:
 
 networks:

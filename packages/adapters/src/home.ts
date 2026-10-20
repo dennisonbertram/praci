@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { constants } from "node:fs";
 import {
   access,
+  lstat,
   mkdir,
   open,
   readdir,
@@ -9,6 +10,7 @@ import {
   rename,
   rm,
   stat,
+  unlink,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
@@ -79,7 +81,24 @@ export class LocalAgentHomeStore implements AgentHomeStore {
     });
   }
 
-  async revise(botId: string): Promise<string> {
+  /** The home itself is the only copy, so it is always current. */
+  async liveDirectory(botId: string, _context?: AdapterContext) {
+    const dir = this.pathFor(botId);
+    await mkdir(dir, { recursive: true });
+    return { path: dir, current: true };
+  }
+
+  async remove(botId: string, _context?: AdapterContext) {
+    await this.withBotWrite(botId, () => rm(this.botDir(botId), { recursive: true, force: true }));
+  }
+
+  async removeEntry(botId: string, parent: string, name: string, _context?: AdapterContext) {
+    await this.withBotWrite(botId, () =>
+      removeContainedDirectory(this.botDir(botId), parent, name),
+    );
+  }
+
+  async revise(botId: string, _context?: AdapterContext): Promise<string> {
     return this.withBotWrite(botId, async () => this.writeRevision(botId));
   }
 
@@ -216,9 +235,17 @@ export class LocalAgentHomeStore implements AgentHomeStore {
   }
 }
 
-export function resolveAgentHomePath(home: AgentHomeStore, homeKey: string, dataDir = "./data") {
-  if (home instanceof LocalAgentHomeStore) return home.pathFor(homeKey);
-  return path.resolve(dataDir, "homes", homeKey);
+/** The directory a local-mount sandbox uses for this home, from the store when it offers one. */
+export async function liveHomeDirectory(
+  home: AgentHomeStore,
+  homeKey: string,
+  context: AdapterContext,
+  dataDir = "./data",
+  options?: { unmounted?: () => Promise<boolean> },
+) {
+  return home.liveDirectory
+    ? home.liveDirectory(homeKey, context, options)
+    : { path: path.resolve(dataDir, "homes", homeKey), current: true }; // the path is the home
 }
 
 function safeJoin(root: string, rel: string) {
@@ -397,4 +424,38 @@ async function* walkFiles(
       };
     }
   }
+}
+
+/** Delete one folder in the home. A symlinked parent is refused; a final symlink is unlinked. */
+async function removeContainedDirectory(root: string, parent: string, name: string) {
+  const target = path.join(root, parent, name);
+  const info = await lstat(target).catch((error: unknown) => {
+    if (isMissing(error)) return null;
+    throw error;
+  });
+  if (!info) return;
+  const parentInfo = await lstat(path.dirname(target)).catch((error: unknown) => {
+    if (isMissing(error)) return null;
+    throw error;
+  });
+  if (!parentInfo || parentInfo.isSymbolicLink() || !parentInfo.isDirectory()) {
+    throw new Error("folder escapes the home");
+  }
+  if (info.isSymbolicLink()) {
+    await unlink(target);
+    return;
+  }
+  const resolvedRoot = await realpath(root);
+  const resolvedTarget = await realpath(target);
+  const relative = path.relative(resolvedRoot, resolvedTarget);
+  if (
+    path.dirname(resolvedTarget) !== path.join(resolvedRoot, parent) ||
+    path.basename(resolvedTarget) !== name ||
+    relative === "" ||
+    relative.startsWith("..") ||
+    path.isAbsolute(relative)
+  ) {
+    throw new Error("folder escapes the home");
+  }
+  await rm(resolvedTarget, { recursive: true, force: true });
 }

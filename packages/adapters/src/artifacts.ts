@@ -1,7 +1,8 @@
-import { randomUUID } from "node:crypto";
-import { constants } from "node:fs";
+import { createHash, randomUUID } from "node:crypto";
+import { constants, createReadStream, createWriteStream } from "node:fs";
 import { mkdir, open, rm } from "node:fs/promises";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import type { AdapterContext, ArtifactPut, ArtifactStore } from "@rakazo/adapter-kit";
 
 const O_NOFOLLOW = constants.O_NOFOLLOW ?? 0;
@@ -33,7 +34,42 @@ export class LocalArtifactStore implements ArtifactStore {
     } finally {
       await handle.close();
     }
-    return { id, hash: String(artifact.bytes.byteLength) };
+    return { id, hash: createHash("sha256").update(artifact.bytes).digest("hex") };
+  }
+
+  async putFile(file: { path: string }, context: AdapterContext) {
+    const id = randomUUID();
+    const dir = path.join(this.root, "artifacts", context.spaceId);
+    await mkdir(dir, { recursive: true });
+    const hash = createHash("sha256");
+    const target = path.join(dir, id);
+    try {
+      await pipeline(
+        createReadStream(file.path),
+        async function* (source) {
+          for await (const chunk of source) {
+            hash.update(chunk);
+            yield chunk;
+          }
+        },
+        createWriteStream(target, { flags: "wx", mode: 0o600 }),
+      );
+    } catch (error) {
+      await rm(target, { force: true });
+      throw error;
+    }
+    return { id, hash: hash.digest("hex") };
+  }
+
+  async getFile(id: string, destination: string, context: AdapterContext) {
+    const handle = await open(
+      path.join(this.root, "artifacts", context.spaceId, id),
+      constants.O_RDONLY | O_NOFOLLOW,
+    );
+    await pipeline(
+      handle.createReadStream(),
+      createWriteStream(destination, { flags: "wx", mode: 0o600 }),
+    );
   }
 
   async get(id: string, context: AdapterContext) {

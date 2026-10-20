@@ -22,6 +22,7 @@ readonly ENV_FILE=".env"
 prepare_only=false
 skip_existing=false
 pull_never=false
+enable_bundled_storage=false
 if [[ "${RAKAZO_DOWNLOAD_SKIP_EXISTING:-}" == "1" ]]; then
   skip_existing=true
 fi
@@ -40,13 +41,17 @@ for arg in "$@"; do
     --pull-never)
       pull_never=true
       ;;
+    --enable-bundled-storage)
+      # Upgrade opt-in: add the bundled object store and generated credentials to an existing .env.
+      enable_bundled_storage=true
+      ;;
     --offline)
       # Air-gap bootstrap: keep local Compose/env files and do not pull images.
       skip_existing=true
       pull_never=true
       ;;
     *)
-      echo "Usage: bash install-images.sh [--prepare-only] [--local] [--pull-never] [--offline]" >&2
+      echo "Usage: bash install-images.sh [--prepare-only] [--local] [--pull-never] [--offline] [--enable-bundled-storage]" >&2
       exit 2
       ;;
   esac
@@ -231,6 +236,12 @@ create_env() {
       "SANDBOX_SUPERVISOR_TOKEN=")
         printf 'SANDBOX_SUPERVISOR_TOKEN=%s\n' "$(openssl rand -hex 32)"
         ;;
+      "RAKAZO_S3_ACCESS_KEY_ID=")
+        printf 'RAKAZO_S3_ACCESS_KEY_ID=%s\n' "$(openssl rand -hex 10)"
+        ;;
+      "RAKAZO_S3_SECRET_ACCESS_KEY=")
+        printf 'RAKAZO_S3_SECRET_ACCESS_KEY=%s\n' "$(openssl rand -hex 20)"
+        ;;
       *)
         printf '%s\n' "$line"
         ;;
@@ -241,6 +252,60 @@ create_env() {
   mv -- "$temporary_file" "$ENV_FILE"
   temporary_file=""
   echo "Created .env with random secrets."
+}
+
+env_value() {
+  sed -n "s/^$1=//p" "$ENV_FILE" | tail -n 1
+}
+
+bundled_storage_enabled() {
+  [[ ",$(env_value COMPOSE_PROFILES)," == *",bundled-s3,"* ]]
+}
+
+# An upgraded install keeps storing files on local disk until the admin opts in here. Files already
+# on disk stay readable afterwards.
+enable_bundled_storage_in_env() {
+  if bundled_storage_enabled; then
+    return
+  fi
+  if grep -q '^RAKAZO_S3_' "$ENV_FILE"; then
+    fail ".env already sets RAKAZO_S3_*. To use the bundled store, remove those lines and run again, or add COMPOSE_PROFILES=bundled-s3 and your own credentials."
+  fi
+  if grep -q '^COMPOSE_PROFILES=.\+' "$ENV_FILE"; then
+    fail ".env already sets COMPOSE_PROFILES. Add bundled-s3 to it, then run again."
+  fi
+  umask 077
+  {
+    printf '\n# Bundled object storage (added by install-images.sh --enable-bundled-storage).\n'
+    printf 'COMPOSE_PROFILES=bundled-s3\n'
+    printf 'RAKAZO_S3_ENDPOINT=http://seaweedfs:8333\n'
+    printf 'RAKAZO_S3_BUCKET=rakazo\n'
+    printf 'RAKAZO_S3_REGION=us-east-1\n'
+    printf 'RAKAZO_S3_FORCE_PATH_STYLE=true\n'
+    printf 'RAKAZO_S3_ACCESS_KEY_ID=%s\n' "$(openssl rand -hex 10)"
+    printf 'RAKAZO_S3_SECRET_ACCESS_KEY=%s\n' "$(openssl rand -hex 20)"
+  } >> "$ENV_FILE"
+  echo "Enabled bundled object storage in .env. Files already on disk stay readable."
+}
+
+validate_bundled_storage() {
+  if ! bundled_storage_enabled; then
+    if [[ -z "$(env_value RAKAZO_S3_ENDPOINT)" ]]; then
+      echo "Object storage is off: files stay on local disk. To store them in the bundled object store, run: bash install-images.sh --enable-bundled-storage"
+    fi
+    return
+  fi
+  local id secret
+  id=$(env_value RAKAZO_S3_ACCESS_KEY_ID)
+  secret=$(env_value RAKAZO_S3_SECRET_ACCESS_KEY)
+  if [[ ! "$id" =~ ^[A-Za-z0-9]{8,}$ || ! "$secret" =~ ^[A-Za-z0-9]{8,}$ ]]; then
+    fail "with COMPOSE_PROFILES=bundled-s3, RAKAZO_S3_ACCESS_KEY_ID and RAKAZO_S3_SECRET_ACCESS_KEY must each be at least 8 letters or digits."
+  fi
+  local endpoint
+  endpoint=$(env_value RAKAZO_S3_ENDPOINT)
+  if [[ -n "$endpoint" && "$endpoint" != "http://seaweedfs:8333" ]]; then
+    echo "RAKAZO_S3_ENDPOINT points outside this stack, so the bundled store is not needed. Remove bundled-s3 from COMPOSE_PROFILES to stop running it."
+  fi
 }
 
 validate_required_secrets() {
@@ -292,7 +357,11 @@ else
   create_env
 fi
 
+if [[ "$enable_bundled_storage" == true ]]; then
+  enable_bundled_storage_in_env
+fi
 validate_required_secrets
+validate_bundled_storage
 
 if [[ "$prepare_only" == true ]]; then
   echo "Rakazo files are ready. Edit .env, then run: bash install-images.sh"

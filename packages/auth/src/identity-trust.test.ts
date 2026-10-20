@@ -48,6 +48,7 @@ function fixture({
   };
   const messages: TransactionalEmail[] = [];
   const blobs: Array<{ spaceId: string; storageKey: string }> = [];
+  const homes: Array<{ homeKey: string; homeSnapshotId: string | null }> = [];
   const members = new Set<string>();
   const prisma = {
     authData: data,
@@ -109,6 +110,16 @@ function fixture({
     dataRoomItem: {
       findMany: vi.fn(async () => [{ spaceId: "space-1", storageKey: "blob/k1" }]),
     },
+    computer: {
+      findMany: vi.fn(async () => [
+        {
+          spaceId: "space-1",
+          homeKey: "home-1",
+          homeSnapshotId: "snap-2",
+          homePreviousSnapshotId: "snap-1",
+        },
+      ]),
+    },
     messagingIdentity: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     organization: { deleteMany: vi.fn(async () => ({ count: 0 })) },
     spaceMember: {
@@ -127,7 +138,10 @@ function fixture({
     webOrigin,
     signupsEnabled: "true",
     signupAllowlist: "",
-    afterDeleteUserData: async (items) => void blobs.push(...items),
+    afterDeleteUserData: async (items, deletedHomes) => {
+      blobs.push(...items);
+      homes.push(...deletedHomes);
+    },
     email: delivery
       ? {
           describe: () => ({
@@ -171,7 +185,7 @@ function fixture({
     const url = new URL(messages.at(-1)!.text.match(/http:\/\/\S+/)![0]);
     return request(`${url.pathname.replace("/api/auth", "")}${url.search}`);
   };
-  return { auth, request, signup, signin, verify, data, policy, messages, members, blobs };
+  return { auth, request, signup, signin, verify, data, policy, messages, members, blobs, homes };
 }
 
 beforeEach(() => vi.clearAllMocks());
@@ -491,5 +505,8 @@ describe("session credentials", () => {
     expect(deleted.status).toBe(200);
     expect(f.data.user).toHaveLength(0);
     expect(f.blobs).toEqual([{ spaceId: "space-1", storageKey: "blob/k1" }]);
+    expect(f.homes).toEqual([
+      expect.objectContaining({ homeKey: "home-1", homeSnapshotId: "snap-2" }),
+    ]);
   });
 });

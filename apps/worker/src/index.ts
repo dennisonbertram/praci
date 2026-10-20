@@ -13,6 +13,7 @@ import {
   boxAccessToken,
   ChatSdkMessagingSurface,
   CodexCatalogCache,
+  createAgentHomeStore,
   createArtifactStore,
   createBackgroundJobHandlers,
   createCloudAgentConnection,
@@ -35,7 +36,6 @@ import {
   isComposioEnabled,
   isMessagingSurfaceEnabled,
   isPipedreamEnabled,
-  LocalAgentHomeStore,
   McpConnector,
   McpOAuthBroker,
   messagingEnvFromProcess,
@@ -173,8 +173,8 @@ async function main() {
   await connector.start();
   integrationSettings.warmDirectories();
   const memoryProviders = new SpaceMemoryProviderResolver(prisma, secrets);
-  const home = new LocalAgentHomeStore(dataDir);
   const artifacts = createArtifactStore(process.env, dataDir);
+  const home = createAgentHomeStore(process.env, prisma, artifacts, dataDir);
   const inMemoryJobs = process.env.WAKEUP_DRIVER === "memory" ? new InMemoryJobQueue() : undefined;
   const jobs: JobPublisher = inMemoryJobs ?? new GraphileJobPublisher(pool);
   const ticketChanges = createTicketChangeNotifier({
@@ -195,7 +195,9 @@ async function main() {
   const notifications = new ExpoPushProvider(prisma, (sessionId) =>
     pushSessionExpiresAt(prisma, sessionId),
   );
+  const shutdown = new AbortController();
   const executor = createRunExecutor({
+    shutdownSignal: shutdown.signal,
     prisma,
     runtime,
     // Live per-account Codex catalog; never refreshes or writes credentials.
@@ -300,7 +302,15 @@ async function main() {
     stopping = true;
     try {
       await reconciler.stop();
-      await jobHost.stop();
+      // Stop claiming jobs and let in-flight runs finish. After the grace period, abort them
+      // so they requeue as interrupted; Prisma disconnects only once they have returned.
+      const drained = jobHost.stop();
+      const grace = setTimeout(() => shutdown.abort(new Error("Worker shutting down")), 10_000);
+      try {
+        await drained;
+      } finally {
+        clearTimeout(grace);
+      }
       await jobs.close();
       await secrets.close();
       await realtime.close();

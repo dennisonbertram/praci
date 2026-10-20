@@ -6,6 +6,7 @@ import { LocalArtifactStore } from "./artifacts.js";
 import {
   ArtifactNotFoundError,
   createArtifactStore,
+  LocalFallbackArtifactStore,
   S3ArtifactStore,
   s3ArtifactConfigFromEnv,
 } from "./s3-artifacts.js";
@@ -234,7 +235,8 @@ describe("s3ArtifactConfigFromEnv", () => {
   it("returns null when absent and picks the local store", () => {
     expect(s3ArtifactConfigFromEnv({})).toBeNull();
     expect(createArtifactStore({}, "/tmp/x")).toBeInstanceOf(LocalArtifactStore);
-    expect(createArtifactStore(full, "/tmp/x")).toBeInstanceOf(S3ArtifactStore);
+    // Reads fall back to files written before object storage was on.
+    expect(createArtifactStore(full, "/tmp/x")).toBeInstanceOf(LocalFallbackArtifactStore);
   });
 
   it("treats any S3 variable as activation", () => {
