@@ -2376,6 +2376,14 @@ msgstr "Connected and using {0}."
 msgid "Connected. Its tools are available from your next message."
 msgstr "Connected. Its tools are available from your next message."
 
+#: src/lib/run-phase.ts
+msgid "Connecting to {name}"
+msgstr "Connecting to {name}"
+
+#: src/lib/run-phase.ts
+msgid "Connecting to tools"
+msgstr "Connecting to tools"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/parts.tsx
@@ -7033,6 +7041,14 @@ msgstr "Retry now"
 msgid "Retry screen"
 msgstr "Retry screen"
 
+#: src/lib/run-phase.ts
+msgid "Retrying"
+msgstr "Retrying"
+
+#: src/lib/run-phase.ts
+msgid "Retrying: {name}"
+msgstr "Retrying: {name}"
+
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Rakazo"
@@ -7932,6 +7948,10 @@ msgstr "Start recording"
 msgid "Starting"
 msgstr "Starting"
 
+#: src/lib/run-phase.ts
+msgid "Starting the computer"
+msgstr "Starting the computer"
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8215,6 +8235,10 @@ msgstr "The Carta agent reads your cap table from Carta and answers questions ab
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr "The Carta agent will be able to change your Carta data. It asks before each change."
 
+#: src/lib/run-phase.ts
+msgid "the computer"
+msgstr "the computer"
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "The connection timed out."
@@ -8243,6 +8267,10 @@ msgstr "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: ch
 #: src/components/legal/ConsentPrompt.tsx
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
 msgstr "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
+
+#: src/lib/run-phase.ts
+msgid "the model"
+msgstr "the model"
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "The model could not sort your files."
@@ -8472,6 +8500,10 @@ msgstr "Today"
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
 msgstr "Token"
+
+#: src/lib/run-phase.ts
+msgid "tools"
+msgstr "tools"
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8956,6 +8988,10 @@ msgstr "vs {previousRange}"
 msgid "Wait a moment and test again."
 msgstr "Wait a moment and test again."
 
+#: src/lib/run-phase.ts
+msgid "Waiting for {name}"
+msgstr "Waiting for {name}"
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
@@ -8964,6 +9000,14 @@ msgstr "Waiting for sign-in"
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
 msgstr "Waiting for the API to come back…"
+
+#: src/lib/run-phase.ts
+msgid "Waiting for the computer"
+msgstr "Waiting for the computer"
+
+#: src/lib/run-phase.ts
+msgid "Waiting for the model"
+msgstr "Waiting for the model"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Waiting for you to finish signing in."

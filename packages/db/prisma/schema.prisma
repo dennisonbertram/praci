@@ -678,6 +678,9 @@ model Run {
   leaseFence           Int               @default(0)
   leaseExpiresAt       DateTime?
   checkpoint           String?
+  // What the run is waiting on before its first tool call (RunPhase in contracts). Requeues
+  // also keep their streak here, which the executor's circuit breaker reads.
+  phase                Json?
   clientNonce          String?
   sourceMessageId      String?
   sourceMessage        Message?          @relation("RunSourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)

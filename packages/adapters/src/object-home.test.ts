@@ -77,17 +77,19 @@ function fakes(kind = "e2b") {
         const hit = rows.find((row) => matches(row, where));
         return hit ? { ...hit } : null; // a copy, like a database read
       },
-      updateMany: async ({
-        where,
-        data,
-      }: {
-        where: Record<string, unknown>;
-        data: Partial<Row>;
-      }) => {
-        const hit = rows.filter((row) => matches(row, where));
-        for (const row of hit) Object.assign(row, data);
-        return { count: hit.length };
-      },
+    },
+    // The store's only raw statement: setHome's UPDATE, with its values in order.
+    $executeRaw: async (_sql: TemplateStringsArray, ...values: (string | null)[]) => {
+      const [homeRevision, homeSnapshotId, homePreviousSnapshotId, id, spaceId, expected] = values;
+      const hit = rows.filter(
+        (row) =>
+          row.id === id &&
+          row.spaceId === spaceId &&
+          (expected == null || row.homeRevision === expected),
+      );
+      for (const row of hit)
+        Object.assign(row, { homeRevision, homeSnapshotId, homePreviousSnapshotId });
+      return hit.length;
     },
   };
   const objects = new Map<string, Uint8Array>();

@@ -7869,6 +7869,7 @@ async function spaceNavigationDto(
           unread: bot.unread,
           preview: bot.preview,
           status: bot.status,
+          runPhase: bot.runPhase,
           runErrorId: bot.runErrorId,
           updatedAt: bot.updatedAt,
         })),

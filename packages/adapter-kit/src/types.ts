@@ -38,6 +38,8 @@ export interface AdapterContext {
    * retrying. `rate_limited` is a 429 or quota answer; `retry` is a timeout or server error.
    */
   onRetry?: (retry: { reason: "rate_limited" | "retry"; attempt: number }) => void;
+  /** Called as tool discovery connects to a server, with the name a person knows it by. */
+  onConnecting?: (service: string) => void;
 }
 
 export interface ConnectedConnector {

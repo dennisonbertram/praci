@@ -5,7 +5,7 @@ import type {
   ThreadMessage,
   ThreadSnapshot,
 } from "@rakazo/contracts";
-import { RUN_TRIGGERS } from "@rakazo/contracts";
+import { RUN_TRIGGERS, RunPhaseSchema } from "@rakazo/contracts";
 import {
   isRunTerminalEvent,
   progressMessageId,
@@ -39,6 +39,7 @@ function runFromStartedEvent(event: ProductEvent, previous: Run | undefined): Ru
     modelProvider: previous?.modelProvider ?? null,
     modelId: previous?.modelId ?? null,
     error: null,
+    phase: previous?.phase ?? null,
     startedAt: previous?.startedAt ?? event.createdAt,
     completedAt: null,
     createdAt: previous?.createdAt ?? event.createdAt,
@@ -64,6 +65,7 @@ export function isThreadSnapshotEvent(event: ProductEvent): boolean {
     event.type === "thread.message.updated" ||
     event.type === "thread.message.reaction" ||
     event.type === "run.started" ||
+    event.type === "run.phase" ||
     event.type === "run.waiting_input" ||
     event.type === "computer.takeover.requested" ||
     isRunTerminalEvent(event)
@@ -116,6 +118,20 @@ export function reduceThreadSnapshot(
       // cannot wipe the banner (activeRuns still tracks the new work).
       run: prev.groupId && prev.run?.status === "failed" && prev.run.id !== run.id ? prev.run : run,
       activeRuns,
+    };
+  }
+  if (event.type === "run.phase") {
+    const parsed = RunPhaseSchema.safeParse(event.payload);
+    const known =
+      prev.run?.id === event.runId || prev.activeRuns?.some((run) => run.id === event.runId);
+    if (!parsed.success || !event.runId || !known) return { ...prev, cursor: event.seq };
+    const phase = parsed.data;
+    const withPhase = (run: Run) => (run.id === event.runId ? { ...run, phase } : run);
+    return {
+      ...prev,
+      cursor: event.seq,
+      run: prev.run ? withPhase(prev.run) : prev.run,
+      activeRuns: prev.activeRuns?.map(withPhase),
     };
   }
   if (event.type === "run.waiting_input" || event.type === "computer.takeover.requested") {

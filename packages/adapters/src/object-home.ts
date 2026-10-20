@@ -63,7 +63,7 @@ export const HOME_CACHE_LIMITS = {
   leftoverMs: LEFTOVER_MS,
 };
 
-export type ObjectHomePrisma = Pick<PrismaClient, "computer">;
+export type ObjectHomePrisma = Pick<PrismaClient, "computer" | "$executeRaw">;
 
 /**
  * Keeps each Computer's home as one gzip tar snapshot in the artifact store, with the current
@@ -215,9 +215,10 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
         const row = await this.row(botId, context).catch(() => null);
         if (!row) return;
         ids = [row.homeSnapshotId, row.homePreviousSnapshotId];
-        await this.prisma.computer.updateMany({
-          where: { id: row.id, spaceId: context.spaceId },
-          data: { homeSnapshotId: null, homePreviousSnapshotId: null, homeRevision: "empty" },
+        await this.setHome(row.id, context.spaceId, null, {
+          homeRevision: "empty",
+          homeSnapshotId: null,
+          homePreviousSnapshotId: null,
         });
       }
       for (const id of ids) if (id) await this.artifacts.remove(id, context);
@@ -470,15 +471,12 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
       });
       // The time the archive started reading `source`; see `saveLive`.
       const revision = `rev-${started}-${randomUUID().slice(0, 8)}`;
-      const won = await this.prisma.computer.updateMany({
-        where: { id: row.id, spaceId: context.spaceId, homeRevision: row.homeRevision },
-        data: {
-          homeRevision: revision,
-          homeSnapshotId: stored.id,
-          homePreviousSnapshotId: row.homeSnapshotId,
-        },
+      const won = await this.setHome(row.id, context.spaceId, row.homeRevision, {
+        homeRevision: revision,
+        homeSnapshotId: stored.id,
+        homePreviousSnapshotId: row.homeSnapshotId,
       });
-      if (won.count !== 1) {
+      if (won !== 1) {
         await this.artifacts.remove(stored.id, context).catch(() => undefined);
         throw new AgentHomeConflictError(botId);
       }
@@ -491,6 +489,31 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
     } finally {
       await removeTree(scratch);
     }
+  }
+
+  /**
+   * Writes the home columns, only while the revision is still `expectedRevision` when one is
+   * given, and returns the rows changed. Raw SQL because Prisma's updateMany would also bump
+   * updatedAt, which is the fence of a booting claim: a save made while provisioning (the
+   * legacy migration) made the boot's activation miss and left the Computer "booting".
+   */
+  private setHome(
+    id: string,
+    spaceId: string,
+    expectedRevision: string | null,
+    home: {
+      homeRevision: string;
+      homeSnapshotId: string | null;
+      homePreviousSnapshotId: string | null;
+    },
+  ): Promise<number> {
+    return this.prisma.$executeRaw`
+      UPDATE computers
+      SET "homeRevision" = ${home.homeRevision},
+          "homeSnapshotId" = ${home.homeSnapshotId},
+          "homePreviousSnapshotId" = ${home.homePreviousSnapshotId}
+      WHERE id = ${id} AND "spaceId" = ${spaceId}
+        AND (${expectedRevision}::text IS NULL OR "homeRevision" = ${expectedRevision})`;
   }
 
   private upload(botId: string, file: string, context: AdapterContext) {

@@ -14,6 +14,7 @@ function bot(id = "bot-1"): Bot {
     threadId: `thread-${id}`,
     pinned: false,
     status: "idle",
+    runPhase: null,
     runErrorId: null,
     sectionId: null,
     archivedAt: null,
