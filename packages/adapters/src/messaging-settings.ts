@@ -7,14 +7,18 @@ import type {
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { z } from "zod";
+import type { BlueBubblesAdapterConfig } from "./bluebubbles-adapter.js";
 import {
   BlueBubblesAdapter,
-  type BlueBubblesAdapterConfig,
   BlueBubblesError,
   parseBlueBubblesServerUrl,
 } from "./bluebubbles-adapter.js";
 import type { MessagingEnvironmentValues } from "./messaging-platforms.js";
-import { PhotonAdapter, type PhotonAdapterConfig, PhotonError } from "./photon-adapter.js";
+import type { PhotonAdapterConfig } from "./photon-adapter.js";
+import { PhotonAdapter, PhotonError } from "./photon-adapter.js";
+
+const savedSchema = z.record(z.string(), z.string());
 
 type Field = { env: keyof MessagingEnvironmentValues; secret?: true };
 /** Saved field name -> the env value it stands in for. Env wins per field. */
@@ -60,7 +64,7 @@ export class MessagingSettings {
     const row = await this.prisma.integrationProviderConfig.findUnique({ where: { id } });
     if (!row) return {};
     const plaintext = await this.secrets.load(row.ciphertext, `integration-provider:${id}`);
-    return JSON.parse(plaintext) as Record<string, string>;
+    return savedSchema.parse(JSON.parse(plaintext));
   }
 
   /** The env values with saved values filling any field the environment leaves unset. */

@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { CLOUD_METADATA_HOSTNAMES, isLocalMcpHost } from "@rakazo/contracts";
 import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
+import type { ResolvedAddress, ResolveHostname } from "./network-address.js";
 import {
   assertPrivateLanAddresses as assertPrivateLanAddressesShared,
   createAddressCheckedLookup,
@@ -11,23 +12,18 @@ import {
   normalizeUrlHostname as hostnameOf,
   isCloudMetadataAddress,
   isPrivateAddress,
-  type ResolvedAddress,
-  type ResolveHostname,
 } from "./network-address.js";
-import {
-  createSafeRemoteFetch,
-  type RemoteTransportDependencies,
-  type SafeRemoteFetch,
-} from "./remote-mcp.js";
+import type { RemoteTransportDependencies, SafeRemoteFetch } from "./remote-mcp.js";
+import { createSafeRemoteFetch } from "./remote-mcp.js";
 import { fetchPairedWithDispatcher } from "./undici-fetch.js";
 import { isBlockedHostname } from "./web-ssrf.js";
 
 const SERENITY_TIMEOUT_MS = 15_000;
 const SERENITY_TERMINATE_TIMEOUT_MS = 2_000;
-export const MAX_SERENITY_FACT_CHARS = 10_000;
+const MAX_SERENITY_FACT_CHARS = 10_000;
 /** Hosted Serenity rejects larger facts; self-hosted brains share the same bound. */
 export const MAX_SERENITY_FACT_BYTES = 4096;
-export const MAX_SERENITY_PROVENANCE_CHARS = 500;
+const MAX_SERENITY_PROVENANCE_CHARS = 500;
 
 export type SerenityNetworkDependencies = RemoteTransportDependencies;
 
@@ -38,9 +34,9 @@ export interface SerenityConnectionConfig {
   endpointTrust?: "private" | "public";
 }
 
-export type SerenityResult<T> = { ok: true; value: T } | { ok: false; error: string };
+type SerenityResult<T> = { ok: true; value: T } | { ok: false; error: string };
 
-export interface SerenityRecallFact {
+interface SerenityRecallFact {
   factId: string;
   fact: string;
   provenance: string;
@@ -48,13 +44,13 @@ export interface SerenityRecallFact {
   entitySlug?: string | null;
 }
 
-export interface SerenityRememberResult {
+interface SerenityRememberResult {
   id: string;
   status: string;
   statusText?: string;
 }
 
-export interface SerenityForgetResult {
+interface SerenityForgetResult {
   id: string;
   expired: boolean;
   reason: string | null;

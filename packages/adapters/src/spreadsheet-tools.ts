@@ -5,9 +5,9 @@ import { createDataRoomRepos, IsolationError } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { dataRoomBlobContext } from "./data-room-files.js";
 import { MAX_INPUT_BYTES } from "./office-text.js";
+import type { CellValue } from "./spreadsheet.js";
 import {
   buildXlsx,
-  type CellValue,
   MAX_WRITE_CELLS,
   MAX_WRITE_ROWS,
   MAX_WRITE_SHEETS,

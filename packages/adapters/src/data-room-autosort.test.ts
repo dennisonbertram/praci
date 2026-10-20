@@ -1,6 +1,7 @@
 import { AutoSortPlanSchema } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { type AutoSortItem, buildAutoSortPlan, isMeaninglessName } from "./data-room-autosort.js";
+import type { AutoSortItem } from "./data-room-autosort.js";
+import { buildAutoSortPlan, isMeaninglessName } from "./data-room-autosort.js";
 
 // A messy room: a duplicate top-level folder with a sub-folder, screenshots, and an unfiled PDF.
 const folders = [

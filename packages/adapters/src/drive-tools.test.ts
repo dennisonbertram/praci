@@ -1,13 +1,8 @@
 import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-kit";
 import { describe, expect, it } from "vitest";
 import { DriveApiEmulator } from "./drive-api-emulator.js";
-import {
-  type DriveAccount,
-  type DriveToolDeps,
-  driveToolFromTool,
-  driveToolsAllowed,
-  listDriveAccounts,
-} from "./drive-tools.js";
+import type { DriveAccount, DriveToolDeps } from "./drive-tools.js";
+import { driveToolFromTool, driveToolsAllowed, listDriveAccounts } from "./drive-tools.js";
 import { GoogleApiClient } from "./google-api-request.js";
 
 const scope = { spaceId: "space-1", userId: "user-1" };

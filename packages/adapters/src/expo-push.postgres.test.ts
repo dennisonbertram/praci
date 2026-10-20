@@ -1,4 +1,5 @@
-import { createDb, type PrismaClient, savePushToken } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb, savePushToken } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { ExpoPushProvider } from "./expo-push.js";
 

@@ -38,15 +38,7 @@ export function contactToolsAllowed(
   );
 }
 
-/** Drop the contact tools when the run may not use them. */
-export function selectContactTools<T extends { name: string }>(
-  tools: T[],
-  contactsEnabled: boolean,
-): T[] {
-  return contactsEnabled ? tools : tools.filter((tool) => !CONTACT_TOOL_NAMES.has(tool.name));
-}
-
-export type ContactToolDeps = {
+type ContactToolDeps = {
   prisma: Pick<PrismaClient, "contact" | "capTableSnapshot">;
   /** From the run (the bot owner), never from model input. */
   scope: { spaceId: string; userId: string };

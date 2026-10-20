@@ -1,8 +1,5 @@
-import {
-  type AdapterContext,
-  type ConnectorProxyError,
-  MailProviderError,
-} from "@rakazo/adapter-kit";
+import type { AdapterContext, ConnectorProxyError } from "@rakazo/adapter-kit";
+import { MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ComposioConnector } from "./composio-connector.js";

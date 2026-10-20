@@ -334,7 +334,7 @@ export function formatNameIndexText(groups: Array<{ group: string; names: string
   return groups.map(({ group, names }) => `${group}:\n  ${names.join(", ")}`).join("\n");
 }
 
-export function fitsNameIndexBudget(groups: Array<{ group: string; names: string[] }>): boolean {
+function fitsNameIndexBudget(groups: Array<{ group: string; names: string[] }>): boolean {
   const nameCount = groups.reduce((total, group) => total + group.names.length, 0);
   if (nameCount > NAME_INDEX_MAX_NAMES) return false;
   return Buffer.byteLength(formatNameIndexText(groups), "utf8") <= NAME_INDEX_MAX_BYTES;

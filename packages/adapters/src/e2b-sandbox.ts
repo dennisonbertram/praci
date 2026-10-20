@@ -1,4 +1,5 @@
-import { type CommandResult, Sandbox, TimeoutError } from "@e2b/desktop";
+import type { CommandResult } from "@e2b/desktop";
+import { Sandbox, TimeoutError } from "@e2b/desktop";
 import type {
   AdapterContext,
   CommandRequest,

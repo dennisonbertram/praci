@@ -9,9 +9,9 @@ import type {
 import type { ComposioCatalogItem, ComposioProvider } from "./composio-connector.js";
 import { expandComposioMultiExecute, filterCatalog } from "./composio-connector.js";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";
+import type { EmulatedGithubRelease } from "./release-watch.js";
 import {
   DEFAULT_RAKAZO_EMULATED_RELEASES,
-  type EmulatedGithubRelease,
   RELEASE_WATCH_GITHUB_TOOL_NAMES,
 } from "./release-watch.js";
 

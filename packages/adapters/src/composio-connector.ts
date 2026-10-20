@@ -13,11 +13,8 @@ import type {
 } from "@rakazo/adapter-kit";
 import { ConnectorProxyError } from "@rakazo/adapter-kit";
 import { getLogger } from "@rakazo/logging";
-import {
-  composioToolkitDirectory,
-  mergeCatalogWithConnected,
-  type ToolkitDirectoryEntry,
-} from "./composio-catalog-cache.js";
+import type { ToolkitDirectoryEntry } from "./composio-catalog-cache.js";
+import { composioToolkitDirectory, mergeCatalogWithConnected } from "./composio-catalog-cache.js";
 import { DestinationEmulator } from "./destination-emulator.js";
 import { CATALOG_EXECUTE, catalogEntries, resolveCatalogCall } from "./lazy-tool-catalog.js";
 import { isVitestRuntime } from "./test-runtime.js";

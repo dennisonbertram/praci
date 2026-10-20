@@ -89,7 +89,7 @@ function detail(body: unknown): string {
   return "";
 }
 
-export function voiceUnreachable(provider: string): string {
+function voiceUnreachable(provider: string): string {
   return `Couldn't reach ${provider} to check that key. Check your connection.`;
 }
 
