@@ -98,6 +98,7 @@ export const ES_MESSAGES: Record<string, string> = {
   "@{name}": "@{name}",
   "Add a voice provider in Voice settings.": "Añade un proveedor de voz en los ajustes de Voz.",
   Agent: "Agente",
+  Allowed: "Permitido",
   "Allowed once": "Permitido una vez",
   "Always allowed": "Siempre permitido",
   Answer: "Responder",

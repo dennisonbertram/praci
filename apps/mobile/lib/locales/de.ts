@@ -105,6 +105,7 @@ export const DE_MESSAGES: Record<string, string> = {
   "@{name}": "@{name}",
   "Add a voice provider in Voice settings.": "Füge unter Stimme einen Sprachanbieter hinzu.",
   Agent: "Agent",
+  Allowed: "Erlaubt",
   "Allowed once": "Einmal erlaubt",
   "Always allowed": "Immer erlaubt",
   Answer: "Antwort",

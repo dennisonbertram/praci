@@ -97,6 +97,7 @@ export const HI_MESSAGES: Record<string, string> = {
   "@{name}": "@{name}",
   "Add a voice provider in Voice settings.": "आवाज़ सेटिंग्स में वॉइस प्रोवाइडर जोड़ें।",
   Agent: "एजेंट",
+  Allowed: "अनुमति दी गई",
   "Allowed once": "एक बार अनुमति दी गई",
   "Always allowed": "हमेशा अनुमत",
   Answer: "उत्तर",

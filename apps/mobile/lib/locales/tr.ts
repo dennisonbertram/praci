@@ -98,6 +98,7 @@ export const TR_MESSAGES: Record<string, string> = {
   "@{name}": "@{name}",
   "Add a voice provider in Voice settings.": "Ses ayarlarından bir ses sağlayıcısı ekle.",
   Agent: "Agent",
+  Allowed: "İzin verildi",
   "Allowed once": "Bir kez izin verildi",
   "Always allowed": "Her zaman izinli",
   Answer: "Yanıtla",

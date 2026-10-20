@@ -121,6 +121,7 @@ export const RU_MESSAGES: Record<string, string> = {
   "Add Treg": "Добавить Treg",
   "Agent messages": "Сообщения агента",
   "Alerts from routines": "Уведомления от задач",
+  Allowed: "Разрешено",
   "Allowed once": "Разрешено один раз",
   "Allow once": "Разрешить один раз",
   "Already have an account?": "У вас уже есть аккаунт?",

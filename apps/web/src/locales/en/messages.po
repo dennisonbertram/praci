@@ -922,6 +922,7 @@ msgid "All time"
 msgstr "All time"
 
 #: src/components/AiDataSharing.tsx
+#: src/components/AskCard.tsx
 #: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr "Allow"
@@ -990,6 +991,10 @@ msgstr "Allow purchase actions without asking"
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Allow writing"
 msgstr "Allow writing"
+
+#: src/components/AskCard.tsx
+msgid "Allowed"
+msgstr "Allowed"
 
 #: src/components/AskCard.tsx
 msgid "Allowed once"
@@ -5842,6 +5847,7 @@ msgid "Not in runway"
 msgstr "Not in runway"
 
 #: src/components/AiDataSharing.tsx
+#: src/components/AskCard.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Not now"
