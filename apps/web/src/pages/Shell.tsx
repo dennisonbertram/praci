@@ -77,6 +77,7 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
+  Compass,
   Files,
   FileText,
   FolderOpen,
@@ -165,6 +166,7 @@ import { glanceBadge, runwayGlance, StatusMark } from "../components/sidebar-gla
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
+import { FirstRunTour } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -770,6 +772,7 @@ export function ShellPage() {
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [initialBotsLoaded, setInitialBotsLoaded] = useState(false);
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
+  const [tourRestart, setTourRestart] = useState(false);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -3791,6 +3794,7 @@ export function ShellPage() {
             ) : (
               <InputGroup
                 data-testid="sidebar-search"
+                data-tour="sidebar-search"
                 className="app-no-drag w-auto min-w-0 flex-1 rounded-xl bg-card dark:bg-input border border-border text-muted-foreground focus-within:border-ring"
               >
                 <InputGroupAddon>
@@ -3869,6 +3873,7 @@ export function ShellPage() {
                     className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
                     title={t`Create`}
                     data-testid="create-menu-trigger"
+                    data-tour="create-menu"
                   >
                     +
                   </PopoverTrigger>
@@ -4725,9 +4730,17 @@ export function ShellPage() {
             }}
           />
         </div>
+        <FirstRunTour
+          open={tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0)}
+          onClose={(me) => {
+            setTourRestart(false);
+            setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
+          }}
+        />
         <Popover open={menuOpen} onOpenChange={setMenuOpen}>
           <PopoverTrigger
             data-testid="user-menu-trigger"
+            data-tour="user-menu"
             aria-label={rail ? userName : undefined}
             className={`flex items-center gap-[11px] rounded-lg py-3.5 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
               rail ? "justify-center px-0" : "px-[18px]"
@@ -4772,6 +4785,18 @@ export function ShellPage() {
                 <Trans>Settings</Trans>
               </Button>
               <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
+              <Button
+                variant="ghost"
+                className="w-full justify-start font-normal"
+                data-testid="take-tour"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setTourRestart(true);
+                }}
+              >
+                <Compass className="text-muted-foreground" strokeWidth={1.75} />
+                <Trans>Take the tour</Trans>
+              </Button>
               <Button
                 variant="ghost"
                 className="w-full justify-start font-normal"

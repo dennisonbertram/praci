@@ -155,6 +155,23 @@ describe("account preferences", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
+  it("records the tour as seen and clears it again", async () => {
+    const { update, actor, handler } = preferencesDeps("organic");
+    const send = (tourSeen: boolean) =>
+      handler.handle(
+        new Request("http://127.0.0.1/rpc/preferences/update", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ json: { tourSeen } }),
+        }),
+        { prefix: "/rpc", context: { actor } },
+      );
+    expect((await send(true)).response?.status).toBe(200);
+    expect(update.mock.calls[0]?.[0].data.tourSeenAt).toBeInstanceOf(Date);
+    await send(false);
+    expect(update.mock.calls[1]?.[0].data.tourSeenAt).toBeNull();
+  });
+
   it("rejects avatar styles outside robot|organic", async () => {
     const { update, actor, handler } = preferencesDeps("robot");
 

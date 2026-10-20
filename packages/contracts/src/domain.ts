@@ -1535,6 +1535,8 @@ export const MeSchema = z.object({
   avatarStyle: AvatarStyleSchema,
   /** IANA time zone last reported by one of the user's clients; null before the first report. */
   timezone: z.string().nullable(),
+  /** True once the user has finished or skipped the first-run tour. */
+  tourSeen: z.boolean(),
   /** True when this deployment bills and the user is not the deployment owner. */
   billingEnabled: z.boolean(),
 });

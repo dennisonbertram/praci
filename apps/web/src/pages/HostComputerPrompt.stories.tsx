@@ -9,6 +9,7 @@ const me: Me = {
   ticketBoardEnabled: false,
   userId: "user_demo",
   timezone: null,
+  tourSeen: true,
   email: "sam@example.com",
   name: "Sam Example",
   spaceId: "space_demo",

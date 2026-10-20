@@ -129,6 +129,7 @@ function account(provider: string, modelId: string) {
   return {
     userId: "user-1",
     timezone: null,
+    tourSeen: true,
     email: "ada@example.test",
     name: "Ada",
     spaceId: "space-1",
