@@ -4,6 +4,8 @@ Scope: one PLANNED read-only Devin page in Rakazo (mockup `docs/devin/mockup.htm
 
 This catalog consolidates the five topic files in `docs/devin/ux-paths/topics/` against `docs/devin/ux-paths/discovery.md`. Evidence labels used in story bodies: `[exists]` read in code, `[planned]` only in the mockup or discovery, `[unverified]` nobody has observed it. Story bodies are copied unchanged except for renumbered story IDs; older IDs are listed in the mapping table. A `Gap IDs` line was added to each story and points to the register in section 8.
 
+**Round 2 (mockup v3).** The mockup was revised after round 1 and the requester decided: Rakazo is read-only; one Devin connection per space; the needs-you notification goes to whoever connected; a notification links straight to the Devin session; mobile gets push only (no native screen); no Devin write option. These override older story text. Story bodies below are kept; each story affected by v3 or a decision has a `Round 2 update` block that supersedes the steps it names. Two stories are new (STORY-034, STORY-035). Section 6 (coverage matrix) and section 7 were not re-run. Round-2 evidence: `docs/devin/ux-walker/round-2/report.md`.
+
 Contents: 1 Summary, 2 ID mapping, 3 Merged stories, 4 Dependency graph, 5 Cross-topic overlaps, 6 Coverage matrix, 7 Redundancy candidates, 8 Gap register and decisions, 9 Stories.
 
 ## 1. Summary
@@ -27,6 +29,17 @@ Contents: 1 Summary, 2 ID mapping, 3 Merged stories, 4 Dependency graph, 5 Cross
 | `GAP:` lines in the topic files | 155 lines, merged into 47 distinct gaps |
 | Gaps by severity | 10 blocker, 18 major, 19 minor |
 | Decisions needed from the requester | 13 (section 8) |
+
+### Round 2 delta
+
+| Measure | Round 1 | Round 2 |
+|---|---|---|
+| Stories | 33 | 35 (STORY-034, STORY-035 added) |
+| Stories with a Round 2 update block | 0 | 17 |
+| Gaps | 47 | 53 (6 new) |
+| Gaps resolved by v3 mockup or decision | 0 | 18 |
+| Gaps open | 47 | 35 |
+| Decisions open | 13 | 5 (5, 6, 7, 8, 11) |
 
 ## 2. ID mapping (old to new)
 
@@ -65,6 +78,8 @@ Contents: 1 Summary, 2 ID mapping, 3 Merged stories, 4 Dependency graph, 5 Cross
 | STORY-031 | STORY-506 | A teammate in the same space opens the Devin page | long | Errors, permissions and surfaces |
 | STORY-032 | STORY-507 | Disconnecting Devin from Integrations | medium | Errors, permissions and surfaces |
 | STORY-033 | STORY-304, STORY-508 | Narrow windows, Electron links and the phone | long | Errors, permissions and surfaces |
+| STORY-034 | (new, round 2) | Open the agent panel for the first time from the closed first-visit page | short | Asking the Devin agent |
+| STORY-035 | (new, round 2) | Needs-you alerts after the connector leaves or someone reconnects | medium | Notifications and re-entry |
 
 ## 3. Merged stories (deduplication)
 
@@ -268,82 +283,92 @@ Source for the 'same fact' lists: topic files, plus the table at the top of `top
 
 The topic files contain 155 lines with `GAP:`. They collapse to 47 distinct gaps. Categories: data/API, state not designed, copy, notification, permissions/teams, layout/surface, scope conflict. Severity: blocker = a core journey fails or misleads; major = confusing or extra steps; minor = polish. Proposed fixes favor removing or simplifying over adding UI, per the minimal-UI rule in `AGENTS.md`.
 
-| ID | Gap | Stories | Category | Severity | Proposed fix |
-|---|---|---|---|---|---|
-| GAP-01 | The question text of a Needs-you row (and the notification body and the agent's answer) needs `devin_session_interact` get_messages, which is a forced write today, so reading it shows approval cards or is blocked. | 010, 012, 020, 021 | data/API | blocker | Split get/get_messages into a read path in `packages/contracts/src/devin.ts`; if that is refused, drop the row subtitle and notify with the session title only. |
-| GAP-02 | Nothing detects a session turning Needs you: no poller, no store of the last-seen status, page-open polling cannot reach a user who is away, and the first poll after connecting could burst-notify old sessions. | 011, 021, 022, 023, 024, 025 | notification | blocker | One server-side poll per connected server; keep last status per session in Postgres; the first poll sets a silent baseline. |
-| GAP-03 | The mapping from Devin `status` / `status_detail` to the five badges is unverified, ambiguous pairs and unknown values have no rule, and a wrong mapping would notify on the wrong sessions. | 008, 009, 025, 029, 030 | data/API | blocker | Capture the real status values from a live key, write the mapping table in code, and show an unknown value as its raw text in the neutral badge, excluded from tiles. |
-| GAP-04 | A revoked or unauthorised key has no designed state: the page keeps stale rows, the Integrations card still reads Connected (`mcpStatus` cannot see a bad bearer key), and needs-you alerts stop silently. | 007, 027 | state not designed | blocker | One `ErrorNotice` on the page with a Reconnect action that opens the existing key dialog; on 401/403 mark the server failed so the card says so too. |
-| GAP-05 | The sidebar dot counts unseen notifications and clears when the page is opened, so it goes out while sessions still need the user and disagrees with the Needs you tile. | 008, 016, 021, 022, 023 | notification | blocker | Drive the dot from the live needs-you count (like the other pages' glance counts), not from unseen notifications. |
-| GAP-06 | Dedupe and rate limits can swallow or drop real alerts: a session-only key hides a second question, the default key (surface + title) merges different sessions, the 2-per-hour attention limit drops the rest for good, and a 24-hour repeat looks like a new event. | 010, 021, 023, 024, 025 | notification | blocker | Explicit key = session id + latest message id, unique title per session, and send overflow as a low-importance notification instead of dropping it. |
-| GAP-07 | Mobile has no Devin screen; the push link `/app/devin` opens nothing or is misread as a bot id, and the phone behavior is undecided. | 012, 016, 022, 033 | layout/surface | blocker | Put the Devin agent bot id in the push data so a tap opens its thread, and state in the PR that the page is web and desktop only. |
-| GAP-08 | No Devin RPC or read path exists for the page; how it reads sessions as the connector, how that is authorised, and that tiles, table, dot count and agent come from one result are undecided. | 004, 008, 011, 014, 016, 027 | data/API | blocker | One space- and user-scoped server call that runs the search and caches the result; tiles, table and dot all read that one result. |
-| GAP-09 | The org-scoped key shows every org session, including confidential titles, to every member who connects, with no owner name and no label saying which org. | 003, 004, 015, 031 | permissions/teams | blocker | Decide scope before build; minimum is to name the org in the page header and keep titles visible only to connectors. |
-| GAP-10 | The page is read-only, but the Devin agent offers the 'Allow changes in Devin' setting, approval cards for send, stop and create, and a skill that points users to that setting, which contradicts 'Rakazo never launches, replies or stops'. | 010, 012, 018, 019, 020 | scope conflict | blocker | Remove the write option for Devin: keep `writesEnabled` false, hide the Devin write tools from the agent, and drop the skill pointer. |
-| GAP-11 | Clicking an OS notification only focuses the window and does not open the notification link, so the away user lands on whatever page they left. | 021, 022 | notification | major | Navigate to the link in the OS notification click handler (`notification-delivery.ts`). |
-| GAP-12 | Only the user whose key detected a session is notified, even when the session belongs to someone else; teammates who did not connect get nothing. | 015, 023, 031 | permissions/teams | major | Keep connector-only for the first release and say so in the PR. |
-| GAP-13 | There is no refresh model: no refresh control, no auto-refresh cadence, no rule for the header clock, the page wakes stale, and the page lags after the user answers in Devin. | 010, 011, 016, 023, 025, 027 | data/API | major | Refetch on window focus and every N seconds while visible; no refresh button. |
-| GAP-14 | Loading and slow states are not drawn: first-load skeleton, refresh with data on screen, the connector timeout, and the 590-second gather tool must never be used for a page load. | 004, 011, 020, 027 | state not designed | major | Skeleton on first load only; keep rows during refresh; the page uses search with a short timeout. |
-| GAP-15 | There is no empty state: zero sessions, an all-old list, and an empty tool response all look broken or like an outage. | 005, 008, 027 | state not designed | major | One short 'No sessions' row inside the table frame; tiles stay at 0. |
-| GAP-16 | Only the latest 100 sessions load, so tiles undercount, an older Needs-you session is invisible, and the agent can know more than the page. | 012, 013, 014, 029 | data/API | major | Page through results until all non-finished sessions are read, or label the table 'latest 100'. |
-| GAP-17 | The sort rule, sticky header, filter and search are undefined, so there is no way to narrow to Error or to a repo. | 009, 014, 017 | layout/surface | major | State one sort (Needs you first, then newest); add no filters, since the agent is the search. |
-| GAP-18 | Tile definitions are open: 'ACUs' is jargon, 'this week' has no window or timezone, per-session `acus_consumed` can miscount across weeks, and 'PRs open' counts only the fetched rows. | 004, 005, 008, 013, 014, 017 | copy | major | Define a rolling 7-day window in the viewer's timezone; consider dropping the ACUs tile. |
-| GAP-19 | The session link target is unverified (`url` comes only from the gated get call), the header 'Open Devin' has no target, and there is no row highlight, copy link or Slack-thread link. | 004, 010, 012, 021, 027 | data/API | major | Build the link from the session id after the URL shape is checked; point 'Open Devin' at Devin home; no highlight or copy control. |
-| GAP-20 | Nothing tells the user that a Needs-you question is answered in Devin, so they look for a reply box that does not exist. | 010, 012 | copy | major | Label the row link 'Answer in Devin' instead of adding explanatory text. |
-| GAP-21 | After Connect the dialog ends on 'Devin connected' and Done in the catalog, with no path to the new page. | 001, 002 | layout/surface | major | Close the dialog and go to `/app/devin`; add the 'Open Devin' link on the card. |
-| GAP-22 | The connect check lists tools only, so a key without session-read permission connects and then fails on the page. | 003, 007 | data/API | major | Add one session search to the connect-time check. |
-| GAP-23 | Panel states for a missing agent (Create agent, Try again), no model, and failed creation are not drawn for Devin, and the table works without a model with no hint. | 006, 012 | state not designed | major | Reuse the Legal and Carta panel branch. |
-| GAP-24 | Connections are per user: a teammate sees a bare Connect Devin with no hint that a colleague connected, a shared key may be pasted into chat, and one revoked shared key breaks every page using it. | 002, 007, 031 | permissions/teams | major | Keep per-user connections; link the dialog hint to where a service-user key is created; revisit a shared connection later. |
-| GAP-25 | Narrow layouts are not drawn: six-column table and four tiles under 1280px, the overlay panel hiding the table, the drawer hiding the dot, and long titles. | 012, 014, 021, 033 | layout/surface | major | Reuse Legal's container-query list layout; the overlay panel stays as is. |
-| GAP-26 | Error and Suspended rows give no reason (`status_detail`), Suspended can mean out of credits or a manual pause, and a row cannot show two statuses. | 009, 030 | data/API | major | Show the reason as a tooltip from `status_detail` and define which status wins. |
-| GAP-27 | Tool output is free text; rows or fields that fail to parse are dropped silently, so tiles can be wrong and 'no PR' looks the same as 'PR unreadable'. | 027, 029 | data/API | major | Parse defensively against real output, and show a dash for an unreadable field and a count of skipped rows. |
-| GAP-28 | HTTP 429 is not handled: the user sees a raw error, 'Try again' keeps the limit exhausted, the key is shared across the org, and the agent may retry in a loop. | 025, 028 | data/API | major | Map 429 to one plain message, disable 'Try again' for the cooldown, and add jitter to the poller. |
-| GAP-29 | First-visit state of the agent panel (open or closed, intro, suggestions) is not designed. | 004, 012 | state not designed | minor | Closed by default; Ask opens it; reuse the existing suggestions pattern. |
-| GAP-30 | The agent reads live while the table is cached, so counts and wording of the same question can differ, and answers show no freshness. | 011, 012, 014, 017, 020 | data/API | minor | Accept the difference; have the page and the agent use the same session read so wording of status matches. |
-| GAP-31 | There is no standard wording for what the agent cannot do: read the question, answer by person, see the credit balance, match a repo without a PR, or look past 100 sessions. | 012, 015, 017, 030 | copy | minor | One line in the agent's skill: state the limit in a sentence and point to Devin; no UI. |
-| GAP-32 | If writes are kept, the approval card shows raw JSON, has no edit step, and is the only protection against prompt injection from session text. | 018 | permissions/teams | minor | Moot if the write option is removed; otherwise render a plain-sentence summary. |
-| GAP-33 | Requests from another bot to the Devin agent have undefined visibility (is it in the Devin thread), approval-card location, and no rule against forwarding Devin content to third parties. | 019 | permissions/teams | minor | With writes removed, only the forwarding rule remains: one line in the agent's skill. |
-| GAP-34 | The header 'Updated Nm ago' (Rakazo fetch time), the per-row 'Updated' (Devin time) and the sidebar glance are three different clocks, and the under-one-minute wording is undefined. | 008, 011 | copy | minor | Drop the header clock unless the data is more than a few minutes old. |
-| GAP-35 | The PR column has one slot: several PRs per session, closed-unmerged PRs, and sessions with no PR (so no repo at all) are undefined. | 013, 017 | data/API | minor | Show the first PR plus a count; add a 'closed' state; leave the repo blank without a PR. |
-| GAP-36 | Devin `origin` values beyond Slack, Linear, Web and API (jira, teams, automation, cli, code_scan, other) and sessions without a title have no label. | 009, 015 | data/API | minor | Map unknown origins to 'Other' and an empty title to 'Untitled session'. |
-| GAP-37 | It is undecided whether the sidebar link shows before connecting, and a hidden page loses its dot with no hint that it still notifies. | 002, 008, 026 | state not designed | minor | Show the link always (like Cap table); hidden pages still toast, so add no UI. |
-| GAP-38 | The connect dialog does not say where to create a key, one error covers a bad key, missing permission, network and outage, nothing says the failed key was not saved, and closing during 'Connecting' is unspecified. | 001, 003 | copy | minor | Add one link to the key hint; split the error into 'rejected' and 'could not reach'. |
-| GAP-39 | Toast, dot and tile announce the same fact, a toast can appear for a page the user is already on, and the drawer hides the dot under 1024px. | 021 | notification | minor | Suppress the toast while on `/app/devin`. |
-| GAP-40 | The phone push still fires when a laptop OS banner was shown, so both devices buzz. | 022 | notification | minor | Leave as is; it is existing behavior across all notifications. |
-| GAP-41 | Missed alerts cannot be reviewed: a rate-limited one is gone, none replays on open, there is no history, and another space's unseen state is not shown. | 016, 023 | notification | minor | Treat the page as the source of truth; add no bell or history. |
-| GAP-42 | Only Needs you notifies; a broken key, out-of-credits suspensions and Error sessions produce no alert. | 007, 030 | notification | minor | Keep needs-you only for the first release; show the others on the page. |
-| GAP-43 | The Remove dialog does not say Devin sessions are untouched or that the agent is archived, an open page tab goes stale, old notification links land on Connect Devin, and reconnecting orphans agent history. | 032 | copy | minor | Add one clause to the dialog; leave the rest. |
-| GAP-44 | Connection trouble is worded differently in the Integrations badge, the page notice and the chat tool error, and the raw message ('401') means nothing to the user. | 007, 027, 028 | copy | minor | Two shared messages ('Devin rejected the key', 'Devin is not responding') used in all three places. |
-| GAP-45 | A long or truncated question shows on one line with an ellipsis and no way to read it in full. | 010, 012, 029 | layout/surface | minor | Clamp to two lines; the link to Devin is the way to read more. |
-| GAP-46 | Searching 'Devin' returns the page and the 'Devin agent' bot, and no keywords or order are defined. | 026 | layout/surface | minor | Page first, with a keywords string like Cap table has. |
-| GAP-47 | Accessibility details are open: dot label, reason on a disabled composer, overlay focus order and Esc, and tool-step summary names. | 006, 020, 033 | layout/surface | minor | Follow the existing page-agent patterns; no new design. |
+| ID | Gap | Stories | Category | Severity | Proposed fix | Round 2 |
+|---|---|---|---|---|---|---|
+| GAP-01 | The question text of a Needs-you row (and the notification body and the agent's answer) needs `devin_session_interact` get_messages, which is a forced write today, so reading it shows approval cards or is blocked. | 010, 012, 020, 021 | data/API | blocker | Split get/get_messages into a read path in `packages/contracts/src/devin.ts`; if that is refused, drop the row subtitle and notify with the session title only. | Open |
+| GAP-02 | Nothing detects a session turning Needs you: no poller, no store of the last-seen status, page-open polling cannot reach a user who is away, and the first poll after connecting could burst-notify old sessions. | 011, 021, 022, 023, 024, 025 | notification | blocker | One server-side poll per connected server; keep last status per session in Postgres; the first poll sets a silent baseline. | Open |
+| GAP-03 | The mapping from Devin `status` / `status_detail` to the five badges is unverified, ambiguous pairs and unknown values have no rule, and a wrong mapping would notify on the wrong sessions. | 008, 009, 025, 029, 030 | data/API | blocker | Capture the real status values from a live key, write the mapping table in code, and show an unknown value as its raw text in the neutral badge, excluded from tiles. | Open |
+| GAP-04 | A revoked or unauthorised key has no designed state: the page keeps stale rows, the Integrations card still reads Connected (`mcpStatus` cannot see a bad bearer key), and needs-you alerts stop silently. | 007, 027 | state not designed | blocker | One `ErrorNotice` on the page with a Reconnect action that opens the existing key dialog; on 401/403 mark the server failed so the card says so too. | Resolved (round 2): Mockup draws the stale frame with 'Devin rejected the key.' and Reconnect. The silent alert stop and card health move to GAP-49. |
+| GAP-05 | The sidebar dot counts unseen notifications and clears when the page is opened, so it goes out while sessions still need the user and disagrees with the Needs you tile. | 008, 016, 021, 022, 023 | notification | blocker | Drive the dot from the live needs-you count (like the other pages' glance counts), not from unseen notifications. | Open: Mockup dot has no number; the clearing rule is still undecided (decision 8). |
+| GAP-06 | Dedupe and rate limits can swallow or drop real alerts: a session-only key hides a second question, the default key (surface + title) merges different sessions, the 2-per-hour attention limit drops the rest for good, and a 24-hour repeat looks like a new event. | 010, 021, 023, 024, 025 | notification | blocker | Explicit key = session id + latest message id, unique title per session, and send overflow as a low-importance notification instead of dropping it. | Open |
+| GAP-07 | Mobile has no Devin screen; the push link `/app/devin` opens nothing or is misread as a bot id, and the phone behavior is undecided. | 012, 016, 022, 033 | layout/surface | blocker | Put the Devin agent bot id in the push data so a tap opens its thread, and state in the PR that the page is web and desktop only. | Resolved (round 2): Decision: mobile gets push only, no native screen. The push tap target moves to GAP-48. |
+| GAP-08 | No Devin RPC or read path exists for the page; how it reads sessions as the connector, how that is authorised, and that tiles, table, dot count and agent come from one result are undecided. | 004, 008, 011, 014, 016, 027 | data/API | blocker | One space- and user-scoped server call that runs the search and caches the result; tiles, table and dot all read that one result. | Open |
+| GAP-09 | The org-scoped key shows every org session, including confidential titles, to every member who connects, with no owner name and no label saying which org. | 003, 004, 015, 031 | permissions/teams | blocker | Decide scope before build; minimum is to name the org in the page header and keep titles visible only to connectors. | Resolved (round 2): Decision: one connection per space; mockup header names the org ('acme'). Who may connect moves to GAP-50. |
+| GAP-10 | The page is read-only, but the Devin agent offers the 'Allow changes in Devin' setting, approval cards for send, stop and create, and a skill that points users to that setting, which contradicts 'Rakazo never launches, replies or stops'. | 010, 012, 018, 019, 020 | scope conflict | blocker | Remove the write option for Devin: keep `writesEnabled` false, hide the Devin write tools from the agent, and drop the skill pointer. | Resolved (round 2): Decision: no Devin write option. Build work: hide the write tools and the skill pointer. |
+| GAP-11 | Clicking an OS notification only focuses the window and does not open the notification link, so the away user lands on whatever page they left. | 021, 022 | notification | major | Navigate to the link in the OS notification click handler (`notification-delivery.ts`). | Resolved (round 2): Decision: a needs-you notification links straight to the Devin session, so the click must open it. Build work in `notification-delivery.ts`. |
+| GAP-12 | Only the user whose key detected a session is notified, even when the session belongs to someone else; teammates who did not connect get nothing. | 015, 023, 031 | permissions/teams | major | Keep connector-only for the first release and say so in the PR. | Resolved (round 2): Decision: the needs-you notification goes to whoever connected. A connector who leaves is GAP-53. |
+| GAP-13 | There is no refresh model: no refresh control, no auto-refresh cadence, no rule for the header clock, the page wakes stale, and the page lags after the user answers in Devin. | 010, 011, 016, 023, 025, 027 | data/API | major | Refetch on window focus and every N seconds while visible; no refresh button. | Open: Mockup shows 'Updated Nm ago' only when stale; no refresh cue is drawn. |
+| GAP-14 | Loading and slow states are not drawn: first-load skeleton, refresh with data on screen, the connector timeout, and the 590-second gather tool must never be used for a page load. | 004, 011, 020, 027 | state not designed | major | Skeleton on first load only; keep rows during refresh; the page uses search with a short timeout. | Resolved (round 2): Mockup draws the loading skeleton (frame 'Loading'). The short-timeout and no-gather-tool rule is build work. |
+| GAP-15 | There is no empty state: zero sessions, an all-old list, and an empty tool response all look broken or like an outage. | 005, 008, 027 | state not designed | major | One short 'No sessions' row inside the table frame; tiles stay at 0. | Resolved (round 2): Mockup draws 'No Devin sessions yet.' (frame 'Empty'). |
+| GAP-16 | Only the latest 100 sessions load, so tiles undercount, an older Needs-you session is invisible, and the agent can know more than the page. | 012, 013, 014, 029 | data/API | major | Page through results until all non-finished sessions are read, or label the table 'latest 100'. | Open |
+| GAP-17 | The sort rule, sticky header, filter and search are undefined, so there is no way to narrow to Error or to a repo. | 009, 014, 017 | layout/surface | major | State one sort (Needs you first, then newest); add no filters, since the agent is the search. | Open: Mockup groups Needs you, Working, Earlier; the order inside a group is not stated. |
+| GAP-18 | Tile definitions are open: 'ACUs' is jargon, 'this week' has no window or timezone, per-session `acus_consumed` can miscount across weeks, and 'PRs open' counts only the fetched rows. | 004, 005, 008, 013, 014, 017 | copy | major | Define a rolling 7-day window in the viewer's timezone; consider dropping the ACUs tile. | Resolved (round 2): Mockup keeps only the Needs you and Working tiles; ACUs and PRs open are gone, so no window is needed. |
+| GAP-19 | The session link target is unverified (`url` comes only from the gated get call), the header 'Open Devin' has no target, and there is no row highlight, copy link or Slack-thread link. | 004, 010, 012, 021, 027 | data/API | major | Build the link from the session id after the URL shape is checked; point 'Open Devin' at Devin home; no highlight or copy control. | Open: All links are '#'; the session URL shape is still unverified (the header icon is gone). |
+| GAP-20 | Nothing tells the user that a Needs-you question is answered in Devin, so they look for a reply box that does not exist. | 010, 012 | copy | major | Label the row link 'Answer in Devin' instead of adding explanatory text. | Resolved (round 2): Needs-you rows carry the link 'Answer in Devin' with an external icon. |
+| GAP-21 | After Connect the dialog ends on 'Devin connected' and Done in the catalog, with no path to the new page. | 001, 002 | layout/surface | major | Close the dialog and go to `/app/devin`; add the 'Open Devin' link on the card. | Resolved (round 2): Caption under the dialog: Connect closes the dialog and opens /app/devin. |
+| GAP-22 | The connect check lists tools only, so a key without session-read permission connects and then fails on the page. | 003, 007 | data/API | major | Add one session search to the connect-time check. | Open |
+| GAP-23 | Panel states for a missing agent (Create agent, Try again), no model, and failed creation are not drawn for Devin, and the table works without a model with no hint. | 006, 012 | state not designed | major | Reuse the Legal and Carta panel branch. | Open: Ask is drawn on Not connected, Loading and Empty frames with no agent state (F-STORY-002-04). |
+| GAP-24 | Connections are per user: a teammate sees a bare Connect Devin with no hint that a colleague connected, a shared key may be pasted into chat, and one revoked shared key breaks every page using it. | 002, 007, 031 | permissions/teams | major | Keep per-user connections; link the dialog hint to where a service-user key is created; revisit a shared connection later. | Resolved (round 2): Decision: one Devin connection per space. |
+| GAP-25 | Narrow layouts are not drawn: six-column table and four tiles under 1280px, the overlay panel hiding the table, the drawer hiding the dot, and long titles. | 012, 014, 021, 033 | layout/surface | major | Reuse Legal's container-query list layout; the overlay panel stays as is. | Resolved (round 2): Width switcher draws 1100, 900 and 390 (list layout, top bar, overlay panel). Residuals: F-STORY-033-03 and -06. |
+| GAP-26 | Error and Suspended rows give no reason (`status_detail`), Suspended can mean out of credits or a manual pause, and a row cannot show two statuses. | 009, 030 | data/API | major | Show the reason as a tooltip from `status_detail` and define which status wins. | Open |
+| GAP-27 | Tool output is free text; rows or fields that fail to parse are dropped silently, so tiles can be wrong and 'no PR' looks the same as 'PR unreadable'. | 027, 029 | data/API | major | Parse defensively against real output, and show a dash for an unreadable field and a count of skipped rows. | Open |
+| GAP-28 | HTTP 429 is not handled: the user sees a raw error, 'Try again' keeps the limit exhausted, the key is shared across the org, and the agent may retry in a loop. | 025, 028 | data/API | major | Map 429 to one plain message, disable 'Try again' for the cooldown, and add jitter to the poller. | Open: Load-error frame has 'Try again'; the 429 cooldown rule is not drawn. |
+| GAP-29 | First-visit state of the agent panel (open or closed, intro, suggestions) is not designed. | 004, 012 | state not designed | minor | Closed by default; Ask opens it; reuse the existing suggestions pattern. | Resolved (round 2): Mockup draws first visit with the panel closed. The first Ask is STORY-034. |
+| GAP-30 | The agent reads live while the table is cached, so counts and wording of the same question can differ, and answers show no freshness. | 011, 012, 014, 017, 020 | data/API | minor | Accept the difference; have the page and the agent use the same session read so wording of status matches. | Open |
+| GAP-31 | There is no standard wording for what the agent cannot do: read the question, answer by person, see the credit balance, match a repo without a PR, or look past 100 sessions. | 012, 015, 017, 030 | copy | minor | One line in the agent's skill: state the limit in a sentence and point to Devin; no UI. | Open |
+| GAP-32 | If writes are kept, the approval card shows raw JSON, has no edit step, and is the only protection against prompt injection from session text. | 018 | permissions/teams | minor | Moot if the write option is removed; otherwise render a plain-sentence summary. | Resolved (round 2): Decision: no write path, so no approval card for Devin. |
+| GAP-33 | Requests from another bot to the Devin agent have undefined visibility (is it in the Devin thread), approval-card location, and no rule against forwarding Devin content to third parties. | 019 | permissions/teams | minor | With writes removed, only the forwarding rule remains: one line in the agent's skill. | Open: Narrowed: with writes removed only the 'do not forward Devin content' rule remains. |
+| GAP-34 | The header 'Updated Nm ago' (Rakazo fetch time), the per-row 'Updated' (Devin time) and the sidebar glance are three different clocks, and the under-one-minute wording is undefined. | 008, 011 | copy | minor | Drop the header clock unless the data is more than a few minutes old. | Resolved (round 2): Header shows the org name; 'Updated 4m ago' appears only on the stale frame. |
+| GAP-35 | The PR column has one slot: several PRs per session, closed-unmerged PRs, and sessions with no PR (so no repo at all) are undefined. | 013, 017 | data/API | minor | Show the first PR plus a count; add a 'closed' state; leave the repo blank without a PR. | Open |
+| GAP-36 | Devin `origin` values beyond Slack, Linear, Web and API (jira, teams, automation, cli, code_scan, other) and sessions without a title have no label. | 009, 015 | data/API | minor | Map unknown origins to 'Other' and an empty title to 'Untitled session'. | Open |
+| GAP-37 | It is undecided whether the sidebar link shows before connecting, and a hidden page loses its dot with no hint that it still notifies. | 002, 008, 026 | state not designed | minor | Show the link always (like Cap table); hidden pages still toast, so add no UI. | Resolved (round 2): Not connected frame shows the sidebar link, with no dot. |
+| GAP-38 | The connect dialog does not say where to create a key, one error covers a bad key, missing permission, network and outage, nothing says the failed key was not saved, and closing during 'Connecting' is unspecified. | 001, 003 | copy | minor | Add one link to the key hint; split the error into 'rejected' and 'could not reach'. | Open: Narrowed: the help link 'Where to find your key' is now drawn; the error split and failed-key wording are not. |
+| GAP-39 | Toast, dot and tile announce the same fact, a toast can appear for a page the user is already on, and the drawer hides the dot under 1024px. | 021 | notification | minor | Suppress the toast while on `/app/devin`. | Open: Toast frame is drawn on the Devin page itself (F-STORY-021-04). |
+| GAP-40 | The phone push still fires when a laptop OS banner was shown, so both devices buzz. | 022 | notification | minor | Leave as is; it is existing behavior across all notifications. | Open |
+| GAP-41 | Missed alerts cannot be reviewed: a rate-limited one is gone, none replays on open, there is no history, and another space's unseen state is not shown. | 016, 023 | notification | minor | Treat the page as the source of truth; add no bell or history. | Open |
+| GAP-42 | Only Needs you notifies; a broken key, out-of-credits suspensions and Error sessions produce no alert. | 007, 030 | notification | minor | Keep needs-you only for the first release; show the others on the page. | Open |
+| GAP-43 | The Remove dialog does not say Devin sessions are untouched or that the agent is archived, an open page tab goes stale, old notification links land on Connect Devin, and reconnecting orphans agent history. | 032 | copy | minor | Add one clause to the dialog; leave the rest. | Open: Now also: Remove ends the connection for every member of the space. |
+| GAP-44 | Connection trouble is worded differently in the Integrations badge, the page notice and the chat tool error, and the raw message ('401') means nothing to the user. | 007, 027, 028 | copy | minor | Two shared messages ('Devin rejected the key', 'Devin is not responding') used in all three places. | Open: Page uses 'Devin rejected the key.' and 'Could not load Devin sessions.'; the Integrations card and chat error wording are unverified. |
+| GAP-45 | A long or truncated question shows on one line with an ellipsis and no way to read it in full. | 010, 012, 029 | layout/surface | minor | Clamp to two lines; the link to Devin is the way to read more. | Resolved (round 2): Mockup clamps the question to two lines and adds 'Answer in Devin'. |
+| GAP-46 | Searching 'Devin' returns the page and the 'Devin agent' bot, and no keywords or order are defined. | 026 | layout/surface | minor | Page first, with a keywords string like Cap table has. | Open |
+| GAP-47 | Accessibility details are open: dot label, reason on a disabled composer, overlay focus order and Esc, and tool-step summary names. | 006, 020, 033 | layout/surface | minor | Follow the existing page-agent patterns; no new design. | Open: Dot has no role (F-STORY-008-04); 'Answer in Devin' is 18px high (F-STORY-010-04). |
+| GAP-48 | A needs-you notification now links to the Devin session (https). The phone push has no handler for an external link: the mobile parser reads app paths only, so a tap may open nothing or the app home. | 022, 033 | notification | major | Mobile notification-open opens an https link in the system browser; keep the thread route for other notifications. | Open (new) |
+| GAP-49 | With the key rejected, the page keeps the tile, badges, 'Answer in Devin' links and the sidebar dot looking live; nothing says needs-you alerts have stopped; the Integrations card can still read Connected; it is not said who can press Reconnect on a shared connection. | 007, 027, 031 | state not designed | major | Dim tile and dot while stale or add a short clause to the notice; mark the server failed on 401/403; allow any member who may connect to Reconnect. | Open (new) |
+| GAP-50 | One connection per space is decided, but not who may connect, replace or remove it, what the dialog says about sharing (every member sees every org session), or what a member who may not connect sees. | 001, 002, 031, 032 | permissions/teams | major | Decide the role rule, then add one short clause to the connect and remove dialogs and one 'ask whoever connected it' variant of Not connected. | Open (new) |
+| GAP-51 | Clicking Ask on the closed-panel first-visit frame hides the button and shows no panel, so the first-open state (empty thread, intro, suggestion chips) and the closed-to-open transition are not drawn; Ask also shows where there is no agent (Not connected, Loading, Empty). | 004, 012, 034 | state not designed | minor | Draw the first-open intro once; hide Ask until an agent exists. | Open (new) |
+| GAP-52 | A notification link points at a Devin session URL, but the URL shape is unverified (GAP-19). If it cannot be built, the notification has no target. | 021, 022 | notification | minor | Fall back to `/app/devin` when no session URL can be built. | Open (new) |
+| GAP-53 | Needs-you alerts go to whoever connected. If that person leaves the space, is deactivated or reconnects as someone else, nobody (or the wrong person) is alerted, and nothing on the page says who receives them. | 023, 031, 035 | permissions/teams | minor | On reconnect, the new connector becomes the recipient; when the connector is removed, notify an owner once. | Open (new) |
 
 Story numbers in the table are `STORY-` numbers without the prefix.
 
 ### Gap counts
 
-| Severity | Count |
-|---|---|
-| Blocker | 10 |
-| Major | 18 |
-| Minor | 19 |
-| Total | 47 |
+| Severity | Round 1 | Resolved (round 2) | Open after round 2 (incl. 6 new) |
+|---|---|---|---|
+| Blocker | 10 | 4 | 6 |
+| Major | 18 | 9 | 12 (9 old + 3 new) |
+| Minor | 19 | 5 | 17 (14 old + 3 new) |
+| Total | 47 | 18 | 35 |
+
+Resolved here means the design question is settled by the v3 mockup or by a requester decision; several still need build work, which the Round 2 column says. Counts are from the Round 2 column above.
 
 ### Decisions needed from the requester
 
-1. **Org-wide visibility.** The org key shows every Devin session to every member who connects, with no names. Choose: show all org sessions with the org named in the header (recommended minimum), filter somehow, or restrict who can connect. Closes: GAP-09, GAP-24.
-2. **Who gets notified.** Only the connector (recommended for the first release), or every member, or the session owner (not possible today: `user_id` is opaque). Closes: GAP-12.
-3. **Mobile scope.** Recommended: the page is web and desktop only; the push opens the Devin agent thread. Alternative: a native session list. Closes: GAP-07.
-4. **Remove 'Allow changes in Devin' for Devin?.** Recommended: yes. The page promises read-only, and the setting, the approval cards and the skill text all invite writes. Closes: GAP-10, GAP-32, GAP-33.
+Round 2 marks which of these are now decided or settled by the v3 mockup. Decisions 5, 6, 7, 8 and 11 are still open.
+
+1. **Org-wide visibility.** The org key shows every Devin session to every member who connects, with no names. Choose: show all org sessions with the org named in the header (recommended minimum), filter somehow, or restrict who can connect. Closes: GAP-09, GAP-24. **Decided (round 2): one shared connection per space, org named in the header; who may connect is GAP-50.**
+2. **Who gets notified.** Only the connector (recommended for the first release), or every member, or the session owner (not possible today: `user_id` is opaque). Closes: GAP-12. **Decided (round 2): whoever connected.**
+3. **Mobile scope.** Recommended: the page is web and desktop only; the push opens the Devin agent thread. Alternative: a native session list. Closes: GAP-07. **Decided (round 2): push only, no native screen; the push opens the Devin session link, not the agent thread.**
+4. **Remove 'Allow changes in Devin' for Devin?.** Recommended: yes. The page promises read-only, and the setting, the approval cards and the skill text all invite writes. Closes: GAP-10, GAP-32, GAP-33. **Decided (round 2): yes, no Devin write option.**
 5. **Refresh and poll model.** Recommended: refetch on focus and every N seconds while visible, plus one server-side poll for alerts. Alternative: page-open polling only, which cannot notify an away user. Closes: GAP-13, GAP-02.
 6. **Split `devin_session_interact` read actions.** Recommended: yes, so question text can be read without an approval card. Alternative: ship without question text on rows and in alerts. Closes: GAP-01.
 7. **Page read path.** A new Devin RPC that reads as the connector (recommended) vs reading through the agent's server connection. Closes: GAP-08.
 8. **Dot meaning.** Live needs-you count (recommended) vs unseen notifications (current mechanism). Closes: GAP-05.
-9. **Tile definitions.** 'This week' window and timezone, and whether to keep the ACUs tile at all. Closes: GAP-18.
-10. **Sidebar link before connecting.** Always show (recommended, like Cap table) vs hide until connected. Closes: GAP-37.
+9. **Tile definitions.** 'This week' window and timezone, and whether to keep the ACUs tile at all. Closes: GAP-18. **Settled by mockup (round 2): ACUs tile dropped.**
+10. **Sidebar link before connecting.** Always show (recommended, like Cap table) vs hide until connected. Closes: GAP-37. **Settled by mockup (round 2): link always shown.**
 11. **Alerts beyond Needs you.** Whether a broken key or out-of-credits suspensions should notify. Recommended: no, for the first release. Closes: GAP-42.
-12. **Agent panel default.** Closed with Ask (recommended) vs open on first visit, as the mockup draws it. Closes: GAP-29.
-13. **Shared connection.** Per-user key (current, recommended) vs a shared connection for a space. Closes: GAP-24.
+12. **Agent panel default.** Closed with Ask (recommended) vs open on first visit, as the mockup draws it. Closes: GAP-29. **Settled by mockup (round 2): closed with Ask.**
+13. **Shared connection.** Per-user key (current, recommended) vs a shared connection for a space. Closes: GAP-24. **Decided (round 2): one connection per space (the recommendation in this list is superseded).**
 
 ## 9. Stories
 
@@ -377,6 +402,14 @@ Stories are grouped by their topic file, in the new numbering.
 - She pastes a Linear or GitHub token by mistake: handled as a rejected key (STORY-003).
 - Information appears twice: the key description is on the tile hint and in the dialog; the "Connected" section repeats the status in a badge.
 
+#### Round 2 update (mockup v3, decisions)
+- **Dialog** [mockup frame 'Connect dialog']: hint unchanged ("An org-scoped Devin service-user key (starts with cog_)."), one field, and a new grey link "Where to find your key" under the field (target not observable). GAP-38 is half closed.
+- **Step 5 is gone.** The caption under the frame says Connect closes the dialog and opens `/app/devin` [mockup caption; planned]. The "Devin connected" / "Done" screen is dropped from the planned path. GAP-21 resolved.
+- **Ideal path: 4** (Integrations, Devin tile, paste key, Connect, then the page is open). Was 5.
+- **Not drawn:** Connect disabled on an empty field, "Connecting…", rejected key, could not reach Devin. The frame shows an enabled Connect with a prefilled key.
+- **New (decision: one connection per space):** the dialog does not say the connection is shared with every member or that every member will see all org sessions, and 'org-scoped' is still in the hint (GAP-50, F-STORY-001-05). If the space already has a connection, what the Devin tile and its dialog show is not drawn.
+- Gap IDs now: GAP-21 resolved, GAP-38 narrowed, GAP-50 new.
+
 ### STORY-002: First visit through the sidebar link, not connected
 **Old ID**: STORY-102  
 **Gap IDs**: GAP-21, GAP-24, GAP-37  
@@ -400,6 +433,12 @@ Stories are grouped by their topic file, in the new numbering.
 #### Edge Cases
 - A teammate in the same space already connected: Marcus still sees Not connected, because connections are per user [exists in code]. GAP: nothing on the page says a colleague has connected, or that his own key is needed.
 - Space switch: the page reloads with that space's connection state.
+
+#### Round 2 update (mockup v3, decisions)
+- **Not connected frame** [mockup frame 'Not connected']: inside the shell, sidebar link "Devin" selected with no dot, title "Devin" with no org meta, one line "Connect Devin to see its sessions here." and one black "Connect Devin" button. Step 2's gap (a bare button) is resolved by that line. GAP-37 resolved (the link is always shown).
+- An Ask button is also drawn on this frame, although no Devin agent exists before connecting (GAP-51, F-STORY-002-04).
+- **Step 4 changes:** Connect closes the dialog and opens the page; no "Devin connected" screen (caption). Ideal path stays 3 for the first connector (Devin, Connect Devin, key and Connect).
+- **Decision (one connection per space) supersedes the per-user edge case:** a member of a space that is already connected never sees this frame; opening "Devin" lands on the table (ideal path 1). A member who is not allowed to connect or replace the shared connection has no drawn state (GAP-50).
 
 ### STORY-003: Wrong or rejected key
 **Old ID**: STORY-103  
@@ -454,6 +493,13 @@ Stories are grouped by their topic file, in the new numbering.
 - Sessions started by colleagues in Slack or Linear appear without a person name; "From" shows the origin only.
 - The page fetch must not use the blocking gather tool; slow Devin responses have no designed state.
 
+#### Round 2 update (mockup v3)
+- **States now drawn:** 'First visit, panel closed' (header "Devin" with org meta "acme"; tiles Needs you 2 and Working 2; five columns Session, Status, Pull request, Source, Updated; Needs you rows show the question and "Answer in Devin"), 'Loading' (skeleton: header line, two tiles, table block, no dot), and 'Load error' ("Could not load Devin sessions." with "Try again").
+- **Tiles changed:** ACUs this week and PRs open are gone (GAP-18 resolved). The ACUs column is gone.
+- **The panel is closed on first visit** (GAP-29 resolved); the steps that read the open panel thread no longer apply. Ideal path: 2 (connect lands on the page, read the Needs you group). Opening the panel is STORY-034.
+- Titles wrap instead of clipping; the question clamps at two lines (F-STORY-004-06).
+- Loading shows no sidebar dot, so the dot appears only after data loads.
+
 ### STORY-005: Connected but nothing to show (empty list)
 **Old ID**: STORY-105  
 **Gap IDs**: GAP-15, GAP-18  
@@ -476,6 +522,10 @@ Stories are grouped by their topic file, in the new numbering.
 #### Edge Cases
 - Zero tiles next to a table of old rows can look like a bug; no copy explains the window.
 - Org that has Devin but whose key cannot list sessions gives an error instead of an empty list (STORY-007).
+
+#### Round 2 update (mockup v3)
+- **Empty frame** [mockup frame 'Empty']: header "Devin" with meta "acme", one centred line "No Devin sessions yet.", no tiles, no group headings, no dot, Ask visible. GAP-15 resolved.
+- Not drawn: a list with only old sessions (only the Earlier group), and tiles with a zero Needs you count while other sessions exist (F-STORY-008-05).
 
 ### STORY-006: Returning when the Devin agent is missing, no model is set, or setup failed
 **Merged from**: STORY-106, STORY-306 (primary body first, merged variant below)  
@@ -583,6 +633,10 @@ Duplicated information: the model prompt appears in the panel, in Settings, and 
 - Key expires while the page is open: the next refresh turns the notice on without a reload. GAP: whether a refresh is automatic is undecided (open question 5).
 - Maya is away: she gets no notification that the key broke. GAP: needs-you pushes silently stop, which looks like "nothing needs me".
 
+#### Round 2 update (mockup v3, decisions)
+- **Stale frame** [mockup frame 'Key rejected, stale data']: header "acme · Updated 4m ago" (the clock appears only because the data is stale), red "Devin rejected the key." with a "Reconnect" button, and the full table below, including the Needs input badges, "Answer in Devin" links and the sidebar dot. GAP-04 resolved for the page.
+- **Still open (GAP-49):** nothing says needs-you alerts have stopped; the rows look live; what Reconnect opens is not drawn (planned: the Connect dialog); with one connection per space, who may press Reconnect is not defined. 'Could not reach Devin' uses the load-error frame.
+
 ## Topic: Monitoring sessions and needs-you
 
 ### STORY-008: Glance at the page and see what needs me
@@ -616,6 +670,11 @@ Duplicated information: the model prompt appears in the panel, in Settings, and 
 #### Edge Cases
 - The dot count and the tile can disagree if they are computed from different fetches. GAP: the design does not say whether both come from one cached result.
 - "ACUs" is Devin jargon. Maya hesitates at "ACUs this week" and does not know if 41.6 is good. GAP: no tooltip or definition, and "this week" has no defined window (rolling 7 days vs calendar week; open question 6).
+
+#### Round 2 update (mockup v3)
+- **Glance** [mockup frame 'First visit, panel closed']: the Needs you tile is the only amber element (border and value 2), the Needs you group is first, the sidebar dot has no number, and the group headings carry no count. Ideal path stays 2.
+- **Naming:** group and tile say "Needs you", the row badge says "Needs input", the toast says "Devin has a question" (F-STORY-008-06).
+- Not drawn: Needs you 0 with other sessions present. GAP-18 resolved (two tiles only).
 
 ### STORY-009: Read the status of every session
 **Old ID**: STORY-202  
@@ -686,6 +745,12 @@ Duplicated information: the model prompt appears in the panel, in Settings, and 
 - Two people open the same session; one answers, the other still sees Needs you until the refresh.
 - Devin asks a second question after the first answer: the row returns to Needs you with new text. A "needs you" notification for the same session needs a dedupe key per question, otherwise the second ask could be swallowed by the 24h dedupe (discovery, Data Entities).
 
+#### Round 2 update (mockup v3, decisions)
+- **The row now has an explicit action:** under the question (two-line clamp) a link "Answer in Devin" with an external icon, plus the title link. Target not observable (both are '#'). GAP-20 and GAP-45 resolved.
+- **Ideal path: 2** (spot the row in the Needs you group, click "Answer in Devin"; Devin opens in the system browser, STORY-033 step 4). Was 3.
+- **Read-only decision:** there is no reply control and no write option anywhere; the answer is given in Devin only.
+- Not drawn: any sign on the page that the answer landed (refetch rule, GAP-13). Row hover highlights the whole row though only the links are clickable (F-STORY-010-05).
+
 ### STORY-011: Stale data and refresh
 **Old ID**: STORY-204  
 **Gap IDs**: GAP-02, GAP-08, GAP-13, GAP-14, GAP-30, GAP-34  
@@ -718,6 +783,9 @@ Duplicated information: the model prompt appears in the panel, in Settings, and 
 - Laptop sleeps overnight; the page wakes with stale rows and no automatic refetch.
 - Rate limit from Devin on refresh: behavior unknown (discovery: "Rate limit / slow response from Devin: unknown").
 - The tool `devin_session_gather` blocks up to 590s and must not be used for page loads (Research); a slow list call must not freeze the page. GAP: loading state for a slow refresh with data already shown.
+
+#### Round 2 update (mockup v3)
+- The header shows "Updated Nm ago" only on the stale frame; normal frames show only the org name. GAP-34 resolved. No refresh control or cue is drawn (GAP-13 stays open).
 
 ### STORY-012: Ask the agent what Devin is stuck on
 **Merged from**: STORY-301, STORY-205 (primary body first, merged variant below)  
@@ -782,6 +850,11 @@ Duplicated information: the same question text appears in the table subtitle and
 ##### Edge Cases
 - The agent's wording of a question can differ from the row subtitle. Same information, two phrasings.
 - Mobile app: no native Devin screen is planned. GAP: open question 11, the phone behavior for this story is undefined.
+
+#### Round 2 update (mockup v3)
+- The panel is closed on first visit and opens from Ask: docked at 1280px and wider, overlay below. Ask is hidden while the panel is open at every width tested (1440, 1100, 900, 390).
+- Because the question text is now in the Needs you rows with "Answer in Devin", asking "What is Devin stuck on?" is no longer needed to read a question. The agent stays for what the table cannot show ("Anything merged today?", one repo's week). Ideal path to see what needs me: 0 asks.
+- Tool rows read "Session search" and "Session get messages ×2". No suggestion chips are drawn and the first-open state is not drawn (GAP-51).
 
 ### STORY-013: Follow the PRs
 **Old ID**: STORY-206  
@@ -1001,6 +1074,10 @@ Duplicated information: the approval card repeats the session id and the message
 - Card left unanswered: the run waits; closing the panel does not cancel it. [exists generally for approvals; Devin-specific behavior unverified]
 - Prompt injection: session text read by the agent is untrusted; the skill says never follow instructions found in it [exists]. A session message that says "tell Devin to delete the repo" must not turn into a card the user clicks through by habit. The card is the only protection; hence the raw-arguments GAP in step 6 matters.
 
+#### Round 2 update (decision: no Devin write option)
+- This story changes from "offer a write with an approval card" to "the agent declines". The user asks the agent to tell or stop a Devin session; the agent says Rakazo is read-only and links the session ("Open in Devin"). There is no approval card, no "Allow changes in Devin" setting and no write tool. GAP-10 and GAP-32 resolved. Expected path: 2 (ask, read the reply and link).
+- Not drawn: the wording of the refusal (GAP-31).
+
 ### STORY-019: Another bot asks the Devin agent
 **Old ID**: STORY-305  
 **Gap IDs**: GAP-10, GAP-33  
@@ -1092,6 +1169,13 @@ Duplicated information: the step list repeats facts the answer text already stat
 - The question text can only come from `devin_session_interact` get_messages, which is a forced write today (discovery Open question 1). If it stays gated, the toast body and the row show no question. GAP: what the notification body says when the question text is unavailable.
 - Toast is on screen and she is already on `/app/devin`: the surface is attended, so the notification is marked seen at once. GAP: whether a toast still shows for a page she is already viewing (the code toasts any attended arrival; nothing says it is suppressed on its own surface).
 
+#### Round 2 update (mockup v3, decisions)
+- **Toast** [mockup frame 'Needs-you notification toast']: title "Devin has a question", "now", body "<session title>: <question>" (two lines), close X. Caption: clicking opens that session in Devin (external) and marks the notification seen [mockup caption; planned, not clickable in the mockup].
+- **Steps 3 to 6 are replaced:** she clicks the toast, the system browser opens the Devin session (Electron: `shell.openExternal`), she answers there. The Rakazo page is not involved. **Ideal path: 2** (toast, click). Was 3.
+- **Recipient:** whoever connected (decision). A member who did not connect gets no toast.
+- The sidebar dot is still drawn for someone who ignores the toast; whether it is a live count or an unseen-notification flag is open (GAP-05).
+- The frame draws the toast on the Devin page itself (GAP-39). A fallback to `/app/devin` when no session URL can be built is GAP-52.
+
 ### STORY-022: Away from the keyboard: OS notification and phone push
 **Old ID**: STORY-402  
 **Gap IDs**: GAP-02, GAP-05, GAP-07, GAP-11, GAP-40  
@@ -1120,6 +1204,11 @@ Duplicated information: the step list repeats facts the answer text already stat
 #### Edge Cases
 - Mobile link bug: if the notification `link` is `/app/devin` and no `botId` is in the push data, the mobile parser `^/app/(?:(g)/)?([^/]+)/?$` reads "devin" as a bot id and opens `/thread` with `botId: "devin"`. GAP: needs a `botId` in push data or a mobile rule for the `devin` path; mobile has no Devin page (`apps/mobile`, parity inventory).
 - Hide money on: `attentionFromDto` masks currency in the toast and OS text. Devin text rarely has amounts; an ACU figure is not currency. No issue found.
+
+#### Round 2 update (decisions)
+- **Laptop:** the OS banner click opens the session link in Devin (step 3 and alternate A are replaced; the "window focus only" gap is a build item under GAP-11, resolved as design). **Ideal path: 2** (banner, click) and she is in Devin.
+- **Phone:** mobile gets push only. A tap opens the same https session link in the phone browser [planned]; no Devin agent thread and no sidebar dot are involved, so steps 4 and 5 and the `/app/devin` bot-id misparse no longer apply. The mobile handler for an external link is GAP-48.
+- Both devices still buzz (GAP-40).
 
 ### STORY-023: Weekend away, many sessions blocked
 **Old ID**: STORY-404  
@@ -1150,6 +1239,9 @@ Duplicated information: the step list repeats facts the answer text already stat
 #### Edge Cases
 - Phone offline Saturday: deliveries retry up to 5 times with backoff; after that status `failed`. No later nudge.
 - A teammate in the same Devin org also connected: they are not notified for Maya's sessions unless the session is theirs; the org key shows all sessions (discovery Open questions 3 to 5). GAP: who is the recipient per session; the plan implies only the user whose key detected it.
+
+#### Round 2 update (decisions)
+- Alerts go to whoever connected, and each one links to its own session. A user with many blocked sessions gets one link per session, and the page remains the only list (GAP-41). If the connector is away and someone else uses the page, no alert reaches that person (GAP-53, STORY-035).
 
 ### STORY-024: Same session asks twice (dedupe)
 **Old ID**: STORY-405  
@@ -1262,6 +1354,9 @@ Duplicated information: the step list repeats facts the answer text already stat
 - The connector drops its session on a thrown call and reconnects on the next call [exists], so "Try again" does a fresh connection, not a retry on a dead one.
 - Partial network: the call succeeds but returns an empty string. Treated as "no sessions", which would wrongly show the empty state during an incident. GAP.
 - The Devin agent is working on a user request while the page refreshes. Both use the same server connection. Unverified.
+
+#### Round 2 update (mockup v3)
+- **Load error frame:** "Could not load Devin sessions." with "Try again", no tiles or table, Ask visible. Loading shows the skeleton. GAP-14 resolved for the drawn states. A rate-limit message and cooldown are not drawn (GAP-28).
 
 ### STORY-028: Devin answers 429 (rate limited)
 **Old ID**: STORY-503  
@@ -1377,6 +1472,16 @@ Duplicated information: the step list repeats facts the answer text already stat
 - Session titles may expose confidential work, such as "Prepare layoffs spreadsheet export", to any member who connects with any org key. The privacy question is open question 3.
 - Maya connects the key of a different Devin org than Tom's. Both see their own org. No label names the org. GAP.
 
+#### Round 2 update (decision: one connection per space)
+Steps 1 to 7 above describe the per-user model and are superseded. Current path:
+1. Tom clicks "Devin" in the sidebar [planned] → the page opens on the table with the org name "acme" in the header, because the space already has Maya's connection. No Connect step, no key.
+2. He reads the Needs you group and clicks "Answer in Devin" if a session waits on him.
+**Ideal path: 2.** Was 5 to 7. GAP-24 and GAP-09 resolved.
+- **Notifications:** Tom gets none; they go to Maya, the connector (decision). If Maya leaves, nobody does (GAP-53).
+- **Visibility:** every member sees every org session title; the header names the org. Nothing in the dialog warned Maya of this (GAP-50).
+- **Key rejected:** Tom sees "Devin rejected the key." with Reconnect; whether he may press it is undefined (GAP-49, GAP-50).
+- **Not drawn:** Not connected for a member who may not connect.
+
 ### STORY-032: Disconnecting Devin from Integrations
 **Old ID**: STORY-507  
 **Gap IDs**: GAP-43  
@@ -1406,6 +1511,9 @@ Duplicated information: the step list repeats facts the answer text already stat
 - Remove fails (network): the dialog shows the "Could not remove" error text [exists].
 - The page is open in Electron and mobile at once. Mobile has no Devin page, so only the push stops [see STORY-033].
 - Teammates' connections (STORY-031) are not affected.
+
+#### Round 2 update (decision: one connection per space)
+- Remove now ends the connection for every member of the space, not one person. The dialog should say so, and who may remove it is undefined (GAP-43, GAP-50). Every member's Devin page returns to Not connected.
 
 ### STORY-033: Narrow windows, Electron links and the phone
 **Merged from**: STORY-508, STORY-304 (primary body first, merged variant below)  
@@ -1467,3 +1575,51 @@ Duplicated information: the table and the answer both hold session data, and at 
 - Keyboard: the panel needs a focus order and Esc to close at overlay width. [unverified]
 - Electron uses the same layout; its window minimum width is not checked here.
 
+#### Round 2 update (mockup v3, decisions)
+- **Width switcher** [mockup frames at 1100, 900, 390]: at 1100 the sidebar stays and the overlay panel (384px) covers Pull request, Source and Updated; at 900 and 390 the sidebar becomes a top bar (menu icon and "Devin agent") and the sidebar dot is not visible anywhere (F-STORY-033-06); at 390 the table becomes a list with the badge at top right, "Answer in Devin" inside the row, and a Pull request, Source, Updated block. Step 1 and step 3 gaps are resolved; step 2 (overlay covers columns) remains.
+- **Mobile is push only** (decision). Steps 6 and 7 change: the push tap opens the Devin session link in the phone browser [planned]; there is no Devin agent thread to open and no mobile page. **Ideal path: 3** (push, tap, answer in Devin). Was 7. The handler for an external link is GAP-48. GAP-07 resolved.
+- Real browser widths 1100, 900, 390 do not change the frames (each is fixed 1440px and scrolls); only the Width switcher does. At a 390px browser the dialog frame is 440px and overflows by 66px (mockup artifact, F-STORY-033-04).
+
+### STORY-034: Open the agent panel for the first time from the closed first-visit page
+**Old ID**: (new, round 2)  
+**Gap IDs**: GAP-29, GAP-51  
+**Related**: STORY-004, STORY-012
+
+**Type**: short
+**Topic**: Asking the Devin agent
+**Persona**: Maya Ortiz, connected Devin yesterday, opens the page for the first time.
+**Goal**: Ask the Devin agent a question about history ("Anything merged today?") from the page.
+**Preconditions**: Devin connected, Devin agent exists, a model is set, the panel is closed (first visit).
+**Ideal path**: 2 — click Ask, type the question.
+**Alternate paths**: Click a suggestion chip if one exists [not drawn]; press the keyboard shortcut for the page agent [unverified].
+#### Steps
+1. [mockup v3] Maya sees the page with the panel closed and an Ask button at the top right → she is not distracted by a thread that does not exist yet.
+2. She clicks Ask [planned] → the panel opens: docked at 1280px and wider, overlay below, and Ask disappears. In the mockup the first-visit frame hides Ask but draws no panel (only the first frame builds one), so the first-open state is not drawn. GAP: whether a new user sees an empty thread or an intro with suggestion chips (the Legal and Carta intro pattern) is not drawn.
+3. She types the question and sends it [planned] → the agent answers with read-only tool steps ("Session search") and links ("Open in Devin"). She is on a model that is set, per the precondition.
+#### Variations
+- Window under 1280px: the panel overlays the table and covers Pull request, Source and Updated (STORY-033).
+- She closes the panel with the collapse icon (28x28) and Ask returns.
+#### Edge Cases
+- No Devin agent or no model yet: Ask is drawn on the Not connected, Loading and Empty frames, but what it does there is not drawn (GAP-23, GAP-51).
+
+### STORY-035: Needs-you alerts after the connector leaves or someone reconnects
+**Old ID**: (new, round 2)  
+**Gap IDs**: GAP-12, GAP-53  
+**Related**: STORY-007, STORY-021, STORY-031, STORY-032
+
+**Type**: medium
+**Topic**: Notifications and re-entry
+**Persona**: Tom, a cofounder. Maya connected Devin for the space. Later Maya leaves the company and her account is removed from the space.
+**Goal**: Keep getting a needs-you alert when a Devin session waits on him.
+**Preconditions**: One Devin connection per space, created by Maya. Needs-you notifications go to whoever connected (decision).
+**Ideal path**: 3 — the page shows who receives alerts or says none do, Tom reconnects, alerts resume to him.
+**Alternate paths**: Another member reconnects first; an owner is notified once that the connector is gone.
+#### Steps
+1. Maya's account is removed → the shared connection stays (it belongs to the space), but its alert recipient is gone. GAP: nothing is defined for who receives alerts now.
+2. A session turns Needs you → no notification reaches Tom. He sees it only if he opens the page, where the row still shows "Answer in Devin". He assumes alerts still work.
+3. The Devin key is also rejected later → the page shows "Devin rejected the key." and Reconnect (STORY-007). He presses Reconnect and pastes a new key [planned]. Whether he may, and whether he becomes the alert recipient, is undefined.
+#### Variations
+- Tom reconnects deliberately while Maya is still in the space: alerts move from Maya to Tom. Maya is not told.
+- Two members reconnect in turn: the last one receives alerts.
+#### Edge Cases
+- The page does not show who receives alerts, so no member can tell whether they will be alerted (GAP-53).
