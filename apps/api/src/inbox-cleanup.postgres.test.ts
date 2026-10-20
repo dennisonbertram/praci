@@ -119,6 +119,26 @@ describePostgres("inbox cleanup (PostgreSQL + Gmail emulator)", () => {
       );
     });
 
+    it("never preselects a high-volume, unread updates-pile sender (invoices, alerts)", async () => {
+      await f.wipe();
+      await sender(f.a, f.connA, "invoices@billing.example.test", {
+        count: 12,
+        extra: { pile: "updates" },
+      });
+      await sender(f.a, f.connA, "weekly@lists.example.test", {
+        count: 4,
+        extra: { pile: "newsletters" },
+      });
+
+      const out = await inboxCleanupList(f.deps, f.a, {});
+
+      const preselected = Object.fromEntries(out.senders.map((s) => [s.address, s.preselected]));
+      expect(preselected).toEqual({
+        "invoices@billing.example.test": false,
+        "weekly@lists.example.test": true,
+      });
+    });
+
     it("never preselects spam-like senders and offers no unsubscribe for them", async () => {
       await f.wipe();
       await sender(f.a, f.connA, "forged@lists.example.test", { extra: { signals: failedAuth } });
