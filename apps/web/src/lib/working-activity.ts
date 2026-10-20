@@ -30,7 +30,10 @@ export type ToolAction =
   | "mail-open"
   | "mail-draft"
   | "mail-show"
-  | "finance";
+  | "finance"
+  | "ask-agent"
+  | "message-user"
+  | "thinking";
 
 const TOOL_ACTIONS: Record<string, ToolAction> = {
   contacts_add: "contact-add",
@@ -52,6 +55,9 @@ const TOOL_ACTIONS: Record<string, ToolAction> = {
   show_emails: "mail-show",
   finance_overview: "finance",
   finance_breakdown: "finance",
+  message_bot: "ask-agent",
+  message_user: "message-user",
+  skill_read: "thinking",
 };
 
 // Steps keep only the humanized label, so match on it; MCP and built-in names humanize the same way.

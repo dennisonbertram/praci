@@ -1,15 +1,17 @@
-import { humanizeToolName } from "@rakazo/core";
-import { expect, it, vi } from "vitest";
+import { i18n } from "@lingui/core";
+import { expect, it } from "vitest";
 
-vi.mock("@lingui/core/macro", () => ({ t: (parts: TemplateStringsArray) => parts.join("") }));
+import { toolActionLabel } from "./working-label";
 
-import { internalToolLabel } from "./working-label";
+i18n.loadAndActivate({ locale: "en", messages: {} });
 
-it("names agent-to-agent messaging as asking another agent", () => {
-  expect(internalToolLabel(humanizeToolName("message_bot"))).toBe("Asking another agent");
+it("names the agent being asked, or falls back when it is unknown", () => {
+  expect(toolActionLabel("ask-agent", "Gmail")).toBe("Asking Gmail");
+  expect(toolActionLabel("ask-agent")).toBe("Asking another agent");
 });
 
-it("shows internal calls as Thinking and leaves other tools alone", () => {
-  expect(internalToolLabel(humanizeToolName("skill_read"))).toBe("Thinking");
-  expect(internalToolLabel("Search the web")).toBeUndefined();
+it("words the user message and internal calls plainly", () => {
+  expect(toolActionLabel("message-user")).toBe("Messaging you");
+  expect(toolActionLabel("thinking")).toBe("Thinking");
+  expect(toolActionLabel(undefined)).toBeUndefined();
 });

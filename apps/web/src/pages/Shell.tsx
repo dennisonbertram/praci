@@ -428,7 +428,7 @@ import {
 } from "./shell/message-cards";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
-import { internalToolLabel } from "./shell/working-label";
+import { toolActionLabel } from "./shell/working-label";
 import { WindowChrome } from "./WindowChrome";
 
 const ArtifactsPage = lazy(() =>
@@ -6523,44 +6523,11 @@ export const Transcript = memo(function Transcript({
             ? t`Writing`
             : activity?.kind === "tool"
               ? (toolActionLabel(activity.action) ??
-                internalToolLabel(activity.label) ??
                 (toolPhrase(activity.label, "activity") || activity.label))
               : workingBotName
                 ? t`${workingBotName} is working`
                 : t`Bots are working`;
   const waitingLabel = (service: string) => t`Still waiting on ${service}`;
-  function toolActionLabel(action: ToolAction | undefined): string | undefined {
-    switch (action) {
-      case "contact-add":
-        return t`Adding a contact`;
-      case "contact-save":
-        return t`Saving a contact`;
-      case "contacts-read":
-        return t`Reading your contacts`;
-      case "cap-table-read":
-        return t`Reading the cap table`;
-      case "cap-table-update":
-        return t`Updating the cap table`;
-      case "carta-cap-table":
-        return t`Reading your cap table from Carta`;
-      case "carta-company":
-        return t`Choosing your company in Carta`;
-      case "connected-app":
-        return t`Reading a connected app`;
-      case "mail-search":
-        return t`Searching your mail`;
-      case "mail-open":
-        return t`Opening an email`;
-      case "mail-draft":
-        return t`Writing a draft email`;
-      case "mail-show":
-        return t`Showing the emails it found`;
-      case "finance":
-        return t`Reading your finances`;
-      default:
-        return undefined;
-    }
-  }
   const [quoteDraft, setQuoteDraft] = useState<{
     message: ThreadMessage;
     text: string;
