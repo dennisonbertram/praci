@@ -38,6 +38,12 @@ describe("mobile message presentation", () => {
     expect(isCenteredAgentEvent([{ kind: "text", text: "Hello" }])).toBe(false);
   });
 
+  it("centers a message made only of system notes, not one that also has text", () => {
+    const note: MessageBlock = { kind: "meta", text: "Created by Scout" };
+    expect(isCenteredAgentEvent([note])).toBe(true);
+    expect(isCenteredAgentEvent([note, { kind: "text", text: "Hello" }])).toBe(false);
+  });
+
   it("hides completed tool activity", () => {
     const blocks = [
       {

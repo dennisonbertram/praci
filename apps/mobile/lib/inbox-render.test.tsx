@@ -44,6 +44,7 @@ vi.mock("react-native", () => ({
   StyleSheet: { create: (styles: unknown) => styles },
 }));
 vi.mock("./i18n", () => ({
+  t: (text: string) => text,
   useI18n: () => ({ t: (text: string) => text }),
   dateLocaleForUi: () => "en-US",
 }));
