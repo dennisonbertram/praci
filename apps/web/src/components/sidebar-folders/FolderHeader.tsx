@@ -14,7 +14,7 @@ import { StatusMark } from "../sidebar-glance";
 import { useFolderDnd } from "./SidebarDnd";
 
 /**
- * A folder row in the Personnel list: chevron, name, how many chats it holds, and a menu. While
+ * A folder row in the sidebar list: chevron, name, how many chats it holds, and a menu. While
  * collapsed it still shows the most urgent status of the chats inside (or an unread dot), so
  * nothing is hidden.
  */

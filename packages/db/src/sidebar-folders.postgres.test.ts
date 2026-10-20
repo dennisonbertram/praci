@@ -23,7 +23,8 @@ describePostgres("sidebar folders (PostgreSQL)", () => {
   const spaceId = `folders-space-${suffix}`;
   const alice = { spaceId, userId: `folders-alice-${suffix}` };
   const bob = { spaceId, userId: `folders-bob-${suffix}` };
-  const userIds = [alice.userId, bob.userId];
+  const carol = { spaceId, userId: `folders-carol-${suffix}` };
+  const userIds = [alice.userId, bob.userId, carol.userId];
   let prisma: PrismaClient;
   let close: () => Promise<void>;
   let n = 0;
@@ -72,6 +73,40 @@ describePostgres("sidebar folders (PostgreSQL)", () => {
     await prisma.organization.deleteMany({ where: { id: organizationId } });
     await prisma.user.deleteMany({ where: { id: { in: userIds } } });
     await close();
+  });
+
+  it("keeps last-activity time when organizing the sidebar", async () => {
+    const old = new Date("2026-01-02T03:04:05.000Z");
+    const stamp = async (kind: "bot" | "group", id: string) =>
+      (kind === "bot"
+        ? await prisma.bot.findUniqueOrThrow({ where: { id } })
+        : await prisma.chatGroup.findUniqueOrThrow({ where: { id } })
+      ).updatedAt.getTime();
+    const setOld = async (kind: "bot" | "group", id: string) => {
+      if (kind === "bot")
+        await prisma.$executeRaw`UPDATE "bots" SET "updatedAt" = ${old} WHERE id = ${id}`;
+      else await prisma.$executeRaw`UPDATE "chat_groups" SET "updatedAt" = ${old} WHERE id = ${id}`;
+    };
+    const b = await bot(carol, "Activity bot");
+    const g = await group(carol, "Activity group");
+    const pinned = await bot(carol, "Activity pinned", { pinned: true });
+    const all = [ref("bot", b), ref("group", g), ref("bot", pinned)] as const;
+    const resetAll = () => Promise.all(all.map((r) => setOld(r.kind, r.id)));
+    const expectUntouched = async () => {
+      for (const r of all) expect(await stamp(r.kind, r.id)).toBe(old.getTime());
+    };
+    await resetAll();
+    const f = await addSidebarFolder(prisma, carol, "Activity");
+    await moveSidebarItem(prisma, carol, { item: ref("bot", b), folderId: f.id });
+    await moveSidebarItem(prisma, carol, { item: ref("group", g), folderId: f.id });
+    await expectUntouched();
+    await removeSidebarFolder(prisma, carol, f.id);
+    await expectUntouched();
+    const snapshot = await autoGroupSidebar(prisma, carol);
+    expect(snapshot.placements.length).toBeGreaterThan(0);
+    await expectUntouched();
+    await restoreSidebar(prisma, carol, snapshot);
+    await expectUntouched();
   });
 
   it("keeps folders private to the user and rejects another user's folder", async () => {

@@ -38,17 +38,23 @@ vi.mock("./ConnectAppDialog", () => ({
     onConnected,
     confirmFirst,
     accountName,
+    replacesConnectionId,
+    permission,
   }: {
     onClose: () => void;
     onConnected?: () => void;
     confirmFirst?: boolean;
     accountName?: string;
+    replacesConnectionId?: string;
+    permission?: string;
   }) => (
     <button
       type="button"
       data-testid="connect-dialog"
       data-confirm-first={String(Boolean(confirmFirst))}
       data-account-name={accountName ?? ""}
+      data-replaces={replacesConnectionId ?? ""}
+      data-permission={permission ?? ""}
       onClick={() => {
         onClose();
         onConnected?.();
@@ -438,6 +444,53 @@ it("offers Reconnect on a signed-out mail account and replaces it once signed in
   await act(async () => (dialog() as HTMLButtonElement).click());
   expect(revoke).toHaveBeenCalledWith({ connectionId: "old" });
   expect(where()).toBe("/app/inbox");
+});
+
+it("opens the sign-in that replaces an account and asks for the filter permission, after a click", async () => {
+  const account = (id: string) =>
+    ({
+      id,
+      connectorId: "google",
+      provider: "gmail",
+      displayName: `Mail ${id}`,
+      status: "connected",
+      error: null,
+      capabilities: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    }) as IntegrationsData["connections"][number];
+  await show(
+    `${PAGE}?reconnect=b&permission=mail_rules&next=%2Fapp%2Finbox`,
+    data({ connections: [account("a"), account("b")] }),
+  );
+  expect(dialog()?.getAttribute("data-replaces")).toBe("b");
+  expect(dialog()?.getAttribute("data-permission")).toBe("mail_rules");
+  expect(dialog()?.getAttribute("data-confirm-first")).toBe("true");
+  expect(dialog()?.getAttribute("data-account-name")).toBe("Mail b");
+  revoke.mockClear();
+  // Closing the dialog drops the permission, so a later Reconnect does not ask for it. The working
+  // account is not revoked: the server replaces it only when the same Google account signed in.
+  await act(async () => (dialog() as HTMLButtonElement).click());
+  expect(revoke).not.toHaveBeenCalled();
+  expect(where()).toBe("/app/inbox");
+});
+
+it("does not open a sign-in for a connection that is not there, or without the permission", async () => {
+  const account = {
+    id: "a",
+    connectorId: "google",
+    provider: "gmail",
+    displayName: "Mail a",
+    status: "connected",
+    error: null,
+    capabilities: [],
+    createdAt: "2026-01-01T00:00:00.000Z",
+  } as IntegrationsData["connections"][number];
+  await show(`${PAGE}?reconnect=missing&permission=mail_rules`, data({ connections: [account] }));
+  expect(dialog()).toBeNull();
+  act(() => root.unmount());
+  container.remove();
+  await show(`${PAGE}?reconnect=a`, data({ connections: [account] }));
+  expect(dialog()).toBeNull();
 });
 
 it("offers Remove account per row only when there is more than one account", async () => {

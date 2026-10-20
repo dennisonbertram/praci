@@ -232,4 +232,16 @@ describe("appPath", () => {
       appPath({ connectorId: "google", slug: "gmail" }, { connect: true, next: "/app/data-room" }),
     ).toBe("/app/integrations/app/google/gmail?connect=1&next=%2Fapp%2Fdata-room");
   });
+
+  it("builds the link that signs a connection in again with the filter permission", () => {
+    const link = appPath(
+      { connectorId: "google", slug: "gmail" },
+      { reconnect: "conn 1", next: "/app/inbox?cleanup=1" },
+    );
+    const url = new URL(link, "http://localhost");
+    expect(url.pathname).toBe("/app/integrations/app/google/gmail");
+    expect(url.searchParams.get("reconnect")).toBe("conn 1");
+    expect(url.searchParams.get("permission")).toBe("mail_rules");
+    expect(url.searchParams.get("next")).toBe("/app/inbox?cleanup=1");
+  });
 });

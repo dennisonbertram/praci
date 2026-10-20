@@ -1884,6 +1884,13 @@ model MailSenderStat {
   /// true: the user sent mail to this address. false: searched, none found. null: not checked.
   priorContact          Boolean?
   priorContactCheckedAt DateTime?
+  /// Pile the model chose for this sender often enough to reuse: "important" | "updates" | "newsletters". Null: none.
+  learnedPile           String?
+  /// Agreeing model verdicts when it was learned.
+  learnedCount          Int        @default(0)
+  learnedAt             DateTime?
+  /// The user forgot the learned pile; only mail received after this counts toward learning again.
+  learnedForgottenAt    DateTime?
 
   @@unique([connectionId, senderAddress])
   @@map("mail_sender_stats")
@@ -1907,6 +1914,10 @@ model MailSenderDecision {
   /// "one_click" | "link" | "mailto".
   unsubscribeMethod String?
   unsubscribedAt    DateTime?
+  /// Gmail filter this decision created, so Stop and Undo can delete it. Null: none, or Gmail already had an identical one.
+  ruleId            String?
+  /// "active" | "pending" (waiting for permission) | "full" (the 1,000-filter cap) | "failed". Null: Rakazo-side only.
+  ruleStatus        String?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt
 
