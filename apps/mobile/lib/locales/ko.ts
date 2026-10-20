@@ -246,6 +246,8 @@ export const KO_MESSAGES: Record<string, string> = {
   Name: "이름",
   "Name this bot": "Bot 이름 지정",
   "Read replies aloud": "답변을 자동으로 읽기",
+  Skills: "스킬",
+  "Use {name}": "{name} 사용",
   Save: "저장",
   "Saving…": "저장 중…",
   "Space default": "스페이스 기본값",

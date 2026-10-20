@@ -773,6 +773,10 @@ msgstr "Add page"
 msgid "Add server URL"
 msgstr "Add server URL"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Add skill"
+msgstr "Add skill"
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "Add to routine"
@@ -1574,7 +1578,7 @@ msgstr "Brex does not share it"
 msgid "Browser"
 msgstr "Browser"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Built-in"
 
@@ -1647,6 +1651,7 @@ msgstr "Can't reach the server."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Cancel"
 msgstr "Cancel"
@@ -1994,11 +1999,11 @@ msgstr "Client secret (optional)"
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Close"
@@ -2219,7 +2224,7 @@ msgstr "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_T
 msgid "Configured by deployment"
 msgstr "Configured by deployment"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirm delete"
 
@@ -2588,7 +2593,7 @@ msgstr "Could not delete group"
 msgid "Could not delete routine"
 msgstr "Could not delete routine"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not delete skill"
 msgstr "Could not delete skill"
 
@@ -2644,6 +2649,7 @@ msgstr "Could not list files"
 
 #: src/components/ErrorBoundary.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load"
 msgstr "Could not load"
 
@@ -2709,7 +2715,7 @@ msgstr "Could not load sign-in options"
 msgid "Could not load sign-in options."
 msgstr "Could not load sign-in options."
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load skill"
 msgstr "Could not load skill"
 
@@ -2889,7 +2895,7 @@ msgstr "Could not save routine"
 msgid "Could not save rule"
 msgstr "Could not save rule"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "Could not save skill"
 
@@ -3257,9 +3263,9 @@ msgstr "Default ({0})"
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
 msgstr "Delete"
@@ -4064,6 +4070,10 @@ msgstr "From Google Drive"
 msgid "From the latest 409A valuation"
 msgstr "From the latest 409A valuation"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "From URL"
+msgstr "From URL"
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "Fullscreen"
@@ -4583,10 +4593,6 @@ msgstr "Keyboard shortcuts"
 #: src/pages/CapTable.tsx
 msgid "Kind"
 msgstr "Kind"
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Knowledge"
-msgstr "Knowledge"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
@@ -5432,7 +5438,7 @@ msgstr "New password"
 msgid "New section"
 msgstr "New section"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "New skill"
 msgstr "New skill"
 
@@ -5688,10 +5694,6 @@ msgstr "No rush"
 #: src/pages/CapTable.tsx
 msgid "No shareholders in Carta"
 msgstr "No shareholders in Carta"
-
-#: src/pages/KnowledgeSection.tsx
-msgid "No skills yet"
-msgstr "No skills yet"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -6331,7 +6333,7 @@ msgstr "Pin"
 msgid "Playing…"
 msgstr "Playing…"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Plugin"
 
@@ -7159,6 +7161,7 @@ msgstr "Sales & CRM"
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
 msgstr "Save"
@@ -7564,10 +7567,6 @@ msgstr "Shared by all bots"
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
 
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared skills"
-msgstr "Shared skills"
-
 #: src/pages/CapTable.tsx
 msgid "Shareholder"
 msgstr "Shareholder"
@@ -7750,6 +7749,7 @@ msgid "Skill {0}"
 msgstr "Skill {0}"
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Skills"
 msgstr "Skills"
 
@@ -8796,6 +8796,10 @@ msgstr "Upload a PDF, CSV, OFX or QFX file"
 msgid "Upload failed"
 msgstr "Upload failed"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload SKILL.md"
+msgstr "Upload SKILL.md"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
 msgstr "Upload statement"
@@ -8824,6 +8828,11 @@ msgstr "URL"
 #: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "Usage"
+
+#. placeholder {0}: entry.name
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Use {0}"
+msgstr "Use {0}"
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Use {hostLabel}"

@@ -1814,6 +1814,7 @@ describe("createRunExecutor", () => {
     const updateMany = vi.fn(async () => ({ count: 1 }));
     const taskCreate = vi.fn(async () => ({ id: "task-1" }));
     const runCreate = vi.fn(async () => ({ id: "run-1" }));
+    const skillSettingFind = vi.fn(async () => []);
     const prisma = {
       routine: {
         findUnique: vi.fn(async () => ({
@@ -1838,6 +1839,7 @@ describe("createRunExecutor", () => {
       thread: {
         findFirst: vi.fn(async () => ({ id: "group-thread-1" })),
       },
+      botSkillSetting: { findMany: skillSettingFind },
       agentSkill: {
         findMany: vi.fn(async () => []),
       },
@@ -1868,6 +1870,12 @@ describe("createRunExecutor", () => {
       expect.objectContaining({
         where: expect.objectContaining({ bot: { archivedAt: null } }),
         data: expect.objectContaining({ active: false, nextRunAt: null }),
+      }),
+    );
+    // A routine reads only the skills switched on for its own bot.
+    expect(skillSettingFind).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ botId: "bot-1", enabled: false }),
       }),
     );
     expect(cancel).toHaveBeenCalledWith("routine:routine-1");
@@ -1920,6 +1928,7 @@ describe("createRunExecutor", () => {
           findUnique: vi.fn(async () => ({ id: "bot-1", thread: { id: "thread-1" } })),
         },
         agentSkill: { findMany: vi.fn(async () => []) },
+        botSkillSetting: { findMany: vi.fn(async () => []) },
         $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
           callback({
             routine: {
@@ -2066,6 +2075,7 @@ describe("createRunExecutor", () => {
       },
       thread: { findFirst },
       agentSkill: { findMany: vi.fn(async () => []) },
+      botSkillSetting: { findMany: vi.fn(async () => []) },
       $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
           routine: {
@@ -2138,6 +2148,7 @@ describe("createRunExecutor", () => {
       },
       thread: { findFirst },
       agentSkill: { findMany: vi.fn(async () => []) },
+      botSkillSetting: { findMany: vi.fn(async () => []) },
       $transaction: vi.fn(async (callback: (tx: unknown) => Promise<unknown>) =>
         callback({
           routine: {
@@ -2216,6 +2227,7 @@ description: Prepare standup notes
           thread: { id: "thread-1" },
         })),
       },
+      botSkillSetting: { findMany: vi.fn(async () => []) },
       agentSkill: {
         findMany: vi.fn(async () => [
           {
@@ -2284,6 +2296,7 @@ description: Prepare standup notes
           thread: { id: "thread-1" },
         })),
       },
+      botSkillSetting: { findMany: vi.fn(async () => []) },
       agentSkill: {
         findMany: vi.fn(async () => []),
       },
@@ -2347,6 +2360,7 @@ description: Prepare standup notes
           thread: { id: "thread-1" },
         })),
       },
+      botSkillSetting: { findMany: vi.fn(async () => []) },
       agentSkill: {
         findMany: vi.fn(async () => []),
       },
@@ -2711,6 +2725,7 @@ description: Prepare standup notes
       agentSecret: { findMany: vi.fn(async () => []) },
       botSecret: { findMany: vi.fn(async () => []) },
       agentSkill: { findMany: vi.fn(async () => []) },
+      botSkillSetting: { findMany: vi.fn(async () => []) },
       scratchpadItem: { findMany: vi.fn(async () => []) },
     } as unknown as PrismaClient;
     const executor = createRunExecutor({
@@ -2817,6 +2832,7 @@ description: Prepare standup notes
       botSecret: { findMany: vi.fn(async () => []) },
       agentSecret: { findMany: vi.fn(async () => []) },
       agentSkill: { findMany: vi.fn(async () => []) },
+      botSkillSetting: { findMany: vi.fn(async () => []) },
       scratchpadItem: { findMany: vi.fn(async () => []) },
     } as unknown as PrismaClient;
     const executor = createRunExecutor({

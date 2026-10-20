@@ -3,7 +3,7 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 211 of 211
+- Web and shared component files with stories: 212 of 212
 - Web and shared components: 597
 - Mobile components: 130 in 90 files, mobile — native story pending
 
@@ -255,7 +255,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | InboxPage | [apps/web/src/pages/Inbox.tsx](../../apps/web/src/pages/Inbox.tsx) | [Inbox.stories.tsx](../../apps/web/src/pages/Inbox.stories.tsx) | web |
 | IntegrationsPage | [apps/web/src/pages/Integrations.tsx](../../apps/web/src/pages/Integrations.tsx) | [Integrations.stories.tsx](../../apps/web/src/pages/Integrations.stories.tsx) | web |
 | IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/pages/IntegrationSetup.stories.tsx) | web |
-| KnowledgeSection, SpaceMemorySection, MemoryDocumentList, SkillSourceBadge, AgentSkills | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
+| KnowledgeSection, SpaceMemorySection, MemoryDocumentList | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
 | LegalPage, Legal, ModelBlockerNotice, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
 | Title, Status, LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
 | LegalDeadlines | [apps/web/src/pages/legal/LegalDeadlines.tsx](../../apps/web/src/pages/legal/LegalDeadlines.tsx) | [LegalDeadlines.stories.tsx](../../apps/web/src/pages/legal/LegalDeadlines.stories.tsx) | web |
@@ -284,6 +284,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ComputerModePicker, BotSettings | [apps/web/src/pages/shell/bot-panel.tsx](../../apps/web/src/pages/shell/bot-panel.tsx) | [bot-panel.stories.tsx](../../apps/web/src/pages/shell/bot-panel.stories.tsx) | web |
 | BotCreatePicker | [apps/web/src/pages/shell/bot-picker.tsx](../../apps/web/src/pages/shell/bot-picker.tsx) | [bot-picker.stories.tsx](../../apps/web/src/pages/shell/bot-picker.stories.tsx) | web |
 | PinsStrip, ItemRow, PinsList | [apps/web/src/pages/shell/bot-pins.tsx](../../apps/web/src/pages/shell/bot-pins.tsx) | [bot-pins.stories.tsx](../../apps/web/src/pages/shell/bot-pins.stories.tsx) | web |
+| SkillSourceBadge, BotSkillsSection | [apps/web/src/pages/shell/BotSkillsSection.tsx](../../apps/web/src/pages/shell/BotSkillsSection.tsx) | [BotSkillsSection.stories.tsx](../../apps/web/src/pages/shell/BotSkillsSection.stories.tsx) | web |
 | ReplyThumbnail, TimeSeparator, ComposerReplyPreview, ReplyLine | [apps/web/src/pages/shell/chat-context.tsx](../../apps/web/src/pages/shell/chat-context.tsx) | [chat-context.stories.tsx](../../apps/web/src/pages/shell/chat-context.stories.tsx) | web |
 | CommandPalette | [apps/web/src/pages/shell/command-palette.tsx](../../apps/web/src/pages/shell/command-palette.tsx) | [command-palette.stories.tsx](../../apps/web/src/pages/shell/command-palette.stories.tsx) | web |
 | ComposerError | [apps/web/src/pages/shell/composer-error.tsx](../../apps/web/src/pages/shell/composer-error.tsx) | [composer-error.stories.tsx](../../apps/web/src/pages/shell/composer-error.stories.tsx) | web |

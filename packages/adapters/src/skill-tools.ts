@@ -82,20 +82,32 @@ function rejectInvalidSkillFields(name: string, description: string): string | u
   return undefined;
 }
 
+/** The user's skills and built-ins; with `botId`, minus the skills switched off for that bot. */
 export async function listAgentSkillRecords(
   prisma: PrismaClient,
-  owner: SkillOwner,
+  owner: SkillOwner & { botId?: string },
 ): Promise<Array<SkillRecord & { id: string }>> {
-  const rows = await prisma.agentSkill.findMany({
-    where: { spaceId: owner.spaceId, userId: owner.userId },
-    orderBy: [{ name: "asc" }, { id: "asc" }],
-  });
-  return mergeBuiltinSkills(builtinRecords(), rows.map(toRecord));
+  const [rows, off] = await Promise.all([
+    prisma.agentSkill.findMany({
+      where: { spaceId: owner.spaceId, userId: owner.userId },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+    }),
+    owner.botId
+      ? prisma.botSkillSetting.findMany({
+          where: { spaceId: owner.spaceId, botId: owner.botId, enabled: false },
+          select: { skillKey: true },
+        })
+      : Promise.resolve([]),
+  ]);
+  const disabled = new Set(off.map((row) => row.skillKey));
+  return mergeBuiltinSkills(builtinRecords(), rows.map(toRecord)).filter(
+    (skill) => !disabled.has(skill.id),
+  );
 }
 
 async function findOwnedSkill(
   prisma: PrismaClient,
-  owner: SkillOwner,
+  owner: SkillOwner & { botId?: string },
   input: { skillId?: string; name?: string },
 ): Promise<(SkillRecord & { id: string }) | null> {
   const skills = await listAgentSkillRecords(prisma, owner);
@@ -108,7 +120,7 @@ async function findOwnedSkill(
 
 export async function skillReadFromTool(
   prisma: PrismaClient,
-  owner: SkillOwner,
+  owner: SkillOwner & { botId?: string },
   input: { name?: string; skillId?: string },
 ): Promise<Record<string, unknown>> {
   const skill = await findOwnedSkill(prisma, owner, input);

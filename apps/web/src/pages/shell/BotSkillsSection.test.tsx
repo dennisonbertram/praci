@@ -1,0 +1,208 @@
+// @vitest-environment jsdom
+
+import type { BotAgentSkill } from "@rakazo/contracts";
+import type { ComponentProps, ReactNode } from "react";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { beforeEach, expect, it, vi } from "vitest";
+
+const api = vi.hoisted(() => ({
+  forBot: vi.fn(),
+  setEnabled: vi.fn(),
+  get: vi.fn(),
+  create: vi.fn(),
+  update: vi.fn(),
+  remove: vi.fn(),
+  importFromUrl: vi.fn(),
+}));
+vi.mock("../../lib/rpc", () => ({ rpc: { agentSkills: api } }));
+vi.mock("@lingui/react/macro", () => {
+  const t = (parts: TemplateStringsArray, ...values: unknown[]) =>
+    parts.reduce((text, part, index) => text + part + (values[index] ?? ""), "");
+  return { useLingui: () => ({ t }), Trans: ({ children }: { children: ReactNode }) => children };
+});
+vi.mock("@rakazo/ui-web", () => {
+  const Container = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
+  return {
+    Button: ({ variant: _v, ...props }: ComponentProps<"button"> & { variant?: string }) => (
+      <button {...props} />
+    ),
+    Input: (props: ComponentProps<"input">) => <input {...props} />,
+    Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
+    Skeleton: Container,
+    Badge: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+    Switch: ({
+      checked,
+      onCheckedChange,
+      ...props
+    }: {
+      checked: boolean;
+      onCheckedChange: (value: boolean) => void;
+    } & ComponentProps<"input">) => (
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onCheckedChange(event.target.checked)}
+        {...props}
+      />
+    ),
+    DropdownMenu: Container,
+    DropdownMenuContent: Container,
+    DropdownMenuTrigger: ({ children }: { children?: ReactNode }) => <span>{children}</span>,
+    DropdownMenuItem: ({ children, onClick }: { children?: ReactNode; onClick?: () => void }) => (
+      <button type="button" onClick={onClick}>
+        {children}
+      </button>
+    ),
+  };
+});
+
+import { BotSkillsSection } from "./BotSkillsSection";
+
+const skill = (
+  id: string,
+  name: string,
+  source: BotAgentSkill["source"],
+  enabled = true,
+): BotAgentSkill => ({
+  id,
+  name,
+  description: `${name} description`,
+  source,
+  readOnly: source !== "user",
+  enabled,
+});
+
+let catalog: BotAgentSkill[];
+beforeEach(() => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  for (const fn of Object.values(api)) fn.mockReset();
+  catalog = [
+    skill("builtin:Interrogate", "Interrogate", "builtin"),
+    skill("user-1", "greeting", "user", false),
+  ];
+  api.forBot.mockImplementation(async () => catalog);
+  api.get.mockImplementation(async ({ skillId }: { skillId: string }) => {
+    const entry = catalog.find((s) => s.id === skillId);
+    return { ...entry, content: "Steps", createdAt: "", updatedAt: "" };
+  });
+});
+
+async function mount(onSkillsChange = vi.fn(), refreshKey = 0) {
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const render = (key: number) =>
+    act(async () =>
+      root.render(
+        <BotSkillsSection botId="bot-1" refreshKey={key} onSkillsChange={onSkillsChange} />,
+      ),
+    );
+  await render(refreshKey);
+  const button = (text: string) => {
+    const found = [...container.querySelectorAll("button")].find((entry) =>
+      entry.textContent?.includes(text),
+    );
+    if (!found) throw new Error(`Missing button: ${text}`);
+    return found;
+  };
+  const toggle = (name: string) =>
+    container.querySelector<HTMLInputElement>(`[aria-label="Use ${name}"]`) as HTMLInputElement;
+  return { container, button, toggle, render, unmount: () => act(async () => root.unmount()) };
+}
+
+it("lists skills with a source badge only for non-user skills and a switch each", async () => {
+  const onSkillsChange = vi.fn();
+  const view = await mount(onSkillsChange);
+  expect(api.forBot).toHaveBeenCalledWith({ botId: "bot-1" });
+  expect(view.button("Interrogate").textContent).toContain("Built-in");
+  expect(view.button("greeting").textContent).not.toContain("Built-in");
+  expect(view.toggle("Interrogate").checked).toBe(true);
+  expect(view.toggle("greeting").checked).toBe(false);
+  // Only skills switched on reach the slash menu.
+  expect(onSkillsChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({ id: "builtin:Interrogate" }),
+  ]);
+  await view.unmount();
+});
+
+it("saves the switch and puts it back when saving fails", async () => {
+  api.setEnabled.mockResolvedValueOnce({ ok: true });
+  const view = await mount();
+  await act(async () => view.toggle("greeting").click());
+  expect(api.setEnabled).toHaveBeenCalledWith({
+    botId: "bot-1",
+    skillKey: "user-1",
+    enabled: true,
+  });
+  expect(view.toggle("greeting").checked).toBe(true);
+  api.setEnabled.mockRejectedValueOnce(new Error("offline"));
+  await act(async () => view.toggle("Interrogate").click());
+  expect(view.toggle("Interrogate").checked).toBe(true);
+  expect(view.container.textContent).toContain("Could not save skill");
+  await view.unmount();
+});
+
+it("opens built-ins read-only and user skills for editing", async () => {
+  const view = await mount();
+  await act(async () => view.button("Interrogate").click());
+  expect(view.container.querySelector("textarea")?.readOnly).toBe(true);
+  expect(view.container.textContent).not.toContain("Delete");
+  await act(async () => view.button("Close").click());
+  await act(async () => view.button("greeting").click());
+  expect(view.container.querySelector("textarea")?.readOnly).toBe(false);
+  expect(view.button("Delete")).toBeTruthy();
+  await view.unmount();
+});
+
+it("creates a skill from New skill and shows it in the list", async () => {
+  api.create.mockResolvedValue({});
+  const view = await mount();
+  await act(async () => view.button("New skill").click());
+  await act(async () => view.button("Save").click());
+  expect(api.create).toHaveBeenCalledWith({ content: expect.stringContaining("my-skill") });
+  catalog = [...catalog, skill("user-2", "my-skill", "user")];
+  await view.render(0);
+  await act(async () => undefined);
+  expect(api.forBot).toHaveBeenCalledTimes(2);
+  await view.unmount();
+});
+
+it("uploads a SKILL.md file as the skill content", async () => {
+  api.create.mockResolvedValue({});
+  const view = await mount();
+  const input = view.container.querySelector<HTMLInputElement>("[data-testid=bot-skills-upload]");
+  const file = new File(["---\nname: up\ndescription: d\n---\nBody"], "SKILL.md");
+  Object.defineProperty(input, "files", { value: [file], configurable: true });
+  await act(async () => {
+    input?.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  expect(api.create).toHaveBeenCalledWith({ content: "---\nname: up\ndescription: d\n---\nBody" });
+  await view.unmount();
+});
+
+it("imports a skill from a URL", async () => {
+  api.importFromUrl.mockResolvedValue({});
+  const view = await mount();
+  await act(async () => view.button("From URL").click());
+  const input = view.container.querySelector<HTMLInputElement>("[aria-label='From URL']");
+  const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
+  await act(async () => {
+    setValue?.call(input, "https://github.com/acme/skills/blob/main/SKILL.md");
+    input?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => view.button("Save").click());
+  expect(api.importFromUrl).toHaveBeenCalledWith({
+    url: "https://github.com/acme/skills/blob/main/SKILL.md",
+  });
+  await view.unmount();
+});
+
+it("reloads when the refresh key changes", async () => {
+  const view = await mount();
+  catalog = [...catalog, skill("user-3", "agent-made", "user")];
+  await view.render(1);
+  expect(api.forBot).toHaveBeenCalledTimes(2);
+  expect(view.button("agent-made")).toBeTruthy();
+  await view.unmount();
+});

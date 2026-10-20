@@ -256,6 +256,8 @@ export const DE_MESSAGES: Record<string, string> = {
   Name: "Name",
   "Name this bot": "Bot benennen",
   "Read replies aloud": "Antworten vorlesen",
+  Skills: "Skills",
+  "Use {name}": "{name} verwenden",
   Save: "Speichern",
   "Saving…": "Wird gespeichert…",
   "Space default": "Space-Standard",

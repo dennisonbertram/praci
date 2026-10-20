@@ -572,6 +572,10 @@ export const AgentSkillCatalogEntrySchema = AgentSkillSchema.pick({
 });
 export type AgentSkillCatalogEntry = z.infer<typeof AgentSkillCatalogEntrySchema>;
 
+/** A catalog entry with this bot's switch. A skill with no stored setting is on. */
+export const BotAgentSkillSchema = AgentSkillCatalogEntrySchema.extend({ enabled: z.boolean() });
+export type BotAgentSkill = z.infer<typeof BotAgentSkillSchema>;
+
 export const CreateAgentSkillInput = z
   .object({
     content: z.string().min(1).max(100_000).optional(),
