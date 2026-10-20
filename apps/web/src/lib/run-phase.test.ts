@@ -14,7 +14,9 @@ describe("run phase copy", () => {
   });
 
   it("names the service being connected", () => {
-    expect(runPhaseLine({ kind: "connecting", name: "Notion", at: AT })).toBe("Connecting to Notion");
+    expect(runPhaseLine({ kind: "connecting", name: "Notion", at: AT })).toBe(
+      "Connecting to Notion",
+    );
     expect(runPhaseWaitingOn({ kind: "connecting", at: AT })).toBe("tools");
   });
 });
