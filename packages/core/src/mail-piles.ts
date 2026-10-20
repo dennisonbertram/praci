@@ -96,10 +96,9 @@ const NO_REPLY_LOCAL = /^(no[-_.]?reply|do[-_.]?not[-_.]?reply|notifications?)$/
 
 const failed = (result: string | null) => result === "fail";
 
-/** At least one of DKIM or SPF passed and none failed. */
+/** DMARC passed (so the passing DKIM or SPF aligns with the From domain) and nothing failed. */
 const authPassed = (signals: MailSignals) =>
-  !Object.values(signals.auth).some(failed) &&
-  (signals.auth.dkim === "pass" || signals.auth.spf === "pass");
+  !Object.values(signals.auth).some(failed) && signals.auth.dmarc === "pass";
 
 function claimsBrandItIsNot(input: PileInput): boolean {
   // A look-alike such as apple-verify.example.test contains the brand, so a label must equal it.

@@ -356,11 +356,10 @@ describe("classifyPile learned sender", () => {
   const learned = (patch: Partial<PileInput> = {}) =>
     classifyPile(input({ learnedPile: "newsletters", ...patch }));
   const noPass = withSignals({ auth: { dkim: null, spf: null, dmarc: null } });
-  const dkimOnly = withSignals({ auth: { dkim: "pass", spf: null, dmarc: null } });
+  const unaligned = withSignals({ auth: { dkim: "pass", spf: "pass", dmarc: null } });
 
   it("uses the learned pile when no header rule decides, auth passes and nothing is marked", () => {
     expect(learned()).toEqual({ pile: "newsletters", reasons: ["learned_sender"] });
-    expect(learned({ signals: dkimOnly }).pile).toBe("newsletters");
     expect(learned({ learnedPile: "important" }).pile).toBe("important");
   });
 
@@ -369,6 +368,7 @@ describe("classifyPile learned sender", () => {
     const forged = withSignals({ auth: { dkim: "fail", spf: "pass", dmarc: "pass" } });
     expect(learned({ signals: forged }).pile).toBeNull();
     expect(learned({ signals: noPass }).pile).toBeNull();
+    expect(learned({ signals: unaligned }).pile).toBeNull();
     expect(learned({ senderMark: "noise" }).pile).toBeNull();
     expect(learned({ senderMark: "important" }).pile).toBe("important");
     expect(learned({ skipInbox: true }).reasons).toEqual(["skip_inbox"]);
@@ -435,6 +435,10 @@ describe("learnSenderPile", () => {
       count: 3,
     });
     expect(learnSenderPile([...votes(2), vote({ signals: noPass })], ctx())).toEqual({
+      keep: true,
+    });
+    const unaligned = withSignals({ auth: { dkim: "pass", spf: "pass", dmarc: null } });
+    expect(learnSenderPile([...votes(2), vote({ signals: unaligned })], ctx())).toEqual({
       keep: true,
     });
     expect(learnSenderPile([...votes(2), vote({ signals: null })], ctx())).toEqual({ keep: true });

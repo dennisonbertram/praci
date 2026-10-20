@@ -441,6 +441,20 @@ const cases: Case[] = [
     learned: "newsletters",
   },
   {
+    name: "forged From with DKIM and SPF passing for the attacker's own domain, no DMARC",
+    kind: "scam",
+    expected: null,
+    from: "Notes <hello@notes.example.test>",
+    subject: "Field notes for October",
+    headers: [
+      [
+        "Authentication-Results",
+        "mx.google.com; dkim=pass header.i=@attacker.example.test; spf=pass smtp.mailfrom=attacker.example.test",
+      ],
+    ],
+    learned: "newsletters",
+  },
+  {
     name: "learned sender with a sign-in alert subject",
     kind: "security",
     expected: null,
