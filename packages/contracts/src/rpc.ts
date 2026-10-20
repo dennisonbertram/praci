@@ -184,6 +184,11 @@ import {
 } from "./finance-statements.js";
 import { Id, IsoDate } from "./ids.js";
 import {
+  CleanupArchiveInputSchema,
+  CleanupArchiveOutputSchema,
+  CleanupForgetInputSchema,
+  CleanupListInputSchema,
+  CleanupListOutputSchema,
   ComposeClientId,
   ComposeFieldsSchema,
   ComposePrefillInputSchema,
@@ -197,11 +202,18 @@ import {
   InboxListOutputSchema,
   InboxMarkReadInputSchema,
   InboxMessageSchema,
+  InboxMoveInputSchema,
+  InboxMoveOutputSchema,
   InboxRefreshInputSchema,
   InboxRefreshOutputSchema,
   InboxScopeInputSchema,
   InboxTodoSchema,
   InboxTodosOutputSchema,
+  MailActionsListOutputSchema,
+  MailActionUndoInputSchema,
+  MailActionUndoOutputSchema,
+  UnsubscribeInputSchema,
+  UnsubscribeOutputSchema,
 } from "./inbox.js";
 import {
   IntegrationProviderConfigSchema,
@@ -1313,6 +1325,17 @@ export const appContract = {
     unarchive: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
     archiveMany: oc.input(InboxBulkInputSchema).output(InboxBulkResultSchema),
     unarchiveMany: oc.input(InboxBulkInputSchema).output(InboxBulkResultSchema),
+    moveMany: oc.input(InboxMoveInputSchema).output(InboxMoveOutputSchema),
+    unsubscribe: oc.input(UnsubscribeInputSchema).output(UnsubscribeOutputSchema),
+    cleanup: {
+      list: oc.input(CleanupListInputSchema).output(CleanupListOutputSchema),
+      archive: oc.input(CleanupArchiveInputSchema).output(CleanupArchiveOutputSchema),
+      forget: oc.input(CleanupForgetInputSchema).output(z.object({ ok: z.literal(true) })),
+    },
+    actions: {
+      list: oc.input(z.object({})).output(MailActionsListOutputSchema),
+      undo: oc.input(MailActionUndoInputSchema).output(MailActionUndoOutputSchema),
+    },
     compose: {
       prefill: oc.input(ComposePrefillInputSchema).output(ComposePrefillOutputSchema),
       draftSave: oc.input(ComposeFieldsSchema).output(ComposeResultSchema),

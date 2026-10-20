@@ -242,3 +242,19 @@ export const SpamNoArchivedBadge: Story = {
     onPick: noop,
   },
 };
+
+/** With a move handler, the More menu also offers Spam and Trash for inbox mail (open the menu to see them). */
+export const WithSpamAndTrash: Story = {
+  args: { row: rows[0] as MailRow, selected: true, onArchive: noop, onRead: noop, onMove: noop },
+};
+
+/** Mail in the Spam pile offers Not spam in the More menu instead of Spam. */
+export const InSpamPile: Story = {
+  args: {
+    row: { ...(rows[3] as MailRow), inInbox: false, pile: "spam" },
+    selected: true,
+    onRead: noop,
+    onMove: noop,
+    showArchived: false,
+  },
+};
