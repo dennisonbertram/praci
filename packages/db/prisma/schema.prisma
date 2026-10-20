@@ -40,6 +40,8 @@ model User {
   avatarStyle                 String                       @default("organic")
   /// IANA time zone reported by the owner's clients; null until one signs in.
   timezone                    String?
+  /// Set when the owner finishes or skips the first-run tour; null means it has not been shown.
+  tourSeenAt                  DateTime?
   hiddenPages                 String[]                     @default([])
   sessions                    Session[]
   accounts                    Account[]

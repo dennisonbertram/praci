@@ -1471,6 +1471,7 @@ msgstr "Avatars"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/tour/TourPopover.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/RoutineEditor.tsx
@@ -1936,6 +1937,10 @@ msgstr "Chat apps, group channels, and agent connections."
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr "Chat settings"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Chat with Chief here. Agents ask before they send, pay or change anything."
+msgstr "Chat with Chief here. Agents ask before they send, pay or change anything."
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Chat with your agents over iMessage"
@@ -2449,6 +2454,10 @@ msgstr "Connect mail"
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "Connect MCP server “{name}”"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Connect the apps you already use."
+msgstr "Connect the apps you already use."
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
@@ -3298,6 +3307,10 @@ msgstr "Create space"
 msgid "Create your account"
 msgstr "Create your account"
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Create your own agent, group or space."
+msgstr "Create your own agent, group or space."
+
 #: src/components/AskCard.tsx
 msgid "Created"
 msgstr "Created"
@@ -3703,6 +3716,7 @@ msgstr "Don’t have an account?"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/components/tour/TourPopover.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -4151,6 +4165,10 @@ msgstr "Filters"
 #: src/pages/Shell.tsx
 msgid "Finance"
 msgstr "Finance"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Finance shows cash, burn and runway from your bank."
+msgstr "Finance shows cash, burn and runway from your bank."
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
@@ -4696,6 +4714,10 @@ msgstr "Inbox"
 msgid "Inbox & email"
 msgstr "Inbox & email"
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Inbox sorts your mail and drafts replies you approve."
+msgstr "Inbox sorts your mail and drafts replies you approve."
+
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Indexing"
 msgstr "Indexing"
@@ -4930,6 +4952,10 @@ msgstr "Leave"
 #: src/pages/Shell.tsx
 msgid "Legal"
 msgstr "Legal"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Legal and Cap table keep contracts and ownership in one place."
+msgstr "Legal and Cap table keep contracts and ownership in one place."
 
 #: src/components/data-room/format.ts
 msgid "Legal document"
@@ -5755,6 +5781,7 @@ msgstr "Newsletter"
 msgid "Newsletters"
 msgstr "Newsletters"
 
+#: src/components/tour/TourPopover.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Next"
 msgstr "Next"
@@ -7746,6 +7773,10 @@ msgstr "Search Box"
 msgid "Search by domain"
 msgstr "Search by domain"
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Search chats, files and mail."
+msgstr "Search chats, files and mail."
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
 msgstr "Search directory"
@@ -7995,6 +8026,10 @@ msgstr "Set up app catalog"
 #: src/pages/Shell.tsx
 msgid "Settings"
 msgstr "Settings"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Settings, backups and Export my data are here, and so is Take the tour."
+msgstr "Settings, backups and Export my data are here, and so is Take the tour."
 
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8256,6 +8291,10 @@ msgstr "Skip or deploy key"
 #: src/components/SkipToContent.tsx
 msgid "Skip to content"
 msgstr "Skip to content"
+
+#: src/components/tour/TourPopover.tsx
+msgid "Skip tour"
+msgstr "Skip tour"
 
 #. placeholder {0}: failed.join(", ")
 #. placeholder {0}: skipped.join(", ")
@@ -8596,6 +8635,10 @@ msgstr "Tags"
 msgid "Take control"
 msgstr "Take control"
 
+#: src/pages/Shell.tsx
+msgid "Take the tour"
+msgstr "Take the tour"
+
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 msgid "Task board"
@@ -8743,6 +8786,10 @@ msgstr "the computer"
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "The connection timed out."
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "The Data room holds your files. Artifacts holds what agents make."
+msgstr "The Data room holds your files. Artifacts holds what agents make."
 
 #: src/components/finance/StatementImport.tsx
 msgid "The file is too large"
@@ -9076,6 +9123,10 @@ msgstr "Total cash"
 #: src/pages/Finance.tsx
 msgid "Total incl. crypto"
 msgstr "Total incl. crypto"
+
+#: src/components/tour/TourPopover.tsx
+msgid "Tour"
+msgstr "Tour"
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx

@@ -1,0 +1,2 @@
+ALTER TABLE "user" ADD COLUMN "tourSeenAt" TIMESTAMP(3);
+UPDATE "user" SET "tourSeenAt" = CURRENT_TIMESTAMP;

@@ -4,6 +4,7 @@ export const mockMe: Me = {
   ticketBoardEnabled: false,
   userId: "user_demo",
   timezone: null,
+  tourSeen: true,
   email: "demo@example.test",
   name: "Demo User",
   spaceId: "space_demo",
