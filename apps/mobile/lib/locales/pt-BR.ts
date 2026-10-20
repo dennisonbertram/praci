@@ -1,5 +1,5 @@
 export const PT_BR_MESSAGES: Record<string, string> = {
-  "Sheets": "Planilhas",
+  Sheets: "Planilhas",
   "This sheet is empty.": "Esta planilha está vazia.",
   "Load more": "Carregar mais",
   "Could not load more rows.": "Não foi possível carregar mais linhas.",

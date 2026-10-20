@@ -1,5 +1,5 @@
 export const RU_MESSAGES: Record<string, string> = {
-  "Sheets": "Листы",
+  Sheets: "Листы",
   "This sheet is empty.": "Этот лист пуст.",
   "Load more": "Загрузить ещё",
   "Could not load more rows.": "Не удалось загрузить ещё строки.",

@@ -1,5 +1,5 @@
 export const ZH_MESSAGES: Record<string, string> = {
-  "Sheets": "工作表",
+  Sheets: "工作表",
   "This sheet is empty.": "此工作表为空。",
   "Load more": "加载更多",
   "Could not load more rows.": "无法加载更多行。",

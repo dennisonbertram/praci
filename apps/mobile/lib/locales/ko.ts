@@ -1,5 +1,5 @@
 export const KO_MESSAGES: Record<string, string> = {
-  "Sheets": "시트",
+  Sheets: "시트",
   "This sheet is empty.": "이 시트는 비어 있습니다.",
   "Load more": "더 불러오기",
   "Could not load more rows.": "행을 더 불러오지 못했습니다.",

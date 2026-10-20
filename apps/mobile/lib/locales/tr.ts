@@ -1,5 +1,5 @@
 export const TR_MESSAGES: Record<string, string> = {
-  "Sheets": "Sayfalar",
+  Sheets: "Sayfalar",
   "This sheet is empty.": "Bu sayfa boş.",
   "Load more": "Daha fazla yükle",
   "Could not load more rows.": "Daha fazla satır yüklenemedi.",

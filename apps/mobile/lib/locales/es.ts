@@ -1,5 +1,5 @@
 export const ES_MESSAGES: Record<string, string> = {
-  "Sheets": "Hojas",
+  Sheets: "Hojas",
   "This sheet is empty.": "Esta hoja está vacía.",
   "Load more": "Cargar más",
   "Could not load more rows.": "No se pudieron cargar más filas.",

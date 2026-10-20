@@ -1,5 +1,5 @@
 export const DE_MESSAGES: Record<string, string> = {
-  "Sheets": "Tabellen",
+  Sheets: "Tabellen",
   "This sheet is empty.": "Diese Tabelle ist leer.",
   "Load more": "Mehr laden",
   "Could not load more rows.": "Weitere Zeilen konnten nicht geladen werden.",

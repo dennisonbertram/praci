@@ -1,5 +1,5 @@
 export const HI_MESSAGES: Record<string, string> = {
-  "Sheets": "शीट",
+  Sheets: "शीट",
   "This sheet is empty.": "यह शीट खाली है।",
   "Load more": "और लोड करें",
   "Could not load more rows.": "और पंक्तियाँ लोड नहीं हो सकीं।",
