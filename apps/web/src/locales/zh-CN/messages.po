@@ -923,6 +923,7 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/PathBar.tsx
 #: src/pages/DataRoom.tsx
 msgid "All items"
 msgstr ""
@@ -4442,6 +4443,10 @@ msgstr "试听"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "你好，这是我朗读回复时的声音。"
 
+#: src/components/data-room/PathBar.tsx
+msgid "Hidden folders"
+msgstr ""
+
 #: src/components/data-room/Preview.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
@@ -6585,6 +6590,10 @@ msgstr "粘贴你的 API 密钥"
 msgid "Paste your API key, then test again."
 msgstr "请粘贴你的 API 密钥，然后重新测试。"
 
+#: src/components/data-room/PathBar.tsx
+msgid "Path"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Paused"
 msgstr "已暂停"
@@ -7323,6 +7332,10 @@ msgstr "重置你的密码"
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Resetting…"
 msgstr "正在重置…"
+
+#: src/components/data-room/ResizableFolders.tsx
+msgid "Resize folders"
+msgstr ""
 
 #: src/components/data-room/Preview.tsx
 #: src/pages/ResizableSidePanel.tsx

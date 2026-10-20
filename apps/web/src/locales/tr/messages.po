@@ -923,6 +923,7 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/PathBar.tsx
 #: src/pages/DataRoom.tsx
 msgid "All items"
 msgstr ""
@@ -4442,6 +4443,10 @@ msgstr "Örnek dinle"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Merhaba, yanıtları sesli okuduğumda böyle duyulacağım."
 
+#: src/components/data-room/PathBar.tsx
+msgid "Hidden folders"
+msgstr ""
+
 #: src/components/data-room/Preview.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
@@ -6585,6 +6590,10 @@ msgstr "API anahtarını yapıştır"
 msgid "Paste your API key, then test again."
 msgstr "API anahtarını yapıştır, sonra yeniden test et."
 
+#: src/components/data-room/PathBar.tsx
+msgid "Path"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Paused"
 msgstr ""
@@ -7322,6 +7331,10 @@ msgstr "Parolanızı sıfırlayın"
 
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Resetting…"
+msgstr ""
+
+#: src/components/data-room/ResizableFolders.tsx
+msgid "Resize folders"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
