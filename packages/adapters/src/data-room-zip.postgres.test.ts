@@ -333,6 +333,54 @@ describePostgres("Data room zip unpacking (PostgreSQL)", () => {
     expect(artifacts.blobs.has(job.payload.storageKey)).toBe(false);
   });
 
+  it("counts a repeat inside one zip as a duplicate, also across a retry", async () => {
+    const same = text("licence text");
+    const zip = zipSync({ "a/LICENSE-x": same, "b/LICENSE-y": same, "c.txt": text("other") });
+    const queued = await files.fileItem(owner, zipInput("twins.zip", zip));
+    const importId = (queued as { importId: string }).importId;
+    const [job] = queuedUnpacks() as [UnpackJob];
+    // The job runs out of time after the first entry, then a retry files the rest.
+    const controller = new AbortController();
+    const realPutStream = artifacts.putStream.bind(artifacts);
+    artifacts.putStream = async (...args) => {
+      const stored = await realPutStream(...args);
+      controller.abort();
+      return stored;
+    };
+    await expect(unpack(job, controller.signal)).rejects.toThrow();
+    artifacts.putStream = realPutStream;
+    await unpack(job);
+    expect(await prisma.dataRoomImport.findUnique({ where: { id: importId } })).toMatchObject({
+      total: 3,
+      duplicates: 1,
+      rejected: 0,
+    });
+    expect(await prisma.dataRoomItem.count({ where: { ...owned(owner), importId } })).toBe(2);
+  });
+
+  it("keeps the zip when storage fails on a later entry, then files it on retry", async () => {
+    const zip = zipSync({ "flaky-a.txt": text("fa"), "flaky-b.txt": text("fb") });
+    const queued = await files.fileItem(owner, zipInput("flaky.zip", zip));
+    const [job] = queuedUnpacks() as [UnpackJob];
+    const realPutStream = artifacts.putStream.bind(artifacts);
+    let calls = 0;
+    artifacts.putStream = async (...args) => {
+      if (++calls === 2) throw new Error("storage timed out");
+      return realPutStream(...args);
+    };
+    await expect(unpack(job)).rejects.toThrow("storage timed out");
+    artifacts.putStream = realPutStream;
+    expect(artifacts.blobs.has(job.payload.storageKey)).toBe(true);
+    await unpack(job);
+    expect(
+      await prisma.dataRoomImport.findUnique({
+        where: { id: (queued as { importId: string }).importId },
+      }),
+    ).toMatchObject({ total: 2, duplicates: 0, rejected: 0 });
+    expect(await itemNames(owner)).toEqual(expect.arrayContaining(["flaky-a.txt", "flaky-b.txt"]));
+    expect(artifacts.blobs.has(job.payload.storageKey)).toBe(false);
+  });
+
   it("abandons the zip when the user left the space", async () => {
     const zip = zipSync({ "gone.txt": text("x") });
     const stored = await artifacts.put({ bytes: zip });

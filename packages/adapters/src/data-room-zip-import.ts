@@ -2,7 +2,12 @@ import type { ArtifactStore, BackgroundJobPayloads, JobPublisher } from "@rakazo
 import type { Actor } from "@rakazo/contracts";
 import { inferAttachmentMimeType } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
-import { createDataRoomRepos, recordImportSkips } from "@rakazo/db";
+import {
+  createDataRoomRepos,
+  DataRoomConflictError,
+  IsolationError,
+  recordImportSkips,
+} from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import {
   createFileDataRoomItem,
@@ -17,12 +22,18 @@ export interface ZipUnpackDeps {
   jobs: JobPublisher;
 }
 
+const isEntryProblem = (error: unknown) =>
+  error instanceof ZipRefusal ||
+  error instanceof IsolationError ||
+  error instanceof DataRoomConflictError;
+
 /**
  * Files each entry of a stored zip as its own item, reading the zip from storage with ranged
  * requests and streaming every entry back, so memory stays flat whatever the sizes. The zip is
- * removed once its entries are filed or the whole zip is refused; a failure that a retry could fix
- * (storage down, the job's time ran out) rethrows and keeps it. Safe to run again: an entry an
- * earlier attempt filed is not counted twice.
+ * removed once its entries are filed or the whole zip is refused. Only a problem with one entry
+ * (it cannot be read, or its folder or owner is refused) fails that entry; any other failure
+ * (storage down, the job's time ran out) rethrows and keeps the zip for the retry. Safe to run
+ * again: an entry an earlier attempt filed is not counted twice.
  */
 export async function runDataRoomZipUnpack(
   deps: ZipUnpackDeps,
@@ -64,6 +75,8 @@ export async function runDataRoomZipUnpack(
   const { storeAndFile, folderAt } = createFileDataRoomItem(deps, createDataRoomRepos(deps.prisma));
   let duplicates = 0;
   let rejected = Math.max(0, payload.entries - entries.length);
+  // Items filed or matched in this run, to tell a repeat inside the zip from a retried entry.
+  const seen = new Set<string>();
   for (const entry of entries) {
     signal.throwIfAborted();
     try {
@@ -86,10 +99,15 @@ export async function runDataRoomZipUnpack(
         ...(payload.sourceUrl ? { sourceUrl: payload.sourceUrl } : {}),
       });
       // An entry an earlier attempt of this job filed is already counted as an item.
-      if (!result.created && result.item.importId !== payload.importId) duplicates += 1;
+      if (
+        !result.created &&
+        (result.item.importId !== payload.importId || seen.has(result.item.id))
+      )
+        duplicates += 1;
+      seen.add(result.item.id);
     } catch (error) {
-      // The job ran out of time: leave the zip for the retry instead of failing every entry.
-      if (signal.aborted) throw error;
+      // Anything but a problem with this entry (storage, network, time) is left for the retry.
+      if (signal.aborted || !isEntryProblem(error)) throw error;
       // One bad entry does not stop the rest; each is bounded on its own.
       getLogger().warn("data room zip entry failed", {
         reason: error instanceof Error ? error.message : "unknown",
