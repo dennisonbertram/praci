@@ -454,13 +454,35 @@ it("sends a grid tile to an agent from its right-click menu", async () => {
   expect(pick).toHaveBeenCalledWith(file, expect.objectContaining({ id: "bot_ben" }));
 });
 
-it("offers no right-click menu when there is no agent to send to", async () => {
+it("offers the same four actions in the right-click menu as in the row's More actions menu", async () => {
+  const names = () =>
+    Array.from(document.body.querySelectorAll('[role="menuitem"]')).map((e) =>
+      e.textContent?.trim(),
+    );
+  act(() =>
+    root.render(
+      <ListView rows={[{ item: item("lease", null), snippets: [] }]} o={withAgents(vi.fn())} />,
+    ),
+  );
+  await act(async () => {
+    container
+      .querySelector("[data-row]")
+      ?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+  });
+  await flush();
+  expect(names()).toEqual(["Send to agent", "Move", "Rename", "Delete"]);
+});
+
+it("keeps Move, Rename and Delete in the right-click menu when there is no agent to send to", async () => {
   act(() => root.render(<ListView rows={[{ item: item("lease", null), snippets: [] }]} o={o()} />));
-  const row = container.querySelector("[data-row]") as Element;
-  const event = new MouseEvent("contextmenu", { bubbles: true, cancelable: true });
-  await act(async () => row.dispatchEvent(event));
-  expect(event.defaultPrevented).toBe(false);
+  await act(async () => {
+    container
+      .querySelector("[data-row]")
+      ?.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+  });
+  await flush();
   expect(menuItem("Send to agent")).toBeUndefined();
+  expect(menuItem("Rename")).toBeDefined();
 });
 
 it("offers Send to agent in the row's More actions menu too", async () => {

@@ -221,3 +221,46 @@ export function userTurnMessageForRun<
       (sourceMessageId ? message.id === sourceMessageId : message.runId === runId),
   );
 }
+
+/** A file the server can preview as a table: .xlsx, .xlsm, .csv or .tsv (legacy .xls is not). */
+export function canPreviewSpreadsheet(name: string, mimeType: string): boolean {
+  const ext = /\.([a-z0-9]+)$/i.exec(name)?.[1]?.toLowerCase();
+  const type = mimeType.toLowerCase().split(";")[0]?.trim() ?? "";
+  if (ext === "xls" || type === "application/vnd.ms-excel") return false;
+  return (
+    ["xlsx", "xlsm", "csv", "tsv"].includes(ext ?? "") ||
+    type.includes("spreadsheetml.sheet") ||
+    type === "application/vnd.ms-excel.sheet.macroenabled.12" ||
+    type === "text/csv" ||
+    type === "text/tab-separated-values"
+  );
+}
+
+type SheetCell = string | number | boolean | null;
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/;
+// CSV cells are text, so a figure such as "1,250.50" or "(12%)" is recognised by its shape.
+const NUMERIC_TEXT = /^[-+(]?[$€£¥]?\s?-?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?%?\)?$/;
+
+export const isNumericSheetCell = (cell: SheetCell): boolean =>
+  typeof cell === "number" || (typeof cell === "string" && NUMERIC_TEXT.test(cell.trim()));
+
+/** Display text for a spreadsheet preview cell: locale numbers, ISO dates, TRUE/FALSE. */
+export function formatSheetCell(cell: SheetCell, locale?: string): string {
+  if (cell === null) return "";
+  if (typeof cell === "number") {
+    return new Intl.NumberFormat(locale, { maximumFractionDigits: 10 }).format(cell);
+  }
+  if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
+  if (ISO_DATE.test(cell)) {
+    const date = new Date(cell.length === 10 ? `${cell}T00:00:00Z` : `${cell}Z`);
+    if (!Number.isNaN(date.getTime())) {
+      return new Intl.DateTimeFormat(locale, {
+        dateStyle: "medium",
+        ...(cell.length > 10 ? { timeStyle: "short" as const } : {}),
+        timeZone: "UTC",
+      }).format(date);
+    }
+  }
+  return cell;
+}

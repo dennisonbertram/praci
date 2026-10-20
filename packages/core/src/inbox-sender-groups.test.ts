@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   archivableIds,
   bulkInChunks,
+  digestRows,
   groupBySender,
   rowSummary,
   type SenderGroupRow,
@@ -74,6 +75,135 @@ describe("groupBySender", () => {
 
   it("returns nothing for no rows", () => {
     expect(groupBySender([])).toEqual([]);
+  });
+
+  describe("one group per sender", () => {
+    const research = (id: string, extra: Partial<SenderGroupRow> = {}) =>
+      row(id, { from: "Research Weekly", fromAddress: "digest@research.example", ...extra });
+
+    it("merges the same address across two connections (counts add)", () => {
+      const [group, ...rest] = groupBySender([
+        research("a1", { connectionId: "c1" }),
+        research("a2", { connectionId: "c1" }),
+        research("b1", { connectionId: "c2" }),
+      ]);
+      expect(rest).toEqual([]);
+      expect(group?.count).toBe(3);
+      expect(group?.rows.map((r) => r.connectionId).sort()).toEqual(["c1", "c1", "c2"]);
+    });
+
+    it("merges plus-tag variants of one address", () => {
+      const groups = groupBySender([
+        row("a", { fromAddress: "news+abc123@acme.example", from: "news+abc123@acme.example" }),
+        row("b", { fromAddress: "news+def456@acme.example", from: "news+def456@acme.example" }),
+        row("c", { fromAddress: "news@acme.example", from: "news@acme.example" }),
+      ]);
+      expect(groups).toHaveLength(1);
+      expect(groups[0]?.count).toBe(3);
+    });
+
+    it("merges the same display name on different local parts and a subdomain of one domain", () => {
+      const groups = groupBySender([
+        ...["a1", "a2", "a3", "a4"].map((id) => research(id)),
+        research("b1", { fromAddress: "bounce-77@mail.research.example" }),
+        research("b2", {
+          fromAddress: "bounce-78@mail.research.example",
+          from: "RESEARCH  weekly",
+        }),
+        research("b3", { fromAddress: "weekly@research.example" }),
+      ]);
+      expect(groups).toHaveLength(1);
+      expect(groups[0]?.count).toBe(7);
+    });
+
+    it("merges one name across a newsletter platform and the brand's own subdomain", () => {
+      const named = (id: string, fromAddress: string) =>
+        row(id, { from: "Example Research", fromAddress });
+      const groups = groupBySender([
+        named("a", "a@newsletters.example"),
+        named("b", "b@newsletters.example"),
+        named("c", "news@update.exampleresearch.test"),
+      ]);
+      expect(groups).toHaveLength(1);
+      expect(groups[0]?.count).toBe(3);
+    });
+
+    it("keeps same-named people on a shared mailbox domain apart", () => {
+      const groups = groupBySender([
+        row("a", { from: "Sam Lee", fromAddress: "sam1@gmail.com" }),
+        row("b", { from: "Sam Lee", fromAddress: "sam2@gmail.com" }),
+      ]);
+      expect(groups).toHaveLength(2);
+    });
+
+    it("keeps different display names on one domain apart", () => {
+      const groups = groupBySender([
+        research("a"),
+        research("b", { from: "Research Jobs", fromAddress: "jobs@research.example" }),
+      ]);
+      expect(groups).toHaveLength(2);
+    });
+
+    it("merges the same display name on different domains", () => {
+      const groups = groupBySender([
+        research("a"),
+        research("b", { fromAddress: "digest@other-research.example" }),
+        research("c", { fromAddress: "digest@shop.co.uk" }),
+        research("d", { fromAddress: "digest@other.co.uk" }),
+      ]);
+      expect(groups).toHaveLength(1);
+    });
+
+    it("keeps two people with one display name on a shared mailbox domain apart", () => {
+      const groups = groupBySender([
+        research("a", { from: "Alex Kim", fromAddress: "alex.kim@gmail.com" }),
+        research("b", { from: "Alex Kim", fromAddress: "akim99@gmail.com" }),
+      ]);
+      expect(groups).toHaveLength(2);
+    });
+
+    it("groups rows without a display name by normalized address", () => {
+      const bare = (id: string, address: string) =>
+        row(id, { from: address, fromAddress: address });
+      const groups = groupBySender([
+        bare("a", "Alerts@Acme.example"),
+        bare("b", "alerts+x@acme.example"),
+        bare("c", "other@acme.example"),
+      ]);
+      expect(groups.map((g) => g.count).sort()).toEqual([1, 2]);
+    });
+
+    it("gives a group a key that does not change when a variant address arrives", () => {
+      const before = groupBySender([research("a"), research("b")])[0]?.key;
+      const after = groupBySender([
+        research("a"),
+        research("b"),
+        research("c", { fromAddress: "zz+tag@mail.research.example" }),
+      ])[0]?.key;
+      expect(after).toBe(before);
+    });
+  });
+});
+
+describe("digestRows", () => {
+  const now = new Date("2026-10-20T12:00:00.000Z");
+
+  it("keeps rows from the last 7 days, newest first, ties by id", () => {
+    const rows = [
+      row("old", { receivedAt: "2026-10-13T11:59:59.000Z" }),
+      row("edge", { receivedAt: "2026-10-13T12:00:00.000Z" }),
+      row("tie-a", { receivedAt: "2026-10-19T12:00:00.000Z" }),
+      row("tie-b", { receivedAt: "2026-10-19T12:00:00.000Z" }),
+      row("new", { receivedAt: "2026-10-20T09:00:00.000Z" }),
+    ];
+    expect(digestRows(rows, now).map((r) => r.id)).toEqual(["new", "tie-b", "tie-a", "edge"]);
+  });
+
+  it("takes a different window and returns nothing when no row is recent", () => {
+    const rows = [row("a", { receivedAt: "2026-10-18T12:00:00.000Z" })];
+    expect(digestRows(rows, now, 1)).toEqual([]);
+    expect(digestRows(rows, now, 3)).toHaveLength(1);
+    expect(digestRows([], now)).toEqual([]);
   });
 });
 
