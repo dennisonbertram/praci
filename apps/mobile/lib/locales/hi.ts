@@ -245,6 +245,8 @@ export const HI_MESSAGES: Record<string, string> = {
   Name: "नाम",
   "Name this bot": "बॉट को नाम दें",
   "Read replies aloud": "उत्तर पढ़कर सुनाएं",
+  Skills: "स्किल्स",
+  "Use {name}": "{name} इस्तेमाल करें",
   Save: "सहेजें",
   "Saving…": "सहेजा जा रहा है…",
   "Space default": "स्पेस डिफ़ॉल्ट",

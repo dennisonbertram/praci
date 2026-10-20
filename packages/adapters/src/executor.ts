@@ -3299,6 +3299,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
       const skillRecords = await listAgentSkillRecords(deps.prisma, {
         spaceId: routine.spaceId,
         userId: routine.userId,
+        botId: routine.botId,
       });
       const routinePrompt = expandSkillReferencesInPrompt(routine.prompt, skillRecords);
       const claimed = await deps.prisma.$transaction(async (tx) => {
@@ -3589,6 +3590,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           listAgentSkillRecords(deps.prisma, {
             spaceId: run.spaceId,
             userId: run.userId,
+            botId: run.botId,
           }),
           voiceAgent
             ? Promise.resolve([])
@@ -6597,6 +6599,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               {
                 spaceId: run.spaceId,
                 userId: run.userId,
+                botId: run.botId,
               },
               {
                 name: args.name ? String(args.name) : undefined,

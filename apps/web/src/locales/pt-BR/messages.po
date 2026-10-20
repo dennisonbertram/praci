@@ -768,6 +768,10 @@ msgstr ""
 msgid "Add server URL"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Add skill"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "Adicionar à rotina"
@@ -1563,7 +1567,7 @@ msgstr ""
 msgid "Browser"
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Integrado"
 
@@ -1636,6 +1640,7 @@ msgstr "Não é possível acessar o servidor."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Cancel"
 msgstr "Cancelar"
@@ -1983,11 +1988,11 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Fechar"
@@ -2208,7 +2213,7 @@ msgstr "Computadores estão desligados. Defina SANDBOX_PROVIDER=docker com SANDB
 msgid "Configured by deployment"
 msgstr "Configurado por implantação"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirmar exclusão"
 
@@ -2577,7 +2582,7 @@ msgstr ""
 msgid "Could not delete routine"
 msgstr "Não foi possível excluir a rotina"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not delete skill"
 msgstr "Não foi possível excluir a habilidade"
 
@@ -2633,6 +2638,7 @@ msgstr ""
 
 #: src/components/ErrorBoundary.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load"
 msgstr "Não foi possível carregar"
 
@@ -2698,7 +2704,7 @@ msgstr "Não foi possível carregar as opções de login"
 msgid "Could not load sign-in options."
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load skill"
 msgstr "Não foi possível carregar a habilidade"
 
@@ -2878,7 +2884,7 @@ msgstr "Não foi possível salvar a rotina"
 msgid "Could not save rule"
 msgstr "Não foi possível salvar"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "Não foi possível salvar a habilidade"
 
@@ -3242,9 +3248,9 @@ msgstr "Padrão ({0})"
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
 msgstr "Excluir"
@@ -4049,6 +4055,10 @@ msgstr ""
 msgid "From the latest 409A valuation"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "From URL"
+msgstr ""
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "Tela Cheia"
@@ -4567,10 +4577,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "Kind"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Knowledge"
-msgstr "Conhecimento"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
@@ -5416,7 +5422,7 @@ msgstr "Nova senha"
 msgid "New section"
 msgstr "Nova seção"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "New skill"
 msgstr "Nova habilidade"
 
@@ -5671,10 +5677,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "No shareholders in Carta"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "No skills yet"
-msgstr "Ainda não há habilidades"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -6314,7 +6316,7 @@ msgstr "Fixar"
 msgid "Playing…"
 msgstr "Reproduzindo"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Plugin"
 
@@ -7142,6 +7144,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
 msgstr "Salvar"
@@ -7541,10 +7544,6 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared skills"
-msgstr "Habilidades compartilhadas"
-
 #: src/pages/CapTable.tsx
 msgid "Shareholder"
 msgstr ""
@@ -7727,6 +7726,7 @@ msgid "Skill {0}"
 msgstr "Habilidade {0}"
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Skills"
 msgstr ""
 
@@ -8771,6 +8771,10 @@ msgstr ""
 msgid "Upload failed"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload SKILL.md"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
 msgstr ""
@@ -8799,6 +8803,11 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "Uso"
+
+#. placeholder {0}: entry.name
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Use {0}"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Use {hostLabel}"

@@ -655,6 +655,8 @@ export function ShellPage() {
   const [taughtSkills, setTaughtSkills] = useState<TaughtSkill[]>([]);
   const [taughtSkillsBotId, setTaughtSkillsBotId] = useState<string | null>(null);
   const [agentSkills, setAgentSkills] = useState<AgentSkillCatalogEntry[]>([]);
+  // Bumped when a run ends, so the Skills settings list picks up a skill the agent just created.
+  const [skillsRefreshKey, setSkillsRefreshKey] = useState(0);
   const [mentionRoutines, setMentionRoutines] = useState<Array<Routine & { botName?: string }>>([]);
   const [mentionConnectors, setMentionConnectors] = useState<
     Array<{
@@ -1500,12 +1502,16 @@ export function ShellPage() {
     };
   }, []);
 
+  const slashBotId = active?.id;
   const refreshAgentSkills = useCallback(() => {
-    void rpc.agentSkills
-      .list()
-      .then(setAgentSkills)
-      .catch(() => undefined);
-  }, []);
+    // The slash menu offers only the skills switched on for this bot.
+    const skills = slashBotId
+      ? rpc.agentSkills
+          .forBot({ botId: slashBotId })
+          .then((list) => list.filter((skill) => skill.enabled))
+      : rpc.agentSkills.list();
+    void skills.then(setAgentSkills).catch(() => undefined);
+  }, [slashBotId]);
 
   useEffect(() => {
     void rpc.voice
@@ -1640,6 +1646,7 @@ export function ShellPage() {
         ) {
           // waiting_input: reconcile ask cards if a stale post-send refresh raced SSE.
           void refreshThread(active.id).catch(() => undefined);
+          setSkillsRefreshKey((key) => key + 1);
         } else if (isComputerStatusEvent(event)) {
           void refreshComputerScreen(active.id).catch(() => undefined);
         }
@@ -5195,6 +5202,7 @@ export function ShellPage() {
                 focusName={namingBotId === active.id}
                 memoryProviderConfigured={memoryProviderConfig != null}
                 onSkillsChange={setAgentSkills}
+                skillsRefreshKey={skillsRefreshKey}
                 onSave={async ({ computerMode, ...patch }) => {
                   if (computerMode !== active.computerMode) {
                     await rpc.bots.setComputer({

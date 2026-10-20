@@ -768,6 +768,10 @@ msgstr ""
 msgid "Add server URL"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Add skill"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "रूटीन में जोड़ें"
@@ -1563,7 +1567,7 @@ msgstr ""
 msgid "Browser"
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "अंतर्निहित"
 
@@ -1636,6 +1640,7 @@ msgstr "सर्वर तक नहीं पहुंचा जा सका�
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Cancel"
 msgstr "रद्द करें"
@@ -1983,11 +1988,11 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "बंद करें"
@@ -2208,7 +2213,7 @@ msgstr "कंप्यूटर बंद हैं। SANDBOX_PROVIDER=docker 
 msgid "Configured by deployment"
 msgstr "डिप्लॉयमेंट द्वारा कॉन्फ़िगर"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "डिलीट की पुष्टि करें"
 
@@ -2577,7 +2582,7 @@ msgstr ""
 msgid "Could not delete routine"
 msgstr "रूटीन डिलीट नहीं किया जा सका"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not delete skill"
 msgstr "स्किल हटाई नहीं जा सकी"
 
@@ -2633,6 +2638,7 @@ msgstr ""
 
 #: src/components/ErrorBoundary.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load"
 msgstr "लोड नहीं हो सका"
 
@@ -2698,7 +2704,7 @@ msgstr "साइन इन के विकल्प लोड नहीं ह
 msgid "Could not load sign-in options."
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load skill"
 msgstr "स्किल लोड नहीं हो सकी"
 
@@ -2878,7 +2884,7 @@ msgstr "रूटीन सहेजा नहीं जा सका"
 msgid "Could not save rule"
 msgstr "नियम सहेजा नहीं जा सका"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "स्किल सहेजी नहीं जा सकी"
 
@@ -3242,9 +3248,9 @@ msgstr "डिफ़ॉल्ट ({0})"
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
 msgstr "डिलीट करें"
@@ -4049,6 +4055,10 @@ msgstr ""
 msgid "From the latest 409A valuation"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "From URL"
+msgstr ""
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "फ़ुलस्क्रीन"
@@ -4567,10 +4577,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "Kind"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Knowledge"
-msgstr "ज्ञान"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
@@ -5416,7 +5422,7 @@ msgstr "नया पासवर्ड"
 msgid "New section"
 msgstr "नया सेक्शन"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "New skill"
 msgstr "नई स्किल"
 
@@ -5671,10 +5677,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "No shareholders in Carta"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "No skills yet"
-msgstr "अभी तक कोई स्किल नहीं"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -6314,7 +6316,7 @@ msgstr "पिन करें"
 msgid "Playing…"
 msgstr "प्ले हो रहा है…"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "प्लगइन"
 
@@ -7142,6 +7144,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
 msgstr "सहेजें"
@@ -7541,10 +7544,6 @@ msgstr ""
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared skills"
-msgstr "साझा स्किल्स"
-
 #: src/pages/CapTable.tsx
 msgid "Shareholder"
 msgstr ""
@@ -7727,6 +7726,7 @@ msgid "Skill {0}"
 msgstr "स्किल {0}"
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Skills"
 msgstr ""
 
@@ -8771,6 +8771,10 @@ msgstr ""
 msgid "Upload failed"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload SKILL.md"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
 msgstr ""
@@ -8799,6 +8803,11 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "उपयोग"
+
+#. placeholder {0}: entry.name
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Use {0}"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Use {hostLabel}"

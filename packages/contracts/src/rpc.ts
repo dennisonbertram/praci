@@ -69,6 +69,7 @@ import {
   ArtifactWithContentSchema,
   AvatarStyleSchema,
   BillingStatusSchema,
+  BotAgentSkillSchema,
   BotMcpServerSchema,
   BotSchema,
   BotSectionSchema,
@@ -833,6 +834,15 @@ export const appContract = {
     create: oc.input(CreateAgentSkillInput).output(AgentSkillSchema),
     update: oc.input(UpdateAgentSkillInput).output(AgentSkillSchema),
     remove: oc.input(z.object({ skillId: Id })).output(z.object({ ok: z.literal(true) })),
+    /** The catalog with this bot's on/off switch per skill. */
+    forBot: oc.input(botId).output(z.array(BotAgentSkillSchema)),
+    setEnabled: oc
+      .input(z.object({ botId: Id, skillKey: z.string().min(1).max(200), enabled: z.boolean() }))
+      .output(z.object({ ok: z.literal(true) })),
+    /** Fetch a public GitHub or raw SKILL.md and store it as a user skill. */
+    importFromUrl: oc
+      .input(z.object({ url: z.string().trim().url().max(2048) }))
+      .output(AgentSkillSchema),
   },
   capabilities: {
     list: oc.output(z.array(CapabilityInstallSchema)),

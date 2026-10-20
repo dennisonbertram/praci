@@ -62,6 +62,7 @@ vi.mock("../ScratchpadSection", () => ({ ScratchpadSection: () => null }));
 vi.mock("../KnowledgeSection", () => ({ KnowledgeSection: () => null }));
 vi.mock("./avatar-studio-popover", () => ({ AvatarStudioPopover: () => null }));
 vi.mock("./bot-credentials", () => ({ BotCredentialsSection: () => null }));
+vi.mock("./BotSkillsSection", () => ({ BotSkillsSection: () => null }));
 
 import { BotSettings } from "./bot-panel";
 
