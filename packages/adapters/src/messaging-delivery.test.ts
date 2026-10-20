@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyMessagingOutboundStatus,
   deliverMessagingOutbound,
+  MESSAGING_AI_DISCLOSURE,
   MESSAGING_DM_OUTBOUND_CAP,
   MESSAGING_OUTBOUND_MAX_ATTEMPTS,
   type MessagingDeliveryDeps,
@@ -26,6 +27,7 @@ const identity = {
   spaceId: "ws-1",
   botId: "bot-1",
   outboundSinceInbound: 0,
+  disclosedAt: null as Date | null,
 };
 
 const messagingRun = {
@@ -58,6 +60,10 @@ function createFakeSurface(sendError?: Error) {
     sendTyping: vi.fn(async () => undefined),
   };
   return { messaging, sendToThread, openDirectThread };
+}
+
+function sentBodies(deps: { sendToThread: { mock: { calls: unknown[][] } } }): string[] {
+  return deps.sendToThread.mock.calls.map((call) => (call[0] as { body: string }).body);
 }
 
 function createDeps(overrides: {
@@ -95,6 +101,22 @@ function createDeps(overrides: {
         }
         return identityRow;
       }),
+      // Only the disclosure claim uses updateMany: set disclosedAt where it is still null.
+      updateMany: vi.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { disclosedAt?: null };
+          data: Record<string, unknown>;
+        }) => {
+          if (!identityRow || ("disclosedAt" in where && identityRow.disclosedAt != null)) {
+            return { count: 0 };
+          }
+          identityRow.disclosedAt = data.disclosedAt as Date | null;
+          return { count: 1 };
+        },
+      ),
     },
     agentConnection: {
       findUnique: vi.fn(async () =>
@@ -280,6 +302,60 @@ describe("deliverMessagingOutbound", () => {
 
     expect(deps.sendToThread).not.toHaveBeenCalled();
     expect(deps.rows).toEqual([expect.objectContaining({ kind: "dm", status: "pending" })]);
+  });
+
+  it("holds photon DM sends at the consecutive-outbound cap", async () => {
+    const deps = createDeps({
+      identity: {
+        provider: "photon",
+        disclosedAt: new Date(),
+        outboundSinceInbound: MESSAGING_DM_OUTBOUND_CAP,
+      },
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+
+    expect(deps.sendToThread).not.toHaveBeenCalled();
+    expect(deps.rows).toEqual([expect.objectContaining({ kind: "dm", status: "pending" })]);
+  });
+
+  it("sends the AI disclosure once, before the first photon message", async () => {
+    const deps = createDeps({
+      identity: { provider: "photon", dmThreadId: "photon:dm-1" },
+      messages: [
+        { id: "m-1", blocks: [{ kind: "text", text: "first" }] },
+        { id: "m-2", blocks: [{ kind: "text", text: "second" }] },
+      ],
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+
+    expect(sentBodies(deps)).toEqual([MESSAGING_AI_DISCLOSURE, "first", "second"]);
+    expect(MESSAGING_AI_DISCLOSURE).toBe("You're messaging an AI assistant.");
+  });
+
+  it("does not repeat the disclosure once it was recorded, and skips other providers", async () => {
+    const disclosed = createDeps({
+      identity: { provider: "photon", disclosedAt: new Date() },
+    });
+    await deliverMessagingOutbound(disclosed, { runId: "run-1" }, context);
+    expect(sentBodies(disclosed)).toEqual(["Hello from your bot"]);
+
+    const sendblue = createDeps({});
+    await deliverMessagingOutbound(sendblue, { runId: "run-1" }, context);
+    expect(sentBodies(sendblue)).toEqual(["Hello from your bot"]);
+  });
+
+  it("unmarks the disclosure when it fails to send, so the retry sends it again", async () => {
+    const deps = createDeps({
+      identity: { provider: "photon" },
+      sendError: new Error("photon 503"),
+    });
+    await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
+
+    expect(deps.rows).toEqual([expect.objectContaining({ status: "pending", attempts: 1 })]);
+    expect(deps.prisma.messagingIdentity.updateMany).toHaveBeenLastCalledWith({
+      where: { id: "mi-1" },
+      data: { disclosedAt: null },
+    });
   });
 
   it("does not apply the sendblue outbound cap to other providers", async () => {

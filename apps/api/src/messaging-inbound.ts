@@ -1,7 +1,13 @@
 import type { JobPublisher, MessagingInboundMessage } from "@rakazo/adapter-kit";
 import { messagingDeliverJob, runContinueJob } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
-import { parseMessagingCommand, sanitizeMessagingLabel } from "@rakazo/core";
+import {
+  MESSAGING_PHOTON_BLOCKED_MESSAGE,
+  messagingProviderBlocksBot,
+  messagingProviderRestrictsAgents,
+  parseMessagingCommand,
+  sanitizeMessagingLabel,
+} from "@rakazo/core";
 import type {
   MessagingIdentityRequest,
   Prisma,
@@ -325,6 +331,35 @@ async function tryRedeemLinkCode(
 ): Promise<boolean> {
   const code = normalizeMessagingLinkCode(event.content);
   if (!code) return false;
+  if (messagingProviderRestrictsAgents(event.provider)) {
+    // Look before redeeming, so a refused code stays usable on another app.
+    const row = await deps.prisma.messagingLinkCode.findUnique({
+      where: { code },
+      select: { botId: true },
+    });
+    const bot = row
+      ? await deps.prisma.bot.findUnique({
+          where: { id: row.botId },
+          select: { spawnKey: true },
+        })
+      : null;
+    if (bot && messagingProviderBlocksBot(event.provider, bot.spawnKey)) {
+      // An unlinked sender has no identity to reply to, so only a linked one hears why.
+      const linked = await deps.prisma.messagingIdentity.findUnique({
+        where: { provider_address: { provider: event.provider, address: event.from } },
+        select: { id: true },
+      });
+      if (linked) {
+        await enqueueConfirmation(
+          deps,
+          linked,
+          `link-blocked:${event.handle}`,
+          MESSAGING_PHOTON_BLOCKED_MESSAGE,
+        );
+      }
+      return true;
+    }
+  }
   const redeemed = await redeemMessagingLinkCode(deps.prisma, {
     code,
     provider: event.provider,

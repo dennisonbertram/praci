@@ -67,6 +67,10 @@ export interface AppEnv {
   bluebubblesUrl: string | undefined;
   bluebubblesPassword: string | undefined;
   bluebubblesWebhookToken: string | undefined;
+  photonProjectId: string | undefined;
+  photonProjectSecret: string | undefined;
+  photonWebhookSecret: string | undefined;
+  photonImessageAddress: string | undefined;
   smtpUrl: string | undefined;
   emailFrom: string | undefined;
   /** Billing turns on only when all three are set; self-hosted installs leave them unset. */
@@ -212,6 +216,10 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     bluebubblesUrl: optional(source.BLUEBUBBLES_URL),
     bluebubblesPassword: optional(source.BLUEBUBBLES_PASSWORD),
     bluebubblesWebhookToken: optional(source.BLUEBUBBLES_WEBHOOK_TOKEN),
+    photonProjectId: optional(source.PHOTON_PROJECT_ID),
+    photonProjectSecret: optional(source.PHOTON_PROJECT_SECRET),
+    photonWebhookSecret: optional(source.PHOTON_WEBHOOK_SECRET),
+    photonImessageAddress: optional(source.PHOTON_IMESSAGE_ADDRESS),
     smtpUrl: optional(source.SMTP_URL),
     emailFrom: optional(source.EMAIL_FROM),
     stripeSecretKey: optional(source.STRIPE_SECRET_KEY),

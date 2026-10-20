@@ -13,6 +13,7 @@ import {
   bluebubblesTransport,
 } from "./bluebubbles-adapter.js";
 import type { MessagingPlatform } from "./chat-sdk-surface.js";
+import { PhotonAdapter, photonTransport } from "./photon-adapter.js";
 import { isVitestRuntime } from "./test-runtime.js";
 
 /**
@@ -27,6 +28,11 @@ export interface MessagingEnvironmentValues {
   bluebubblesUrl?: string | undefined;
   bluebubblesPassword?: string | undefined;
   bluebubblesWebhookToken?: string | undefined;
+  photonProjectId?: string | undefined;
+  photonProjectSecret?: string | undefined;
+  photonWebhookSecret?: string | undefined;
+  /** Optional override of Photon's iMessage HTTP address. */
+  photonImessageAddress?: string | undefined;
   slackBotToken?: string | undefined;
   slackSigningSecret?: string | undefined;
   whatsappAccessToken?: string | undefined;
@@ -56,6 +62,10 @@ export function messagingEnvFromProcess(
     bluebubblesUrl: clean(env.BLUEBUBBLES_URL),
     bluebubblesPassword: clean(env.BLUEBUBBLES_PASSWORD),
     bluebubblesWebhookToken: clean(env.BLUEBUBBLES_WEBHOOK_TOKEN),
+    photonProjectId: clean(env.PHOTON_PROJECT_ID),
+    photonProjectSecret: clean(env.PHOTON_PROJECT_SECRET),
+    photonWebhookSecret: clean(env.PHOTON_WEBHOOK_SECRET),
+    photonImessageAddress: clean(env.PHOTON_IMESSAGE_ADDRESS),
     slackBotToken: clean(env.SLACK_BOT_TOKEN),
     slackSigningSecret: clean(env.SLACK_SIGNING_SECRET),
     whatsappAccessToken: clean(env.WHATSAPP_ACCESS_TOKEN),
@@ -233,6 +243,32 @@ export function messagingPlatformsFromEnv(
       // the API and worker still boot with every other platform.
       getLogger().error(
         `BlueBubbles is disabled: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  // All three required: without the signing secret anyone could post fake
+  // inbound messages. Direct iMessage only; groups and SMS/RCS are ignored.
+  if (env.photonProjectId && env.photonProjectSecret && env.photonWebhookSecret) {
+    try {
+      const adapter = new PhotonAdapter({
+        projectId: env.photonProjectId,
+        projectSecret: env.photonProjectSecret,
+        webhookSecret: env.photonWebhookSecret,
+        ...(env.photonImessageAddress ? { address: env.photonImessageAddress } : {}),
+      });
+      platforms.push({
+        provider: "photon",
+        capabilities: { direct: true, groups: false, typing: true },
+        adapter,
+        directThreadId: (address) => adapter.directThreadId(address),
+        transport: photonTransport,
+      });
+    } catch (error) {
+      // A bad Photon setting turns off Photon only; the API and worker still
+      // boot with every other platform.
+      getLogger().error(
+        `Photon is disabled: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }

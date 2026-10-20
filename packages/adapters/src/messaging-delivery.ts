@@ -18,6 +18,16 @@ import { getLogger } from "@rakazo/logging";
  */
 export const MESSAGING_DM_OUTBOUND_CAP = 140;
 
+/** Providers whose lines are iMessage and share the consecutive-outbound cap. */
+const IMESSAGE_PROVIDERS = new Set(["sendblue", "bluebubbles", "photon"]);
+
+/**
+ * Photon's terms (3.6) require telling people they are talking to an AI. It
+ * goes out once, ahead of the first message in a conversation.
+ */
+export const MESSAGING_AI_DISCLOSURE = "You're messaging an AI assistant.";
+const DISCLOSURE_PROVIDERS = new Set(["photon"]);
+
 /** Provider-send attempts before a mirrored row is declared lost. */
 export const MESSAGING_OUTBOUND_MAX_ATTEMPTS = 5;
 
@@ -376,7 +386,7 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
       // Sendblue, a runaway guard on BlueBubbles); other providers have no
       // equivalent limit, so do not hold Slack/WhatsApp/Telegram DMs.
       if (
-        (identity.provider === "sendblue" || identity.provider === "bluebubbles") &&
+        IMESSAGE_PROVIDERS.has(identity.provider) &&
         identity.outboundSinceInbound >= MESSAGING_DM_OUTBOUND_CAP
       ) {
         // Cap holds are not failures: release the claim back to pending.
@@ -387,6 +397,7 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
         continue;
       }
       const threadId = await resolveDirectThread(deps, identity, context);
+      await discloseOnce(deps, identity, threadId, row.id, context);
       const invitePair = connectInvitePair(row.idempotencyKey);
       if (invitePair) {
         const result = await sendConnectInvite(
@@ -441,6 +452,38 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
         await deps.jobs.enqueue(messagingDeliverJob(undefined, retryAt));
       }
     }
+  }
+}
+
+/**
+ * Send the AI disclosure ahead of the first message to a conversation. The
+ * identity is marked first, so concurrent drains send it once; a failed send
+ * unmarks it and the row's retry sends it again.
+ */
+async function discloseOnce(
+  deps: MessagingDeliveryDeps,
+  identity: { id: string; provider: string },
+  threadId: string,
+  rowId: string,
+  context: AdapterContext,
+): Promise<void> {
+  if (!DISCLOSURE_PROVIDERS.has(identity.provider)) return;
+  const { count } = await deps.prisma.messagingIdentity.updateMany({
+    where: { id: identity.id, disclosedAt: null },
+    data: { disclosedAt: new Date() },
+  });
+  if (count === 0) return;
+  try {
+    await deps.messaging.sendToThread(
+      { threadId, body: MESSAGING_AI_DISCLOSURE, idempotencyKey: `${rowId}:disclosure` },
+      context,
+    );
+  } catch (error) {
+    await deps.prisma.messagingIdentity.updateMany({
+      where: { id: identity.id },
+      data: { disclosedAt: null },
+    });
+    throw error;
   }
 }
 

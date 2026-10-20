@@ -1488,6 +1488,8 @@ model MessagingIdentity {
   verifiedAt           DateTime?
   lastInboundAt        DateTime?
   outboundSinceInbound Int       @default(0)
+  /// When the "you're messaging an AI" line went out; set once, for providers whose terms require it.
+  disclosedAt          DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

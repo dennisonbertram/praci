@@ -191,7 +191,9 @@ import {
   expandSkillReferencesInPrompt,
   hasMixedOneShotSchedule,
   isOneShotRoutineCrons,
+  MESSAGING_PHOTON_BLOCKED_MESSAGE,
   matchFeaturedConnectorId,
+  messagingProviderBlocksBot,
   nextCronDateAcrossStrict,
   splitPage,
   withAppDirectory,
@@ -6485,9 +6487,18 @@ export function createRouter(deps: RouterDeps) {
               userId: context.actor.userId,
               archivedAt: null,
             },
-            select: { id: true },
+            select: { id: true, spawnKey: true },
           });
           if (!bot) throw new ORPCError("NOT_FOUND");
+          // A code works on any mounted provider, so refuse only when every
+          // provider this deployment has would block the bot.
+          const providers = deps.messaging?.providers ?? [];
+          if (
+            providers.length > 0 &&
+            providers.every((provider) => messagingProviderBlocksBot(provider, bot.spawnKey))
+          ) {
+            throw new ORPCError("BAD_REQUEST", { message: MESSAGING_PHOTON_BLOCKED_MESSAGE });
+          }
           // One chat identity per bot: delivery mirrors a bot's replies to
           // exactly one conversation.
           const linked = await deps.prisma.messagingIdentity.findUnique({
@@ -6523,9 +6534,12 @@ export function createRouter(deps: RouterDeps) {
               userId: context.actor.userId,
               archivedAt: null,
             },
-            select: { id: true },
+            select: { id: true, spawnKey: true },
           });
           if (!bot) throw new ORPCError("NOT_FOUND");
+          if (messagingProviderBlocksBot(identity.provider, bot.spawnKey)) {
+            throw new ORPCError("BAD_REQUEST", { message: MESSAGING_PHOTON_BLOCKED_MESSAGE });
+          }
           try {
             const updated = await deps.prisma.messagingIdentity.update({
               where: { id: identity.id },

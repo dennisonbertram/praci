@@ -17,9 +17,15 @@ const identity = {
   outboundSinceInbound: 0,
 };
 
+const SPAWN_KEYS: Record<string, string> = {
+  "bot-finance": "finance-agent:user-1",
+  "bot-legal": "legal-agent:user-1",
+};
+
 function messagingDeps(
   overrides: {
     enabled?: boolean;
+    providers?: string[];
     identity?: unknown;
     /** Every chat app the caller has linked; defaults to the single identity. */
     identities?: Array<Record<string, unknown>>;
@@ -188,7 +194,9 @@ function messagingDeps(
         name: where.id === "bot-9" ? "Helper" : "Assistant",
       })),
       findFirst: vi.fn(async ({ where }: { where: { id: string } }) =>
-        where.id.startsWith("bot-") ? { id: where.id } : null,
+        where.id.startsWith("bot-")
+          ? { id: where.id, spawnKey: SPAWN_KEYS[where.id] ?? null }
+          : null,
       ),
     },
     messagingLinkCode: {
@@ -262,7 +270,7 @@ function messagingDeps(
     },
     messaging: {
       enabled: overrides.enabled ?? true,
-      providers: ["sendblue"],
+      providers: overrides.providers ?? ["sendblue"],
       openSignup: false,
     },
     dataDir: "/tmp/rakazo-router-test",
@@ -348,6 +356,52 @@ describe("messaging.link", () => {
     // messagingIdentity.findUnique resolves an identity for bot-1 by default.
     const response = await call(handler, actor, "messaging/link/start", { botId: "bot-1" });
     expect(response.status).toBe(400);
+  });
+});
+
+describe("Finance and Legal agents on Photon", () => {
+  it("refuses to point a Photon identity at the Finance or Legal agent, with a message", async () => {
+    for (const botId of ["bot-finance", "bot-legal"]) {
+      const { handler, actor } = messagingDeps({ identity: { ...identity, provider: "photon" } });
+      const response = await call(handler, actor, "messaging/identities/setBot", {
+        identityId: "mi-1",
+        botId,
+      });
+      expect(response.status).toBe(400);
+      expect(JSON.stringify(await response.json())).toContain("can't be linked to iMessage");
+    }
+  });
+
+  it("still lets a Photon identity use another agent, and other providers use Finance", async () => {
+    const photon = messagingDeps({ identity: { ...identity, provider: "photon" } });
+    const ok = await call(photon.handler, photon.actor, "messaging/identities/setBot", {
+      identityId: "mi-1",
+      botId: "bot-2",
+    });
+    expect(ok.status).toBe(200);
+    const sendblue = messagingDeps();
+    const finance = await call(sendblue.handler, sendblue.actor, "messaging/identities/setBot", {
+      identityId: "mi-1",
+      botId: "bot-finance",
+    });
+    expect(finance.status).toBe(200);
+  });
+
+  it("refuses a link code for Finance only when Photon is the only provider", async () => {
+    const only = messagingDeps({ identity: null, providers: ["photon"] });
+    (only.prisma.messagingIdentity.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const refused = await call(only.handler, only.actor, "messaging/link/start", {
+      botId: "bot-finance",
+    });
+    expect(refused.status).toBe(400);
+    expect(only.prisma.messagingLinkCode.create).not.toHaveBeenCalled();
+
+    const both = messagingDeps({ identity: null, providers: ["photon", "sendblue"] });
+    (both.prisma.messagingIdentity.findUnique as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    const allowed = await call(both.handler, both.actor, "messaging/link/start", {
+      botId: "bot-finance",
+    });
+    expect(allowed.status).toBe(200);
   });
 });
 
