@@ -1310,7 +1310,11 @@ export function createRouter(deps: RouterDeps) {
         }
         await deps.prisma.user.update({
           where: { id: context.actor.userId },
-          data: { avatarStyle: input.avatarStyle, timezone: input.timezone },
+          data: {
+            avatarStyle: input.avatarStyle,
+            timezone: input.timezone,
+            hiddenPages: input.hiddenPages && [...new Set(input.hiddenPages)],
+          },
         });
         return meDto(deps, context.actor);
       }),
@@ -8140,6 +8144,7 @@ async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     sandboxProvider: deps.env.sandboxProvider,
     avatarStyle: user.avatarStyle === "robot" ? "robot" : "organic",
     timezone: user.timezone ?? null,
+    hiddenPages: user.hiddenPages ?? [],
     billingEnabled: Boolean(deps.billing) && !actor.isDeploymentOwner,
   };
 }

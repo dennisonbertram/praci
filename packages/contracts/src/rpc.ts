@@ -394,6 +394,7 @@ export const appContract = {
         z.object({
           avatarStyle: AvatarStyleSchema.optional(),
           timezone: z.string().min(1).max(64).optional(),
+          hiddenPages: z.array(z.string().min(1).max(64)).max(100).optional(),
         }),
       )
       .output(MeSchema),
