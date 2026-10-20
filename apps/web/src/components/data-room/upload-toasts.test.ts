@@ -2,9 +2,14 @@
 
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
-const hoisted = vi.hoisted(() => ({ upload: vi.fn(), folders: vi.fn(), space: { id: "s1" } }));
+const hoisted = vi.hoisted(() => ({
+  upload: vi.fn(),
+  folders: vi.fn(),
+  imports: vi.fn(),
+  space: { id: "s1" },
+}));
 vi.mock("../../lib/rpc", () => ({
-  rpc: { dataRoom: { folders: hoisted.folders } },
+  rpc: { dataRoom: { folders: hoisted.folders, imports: hoisted.imports } },
   selectedSpaceId: () => hoisted.space.id,
   withSpaceHeaders: () => new Headers(),
 }));
@@ -91,15 +96,33 @@ it("reports why a zip was refused, without starting an import", async () => {
   window.removeEventListener("rakazo:data-room-import-started", started);
 });
 
-it("hands a zip over to the import row: the toast goes away and progress is read at once", async () => {
+it("keeps a zip's card and follows its import row until it is added", async () => {
   setUploadScope("u1");
   const started = vi.fn();
   window.addEventListener("rakazo:data-room-import-started", started);
   hoisted.upload.mockResolvedValue({ importId: "import-1" });
+  const row = {
+    id: "import-1",
+    total: 2,
+    done: 0,
+    failed: 0,
+    finished: false,
+    stage: "adding",
+    currentName: "a.txt",
+  };
+  hoisted.imports.mockResolvedValue([row]);
   uploadFilesToDataRoom([file("bundle.zip")]);
   await flush();
-  expect(names()).toEqual([]);
+  expect(getUploadToasts()[0]?.state).toMatchObject({ kind: "importing", progress: null });
   expect(started).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(getUploadToasts()[0]?.state).toMatchObject({
+    kind: "importing",
+    progress: { currentName: "a.txt" },
+  });
+  hoisted.imports.mockResolvedValue([{ ...row, done: 2, finished: true, stage: "done" }]);
+  await vi.advanceTimersByTimeAsync(1_000);
+  expect(getUploadToasts()[0]?.state).toEqual({ kind: "imported", count: 2 });
   window.removeEventListener("rakazo:data-room-import-started", started);
 });
 
