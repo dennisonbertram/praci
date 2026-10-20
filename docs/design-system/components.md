@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 206 of 206
-- Web and shared components: 589
+- Web and shared component files with stories: 207 of 207
+- Web and shared components: 590
 - Mobile components: 127 in 88 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -118,6 +118,12 @@ Every rendered React component, grouped by area. A web or shared component file 
 | --- | --- | --- | --- |
 | CallCard | [apps/web/src/components/call/CallCard.tsx](../../apps/web/src/components/call/CallCard.tsx) | [CallCard.stories.tsx](../../apps/web/src/components/call/CallCard.stories.tsx) | web |
 | VoiceChatCard | [apps/web/src/components/call/VoiceChatCard.tsx](../../apps/web/src/components/call/VoiceChatCard.tsx) | [VoiceChatCard.stories.tsx](../../apps/web/src/components/call/VoiceChatCard.stories.tsx) | web |
+
+## Web components/cap-table
+
+| Component | File | Story file | Surface |
+| --- | --- | --- | --- |
+| OwnershipDonut | [apps/web/src/components/cap-table/OwnershipDonut.tsx](../../apps/web/src/components/cap-table/OwnershipDonut.tsx) | [OwnershipDonut.stories.tsx](../../apps/web/src/components/cap-table/OwnershipDonut.stories.tsx) | web |
 
 ## Web components/compose
 
