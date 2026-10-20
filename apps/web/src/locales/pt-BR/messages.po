@@ -775,6 +775,10 @@ msgstr ""
 msgid "Add skill"
 msgstr ""
 
+#: src/components/inbox/MailAttachments.tsx
+msgid "Add to Data room"
+msgstr ""
+
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
 msgstr "Adicionar à rotina"
@@ -800,6 +804,7 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemRows.tsx
+#: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
 msgid "Added"
 msgstr ""
@@ -1309,7 +1314,7 @@ msgid "Attachment"
 msgstr "Anexo"
 
 #: src/components/ComposeEmail.tsx
-#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "Attachments"
 msgstr ""
 
@@ -3076,7 +3081,7 @@ msgid "Couldn't classify"
 msgstr ""
 
 #. placeholder {0}: result.filename
-#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "Couldn't download {0}"
 msgstr ""
 
@@ -3625,6 +3630,7 @@ msgstr "Concluído"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
 msgid "Download"
 msgstr ""
@@ -3649,7 +3655,7 @@ msgid "Download Executor"
 msgstr ""
 
 #. placeholder {0}: result.filename
-#: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "Downloaded {0}"
 msgstr ""
 
@@ -4354,6 +4360,7 @@ msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Olá, é assim que vou soar quando ler as respostas em voz alta."
 
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
 msgstr ""
 
@@ -5379,8 +5386,10 @@ msgstr ""
 msgid "More"
 msgstr ""
 
+#. placeholder {0}: attachment.filename
 #. placeholder {0}: item.name
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/inbox/MailAttachments.tsx
 msgid "More actions for {0}"
 msgstr ""
 
@@ -5627,6 +5636,10 @@ msgstr ""
 
 #: src/components/FinanceCards.tsx
 msgid "Next 30 days"
+msgstr ""
+
+#: src/components/inbox/MailAttachments.tsx
+msgid "Next attachment"
 msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
@@ -6590,8 +6603,13 @@ msgid "Preview {0}"
 msgstr "Pré-visualizar {0}"
 
 #: src/components/ArtifactPreview.tsx
+#: src/components/inbox/MailAttachments.tsx
 #: src/components/SheetPreview.tsx
 msgid "Preview isn't available for this file type — download it to view it."
+msgstr ""
+
+#: src/components/inbox/MailAttachments.tsx
+msgid "Previous attachment"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
@@ -8741,6 +8759,10 @@ msgstr "Hoje"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
+msgstr ""
+
+#: src/components/inbox/MailAttachments.tsx
+msgid "Too large to preview"
 msgstr ""
 
 #: src/lib/run-phase.ts

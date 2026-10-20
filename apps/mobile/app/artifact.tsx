@@ -309,7 +309,7 @@ function ArtifactPreview({
   if (preview.kind === "sheet") {
     return (
       <View style={styles.previewCard}>
-        <SheetArtifactPreview artifactId={preview.artifactId} />
+        <SheetArtifactPreview source={{ artifactId: preview.artifactId }} />
       </View>
     );
   }

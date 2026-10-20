@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 223 of 223
-- Web and shared components: 619
-- Mobile components: 135 in 92 files, mobile — native story pending
+- Web and shared component files with stories: 224 of 224
+- Web and shared components: 624
+- Mobile components: 136 in 93 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -190,11 +190,12 @@ Every rendered React component, grouped by area. A web or shared component file 
 | CleanupSenderRow | [apps/web/src/components/inbox/CleanupSenderRow.tsx](../../apps/web/src/components/inbox/CleanupSenderRow.tsx) | [CleanupSenderRow.stories.tsx](../../apps/web/src/components/inbox/CleanupSenderRow.stories.tsx) | web |
 | InboxCleanup, OpenLink | [apps/web/src/components/inbox/InboxCleanup.tsx](../../apps/web/src/components/inbox/InboxCleanup.tsx) | [InboxCleanup.stories.tsx](../../apps/web/src/components/inbox/InboxCleanup.stories.tsx) | web |
 | InboxDigest | [apps/web/src/components/inbox/InboxDigest.tsx](../../apps/web/src/components/inbox/InboxDigest.tsx) | [InboxDigest.stories.tsx](../../apps/web/src/components/inbox/InboxDigest.stories.tsx) | web |
-| InboxMessageDialog, InboxMessage, AttachmentIcon, InboxAttachments, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
+| InboxMessageDialog, InboxMessage, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
 | InboxPileTabs | [apps/web/src/components/inbox/InboxPileTabs.tsx](../../apps/web/src/components/inbox/InboxPileTabs.tsx) | [InboxPileTabs.stories.tsx](../../apps/web/src/components/inbox/InboxPileTabs.stories.tsx) | web |
 | InboxGroup, InboxRow | [apps/web/src/components/inbox/InboxRow.tsx](../../apps/web/src/components/inbox/InboxRow.tsx) | [InboxRow.stories.tsx](../../apps/web/src/components/inbox/InboxRow.stories.tsx) | web |
 | InboxSenderGroup | [apps/web/src/components/inbox/InboxSenderGroup.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.tsx) | [InboxSenderGroup.stories.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.stories.tsx) | web |
 | InboxShortcuts | [apps/web/src/components/inbox/InboxShortcuts.tsx](../../apps/web/src/components/inbox/InboxShortcuts.tsx) | [InboxShortcuts.stories.tsx](../../apps/web/src/components/inbox/InboxShortcuts.stories.tsx) | web |
+| KindIcon, Thumbnail, ThumbnailImage, AttachmentView, DataRoomAction, AttachmentPreviewDialog, MailAttachments | [apps/web/src/components/inbox/MailAttachments.tsx](../../apps/web/src/components/inbox/MailAttachments.tsx) | [MailAttachments.stories.tsx](../../apps/web/src/components/inbox/MailAttachments.stories.tsx) | web |
 | TodoCard | [apps/web/src/components/inbox/TodoCard.tsx](../../apps/web/src/components/inbox/TodoCard.tsx) | [TodoCard.stories.tsx](../../apps/web/src/components/inbox/TodoCard.stories.tsx) | web |
 
 ## Web components/integrations
@@ -342,6 +343,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Computer, ComputerReleaseActions, ScreenWebView | [apps/mobile/app/computer.tsx](../../apps/mobile/app/computer.tsx) | mobile — native story pending | mobile |
 | GroupSettingsScreen | [apps/mobile/app/group-settings.tsx](../../apps/mobile/app/group-settings.tsx) | mobile — native story pending | mobile |
 | ImageScreen | [apps/mobile/app/image.tsx](../../apps/mobile/app/image.tsx) | mobile — native story pending | mobile |
+| InboxAttachmentScreen | [apps/mobile/app/inbox-attachment.tsx](../../apps/mobile/app/inbox-attachment.tsx) | mobile — native story pending | mobile |
 | InboxCleanupScreen | [apps/mobile/app/inbox-cleanup.tsx](../../apps/mobile/app/inbox-cleanup.tsx) | mobile — native story pending | mobile |
 | InboxMessageScreen | [apps/mobile/app/inbox-message.tsx](../../apps/mobile/app/inbox-message.tsx) | mobile — native story pending | mobile |
 | InboxScreen, TodoCard, MailGroupRow, MailListRow | [apps/mobile/app/inbox.tsx](../../apps/mobile/app/inbox.tsx) | mobile — native story pending | mobile |

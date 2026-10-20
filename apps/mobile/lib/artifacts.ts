@@ -1,4 +1,9 @@
-import type { Artifact, ArtifactVersion, SpreadsheetPreview } from "@rakazo/contracts";
+import type {
+  Artifact,
+  ArtifactVersion,
+  SpreadsheetPreview,
+  SpreadsheetPreviewInput,
+} from "@rakazo/contracts";
 import { canPreviewSpreadsheet } from "@rakazo/core";
 import { rpc } from "./api";
 import type { MobileArtifactTarget } from "./artifact-open";
@@ -37,12 +42,14 @@ export function artifactThreadTarget(
   return null;
 }
 
-/** One page of one sheet of a spreadsheet artifact, read by the server. */
+export type SheetSource = SpreadsheetPreviewInput["source"];
+
+/** One page of one sheet of a spreadsheet artifact or mail attachment, read by the server. */
 export function getSpreadsheetPreview(
-  artifactId: string,
+  source: SheetSource,
   page: { sheet?: string; offset?: number } = {},
 ): Promise<SpreadsheetPreview> {
-  return rpc<SpreadsheetPreview>("files/spreadsheetPreview", { source: { artifactId }, ...page });
+  return rpc<SpreadsheetPreview>("files/spreadsheetPreview", { source, ...page });
 }
 
 /** .xlsx, .xlsm, .csv and .tsv; legacy .xls is not previewed. */
