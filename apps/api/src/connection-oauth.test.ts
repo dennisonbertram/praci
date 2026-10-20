@@ -91,7 +91,7 @@ function setup(replacesConnectionId?: string) {
     secret: { deleteMany: vi.fn(async () => ({ count: 1 })) },
     $transaction: async (fn: (t: typeof tx) => unknown) => fn(tx),
   };
-  const run = () =>
+  const run = (afterConnect?: (connectionId: string) => void) =>
     completeNativeOAuth({
       prisma: prisma as never,
       actor,
@@ -108,6 +108,7 @@ function setup(replacesConnectionId?: string) {
       code: "c",
       context: {} as never,
       lock: async () => undefined,
+      afterConnect,
     });
   return { rows, todos, messages, stats, decisions, actionLogs, tx, secrets, run, prisma };
 }
@@ -169,5 +170,16 @@ describe("completeNativeOAuth, same account again", () => {
     const f = setup("old");
     await f.run();
     expect(f.rows.pending?.metadata).toEqual({ scope: "openid email gmail.readonly" });
+  });
+
+  it("tells the caller the saved connection, and a failing hook does not fail the connect", async () => {
+    const f = setup("old");
+    const seen: string[] = [];
+    const done = await f.run((id) => {
+      seen.push(id);
+      throw new Error("hook failed");
+    });
+    expect(seen).toEqual(["pending"]);
+    expect(done.status).toBe("connected");
   });
 });

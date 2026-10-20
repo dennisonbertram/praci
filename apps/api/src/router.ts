@@ -44,6 +44,7 @@ import type {
 import {
   acquireComputerExecutionLease,
   applyCodexLiveCatalog,
+  applyPendingSenderRules,
   applyTeachingDesktopInput,
   archiveBot,
   assertSafeRemoteUrl,
@@ -383,6 +384,7 @@ import {
   inboxTodoSetDone,
   inboxTodosList,
   inboxUnreadCount,
+  mailContext,
 } from "./inbox.js";
 import { inboxActionsList, inboxActionsUndo } from "./inbox-actions.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
@@ -5746,6 +5748,31 @@ export function createRouter(deps: RouterDeps) {
             lock: (tx, connectorId, provider) =>
               lockProviderConnectionScope(tx, context.actor, connectorId, provider),
             provision: (connectionId) => provisionForActor(context.actor, connectionId),
+            // Skipped senders that waited for the filter permission get their filters now, on a
+            // signal of their own because this request ends first.
+            afterConnect: (connectionId) => {
+              const background = mailContext(context.actor, "connections.rules");
+              void deps.mail
+                .listAccounts(
+                  { spaceId: context.actor.spaceId, userId: context.actor.userId },
+                  background,
+                )
+                .then((accounts) => accounts.find((a) => a.id === connectionId))
+                .then((account) =>
+                  account
+                    ? applyPendingSenderRules(
+                        {
+                          prisma: deps.prisma,
+                          mail: deps.mail,
+                          writesDisabled: deps.env.mailWritesDisabled,
+                        },
+                        account,
+                        background,
+                      )
+                    : undefined,
+                )
+                .catch(() => undefined);
+            },
           });
         }
         // An undefined id would match any of the caller's rows; the input schema forbids it.

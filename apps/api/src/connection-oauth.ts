@@ -24,6 +24,8 @@ export async function completeNativeOAuth(options: {
   lock: (tx: Prisma.TransactionClient, connectorId: string, provider: string) => Promise<void>;
   /** Gives a newly connected private account its agent; a no-op when it has one or is not private. */
   provision?: (connectionId: string) => Promise<void>;
+  /** Runs once the connection is saved, for work that must not delay or fail the connect. */
+  afterConnect?: (connectionId: string) => void;
 }) {
   const { prisma, actor, connectorId, state } = options;
   const owner = { spaceId: actor.spaceId, userId: actor.userId };
@@ -152,6 +154,11 @@ export async function completeNativeOAuth(options: {
   // A replacement of a private connection that had no agent gets one too; the provisioner does
   // nothing for a row that is not private or already has one.
   await options.provision?.(row.id).catch(() => undefined);
+  try {
+    options.afterConnect?.(row.id);
+  } catch {
+    // Best effort.
+  }
   const final =
     (await prisma.connection.findFirst({ where: { id: row.id, ...owner } }).catch(() => null)) ??
     row;
