@@ -145,3 +145,20 @@ button:focus-visible {
   min-height: 1.5em;
   color: var(--fg);
 }
+
+.shot {
+  margin: 48px 0 40px;
+  max-width: 1100px;
+}
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+}
+.shot figcaption {
+  margin-top: 8px;
+  font-size: 13px;
+  opacity: 0.6;
+}

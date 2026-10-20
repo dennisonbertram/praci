@@ -26,15 +26,15 @@ const github = "https://github.com/dennisonbertram/praci";
         <li>Agents ask before they send, pay or change anything.</li>
         <li>Self-host it, or let us run it for you.</li>
       </ul>
+      <figure class="shot">
+        <img src="/app.webp" width="1440" height="900" alt="The Praci Finance page with cash, burn, runway and upcoming payments" />
+        <figcaption>Mock data.</figcaption>
+      </figure>
       <section id="hosted">
         <h2>Get the hosted version</h2>
         <form id="join" novalidate>
           <label class="sr-only" for="email">Email address</label>
           <input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="254" placeholder="Email" required />
-          <label class="sr-only" for="name">Name (optional)</label>
-          <input id="name" name="name" type="text" autocomplete="name" maxlength="100" placeholder="Name (optional)" />
-          <label class="sr-only" for="company">Company (optional)</label>
-          <input id="company" name="company" type="text" autocomplete="organization" maxlength="100" placeholder="Company (optional)" />
           <div hidden><input name="contactNote" type="text" autocomplete="off" tabindex="-1" /></div>
           <button type="submit">Join the waitlist</button>
         </form>
@@ -63,8 +63,6 @@ const github = "https://github.com/dennisonbertram/praci";
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               email: email.value,
-              name: field("name"),
-              company: field("company"),
               contactNote: field("contactNote"),
             }),
           });
