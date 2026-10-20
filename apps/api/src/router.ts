@@ -242,6 +242,7 @@ import {
   isRecordNotFound,
   issueMessagingLinkCode,
   isUniqueViolation,
+  linkedImessageIdentities,
   listBoards,
   listContacts,
   listNotifications,
@@ -7479,20 +7480,26 @@ export function createRouter(deps: RouterDeps) {
       }),
       preferences: authed.notifications.preferences.handler(async ({ context }) => {
         const { actor } = context;
-        const [preferences, endpoints] = await Promise.all([
+        const [preferences, endpoints, imessage] = await Promise.all([
           getNotificationPreferences(deps.prisma, actor),
           listPushEndpoints(deps.prisma, actor.userId),
+          linkedImessageIdentities(deps.prisma, actor),
         ]);
-        return { ...preferences, hasPhone: endpoints.length > 0 };
+        return { ...preferences, hasPhone: endpoints.length > 0, hasImessage: imessage.length > 0 };
       }),
       updatePreferences: authed.notifications.updatePreferences.handler(
         async ({ context, input }) => {
           const { actor } = context;
-          const [preferences, endpoints] = await Promise.all([
+          const [preferences, endpoints, imessage] = await Promise.all([
             updateNotificationPreferences(deps.prisma, actor, input),
             listPushEndpoints(deps.prisma, actor.userId),
+            linkedImessageIdentities(deps.prisma, actor),
           ]);
-          return { ...preferences, hasPhone: endpoints.length > 0 };
+          return {
+            ...preferences,
+            hasPhone: endpoints.length > 0,
+            hasImessage: imessage.length > 0,
+          };
         },
       ),
       unregisterPush: authed.notifications.unregisterPush.handler(async ({ context }) => {

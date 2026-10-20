@@ -508,6 +508,7 @@ function noticePrisma(run: ReturnType<typeof candidate>, stamps: NoticeStamp[]) 
       findMany: vi.fn(async () => (phone.registered ? [{ channel: "push" }] : [])),
     },
     notificationPreference: { findUnique: vi.fn(async () => null) },
+    messagingIdentity: { findMany: vi.fn(async () => []) },
     thread: { update: vi.fn(async () => ({ nextEventSeq: stamps.length + 1 })) },
     $queryRaw: vi.fn(async () => []),
     $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(prisma)),

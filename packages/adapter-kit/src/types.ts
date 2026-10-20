@@ -685,6 +685,8 @@ export interface BackgroundJobPayloads {
   "notifications.deliver": Record<string, never>;
   /** Deletes expired notifications and deliveries; run daily by the worker's cron. */
   "notifications.retention": Record<string, never>;
+  /** Deletes messaging outbox rows and inbound claims older than 7 days; run daily by cron. */
+  "messaging.retention": Record<string, never>;
   /** Reconcile durable remote-agent intent; scope is loaded from the database. */
   "cloud_agent.poll": { agentId: string };
   /** Deletes a saved mail search (and its rows) once it has expired. */

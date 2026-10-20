@@ -31,6 +31,7 @@ import {
   ExpoPushProvider,
   GraphileJobPublisher,
   GraphileJobWorkerHost,
+  ImessageNotificationChannel,
   InMemoryJobQueue,
   InstalledConnectorProvider,
   isComposioEnabled,
@@ -268,7 +269,18 @@ async function main() {
     artifacts,
     connectors: stack.connector,
     boxAccessToken: boxAccessToken(mcpOAuth),
-    notificationChannels: [notifications],
+    notificationChannels: [
+      notifications,
+      ...(messaging
+        ? [
+            new ImessageNotificationChannel({
+              prisma,
+              jobs,
+              appUrl: process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173",
+            }),
+          ]
+        : []),
+    ],
   });
   // graphile-worker run() connects through the shared pool. createPool already
   // retries connect() on 53300 a finite number of times. Keep retrying start

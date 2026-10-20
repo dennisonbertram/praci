@@ -1,6 +1,6 @@
 # iMessage through Photon and BlueBubbles
 
-Status: approved plan; phases 1, 2 and 7 done (notes at the end). Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
+Status: approved plan; phases 1, 2, 3, 5, 6 and 7 done (notes at the end). Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
 
 ## Owner answers
 
@@ -187,8 +187,8 @@ Two tiles, "iMessage (Photon)" and "iMessage (BlueBubbles)", under the existing 
 1. **Shared conformance suite and BlueBubbles adapter, single-owner.** Suite in `packages/testkit`, run against a fake platform, Sendblue and BlueBubbles; `createBlueBubblesAdapter`; env config (`BLUEBUBBLES_URL`, `BLUEBUBBLES_PASSWORD`, `BLUEBUBBLES_WEBHOOK_TOKEN`) with an SSRF-guarded URL; token-authenticated webhook with fetch-by-guid; catch-up poll; handle normalization; chunked plain-text sends with `tempGuid` idempotency; iMessage-transport gating.
 2. **Photon adapter.** Wrap `chat-adapter-imessage` in cloud mode, `PHOTON_*` env, fixture-based signature tests, same suite; Finance and Legal agents blocked on this provider.
 3. **Setup tiles.** Photon and BlueBubbles Integrations tiles, connection tests, webhook registration, link-code flow reuse, stories and a web test.
-4. **iMessage notification channel.** Depends on notification PRs 1 and 3 in `notifications.md`.
-5. **Privacy job.** Body blanking and 7-day cleanup for iMessage outbox rows (may move earlier).
+4. **iMessage notification channel (done).** Depends on notification PRs 1 and 3 in `notifications.md`.
+5. **Privacy job (done).** Body blanking and 7-day cleanup for iMessage outbox rows (may move earlier).
 6. **Per-user BlueBubbles connections**, only if a hosted multi-user BlueBubbles is ever wanted (not needed for the self-hosted one-owner-per-install positioning).
 7. **Agent tools (Goal C), last:** read tools and an approval-gated send tool on the second account's allowlisted chats.
 
@@ -218,6 +218,13 @@ All earlier questions are answered in "Owner answers". Remaining: confirm the ex
 - **Disclosure (terms 3.6).** The first outbound message to a Photon conversation is preceded by "You're messaging an AI assistant." The identity's `disclosedAt` records it. The wording still needs the owner's review.
 - **Finance and Legal (terms 3.8(b)).** Refused when a Photon identity is pointed at either agent (`messaging.identities.setBot`), when a link code is issued while Photon is the only provider, and when a code for either agent is sent over Photon (the code is kept and a linked sender is told why).
 - **Not verified live.** Everything above runs against an offline fake; see the PR notes for what needs a real Photon account (the HTTP endpoint address, the inbound payload's transport field, token minting, `clientMessageId` deduplication).
+
+## Phases 5 and 6 (notification channel and privacy cleanup): done
+
+- **Channel.** `ImessageNotificationChannel` (`channel: "imessage"`) queues a `MessagingOutbound` row (key `notification:<id>`, so one text per notification) and enqueues `messaging.deliver`. The existing drain sends it, so chunking, the 140-message cap, Photon's AI disclosure and retries are unchanged. The text is title, body and an absolute link built from `WEB_ORIGIN`. The channel resolves its own endpoint (new optional `NotificationChannel.endpoints`): the most recently active verified BlueBubbles or Photon identity, only while the owner texted within 24 hours and the cap is not reached; otherwise the delivery is skipped. Mounted only when a messaging surface exists.
+- **Preference.** `channels.imessage` in `NotificationPreference` (missing means on); Settings shows an "iMessage" switch next to "Browser" and "Phone" once a verified identity is linked (`hasImessage`).
+- **Not done: Hide amounts.** The setting lives only in the browser (`rakazo.hideAmounts` in local storage), so the server cannot mask agent-written notification text with `maskCurrencyWhenHidden`. Masking needs the switch stored per user; until then amounts in an `attention` notification go out as written.
+- **Privacy.** The body of a DM row is blanked when it is sent through an iMessage provider; pending and failed rows keep it for retry. The new `messaging.retention` cron job (daily 03:23) deletes `MessagingOutbound` rows and `MessagingInboundClaim` rows older than 7 days in batches of 1000; it replaces the in-process hourly claim prune. Inbound text is stored only as thread messages (the user's chat history), so there is nothing else to clean. Credentials are deployment-wide (env or `IntegrationProviderConfig`), not per identity, so unlinking has nothing to delete; per-user credential deletion belongs to phase 6 of the PR list (per-user BlueBubbles connections), if built.
 
 ## Phase 7 (agent tools): done
 

@@ -49,6 +49,7 @@ import {
   EmailEmulator,
   ExpoPushProvider,
   GraphileJobPublisher,
+  ImessageNotificationChannel,
   InMemoryJobQueue,
   InMemoryRealtimeFanout,
   InstalledConnectorProvider,
@@ -577,7 +578,12 @@ export async function createApp(
     artifacts,
     connectors: stack.connector,
     boxAccessToken: boxAccessToken(mcpOAuth),
-    notificationChannels: [notifications],
+    notificationChannels: [
+      notifications,
+      ...(messaging
+        ? [new ImessageNotificationChannel({ prisma, jobs, appUrl: env.webOrigin })]
+        : []),
+    ],
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);

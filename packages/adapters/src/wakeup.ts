@@ -101,6 +101,7 @@ export const RECURRING_JOBS: CronItem[] = [
   // Outbox every minute (deliveries are due 30 seconds after creation); retention at 03:17.
   { task: "notifications.deliver", match: "* * * * *" },
   { task: "notifications.retention", match: "17 3 * * *" },
+  { task: "messaging.retention", match: "23 3 * * *" },
 ];
 
 export class GraphileJobWorkerHost implements JobWorkerHost {

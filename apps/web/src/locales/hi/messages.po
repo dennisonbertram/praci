@@ -4336,6 +4336,10 @@ msgstr ""
 msgid "Image upload area"
 msgstr "छवि अपलोड क्षेत्र"
 
+#: src/components/NotificationSettings.tsx
+msgid "iMessage"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "iMessage (BlueBubbles)"
 msgstr ""

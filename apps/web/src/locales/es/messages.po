@@ -4336,6 +4336,10 @@ msgstr ""
 msgid "Image upload area"
 msgstr "Área de carga de imagen"
 
+#: src/components/NotificationSettings.tsx
+msgid "iMessage"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "iMessage (BlueBubbles)"
 msgstr ""

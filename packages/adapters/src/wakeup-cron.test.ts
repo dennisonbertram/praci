@@ -9,6 +9,7 @@ describe("RECURRING_JOBS", () => {
     expect(parseCronItems(RECURRING_JOBS).map((item) => item.task)).toEqual([
       "notifications.deliver",
       "notifications.retention",
+      "messaging.retention",
     ]);
   });
 });

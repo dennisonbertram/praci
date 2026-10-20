@@ -621,6 +621,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
       finish: true,
       channels: {},
       hasPhone: false,
+      hasImessage: false,
     });
     await rpc(app, first, "notifications/updatePreferences", {
       help: false,
@@ -636,6 +637,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
       takeover: true,
       channels: { push: false, browser: false },
       hasPhone: true,
+      hasImessage: false,
     });
     expect(await rpc(app, second, "notifications/preferences")).toEqual({
       finish: true,
@@ -643,6 +645,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
       takeover: true,
       channels: {},
       hasPhone: false,
+      hasImessage: false,
     });
     const bad = await raw(app, first, "notifications/updatePreferences", {
       channels: { slack: false },

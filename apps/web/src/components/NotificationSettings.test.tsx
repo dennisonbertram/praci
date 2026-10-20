@@ -45,6 +45,7 @@ const prefs = (over: Partial<NotificationPreferences> = {}): NotificationPrefere
   takeover: true,
   channels: {},
   hasPhone: false,
+  hasImessage: false,
   ...over,
 });
 
@@ -87,6 +88,23 @@ it("turns Phone off through the channel switch", async () => {
   await click(row("Phone"));
   expect(api.updatePreferences).toHaveBeenCalledExactlyOnceWith({ channels: { push: false } });
   expect(row("Phone")?.getAttribute("aria-checked")).toBe("false");
+});
+
+it("shows iMessage only with a linked number and turns it off through the channel switch", async () => {
+  setPermission("granted");
+  api.preferences.mockResolvedValueOnce(prefs());
+  await render();
+  expect(row("iMessage")).toBeNull();
+  await act(async () => root.unmount());
+  root = createRoot(container);
+  api.preferences.mockResolvedValue(prefs({ hasImessage: true }));
+  api.updatePreferences.mockResolvedValue(
+    prefs({ hasImessage: true, channels: { imessage: false } }),
+  );
+  await render();
+  await click(row("iMessage"));
+  expect(api.updatePreferences).toHaveBeenCalledExactlyOnceWith({ channels: { imessage: false } });
+  expect(row("iMessage")?.getAttribute("aria-checked")).toBe("false");
 });
 
 it("asks for browser permission when Browser is turned on, and stores it once granted", async () => {

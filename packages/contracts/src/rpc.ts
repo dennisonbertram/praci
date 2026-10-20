@@ -310,7 +310,11 @@ const EffectiveAccessSchema = z.record(
 
 /** "browser" is the client's own permission; "push" is the phone. A missing key means on. */
 const NotificationChannelsSchema = z
-  .object({ push: z.boolean().optional(), browser: z.boolean().optional() })
+  .object({
+    push: z.boolean().optional(),
+    browser: z.boolean().optional(),
+    imessage: z.boolean().optional(),
+  })
   .strict();
 export const NotificationPreferencesSchema = z.object({
   finish: z.boolean(),
@@ -319,6 +323,8 @@ export const NotificationPreferencesSchema = z.object({
   channels: NotificationChannelsSchema,
   /** The user has at least one registered phone push endpoint. */
   hasPhone: z.boolean(),
+  /** The user has a linked, verified iMessage identity. */
+  hasImessage: z.boolean(),
 });
 
 export type NotificationPreferences = z.infer<typeof NotificationPreferencesSchema>;
