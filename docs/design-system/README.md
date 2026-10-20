@@ -164,6 +164,7 @@ Mobile is native-first: Expo Router, Expo UI, and native sheets, menus, alerts, 
 - Custom surfaces (thread, composer, avatars, cards) use plain `StyleSheet` with the shared tokens through `apps/mobile/lib/appearance.ts`.
 - System chrome uses `PlatformColor` through `apps/mobile/lib/native.ts` (the `native` color object and `useThemedStyles`).
 - Mobile may differ from web when the native pattern is better.
+- The iOS Liquid Glass design boards, page designs and page rules, including iPhone Duo layouts, are in [ios/README.md](ios/README.md).
 - Native stories are pending. Storybook runs only web components, so mobile components appear in [components.md](components.md) as "mobile — native story pending".
 
 ## Workflow
