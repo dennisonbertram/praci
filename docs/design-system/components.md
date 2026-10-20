@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 223 of 223
-- Web and shared components: 617
+- Web and shared components: 618
 - Mobile components: 135 in 92 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -212,7 +212,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | CustomConnectionDialog | [apps/web/src/components/integrations/CustomConnectionDialog.tsx](../../apps/web/src/components/integrations/CustomConnectionDialog.tsx) | [CustomConnectionDialog.stories.tsx](../../apps/web/src/components/integrations/CustomConnectionDialog.stories.tsx) | web |
 | ExchangeConnectDialog | [apps/web/src/components/integrations/ExchangeConnectDialog.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.tsx) | [ExchangeConnectDialog.stories.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.stories.tsx) | web |
 | TileName, CryptoTile, AlchemyTile, ExchangeTile, FinanceSection | [apps/web/src/components/integrations/FinanceSection.tsx](../../apps/web/src/components/integrations/FinanceSection.tsx) | [FinanceSection.stories.tsx](../../apps/web/src/components/integrations/FinanceSection.stories.tsx) | web |
-| SetupDialog, IMessageSection | [apps/web/src/components/integrations/IMessageSection.tsx](../../apps/web/src/components/integrations/IMessageSection.tsx) | [IMessageSection.stories.tsx](../../apps/web/src/components/integrations/IMessageSection.stories.tsx) | web |
+| Labeled, SetupDialog, IMessageSection | [apps/web/src/components/integrations/IMessageSection.tsx](../../apps/web/src/components/integrations/IMessageSection.tsx) | [IMessageSection.stories.tsx](../../apps/web/src/components/integrations/IMessageSection.stories.tsx) | web |
 | WritesSwitch, IntegrationAgentSection | [apps/web/src/components/integrations/IntegrationAgentSection.tsx](../../apps/web/src/components/integrations/IntegrationAgentSection.tsx) | [IntegrationAgentSection.stories.tsx](../../apps/web/src/components/integrations/IntegrationAgentSection.stories.tsx) | web |
 | IntegrationSetup | [apps/web/src/components/integrations/IntegrationSetup.tsx](../../apps/web/src/components/integrations/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/components/integrations/IntegrationSetup.stories.tsx) | web |
 | Card, OpenPageLink, UsedBy, McpCard, AppCard, SourceCard, AppTile, IntegrationsHome | [apps/web/src/components/integrations/IntegrationsHome.tsx](../../apps/web/src/components/integrations/IntegrationsHome.tsx) | [IntegrationsHome.stories.tsx](../../apps/web/src/components/integrations/IntegrationsHome.stories.tsx) | web |

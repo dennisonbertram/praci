@@ -14,7 +14,7 @@ import {
   DialogTitle,
   Input,
 } from "@rakazo/ui-web";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { useCopyText } from "../../lib/copy-text";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -23,6 +23,19 @@ import { CardHead, IntegrationTile, SectionTitle } from "./parts";
 
 type Provider = MessagingSetupState["providers"][number];
 type FieldSpec = { id: string; label: string; secret?: boolean; optional?: boolean };
+
+const TEST_TIMEOUT_MS = 10_000;
+
+function Labeled({ id, label, children }: { id: string; label: string; children: ReactNode }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <label htmlFor={id} className="text-xs text-muted-foreground">
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 function SetupDialog({
   provider,
@@ -97,11 +110,19 @@ function SetupDialog({
   async function runTest() {
     setBusy(true);
     setTest(null);
+    let timer: ReturnType<typeof setTimeout> | undefined;
     try {
-      setTest(await rpc.messagingSetup.test({ provider: provider.id }));
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new Error(t`No response from the server. Check the address.`)),
+          TEST_TIMEOUT_MS,
+        );
+      });
+      setTest(await Promise.race([rpc.messagingSetup.test({ provider: provider.id }), timeout]));
     } catch (cause) {
       setTest({ ok: false, error: errorText(cause) });
     } finally {
+      clearTimeout(timer);
       setBusy(false);
     }
   }
@@ -109,17 +130,20 @@ function SetupDialog({
   function input(spec: FieldSpec, field: MessagingField) {
     if (field.source === "server") {
       return (
-        <div className="flex items-center gap-2">
-          <Input
-            readOnly
-            disabled
-            aria-label={spec.label}
-            value={spec.secret ? "••••••••" : (field.value ?? "")}
-          />
-          <span className="shrink-0 text-xs text-muted-foreground">
-            <Trans>Set by server</Trans>
-          </span>
-        </div>
+        <Labeled id={`messaging-${spec.id}`} label={spec.label}>
+          <div className="flex items-center gap-2">
+            <Input
+              id={`messaging-${spec.id}`}
+              readOnly
+              disabled
+              aria-label={spec.label}
+              value={spec.secret ? "••••••••" : (field.value ?? "")}
+            />
+            <span className="shrink-0 text-xs text-muted-foreground">
+              <Trans>Set by server</Trans>
+            </span>
+          </div>
+        </Labeled>
       );
     }
     if (spec.secret && field.source === "saved" && !replacing[spec.id]) {
@@ -141,16 +165,18 @@ function SetupDialog({
       );
     }
     return (
-      <Input
-        autoComplete="off"
-        spellCheck={false}
-        type={spec.secret ? "password" : "text"}
-        required={!spec.optional && !spec.secret}
-        aria-label={spec.label}
-        placeholder={spec.label}
-        value={values[spec.id] ?? (spec.secret ? "" : (field.value ?? ""))}
-        onChange={(e) => setValues((prev) => ({ ...prev, [spec.id]: e.target.value }))}
-      />
+      <Labeled id={`messaging-${spec.id}`} label={spec.label}>
+        <Input
+          id={`messaging-${spec.id}`}
+          autoComplete="off"
+          spellCheck={false}
+          type={spec.secret ? "password" : "text"}
+          required={!spec.optional && !spec.secret}
+          aria-label={spec.label}
+          value={values[spec.id] ?? (spec.secret ? "" : (field.value ?? ""))}
+          onChange={(e) => setValues((prev) => ({ ...prev, [spec.id]: e.target.value }))}
+        />
+      </Labeled>
     );
   }
 
@@ -176,16 +202,25 @@ function SetupDialog({
             </p>
           ) : null}
           {provider.webhookUrl ? (
-            <div className="flex items-center gap-2">
-              <Input
-                readOnly
-                aria-label={t`Webhook URL`}
-                value={provider.webhookUrl}
-                onFocus={(e) => e.target.select()}
-              />
-              <Button type="button" variant="outline" onClick={() => copy(provider.webhookUrl!)}>
-                {copied ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
-              </Button>
+            <div className="flex flex-col gap-1">
+              <label htmlFor="messaging-webhook-url" className="text-xs text-muted-foreground">
+                {provider.id === "bluebubbles" ? (
+                  <Trans>Paste this into BlueBubbles</Trans>
+                ) : (
+                  <Trans>Paste this into Photon</Trans>
+                )}
+              </label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="messaging-webhook-url"
+                  readOnly
+                  value={provider.webhookUrl}
+                  onFocus={(e) => e.target.select()}
+                />
+                <Button type="button" variant="outline" onClick={() => copy(provider.webhookUrl!)}>
+                  {copied ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
+                </Button>
+              </div>
             </div>
           ) : null}
           {test ? (
@@ -196,9 +231,14 @@ function SetupDialog({
               {test.ok ? <Trans>Connected</Trans> : test.error}
             </p>
           ) : null}
+          {saved ? (
+            <p role="status" className="text-sm text-success">
+              <Trans>Saved</Trans>
+            </p>
+          ) : null}
           {saved || (provider.configured && !provider.active) ? (
             <p role="status" className="text-sm text-warning">
-              <Trans>Restart required</Trans>
+              <Trans>Restart the Rakazo server to start using iMessage.</Trans>
             </p>
           ) : null}
           {error ? (
@@ -208,7 +248,7 @@ function SetupDialog({
           ) : null}
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>
-              <Trans>Cancel</Trans>
+              {saved ? <Trans>Done</Trans> : <Trans>Cancel</Trans>}
             </Button>
             <Button
               type="button"
@@ -290,7 +330,7 @@ export function IMessageSection({
                   </span>
                 ) : provider.configured ? (
                   <span className="text-xs font-semibold text-warning">
-                    <Trans>Restart required</Trans>
+                    <Trans>Needs a server restart</Trans>
                   </span>
                 ) : null}
                 {provider.active && onOpenMessaging ? (
