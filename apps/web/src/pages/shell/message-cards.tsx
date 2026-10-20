@@ -12,7 +12,7 @@ import { chartViewport } from "../../lib/chart-viewport";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
-import { useArtifactImage } from "../../lib/use-artifact-image";
+import { useArtifactImageState } from "../../lib/use-artifact-image";
 import { errorText } from "../../lib/user-error";
 
 export function ChoiceCard({
@@ -550,20 +550,31 @@ export function ChartBlockView({
   );
 }
 
+type ImageBlock = Extract<MessageBlock, { kind: "image" }>;
+
+/** One image fetched through the authenticated artifact route; click opens it full size. */
 export function ArtifactImage({
   target,
   artifactId,
   name,
+  alt,
+  caption,
+  tile,
 }: {
   target: ArtifactTarget;
   artifactId: string;
   name: string;
+  alt?: string;
+  caption?: string;
+  /** A square cell in a grid instead of a standalone image. */
+  tile?: boolean;
 }) {
   const { t } = useLingui();
   const [open, setOpen] = useState(false);
   const [visible, setVisible] = useState(false);
   const container = useRef<HTMLDivElement>(null);
-  const src = useArtifactImage(target, artifactId, visible);
+  const { src, failed } = useArtifactImageState(target, artifactId, visible);
+  const label = alt || name;
 
   useEffect(() => {
     const element = container.current;
@@ -585,27 +596,45 @@ export function ArtifactImage({
   }, []);
 
   return (
-    <div ref={container}>
+    <figure ref={container} className={tile ? "min-w-0" : "max-w-[min(480px,100%)]"}>
       {src ? (
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="max-w-[240px] overflow-hidden rounded-[20px]"
+          className="block w-full overflow-hidden rounded-xl border border-border"
         >
-          <img src={src} alt={name} className="max-h-48 w-full object-cover" />
+          <img
+            src={src}
+            alt={label}
+            className={tile ? "h-40 w-full object-cover" : "max-h-[480px] w-full object-contain"}
+          />
         </button>
-      ) : (
-        <div className="rounded-[20px] border border-border bg-muted px-4 py-3 text-[14px] text-muted-foreground">
+      ) : failed ? (
+        <div
+          role="img"
+          aria-label={label}
+          className="rounded-xl border border-border bg-muted px-4 py-3 text-[14px] text-muted-foreground"
+        >
           {name}
         </div>
+      ) : (
+        <div
+          data-testid="image-skeleton"
+          className={`animate-pulse rounded-xl border border-border bg-muted ${tile ? "h-40" : "h-48 w-72"}`}
+        />
       )}
+      {caption ? (
+        <figcaption className="mt-1 text-[13px] text-muted-foreground" dir="auto">
+          {caption}
+        </figcaption>
+      ) : null}
       {src ? (
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogContent
             showCloseButton={false}
             className="w-auto max-w-none bg-transparent p-0 ring-0 sm:max-w-none"
           >
-            <DialogTitle className="sr-only">{name}</DialogTitle>
+            <DialogTitle className="sr-only">{label}</DialogTitle>
             <DialogClose
               aria-label={t`Close image preview`}
               render={<Button variant="ghost" size="icon-sm" className="absolute end-2 top-2" />}
@@ -614,12 +643,33 @@ export function ArtifactImage({
             </DialogClose>
             <img
               src={src}
-              alt={name}
+              alt={label}
               className="max-h-[85vh] max-w-[90vw] rounded-xl object-contain"
             />
           </DialogContent>
         </Dialog>
       ) : null}
+    </figure>
+  );
+}
+
+/** Several images shown together (show_image with more than one) make a two-column grid. */
+export function ArtifactImageGrid({
+  target,
+  images,
+}: {
+  target: ArtifactTarget;
+  images: ImageBlock[];
+}) {
+  if (images.length === 1) {
+    const [image] = images as [ImageBlock];
+    return <ArtifactImage target={target} {...image} />;
+  }
+  return (
+    <div className="grid w-[min(480px,100%)] grid-cols-2 gap-2">
+      {images.map((image) => (
+        <ArtifactImage key={image.artifactId} target={target} {...image} tile />
+      ))}
     </div>
   );
 }

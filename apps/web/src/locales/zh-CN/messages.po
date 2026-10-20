@@ -3896,6 +3896,7 @@ msgstr ""
 msgid "Finance"
 msgstr ""
 
+#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Financing"
@@ -6076,6 +6077,7 @@ msgstr ""
 msgid "Other model…"
 msgstr "其他模型…"
 
+#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Out"
@@ -6957,6 +6959,7 @@ msgstr ""
 msgid "Return to Rakazo"
 msgstr "返回 Rakazo"
 
+#: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Revenue"

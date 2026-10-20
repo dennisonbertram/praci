@@ -878,6 +878,7 @@ export function describeToolActivity(toolName: string, args: unknown): string {
   if (toolName === "write_file") return `Writing ${detail(record.path)}`;
   if (toolName === "list_files") return `Listing ${detail(record.path ?? ".")}`;
   if (toolName === "attach_file") return `Attaching ${detail(record.path)}`;
+  if (toolName === "show_image") return "Showing an image";
   if (toolName === "open_path") return `Opening ${detail(record.path)}`;
   if (toolName === "render_plot") return "Rendering a chart";
   if (toolName === "add_mcp_server") return `Connecting MCP server: ${detail(record.name)}`;
