@@ -5016,6 +5016,7 @@ msgstr "Ältere Ausführungen laden"
 msgid "Load web images automatically"
 msgstr "Webbilder automatisch laden"
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Shell.tsx
 msgid "Loading"

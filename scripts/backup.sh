@@ -16,4 +16,6 @@ else
   [[ -d "$ROOT/data" ]] || { echo "data is not a directory" >&2; exit 1; }
   tar -czf "$OUT/homes.tgz" -C "$ROOT" data
 fi
+# Object storage (RAKAZO_S3_*): exports every object, or skips when none is configured.
+node "$ROOT/scripts/s3-objects.mjs" backup "$OUT" --dotenv "$ROOT/.env"
 echo "Backup written to $OUT"

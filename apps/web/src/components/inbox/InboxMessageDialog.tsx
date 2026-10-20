@@ -45,6 +45,7 @@ import { MailAttachments } from "./MailAttachments";
 export function InboxMessageDialog({
   messageId,
   subject,
+  preview,
   previousId,
   nextId,
   onNavigate,
@@ -60,6 +61,8 @@ export function InboxMessageDialog({
   messageId: string | null;
   /** Shown until the message loads, from the list row that was opened. */
   subject?: string;
+  /** Sender, date and snippet of the opened row, shown with the loading skeleton. */
+  preview?: { from: string; receivedAt: string; snippet: string };
   /** With `onNavigate`, adds previous/next buttons and the j/k keys. */
   previousId?: string;
   nextId?: string;
@@ -109,6 +112,7 @@ export function InboxMessageDialog({
             key={messageId}
             messageId={messageId}
             subject={subject}
+            preview={preview}
             previousId={previousId}
             nextId={nextId}
             onNavigate={onNavigate}
@@ -133,6 +137,7 @@ const COMPOSE_KEYS: Record<string, ComposeMode> = { r: "reply", a: "replyAll", f
 function InboxMessage({
   messageId,
   subject,
+  preview,
   previousId,
   nextId,
   onNavigate,
@@ -148,6 +153,7 @@ function InboxMessage({
 }: {
   messageId: string;
   subject?: string;
+  preview?: { from: string; receivedAt: string; snippet: string };
   previousId?: string;
   nextId?: string;
   onNavigate?: (messageId: string) => void;
@@ -306,9 +312,35 @@ function InboxMessage({
             ) : null}
           </div>
         </div>
+      ) : preview ? (
+        <div className="flex flex-col gap-0.5 text-sm text-muted-foreground">
+          <div className="flex items-baseline justify-between gap-3">
+            <span dir="auto" className="min-w-0 truncate font-semibold text-foreground">
+              {splitSender(preview.from).name}
+            </span>
+            <time className="shrink-0 text-xs tabular-nums">
+              {Number.isNaN(new Date(preview.receivedAt).getTime())
+                ? ""
+                : new Date(preview.receivedAt).toLocaleString(i18n.locale || "en", {
+                    dateStyle: "medium",
+                    timeStyle: "short",
+                  })}
+            </time>
+          </div>
+          <p dir="auto" className="truncate text-xs">
+            {maskCurrencyWhenHidden(preview.snippet)}
+          </p>
+        </div>
       ) : (
         <Skeleton className="h-8 w-full" />
       )}
+      {!message && !gone && !error ? (
+        <div aria-hidden="true" className="flex gap-1.5">
+          <Skeleton className="h-7 w-20" />
+          <Skeleton className="h-7 w-24" />
+          <Skeleton className="h-7 w-24" />
+        </div>
+      ) : null}
       {message ? (
         <div className="flex flex-wrap gap-1.5">
           <Button variant="outline" size="sm" onClick={() => setComposing("reply")}>
@@ -417,7 +449,17 @@ function InboxMessage({
             </Button>
           </div>
         ) : !message ? (
-          <Skeleton className="h-24 w-full" />
+          <div
+            role="status"
+            aria-busy="true"
+            aria-label={t`Loading`}
+            className="mt-3 flex min-h-64 shrink-0 flex-col gap-3 rounded-lg border border-border bg-white p-4"
+          >
+            <Skeleton className="h-3 w-1/3 bg-neutral-200" />
+            <Skeleton className="h-3 w-full bg-neutral-200" />
+            <Skeleton className="h-3 w-5/6 bg-neutral-200" />
+            <Skeleton className="h-3 w-2/3 bg-neutral-200" />
+          </div>
         ) : message.html &&
           hasVisibleContent(message.html) &&
           !(message.text && isPlainHtml(message.html)) ? (
