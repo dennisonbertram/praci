@@ -37,8 +37,16 @@ export function ToolSteps({
           <ToolCallLabel
             key={index}
             name={toolStepLabel(step.label)}
-            state={isCurrent ? "running" : "done"}
+            state={
+              isCurrent
+                ? "running"
+                : !step.summary && step.lines?.some((line) => line.failed)
+                  ? "failed"
+                  : "done"
+            }
             count={step.count}
+            summary={step.summary}
+            lines={step.lines}
           />
         );
       })}

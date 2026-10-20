@@ -30,6 +30,11 @@ export interface AdapterContext {
   connectedAppAgentConnectionId?: string;
   /** @deprecated Prefer connectedConnections so providers with the same app slug cannot collide. */
   connectedProviders?: string[];
+  /**
+   * Called before a provider request waits to try again, so a tool can tell the user it is
+   * retrying. `rate_limited` is a 429 or quota answer; `retry` is a timeout or server error.
+   */
+  onRetry?: (retry: { reason: "rate_limited" | "retry"; attempt: number }) => void;
 }
 
 export interface ConnectedConnector {
@@ -193,8 +198,17 @@ export interface AgentToolExecutionResult {
   details: unknown;
 }
 
+/** A step a tool reports while it runs. `summary` is the finished one-line result of the call. */
+export interface ToolProgress {
+  text: string;
+  failed?: true;
+  summary?: string;
+}
+
 /** Hooks for a tool call that can report output before it returns. */
 export interface AgentToolExecutionObserver {
+  /** One line about what the tool is doing now. Shown to the owner only; never sent as a notification. */
+  onProgress?: (progress: ToolProgress) => void;
   /**
    * A shell command has already produced output and is still running.
    * Resolves with the final redacted result when the process exits.

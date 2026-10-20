@@ -10,6 +10,7 @@ import { describe, expect, it, vi } from "vitest";
 import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import {
+  describeMailQuery,
   MAIL_TOOL_NAMES,
   type MailToolDeps,
   mailToolFromTool,
@@ -780,5 +781,141 @@ describe("mail write tools", () => {
     });
     expect(off.gmail.sentOf("a")).toHaveLength(0);
     expect(gmail.sentOf("a")).toHaveLength(0);
+  });
+});
+
+describe("mail progress", () => {
+  const messages: EmulatedMessage[] = [
+    {
+      ...base,
+      id: "m1",
+      date: "2026-09-01T10:00:00Z",
+      subject: "Pick a time",
+      text: "pick a time",
+    },
+    {
+      ...base,
+      id: "m2",
+      date: "2026-09-02T10:00:00Z",
+      subject: "Pick a time again",
+      text: "pick a time",
+    },
+    {
+      ...base,
+      id: "m3",
+      date: "2026-09-03T10:00:00Z",
+      subject:
+        "Re: Justworks setup, the invoice for $12,400 is attached and the long subject keeps going",
+      text: "hello",
+    },
+  ];
+  const savedSearch = {
+    mailSearch: {
+      create: async () => ({ id: "search-1" }),
+      deleteMany: async () => ({ count: 0 }),
+    },
+  };
+  function withProgress(options: Parameters<typeof setup>[1] = { prisma: savedSearch }) {
+    const made = setup({ a: messages }, options);
+    const lines: Array<{ text: string; failed?: true; summary?: string }> = [];
+    made.deps.progress = (line) => lines.push(line);
+    made.deps.now = () => new Date("2026-10-19T12:00:00Z");
+    return { ...made, lines };
+  }
+
+  it("reads a Gmail query in words", () => {
+    const now = new Date("2026-10-19T12:00:00Z");
+    expect(describeMailQuery('from:Kevin after:2026/10/01 "pick a time"', now)).toBe(
+      'from Kevin · after Oct 1 · "pick a time"',
+    );
+    expect(describeMailQuery("invoice newer_than:7d is:unread has:attachment", now)).toBe(
+      'last 7 days · unread · has attachment · "invoice"',
+    );
+    expect(describeMailQuery("before:2025-01-05 -from:bot", now)).toBe(
+      "before Jan 5 2025 · not from bot",
+    );
+  });
+
+  it("reports the search and how many messages it found", async () => {
+    const { deps, lines } = withProgress();
+    await mailToolFromTool("mail_search", deps, context(), { queries: ["pick a time"] });
+    expect(lines.map((line) => line.text)).toEqual([
+      'Searching mail: "pick a time"',
+      "Found 2 messages",
+    ]);
+    expect(lines.at(-1)?.summary).toBe("Searched mail · 2 found");
+  });
+
+  it("says when nothing matched", async () => {
+    const { deps, lines } = withProgress();
+    await mailToolFromTool("mail_search", deps, context(), { queries: ["zzzzqqq"] });
+    expect(lines.at(-1)).toMatchObject({
+      text: "No matches",
+      summary: "Searched mail · none found",
+    });
+  });
+
+  it("reports each query of a multi-query search and the total", async () => {
+    const { deps, lines } = withProgress();
+    await mailToolFromTool("mail_search", deps, context(), { queries: ["pick", "hello"] });
+    expect(lines.map((line) => line.text)).toEqual([
+      'Searching mail: "pick"',
+      "Found 2 messages",
+      'Searching mail: "hello"',
+      "Found 1 message",
+      "Found 3 messages in total",
+    ]);
+  });
+
+  it("names the message it reads with a clipped subject", async () => {
+    const { deps, lines } = withProgress({});
+    await mailToolFromTool("mail_get", deps, context(), { id: "m3" });
+    expect(lines).toHaveLength(1);
+    expect(lines[0]?.text).toMatch(/^Reading "Re: Justworks setup, .*…" from jana@example.test$/);
+    expect(lines[0]?.text.length).toBeLessThanOrEqual(120);
+  });
+
+  it("says when it moves on to the next page of results", async () => {
+    const { deps, lines } = withProgress();
+    const summary = (id: string) => ({
+      id,
+      threadId: id,
+      date: "2026-09-01T10:00:00Z",
+      from: { address: "jana@example.test" },
+      to: [],
+      subject: id,
+      snippet: "",
+    });
+    const listMessages = vi
+      .fn()
+      .mockResolvedValueOnce({ messages: [summary("a")], nextPageToken: "t2" })
+      .mockResolvedValueOnce({ messages: [summary("b")] });
+    deps.mail = { ...deps.mail, listMessages } as never;
+    await mailToolFromTool("mail_search", deps, context(), { queries: ["x"] });
+    expect(lines.map((line) => line.text)).toEqual([
+      'Searching mail: "x"',
+      "Looking at more results (page 2)",
+      "Found 2 messages",
+    ]);
+  });
+
+  it("reports a rate limit as a retry line", async () => {
+    const { deps, gmail, lines } = withProgress();
+    gmail.failNext(429, { times: 1 });
+    await mailToolFromTool("mail_search", deps, context(), { queries: ["pick a time"] });
+    expect(lines.map((line) => line.text)).toContain("Gmail is limiting requests, retrying");
+    expect(lines.at(-1)?.text).toBe("Found 2 messages");
+  });
+
+  it("keeps a failed search with its reason", async () => {
+    const { deps, gmail, lines } = withProgress();
+    gmail.failNext(429, { times: 20 });
+    await mailToolFromTool("mail_search", deps, context(), { queries: ["pick a time"] });
+    expect(lines.filter((line) => line.text.includes("retrying")).length).toBeGreaterThan(0);
+    expect(lines).toContainEqual({
+      text: "Could not finish this search: Gmail is limiting requests",
+      failed: true,
+    });
+    expect(lines.at(-1)?.summary).toBe("Searched mail · none found · incomplete");
   });
 });

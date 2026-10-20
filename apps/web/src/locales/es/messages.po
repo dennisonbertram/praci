@@ -7882,6 +7882,10 @@ msgid "Steps"
 msgstr "Pasos"
 
 #: src/pages/Shell.tsx
+msgid "Still waiting on {service}"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Stop"
 msgstr "Detener"
 

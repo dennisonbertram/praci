@@ -22,6 +22,40 @@ export const LoadingCustomIndicator: Story = {
   render: () => <LoadingState indicator={<span aria-hidden>...</span>} label="Sending" />,
 };
 
+export const LoadingWithStep: Story = {
+  render: () => (
+    <LoadingState
+      label="Searching your mail"
+      startedAt={Date.now() - 4_000}
+      detail={'Searching mail: from Kevin · after Oct 1 · "pick a time"'}
+    />
+  ),
+};
+
+export const LoadingQuiet: Story = {
+  render: () => (
+    <LoadingState
+      label="Searching your mail"
+      startedAt={Date.now() - 20_000}
+      detail="Searching mail: from Kevin · after Oct 1"
+      detailSince={Date.now() - 18_000}
+      waitingLabel="Still waiting on Gmail"
+    />
+  ),
+};
+
+export const LoadingStillWaiting: Story = {
+  render: () => (
+    <LoadingState
+      label="Searching your mail"
+      startedAt={Date.now() - 95_800}
+      detail="Gmail is limiting requests, retrying"
+      detailSince={Date.now() - 50_000}
+      waitingLabel="Still waiting on Gmail"
+    />
+  ),
+};
+
 export const Success: Story = { render: () => <SuccessPop label="Approved" /> };
 
 export const Card: Story = {

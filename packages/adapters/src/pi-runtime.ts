@@ -1262,6 +1262,8 @@ function toAgentTool(tool: ConnectorTool, host: ToolHost, exposedName: string): 
               executionId,
               tool.route,
               {
+                onProgress: (progress) =>
+                  host.queue.push({ type: "progress", text: progress.text, activity: true }),
                 onShellStillRunning: (completion) => {
                   host.pendingShells.push(completion);
                 },
