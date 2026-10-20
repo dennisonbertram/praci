@@ -54,6 +54,11 @@ msgstr ""
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 msgstr ""
 
+#. placeholder {0}: stats.duplicates
+#: src/components/data-room/DataRoomStats.tsx
+msgid "{0, plural, one {# duplicate} other {# duplicates}}"
+msgstr ""
+
 #. placeholder {0}: message.thread.length
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "{0, plural, one {# earlier message} other {# earlier messages}}"
@@ -918,7 +923,7 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
-#: src/components/data-room/PathBar.tsx
+#: src/pages/DataRoom.tsx
 msgid "All items"
 msgstr ""
 
@@ -1072,6 +1077,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Amount raised"
+msgstr ""
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Amounts"
 msgstr ""
 
 #: src/components/HideAmountsToggle.tsx
@@ -2052,6 +2061,7 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/DataRoom.tsx
@@ -3653,9 +3663,14 @@ msgstr ""
 msgid "Document date"
 msgstr ""
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
+msgstr ""
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Documents over time"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -4034,6 +4049,7 @@ msgstr "Sehr hoch"
 msgid "failed"
 msgstr "fehlgeschlagen"
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/ProcessingStrip.tsx
@@ -4426,10 +4442,6 @@ msgstr "Beispiel anhören"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Hallo, so klinge ich, wenn ich Antworten vorlese."
 
-#: src/components/data-room/PathBar.tsx
-msgid "Hidden folders"
-msgstr ""
-
 #: src/components/data-room/Preview.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
@@ -4798,6 +4810,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Language"
 msgstr "Sprache"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Largest files"
+msgstr ""
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -5923,6 +5939,7 @@ msgstr ""
 msgid "No response from the server. Check the address."
 msgstr ""
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/shell/command-palette.tsx
@@ -6069,6 +6086,10 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Not scanned yet. Daily scan paused."
+msgstr ""
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Not searchable"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -6564,10 +6585,6 @@ msgstr "Füge deinen API-Schlüssel ein"
 msgid "Paste your API key, then test again."
 msgstr "Füge deinen API-Schlüssel ein und teste erneut."
 
-#: src/components/data-room/PathBar.tsx
-msgid "Path"
-msgstr ""
-
 #: src/pages/RoutineEditor.tsx
 msgid "Paused"
 msgstr ""
@@ -6837,6 +6854,7 @@ msgstr "Antworten vorlesen"
 msgid "Read-only API key"
 msgstr ""
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/format.ts
 msgid "Reading"
 msgstr ""
@@ -6887,6 +6905,7 @@ msgstr ""
 msgid "Reading…"
 msgstr ""
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Ready"
 msgstr ""
@@ -7305,10 +7324,6 @@ msgstr "Setze dein Passwort zurück"
 msgid "Resetting…"
 msgstr ""
 
-#: src/components/data-room/ResizableFolders.tsx
-msgid "Resize folders"
-msgstr ""
-
 #: src/components/data-room/Preview.tsx
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
@@ -7344,6 +7359,7 @@ msgstr ""
 
 #: src/components/AccountAccess.tsx
 #: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -7710,6 +7726,10 @@ msgstr ""
 #. placeholder {0}: filters.query.trim()
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
+msgstr ""
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Searchable"
 msgstr ""
 
 #: src/pages/DataRoom.tsx
@@ -8085,6 +8105,7 @@ msgstr ""
 msgid "Site"
 msgstr ""
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 msgid "Size"
@@ -8191,6 +8212,10 @@ msgstr ""
 #: src/components/data-room/Preview.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Source"
+msgstr ""
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Sources"
 msgstr ""
 
 #: src/pages/ModelBackupsSettings.tsx
@@ -8317,6 +8342,11 @@ msgstr "Wird gestartet…"
 msgid "Statement files"
 msgstr ""
 
+#: src/pages/DataRoom.tsx
+msgid "Stats"
+msgstr ""
+
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
@@ -8916,6 +8946,10 @@ msgstr ""
 msgid "Tools from an Executor server you run"
 msgstr ""
 
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Top parties"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Total balance"
 msgstr ""
@@ -9038,6 +9072,10 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Type your answer"
 msgstr "Gib deine Antwort ein"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Types"
+msgstr ""
 
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx

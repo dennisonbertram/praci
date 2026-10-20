@@ -7006,6 +7006,9 @@ export function createRouter(deps: RouterDeps) {
       facetValues: authed.dataRoom.facetValues.handler(({ context, input }) =>
         dataRoom.facetValues(context.actor, input),
       ),
+      stats: authed.dataRoom.stats.handler(({ context, input }) =>
+        dataRoom.stats(context.actor, input),
+      ),
       folderCreate: authed.dataRoom.folderCreate.handler(({ context, input }) =>
         dataRoom.createFolder(context.actor, input),
       ),
