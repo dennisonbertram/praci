@@ -4336,17 +4336,46 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
         // Any agent reads mail only with the AI data sharing consent the Inbox sorting needs,
         // so turning that off stops both. Read on every mail tool call, so revoking it mid-run applies.
-        const inboxMailConsentBlock = () => {
+        const inboxMailConsentBlock = async (): Promise<{
+          recipient?: { key: string; name: string; detail?: string };
+        } | null> => {
+          // In a chat the mail goes to the model running this chat, so that recipient is the one that
+          // needs consent. Background runs keep the Inbox's own check.
+          if (run.trigger === "user") {
+            try {
+              const recipient = aiRecipient({
+                provider: runModelProvider,
+                modelId: runModelId,
+                baseUrl: resolved.baseUrl,
+                use: "model",
+              });
+              // No external recipient (the scripted runtime): nothing leaves.
+              if (!recipient) return null;
+              const granted = await deps.prisma.aiDataConsent.findFirst({
+                where: {
+                  userId: bot.userId,
+                  spaceId: run.spaceId,
+                  recipientKey: recipient.key,
+                  version: AI_DISCLOSURE_VERSION,
+                },
+                select: { userId: true },
+              });
+              return granted ? null : { recipient };
+            } catch {
+              // Unknown is treated as not allowed.
+              return {};
+            }
+          }
           return triageStatus(
             { prisma: deps.prisma, resolveModel },
             { userId: bot.userId, spaceId: run.spaceId },
           ).then(
-            (status): { recipient?: { key: string; name: string } } | null =>
+            (status): { recipient?: { key: string; name: string; detail?: string } } | null =>
               status.blocked?.reason === "needs_consent"
                 ? { recipient: status.blocked.recipient }
                 : null,
             // Unknown is treated as not allowed: mail content never leaves on a failed check.
-            (): { recipient?: { key: string; name: string } } => ({}),
+            (): { recipient?: { key: string; name: string; detail?: string } } => ({}),
           );
         };
         // Connected Google Drive accounts of the bot owner, looked up once per run.
@@ -4764,6 +4793,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         let unchangedVisualStreak: UnchangedVisualStreak = { count: 0 };
         let terminalCheckpointComplete = false;
         let approvalPausePending = false;
+        /** The one consent card of this run attempt, shared by parallel mail calls. */
+        let consentAsk: Promise<unknown> | undefined;
         let handedOff = false;
         let progressRedactor = createStreamingRedactor(runSecrets);
         const scripted = deps.runtime.describe().capabilities.scripted;
@@ -5495,17 +5526,30 @@ export function createRunExecutor(deps: ExecutorDeps) {
            * pauses the run. The recipient comes from the server's own check, never the model. The
            * owner's click records the consent; a decline is remembered so the call is not asked twice.
            */
-          const askMailConsent = async (recipient: { key: string; name: string }) => {
+          const askMailConsent = (recipient: { key: string; name: string; detail?: string }) =>
+            // Parallel mail calls share one card: the later ones wait on the first and pause with it.
+            (consentAsk ??= askMailConsentOnce(recipient));
+          const askMailConsentOnce = async (recipient: {
+            key: string;
+            name: string;
+            detail?: string;
+          }) => {
             const request = { recipientKey: recipient.key, version: AI_DISCLOSURE_VERSION };
-            const recorded = await recordEffect(
-              deps,
-              run,
-              AI_CONSENT_EFFECT_KIND,
-              approvalEffectKey(runId, AI_CONSENT_EFFECT_KIND, request),
-              request,
-              undefined,
-              consumedEffectIds,
-            );
+            const record = () =>
+              recordEffect(
+                deps,
+                run,
+                AI_CONSENT_EFFECT_KIND,
+                approvalEffectKey(runId, AI_CONSENT_EFFECT_KIND, request),
+                request,
+                undefined,
+                consumedEffectIds,
+              );
+            // A concurrent writer may have created the effect between our read and insert; read it again.
+            const recorded = await record().catch((error: unknown) => {
+              if ((error as { code?: unknown } | null)?.code === "P2002") return record();
+              throw error;
+            });
             if (recorded.duplicate) {
               if (recorded.effect.status === "denied") return { error: MAIL_CONSENT_DECLINED };
               if (recorded.effect.status !== "intended") return undefined;
@@ -5515,25 +5559,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
               });
               if (current?.status === "waiting_input") return pauseForApproval();
             }
-            const detail = await resolveModel({
-              userId: bot.userId,
-              spaceId: run.spaceId,
-              botId: bot.id,
-            }).then(
-              (model) =>
-                aiRecipient({
-                  provider: model.provider,
-                  modelId: model.id,
-                  baseUrl: model.baseUrl,
-                  use: "model",
-                }),
-              () => null,
-            );
             return pauseForAsk(
-              buildConsentAskBlock(recorded.effect.id, {
-                name: recipient.name,
-                detail: detail?.key === recipient.key ? detail.detail : undefined,
-              }),
+              buildConsentAskBlock(recorded.effect.id, recipient),
               "Allow access to your mail",
             );
           };

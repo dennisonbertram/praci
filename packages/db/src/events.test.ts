@@ -3505,9 +3505,24 @@ describe("answerRunInput on an AI data sharing request", () => {
     expect(tx.run.updateMany).not.toHaveBeenCalled();
   });
 
-  it("refuses a request made under an older disclosure version", async () => {
-    const { tx, answer } = consentTx({ recipientKey: "key-1", version: "2020-01-01" });
-    await expect(answer("owner-1", "allow")).resolves.toBe(false);
-    expect(tx.aiDataConsent.upsert).not.toHaveBeenCalled();
-  });
+  it.each(["allow", "deny"])(
+    "resumes the run as Not now on %s for an older disclosure version, granting nothing",
+    async (id) => {
+      const { tx, answer } = consentTx({ recipientKey: "key-1", version: "2020-01-01" });
+      await expect(answer("owner-1", id)).resolves.toBe(true);
+      expect(tx.aiDataConsent.upsert).not.toHaveBeenCalled();
+      expect(tx.externalEffect.update).toHaveBeenCalledWith({
+        where: { id: "effect-1" },
+        data: { status: "denied" },
+      });
+      expect(tx.run.updateMany).toHaveBeenCalledWith(
+        expect.objectContaining({ data: expect.objectContaining({ status: "queued" }) }),
+      );
+      expect(tx.message.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: { blocks: [expect.objectContaining({ status: "answered", answer: "deny" })] },
+        }),
+      );
+    },
+  );
 });

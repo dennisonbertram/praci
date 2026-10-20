@@ -105,7 +105,8 @@ export function buildConsentAskBlock(
     kind: "ask",
     approvalEffectId: effectId,
     text: `Allow your mail to be sent to ${recipient.name}${recipient.detail ? ` (${recipient.detail})` : ""}?`,
-    detail: AI_DATA_DISCLOSURES.model,
+    // The clause says the permission is standing, not for this one read.
+    detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Account settings.`,
     consent: { version: AI_DISCLOSURE_VERSION },
     status: "pending",
     actions: [
