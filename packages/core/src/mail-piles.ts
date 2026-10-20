@@ -11,6 +11,8 @@ export interface PileInput {
   senderMark: SenderMark | null;
   /** True: the user wrote to this address. False: checked, never. Null: not checked yet. */
   priorContact: boolean | null;
+  /** The user chose to skip the inbox for this sender (mail_sender_decisions.skipInboxAt). */
+  skipInbox: boolean;
 }
 
 /** A null pile means the rules did not decide and the model should. Reasons are stable codes, not UI copy. */
@@ -41,10 +43,18 @@ export function pileFromCategory(category: string | null): InboxPile | null {
   return category === null ? null : (PILE_BY_CATEGORY[category as InboxCategory] ?? null);
 }
 
-/** The stored pile: the free rules win, except that a model verdict of spam, scam or suspicious always wins. */
-export function resolvePile(rulePile: string | null, category: string | null): string | null {
+/**
+ * The stored pile: the free rules win, except that a model verdict of spam, scam or suspicious always wins.
+ * A user's Not spam choice (`notSpam`) overrides the model's spam verdict only; a rule pile of spam (Gmail's label) still counts.
+ */
+export function resolvePile(
+  rulePile: string | null,
+  category: string | null,
+  notSpam = false,
+): string | null {
   const modelPile = pileFromCategory(category);
-  return modelPile === "spam" ? "spam" : (rulePile ?? modelPile);
+  if (modelPile === "spam") return notSpam ? rulePile : "spam";
+  return rulePile ?? modelPile;
 }
 
 // ponytail: a short hand-picked list. A brand it lacks is only missed here and still reaches the model.
@@ -94,7 +104,8 @@ export function classifyPile(input: PileInput): PileDecision {
   // 1. Safety.
   if (signals?.categories.spam) return { pile: "spam", reasons: ["gmail_spam"] };
   const authFailed = signals ? Object.values(signals.auth).some(failed) : false;
-  if (authFailed && claimsBrandItIsNot(input))
+  // A sender the user marked important (for instance by choosing Not spam) is left to the model instead.
+  if (authFailed && senderMark !== "important" && claimsBrandItIsNot(input))
     return { pile: "spam", reasons: ["auth_failed_brand"] };
 
   // 2. The user's own mark. A noise mark does not decide; it only stops prior contact from meaning important.
@@ -102,6 +113,18 @@ export function classifyPile(input: PileInput): PileDecision {
   if (authFailed && (senderMark === "important" || priorContact === true))
     return { pile: null, reasons: ["auth_failed"] };
   if (senderMark === "important") return { pile: "important", reasons: ["marked_important"] };
+
+  // The user's skip-inbox decision for a sender settles the pile before prior contact is asked.
+  // Failed authentication here may be a forgery of the sender, so it is left to the model.
+  if (input.skipInbox && !authFailed) {
+    const bulkLooking =
+      signals !== null &&
+      (signals.categories.promotions ||
+        signals.listUnsubscribe.length > 0 ||
+        signals.listId !== null ||
+        signals.bulk);
+    return { pile: bulkLooking ? "newsletters" : "updates", reasons: ["skip_inbox"] };
+  }
 
   // 3. Prior contact blocks every bulk decision, and unknown counts as possible contact.
   if (!signals) return { pile: null, reasons: ["no_signals"] };

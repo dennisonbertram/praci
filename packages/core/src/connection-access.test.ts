@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  appStatus,
   botMayUseConnection,
   type ConnectionAccessRow,
   deniedConnectionIds,
@@ -249,4 +250,18 @@ describe("connections created private", () => {
       }
     },
   );
+});
+
+describe("appStatus", () => {
+  const conn = (status: string, needsReconnect?: boolean) => ({ status, needsReconnect }) as never;
+  it("maps connection rows: a working account wins, then pending, then error", () => {
+    expect(appStatus([conn("error"), conn("connected")])).toBe("connected");
+    expect(appStatus([conn("error"), conn("pending")])).toBe("connecting");
+    expect(appStatus([conn("error")])).toBe("failed");
+    expect(appStatus([conn("revoked")])).toBeNull();
+  });
+  it("needs a reconnect when every connected account's sign-in was refused", () => {
+    expect(appStatus([conn("connected", true)])).toBe("reconnect");
+    expect(appStatus([conn("connected", true), conn("connected")])).toBe("connected");
+  });
 });

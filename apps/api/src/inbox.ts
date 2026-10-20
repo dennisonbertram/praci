@@ -87,12 +87,26 @@ export function mailContext(
 }
 
 /** The actor's connected mail connections, read from Postgres only. */
-async function connectedMailConnections(prisma: PrismaClient, actor: Actor) {
+export async function connectedMailConnections(prisma: PrismaClient, actor: Actor) {
   const rows = await prisma.connection.findMany({
     where: { spaceId: actor.spaceId, userId: actor.userId, status: "connected" },
     orderBy: { createdAt: "asc" },
   });
   return rows.filter(isMailConnection);
+}
+
+/** The account tabs for these connections: label and, once Gmail reported it, the address. */
+export function mailAccountsOf(
+  connections: Array<{ id: string; displayName: string; metadata: unknown }>,
+): Array<{ connectionId: string; label: string; address?: string }> {
+  return connections.map((c) => {
+    const address = (c.metadata as { mailAddress?: unknown } | null)?.mailAddress;
+    return {
+      connectionId: c.id,
+      label: c.displayName,
+      ...(typeof address === "string" && address ? { address } : {}),
+    };
+  });
 }
 
 /** True when the triage job would pick at least one message of these accounts (Job flow step 4). */
@@ -353,14 +367,7 @@ export async function inboxList(
     },
     select: { id: true, name: true },
   });
-  const accounts = connections.map((c) => {
-    const address = (c.metadata as { mailAddress?: unknown } | null)?.mailAddress;
-    return {
-      connectionId: c.id,
-      label: c.displayName,
-      ...(typeof address === "string" && address ? { address } : {}),
-    };
-  });
+  const accounts = mailAccountsOf(connections);
   const agentOut = agent ? { botId: agent.id, name: agent.name } : null;
   const { ready, blocked: triageBlocked } = await triageStatus(deps, actor);
   const enabled = ready !== null;
