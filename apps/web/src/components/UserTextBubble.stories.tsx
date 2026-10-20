@@ -30,3 +30,15 @@ export const OnlyFiles: Story = {
     text: "Data room item itm_1: Sample agreement.pdf\nData room item itm_2: Sample budget.xlsx",
   },
 };
+
+/** From 768px up the bubble stops at 40rem; a long message wraps instead of filling the thread. */
+export const Long: Story = {
+  decorators: [
+    (Story) => (
+      <div className="w-[1000px]">
+        <Story />
+      </div>
+    ),
+  ],
+  args: { text: "Please summarise the open points. ".repeat(12) },
+};

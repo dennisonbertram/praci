@@ -217,7 +217,7 @@ import { SkillDraftCard } from "../components/teach/SkillDraftCard";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { UserTextBubble } from "../components/UserTextBubble";
+import { bubbleMeasure, UserTextBubble } from "../components/UserTextBubble";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -8565,7 +8565,11 @@ const MessageView = memo(function MessageView({
     return (
       <>
         {messageContext}
-        <div className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full">
+        <div
+          className={`flex w-fit max-w-full justify-start [@media(hover:none)]:w-full ${bubbleMeasure(
+            visibleNarrationBlocks.map((block) => ("text" in block ? block.text : "")).join("\n"),
+          )}`}
+        >
           <div
             data-testid="message-bot-bubble"
             className="max-w-full space-y-2.5 rounded-[20px] bg-muted px-[18px] py-3 text-[15.5px] leading-[1.5] text-foreground/90"
@@ -8692,7 +8696,7 @@ const MessageView = memo(function MessageView({
           return (
             <div
               key={i}
-              className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full"
+              className={`flex w-fit max-w-full justify-start [@media(hover:none)]:w-full ${bubbleMeasure(block.text)}`}
             >
               <div
                 data-testid="message-bot-bubble"
@@ -8850,7 +8854,7 @@ const MessageView = memo(function MessageView({
           return (
             <div
               key={i}
-              className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full"
+              className={`flex w-fit max-w-full justify-start [@media(hover:none)]:w-full ${bubbleMeasure(block.text)}`}
             >
               <div
                 data-testid="message-bot-bubble"
