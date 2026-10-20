@@ -61,6 +61,8 @@ export async function inboxActionsList(
         batchId: first.batchId,
         kind: kind.data,
         source: first.source === "auto" ? "auto" : "user",
+        reason:
+          first.reason === "cleanup" || first.reason === "skip_inbox" ? first.reason : "selection",
         createdAt: first.createdAt.toISOString(),
         undone: members.every((row) => row.undoneAt !== null),
         threadCount: members.reduce((sum, row) => sum + row.threadIds.length, 0),

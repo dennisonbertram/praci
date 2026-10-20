@@ -34,6 +34,7 @@ export async function applyPileRules(
       rulePile: true,
       ruleReasons: true,
       pile: true,
+      notSpamAt: true,
     },
   });
   if (rows.length === 0) return;
@@ -74,7 +75,7 @@ export async function applyPileRules(
       skipInbox: skipped.has(address),
     });
     const rulePile = decision.pile;
-    const pile = resolvePile(rulePile, row.category);
+    const pile = resolvePile(rulePile, row.category, row.notSpamAt !== null);
     const unchanged =
       row.rulePile === rulePile &&
       row.pile === pile &&

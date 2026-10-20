@@ -23,7 +23,13 @@ interface Change {
   /** The label change sent to the provider for each message. */
   label: MailLabelChange;
   /** What the cache row says afterwards. */
-  cache: { unread?: boolean; inInbox?: boolean; isSpam?: boolean; pile?: null };
+  cache: {
+    unread?: boolean;
+    inInbox?: boolean;
+    isSpam?: boolean;
+    pile?: null;
+    notSpamAt?: Date | null;
+  };
   /** Messages of the thread that still need the change; the rest are skipped. */
   pending: Prisma.CachedMailMessageWhereInput;
   /** Change the whole thread, not just the message the row stands for. */
@@ -293,7 +299,7 @@ const MOVES: Record<InboxMoveInput["op"], Omit<Change, "thread"> & { kind: MailA
     kind: "spam",
     operation: "inbox.spam",
     label: { addLabelIds: ["SPAM"], removeLabelIds: ["INBOX"] },
-    cache: { inInbox: false, isSpam: true },
+    cache: { inInbox: false, isSpam: true, notSpamAt: null },
     pending: { inInbox: true },
   },
   notSpam: {
@@ -301,7 +307,10 @@ const MOVES: Record<InboxMoveInput["op"], Omit<Change, "thread"> & { kind: MailA
     operation: "inbox.notSpam",
     label: { addLabelIds: ["INBOX"], removeLabelIds: ["SPAM"] },
     // The pile is cleared too, so the row leaves the Spam pile at once; the next sync recomputes it.
-    cache: { inInbox: true, isSpam: false, pile: null },
+    // A getter, so the time is the click's, not the module's. The model's spam verdict no longer applies to this message.
+    get cache() {
+      return { inInbox: true, isSpam: false, pile: null, notSpamAt: new Date() };
+    },
     pending: { OR: [{ isSpam: true }, { pile: "spam" }] },
   },
   // Sync drops the row once Gmail reports it in the trash.

@@ -50,8 +50,8 @@ export async function senderFacts(
   address?: string,
   /** False: also senders whose mail has all left the Inbox. */
   inboxOnly = true,
-  /** With `inboxOnly`: senders listed anyway, such as those the user skips. */
-  also: string[] = [],
+  /** With `inboxOnly`: senders listed anyway on their own connection, such as those the user skips. */
+  also: Array<{ connectionId: string; address: string }> = [],
 ): Promise<SenderFacts[]> {
   if (connectionIds.length === 0) return [];
   const since = new Date(Date.now() - WINDOW_MS);
@@ -92,7 +92,13 @@ export async function senderFacts(
     ${
       inboxOnly
         ? Prisma.sql`HAVING COUNT(*) FILTER (WHERE "inInbox") > 0
-          ${also.length ? Prisma.sql`OR sender IN (${Prisma.join(also)})` : Prisma.empty}`
+          ${
+            also.length
+              ? Prisma.sql`OR ("connectionId", sender) IN (${Prisma.join(
+                  also.map((a) => Prisma.sql`(${a.connectionId}, ${a.address})`),
+                )})`
+              : Prisma.empty
+          }`
         : Prisma.empty
     }`);
   return rows.map((row) => {
@@ -144,7 +150,9 @@ export async function inboxCleanupList(
     prisma.mailSyncState.findMany({ where: { connectionId: { in: ids } } }),
   ]);
   // A sender the user skips stays listed after its mail is archived, so the decision can be undone.
-  const skipped = decisions.filter((d) => d.skipInboxAt).map((d) => d.senderAddress);
+  const skipped = decisions
+    .filter((d) => d.skipInboxAt)
+    .map((d) => ({ connectionId: d.connectionId, address: d.senderAddress }));
   const facts = await senderFacts(prisma, actor, ids, undefined, true, skipped);
   const key = (connectionId: string, address: string) => `${connectionId}:${address}`;
   const statOf = new Map(stats.map((s) => [key(s.connectionId, s.senderAddress), s]));

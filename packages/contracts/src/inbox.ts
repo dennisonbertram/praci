@@ -344,6 +344,8 @@ export const MailActionSchema = z.object({
   batchId: Id,
   kind: MailActionKindSchema,
   source: z.enum(["user", "auto"]),
+  /** What led to it: a sender cleanup, a hand-picked selection, or a sender's skip-inbox decision. */
+  reason: z.enum(["cleanup", "selection", "skip_inbox"]),
   createdAt: z.string(),
   undone: z.boolean(),
   threadCount: z.number().int().nonnegative(),

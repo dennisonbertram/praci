@@ -19,6 +19,7 @@ const action = (patch: Partial<MailAction> = {}): MailAction => ({
   batchId: "b1",
   kind: "archive",
   source: "user",
+  reason: "cleanup",
   createdAt: "2026-10-18T10:00:00.000Z",
   undone: false,
   threadCount: 31,
@@ -51,6 +52,19 @@ it("describes each action with its sender summary and undoes it", async () => {
   expect(document.body.textContent).toContain("news@lists.example.test +1");
   await act(async () => document.querySelector<HTMLElement>("li button")?.click());
   expect(onUndo).toHaveBeenCalledWith("b1");
+});
+
+it("shows a cleanup or skip-inbox reason and nothing for a plain selection", async () => {
+  await show([
+    action({ batchId: "a", reason: "cleanup" }),
+    action({ batchId: "b", kind: "archive", source: "auto", reason: "skip_inbox" }),
+    action({ batchId: "c", reason: "selection" }),
+  ]);
+  const rows = [...document.querySelectorAll("li")].map((li) => li.textContent ?? "");
+  expect(rows[0]).toContain("Cleanup");
+  expect(rows[1]).toContain("Skip inbox");
+  expect(rows[2]).not.toContain("Cleanup");
+  expect(rows[2]).not.toContain("Skip inbox");
 });
 
 it("marks automatic actions and disables Undo once undone", async () => {

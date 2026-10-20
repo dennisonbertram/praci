@@ -185,9 +185,15 @@ export default function InboxCleanupScreen() {
       not_spam: t("Not spam"),
       trash: t("Trash"),
     }[action.kind];
+    const why =
+      action.reason === "cleanup"
+        ? t("Cleanup")
+        : action.reason === "skip_inbox" && action.kind !== "skip_inbox"
+          ? t("Skip inbox")
+          : "";
     return `${kind} · ${action.threadCount} · ${action.senders[0] ?? ""}${
       action.senderCount > 1 ? ` +${action.senderCount - 1}` : ""
-    }`;
+    }${why ? ` · ${why}` : ""}`;
   };
 
   const hasChoices = senders.length > 0;
@@ -267,11 +273,13 @@ export default function InboxCleanupScreen() {
         style={styles.list}
         contentInsetAdjustmentBehavior="automatic"
         data={items}
-        keyExtractor={(item) =>
-          item.type === "sender"
-            ? senderKey(item.sender.connectionId, item.sender.address)
-            : `${item.type}:${item.type === "failure" ? item.failure.sender.address : item.sender.address}`
-        }
+        keyExtractor={(item, index) => {
+          if (item.type === "sender")
+            return senderKey(item.sender.connectionId, item.sender.address);
+          const sender = item.type === "failure" ? item.failure.sender : item.sender;
+          // A note is never reordered, so its position keeps repeated notes for one sender apart.
+          return `${item.type}:${senderKey(sender.connectionId, sender.address)}:${index}`;
+        }}
         ListEmptyComponent={
           error ? (
             <View style={styles.centered}>
@@ -300,14 +308,26 @@ export default function InboxCleanupScreen() {
                 <Text style={styles.link}>{t("Open link")}</Text>
               </Pressable>
             );
-          if (item.type === "failure")
+          if (item.type === "failure") {
+            const openUrl =
+              item.failure.reason === "unsubscribe" ? item.failure.openUrl : undefined;
             return (
               <View style={styles.row}>
                 <Text style={[styles.name, { color: tokens.destructive }]} numberOfLines={2}>
                   {t("Could not update {name}", { name: item.failure.sender.name })}
                 </Text>
+                {openUrl ? (
+                  <Pressable
+                    accessibilityRole="link"
+                    hitSlop={8}
+                    onPress={() => void Linking.openURL(openUrl)}
+                  >
+                    <Text style={styles.link}>{t("Open link")}</Text>
+                  </Pressable>
+                ) : null}
               </View>
             );
+          }
           const { sender } = item;
           const key = senderKey(sender.connectionId, sender.address);
           const on = selected.has(key);

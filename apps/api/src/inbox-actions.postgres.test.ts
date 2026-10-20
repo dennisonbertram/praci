@@ -61,6 +61,7 @@ describePostgres("action log and undo (PostgreSQL + Gmail emulator)", () => {
     expect(actions[1]).toMatchObject({
       kind: "archive",
       source: "user",
+      reason: "cleanup",
       undone: false,
       threadCount: 2,
       senders: [NEWS],

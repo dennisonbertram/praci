@@ -294,6 +294,12 @@ describe("resolvePile", () => {
     expect(resolvePile(null, null)).toBeNull();
   });
 
+  it("lets the user's Not spam choice beat a model spam verdict but not a spam rule pile", () => {
+    expect(resolvePile(null, "spam", true)).toBeNull();
+    expect(resolvePile("newsletters", "scam", true)).toBe("newsletters");
+    expect(resolvePile("spam", "spam", true)).toBe("spam");
+  });
+
   it("lets a spam, scam or suspicious verdict beat any rule pile", () => {
     for (const category of ["spam", "scam", "suspicious"]) {
       expect(resolvePile("newsletters", category)).toBe("spam");

@@ -1,5 +1,6 @@
 -- AlterTable
-ALTER TABLE "mail_messages" ADD COLUMN     "skipAppliedAt" TIMESTAMP(3);
+ALTER TABLE "mail_messages" ADD COLUMN     "notSpamAt" TIMESTAMP(3),
+ADD COLUMN     "skipAppliedAt" TIMESTAMP(3);
 
 -- CreateTable
 CREATE TABLE "mail_sender_decisions" (

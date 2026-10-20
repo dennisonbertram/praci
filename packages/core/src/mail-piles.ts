@@ -43,10 +43,18 @@ export function pileFromCategory(category: string | null): InboxPile | null {
   return category === null ? null : (PILE_BY_CATEGORY[category as InboxCategory] ?? null);
 }
 
-/** The stored pile: the free rules win, except that a model verdict of spam, scam or suspicious always wins. */
-export function resolvePile(rulePile: string | null, category: string | null): string | null {
+/**
+ * The stored pile: the free rules win, except that a model verdict of spam, scam or suspicious always wins.
+ * A user's Not spam choice (`notSpam`) overrides the model's spam verdict only; a rule pile of spam (Gmail's label) still counts.
+ */
+export function resolvePile(
+  rulePile: string | null,
+  category: string | null,
+  notSpam = false,
+): string | null {
   const modelPile = pileFromCategory(category);
-  return modelPile === "spam" ? "spam" : (rulePile ?? modelPile);
+  if (modelPile === "spam") return notSpam ? rulePile : "spam";
+  return rulePile ?? modelPile;
 }
 
 // ponytail: a short hand-picked list. A brand it lacks is only missed here and still reaches the model.

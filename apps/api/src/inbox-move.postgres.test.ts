@@ -69,6 +69,10 @@ describePostgres("spam and trash (PostgreSQL + Gmail emulator)", () => {
     expect(out.done).toEqual([r.junk.id]);
     expect(f.labelsOf("box-a", "junk")).toEqual(["INBOX"]);
     expect(await row("junk")).toMatchObject({ inInbox: true, isSpam: false });
+    // The choice is remembered on the message, so a model spam verdict does not undo it; marking spam clears it.
+    expect((await row("junk")).notSpamAt).toBeInstanceOf(Date);
+    await inboxMoveMany(f.deps, f.a, { op: "spam", messageIds: [r.junk.id] });
+    expect((await row("junk")).notSpamAt).toBeNull();
     expect(
       (await f.prisma.mailActionLog.findFirstOrThrow({ where: { batchId: out.batchId } })).kind,
     ).toBe("not_spam");

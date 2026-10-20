@@ -1981,6 +1981,7 @@ msgstr ""
 msgid "Choosing your company in Carta"
 msgstr ""
 
+#: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/pages/Inbox.tsx
 msgid "Cleanup"
@@ -7928,6 +7929,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Skip"
 msgstr "Atla"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Skip inbox"
+msgstr ""
 
 #. placeholder {0}: counts.skip_inbox
 #: src/components/inbox/CleanupActionBar.tsx

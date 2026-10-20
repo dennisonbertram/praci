@@ -24,6 +24,11 @@ export function CleanupHistory({
     not_spam: (n) => t`Marked ${n} as not spam`,
     trash: (n) => t`Moved ${n} to trash`,
   };
+  // A hand-picked selection is the plain case and says nothing.
+  const reasons: Partial<Record<MailAction["reason"], string>> = {
+    cleanup: t`Cleanup`,
+    skip_inbox: t`Skip inbox`,
+  };
   return (
     <section aria-labelledby="cleanup-history" className="mt-8">
       <h2 id="cleanup-history" className="mb-1 text-[13px] font-semibold text-muted-foreground">
@@ -42,6 +47,9 @@ export function CleanupHistory({
                 {action.senders[0] ?? ""}
                 {action.senderCount > 1 ? ` +${action.senderCount - 1}` : ""}
                 {action.source === "auto" ? ` · ${t`Automatic`}` : ""}
+                {reasons[action.reason] && action.reason !== action.kind
+                  ? ` · ${reasons[action.reason]}`
+                  : ""}
               </span>
             </span>
             <time

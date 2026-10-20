@@ -317,6 +317,7 @@ describe("InboxCleanup", () => {
           batchId: "old-1",
           kind: "archive",
           source: "user",
+          reason: "cleanup",
           createdAt: "2026-10-18T10:00:00.000Z",
           undone: false,
           threadCount: 7,

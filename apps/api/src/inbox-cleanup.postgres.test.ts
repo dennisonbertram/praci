@@ -172,6 +172,26 @@ describePostgres("inbox cleanup (PostgreSQL + Gmail emulator)", () => {
       });
     });
 
+    it("keeps a skipped sender listed only on the account where it is skipped", async () => {
+      await f.wipe();
+      const address = "skipped@lists.example.test";
+      await sender(f.a, f.connA, address, { extra: { inInbox: false } });
+      await sender(f.a, f.connA2, address, { extra: { inInbox: false } });
+      await f.prisma.mailSenderDecision.create({
+        data: {
+          spaceId: f.a.spaceId,
+          userId: f.a.userId,
+          connectionId: f.connA,
+          senderAddress: address,
+          skipInboxAt: new Date(),
+        },
+      });
+
+      const out = await inboxCleanupList(f.deps, f.a, {});
+
+      expect(out.senders.map((s) => s.connectionId)).toEqual([f.connA]);
+    });
+
     it("filters by account, rejects a foreign one and hides other users' and spaces' data", async () => {
       await f.wipe();
       await sender(f.a, f.connA, "a1@lists.example.test");

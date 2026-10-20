@@ -337,6 +337,7 @@ describe("cleanup screen", () => {
           batchId: "old-1",
           kind: "archive",
           source: "user",
+          reason: "cleanup",
           createdAt: new Date().toISOString(),
           undone: false,
           threadCount: 7,
