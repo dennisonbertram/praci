@@ -120,7 +120,7 @@ This is the cheapest phase and matters most for trust, because it stops mobile f
 
 ### Not yet built anywhere
 
-The Legal page, Cap table page and Data room (epic #61) are merged on web with no mobile screen. Mobile Data room work is tracked as #59. Hide amounts, spreadsheet sheet paging, PDF preview, chart blocks in chat, mail approval editing and remembering a message are also web-only. All of them are rows at the end of [inventory.md](inventory.md) and follow the same rule: ship on both surfaces, or say why not.
+The Legal page, Cap table page and Data room (epic #61) are merged on web with no mobile screen. Mobile Data room work is tracked as #59. Hide amounts, spreadsheet sheet paging, PDF preview, chart blocks in chat, mail approval editing and the remembered-message indicator are also web-only. All of them are rows at the end of [inventory.md](inventory.md) and follow the same rule: ship on both surfaces, or say why not.
 
 ## Decisions needed
 
