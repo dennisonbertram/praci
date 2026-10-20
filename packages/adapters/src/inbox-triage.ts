@@ -15,8 +15,8 @@ import {
   isNoReplyCategory,
   MAX_TRIAGE_PER_RUN,
   needsLlmDetail,
-  pileFromCategory,
   planTodoSync,
+  resolvePile,
   selectTodoCandidates,
   senderMarkMap,
   TODO_CATEGORIES,
@@ -220,8 +220,8 @@ async function triagePass(
             needsReply: item?.needsReply ?? null,
             priority: item?.priority ?? null,
             category: item?.category ?? null,
-            // The free rules win when they decided; the model's category fills the rest.
-            pile: row.rulePile ?? (item ? pileFromCategory(item.category) : null),
+            // The free rules win when they decided, unless the model calls it spam; its category fills the rest.
+            pile: item ? resolvePile(row.rulePile, item.category) : row.rulePile,
             reason: item?.reason || null,
             todoText: item?.todo ?? null,
             dueOn: item?.due ? new Date(`${item.due}T00:00:00Z`) : null,

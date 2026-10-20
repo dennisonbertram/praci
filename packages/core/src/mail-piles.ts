@@ -41,6 +41,12 @@ export function pileFromCategory(category: string | null): InboxPile | null {
   return category === null ? null : (PILE_BY_CATEGORY[category as InboxCategory] ?? null);
 }
 
+/** The stored pile: the free rules win, except that a model verdict of spam, scam or suspicious always wins. */
+export function resolvePile(rulePile: InboxPile | null, category: string | null): InboxPile | null {
+  const modelPile = pileFromCategory(category);
+  return modelPile === "spam" ? "spam" : (rulePile ?? modelPile);
+}
+
 // ponytail: a short hand-picked list. A brand it lacks is only missed here and still reaches the model.
 const BRANDS = [
   "paypal",
@@ -92,6 +98,9 @@ export function classifyPile(input: PileInput): PileDecision {
     return { pile: "spam", reasons: ["auth_failed_brand"] };
 
   // 2. The user's own mark. A noise mark does not decide; it only stops prior contact from meaning important.
+  // Failed authentication on a known or marked sender may be a forgery of them, so the model decides.
+  if (authFailed && (senderMark === "important" || priorContact === true))
+    return { pile: null, reasons: ["auth_failed"] };
   if (senderMark === "important") return { pile: "important", reasons: ["marked_important"] };
 
   // 3. Prior contact blocks every bulk decision, and unknown counts as possible contact.

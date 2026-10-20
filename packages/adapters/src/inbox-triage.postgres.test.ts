@@ -392,6 +392,24 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     });
   });
 
+  it("moves a rule-decided message to spam when the model calls it a scam", async () => {
+    const user = await addUser();
+    const row = await mail(user, "Fall sale", { minutesAgo: 2 });
+    await prisma.cachedMailMessage.update({
+      where: { id: row.id },
+      data: { rulePile: "newsletters", ruleReasons: ["promotions"], pile: "newsletters" },
+    });
+    const rt = fakeRuntime(answerAll(() => ({ category: "scam", todo: null })));
+
+    await run(user, rt.runtime);
+
+    expect((await messagesOf(user)).find((m) => m.id === row.id)).toMatchObject({
+      category: "scam",
+      rulePile: "newsletters",
+      pile: "spam",
+    });
+  });
+
   it("makes no to-do from a message Gmail put in spam", async () => {
     const user = await addUser();
     const row = await mail(user, "Act now", { minutesAgo: 2 });

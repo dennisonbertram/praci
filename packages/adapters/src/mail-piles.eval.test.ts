@@ -339,6 +339,24 @@ const cases: Case[] = [
     headers: [fail()],
     prior: true,
   },
+  {
+    name: "forged prior contact with failed authentication, no brand and no list headers",
+    kind: "scam",
+    expected: null,
+    from: "Pat Example <pat@contact.example.test>",
+    subject: "Wire needed today",
+    headers: [fail()],
+    prior: true,
+  },
+  {
+    name: "forged important-marked sender with failed authentication",
+    kind: "scam",
+    expected: null,
+    from: "Pat Example <pat@contact.example.test>",
+    subject: "Wire needed today",
+    headers: [fail()],
+    mark: "important",
+  },
 ];
 
 function run(testCase: Case) {

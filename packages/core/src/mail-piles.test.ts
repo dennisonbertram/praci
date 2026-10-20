@@ -1,6 +1,6 @@
 import { InboxCategorySchema, type MailSignals } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { classifyPile, type PileInput, pileFromCategory } from "./mail-piles.js";
+import { classifyPile, type PileInput, pileFromCategory, resolvePile } from "./mail-piles.js";
 
 const quiet: MailSignals = {
   listUnsubscribe: [],
@@ -51,6 +51,13 @@ describe("classifyPile stage order", () => {
       pile: "important",
       reasons: ["marked_important"],
     });
+  });
+
+  it("leaves failed authentication from a prior contact or an important mark to the model", () => {
+    const forged = withSignals({ auth: { dkim: "fail", spf: "fail", dmarc: "fail" } });
+    const expected = { pile: null, reasons: ["auth_failed"] };
+    expect(classifyPile(input({ signals: forged, priorContact: true }))).toEqual(expected);
+    expect(classifyPile(input({ signals: forged, senderMark: "important" }))).toEqual(expected);
   });
 
   it("does not turn prior contact into important for a sender marked noise", () => {
@@ -227,5 +234,20 @@ describe("pileFromCategory", () => {
     expect(pileFromCategory("scam")).toBe("spam");
     expect(pileFromCategory(null)).toBeNull();
     expect(pileFromCategory("something-new")).toBeNull();
+  });
+});
+
+describe("resolvePile", () => {
+  it("keeps the rule pile over a non-spam model verdict", () => {
+    expect(resolvePile("newsletters", "personal")).toBe("newsletters");
+    expect(resolvePile(null, "personal")).toBe("important");
+    expect(resolvePile(null, null)).toBeNull();
+  });
+
+  it("lets a spam, scam or suspicious verdict beat any rule pile", () => {
+    for (const category of ["spam", "scam", "suspicious"]) {
+      expect(resolvePile("newsletters", category)).toBe("spam");
+      expect(resolvePile("important", category)).toBe("spam");
+    }
   });
 });

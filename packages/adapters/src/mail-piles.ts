@@ -1,5 +1,5 @@
 import { MailSignalsSchema } from "@rakazo/contracts";
-import { classifyPile, pileFromCategory, senderMarkMap } from "@rakazo/core";
+import { classifyPile, resolvePile, senderMarkMap } from "@rakazo/core";
 import type { Prisma } from "@rakazo/db";
 import type { SenderScope } from "./mail-sender-stats.js";
 
@@ -68,7 +68,7 @@ export async function applyPileRules(
       priorContact: prior.get(address) ?? null,
     });
     const rulePile = decision.pile;
-    const pile = rulePile ?? pileFromCategory(row.category);
+    const pile = resolvePile(rulePile, row.category);
     const unchanged =
       row.rulePile === rulePile &&
       row.pile === pile &&
