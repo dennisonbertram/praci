@@ -524,7 +524,7 @@ msgid "{yieldAmount} last month"
 msgstr ""
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "@{0}"
 msgstr "@{0}"
 
@@ -627,7 +627,7 @@ msgstr "Comptes"
 msgid "Action confirmations"
 msgstr "Confirmations d'action"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Actions"
 msgstr ""
 
@@ -1339,7 +1339,7 @@ msgstr "à {timeSelect}"
 msgid "At least 8 characters."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "Joindre un fichier"
 
@@ -1351,8 +1351,8 @@ msgstr ""
 msgid "Attached {path}"
 msgstr ""
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attachment"
 msgstr "Pièce jointe"
 
@@ -1561,9 +1561,12 @@ msgstr ""
 msgid "Bills"
 msgstr ""
 
-#: src/components/NotificationSettings.tsx
 #: src/lib/ticket-status.ts
 msgid "Blocked"
+msgstr ""
+
+#: src/components/NotificationSettings.tsx
+msgid "Blocked in browser settings"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -1703,7 +1706,7 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Call Elio"
 msgstr ""
 
@@ -1917,7 +1920,7 @@ msgstr "Applications de discussion"
 msgid "Chat apps, group channels, and agent connections."
 msgstr "Applications de discussion, canaux de groupe et connexions d'agent."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr ""
 
@@ -3052,6 +3055,10 @@ msgstr ""
 msgid "Could not save this choice"
 msgstr "Impossible d'enregistrer ce choix"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Could not save time zone"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Could not search"
 msgstr ""
@@ -3608,6 +3615,7 @@ msgstr "Déconnexion en cours…"
 #: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr "Fermer"
@@ -5306,7 +5314,7 @@ msgstr "Mémoire"
 msgid "Memory scope"
 msgstr "Portée de la mémoire"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Mentions"
 msgstr "Mentions"
 
@@ -5324,16 +5332,16 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "Message"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message {activeName}"
 msgstr "Message à {activeName}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr "Zone de composition"
 
@@ -5345,7 +5353,7 @@ msgstr "Événement de message"
 msgid "Message from {peer}"
 msgstr "Message de {peer}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message…"
 msgstr "Message…"
 
@@ -5628,7 +5636,7 @@ msgstr ""
 msgid "Needs reply"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Needs sign-in"
 msgstr ""
 
@@ -5875,6 +5883,7 @@ msgstr ""
 msgid "No mail matches this filter"
 msgstr ""
 
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
@@ -5884,7 +5893,7 @@ msgstr ""
 msgid "No matches in chats, pages, documents or artifacts."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
@@ -6122,6 +6131,10 @@ msgstr ""
 msgid "Not spam"
 msgstr ""
 
+#: src/components/NotificationSettings.tsx
+msgid "Not supported here"
+msgstr ""
+
 #: src/components/data-room/ItemRows.tsx
 msgid "Not tagged"
 msgstr ""
@@ -6350,7 +6363,7 @@ msgstr ""
 msgid "Open server integrations"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Open Settings"
 msgstr ""
 
@@ -6644,8 +6657,8 @@ msgstr ""
 msgid "Phone"
 msgstr ""
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Photo"
 msgstr "Photo"
 
@@ -7137,7 +7150,7 @@ msgstr "Retirer"
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove {0}"
 msgstr "Retirer {0}"
 
@@ -7190,7 +7203,7 @@ msgid "Remove link"
 msgstr ""
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove mention {0}"
 msgstr "Retirer la mention {0}"
 
@@ -7203,7 +7216,7 @@ msgid "Remove schedule"
 msgstr "Retirer la planification"
 
 #. placeholder {0}: slashSkillLabel(selectedSkill).title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove skill {0}"
 msgstr "Retirer la compétence {0}"
 
@@ -7313,13 +7326,17 @@ msgstr "Répondre"
 msgid "Reply all"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
 msgstr ""
 
 #. placeholder {0}: replyNameRef.current
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
+msgstr ""
+
+#: src/components/DataExport.tsx
+msgid "Request export"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -7504,7 +7521,7 @@ msgstr "En cours · Arrêter"
 msgid "Running…"
 msgstr "Exécution en cours…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr ""
 
@@ -7663,6 +7680,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -7784,7 +7802,7 @@ msgstr "Recherche en cours…"
 msgid "Security"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "See usage"
 msgstr ""
 
@@ -7827,7 +7845,7 @@ msgstr ""
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr "Envoyer"
 
@@ -8147,16 +8165,16 @@ msgid "Size"
 msgstr ""
 
 #. placeholder {0}: label.title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skill {0}"
 msgstr "Compétence {0}"
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills and actions"
 msgstr ""
 
@@ -8410,6 +8428,7 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Stop"
 msgstr "Arrêter"
 
@@ -8905,6 +8924,10 @@ msgstr "Heure de la journée"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Time zone"
+msgstr ""
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Time zone updated"
 msgstr ""
 
 #: src/pages/Board.tsx

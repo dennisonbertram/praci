@@ -524,7 +524,7 @@ msgid "{yieldAmount} last month"
 msgstr ""
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "@{0}"
 msgstr "@{0}"
 
@@ -627,7 +627,7 @@ msgstr ""
 msgid "Action confirmations"
 msgstr "操作确认"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Actions"
 msgstr ""
 
@@ -1339,7 +1339,7 @@ msgstr "{timeSelect}"
 msgid "At least 8 characters."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "附加文件"
 
@@ -1351,8 +1351,8 @@ msgstr ""
 msgid "Attached {path}"
 msgstr ""
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attachment"
 msgstr "附件"
 
@@ -1561,9 +1561,12 @@ msgstr ""
 msgid "Bills"
 msgstr ""
 
-#: src/components/NotificationSettings.tsx
 #: src/lib/ticket-status.ts
 msgid "Blocked"
+msgstr ""
+
+#: src/components/NotificationSettings.tsx
+msgid "Blocked in browser settings"
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -1703,7 +1706,7 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Call Elio"
 msgstr ""
 
@@ -1917,7 +1920,7 @@ msgstr "聊天应用"
 msgid "Chat apps, group channels, and agent connections."
 msgstr "聊天应用、群组频道和 Agent 连接。"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr ""
 
@@ -3052,6 +3055,10 @@ msgstr ""
 msgid "Could not save this choice"
 msgstr "无法保存此选择"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Could not save time zone"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Could not search"
 msgstr ""
@@ -3608,6 +3615,7 @@ msgstr "正在断开…"
 #: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr ""
@@ -5306,7 +5314,7 @@ msgstr "记忆"
 msgid "Memory scope"
 msgstr "记忆范围"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Mentions"
 msgstr "提及"
 
@@ -5324,16 +5332,16 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "消息"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message {activeName}"
 msgstr "给 {activeName} 发消息"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr "消息输入框"
 
@@ -5345,7 +5353,7 @@ msgstr ""
 msgid "Message from {peer}"
 msgstr "来自 {peer} 的消息"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message…"
 msgstr "消息…"
 
@@ -5628,7 +5636,7 @@ msgstr ""
 msgid "Needs reply"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Needs sign-in"
 msgstr ""
 
@@ -5875,6 +5883,7 @@ msgstr ""
 msgid "No mail matches this filter"
 msgstr ""
 
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
@@ -5884,7 +5893,7 @@ msgstr ""
 msgid "No matches in chats, pages, documents or artifacts."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
@@ -6122,6 +6131,10 @@ msgstr ""
 msgid "Not spam"
 msgstr ""
 
+#: src/components/NotificationSettings.tsx
+msgid "Not supported here"
+msgstr ""
+
 #: src/components/data-room/ItemRows.tsx
 msgid "Not tagged"
 msgstr ""
@@ -6350,7 +6363,7 @@ msgstr ""
 msgid "Open server integrations"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Open Settings"
 msgstr ""
 
@@ -6644,8 +6657,8 @@ msgstr ""
 msgid "Phone"
 msgstr ""
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Photo"
 msgstr "照片"
 
@@ -7137,7 +7150,7 @@ msgstr "移除"
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove {0}"
 msgstr "移除 {0}"
 
@@ -7190,7 +7203,7 @@ msgid "Remove link"
 msgstr ""
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove mention {0}"
 msgstr "移除提及 {0}"
 
@@ -7203,7 +7216,7 @@ msgid "Remove schedule"
 msgstr "移除计划"
 
 #. placeholder {0}: slashSkillLabel(selectedSkill).title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove skill {0}"
 msgstr "移除技能 {0}"
 
@@ -7313,13 +7326,17 @@ msgstr "回复"
 msgid "Reply all"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
 msgstr ""
 
 #. placeholder {0}: replyNameRef.current
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
+msgstr ""
+
+#: src/components/DataExport.tsx
+msgid "Request export"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -7504,7 +7521,7 @@ msgstr "运行中 · 停止"
 msgid "Running…"
 msgstr "正在运行…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr ""
 
@@ -7663,6 +7680,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -7784,7 +7802,7 @@ msgstr "正在搜索…"
 msgid "Security"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "See usage"
 msgstr ""
 
@@ -7827,7 +7845,7 @@ msgstr ""
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr "发送"
 
@@ -8147,16 +8165,16 @@ msgid "Size"
 msgstr ""
 
 #. placeholder {0}: label.title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skill {0}"
 msgstr "技能 {0}"
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills and actions"
 msgstr ""
 
@@ -8410,6 +8428,7 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Stop"
 msgstr "停止"
 
@@ -8905,6 +8924,10 @@ msgstr "时间"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Time zone"
+msgstr ""
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Time zone updated"
 msgstr ""
 
 #: src/pages/Board.tsx

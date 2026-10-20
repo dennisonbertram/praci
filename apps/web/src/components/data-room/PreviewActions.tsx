@@ -89,7 +89,8 @@ export function FileViewer({
     );
   return item.mimeType === "application/pdf" ? (
     <iframe
-      src={file.url}
+      // Hide the browser viewer's own Download and Print: the pane has Open and Download.
+      src={`${file.url}#toolbar=0`}
       title={item.name}
       className={`w-full shrink-0 rounded-md border border-border bg-muted ${fill ? "h-full" : "h-[60vh]"}`}
     />

@@ -3,12 +3,18 @@ import type { AccountSecurity, AvatarStyle } from "@rakazo/contracts";
 import {
   BotAvatar,
   Button,
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
   Field,
   FieldLabel,
   Input,
   Label,
-  NativeSelect,
-  NativeSelectOption,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
   Switch,
   Toggle,
 } from "@rakazo/ui-web";
@@ -204,27 +210,15 @@ export function GeneralSettingsPanels({
           <Trans>Language</Trans>
         </h3>
         <UiLocalePicker value={locale} onChange={chooseLocale} />
+        {timezone && onTimezoneChange ? (
+          <>
+            <h3 className="mt-5 text-[15px] font-medium text-foreground">
+              <Trans>Time zone</Trans>
+            </h3>
+            <TimezonePicker value={timezone} onChange={onTimezoneChange} />
+          </>
+        ) : null}
       </section>
-
-      {timezone && onTimezoneChange ? (
-        <section className="rounded-xl border border-border px-4 py-4">
-          <h3 className="text-[15px] font-medium text-foreground">
-            <Trans>Time zone</Trans>
-          </h3>
-          <NativeSelect
-            aria-label={t`Time zone`}
-            className="mt-3 w-full"
-            value={timezone}
-            onChange={(event) => void onTimezoneChange(event.target.value).catch(() => undefined)}
-          >
-            {timezoneOptions(timezone).map((zone) => (
-              <NativeSelectOption key={zone} value={zone}>
-                {zone.replaceAll("_", " ")}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </section>
-      ) : null}
 
       <section
         className="rounded-xl border border-border px-4 py-4"
@@ -599,9 +593,92 @@ function AppearancePicker({
   );
 }
 
+function timezoneLabel(zone: string): string {
+  const offset = new Intl.DateTimeFormat("en", { timeZone: zone, timeZoneName: "shortOffset" })
+    .formatToParts()
+    .find((part) => part.type === "timeZoneName")?.value;
+  const city = (zone.split("/").pop() ?? zone).replaceAll("_", " ");
+  return `${city} (${offset?.replace("GMT", "UTC") ?? "UTC"})`;
+}
+
+/** The browser's zone first, then the rest alphabetically; the current value is always listed. */
 function timezoneOptions(current: string): string[] {
-  const zones = Intl.supportedValuesOf("timeZone");
-  return zones.includes(current) ? zones : [current, ...zones];
+  const browser = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const all = new Set([current, ...Intl.supportedValuesOf("timeZone")]);
+  all.delete(browser);
+  return [browser, ...all];
+}
+
+function TimezonePicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (timezone: string) => Promise<void>;
+}) {
+  const { t } = useLingui();
+  const [open, setOpen] = useState(false);
+  const [pending, setPending] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function choose(zone: string) {
+    setOpen(false);
+    if (zone === value || pending) return;
+    setPending(zone);
+    setSaved(false);
+    setError(null);
+    try {
+      await onChange(zone);
+      setSaved(true);
+    } catch {
+      setError(t`Could not save time zone`);
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    <div className="mt-3">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={<Button variant="outline" className="w-full justify-between font-normal" />}
+          aria-label={t`Time zone`}
+          disabled={pending !== null}
+        >
+          {timezoneLabel(pending ?? value)}
+          <ChevronDown aria-hidden="true" />
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-(--anchor-width) min-w-64 p-0">
+          <Command>
+            <CommandInput placeholder={t`Search`} />
+            <CommandList>
+              <CommandEmpty>
+                <Trans>No matches</Trans>
+              </CommandEmpty>
+              {timezoneOptions(value).map((zone) => (
+                <CommandItem
+                  key={zone}
+                  value={zone}
+                  keywords={[timezoneLabel(zone)]}
+                  data-checked={zone === value}
+                  onSelect={() => void choose(zone)}
+                >
+                  {timezoneLabel(zone)}
+                </CommandItem>
+              ))}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+      {error ? (
+        <p role="alert" className="mt-3 text-[12.5px] text-destructive">
+          {error}
+        </p>
+      ) : null}
+      {saved ? <SuccessPop label={t`Time zone updated`} /> : null}
+    </div>
+  );
 }
 
 function UiLocalePicker({
