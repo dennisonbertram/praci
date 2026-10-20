@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/client";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { DATA_ROOM_METADATA_ORDINAL } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { isInProgress } from "../../lib/data-room";
+import { canOpenInBrowser, isInProgress } from "../../lib/data-room";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
@@ -31,6 +31,9 @@ export type Row = { item: DataRoomApiItem; snippets: string[] };
 const LIST_PAGE = 50;
 const SEARCH_PAGE = 20;
 const POLL_MS = 3_000;
+/** Thumbnails are drawn after the list first shows an item: look again a few times for them. */
+const THUMBNAIL_WAIT_MS = 5_000;
+const THUMBNAIL_TRIES = 3;
 
 /** The value the server orders by, so a change to it means the row's place in the order changed. */
 function sortValue(item: DataRoomApiItem, sort: Sort | null) {
@@ -239,6 +242,39 @@ export function useDataRoomList(q: ListQuery) {
     }, POLL_MS);
     return () => clearInterval(timer);
   }, [pendingIds]);
+
+  // ponytail: refreshes only the first page; rows further down get theirs on the next reload.
+  const thumbnailTries = useRef(0);
+  const waiting = state.rows.some(
+    ({ item }) => canOpenInBrowser(item) && !item.hasThumbnail && item.status !== "failed",
+  );
+  // A new query starts the count again.
+  useEffect(() => {
+    thumbnailTries.current = 0;
+  }, [key]);
+  useEffect(() => {
+    if (!waiting || state.loading || q.query || thumbnailTries.current >= THUMBNAIL_TRIES) return;
+    const timer = setTimeout(() => {
+      thumbnailTries.current += 1;
+      const id = generation.current;
+      fetchPage(latest.current)
+        .then((page) => {
+          if (id !== generation.current) return;
+          const drawn = new Map(
+            page.rows.filter((row) => row.item.hasThumbnail).map((row) => [row.item.id, row.item]),
+          );
+          setState((s) => ({
+            ...s,
+            rows: s.rows.map((row) => {
+              const item = drawn.get(row.item.id);
+              return item ? { ...row, item: { ...row.item, hasThumbnail: true } } : row;
+            }),
+          }));
+        })
+        .catch(() => undefined);
+    }, THUMBNAIL_WAIT_MS);
+    return () => clearTimeout(timer);
+  }, [waiting, state.rows, state.loading, q.query]);
 
   return { ...state, loadMore, reload };
 }

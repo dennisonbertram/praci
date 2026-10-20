@@ -18,9 +18,16 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { FileImage, FileSpreadsheet, FileText, Folder } from "lucide-react";
-import type { KeyboardEvent, ReactElement, ReactNode } from "react";
-import { cloneElement } from "react";
-import { splitSnippet } from "../../lib/data-room";
+import {
+  cloneElement,
+  type KeyboardEvent,
+  type ReactElement,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import { dataRoomThumbnailUrl, splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { dateText, isSettled, statusLabel, typeLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
@@ -126,12 +133,10 @@ function Marker({ item }: { item: DataRoomApiItem }) {
 }
 
 const SHEET = /^text\/(csv|tab-separated-values)$|spreadsheet|ms-excel/;
-export const fileIcon = ({ mimeType, name }: Pick<DataRoomApiItem, "mimeType" | "name">) =>
-  mimeType.startsWith("image/")
-    ? FileImage
-    : SHEET.test(mimeType) || /\.(csv|tsv|xlsx?)$/i.test(name)
-      ? FileSpreadsheet
-      : FileText;
+const isSheet = ({ mimeType, name }: Pick<DataRoomApiItem, "mimeType" | "name">) =>
+  SHEET.test(mimeType) || /\.(csv|tsv|xlsx?)$/i.test(name);
+export const fileIcon = (item: Pick<DataRoomApiItem, "mimeType" | "name">) =>
+  item.mimeType.startsWith("image/") ? FileImage : isSheet(item) ? FileSpreadsheet : FileText;
 
 const DASH = "—";
 const empty = <span className="text-muted-foreground">{DASH}</span>;
@@ -461,6 +466,102 @@ export function ListView({
   );
 }
 
+/** The picture area at the top of a file tile: one fixed shape, so tiles line up. */
+const PREVIEW_AREA =
+  "relative grid aspect-4/5 w-full place-items-center overflow-hidden rounded-md bg-muted [&>svg]:size-6";
+
+/**
+ * The drawn thumbnail, fetched with the session once the tile nears the screen. The file icon
+ * shows until it arrives, and stays if it cannot be read.
+ */
+function ThumbnailImage({ item }: { item: DataRoomApiItem }) {
+  const [near, setNear] = useState(typeof IntersectionObserver === "undefined");
+  const [url, setUrl] = useState("");
+  const area = useRef<HTMLSpanElement>(null);
+  const { id } = item;
+  useEffect(() => {
+    const node = area.current;
+    if (near || !node) return;
+    const observer = new IntersectionObserver(
+      (entries) => entries.some((entry) => entry.isIntersecting) && setNear(true),
+      { rootMargin: "200px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [near]);
+  useEffect(() => {
+    if (!near) return;
+    let live = true;
+    let made = "";
+    dataRoomThumbnailUrl({ id })
+      .then((next) => {
+        made = next;
+        if (live) setUrl(next);
+        else URL.revokeObjectURL(next);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+      if (made) URL.revokeObjectURL(made);
+    };
+  }, [near, id]);
+  return (
+    <span ref={area} className={PREVIEW_AREA}>
+      {url ? (
+        <img
+          src={url}
+          alt=""
+          loading="lazy"
+          className={cn(
+            "absolute inset-0 size-full",
+            item.mimeType === "application/pdf" ? "object-contain object-top" : "object-cover",
+          )}
+        />
+      ) : (
+        <Marker item={item} />
+      )}
+    </span>
+  );
+}
+
+/** The first lines of a sheet, document or text file, as a small page; amounts follow the hide switch. */
+function TextPreview({ item, text }: { item: DataRoomApiItem; text: string }) {
+  const sheet = isSheet(item);
+  const shown = maskCurrencyWhenHidden(sheet ? text.replaceAll("\t", " | ") : text);
+  return (
+    <span className={cn(PREVIEW_AREA, "place-items-start bg-card p-2")}>
+      <span
+        aria-hidden="true"
+        className={cn(
+          "size-full overflow-hidden text-start text-[9px] leading-snug text-foreground/70",
+          sheet ? "font-mono whitespace-pre" : "break-words whitespace-pre-wrap",
+        )}
+      >
+        {shown}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * What a file tile shows above its name: the thumbnail of a PDF or image, the start of the text
+ * of a sheet or document, or else the file icon (also while reading, on failure, and for a
+ * thumbnail while amounts are hidden, since it cannot be masked).
+ */
+function TilePreview({ item }: { item: DataRoomApiItem }) {
+  const hidden = useHideAmounts();
+  if (item.status !== "failed") {
+    if (item.hasThumbnail && !hidden) return <ThumbnailImage item={item} />;
+    const picture = item.mimeType.startsWith("image/") || item.mimeType === "application/pdf";
+    if (!picture && item.previewText) return <TextPreview item={item} text={item.previewText} />;
+  }
+  return (
+    <span className={PREVIEW_AREA}>
+      <Marker item={item} />
+    </span>
+  );
+}
+
 export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
   return (
     <ul aria-label={t`Items`} data-rows className={TILE_GRID}>
@@ -480,16 +581,14 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
             />
           }
         >
-          <span className={ICON_AREA}>
-            <Marker item={item} />
-          </span>
+          <TilePreview item={item} />
           <ItemMenu
             item={item}
             onAction={o.onAction}
             canRetry={item.status === "failed"}
             agents={o.agents}
             onSendToAgent={o.onSendToAgent}
-            className="absolute top-3 right-3"
+            className="absolute top-3 right-3 bg-card/80"
           />
           {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
           <span className="line-clamp-3 min-h-15 font-medium break-words" title={item.name}>

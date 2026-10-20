@@ -22,7 +22,12 @@ import { performComputerUpdate } from "./computer-update.js";
 import { runBoxFileImport, runBoxImport } from "./data-room-box-import.js";
 import { runDriveFileImport, runDriveImport } from "./data-room-drive-import.js";
 import type { DataRoomJobDeps } from "./data-room-jobs.js";
-import { runDataRoomClassify, runDataRoomIndex, runDataRoomIngest } from "./data-room-jobs.js";
+import {
+  runDataRoomClassify,
+  runDataRoomIndex,
+  runDataRoomIngest,
+  runDataRoomThumbnail,
+} from "./data-room-jobs.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
 import type { DriveFilesDeps } from "./drive-files.js";
 import { syncExchanges } from "./exchange-sync.js";
@@ -39,6 +44,7 @@ import { deliverDueNotifications } from "./notification-outbox.js";
 import { renderPdfPages } from "./pdf-render.js";
 import { syncCryptoHoldings } from "./rpc-crypto-sync.js";
 import { expireTaughtSkillTeaching } from "./teaching-session.js";
+import { renderThumbnail } from "./thumbnail-render.js";
 
 export function createBackgroundJobHandlers(deps: {
   executor: ReturnType<typeof createRunExecutor>;
@@ -89,6 +95,7 @@ export function createBackgroundJobHandlers(deps: {
       artifacts: deps.artifacts,
       runtime: deps.runtime,
       renderPdfPages,
+      renderThumbnail,
       resolveAi: (scope) =>
         resolveDataRoomAi({ prisma: deps.prisma, resolveModel: deps.executor.resolveModel }, scope),
     };
@@ -161,7 +168,10 @@ export function createBackgroundJobHandlers(deps: {
       // ponytail: a long row delete outlasting every retry leaks the blob; use a transactional
       // outbox if that ever matters.
       const live = await deps.prisma.dataRoomItem.findFirst({
-        where: { spaceId: payload.spaceId, storageKey: payload.storageKey },
+        where: {
+          spaceId: payload.spaceId,
+          OR: [{ storageKey: payload.storageKey }, { thumbnailKey: payload.storageKey }],
+        },
         select: { id: true },
       });
       if (live) throw new Error("Data room item still references this blob");
@@ -177,6 +187,7 @@ export function createBackgroundJobHandlers(deps: {
     "dataroom.ingest": (payload) => runDataRoomIngest(dataRoomDeps(), payload),
     "dataroom.classify": (payload) => runDataRoomClassify(dataRoomDeps(), payload),
     "dataroom.index": (payload) => runDataRoomIndex(dataRoomDeps(), payload),
+    "dataroom.thumbnail": (payload) => runDataRoomThumbnail(dataRoomDeps(), payload),
     "dataroom.drive.import": (payload) =>
       runDriveImport({ prisma: deps.prisma, jobs: deps.jobs }, payload),
     "dataroom.drive.file": async (payload) => {

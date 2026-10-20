@@ -682,6 +682,8 @@ export interface BackgroundJobPayloads {
   "dataroom.ingest": { spaceId: string; userId: string; itemId: string };
   "dataroom.classify": { spaceId: string; userId: string; itemId: string };
   "dataroom.index": { spaceId: string; userId: string; itemId: string };
+  /** Makes the small preview image of one PDF or image; outside the pipeline, queued when a list first shows the item. */
+  "dataroom.thumbnail": { spaceId: string; userId: string; itemId: string };
   /**
    * A planned Drive folder import: creates the Data room folders, then queues one
    * `dataroom.drive.file` job per file. Safe to run again after a partial failure.

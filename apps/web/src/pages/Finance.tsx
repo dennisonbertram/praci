@@ -32,7 +32,7 @@ import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { AddAccountDialog, type CryptoChoice } from "../components/finance/AddAccountDialog";
-import { type BarGranularity, BurnBars } from "../components/finance/charts";
+import { type BarGranularity, BurnLines } from "../components/finance/charts";
 import { StatementReminderBanner } from "../components/finance/StatementReminderBanner";
 import {
   AskAgentButton,
@@ -101,10 +101,10 @@ const CONNECT_PATH = "/app/integrations?category=finance";
 const MAX_ROWS = 7;
 /** The Burn chart's bucket size for each period. */
 const BAR_GRANULARITY: Record<SpendPeriod, BarGranularity> = {
-  week: "day",
-  month: "day",
-  quarter: "week",
-  year: "month",
+  week: "week",
+  month: "month",
+  quarter: "quarter",
+  year: "year",
 };
 
 /** The Finance area: the dashboard at /app/finance and its detail pages. */
@@ -611,7 +611,7 @@ function Overview({
                 <Trans>No money in or out in this period yet.</Trans>
               </div>
             ) : (
-              <BurnBars
+              <BurnLines
                 series={bars}
                 granularity={barGranularity}
                 label={t`Cash out and cash in over time`}

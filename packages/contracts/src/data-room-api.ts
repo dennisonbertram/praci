@@ -51,6 +51,10 @@ export const DataRoomApiItemSchema = z.object({
   error: z.string().nullable(),
   facets: DataRoomApiFacetsSchema,
   createdAt: z.string().datetime(),
+  /** A thumbnail can be fetched from `/api/data-room/items/:id/thumbnail`. */
+  hasThumbnail: z.boolean(),
+  /** The first ~400 characters of the extracted text, for the grid; null when there is none. */
+  previewText: z.string().nullable(),
 });
 export type DataRoomApiItem = z.infer<typeof DataRoomApiItemSchema>;
 

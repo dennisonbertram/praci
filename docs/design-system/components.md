@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 205 of 205
-- Web and shared components: 583
+- Web and shared component files with stories: 206 of 206
+- Web and shared components: 589
 - Mobile components: 127 in 88 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -82,6 +82,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | FinanceCards, FinanceCardGroup, Header, Preview | [apps/web/src/components/FinanceCards.tsx](../../apps/web/src/components/FinanceCards.tsx) | [FinanceCards.stories.tsx](../../apps/web/src/components/FinanceCards.stories.tsx) | web |
 | HideAmountsButton, HideAmountsMenuItem | [apps/web/src/components/HideAmountsToggle.tsx](../../apps/web/src/components/HideAmountsToggle.tsx) | [HideAmountsToggle.stories.tsx](../../apps/web/src/components/HideAmountsToggle.stories.tsx) | web |
 | I18nBootstrap | [apps/web/src/components/I18nBootstrap.tsx](../../apps/web/src/components/I18nBootstrap.tsx) | [I18nBootstrap.stories.tsx](../../apps/web/src/components/I18nBootstrap.stories.tsx) | web |
+| Tip, SearchField, PickFilter, SortControl | [apps/web/src/components/ListControls.tsx](../../apps/web/src/components/ListControls.tsx) | [ListControls.stories.tsx](../../apps/web/src/components/ListControls.stories.tsx) | web |
 | Row, MailApprovalCard | [apps/web/src/components/MailApprovalCard.tsx](../../apps/web/src/components/MailApprovalCard.tsx) | [MailApprovalCard.stories.tsx](../../apps/web/src/components/MailApprovalCard.stories.tsx) | web |
 | MailOutbox | [apps/web/src/components/MailOutbox.tsx](../../apps/web/src/components/MailOutbox.tsx) | [MailOutbox.stories.tsx](../../apps/web/src/components/MailOutbox.stories.tsx) | web |
 | MarkdownLinkPrompt | [apps/web/src/components/markdown-link-prompt.tsx](../../apps/web/src/components/markdown-link-prompt.tsx) | [markdown-link-prompt.stories.tsx](../../apps/web/src/components/markdown-link-prompt.stories.tsx) | web |
@@ -143,7 +144,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | DataRoomRefChips | [apps/web/src/components/data-room/DataRoomRefChips.tsx](../../apps/web/src/components/data-room/DataRoomRefChips.tsx) | [DataRoomRefChips.stories.tsx](../../apps/web/src/components/data-room/DataRoomRefChips.stories.tsx) | web |
 | DriveRow | [apps/web/src/components/data-room/DriveRow.tsx](../../apps/web/src/components/data-room/DriveRow.tsx) | [DriveRow.stories.tsx](../../apps/web/src/components/data-room/DriveRow.stories.tsx) | web |
 | DataRoomDropZone | [apps/web/src/components/data-room/DropZone.tsx](../../apps/web/src/components/data-room/DropZone.tsx) | [DropZone.stories.tsx](../../apps/web/src/components/data-room/DropZone.stories.tsx) | web |
-| Tip, ToolbarTip, Chip, DateFilter, PickFilter, FilterBar | [apps/web/src/components/data-room/FilterBar.tsx](../../apps/web/src/components/data-room/FilterBar.tsx) | [FilterBar.stories.tsx](../../apps/web/src/components/data-room/FilterBar.stories.tsx) | web |
+| ToolbarTip, Chip, DateFilter, FilterBar | [apps/web/src/components/data-room/FilterBar.tsx](../../apps/web/src/components/data-room/FilterBar.tsx) | [FilterBar.stories.tsx](../../apps/web/src/components/data-room/FilterBar.stories.tsx) | web |
 | FolderDocuments | [apps/web/src/components/data-room/FolderDocuments.tsx](../../apps/web/src/components/data-room/FolderDocuments.tsx) | [FolderDocuments.stories.tsx](../../apps/web/src/components/data-room/FolderDocuments.stories.tsx) | web |
 | FolderTree | [apps/web/src/components/data-room/FolderTree.tsx](../../apps/web/src/components/data-room/FolderTree.tsx) | [FolderTree.stories.tsx](../../apps/web/src/components/data-room/FolderTree.stories.tsx) | web |
 | ImportActivity | [apps/web/src/components/data-room/ImportActivity.tsx](../../apps/web/src/components/data-room/ImportActivity.tsx) | [ImportActivity.stories.tsx](../../apps/web/src/components/data-room/ImportActivity.stories.tsx) | web |
@@ -151,7 +152,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | MessageRow, EmailPicker, ImportSources | [apps/web/src/components/data-room/ImportFromEmail.tsx](../../apps/web/src/components/data-room/ImportFromEmail.tsx) | [ImportFromEmail.stories.tsx](../../apps/web/src/components/data-room/ImportFromEmail.stories.tsx) | web |
 | NameInput, FolderOptions, NewFolderDialog, ItemDialog, DeleteDialog | [apps/web/src/components/data-room/ItemDialogs.tsx](../../apps/web/src/components/data-room/ItemDialogs.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx) | web |
 | ItemMenu | [apps/web/src/components/data-room/ItemMenu.tsx](../../apps/web/src/components/data-room/ItemMenu.tsx) | [ItemDialogs.stories.tsx](../../apps/web/src/components/data-room/ItemDialogs.stories.tsx), [ItemMenu.stories.tsx](../../apps/web/src/components/data-room/ItemMenu.stories.tsx) | web |
-| FileContext, Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
+| FileContext, Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, ThumbnailImage, TextPreview, TilePreview, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
 | Field, Tag, FilePreview, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
 | SendToAgentMenu | [apps/web/src/components/data-room/SendToAgent.tsx](../../apps/web/src/components/data-room/SendToAgent.tsx) | [SendToAgent.stories.tsx](../../apps/web/src/components/data-room/SendToAgent.stories.tsx) | web |
 
@@ -160,7 +161,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | Option, AddAccountDialog | [apps/web/src/components/finance/AddAccountDialog.tsx](../../apps/web/src/components/finance/AddAccountDialog.tsx) | [AddAccountDialog.stories.tsx](../../apps/web/src/components/finance/AddAccountDialog.stories.tsx) | web |
-| Chart, Grid, LineChart, BurnBars, MonthBars, StackBar | [apps/web/src/components/finance/charts.tsx](../../apps/web/src/components/finance/charts.tsx) | [charts.stories.tsx](../../apps/web/src/components/finance/charts.stories.tsx) | web |
+| Chart, Grid, LineChart, BurnLines, MonthBars, StackBar | [apps/web/src/components/finance/charts.tsx](../../apps/web/src/components/finance/charts.tsx) | [charts.stories.tsx](../../apps/web/src/components/finance/charts.stories.tsx) | web |
 | CountCryptoButton | [apps/web/src/components/finance/CountCryptoButton.tsx](../../apps/web/src/components/finance/CountCryptoButton.tsx) | [CountCryptoButton.stories.tsx](../../apps/web/src/components/finance/CountCryptoButton.stories.tsx) | web |
 | ExchangeGroup | [apps/web/src/components/finance/ExchangeGroup.tsx](../../apps/web/src/components/finance/ExchangeGroup.tsx) | [ExchangeGroup.stories.tsx](../../apps/web/src/components/finance/ExchangeGroup.stories.tsx) | web |
 | RenameAccountDialog | [apps/web/src/components/finance/RenameAccountDialog.tsx](../../apps/web/src/components/finance/RenameAccountDialog.tsx) | [RenameAccountDialog.stories.tsx](../../apps/web/src/components/finance/RenameAccountDialog.stories.tsx) | web |
@@ -279,7 +280,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | NewSpaceDialog, RenameSpaceDialog, PickerInfoDialog, NewBotSectionDialog, RenameBotSectionDialog, ClearConversationDialog, DeleteBotDialog, DeleteItemDialog | [apps/web/src/pages/shell/dialogs.tsx](../../apps/web/src/pages/shell/dialogs.tsx) | [dialogs.stories.tsx](../../apps/web/src/pages/shell/dialogs.stories.tsx) | web |
 | GroupIntro | [apps/web/src/pages/shell/GroupIntro.tsx](../../apps/web/src/pages/shell/GroupIntro.tsx) | [GroupIntro.stories.tsx](../../apps/web/src/pages/shell/GroupIntro.stories.tsx) | web |
 | MentionIcon | [apps/web/src/pages/shell/mention-icon.tsx](../../apps/web/src/pages/shell/mention-icon.tsx) | [mention-icon.stories.tsx](../../apps/web/src/pages/shell/mention-icon.stories.tsx) | web |
-| ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionHint, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
+| ChoiceCard, OnboardingFocusQuestion, OnboardingFocusOptionHint, OnboardingFocusOptionLabel, AppConnectCard, ChartCanvas, ChartCanvasPlot, McpApprovalCard, ChartBlockView, ArtifactImage, ArtifactImageGrid | [apps/web/src/pages/shell/message-cards.tsx](../../apps/web/src/pages/shell/message-cards.tsx) | [message-cards.stories.tsx](../../apps/web/src/pages/shell/message-cards.stories.tsx) | web |
 | SidebarHeaderRow | [apps/web/src/pages/shell/sidebar-header-row.tsx](../../apps/web/src/pages/shell/sidebar-header-row.tsx) | [sidebar-header-row.stories.tsx](../../apps/web/src/pages/shell/sidebar-header-row.stories.tsx) | web |
 | Section, LinkRow, SpaceSearchResults | [apps/web/src/pages/SpaceSearch.tsx](../../apps/web/src/pages/SpaceSearch.tsx) | [SpaceSearch.stories.tsx](../../apps/web/src/pages/SpaceSearch.stories.tsx) | web |
 | VoiceSettingsOverlay | [apps/web/src/pages/VoiceSettingsOverlay.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.tsx) | [VoiceSettingsOverlay.stories.tsx](../../apps/web/src/pages/VoiceSettingsOverlay.stories.tsx) | web |

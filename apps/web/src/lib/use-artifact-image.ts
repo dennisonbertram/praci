@@ -63,28 +63,41 @@ function acquireDownload(target: ArtifactTarget, artifactId: string) {
   };
 }
 
-export function useArtifactImage(
+export function useArtifactImageState(
   target: ArtifactTarget | undefined,
   artifactId: string,
   enabled = true,
 ) {
-  const [src, setSrc] = useState<string | null>(null);
+  const [state, setState] = useState<{ src: string | null; failed: boolean }>({
+    src: null,
+    failed: false,
+  });
   const botId = target && "botId" in target ? target.botId : undefined;
   const groupId = target && "groupId" in target ? target.groupId : undefined;
   useEffect(() => {
-    setSrc(null);
+    setState({ src: null, failed: false });
     if (!enabled || (!botId && !groupId)) return;
     let cancelled = false;
     const download = acquireDownload(botId ? { botId } : { groupId: groupId! }, artifactId);
     void download.promise
       .then((objectUrl) => {
-        if (!cancelled) setSrc(objectUrl);
+        if (!cancelled) setState({ src: objectUrl, failed: false });
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setState({ src: null, failed: true });
+      });
     return () => {
       cancelled = true;
       download.release();
     };
   }, [artifactId, botId, groupId, enabled]);
-  return src;
+  return state;
+}
+
+export function useArtifactImage(
+  target: ArtifactTarget | undefined,
+  artifactId: string,
+  enabled = true,
+) {
+  return useArtifactImageState(target, artifactId, enabled).src;
 }

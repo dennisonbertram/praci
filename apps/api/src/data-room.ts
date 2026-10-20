@@ -32,6 +32,7 @@ import {
   dataRoomVisionKey,
   downloadBoxFile,
   downloadDriveFile,
+  hasThumbnailType,
   listBoxAccounts,
   listBoxFiles,
   listDriveAccounts,
@@ -133,6 +134,8 @@ export const itemDto = (item: DataRoomItemRecord): DataRoomApiItem => ({
     summary: item.summary,
   },
   createdAt: item.createdAt.toISOString(),
+  hasThumbnail: item.thumbnailKey !== null,
+  previewText: item.previewText,
 });
 
 /** A record the actor cannot see is "not found"; a folder name clash or cycle is a conflict. */
@@ -351,6 +354,23 @@ export function createDataRoomService(deps: DataRoomDeps) {
       dataRoomCall(async () => {
         const { limit, cursor, sort, ...filters } = input;
         const page = await repo.listItemsPage(actor, toFilters(filters), { sort, limit, cursor });
+        // Items shown without a thumbnail get one drawn, once; the grid shows it on a later read.
+        // ponytail: an item claimed here whose enqueue fails gets none; a retry flag if that matters.
+        const claimed = await repo.claimThumbnails(
+          actor,
+          page.items.flatMap((i) =>
+            i.storageKey && !i.thumbnailKey && !i.thumbnailTriedAt && hasThumbnailType(i)
+              ? [i.id]
+              : [],
+          ),
+        );
+        for (const id of claimed) {
+          await deps.jobs
+            .enqueue(dataRoomStepJob("dataroom.thumbnail", actor, id))
+            .catch((error: unknown) =>
+              getLogger().error("data room thumbnail enqueue failed", error),
+            );
+        }
         return { items: page.items.map(itemDto), nextCursor: page.nextCursor };
       }),
     item: (actor: Actor, id: string) =>
@@ -369,11 +389,12 @@ export function createDataRoomService(deps: DataRoomDeps) {
       }),
     deleteItem: (actor: Actor, id: string) =>
       dataRoomCall(async () => {
-        const { storageKey } = await repo.getItem(actor, id);
+        const { storageKey, thumbnailKey } = await repo.getItem(actor, id);
         // Queue the cleanup first: if the row delete fails, the job finds the row and keeps the blob.
-        if (storageKey) {
+        for (const key of [storageKey, thumbnailKey]) {
+          if (!key) continue;
           const at = new Date(Date.now() + (deps.blobDeleteDelayMs ?? 60_000));
-          await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, storageKey, at));
+          await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, key, at));
         }
         await repo.deleteItem(actor, id);
         return { ok: true as const };
@@ -1030,6 +1051,30 @@ export function mountDataRoomRoutes(
         "x-content-type-options": "nosniff",
         "content-security-policy": "sandbox; default-src 'none'",
         "cache-control": "private, no-store",
+      },
+    });
+  });
+
+  /** The small WebP we drew ourselves, so it may be shown inline; cached by the browser only. */
+  app.get("/api/data-room/items/:id/thumbnail", async (c) => {
+    const actor = await authenticate(c.req.raw);
+    if (!actor) return c.json({ error: "Unauthorized" }, 401);
+    const item = await repo.getItem(actor, c.req.param("id")).catch((error: unknown) => {
+      if (error instanceof IsolationError) return null;
+      throw error;
+    });
+    if (!item?.thumbnailKey) return c.json({ error: "Not found" }, 404);
+    const bytes = await deps.artifacts.get(
+      item.thumbnailKey,
+      dataRoomBlobContext(actor, "data-room.thumbnail"),
+    );
+    return new Response(new Uint8Array(bytes), {
+      headers: {
+        "content-type": "image/webp",
+        "content-length": String(bytes.byteLength),
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "sandbox; default-src 'none'",
+        "cache-control": "private, max-age=86400",
       },
     });
   });

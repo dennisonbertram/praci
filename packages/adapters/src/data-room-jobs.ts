@@ -57,6 +57,11 @@ export interface DataRoomJobDeps {
    * scanned PDFs are not read. The composition root supplies it so no native canvas is required.
    */
   renderPdfPages?: (bytes: Uint8Array, maxPages: number) => Promise<Uint8Array[]>;
+  /**
+   * Draws a WebP thumbnail of a PDF's first page or an image; null when it cannot. Without it,
+   * thumbnails are not made.
+   */
+  renderThumbnail?: (bytes: Uint8Array, type: string) => Promise<Uint8Array | null>;
   /** Test seam; the default is the space's chat model. */
   classifier?: (ai: DataRoomAi) => DataRoomClassifier;
 }
@@ -390,6 +395,38 @@ export async function runDataRoomIngest(deps: DataRoomJobDeps, payload: Payload)
     }
     return repo.finishExtraction(actorOf(payload), item.id, revision, text, extractKey);
   });
+}
+
+// --- Thumbnails ---------------------------------------------------------------------------------
+
+/** True for the files a thumbnail can be drawn from: PDFs and raster images. */
+export function hasThumbnailType(item: Pick<DataRoomItemRecord, "mimeType" | "name">): boolean {
+  const type = effectiveType(item.mimeType, item.name);
+  return type === "application/pdf" || IMAGE_TYPES.has(type);
+}
+
+/**
+ * Draws and stores the item's thumbnail. It runs outside the ingest steps, so the item's status and
+ * revision are untouched. A file that cannot be drawn simply gets none.
+ */
+export async function runDataRoomThumbnail(deps: DataRoomJobDeps, payload: Payload): Promise<void> {
+  const repo = createDataRoomRepos(deps.prisma);
+  const actor = actorOf(payload);
+  const item = await repo.findItem(actor, payload.itemId);
+  if (!item?.storageKey || item.thumbnailKey || !deps.renderThumbnail || !hasThumbnailType(item))
+    return;
+  const ctx = context(payload, "thumbnail");
+  const bytes = await deps.artifacts.get(item.storageKey, ctx);
+  const webp = await deps.renderThumbnail(bytes, effectiveType(item.mimeType, item.name));
+  if (!webp) return;
+  const stored = await deps.artifacts.put(
+    { name: `${item.id}.webp`, mimeType: "image/webp", bytes: webp },
+    ctx,
+  );
+  // The item was deleted meanwhile: drop the file nothing points to.
+  if (!(await repo.setThumbnail(actor, item.id, stored.id))) {
+    await deps.artifacts.remove(stored.id, ctx);
+  }
 }
 
 // --- Classification ----------------------------------------------------------------------------

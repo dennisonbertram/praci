@@ -202,6 +202,28 @@ export const ShareholdersTab: Story = {
     }),
 };
 
+const withHolders = (entry: string) => ({
+  parameters: { initialEntries: [entry] },
+  beforeEach: () =>
+    mockRpc({
+      "contacts.list": contacts,
+      "mcp.servers.list": [cartaServer],
+      "carta.capTable": { snapshot, syncing: false },
+    }),
+});
+
+/** Sorted by shares, smallest first; the contact with no holding stays last. */
+export const SortedByShares: Story = withHolders("/app/cap-table?sort=shares&dir=asc");
+
+/** Filtered to one security, with the Security pill showing it. */
+export const SecurityFilter: Story = withHolders("/app/cap-table?security=SAFE");
+
+/** A search that matches no one. */
+export const NoMatches: Story = withHolders("/app/cap-table?q=nobody");
+
+/** Search finds a holder by company. */
+export const SearchByCompany: Story = withHolders("/app/cap-table?q=newcomer");
+
 /** The cap table read failed: the error sits where the figures would be. */
 export const CapTableLoadFailed: Story = {
   beforeEach: () =>

@@ -1051,4 +1051,21 @@ describe("cashSeries", () => {
     const series = monthlySeries(txns, today);
     expect(series[11]).toMatchObject({ month: "2026-10", outCents: 210000, partial: true });
   });
+  it("buckets quarters and years, the current one partial, and covers a period from its first day", () => {
+    const quarters = cashSeries(txns, { granularity: "quarter", buckets: 2, now: today });
+    expect(quarters.map((q) => [q.start, q.end])).toEqual([
+      ["2026-07-01", "2026-09-30"],
+      ["2026-10-01", "2026-12-31"],
+    ]);
+    expect(quarters.map((q) => q.outCents)).toEqual([70000, 210000]);
+    expect(quarters[1]?.partial).toBe(true);
+    const years = cashSeries(txns, { granularity: "year", buckets: 2, now: today });
+    expect(years.map((y) => [y.start, y.end])).toEqual([
+      ["2025-01-01", "2025-12-31"],
+      ["2026-01-01", "2026-12-31"],
+    ]);
+    expect(years.map((y) => y.outCents)).toEqual([0, 280000]);
+    const sinceApril = cashSeries(txns, { granularity: "quarter", from: "2026-04-01", now: today });
+    expect(sinceApril.map((q) => q.start)).toEqual(["2026-04-01", "2026-07-01", "2026-10-01"]);
+  });
 });
