@@ -50,5 +50,11 @@ describe("runErrorText", () => {
   it("turns a provider 401 into words", () => {
     expect(runErrorText('401: {"code":401}')).toMatch(/did not accept your API key/);
     expect(runErrorText("member exploded")).toBe("member exploded");
+    expect(runErrorText("Invalid `x()` invocation in /app/db.ts:1:2")).toBe(
+      "Something went wrong. Try again.",
+    );
+    expect(runErrorText("Couldn't reach muse-spark-1.3. Try again.")).toBe(
+      "Couldn't reach muse-spark-1.3. Try again.",
+    );
   });
 });
