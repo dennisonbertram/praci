@@ -16,14 +16,14 @@ export const OPENCLAW_SANDBOX_URL = "https://docs.openclaw.ai/gateway/sandboxing
 export const OPENCLAW_GITHUB_URL = "https://github.com/openclaw/openclaw";
 
 export const PUBLISHED_IMAGES_INSTALL = `mkdir -p rakazo && cd rakazo &&
-curl -fsSLO https://raw.githubusercontent.com/dennisonbertram/praci/main/infra/compose/install-images.sh &&
+curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/install-images.sh &&
 bash install-images.sh`;
 
 export const PUBLISHED_IMAGES_SERVER = `bash install-images.sh --prepare-only
 # Edit .env, then:
 bash install-images.sh`;
 
-export const SOURCE_CHECKOUT = `git clone https://github.com/dennisonbertram/praci.git
+export const SOURCE_CHECKOUT = `git clone https://github.com/elie222/rakazo.git
 cd rakazo
 cp .env.example .env`;
 
