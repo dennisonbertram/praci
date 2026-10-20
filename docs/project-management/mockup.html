@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rakazo Projects Mockup</title>
+<title>Praci Projects Mockup</title>
 <style>
 :root{
   --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
@@ -366,7 +366,7 @@ const deps=t=>t.d.map(byId).filter(Boolean);
 const pid=t=>t.sid||t.t;
 const live=k=>S.s[k].conn||S.s[k].disc;
 const locked=t=>t.src!=='nat'&&(S.s[t.src].ro||S.s[t.src].disc);
-const target=t=>t.src==='nat'?'Rakazo':SRC[t.src].n;
+const target=t=>t.src==='nat'?'Praci':SRC[t.src].n;
 const lockWhy=t=>`${SRC[t.src].n} is ${S.s[t.src].disc?'disconnected':'connected read-only'}`;
 const srcVis=t=>t.pj===S.proj&&live(t.src)&&S.s[t.src].on;
 const fOk=t=>t.ms||((!S.fo||t.o===S.fo)&&(!S.fa||(BOTS[S.fa]?t.bot===S.fa:t.a===S.fa))&&(!S.fl||t.l===S.fl));
@@ -414,7 +414,7 @@ const wr=t=>t.src==='nat'?'':` and written to ${target(t)}`;
 function moveTask(t,to,lane){
   const o={st:t.st,a:t.a,bot:t.bot},parts=[];
   const ln=lane&&lane!==laneOfOld(o)?lane:null,toBot=ln&&ln.startsWith('b:');
-  // a bot assignment lives on Rakazo's row; only status or a person assignment writes to the tracker
+  // a bot assignment lives on Praci's row; only status or a person assignment writes to the tracker
   if((o.st!==to||(ln&&!toBot))&&!canWrite(t))return render();
   const bl=blocked(t);let botOnly=false;
   if(o.st!==to){t.st=to;parts.push(`moved to ${to}`+((to==='In progress'||to==='Done')&&bl.length?` (still blocked by ${bl[0].t})`:''))}
@@ -446,7 +446,7 @@ function head(){
   const labels=[...new Set(T.map(t=>t.l).filter(Boolean))];
   const rows=['gh','lin','no','nat'].filter(k=>k==='nat'||live(k)).map(k=>{
     const x=S.s[k],n=SRC[k],er=x.err,dis=k!=='nat'&&x.disc;
-    const line=k==='nat'?'Saved in Rakazo':er?`${er.reason} · last synced ${er.last}`:dis?'Disconnected · kept':`Synced ${x.sync} · ${n.rule}`;
+    const line=k==='nat'?'Saved in Praci':er?`${er.reason} · last synced ${er.last}`:dis?'Disconnected · kept':`Synced ${x.sync} · ${n.rule}`;
     return `<div class="sr2"><div class="lnkrow"><label class="sr" style="flex:1"><input type="checkbox" data-srcf="${k}" ${x.on?'checked':''}>${k==='nat'?'':ic(n.ic,'s')}${n.n}${k!=='nat'&&(x.ro||dis)?ic('lock','s'):''}${er?'<span class="sd" style="background:var(--destructive)"></span>':''}<span class="sub" style="margin-left:auto">${cnt(k)}</span></label>${k==='nat'?'':dis?`<button class="btn sm" data-reconn="${k}">Connect</button>`:`<button class="btn sm" data-disc="${k}">Disconnect</button>`}</div><div class="sub rs ${er?'er':''}">${line}${x.ro&&!dis?' · Read only':''}</div></div>`}).join('');
   const anyErr=['gh','lin','no'].some(k=>S.s[k].err);
   h.innerHTML=`
@@ -760,7 +760,7 @@ document.addEventListener('click',e=>{
     else if(a==='selall'){['gh','lin','no','nat'].forEach(k=>S.s[k].on=1)}
     else if(a==='clearf'){S.fo=S.fa=S.fl=''}
     else if(a==='toast'){toast(el.dataset.msg)}
-    else if(a==='openin'){e.preventDefault();toast(`Opened in ${el.dataset.n}. Rakazo updates on next sync`)}
+    else if(a==='openin'){e.preventDefault();toast(`Opened in ${el.dataset.n}. Praci updates on next sync`)}
     else if(a==='postcm'){const i=$('#cmIn'),v=i.value.trim();if(v){const t=S.detail;S.cm[t]=(S.cm[t]||[['bo','Bo Reyes','2h','Waiting on the pricing sign-off.'],['di','Di Okafor','Yesterday','Draft is ready for a first look.']]).concat([['ada','Ada Park','Just now',esc(v)]])}}
     else if(a==='addrel'){S.relAsk=true;S.chat=true;S.panelBot='project';S.panelTask=null;render();const th=$('#thread');th.scrollTop=th.scrollHeight;return}
     return render();

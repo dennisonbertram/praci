@@ -20,7 +20,7 @@ export function senderRulesState(
     : "needs_permission";
 }
 
-/** Where a skipped sender's Gmail filter stands. Null in the database: Rakazo-side only. */
+/** Where a skipped sender's Gmail filter stands. Null in the database: Praci-side only. */
 export type SenderRuleStatus = "active" | "pending" | "full" | "failed";
 
 export interface SenderRuleDeps {
@@ -38,7 +38,7 @@ const rejected = (error: unknown) => (error instanceof MailProviderError ? error
 /**
  * Makes the Gmail filter for a sender the user chose to skip, and records the outcome on the
  * decision. Returns the new status, or null when nothing applies: no skip decision, a route that
- * cannot hold filters, a sender marked important (Gmail would archive mail Rakazo keeps), or writes
+ * cannot hold filters, a sender marked important (Gmail would archive mail Praci keeps), or writes
  * switched off. Without the permission the status is `pending` until the account is reconnected.
  * A rule call that fails with `auth` means that permission is missing, so it never marks the
  * account as needing a reconnect.
@@ -99,7 +99,7 @@ export async function ensureSenderRule(
 
 /**
  * Deletes the Gmail filters of these decisions and clears them from the rows. A filter that is
- * already gone counts as removed, and so does one Rakazo can no longer manage (`auth` on an account
+ * already gone counts as removed, and so does one Praci can no longer manage (`auth` on an account
  * known to lack the permission). Any other failure counts in `failed`, so the caller can keep the
  * decision and let the user retry: an `auth` error on an account that has the permission is an
  * expired or revoked token, and the filter is still in the mailbox. A missing account counts as

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="setupTitle setupDesc">
-  <title id="setupTitle">Setup paths for Rakazo, OpenClaw, and Hermes Agent</title>
+  <title id="setupTitle">Setup paths for Praci, OpenClaw, and Hermes Agent</title>
   <desc id="setupDesc">Three columns of setup steps taken from each project's public install docs. No times are shown.</desc>
   <rect width="1200" height="720" fill="#fdfdfd"/>
   <text x="48" y="64" fill="#242424" font-family="Geist, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="600">Setup paths</text>
@@ -8,7 +8,7 @@
     <rect x="48" y="132" width="348" height="520" rx="16" fill="#ffffff" stroke="#e6e6e6"/>
     <rect x="426" y="132" width="348" height="520" rx="16" fill="#ffffff" stroke="#e6e6e6"/>
     <rect x="804" y="132" width="348" height="520" rx="16" fill="#ffffff" stroke="#e6e6e6"/>
-    <text x="72" y="176" fill="#242424" font-size="20" font-weight="600">Rakazo</text>
+    <text x="72" y="176" fill="#242424" font-size="20" font-weight="600">Praci</text>
     <text x="450" y="176" fill="#242424" font-size="20" font-weight="600">OpenClaw</text>
     <text x="828" y="176" fill="#242424" font-size="20" font-weight="600">Hermes Agent</text>
     <g fill="#3d3d3d" font-size="15">

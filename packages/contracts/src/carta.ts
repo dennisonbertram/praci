@@ -25,7 +25,7 @@ export function isCartaEndpoint(endpoint: string | null | undefined): boolean {
  * The tools the Carta agent may call on Carta's server, even when its assignment allows all tools.
  * From the server's real tools/list (2026-10-16). Left out: mutate and call_tool (writes),
  * request_permissions, skill_checkpoint and track_ui_event (record state), and view_static and
- * view_remote (render Carta's own UI, which Rakazo does not show). set_context only picks the company.
+ * view_remote (render Carta's own UI, which Praci does not show). set_context only picks the company.
  */
 export const CARTA_READ_TOOLS = [
   "welcome",

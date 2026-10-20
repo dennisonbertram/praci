@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rakazo GTM Mockup</title>
+<title>Praci GTM Mockup</title>
 <style>
 :root{
   --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
@@ -230,13 +230,13 @@ const S={v:'A',dev:'desk',th:'auto',
   {t:'Research AI-workspace directories',c:'research',ch:'directory',m:'Found 14, ranked by fit',at:'Wed 16:00'},
   {t:'Draft Product Hunt launch copy',c:'draft',ch:'producthunt',m:'Draft only'}],
  drafts:[
-  {id:'li',t:'LinkedIn post: why we built Rakazo',ch:'linkedin',txt:'Most founders run five tools to answer one question. We built one workspace for inbox, finance and legal. Looking for 50 design partners.'},
-  {id:'hn',t:'Show HN: one workspace for founders',ch:'hn',txt:'Show HN: Rakazo, an agent workspace for inbox, finance and legal.'}],
+  {id:'li',t:'LinkedIn post: why we built Praci',ch:'linkedin',txt:'Most founders run five tools to answer one question. We built one workspace for inbox, finance and legal. Looking for 50 design partners.'},
+  {id:'hn',t:'Show HN: one workspace for founders',ch:'hn',txt:'Show HN: Praci, an agent workspace for inbox, finance and legal.'}],
  done:[
   {t:'List on example-directory.test',c:'create_account',ch:'directory',u:'https://example-directory.test/listing/123'},
   {t:'Post launch thread on X',c:'public_post',ch:'x',u:'https://example-social.test/status/1001'},
   {t:'Create account on sample-hub.test',c:'create_account',ch:'directory',u:'https://sample-hub.test/u/rakazo-demo'}]};
-const XTXT='Looking for 50 design partners for Rakazo: one workspace for inbox, finance and legal, run by agents.\n\nFree for early teams. Reply or DM for access.';
+const XTXT='Looking for 50 design partners for Praci: one workspace for inbox, finance and legal, run by agents.\n\nFree for early teams. Reply or DM for access.';
 const CHAN=[['X','Zernio','Approve every post','Connected',''],['LinkedIn','Zernio','Approve every post','Connected',''],
  ['Threads','Zernio','','Not connected','e','Connect'],['Bluesky','Zernio','','Not connected','e','Connect'],
  ['Directories','Browser','2 of 3 approvals before auto · 1 of 5 today','Learning','w'],['Email','Inbox (Gmail)','Approve every email','Connected',''],
@@ -311,7 +311,7 @@ function pChannels(){return S.v!=='C'?'':`<div class="sec">Channels</div><div cl
 const pConnect=()=>S.v!=='A'||S.xc?'':`<div class="pgroup" style="margin-top:12px"><div class="prow"><div class="t"><b>Connect X</b><span class="sub">Needed to post approved text</span></div><button class="btn p sm" data-act="connect">Connect</button></div></div>`;
 
 /* variant C: previews and calendar */
-const XT='Looking for 50 design partners for Rakazo: one workspace for inbox, finance and legal, run by agents. Free for early teams, and we onboard each one by hand. Reply or DM for access.';
+const XT='Looking for 50 design partners for Praci: one workspace for inbox, finance and legal, run by agents. Free for early teams, and we onboard each one by hand. Reply or DM for access.';
 const XT2='Update: we now onboard each design partner by hand within a day. Looking for 50 early teams. Reply or DM for access.';
 const xCount=t=>t.length+1+23; // links count as 23
 const LIT='Most founders run five tools to answer one question: who owes us a reply, what did we spend, what did we sign. We built one workspace where agents handle inbox, finance and legal. We are looking for 50 design partners. Comment or message me.';
@@ -322,23 +322,23 @@ function needC(k){
   if(k==='dir')return needDir();
   if(k==='x'||k==='xch'){const ch=k==='xch',t=ch?XT2:XT,n=xCount(t);
     return `<div class="need" data-k="${k}"><div class="top"><b>Post to X</b>${ch?'<span class="tag">Changed</span>':''}<span class="sp"></span>${sched(ch?'Thu 11:00':'Thu 10:00')}</div>
-    <div class="post">${av2('R')}<div class="pb"><div class="nm"><b>Rakazo</b><span class="sub">@rakazo_demo</span></div><div class="ptxt">${t}</div>
-    ${ch?'':`<div class="lcard"><div class="im">${ic('link')}</div><div class="tx"><span class="sub">example-rakazo.test</span><span>Rakazo: early access</span></div></div>`}</div></div>
+    <div class="post">${av2('R')}<div class="pb"><div class="nm"><b>Praci</b><span class="sub">@rakazo_demo</span></div><div class="ptxt">${t}</div>
+    ${ch?'':`<div class="lcard"><div class="im">${ic('link')}</div><div class="tx"><span class="sub">example-rakazo.test</span><span>Praci: early access</span></div></div>`}</div></div>
     <div class="meta"><span class="cnt ${n>280?'over':''}" aria-label="${n} of 280 characters, link counts as 23">${n} / 280</span><span class="sub">Link counts as 23</span></div>${ch?`<div class="acts">${btn('Re-approve','approve','p',k,zOff()?'aria-disabled="true"':'')}${btn('Edit','edit')}${btn('Discard','discard','d',k)}</div>`:acts('x',false)}</div>`}
   if(k==='li'){
     return `<div class="need" data-k="li"><div class="top"><b>Post to LinkedIn</b><span class="sp"></span>${sched('Thu 14:00')}</div>
-    <div class="post">${av2('R')}<div class="pb"><div class="nm"><b>Rakazo</b><span class="sub">Company page</span></div>
+    <div class="post">${av2('R')}<div class="pb"><div class="nm"><b>Praci</b><span class="sub">Company page</span></div>
     <div class="ptxt">${LIT}</div></div></div>
     <div class="meta"><span class="cnt" aria-label="${LIT.length} of 3,000 characters">${LIT.length} / 3,000</span></div>${acts('li',false)}</div>`}
   const ok=S.addr;
   return `<div class="need" data-k="mail"><div class="top"><b>Email via Inbox</b><span class="sp"></span></div>
     <dl class="kv"><dt class="mute">From</dt><dd>founder@example.com via Gmail</dd><dt class="mute">To</dt><dd>a@example-prospect.test</dd><dt class="mute">Subject</dt><dd>Design partner program</dd></dl>
-    <div class="quote">Hi Alex, we are looking for 50 design partners for Rakazo. Free for early teams. Open to a 15 minute call this week?</div>
+    <div class="quote">Hi Alex, we are looking for 50 design partners for Praci. Free for early teams. Open to a 15 minute call this week?</div>
     <div class="checks"><span class="ok">Unsubscribe line ✓</span><span class="mute">·</span><span class="${ok?'ok':'bad'}">Postal address ${ok?'✓':'✗'}</span>${ok?'':btn('Add address','addr')}</div>${acts('mail',!ok)}</div>`;
 }
 const DAYS=['Mon 19','Tue 20','Wed 21','Thu 22','Fri 23','Sat 24','Sun 25'],TODAY=2;
 const CAL=[
- {id:'x',d:3,t:'10:00',l:'X',n:'Design-partner post'},{id:'li',d:3,t:'14:00',l:'in',n:'Why we built Rakazo'},
+ {id:'x',d:3,t:'10:00',l:'X',n:'Design-partner post'},{id:'li',d:3,t:'14:00',l:'in',n:'Why we built Praci'},
 {id:'dir',d:2,t:'15:00',l:'D',n:'Directory signup'},
  {id:'r',d:2,t:'16:00',l:'R',n:'Research directories'},
  {z:1,d:3,t:'16:30',l:'X',n:'Changelog post'},{z:1,d:4,t:'12:00',l:'in',n:'Customer story'},{z:1,d:1,t:'09:00',l:'X',n:'Build update',past:1}];

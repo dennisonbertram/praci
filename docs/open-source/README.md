@@ -1,6 +1,6 @@
 # Open-sourcing as Praci: plan
 
-Status: plan, not started. Written 2026-10-19 against `main` at `13dd1fcff`. Counts below are from
+Status: a visible-only rename (product name in the UI, docs and site) has landed. The code identifier rename (packages, env vars, database and volume names, native modules) is still to do. Written 2026-10-19 against `main` at `13dd1fcff`. Counts below are from
 that commit and will drift.
 
 This fork will be published as an open-source project under a new name, **Praci**. The name comes

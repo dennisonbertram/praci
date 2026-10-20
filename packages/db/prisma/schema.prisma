@@ -1923,7 +1923,7 @@ model MailSenderDecision {
   unsubscribedAt    DateTime?
   /// Gmail filter this decision created, so Stop and Undo can delete it. Null: none, or Gmail already had an identical one.
   ruleId            String?
-  /// "active" | "pending" (waiting for permission) | "full" (the 1,000-filter cap) | "failed". Null: Rakazo-side only.
+  /// "active" | "pending" (waiting for permission) | "full" (the 1,000-filter cap) | "failed". Null: Praci-side only.
   ruleStatus        String?
   createdAt         DateTime   @default(now())
   updatedAt         DateTime   @updatedAt

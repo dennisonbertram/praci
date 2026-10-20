@@ -84,12 +84,12 @@
           },
           {
             "level": "group",
-            "element": "Stack of red rate-limit banner immediately above the 'Let Rakazo sort your mail' Allow/Not now card on the cached page",
+            "element": "Stack of red rate-limit banner immediately above the 'Let Praci sort your mail' Allow/Not now card on the cached page",
             "problem": "Two competing notifications stack with no hierarchy cues: a destructive service problem and an optional AI-consent upsell get similar vertical weight, and the consent card's larger box and white 'Allow' button actually dominate the urgent red line. First-time users may resolve the upsell and miss that mail is stale, or read the stack as one message.",
             "norm": "Visual hierarchy and alert stacking: one primary notice at a time; blocking/degraded-service notices outrank optional consent/upsell, which should be deferred during an incident.",
             "severity": "P2",
             "screenshot": "1440x900-banner-cached.png",
-            "fix": "Suppress or collapse the 'Let Rakazo sort your mail' card while sync is degraded, or demote it below the list; give the sync banner a filled warning background so it clearly outranks passive cards."
+            "fix": "Suppress or collapse the 'Let Praci sort your mail' card while sync is degraded, or demote it below the list; give the sync banner a filled warning background so it clearly outranks passive cards."
           },
           {
             "level": "component",
@@ -144,7 +144,7 @@
       "seconds": 124,
       "costUsd": 0.11162,
       "result": {
-        "verdict": "Rakazo’s dark monochrome aesthetic and graceful fallback to cached mail rows are strong foundations, but the sync-error states suffer from critical feedback loops, inverted status-colour semantics, and ambiguous state communication. Most urgently, the 11-second retry state removes button text while leaving contradictory 'Try again in a few seconds' copy on screen, and post-retry failure gives zero updated feedback—making the app feel broken. Additionally, using destructive red for a temporary rate limit in the cached banner while using neutral grey for a hard OAuth disconnect inverts colour semantics, and the cached state never tells the user that the visible emails are stale.",
+        "verdict": "Praci’s dark monochrome aesthetic and graceful fallback to cached mail rows are strong foundations, but the sync-error states suffer from critical feedback loops, inverted status-colour semantics, and ambiguous state communication. Most urgently, the 11-second retry state removes button text while leaving contradictory 'Try again in a few seconds' copy on screen, and post-retry failure gives zero updated feedback—making the app feel broken. Additionally, using destructive red for a temporary rate limit in the cached banner while using neutral grey for a hard OAuth disconnect inverts colour semantics, and the cached state never tells the user that the visible emails are stale.",
         "findings": [
           {
             "level": "component",
@@ -175,12 +175,12 @@
           },
           {
             "level": "page",
-            "element": "'Let Rakazo sort your mail' onboarding card ('Allow' / 'Not now') directly beneath the inline rate-limit banner",
-            "problem": "In the cached error state, the large bordered 'Let Rakazo sort your mail' card and its bright white primary 'Allow' button visually overpower the unboxed single line of red error text and its dim, low-contrast 'Try again' button. Prompting a user to kick off AI inbox sorting ('Allow') while Gmail is actively throttling requests misdirects visual hierarchy and risks triggering another failed API job.",
+            "element": "'Let Praci sort your mail' onboarding card ('Allow' / 'Not now') directly beneath the inline rate-limit banner",
+            "problem": "In the cached error state, the large bordered 'Let Praci sort your mail' card and its bright white primary 'Allow' button visually overpower the unboxed single line of red error text and its dim, low-contrast 'Try again' button. Prompting a user to kick off AI inbox sorting ('Allow') while Gmail is actively throttling requests misdirects visual hierarchy and risks triggering another failed API job.",
             "norm": "Hierarchy & Progressive disclosure",
             "severity": "P1",
             "screenshot": "1440x900-banner-cached.png, 375x812-banner-cached.png",
-            "fix": "Hide or defer non-critical AI onboarding cards ('Let Rakazo sort your mail') while inbox sync is in an error state, and place the sync notice inside a subtle surface container with a leading status icon so it anchors the top of the list."
+            "fix": "Hide or defer non-critical AI onboarding cards ('Let Praci sort your mail') while inbox sync is in an error state, and place the sync notice inside a subtle surface container with a leading status icon so it anchors the top of the list."
           },
           {
             "level": "group",

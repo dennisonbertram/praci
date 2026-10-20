@@ -295,6 +295,6 @@ test("create group from + and see two bots in one transcript", async ({ page }, 
   await page.goto(`/app/g/${reviewGroup.id}`);
   // An address for a removed group says so instead of jumping to another chat.
   await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
-  await page.getByRole("link", { name: "Go to Rakazo" }).click();
+  await page.getByRole("link", { name: "Go to Praci" }).click();
   await expect(page.getByRole("combobox", { name: /Message/ })).toBeVisible();
 });

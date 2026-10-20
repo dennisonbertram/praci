@@ -329,7 +329,7 @@ export async function inboxCleanupArchive(
 /**
  * Forgets the sender's skip and unsubscribe decision, or with `learned` only the learned pile (and
  * then only mail received later counts toward learning it again). Mail already archived stays
- * archived. The Gmail filter Rakazo made for the sender is deleted first, and if that fails the
+ * archived. The Gmail filter Praci made for the sender is deleted first, and if that fails the
  * decision stays so the user can try again.
  */
 export async function inboxCleanupForget(

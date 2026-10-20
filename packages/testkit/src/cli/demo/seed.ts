@@ -705,7 +705,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
     await session.rpc("inbox/refresh", {}, space.id).catch(() => undefined);
     done.push(`space "${name}" with a Gmail account that ${what}`);
   }
-  // The Data room documents already carry a type, date and parties, as if Rakazo had read them, so the
+  // The Data room documents already carry a type, date and parties, as if Praci had read them, so the
   // founder allowed that earlier; otherwise the Data room asks for consent it seems to have used.
   // The row is written directly, and last, so no document is sent to the model again: granting
   // through the API re-queues every document, and a reply would replace the seeded facets.

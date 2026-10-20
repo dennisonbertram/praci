@@ -28,8 +28,8 @@ export const FR_MESSAGES: Record<string, string> = {
   "Chat Settings": "Paramètres de discussion",
   "Configure a plugin catalog on the server to connect apps.":
     "Configurez un catalogue de plugins sur le serveur pour connecter des applis.",
-  "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.":
-    "Collez l'adresse compatible OpenAI de votre serveur. Rakazo ajoute /v1 si nécessaire.",
+  "Paste the OpenAI-compatible address from your server. Praci adds /v1 if needed.":
+    "Collez l'adresse compatible OpenAI de votre serveur. Praci ajoute /v1 si nécessaire.",
   "Settings: General": "Paramètres : Général",
   "Settings: Usage": "Paramètres : Utilisation",
   "Sign-in did not return a session": "La connexion n’a renvoyé aucune session",
@@ -59,7 +59,7 @@ export const FR_MESSAGES: Record<string, string> = {
   "Custom server {host}": "Serveur personnalisé {host}",
   "Don’t have an account?": "Vous n'avez pas de compte ?",
   Email: "E-mail",
-  "Enter your Rakazo server address.": "Saisissez l’adresse de votre serveur Rakazo.",
+  "Enter your Praci server address.": "Saisissez l’adresse de votre serveur Praci.",
   "Forgot password?": "Mot de passe oublié ?",
   "Loading…": "Chargement…",
   Password: "Mot de passe",
@@ -68,9 +68,9 @@ export const FR_MESSAGES: Record<string, string> = {
   "Reset your password": "Réinitialisez votre mot de passe",
   "Send reset link": "Envoyer le lien de réinitialisation",
   Server: "Serveur",
-  "Sign in to Rakazo": "Connectez-vous à Rakazo",
+  "Sign in to Praci": "Connectez-vous à Praci",
   "Sign up": "S'inscrire",
-  "Sign up for Rakazo": "S’inscrire à Rakazo",
+  "Sign up for Praci": "S’inscrire à Praci",
   "Use a custom server": "Utiliser un serveur personnalisé",
   "Use default server": "Utiliser le serveur par défaut",
   Activity: "Activité",
@@ -384,8 +384,8 @@ export const FR_MESSAGES: Record<string, string> = {
   "Switching…": "Basculement en cours…",
   "The final page may not load. Paste its URL or code here.":
     "La dernière page peut ne pas se charger. Collez ici son URL ou son code.",
-  "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider.":
-    "Cette connexion par abonnement n'est pas encore disponible dans Rakazo. Utilisez un identifiant de déploiement ou choisissez un autre fournisseur.",
+  "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider.":
+    "Cette connexion par abonnement n'est pas encore disponible dans Praci. Utilisez un identifiant de déploiement ou choisissez un autre fournisseur.",
   "Use a found model": "Utiliser un modèle trouvé",
   "Use this model": "Utiliser ce modèle",
   "Waiting for sign-in…": "En attente de la connexion…",
@@ -662,7 +662,7 @@ export const FR_MESSAGES: Record<string, string> = {
   "Enter a server URL": "Saisissez l’URL d’un serveur",
   "Public servers need https://. HTTP only works on your local network.":
     "Les serveurs publics exigent https://. HTTP ne fonctionne que sur votre réseau local.",
-  "That URL did not look like a Rakazo server": "Cette URL ne ressemble pas à un serveur Rakazo",
+  "That URL did not look like a Praci server": "Cette URL ne ressemble pas à un serveur Praci",
   "That URL is missing a host": "Il manque l’hôte dans cette URL",
   "That doesn’t look like a URL": "Cela ne ressemble pas à une URL",
   "Use an http or https URL": "Utilisez une URL http ou https",
@@ -738,7 +738,7 @@ export const FR_MESSAGES: Record<string, string> = {
   "AI models": "Modèles IA",
   Memory: "Mémoire",
   "Privacy policies": "Politiques de confidentialité",
-  Rakazo: "Rakazo",
+  Praci: "Praci",
   "Withdraw all permissions": "Retirer toutes les autorisations",
   "Withdraw all permissions?": "Retirer toutes les autorisations ?",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":

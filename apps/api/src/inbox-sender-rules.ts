@@ -5,7 +5,7 @@ import { mailContext } from "./inbox.js";
 
 /**
  * Deletes the Gmail filters made for a sender, on every account of the caller, once the sender is
- * marked important. A filter archives all the sender's mail, including what Rakazo would keep in
+ * marked important. A filter archives all the sender's mail, including what Praci would keep in
  * the inbox. Returns how many filters could not be deleted; those decisions keep their `ruleId`.
  */
 export async function removeFiltersOfSender(

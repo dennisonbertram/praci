@@ -89,7 +89,7 @@ Code refs: list keys `apps/web/src/lib/inbox-keyboard.ts`, wiring `pages/Inbox.t
 ## STORY-005: Discover the shortcuts with `?` and find the help incomplete
 **Type**: short
 **Topic**: keyboard-power-use
-**Persona**: Hannah Cole, ex-Gmail power user new to Rakazo
+**Persona**: Hannah Cole, ex-Gmail power user new to Praci
 **Goal**: Learn what keys exist
 **Preconditions**: Inbox list, focus on body
 **Ideal path**: 1 — `?`

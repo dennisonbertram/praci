@@ -20,7 +20,7 @@ approval of each send. A send with an unclear outcome is reported, never retried
 `MAIL_WRITES_DISABLED=true` blocks all three.
 
 This ports the "big search, save the results, grep" approach from the reference
-implementation. The reference kept results in a local file; Rakazo keeps them in
+implementation. The reference kept results in a local file; Praci keeps them in
 Postgres, because the search and the grep can run on different API or worker
 processes. Everything provider-specific stays in item 1's adapters.
 
@@ -33,7 +33,7 @@ processes. Everything provider-specific stays in item 1's adapters.
 | Coverage `complete`/`capped`, `coveredBackTo` | Port. The Gmail-syntax `continuationSuffix` (a date bound) is replaced by a resume cursor stored with the search, because a date-only bound skips the rest of a day that was cut off halfway. `mail_search` accepts `continueFrom: <searchId>`. |
 | Grep: up to 20 patterns of 200 characters or fewer, case-insensitive, ReDoS literal guard, `dateFrom`/`dateTo` ISO-prefix filter, `maxResults`, `contextLines`, output budget | Port verbatim, except the budget is a fixed 16,000 characters instead of 5% of the model context window. The executor does not know the context window at that point. `ponytail:` comment: switch to the model's window if small-context models truncate too often. |
 | Read a line range (`scratchpad_read`) and list files (`scratchpad_list`) | Dropped as separate tools. `mail_grep` with no patterns returns every row in the date range, and `afterLine` pages through the rows. The `searchId` comes back from `mail_search`; if it is lost from context, the bot runs the search again. |
-| One-message read: 12k body characters by default, 40k maximum, quoted replies stripped | Port. The email-content privacy modes and the `includeBody` flag are dropped because Rakazo has no such setting. |
+| One-message read: 12k body characters by default, 40k maximum, quoted replies stripped | Port. The email-content privacy modes and the `includeBody` flag are dropped because Praci has no such setting. |
 | Separate search tools for small and medium result sets (`gmail_search`, `gmail_collect_search`) | Dropped. `mail_search` with a small `maxMessages` covers them. |
 | Natural-date rewriting ("last 2 weeks" becomes `newer_than:14d`) and from/to query mirroring | Not ported. One prompt sentence covers both, and each would need about 130 lines of regex plus tests. |
 | `intent`, `pageSize`, `deadlineMs`, `includeSpamTrash` inputs | Dropped. Fixed internal values; Gmail `in:trash` / `in:spam` still work inside a query. |
@@ -299,7 +299,7 @@ model MailSearchRow {
 | Composition | `apps/worker/src/index.ts:187` (`createRunExecutor`) and `apps/api/src/app.ts:455` | Worker: `mail: createMailProvider(...)`. API: pass the instance item 4 PR 1 already created for `RouterDeps.mail`. |
 | Offering | `selectBuiltinToolsForRun` `executor.ts:7457`; call site `:3820` | Add an option `mailEnabled: boolean` and wrap with `selectMailTools(tools, mailEnabled)`, matching `selectCloudAgentTools`. At the call site, `mailEnabled = Boolean(deps.mail) && !thread.groupId && run.userId === bot.userId && !messagingChannelRun && (await mailAccounts()).length > 0`. `mailAccounts` is a memo of `listAccounts` that lives only for this run (request-scoped, never shared across runs or users), and the handlers reuse it. The disabled list is already applied by the trailing `.filter` at `:7489`. |
 | Disabled guard | `executor.ts:4061` | No change; it already rejects disabled names. |
-| Read-only | `READ_ONLY_AGENT_TOOLS` `executor.ts:388` | Add the three names, so they skip `recordEffect` (`:4330`) and no approval card is created. Saving search rows is Rakazo's own state, not an external effect. |
+| Read-only | `READ_ONLY_AGENT_TOOLS` `executor.ts:388` | Add the three names, so they skip `recordEffect` (`:4330`) and no approval card is created. Saving search rows is Praci's own state, not an external effect. |
 | Dispatch | next to `web_search` `executor.ts:5187` | `if (name.startsWith("mail_")) return finish(await mailToolFromTool(name, { mail: deps.mail!, prisma: deps.prisma, jobs: deps.jobs, accounts: mailAccounts, scope: { spaceId: run.spaceId, userId: bot.userId, botId: bot.id } }, context, args));` |
 | Prompt | — | None in this item. The search recipe is item 3's `inbox-search` skill, which the executor loads whenever `mail_search` is offered. Keeping one copy avoids two prompts drifting apart. Item 3 PR 1 merges before this item's PR 2. |
 
@@ -427,7 +427,7 @@ seeded row. This checks the dispatch wiring and the scope that comes from the ru
 - **Query syntax is Gmail's.** Every adapter is Gmail today, so queries pass through
   unchanged. A non-Gmail provider would need its own syntax note in the prompt; that
   is item 1's decision, and nothing here changes.
-- **Search speed is unmeasured in Rakazo.** Google's published quota implies about 300
+- **Search speed is unmeasured in Praci.** Google's published quota implies about 300
   metadata `get`s per minute per account; the reference implementation's identical
   approach is fast in practice. Measure in item 1's manual smoke tests. Composio and
   Pipedream add a proxy hop per call. The 60-second deadline turns a slow pull into

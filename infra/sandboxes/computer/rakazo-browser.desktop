@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
-Name=Rakazo Browser
-Comment=Chromium with Rakazo container flags and profile isolation
+Name=Praci Browser
+Comment=Chromium with Praci container flags and profile isolation
 Exec=/usr/local/bin/rakazo-browser %U
 Terminal=false
 Categories=Network;WebBrowser;

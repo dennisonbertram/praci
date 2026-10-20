@@ -2,14 +2,14 @@
 
 Status: proposal. Builds on items 01–07, which are implemented on the local `feat/inbox` branch together with the follow-ups (account tabs, Gmail-powered filters and search, images in opened mail, faster Inbox agent).
 
-The reference implementation is a single-user, local-first app (SQLite files, the user's own Google client, `gmail.modify` and `gmail.compose` scopes). Nothing ports as code. Each feature below is re-specified for Rakazo's rules: provider-neutral adapters, optional vendors, multi-tenant Postgres state, minimal copy.
+The reference implementation is a single-user, local-first app (SQLite files, the user's own Google client, `gmail.modify` and `gmail.compose` scopes). Nothing ports as code. Each feature below is re-specified for Praci's rules: provider-neutral adapters, optional vendors, multi-tenant Postgres state, minimal copy.
 
 ## What already matches
 
 - Dump-then-grep agent search (`mail_search`, `mail_grep`, `mail_get`).
 - One row per thread, multi-account, per-account tabs, server-side Gmail search and filters, load more.
 - Needs reply group and a capped AI to-do list. To-dos are keyed by message id, which avoids the reference's reworded-duplicate bug.
-- Rate-limited hydration with `Retry-After` backoff (Rakazo now runs 12 in flight per account).
+- Rate-limited hydration with `Retry-After` backoff (Praci now runs 12 in flight per account).
 
 ## Phase 1 — read-only, current scopes
 
@@ -27,13 +27,13 @@ The reference implementation is a single-user, local-first app (SQLite files, th
 Sending was approved first (decision 10 in the README now allows drafts and sending, not the other writes). Item 2 below is built; items 1, 3 and 4 still need `gmail.modify`, restricted-scope verification for public deployments, and their own sign-off. The proxy paths (Composio, Pipedream, native Google) now carry POST, PUT and DELETE with a JSON body, and `MAIL_WRITES_DISABLED=true` is the deployment-wide kill switch.
 
 1. Archive, spam, label, mark read from the read view; bulk archive on category views behind a confirmation dialog.
-2. **Built.** Reply, reply all, forward and compose. The user's Send click is the approval (no extra modal). The composer saves a Gmail draft as the user types, and a send is keyed by a client-generated id in Postgres (`ComposeSend`), so a retry or double click never sends twice and a send with an unclear outcome is never repeated (the user is told to check Sent). Plain-text body; the HTML part is generated from it and escaped. Left out for now: attachments (a forward quotes the text only), rich text, and re-opening a saved draft in Rakazo (it stays in Gmail Drafts).
-3. Agent write tools (`create_draft`, `modify_labels`, `archive`) gated by Rakazo's existing action-approval flow. No direct send tool; the agent proposes a send card. Not built: the agent still has no draft or send tool.
+2. **Built.** Reply, reply all, forward and compose. The user's Send click is the approval (no extra modal). The composer saves a Gmail draft as the user types, and a send is keyed by a client-generated id in Postgres (`ComposeSend`), so a retry or double click never sends twice and a send with an unclear outcome is never repeated (the user is told to check Sent). Plain-text body; the HTML part is generated from it and escaped. Left out for now: attachments (a forward quotes the text only), rich text, and re-opening a saved draft in Praci (it stays in Gmail Drafts).
+3. Agent write tools (`create_draft`, `modify_labels`, `archive`) gated by Praci's existing action-approval flow. No direct send tool; the agent proposes a send card. Not built: the agent still has no draft or send tool.
 4. Cards: send confirmation (editable fields), quick reply (several drafts, send one), bulk action, attachment-read consent. Each has Dismiss, persisted with the message, taking no Gmail action.
 
 ## Phase 3 — larger features
 
-1. **Triage loop.** One important thread at a time with keyboard actions (reply, snooze, to-do, done, undo). Snooze is Rakazo-side state in Postgres that resurfaces on new inbound mail; done needs phase 2's archive.
+1. **Triage loop.** One important thread at a time with keyboard actions (reply, snooze, to-do, done, undo). Snooze is Praci-side state in Postgres that resurfaces on new inbound mail; done needs phase 2's archive.
 2. **Focus items.** Durable multi-thread work streams with status, AI review and to-dos. Large; specify separately.
 3. **Inbox brief.** A periodic summary (open loops, timely, recently resolved) produced by a worker job per user.
 4. **Calendar invitations.** Render invites in the read view and chat, with RSVP. Needs calendar scopes and a calendar provider interface.

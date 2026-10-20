@@ -8,7 +8,7 @@ Code read: `the repository root` at `559a76ad` (branch `docs/ux-pass`, merged wi
 Total Stories: 40 (short 23, medium 13, long 4)
 Previous catalog: 2026-10-16, 24 stories (STORY-INB-001..024). This version keeps every id, rewrites the steps to match the code as it is now, and adds STORY-INB-025..040.
 
-**Persona for every story.** A naive first-time user: a startup founder who has never seen Rakazo or its code, does not know its words ("triage", "noise", "agent", "Data room", "approval"), and only wants to run their company clearly and consistently. In the stories they are called **Maya**, the founder of the mock company. Steps say what Maya would try, in her words, and mark **Hesitation** where she would likely pause or misread a label. "UNVERIFIED" marks a behaviour read from code but not seen running; the walker should record what actually appears.
+**Persona for every story.** A naive first-time user: a startup founder who has never seen Praci or its code, does not know its words ("triage", "noise", "agent", "Data room", "approval"), and only wants to run their company clearly and consistently. In the stories they are called **Maya**, the founder of the mock company. Steps say what Maya would try, in her words, and mark **Hesitation** where she would likely pause or misread a label. "UNVERIFIED" marks a behaviour read from code but not seen running; the walker should record what actually appears.
 
 **Scope note on the Data room.** On this commit the Data room has **no** "Import from email" and the Inbox has no "Save to Data room" action; the agent has only `data_room_search` and `data_room_read` (`builtin-tools.ts:1021-1028`), no tool that adds files. The way to file a mail attachment is: download it, then **Choose files** on the Data room page or drop it on any app page (STORY-INB-016, 022, 024). **PR #109 (`origin/feat/legal`)** adds `ImportFromEmail.tsx` to the Data room page (a button "Import from email", or "Connect Gmail" when none is connected, that opens a picker of mail with attachments). The main-branch path stays the primary path in every story; each Data-room story says what changes once #109 merges.
 
@@ -197,7 +197,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ##### Edge Cases
 - The search box and Filter button are live but have nothing to search.
 
-#### STORY-INB-002: "Let Rakazo sort your mail" — allow AI sorting
+#### STORY-INB-002: "Let Praci sort your mail" — allow AI sorting
 
 **Type**: short
 **Topic**: Triage consent
@@ -209,7 +209,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 ##### Steps
 1. Opens Inbox → rows appear in two groups, **Today** and **Earlier**. No "Needs reply" group, no **Important** toggle, no To do card, no Categories in the Filter menu.
-2. At the top a card (`AiDataSharing.tsx:69-96`): "**Let Rakazo sort your mail**" — "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({model name})." Buttons **Allow** and **Not now**. She **expects** a clear yes/no and that "no" leaves her mail alone. **Hesitation**: "the AI service that runs your bots" — she has no bots yet and does not know who that is; the provider name in brackets helps only if she recognises it. The card says the previews go out but not that the full email bodies are not.
+2. At the top a card (`AiDataSharing.tsx:69-96`): "**Let Praci sort your mail**" — "Praci finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({model name})." Buttons **Allow** and **Not now**. She **expects** a clear yes/no and that "no" leaves her mail alone. **Hesitation**: "the AI service that runs your bots" — she has no bots yet and does not know who that is; the provider name in brackets helps only if she recognises it. The card says the previews go out but not that the full email bodies are not.
 3. Clicks **Allow** → the card is replaced by "Sorting your mail…" (STORY-INB-025), then the **Needs reply** group, **Important** toggle and **To do** card appear.
 
 ##### Variations
@@ -248,7 +248,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 **Type**: short
 **Topic**: Consent withdrawal
 **Persona**: Maya, after reading an article about AI and email
-**Goal**: Stop Rakazo sending her mail details to the AI service.
+**Goal**: Stop Praci sending her mail details to the AI service.
 **Preconditions**: A1; CONSENT-GIVEN; T1–T4 present.
 **Ideal path**: 4 — account menu, Settings, switch off, back to Inbox.
 **Alternate paths**: none found (no switch on the Inbox page itself).
@@ -1050,7 +1050,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ##### Steps
 1. Sidebar **Inbox** → "No mail connected" → **Connect mail** → Integrations → connects Gmail (STORY-INB-001).
 2. Returns to Inbox by the sidebar → skeleton → **Today** / **Earlier** lists.
-3. Reads the "Let Rakazo sort your mail" card → clicks **Allow** (STORY-INB-002) → "Sorting your mail…" (STORY-INB-025).
+3. Reads the "Let Praci sort your mail" card → clicks **Allow** (STORY-INB-002) → "Sorting your mail…" (STORY-INB-025).
 4. When it finishes, **Needs reply** (M1, M3), the **Important** toggle and the **To do** card appear at once.
 5. **Hesitation**: M11 "Urgent: wire transfer update" has a small red warning triangle before the sender name. It is named "Suspicious" only for screen readers and has no visible text. She nearly opens it as a real message from herself ("Maya Okafor").
 6. Archives M11 with the hover Archive icon → "Archived" + Undo.

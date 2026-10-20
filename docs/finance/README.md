@@ -14,7 +14,7 @@ new, which is safe because no existing workflow changes.
 
 ## Decisions
 
-1. **Connection is the vendors' official MCP servers over OAuth**, reusing Rakazo's
+1. **Connection is the vendors' official MCP servers over OAuth**, reusing Praci's
    existing remote-MCP support (`McpServer`, `mcp.oauth.*`, `remote-mcp.ts`). Mercury:
    `https://mcp.mercury.com/mcp`. Brex: `https://api.brex.com/mcp` (an admin must
    enable Brex's AI-assistant beta). Both use dynamic client registration, so no
@@ -77,7 +77,7 @@ new, which is safe because no existing workflow changes.
 - **Receipt upload.** The mockup shows "Upload" on a charge with no receipt. There is
   nowhere to store an uploaded file yet. Options to decide later: send it to Brex
   (`upload_card_expense_receipt_from_urls` needs a public URL, and it is a write),
-  store it in a connected Google Drive, or add Rakazo file storage. v1 shows "No
+  store it in a connected Google Drive, or add Praci file storage. v1 shows "No
   receipt" without an Upload button.
 - Plaid and other banks. The sources are separate adapters, so adding one does not
   change the calculations.
