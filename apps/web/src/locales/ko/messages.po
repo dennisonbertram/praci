@@ -9037,10 +9037,6 @@ msgstr ""
 msgid "Wait a moment and test again."
 msgstr "잠시 기다린 뒤 다시 테스트하세요."
 
-#: src/lib/run-phase.ts
-msgid "Waiting for {name}"
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"

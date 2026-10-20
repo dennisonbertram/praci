@@ -17,6 +17,7 @@ import {
   buildComposerMentionOptions,
   channelMessageLine,
   cloudAgentHttpsUrl,
+  dismissedThreadRunError,
   formatFileSize,
   formatMessageTime,
   forwardProbeAfterPage,
@@ -24,6 +25,7 @@ import {
   isApprovalAskBlock,
   isPeerReceiptBlocks,
   isRunTerminalEvent,
+  isRunWorking,
   isSecretAskBlock,
   isStoredMessage,
   isThreadSnapshotEvent,
@@ -42,9 +44,11 @@ import {
   selectableMessageText,
   selectedAskActionLabel,
   splitDataRoomReferences,
+  threadRunError,
   threadWindowMessages,
   timeSeparatorIds,
   userVisibleMessages,
+  workingActivity,
 } from "@rakazo/core";
 import * as Clipboard from "expo-clipboard";
 import {
@@ -120,7 +124,7 @@ import { ThreadComposer } from "../components/thread-composer";
 import { TimeSeparator } from "../components/time-separator";
 import { UnreadDivider } from "../components/unread-divider";
 import { VoiceChatCard } from "../components/VoiceChatCard";
-import { WorkingIndicator } from "../components/WorkingIndicator";
+import { WorkingIndicator, WorkingStatusText } from "../components/WorkingIndicator";
 import { accentTokens } from "../lib/accent-tokens";
 import type {
   MobileBot,
@@ -189,6 +193,7 @@ import {
   getCachedResponseStreamingEnabled,
   subscribeResponseStreaming,
 } from "../lib/response-streaming";
+import { dismissedRunErrorIds, workingStatus } from "../lib/run-status";
 import type { SavedChatsScope } from "../lib/saved-chats";
 import {
   liveSavedChatsScope,
@@ -219,7 +224,7 @@ import type { ThreadScrollAction, ThreadScrollState } from "../lib/thread-scroll
 import { ThreadScrollBehavior } from "../lib/thread-scroll";
 import { openUnreadAnchor, type UnreadAnchor, unreadDividerId } from "../lib/thread-unread";
 import { prepareUnsentSends } from "../lib/unsent-sends";
-import { errorText } from "../lib/user-error";
+import { errorText, runErrorText } from "../lib/user-error";
 import { speakQueue, speakText } from "../lib/voice";
 import {
   loadCallCallerName,
@@ -256,16 +261,6 @@ function formatAttachmentSkip(item: { name: string; reason: string }): string {
     return t("{name} (max {count} attachments)", { name, count: maxMatch[1] ?? "" });
   }
   return `${name} (${item.reason})`;
-}
-
-function isWorkingStatus(status: string | undefined): boolean {
-  return (
-    status === "queued" ||
-    status === "leased" ||
-    status === "running" ||
-    status === "waiting_input" ||
-    status === "waiting_takeover"
-  );
 }
 
 const ATTACHMENT_PLACEHOLDER_LINE = /^\[(?:image|file|chart): .*\]$/;
@@ -696,19 +691,27 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
     const last = snap?.messages.at(-1);
     return last?.role === "bot" ? reportedToolStep(last.blocks) : null;
   }, [snap?.messages]);
+  // The one run that is working, so the footer can say what it is doing.
+  const workingLine = useMemo(() => {
+    const runs = (snap?.activeRuns ?? (snap?.run ? [snap.run] : [])).filter((run) =>
+      isRunWorking(run.status),
+    );
+    const sole = runs.length === 1 ? runs[0] : undefined;
+    return sole ? workingStatus(workingActivity(sole, snap?.messages ?? [])) : null;
+  }, [snap?.activeRuns, snap?.messages, snap?.run]);
   const workingGroupBots = useMemo(() => {
     if (!inGroup) return [];
     const seen = new Set<string>();
     const working = snap?.activeRuns ?? (snap?.run ? [snap.run] : []);
     return working.flatMap((run) => {
-      if (!run.botId || seen.has(run.botId) || !isWorkingStatus(run.status)) return [];
+      if (!run.botId || seen.has(run.botId) || !isRunWorking(run.status)) return [];
       const member = snap?.members?.find((candidate) => candidate.botId === run.botId);
       if (!member) return [];
       seen.add(run.botId);
       return [{ ...member, status: run.status }];
     });
   }, [inGroup, snap?.activeRuns, snap?.members, snap?.run]);
-  const working = inGroup ? workingGroupBots.length > 0 : isWorkingStatus(currentBotStatus);
+  const working = inGroup ? workingGroupBots.length > 0 : isRunWorking(currentBotStatus);
 
   const speakFinishedReply = useCallback(() => {
     if (!botId || inGroup || !currentBot) return;
@@ -2021,7 +2024,16 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   }
 
   const answerableAskMessageId = latestAnswerableAskMessageId(snap);
-  const runError = snap?.run?.status === "failed" ? (snap.run.error ?? null) : null;
+  const [dismissedRuns, setDismissedRuns] = useState<ReadonlySet<string>>(
+    () => new Set(dismissedRunErrorIds),
+  );
+  const runError = threadRunError(snap ?? null, runErrorText, dismissedRuns);
+  const dismissedRunError = dismissedThreadRunError(snap ?? null, runErrorText, dismissedRuns);
+  const dismissRunError = () => {
+    if (!snap?.run) return;
+    dismissedRunErrorIds.add(snap.run.id);
+    setDismissedRuns(new Set(dismissedRunErrorIds));
+  };
   const separatorIds = useMemo(() => timeSeparatorIds(visibleMessages), [visibleMessages]);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -2328,7 +2340,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   const workingFooter =
     !inGroup &&
     currentBot &&
-    isWorkingStatus(currentBotStatus) &&
+    isRunWorking(currentBotStatus) &&
     (!hasLiveProgress || reportedStep) ? (
       <View
         accessibilityLabel={t("{name} is working", { name: currentBot.name })}
@@ -2348,13 +2360,8 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           status={currentBotStatus}
         />
         <WorkingIndicator />
-        {reportedStep ? (
-          <Text
-            numberOfLines={1}
-            style={{ flexShrink: 1, color: tokens.mutedForeground, fontSize: 12 }}
-          >
-            {reportedStep.detail}
-          </Text>
+        {workingLine ? (
+          <WorkingStatusText text={workingLine.text} waitingOn={workingLine.waitingOn} />
         ) : null}
       </View>
     ) : inGroup && workingGroupBots.length > 0 ? (
@@ -2406,6 +2413,15 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       </Pressable>
     ) : null;
 
+  const runFailedNote =
+    dismissedRunError != null ? (
+      <Text style={{ color: tokens.destructive, fontSize: 13, paddingVertical: 8 }}>
+        {dismissedRunError
+          ? t("Last run failed: {error}", { error: dismissedRunError })
+          : t("Last run failed")}
+      </Text>
+    ) : null;
+
   const failedSendBubbles = feedback.unsentSends.map((attempt) => (
     <FailedSendBubble
       key={attempt.clientNonce}
@@ -2428,16 +2444,11 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
             {showingSaved ? t("Couldn't refresh — showing the last loaded messages.") : error}
           </Text>
         ) : null}
-        {runError ? (
-          <Text style={{ color: tokens.destructive, marginTop: error ? 12 : headerHeight + 28 }}>
-            {runError}
-          </Text>
-        ) : null}
         {pins && hasStats && botId ? (
           <PinsStrip
             botId={botId}
             stats={pins.stats}
-            topInset={error || runError ? 8 : headerHeight}
+            topInset={error ? 8 : headerHeight}
             onRefreshed={setPins}
           />
         ) : null}
@@ -2499,6 +2510,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
                 renderMessageRow(message, { enableJump: true, index }),
               )}
               {pinnedNewerCursor === null ? failedSendBubbles : null}
+              {pinnedNewerCursor === null ? runFailedNote : null}
               {pinnedNewerCursor === null ? (
                 workingFooter
               ) : loadingNewer ? (
@@ -2556,6 +2568,7 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
               ListFooterComponent={loadEarlierControl}
               ListHeaderComponent={
                 <>
+                  {runFailedNote}
                   {failedSendBubbles}
                   {workingFooter}
                 </>
@@ -2641,6 +2654,16 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
         >
           {/* Fades messages out above the composer, like the header fade. */}
           <View pointerEvents="none" style={styles.composerFade} />
+          {runError ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("Dismiss")}
+              onPress={dismissRunError}
+              style={{ marginTop: 12 }}
+            >
+              <Text style={{ color: tokens.destructive, fontSize: 13 }}>{runError}</Text>
+            </Pressable>
+          ) : null}
           {replyTarget ? (
             <GlassSurface
               style={{
@@ -3445,6 +3468,21 @@ const MessageBubble = memo(function MessageBubble({
           style={{ color: tokens.mutedForeground, fontSize: 13.5, flexShrink: 1 }}
         >
           {label}
+        </Text>
+      </Pressable>
+    );
+  }
+  if (
+    isCenteredAgentEvent(message.blocks) &&
+    message.blocks.every((block) => block.kind === "meta")
+  ) {
+    return (
+      <Pressable
+        {...actionProps}
+        style={{ width: "100%", paddingVertical: 4, alignItems: "center" }}
+      >
+        <Text style={{ color: tokens.mutedForeground, fontSize: 13.5, textAlign: "center" }}>
+          {message.blocks.map((block) => (block.kind === "meta" ? block.text : "")).join("\n")}
         </Text>
       </Pressable>
     );
