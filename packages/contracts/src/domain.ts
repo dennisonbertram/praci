@@ -13,7 +13,10 @@ import { McpHeadersSchema, McpRemoteEndpointSchema, McpTransportSchema } from ".
 import { RunTriggerSchema } from "./runs.js";
 
 export const ComputerModeSchema = z.enum(["team", "dedicated"]);
+/** Where commands run: the sandbox, or the host computer. */
+export const ComputerHostSchema = z.enum(["docker", "this-mac"]);
 export type ComputerMode = z.infer<typeof ComputerModeSchema>;
+export type ComputerHost = z.infer<typeof ComputerHostSchema>;
 
 export const MemoryScopeSchema = z.enum(["isolated", "shared"]);
 export type MemoryScopeValue = z.infer<typeof MemoryScopeSchema>;
@@ -94,6 +97,8 @@ export const BotSchema = z.object({
   runPhase: RunPhaseSchema.nullable().default(null),
   runErrorId: Id.nullable().default(null),
   computerMode: ComputerModeSchema,
+  /** Null follows the deployment default. */
+  runsOn: ComputerHostSchema.nullable().optional(),
   updatedAt: z.string(),
   createdAt: z.string(),
   voiceId: z.string().nullable(),
@@ -377,6 +382,7 @@ export const UpdateBotInput = z
     teamChatAmbientEnabled: z.boolean().optional(),
     teamChatRules: z.string().max(TEAM_CHAT_RULES_MAX_LENGTH).optional(),
     disabledBuiltinTools: DisabledBuiltinToolsSchema.optional(),
+    runsOn: ComputerHostSchema.nullable().optional(),
   })
   .superRefine((value, ctx) => {
     const providerProvided = value.modelProvider !== undefined;
@@ -1535,6 +1541,10 @@ export const MeSchema = z.object({
   avatarStyle: AvatarStyleSchema,
   /** IANA time zone last reported by one of the user's clients; null before the first report. */
   timezone: z.string().nullable(),
+  /** True once the user has finished or skipped the first-run tour. */
+  tourSeen: z.boolean(),
+  /** Sidebar page keys this user hid; the pages stay reachable by URL and search. */
+  hiddenPages: z.array(z.string()).optional(),
   /** True when this deployment bills and the user is not the deployment owner. */
   billingEnabled: z.boolean(),
 });

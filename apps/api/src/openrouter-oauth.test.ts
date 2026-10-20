@@ -54,6 +54,9 @@ const alice = { userId: "u1", spaceId: "s1" };
 const webOrigin = "http://127.0.0.1:45173";
 const redirectUri = `${webOrigin}/models/openrouter/callback`;
 
+const stateOf = (url: URL) =>
+  (url.searchParams.get("callback_url") ?? "").slice(redirectUri.length + 1);
+
 async function begin(db: ReturnType<typeof fakeDb>, scope = alice) {
   const { authorizationUrl } = await beginOpenRouterOAuth({
     prisma: db.prisma,
@@ -70,9 +73,12 @@ describe("OpenRouter sign-in", () => {
     const db = fakeDb();
     const url = await begin(db);
     expect(url.origin + url.pathname).toBe("https://openrouter.ai/auth");
-    expect(url.searchParams.get("callback_url")).toBe(redirectUri);
+    expect(url.searchParams.get("state")).toBeNull();
+    const callback = url.searchParams.get("callback_url") ?? "";
+    expect(callback.startsWith(`${redirectUri}/`)).toBe(true);
     expect(url.searchParams.get("code_challenge_method")).toBe("S256");
-    const state = url.searchParams.get("state") ?? "";
+    const state = callback.slice(redirectUri.length + 1);
+    expect(state.length).toBeGreaterThan(20);
     const fetchImpl = vi.fn(async (_url: unknown, init?: RequestInit) => {
       const body = JSON.parse(String(init?.body));
       expect(body.code).toBe("abc");
@@ -106,12 +112,12 @@ describe("OpenRouter sign-in", () => {
         code: "c",
         fetchImpl: ok as unknown as typeof fetch,
       });
-    const state = (await begin(db)).searchParams.get("state") ?? "";
+    const state = stateOf(await begin(db));
     await expect(run(state, { userId: "u2", spaceId: "s1" })).rejects.toThrow("sign-in failed");
     await expect(run("unknown")).rejects.toThrow("sign-in failed");
     await expect(run(state)).resolves.toBe("k");
     await expect(run(state)).rejects.toThrow("sign-in failed");
-    const old = (await begin(db)).searchParams.get("state") ?? "";
+    const old = stateOf(await begin(db));
     db.rows.get(old)!.createdAt = new Date(Date.now() - 11 * 60_000);
     await expect(run(old)).rejects.toThrow("sign-in failed");
     expect(ok).toHaveBeenCalledTimes(1);
@@ -128,7 +134,7 @@ describe("OpenRouter sign-in", () => {
         redirectUri: "https://evil.example/models/openrouter/callback",
       }),
     ).rejects.toThrow("sign-in failed");
-    const state = (await begin(db)).searchParams.get("state") ?? "";
+    const state = stateOf(await begin(db));
     const failing = vi.fn(async () => new Response("{}", { status: 400 }));
     await expect(
       completeOpenRouterOAuth({

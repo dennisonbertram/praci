@@ -118,11 +118,15 @@ const onSave = vi.fn(
   async (_patch: Parameters<ComponentProps<typeof BotSettings>["onSave"]>[0]) => undefined,
 );
 
-async function render(description = "Billing") {
+async function render(
+  description = "Billing",
+  hostComputer?: { defaultHost: "docker" | "this-mac" },
+) {
   await act(async () => {
     root.render(
       <BotSettings
         bot={bot(description)}
+        hostComputer={hostComputer}
         memoryProviderConfigured={false}
         onSkillsChange={() => undefined}
         onSave={onSave}
@@ -286,6 +290,18 @@ describe("BotSettings saving without a Save button", () => {
     await act(async () => privateMode?.click());
     expect(onSave).toHaveBeenCalledTimes(1);
     expect(onSave.mock.calls[0]?.[0]).toMatchObject({ computerMode: "dedicated" });
+  });
+
+  it("offers Runs on only where the host is allowed, and saves the choice", async () => {
+    await render();
+    expect(container.textContent).not.toContain("Runs on");
+    await render("Billing", { defaultHost: "docker" });
+    expect(container.textContent).toContain("Runs on");
+    const mac = [...container.querySelectorAll("button")].find((b) =>
+      /^This (Mac|computer)$/.test(b.textContent ?? ""),
+    );
+    await act(async () => mac?.click());
+    expect(onSave.mock.calls[0]?.[0]).toMatchObject({ runsOn: "this-mac" });
   });
 
   it("shows Saved after a save and clears it after about two seconds", async () => {

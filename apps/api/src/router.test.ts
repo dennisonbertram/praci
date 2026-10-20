@@ -132,6 +132,38 @@ describe("account preferences", () => {
     });
   });
 
+  it("saves hidden pages for the signed-in user only and returns them", async () => {
+    const { update, deps, actor, handler } = preferencesDeps("organic");
+    (deps.prisma.user.findUniqueOrThrow as ReturnType<typeof vi.fn>).mockResolvedValue({
+      email: "user@rakazo.test",
+      name: "Test User",
+      avatarStyle: "organic",
+      timezone: null,
+      hiddenPages: ["legal", "cap-table"],
+    });
+
+    const { response } = await handler.handle(
+      new Request("http://127.0.0.1/rpc/preferences/update", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        // A userId in the body is ignored: the target is always the actor.
+        body: JSON.stringify({
+          json: { hiddenPages: ["legal", "cap-table", "legal"], userId: "user-2" },
+        }),
+      }),
+      { prefix: "/rpc", context: { actor } },
+    );
+
+    expect(response.status).toBe(200);
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: expect.objectContaining({ hiddenPages: ["legal", "cap-table"] }),
+    });
+    await expect(response.json()).resolves.toEqual({
+      json: expect.objectContaining({ hiddenPages: ["legal", "cap-table"] }),
+    });
+  });
+
   it("stores a reported time zone and rejects an unknown one", async () => {
     const { update, actor, handler } = preferencesDeps("organic");
     const send = (timezone: string) =>
@@ -153,6 +185,23 @@ describe("account preferences", () => {
     update.mockClear();
     expect((await send("Not/AZone")).response?.status).toBeGreaterThanOrEqual(400);
     expect(update).not.toHaveBeenCalled();
+  });
+
+  it("records the tour as seen and clears it again", async () => {
+    const { update, actor, handler } = preferencesDeps("organic");
+    const send = (tourSeen: boolean) =>
+      handler.handle(
+        new Request("http://127.0.0.1/rpc/preferences/update", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ json: { tourSeen } }),
+        }),
+        { prefix: "/rpc", context: { actor } },
+      );
+    expect((await send(true)).response?.status).toBe(200);
+    expect(update.mock.calls[0]?.[0].data.tourSeenAt).toBeInstanceOf(Date);
+    await send(false);
+    expect(update.mock.calls[1]?.[0].data.tourSeenAt).toBeNull();
   });
 
   it("rejects avatar styles outside robot|organic", async () => {

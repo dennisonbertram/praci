@@ -82,6 +82,7 @@ export function ConnectAppsButton({
       <button
         type="button"
         data-testid="sidebar-integrations"
+        data-tour="sidebar-integrations"
         onClick={onClick}
         className="mb-1 flex w-full items-center justify-between gap-3 rounded-full border border-sidebar-border bg-muted py-1.5 pl-4 pr-2 hover:bg-sidebar-accent"
       >
@@ -102,6 +103,7 @@ export function ConnectAppsButton({
     <button
       type="button"
       data-testid="sidebar-integrations"
+      data-tour="sidebar-integrations"
       aria-current={active ? "page" : undefined}
       onClick={onClick}
       className={`mb-1 flex w-full items-center gap-3 rounded-xl px-2.5 py-2 hover:bg-sidebar-accent ${
