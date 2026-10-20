@@ -101,6 +101,7 @@ export * from "./graphql-connectors.js";
 export * from "./group-handoff.js";
 export * from "./home.js";
 export * from "./host-aware-sandbox.js";
+export * from "./imessage-notification.js";
 export * from "./inbox-classifier-factory.js";
 export * from "./inbox-triage.js";
 export * from "./infisical-secret-store.js";

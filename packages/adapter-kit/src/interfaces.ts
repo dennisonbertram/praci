@@ -493,6 +493,14 @@ export interface NotificationChannel {
   /** The `NotificationDelivery.channel` and `NotificationEndpoint.channel` value, e.g. "push". */
   readonly channel: string;
   describe(): AdapterDescriptor<{ push: boolean; email: boolean }>;
+  /**
+   * Where to reach the user, for channels whose addresses are not `NotificationEndpoint` rows
+   * (iMessage uses the linked messaging identity). Without it the outbox reads the endpoint table.
+   */
+  endpoints?(
+    scope: { userId: string; spaceId: string },
+    context: { signal: AbortSignal },
+  ): Promise<NotificationEndpointRef[]>;
   send(
     envelope: NotificationEnvelope,
     endpoint: NotificationEndpointRef,

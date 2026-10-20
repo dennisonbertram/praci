@@ -4336,6 +4336,10 @@ msgstr "Image hidden while amounts are hidden"
 msgid "Image upload area"
 msgstr "Image upload area"
 
+#: src/components/NotificationSettings.tsx
+msgid "iMessage"
+msgstr "iMessage"
+
 #: src/components/integrations/IMessageSection.tsx
 msgid "iMessage (BlueBubbles)"
 msgstr "iMessage (BlueBubbles)"

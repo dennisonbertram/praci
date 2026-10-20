@@ -13,6 +13,7 @@ const prefs = (over: Partial<NotificationPreferences>): NotificationPreferences 
   takeover: true,
   channels: {},
   hasPhone: false,
+  hasImessage: false,
   ...over,
 });
 
@@ -26,6 +27,17 @@ const render = () => (
 export const BrowserOnly: Story = {
   render,
   beforeEach: () => mockRpc({ "notifications.preferences": prefs({}) }),
+};
+
+/** A linked iMessage number adds the iMessage row, here switched off. */
+export const WithImessage: Story = {
+  render,
+  beforeEach: () =>
+    mockRpc({
+      "notifications.preferences": prefs({ hasImessage: true, channels: { imessage: false } }),
+      "notifications.updatePreferences": (input: unknown) =>
+        prefs({ hasImessage: true, ...(input as object) }),
+    }),
 };
 
 export const WithPhone: Story = {

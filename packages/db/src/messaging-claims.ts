@@ -3,10 +3,6 @@ import type { PrismaClient } from "./client.js";
 type ClaimDb = Pick<PrismaClient, "messagingInboundClaim">;
 type CursorDb = Pick<PrismaClient, "messagingPollCursor">;
 
-const CLAIM_RETENTION_MS = 7 * 24 * 60 * 60_000;
-const PRUNE_EVERY_MS = 60 * 60_000;
-let lastPrune = 0;
-
 export function messagingInboundKey(provider: string, messageId: string): string {
   return `messaging:${provider}:${messageId}`;
 }
@@ -22,23 +18,12 @@ export async function claimInboundMessage(db: ClaimDb, key: string): Promise<boo
     data: [{ key }],
     skipDuplicates: true,
   });
-  pruneInboundClaims(db);
   return count === 1;
 }
 
 /** Give a claim back after a failed attempt so the provider's retry (or the next poll) can run it. */
 export async function releaseInboundMessage(db: ClaimDb, key: string): Promise<void> {
   await db.messagingInboundClaim.deleteMany({ where: { key } });
-}
-
-/** Claims only guard recent replays; keys hold no message content. At most hourly per process. */
-function pruneInboundClaims(db: ClaimDb): void {
-  const now = Date.now();
-  if (now - lastPrune < PRUNE_EVERY_MS) return;
-  lastPrune = now;
-  void db.messagingInboundClaim
-    .deleteMany({ where: { createdAt: { lt: new Date(now - CLAIM_RETENTION_MS) } } })
-    .catch(() => undefined);
 }
 
 /**

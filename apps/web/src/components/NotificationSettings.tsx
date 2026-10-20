@@ -11,7 +11,7 @@ import { errorText } from "../lib/user-error";
 const currentPermission = (): BrowserNotificationPermission | undefined =>
   typeof Notification === "undefined" ? undefined : Notification.permission;
 
-/** One switch per channel the user can receive on. Phone shows only once a phone is registered. */
+/** One switch per channel the user can receive on. Phone and iMessage show only once a phone is registered or an iMessage number is linked. */
 export function NotificationSettingsSection() {
   const { t } = useLingui();
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
@@ -88,6 +88,19 @@ export function NotificationSettingsSection() {
             />
             <span className="text-[14px] text-foreground/75">
               <Trans>Phone</Trans>
+            </span>
+          </li>
+        ) : null}
+        {prefs.hasImessage ? (
+          <li className="flex items-center gap-3">
+            <Switch
+              aria-label={t`iMessage`}
+              checked={prefs.channels.imessage !== false}
+              disabled={pending}
+              onCheckedChange={(on) => void save({ imessage: on })}
+            />
+            <span className="text-[14px] text-foreground/75">
+              <Trans>iMessage</Trans>
             </span>
           </li>
         ) : null}

@@ -11,7 +11,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import { messagingDeliverJob } from "@rakazo/adapter-kit";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
-import { deleteExpiredNotifications } from "@rakazo/db";
+import { deleteExpiredMessagingTransport, deleteExpiredNotifications } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { BoxFilesDeps } from "./box-files.js";
 import type { CloudAgentConnection } from "./cloud-agent-factory.js";
@@ -145,6 +145,9 @@ export function createBackgroundJobHandlers(deps: {
     },
     "notifications.retention": async () => {
       await deleteExpiredNotifications(deps.prisma);
+    },
+    "messaging.retention": async () => {
+      await deleteExpiredMessagingTransport(deps.prisma);
     },
     "mail.search.expire": async (payload) => {
       await expireMailSearch(deps.prisma, payload.searchId);

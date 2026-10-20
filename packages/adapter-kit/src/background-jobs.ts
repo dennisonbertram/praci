@@ -29,6 +29,7 @@ const payloadSchemas = {
   "messaging.deliver": z.object({ runId: z.string().min(1).optional() }),
   "notifications.deliver": z.object({}),
   "notifications.retention": z.object({}),
+  "messaging.retention": z.object({}),
   "cloud_agent.poll": z.object({ agentId: z.string().min(1) }),
   "mail.search.expire": z.object({ searchId: z.string().min(1) }),
   "inbox.triage": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),

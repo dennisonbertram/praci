@@ -86,15 +86,18 @@ async function deliverOne(
     : null;
   const envelope = { ...notification, groupId: thread?.groupId ?? null };
   if (!channel) return finish("failed", `No ${delivery.channel} channel is configured.`);
-  const endpoints = await deps.prisma.notificationEndpoint.findMany({
-    where: {
-      userId: notification.userId,
-      channel: delivery.channel,
-      OR: [{ spaceId: null }, { spaceId: notification.spaceId }],
-    },
-    select: { id: true, address: true, sessionId: true },
-  });
   const abort = AbortSignal.timeout(Math.floor(leaseMs * 0.75));
+  const scope = { userId: notification.userId, spaceId: notification.spaceId };
+  const endpoints = channel.endpoints
+    ? await channel.endpoints(scope, { signal: abort })
+    : await deps.prisma.notificationEndpoint.findMany({
+        where: {
+          userId: notification.userId,
+          channel: delivery.channel,
+          OR: [{ spaceId: null }, { spaceId: notification.spaceId }],
+        },
+        select: { id: true, address: true, sessionId: true },
+      });
   const context = {
     operationId: `notification.deliver:${delivery.id}`,
     traceId: `notification.deliver:${delivery.id}`,

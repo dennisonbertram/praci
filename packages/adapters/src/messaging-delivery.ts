@@ -408,6 +408,7 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
           context,
         );
         if (result === "delivered") {
+          await blankSentBody(deps.prisma, row.id, identity.provider);
           await deps.prisma.messagingIdentity.update({
             where: { id: identity.id },
             data: { outboundSinceInbound: { increment: 1 } },
@@ -421,7 +422,7 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
       );
       await deps.prisma.messagingOutbound.updateMany({
         where: { id: row.id },
-        data: { providerHandle: sent.handle },
+        data: { providerHandle: sent.handle, ...blankedBody(identity.provider) },
       });
       await deps.prisma.messagingIdentity.update({
         where: { id: identity.id },
@@ -454,6 +455,12 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
     }
   }
 }
+
+/** Personal text is not kept once sent; failed and pending rows keep it for retry until retention. */
+const blankedBody = (provider: string) => (IMESSAGE_PROVIDERS.has(provider) ? { body: "" } : {});
+
+const blankSentBody = (prisma: PrismaClient, id: string, provider: string) =>
+  prisma.messagingOutbound.updateMany({ where: { id }, data: blankedBody(provider) });
 
 /**
  * Send the AI disclosure ahead of the first message to a conversation. The

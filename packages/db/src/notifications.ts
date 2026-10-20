@@ -163,12 +163,34 @@ export async function createNotification(
   });
 }
 
-/** Channels the user has an endpoint for (account-wide or in this space) and has not disabled. */
+/** Providers whose linked identity can receive the "imessage" notification channel. */
+export const IMESSAGE_NOTIFICATION_PROVIDERS = ["bluebubbles", "photon"];
+
+/** The user's verified iMessage identities in this space, most recently active first. */
+export async function linkedImessageIdentities(
+  prisma: Pick<PrismaClient, "messagingIdentity">,
+  { spaceId, userId }: Scope,
+) {
+  return prisma.messagingIdentity.findMany({
+    where: {
+      spaceId,
+      userId,
+      provider: { in: IMESSAGE_NOTIFICATION_PROVIDERS },
+      verifiedAt: { not: null },
+    },
+    orderBy: { lastInboundAt: { sort: "desc", nulls: "last" } },
+  });
+}
+
+/**
+ * Channels the user can be reached on (a push or browser endpoint, account-wide or in this space,
+ * or a linked iMessage identity) and has not disabled.
+ */
 export async function externalChannels(
-  tx: Pick<PrismaClient, "notificationEndpoint" | "notificationPreference">,
+  tx: Pick<PrismaClient, "notificationEndpoint" | "notificationPreference" | "messagingIdentity">,
   { spaceId, userId }: Scope,
 ): Promise<string[]> {
-  const [endpoints, preference] = await Promise.all([
+  const [endpoints, preference, imessage] = await Promise.all([
     tx.notificationEndpoint.findMany({
       where: { userId, OR: [{ spaceId: null }, { spaceId }] },
       distinct: ["channel"],
@@ -178,12 +200,15 @@ export async function externalChannels(
       where: { spaceId_userId: { spaceId, userId } },
       select: { channels: true },
     }),
+    linkedImessageIdentities(tx, { spaceId, userId }),
   ]);
   const switches = (preference?.channels ?? {}) as Record<string, unknown>;
-  return endpoints.map((e) => e.channel).filter((channel) => switches[channel] !== false);
+  const channels = endpoints.map((e) => e.channel);
+  if (imessage.length > 0) channels.push("imessage");
+  return channels.filter((channel) => switches[channel] !== false);
 }
 
-export const NOTIFICATION_CHANNELS = ["push", "browser"] as const;
+export const NOTIFICATION_CHANNELS = ["push", "browser", "imessage"] as const;
 export type NotificationChannelSwitches = Partial<
   Record<(typeof NOTIFICATION_CHANNELS)[number], boolean>
 >;
