@@ -67,6 +67,14 @@ export function isTechnicalErrorMessage(message: string): boolean {
   return TECHNICAL_MESSAGE.some((pattern) => pattern.test(message));
 }
 
+const INTERNAL_RUN_ERROR =
+  /invocation in|prisma|at Object\.|\bECONN[A-Z]*\b|(?:^|[\s(])\/(?:[\w.-]+\/)+[\w.-]+|[A-Za-z]:\\|\.[cm]?[jt]sx?:\d+|\b(?:SELECT|INSERT INTO|UPDATE \w+ SET|DELETE FROM)\b|\bat \S+ \(/i;
+
+/** True for a stored run error that is implementation detail (database or stack-trace text). */
+export function isInternalRunError(error: string): boolean {
+  return error.length > 300 || INTERNAL_RUN_ERROR.test(error) || isTechnicalErrorMessage(error);
+}
+
 /** The `message` inside a provider's JSON error body (`400 {"error":{"message":"..."}}`), or null. */
 export function jsonErrorMessage(text: string): string | null {
   const start = text.indexOf("{");

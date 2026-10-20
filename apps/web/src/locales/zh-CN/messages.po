@@ -4625,6 +4625,12 @@ msgstr ""
 msgid "Imported"
 msgstr ""
 
+#. placeholder {0}: importing.done
+#. placeholder {1}: importing.total
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Importing {0} of {1}"
+msgstr ""
+
 #: src/components/data-room/ImportActivity.tsx
 msgid "Importing {done} of {total}"
 msgstr ""
@@ -5005,6 +5011,7 @@ msgstr "加载更早的运行记录"
 msgid "Load web images automatically"
 msgstr "自动加载网络图片"
 
+#: src/components/inbox/InboxMessageDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Shell.tsx
 msgid "Loading"
