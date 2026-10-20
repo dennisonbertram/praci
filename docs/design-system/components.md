@@ -5,7 +5,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 - Web and shared component files with stories: 239 of 239
 - Web and shared components: 651
-- Mobile components: 137 in 94 files, mobile — native story pending
+- Mobile components: 139 in 96 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -361,6 +361,8 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ArtifactsScreen, Chip, ArtifactRow | [apps/mobile/app/artifacts.tsx](../../apps/mobile/app/artifacts.tsx) | mobile — native story pending | mobile |
 | BotSettingsScreen | [apps/mobile/app/bot-settings.tsx](../../apps/mobile/app/bot-settings.tsx) | mobile — native story pending | mobile |
 | Computer, ComputerReleaseActions, ScreenWebView | [apps/mobile/app/computer.tsx](../../apps/mobile/app/computer.tsx) | mobile — native story pending | mobile |
+| DataRoomItemScreen | [apps/mobile/app/data-room-item.tsx](../../apps/mobile/app/data-room-item.tsx) | mobile — native story pending | mobile |
+| DataRoomScreen | [apps/mobile/app/data-room.tsx](../../apps/mobile/app/data-room.tsx) | mobile — native story pending | mobile |
 | GroupSettingsScreen | [apps/mobile/app/group-settings.tsx](../../apps/mobile/app/group-settings.tsx) | mobile — native story pending | mobile |
 | ImageScreen | [apps/mobile/app/image.tsx](../../apps/mobile/app/image.tsx) | mobile — native story pending | mobile |
 | InboxAttachmentScreen | [apps/mobile/app/inbox-attachment.tsx](../../apps/mobile/app/inbox-attachment.tsx) | mobile — native story pending | mobile |
