@@ -1,16 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MemoryRouter } from "react-router-dom";
 import { DataRoomRefChips } from "./DataRoomRefChips";
 
 const meta = {
   title: "DataRoom/DataRoomRefChips",
   decorators: [
     (Story) => (
-      <MemoryRouter>
-        <div className="w-80">
-          <Story />
-        </div>
-      </MemoryRouter>
+      <div className="w-80">
+        <Story />
+      </div>
     ),
   ],
   render: () => (

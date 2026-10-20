@@ -3,7 +3,14 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { ConnectorProxyResponse } from "@rakazo/adapter-kit";
-import { ComposioEmulator, FakeSandboxProvider, GmailApiEmulator } from "@rakazo/adapters";
+import {
+  aiRecipient,
+  ComposioEmulator,
+  FakeSandboxProvider,
+  GmailApiEmulator,
+} from "@rakazo/adapters";
+import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
+import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it } from "vitest";
 import { discardBotIntroRun } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
@@ -12,6 +19,27 @@ import { startModelEmulator } from "./model-emulator.js";
 type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
 const fixtureOrigin = "http://127.0.0.1:5173";
+
+/** Records the AI data sharing consent a chat's mail reads need, for the fixture model. */
+async function grantChatMailConsent(
+  prisma: PrismaClient,
+  bot: { spaceId: string; userId: string },
+  model: { baseUrl: string; model: { provider: string; id: string } },
+) {
+  const recipient = aiRecipient({
+    provider: model.model.provider,
+    modelId: model.model.id,
+    baseUrl: model.baseUrl,
+    use: "model",
+  });
+  if (!recipient) return;
+  const where = { userId: bot.userId, spaceId: bot.spaceId, recipientKey: recipient.key };
+  await prisma.aiDataConsent.upsert({
+    where: { userId_spaceId_recipientKey: where },
+    create: { ...where, version: AI_DISCLOSURE_VERSION },
+    update: { version: AI_DISCLOSURE_VERSION },
+  });
+}
 
 /** Composio stand-in whose proxy answers from the Gmail emulator, so the real mail provider runs. */
 class MailComposioEmulator extends ComposioEmulator {
@@ -166,6 +194,7 @@ describe.skipIf(!databaseAvailable)(
             metadata: { mailAddress: "me@example.test" },
           },
         });
+        await grantChatMailConsent(handles.prisma, storedBot, model);
         const sent = await rpc<{ runId: string }>(handles.app, cookie, "threads/send", {
           botId: bot.id,
           text: "When did Jana first email me?",
@@ -335,6 +364,7 @@ describe.skipIf(!databaseAvailable)(
             metadata: { mailAddress: "me@example.test" },
           },
         });
+        await grantChatMailConsent(handles.prisma, storedBot, model);
         const sent = await rpc<{ runId: string }>(handles.app, cookie, "threads/send", {
           botId: bot.id,
           text: "What needs my attention?",

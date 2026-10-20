@@ -163,6 +163,11 @@ export async function runTrial(
         where: { id: botId },
         select: { userId: true, spaceId: true },
       });
+      // A new connection starts private to its own agent; the eval's Assistant bot needs all of them.
+      await prisma.connection.updateMany({
+        where: { spaceId: persistedBot.spaceId, userId: persistedBot.userId },
+        data: { allAgents: true },
+      });
       // Register before discard so a timeout still reaches cleanupActors.
       actors.push({ botId, cookie, ...persistedBot });
       await discardBotIntroRun(trial, cookie, botId);
