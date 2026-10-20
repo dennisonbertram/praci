@@ -105,8 +105,17 @@ message on with its hints.
    `Precedence: bulk|list`, `Auto-Submitted`, Gmail's promotions/social/updates
    categories, no-reply senders. Decides Newsletters or Updates for clear cases. Mail
    that looks like a security alert, a bill or a direct ask goes to the model instead.
+   Mail with list headers (`List-Id`, `List-Unsubscribe`, bulk precedence) goes to
+   Newsletters, even when Gmail filed it under Updates, unless a transactional hint keeps
+   it in Updates: `Auto-Submitted`, Gmail's social category, a receipt, order, shipping or
+   delivery subject, or a no-reply sender without a `List-Id` or promotions category.
 5. **Learned sender decision**: once the model has put an authenticated sender in the
    same pile a few times with high confidence, store that as the sender's decision.
+   Built as: three agreeing, conflict-free model verdicts (the model's confidence is not
+   stored), DKIM or SPF passing and none failing, no prior contact. It applies only after
+   every rule above has passed, so headers and safety win. It does not skip the model: triage
+   still reads every new message for the summary. What it adds is a pile that is set by
+   rules alone, which also works with no model or consent.
 6. **Model**: the optional first-pass classifier provider, then the user's model, with
    headers, snippet, sender stats and the last few corrections for that sender. Output
    keeps today's fields, turns `reason` into a one-line summary, and adds one to three
@@ -165,8 +174,8 @@ cover every new write.
 
 Filters and push need the native Google connection, where Rakazo owns the OAuth
 client and scopes. For Composio and Pipedream connections, Rakazo applies "always skip
-the inbox" itself during sync and keeps polling. Whether those proxies allow the
-filters endpoint is checked before phase 4.
+the inbox" itself during sync and keeps polling. Filters are offered on native Google
+only, because the Composio and Pipedream default scopes lack `gmail.settings.basic`.
 
 ## Sync and speed
 
@@ -199,16 +208,52 @@ stories.
    Mockup: [piles-mockup.html](piles-mockup.html).
 3. **Cleanup screen and unsubscribe.** Ranked senders, preselection, one-click
    unsubscribe with the POST-capable safe fetch, spam and trash, action log with undo.
-   Mobile: the same screen as a native list.
+   Mobile: the same screen as a native list. Mockup: [cleanup-mockup.html](cleanup-mockup.html).
+   Landed: the Cleanup screen on web (Inbox header button) and mobile (Inbox header menu);
+   `inbox.cleanup.*`, `inbox.unsubscribe`, `inbox.moveMany` and `inbox.actions.*`; a per-sender
+   decision (skip inbox, unsubscribe result) and an action log, both per mail account. Skip
+   inbox is applied by the `mail.sync` job after each sync, not by a Gmail filter (phase 4), and
+   is the one automatic action so far: it archives only mail received after the decision, never
+   spam, spam-like or failed-authentication mail or a sender marked important, and every run is a
+   logged, undoable entry. Spam, not spam and trash are `SPAM` and `TRASH` label changes through
+   `modifyThread`; the agent's `mail_modify` still refuses both.
 4. **Gmail filters.** "Always skip the inbox" creates a filter on native Google
    connections, archives existing mail, records the filter for undo. Mobile: the same
-   action, no new screen.
+   action, no new screen. Landed: the optional `MailProvider` methods `createSenderRule` and
+   `deleteSenderRule` (Gmail `users.settings.filters`: `from` = the sender, remove `INBOX`);
+   `MailAccount.senderRules` says whether an account is `ready`, `needs_permission` or
+   `unsupported`. The permission is requested only when a user skips a sender on a native
+   account that lacks it: Rakazo still skips on its own, the Cleanup screen shows one "Also in
+   Gmail" link, and that link runs a reconnect that adds `gmail.settings.basic` to the usual
+   scopes and keeps the account's decisions and action log (a reconnect used to delete them).
+   Granted scopes are stored in the connection's metadata. A decision keeps `ruleId` and
+   `ruleStatus` (`active`, `pending`, `full`, `failed`). Waiting filters are made right after the
+   reconnect and again at the end of each sync job. A sender marked important gets no filter,
+   an identical filter the user already had is reused and never deleted, and an address that
+   Gmail would read as a search expression (spaces, `OR`, braces, a leading `-`) is refused.
+   Stop and Undo delete the filter first and keep the decision if that fails; both are refused
+   while `MAIL_WRITES_DISABLED` is set when a filter exists. At 1,000 filters, or on any
+   provider error, the decision stays on Rakazo's side and the row says so. An unsubscribe still
+   skips the inbox only on Rakazo's side and makes no filter. The per-click `skip_inbox` batch
+   is the log entry, so skipping a sender with no inbox mail writes none and Stop removes the
+   filter.
+   Mobile shows the Rakazo-side skip and the two notes; native Google is hidden there, so it
+   makes no filters and has no reconnect link. Removing an account does not delete its filters
+   in Gmail.
 5. **Background sync and push.** Worker-owned sync for all three callers, wider cache,
    optional Pub/Sub. Mobile: none. Landed: the `mail.sync` job, a 90-day cache filled
    100 messages per query per run, and Gmail push when `GMAIL_PUSH_TOPIC` and
    `GMAIL_PUSH_SERVICE_ACCOUNT` are set.
 6. **Newsletter digest and learned sender decisions.** Digest reading view; promote
    repeated model decisions to sender decisions. Mobile: digest view.
+   Landed: a Digest toggle on the Newsletters pile (web) and a Senders / Digest control (mobile)
+   with one card or row per issue from the last 7 days, newest first, and Archive all (undo on
+   web, a confirm on mobile). Learned sender decisions are columns on `mail_sender_stats`
+   (`learnedPile`, `learnedCount`, `learnedAt`, `learnedForgottenAt`), set by `applyPileRules`.
+   A sender mark, Not spam, skip inbox, prior contact, a spam verdict or a conflicting verdict
+   clears one; the cleanup row shows it with Forget, after which only newer mail counts.
+   Also fixed: one sender listed twice (rows join by address without a +tag, or by display
+   name on one base domain), newsletters filed under Updates, and a flaky sync job test.
 
 ## Decisions
 
@@ -224,13 +269,16 @@ with spam, trash, unsubscribe and filters from user clicks.
 
 ## Open decisions
 
-- Automatic actions: phases 1–4 only act on a user's click. Whether to add scheduled
-  automatic cleanup (archive and label only, capped, logged) is decided after phase 3.
+- Automatic actions: apart from skip inbox for senders the user chose (phase 3), phases 1–4
+  only act on a user's click. Whether to add scheduled automatic cleanup (archive and label
+  only, capped, logged) is decided after phase 3.
 - Cache window and storage cost for 90 days of headers per connection.
 
 ## Unverified
 
 - Whether applying the `SPAM` label through the API trains Gmail's spam filter.
-- Whether the Composio and Pipedream proxies allow `users.settings.filters`.
+- The exact error Gmail returns for the 1,001st filter and for a missing
+  `gmail.settings.basic` scope. The code counts filters before creating one and treats any
+  `auth` error on a filter call as a missing permission.
 - Several Superhuman details (speed targets, reminders) came from reviews, not
   official pages; none of this plan depends on them.

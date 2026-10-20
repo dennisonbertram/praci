@@ -41,6 +41,8 @@ model User {
   accounts                    Account[]
   cachedMailMessages          CachedMailMessage[]
   mailSenderStats             MailSenderStat[]
+  mailSenderDecisions         MailSenderDecision[]
+  mailActionLogs              MailActionLog[]
   inboxTodos                  InboxTodo[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
@@ -242,6 +244,8 @@ model Space {
   connections                 Connection[]
   cachedMailMessages          CachedMailMessage[]
   mailSenderStats             MailSenderStat[]
+  mailSenderDecisions         MailSenderDecision[]
+  mailActionLogs              MailActionLog[]
   inboxTodos                  InboxTodo[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
@@ -962,36 +966,38 @@ model MailSearchRow {
 }
 
 model Connection {
-  id                 String                @id @default(cuid())
-  spaceId            String
-  space              Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId             String
-  connectorId        String                @default("composio")
-  provider           String
-  displayName        String
-  status             String
-  secretId           String?
-  providerRef        String?
-  metadata           Json                  @default("{}")
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  cachedMailMessages CachedMailMessage[]
-  mailSenderStats    MailSenderStat[]
-  inboxTodos         InboxTodo[]
-  mailSyncState      MailSyncState?
-  dataRoomSyncState  DataRoomSyncState?
-  dataRoomItems      DataRoomItem[]
-  composeSends       ComposeSend[]
+  id                  String                @id @default(cuid())
+  spaceId             String
+  space               Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId              String
+  connectorId         String                @default("composio")
+  provider            String
+  displayName         String
+  status              String
+  secretId            String?
+  providerRef         String?
+  metadata            Json                  @default("{}")
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  cachedMailMessages  CachedMailMessage[]
+  mailSenderStats     MailSenderStat[]
+  mailSenderDecisions MailSenderDecision[]
+  mailActionLogs      MailActionLog[]
+  inboxTodos          InboxTodo[]
+  mailSyncState       MailSyncState?
+  dataRoomSyncState   DataRoomSyncState?
+  dataRoomItems       DataRoomItem[]
+  composeSends        ComposeSend[]
   /// false: only bots with a BotConnectionAccess row may use this connection's tools.
-  allAgents          Boolean               @default(true)
-  botAccess          BotConnectionAccess[]
-  writesEnabled      Boolean               @default(false)
-  agentBotId         String?
-  agentBot           Bot?                  @relation("ConnectionAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
+  allAgents           Boolean               @default(true)
+  botAccess           BotConnectionAccess[]
+  writesEnabled       Boolean               @default(false)
+  agentBotId          String?
+  agentBot            Bot?                  @relation("ConnectionAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
   /// Set once, when begin creates a brand-new row (never on reuse, never cleared): the connection
   /// is private to its own agent from the start, stays private when the agent goes away, and is
   /// always scoped on its own. Older rows keep the shared-by-default rules.
-  privateByDefault   Boolean               @default(false)
+  privateByDefault    Boolean               @default(false)
 
   @@index([spaceId, userId, connectorId])
   @@index([agentBotId])
@@ -1832,6 +1838,10 @@ model CachedMailMessage {
   alreadyHandled    Boolean     @default(false)
   /// Last time a sync or a search wrote this row.
   seenAt            DateTime
+  /// Sync archived this message because its sender skips the inbox. Set once and never cleared, so an undo is not archived again.
+  skipAppliedAt     DateTime?
+  /// The user chose Not spam: the model's spam verdict no longer puts this message back in the Spam pile. Cleared when the user marks it spam.
+  notSpamAt         DateTime?
   /// MailSignals (List-Unsubscribe, auth results, Gmail category flags); null until fetched.
   signals           Json?
   /// MAIL_SIGNALS_VERSION that produced `signals`; an older value makes sync fetch the row again.
@@ -1874,9 +1884,74 @@ model MailSenderStat {
   /// true: the user sent mail to this address. false: searched, none found. null: not checked.
   priorContact          Boolean?
   priorContactCheckedAt DateTime?
+  /// Pile the model chose for this sender often enough to reuse: "important" | "updates" | "newsletters". Null: none.
+  learnedPile           String?
+  /// Agreeing model verdicts when it was learned.
+  learnedCount          Int        @default(0)
+  learnedAt             DateTime?
+  /// The user forgot the learned pile; only mail received after this counts toward learning again.
+  learnedForgottenAt    DateTime?
 
   @@unique([connectionId, senderAddress])
   @@map("mail_sender_stats")
+}
+
+/// The user's decision about one sender on one mail account. Deleting the row forgets it.
+model MailSenderDecision {
+  id                String     @id @default(cuid())
+  spaceId           String
+  space             Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId      String
+  connection        Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Lowercased From address.
+  senderAddress     String
+  /// Set while future mail from the sender is archived during sync; mail received before it is left alone.
+  skipInboxAt       DateTime?
+  /// Last unsubscribe attempt: "done" | "opened" | "sent" | "unknown" | "failed" | "refused". Null: none.
+  unsubscribeStatus String?
+  /// "one_click" | "link" | "mailto".
+  unsubscribeMethod String?
+  unsubscribedAt    DateTime?
+  /// Gmail filter this decision created, so Stop and Undo can delete it. Null: none, or Gmail already had an identical one.
+  ruleId            String?
+  /// "active" | "pending" (waiting for permission) | "full" (the 1,000-filter cap) | "failed". Null: Rakazo-side only.
+  ruleStatus        String?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@unique([connectionId, senderAddress])
+  @@index([spaceId, userId])
+  @@map("mail_sender_decisions")
+}
+
+/// One bulk action on one mail account, kept so it can be listed and undone. A click that spans
+/// accounts writes one row per account, sharing batchId.
+model MailActionLog {
+  id              String     @id @default(cuid())
+  spaceId         String
+  space           Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId    String
+  connection      Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  batchId         String
+  /// "archive" | "skip_inbox" | "unsubscribe" | "spam" | "not_spam" | "trash".
+  kind            String
+  /// "user" | "auto".
+  source          String
+  /// "cleanup" | "selection" | "skip_inbox".
+  reason          String
+  senderAddresses String[]   @default([])
+  /// Provider thread ids that changed. Undo works from these, so it still works after sync prunes the cache rows.
+  threadIds       String[]   @default([])
+  createdAt       DateTime   @default(now())
+  undoneAt        DateTime?
+
+  @@unique([connectionId, batchId])
+  @@index([spaceId, userId, createdAt])
+  @@map("mail_action_logs")
 }
 
 /// A private to-do created by triage from one cached message. Scoped to one user in one space,

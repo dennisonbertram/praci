@@ -1,7 +1,9 @@
-import type { InboxPile, InboxTodo, MailRow } from "@rakazo/contracts";
+import { MenuView } from "@expo/ui/community/menu";
+import type { InboxMoveInput, InboxPile, InboxTodo, MailRow } from "@rakazo/contracts";
 import type { SenderGroup } from "@rakazo/core";
 import {
   archivableIds,
+  digestRows,
   dueTone,
   groupBySender,
   groupInbox,
@@ -36,10 +38,11 @@ import {
   ensureMailAgent,
   listMailInbox,
   listMailTodos,
+  moveMailMessages,
   refreshMailInbox,
   todoDueLabel,
 } from "../lib/mail-inbox";
-import { native, useThemedStyles } from "../lib/native";
+import { native, useResolvedAppearance, useThemedStyles } from "../lib/native";
 import { iosAtLeast } from "../lib/native-controls";
 import { setOpenSurface } from "../lib/open-surface";
 import { markSurfaceSeen } from "../lib/unseen-notifications";
@@ -73,6 +76,8 @@ export default function InboxScreen() {
   const [dataPile, setDataPile] = useState<InboxPile>();
   // Open sender groups, by group key.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  // The Newsletters pile read as a flat list of recent issues; another pile ends it.
+  const [digest, setDigest] = useState(false);
   const [data, setData] = useState<Awaited<ReturnType<typeof listMailInbox>> | null>(null);
   const [todos, setTodos] = useState<InboxTodo[]>([]);
   const [error, setError] = useState("");
@@ -179,6 +184,7 @@ export default function InboxScreen() {
     setPile(value);
     pileRef.current = value;
     setExpanded(new Set());
+    setDigest(false);
     void load(tabRef.current, false);
   };
 
@@ -199,6 +205,27 @@ export default function InboxScreen() {
       if (result.failed.length > 0 || spamView) void load(tabRef.current, false);
     } catch (cause) {
       Alert.alert(errorText(cause, t("Could not archive {count}", { count: ids.length })));
+      void load(tabRef.current, false);
+    }
+  };
+  // Spam, not spam and trash leave the list the same way an archive does.
+  const moveRows = async (op: InboxMoveInput["op"], rows: MailRow[]) => {
+    const ids = rows
+      .filter((row) => (op === "notSpam" ? row.pile === "spam" : row.inInbox))
+      .map((row) => row.id);
+    if (ids.length === 0) return;
+    const gone = new Set(ids);
+    setData((current) =>
+      current ? { ...current, rows: current.rows.filter((row) => !gone.has(row.id)) } : current,
+    );
+    try {
+      const result = await moveMailMessages(op, ids);
+      if (result.failed.length > 0)
+        Alert.alert(t("Could not move {count}", { count: result.failed.length }));
+      // The pile counts follow, and a failed thread comes back with the real list.
+      void load(tabRef.current, false);
+    } catch (cause) {
+      Alert.alert(errorText(cause, t("Could not move {count}", { count: ids.length })));
       void load(tabRef.current, false);
     }
   };
@@ -259,6 +286,7 @@ export default function InboxScreen() {
     }
   }, [agent, router]);
 
+  const scheme = useResolvedAppearance();
   useLayoutEffect(() => {
     // An agent that searches mail has nothing to search until an account is connected.
     const show = accounts.length > 0;
@@ -274,28 +302,74 @@ export default function InboxScreen() {
                       icon: { type: "sfSymbol" as const, name: AGENT_SYMBOL },
                       onPress: () => void openAgent(),
                     },
+                    {
+                      type: "menu" as const,
+                      label: t("More"),
+                      accessibilityLabel: t("More"),
+                      icon: { type: "sfSymbol" as const, name: "ellipsis" },
+                      menu: {
+                        items: [
+                          {
+                            type: "action" as const,
+                            label: t("Cleanup"),
+                            onPress: () => router.push("/inbox-cleanup"),
+                          },
+                        ],
+                      },
+                    },
                   ]
                 : [],
           }
         : {
             headerRight: () =>
               show ? (
-                <Pressable
-                  accessibilityLabel={agentName}
-                  hitSlop={8}
-                  onPress={() => void openAgent()}
-                  style={styles.headerButton}
-                >
-                  <NativeSymbol ios={AGENT_SYMBOL} android="chatbubble-outline" size={19} />
-                </Pressable>
+                <View style={styles.headerButtons}>
+                  <Pressable
+                    accessibilityLabel={agentName}
+                    hitSlop={8}
+                    onPress={() => void openAgent()}
+                    style={styles.headerButton}
+                  >
+                    <NativeSymbol ios={AGENT_SYMBOL} android="chatbubble-outline" size={19} />
+                  </Pressable>
+                  <MenuView
+                    colorScheme={scheme}
+                    actions={[{ id: "cleanup", title: t("Cleanup"), image: "checklist" as const }]}
+                    onPressAction={() => router.push("/inbox-cleanup")}
+                  >
+                    <View
+                      accessibilityRole="button"
+                      accessibilityLabel={t("More")}
+                      style={styles.headerButton}
+                    >
+                      <NativeSymbol ios="ellipsis" android="ellipsis-horizontal" size={19} />
+                    </View>
+                  </MenuView>
+                </View>
               ) : null,
           },
     );
-  }, [accounts.length, agentName, navigation, openAgent, styles]);
+  }, [accounts.length, agentName, navigation, openAgent, router, scheme, styles, t]);
 
   const current = dataPile === pile;
   const rows = useMemo(() => (current ? (data?.rows ?? []) : []), [current, data]);
+  const digestOn = digest && pile === "newsletters";
+  const digestList = useMemo(
+    () => (digestOn ? digestRows(rows, new Date()) : []),
+    [digestOn, rows],
+  );
+  const confirmArchiveAll = () => {
+    if (digestList.length === 0) return;
+    Alert.alert(t("Archive all"), undefined, [
+      { text: t("Cancel"), style: "cancel" },
+      { text: t("Archive all"), onPress: () => void archiveRows(digestList) },
+    ]);
+  };
   const sections = useMemo(() => {
+    if (digestOn)
+      return digestList.length > 0
+        ? [{ key: "digest", title: "", data: digestList.map((row) => messageItem(row)) }]
+        : [];
     if (pile === "updates" || pile === "newsletters") {
       // A sender with one message is that message; a larger group is a header, then its messages when open.
       const items = groupBySender(rows).flatMap((group): ListItem[] =>
@@ -322,7 +396,7 @@ export default function InboxScreen() {
       { key: "today", title: t("Today"), data: groups.today.map((row) => messageItem(row)) },
       { key: "earlier", title: t("Earlier"), data: groups.earlier.map((row) => messageItem(row)) },
     ].filter((section) => section.data.length > 0);
-  }, [pile, rows, expanded, t]);
+  }, [pile, rows, expanded, digestOn, digestList, t]);
 
   const choices = [
     { key: ALL, label: t("All") },
@@ -364,6 +438,21 @@ export default function InboxScreen() {
       </View>
     ) : null;
 
+  const viewPicker =
+    pile === "newsletters" && accounts.length > 0 ? (
+      <View style={styles.picker}>
+        <NativeSegmentedControl
+          accessibilityLabel={t("Newsletters")}
+          value={digest ? "digest" : "senders"}
+          onChange={(value) => setDigest(value === "digest")}
+          options={[
+            { value: "senders" as const, label: t("Senders") },
+            { value: "digest" as const, label: t("Digest") },
+          ]}
+        />
+      </View>
+    ) : null;
+
   const loading = !data || !current || (rows.length === 0 && !synced);
   const empty =
     data && accounts.length === 0 ? (
@@ -401,6 +490,16 @@ export default function InboxScreen() {
           <>
             {picker}
             {pilePicker}
+            {viewPicker}
+            {digestList.length > 0 ? (
+              <View style={styles.picker}>
+                <NativeActionButton
+                  label={t("Archive all")}
+                  prominence="plain"
+                  onPress={confirmArchiveAll}
+                />
+              </View>
+            ) : null}
             {error && !loading ? <Text style={styles.empty}>{error}</Text> : null}
             {pile === "important" && todos.length > 0 ? (
               <TodoCard todos={todos} onComplete={completeTodo} />
@@ -421,7 +520,15 @@ export default function InboxScreen() {
               />
             </MailRowMenu>
           ) : (
-            <MailRowMenu onArchive={() => void archiveRows([item.row])}>
+            <MailRowMenu
+              onArchive={() => void archiveRows([item.row])}
+              {...(item.row.pile === "spam"
+                ? { onNotSpam: () => void moveRows("notSpam", [item.row]) }
+                : item.row.inInbox
+                  ? { onSpam: () => void moveRows("spam", [item.row]) }
+                  : {})}
+              {...(item.row.inInbox ? { onTrash: () => void moveRows("trash", [item.row]) } : {})}
+            >
               <MailListRow
                 row={item.row}
                 indented={item.child}
@@ -668,5 +775,6 @@ function createStyles() {
     },
     dimmed: { opacity: 0.55 },
     headerButton: { padding: 8 },
+    headerButtons: { flexDirection: "row", alignItems: "center" },
   });
 }

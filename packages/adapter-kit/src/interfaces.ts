@@ -213,14 +213,16 @@ export interface ConnectorProvider {
 export interface ConnectionAuthProvider {
   describe(): AdapterDescriptor<{ oauth: boolean }>;
   begin(
-    request: { provider: string; redirectUrl: string },
+    /** `permission` asks a connector that supports it for one extra grant on top of its defaults. */
+    request: { provider: string; redirectUrl: string; permission?: "mail_rules" },
     context: AdapterContext,
   ): Promise<{ authorizationUrl: string | null; state: string }>;
   complete(
     /** `provider` is the pending Connection's provider, for connectors whose providers need different grants. */
     request: { state: string; code?: string; redirectUrl?: string; provider?: string },
+    /** `scope`: the space-separated scopes the provider granted, when it reports them. */
     context: AdapterContext,
-  ): Promise<{ connectionRef: string; secretId?: string }>;
+  ): Promise<{ connectionRef: string; secretId?: string; scope?: string }>;
   /** `provider` is the Connection's provider, for connectors that hold several apps per account. */
   revoke(
     connectionRef: string,
@@ -241,6 +243,15 @@ export interface ManagedConnectorProvider
   warmDirectory?(): Promise<void>;
   /** Authenticated call to the app's API as one connected account. Status codes are returned, not thrown. */
   proxy?(request: ConnectorProxyRequest, context: AdapterContext): Promise<ConnectorProxyResponse>;
+}
+
+/**
+ * Sends the RFC 8058 one-click unsubscribe POST. It is not tied to a mailbox. Throws
+ * `MailProviderError("invalid")` for a URL it refuses and `"unavailable"` for any failure
+ * (redirect, non-2xx, timeout, oversized answer, network).
+ */
+export interface MailUnsubscriber {
+  oneClick(url: string, context: AdapterContext): Promise<void>;
 }
 
 /** Read access to a user's mailboxes, whichever connector authenticated them. */
@@ -316,6 +327,20 @@ export interface MailProvider {
   ): Promise<MailWatch | null>;
   /** Optional. Ends the watch; succeeds when none is active. */
   stopWatch?(account: MailAccount, context: AdapterContext): Promise<void>;
+  /**
+   * Optional. Makes the mailbox itself keep a sender's mail out of the inbox from now on (a Gmail
+   * filter). `account.senderRules` says whether the route can. Returns null when this route cannot,
+   * without any request. `created` is false when an identical rule already existed, which the caller
+   * must not delete later. Throws `auth` when the account lacks the permission, `invalid` for an
+   * address that is not a plain mailbox address, and `limit` when the mailbox's rule quota is full.
+   */
+  createSenderRule?(
+    account: MailAccount,
+    rule: { from: string; skipInbox: true },
+    context: AdapterContext,
+  ): Promise<{ ruleId: string; created: boolean } | null>;
+  /** Optional. Deletes a rule `createSenderRule` made; succeeds when it is already gone. */
+  deleteSenderRule?(account: MailAccount, ruleId: string, context: AdapterContext): Promise<void>;
   /** Saves a new draft. Never retried after an unclear failure, so it cannot leave two drafts. */
   createDraft(
     account: MailAccount,

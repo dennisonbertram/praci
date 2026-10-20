@@ -27,6 +27,10 @@ export interface SafeWebFetchOptions {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   maxRedirects?: number;
+  /** Default GET. A POST sends `body` once, with no cookies or credentials, and follows no redirect. */
+  method?: "GET" | "POST";
+  /** The request body of a POST. */
+  body?: string;
   /** Keep the first `maxBytes` of a longer body instead of rejecting it. */
   truncate?: boolean;
   /** Refuse any hop, redirects included, whose port is not listed. */
@@ -133,6 +137,8 @@ export async function fetchSafeWebBytes(
       redirectsRemaining: options.maxRedirects ?? MAX_REDIRECTS,
       truncate: options.truncate ?? false,
       allowedPorts: options.allowedPorts,
+      method: options.method ?? "GET",
+      body: options.body,
     });
   } finally {
     // Race graceful close against the shared deadline. Do not wait unbounded on close().
@@ -163,6 +169,8 @@ async function followRedirects(
     redirectsRemaining: number;
     truncate: boolean;
     allowedPorts?: readonly number[];
+    method: "GET" | "POST";
+    body?: string;
   },
 ): Promise<SafeWebResponse<Uint8Array>> {
   if (state.signal.aborted) {
@@ -172,20 +180,29 @@ async function followRedirects(
   // Race fetch against the deadline — injected fetch may ignore init.signal.
   const response = await withAbort(
     state.baseFetch(validated.href, {
-      method: "GET",
+      method: state.method,
       redirect: "manual",
       signal: state.signal,
       headers: {
         "user-agent": state.userAgent,
-        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5",
+        accept:
+          state.method === "GET"
+            ? "text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5"
+            : "*/*",
         ...state.headers,
       },
+      ...(state.method === "POST" ? { body: state.body, credentials: "omit" as const } : {}),
       dispatcher: state.dispatcher,
     } as RequestInit & { dispatcher: Agent }),
     state.signal,
   );
 
   if (response.status >= 300 && response.status < 400) {
+    // A POST is never replayed at another address: the caller treats the redirect as a failure.
+    if (state.method !== "GET") {
+      await cancelResponseBody(response, state.signal);
+      throw new Error("Redirects are not followed");
+    }
     if (state.redirectsRemaining <= 0) {
       await cancelResponseBody(response, state.signal);
       throw new Error("Too many redirects");
@@ -274,6 +291,30 @@ async function readBodyPrefix(
     void Promise.resolve(reader.cancel()).catch(() => undefined);
   }
   return prefix.slice(0, total);
+}
+
+/**
+ * POSTs a form body to an https URL on port 443 with every GET protection kept (DNS pinning,
+ * private ranges, one deadline) and nothing more: no cookies, no credentials, no redirect, and the
+ * answer is read only up to 16 KiB because a 2xx is all that counts. Resolves on 2xx, else throws.
+ */
+export async function postSafeWebForm(
+  url: string,
+  body: string,
+  options: SafeWebFetchOptions = {},
+): Promise<void> {
+  if (!url.toLowerCase().startsWith("https:")) throw new Error("Only https: URLs are allowed");
+  await fetchSafeWebBytes(url, {
+    allowedPorts: [443],
+    timeoutMs: 10_000,
+    maxBytes: 16 * 1024,
+    truncate: true,
+    ...options,
+    method: "POST",
+    body,
+    maxRedirects: 0,
+    headers: { ...options.headers, "content-type": "application/x-www-form-urlencoded" },
+  });
 }
 
 function assertPublicAddresses(addresses: ResolvedAddress[]): void {

@@ -36,6 +36,7 @@ import {
   createGmailPushVerifier,
   createJobReconciler,
   createMailProvider,
+  createMailUnsubscriber,
   createMessagingContextLoader,
   createMessagingTeamChatSender,
   createRpcClient,
@@ -590,6 +591,7 @@ export async function createApp(
         : []),
     ],
     mail,
+    mailWritesDisabled: env.mailWritesDisabled,
     gmailPush,
   });
   if (inMemoryJobs) {
@@ -608,6 +610,7 @@ export async function createApp(
   reconciler?.start();
 
   const router = createRouter({
+    unsubscriber: createMailUnsubscriber(),
     proposeSort: (model, input, context) =>
       new LlmDataRoomClassifier({
         runtime,
