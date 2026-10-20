@@ -290,11 +290,11 @@ async function updateSkillDraftMessage(
   }
 }
 
-export async function expireTeachingSessionIfNeeded(deps: TaughtSkillsDeps, skillId: string) {
+async function expireTeachingSessionIfNeeded(deps: TaughtSkillsDeps, skillId: string) {
   return expireTaughtSkillTeaching(deps, skillId);
 }
 
-export async function stopTeachingSession(
+async function stopTeachingSession(
   deps: TaughtSkillsDeps,
   actor: Actor,
   skillId: string,

@@ -55,7 +55,7 @@ export function isUpdaterConfigured(config: UpdaterProxyConfig): boolean {
   return Boolean(config.url?.trim() && config.token?.trim());
 }
 
-export async function hasGitCheckout(root: string): Promise<boolean> {
+async function hasGitCheckout(root: string): Promise<boolean> {
   try {
     await access(path.join(root, ".git"));
     return true;
@@ -379,13 +379,4 @@ async function sidecarJson<T>(
     );
   }
   return payload;
-}
-
-/** Exported for tests that assert the API never treats a source tree as applyable. */
-export function assertNoGitApplyPath(installKind: string): void {
-  if (installKind === "source" || installKind === "compose") {
-    throw new UpdaterProxyError(
-      "Settings cannot apply updates without the updater sidecar. Use the documented host commands.",
-    );
-  }
 }

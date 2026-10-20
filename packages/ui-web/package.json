@@ -8,8 +8,7 @@
     "./styles.css": "./src/styles.css",
     "./avatar-ticker": "./src/avatar-ticker.ts",
     "./lib/utils": "./src/lib/utils.ts",
-    "./components/ui/*": "./src/components/ui/*.tsx",
-    "./hooks/*": "./src/hooks/*.ts"
+    "./components/ui/*": "./src/components/ui/*.tsx"
   },
   "scripts": {
     "check": "tsc --noEmit -p tsconfig.json",
