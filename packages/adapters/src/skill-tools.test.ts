@@ -28,6 +28,7 @@ function makePrisma(
             if (!where) return true;
             if (where.spaceId && row.spaceId !== where.spaceId) return false;
             if (where.userId && row.userId !== where.userId) return false;
+            if (where.status && (row.status ?? "active") !== where.status) return false;
             return true;
           })
           .map((row) => ({ ...row })),
@@ -96,6 +97,13 @@ function makePrisma(
 
 const owner = { spaceId: "ws-1", userId: "user-1" };
 
+/** What the owner's Approve button does. */
+function approve(prisma: ReturnType<typeof makePrisma>, id: unknown) {
+  const row = prisma._store.find((entry) => entry.id === id);
+  if (!row) throw new Error("missing");
+  row.status = "active";
+}
+
 describe("skills switched off for a bot", () => {
   const owner = { spaceId: "space-1", userId: "user-1" };
   const row = {
@@ -155,8 +163,12 @@ describe("skill tools", () => {
       description: "Prepare standup notes",
       body: "1. Summarize yesterday.\n2. List blockers.",
     });
-    expect(created).toMatchObject({ ok: true, name: "Daily standup" });
-    expect(String(created.hint)).toContain("/Daily standup");
+    expect(created).toMatchObject({ ok: true, name: "Daily standup", status: "draft" });
+    // A draft is in no catalog and cannot be read until the owner approves it.
+    expect(await skillReadFromTool(prisma as never, owner, { name: "Daily standup" })).toEqual({
+      error: "Skill not found.",
+    });
+    approve(prisma, created.id);
 
     const read = await skillReadFromTool(prisma as never, owner, { name: "Daily standup" });
     expect(read).toMatchObject({
@@ -170,7 +182,11 @@ describe("skill tools", () => {
       name: "Daily standup",
       description: "Updated when-to-use",
     });
-    expect(updated).toMatchObject({ ok: true, description: "Updated when-to-use" });
+    // The change waits for approval; the active skill is unchanged.
+    expect(updated).toMatchObject({ ok: true, status: "revision_pending" });
+    expect(
+      await skillReadFromTool(prisma as never, owner, { name: "Daily standup" }),
+    ).toMatchObject({ description: "Prepare standup notes" });
 
     const deleted = await skillDeleteFromTool(prisma as never, owner, { name: "Daily standup" });
     expect(deleted).toEqual({ ok: true, name: "Daily standup" });
@@ -187,13 +203,14 @@ describe("skill tools", () => {
       frontmatter: { compatibility: "cursor", "allowed-tools": ["shell"] },
     });
     await skillCreateFromTool(prisma as never, owner, { content });
+    // Still a draft, so the edit lands in the draft itself.
     await skillUpdateFromTool(prisma as never, owner, {
       name: "Review PR",
       body: "1. Read the diff.\n2. Leave comments.",
     });
-    const read = await skillReadFromTool(prisma as never, owner, { name: "Review PR" });
-    expect(String(read.content)).toContain("compatibility: cursor");
-    expect(String(read.content)).toContain("Leave comments");
+    const [row] = prisma._store;
+    expect(String(row?.content)).toContain("compatibility: cursor");
+    expect(String(row?.content)).toContain("Leave comments");
   });
 
   it("renames only via newName, not the name lookup key", async () => {
@@ -203,18 +220,23 @@ describe("skill tools", () => {
       body: "body",
     });
     const skillId = String(created.id);
+    approve(prisma, created.id);
     const mistyped = await skillUpdateFromTool(prisma as never, owner, {
       skillId,
       name: "Should not apply",
       description: "still original name",
     });
     expect(mistyped).toMatchObject({ ok: true, name: "Original" });
+    expect(prisma._store[0]).toMatchObject({ name: "Original" });
 
     const renamed = await skillUpdateFromTool(prisma as never, owner, {
       skillId,
       newName: "Renamed",
     });
     expect(renamed).toMatchObject({ ok: true, name: "Renamed" });
+    // The rename is only proposed; the stored name changes when the owner approves.
+    expect(prisma._store[0]).toMatchObject({ name: "Original" });
+    expect(String(prisma._store[0]?.pendingContent)).toContain("name: Renamed");
   });
 
   it("scopes list to the owner workspace and injects catalog lines", async () => {
@@ -233,11 +255,12 @@ describe("skill tools", () => {
         source: "user",
       },
     ]);
-    await skillCreateFromTool(prisma as never, owner, {
+    const created = await skillCreateFromTool(prisma as never, owner, {
       name: "Daily standup",
       description: "Prepare standup notes",
       body: "steps",
     });
+    approve(prisma, created.id);
     const records = await listAgentSkillRecords(prisma as never, owner);
     expect(records.map((row) => row.name)).toContain("Daily standup");
     expect(records.map((row) => row.name)).not.toContain("Other workspace skill");
@@ -410,7 +433,7 @@ describe("skill tools", () => {
     ).toMatchObject({ ok: true });
     expect(await skillDeleteFromTool(prisma as never, owner, { name: "Interrogate" })).toEqual({
       ok: true,
-      name: name.trim(),
+      name,
     });
   });
 

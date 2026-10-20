@@ -1,5 +1,10 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import type { AgentSkill, AgentSkillCatalogEntry, BotAgentSkill } from "@rakazo/contracts";
+import type {
+  AgentSkill,
+  AgentSkillCatalogEntry,
+  AgentSkillDraft,
+  BotAgentSkill,
+} from "@rakazo/contracts";
 import {
   Badge,
   Button,
@@ -16,7 +21,23 @@ import { useEffect, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
-export function SkillSourceBadge({ source }: { source: AgentSkillCatalogEntry["source"] }) {
+export function SkillSourceBadge({
+  source,
+  origin,
+}: {
+  source: AgentSkillCatalogEntry["source"];
+  origin?: AgentSkillCatalogEntry["origin"];
+}) {
+  if (source === "user" && origin === "agent") {
+    return (
+      <Badge
+        variant="secondary"
+        className="rounded-full px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
+      >
+        <Trans>Agent</Trans>
+      </Badge>
+    );
+  }
   if (source !== "builtin" && source !== "plugin") return null;
   return (
     <Badge
@@ -65,6 +86,7 @@ export function BotSkillsSection({
   const { t } = useLingui();
   const [loading, setLoading] = useState(true);
   const [skills, setSkills] = useState<BotAgentSkill[]>([]);
+  const [drafts, setDrafts] = useState<AgentSkillDraft[]>([]);
   const [open, setOpen] = useState<AgentSkill | null>(null);
   const [creating, setCreating] = useState(false);
   const [urlOpen, setUrlOpen] = useState(false);
@@ -81,20 +103,24 @@ export function BotSkillsSection({
 
   async function refresh() {
     const current = ++generation.current;
-    const list = await rpc.agentSkills.forBot({ botId });
+    const [list, pending] = await Promise.all([
+      rpc.agentSkills.forBot({ botId }),
+      rpc.agentSkills.drafts(),
+    ]);
     if (current !== generation.current) return;
     setSkills(list);
+    setDrafts(pending);
     onChange.current(list.filter((skill) => skill.enabled));
   }
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey reloads the list on demand
   useEffect(() => {
     const current = ++generation.current;
-    void rpc.agentSkills
-      .forBot({ botId })
-      .then((list) => {
+    void Promise.all([rpc.agentSkills.forBot({ botId }), rpc.agentSkills.drafts()])
+      .then(([list, pending]) => {
         if (current !== generation.current) return;
         setSkills(list);
+        setDrafts(pending);
         setLoading(false);
         setError(null);
         onChange.current(list.filter((skill) => skill.enabled));
@@ -180,6 +206,15 @@ export function BotSkillsSection({
       setBusy(false);
     }
   }
+
+  const decide = (draft: AgentSkillDraft, approve: boolean) =>
+    write(
+      () =>
+        approve
+          ? rpc.agentSkills.approveDraft({ skillId: draft.id })
+          : rpc.agentSkills.discardDraft({ skillId: draft.id }),
+      approve ? t`Could not approve skill` : t`Could not discard skill`,
+    );
 
   const save = () =>
     draft.trim()
@@ -305,6 +340,59 @@ export function BotSkillsSection({
         </div>
       ) : null}
       {loading ? <Skeleton className="mt-2 h-10 w-full" /> : null}
+      {!editorOpen && !urlOpen && drafts.length > 0 ? (
+        <div className="mt-2" data-testid="bot-skills-drafts">
+          <h4 className="px-2.5 text-[12.5px] text-muted-foreground">
+            <Trans>Drafts</Trans>
+          </h4>
+          {drafts.map((draft) => (
+            <details key={draft.id} className="px-2.5 py-2">
+              <summary className="flex cursor-pointer items-center gap-2 text-[14px] text-foreground">
+                <span className="min-w-0 truncate" dir="auto">
+                  {draft.name}
+                </span>
+                {draft.revision ? (
+                  <Badge
+                    variant="secondary"
+                    className="rounded-full px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
+                  >
+                    <Trans>Update</Trans>
+                  </Badge>
+                ) : null}
+              </summary>
+              <div className="mt-1 text-[12.5px] text-muted-foreground" dir="auto">
+                {draft.description}
+              </div>
+              <pre
+                className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-2 font-mono text-[12.5px]"
+                dir="auto"
+              >
+                {draft.content}
+              </pre>
+              <div className="mt-2 flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void decide(draft, true)}
+                  className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground"
+                >
+                  <Trans>Approve</Trans>
+                </Button>
+                <Button
+                  variant="ghost"
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void decide(draft, false)}
+                  className="rounded-lg px-3 py-1.5 text-[13px] text-muted-foreground"
+                >
+                  <Trans>Discard</Trans>
+                </Button>
+              </div>
+            </details>
+          ))}
+        </div>
+      ) : null}
       {!editorOpen && !urlOpen ? (
         <div className="max-h-72 overflow-y-auto" data-testid="bot-skills-list">
           {skills.map((entry) => (
@@ -320,7 +408,7 @@ export function BotSkillsSection({
                   <span className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
                     {entry.name}
                   </span>
-                  <SkillSourceBadge source={entry.source} />
+                  <SkillSourceBadge source={entry.source} origin={entry.origin} />
                 </span>
                 <span
                   className="mt-0.5 block truncate text-[12.5px] text-muted-foreground"
@@ -345,7 +433,7 @@ export function BotSkillsSection({
               <div className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
                 {open.name}
               </div>
-              <SkillSourceBadge source={open.source} />
+              <SkillSourceBadge source={open.source} origin={open.origin} />
             </div>
           ) : null}
           <Textarea

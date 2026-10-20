@@ -32,6 +32,9 @@ type AgentSkillRow = {
   description: string;
   content: string;
   source: string;
+  origin?: string;
+  status?: string;
+  pendingContent?: string | null;
 };
 
 function asSource(value: string): SkillSource {
@@ -49,6 +52,26 @@ function toRecord(row: AgentSkillRow): SkillRecord & { id: string } {
     source,
     readOnly: isSkillReadOnly(source),
   };
+}
+
+/** Every stored row, drafts included. Only `listAgentSkillRecords` hides drafts. */
+async function ownedRows(prisma: PrismaClient, owner: SkillOwner) {
+  return prisma.agentSkill.findMany({
+    where: { spaceId: owner.spaceId, userId: owner.userId },
+    orderBy: [{ name: "asc" }, { id: "asc" }],
+  });
+}
+
+function nameTaken(
+  rows: AgentSkillRow[],
+  name: string,
+  exceptId?: string,
+): AgentSkillRow | SkillRecord | undefined {
+  const lower = name.toLowerCase();
+  return (
+    rows.find((row) => row.id !== exceptId && row.name.toLowerCase() === lower) ??
+    builtinRecords().find((skill) => skill.name.toLowerCase() === lower)
+  );
 }
 
 function builtinRecords(): Array<SkillRecord & { id: string }> {
@@ -88,7 +111,7 @@ export async function listAgentSkillRecords(
 ): Promise<Array<SkillRecord & { id: string }>> {
   const [rows, off] = await Promise.all([
     prisma.agentSkill.findMany({
-      where: { spaceId: owner.spaceId, userId: owner.userId },
+      where: { spaceId: owner.spaceId, userId: owner.userId, status: "active" },
       orderBy: [{ name: "asc" }, { id: "asc" }],
     }),
     owner.botId
@@ -164,10 +187,11 @@ export async function skillCreateFromTool(
   const oversized = rejectOversizedContent(content);
   if (oversized) return { error: oversized };
 
-  const existing = await findOwnedSkill(prisma, owner, { name });
-  if (existing) return { error: `A skill named "${existing.name}" already exists.` };
+  const taken = nameTaken(await ownedRows(prisma, owner), name);
+  if (taken) return { error: `A skill named "${taken.name}" already exists.` };
 
   try {
+    // An agent never activates its own skill: the owner approves it first.
     const row = await prisma.agentSkill.create({
       data: {
         spaceId: owner.spaceId,
@@ -176,14 +200,16 @@ export async function skillCreateFromTool(
         description,
         content,
         source: "user",
+        origin: "agent",
+        status: "draft",
       },
     });
     return {
       ok: true,
       id: row.id,
       name: row.name,
-      description: row.description,
-      hint: `Created skill. Mention /${row.name} so the user can open it.`,
+      status: "draft",
+      message: "Drafted; awaiting the owner's approval. It is not usable until they approve it.",
     };
   } catch {
     return { error: "Could not create skill (name may already exist)." };
@@ -202,14 +228,19 @@ export async function skillUpdateFromTool(
     content?: string;
   },
 ): Promise<Record<string, unknown>> {
-  const existing = await findOwnedSkill(prisma, owner, {
-    skillId: input.skillId,
-    name: input.name,
-  });
-  if (!existing) return { error: "Skill not found." };
-  if (existing.readOnly || existing.source !== "user" || existing.id.startsWith("builtin:")) {
-    return { error: "Builtin and plugin skills are read-only." };
+  const rows = await ownedRows(prisma, owner);
+  const existing = input.skillId
+    ? rows.find((row) => row.id === input.skillId)
+    : input.name
+      ? findSkillByName(rows, input.name)
+      : undefined;
+  if (!existing) {
+    const builtin =
+      input.skillId?.startsWith("builtin:") ||
+      (input.name && findSkillByName(builtinRecords(), input.name));
+    return { error: builtin ? "Builtin and plugin skills are read-only." : "Skill not found." };
   }
+  if (existing.source !== "user") return { error: "Builtin and plugin skills are read-only." };
 
   let nextContent = existing.content;
   let nextName = existing.name;
@@ -244,13 +275,14 @@ export async function skillUpdateFromTool(
   const oversized = rejectOversizedContent(nextContent);
   if (oversized) return { error: oversized };
 
-  if (nextName.toLowerCase() !== existing.name.toLowerCase()) {
-    const clash = await findOwnedSkill(prisma, owner, { name: nextName });
-    if (clash && clash.id !== existing.id) {
-      return { error: `A skill named "${clash.name}" already exists.` };
-    }
+  if (!findSkillByName([existing], nextName)) {
+    const clash = nameTaken(rows, nextName, existing.id);
+    if (clash) return { error: `A skill named "${clash.name}" already exists.` };
   }
 
+  // A draft is still unapproved, so edit it in place. An active skill keeps working until the
+  // owner approves the proposed revision.
+  const isDraft = existing.status === "draft";
   try {
     // Re-scope mutate to owner + user source so a stale id cannot cross tenants.
     const updated = await prisma.agentSkill.updateMany({
@@ -260,14 +292,20 @@ export async function skillUpdateFromTool(
         userId: owner.userId,
         source: "user",
       },
-      data: {
-        name: nextName,
-        description: nextDescription,
-        content: nextContent,
-      },
+      data: isDraft
+        ? { name: nextName, description: nextDescription, content: nextContent }
+        : { pendingContent: nextContent },
     });
     if (updated.count !== 1) return { error: "Could not update skill." };
-    return { ok: true, id: existing.id, name: nextName, description: nextDescription };
+    return {
+      ok: true,
+      id: existing.id,
+      name: nextName,
+      status: isDraft ? "draft" : "revision_pending",
+      message: isDraft
+        ? "Draft updated; awaiting the owner's approval."
+        : "Revision proposed; the current version stays in use until the owner approves it.",
+    };
   } catch {
     return { error: "Could not update skill." };
   }
