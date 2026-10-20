@@ -236,9 +236,16 @@ section.works {
   margin-top: 72px;
 }
 .works h2 {
+  margin-bottom: 8px;
   color: var(--muted);
   font-size: 14px;
   font-weight: 500;
+}
+.stack-note {
+  max-width: 52ch;
+  margin: 0 0 28px;
+  color: var(--fg);
+  font-size: 16px;
 }
 .works ul {
   display: flex;
