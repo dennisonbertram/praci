@@ -290,6 +290,37 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         orderBy: [{ name: "asc" }, { id: "asc" }],
       }),
 
+    /**
+     * How many of the caller's items each pipeline step still has, from the status column in one
+     * grouped query, plus the name of the item most recently touched by a working step.
+     */
+    async processing(actor: Actor) {
+      const where = { spaceId: actor.spaceId, userId: actor.userId };
+      const [groups, current] = await Promise.all([
+        prisma.dataRoomItem.groupBy({
+          by: ["status"],
+          where: { ...where, status: { not: "ready" } },
+          _count: { _all: true },
+        }),
+        prisma.dataRoomItem.findFirst({
+          where: { ...where, status: { in: ["extracting", "classifying", "indexing"] } },
+          orderBy: { updatedAt: "desc" },
+          select: { name: true },
+        }),
+      ]);
+      const n = (...statuses: string[]) =>
+        groups
+          .filter((g) => statuses.includes(g.status))
+          .reduce((sum, g) => sum + g._count._all, 0);
+      return {
+        reading: n("pending", "extracting"),
+        tagging: n("classifying"),
+        indexing: n("indexing"),
+        failed: n("failed"),
+        current: current?.name ?? null,
+      };
+    },
+
     /** How many items sit directly in each folder (not in its sub-folders), by folder id. */
     async folderItemCounts(actor: Actor): Promise<Map<string, number>> {
       const groups = await prisma.dataRoomItem.groupBy({

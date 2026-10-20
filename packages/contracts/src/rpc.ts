@@ -45,6 +45,7 @@ import {
   DataRoomApiItemListOutputSchema,
   DataRoomApiItemSchema,
   DataRoomApiName,
+  DataRoomApiProcessingSchema,
   DataRoomApiSearchInputSchema,
   DataRoomApiSearchOutputSchema,
   DataRoomConsentGrantInputSchema,
@@ -1408,6 +1409,8 @@ export const appContract = {
       .output(DataRoomApiImportDriveOutputSchema),
     /** The caller's imports that are running, or finished in the last few minutes. */
     imports: oc.output(z.array(DataRoomApiImportSchema)),
+    /** Counts of items still in each pipeline step, for the Data room status strip. */
+    processing: oc.output(DataRoomApiProcessingSchema),
     boxList: oc.input(DataRoomApiBoxListInputSchema).output(DataRoomApiBoxListOutputSchema),
     importBox: oc.input(DataRoomApiImportBoxInputSchema).output(DataRoomApiImportBoxOutputSchema),
     search: oc.input(DataRoomApiSearchInputSchema).output(DataRoomApiSearchOutputSchema),

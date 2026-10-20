@@ -7057,6 +7057,9 @@ export function createRouter(deps: RouterDeps) {
         dataRoom.importDrive(context.actor, input, context.signal),
       ),
       imports: authed.dataRoom.imports.handler(({ context }) => dataRoom.imports(context.actor)),
+      processing: authed.dataRoom.processing.handler(({ context }) =>
+        dataRoom.processing(context.actor),
+      ),
       search: authed.dataRoom.search.handler(({ context, input }) =>
         dataRoom.search(context.actor, input),
       ),

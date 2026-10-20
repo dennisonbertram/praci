@@ -438,6 +438,10 @@ msgstr ""
 msgid "{readPercent}% read"
 msgstr ""
 
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "{remaining, plural, one {Processing # file} other {Processing # files}}"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "남은 시간 {remaining} · Bot은 화면만 보고 직접 조작하지 않습니다"
@@ -905,6 +909,10 @@ msgstr ""
 
 #: src/components/FinanceCards.tsx
 msgid "all dates"
+msgstr ""
+
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "All files processed"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
@@ -3508,6 +3516,10 @@ msgstr ""
 msgid "Desktop update"
 msgstr ""
 
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Details"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Developer"
 msgstr ""
@@ -4023,6 +4035,7 @@ msgstr "실패"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/ProcessingStrip.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -4633,6 +4646,11 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "Inbox sorting and Data room files"
+msgstr ""
+
+#: src/components/data-room/format.ts
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Indexing for search"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -6709,6 +6727,10 @@ msgstr ""
 msgid "Private workspace with its own bots and groups."
 msgstr ""
 
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Processing"
+msgstr ""
+
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Project ID"
@@ -6825,6 +6847,11 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Reading Carta…"
+msgstr ""
+
+#: src/components/data-room/format.ts
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Reading text"
 msgstr ""
 
 #: src/pages/shell/working-label.ts
@@ -8401,6 +8428,11 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "시스템"
+
+#: src/components/data-room/format.ts
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Tagging"
+msgstr ""
 
 #: src/components/data-room/Preview.tsx
 msgid "Tags"

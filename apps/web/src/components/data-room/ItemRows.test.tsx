@@ -498,3 +498,15 @@ it("offers Send to agent in the row's More actions menu too", async () => {
   await flush();
   expect(menuItem("Send to agent")).toBeDefined();
 });
+
+it("names the step a working item is in on its spinner, and leaves ready items plain", () => {
+  const rows = ["pending", "classifying", "indexing", "ready"].map((status) => ({
+    item: { ...item(status, null), status } as DataRoomApiItem,
+    snippets: [],
+  }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  const titles = Array.from(
+    container.querySelectorAll("[data-row] span[title]:has(> [role=presentation])"),
+  ).map((el) => el.getAttribute("title"));
+  expect(titles).toEqual(["Reading text", "Tagging", "Indexing for search"]);
+});

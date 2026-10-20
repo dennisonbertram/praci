@@ -1681,4 +1681,38 @@ describePostgres("Data room API (PostgreSQL)", () => {
     expect(keys).toContain(stored.id);
     expect(keys).toHaveLength(2);
   });
+  it("counts the caller's items still in each pipeline step, and no one else's", async () => {
+    const a = client(actors.a).dataRoom;
+    const before = await a.processing();
+    const bBefore = await client(actors.b).dataRoom.processing();
+    const make = (actor: Actor, status: string, n: number) =>
+      prisma.dataRoomItem.createMany({
+        data: Array.from({ length: n }, (_, k) => ({
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          source: "upload",
+          sha256: `proc-${run}-${actor.userId}-${status}-${k}`,
+          name: `proc-${status}-${k}.txt`,
+          mimeType: "text/plain",
+          size: 1,
+          status,
+        })),
+      });
+    await make(actors.a, "pending", 2);
+    await make(actors.a, "extracting", 1);
+    await make(actors.a, "classifying", 3);
+    await make(actors.a, "indexing", 4);
+    await make(actors.a, "ready", 5);
+    await make(actors.a, "failed", 1);
+    await make(actors.b, "pending", 7);
+    const after = await a.processing();
+    expect(after.reading - before.reading).toBe(3);
+    expect(after.tagging - before.tagging).toBe(3);
+    expect(after.indexing - before.indexing).toBe(4);
+    expect(after.failed - before.failed).toBe(1);
+    expect(after.current).toMatch(/^proc-/);
+    const bAfter = await client(actors.b).dataRoom.processing();
+    expect(bAfter.reading - bBefore.reading).toBe(7);
+    expect(bAfter.tagging).toBe(bBefore.tagging);
+  });
 });
