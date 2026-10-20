@@ -176,8 +176,9 @@ describePostgres("object-storage agent homes (PostgreSQL)", () => {
     const computer = await prisma.computer.create({
       data: { spaceId, userId, scopeKey: `boot:${suffix}`, homeKey: key, kind: "docker" },
     });
-    const sandbox = new FakeSandboxProvider();
-    sandbox.provisionKind = async () => "docker";
+    const sandbox = Object.assign(new FakeSandboxProvider(), {
+      provisionKind: async () => "docker" as const,
+    });
     const home = new ObjectAgentHomeStore(prisma, new LocalArtifactStore(await tmp()), dataDir);
     await provisionComputer(
       { prisma, sandbox, home, jobs: {} as JobPublisher, events: {} as ThreadEvents, dataDir },

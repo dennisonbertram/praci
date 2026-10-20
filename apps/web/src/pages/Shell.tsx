@@ -295,6 +295,7 @@ import {
 import { type MissingBotSeen, resolveRouteBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
+import { runPhaseLine, runPhaseWaitingOn } from "../lib/run-phase";
 import { type DataRoomRef, planSendToAgent, sendTargets } from "../lib/send-to-agent";
 import { sharedInflight } from "../lib/shared-inflight";
 import {
@@ -444,6 +445,8 @@ const COMPOSER_COLLAPSE_SLACK_PX = 16;
 const wideScreen = () => window.matchMedia(PANEL_DOCKED_QUERY).matches;
 /** How long "Sent to <group> · Open" stays under the composer after an @group message. */
 const FORWARDED_NOTICE_MS = 8000;
+
+const maskOptional = (text: string | null) => (text ? maskCurrencyWhenHidden(text) : null);
 
 function threadSnapshotSignal(parent: AbortSignal): AbortSignal {
   return AbortSignal.any([parent, AbortSignal.timeout(THREAD_SNAPSHOT_TIMEOUT_MS)]);
@@ -1622,6 +1625,7 @@ export function ShellPage() {
           event.type === "bot.deleted" ||
           event.type === "bot.updated" ||
           event.type === "run.started" ||
+          event.type === "run.phase" ||
           isRunTerminalEvent(event) ||
           event.type === "thread.cleared"
         ) {
@@ -4117,7 +4121,11 @@ export function ShellPage() {
                           (item.kind === "group" && inGroup && activeGroup?.id === item.chat.id);
                         const compact = botsSidebarDensity === "compact";
                         const workStatusLabel =
-                          item.kind === "bot" ? rosterWorkStatusLabel(item.chat.status) : null;
+                          item.kind === "bot"
+                            ? maskOptional(
+                                rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
+                              )
+                            : null;
                         const rowError =
                           item.kind === "bot" &&
                           (rosterHasUndismissedRunError(
@@ -4129,7 +4137,9 @@ export function ShellPage() {
                           compact && item.kind === "bot"
                             ? rowError
                               ? t`Error`
-                              : compactRosterStatusLabel(item.chat.status)
+                              : maskOptional(
+                                  compactRosterStatusLabel(item.chat.status, item.chat.runPhase),
+                                )
                             : null;
                         const rosterLine = compact
                           ? compactStatusLabel
@@ -6222,16 +6232,20 @@ export const Transcript = memo(function Transcript({
   const workingLabel =
     activity?.kind === "starting"
       ? t`Starting`
-      : activity?.kind === "thinking"
-        ? t`Thinking`
-        : activity?.kind === "writing"
-          ? t`Writing`
-          : activity?.kind === "tool"
-            ? (toolActionLabel(activity.action) ??
-              (toolPhrase(activity.label, "activity") || activity.label))
-            : workingBotName
-              ? t`${workingBotName} is working`
-              : t`Bots are working`;
+      : activity?.kind === "phase"
+        ? activity.phase.kind === "model_wait"
+          ? t`Thinking`
+          : t`Starting`
+        : activity?.kind === "thinking"
+          ? t`Thinking`
+          : activity?.kind === "writing"
+            ? t`Writing`
+            : activity?.kind === "tool"
+              ? (toolActionLabel(activity.action) ??
+                (toolPhrase(activity.label, "activity") || activity.label))
+              : workingBotName
+                ? t`${workingBotName} is working`
+                : t`Bots are working`;
   const waitingLabel = (service: string) => t`Still waiting on ${service}`;
   function toolActionLabel(action: ToolAction | undefined): string | undefined {
     switch (action) {
@@ -6835,11 +6849,20 @@ export const Transcript = memo(function Transcript({
             bots={workingBots}
             label={workingLabel}
             startedAt={workingStartedAt}
-            detail={activity?.kind === "tool" ? activity.detail : undefined}
+            detail={
+              activity?.kind === "tool"
+                ? activity.detail
+                : activity?.kind === "phase"
+                  ? maskCurrencyWhenHidden(runPhaseLine(activity.phase) ?? "")
+                  : undefined
+            }
+            detailSince={activity?.kind === "phase" ? Date.parse(activity.phase.at) : undefined}
             waitingLabel={
               activity?.kind === "tool" && activity.service
                 ? waitingLabel(activity.service)
-                : undefined
+                : activity?.kind === "phase" && runPhaseWaitingOn(activity.phase)
+                  ? waitingLabel(runPhaseWaitingOn(activity.phase) ?? "")
+                  : undefined
             }
           />
         ) : null}

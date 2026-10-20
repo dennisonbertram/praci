@@ -281,6 +281,7 @@ export class McpConnector implements ConnectorProvider {
       assignments.map(async (assignment): Promise<ConnectorTool[]> => {
         const startedAt = Date.now();
         try {
+          context.onConnecting?.(assignment.server.name || assignment.server.slug);
           const session = await this.sessionFor(assignment.server, context);
           const listed = await this.cachedTools(session, context.signal);
           reportAllowlistDrift(assignment, listed.tools, context);

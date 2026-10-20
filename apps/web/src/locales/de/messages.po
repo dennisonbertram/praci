@@ -2360,6 +2360,14 @@ msgstr "Verbunden, {0} wird verwendet."
 msgid "Connected. Its tools are available from your next message."
 msgstr "Verbunden. Die Tools sind ab deiner nächsten Nachricht verfügbar."
 
+#: src/lib/run-phase.ts
+msgid "Connecting to {name}"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Connecting to tools"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/parts.tsx
@@ -7014,6 +7022,14 @@ msgstr "Jetzt erneut versuchen"
 msgid "Retry screen"
 msgstr ""
 
+#: src/lib/run-phase.ts
+msgid "Retrying"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Retrying: {name}"
+msgstr ""
+
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Rakazo"
@@ -7908,6 +7924,10 @@ msgstr "Aufnahme starten"
 msgid "Starting"
 msgstr "Startet"
 
+#: src/lib/run-phase.ts
+msgid "Starting the computer"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8191,6 +8211,10 @@ msgstr ""
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr ""
 
+#: src/lib/run-phase.ts
+msgid "the computer"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "Zeitüberschreitung der Verbindung."
@@ -8218,6 +8242,10 @@ msgstr ""
 
 #: src/components/legal/ConsentPrompt.tsx
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "the model"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -8447,6 +8475,10 @@ msgstr "Heute"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "tools"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -8918,6 +8950,10 @@ msgstr ""
 msgid "Wait a moment and test again."
 msgstr "Warte kurz und teste erneut."
 
+#: src/lib/run-phase.ts
+msgid "Waiting for {name}"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
@@ -8925,6 +8961,14 @@ msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Waiting for the computer"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Waiting for the model"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx

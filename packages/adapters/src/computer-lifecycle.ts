@@ -143,7 +143,8 @@ async function hasLiveForeignRunLease(
 }
 
 export class ComputerBusyError extends Error {
-  constructor() {
+  /** Why, for the requeue log line. The message stays the same for callers that show it. */
+  constructor(readonly reason = "busy") {
     super("Computer is busy");
     this.name = "ComputerBusyError";
   }
@@ -199,7 +200,7 @@ export async function provisionComputer(
 ): Promise<ComputerRef> {
   let existing = await deps.prisma.computer.findUniqueOrThrow({ where: { id: computerId } });
   if (existing.maintenanceId && existing.maintenanceId !== context.operationId)
-    throw new ComputerBusyError();
+    throw new ComputerBusyError("under maintenance");
   if (existing.controlLeaseId && !hasActiveComputerControl(existing)) {
     await expireComputerControl(deps, existing.id, existing.controlLeaseId);
     existing = await deps.prisma.computer.findUniqueOrThrow({ where: { id: computerId } });
@@ -234,7 +235,7 @@ export async function provisionComputer(
         },
         data: { updatedAt: new Date() },
       });
-      if (retained.count !== 1) throw new ComputerBusyError();
+      if (retained.count !== 1) throw new ComputerBusyError("changed while reconnecting");
       await deps.sandbox.prepare(ref, context);
       await ensureComputerWorkspaceLayout(
         deps.sandbox,
@@ -270,13 +271,13 @@ export async function provisionComputer(
   // journeys previously hung createApp stop() while continueRun sat in that wait against a
   // wedged mid-boot row left by an earlier suite.
   if (existing.state === "booting" && reclaimStamp !== null && !bootClaimIsStale) {
-    throw new ComputerBusyError();
+    throw new ComputerBusyError("another start is in progress");
   }
   if (
     existing.state === "booting" &&
     (await hasLiveForeignRunLease(deps.prisma, computerId, context.runId))
   ) {
-    throw new ComputerBusyError();
+    throw new ComputerBusyError("another run is starting it");
   }
   if (existing.state === "booting" || existing.state === "suspending") {
     existing = await waitForComputerReady(deps.prisma, computerId, context);
@@ -292,17 +293,17 @@ export async function provisionComputer(
     !staleSuspending &&
     !["running", "stopped", "suspended", "error", "booting"].includes(existing.state)
   ) {
-    throw new ComputerBusyError();
+    throw new ComputerBusyError("not in a state that can start");
   }
   // Waited for suspending (or similar) and landed on booting we never stamped: another
   // caller owns that boot. Do not adopt its updatedAt / previousRef and double-provision.
   if (existing.state === "booting" && reclaimStamp === null) {
-    throw new ComputerBusyError();
+    throw new ComputerBusyError("another start is in progress");
   }
   // We came to reclaim abandoned booting; if another caller already activated, do not fall
   // through into reconnect (that would provision again under their providerRef).
   if (reclaimStamp !== null && existing.state === "running") {
-    throw new ComputerBusyError();
+    throw new ComputerBusyError("another start finished first");
   }
   // Stamp age is only a lower bound. Dedicated / lease-less boots can provision longer than
   // BOOT_CLAIM_STALE_MS; a heartbeating foreign run lease means the holder is still alive.
@@ -311,7 +312,7 @@ export async function provisionComputer(
     reclaimStamp !== null &&
     (await hasLiveForeignRunLease(deps.prisma, computerId, context.runId))
   ) {
-    throw new ComputerBusyError();
+    throw new ComputerBusyError("another run is starting it");
   }
 
   const reconnecting =
@@ -354,7 +355,7 @@ export async function provisionComputer(
     },
     data: { state: "booting", updatedAt: claimStamp },
   });
-  if (claimed.count !== 1) throw new ComputerBusyError();
+  if (claimed.count !== 1) throw new ComputerBusyError("claimed by another start");
   let provisioned: ComputerRef | undefined;
   try {
     // Only a computer that mounts a host path (Docker) uses the store's live directory; remote
@@ -456,7 +457,7 @@ export async function provisionComputer(
       },
     });
     if (activated.count !== 1) {
-      throw new ComputerBusyError();
+      throw new ComputerBusyError("boot claim lost before activation");
     }
     return ref;
   } catch (error) {
@@ -565,9 +566,9 @@ export async function acquireComputerExecutionLease(
 ): Promise<ComputerExecutionLease | null> {
   const computer = await prisma.computer.findUniqueOrThrow({ where: { id: input.computerId } });
   if (computer.maintenanceId && computer.maintenanceId !== input.runId)
-    throw new ComputerBusyError();
+    throw new ComputerBusyError("under maintenance");
   if (computer.scope !== "team") return null;
-  if (isLiveSuspending(computer)) throw new ComputerBusyError();
+  if (isLiveSuspending(computer)) throw new ComputerBusyError("going to sleep");
   const now = new Date();
   const expiresAt = new Date(now.getTime() + EXECUTION_LEASE_MS);
   const [reclaimed] = await prisma.computerExecutionLease.updateManyAndReturn({
@@ -609,7 +610,7 @@ export async function acquireComputerExecutionLease(
       fence: created.fence,
     });
   } catch (error) {
-    if (isUniqueViolation(error)) throw new ComputerBusyError();
+    if (isUniqueViolation(error)) throw new ComputerBusyError("in use by another run");
     throw error;
   }
 }
@@ -628,7 +629,7 @@ async function validateAcquiredComputerLease(
   )
     return lease;
   await releaseComputerExecutionLease(prisma, lease);
-  throw new ComputerBusyError();
+  throw new ComputerBusyError("in use by another run");
 }
 
 export async function renewComputerExecutionLease(

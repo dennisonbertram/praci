@@ -2360,6 +2360,14 @@ msgstr "{0}에 연결하고 기본 모델로 설정했습니다."
 msgid "Connected. Its tools are available from your next message."
 msgstr "연결되었습니다. 다음 메시지부터 이 도구를 사용할 수 있습니다."
 
+#: src/lib/run-phase.ts
+msgid "Connecting to {name}"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Connecting to tools"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/parts.tsx
@@ -7014,6 +7022,14 @@ msgstr "지금 다시 시도"
 msgid "Retry screen"
 msgstr ""
 
+#: src/lib/run-phase.ts
+msgid "Retrying"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Retrying: {name}"
+msgstr ""
+
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Rakazo"
@@ -7908,6 +7924,10 @@ msgstr "작업 녹화 시작"
 msgid "Starting"
 msgstr "시작 중"
 
+#: src/lib/run-phase.ts
+msgid "Starting the computer"
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8191,6 +8211,10 @@ msgstr ""
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr ""
 
+#: src/lib/run-phase.ts
+msgid "the computer"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "연결 시간이 초과되었습니다."
@@ -8218,6 +8242,10 @@ msgstr ""
 
 #: src/components/legal/ConsentPrompt.tsx
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "the model"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -8447,6 +8475,10 @@ msgstr "오늘"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "tools"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -8918,6 +8950,10 @@ msgstr ""
 msgid "Wait a moment and test again."
 msgstr "잠시 기다린 뒤 다시 테스트하세요."
 
+#: src/lib/run-phase.ts
+msgid "Waiting for {name}"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
@@ -8926,6 +8962,14 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
 msgstr "API가 다시 작동하기를 기다리는 중…"
+
+#: src/lib/run-phase.ts
+msgid "Waiting for the computer"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Waiting for the model"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Waiting for you to finish signing in."

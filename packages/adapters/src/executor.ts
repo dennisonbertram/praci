@@ -37,7 +37,7 @@ import {
   routineWakeupJob,
   runContinueJob,
 } from "@rakazo/adapter-kit";
-import type { ComputerCommand, MessageBlock, RunStatus } from "@rakazo/contracts";
+import type { ComputerCommand, MessageBlock, RunPhase, RunStatus } from "@rakazo/contracts";
 import {
   ATTACHMENT_MAX_BYTES,
   BOT_DESCRIPTION_MAX_LENGTH,
@@ -65,6 +65,7 @@ import {
   LEGAL_AGENT_MODEL,
   LEGAL_MODEL_REQUIRED_MESSAGE,
   OPENAI_COMPATIBLE_PROVIDER_ID,
+  RunPhaseSchema,
   VOICE_AGENT_BUILTIN_TOOLS,
 } from "@rakazo/contracts";
 import type { ActionApprovalRule, ToolCallStreak } from "@rakazo/core";
@@ -3426,6 +3427,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
 
       const fence = nextFence(run.leaseFence);
       const renew = () => renewRunLease(deps, runId, workerId, fence);
+      const phases = runPhaseWriter(deps, run, fence);
       const now = new Date();
       const leased = await deps.prisma.run.updateMany({
         where: {
@@ -3477,6 +3479,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
       });
       if (!leaseTarget.computerId) throw new Error("Bot has no computer");
       if (leaseTarget.computerSwitching) {
+        await phases.requeued({ kind: "computer_wait" }, "switching computers", false);
         await requeueComputerRun(deps, runId, workerId, fence, resumeCheckpoint, heldForTakeover);
         return;
       }
@@ -3490,6 +3493,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
       } catch (error) {
         if (!(error instanceof ComputerBusyError)) throw error;
+        // Another run of this bot holds the computer: waiting in line is normal, so it is not
+        // counted toward the circuit breaker.
+        await phases.requeued({ kind: "computer_wait" }, error.reason, false);
         await requeueComputerRun(deps, runId, workerId, fence, resumeCheckpoint, heldForTakeover);
         return;
       }
@@ -3746,6 +3752,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           connectedProviders: connectedComposio.map((row) => row.provider),
           // Set for a peer run on an agent: the MCP catalog then covers only the agent's servers.
           mcpServerIds: undefined as string[] | undefined,
+          onConnecting: (service: string) =>
+            void phases.write({ kind: "connecting", name: service }),
         };
         const memoryScope = configuredMemory
           ? effectiveMemoryScope(bot.memoryScope, configuredMemory.defaultScope)
@@ -4117,6 +4125,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         if (!bot.computer) throw new Error("Bot has no computer");
         const storedComputer = bot.computer;
         const computerMode = parseComputerMode(storedComputer.scope);
+        if (storedComputer.state !== "running") void phases.write({ kind: "computer_start" });
         const computer = await provisionComputer(deps, storedComputer.id, context, "bot");
         screenRelease = { computer, context };
         scheduleComputerSleep(deps.jobs, storedComputer.id);
@@ -8023,7 +8032,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
             },
             context,
           );
+          void phases.write({ kind: "model_wait", name: runModelId.split("/").at(-1) });
+          let firstRuntimeEvent = true;
           for await (const event of withRuntimeCleanup(runtimeEvents, runAbortController)) {
+            if (firstRuntimeEvent) {
+              firstRuntimeEvent = false;
+              void phases.write({ kind: "thinking" });
+            }
             if (approvalPausePending) return;
             if (!leaseValid) return;
             const now = Date.now();
@@ -8545,6 +8560,22 @@ export function createRunExecutor(deps: ExecutorDeps) {
             // The process or database went away, not the work. Requeue so run.continue (or lease
             // expiry, when the database is unreachable) resumes it, and post nothing.
             getLogger().warn("run interrupted", { runId, error });
+            // A shutdown ends on its own; a database that keeps dropping counts toward the breaker.
+            const shutdown = Boolean(deps.shutdownSignal?.aborted);
+            const streak = await phases.requeued(
+              {
+                kind: "retrying",
+                name: shutdown ? "the worker restarted" : "the database connection dropped",
+              },
+              shutdown ? "worker shutdown" : "database interruption",
+              !shutdown,
+            );
+            if (requeueLimitReached(streak)) {
+              await stopRequeuedRun(deps, run, thread.id, attempt.id, workerId, fence, {
+                retrying: "the database connection kept dropping",
+              });
+              return;
+            }
             const released = await writeComputerRunRequeue(
               deps,
               runId,
@@ -8601,6 +8632,24 @@ export function createRunExecutor(deps: ExecutorDeps) {
       } catch (setupError) {
         const computerBusy = setupError instanceof ComputerBusyError;
         const retryForever = computerBusy || isTooManyDatabaseConnections(setupError);
+        const streak = await phases.requeued(
+          computerBusy
+            ? { kind: "computer_wait" }
+            : { kind: "retrying", name: retryForever ? "the database is busy" : "setup failed" },
+          computerBusy
+            ? setupError.reason
+            : retryForever
+              ? "too many database connections"
+              : "setup failed",
+          // A plain setup failure is retried by the job queue, which gives up on its own.
+          retryForever,
+        );
+        if (retryForever && requeueLimitReached(streak)) {
+          await stopRequeuedRun(deps, run, run.threadId, attempt.id, workerId, fence, {
+            ...(computerBusy ? {} : { retrying: "the database stayed busy" }),
+          });
+          return;
+        }
         if (!computerBusy) {
           // undici collapses every network failure to "fetch failed"; the cause names the
           // host and errno, which is the only part worth paging over.
@@ -9746,6 +9795,120 @@ async function writeComputerRunRequeue(
     data: releasedHold,
   });
   return retried.count === 1;
+}
+
+/** A run requeued this many times without progress, for this long, is stopped (both must hold). */
+export const REQUEUE_LIMIT = { count: 20, ms: 15 * 60_000 };
+
+type RequeueStreak = { since: string; count?: number };
+
+/** True once a requeue streak is both long and old: a wait that is not going to end. */
+export function requeueLimitReached(streak: RequeueStreak | undefined, now = Date.now()): boolean {
+  return (
+    streak !== undefined &&
+    (streak.count ?? 0) >= REQUEUE_LIMIT.count &&
+    now - Date.parse(streak.since) >= REQUEUE_LIMIT.ms
+  );
+}
+
+/**
+ * Records what a run is waiting on before its first tool call (shown in the working row and the
+ * sidebar) and the streak of requeues without progress, which survives on the run row across
+ * workers. Writes are fenced on this claim and never fail the run.
+ */
+export function runPhaseWriter(
+  deps: Pick<ExecutorDeps, "prisma" | "events">,
+  run: {
+    id: string;
+    spaceId: string;
+    threadId: string;
+    botId: string;
+    trigger: string;
+    phase?: unknown;
+  },
+  fence: number,
+) {
+  const stored = RunPhaseSchema.safeParse(run.phase).data;
+  // A streak runs until the run reaches the model; a requeue continues it.
+  let streak: RequeueStreak | undefined = stored?.since
+    ? { since: stored.since, ...(stored.count ? { count: stored.count } : {}) }
+    : undefined;
+  let chain: Promise<void> = Promise.resolve();
+  const write = (phase: { kind: RunPhase["kind"]; name?: string }): Promise<void> => {
+    if (phase.kind === "model_wait" || phase.kind === "thinking") streak = undefined;
+    if (isBackgroundRunTrigger(run.trigger)) return chain;
+    const value: RunPhase = { ...phase, at: new Date().toISOString(), ...(streak ?? {}) };
+    chain = chain
+      .then(async () => {
+        const written = await deps.prisma.run.updateMany({
+          where: { id: run.id, leaseFence: fence },
+          data: { phase: value },
+        });
+        if (written.count !== 1) return;
+        await deps.events.append({
+          spaceId: run.spaceId,
+          threadId: run.threadId,
+          botId: run.botId,
+          type: "run.phase",
+          runId: run.id,
+          payload: value,
+        });
+      })
+      .catch((error) => getLogger().warn("run phase not recorded", { runId: run.id, error }));
+    return chain;
+  };
+  return {
+    write,
+    /** Logs why the run is requeued, extends the streak (counted when it is not normal waiting). */
+    async requeued(
+      phase: { kind: RunPhase["kind"]; name?: string },
+      reason: string,
+      counted: boolean,
+    ): Promise<RequeueStreak> {
+      const count = (streak?.count ?? 0) + (counted ? 1 : 0);
+      streak = {
+        since: streak?.since ?? new Date().toISOString(),
+        ...(count > 0 ? { count } : {}),
+      };
+      getLogger().warn("run requeued", { runId: run.id, reason, requeues: count });
+      await write(phase);
+      return streak;
+    },
+  };
+}
+
+/** Ends a run whose requeues hit REQUEUE_LIMIT, with a reason the user can act on. */
+async function stopRequeuedRun(
+  deps: ExecutorDeps,
+  run: { id: string; spaceId: string; botId: string; taskId: string },
+  threadId: string,
+  attemptId: string,
+  workerId: string,
+  fence: number,
+  cause: { retrying?: string },
+) {
+  const minutes = Math.round(REQUEUE_LIMIT.ms / 60_000);
+  const error = cause.retrying
+    ? `Stopped after ${minutes} minutes of retrying because ${cause.retrying}. Try again.`
+    : `Stopped after ${minutes} minutes waiting for the computer. Try again, or restart the computer.`;
+  getLogger().warn("run stopped after repeated requeues", { runId: run.id, error });
+  const failed = await deps.events.finalizeRun({
+    spaceId: run.spaceId,
+    threadId,
+    botId: run.botId,
+    runId: run.id,
+    taskId: run.taskId,
+    attemptId,
+    leaseOwner: workerId,
+    leaseFence: fence,
+    outcome: "failed",
+    error,
+  });
+  if (failed && failed.continuationRunId) {
+    await deps.jobs
+      .enqueue(runContinueJob(failed.continuationRunId))
+      .catch((enqueueError) => getLogger().error("steering continuation enqueue", enqueueError));
+  }
 }
 
 async function requeueComputerRun(

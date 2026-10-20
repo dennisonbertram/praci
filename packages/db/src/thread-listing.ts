@@ -1,4 +1,5 @@
-import type { MessageBlock } from "@rakazo/contracts";
+import type { MessageBlock, RunPhase } from "@rakazo/contracts";
+import { RunPhaseSchema } from "@rakazo/contracts";
 import {
   ACTIVE_RUN_STATUSES,
   BACKGROUND_RUN_TRIGGERS,
@@ -25,8 +26,14 @@ export const activeRunSelection = {
   },
   orderBy: { createdAt: "desc" as const },
   take: 1,
-  select: { status: true },
+  select: { status: true, phase: true },
 } as const;
+
+/** A stored run phase, or null when the column holds nothing usable. */
+export function storedRunPhase(phase: unknown): RunPhase | null {
+  const parsed = RunPhaseSchema.safeParse(phase);
+  return parsed.success ? parsed.data : null;
+}
 
 /** Latest user-visible run for a bot roster error signal; later success clears an older failure. */
 export const latestBotRunSelection = {
