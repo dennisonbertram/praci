@@ -199,7 +199,15 @@ stories.
    Mockup: [piles-mockup.html](piles-mockup.html).
 3. **Cleanup screen and unsubscribe.** Ranked senders, preselection, one-click
    unsubscribe with the POST-capable safe fetch, spam and trash, action log with undo.
-   Mobile: the same screen as a native list.
+   Mobile: the same screen as a native list. Mockup: [cleanup-mockup.html](cleanup-mockup.html).
+   Landed: the Cleanup screen on web (Inbox header button) and mobile (Inbox header menu);
+   `inbox.cleanup.*`, `inbox.unsubscribe`, `inbox.moveMany` and `inbox.actions.*`; a per-sender
+   decision (skip inbox, unsubscribe result) and an action log, both per mail account. Skip
+   inbox is applied by the `mail.sync` job after each sync, not by a Gmail filter (phase 4), and
+   is the one automatic action so far: it archives only mail received after the decision, never
+   spam, spam-like or failed-authentication mail or a sender marked important, and every run is a
+   logged, undoable entry. Spam, not spam and trash are `SPAM` and `TRASH` label changes through
+   `modifyThread`; the agent's `mail_modify` still refuses both.
 4. **Gmail filters.** "Always skip the inbox" creates a filter on native Google
    connections, archives existing mail, records the filter for undo. Mobile: the same
    action, no new screen.
@@ -224,8 +232,9 @@ with spam, trash, unsubscribe and filters from user clicks.
 
 ## Open decisions
 
-- Automatic actions: phases 1–4 only act on a user's click. Whether to add scheduled
-  automatic cleanup (archive and label only, capped, logged) is decided after phase 3.
+- Automatic actions: apart from skip inbox for senders the user chose (phase 3), phases 1–4
+  only act on a user's click. Whether to add scheduled automatic cleanup (archive and label
+  only, capped, logged) is decided after phase 3.
 - Cache window and storage cost for 90 days of headers per connection.
 
 ## Unverified

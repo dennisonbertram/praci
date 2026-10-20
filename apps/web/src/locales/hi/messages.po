@@ -444,6 +444,10 @@ msgstr ""
 msgid "{pickedCount} selected"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "{readPercent}% read"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "{remaining} शेष · बॉट देख रहा है, कार्रवाई नहीं कर रहा"
@@ -462,6 +466,10 @@ msgstr ""
 
 #: src/pages/BillingSettingsPanel.tsx
 msgid "{seats, plural, one {# seat} other {# seats}}"
+msgstr ""
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "{senderCount, plural, one {Skipping inbox for # sender} other {Skipping inbox for # senders}}"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -1166,6 +1174,11 @@ msgstr ""
 msgid "Archive"
 msgstr "आर्काइव करें"
 
+#. placeholder {0}: counts.archive
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Archive {0}"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "archived"
 msgstr "आर्काइव किया गया"
@@ -1184,8 +1197,17 @@ msgstr "आर्काइव किया गया"
 msgid "Archived \"{0}\""
 msgstr ""
 
+#. placeholder {0}: result.done
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Archived {0}"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Archived {count}"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Archived {n}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1378,6 +1400,10 @@ msgstr ""
 msgid "Automated senders will appear after they post here."
 msgstr ""
 
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Automatic"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Available after the routine is saved"
 msgstr ""
@@ -1397,6 +1423,7 @@ msgstr ""
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -1660,6 +1687,7 @@ msgstr "सर्वर तक नहीं पहुंचा जा सका�
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
@@ -1951,6 +1979,12 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Choosing your company in Carta"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+#: src/components/inbox/InboxCleanup.tsx
+#: src/pages/Inbox.tsx
+msgid "Cleanup"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -3058,6 +3092,10 @@ msgstr ""
 msgid "Couldn't load messaging settings"
 msgstr ""
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Couldn't load senders"
+msgstr ""
+
 #: src/lib/inbox-sync-error.ts
 msgid "Couldn't reach Gmail."
 msgstr ""
@@ -3072,6 +3110,14 @@ msgstr ""
 
 #: src/pages/shell/bot-pins.tsx
 msgid "Couldn't save. Try again."
+msgstr ""
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Couldn't unsubscribe from {name}"
+msgstr ""
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Couldn't update {name}"
 msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
@@ -4325,6 +4371,10 @@ msgstr "उच्च"
 msgid "High"
 msgstr "उच्च"
 
+#: src/components/inbox/CleanupHistory.tsx
+msgid "History"
+msgstr ""
+
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
 msgstr ""
@@ -4903,6 +4953,10 @@ msgstr ""
 msgid "Log out"
 msgstr "लॉग आउट"
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Looks like spam"
+msgstr ""
+
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5006,9 +5060,29 @@ msgstr ""
 msgid "Mark unread"
 msgstr ""
 
+#. placeholder {0}: status.count
+#: src/pages/Inbox.tsx
+msgid "Marked {0} as not spam"
+msgstr ""
+
+#. placeholder {0}: result.done
+#. placeholder {0}: status.count
+#: src/components/inbox/InboxCleanup.tsx
+#: src/pages/Inbox.tsx
+msgid "Marked {0} as spam"
+msgstr ""
+
 #. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Marked {0} done."
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Marked {n} as not spam"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Marked {n} as spam"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -5274,6 +5348,7 @@ msgstr ""
 msgid "Monthly spend · {0} – {1}"
 msgstr ""
 
+#: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -5334,6 +5409,15 @@ msgstr ""
 #. placeholder {0}: maskCurrencyWhenHidden(status.subject)
 #: src/pages/Inbox.tsx
 msgid "Moved \"{0}\" to Inbox"
+msgstr ""
+
+#. placeholder {0}: status.count
+#: src/pages/Inbox.tsx
+msgid "Moved {0} to trash"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Moved {n} to trash"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
@@ -5872,6 +5956,11 @@ msgstr ""
 msgid "Not sent. {text}"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+#: src/pages/Inbox.tsx
+msgid "Not spam"
+msgstr ""
+
 #: src/components/data-room/ItemRows.tsx
 msgid "Not tagged"
 msgstr ""
@@ -5911,6 +6000,10 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
 msgstr "अभी तक कुछ याद नहीं किया गया"
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Nothing to clean up"
+msgstr ""
 
 #: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
@@ -6062,6 +6155,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
+msgstr ""
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Open link"
 msgstr ""
 
 #: src/pages/shell/composer-error.tsx
@@ -7474,8 +7571,10 @@ msgstr ""
 
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
+#. placeholder {0}: sender.name
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/inbox/CleanupSenderRow.tsx
 msgid "Select {0}"
 msgstr ""
 
@@ -7496,6 +7595,7 @@ msgid "Self-custody"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -7508,6 +7608,11 @@ msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Send again"
+msgstr ""
+
+#. placeholder {0}: confirming[0]?.mailTo ?? ""
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Send an unsubscribe email to {0}?"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -7825,6 +7930,15 @@ msgstr ""
 msgid "Skip"
 msgstr "छोड़ें"
 
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Skip inbox"
+msgstr ""
+
+#. placeholder {0}: counts.skip_inbox
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Skip inbox {0}"
+msgstr ""
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "छोड़ें या डिप्लॉय कुंजी दें"
@@ -7838,6 +7952,14 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"
 msgstr "{0} को छोड़ा गया"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Skipped inbox for {n}"
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Skipping"
+msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
@@ -7909,7 +8031,13 @@ msgstr ""
 
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/pages/Inbox.tsx
 msgid "Spam"
+msgstr ""
+
+#. placeholder {0}: counts.spam
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Spam {0}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -8035,6 +8163,7 @@ msgstr "चरण"
 msgid "Still waiting on {service}"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 msgid "Stop"
 msgstr "रोकें"
@@ -8607,6 +8736,11 @@ msgstr ""
 msgid "Transport"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+#: src/pages/Inbox.tsx
+msgid "Trash"
+msgstr ""
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Treasury yield"
@@ -8633,6 +8767,7 @@ msgstr ""
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8716,6 +8851,8 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
+#: src/components/inbox/CleanupHistory.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
 #: src/pages/CapTable.tsx
@@ -8756,6 +8893,19 @@ msgstr "पिन हटाएं"
 
 #: src/pages/Inbox.tsx
 msgid "Unread"
+msgstr ""
+
+#. placeholder {0}: counts.unsubscribe
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Unsubscribe {0}"
+msgstr ""
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Unsubscribed and archived {n}"
+msgstr ""
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Unsubscribed from {senderCount}"
 msgstr ""
 
 #: src/components/data-room/DropZone.tsx

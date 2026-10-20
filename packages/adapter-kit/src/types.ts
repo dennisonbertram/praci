@@ -1054,7 +1054,11 @@ export interface MailLabel {
   type: "system" | "user";
 }
 
-/** Label ids to add and remove in one change. `UNREAD` is the unread flag; removing `INBOX` archives. */
+/**
+ * Label ids to add and remove in one change. `UNREAD` is the unread flag; removing `INBOX` archives.
+ * Adding `SPAM` reports spam (with `INBOX` removed) and removing it is "not spam"; adding `TRASH`
+ * moves to trash. A provider without these labels maps them itself or throws `invalid`.
+ */
 export interface MailLabelChange {
   addLabelIds?: string[];
   removeLabelIds?: string[];
