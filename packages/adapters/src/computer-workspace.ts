@@ -10,11 +10,13 @@ import type {
 } from "@rakazo/adapter-kit";
 import type { ComputerMode } from "@rakazo/contracts";
 import { parseScreenLeaseId } from "@rakazo/core";
-import { browserProfilePathForScreen } from "@rakazo/core/node/desktop-runtime";
+import {
+  browserProfilePathForScreen,
+  quiesceBrowserProfilesCommand,
+} from "@rakazo/core/node/desktop-runtime";
 import type { PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { normalizeWorkspacePath, teamBotWorkspaceDirectory } from "./computer-support.js";
-import { LocalAgentHomeStore } from "./home.js";
 
 export const PORTABLE_TRANSFER_BATCH_BYTES = 8 * 1024 * 1024;
 
@@ -55,8 +57,10 @@ export async function restoreComputerWorkspace(
   homeKey: string,
   computer: ComputerRef,
   context: AdapterContext,
+  /** True when the computer mounts a live directory the lifecycle already made current. */
+  liveDirectoryCurrent = false,
 ): Promise<void> {
-  if (computer.kind === "docker" && home instanceof LocalAgentHomeStore) return;
+  if (computer.kind === "docker" && liveDirectoryCurrent) return;
   await sandbox.importWorkspace(computer, home.exportHome(homeKey, context), context);
 }
 
@@ -279,16 +283,28 @@ export async function checkpointComputerWorkspace(
   homeKey: string,
   computer: ComputerRef,
   context: AdapterContext,
+  /**
+   * The revision this caller read before it started; a newer stored revision rejects the save.
+   * Not used for a Docker live directory, which is always the newest copy.
+   */
+  expectedRevision?: string,
+  /**
+   * Stop the computer's browsers first so their profiles are consistent on disk. Only for a
+   * computer that is about to stop or be replaced: it kills browsers other runs may be using.
+   */
+  options?: { quiesceBrowsers?: boolean },
 ): Promise<string> {
-  if (computer.kind === "docker" && home instanceof LocalAgentHomeStore) {
-    return home.revise(homeKey);
+  if (computer.kind === "docker" && home.liveDirectory && home.revise) {
+    // A failure here is logged, not fatal: saving the files matters more.
+    if (options?.quiesceBrowsers) await quiesceDockerBrowsers(sandbox, computer, context);
+    return home.revise(homeKey, context);
   }
   const staging = await mkdtemp(path.join(tmpdir(), "rakazo-workspace-"));
   try {
     for await (const file of sandbox.exportWorkspace(computer, context)) {
       await writePortableFile(staging, file);
     }
-    return await home.commit(homeKey, staging, context);
+    return await home.commit(homeKey, staging, context, expectedRevision);
   } finally {
     await rm(staging, { recursive: true, force: true });
   }
@@ -339,21 +355,49 @@ export async function checkpointRunComputerWorkspace(
   }
 }
 
+async function quiesceDockerBrowsers(
+  sandbox: SandboxProvider,
+  computer: ComputerRef,
+  context: AdapterContext,
+) {
+  try {
+    for await (const event of sandbox.execute(
+      computer,
+      { argv: ["bash", "-c", quiesceBrowserProfilesCommand()] },
+      context,
+    )) {
+      void event;
+    }
+  } catch (error) {
+    getLogger().error("browser quiesce before checkpoint failed", error);
+  }
+}
+
 export async function checkpointAndRecordComputerWorkspace(
   deps: { home: AgentHomeStore; sandbox: SandboxProvider; prisma: PrismaClient },
   computerRecord: { id: string; homeKey: string },
   computer: ComputerRef,
   context: AdapterContext,
 ): Promise<string> {
+  // Read the revision now, not from the caller's older copy of the row: the save is refused if
+  // another worker moves the revision first, and the record below only advances from it.
+  const before = await deps.prisma.computer.findUnique({
+    where: { id: computerRecord.id },
+    select: { homeRevision: true },
+  });
   const revision = await checkpointComputerWorkspace(
     deps.home,
     deps.sandbox,
     computerRecord.homeKey,
     computer,
     context,
+    before?.homeRevision,
   );
   await deps.prisma.computer.updateMany({
-    where: { id: computerRecord.id },
+    where: {
+      id: computerRecord.id,
+      ...(before ? { homeRevision: { in: [before.homeRevision, revision] } } : {}),
+    },
     data: { homeRevision: revision },
   });
   return revision;

@@ -1,13 +1,15 @@
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { AdapterContext, JobPublisher } from "@rakazo/adapter-kit";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { LocalArtifactStore } from "./artifacts.js";
 import { ComputerBusyError, provisionComputer } from "./computer-lifecycle.js";
 import { DockerSandboxProvider } from "./docker-sandbox.js";
 import { FakeSandboxProvider } from "./fake-sandbox.js";
 import { LocalAgentHomeStore } from "./home.js";
 import { HostAwareSandbox } from "./host-aware-sandbox.js";
+import { ObjectAgentHomeStore } from "./object-home.js";
 
 const context = {
   operationId: "test",
@@ -173,4 +175,51 @@ describe("running Docker computer reuse", () => {
       }
     },
   );
+
+  it("installs the snapshot of a Computer that last ran elsewhere before Docker mounts it", async () => {
+    const f = await fixture();
+    try {
+      // The row last ran on E2B; Docker provisions it now, and homes/<key> holds an old copy.
+      Object.assign(f.row, {
+        kind: "e2b",
+        state: "stopped",
+        providerRef: "e2b-sandbox",
+        spaceId: "space",
+        homeRevision: "empty",
+        homeSnapshotId: null,
+        homePreviousSnapshotId: null,
+      });
+      const computer = f.deps.prisma.computer as unknown as Record<string, unknown>;
+      computer.findFirst = vi.fn(async () => ({ ...f.row }));
+      const home = new ObjectAgentHomeStore(
+        f.deps.prisma as never,
+        new LocalArtifactStore(f.deps.dataDir),
+        f.deps.dataDir,
+      );
+      const src = path.join(f.deps.dataDir, "src");
+      await mkdir(src);
+      await writeFile(path.join(src, "work.txt"), "saved on e2b");
+      await home.commit("bot", src, context);
+      const stale = path.join(f.deps.dataDir, "homes", "bot");
+      await mkdir(stale, { recursive: true });
+      await writeFile(path.join(stale, "work.txt"), "old docker copy");
+      let mounted: string | undefined;
+      f.provision.mockImplementation(async (request) => {
+        mounted = await readFile(path.join(request.homePath, "work.txt"), "utf8");
+        return {
+          id: "provider",
+          providerRef: "provider",
+          botId: "bot",
+          kind: "docker",
+          fresh: true,
+        };
+      });
+      const importWorkspace = vi.spyOn(f.deps.sandbox, "importWorkspace");
+      await provisionComputer({ ...f.deps, home }, "computer", context, "bot");
+      expect(mounted).toBe("saved on e2b");
+      expect(importWorkspace).not.toHaveBeenCalled();
+    } finally {
+      await f.cleanup();
+    }
+  });
 });

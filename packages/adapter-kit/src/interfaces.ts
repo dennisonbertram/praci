@@ -125,7 +125,10 @@ export interface SandboxProvider {
     context: AdapterContext,
   ): Promise<ComputerRef>;
   /** Read-only probe: true only when this exact reference is already running. */
-  isRunning?(computer: ComputerRef, context: AdapterContext): Promise<boolean>;
+  /** `undefined` when the provider cannot tell (for example its supervisor did not answer). */
+  isRunning?(computer: ComputerRef, context: AdapterContext): Promise<boolean | undefined>;
+  /** The kind of computer `provision` would create now, when it can differ from `describe().id`. */
+  provisionKind?(context: AdapterContext): Promise<ComputerRef["kind"]>;
   /** Perform idempotent provider setup after the lifecycle has captured the reference. */
   prepare(computer: ComputerRef, context: AdapterContext): Promise<void>;
   execute(
@@ -384,7 +387,13 @@ export interface JobWorkerHost {
 export interface AgentHomeStore {
   describe(): AdapterDescriptor<{ revisions: boolean }>;
   checkout(botId: string, dest: string, context: AdapterContext): Promise<string>;
-  commit(botId: string, src: string, context: AdapterContext): Promise<string>;
+  /** `expectedRevision`, when given, makes the save fail if the stored revision has moved on. */
+  commit(
+    botId: string,
+    src: string,
+    context: AdapterContext,
+    expectedRevision?: string,
+  ): Promise<string>;
   restore(botId: string, revision: string, dest: string, context: AdapterContext): Promise<void>;
   /**
    * Paths are relative to `directory`; a missing or linked directory exports nothing.
@@ -407,6 +416,35 @@ export interface AgentHomeStore {
     path: string,
     context: AdapterContext,
   ): Promise<Array<{ path: string; kind: "file" | "dir"; size: number }>>;
+  /**
+   * Deletes the whole home, including every stored snapshot. Does nothing when the Computer is not
+   * found for the caller's space, unless the caller already deleted the Computer row and passes
+   * the snapshot ids that row held.
+   */
+  remove(
+    botId: string,
+    context: AdapterContext,
+    deletedRow?: { homeSnapshotId: string | null; homePreviousSnapshotId: string | null },
+  ): Promise<void>;
+  /**
+   * Deletes `parent/name` inside the home and persists the change. A linked parent is refused;
+   * a linked final entry is unlinked. Missing entries are not an error.
+   */
+  removeEntry(botId: string, parent: string, name: string, context: AdapterContext): Promise<void>;
+  /**
+   * Present when a sandbox on this host (Docker) may use the home as its live working directory.
+   * While that directory holds the current revision it is the newest copy of the home. A newer
+   * stored revision replaces it only when `unmounted` confirms no container is using it; the
+   * store calls it only when it has something to replace. `current` is false when the directory
+   * was left as it was and does not hold the current revision, so the caller must restore it.
+   */
+  liveDirectory?(
+    botId: string,
+    context: AdapterContext,
+    options?: { unmounted?: () => Promise<boolean> },
+  ): Promise<{ path: string; current: boolean }>;
+  /** Records the live directory's current contents as a new revision. */
+  revise?(botId: string, context: AdapterContext): Promise<string>;
 }
 
 export interface ArtifactStore {
@@ -414,6 +452,13 @@ export interface ArtifactStore {
   put(artifact: ArtifactPut, context: AdapterContext): Promise<{ id: string; hash: string }>;
   get(id: string, context: AdapterContext): Promise<Uint8Array>;
   remove(id: string, context: AdapterContext): Promise<void>;
+  /** Stores a local file without reading it whole into memory. */
+  putFile?(
+    file: { path: string; name: string; mimeType: string },
+    context: AdapterContext,
+  ): Promise<{ id: string; hash: string }>;
+  /** Writes an object to a new local file without holding it whole in memory. */
+  getFile?(id: string, destination: string, context: AdapterContext): Promise<void>;
 }
 
 export interface SecretStore {

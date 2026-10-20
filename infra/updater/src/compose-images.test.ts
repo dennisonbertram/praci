@@ -16,6 +16,9 @@ interface ComposeService {
   restart?: string;
   network_mode?: string;
   networks?: string[];
+  depends_on?: Record<string, unknown>;
+  profiles?: string[];
+  entrypoint?: unknown;
 }
 
 const repoRoot = path.resolve(import.meta.dirname, "../../..");
@@ -56,6 +59,8 @@ describe("the images compose file", () => {
       "computer",
       "data-init",
       "postgres",
+      "seaweedfs",
+      "seaweedfs-init",
       "supervisor",
       "web",
       "worker",
@@ -70,6 +75,33 @@ describe("the images compose file", () => {
       /^\$\{POSTGRES_IMAGE:-pgvector\/pgvector:pg16-trixie@sha256:[0-9a-f]{64}\}$/,
     );
     expect(compose.services["data-init"]?.image).toMatch(/^\$\{BUSYBOX_IMAGE:-busybox:1\}$/);
+  });
+
+  it("bundles SeaweedFS behind a profile, with no default credentials and no host port", () => {
+    const store = compose.services.seaweedfs;
+    expect(store?.ports).toBeUndefined();
+    expect(store?.profiles).toEqual(["bundled-s3"]);
+    expect(store?.image).toMatch(/^\$\{SEAWEEDFS_IMAGE:-chrislusf\/seaweedfs:\d+\.\d+\}$/);
+    expect(compose.services["seaweedfs-init"]?.profiles).toEqual(["bundled-s3"]);
+    expect(compose.services["seaweedfs-init"]?.restart).toBe("no");
+    // The credentials are empty without them, and the store refuses to start on short values.
+    for (const name of ["seaweedfs", "seaweedfs-init"] as const) {
+      for (const [key, value] of Object.entries(compose.services[name]?.environment ?? {})) {
+        if (/ACCESS_KEY|SECRET/.test(key)) expect(value, `${name}.${key}`).toMatch(/:-\}$/);
+      }
+    }
+    expect(JSON.stringify(store?.entrypoint)).toContain("at least 8 characters");
+  });
+
+  it("does not make the app depend on object storage unless the profile runs", () => {
+    for (const name of ["api", "worker"] as const) {
+      const environment = compose.services[name]?.environment ?? {};
+      expect(Object.keys(environment).filter((key) => key.startsWith("RAKAZO_S3_"))).toEqual([]);
+      expect(compose.services[name]?.depends_on?.["seaweedfs-init"]).toEqual({
+        condition: "service_completed_successfully",
+        required: false,
+      });
+    }
   });
 
   it("skips non-string Compose environment scalars when collecting image names", () => {
