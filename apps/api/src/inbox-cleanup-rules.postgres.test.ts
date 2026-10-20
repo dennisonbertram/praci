@@ -3,7 +3,8 @@ import { inboxFeedbackSet } from "./inbox.js";
 import { inboxActionsUndo } from "./inbox-actions.js";
 import { inboxCleanupArchive, inboxCleanupForget, inboxCleanupList } from "./inbox-cleanup.js";
 import { inboxMoveMany } from "./inbox-modify.js";
-import { createMailFixture, daysAgo, type MailFixture } from "./test-support/mail-fixture.js";
+import type { MailFixture } from "./test-support/mail-fixture.js";
+import { createMailFixture, daysAgo } from "./test-support/mail-fixture.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =

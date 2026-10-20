@@ -623,10 +623,10 @@ export class GmailMailProvider implements MailProvider {
       throw new MailProviderError("invalid", "Not a plain sender address");
     const listed = asRecord(await this.request(account, context, `${GMAIL}/settings/filters`));
     const filters = (Array.isArray(listed?.filter) ? listed.filter : []).map(asRecord);
-    if (filters.length >= GMAIL_FILTER_LIMIT)
-      throw new MailProviderError("limit", "Gmail filter limit reached");
     const same = filters.find((f) => f && isSkipInboxFilter(f, from));
     if (typeof same?.id === "string") return { ruleId: same.id, created: false };
+    if (filters.length >= GMAIL_FILTER_LIMIT)
+      throw new MailProviderError("limit", "Gmail filter limit reached");
     const created = asRecord(
       await this.request(account, context, `${GMAIL}/settings/filters`, {
         method: "POST",

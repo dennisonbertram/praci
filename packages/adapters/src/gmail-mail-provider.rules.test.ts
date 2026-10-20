@@ -141,6 +141,16 @@ describe("Gmail sender rules", () => {
     expect(s.requests().map((r) => r.method)).toEqual(["GET"]);
   });
 
+  it("reuses an identical filter even at 1,000 filters", async () => {
+    const s = setup();
+    s.gmail.grantScope(s.a.accountRef, GMAIL_SETTINGS_BASIC);
+    const first = await create(s, s.a, "n@lists.example.test");
+    s.gmail.fillFilters(s.a.accountRef, 1000);
+    const again = await create(s, s.a, "n@lists.example.test");
+    expect(again).toEqual({ ruleId: first?.ruleId, created: false });
+    expect(s.requests().filter((r) => r.method === "POST")).toHaveLength(1);
+  });
+
   it("maps a missing permission to auth", async () => {
     const s = setup();
     expect(await kindOf(create(s, s.a, "n@lists.example.test"))).toBe("auth");
