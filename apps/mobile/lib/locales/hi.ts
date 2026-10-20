@@ -575,6 +575,8 @@ export const HI_MESSAGES: Record<string, string> = {
   "Make sure nothing is still running on this computer.":
     "सुनिश्चित करें कि इस कंप्यूटर पर कुछ भी चल नहीं रहा है।",
   "Nothing is still running": "कुछ भी नहीं चल रहा",
+  Reconnect: "फिर से कनेक्ट करें",
+  "Try again": "फिर कोशिश करें",
   Reconnecting: "पुनः कनेक्ट हो रहा है",
   "Recovering Team Computer": "टीम कंप्यूटर बहाल हो रहा है",
   "Recovering {name}’s Computer": "{name} का कंप्यूटर बहाल हो रहा है",

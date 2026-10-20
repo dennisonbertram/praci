@@ -9,6 +9,21 @@ import {
   isVoiceAgentSpawnKey,
 } from "@rakazo/contracts";
 
+export type StatusKind = "connected" | "reconnect" | "failed" | "connecting";
+
+/** Status of one managed app, from all of its account rows. A working account wins. */
+export function appStatus(
+  rows: readonly { status: string; needsReconnect?: boolean }[],
+): StatusKind | null {
+  const live = rows.filter((row) => row.status === "connected");
+  if (live.some((row) => !row.needsReconnect)) return "connected";
+  // Every account is connected on paper, but its provider refuses the sign-in.
+  if (live.length > 0) return "reconnect";
+  if (rows.some((row) => row.status === "pending")) return "connecting";
+  if (rows.some((row) => row.status === "error")) return "failed";
+  return null;
+}
+
 /** A connection row as the access rules read it. `botAccess` lists the grants being considered. */
 export type ConnectionAccessRow = {
   id: string;

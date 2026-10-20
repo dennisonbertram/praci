@@ -607,6 +607,8 @@ export const DE_MESSAGES: Record<string, string> = {
   "Make sure nothing is still running on this computer.":
     "Stelle sicher, dass auf diesem Computer nichts mehr läuft.",
   "Nothing is still running": "Nichts läuft mehr",
+  Reconnect: "Erneut verbinden",
+  "Try again": "Erneut versuchen",
   Reconnecting: "Verbindung wird wiederhergestellt",
   "Recovering Team Computer": "Team-Computer wird wiederhergestellt",
   "Recovering {name}’s Computer": "Computer von {name} wird wiederhergestellt",

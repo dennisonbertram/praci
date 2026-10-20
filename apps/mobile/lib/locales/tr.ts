@@ -578,6 +578,8 @@ export const TR_MESSAGES: Record<string, string> = {
   "Make sure nothing is still running on this computer.":
     "Bu bilgisayarda hâlâ çalışan bir şey olmadığından emin ol.",
   "Nothing is still running": "Hâlâ çalışan bir şey yok",
+  Reconnect: "Yeniden bağlan",
+  "Try again": "Tekrar dene",
   Reconnecting: "Yeniden bağlanıyor",
   "Recovering Team Computer": "Takım Bilgisayarı kurtarılıyor",
   "Recovering {name}’s Computer": "{name} adlı kişinin bilgisayarı kurtarılıyor",
