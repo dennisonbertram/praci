@@ -810,6 +810,8 @@ export const HI_MESSAGES: Record<string, string> = {
   "{count} messages · {percent}% read": "{count} संदेश · {percent}% पढ़े गए",
   "Looks like spam": "स्पैम जैसा लगता है",
   Skipping: "छोड़ा जा रहा है",
+  "Gmail filter limit reached": "Gmail फ़िल्टर की सीमा पूरी हो गई",
+  "Couldn't add Gmail filter": "Gmail फ़िल्टर जोड़ा नहीं जा सका",
   History: "इतिहास",
   Undo: "पूर्ववत करें",
   "Send an unsubscribe email to {address}?": "{address} को सदस्यता रद्द करने का ईमेल भेजें?",

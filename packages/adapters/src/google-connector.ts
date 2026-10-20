@@ -26,6 +26,9 @@ const GMAIL_READONLY = "https://www.googleapis.com/auth/gmail.readonly";
 const GMAIL_COMPOSE = "https://www.googleapis.com/auth/gmail.compose";
 // gmail.modify adds labels: mark read or unread and archive. Like compose it is optional at connect.
 const GMAIL_MODIFY = "https://www.googleapis.com/auth/gmail.modify";
+// gmail.settings.basic manages filters. It is restricted, so it is requested only when the user first
+// asks for a Gmail filter (`begin` with permission "mail_rules"), never in the default connect.
+export const GMAIL_SETTINGS_BASIC = "https://www.googleapis.com/auth/gmail.settings.basic";
 const GOOGLE_API_ORIGIN = "https://www.googleapis.com";
 const CALENDAR_EVENTS = "https://www.googleapis.com/auth/calendar.events";
 const DRIVE = "https://www.googleapis.com/auth/drive";
@@ -174,7 +177,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
   }
 
   async begin(
-    request: { provider: string; redirectUrl: string },
+    request: { provider: string; redirectUrl: string; permission?: "mail_rules" },
     _context: AdapterContext,
   ): Promise<{ authorizationUrl: string | null; state: string }> {
     const provider = providerOf(request.provider);
@@ -184,7 +187,12 @@ export class GoogleConnector implements ManagedConnectorProvider {
       client_id: this.config.clientId,
       redirect_uri: this.redirectUriFor(request.redirectUrl),
       response_type: "code",
-      scope: PROVIDERS[provider].scopes.join(" "),
+      scope: [
+        ...PROVIDERS[provider].scopes,
+        ...(provider === "gmail" && request.permission === "mail_rules"
+          ? [GMAIL_SETTINGS_BASIC]
+          : []),
+      ].join(" "),
       state,
       code_challenge: createHash("sha256").update(this.verifier(state)).digest("base64url"),
       code_challenge_method: "S256",
@@ -199,7 +207,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
   async complete(
     request: { state: string; code?: string; redirectUrl?: string; provider?: string },
     context: AdapterContext,
-  ): Promise<{ connectionRef: string; secretId: string }> {
+  ): Promise<{ connectionRef: string; secretId: string; scope: string }> {
     if (!STATE_PATTERN.test(request.state) || !request.code)
       throw new Error("Google authorization is incomplete");
     // Without a provider the grant is Gmail's, as before providers were passed.
@@ -255,7 +263,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
           ciphertext: stored.ciphertext,
         },
       });
-      return { connectionRef: profile.sub, secretId: stored.id };
+      return { connectionRef: profile.sub, secretId: stored.id, scope: token.scope };
     } catch (error) {
       throw new Error(sanitizeConnectorError(error, secrets));
     }

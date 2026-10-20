@@ -1036,6 +1036,10 @@ msgstr ""
 msgid "Already tidy."
 msgstr ""
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Also in Gmail"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -3071,6 +3075,10 @@ msgstr "Datei konnte nicht hochgeladen werden"
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Couldn't add Gmail filter"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Couldn't archive {count}"
 msgstr ""
@@ -4215,6 +4223,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Gmail didn't respond. Try again."
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Gmail filter limit reached"
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts

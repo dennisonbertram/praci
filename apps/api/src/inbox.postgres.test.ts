@@ -315,7 +315,12 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       });
       expect(out.rows[1]?.from).toBe("ann@example.test");
       expect(out.accounts).toEqual([
-        { connectionId: connA, label: "Mailbox box-a", address: "box-a@example.test" },
+        {
+          connectionId: connA,
+          label: "Mailbox box-a",
+          address: "box-a@example.test",
+          senderRules: "unsupported",
+        },
       ]);
       expect(out.syncedAt).toBeNull();
       expect(out.failedAccounts).toEqual([]);
@@ -653,7 +658,12 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(unread.nextPageToken).toBeUndefined();
       expect(unread.failedAccounts).toEqual([]);
       expect(unread.accounts).toEqual([
-        { connectionId: connA, label: "Mailbox box-a", address: "box-a@example.test" },
+        {
+          connectionId: connA,
+          label: "Mailbox box-a",
+          address: "box-a@example.test",
+          senderRules: "unsupported",
+        },
       ]);
       expect(requestedBoxes()).toEqual(["box-a"]);
 
@@ -1863,9 +1873,12 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         const message = await prisma.cachedMailMessage.findFirstOrThrow({
           where: { providerMessageId: "m1" },
         });
-        const client = createRouterClient(createRouter({ ...on() } as unknown as RouterDeps), {
-          context: { actor: a } as never,
-        });
+        const client = createRouterClient(
+          createRouter({ ...on(), env: {} } as unknown as RouterDeps),
+          {
+            context: { actor: a } as never,
+          },
+        );
 
         expect(await client.inbox.feedback({ messageId: message.id, mark: "important" })).toEqual({
           mark: "important",

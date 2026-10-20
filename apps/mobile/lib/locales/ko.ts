@@ -815,6 +815,8 @@ export const KO_MESSAGES: Record<string, string> = {
   "{count} messages · {percent}% read": "메시지 {count}개 · {percent}% 읽음",
   "Looks like spam": "스팸처럼 보임",
   Skipping: "건너뛰는 중",
+  "Gmail filter limit reached": "Gmail 필터 한도에 도달했습니다",
+  "Couldn't add Gmail filter": "Gmail 필터를 추가하지 못했습니다",
   History: "기록",
   Undo: "실행 취소",
   "Send an unsubscribe email to {address}?": "{address}(으)로 구독 취소 이메일을 보낼까요?",

@@ -372,6 +372,11 @@ export default function InboxCleanupScreen() {
                     >
                       <Text style={styles.link}>{t("Stop")}</Text>
                     </Pressable>
+                    {sender.rule === "full" ? (
+                      <Text style={styles.meta}>{t("Gmail filter limit reached")}</Text>
+                    ) : sender.rule === "failed" ? (
+                      <Text style={styles.meta}>{t("Couldn't add Gmail filter")}</Text>
+                    ) : null}
                   </View>
                 ) : null}
               </View>

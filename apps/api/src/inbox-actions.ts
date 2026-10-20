@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import type { MailLabelChange } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
+import { removeSenderRules } from "@rakazo/adapters";
 import type {
   Actor,
   MailAction,
@@ -144,16 +145,35 @@ export async function inboxActionsUndo(
       await prisma.cachedMailMessage.updateMany({ where, data: inverse.cache });
     }
     if (failures > 0) continue;
-    await prisma.mailActionLog.update({ where: { id: row.id }, data: { undoneAt: new Date() } });
     const decisions = {
       ...scope,
       connectionId: row.connectionId,
       senderAddress: { in: row.senderAddresses },
     };
-    if (kind.data === "skip_inbox" && row.source === "user")
-      await prisma.mailSenderDecision.deleteMany({ where: decisions });
+    const forgets = kind.data === "skip_inbox" && row.source === "user";
+    if (forgets || kind.data === "unsubscribe") {
+      // The Gmail filter goes with the decision. If it cannot be deleted the row stays undoable.
+      const withRule = await prisma.mailSenderDecision.findMany({
+        where: { ...decisions, ruleId: { not: null } },
+      });
+      const removal = await removeSenderRules(
+        { prisma, mail: deps.mail },
+        account,
+        context,
+        withRule,
+      );
+      if (removal.failed > 0) {
+        failed += removal.failed;
+        continue;
+      }
+    }
+    await prisma.mailActionLog.update({ where: { id: row.id }, data: { undoneAt: new Date() } });
+    if (forgets) await prisma.mailSenderDecision.deleteMany({ where: decisions });
     else if (kind.data === "unsubscribe")
-      await prisma.mailSenderDecision.updateMany({ where: decisions, data: { skipInboxAt: null } });
+      await prisma.mailSenderDecision.updateMany({
+        where: decisions,
+        data: { skipInboxAt: null, ruleId: null, ruleStatus: null },
+      });
   }
   return { restored, failed };
 }

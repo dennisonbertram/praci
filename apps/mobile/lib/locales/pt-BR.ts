@@ -823,6 +823,8 @@ export const PT_BR_MESSAGES: Record<string, string> = {
   "{count} messages · {percent}% read": "{count} mensagens · {percent}% lidas",
   "Looks like spam": "Parece spam",
   Skipping: "Ignorando",
+  "Gmail filter limit reached": "Limite de filtros do Gmail atingido",
+  "Couldn't add Gmail filter": "Não foi possível adicionar o filtro do Gmail",
   History: "Histórico",
   Undo: "Desfazer",
   "Send an unsubscribe email to {address}?":

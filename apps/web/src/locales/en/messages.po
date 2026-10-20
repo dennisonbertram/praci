@@ -1036,6 +1036,10 @@ msgstr "Already in your Data room as {name}"
 msgid "Already tidy."
 msgstr "Already tidy."
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Also in Gmail"
+msgstr "Also in Gmail"
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr "Always act"
@@ -3071,6 +3075,10 @@ msgstr "Could not upload file"
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Couldn't add Gmail filter"
+msgstr "Couldn't add Gmail filter"
+
 #: src/pages/Inbox.tsx
 msgid "Couldn't archive {count}"
 msgstr "Couldn't archive {count}"
@@ -4216,6 +4224,10 @@ msgstr "Gmail didn't accept it. Check the addresses."
 #: src/components/ComposeEmail.tsx
 msgid "Gmail didn't respond. Try again."
 msgstr "Gmail didn't respond. Try again."
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Gmail filter limit reached"
+msgstr "Gmail filter limit reached"
 
 #: src/lib/inbox-sync-error.ts
 msgid "Gmail is limiting requests right now."

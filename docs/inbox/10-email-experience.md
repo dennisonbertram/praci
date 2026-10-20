@@ -165,8 +165,8 @@ cover every new write.
 
 Filters and push need the native Google connection, where Rakazo owns the OAuth
 client and scopes. For Composio and Pipedream connections, Rakazo applies "always skip
-the inbox" itself during sync and keeps polling. Whether those proxies allow the
-filters endpoint is checked before phase 4.
+the inbox" itself during sync and keeps polling. Filters are offered on native Google
+only, because the Composio and Pipedream default scopes lack `gmail.settings.basic`.
 
 ## Sync and speed
 
@@ -210,7 +210,27 @@ stories.
    `modifyThread`; the agent's `mail_modify` still refuses both.
 4. **Gmail filters.** "Always skip the inbox" creates a filter on native Google
    connections, archives existing mail, records the filter for undo. Mobile: the same
-   action, no new screen.
+   action, no new screen. Landed: the optional `MailProvider` methods `createSenderRule` and
+   `deleteSenderRule` (Gmail `users.settings.filters`: `from` = the sender, remove `INBOX`);
+   `MailAccount.senderRules` says whether an account is `ready`, `needs_permission` or
+   `unsupported`. The permission is requested only when a user skips a sender on a native
+   account that lacks it: Rakazo still skips on its own, the Cleanup screen shows one "Also in
+   Gmail" link, and that link runs a reconnect that adds `gmail.settings.basic` to the usual
+   scopes and keeps the account's decisions and action log (a reconnect used to delete them).
+   Granted scopes are stored in the connection's metadata. A decision keeps `ruleId` and
+   `ruleStatus` (`active`, `pending`, `full`, `failed`). Waiting filters are made right after the
+   reconnect and again at the end of each sync job. A sender marked important gets no filter,
+   an identical filter the user already had is reused and never deleted, and an address that
+   Gmail would read as a search expression (spaces, `OR`, braces, a leading `-`) is refused.
+   Stop and Undo delete the filter first and keep the decision if that fails; both are refused
+   while `MAIL_WRITES_DISABLED` is set when a filter exists. At 1,000 filters, or on any
+   provider error, the decision stays on Rakazo's side and the row says so. An unsubscribe still
+   skips the inbox only on Rakazo's side and makes no filter. The per-click `skip_inbox` batch
+   is the log entry, so skipping a sender with no inbox mail writes none and Stop removes the
+   filter.
+   Mobile shows the Rakazo-side skip and the two notes; native Google is hidden there, so it
+   makes no filters and has no reconnect link. Removing an account does not delete its filters
+   in Gmail.
 5. **Background sync and push.** Worker-owned sync for all three callers, wider cache,
    optional Pub/Sub. Mobile: none. Landed: the `mail.sync` job, a 90-day cache filled
    100 messages per query per run, and Gmail push when `GMAIL_PUSH_TOPIC` and
@@ -240,6 +260,8 @@ with spam, trash, unsubscribe and filters from user clicks.
 ## Unverified
 
 - Whether applying the `SPAM` label through the API trains Gmail's spam filter.
-- Whether the Composio and Pipedream proxies allow `users.settings.filters`.
+- The exact error Gmail returns for the 1,001st filter and for a missing
+  `gmail.settings.basic` scope. The code counts filters before creating one and treats any
+  `auth` error on a filter call as a missing permission.
 - Several Superhuman details (speed targets, reminders) came from reviews, not
   official pages; none of this plan depends on them.

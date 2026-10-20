@@ -845,6 +845,8 @@ export const ZH_MESSAGES: Record<string, string> = {
   "{count} messages · {percent}% read": "{count} 封邮件 · 已读 {percent}%",
   "Looks like spam": "看起来像垃圾邮件",
   Skipping: "正在跳过",
+  "Gmail filter limit reached": "已达到 Gmail 过滤器上限",
+  "Couldn't add Gmail filter": "无法添加 Gmail 过滤器",
   History: "历史记录",
   Undo: "撤销",
   "Send an unsubscribe email to {address}?": "向 {address} 发送退订邮件？",

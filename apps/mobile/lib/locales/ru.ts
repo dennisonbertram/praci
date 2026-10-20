@@ -870,6 +870,8 @@ export const RU_MESSAGES: Record<string, string> = {
   "{count} messages · {percent}% read": "{count} писем · прочитано {percent}%",
   "Looks like spam": "Похоже на спам",
   Skipping: "Пропускается",
+  "Gmail filter limit reached": "Достигнут лимит фильтров Gmail",
+  "Couldn't add Gmail filter": "Не удалось добавить фильтр Gmail",
   History: "История",
   Undo: "Отменить",
   "Send an unsubscribe email to {address}?": "Отправить письмо об отписке на {address}?",

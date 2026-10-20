@@ -65,6 +65,15 @@ export function CleanupSenderRow({
                     <Trans>Stop</Trans>
                   </Button>
                 ) : null}
+                {sender.rule === "full" ? (
+                  <span>
+                    <Trans>Gmail filter limit reached</Trans>
+                  </span>
+                ) : sender.rule === "failed" ? (
+                  <span>
+                    <Trans>Couldn't add Gmail filter</Trans>
+                  </span>
+                ) : null}
               </span>
             ) : null}
           </div>

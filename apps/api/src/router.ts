@@ -44,6 +44,7 @@ import type {
 import {
   acquireComputerExecutionLease,
   applyCodexLiveCatalog,
+  applyPendingSenderRules,
   applyTeachingDesktopInput,
   archiveBot,
   assertSafeRemoteUrl,
@@ -383,6 +384,7 @@ import {
   inboxTodoSetDone,
   inboxTodosList,
   inboxUnreadCount,
+  mailContext,
 } from "./inbox.js";
 import { inboxActionsList, inboxActionsUndo } from "./inbox-actions.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
@@ -5499,6 +5501,9 @@ export function createRouter(deps: RouterDeps) {
         if (input.redirect === "desktop" && input.connectorId !== "google") {
           throw new ORPCError("BAD_REQUEST", { message: "Desktop sign-in is only for Google" });
         }
+        if (input.permission && input.connectorId !== "google") {
+          throw new ORPCError("BAD_REQUEST", { message: "This permission is only for Google" });
+        }
         const redirectUrl =
           input.redirect === "desktop" ? GOOGLE_DESKTOP_REDIRECT_URI : `${deps.env.webOrigin}/app`;
         const connector =
@@ -5565,7 +5570,11 @@ export function createRouter(deps: RouterDeps) {
         });
         try {
           const auth = await connector.begin(
-            { provider: input.provider, redirectUrl },
+            {
+              provider: input.provider,
+              redirectUrl,
+              ...(input.permission ? { permission: input.permission } : {}),
+            },
             connectionContext(context.actor, "connections.begin", context.signal),
           );
           // Re-take the provider lock and only advance still-pending rows so a
@@ -5739,6 +5748,31 @@ export function createRouter(deps: RouterDeps) {
             lock: (tx, connectorId, provider) =>
               lockProviderConnectionScope(tx, context.actor, connectorId, provider),
             provision: (connectionId) => provisionForActor(context.actor, connectionId),
+            // Skipped senders that waited for the filter permission get their filters now, on a
+            // signal of their own because this request ends first.
+            afterConnect: (connectionId) => {
+              const background = mailContext(context.actor, "connections.rules");
+              void deps.mail
+                .listAccounts(
+                  { spaceId: context.actor.spaceId, userId: context.actor.userId },
+                  background,
+                )
+                .then((accounts) => accounts.find((a) => a.id === connectionId))
+                .then((account) =>
+                  account
+                    ? applyPendingSenderRules(
+                        {
+                          prisma: deps.prisma,
+                          mail: deps.mail,
+                          writesDisabled: deps.env.mailWritesDisabled,
+                        },
+                        account,
+                        background,
+                      )
+                    : undefined,
+                )
+                .catch(() => undefined);
+            },
           });
         }
         // An undefined id would match any of the caller's rows; the input schema forbids it.
@@ -7279,7 +7313,11 @@ export function createRouter(deps: RouterDeps) {
         inboxUnreadCount(deps, context.actor),
       ),
       feedback: authed.inbox.feedback.handler(({ context, input }) =>
-        inboxFeedbackSet(deps, context.actor, input),
+        inboxFeedbackSet(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+        ),
       ),
       markRead: authed.inbox.markRead.handler(({ context, input }) =>
         inboxMarkRead(
@@ -7350,7 +7388,12 @@ export function createRouter(deps: RouterDeps) {
           ),
         ),
         forget: authed.inbox.cleanup.forget.handler(({ context, input }) =>
-          inboxCleanupForget(deps, context.actor, input),
+          inboxCleanupForget(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+            context.signal,
+          ),
         ),
       },
       actions: {
