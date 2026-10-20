@@ -1,5 +1,5 @@
 [Unit]
-Description=Create and verify a Rakazo production backup
+Description=Create and verify a Praci production backup
 Requires=docker.service
 After=docker.service
 

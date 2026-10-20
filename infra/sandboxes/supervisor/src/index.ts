@@ -1531,7 +1531,7 @@ export async function reclaimIdleComputerNetworks() {
   const runtime = await inspectSupervisorContainer();
   const owner = computerNetworkOwnerFor(dataDir, runtime);
   const networks = await docker.listNetworks({
-    filters: { label: [`rakazo.computerOwner=${owner}`] },
+    filters: { label: [`praci.aiputerOwner=${owner}`] },
   });
   for (const { Name, Labels } of networks) {
     const botId = Labels?.["rakazo.botId"];

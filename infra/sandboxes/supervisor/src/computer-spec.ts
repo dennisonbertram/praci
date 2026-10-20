@@ -43,7 +43,7 @@ export function resolveSpaceComputerLimit(
  * A computer runs Xvfb, a window manager and a full Chromium on behalf of an
  * agent that decides for itself what to open. #343 gave these containers a
  * pids ceiling, but Memory and NanoCpus are still unset, so one runaway page is
- * a host-wide memory and CPU event that takes every other bot and the Rakazo
+ * a host-wide memory and CPU event that takes every other bot and the Praci
  * services down with it. Every service in docker-compose.prod.yml already
  * carries mem_limit; this applies the same discipline to the containers that
  * actually run untrusted page content.
@@ -204,7 +204,7 @@ export function computerNetworkCreateOptions(
     Name: computerNetworkNameFor(botId),
     Driver: "bridge",
     CheckDuplicate: true,
-    Labels: { "rakazo.computerOwner": owner, "rakazo.botId": botId },
+    Labels: { "praci.aiputerOwner": owner, "rakazo.botId": botId },
     ...(egress === "restricted"
       ? { Options: { "com.docker.network.bridge.name": computerBridgeNameFor(botId) } }
       : {}),

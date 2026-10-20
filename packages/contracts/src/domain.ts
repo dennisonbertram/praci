@@ -701,7 +701,7 @@ export const ConnectionCatalogItemSchema = z.object({
 });
 export type ConnectionCatalogItem = z.infer<typeof ConnectionCatalogItemSchema>;
 
-// Apps Rakazo's own Google connector offers, compared by slug without case or punctuation.
+// Apps Praci's own Google connector offers, compared by slug without case or punctuation.
 const NATIVE_GOOGLE_APPS = new Set(["gmail", "googlecalendar", "googledrive"]);
 const nativeGoogleKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 

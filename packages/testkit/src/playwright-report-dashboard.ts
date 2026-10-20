@@ -201,7 +201,7 @@ export function renderPlaywrightDashboard(history: PlaywrightRun[]): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <title>Playwright · Rakazo</title>
+  <title>Playwright · Praci</title>
   <style>
     ${SHARED_PAGE_STYLES}
     body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #312e81 0, #09090b 34rem); }
@@ -242,14 +242,14 @@ export function renderPlaywrightDashboard(history: PlaywrightRun[]): string {
   <main>
     <header>
       <div>
-        <p class="eyebrow">Rakazo · browser checks</p>
+        <p class="eyebrow">Praci · browser checks</p>
         <h1>Playwright</h1>
         <p class="subtitle">Persistent visual evidence and results from the emulated end-to-end suite.</p>
       </div>
       <div class="actions">
         <a class="button" href="#" id="latest-screenshots">Latest screenshots</a>
         <a class="button" href="#" id="latest-report">Latest report</a>
-        <a class="button" href="https://github.com/elie222/rakazo/actions">GitHub Actions</a>
+        <a class="button" href="https://github.com/dennisonbertram/praci/actions">GitHub Actions</a>
       </div>
     </header>
 
@@ -474,7 +474,7 @@ function renderGalleryPage(input: GalleryInput): string {
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="color-scheme" content="dark" />
-  <title>${mobile ? "Android screenshots" : "Run screenshots"} · Rakazo</title>
+  <title>${mobile ? "Android screenshots" : "Run screenshots"} · Praci</title>
   <style>
     ${SHARED_PAGE_STYLES}
     body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #312e81 0, #09090b 36rem); }
@@ -525,7 +525,7 @@ function renderGalleryPage(input: GalleryInput): string {
   <main>
     <header>
       <div>
-        <p class="eyebrow">Rakazo · visual review</p>
+        <p class="eyebrow">Praci · visual review</p>
         <h1>${mobile ? "Android screenshots" : input.pullRequestNumber ? `PR #${input.pullRequestNumber} screenshots` : "Run screenshots"}</h1>
         ${mobile ? "" : '<p class="subtitle">Review intentional checkpoints separately from automatic failure captures.</p>'}
       </div>

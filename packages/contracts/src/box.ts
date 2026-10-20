@@ -81,5 +81,5 @@ export const BOX_WRITE_TOOLS = [
   "ai_extract_structured_from_metadata_template_enhanced",
 ] as const;
 
-/** Scopes of Box's MCP integration; `root_readwrite` also lets Rakazo list and download for the Data room. */
+/** Scopes of Box's MCP integration; `root_readwrite` also lets Praci list and download for the Data room. */
 export const BOX_OAUTH_SCOPE = "root_readwrite";

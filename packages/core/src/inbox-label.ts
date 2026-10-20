@@ -1,4 +1,4 @@
-// The one small label an Inbox row shows, derived from triage. These are Rakazo labels only;
+// The one small label an Inbox row shows, derived from triage. These are Praci labels only;
 // nothing is written to the mailbox. Pure, so web and mobile show the same label for a row.
 export type InboxLabel = "attention" | "newsletter" | "spam" | "junk";
 

@@ -105,7 +105,7 @@ class GoogleAuthError extends Error {
 }
 
 /**
- * Rakazo's own Google OAuth client for Gmail, Google Calendar and Google Drive. Gmail reads mail, saves
+ * Praci's own Google OAuth client for Gmail, Google Calendar and Google Drive. Gmail reads mail, saves
  * and sends drafts, and changes labels. Google keeps one grant per Google user and OAuth client, so
  * revoking any token revokes all three; `revoke` and `complete` guard against that.
  * Accounts connected before gmail.compose or gmail.modify was requested lack that access, and
@@ -411,7 +411,7 @@ export class GoogleConnector implements ManagedConnectorProvider {
 
   /**
    * True when any other connected Google app holds a grant for this Google account. Google's grant
-   * belongs to the account and OAuth client, not to a Rakazo space or user, so this looks across all
+   * belongs to the account and OAuth client, not to a Praci space or user, so this looks across all
    * of them and returns only a boolean.
    */
   private async hasConnectedSibling(sub: string, excludeId?: string): Promise<boolean> {

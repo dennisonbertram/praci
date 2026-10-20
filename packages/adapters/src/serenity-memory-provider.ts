@@ -221,7 +221,7 @@ export class SerenityMemoryProvider implements SemanticMemoryProvider {
     request: SemanticMemoryRecallRequest,
     context: AdapterContext,
   ): Promise<SemanticMemoryResponse<SemanticMemoryResult[]>> {
-    // History compaction stays in Rakazo; Serenity is the durable brain only.
+    // History compaction stays in Praci; Serenity is the durable brain only.
     const entities = recallEntities(
       request.scope,
       request.botId,

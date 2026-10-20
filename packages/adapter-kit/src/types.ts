@@ -1105,7 +1105,7 @@ export interface MailMessage extends MailMessageSummary {
   attachments: MailAttachmentInfo[];
 }
 
-/** A provider-side subscription that tells Rakazo when a mailbox changes. */
+/** A provider-side subscription that tells Praci when a mailbox changes. */
 export interface MailWatch {
   /** Provider change cursor when the watch started. Informational: sync keeps its own cursor. */
   cursor: string;
