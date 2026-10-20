@@ -44,6 +44,26 @@ export const Skipping: Story = {
   args: { sender: { ...sender, skipInbox: true }, onStop: () => undefined },
 };
 
+/** Gmail also keeps the sender's mail out of the inbox. Nothing extra is shown. */
+export const RuleActive: Story = {
+  args: { sender: { ...sender, skipInbox: true, rule: "active" }, onStop: () => undefined },
+};
+
+/** Skipped in Rakazo, but Gmail's 1,000 filter limit is used up. */
+export const RuleFull: Story = {
+  args: { sender: { ...sender, skipInbox: true, rule: "full" }, onStop: () => undefined },
+};
+
+/** Skipped in Rakazo, but Gmail did not accept the filter. */
+export const RuleFailed: Story = {
+  args: { sender: { ...sender, skipInbox: true, rule: "failed" }, onStop: () => undefined },
+};
+
+/** The model kept putting this sender in Newsletters, so its mail goes there on its own; Forget undoes that. */
+export const Learned: Story = {
+  args: { sender: { ...sender, learnedPile: "newsletters" }, onForgetLearned: () => undefined },
+};
+
 /** Never ticked, and Skip inbox and Unsubscribe leave it out. */
 export const LooksLikeSpam: Story = {
   args: {

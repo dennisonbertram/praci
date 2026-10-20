@@ -35,6 +35,7 @@ export function ConnectAppDialog({
   confirmFirst = false,
   accountName,
   replacesConnectionId,
+  permission,
 }: {
   item: ConnectionCatalogItem;
   data: IntegrationsData;
@@ -48,6 +49,8 @@ export function ConnectAppDialog({
   accountName?: string;
   /** Reconnect: this connection is replaced by the new sign-in, keeping its Inbox data. */
   replacesConnectionId?: string;
+  /** Google only: also ask for permission to make Gmail filters. */
+  permission?: "mail_rules";
 }) {
   const { t } = useLingui();
   const [phase, setPhase] = useState<Phase>(
@@ -149,6 +152,7 @@ export function ConnectAppDialog({
           nextAccountLabel(item.name, rows.filter((entry) => entry.status === "connected").length),
         ...(viaSystemBrowser ? { redirect: "desktop" as const } : {}),
         ...(replacesConnectionId ? { replacesConnectionId } : {}),
+        ...(permission ? { permission } : {}),
       });
       connectionId.current = begun.connectionId;
       for (const old of stale)
@@ -291,11 +295,8 @@ export function ConnectAppDialog({
             <DialogTitle className="text-center">
               <Trans>{item.name} connected</Trans>
             </DialogTitle>
-            <DialogDescription className="text-center">
-              {t`${row?.displayName ?? item.name} is ready.`}
-            </DialogDescription>
-            <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-              {phase.agents === "skipped" ? null : (
+            {phase.agents === "skipped" ? null : (
+              <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
                 <li>
                   <span className="font-bold text-success">✓ </span>
                   {phase.agents === "all" ? (
@@ -306,12 +307,8 @@ export function ConnectAppDialog({
                     <Trans>No bot uses {item.name} yet. Choose bots on its page.</Trans>
                   )}
                 </li>
-              )}
-              <li>
-                <span className="font-bold text-success">✓ </span>
-                <Trans>{item.name} now appears under Connected.</Trans>
-              </li>
-            </ul>
+              </ul>
+            )}
             <div className="mt-4 flex justify-end">
               <Button onClick={close}>
                 <Trans>Done</Trans>

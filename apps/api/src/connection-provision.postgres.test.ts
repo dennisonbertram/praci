@@ -722,6 +722,71 @@ describePostgres("agent per connection: provisioning (PostgreSQL)", () => {
     expect(await row(pending.id)).toMatchObject({ allAgents: false, privateByDefault: true });
   });
 
+  it("a Gmail reconnect keeps skip decisions and the action log, and stores the granted scope", async () => {
+    const ref = `keep-acct-${suffix}`;
+    const state = `keep-state-${suffix}`;
+    const old = await create({ connectorId: "google", provider: "gmail", status: "connected" });
+    await prisma.connection.update({ where: { id: old.id }, data: { providerRef: ref } });
+    const next = await create({ connectorId: "google", provider: "gmail" });
+    await prisma.connection.update({
+      where: { id: next.id },
+      data: { providerRef: state, metadata: { replacesConnectionId: old.id } },
+    });
+    // The new row already holds a decision of its own for the same sender: the old one wins.
+    await prisma.mailSenderDecision.createMany({
+      data: [
+        {
+          spaceId,
+          userId,
+          connectionId: old.id,
+          senderAddress: "news@lists.example.test",
+          skipInboxAt: new Date(),
+          ruleId: "filter-1",
+          ruleStatus: "active",
+        },
+        { spaceId, userId, connectionId: next.id, senderAddress: "news@lists.example.test" },
+      ],
+    });
+    await prisma.mailActionLog.create({
+      data: {
+        spaceId,
+        userId,
+        connectionId: old.id,
+        batchId: `batch-${suffix}`,
+        kind: "skip_inbox",
+        source: "user",
+        reason: "cleanup",
+        senderAddresses: ["news@lists.example.test"],
+        threadIds: ["t1"],
+      },
+    });
+    const scope = "openid email https://www.googleapis.com/auth/gmail.settings.basic";
+    await completeNativeOAuth({
+      prisma,
+      actor: owner,
+      connector: {
+        complete: async () => ({ connectionRef: ref, secretId: `keep-secret-${suffix}`, scope }),
+      } as never,
+      connectorId: "google",
+      state,
+      code: "c",
+      context: {} as never,
+      lock: async () => undefined,
+    });
+
+    expect(await prisma.connection.findUnique({ where: { id: old.id } })).toBeNull();
+    const decisions = await prisma.mailSenderDecision.findMany({
+      where: { connectionId: next.id },
+    });
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0]).toMatchObject({ ruleId: "filter-1", ruleStatus: "active" });
+    expect(decisions[0]?.skipInboxAt).not.toBeNull();
+    expect(
+      await prisma.mailActionLog.count({ where: { connectionId: next.id, kind: "skip_inbox" } }),
+    ).toBe(1);
+    expect((await row(next.id)).metadata).toEqual({ scope });
+  });
+
   it("a Google replacement never copies a stale share over a concurrent setExclusive", async () => {
     for (let i = 0; i < 6; i += 1) {
       const provider = "googledrive";

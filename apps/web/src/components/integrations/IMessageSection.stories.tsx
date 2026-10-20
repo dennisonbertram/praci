@@ -103,3 +103,40 @@ export const SetupDialog: Story = {
     await userEvent.click(await screen.findByRole("button", { name: /iMessage \(BlueBubbles\)/ }));
   },
 };
+
+/** An empty BlueBubbles dialog: every field has a visible label. */
+export const SetupDialogEmpty: Story = {
+  decorators: [withPageBehind()],
+  beforeEach: () => serve(empty),
+  play: async () => {
+    await userEvent.click(
+      await screen.findByRole("button", { name: /Connect iMessage \(BlueBubbles\)/ }),
+    );
+  },
+};
+
+/** A connection test that never answers; it ends with an error after ten seconds. */
+export const TestingHangs: Story = {
+  decorators: [withPageBehind()],
+  beforeEach: () => {
+    serve(saved);
+    mockRpc({ "messagingSetup.test": () => new Promise(() => undefined) });
+  },
+  play: async () => {
+    await userEvent.click(await screen.findByRole("button", { name: /iMessage \(BlueBubbles\)/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Test connection" }));
+  },
+};
+
+/** After a successful save the dialog says so and offers Done. */
+export const SavedDialog: Story = {
+  decorators: [withPageBehind()],
+  beforeEach: () => {
+    serve(saved);
+    mockRpc({ "messagingSetup.save": { ok: true } });
+  },
+  play: async () => {
+    await userEvent.click(await screen.findByRole("button", { name: /iMessage \(BlueBubbles\)/ }));
+    await userEvent.click(await screen.findByRole("button", { name: "Save" }));
+  },
+};

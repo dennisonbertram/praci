@@ -51,7 +51,7 @@ export function ImportActivity({
               key={file.id}
               variant="link"
               size="xs"
-              className="h-auto max-w-40 p-0"
+              className="h-auto max-w-full min-w-0 p-0"
               onClick={() => onOpenItem(file.id)}
             >
               <span className="truncate">{file.name}</span>

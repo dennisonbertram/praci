@@ -2,6 +2,7 @@ import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { SpreadsheetPreview } from "@rakazo/contracts";
+import { formatSheetCell, isNumericSheetCell } from "@rakazo/core";
 import {
   Button,
   Skeleton,
@@ -27,34 +28,11 @@ export type SheetSource = { artifactId: string } | { dataRoomItemId: string };
 type Ready = Extract<SpreadsheetPreview, { status: "ready" }>;
 type Cell = Ready["header"][number];
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$/;
-// CSV cells are text, so a figure such as "1,250.50" or "(12%)" is recognised by its shape.
-const NUMERIC_TEXT = /^[-+(]?[$€£¥]?\s?-?(\d{1,3}(,\d{3})+|\d+)(\.\d+)?%?\)?$/;
-
-const isNumeric = (cell: Cell) =>
-  typeof cell === "number" || (typeof cell === "string" && NUMERIC_TEXT.test(cell.trim()));
-
 function formatCell(cell: Cell, hidden: boolean): string {
-  if (cell === null) return "";
   // While amounts are hidden every numeric cell is masked, header row included (it may be data).
-  if (hidden && isNumeric(cell)) return MASK;
-  if (typeof cell === "number") {
-    return new Intl.NumberFormat(i18n.locale || undefined, { maximumFractionDigits: 10 }).format(
-      cell,
-    );
-  }
-  if (typeof cell === "boolean") return cell ? "TRUE" : "FALSE";
-  if (ISO_DATE.test(cell)) {
-    const date = new Date(cell.length === 10 ? `${cell}T00:00:00Z` : `${cell}Z`);
-    if (!Number.isNaN(date.getTime())) {
-      return new Intl.DateTimeFormat(i18n.locale || undefined, {
-        dateStyle: "medium",
-        ...(cell.length > 10 ? { timeStyle: "short" as const } : {}),
-        timeZone: "UTC",
-      }).format(date);
-    }
-  }
-  return maskCurrencyWhenHidden(cell);
+  if (cell !== null && hidden && isNumericSheetCell(cell)) return MASK;
+  const text = formatSheetCell(cell, i18n.locale || undefined);
+  return typeof cell === "string" ? maskCurrencyWhenHidden(text) : text;
 }
 
 type State =
@@ -247,7 +225,7 @@ function SheetRow({
             className={cn(
               "max-w-[28ch] truncate border-b border-border px-2 py-1",
               head && "sticky top-7 z-10 bg-background",
-              isNumeric(cell) && "text-end font-mono tabular-nums",
+              isNumericSheetCell(cell) && "text-end font-mono tabular-nums",
             )}
           >
             {text}

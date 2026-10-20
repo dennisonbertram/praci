@@ -122,3 +122,23 @@ export const LoadFailed: Story = {
       },
     }),
 };
+
+export const NewSkillSaveFailed: Story = {
+  beforeEach: () =>
+    mockRpc({
+      ...loaded,
+      "agentSkills.create": () => {
+        throw new Error("Skill front matter needs a description.");
+      },
+    }),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByRole("button", { name: "Add skill" }));
+    await userEvent.click(
+      await within(document.body).findByRole("menuitem", { name: "New skill" }),
+    );
+    await userEvent.click(await canvas.findByRole("textbox", { name: "SKILL.md" }));
+    await userEvent.paste("---\nname: demo\ndescription: Demo skill.\n---\n\nSteps.\n");
+    await userEvent.click(await canvas.findByRole("button", { name: "Save" }));
+  },
+};

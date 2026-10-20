@@ -95,13 +95,12 @@ test("custom connections persist reasoning support and bot thinking", async ({
   await model.selectOption("openai-compatible::arbitrary-model");
   const thinking = settings.getByRole("combobox", { name: "Thinking", exact: true });
   await expect(thinking).toBeVisible();
-  await thinking.selectOption("low");
-  await thinking.scrollIntoViewIfNeeded();
-  await captureScreenshot(page, testInfo, "openai-compatible-thinking");
   const saved = page.waitForResponse(
     (response) => response.url().includes("/rpc/bots/update") && response.ok(),
   );
-  await settings.getByRole("button", { name: "Save", exact: true }).click();
+  await thinking.selectOption("low");
+  await thinking.scrollIntoViewIfNeeded();
+  await captureScreenshot(page, testInfo, "openai-compatible-thinking");
   await saved;
   await page.reload();
   await page.locator("main").getByRole("button", { name: "Chief", exact: true }).click();

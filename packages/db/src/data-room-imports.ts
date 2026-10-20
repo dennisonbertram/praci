@@ -131,7 +131,8 @@ export async function listDataRoomImports(prisma: PrismaClient, actor: Owner, no
         }),
       ]);
       const items = (status: string) => counts.find((c) => c.status === status)?._count._all ?? 0;
-      const done = items("ready") + row.duplicates;
+      // "indexing" only brings search up to date: the file is already readable and filed.
+      const done = items("ready") + items("indexing") + row.duplicates;
       const failed = items("failed") + row.rejected;
       return {
         id: row.id,

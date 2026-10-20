@@ -161,6 +161,7 @@ import { Pressable } from "react-native";
 import type { LinkFavicons } from "./markdown.native";
 import {
   ChatMarkdown,
+  HideAmountsContext,
   LinkFaviconsContext,
   LinkifiedText,
   MarkdownLinkPromptProvider,
@@ -1177,5 +1178,23 @@ it("shows a full long native URL and opens it only on confirmation", async () =>
   expect(linking.openURL).toHaveBeenCalledWith(url);
   await act(async () => {
     root.unmount();
+  });
+});
+
+describe("native markdown hide amounts", () => {
+  const text = "Cash is $73,781.83 with 40% owned.";
+  it("shows amounts by default", () => {
+    expect(renderToStaticMarkup(<ChatMarkdown>{text}</ChatMarkdown>)).toContain("$73,781.83");
+  });
+
+  it("masks amounts while the hide-amounts context is on", () => {
+    const html = renderToStaticMarkup(
+      <HideAmountsContext.Provider value>
+        <ChatMarkdown>{text}</ChatMarkdown>
+      </HideAmountsContext.Provider>,
+    );
+    expect(html).not.toContain("73,781");
+    expect(html).toContain("$•••");
+    expect(html).toContain("•••%");
   });
 });
