@@ -1,17 +1,24 @@
 import { createHash } from "node:crypto";
 import type {
   Actor,
+  CompanyEdgeEditInput,
   CompanyEdgeImportInput,
   CompanyEntityEditInput,
   CompanyEntityImportInput,
+  CompanyEventEditInput,
   CompanyEventImportInput,
   CompanyPartialDate,
+  CompanyEdgeRecord as ContractCompanyEdgeRecord,
+  CompanyEventRecord as ContractCompanyEventRecord,
+  CompanyEvidenceRecord as ContractCompanyEvidenceRecord,
 } from "@rakazo/contracts";
 import {
   CompanyConfirmInputSchema,
+  CompanyEdgeEditInputSchema,
   CompanyEdgeImportInputSchema,
   CompanyEntityEditInputSchema,
   CompanyEntityImportInputSchema,
+  CompanyEventEditInputSchema,
   CompanyEventImportInputSchema,
   CompanyMergeInputSchema,
   CompanyRejectInputSchema,
@@ -27,20 +34,9 @@ type Scope = { spaceId: string; ownerUserId: string };
 type CompanyDb = PrismaClient | Prisma.TransactionClient;
 type RootDb = PrismaClient;
 
-export type CompanyEvidenceRecord = {
-  id: string;
-  factKind: string;
-  factId: string;
-  stance: string;
-  sourceKind: string;
-  sourceItemId: string;
-  sourceKey: string;
-  sourceUrl: string | null;
-  quote: string;
-  contentHash: string;
-  extractedAt: string;
-  confidence: number;
-};
+export type CompanyEvidenceRecord = ContractCompanyEvidenceRecord;
+export type CompanyEdgeRecord = ContractCompanyEdgeRecord;
+export type CompanyEventRecord = ContractCompanyEventRecord;
 
 export type CompanyEntityRecord = {
   id: string;
@@ -53,30 +49,15 @@ export type CompanyEntityRecord = {
   visibility: string;
   lockedFields: string[];
   confirmedAt: string | null;
+  confirmedByUserId: string | null;
   identities: Array<{ id: string; identityType: string; identityValue: string }>;
   evidence: CompanyEvidenceRecord[];
   mergedFrom: string[];
-  edges: Array<{
-    id: string;
-    fromId: string;
-    toId: string;
-    relation: string;
-    startsOn: string | null;
-    endsOn: string | null;
-    role: string | null;
-    evidence: CompanyEvidenceRecord[];
-  }>;
-  events: Array<{
-    id: string;
-    kind: string;
-    title: string;
-    occursOn: string;
-    entityIds: string[];
-    evidence: CompanyEvidenceRecord[];
-  }>;
-  contact: unknown;
-  legalContract: unknown;
-  dataRoomItem: unknown;
+  edges: CompanyEdgeRecord[];
+  events: CompanyEventRecord[];
+  contactId: string | null;
+  legalContractId: string | null;
+  dataRoomItemId: string | null;
 };
 
 export type CompanyCandidateRecord = {
@@ -86,6 +67,9 @@ export type CompanyCandidateRecord = {
   entityIds: string[];
   proposedFact: unknown;
   sourceKind: string;
+  connectionId?: string | null;
+  mcpServerId?: string | null;
+  dataRoomItemId?: string | null;
   sourceItemId: string;
   sourceKey: string;
   quote: string;
@@ -97,9 +81,6 @@ export type CompanyWriteResult = CompanyEntityRecord | CompanySuppressedResult;
 
 const ENTITY_INCLUDE = {
   identities: { select: { id: true, identityType: true, identityValue: true } },
-  contact: true,
-  legalContract: true,
-  dataRoomItem: true,
 } as const;
 
 const ownerOf = (actor: Pick<Actor, "spaceId" | "userId">): Scope => ({
@@ -119,10 +100,18 @@ function datePrecision(value: CompanyPartialDate | null | undefined): string | n
   return value?.precision ?? null;
 }
 
-function identityParts(input: CompanyEntityImportInput["entity"]): Array<[string, string]> {
+function partialDate(value: Date | null, precision: string | null): CompanyPartialDate | null {
+  if (!value || !precision) return null;
+  return {
+    date: value.toISOString().slice(0, 10),
+    precision: precision as CompanyPartialDate["precision"],
+  };
+}
+
+function identityParts(input: CompanyEntityImportInput["entity"]): Array<[string, string, string]> {
   return companyEntityIdentifiers(input).map((value) => {
     const separator = value.indexOf(":");
-    return [value.slice(0, separator), value.slice(separator + 1)];
+    return [input.kind, value.slice(0, separator), value.slice(separator + 1)];
   });
 }
 
@@ -144,15 +133,47 @@ function toEvidence(row: {
   factId: string;
   stance: string;
   sourceKind: string;
+  connectionId: string | null;
+  mcpServerId: string | null;
+  dataRoomItemId: string | null;
   sourceItemId: string;
   sourceKey: string;
   sourceUrl: string | null;
   quote: string;
   contentHash: string;
   extractedAt: Date;
+  extractorRunId: string | null;
+  extractorModel: Prisma.JsonValue | null;
   confidence: number;
+  confirmedByUserId: string | null;
+  confirmedAt: Date | null;
 }): CompanyEvidenceRecord {
-  return { ...row, extractedAt: row.extractedAt.toISOString() };
+  return {
+    id: row.id,
+    factKind: row.factKind as CompanyEvidenceRecord["factKind"],
+    factId: row.factId,
+    stance: row.stance as CompanyEvidenceRecord["stance"],
+    sourceKind: row.sourceKind as CompanyEvidenceRecord["sourceKind"],
+    connectionId: row.connectionId,
+    mcpServerId: row.mcpServerId,
+    dataRoomItemId: row.dataRoomItemId,
+    sourceItemId: row.sourceItemId,
+    sourceKey: row.sourceKey,
+    sourceUrl: row.sourceUrl,
+    quote: row.quote,
+    contentHash: row.contentHash,
+    extractedAt: row.extractedAt.toISOString(),
+    extractorRunId: row.extractorRunId,
+    extractorModel:
+      row.extractorModel &&
+      typeof row.extractorModel === "object" &&
+      !Array.isArray(row.extractorModel)
+        ? (row.extractorModel as Record<string, unknown>)
+        : null,
+    confidence: row.confidence,
+    confirmedByUserId: row.confirmedByUserId,
+    confirmedAt: row.confirmedAt?.toISOString() ?? null,
+  };
 }
 
 async function evidenceFor(
@@ -168,17 +189,115 @@ async function evidenceFor(
   return rows.map(toEvidence);
 }
 
+async function mapEdgeRecord(
+  db: CompanyDb,
+  scope: Scope,
+  row: Prisma.CompanyEdgeGetPayload<object>,
+): Promise<CompanyEdgeRecord> {
+  return {
+    id: row.id,
+    fromId: row.fromId,
+    toId: row.toId,
+    relation: row.relation as CompanyEdgeRecord["relation"],
+    startsOn: partialDate(row.startsOn, row.startsPrecision),
+    endsOn: partialDate(row.endsOn, row.endsPrecision),
+    role: row.role,
+    confidence: row.confidence,
+    status: row.status as CompanyEdgeRecord["status"],
+    visibility: row.visibility as CompanyEdgeRecord["visibility"],
+    lockedFields: row.lockedFields,
+    confirmedByUserId: row.confirmedByUserId,
+    confirmedAt: row.confirmedAt?.toISOString() ?? null,
+    evidence: await evidenceFor(db, scope, "edge", row.id),
+  };
+}
+
+async function mapEventRecord(
+  db: CompanyDb,
+  scope: Scope,
+  row: Prisma.CompanyEventGetPayload<object>,
+  entityIds: string[],
+): Promise<CompanyEventRecord> {
+  return {
+    id: row.id,
+    stream: row.stream as CompanyEventRecord["stream"],
+    kind: row.kind as CompanyEventRecord["kind"],
+    title: row.title,
+    occursOn: partialDate(row.occursOn, row.occursPrecision),
+    endsOn: partialDate(row.endsOn, row.endsPrecision),
+    amountCents: row.amountCents === null ? null : Number(row.amountCents),
+    currency: row.currency,
+    entityIds,
+    confidence: row.confidence,
+    status: row.status as CompanyEventRecord["status"],
+    visibility: row.visibility as CompanyEventRecord["visibility"],
+    lockedFields: row.lockedFields,
+    confirmedByUserId: row.confirmedByUserId,
+    confirmedAt: row.confirmedAt?.toISOString() ?? null,
+    evidence: await evidenceFor(db, scope, "event", row.id),
+  };
+}
+
 async function mapEntity(
   db: CompanyDb,
   scope: Scope,
   row: Prisma.CompanyEntityGetPayload<{ include: typeof ENTITY_INCLUDE }>,
+  options: { includeRejected?: boolean } = {},
 ): Promise<CompanyEntityRecord> {
+  const parentMerge = await db.companyMerge.findFirst({
+    where: { ...scope, sourceEntityId: row.id },
+    select: { survivorEntityId: true },
+  });
+  if (parentMerge) {
+    const survivor = await db.companyEntity.findFirstOrThrow({
+      where: { ...scope, id: parentMerge.survivorEntityId },
+      include: ENTITY_INCLUDE,
+    });
+    return mapEntity(db, scope, survivor, options);
+  }
   const merges = await db.companyMerge.findMany({
     where: { ...scope, survivorEntityId: row.id },
     select: { sourceEntityId: true },
     orderBy: { createdAt: "asc" },
   });
   const memberIds = [row.id, ...merges.map((merge) => merge.sourceEntityId)];
+  const members = await db.companyEntity.findMany({
+    where: { ...scope, id: { in: memberIds } },
+    orderBy: { id: "asc" },
+  });
+  const memberIdentities = await db.companyIdentity.findMany({
+    where: { ...scope, entityId: { in: memberIds } },
+    select: { id: true, identityType: true, identityValue: true },
+    orderBy: [{ identityType: "asc" }, { identityValue: "asc" }],
+  });
+  const rootAttrs = row.attrs as Record<string, unknown>;
+  const attrs: Record<string, unknown> = {};
+  for (const member of members.filter((member) => member.id !== row.id)) {
+    for (const [key, value] of Object.entries(member.attrs as Record<string, unknown>)) {
+      if (Array.isArray(value)) {
+        attrs[key] = [
+          ...new Set([...(Array.isArray(attrs[key]) ? (attrs[key] as unknown[]) : []), ...value]),
+        ];
+      } else if (!(key in attrs)) {
+        attrs[key] = value;
+      }
+    }
+  }
+  for (const [key, value] of Object.entries(rootAttrs)) {
+    if (row.lockedFields.includes(`attrs.${key}`) || !Array.isArray(value)) {
+      attrs[key] = value;
+    } else {
+      attrs[key] = [
+        ...new Set([...(Array.isArray(attrs[key]) ? (attrs[key] as unknown[]) : []), ...value]),
+      ];
+    }
+  }
+  const rootLinks = {
+    contactId: row.contactId,
+    legalContractId: row.legalContractId,
+    dataRoomItemId: row.dataRoomItemId,
+  };
+  const childLinks = members.find((member) => member.id !== row.id);
   const resolveSurvivor = async (entityId: string): Promise<string> => {
     let current = entityId;
     for (;;) {
@@ -211,26 +330,49 @@ async function mapEntity(
         select: { eventId: true, entityId: true },
       })
     : [];
-  const edges = await Promise.all(
-    edgeRows.map(async (edge) => ({
-      id: edge.id,
-      fromId: await resolveSurvivor(edge.fromId),
-      toId: await resolveSurvivor(edge.toId),
-      relation: edge.relation,
-      startsOn: edge.startsOn?.toISOString().slice(0, 10) ?? null,
-      endsOn: edge.endsOn?.toISOString().slice(0, 10) ?? null,
-      role: edge.role,
-      evidence: await evidenceFor(db, scope, "edge", edge.id),
-    })),
+  const linkedEntityIds = [
+    ...new Set([
+      ...edgeRows.flatMap((edge) => [edge.fromId, edge.toId]),
+      ...eventEntityRows.map((link) => link.entityId),
+    ]),
+  ];
+  const rejectedEntityIds = new Set(
+    (
+      await db.companyEntity.findMany({
+        where: { ...scope, id: { in: linkedEntityIds }, status: "rejected" },
+        select: { id: true },
+      })
+    ).map((entity) => entity.id),
   );
-  const uniqueEventLinks = [...new Map(eventRows.map((link) => [link.eventId, link])).values()];
+  const edges = await Promise.all(
+    edgeRows
+      .filter(
+        (edge) =>
+          options.includeRejected ||
+          (edge.status !== "rejected" &&
+            !rejectedEntityIds.has(edge.fromId) &&
+            !rejectedEntityIds.has(edge.toId)),
+      )
+      .map(async (edge) => ({
+        ...(await mapEdgeRecord(db, scope, edge)),
+        fromId: await resolveSurvivor(edge.fromId),
+        toId: await resolveSurvivor(edge.toId),
+      })),
+  );
+  const uniqueEventLinks = [
+    ...new Map(eventRows.map((link) => [link.eventId, link])).values(),
+  ].filter(
+    (link) =>
+      options.includeRejected ||
+      (link.event.status !== "rejected" &&
+        !eventEntityRows.some(
+          (eventLink) =>
+            eventLink.eventId === link.eventId && rejectedEntityIds.has(eventLink.entityId),
+        )),
+  );
   const events = await Promise.all(
-    uniqueEventLinks.map(async (link) => ({
-      id: link.event.id,
-      kind: link.event.kind,
-      title: link.event.title,
-      occursOn: link.event.occursOn.toISOString().slice(0, 10),
-      entityIds: [
+    uniqueEventLinks.map(async (link) =>
+      mapEventRecord(db, scope, link.event, [
         ...new Set(
           await Promise.all(
             eventEntityRows
@@ -238,31 +380,31 @@ async function mapEntity(
               .map((eventLink) => resolveSurvivor(eventLink.entityId)),
           ),
         ),
-      ],
-      evidence: await evidenceFor(db, scope, "event", link.event.id),
-    })),
+      ]),
+    ),
   );
   return {
     id: row.id,
     kind: row.kind,
     displayName: row.displayName,
     normalizedName: row.normalizedName,
-    attrs: row.attrs as Record<string, unknown>,
+    attrs,
     confidence: row.confidence,
     status: row.status,
     visibility: row.visibility,
     lockedFields: row.lockedFields,
     confirmedAt: row.confirmedAt?.toISOString() ?? null,
-    identities: row.identities,
+    confirmedByUserId: row.confirmedByUserId,
+    identities: memberIdentities,
     evidence: (
       await Promise.all(memberIds.map((entityId) => evidenceFor(db, scope, "entity", entityId)))
     ).flat(),
     mergedFrom: merges.map((merge) => merge.sourceEntityId),
     edges,
     events,
-    contact: row.contact,
-    legalContract: row.legalContract,
-    dataRoomItem: row.dataRoomItem,
+    contactId: rootLinks.contactId ?? childLinks?.contactId ?? null,
+    legalContractId: rootLinks.legalContractId ?? childLinks?.legalContractId ?? null,
+    dataRoomItemId: rootLinks.dataRoomItemId ?? childLinks?.dataRoomItemId ?? null,
   };
 }
 
@@ -274,20 +416,47 @@ async function hiddenIds(db: CompanyDb, scope: Scope): Promise<Set<string>> {
   return new Set(rows.map((row) => row.sourceEntityId));
 }
 
-function sourceKey(sourceKind: string, sourceItemId: string): string {
-  return `${sourceKind}:${sourceItemId}`;
+async function resolveSurvivorId(db: CompanyDb, scope: Scope, entityId: string): Promise<string> {
+  const merge = await db.companyMerge.findFirst({
+    where: { ...scope, sourceEntityId: entityId },
+    select: { survivorEntityId: true },
+  });
+  return merge?.survivorEntityId ?? entityId;
+}
+
+type EvidenceLocator = CompanyEntityImportInput["evidence"];
+
+function sourceKey(evidence: EvidenceLocator, claimFingerprint: string): string {
+  return `source:${hash([
+    evidence.sourceKind,
+    evidence.connectionId ?? "",
+    evidence.mcpServerId ?? "",
+    evidence.dataRoomItemId ?? (evidence.sourceKind === "data_room" ? evidence.sourceItemId : ""),
+    evidence.sourceItemId,
+  ])}:claim:${claimFingerprint}`;
+}
+
+async function findFactSuppression(
+  db: CompanyDb,
+  scope: Scope,
+  factKind: "entity" | "edge" | "event",
+  aliases: string[],
+  entityKind: string | null = null,
+): Promise<{ id: string } | null> {
+  if (aliases.length === 0) return null;
+  return db.companyRejection.findFirst({
+    where: { ...scope, factKind, entityKind, identityAliases: { hasSome: aliases } },
+    select: { id: true },
+  });
 }
 
 async function findSuppression(
   db: CompanyDb,
   scope: Scope,
+  entityKind: string,
   aliases: string[],
 ): Promise<{ id: string } | null> {
-  if (aliases.length === 0) return null;
-  return db.companyRejection.findFirst({
-    where: { ...scope, identityAliases: { hasSome: aliases } },
-    select: { id: true },
-  });
+  return findFactSuppression(db, scope, "entity", aliases, entityKind);
 }
 
 async function createCandidate(
@@ -299,6 +468,9 @@ async function createCandidate(
     entityIds: string[];
     proposedFact: unknown;
     sourceKind: string;
+    connectionId: string | null;
+    mcpServerId: string | null;
+    dataRoomItemId: string | null;
     sourceItemId: string;
     sourceKey: string;
     quote: string;
@@ -314,8 +486,66 @@ async function createCandidate(
   });
 }
 
+function strongEntityAliases(input: CompanyEntityImportInput["entity"]): string[] {
+  const identifiers = companyEntityIdentifiers(input).filter(
+    (identifier) => !identifier.startsWith("name:"),
+  );
+  return identifiers.map((identifier) => `${input.kind}:${identifier}`);
+}
+
 function entityAliases(input: CompanyEntityImportInput["entity"]): string[] {
-  return [...companyEntityIdentifiers(input), `name:${normalizeCompanyName(input.displayName)}`];
+  const strong = strongEntityAliases(input);
+  return strong.length > 0
+    ? strong
+    : [`${input.kind}:name:${normalizeCompanyName(input.displayName)}`];
+}
+
+async function linkedDataRoomItemId(
+  db: CompanyDb,
+  scope: Scope,
+  evidence: EvidenceLocator,
+): Promise<string | null> {
+  if (evidence.sourceKind !== "data_room") return evidence.dataRoomItemId ?? null;
+  const sourceId = evidence.dataRoomItemId ?? evidence.sourceItemId;
+  const item = await db.dataRoomItem.findFirst({
+    where: { id: sourceId, spaceId: scope.spaceId, userId: scope.ownerUserId },
+    select: { id: true },
+  });
+  if (!item) throw new IsolationError("Data room evidence must reference a scoped item");
+  return item.id;
+}
+
+async function evidenceCreateData(
+  db: CompanyDb,
+  scope: Scope,
+  factKind: "entity" | "edge" | "event",
+  factId: string,
+  evidence: EvidenceLocator,
+  claimFingerprint: string,
+  stance = evidence.stance,
+) {
+  const dataRoomItemId = await linkedDataRoomItemId(db, scope, evidence);
+  return {
+    ...scope,
+    factKind,
+    factId,
+    stance,
+    sourceKind: evidence.sourceKind,
+    connectionId: evidence.connectionId ?? null,
+    mcpServerId: evidence.mcpServerId ?? null,
+    dataRoomItemId,
+    sourceItemId: evidence.sourceItemId,
+    sourceKey: sourceKey({ ...evidence, dataRoomItemId }, claimFingerprint),
+    sourceUrl: evidence.sourceUrl ?? null,
+    quote: evidence.quote,
+    contentHash: evidence.contentHash,
+    extractedAt: new Date(evidence.extractedAt),
+    extractorRunId: evidence.extractorRunId ?? null,
+    extractorModel: evidence.extractorModel ?? Prisma.JsonNull,
+    confidence: evidence.confidence,
+    confirmedByUserId: null,
+    confirmedAt: null,
+  };
 }
 
 async function importEntity(
@@ -324,7 +554,25 @@ async function importEntity(
   raw: CompanyEntityImportInput,
 ): Promise<CompanyWriteResult> {
   const input = CompanyEntityImportInputSchema.parse(raw);
-  const key = sourceKey(input.evidence.sourceKind, input.evidence.sourceItemId);
+  const aliases = entityAliases(input.entity);
+  const rejection = await findSuppression(db, scope, input.entity.kind, aliases);
+  if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
+
+  const identifiers = identityParts(input.entity);
+  const strongIdentifiers = identifiers
+    .filter(([, identityType]) => identityType !== "name")
+    .map(([, identityType, identityValue]) => `${identityType}:${identityValue}`)
+    .sort();
+  const claimFingerprint = hash({
+    entityKind: input.entity.kind,
+    identity: strongIdentifiers.length
+      ? strongIdentifiers
+      : `name:${normalizeCompanyName(input.entity.displayName)}`,
+    ...(input.entity.kind === "person" && strongIdentifiers.length === 0
+      ? { claim: normalizeCompanyName(input.evidence.quote) }
+      : {}),
+  });
+  const key = sourceKey(input.evidence, claimFingerprint);
   const existingEvidence = await db.companyEvidence.findFirst({
     where: {
       ...scope,
@@ -339,34 +587,55 @@ async function importEntity(
       where: { ...scope, id: existingEvidence.factId },
       include: ENTITY_INCLUDE,
     });
-    if (row) return mapEntity(db, scope, row);
+    if (row && row.status !== "rejected") return mapEntity(db, scope, row);
   }
 
-  const aliases = entityAliases(input.entity);
-  const rejection = await findSuppression(db, scope, aliases);
-  if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
-
-  const identifiers = identityParts(input.entity);
   const matches = identifiers.length
     ? await db.companyIdentity.findMany({
         where: {
           ...scope,
-          OR: identifiers.map(([identityType, identityValue]) => ({ identityType, identityValue })),
+          entityKind: input.entity.kind,
+          OR: identifiers.map(([, identityType, identityValue]) => ({
+            identityType,
+            identityValue,
+          })),
         },
         select: { entityId: true, identityType: true, identityValue: true },
       })
     : [];
   const matchedIds = [...new Set(matches.map((match) => match.entityId))];
+  const groups = await Promise.all(
+    matchedIds.map(async (matchedId) => {
+      const merge = await db.companyMerge.findFirst({
+        where: { ...scope, sourceEntityId: matchedId },
+        select: { survivorEntityId: true },
+      });
+      return merge?.survivorEntityId ?? matchedId;
+    }),
+  );
+  const matchedGroups = [...new Set(groups)];
   let entityId: string | undefined;
-  if (matchedIds.length === 1) {
-    entityId = matchedIds[0];
-  } else if (matchedIds.length > 1) {
+  if (matchedGroups.length === 1) {
+    entityId =
+      identifiers
+        .map(
+          ([, identityType, identityValue]) =>
+            matches.find(
+              (match) =>
+                match.identityType === identityType && match.identityValue === identityValue,
+            )?.entityId,
+        )
+        .find((matchedId): matchedId is string => matchedId !== undefined) ?? matchedIds[0];
+  } else if (matchedGroups.length > 1) {
     await createCandidate(db, scope, {
       kind: input.entity.kind,
       reason: "conflicting_strong_identities",
-      entityIds: matchedIds,
+      entityIds: matchedGroups,
       proposedFact: input.entity,
       sourceKind: input.evidence.sourceKind,
+      connectionId: input.evidence.connectionId ?? null,
+      mcpServerId: input.evidence.mcpServerId ?? null,
+      dataRoomItemId: await linkedDataRoomItemId(db, scope, input.evidence),
       sourceItemId: input.evidence.sourceItemId,
       sourceKey: key,
       quote: input.evidence.quote,
@@ -397,8 +666,8 @@ async function importEntity(
       select: { id: true },
     });
     const localParts = identifiers
-      .filter(([identityType]) => identityType === "email")
-      .map(([, identityValue]) => identityValue.split("@", 1)[0]?.toLowerCase())
+      .filter(([, identityType]) => identityType === "email")
+      .map(([, , identityValue]) => identityValue.split("@", 1)[0]?.toLowerCase())
       .filter((localPart): localPart is string => Boolean(localPart));
     const allPeople = localParts.length
       ? await db.companyEntity.findMany({
@@ -429,6 +698,9 @@ async function importEntity(
         entityIds: candidateIds,
         proposedFact: input.entity,
         sourceKind: input.evidence.sourceKind,
+        connectionId: input.evidence.connectionId ?? null,
+        mcpServerId: input.evidence.mcpServerId ?? null,
+        dataRoomItemId: await linkedDataRoomItemId(db, scope, input.evidence),
         sourceItemId: input.evidence.sourceItemId,
         sourceKey: key,
         quote: input.evidence.quote,
@@ -438,83 +710,69 @@ async function importEntity(
   }
 
   if (entityId) {
-    const merge = await db.companyMerge.findFirst({
-      where: { ...scope, sourceEntityId: entityId },
-      select: { survivorEntityId: true },
-    });
-    if (merge) entityId = merge.survivorEntityId;
+    const originalEntityId = entityId;
+    const survivorEntityId = matchedGroups[0] ?? entityId;
     const existingEntity = await db.companyEntity.findFirstOrThrow({
-      where: { ...scope, id: entityId },
+      where: { ...scope, id: originalEntityId },
       select: { attrs: true, displayName: true, lockedFields: true },
     });
+    const survivorEntity =
+      survivorEntityId === originalEntityId
+        ? existingEntity
+        : await db.companyEntity.findFirstOrThrow({
+            where: { ...scope, id: survivorEntityId },
+            select: { attrs: true, displayName: true, lockedFields: true },
+          });
+    const effectiveLocks = new Set([
+      ...existingEntity.lockedFields,
+      ...survivorEntity.lockedFields,
+    ]);
     const contradictsLockedValue =
-      (existingEntity.lockedFields.includes("displayName") &&
-        existingEntity.displayName !== input.entity.displayName) ||
+      (effectiveLocks.has("displayName") &&
+        survivorEntity.displayName !== input.entity.displayName) ||
       Object.entries(input.entity.attrs).some(([key, value]) => {
-        const storedValue = (existingEntity.attrs as Record<string, unknown>)[key];
-        if (Array.isArray(value)) {
-          return value.some(
-            (item, index) =>
-              existingEntity.lockedFields.includes(`attrs.${key}[${index}]`) &&
-              JSON.stringify((storedValue as unknown[] | undefined)?.[index]) !==
-                JSON.stringify(item),
-          );
-        }
         return (
-          existingEntity.lockedFields.includes(`attrs.${key}`) &&
-          JSON.stringify(storedValue) !== JSON.stringify(value)
+          effectiveLocks.has(`attrs.${key}`) &&
+          JSON.stringify((survivorEntity.attrs as Record<string, unknown>)[key]) !==
+            JSON.stringify(value)
         );
       });
+    const replayEvidence = await evidenceCreateData(
+      db,
+      scope,
+      "entity",
+      originalEntityId,
+      input.evidence,
+      claimFingerprint,
+      contradictsLockedValue ? "contradicts" : input.evidence.stance,
+    );
     await db.companyEvidence.createMany({
-      data: [
-        {
-          ...scope,
-          factKind: "entity",
-          factId: entityId,
-          stance: contradictsLockedValue ? "contradicts" : input.evidence.stance,
-          sourceKind: input.evidence.sourceKind,
-          connectionId: input.evidence.connectionId ?? null,
-          mcpServerId: input.evidence.mcpServerId ?? null,
-          sourceItemId: input.evidence.sourceItemId,
-          sourceKey: key,
-          sourceUrl: input.evidence.sourceUrl ?? null,
-          quote: input.evidence.quote,
-          contentHash: input.evidence.contentHash,
-          extractedAt: new Date(input.evidence.extractedAt),
-          extractorRunId: input.evidence.extractorRunId ?? null,
-          extractorModel: input.evidence.extractorModel ?? Prisma.JsonNull,
-          confidence: input.evidence.confidence,
-        },
-      ],
+      data: [replayEvidence],
       skipDuplicates: true,
     });
+    if (contradictsLockedValue) {
+      await db.companyEvidence.updateMany({
+        where: {
+          ...scope,
+          factKind: "entity",
+          factId: originalEntityId,
+          sourceKey: replayEvidence.sourceKey,
+          contentHash: replayEvidence.contentHash,
+        },
+        data: { stance: "contradicts" },
+      });
+    }
     const currentAttrs = existingEntity.attrs as Record<string, unknown>;
     const updatedAttrs = { ...currentAttrs };
     for (const [key, value] of Object.entries(input.entity.attrs)) {
       if (existingEntity.lockedFields.includes(`attrs.${key}`)) continue;
-      if (!Array.isArray(value)) {
-        updatedAttrs[key] = value;
-        continue;
-      }
-      const nextValue = [...value];
-      for (const path of existingEntity.lockedFields) {
-        const prefix = `attrs.${key}[`;
-        if (!path.startsWith(prefix) || !path.endsWith("]")) continue;
-        const index = Number(path.slice(prefix.length, -1));
-        if (!Number.isInteger(index) || index < 0) continue;
-        const existingValue = (currentAttrs[key] as unknown[] | undefined)?.[index];
-        if (existingValue !== undefined) {
-          while (nextValue.length <= index) nextValue.push(null);
-          nextValue[index] = existingValue;
-        }
-      }
-      updatedAttrs[key] = nextValue;
+      updatedAttrs[key] = value;
     }
     const displayName = existingEntity.lockedFields.includes("displayName")
       ? existingEntity.displayName
       : input.entity.displayName;
     await db.companyEntity.update({
-      where: { id: entityId },
+      where: { id: originalEntityId },
       data: {
         displayName,
         normalizedName: normalizeCompanyName(displayName),
@@ -522,11 +780,12 @@ async function importEntity(
         confidence: input.entity.confidence,
       },
     });
-    if (identifiers.length > 0 && matchedIds.length <= 1) {
+    if (identifiers.length > 0 && matchedGroups.length <= 1) {
       await db.companyIdentity.createMany({
-        data: identifiers.map(([identityType, identityValue]) => ({
+        data: identifiers.map(([entityKind, identityType, identityValue]) => ({
           ...scope,
-          entityId: entityId!,
+          entityId: originalEntityId,
+          entityKind,
           identityType,
           identityValue,
         })),
@@ -534,7 +793,7 @@ async function importEntity(
       });
     }
     const row = await db.companyEntity.findFirstOrThrow({
-      where: { ...scope, id: entityId },
+      where: { ...scope, id: originalEntityId },
       include: ENTITY_INCLUDE,
     });
     return mapEntity(db, scope, row);
@@ -557,34 +816,18 @@ async function importEntity(
     include: ENTITY_INCLUDE,
   });
   await db.companyEvidence.create({
-    data: {
-      ...scope,
-      factKind: "entity",
-      factId: row.id,
-      stance: input.evidence.stance,
-      sourceKind: input.evidence.sourceKind,
-      connectionId: input.evidence.connectionId ?? null,
-      mcpServerId: input.evidence.mcpServerId ?? null,
-      sourceItemId: input.evidence.sourceItemId,
-      sourceKey: key,
-      sourceUrl: input.evidence.sourceUrl ?? null,
-      quote: input.evidence.quote,
-      contentHash: input.evidence.contentHash,
-      extractedAt: new Date(input.evidence.extractedAt),
-      extractorRunId: input.evidence.extractorRunId ?? null,
-      extractorModel: input.evidence.extractorModel ?? Prisma.JsonNull,
-      confidence: input.evidence.confidence,
-    },
+    data: await evidenceCreateData(db, scope, "entity", row.id, input.evidence, claimFingerprint),
   });
-  if (matchedIds.length > 1) {
+  if (matchedGroups.length > 1) {
     // Conflicting identifiers remain candidates; none is attached to the new entity.
     return mapEntity(db, scope, row);
   }
-  if (identifiers.length > 0 && matchedIds.length <= 1) {
+  if (identifiers.length > 0 && matchedGroups.length <= 1) {
     await db.companyIdentity.createMany({
-      data: identifiers.map(([identityType, identityValue]) => ({
+      data: identifiers.map(([entityKind, identityType, identityValue]) => ({
         ...scope,
         entityId: row.id,
+        entityKind,
         identityType,
         identityValue,
       })),
@@ -598,10 +841,71 @@ async function importEdge(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEdgeImportInput,
-): Promise<CompanyEdgeImportInput> {
+): Promise<CompanyEdgeRecord | CompanySuppressedResult> {
   const input = CompanyEdgeImportInputSchema.parse(raw);
   const startsOn = dateValue(input.edge.startsOn);
   const endsOn = dateValue(input.edge.endsOn);
+  const fingerprint = hash({
+    relation: input.edge.relation,
+    fromId: input.edge.fromId,
+    toId: input.edge.toId,
+    startsOn: input.edge.startsOn ?? null,
+    endsOn: input.edge.endsOn ?? null,
+    role: input.edge.role ?? null,
+  });
+  const key = sourceKey(input.evidence, fingerprint);
+  const rejection = await findFactSuppression(db, scope, "edge", [
+    `edge:${fingerprint}`,
+    `source:${key}`,
+  ]);
+  if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
+  const replay = await db.companyEvidence.findFirst({
+    where: { ...scope, factKind: "edge", sourceKey: key },
+    select: { factId: true },
+  });
+  if (replay) {
+    const replayRow = await db.companyEdge.findFirst({ where: { ...scope, id: replay.factId } });
+    if (replayRow && replayRow.status !== "rejected") {
+      const contradicts =
+        (replayRow.lockedFields.includes("relation") &&
+          replayRow.relation !== input.edge.relation) ||
+        (replayRow.lockedFields.includes("startsOn") &&
+          JSON.stringify(partialDate(replayRow.startsOn, replayRow.startsPrecision)) !==
+            JSON.stringify(input.edge.startsOn ?? null)) ||
+        (replayRow.lockedFields.includes("endsOn") &&
+          JSON.stringify(partialDate(replayRow.endsOn, replayRow.endsPrecision)) !==
+            JSON.stringify(input.edge.endsOn ?? null)) ||
+        (replayRow.lockedFields.includes("role") && replayRow.role !== (input.edge.role ?? null)) ||
+        (replayRow.lockedFields.includes("confidence") &&
+          replayRow.confidence !== input.edge.confidence);
+      const replayEvidence = await evidenceCreateData(
+        db,
+        scope,
+        "edge",
+        replayRow.id,
+        input.evidence,
+        fingerprint,
+        contradicts ? "contradicts" : input.evidence.stance,
+      );
+      await db.companyEvidence.createMany({
+        data: [replayEvidence],
+        skipDuplicates: true,
+      });
+      if (contradicts) {
+        await db.companyEvidence.updateMany({
+          where: {
+            ...scope,
+            factKind: "edge",
+            factId: replayRow.id,
+            sourceKey: replayEvidence.sourceKey,
+            contentHash: replayEvidence.contentHash,
+          },
+          data: { stance: "contradicts" },
+        });
+      }
+      return mapEdgeRecord(db, scope, replayRow);
+    }
+  }
   const edge = await db.companyEdge.findFirst({
     where: {
       ...scope,
@@ -632,44 +936,99 @@ async function importEdge(
       },
     }));
   await db.companyEvidence.createMany({
-    data: [
-      {
-        ...scope,
-        factKind: "edge",
-        factId: row.id,
-        stance: input.evidence.stance,
-        sourceKind: input.evidence.sourceKind,
-        connectionId: input.evidence.connectionId ?? null,
-        mcpServerId: input.evidence.mcpServerId ?? null,
-        sourceItemId: input.evidence.sourceItemId,
-        sourceKey: sourceKey(input.evidence.sourceKind, input.evidence.sourceItemId),
-        sourceUrl: input.evidence.sourceUrl ?? null,
-        quote: input.evidence.quote,
-        contentHash: input.evidence.contentHash,
-        extractedAt: new Date(input.evidence.extractedAt),
-        extractorRunId: input.evidence.extractorRunId ?? null,
-        extractorModel: input.evidence.extractorModel ?? Prisma.JsonNull,
-        confidence: input.evidence.confidence,
-      },
-    ],
+    data: await evidenceCreateData(db, scope, "edge", row.id, input.evidence, fingerprint).then(
+      (data) => [data],
+    ),
     skipDuplicates: true,
   });
-  return input;
+  return mapEdgeRecord(db, scope, row);
 }
 
 async function importEvent(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEventImportInput,
-): Promise<CompanyEventImportInput> {
+): Promise<CompanyEventRecord | CompanySuppressedResult> {
   const input = CompanyEventImportInputSchema.parse(raw);
+  const normalizedTitle = normalizeCompanyName(input.event.title);
+  const fingerprint = hash({
+    kind: input.event.kind,
+    normalizedTitle,
+    occursOn: input.event.occursOn ?? null,
+  });
+  const key = sourceKey(input.evidence, fingerprint);
+  const rejection = await findFactSuppression(db, scope, "event", [
+    `event:${fingerprint}`,
+    `source:${key}`,
+  ]);
+  if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
+  const replay = await db.companyEvidence.findFirst({
+    where: { ...scope, factKind: "event", sourceKey: key },
+    select: { factId: true },
+  });
+  if (replay) {
+    const replayRow = await db.companyEvent.findFirst({ where: { ...scope, id: replay.factId } });
+    if (replayRow && replayRow.status !== "rejected") {
+      const contradicts =
+        (replayRow.lockedFields.includes("stream") && replayRow.stream !== input.event.stream) ||
+        (replayRow.lockedFields.includes("kind") && replayRow.kind !== input.event.kind) ||
+        (replayRow.lockedFields.includes("title") && replayRow.title !== input.event.title) ||
+        (replayRow.lockedFields.includes("occursOn") &&
+          JSON.stringify(partialDate(replayRow.occursOn, replayRow.occursPrecision)) !==
+            JSON.stringify(input.event.occursOn ?? null)) ||
+        (replayRow.lockedFields.includes("endsOn") &&
+          JSON.stringify(partialDate(replayRow.endsOn, replayRow.endsPrecision)) !==
+            JSON.stringify(input.event.endsOn ?? null)) ||
+        (replayRow.lockedFields.includes("amountCents") &&
+          Number(replayRow.amountCents ?? 0) !== (input.event.amountCents ?? 0)) ||
+        (replayRow.lockedFields.includes("currency") &&
+          replayRow.currency !== (input.event.currency ?? null)) ||
+        (replayRow.lockedFields.includes("confidence") &&
+          replayRow.confidence !== input.event.confidence);
+      const replayEvidence = await evidenceCreateData(
+        db,
+        scope,
+        "event",
+        replayRow.id,
+        input.evidence,
+        fingerprint,
+        contradicts ? "contradicts" : input.evidence.stance,
+      );
+      await db.companyEvidence.createMany({
+        data: [replayEvidence],
+        skipDuplicates: true,
+      });
+      if (contradicts) {
+        await db.companyEvidence.updateMany({
+          where: {
+            ...scope,
+            factKind: "event",
+            factId: replayRow.id,
+            sourceKey: replayEvidence.sourceKey,
+            contentHash: replayEvidence.contentHash,
+          },
+          data: { stance: "contradicts" },
+        });
+      }
+      const links = await db.companyEventEntity.findMany({
+        where: { ...scope, eventId: replayRow.id },
+        select: { entityId: true },
+      });
+      return mapEventRecord(
+        db,
+        scope,
+        replayRow,
+        links.map((link) => link.entityId),
+      );
+    }
+  }
   const event = await db.companyEvent.findFirst({
     where: {
       ...scope,
       kind: input.event.kind,
-      normalizedTitle: normalizeCompanyName(input.event.title),
-      occursOn: dateValue(input.event.occursOn)!,
-      occursPrecision: input.event.occursOn.precision,
+      normalizedTitle,
+      occursOn: dateValue(input.event.occursOn),
+      occursPrecision: input.event.occursOn?.precision ?? null,
     },
   });
   const row =
@@ -680,9 +1039,9 @@ async function importEvent(
         stream: input.event.stream,
         kind: input.event.kind,
         title: input.event.title,
-        normalizedTitle: normalizeCompanyName(input.event.title),
-        occursOn: dateValue(input.event.occursOn)!,
-        occursPrecision: input.event.occursOn.precision,
+        normalizedTitle,
+        occursOn: dateValue(input.event.occursOn),
+        occursPrecision: input.event.occursOn?.precision ?? null,
         endsOn: dateValue(input.event.endsOn),
         endsPrecision: datePrecision(input.event.endsOn),
         amountCents: input.event.amountCents ?? null,
@@ -695,42 +1054,19 @@ async function importEvent(
     skipDuplicates: true,
   });
   await db.companyEvidence.createMany({
-    data: [
-      {
-        ...scope,
-        factKind: "event",
-        factId: row.id,
-        stance: input.evidence.stance,
-        sourceKind: input.evidence.sourceKind,
-        connectionId: input.evidence.connectionId ?? null,
-        mcpServerId: input.evidence.mcpServerId ?? null,
-        sourceItemId: input.evidence.sourceItemId,
-        sourceKey: sourceKey(input.evidence.sourceKind, input.evidence.sourceItemId),
-        sourceUrl: input.evidence.sourceUrl ?? null,
-        quote: input.evidence.quote,
-        contentHash: input.evidence.contentHash,
-        extractedAt: new Date(input.evidence.extractedAt),
-        extractorRunId: input.evidence.extractorRunId ?? null,
-        extractorModel: input.evidence.extractorModel ?? Prisma.JsonNull,
-        confidence: input.evidence.confidence,
-      },
-    ],
+    data: await evidenceCreateData(db, scope, "event", row.id, input.evidence, fingerprint).then(
+      (data) => [data],
+    ),
     skipDuplicates: true,
   });
-  return input;
+  return mapEventRecord(db, scope, row, input.event.entityIds);
 }
 
 function touchedFields(input: CompanyEntityEditInput): Array<[string, unknown]> {
   const fields: Array<[string, unknown]> = [];
   if (input.displayName !== undefined) fields.push(["displayName", input.displayName]);
   for (const [key, value] of Object.entries(input.attrs ?? {})) {
-    if (Array.isArray(value)) {
-      value.forEach((item, index) => {
-        fields.push([`attrs.${key}[${index}]`, item]);
-      });
-    } else {
-      fields.push([`attrs.${key}`, value]);
-    }
+    fields.push([`attrs.${key}`, value]);
   }
   return fields;
 }
@@ -738,34 +1074,42 @@ function touchedFields(input: CompanyEntityEditInput): Array<[string, unknown]> 
 async function manualEvidence(
   db: CompanyDb,
   scope: Scope,
+  factKind: "entity" | "edge" | "event",
   entityId: string,
   fieldPath: string,
   value: unknown,
+  confirmedByUserId?: string,
 ): Promise<string> {
-  const contentHash = hash({ entityId, fieldPath, value });
+  const confirmedAt = confirmedByUserId ? new Date() : null;
+  const contentHash = hash({ factKind, entityId, fieldPath, value, confirmedAt });
+  const sourceKey = confirmedByUserId
+    ? `manual:${factKind}:${entityId}:${fieldPath}:${confirmedAt!.getTime()}`
+    : `manual:${factKind}:${entityId}:${fieldPath}`;
   const row = await db.companyEvidence.upsert({
     where: {
       spaceId_ownerUserId_factKind_factId_sourceKey_contentHash: {
         ...scope,
-        factKind: "entity",
+        factKind,
         factId: entityId,
-        sourceKey: `manual:${entityId}:${fieldPath}`,
+        sourceKey,
         contentHash,
       },
     },
     create: {
       ...scope,
-      factKind: "entity",
+      factKind,
       factId: entityId,
       stance: "supports",
       sourceKind: "manual",
       sourceItemId: `manual:${entityId}`,
-      sourceKey: `manual:${entityId}:${fieldPath}`,
+      sourceKey,
       quote: `Owner correction for ${fieldPath}`,
       contentHash,
       extractedAt: new Date(),
       extractorModel: Prisma.JsonNull,
       confidence: 1,
+      confirmedByUserId: confirmedByUserId ?? null,
+      confirmedAt,
     },
     update: {},
     select: { id: true },
@@ -788,7 +1132,7 @@ async function editEntity(
   const attrs = { ...(row.attrs as Record<string, unknown>), ...(input.attrs ?? {}) };
   const lockedFields = [...new Set([...row.lockedFields, ...updates.map(([path]) => path)])];
   const evidenceIds = await Promise.all(
-    updates.map(([path, value]) => manualEvidence(db, scope, row.id, path, value)),
+    updates.map(([path, value]) => manualEvidence(db, scope, "entity", row.id, path, value)),
   );
   await db.companyCorrection.createMany({
     data: updates.map(([fieldPath, value], index) => ({
@@ -812,6 +1156,19 @@ async function editEntity(
       lockedFields,
     },
   });
+  const workEmails = input.kind === "person" ? input.attrs?.workEmails : undefined;
+  if (workEmails && workEmails.length > 0) {
+    await db.companyIdentity.createMany({
+      data: workEmails.map((identityValue) => ({
+        ...scope,
+        entityId: row.id,
+        entityKind: row.kind,
+        identityType: "email",
+        identityValue,
+      })),
+      skipDuplicates: true,
+    });
+  }
   return mapEntity(
     db,
     scope,
@@ -832,10 +1189,11 @@ async function confirmEntity(
     where: { ...scope, id: input.entityId },
     include: ENTITY_INCLUDE,
   });
-  await manualEvidence(db, scope, row.id, "status", "confirmed");
+  const confirmedAt = new Date();
+  await manualEvidence(db, scope, "entity", row.id, "status", "confirmed", scope.ownerUserId);
   await db.companyEntity.update({
     where: { id: row.id },
-    data: { status: "confirmed", confirmedAt: new Date() },
+    data: { status: "confirmed", confirmedAt, confirmedByUserId: scope.ownerUserId },
   });
   return mapEntity(
     db,
@@ -858,29 +1216,46 @@ async function rejectEntity(
     where: { ...scope, id: input.entityId },
     include: ENTITY_INCLUDE,
   });
-  const aliases = [
-    `name:${row.normalizedName}`,
-    ...(
-      await db.companyIdentity.findMany({
-        where: { ...scope, entityId: row.id },
-        select: { identityType: true, identityValue: true },
-      })
-    ).map((identity) => `${identity.identityType}:${identity.identityValue}`),
-  ];
+  const merges = await db.companyMerge.findMany({
+    where: { ...scope, OR: [{ survivorEntityId: row.id }, { sourceEntityId: row.id }] },
+    select: { sourceEntityId: true, survivorEntityId: true },
+  });
+  const groupIds = new Set([
+    row.id,
+    ...merges.map((merge) => merge.sourceEntityId),
+    ...merges.map((merge) => merge.survivorEntityId),
+  ]);
+  const groupRows = await db.companyEntity.findMany({
+    where: { ...scope, id: { in: [...groupIds] } },
+    select: { id: true, kind: true, normalizedName: true },
+  });
+  const identities = await db.companyIdentity.findMany({
+    where: { ...scope, entityId: { in: [...groupIds] } },
+    select: { entityId: true, entityKind: true, identityType: true, identityValue: true },
+  });
+  const strongAliases = identities
+    .filter((identity) => identity.identityType !== "name")
+    .map((identity) => `${row.kind}:${identity.identityType}:${identity.identityValue}`);
+  const aliases = strongAliases.length
+    ? strongAliases
+    : groupRows.map((member) => `${member.kind}:name:${member.normalizedName}`);
+  const uniqueAliases = [...new Set(aliases)].sort();
   await db.companyRejection.upsert({
-    where: { spaceId_ownerUserId_fingerprint: { ...scope, fingerprint: hash(aliases.sort()) } },
+    where: { spaceId_ownerUserId_fingerprint: { ...scope, fingerprint: hash(uniqueAliases) } },
     create: {
       ...scope,
-      fingerprint: hash(aliases.sort()),
-      identityAliases: aliases,
+      factKind: "entity",
+      entityKind: row.kind,
+      fingerprint: hash(uniqueAliases),
+      identityAliases: uniqueAliases,
       reason: input.reason ?? null,
     },
-    update: { identityAliases: aliases, reason: input.reason ?? null },
+    update: { identityAliases: uniqueAliases, reason: input.reason ?? null },
   });
-  await manualEvidence(db, scope, row.id, "status", "rejected");
-  await db.companyEntity.update({
-    where: { id: row.id },
-    data: { status: "rejected", confirmedAt: null },
+  await manualEvidence(db, scope, "entity", row.id, "status", "rejected");
+  await db.companyEntity.updateMany({
+    where: { ...scope, id: { in: [...groupIds] } },
+    data: { status: "rejected", confirmedAt: null, confirmedByUserId: null },
   });
   return mapEntity(
     db,
@@ -892,22 +1267,291 @@ async function rejectEntity(
   );
 }
 
+async function editEdge(
+  db: CompanyDb,
+  scope: Scope,
+  raw: CompanyEdgeEditInput,
+): Promise<CompanyEdgeRecord> {
+  const input = CompanyEdgeEditInputSchema.parse(raw);
+  const row = await db.companyEdge.findFirstOrThrow({ where: { ...scope, id: input.edgeId } });
+  if (row.status === "rejected") throw new IsolationError("Rejected edges cannot be edited");
+  const { edgeId: _edgeId, ...fields } = input;
+  const updates = Object.entries(fields).filter(([, value]) => value !== undefined);
+  const data: Prisma.CompanyEdgeUpdateInput = {};
+  for (const [field, value] of updates) {
+    if (field === "startsOn" || field === "endsOn") {
+      const partial = value as CompanyPartialDate | null;
+      Object.assign(data, {
+        [field]: dateValue(partial),
+        [field === "startsOn" ? "startsPrecision" : "endsPrecision"]: datePrecision(partial),
+      });
+    } else {
+      Object.assign(data, { [field]: value });
+    }
+  }
+  const lockedFields = [...new Set([...row.lockedFields, ...updates.map(([field]) => field)])];
+  await Promise.all(
+    updates.map(([field, value]) =>
+      manualEvidence(db, scope, "edge", row.id, field, value ?? null),
+    ),
+  );
+  const updated = await db.companyEdge.update({
+    where: { id: row.id },
+    data: { ...data, lockedFields },
+  });
+  return mapEdgeRecord(db, scope, updated);
+}
+
+async function editEvent(
+  db: CompanyDb,
+  scope: Scope,
+  raw: CompanyEventEditInput,
+): Promise<CompanyEventRecord> {
+  const input = CompanyEventEditInputSchema.parse(raw);
+  const row = await db.companyEvent.findFirstOrThrow({ where: { ...scope, id: input.eventId } });
+  if (row.status === "rejected") throw new IsolationError("Rejected events cannot be edited");
+  const { eventId: _eventId, entityIds, ...fields } = input;
+  const updates = Object.entries(fields).filter(([, value]) => value !== undefined);
+  const data: Prisma.CompanyEventUpdateInput = {};
+  for (const [field, value] of updates) {
+    if (field === "occursOn" || field === "endsOn") {
+      const partial = value as CompanyPartialDate | null;
+      Object.assign(data, {
+        [field]: dateValue(partial),
+        [field === "occursOn" ? "occursPrecision" : "endsPrecision"]: datePrecision(partial),
+      });
+    } else {
+      Object.assign(data, { [field]: value });
+    }
+  }
+  const lockedPaths = [...updates.map(([field]) => field), ...(entityIds ? ["entityIds"] : [])];
+  const lockedFields = [...new Set([...row.lockedFields, ...lockedPaths])];
+  await Promise.all([
+    ...updates.map(([field, value]) =>
+      manualEvidence(db, scope, "event", row.id, field, value ?? null),
+    ),
+    ...(entityIds ? [manualEvidence(db, scope, "event", row.id, "entityIds", entityIds)] : []),
+  ]);
+  if (entityIds) {
+    await db.companyEventEntity.deleteMany({ where: { ...scope, eventId: row.id } });
+    await db.companyEventEntity.createMany({
+      data: entityIds.map((entityId) => ({ ...scope, eventId: row.id, entityId })),
+      skipDuplicates: true,
+    });
+  }
+  const updated = await db.companyEvent.update({
+    where: { id: row.id },
+    data: { ...data, lockedFields },
+  });
+  const links = await db.companyEventEntity.findMany({
+    where: { ...scope, eventId: row.id },
+    select: { entityId: true },
+  });
+  return mapEventRecord(
+    db,
+    scope,
+    updated,
+    links.map((link) => link.entityId),
+  );
+}
+
+async function confirmFact(
+  db: CompanyDb,
+  scope: Scope,
+  factKind: "edge" | "event",
+  factId: string,
+): Promise<CompanyEdgeRecord | CompanyEventRecord> {
+  const confirmedAt = new Date();
+  await manualEvidence(db, scope, factKind, factId, "status", "confirmed", scope.ownerUserId);
+  if (factKind === "edge") {
+    const row = await db.companyEdge.findFirstOrThrow({ where: { ...scope, id: factId } });
+    if (row.status === "rejected") throw new IsolationError("Rejected edges cannot be confirmed");
+    const updated = await db.companyEdge.update({
+      where: { id: factId },
+      data: { status: "confirmed", confirmedByUserId: scope.ownerUserId, confirmedAt },
+    });
+    return mapEdgeRecord(db, scope, updated);
+  }
+  const row = await db.companyEvent.findFirstOrThrow({ where: { ...scope, id: factId } });
+  if (row.status === "rejected") throw new IsolationError("Rejected events cannot be confirmed");
+  const updated = await db.companyEvent.update({
+    where: { id: factId },
+    data: { status: "confirmed", confirmedByUserId: scope.ownerUserId, confirmedAt },
+  });
+  const links = await db.companyEventEntity.findMany({
+    where: { ...scope, eventId: row.id },
+    select: { entityId: true },
+  });
+  return mapEventRecord(
+    db,
+    scope,
+    updated,
+    links.map((link) => link.entityId),
+  );
+}
+
+function edgeClaimFingerprint(edge: {
+  fromId: string;
+  toId: string;
+  relation: string;
+  startsOn: Date | null;
+  startsPrecision: string | null;
+  endsOn: Date | null;
+  endsPrecision: string | null;
+  role: string | null;
+}): string {
+  return hash({
+    relation: edge.relation,
+    fromId: edge.fromId,
+    toId: edge.toId,
+    startsOn: partialDate(edge.startsOn, edge.startsPrecision),
+    endsOn: partialDate(edge.endsOn, edge.endsPrecision),
+    role: edge.role,
+  });
+}
+
+function eventClaimFingerprint(event: {
+  kind: string;
+  normalizedTitle: string;
+  occursOn: Date | null;
+  occursPrecision: string | null;
+}): string {
+  return hash({
+    kind: event.kind,
+    normalizedTitle: event.normalizedTitle,
+    occursOn: partialDate(event.occursOn, event.occursPrecision),
+  });
+}
+
+async function rejectFact(
+  db: CompanyDb,
+  scope: Scope,
+  factKind: "edge" | "event",
+  factId: string,
+  reason?: string | null,
+): Promise<CompanyEdgeRecord | CompanyEventRecord> {
+  const input = CompanyRejectInputSchema.parse({ entityId: factId, reason });
+  const current =
+    factKind === "edge"
+      ? await db.companyEdge.findFirstOrThrow({ where: { ...scope, id: factId } })
+      : await db.companyEvent.findFirstOrThrow({ where: { ...scope, id: factId } });
+  const claimFingerprint =
+    factKind === "edge"
+      ? edgeClaimFingerprint(current as Prisma.CompanyEdgeGetPayload<object>)
+      : eventClaimFingerprint(current as Prisma.CompanyEventGetPayload<object>);
+  const sourceEvidence = await db.companyEvidence.findMany({
+    where: { ...scope, factKind, factId },
+    select: { sourceKey: true },
+  });
+  const aliases = [
+    `${factKind}:${claimFingerprint}`,
+    ...sourceEvidence.map((evidence) => `source:${evidence.sourceKey}`),
+  ];
+  const fingerprint = hash([factKind, ...aliases.sort()]);
+  await db.companyRejection.upsert({
+    where: { spaceId_ownerUserId_fingerprint: { ...scope, fingerprint } },
+    create: {
+      ...scope,
+      factKind,
+      entityKind: null,
+      fingerprint,
+      identityAliases: aliases,
+      reason: input.reason ?? null,
+    },
+    update: { identityAliases: aliases, reason: input.reason ?? null },
+  });
+  await manualEvidence(db, scope, factKind, factId, "status", "rejected");
+  if (factKind === "edge") {
+    const updated = await db.companyEdge.update({
+      where: { id: factId },
+      data: { status: "rejected", confirmedByUserId: null, confirmedAt: null },
+    });
+    return mapEdgeRecord(db, scope, updated);
+  }
+  const updated = await db.companyEvent.update({
+    where: { id: factId },
+    data: { status: "rejected", confirmedByUserId: null, confirmedAt: null },
+  });
+  const links = await db.companyEventEntity.findMany({
+    where: { ...scope, eventId: factId },
+    select: { entityId: true },
+  });
+  return mapEventRecord(
+    db,
+    scope,
+    updated,
+    links.map((link) => link.entityId),
+  );
+}
+
 async function eraseEntity(db: CompanyDb, scope: Scope, entityId: string): Promise<void> {
   const row = await db.companyEntity.findFirst({ where: { ...scope, id: entityId } });
   if (!row) throw new IsolationError("Entity not found");
-  const aliases = [
-    `name:${row.normalizedName}`,
-    ...(
-      await db.companyIdentity.findMany({
-        where: { ...scope, entityId },
-        select: { identityType: true, identityValue: true },
-      })
-    ).map((identity) => `${identity.identityType}:${identity.identityValue}`),
-  ];
+  const identities = await db.companyIdentity.findMany({
+    where: { ...scope, entityId },
+    select: { identityType: true, identityValue: true },
+  });
+  const aliases = identities.some((identity) => identity.identityType !== "name")
+    ? identities
+        .filter((identity) => identity.identityType !== "name")
+        .map((identity) => `${row.kind}:${identity.identityType}:${identity.identityValue}`)
+    : [`${row.kind}:name:${row.normalizedName}`];
   await db.companyRejection.deleteMany({
-    where: { ...scope, identityAliases: { hasSome: aliases } },
+    where: {
+      ...scope,
+      factKind: "entity",
+      entityKind: row.kind,
+      identityAliases: { hasSome: aliases },
+    },
+  });
+  await db.companyCandidate.deleteMany({
+    where: { ...scope, entityIds: { has: row.id } },
   });
   await db.companyEntity.delete({ where: { id: row.id } });
+}
+
+async function eraseMap(db: CompanyDb, scope: Scope): Promise<void> {
+  await db.companyMerge.deleteMany({ where: scope });
+  await db.companyCandidate.deleteMany({ where: scope });
+  await db.companyCorrection.deleteMany({ where: scope });
+  await db.companyRejection.deleteMany({ where: scope });
+  await db.companyEvidence.deleteMany({ where: scope });
+  await db.companyEdge.deleteMany({ where: scope });
+  await db.companyEvent.deleteMany({ where: scope });
+  await db.companyEntity.deleteMany({ where: scope });
+  await db.companyIdentity.deleteMany({ where: scope });
+}
+
+async function disconnectSource(
+  db: CompanyDb,
+  scope: Scope,
+  locator: {
+    sourceKind: string;
+    sourceItemId: string;
+    connectionId?: string | null;
+    mcpServerId?: string | null;
+    dataRoomItemId?: string | null;
+  },
+): Promise<void> {
+  const where = {
+    ...scope,
+    sourceKind: locator.sourceKind,
+    sourceItemId: locator.sourceItemId,
+    connectionId: locator.connectionId ?? null,
+    mcpServerId: locator.mcpServerId ?? null,
+    dataRoomItemId: locator.dataRoomItemId ?? null,
+    NOT: { sourceKind: "manual" },
+  };
+  const candidateWhere = {
+    ...scope,
+    sourceKind: locator.sourceKind,
+    sourceItemId: locator.sourceItemId,
+    connectionId: locator.connectionId ?? null,
+    mcpServerId: locator.mcpServerId ?? null,
+    dataRoomItemId: locator.dataRoomItemId ?? null,
+  };
+  await db.companyCandidate.deleteMany({ where: candidateWhere });
+  await db.companyEvidence.deleteMany({ where });
 }
 
 async function mergeEntities(
@@ -930,8 +1574,21 @@ async function mergeEntities(
     }),
   ]);
   if (source.kind !== survivor.kind) throw new IsolationError("Only same-kind entities can merge");
+  if (
+    source.status !== survivor.status &&
+    [source.status, survivor.status].some(
+      (status) => status === "confirmed" || status === "rejected",
+    )
+  ) {
+    throw new IsolationError(
+      "Confirmed or rejected entities with conflicting statuses cannot merge",
+    );
+  }
   if (await db.companyMerge.findFirst({ where: { ...scope, sourceEntityId: source.id } })) {
     throw new IsolationError("Entity is already merged");
+  }
+  if (await db.companyMerge.findFirst({ where: { ...scope, survivorEntityId: source.id } })) {
+    throw new IsolationError("Entities with existing merged children cannot be merged");
   }
   if (await db.companyMerge.findFirst({ where: { ...scope, sourceEntityId: survivor.id } })) {
     throw new IsolationError("Chained merges are not allowed");
@@ -966,16 +1623,54 @@ function writerFor(db: CompanyDb, actor: Actor) {
     importEdge: (input: CompanyEdgeImportInput) => write((tx) => importEdge(tx, scope, input)),
     importEvent: (input: CompanyEventImportInput) => write((tx) => importEvent(tx, scope, input)),
     edit: (input: CompanyEntityEditInput) => write((tx) => editEntity(tx, scope, input)),
+    editEdge: (input: CompanyEdgeEditInput) => write((tx) => editEdge(tx, scope, input)),
+    editEvent: (input: CompanyEventEditInput) => write((tx) => editEvent(tx, scope, input)),
     confirm: (entityId: string) => write((tx) => confirmEntity(tx, scope, entityId)),
+    confirmEdge: (edgeId: string) => write((tx) => confirmFact(tx, scope, "edge", edgeId)),
+    confirmEvent: (eventId: string) => write((tx) => confirmFact(tx, scope, "event", eventId)),
     reject: (entityId: string, reason?: string) =>
       write((tx) => rejectEntity(tx, scope, entityId, reason)),
-    disconnect: (sourceKind: string, sourceItemId: string) =>
+    rejectEdge: (edgeId: string, reason?: string) =>
+      write((tx) => rejectFact(tx, scope, "edge", edgeId, reason)),
+    rejectEvent: (eventId: string, reason?: string) =>
+      write((tx) => rejectFact(tx, scope, "event", eventId, reason)),
+    disconnect: (
+      sourceKind: string,
+      sourceItemId: string,
+      sourceScope?: {
+        connectionId?: string | null;
+        mcpServerId?: string | null;
+        dataRoomItemId?: string | null;
+      },
+    ) => write((tx) => disconnectSource(tx, scope, { sourceKind, sourceItemId, ...sourceScope })),
+    disconnectConnection: (connectionId: string) =>
       write(async (tx) => {
-        await tx.companyEvidence.deleteMany({
-          where: { ...scope, sourceKind, sourceItemId, NOT: { sourceKind: "manual" } },
+        const candidates = await tx.companyEvidence.findMany({
+          where: { ...scope, connectionId, NOT: { sourceKind: "manual" } },
+          select: { sourceKind: true, sourceItemId: true },
+          distinct: ["sourceKind", "sourceItemId"],
         });
+        await tx.companyCandidate.deleteMany({ where: { ...scope, connectionId } });
+        await tx.companyEvidence.deleteMany({
+          where: { ...scope, connectionId, NOT: { sourceKind: "manual" } },
+        });
+        return candidates.length;
+      }),
+    disconnectMcpServer: (mcpServerId: string) =>
+      write(async (tx) => {
+        const candidates = await tx.companyEvidence.findMany({
+          where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
+          select: { sourceKind: true, sourceItemId: true },
+          distinct: ["sourceKind", "sourceItemId"],
+        });
+        await tx.companyCandidate.deleteMany({ where: { ...scope, mcpServerId } });
+        await tx.companyEvidence.deleteMany({
+          where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
+        });
+        return candidates.length;
       }),
     erase: (entityId: string) => write((tx) => eraseEntity(tx, scope, entityId)),
+    eraseMap: () => write((tx) => eraseMap(tx, scope)),
     merge: (sourceEntityId: string, survivorEntityId: string) =>
       write((tx) => mergeEntities(tx, scope, sourceEntityId, survivorEntityId)),
     split: (sourceEntityId: string) => write((tx) => splitEntity(tx, scope, sourceEntityId)),
@@ -999,11 +1694,19 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
     );
   };
   return {
-    list: async (filter: { kind?: string; text?: string; includeMerged?: boolean } = {}) => {
+    list: async (
+      filter: {
+        kind?: string;
+        text?: string;
+        includeMerged?: boolean;
+        includeRejected?: boolean;
+      } = {},
+    ) => {
       await requireMember(prisma, scope);
       const rows = await prisma.companyEntity.findMany({
         where: {
           ...scope,
+          ...(filter.includeRejected ? {} : { status: { not: "rejected" } }),
           ...(filter.kind ? { kind: filter.kind } : {}),
           ...(filter.text
             ? {
@@ -1019,17 +1722,25 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
       });
       const hidden = filter.includeMerged ? new Set<string>() : await hiddenIds(prisma, scope);
       return Promise.all(
-        rows.filter((row) => !hidden.has(row.id)).map((row) => mapEntity(prisma, scope, row)),
+        rows
+          .filter((row) => !hidden.has(row.id))
+          .map((row) => mapEntity(prisma, scope, row, { includeRejected: filter.includeRejected })),
       );
     },
-    search: async (text: string) => {
-      const records = await companyForActor(prisma, actor).list({ text });
+    search: async (text: string, options: { includeRejected?: boolean } = {}) => {
+      const records = await companyForActor(prisma, actor).list({ text, ...options });
       return records;
     },
-    count: async (filter: { kind?: string; includeMerged?: boolean } = {}) => {
+    count: async (
+      filter: { kind?: string; includeMerged?: boolean; includeRejected?: boolean } = {},
+    ) => {
       await requireMember(prisma, scope);
       const count = await prisma.companyEntity.count({
-        where: { ...scope, ...(filter.kind ? { kind: filter.kind } : {}) },
+        where: {
+          ...scope,
+          ...(filter.kind ? { kind: filter.kind } : {}),
+          ...(filter.includeRejected ? {} : { status: { not: "rejected" } }),
+        },
       });
       if (filter.includeMerged) return count;
       const hidden = await hiddenIds(prisma, scope);
@@ -1041,26 +1752,38 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
                 ...scope,
                 id: { in: [...hidden] },
                 ...(filter.kind ? { kind: filter.kind } : {}),
+                ...(filter.includeRejected ? {} : { status: { not: "rejected" } }),
               },
             });
       return count - hiddenInFilter;
     },
-    detail: async (entityId: string) => {
+    detail: async (
+      entityId: string,
+      options: { includeMerged?: boolean; includeRejected?: boolean } = {},
+    ) => {
       await requireMember(prisma, scope);
-      if ((await hiddenIds(prisma, scope)).has(entityId)) return null;
+      if (!options.includeMerged && (await hiddenIds(prisma, scope)).has(entityId)) return null;
       const row = await prisma.companyEntity.findFirst({
         where: { ...scope, id: entityId },
         include: ENTITY_INCLUDE,
       });
-      return row ? mapEntity(prisma, scope, row) : null;
+      if (row?.status === "rejected" && !options.includeRejected) return null;
+      return row
+        ? mapEntity(prisma, scope, row, { includeRejected: options.includeRejected })
+        : null;
     },
-    evidence: async (entityId: string) => {
+    evidence: async (entityId: string, options: { includeRejected?: boolean } = {}) => {
       await requireMember(prisma, scope);
       const row = await prisma.companyEntity.findFirst({
         where: { ...scope, id: entityId },
-        select: { id: true },
+        select: { id: true, status: true },
       });
-      if (!row || (await hiddenIds(prisma, scope)).has(entityId)) return [];
+      if (
+        !row ||
+        (row.status === "rejected" && !options.includeRejected) ||
+        (await hiddenIds(prisma, scope)).has(entityId)
+      )
+        return [];
       const merges = await prisma.companyMerge.findMany({
         where: { ...scope, survivorEntityId: entityId },
         select: { sourceEntityId: true },
@@ -1073,6 +1796,183 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
         )
       ).flat();
     },
+    listEdges: async (
+      filter: { entityId?: string; relation?: string; includeRejected?: boolean } = {},
+    ) => {
+      await requireMember(prisma, scope);
+      const entityIds = filter.entityId
+        ? [
+            filter.entityId,
+            ...(
+              await prisma.companyMerge.findMany({
+                where: { ...scope, survivorEntityId: filter.entityId },
+                select: { sourceEntityId: true },
+              })
+            ).map((merge) => merge.sourceEntityId),
+          ]
+        : undefined;
+      const rows = await prisma.companyEdge.findMany({
+        where: {
+          ...scope,
+          ...(filter.includeRejected ? {} : { status: { not: "rejected" } }),
+          ...(filter.relation ? { relation: filter.relation } : {}),
+          ...(entityIds
+            ? { OR: [{ fromId: { in: entityIds } }, { toId: { in: entityIds } }] }
+            : {}),
+        },
+        orderBy: [{ startsOn: "asc" }, { id: "asc" }],
+      });
+      const rejectedEntities = new Set(
+        (
+          await prisma.companyEntity.findMany({
+            where: {
+              ...scope,
+              id: { in: [...new Set(rows.flatMap((row) => [row.fromId, row.toId]))] },
+              status: "rejected",
+            },
+            select: { id: true },
+          })
+        ).map((row) => row.id),
+      );
+      return Promise.all(
+        rows
+          .filter(
+            (row) =>
+              filter.includeRejected ||
+              (!rejectedEntities.has(row.fromId) && !rejectedEntities.has(row.toId)),
+          )
+          .map(async (row) => ({
+            ...(await mapEdgeRecord(prisma, scope, row)),
+            fromId: await resolveSurvivorId(prisma, scope, row.fromId),
+            toId: await resolveSurvivorId(prisma, scope, row.toId),
+          })),
+      );
+    },
+    countEdges: async (
+      filter: { entityId?: string; relation?: string; includeRejected?: boolean } = {},
+    ) => {
+      await requireMember(prisma, scope);
+      return (await companyForActor(prisma, actor).listEdges(filter)).length;
+    },
+    edgeDetail: async (
+      edgeId: string,
+      options: { includeRejected?: boolean } = {},
+    ): Promise<CompanyEdgeRecord | null> => {
+      await requireMember(prisma, scope);
+      const row = await prisma.companyEdge.findFirst({ where: { ...scope, id: edgeId } });
+      if (!row || (row.status === "rejected" && !options.includeRejected)) return null;
+      if (!options.includeRejected) {
+        const rejectedEndpoint = await prisma.companyEntity.findFirst({
+          where: { ...scope, id: { in: [row.fromId, row.toId] }, status: "rejected" },
+          select: { id: true },
+        });
+        if (rejectedEndpoint) return null;
+      }
+      return {
+        ...(await mapEdgeRecord(prisma, scope, row)),
+        fromId: await resolveSurvivorId(prisma, scope, row.fromId),
+        toId: await resolveSurvivorId(prisma, scope, row.toId),
+      };
+    },
+    listEvents: async (
+      filter: { entityId?: string; stream?: string; kind?: string; includeRejected?: boolean } = {},
+    ) => {
+      await requireMember(prisma, scope);
+      const entityIds = filter.entityId
+        ? [
+            filter.entityId,
+            ...(
+              await prisma.companyMerge.findMany({
+                where: { ...scope, survivorEntityId: filter.entityId },
+                select: { sourceEntityId: true },
+              })
+            ).map((merge) => merge.sourceEntityId),
+          ]
+        : undefined;
+      const rows = await prisma.companyEvent.findMany({
+        where: {
+          ...scope,
+          ...(filter.includeRejected ? {} : { status: { not: "rejected" } }),
+          ...(filter.stream ? { stream: filter.stream } : {}),
+          ...(filter.kind ? { kind: filter.kind } : {}),
+          ...(entityIds ? { entityLinks: { some: { entityId: { in: entityIds } } } } : {}),
+        },
+        orderBy: [{ occursOn: "asc" }, { id: "asc" }],
+      });
+      const links = rows.length
+        ? await prisma.companyEventEntity.findMany({
+            where: { ...scope, eventId: { in: rows.map((row) => row.id) } },
+            select: { eventId: true, entityId: true },
+          })
+        : [];
+      const rejectedEntityIds = new Set(
+        (
+          await prisma.companyEntity.findMany({
+            where: {
+              ...scope,
+              id: { in: [...new Set(links.map((link) => link.entityId))] },
+              status: "rejected",
+            },
+            select: { id: true },
+          })
+        ).map((row) => row.id),
+      );
+      const hiddenEventIds = new Set(
+        links.filter((link) => rejectedEntityIds.has(link.entityId)).map((link) => link.eventId),
+      );
+      const visibleRows = filter.includeRejected
+        ? rows
+        : rows.filter((row) => !hiddenEventIds.has(row.id));
+      return Promise.all(
+        visibleRows.map(async (row) => {
+          const links = await prisma.companyEventEntity.findMany({
+            where: { ...scope, eventId: row.id },
+            select: { entityId: true },
+          });
+          return mapEventRecord(prisma, scope, row, [
+            ...new Set(
+              await Promise.all(
+                links.map((link) => resolveSurvivorId(prisma, scope, link.entityId)),
+              ),
+            ),
+          ]);
+        }),
+      );
+    },
+    countEvents: async (
+      filter: { entityId?: string; stream?: string; kind?: string; includeRejected?: boolean } = {},
+    ) => {
+      await requireMember(prisma, scope);
+      return (await companyForActor(prisma, actor).listEvents(filter)).length;
+    },
+    eventDetail: async (
+      eventId: string,
+      options: { includeRejected?: boolean } = {},
+    ): Promise<CompanyEventRecord | null> => {
+      await requireMember(prisma, scope);
+      const row = await prisma.companyEvent.findFirst({ where: { ...scope, id: eventId } });
+      if (!row || (row.status === "rejected" && !options.includeRejected)) return null;
+      const links = await prisma.companyEventEntity.findMany({
+        where: { ...scope, eventId: row.id },
+        select: { entityId: true },
+      });
+      if (!options.includeRejected && links.length) {
+        const rejectedEntity = await prisma.companyEntity.findFirst({
+          where: {
+            ...scope,
+            id: { in: links.map((link) => link.entityId) },
+            status: "rejected",
+          },
+          select: { id: true },
+        });
+        if (rejectedEntity) return null;
+      }
+      return mapEventRecord(prisma, scope, row, [
+        ...new Set(
+          await Promise.all(links.map((link) => resolveSurvivorId(prisma, scope, link.entityId))),
+        ),
+      ]);
+    },
     candidates: async () => {
       await requireMember(prisma, scope);
       const rows = await prisma.companyCandidate.findMany({
@@ -1081,8 +1981,18 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
       });
       return rows.map(
         (row): CompanyCandidateRecord => ({
-          ...row,
+          id: row.id,
+          kind: row.kind,
+          reason: row.reason,
+          entityIds: row.entityIds,
           proposedFact: row.proposedFact,
+          sourceKind: row.sourceKind,
+          connectionId: row.connectionId,
+          mcpServerId: row.mcpServerId,
+          dataRoomItemId: row.dataRoomItemId,
+          sourceItemId: row.sourceItemId,
+          sourceKey: row.sourceKey,
+          quote: row.quote,
           createdAt: row.createdAt.toISOString(),
         }),
       );
@@ -1092,16 +2002,42 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
     importEdge: (input: CompanyEdgeImportInput) => write((tx) => importEdge(tx, scope, input)),
     importEvent: (input: CompanyEventImportInput) => write((tx) => importEvent(tx, scope, input)),
     edit: (input: CompanyEntityEditInput) => write((tx) => editEntity(tx, scope, input)),
+    editEdge: (input: CompanyEdgeEditInput) => write((tx) => editEdge(tx, scope, input)),
+    editEvent: (input: CompanyEventEditInput) => write((tx) => editEvent(tx, scope, input)),
     confirm: (entityId: string) => write((tx) => confirmEntity(tx, scope, entityId)),
+    confirmEdge: (edgeId: string) => write((tx) => confirmFact(tx, scope, "edge", edgeId)),
+    confirmEvent: (eventId: string) => write((tx) => confirmFact(tx, scope, "event", eventId)),
     reject: (entityId: string, reason?: string) =>
       write((tx) => rejectEntity(tx, scope, entityId, reason)),
-    disconnect: (sourceKind: string, sourceItemId: string) =>
+    rejectEdge: (edgeId: string, reason?: string) =>
+      write((tx) => rejectFact(tx, scope, "edge", edgeId, reason)),
+    rejectEvent: (eventId: string, reason?: string) =>
+      write((tx) => rejectFact(tx, scope, "event", eventId, reason)),
+    disconnect: (
+      sourceKind: string,
+      sourceItemId: string,
+      sourceScope?: {
+        connectionId?: string | null;
+        mcpServerId?: string | null;
+        dataRoomItemId?: string | null;
+      },
+    ) => write((tx) => disconnectSource(tx, scope, { sourceKind, sourceItemId, ...sourceScope })),
+    disconnectConnection: (connectionId: string) =>
       write(async (tx) => {
+        await tx.companyCandidate.deleteMany({ where: { ...scope, connectionId } });
         await tx.companyEvidence.deleteMany({
-          where: { ...scope, sourceKind, sourceItemId, NOT: { sourceKind: "manual" } },
+          where: { ...scope, connectionId, NOT: { sourceKind: "manual" } },
+        });
+      }),
+    disconnectMcpServer: (mcpServerId: string) =>
+      write(async (tx) => {
+        await tx.companyCandidate.deleteMany({ where: { ...scope, mcpServerId } });
+        await tx.companyEvidence.deleteMany({
+          where: { ...scope, mcpServerId, NOT: { sourceKind: "manual" } },
         });
       }),
     erase: (entityId: string) => write((tx) => eraseEntity(tx, scope, entityId)),
+    eraseMap: () => write((tx) => eraseMap(tx, scope)),
     merge: (sourceEntityId: string, survivorEntityId: string) =>
       write((tx) => mergeEntities(tx, scope, sourceEntityId, survivorEntityId)),
     split: (sourceEntityId: string) => write((tx) => splitEntity(tx, scope, sourceEntityId)),

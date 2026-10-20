@@ -33,6 +33,7 @@ CREATE TABLE "company_entities" (
   "visibility" TEXT NOT NULL DEFAULT 'private',
   "lockedFields" TEXT[] NOT NULL DEFAULT '{}',
   "confirmedAt" TIMESTAMP(3),
+  "confirmedByUserId" TEXT,
   "contactId" TEXT,
   "legalContractId" TEXT,
   "dataRoomItemId" TEXT,
@@ -57,6 +58,7 @@ CREATE TABLE "company_identities" (
   "spaceId" TEXT NOT NULL,
   "ownerUserId" TEXT NOT NULL,
   "entityId" TEXT NOT NULL,
+  "entityKind" TEXT NOT NULL,
   "identityType" TEXT NOT NULL,
   "identityValue" TEXT NOT NULL,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -76,11 +78,19 @@ CREATE TABLE "company_edges" (
   "endsPrecision" TEXT,
   "role" TEXT,
   "confidence" DOUBLE PRECISION NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'suggested',
+  "visibility" TEXT NOT NULL DEFAULT 'private',
+  "lockedFields" TEXT[] NOT NULL DEFAULT '{}',
+  "confirmedByUserId" TEXT,
+  "confirmedAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "company_edges_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "company_edges_relation_check" CHECK ("relation" IN ('works_at', 'reports_to', 'founded', 'invested_in', 'customer_of', 'vendor_of', 'counsel_for', 'party_to', 'works_on', 'part_of')),
   CONSTRAINT "company_edges_confidence_check" CHECK ("confidence" BETWEEN 0 AND 1),
+  CONSTRAINT "company_edges_status_check" CHECK ("status" IN ('suggested', 'confirmed', 'rejected')),
+  CONSTRAINT "company_edges_visibility_check" CHECK ("visibility" IN ('private', 'team')),
+  CONSTRAINT "company_edges_confirmation_check" CHECK (("status" = 'confirmed') = ("confirmedAt" IS NOT NULL)),
   CONSTRAINT "company_edges_start_precision_check" CHECK (
     ("startsOn" IS NULL) = ("startsPrecision" IS NULL)
     AND ("startsPrecision" IS NULL OR "startsPrecision" IN ('day', 'month', 'quarter', 'year'))
@@ -114,22 +124,36 @@ CREATE TABLE "company_events" (
   "kind" TEXT NOT NULL,
   "title" TEXT NOT NULL,
   "normalizedTitle" TEXT NOT NULL,
-  "occursOn" DATE NOT NULL,
-  "occursPrecision" TEXT NOT NULL,
+  "occursOn" DATE,
+  "occursPrecision" TEXT,
   "endsOn" DATE,
   "endsPrecision" TEXT,
   "amountCents" BIGINT,
   "currency" TEXT,
   "confidence" DOUBLE PRECISION NOT NULL,
+  "status" TEXT NOT NULL DEFAULT 'suggested',
+  "visibility" TEXT NOT NULL DEFAULT 'private',
+  "lockedFields" TEXT[] NOT NULL DEFAULT '{}',
+  "confirmedByUserId" TEXT,
+  "confirmedAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL,
   CONSTRAINT "company_events_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "company_events_stream_check" CHECK ("stream" IN ('company', 'people', 'funding', 'legal', 'product', 'customers')),
   CONSTRAINT "company_events_kind_check" CHECK ("kind" IN ('founded', 'hire', 'departure', 'role_change', 'funding_round', 'contract_signed', 'renewal', 'matter_opened', 'matter_closed', 'launch', 'customer_won', 'customer_lost', 'milestone', 'other')),
   CONSTRAINT "company_events_confidence_check" CHECK ("confidence" BETWEEN 0 AND 1),
+  CONSTRAINT "company_events_status_check" CHECK ("status" IN ('suggested', 'confirmed', 'rejected')),
+  CONSTRAINT "company_events_visibility_check" CHECK ("visibility" IN ('private', 'team')),
+  CONSTRAINT "company_events_confirmation_check" CHECK (("status" = 'confirmed') = ("confirmedAt" IS NOT NULL)),
   CONSTRAINT "company_events_occurs_precision_check" CHECK (
-    "occursPrecision" IN ('day', 'month', 'quarter', 'year')
+    ("occursOn" IS NULL) = ("occursPrecision" IS NULL)
     AND (
+      "occursPrecision" IS NULL
+      OR "occursPrecision" IN ('day', 'month', 'quarter', 'year')
+    )
+    AND (
+      "occursOn" IS NULL
+      OR
       "occursPrecision" = 'day'
       OR ("occursPrecision" = 'month' AND EXTRACT(DAY FROM "occursOn") = 1)
       OR ("occursPrecision" = 'quarter' AND EXTRACT(DAY FROM "occursOn") = 1 AND EXTRACT(MONTH FROM "occursOn") IN (1, 4, 7, 10))
@@ -180,6 +204,8 @@ CREATE TABLE "company_evidence" (
   "extractorRunId" TEXT,
   "extractorModel" JSONB,
   "confidence" DOUBLE PRECISION NOT NULL,
+  "confirmedByUserId" TEXT,
+  "confirmedAt" TIMESTAMP(3),
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "company_evidence_pkey" PRIMARY KEY ("id"),
   CONSTRAINT "company_evidence_fact_kind_check" CHECK ("factKind" IN ('entity', 'edge', 'event')),
@@ -205,6 +231,9 @@ CREATE TABLE "company_candidates" (
   "entityIds" TEXT[] NOT NULL DEFAULT '{}',
   "proposedFact" JSONB NOT NULL,
   "sourceKind" TEXT NOT NULL,
+  "connectionId" TEXT,
+  "mcpServerId" TEXT,
+  "dataRoomItemId" TEXT,
   "sourceItemId" TEXT NOT NULL,
   "sourceKey" TEXT NOT NULL,
   "quote" TEXT NOT NULL,
@@ -230,6 +259,8 @@ CREATE TABLE "company_rejections" (
   "id" TEXT NOT NULL,
   "spaceId" TEXT NOT NULL,
   "ownerUserId" TEXT NOT NULL,
+  "factKind" TEXT NOT NULL DEFAULT 'entity',
+  "entityKind" TEXT,
   "fingerprint" TEXT NOT NULL,
   "identityAliases" TEXT[] NOT NULL DEFAULT '{}',
   "reason" TEXT,
@@ -254,7 +285,7 @@ CREATE INDEX "company_entities_spaceId_ownerUserId_kind_status_idx" ON "company_
 CREATE INDEX "company_entities_spaceId_ownerUserId_normalizedName_idx" ON "company_entities"("spaceId", "ownerUserId", "normalizedName");
 
 CREATE UNIQUE INDEX "company_identities_id_spaceId_ownerUserId_key" ON "company_identities"("id", "spaceId", "ownerUserId");
-CREATE UNIQUE INDEX "company_identities_scoped_identity_key" ON "company_identities"("spaceId", "ownerUserId", "identityType", "identityValue");
+CREATE UNIQUE INDEX "company_identities_scoped_identity_key" ON "company_identities"("spaceId", "ownerUserId", "entityKind", "identityType", "identityValue");
 CREATE INDEX "company_identities_entityId_spaceId_ownerUserId_idx" ON "company_identities"("entityId", "spaceId", "ownerUserId");
 
 CREATE UNIQUE INDEX "company_edges_id_spaceId_ownerUserId_key" ON "company_edges"("id", "spaceId", "ownerUserId");
@@ -269,7 +300,8 @@ CREATE INDEX "company_edges_spaceId_ownerUserId_toId_idx" ON "company_edges"("sp
 
 CREATE UNIQUE INDEX "company_events_id_spaceId_ownerUserId_key" ON "company_events"("id", "spaceId", "ownerUserId");
 CREATE UNIQUE INDEX "company_events_fingerprint_key" ON "company_events"(
-  "spaceId", "ownerUserId", "kind", "normalizedTitle", "occursOn", "occursPrecision"
+  "spaceId", "ownerUserId", "kind", "normalizedTitle",
+  COALESCE("occursOn", DATE '0001-01-01'), COALESCE("occursPrecision", '')
 );
 CREATE INDEX "company_events_spaceId_ownerUserId_occursOn_idx" ON "company_events"("spaceId", "ownerUserId", "occursOn");
 
@@ -308,11 +340,11 @@ ALTER TABLE "company_entities" ADD CONSTRAINT "company_entities_spaceId_fkey"
 ALTER TABLE "company_entities" ADD CONSTRAINT "company_entities_owner_fkey"
   FOREIGN KEY ("spaceId", "ownerUserId") REFERENCES "space_members"("spaceId", "userId") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "company_entities" ADD CONSTRAINT "company_entities_contact_scope_fkey"
-  FOREIGN KEY ("contactId", "spaceId", "ownerUserId") REFERENCES "contacts"("id", "spaceId", "userId") ON DELETE RESTRICT ON UPDATE CASCADE;
+  FOREIGN KEY ("contactId", "spaceId", "ownerUserId") REFERENCES "contacts"("id", "spaceId", "userId") ON DELETE SET NULL ("contactId") ON UPDATE CASCADE;
 ALTER TABLE "company_entities" ADD CONSTRAINT "company_entities_legal_contract_scope_fkey"
-  FOREIGN KEY ("legalContractId", "spaceId", "ownerUserId") REFERENCES "legal_contracts"("id", "spaceId", "userId") ON DELETE RESTRICT ON UPDATE CASCADE;
+  FOREIGN KEY ("legalContractId", "spaceId", "ownerUserId") REFERENCES "legal_contracts"("id", "spaceId", "userId") ON DELETE SET NULL ("legalContractId") ON UPDATE CASCADE;
 ALTER TABLE "company_entities" ADD CONSTRAINT "company_entities_data_room_item_scope_fkey"
-  FOREIGN KEY ("dataRoomItemId", "spaceId", "ownerUserId") REFERENCES "data_room_items"("id", "spaceId", "userId") ON DELETE RESTRICT ON UPDATE CASCADE;
+  FOREIGN KEY ("dataRoomItemId", "spaceId", "ownerUserId") REFERENCES "data_room_items"("id", "spaceId", "userId") ON DELETE SET NULL ("dataRoomItemId") ON UPDATE CASCADE;
 
 ALTER TABLE "company_identities" ADD CONSTRAINT "company_identities_spaceId_fkey"
   FOREIGN KEY ("spaceId") REFERENCES "spaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -349,16 +381,22 @@ ALTER TABLE "company_evidence" ADD CONSTRAINT "company_evidence_spaceId_fkey"
 ALTER TABLE "company_evidence" ADD CONSTRAINT "company_evidence_owner_fkey"
   FOREIGN KEY ("spaceId", "ownerUserId") REFERENCES "space_members"("spaceId", "userId") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "company_evidence" ADD CONSTRAINT "company_evidence_connection_scope_fkey"
-  FOREIGN KEY ("connectionId", "spaceId", "ownerUserId") REFERENCES "connections"("id", "spaceId", "userId") ON DELETE RESTRICT ON UPDATE CASCADE;
+  FOREIGN KEY ("connectionId", "spaceId", "ownerUserId") REFERENCES "connections"("id", "spaceId", "userId") ON DELETE SET NULL ("connectionId") ON UPDATE CASCADE;
 ALTER TABLE "company_evidence" ADD CONSTRAINT "company_evidence_mcp_scope_fkey"
-  FOREIGN KEY ("mcpServerId", "spaceId", "ownerUserId") REFERENCES "mcp_servers"("id", "spaceId", "userId") ON DELETE RESTRICT ON UPDATE CASCADE;
+  FOREIGN KEY ("mcpServerId", "spaceId", "ownerUserId") REFERENCES "mcp_servers"("id", "spaceId", "userId") ON DELETE SET NULL ("mcpServerId") ON UPDATE CASCADE;
 ALTER TABLE "company_evidence" ADD CONSTRAINT "company_evidence_data_room_item_scope_fkey"
-  FOREIGN KEY ("dataRoomItemId", "spaceId", "ownerUserId") REFERENCES "data_room_items"("id", "spaceId", "userId") ON DELETE RESTRICT ON UPDATE CASCADE;
+  FOREIGN KEY ("dataRoomItemId", "spaceId", "ownerUserId") REFERENCES "data_room_items"("id", "spaceId", "userId") ON DELETE SET NULL ("dataRoomItemId") ON UPDATE CASCADE;
 
 ALTER TABLE "company_candidates" ADD CONSTRAINT "company_candidates_spaceId_fkey"
   FOREIGN KEY ("spaceId") REFERENCES "spaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "company_candidates" ADD CONSTRAINT "company_candidates_owner_fkey"
   FOREIGN KEY ("spaceId", "ownerUserId") REFERENCES "space_members"("spaceId", "userId") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "company_candidates" ADD CONSTRAINT "company_candidates_connection_scope_fkey"
+  FOREIGN KEY ("connectionId", "spaceId", "ownerUserId") REFERENCES "connections"("id", "spaceId", "userId") ON DELETE SET NULL ("connectionId") ON UPDATE CASCADE;
+ALTER TABLE "company_candidates" ADD CONSTRAINT "company_candidates_mcp_scope_fkey"
+  FOREIGN KEY ("mcpServerId", "spaceId", "ownerUserId") REFERENCES "mcp_servers"("id", "spaceId", "userId") ON DELETE SET NULL ("mcpServerId") ON UPDATE CASCADE;
+ALTER TABLE "company_candidates" ADD CONSTRAINT "company_candidates_data_room_item_scope_fkey"
+  FOREIGN KEY ("dataRoomItemId", "spaceId", "ownerUserId") REFERENCES "data_room_items"("id", "spaceId", "userId") ON DELETE SET NULL ("dataRoomItemId") ON UPDATE CASCADE;
 
 ALTER TABLE "company_corrections" ADD CONSTRAINT "company_corrections_spaceId_fkey"
   FOREIGN KEY ("spaceId") REFERENCES "spaces"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -479,10 +517,18 @@ LANGUAGE plpgsql
 AS $$
 DECLARE
   fact_kind TEXT;
+  fact_exists BOOLEAN;
 BEGIN
   IF TG_TABLE_NAME = 'company_entities' THEN fact_kind := 'entity';
   ELSIF TG_TABLE_NAME = 'company_edges' THEN fact_kind := 'edge';
   ELSE fact_kind := 'event';
+  END IF;
+  EXECUTE format(
+    'SELECT EXISTS (SELECT 1 FROM %I WHERE "id" = $1 AND "spaceId" = $2 AND "ownerUserId" = $3)',
+    TG_TABLE_NAME
+  ) INTO fact_exists USING NEW."id", NEW."spaceId", NEW."ownerUserId";
+  IF NOT fact_exists THEN
+    RETURN NULL;
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM "company_evidence"
@@ -542,6 +588,103 @@ BEGIN
 END
 $$;
 
+CREATE FUNCTION company_lock_evidence_delete()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  fact_table TEXT;
+BEGIN
+  IF OLD."factKind" = 'entity' THEN fact_table := 'company_entities';
+  ELSIF OLD."factKind" = 'edge' THEN fact_table := 'company_edges';
+  ELSE fact_table := 'company_events';
+  END IF;
+  EXECUTE format(
+    'SELECT 1 FROM %I WHERE "id" = $1 AND "spaceId" = $2 AND "ownerUserId" = $3 FOR UPDATE',
+    fact_table
+  ) USING OLD."factId", OLD."spaceId", OLD."ownerUserId";
+  RETURN OLD;
+END
+$$;
+
+CREATE TRIGGER "company_evidence_lock_delete"
+BEFORE DELETE ON "company_evidence"
+FOR EACH ROW EXECUTE FUNCTION company_lock_evidence_delete();
+
 CREATE TRIGGER "company_evidence_remove_orphan"
 AFTER DELETE ON "company_evidence"
 FOR EACH ROW EXECUTE FUNCTION company_remove_orphan_fact();
+
+CREATE FUNCTION company_reject_evidence_move()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  IF (NEW."factKind", NEW."factId", NEW."spaceId", NEW."ownerUserId")
+    IS DISTINCT FROM (OLD."factKind", OLD."factId", OLD."spaceId", OLD."ownerUserId") THEN
+    RAISE EXCEPTION 'company evidence fact ownership is immutable'
+      USING ERRCODE = '23514', CONSTRAINT = 'company_evidence_fact_immutable';
+  END IF;
+  RETURN NEW;
+END
+$$;
+
+CREATE TRIGGER "company_evidence_immutable_fact"
+BEFORE UPDATE ON "company_evidence"
+FOR EACH ROW EXECUTE FUNCTION company_reject_evidence_move();
+
+CREATE FUNCTION company_delete_entity_evidence()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  DELETE FROM "company_evidence"
+  WHERE "factKind" = TG_ARGV[0]
+    AND "factId" = OLD."id"
+    AND "spaceId" = OLD."spaceId"
+    AND "ownerUserId" = OLD."ownerUserId";
+  RETURN OLD;
+END
+$$;
+
+CREATE TRIGGER "company_entities_delete_evidence"
+AFTER DELETE ON "company_entities"
+FOR EACH ROW EXECUTE FUNCTION company_delete_entity_evidence('entity');
+CREATE TRIGGER "company_edges_delete_evidence"
+AFTER DELETE ON "company_edges"
+FOR EACH ROW EXECUTE FUNCTION company_delete_entity_evidence('edge');
+CREATE TRIGGER "company_events_delete_evidence"
+AFTER DELETE ON "company_events"
+FOR EACH ROW EXECUTE FUNCTION company_delete_entity_evidence('event');
+
+CREATE FUNCTION company_disconnect_source()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  source_kind TEXT := TG_ARGV[0];
+BEGIN
+  IF source_kind = 'connection' THEN
+    DELETE FROM "company_evidence" WHERE "connectionId" = OLD."id";
+    DELETE FROM "company_candidates" WHERE "connectionId" = OLD."id";
+  ELSIF source_kind = 'mcp' THEN
+    DELETE FROM "company_evidence" WHERE "mcpServerId" = OLD."id";
+    DELETE FROM "company_candidates" WHERE "mcpServerId" = OLD."id";
+  ELSE
+    DELETE FROM "company_evidence" WHERE "dataRoomItemId" = OLD."id";
+    DELETE FROM "company_candidates"
+    WHERE "dataRoomItemId" = OLD."id";
+  END IF;
+  RETURN OLD;
+END
+$$;
+
+CREATE TRIGGER "company_connection_disconnect"
+BEFORE DELETE ON "connections"
+FOR EACH ROW EXECUTE FUNCTION company_disconnect_source('connection');
+CREATE TRIGGER "company_mcp_disconnect"
+BEFORE DELETE ON "mcp_servers"
+FOR EACH ROW EXECUTE FUNCTION company_disconnect_source('mcp');
+CREATE TRIGGER "company_data_room_disconnect"
+BEFORE DELETE ON "data_room_items"
+FOR EACH ROW EXECUTE FUNCTION company_disconnect_source('data_room');

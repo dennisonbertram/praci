@@ -160,7 +160,7 @@ export const CompanyEventInputSchema = z
     stream: CompanyStreamSchema,
     kind: CompanyEventKindSchema,
     title: shortText,
-    occursOn: CompanyPartialDateSchema,
+    occursOn: CompanyPartialDateSchema.nullable(),
     endsOn: CompanyPartialDateSchema.nullish(),
     entityIds: z.array(identifier).max(100),
     amountCents: z.number().int().safe().nonnegative().nullish(),
@@ -171,7 +171,7 @@ export const CompanyEventInputSchema = z
     confidence: CompanyConfidenceSchema,
   })
   .refine(
-    (value) => !value.endsOn || value.occursOn.date <= value.endsOn.date,
+    (value) => !value.endsOn || !value.occursOn || value.occursOn.date <= value.endsOn.date,
     "End precedes start",
   )
   .refine(
@@ -184,6 +184,7 @@ export const CompanyEvidenceInputSchema = z.strictObject({
   sourceKind: CompanySourceKindSchema,
   connectionId: identifier.nullish(),
   mcpServerId: identifier.nullish(),
+  dataRoomItemId: identifier.nullish(),
   sourceItemId: identifier,
   sourceUrl: url.nullish(),
   quote: z.string().trim().min(1).max(240),
@@ -257,6 +258,39 @@ export const CompanyEntityEditInputSchema = z
       displayName !== undefined || (attrs !== undefined && Object.keys(attrs).length > 0),
     "Provide a name or at least one attribute to edit",
   );
+export const CompanyEdgeEditInputSchema = z
+  .strictObject({
+    edgeId: identifier,
+    relation: CompanyRelationSchema.optional(),
+    startsOn: CompanyPartialDateSchema.nullish(),
+    endsOn: CompanyPartialDateSchema.nullish(),
+    role: shortText.nullish(),
+    confidence: CompanyConfidenceSchema.optional(),
+  })
+  .refine(
+    (value) => Object.keys(value).some((key) => key !== "edgeId"),
+    "Provide an edge field to edit",
+  );
+export const CompanyEventEditInputSchema = z
+  .strictObject({
+    eventId: identifier,
+    stream: CompanyStreamSchema.optional(),
+    kind: CompanyEventKindSchema.optional(),
+    title: shortText.optional(),
+    occursOn: CompanyPartialDateSchema.nullable().optional(),
+    endsOn: CompanyPartialDateSchema.nullish(),
+    amountCents: z.number().int().safe().nonnegative().nullish(),
+    currency: z
+      .string()
+      .regex(/^[A-Z]{3}$/)
+      .nullish(),
+    confidence: CompanyConfidenceSchema.optional(),
+    entityIds: z.array(identifier).max(100).optional(),
+  })
+  .refine(
+    (value) => Object.keys(value).some((key) => key !== "eventId"),
+    "Provide an event field to edit",
+  );
 export const CompanyConfirmInputSchema = z.strictObject({ entityId: identifier });
 export const CompanyRejectInputSchema = z.strictObject({
   entityId: identifier,
@@ -278,6 +312,70 @@ export type CompanyEntityImportInput = z.infer<typeof CompanyEntityImportInputSc
 export type CompanyEdgeImportInput = z.infer<typeof CompanyEdgeImportInputSchema>;
 export type CompanyEventImportInput = z.infer<typeof CompanyEventImportInputSchema>;
 export type CompanyEntityEditInput = z.infer<typeof CompanyEntityEditInputSchema>;
+export type CompanyEdgeEditInput = z.infer<typeof CompanyEdgeEditInputSchema>;
+export type CompanyEventEditInput = z.infer<typeof CompanyEventEditInputSchema>;
+
+export const CompanyEvidenceRecordSchema = z.strictObject({
+  id: identifier,
+  factKind: CompanyFactKindSchema,
+  factId: identifier,
+  stance: z.enum(["supports", "contradicts"]),
+  sourceKind: CompanySourceKindSchema,
+  connectionId: identifier.nullable(),
+  mcpServerId: identifier.nullable(),
+  dataRoomItemId: identifier.nullable(),
+  sourceItemId: identifier,
+  sourceKey: identifier,
+  sourceUrl: url.nullable(),
+  quote: z.string().min(1).max(240),
+  contentHash: z.string().min(1).max(128),
+  extractedAt: z.iso.datetime(),
+  extractorRunId: identifier.nullable(),
+  extractorModel: z.record(z.string(), z.unknown()).nullable(),
+  confidence: CompanyConfidenceSchema,
+  confirmedByUserId: identifier.nullable(),
+  confirmedAt: z.iso.datetime().nullable(),
+});
+export const CompanyEdgeRecordSchema = z.strictObject({
+  id: identifier,
+  fromId: identifier,
+  toId: identifier,
+  relation: CompanyRelationSchema,
+  startsOn: CompanyPartialDateSchema.nullable(),
+  endsOn: CompanyPartialDateSchema.nullable(),
+  role: shortText.nullable(),
+  confidence: CompanyConfidenceSchema,
+  status: CompanyStatusSchema,
+  visibility: CompanyVisibilitySchema,
+  lockedFields: z.array(identifier),
+  confirmedByUserId: identifier.nullable(),
+  confirmedAt: z.iso.datetime().nullable(),
+  evidence: z.array(CompanyEvidenceRecordSchema),
+});
+export const CompanyEventRecordSchema = z.strictObject({
+  id: identifier,
+  stream: CompanyStreamSchema,
+  kind: CompanyEventKindSchema,
+  title: shortText,
+  occursOn: CompanyPartialDateSchema.nullable(),
+  endsOn: CompanyPartialDateSchema.nullable(),
+  amountCents: z.number().int().nonnegative().nullable(),
+  currency: z
+    .string()
+    .regex(/^[A-Z]{3}$/)
+    .nullable(),
+  entityIds: z.array(identifier),
+  confidence: CompanyConfidenceSchema,
+  status: CompanyStatusSchema,
+  visibility: CompanyVisibilitySchema,
+  lockedFields: z.array(identifier),
+  confirmedByUserId: identifier.nullable(),
+  confirmedAt: z.iso.datetime().nullable(),
+  evidence: z.array(CompanyEvidenceRecordSchema),
+});
+export type CompanyEvidenceRecord = z.infer<typeof CompanyEvidenceRecordSchema>;
+export type CompanyEdgeRecord = z.infer<typeof CompanyEdgeRecordSchema>;
+export type CompanyEventRecord = z.infer<typeof CompanyEventRecordSchema>;
 
 /** Identity normalization is deterministic; a name alone is never a person identifier. */
 export function normalizeCompanyName(value: string): string {

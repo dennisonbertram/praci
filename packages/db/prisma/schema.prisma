@@ -1110,6 +1110,7 @@ model Connection {
   /// always scoped on its own. Older rows keep the shared-by-default rules.
   privateByDefault    Boolean               @default(false)
   companyEvidence     CompanyEvidence[]
+  companyCandidates   CompanyCandidate[]    @relation("CompanyCandidateConnection")
 
   @@index([spaceId, userId, connectorId])
   @@unique([id, spaceId, userId])
@@ -1584,6 +1585,7 @@ model McpServer {
   meetings              Meeting[]
   meetingSyncState      MeetingSyncState?
   companyEvidence       CompanyEvidence[]
+  companyCandidates     CompanyCandidate[] @relation("CompanyCandidateMcpServer")
 
   @@unique([spaceId, userId, slug])
   @@unique([id, spaceId, userId])
@@ -2881,6 +2883,7 @@ model DataRoomItem {
   investorShares     InvestorShare[]
   companyEntities    CompanyEntity[] @relation("CompanyEntityDataRoomItem")
   companyEvidence    CompanyEvidence[] @relation("CompanyEvidenceDataRoomItem")
+  companyCandidates  CompanyCandidate[] @relation("CompanyCandidateDataRoomItem")
 
   @@index([spaceId, folderId])
   @@unique([id, spaceId, userId])
@@ -3318,12 +3321,13 @@ model CompanyEntity {
   visibility        String          @default("private")
   lockedFields      String[]        @default([])
   confirmedAt       DateTime?
+  confirmedByUserId String?
   contactId         String?
-  contact           Contact?        @relation("CompanyEntityContact", fields: [contactId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: Restrict)
+  contact           Contact?        @relation("CompanyEntityContact", fields: [contactId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
   legalContractId   String?
-  legalContract     LegalContract?  @relation("CompanyEntityLegalContract", fields: [legalContractId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: Restrict)
+  legalContract     LegalContract?  @relation("CompanyEntityLegalContract", fields: [legalContractId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
   dataRoomItemId    String?
-  dataRoomItem      DataRoomItem?   @relation("CompanyEntityDataRoomItem", fields: [dataRoomItemId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: Restrict)
+  dataRoomItem      DataRoomItem?   @relation("CompanyEntityDataRoomItem", fields: [dataRoomItemId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
   identities        CompanyIdentity[]
@@ -3348,12 +3352,13 @@ model CompanyIdentity {
   owner          SpaceMember   @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
   entityId       String
   entity         CompanyEntity @relation(fields: [entityId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
+  entityKind     String
   identityType   String
   identityValue  String
   createdAt      DateTime      @default(now())
 
   @@unique([id, spaceId, ownerUserId])
-  @@unique([spaceId, ownerUserId, identityType, identityValue])
+  @@unique([spaceId, ownerUserId, entityKind, identityType, identityValue])
   @@index([entityId, spaceId, ownerUserId])
   @@map("company_identities")
 }
@@ -3375,6 +3380,11 @@ model CompanyEdge {
   endsPrecision  String?
   role           String?
   confidence     Float
+  status         String          @default("suggested")
+  visibility     String          @default("private")
+  lockedFields   String[]        @default([])
+  confirmedByUserId String?
+  confirmedAt    DateTime?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
 
@@ -3394,13 +3404,18 @@ model CompanyEvent {
   kind             String
   title            String
   normalizedTitle  String
-  occursOn         DateTime           @db.Date
-  occursPrecision  String
+  occursOn         DateTime?          @db.Date
+  occursPrecision  String?
   endsOn           DateTime?          @db.Date
   endsPrecision    String?
   amountCents      BigInt?
   currency         String?
   confidence       Float
+  status           String             @default("suggested")
+  visibility       String             @default("private")
+  lockedFields     String[]           @default([])
+  confirmedByUserId String?
+  confirmedAt      DateTime?
   createdAt        DateTime           @default(now())
   updatedAt        DateTime           @updatedAt
   entityLinks      CompanyEventEntity[]
@@ -3437,11 +3452,11 @@ model CompanyEvidence {
   stance          String        @default("supports")
   sourceKind      String
   connectionId    String?
-  connection      Connection?   @relation(fields: [connectionId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: Restrict)
+  connection      Connection?   @relation(fields: [connectionId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
   mcpServerId     String?
-  mcpServer       McpServer?    @relation(fields: [mcpServerId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: Restrict)
+  mcpServer       McpServer?    @relation(fields: [mcpServerId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
   dataRoomItemId  String?
-  dataRoomItem    DataRoomItem? @relation("CompanyEvidenceDataRoomItem", fields: [dataRoomItemId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: Restrict)
+  dataRoomItem    DataRoomItem? @relation("CompanyEvidenceDataRoomItem", fields: [dataRoomItemId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
   sourceItemId    String
   sourceKey       String
   sourceUrl       String?
@@ -3451,6 +3466,8 @@ model CompanyEvidence {
   extractorRunId  String?
   extractorModel  Json?
   confidence      Float
+  confirmedByUserId String?
+  confirmedAt      DateTime?
   createdAt       DateTime      @default(now())
 
   @@unique([id, spaceId, ownerUserId])
@@ -3471,6 +3488,12 @@ model CompanyCandidate {
   entityIds    String[]
   proposedFact Json
   sourceKind   String
+  connectionId String?
+  connection   Connection? @relation("CompanyCandidateConnection", fields: [connectionId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  mcpServerId  String?
+  mcpServer    McpServer?  @relation("CompanyCandidateMcpServer", fields: [mcpServerId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
+  dataRoomItemId String?
+  dataRoomItem DataRoomItem? @relation("CompanyCandidateDataRoomItem", fields: [dataRoomItemId, spaceId, ownerUserId], references: [id, spaceId, userId], onDelete: SetNull)
   sourceItemId String
   sourceKey    String
   quote        String
@@ -3506,6 +3529,8 @@ model CompanyRejection {
   space           Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   ownerUserId     String
   owner           SpaceMember @relation(fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
+  factKind        String      @default("entity")
+  entityKind      String?
   fingerprint     String
   identityAliases String[]
   reason          String?
