@@ -272,11 +272,18 @@ const ADDRESS_POOL_EXHAUSTED = [
 ];
 const PORT_IN_USE = ["address already in use", "port is already allocated", "bind for 127.0.0.1"];
 
+/** The image named by a "No such image: <ref>" daemon error, or null. */
+export function missingImageName(output: string): string | null {
+  return /no such image: ([\w./:@-]+)/i.exec(output)?.[1] ?? null;
+}
+
 /** Docker output can contain paths and hostnames, so callers map kinds to fixed messages. */
 export function classifyDockerFailure(output: string): DockerFailureKind {
   const text = output.toLowerCase();
   const matches = (needles: string[]) => needles.some((needle) => text.includes(needle));
   if (matches(SOCKET_PERMISSION)) return "socket-permission";
+  // "error during connect: ... No such image" comes from a running daemon.
+  if (text.includes("no such image")) return "image-not-found";
   if (matches(DAEMON_DOWN)) return "daemon-down";
   if (matches(COMPOSE_MISSING)) return "compose-missing";
   if (matches(PORT_IN_USE)) return "port-in-use";

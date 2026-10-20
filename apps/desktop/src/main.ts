@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { DesktopReachability, DesktopSetup } from "@rakazo/contracts";
@@ -16,6 +16,7 @@ import { DOCKER_INSTALL_LINKS, isDesktopSetupLink, runDocker } from "./docker-cl
 import { requestLocalSettings } from "./local-settings.js";
 import {
   LocalStackController,
+  readStackImages,
   readStackToken,
   readStackWebUrl,
   resolveImageTag,
@@ -169,7 +170,9 @@ async function resolveSessionForTarget(targetUrl: string) {
   const origin = safeOrigin(targetUrl);
   if (origin !== null) {
     try {
-      const defaultCookies = await session.defaultSession.cookies.get({ url: origin });
+      const defaultCookies = await session.defaultSession.cookies.get({
+        url: origin,
+      });
       if (defaultCookies.length > 0) {
         await writeFile(legacyDefaultSessionFlag(partition), new Date().toISOString(), "utf8");
         return { partition: null, value: session.defaultSession };
@@ -961,6 +964,9 @@ function safeOrigin(targetUrl: string) {
 app.whenReady().then(async () => {
   installSessionPermissions(session.defaultSession, permissionTarget);
   const userDataDir = app.getPath("userData");
+  const stackImages = readStackImages(
+    JSON.parse(readFileSync(path.join(app.getAppPath(), "package.json"), "utf8")),
+  );
   localStack = new LocalStackController({
     platform: process.platform,
     env: process.env,
@@ -978,8 +984,9 @@ app.whenReady().then(async () => {
     imageTag: resolveImageTag({
       version: app.getVersion(),
       packaged: app.isPackaged,
-      override: process.env.RAKAZO_IMAGE_TAG,
+      override: process.env.RAKAZO_IMAGE_TAG || stackImages?.tag,
     }),
+    images: stackImages,
     probe: (url, signal, token) => probeManagedStack(url, token, signal),
     randomHex: (bytes) => randomBytes(bytes).toString("hex"),
     onState: (state) => {
@@ -1181,7 +1188,9 @@ app.whenReady().then(async () => {
 
       // Open before persisting so a failed renderer load keeps the last working setup.
       currentSetup = openSetup;
-      const opened = await appOpener.open(openSetup.serverUrl, { switching: true });
+      const opened = await appOpener.open(openSetup.serverUrl, {
+        switching: true,
+      });
       if (!opened) {
         currentSetup = previousSetup;
         return {
