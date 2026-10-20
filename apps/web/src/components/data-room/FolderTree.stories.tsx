@@ -4,6 +4,7 @@ import { userEvent, within } from "storybook/test";
 import { folders } from "../../stories/fixtures/data-room";
 import { FolderTree } from "./FolderTree";
 import { folderNodes } from "./folders";
+import { ResizableFolders } from "./ResizableFolders";
 
 const meta = {
   title: "DataRoom/FolderTree",
@@ -31,4 +32,21 @@ export const FolderMenuOpen: StoryObj = {
     const contracts = await within(canvasElement).findByRole("treeitem", { name: /Contracts/ });
     await userEvent.pointer({ keys: "[MouseRight]", target: contracts });
   },
+};
+
+/** The column's end edge is a handle: drag it, use the arrow keys, or double-click to reset. */
+export const Resizable: StoryObj = {
+  render: () => (
+    <div className="flex h-96 w-full border border-border">
+      <div className="border-e border-border">
+        <ResizableFolders>
+          <FolderTree
+            nodes={folderNodes(folders)}
+            selected="fld_sample"
+            onSelect={() => undefined}
+          />
+        </ResizableFolders>
+      </div>
+    </div>
+  ),
 };

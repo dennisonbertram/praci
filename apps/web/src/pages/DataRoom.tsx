@@ -31,8 +31,10 @@ import { ItemDialog, isFolder, NewFolderDialog } from "../components/data-room/I
 import type { ItemAction } from "../components/data-room/ItemMenu";
 import type { RowInteraction } from "../components/data-room/ItemRows";
 import { GridView, ListView, SubfolderList } from "../components/data-room/ItemRows";
+import { PathBar } from "../components/data-room/PathBar";
 import { Preview } from "../components/data-room/Preview";
 import { ProcessingStrip } from "../components/data-room/ProcessingStrip";
+import { ResizableFolders } from "../components/data-room/ResizableFolders";
 import type { SendTarget } from "../components/data-room/SendToAgent";
 import {
   setOpenDataRoomFolder,
@@ -584,14 +586,16 @@ export function DataRoomPage({
           />
           <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
             <div className="hidden self-stretch border-e border-border @min-[800px]/bd:flex">
-              <FolderTree
-                nodes={nodes}
-                selected={filters.folderId}
-                onSelect={(folderId) => setFilters({ ...filters, folderId })}
-                onAction={(kind, folder) => setAction({ kind, item: folder })}
-                onNewFolder={() => setCreatingFolder(true)}
-                onAutoSort={() => setAutoSorting(true)}
-              />
+              <ResizableFolders>
+                <FolderTree
+                  nodes={nodes}
+                  selected={filters.folderId}
+                  onSelect={(folderId) => setFilters({ ...filters, folderId })}
+                  onAction={(kind, folder) => setAction({ kind, item: folder })}
+                  onNewFolder={() => setCreatingFolder(true)}
+                  onAutoSort={() => setAutoSorting(true)}
+                />
+              </ResizableFolders>
             </div>
             {showStats ? (
               <div
@@ -620,6 +624,11 @@ export function DataRoomPage({
                 data-testid="data-room-list"
                 className="@container/list rk-scroll min-w-0 flex-1 overflow-y-auto"
               >
+                <PathBar
+                  nodes={nodes}
+                  folderId={filters.folderId}
+                  onSelect={(folderId) => setFilters({ ...filters, folderId })}
+                />
                 <ImportActivity
                   imports={importActivity.imports}
                   onOpenItem={openImported}

@@ -80,7 +80,7 @@ function BarRows({
             />
             <span className="relative min-w-0 flex-1 truncate text-start">{row.label}</span>
             <span className="relative text-muted-foreground tabular-nums">
-              {row.text ?? row.count}
+              {row.text ?? new Intl.NumberFormat(i18n.locale || undefined).format(row.count)}
             </span>
           </>
         );
