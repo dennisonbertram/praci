@@ -18,5 +18,7 @@ done
 if [[ -f "$SRC/homes.tgz" ]]; then
   tar -xzf "$SRC/homes.tgz" -C "$ROOT"
 fi
+# Put objects back before the application starts; any failure stops the restore here.
+node "$ROOT/scripts/s3-objects.mjs" restore "$SRC" --dotenv "$ROOT/.env"
 "${compose[@]}" up -d
 echo "Restore complete from $SRC"

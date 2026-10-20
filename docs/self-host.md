@@ -550,9 +550,17 @@ storage is follow-up work; the transcripts are unencrypted, so leave recording o
 ./scripts/backup.sh
 ```
 
-This dumps Postgres (`pg_dump`) and archives `data/` into `backups/<stamp>/`. A missing
-`data/` produces an empty archive; database or archive errors fail the backup. Discard the
-output directory of any failed run.
+This dumps Postgres (`pg_dump`), archives `data/`, and exports every object in the configured
+`RAKAZO_S3_*` bucket (under `RAKAZO_S3_PREFIX` if set) into `backups/<stamp>/objects/`, with an
+`objects.manifest.json` listing each key, size, and etag. Object export uses Node and needs no extra
+tools. The bundled store is not published on the host, so set `RAKAZO_BACKUP_S3_ENDPOINT` to an
+address the host can reach. With no object storage configured, the export is skipped. Any database,
+archive, or object error fails the backup; discard the output directory of a failed run.
+
+`./scripts/restore.sh backups/<stamp>` restores the database, `data/`, and objects (it overwrites
+matching keys and deletes nothing). The production backup (`infra/compose/backup-prod.sh`) exports
+objects the same way into the snapshot; restore them with
+`node scripts/s3-objects.mjs restore <snapshot> --dotenv .env`.
 
 ## Public single-VM deployment
 
