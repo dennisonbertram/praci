@@ -1,11 +1,33 @@
 import { t } from "@lingui/core/macro";
 import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
-import { DATA_ROOM_CHANGED, DataRoomUploadError, uploadToDataRoom } from "../../lib/data-room";
+import {
+  DATA_ROOM_CHANGED,
+  DataRoomUploadError,
+  dataRoomImportStarted,
+  uploadToDataRoom,
+} from "../../lib/data-room";
 import { rpc, selectedSpaceId } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { folderNodes } from "./folders";
 
-export type UploadFailure = "too-large" | "invalid" | "folder-gone" | "failed";
+export type UploadFailure =
+  | "too-large"
+  | "invalid"
+  | "folder-gone"
+  | "zip-too-large"
+  | "zip-encrypted"
+  | "zip-unsafe"
+  | "zip-invalid"
+  | "failed";
+const UPLOAD_FAILURES = [
+  "too-large",
+  "invalid",
+  "folder-gone",
+  "zip-too-large",
+  "zip-encrypted",
+  "zip-unsafe",
+  "zip-invalid",
+];
 export type UploadToast = {
   id: number;
   name: string;
@@ -108,6 +130,9 @@ async function uploadOne(file: File, folderId: string | undefined) {
   };
   // The server enforces the limit; this only avoids sending a file that will be refused.
   if (file.size > DATA_ROOM_UPLOAD_MAX_BYTES) return fail("too-large");
+  // A zip is unpacked while the request is open: let the import row show its progress.
+  const isZip = /\.zip$/i.test(file.name);
+  if (isZip) dataRoomImportStarted();
   try {
     const { item, duplicate } = await uploadToDataRoom(file, folderId, (fraction) => {
       if (current()) update(id, { kind: "uploading", fraction });
@@ -134,12 +159,12 @@ async function uploadOne(file: File, folderId: string | undefined) {
         : {}),
     });
     window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
+    if (isZip) dataRoomImportStarted();
     dismissLater(id, DONE_TOAST_MS);
   } catch (error) {
     if (!current()) return;
     const reason =
-      error instanceof DataRoomUploadError &&
-      ["too-large", "invalid", "folder-gone"].includes(error.message)
+      error instanceof DataRoomUploadError && UPLOAD_FAILURES.includes(error.message)
         ? (error.message as UploadFailure)
         : "failed";
     fail(reason);

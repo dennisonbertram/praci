@@ -8687,6 +8687,22 @@ msgstr "此订阅登录在 Rakazo 中尚不可用。请使用部署凭据或选�
 msgid "This week"
 msgstr ""
 
+#: src/components/data-room/DropZone.tsx
+msgid "This zip can't be read"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip has unsafe file paths"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip is password-protected"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip is too large to unpack"
+msgstr ""
+
 #: src/pages/Board.tsx
 msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
 msgstr ""

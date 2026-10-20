@@ -27,6 +27,22 @@ describe("attachment helpers", () => {
     expect(() => decodeAttachmentBase64("aGVsbG8")).toThrow(AttachmentValidationError);
   });
 
+  it("types a zip from any of the names browsers and phones report", () => {
+    for (const reported of [
+      "application/zip",
+      "application/x-zip-compressed",
+      "application/x-zip",
+      "multipart/x-zip",
+    ]) {
+      expect(inferAttachmentMimeType("bundle.zip", reported)).toBe("application/zip");
+    }
+    expect(inferAttachmentMimeType("bundle.ZIP", "application/octet-stream")).toBe(
+      "application/zip",
+    );
+    expect(inferAttachmentMimeType("bundle.zip")).toBe("application/zip");
+    expect(attachmentExtensionForMimeType("application/zip")).toBe(".zip");
+  });
+
   it("validates a large base64 payload without blowing the stack", () => {
     // Regression test: the original validator used a grouped-repetition regex
     // (`/^(?:[chars]{4})*(...)?$/`) that stack-overflows V8 on inputs in the
