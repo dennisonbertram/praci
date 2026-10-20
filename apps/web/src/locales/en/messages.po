@@ -8885,6 +8885,10 @@ msgstr "Verifying…"
 msgid "Version"
 msgstr "Version"
 
+#: src/components/integrations/parts.tsx
+msgid "via {provider}"
+msgstr "via {provider}"
+
 #: src/components/integrations/McpDetail.tsx
 msgid "via MCP · {host}"
 msgstr "via MCP · {host}"

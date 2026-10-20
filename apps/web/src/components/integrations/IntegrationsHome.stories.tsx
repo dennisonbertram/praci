@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import {
   mockAssignments,
+  mockCatalog,
   mockConnections,
   mockIntegrations,
   mockServer,
@@ -31,6 +32,34 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+
+const pipedreamApp = {
+  ...mockCatalog[0]!,
+  connectorId: "pipedream",
+  slug: "demo-tracker",
+  name: "Demo Tracker",
+  description: "Track tasks and due dates.",
+};
+
+/** Catalog apps from Composio and Pipedream carry a "via" label; direct apps carry none. */
+export const SourceLabels: Story = {
+  args: {
+    data: mockIntegrations({
+      catalog: [...mockCatalog, pipedreamApp],
+      connections: [
+        ...mockConnections,
+        {
+          ...mockConnections[0]!,
+          id: "conn_4",
+          connectorId: "pipedream",
+          provider: "demo-tracker",
+          displayName: "demo-board",
+        },
+      ],
+      servers: [mockServer("srv_1", "Demo files")],
+    }),
+  },
+};
 
 /** Connected apps (connected, failed, connecting), MCP servers and a source, plus the catalog. */
 export const WithConnections: Story = {
