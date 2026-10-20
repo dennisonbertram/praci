@@ -137,6 +137,39 @@ describePostgres("Data room zip unpacking (PostgreSQL)", () => {
     await prisma.dataRoomFolder.deleteMany({ where: { spaceId } });
   });
 
+  it("creates only the folders that receive a new file when a zip is re-uploaded elsewhere", async () => {
+    const dr = createDataRoomRepos(prisma);
+    const target = await dr.createFolder(owner, { name: `Target ${run}` });
+    const unpackInto = async (zip: Uint8Array) => {
+      await files.fileItem(owner, { ...zipInput("dup.zip", zip), folderId: target.id });
+      const [job] = queuedUnpacks() as [UnpackJob];
+      await unpack(job);
+    };
+    const folderCount = () => prisma.dataRoomFolder.count({ where: owned(owner) });
+    const first = zipSync({ "keep/a.txt": text("dup-a"), "keep/deep/b.txt": text("dup-b") });
+    await unpackInto(first);
+    // Same bytes again, into another folder: every file is a duplicate, so no folder is made.
+    const other2 = await dr.createFolder(owner, { name: `Other ${run}` });
+    const before = await folderCount();
+    await files.fileItem(owner, { ...zipInput("dup.zip", first), folderId: other2.id });
+    await unpack((queuedUnpacks() as [UnpackJob])[0]);
+    expect(await folderCount()).toBe(before);
+    // One new file: only its own folder path appears.
+    await files.fileItem(owner, {
+      ...zipInput("dup2.zip", zipSync({ "keep/a.txt": text("dup-a"), "fresh/new.txt": text("n") })),
+      folderId: other2.id,
+    });
+    await unpack((queuedUnpacks() as [UnpackJob])[0]);
+    expect(await folderCount()).toBe(before + 1);
+    const fresh = await prisma.dataRoomFolder.findFirst({
+      where: { ...owned(owner), parentId: other2.id },
+    });
+    expect(fresh?.name).toBe("fresh");
+    for (const table of [prisma.dataRoomItem, prisma.dataRoomFolder] as const) {
+      await (table as typeof prisma.dataRoomItem).deleteMany({ where: owned(owner) });
+    }
+  });
+
   it("files one item per file, in the zip's folders, for the owner only", async () => {
     const inner = zipSync({ "in.txt": text("inside") });
     const zip = zipSync({

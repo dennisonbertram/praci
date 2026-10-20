@@ -83,6 +83,9 @@ export async function runDataRoomZipUnpack(
   let rejected = Math.max(0, payload.entries - entries.length);
   // Items filed or matched in this run, to tell a repeat inside the zip from a retried entry.
   const seen = new Set<string>();
+  // Folders this run made, in parent-first order; a folder left empty (all duplicates) is removed.
+  const made: string[] = [];
+  const repos = createDataRoomRepos(deps.prisma);
   await setStage({ stage: "adding", currentName: null });
   let lastWrite = Date.now();
   for (const [index, entry] of entries.entries()) {
@@ -105,7 +108,7 @@ export async function runDataRoomZipUnpack(
         ),
         content: { stream: streamZipEntry(source, entry) },
         signal,
-        folderId: await folderAt(actor, payload.folderId, entry.folders),
+        folderId: await folderAt(actor, payload.folderId, entry.folders, made),
         importId: payload.importId,
         ...(payload.sourceConnectionId ? { sourceConnectionId: payload.sourceConnectionId } : {}),
         ...(payload.externalId ? { externalId: `${payload.externalId}#${fullPath}` } : {}),
@@ -127,6 +130,12 @@ export async function runDataRoomZipUnpack(
       });
       rejected += 1;
     }
+  }
+  for (const id of made.reverse()) {
+    // Refuses a folder that holds anything, so only the empty ones go.
+    await repos.deleteFolder(actor, id).catch((error: unknown) => {
+      if (!(error instanceof DataRoomConflictError || error instanceof IsolationError)) throw error;
+    });
   }
   await setStage({ stage: "done", currentName: null });
   await recordImportSkips(deps.prisma, payload.importId, { duplicates, rejected });
