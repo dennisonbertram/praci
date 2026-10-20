@@ -280,7 +280,18 @@ export const MessageBlock = z.discriminatedUnion("kind", [
   }),
   z.object({
     kind: z.literal("steps"),
-    steps: z.array(z.object({ label: z.string(), count: z.number().int().positive() })),
+    steps: z.array(
+      z.object({
+        label: z.string(),
+        count: z.number().int().positive(),
+        /** One-line result of the call, such as "Searched mail · 23 found". */
+        summary: z.string().optional(),
+        /** What the tool did, in order. A failed line keeps its reason. */
+        lines: z
+          .array(z.object({ text: z.string(), failed: z.literal(true).optional() }))
+          .optional(),
+      }),
+    ),
     durationMs: z.number().int().nonnegative().optional(),
   }),
   z.object({

@@ -26,6 +26,7 @@ import type {
   SandboxProvider,
   SecretStore,
   SemanticMemoryProvider,
+  ToolProgress,
   WebProvider,
 } from "@rakazo/adapter-kit";
 import {
@@ -72,6 +73,7 @@ import {
   appendToolCallSegment,
   applyJudgeDecision,
   assertTransition,
+  attachToolNotes,
   blocksToAgentHistoryText,
   botMayUseConnection,
   botMessageAllowsSilence,
@@ -4791,6 +4793,24 @@ export function createRunExecutor(deps: ExecutorDeps) {
           return occurrence;
         };
 
+        /** Lines a tool reports are shown live and kept on its step, so the finished row can list them. */
+        const trackToolProgress = (name: string, observer?: AgentToolExecutionObserver) => {
+          const lines: { text: string; failed?: true }[] = [];
+          let summary: string | undefined;
+          return {
+            progress: (progress: ToolProgress) => {
+              lines.push({
+                text: redactSecrets(progress.text, runSecrets),
+                ...(progress.failed ? { failed: true as const } : {}),
+              });
+              if (progress.summary) summary = redactSecrets(progress.summary, runSecrets);
+              observer?.onProgress?.(progress);
+            },
+            keep: () => {
+              messageSegments = attachToolNotes(messageSegments, name, { lines, summary });
+            },
+          };
+        };
         const applyTool = async (
           name: string,
           args: Record<string, unknown>,
@@ -6129,10 +6149,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return finish({ error: LEGAL_CONSENT_REFUSAL, consentRequired: true });
           }
           if (CALENDAR_TOOL_NAMES.has(name) && deps.connectors && calendarEnabled) {
+            const tracked = trackToolProgress(name, observer);
             return finish(
               await calendarToolFromTool(
                 name,
                 {
+                  progress: tracked.progress,
                   accounts: () => accountsAllowedNow(calendarAccounts(), name),
                   beforeWrite: (account) => writeDenialNow(account, name),
                   connectors: deps.connectors,
@@ -6140,7 +6162,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 },
                 context,
                 args,
-              ),
+              ).finally(tracked.keep),
             );
           }
           if (MAIL_TOOL_NAMES.has(name) && deps.mail && mailEnabled) {
@@ -6153,9 +6175,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
               }
               return finish(refused);
             }
+            const tracked = trackToolProgress(name, observer);
             const result = await mailToolFromTool(
               name,
               {
+                progress: tracked.progress,
                 mail: deps.mail,
                 prisma: deps.prisma,
                 jobs: deps.jobs,
@@ -6168,7 +6192,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
               context,
               args,
-            );
+            ).finally(tracked.keep);
             if (approvedByCard && applied && (name === "mail_send" || name === "mail_draft")) {
               await recordApprovedMailOutcome(deps, run, applied.effect.id, name, result);
             }
@@ -6277,10 +6301,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (DRIVE_TOOL_NAMES.has(name) && deps.connectors && driveEnabled) {
+            const tracked = trackToolProgress(name, observer);
             return finish(
               await driveToolFromTool(
                 name,
                 {
+                  progress: tracked.progress,
                   prisma: deps.prisma,
                   connectors: deps.connectors,
                   accounts: () => accountsAllowedNow(driveAccounts(), name),
@@ -6289,7 +6315,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 },
                 context,
                 args,
-              ),
+              ).finally(tracked.keep),
             );
           }
           if (PAGE_BROWSER_TOOL_NAMES.has(name)) {

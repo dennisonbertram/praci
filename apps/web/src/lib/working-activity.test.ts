@@ -1,4 +1,5 @@
 import type { ThreadMessage } from "@rakazo/contracts";
+import { reduceLiveMessageBlocks } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
 import { workingActivity } from "./working-activity";
 
@@ -79,5 +80,54 @@ describe("workingActivity", () => {
         ]),
       ]),
     ).toEqual({ kind: "tool", label: "Get balance" });
+  });
+
+  it("carries the latest step a Gmail tool reported, and the service it waits on", () => {
+    expect(
+      workingActivity(run, [
+        botMessage([
+          {
+            kind: "progress",
+            text: 'Searching mail: from Kevin · "pick a time"',
+            activity: true,
+            pendingToolNames: ["mail_search"],
+          },
+        ]),
+      ]),
+    ).toEqual({
+      kind: "tool",
+      label: "Mail search",
+      action: "mail-search",
+      detail: 'Searching mail: from Kevin · "pick a time"',
+      service: "Gmail",
+    });
+  });
+
+  it("ends the step line with an exclamation mark without losing it", () => {
+    const blocks = reduceLiveMessageBlocks(
+      [{ kind: "progress", text: "", activity: true, pendingToolNames: ["mail_get"] }],
+      {
+        type: "progress",
+        payload: { text: 'Reading "Welcome!" from hi@example.test', activity: true },
+      },
+    );
+    expect(workingActivity(run, [botMessage(blocks)])).toMatchObject({
+      detail: 'Reading "Welcome!" from hi@example.test',
+    });
+  });
+
+  it("shows no step line for a tool that does not report", () => {
+    expect(
+      workingActivity(run, [
+        botMessage([
+          {
+            kind: "progress",
+            text: "Searching the web: x",
+            activity: true,
+            pendingToolNames: ["web_search"],
+          },
+        ]),
+      ]),
+    ).not.toHaveProperty("detail");
   });
 });

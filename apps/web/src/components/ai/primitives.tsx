@@ -1,5 +1,6 @@
 import { cn } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
+import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import "./beautiful-ui.css";
 
 /* Beautiful UI primitives — hand-ported from beautifului.dev
@@ -33,27 +34,44 @@ export function formatElapsed(startedAtMs: number, nowMs: number): string {
   return `${minutes}m ${seconds.toFixed(1)}s`;
 }
 
-function useElapsed(startedAtMs?: number): string {
-  const [mountedAt] = useState(() => Date.now());
+function useNow(): number {
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 100);
     return () => clearInterval(timer);
   }, []);
-  return formatElapsed(startedAtMs ?? mountedAt, now);
+  return now;
 }
 
-/** Pixel-grid loader (or a custom indicator) with shimmering label and live elapsed timer. */
+/** After this long without a new step, the time since the last one is shown next to it. */
+export const QUIET_SECONDS_SHOWN_AFTER_MS = 15_000;
+/** After this long, the line says the service is slow. */
+export const QUIET_WAITING_AFTER_MS = 45_000;
+
+/** Pixel-grid loader (or a custom indicator) with shimmering label, live elapsed timer and the latest step. */
 function DefaultLoadingState({
   indicator,
   label,
   startedAt,
+  detail,
+  detailSince,
+  waitingLabel,
 }: {
   indicator?: React.ReactNode;
   label: string;
   startedAt?: number;
+  detail?: string;
+  detailSince?: number;
+  waitingLabel?: string;
 }) {
-  const elapsed = useElapsed(startedAt);
+  const [mountedAt] = useState(() => Date.now());
+  const now = useNow();
+  const elapsed = formatElapsed(startedAt ?? mountedAt, now);
+  useHideAmounts();
+  // The quiet time restarts whenever the latest step changes.
+  const [seen, setSeen] = useState({ detail, at: detailSince ?? now });
+  if (seen.detail !== detail) setSeen({ detail, at: Date.now() });
+  const quiet = detail ? now - seen.at : 0;
   return (
     <>
       {indicator ?? (
@@ -67,10 +85,28 @@ function DefaultLoadingState({
           ))}
         </span>
       )}
-      <span className="text-[13.5px] font-medium">
-        <Shimmer>{label}</Shimmer>
+      <span className="flex min-w-0 flex-col">
+        <span className="flex items-baseline gap-2.5">
+          <span className="text-[13.5px] font-medium">
+            <Shimmer>{label}</Shimmer>
+          </span>
+          <span className="font-mono text-[12px] tabular-nums text-muted-foreground">
+            {elapsed}
+          </span>
+        </span>
+        {detail ? (
+          <span
+            data-testid="working-detail"
+            className="line-clamp-2 break-words text-[12px] leading-5 text-muted-foreground"
+          >
+            {maskCurrencyWhenHidden(detail)}
+            {quiet >= QUIET_SECONDS_SHOWN_AFTER_MS ? ` · ${Math.floor(quiet / 1000)}s` : ""}
+            {quiet >= QUIET_WAITING_AFTER_MS && waitingLabel ? (
+              <span data-testid="working-waiting">{` · ${waitingLabel}`}</span>
+            ) : null}
+          </span>
+        ) : null}
       </span>
-      <span className="font-mono text-[12px] tabular-nums text-muted-foreground">{elapsed}</span>
     </>
   );
 }
@@ -79,15 +115,34 @@ export function LoadingState({
   indicator,
   label = "working",
   startedAt,
+  detail,
+  detailSince,
+  waitingLabel,
 }: {
   indicator?: React.ReactNode;
   label?: string;
   /** Epoch ms when the run started. Falls back to mount time when omitted. */
   startedAt?: number;
+  /** The latest step the tool reported, such as "Searching mail: from Kevin". */
+  detail?: string;
+  /** Epoch ms of the step, when it is older than this screen. Falls back to mount time. */
+  detailSince?: number;
+  /** Shown after a long quiet spell, such as "Still waiting on Gmail". */
+  waitingLabel?: string;
 }) {
   return (
-    <span role={indicator ? "status" : undefined} className="flex w-fit items-center gap-2.5">
-      <DefaultLoadingState indicator={indicator} label={label} startedAt={startedAt} />
+    <span
+      role={indicator ? "status" : undefined}
+      className="flex w-fit max-w-full items-center gap-2.5"
+    >
+      <DefaultLoadingState
+        indicator={indicator}
+        label={label}
+        startedAt={startedAt}
+        detail={detail}
+        detailSince={detailSince}
+        waitingLabel={waitingLabel}
+      />
     </span>
   );
 }

@@ -708,7 +708,7 @@ describe("Pi connector tool dispatch", () => {
           cwd ? { command, cwd } : { command },
           JSON.stringify(["pi-tool", "main", "call-1"]),
           undefined,
-          { onShellStillRunning: expect.any(Function) },
+          { onProgress: expect.any(Function), onShellStillRunning: expect.any(Function) },
         ],
       ]);
     },
@@ -747,7 +747,7 @@ describe("Pi connector tool dispatch", () => {
       { collection: "notes", title: "Result", body: "Done" },
       JSON.stringify(["pi-tool", "main", "call-1"]),
       { connectorId: "destination", toolName: "destination.write" },
-      { onShellStillRunning: expect.any(Function) },
+      { onProgress: expect.any(Function), onShellStillRunning: expect.any(Function) },
     );
   });
 
@@ -2060,7 +2060,52 @@ describe("Pi connector tool dispatch", () => {
       },
       JSON.stringify(["pi-tool", "main", "call-1"]),
       undefined,
-      { onShellStillRunning: expect.any(Function) },
+      { onProgress: expect.any(Function), onShellStillRunning: expect.any(Function) },
     );
+  });
+
+  it("shows a step a tool reports while it runs as live activity", async () => {
+    fakeAgentState.invoke = { name: "write_file", args: { path: "a.txt", content: "x" } };
+    const executeTool = vi.fn(
+      async (
+        _name: string,
+        _args: unknown,
+        _id: string,
+        _route: unknown,
+        observer?: { onProgress?: (p: { text: string }) => void },
+      ) => {
+        observer?.onProgress?.({ text: "Searching mail: from Kevin" });
+        return { ok: true };
+      },
+    );
+    const runtime = new PiAgentRuntime();
+    const events: Array<{ type: string; text?: string; activity?: boolean }> = [];
+    for await (const event of runtime.run(
+      {
+        botId: "b",
+        threadId: "t",
+        runId: "r",
+        prompt: "go",
+        instructions: "x",
+        history: [],
+        tools: [writeFileTool],
+        model: { provider: "test", id: "dispatch-test-model" },
+        executeTool,
+      },
+      {
+        operationId: "4",
+        traceId: "4",
+        spaceId: "w",
+        userId: "u",
+        signal: new AbortController().signal,
+      },
+    )) {
+      events.push(event as never);
+    }
+    expect(events).toContainEqual({
+      type: "progress",
+      text: "Searching mail: from Kevin",
+      activity: true,
+    });
   });
 });

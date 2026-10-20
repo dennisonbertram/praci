@@ -15,6 +15,28 @@ export const Failed: Story = { args: { state: "failed" } };
 export const WaitingForApproval: Story = {
   args: { name: "mcp__finance-brex__lock_card", state: "waiting" },
 };
+export const SummaryWithSteps: Story = {
+  args: {
+    name: "mail_search",
+    summary: "Searched mail · 23 found",
+    lines: [
+      { text: 'Searching mail: from Kevin · after Oct 1 · "pick a time"' },
+      { text: "Looking at more results (page 2)" },
+      { text: "Found 23 messages" },
+    ],
+  },
+};
+export const FailedWithReason: Story = {
+  args: {
+    name: "mail_search",
+    state: "failed",
+    lines: [
+      { text: 'Searching mail: "invoice"' },
+      { text: "Gmail is limiting requests, retrying" },
+      { text: "Could not finish this search: Gmail is limiting requests", failed: true },
+    ],
+  },
+};
 export const Repeated: Story = { args: { count: 3 } };
 
 export const Kinds: Story = {
