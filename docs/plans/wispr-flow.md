@@ -4,7 +4,7 @@ Status: plan; no code yet. Written 2026-10-20 against `origin/main` at c39eac258
 
 ## Summary
 
-Wispr Flow is a dictation app that works in any text field, so Rakazo does not need an integration for people to speak into it. It has no connection to Rakazo today and it does not need one to work in the composer. What Rakazo can do is (1) make its own text fields work well with Flow and get out of the way (Mac, Windows, the Electron app, the iOS keyboard), (2) offer Flow as an optional transcription provider behind a provider-neutral interface, if the maintainer's organization is approved for Flow's developer API, and (3) optionally connect Flow's read-only MCP server so an agent can read the user's Flow meeting notes.
+Wispr Flow is a dictation app that works in any text field, so Rakazo does not need an integration for people to speak into it. It has no connection to Rakazo today and it does not need one to work in the composer. What Rakazo can do is (1) make its own text fields work well with Flow and get out of the way (Mac, Windows, the Electron app, the iOS keyboard), (2) offer Flow as an optional transcription provider behind a provider-neutral interface, if the maintainer's organization is approved for Flow's developer API, and (3) sync Flow Notetaker meetings, read through the Flow MCP connection that already exists, into the shared meetings store the Granola epic builds.
 
 The plan does not pretend that a paid Flow plan unlocks more than it does. As far as the public pages show, the consumer plan (Free, Pro, Growth, Enterprise) covers the app and the MCP server; the developer API is a separate product that needs approval from Wispr and is billed by usage. Flow's MCP server explicitly cannot read dictation history, and no public page says the user's personal dictionary can be read. So "what I dictate enriches Rakazo" is already true for the plain reason that dictated text becomes the user's message in Rakazo, and "the vocabulary Flow learns" is not reachable. The plan instead goes the other way: Rakazo supplies its own vocabulary (bot, contact, project names) to the API provider.
 
@@ -39,7 +39,7 @@ Flow is two different things for Rakazo, so the plan has three small routes, eac
 
 1. **Compatibility (always).** The honest integration with the consumer Flow app is to be a good host for it: plain focusable text fields, no global shortcut that collides with Flow's, no competing microphone use, and a switch to hide Rakazo's own dictation. Flow needs nothing from Rakazo to work here, and Rakazo cannot know that Flow is installed, so the switch is manual. This is the part that serves the maintainer on day one.
 2. **Provider (conditional).** The only programmatic way to get Flow's transcription into Rakazo's own mic button and calls is the Voice Interface API. It needs Wispr's approval and is billed separately from the consumer plan, so it ships as one provider behind a provider-neutral transcription interface, with the other existing providers on the same interface. If access is never granted, nothing else in the plan depends on it, and a future in-house dictation implements the same interface.
-3. **Notes (conditional, shared).** Flow's MCP server can give an agent the user's meeting notes. That is the same shape as any other hosted MCP tile (see Zernio's in `apps/web/src/lib/integrations.ts`) and overlaps with the Granola plan, so it is one thin slice that reuses whatever shared meeting-notes primitive the lead settles on.
+3. **Meetings (conditional, shared).** Flow's tile, private agent and a read-only preset already exist on `origin/main` (commit 9344d202a), so the remaining work is not a tile. It is to make Flow Notetaker meetings a second `MeetingSource` that fills the same `Meeting` table the Granola epic (#444) creates, so meetings from both tools are searchable and usable by one set of features.
 
 Not chosen: a Flow SDK or plugin inside Rakazo (none is documented), scraping Flow's local history or dictionary files (undocumented, and would read private data), and importing Flow's dictation history (the MCP server excludes it).
 
@@ -53,7 +53,7 @@ Not chosen: a Flow SDK or plugin inside Rakazo (none is documented), scraping Fl
 | Elio | The voice agent has spawn key `voice-agent:<userId>` (`packages/contracts/src/voice-agent.ts`) and a call card (`apps/web/src/components/call/CallCard.tsx`, `apps/web/src/lib/call-session.ts`). A call is speech in, an ordinary agent chat out. |
 | Consent | `AiDataUse` includes `voice`: "Your recordings are sent for transcription..." (`packages/contracts/src/ai-consent.ts`). Voice is gated by it already. |
 | Settings | Voice settings exist (`voice.catalog`, `voice.status`, `voice.credentials`, `voice.setSpeechModel`, `packages/contracts/src/rpc.ts:1316`). Keys are stored per user as credentials. |
-| MCP | First-party hosted MCP tiles are listed in `FIRST_PARTY_MCP` (`apps/web/src/lib/integrations.ts`). Integration presets restrict tools per server (`packages/contracts/src/integration-agent.ts`, `packages/adapters/src/mcp-connector.ts`). |
+| MCP | The Flow tile already exists: `wisprflow` in `FIRST_PARTY_MCP` (`apps/web/src/lib/integrations.ts:176`), `packages/contracts/src/wispr-flow.ts` (endpoint, `isWisprFlowEndpoint`, `WISPR_FLOW_READ_NAME`), `INTEGRATION_PRESETS.wisprflow` in `packages/contracts/src/integration-agent.ts` with its tests (`integration-agent.test.ts:231`), and a private agent per connection. The preset counts a tool as a read by `readOnlyHint` or a read-verb name until the tool list is pinned (a TODO in `wispr-flow.ts`). Presets restrict tools per server (`packages/adapters/src/mcp-connector.ts`). |
 | Memory | `MemoryDocument` is scoped by space, user and optional bot (`packages/db/prisma/schema.prisma:1055`). Nothing in this plan writes to it. |
 
 ## Design
@@ -95,13 +95,13 @@ Other compatibility work, each checked in the slice:
 - Text read from Flow's MCP server (meeting notes, transcripts of other people speaking, calendar entries written by third parties) is untrusted data in agent prompts, the same as any MCP result. It is read-only by Flow's own design; the Rakazo preset also allows only read tools, with write tools absent from the allowlist.
 - `beforeText` sent to a provider is capped and comes only from the field the user is dictating into; it is never stored by Rakazo with the transcription.
 
-### 6. Notes over Flow's MCP (conditional)
+### 6. Flow meetings as a second `MeetingSource` (conditional)
 
-A `FIRST_PARTY_MCP` tile for Flow with endpoint `https://api.wisprflow.ai/connect/mcp`, section "notes" or whichever the Granola plan uses, and a read-only preset. Tool names are unknown (the help center names none), so step 0 of the slice is to connect once on a dev stack and record `tools/list` and the OAuth registration method; the preset allowlist is written from that, not guessed. If Flow's authorization does not work with Rakazo's MCP OAuth client (open question), the slice stops at documenting that and files a follow-up.
+The tile, preset and agent exist; this section adds only what is missing. Step 0 is to connect once on a dev stack, record `tools/list` and the OAuth registration method, and replace the `readOnlyHint` or read-verb heuristic in `INTEGRATION_PRESETS.wisprflow` with an exact allowlist of the real read tools. Then implement a `MeetingSource` (the neutral interface from Granola #437: list changed meetings, get one) over those MCP read tools, so Flow Notetaker meetings sync into the same `Meeting` table with `provider: "wisprflow"`. Vendor names appear only in the adapter and the composition root. The adapter calls the MCP server with the user's own connection, read-only. The offline test pattern is the emulator from Granola #438: a fake MCP server that answers the recorded `tools/list` and invented outputs. If the output shapes cannot be mapped deterministically (the help center documents capabilities, not fields), the slice stops after pinning the allowlist and files a follow-up; the existing tile and agent keep working either way.
 
-## Shared primitive with the Granola plan
+## Shared meetings store (resolved)
 
-Flow's MCP and Granola both expose "meetings the user attended, with notes and transcripts". If the Granola plan introduces a generic external meeting-notes source (a normalized meeting record, an untrusted-data wrapper for transcripts, a read-only preset helper), S5 here should use it instead of making its own. This plan does not define it and does not file an issue for it. A transcript store for dictation is deliberately not proposed: nothing here keeps what the user dictated beyond the message it becomes.
+The lead decided on one shared store. The Granola epic (#444) owns it: #437 adds the `Meeting` table and the provider-neutral `MeetingSource` interface, and #438 adds the emulator pattern for offline fixtures (see `docs/plans/granola.md` on branch `docs/granola-plan`). This plan defines nothing new for it and files no issue for it; S5 consumes it. Meetings stay private to the user who connected the source, with `spaceId` and `userId` on every row, as that plan specifies. A transcript store for dictation is deliberately not proposed: nothing here keeps what the user dictated beyond the message it becomes.
 
 ## Slices
 
@@ -153,12 +153,13 @@ Story: Faster (names spelled right), Trustworthy (scoped, private).
 - Behaviour: the list contains the actor's visible bot, contact and project names only, deduplicated and capped; another user's or space's names never appear; `beforeText` is passed only when the provider's recipient disclosure was accepted; nothing is stored.
 - Tests first: Postgres test for scoping (two spaces, two users) in the style of `inbox-agent.postgres.test.ts`; unit test for cap and dedupe.
 
-### S5. Flow MCP tile for meeting notes (conditional)
+### S5. Wispr Flow meetings as a second MeetingSource (conditional)
 
-Story: Faster. Step 0: connect once on a dev stack and record `tools/list` and the OAuth registration method; stop and write a follow-up if Flow's authorization does not work with the MCP client. After the Granola plan's shared primitive lands, if it does.
+Story: Faster. Prerequisite: Granola #437 (the `Meeting` table and `MeetingSource`); follow #438's emulator pattern for fixtures. Step 0: connect once on a dev stack, record `tools/list` and the OAuth registration method, and pin `INTEGRATION_PRESETS.wisprflow` to the real read tools, replacing the `readOnlyHint` or read-verb heuristic. If the MCP output shapes cannot be mapped deterministically, stop after pinning the allowlist and file a follow-up.
 
-- Owns: `apps/web/src/lib/integrations.ts` (tile), `packages/contracts/src/integration-agent.ts` (read-only preset from the recorded tool list), tests next to the Zernio and Carta ones, `apps/web/e2e/integrations.spec.ts` (tile visible).
-- Behaviour: the tile opens the connection dialog prefilled; the preset lists read tools only; results are treated as untrusted data in agent prompts; with writes off by default there is nothing to turn on (Flow's server is read-only).
+- Owns: `packages/contracts/src/integration-agent.ts` and `packages/contracts/src/wispr-flow.ts` (exact allowlist, remove the heuristic and its TODO), `packages/contracts/src/integration-agent.test.ts` (the existing Flow cases), `packages/adapters/src/wispr-flow-meeting-source.ts` (new, a `MeetingSource` over the MCP read tools) and its test, a fake Flow MCP server for the conformance test beside the Granola emulator, and the sync registration that the Granola sync job (#437 follow-ups) exposes for a second provider. Does not touch the existing tile in `apps/web/src/lib/integrations.ts`.
+- Behaviour: only allowlisted read tools are callable, even with all tools allowed; the source maps Flow meetings (summary, notes, attendees, transcript when readable) into the neutral shape and writes `Meeting` rows with `provider: "wisprflow"`, idempotent by external id; a mapping error is typed and writes no rows; transcripts the account may not read (sharing rules) sync as summary only; every query is scoped to `spaceId` and `userId`; meeting text stays untrusted data; Flow's server is read-only and cannot return dictation history, which the PR states rather than implies.
+- Tests first: the shared `MeetingSource` conformance suite from #437 against the fake Flow MCP server; preset allow and deny cases for each pinned tool and a made-up name; an invented-fixture mapping test including a summary-only meeting.
 
 ### S6. Manual checklist for real Flow
 
@@ -167,11 +168,11 @@ Story: Trustworthy (do not claim what CI cannot see). Docs only. Owns `docs/wisp
 ## Waves and shared-file ordering
 
 1. S0, then S1 and S2 in parallel (they share no file).
-2. S4 after S1 (shares `apps/api/src/voice.ts`). S3a after S1, and only with API access. S5 independent of the rest and after the Granola primitive if one lands.
+2. S4 after S1 (shares `apps/api/src/voice.ts`). S3a after S1, and only with API access. S5 independent of the dictation slices but after Granola #437 (and #438's emulator pattern).
 3. S3b after S3a (shares `dictation.ts` and `call-session.ts` with S2, so after S2 too).
 4. S6 last, run on real devices.
 
-Shared files: `apps/api/src/voice.ts` (S1, S3a, S4 in that order), `packages/adapters/src/voice-factory.ts` (S1, S3a), `apps/web/src/lib/dictation.ts` (S2, then S3b), `apps/web/src/lib/call-session.ts` and `apps/mobile/lib/call-session.ts` (S3b only), `apps/web/src/lib/integrations.ts` (S5, and the Granola plan's tile).
+Shared files: `apps/api/src/voice.ts` (S1, S3a, S4 in that order), `packages/adapters/src/voice-factory.ts` (S1, S3a), `apps/web/src/lib/dictation.ts` (S2, then S3b), `apps/web/src/lib/call-session.ts` and `apps/mobile/lib/call-session.ts` (S3b only), `packages/contracts/src/integration-agent.ts` (S5; the Granola epic edits the same file for its own preset) and the `Meeting` table and sync job owned by Granola #437 (S5 consumes them).
 
 ## Tests and verification
 
@@ -191,6 +192,6 @@ A WebSocket streaming client (the REST path matches the current record-then-uplo
 2. The API hostname, rate limits and audio retention are not on any page read here. Ask Wispr when requesting access, and record the answers in the S3a PR.
 3. Does Flow's MCP authorization work with Rakazo's MCP OAuth client? The pages say browser sign-in with no API key but do not name the registration method. S5 step 0 answers it.
 4. Is "Use system dictation" acceptable as a manual switch, or should the desktop app try to detect a running Flow process (needs a process listing permission and is not documented as supported)?
-5. Should S5 wait for the Granola plan's shared meeting-notes primitive or ship the tile alone first?
+5. Resolved: S5 builds on the shared meetings store owned by the Granola epic (#444); it waits for #437.
 6. Which Flow hotkey does the maintainer use? S2 checks Rakazo's shortcuts against it; the help center's hotkey page (https://docs.wisprflow.ai/articles/2612050838-supported-unsupported-keyboard-hotkey-shortcuts) was listed but not read for this plan.
 7. Does Flow Notetaker's weekly limit on the Free plan matter for S5? Pricing pages differ by date; re-check before telling users which plan they need.
