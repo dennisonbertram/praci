@@ -372,10 +372,11 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
         });
         continue;
       }
-      // Sendblue's consecutive-outbound vendor cap; other providers have no
+      // Consecutive-outbound cap for the iMessage lines (a vendor limit on
+      // Sendblue, a runaway guard on BlueBubbles); other providers have no
       // equivalent limit, so do not hold Slack/WhatsApp/Telegram DMs.
       if (
-        identity.provider === "sendblue" &&
+        (identity.provider === "sendblue" || identity.provider === "bluebubbles") &&
         identity.outboundSinceInbound >= MESSAGING_DM_OUTBOUND_CAP
       ) {
         // Cap holds are not failures: release the claim back to pending.
@@ -403,7 +404,10 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
         }
         continue;
       }
-      const sent = await deps.messaging.sendToThread({ threadId, body: row.body }, context);
+      const sent = await deps.messaging.sendToThread(
+        { threadId, body: row.body, idempotencyKey: row.id },
+        context,
+      );
       await deps.prisma.messagingOutbound.updateMany({
         where: { id: row.id },
         data: { providerHandle: sent.handle },

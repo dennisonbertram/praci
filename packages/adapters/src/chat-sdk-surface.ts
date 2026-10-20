@@ -14,6 +14,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import type { Adapter, Message, Thread } from "chat";
 import { Chat } from "chat";
+import { sendIdempotency } from "./bluebubbles-adapter.js";
 
 /** Per-webhook drain of Chat SDK waitUntil work + inbound sink failures. */
 const webhookDrain = new AsyncLocalStorage<{
@@ -135,7 +136,12 @@ export class ChatSdkMessagingSurface implements MessagingSurface {
     _context: AdapterContext,
   ): Promise<MessagingSendResult> {
     await this.ensureInitialized();
-    const sent = await this.chat.thread(request.threadId).post(request.body);
+    // The adapter derives per-chunk send ids from the outbox key, so a retry of
+    // a half-sent reply does not repeat the chunks that already went out.
+    const post = () => this.chat.thread(request.threadId).post(request.body);
+    const sent = await (request.idempotencyKey
+      ? sendIdempotency.run(request.idempotencyKey, post)
+      : post());
     const handle = "id" in sent && typeof sent.id === "string" ? sent.id : "";
     return { handle };
   }

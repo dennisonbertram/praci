@@ -64,6 +64,9 @@ export interface AppEnv {
   sendblueApiSecret: string | undefined;
   sendblueSigningSecret: string | undefined;
   sendbluePhoneNumber: string | undefined;
+  bluebubblesUrl: string | undefined;
+  bluebubblesPassword: string | undefined;
+  bluebubblesWebhookToken: string | undefined;
   smtpUrl: string | undefined;
   emailFrom: string | undefined;
   /** Billing turns on only when all three are set; self-hosted installs leave them unset. */
@@ -206,6 +209,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     sendblueApiSecret: optional(source.SENDBLUE_API_SECRET),
     sendblueSigningSecret: optional(source.SENDBLUE_SIGNING_SECRET),
     sendbluePhoneNumber: optional(source.SENDBLUE_PHONE_NUMBER),
+    bluebubblesUrl: optional(source.BLUEBUBBLES_URL),
+    bluebubblesPassword: optional(source.BLUEBUBBLES_PASSWORD),
+    bluebubblesWebhookToken: optional(source.BLUEBUBBLES_WEBHOOK_TOKEN),
     smtpUrl: optional(source.SMTP_URL),
     emailFrom: optional(source.EMAIL_FROM),
     stripeSecretKey: optional(source.STRIPE_SECRET_KEY),

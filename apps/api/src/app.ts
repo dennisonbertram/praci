@@ -29,6 +29,7 @@ import {
   createAgentHomeStore,
   createArtifactStore,
   createBackgroundJobHandlers,
+  createBlueBubblesPollState,
   createCloudAgentConnection,
   createConnectorStack,
   createFinanceCallToolFor,
@@ -348,7 +349,10 @@ export async function createApp(
   // so it's the one that must hold Telegram's live getUpdates connection —
   // see messagingPlatformsFromEnv's docstring for why a second poller
   // elsewhere (e.g. the worker) would actively break this.
-  const messagingPlatforms = messagingPlatformsFromEnv(env, { pollInboundMessages: true });
+  const messagingPlatforms = messagingPlatformsFromEnv(env, {
+    pollInboundMessages: true,
+    bluebubblesPollState: createBlueBubblesPollState(prisma),
+  });
   const messaging =
     messagingOverride ??
     (isMessagingSurfaceEnabled(messagingPlatforms, {

@@ -854,7 +854,10 @@ export interface MessagingPlatformDescriptor {
 export interface MessagingSendRequest {
   threadId: string;
   body: string;
-  /** Stable key so retries of the same logical send can be deduped upstream. */
+  /**
+   * Stable and unique per outbox row (its id), never a business key that is reused across
+   * cycles, so a retry of this send can be recognized and a different send cannot.
+   */
   idempotencyKey?: string;
 }
 

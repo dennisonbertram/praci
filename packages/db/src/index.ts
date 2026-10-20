@@ -21,6 +21,7 @@ export * from "./legal.js";
 export * from "./memory-config.js";
 export * from "./messages.js";
 export * from "./messaging.js";
+export * from "./messaging-claims.js";
 export * from "./model-backups.js";
 export * from "./model-credentials.js";
 export * from "./notification-live.js";

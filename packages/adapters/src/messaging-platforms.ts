@@ -3,9 +3,15 @@ import { createTelegramAdapter } from "@chat-adapter/telegram";
 import { createWhatsAppAdapter } from "@chat-adapter/whatsapp";
 import type { MessagingInboundMessage, MessagingOutboundStatus } from "@rakazo/adapter-kit";
 import { asRecord } from "@rakazo/core";
+import { getLogger } from "@rakazo/logging";
 import type { Adapter } from "chat";
 import { createLarkAdapter, Domain } from "chat-adapter-lark";
 import { createSendblueAdapter } from "chat-adapter-sendblue";
+import {
+  BlueBubblesAdapter,
+  type BlueBubblesPollState,
+  bluebubblesTransport,
+} from "./bluebubbles-adapter.js";
 import type { MessagingPlatform } from "./chat-sdk-surface.js";
 import { isVitestRuntime } from "./test-runtime.js";
 
@@ -18,6 +24,9 @@ export interface MessagingEnvironmentValues {
   sendblueApiSecret?: string | undefined;
   sendblueSigningSecret?: string | undefined;
   sendbluePhoneNumber?: string | undefined;
+  bluebubblesUrl?: string | undefined;
+  bluebubblesPassword?: string | undefined;
+  bluebubblesWebhookToken?: string | undefined;
   slackBotToken?: string | undefined;
   slackSigningSecret?: string | undefined;
   whatsappAccessToken?: string | undefined;
@@ -44,6 +53,9 @@ export function messagingEnvFromProcess(
     sendblueApiSecret: clean(env.SENDBLUE_API_SECRET),
     sendblueSigningSecret: clean(env.SENDBLUE_SIGNING_SECRET),
     sendbluePhoneNumber: clean(env.SENDBLUE_PHONE_NUMBER),
+    bluebubblesUrl: clean(env.BLUEBUBBLES_URL),
+    bluebubblesPassword: clean(env.BLUEBUBBLES_PASSWORD),
+    bluebubblesWebhookToken: clean(env.BLUEBUBBLES_WEBHOOK_TOKEN),
     slackBotToken: clean(env.SLACK_BOT_TOKEN),
     slackSigningSecret: clean(env.SLACK_SIGNING_SECRET),
     whatsappAccessToken: clean(env.WHATSAPP_ACCESS_TOKEN),
@@ -82,7 +94,7 @@ export function messagingEnvFromProcess(
  */
 export function messagingPlatformsFromEnv(
   env: MessagingEnvironmentValues,
-  options: { pollInboundMessages?: boolean } = {},
+  options: { pollInboundMessages?: boolean; bluebubblesPollState?: BlueBubblesPollState } = {},
 ): MessagingPlatform[] {
   const platforms: MessagingPlatform[] = [];
 
@@ -193,6 +205,36 @@ export function messagingPlatformsFromEnv(
         domain: env.larkDomain?.toLowerCase() === "lark" ? Domain.Lark : Domain.Feishu,
       }),
     });
+  }
+
+  // All three required: without the webhook token anyone could post fake
+  // inbound messages, and without the password the server refuses every call.
+  // Polling for missed webhooks runs only in the process that owns the inbound
+  // sink (same rule as Telegram's long-poll above), and one replica per
+  // interval through the shared poll state.
+  if (env.bluebubblesUrl && env.bluebubblesPassword && env.bluebubblesWebhookToken) {
+    try {
+      const adapter = new BlueBubblesAdapter({
+        serverUrl: env.bluebubblesUrl,
+        password: env.bluebubblesPassword,
+        webhookToken: env.bluebubblesWebhookToken,
+        pollIntervalMs: options.pollInboundMessages ? 60_000 : 0,
+        ...(options.bluebubblesPollState ? { pollState: options.bluebubblesPollState } : {}),
+      });
+      platforms.push({
+        provider: "bluebubbles",
+        capabilities: { direct: true, groups: false, typing: false },
+        adapter,
+        directThreadId: (address) => adapter.directThreadId(address),
+        transport: bluebubblesTransport,
+      });
+    } catch (error) {
+      // A bad BlueBubbles setting turns off iMessage through BlueBubbles only;
+      // the API and worker still boot with every other platform.
+      getLogger().error(
+        `BlueBubbles is disabled: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   return platforms;
