@@ -1,6 +1,20 @@
 # iMessage through Photon and BlueBubbles
 
-Status: proposal, for owner review; no code yet. Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
+Status: approved plan; phase 1 in progress. Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
+
+## Owner answers
+
+| Question | Answer |
+|---|---|
+| Positioning | BlueBubbles is for the local, self-hosted install: one owner per install, configured per deployment (env) like Sendblue. Photon is for the hosted service. Both sit alongside Sendblue as messaging platforms; Photon does not replace it. |
+| Address the owner texts | The Mac running BlueBubbles is signed in with a second Apple ID or number. The owner texts it like a contact. The Mac's own personal Apple ID is never used. |
+| Agent tools (Goal C) | Yes, last. Agents may read and send iMessages, and every send needs an approval card. Because of the second-Apple-ID setup, these tools act only on that second account's conversations, not the owner's personal ones. |
+| Photon config | Environment variables, like Sendblue. |
+| SMS/RCS from linked addresses | Ignored. Only iMessage-transport messages trigger runs. |
+| Photon disclosure | No extra "messages pass through Photon" line on the tile (the PR description and docs say it). |
+| Finance and Legal agents | Blocked from Photon. |
+| Approvals | Stay in the app; a short iMessage says an approval is waiting. No approve-by-reply. |
+| Photon free tier | Documented as the self-host default. |
 
 ## Summary
 
@@ -73,15 +87,14 @@ One BlueBubbles specific: the server runs on the owner's own Mac signed in as th
 
 `ImessageNotificationChannel implements NotificationChannel` (`channel: "imessage"`), sending `attention` notifications to the owner's linked address by calling `MessagingSurface.sendToThread` on the identity's DM thread. It needs no new transport. Constraints: only to an already-linked, verified identity; only inside an open conversation (the owner has texted in the last 24 hours, to avoid unsolicited first contact, which Photon's deliverability guide says gets lines flagged); text only, title plus body, no link unless it is a public URL; share the rate limits in `notifications.md` and count against the 140 consecutive-outbound cap.
 
-### C. Agents reading or sending the owner's iMessages (not recommended now)
+### C. Agents reading or sending iMessages (build last, with approvals)
 
-Recommendation: do not build it in this effort. Reasons:
+Approved by the owner, as the last phase. Scope, stated plainly: the tools act on the conversations of the **second Apple ID or number** the BlueBubbles Mac is signed into (or on the Photon line's conversations), never on the owner's personal Apple ID, because the Mac does not hold that account. The BlueBubbles tools must refuse any chat guid that is not on that account's allowlist.
 
-- It is the opposite trust direction of Goal A. Goal A makes iMessage a place the owner talks to Rakazo; Goal C makes the owner's private conversations input to an agent. Third parties' texts are untrusted prompt-injection input, and they can also contain other people's personal data.
-- Only BlueBubbles can do it (it sees the owner's whole Messages database). Photon's lines see only conversations with the Photon number.
-- Sending as the owner to third parties is irreversible and visible to others. It would need per-message approval cards, the same as `mail.send`.
-- Photon's terms require AI disclosure and opt-in for each end user (3.6), which does not fit an agent texting the owner's contacts.
-- If wanted later: BlueBubbles only, read tools limited to chats the owner explicitly adds to an allowlist, sends behind a mandatory approval card (like mail sends), all message text wrapped as untrusted data, never available to routine or messaging-triggered runs (the same exclusion mail tools have, `mail-tools.ts:118`), and off by default.
+- Read tools: list chats and read messages of allowed chats. All message text is untrusted data, wrapped as such, and never makes a run owner-originated.
+- Send tool: every send needs an approval card showing the exact recipient and text, like `mail.send`. No "always allow" for sends.
+- Not available to routine or messaging-triggered runs (the same exclusion mail tools have, `mail-tools.ts:118`), and off by default per agent.
+- Third parties' texts are prompt-injection input and contain other people's personal data; Photon's terms (3.6) require AI disclosure and opt-in, so the Photon variant waits for owner review of that wording.
 
 ## Design
 
@@ -171,15 +184,15 @@ Two tiles, "iMessage (Photon)" and "iMessage (BlueBubbles)", under the existing 
 
 ## Phased PRs, smallest first
 
-1. **Shared conformance suite and BlueBubbles adapter, single-owner.** `packages/testkit` conformance suite run against a fake platform and Sendblue (to prove it), `createBlueBubblesAdapter`, env-based config (`BLUEBUBBLES_URL`, `BLUEBUBBLES_PASSWORD`, `BLUEBUBBLES_WEBHOOK_TOKEN`), webhook token verification with fetch-by-guid, catch-up poll job, handle normalization, self-chat/allowlist filter, chunked plain-text sends, `iMessage` transport gating, generalized outbound cap, label entry. Result: the owner links their own handle and chats with an agent. Tests: conformance, token and forged-body cases, allowlist, own-message echo, chunk retry, no-owner-origin on messaging runs.
-2. **Photon adapter.** Wrap `chat-adapter-imessage` in cloud mode, `PHOTON_*` env, webhook verification test with fixtures built from the documented HMAC scheme, same conformance suite, shared-pool limitations in capabilities (groups false). Confirm whether Photon requires a persistent gateway for DM replies (the adapter note about group replies suggests it may; DM replies work from a webhook).
-3. **Setup tiles.** Photon and BlueBubbles Integrations tiles, connection tests, webhook registration, link-code flow reuse, SSRF guard, Storybook stories, a web test that opens the screen with fixtures.
-4. **Per-user BlueBubbles connections.** `Connection` + `Secret` storage, per-connection webhook route and adapter cache, thread id with connection id, removal and unregister on delete. Needed before a hosted multi-tenant Rakazo offers BlueBubbles.
-5. **iMessage notification channel.** `NotificationChannel` implementation over `sendToThread`, depends on notification PRs 1 and 3 in `notifications.md`.
-6. **Privacy job.** Body blanking and 7-day cleanup for iMessage outbox rows (can move earlier if the owner wants it before any real use).
-7. **Agent tools** (Goal C): only if the owner decides to proceed after the questions below.
+1. **Shared conformance suite and BlueBubbles adapter, single-owner.** Suite in `packages/testkit`, run against a fake platform, Sendblue and BlueBubbles; `createBlueBubblesAdapter`; env config (`BLUEBUBBLES_URL`, `BLUEBUBBLES_PASSWORD`, `BLUEBUBBLES_WEBHOOK_TOKEN`) with an SSRF-guarded URL; token-authenticated webhook with fetch-by-guid; catch-up poll; handle normalization; chunked plain-text sends with `tempGuid` idempotency; iMessage-transport gating.
+2. **Photon adapter.** Wrap `chat-adapter-imessage` in cloud mode, `PHOTON_*` env, fixture-based signature tests, same suite; Finance and Legal agents blocked on this provider.
+3. **Setup tiles.** Photon and BlueBubbles Integrations tiles, connection tests, webhook registration, link-code flow reuse, stories and a web test.
+4. **iMessage notification channel.** Depends on notification PRs 1 and 3 in `notifications.md`.
+5. **Privacy job.** Body blanking and 7-day cleanup for iMessage outbox rows (may move earlier).
+6. **Per-user BlueBubbles connections**, only if a hosted multi-user BlueBubbles is ever wanted (not needed for the self-hosted one-owner-per-install positioning).
+7. **Agent tools (Goal C), last:** read tools and an approval-gated send tool on the second account's allowlisted chats.
 
-Verification for each PR: offline conformance and unit tests locally; a manual end-to-end run through the real UI with the owner's own line and handle, reporting only what was exercised. Photon and BlueBubbles live checks need real accounts and a Mac, and will be listed as unverified until run.
+Verification for each PR: offline conformance and unit tests locally; a manual end-to-end run through the real UI. Live Photon and BlueBubbles checks need real accounts and a Mac and are listed as unverified until run.
 
 ## Risks
 
@@ -193,15 +206,6 @@ Verification for each PR: offline conformance and unit tests locally; a manual e
 - **Duplicate outbound** after a timeout where the vendor accepted the send, unless the vendor honors a client message id.
 - **Terms on regulated advice.** Photon forbids automated legal, health or financial advice without professional supervision (3.8(b)). Finance and Legal agents should be blocked from Photon until reviewed.
 
-## Open questions for the owner
+## Open questions
 
-1. Photon config: environment variables like `SENDBLUE_*` (simple, deployment-wide), or an admin-edited encrypted `IntegrationProviderConfig` row from the start?
-2. BlueBubbles in phase 1: single-owner and env-based (recommended, smallest) or per-user connections from the start (needed for hosted multi-tenant, bigger PR)?
-3. Is a dedicated second Apple ID or number on the Mac acceptable for the agent chat, or must the owner's main Apple ID work through "message yourself" only? This changes the BlueBubbles setup text.
-4. Ignore SMS/RCS from a linked address (recommended) or allow it with a lower trust level?
-5. Disclosure: one visible line on the Photon tile that messages pass through Photon, or only in the PR and docs?
-6. Should the Finance and Legal agents be reachable over Photon at all, given the Photon terms on regulated advice?
-7. Are you comfortable with agent approval staying in the app (a short iMessage says approval is needed), or do you want approve-by-reply for non-SMS iMessage later?
-8. Goal C: confirm that read/send agent tools stay out of scope.
-9. Should we keep Sendblue as the third iMessage provider, and does Photon replace it in the hosted offering? Both would show as "iMessage".
-10. Do we want the Photon free tier (shared pool, up to 10 users, no groups) as the documented default for self-hosters?
+All earlier questions are answered in "Owner answers". Remaining: confirm the exact approval-card wording for the send tool in phase 7, and whether the BlueBubbles Private API (SIP off) is ever wanted on the second-account Mac (the plan assumes not).
