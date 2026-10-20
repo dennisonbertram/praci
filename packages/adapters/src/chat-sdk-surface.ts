@@ -3,6 +3,7 @@ import { createMemoryState } from "@chat-adapter/state-memory";
 import type {
   AdapterContext,
   AdapterDescriptor,
+  IMessageHistory,
   MessagingCapabilities,
   MessagingInboundEvent,
   MessagingInboundMessage,
@@ -40,6 +41,8 @@ export interface MessagingPlatform {
   peekStatus?: (payload: unknown) => MessagingOutboundStatus | null;
   /** Group roster addresses from the raw inbound payload, excluding our line. */
   participants?: (raw: unknown) => string[];
+  /** Read access to the line's conversations; only the iMessage providers offer it. */
+  history?: IMessageHistory;
   /** Group display name from the raw inbound payload. */
   channelName?: (raw: unknown) => string | null;
   /** User-facing transport carried by the raw message when it differs from the provider. */
@@ -119,6 +122,10 @@ export class ChatSdkMessagingSurface implements MessagingSurface {
       provider: platform.provider,
       capabilities: platform.capabilities,
     }));
+  }
+
+  history(provider: string): IMessageHistory | undefined {
+    return this.byProvider.get(provider)?.history;
   }
 
   onInbound(sink: (event: MessagingInboundEvent) => Promise<void>): void {

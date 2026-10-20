@@ -4,8 +4,15 @@ import {
   ConnectionError,
   createHttpClient,
   IMessageError,
+  type Message as PhotonMessage,
   RateLimitError,
 } from "@photon-ai/advanced-imessage";
+import type {
+  AdapterContext,
+  IMessageConversation,
+  IMessageHistory,
+  IMessageHistoryMessage,
+} from "@rakazo/adapter-kit";
 import type {
   Adapter,
   AdapterPostableMessage,
@@ -22,6 +29,8 @@ import {
   BLUEBUBBLES_MAX_CHUNK,
   BLUEBUBBLES_MAX_CHUNKS,
   chunkIMessageText,
+  clipHistoryText,
+  HISTORY_TEXT_CHARS,
   normalizeIMessageHandle,
   parseDirectChatGuid,
   sendIdempotency,
@@ -53,6 +62,10 @@ const MIN_WEBHOOK_SECRET_LENGTH = 32;
 const REQUEST_TIMEOUT_MS = 15_000;
 const TOKEN_REFRESH_FRACTION = 0.8;
 const SENT_CHUNK_MEMORY = 1000;
+/** Photon has no chat list: conversations come from the newest messages, this many pages of 100. */
+const HISTORY_PAGES = 5;
+const HISTORY_PAGE_SIZE = 100;
+const HISTORY_SNIPPET_CHARS = 120;
 /** gRPC status codes the SDK reports: INTERNAL, UNAVAILABLE, DEADLINE_EXCEEDED. */
 const RETRYABLE_GRPC_CODES = new Set([4, 13, 14]);
 
@@ -156,7 +169,7 @@ type TokenGrant =
       expiresIn: number;
     };
 
-export class PhotonAdapter implements Adapter<PhotonThreadId, PhotonRawMessage> {
+export class PhotonAdapter implements Adapter<PhotonThreadId, PhotonRawMessage>, IMessageHistory {
   readonly name = "photon";
   readonly userName = "rakazo";
   readonly persistMessageHistory = true;
@@ -418,6 +431,91 @@ export class PhotonAdapter implements Adapter<PhotonThreadId, PhotonRawMessage> 
       return toIMessagePlainText(stringifyMarkdown(message.ast));
     }
     return "";
+  }
+
+  async listConversations(
+    options: { limit: number },
+    _context: AdapterContext,
+  ): Promise<IMessageConversation[]> {
+    const im = await this.imessage();
+    const newest = new Map<string, IMessageConversation>();
+    let pageToken: string | undefined;
+    for (let page = 0; page < HISTORY_PAGES; page += 1) {
+      const result = await im.messages
+        .listRecent({ pageSize: HISTORY_PAGE_SIZE, ...(pageToken ? { pageToken } : {}) })
+        .catch((error) => {
+          throw toPhotonError(error);
+        });
+      for (const message of result.messages) {
+        const entry = this.historyEntry(message);
+        const handle = parseDirectChatGuid(message.chatGuids[0])?.id;
+        const chatGuid = message.chatGuids[0];
+        if (!entry || !chatGuid || !handle) continue;
+        const known = newest.get(chatGuid);
+        if (known && known.lastMessageAt >= entry.at) continue;
+        newest.set(chatGuid, {
+          threadId: this.encodeThreadId({ chatGuid }),
+          handle: normalizeIMessageHandle(handle) ?? handle,
+          lastMessageAt: entry.at,
+          snippet: clipHistoryText(entry.text.replaceAll(/\s+/g, " "), HISTORY_SNIPPET_CHARS),
+        });
+      }
+      pageToken = result.nextPageToken;
+      if (!pageToken) break;
+    }
+    return [...newest.values()]
+      .sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt))
+      .slice(0, options.limit);
+  }
+
+  async readConversation(
+    threadId: string,
+    options: { limit: number; cursor?: string },
+    _context: AdapterContext,
+  ): Promise<{ handle: string; messages: IMessageHistoryMessage[]; nextCursor?: string }> {
+    const { chatGuid } = this.decodeThreadId(threadId);
+    const direct = parseDirectChatGuid(chatGuid);
+    const handle = normalizeIMessageHandle(direct?.id ?? "");
+    if (!handle) {
+      throw new PhotonError("Photon history is limited to direct chats", false);
+    }
+    const im = await this.imessage();
+    const result = await im.messages
+      .listInChat(chatGuid, {
+        pageSize: Math.min(options.limit, HISTORY_PAGE_SIZE),
+        ...(options.cursor ? { pageToken: options.cursor } : {}),
+      })
+      .catch((error) => {
+        throw toPhotonError(error);
+      });
+    const messages = result.messages
+      .flatMap((message) => this.historyEntry(message) ?? [])
+      .sort((a, b) => a.at.localeCompare(b.at));
+    return {
+      handle,
+      messages,
+      ...(result.nextPageToken ? { nextCursor: result.nextPageToken } : {}),
+    };
+  }
+
+  /** A real iMessage text or attachment, or null for reactions, system events and SMS/RCS. */
+  private historyEntry(message: PhotonMessage): (IMessageHistoryMessage & { id: string }) | null {
+    const service = message.sender?.service;
+    if (service === "SMS" || service === "RCS") return null;
+    if (message.reaction || message.isSystemMessage || message.itemType !== "normal") return null;
+    const notes = message.content.attachments.map(
+      (attachment) => `[attachment: ${attachment.mimeType || "file"}]`,
+    );
+    const text = [(message.content.text ?? "").replace(/\uFFFC/g, "").trim(), ...notes]
+      .filter(Boolean)
+      .join("\n");
+    if (!text) return null;
+    return {
+      id: message.guid,
+      direction: message.isFromMe ? "outbound" : "inbound",
+      at: message.dateCreated.toISOString(),
+      text: clipHistoryText(text, HISTORY_TEXT_CHARS),
+    };
   }
 
   /** Setup check: mint a line token, which fails on bad project credentials. */

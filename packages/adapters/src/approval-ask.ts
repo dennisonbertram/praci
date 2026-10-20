@@ -29,15 +29,24 @@ export function buildApprovalAskBlock(
     mailAccount?: string;
     /** The MCP server's display name, so the title says which service runs the tool. */
     serviceName?: string;
+    /** Who an imessage_send goes to, resolved from the call (a thread id alone names no one). */
+    imessage?: { recipient: string; line: string; disclosure?: string };
   },
 ): MessageBlock {
-  const summary = describeApprovalAction(toolName, args, options?.serviceName);
-  const fullDetail = options?.fullMail || options?.integrationWriteTool !== undefined;
-  const detail = options?.fullMail
-    ? fullMailDetail(args, options.reviewReason)
-    : options?.integrationWriteTool !== undefined
-      ? integrationWriteDetail(toolName, options.integrationWriteTool, args, options.reviewReason)
-      : formatApprovalDetail(toolName, args, options?.reviewReason);
+  const summary = describeApprovalAction(
+    toolName,
+    options?.imessage ? { ...args, to: options.imessage.recipient } : args,
+    options?.serviceName,
+  );
+  const fullDetail =
+    options?.fullMail || options?.integrationWriteTool !== undefined || options?.imessage;
+  const detail = options?.imessage
+    ? imessageSendDetail(args, options.imessage, options.reviewReason)
+    : options?.fullMail
+      ? fullMailDetail(args, options.reviewReason)
+      : options?.integrationWriteTool !== undefined
+        ? integrationWriteDetail(toolName, options.integrationWriteTool, args, options.reviewReason)
+        : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
     kind: "ask",
@@ -71,7 +80,9 @@ export function buildApprovalAskBlock(
           ]
         : [
             { id: "allow", label: "Allow once" },
-            ...(options?.fullMail || options?.integrationWriteTool !== undefined
+            ...(options?.fullMail ||
+            options?.integrationWriteTool !== undefined ||
+            toolName === "imessage_send"
               ? []
               : [{ id: "always", label: "Always allow this tool" }]),
             { id: "deny", label: "Deny" },
@@ -156,6 +167,19 @@ function integrationWriteDetail(
   return lines.join("\n");
 }
 
+/** Who, on which line, and the whole text. */
+function imessageSendDetail(
+  args: Record<string, unknown>,
+  target: { recipient: string; line: string; disclosure?: string },
+  reviewReason?: string,
+): string {
+  const lines = reviewReason?.trim() ? [reviewReason.trim()] : [];
+  lines.push(`to: ${target.recipient}`, `line: ${target.line}`);
+  if (target.disclosure) lines.push(`first message also sends: ${target.disclosure}`);
+  lines.push(`text: ${String(args.text ?? "")}`);
+  return lines.join("\n");
+}
+
 /** Every recipient, Bcc included, and the whole body. */
 function fullMailDetail(args: Record<string, unknown>, reviewReason?: string): string {
   const lines = reviewReason?.trim() ? [reviewReason.trim()] : [];
@@ -177,6 +201,10 @@ export function describeApprovalAction(
     const [first, ...rest] = strings(args.to);
     const to = first ? ` to ${first}${rest.length ? ` and ${rest.length} more` : ""}` : "";
     return toolName === "mail_send" ? `sending email${to}` : `saving a draft${to}`;
+  }
+  if (toolName === "imessage_send") {
+    const to = typeof args.to === "string" && args.to ? args.to : "a conversation";
+    return `sending iMessage to ${to}`;
   }
   if (toolName === "destination.write") {
     const collection = args.collection ? String(args.collection) : "records";
@@ -205,6 +233,7 @@ export function describeApprovalAction(
 const HAND_WRITTEN_TOOLS = new Set([
   "mail_send",
   "mail_draft",
+  "imessage_send",
   "destination.write",
   "delete_bot",
   "archive_bot",

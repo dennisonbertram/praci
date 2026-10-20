@@ -235,6 +235,7 @@ export function messagingPlatformsFromEnv(
         provider: "bluebubbles",
         capabilities: { direct: true, groups: false, typing: false },
         adapter,
+        history: adapter,
         directThreadId: (address) => adapter.directThreadId(address),
         transport: bluebubblesTransport,
       });
@@ -261,6 +262,7 @@ export function messagingPlatformsFromEnv(
         provider: "photon",
         capabilities: { direct: true, groups: false, typing: true },
         adapter,
+        history: adapter,
         directThreadId: (address) => adapter.directThreadId(address),
         transport: photonTransport,
       });
