@@ -10,11 +10,9 @@ your own machine or server, bring your own model credentials, and connect your m
 table, and documents. It runs as a web app, an Electron desktop app, and an Expo mobile app. Praci is
 in beta.
 
-![A Praci chat with the Chief bot answering questions about runway, a board deck, and a hiring plan](./docs/images/readme/agent-chat.webp)
-
 ![The Praci Finance page with cash, monthly burn, runway, a burn chart, a category breakdown, and upcoming payments](./docs/images/readme/finance.webp)
 
-The screenshots show invented demo data from `pnpm demo:up`, not a real company.
+Mock data.
 
 ## Ways to run Praci
 
@@ -70,7 +68,7 @@ Open [http://127.0.0.1:5173](http://127.0.0.1:5173), create an account, connect 
 your first bot. To run the Electron app against this stack, use
 `pnpm --filter @rakazo/desktop dev` and choose **Existing instance**.
 
-`pnpm demo:up` starts a separate stack with invented company data and prints its URL and login. Stop
+`pnpm demo:up` starts a separate stack with mock company data and prints its URL and login. Stop
 it with `pnpm demo:down`.
 
 Common checks are `pnpm lint`, `pnpm check`, and `pnpm test`. The repository layout is `apps/` (web,
