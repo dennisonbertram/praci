@@ -22,9 +22,9 @@
 | Critical | 1 | 0 | 0 | 1 |
 | High | 38 | 0 | 0 | 38 |
 | Medium | 76 | 2 | 0 | 74 |
-| Low | 36 | 9 | 0 | 27 |
+| Low | 36 | 9 (3 partial) | 0 | 27 |
 | Suggestion | 5 | n/a | n/a | 5 |
-| **Total** | **156** | **11** | **0** | **145** |
+| **Total** | **156** | **11 (3 partial)** | **0** | **145** |
 
 No separate GitHub issues were filed. Each phase issue (#412 to #426) has a comment listing the design work needed before it is built.
 
@@ -99,6 +99,8 @@ Applied to the boards in `docs/design-system/ios/boards/` in this run (11 findin
 | F-finance-settings-020 | Finance stories | "Due Oct 24" next to "Oct 31" | Consistent "Due" wording | PG-B-Finance |
 | F-duo-034 | STORY-104, 105 | Text overran a caption in DS-03; annotation label overprinted a row in DS-04 | Taller spec grid in DS-03 (the DS-04 annotation overlap is not changed) | DS-03-Navigation |
 | F-duo-035 | STORY-105 | Title capsule touched the trailing group (0 px, spec 8 pt) | 8 pt gap | DS-03-Navigation |
+
+Three fixes are partial and stay open for the parts listed as not changed: F-duo-023 (DS-04 toast avatar), F-thread-033 (reply strip bar color) and F-duo-034 (DS-04 annotation overlap).
 
 ### Quick-fix candidates not applied
 

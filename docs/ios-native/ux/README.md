@@ -27,7 +27,7 @@ This folder holds UX planning for the native iPhone app (epic #427, phases #412 
 - What the UI does when the server lacks a procedure: hide, disable, or explain.
 
 ### #414 (Server selection and sign in)
-- Product name in strings: "Rakazo" (boards) or "Praci" (Expo).
+- Product name in strings: resolved, Praci (boards updated to match Expo in this run).
 - Which mode the app opens in on first launch: sign-up (Expo) or sign-in (board).
 - Whether to confirm before a server change wipes a signed-in session.
 - What happens to the outbox and unsent drafts after a forced sign-out.

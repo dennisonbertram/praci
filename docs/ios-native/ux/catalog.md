@@ -1527,7 +1527,7 @@ Source file: `docs/ios-native/ux/topics/thread-send.md`
 **Device**: standard iPhone
 **Ideal path**: 4 — long-press, Reply, type, Send.
 **Alternate paths**: Quote a selected part of a message (the contract has `replyQuote`; the Select-text sheet in `DS-04-Overlays.dc.html` lets someone select part of a message but no board connects it to Reply); no swipe-to-reply gesture is planned or designed.
-**Design source**: `DS-06-Chat.dc.html` "Failed send bubble and reply line" (Reply line) and Composer "Replying to Ana Ruiz" preview; long-press menu: NO BOARD (Expo uses native menu items "Reply", "React", "Copy").
+**Design source**: `DS-06-Chat.dc.html` "Failed send bubble and reply line" (Reply line) and Composer "Replying to Ana Ruiz" preview; long-press menu: `DS-04-Overlays.dc.html` context menu (Reply, Copy, Select text, Pin, Delete); React is not drawn (Expo uses native menu items "Reply", "React", "Copy").
 
 #### Steps
 1. Long-press the agent bubble → a native context menu appears with "Reply", "React", "Copy" (Expo labels; board says only "Selection and Copy for whole message are in the long-press context menu (native)").
