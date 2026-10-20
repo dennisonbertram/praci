@@ -21,6 +21,7 @@ import { AiDataSharingSection } from "../components/AiDataSharing";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
 import { SuccessPop } from "../components/ai/primitives";
 import { ComputersUnavailableHint } from "../components/ComputersUnavailableHint";
+import { DataExportSection } from "../components/DataExport";
 import { DesktopUpdateSection } from "../components/DesktopUpdates";
 import { NotificationSettingsSection } from "../components/NotificationSettings";
 import { SoftwareUpdateSection } from "../components/SoftwareUpdateSection";
@@ -155,6 +156,8 @@ export function GeneralSettingsPanels({
       <AiDataSharingSection />
 
       <NotificationSettingsSection />
+
+      <DataExportSection />
 
       <section className="rounded-xl border border-border px-4 py-4">
         <h3 className="text-[15px] font-medium text-foreground">

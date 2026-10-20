@@ -15,6 +15,8 @@ function handlers(): BackgroundJobHandlers {
     "notifications.deliver": vi.fn(async () => undefined),
     "notifications.retention": vi.fn(async () => undefined),
     "messaging.retention": vi.fn(async () => undefined),
+    "account.export": vi.fn(async () => undefined),
+    "account.export.cleanup": vi.fn(async () => undefined),
     "cloud_agent.poll": vi.fn(async () => undefined),
     "mail.search.expire": vi.fn(async () => undefined),
     "inbox.triage": vi.fn(async () => undefined),

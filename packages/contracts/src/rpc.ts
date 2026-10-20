@@ -354,6 +354,17 @@ export const NotificationPreferencesSchema = z.object({
 
 export type NotificationPreferences = z.infer<typeof NotificationPreferencesSchema>;
 
+/** The user's own "Export my data" zip. It is downloadable at /api/account/exports/{id}/download once ready. */
+export const AccountExportSchema = z.object({
+  id: Id,
+  status: z.enum(["pending", "running", "ready", "failed"]),
+  /** 0 to 100. */
+  progress: z.number().int().min(0).max(100),
+  /** When the zip is deleted. */
+  expiresAt: IsoDate,
+});
+export type AccountExport = z.infer<typeof AccountExportSchema>;
+
 const spaceName = z.string().trim().min(1).max(60);
 
 export const appContract = {
@@ -1202,6 +1213,12 @@ export const appContract = {
         runs: z.number(),
       }),
     ),
+  },
+  account: {
+    /** Starts an export, or returns the one already running. */
+    exportRequest: oc.output(AccountExportSchema),
+    /** The newest export that is running or not yet expired, if any. */
+    exportLatest: oc.output(AccountExportSchema.nullable()),
   },
   export: {
     bot: oc.input(botId).output(ExportManifestSchema),

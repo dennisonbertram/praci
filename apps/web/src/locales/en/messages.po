@@ -3696,6 +3696,7 @@ msgstr "Done"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
+#: src/components/DataExport.tsx
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
 msgid "Download"
@@ -4026,6 +4027,10 @@ msgstr "Expired"
 #: src/pages/shell/bot-panel.tsx
 msgid "Export"
 msgstr "Export"
+
+#: src/components/DataExport.tsx
+msgid "Export my data"
+msgstr "Export my data"
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Export this week's list from the CRM and drop it in the shared folder"
@@ -6717,6 +6722,11 @@ msgstr "Praci finds what needs a reply, lists your to-dos and groups mail like b
 msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
 msgstr "Praci keeps itself up to date. If an update ever needs you, it shows here."
 
+#. placeholder {0}: job.progress
+#: src/components/DataExport.tsx
+msgid "Preparing… {0}%"
+msgstr "Preparing… {0}%"
+
 #: src/pages/Legal.tsx
 msgid "Press Scan now to read your Data room for contracts and deadlines."
 msgstr "Press Scan now to read your Data room for contracts and deadlines."
@@ -6925,6 +6935,11 @@ msgstr "Reading…"
 #: src/components/integrations/FinanceSection.tsx
 msgid "Ready"
 msgstr "Ready"
+
+#. placeholder {0}: i18n.date(new Date(job.expiresAt), { dateStyle: "medium" })
+#: src/components/DataExport.tsx
+msgid "Ready until {0}"
+msgstr "Ready until {0}"
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx

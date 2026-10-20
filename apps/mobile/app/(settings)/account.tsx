@@ -17,6 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { AppMark } from "../../components/app-mark";
 import { useAvatarStyle } from "../../components/avatar-style";
 import { BotAvatar } from "../../components/bot-avatar";
+import { DataExportRow } from "../../components/data-export-row";
 import { NativeActionButton } from "../../components/native-action-button";
 import { NativeSegmentedControl } from "../../components/native-segmented-control";
 import { NativeSymbol } from "../../components/native-symbol";
@@ -88,6 +89,7 @@ export default function Account() {
   const [deletionCodeSent, setDeletionCodeSent] = useState(false);
   const [ssoReauthenticated, setSsoReauthenticated] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
+  const [exportError, setExportError] = useState<string | null>(null);
   const [localeSaving, setLocaleSaving] = useState(false);
   const [localeError, setLocaleError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -580,6 +582,15 @@ export default function Account() {
               onPress={() => router.push("/integration-setup")}
               title={t("Server integrations")}
             />
+          ) : null}
+        </SettingsGroup>
+
+        <SettingsGroup>
+          <DataExportRow onError={setExportError} />
+          {exportError ? (
+            <Text accessibilityRole="alert" style={styles.error}>
+              {exportError}
+            </Text>
           ) : null}
         </SettingsGroup>
 

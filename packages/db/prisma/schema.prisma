@@ -29,6 +29,7 @@ model User {
   sidebarPages                SidebarPage[]
   notifications               Notification[]
   notificationEndpoints       NotificationEndpoint[]
+  accountExports              AccountExport[]
   id                          String                       @id
   name                        String
   email                       String
@@ -2764,4 +2765,28 @@ model LegalEdge {
   @@index([toId])
   @@index([dataRoomItemId])
   @@map("legal_edges")
+}
+
+/// A user's "Export my data" zip. At most one pending or running row per user (partial unique index
+/// account_exports_one_active_key in the migration SQL). The zip lives in the artifact store under
+/// `storageKey`, scoped to `spaceId`; the row and the blob are removed once `expiresAt` passes.
+model AccountExport {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// The space whose blob scope holds the zip.
+  spaceId    String
+  /// "pending", "running", "ready" or "failed".
+  status     String    @default("pending")
+  /// 0 to 100.
+  progress   Int       @default(0)
+  storageKey String?
+  size       BigInt?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([expiresAt])
+  @@map("account_exports")
 }

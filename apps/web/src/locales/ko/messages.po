@@ -3696,6 +3696,7 @@ msgstr "완료"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/PreviewActions.tsx
+#: src/components/DataExport.tsx
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
 msgid "Download"
@@ -4026,6 +4027,10 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Export"
 msgstr "내보내기"
+
+#: src/components/DataExport.tsx
+msgid "Export my data"
+msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Export this week's list from the CRM and drop it in the shared folder"
@@ -6717,6 +6722,11 @@ msgstr ""
 msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
 msgstr ""
 
+#. placeholder {0}: job.progress
+#: src/components/DataExport.tsx
+msgid "Preparing… {0}%"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Press Scan now to read your Data room for contracts and deadlines."
 msgstr ""
@@ -6924,6 +6934,11 @@ msgstr ""
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Ready"
+msgstr ""
+
+#. placeholder {0}: i18n.date(new Date(job.expiresAt), { dateStyle: "medium" })
+#: src/components/DataExport.tsx
+msgid "Ready until {0}"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx

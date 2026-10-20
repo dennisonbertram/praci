@@ -691,6 +691,10 @@ export interface BackgroundJobPayloads {
   "notifications.retention": Record<string, never>;
   /** Deletes messaging outbox rows and inbound claims older than 7 days; run daily by cron. */
   "messaging.retention": Record<string, never>;
+  /** Builds one "Export my data" zip into the artifact store; one job per export row. */
+  "account.export": { exportId: string };
+  /** Deletes expired data exports and their zips; run daily by the worker's cron. */
+  "account.export.cleanup": Record<string, never>;
   /** Reconcile durable remote-agent intent; scope is loaded from the database. */
   "cloud_agent.poll": { agentId: string };
   /** Deletes a saved mail search (and its rows) once it has expired. */
