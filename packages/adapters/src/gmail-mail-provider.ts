@@ -18,6 +18,7 @@ import {
   type MailProvider,
   MailProviderError,
   type MailSent,
+  type MailWatch,
   type ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
 import { MAIL_SIGNALS_VERSION } from "@rakazo/contracts";
@@ -61,6 +62,10 @@ const METADATA_QUERY = [
 ]
   .map((name) => `metadataHeaders=${name}`)
   .join("&");
+/** Connector id of the account's own Google login, the only route that can hold a push watch. */
+const NATIVE_GOOGLE = "google";
+/** Sent mail from another client only gets SENT, and it feeds the cached sent list and prior contact. */
+const WATCH_LABELS = ["INBOX", "SENT"];
 const HISTORY_TYPES = ["messageAdded", "messageDeleted", "labelAdded", "labelRemoved"];
 
 export type MailSleep = GoogleApiSleep;
@@ -550,6 +555,44 @@ export class GmailMailProvider implements MailProvider {
     } while (pageToken);
     for (const id of deleted) changed.delete(id);
     return { cursor: latest, changedIds: [...changed], deletedIds: [...deleted] };
+  }
+
+  /**
+   * Gmail push through the account's own Google login. Composio and Pipedream hold the OAuth
+   * client, so their accounts return null and keep polling.
+   */
+  async watchChanges(
+    account: MailAccount,
+    request: { topic: string },
+    context: AdapterContext,
+  ): Promise<MailWatch | null> {
+    assertScope(account, context);
+    if (account.connectorId !== NATIVE_GOOGLE) return null;
+    const data = asRecord(
+      await this.request(account, context, `${GMAIL}/watch`, {
+        method: "POST",
+        body: {
+          topicName: request.topic,
+          labelIds: WATCH_LABELS,
+          labelFilterBehavior: "include",
+        },
+      }),
+    );
+    const cursor = data?.historyId;
+    const expiration = Number(data?.expiration);
+    if (
+      (typeof cursor !== "string" && typeof cursor !== "number") ||
+      !String(cursor) ||
+      !Number.isFinite(expiration)
+    )
+      throw new MailProviderError("unavailable", "Unexpected mail response");
+    return { cursor: String(cursor), expiresAt: new Date(expiration).toISOString() };
+  }
+
+  async stopWatch(account: MailAccount, context: AdapterContext): Promise<void> {
+    assertScope(account, context);
+    if (account.connectorId !== NATIVE_GOOGLE) return;
+    await this.request(account, context, `${GMAIL}/stop`, { method: "POST" });
   }
 
   async createDraft(

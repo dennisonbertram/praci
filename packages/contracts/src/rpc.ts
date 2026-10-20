@@ -194,6 +194,8 @@ import {
   InboxListOutputSchema,
   InboxMarkReadInputSchema,
   InboxMessageSchema,
+  InboxRefreshInputSchema,
+  InboxRefreshOutputSchema,
   InboxScopeInputSchema,
   InboxTodoSchema,
   InboxTodosOutputSchema,
@@ -1272,7 +1274,7 @@ export const appContract = {
   inbox: {
     agent: oc.output(BotSchema),
     list: oc.input(InboxListInputSchema).output(InboxListOutputSchema),
-    refresh: oc.input(InboxScopeInputSchema).output(z.object({ ok: z.literal(true) })),
+    refresh: oc.input(InboxRefreshInputSchema).output(InboxRefreshOutputSchema),
     get: oc.input(z.object({ messageId: Id })).output(InboxMessageSchema),
     unreadCount: oc.output(z.object({ count: z.number().int() })),
     feedback: oc.input(InboxFeedbackInputSchema).output(InboxFeedbackOutputSchema),

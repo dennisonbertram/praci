@@ -22,10 +22,15 @@ import {
   storePriorContact,
 } from "./mail-sender-stats.js";
 
-const WINDOW_MS = 14 * 86_400_000;
+/** Days of mail the cache keeps. The readers that show or triage mail still look at their own, shorter windows. */
+export const MAIL_CACHE_WINDOW_DAYS = 90;
+const WINDOW_MS = MAIL_CACHE_WINDOW_DAYS * 86_400_000;
+const DAY_MS = 86_400_000;
 const PAGE_SIZE = 100;
-/** Most messages kept from one list; Gmail pages are 100, so this is two pages. */
+/** Most messages kept from one list when the window is listed; Gmail pages are 100, so this is two pages. */
 const MAX_MESSAGES = 200;
+/** Most messages one backfill run lists per query (inbox, sent): one Gmail page. */
+const BACKFILL_PAGE = 100;
 /** Incremental syncs fetch a few messages. */
 const DEADLINE_MS = 90_000;
 /**
@@ -51,7 +56,7 @@ export interface MailSyncDeps {
   mail: MailProvider;
   /** Queues triage after each successful sync. */
   jobs: JobPublisher;
-  /** Clock for the 14-day window; defaults to the system clock. */
+  /** Clock for the cache window; defaults to the system clock. */
   now?: () => Date;
   /** Caps every provider call of a sync. Without it an incremental sync gets 90 seconds and a full window re-list 240, both shorter than the 5-minute stale claim. */
   deadlineMs?: number;
@@ -69,9 +74,31 @@ interface Listed {
 }
 
 /**
- * Syncs one account's inbox and sent mail for the last 14 days into the Postgres cache. With a
+ * Older mail still to cache after the window was listed: per query, the day (YYYY-MM-DD, UTC) of the
+ * oldest message listed so far, or null when that query is finished. Stored as JSON on the sync state.
+ */
+interface Backfill {
+  inbox: string | null;
+  sent: string | null;
+}
+
+const day = (value: Date | string) => new Date(value).toISOString().slice(0, 10);
+const addDays = (date: string, days: number) =>
+  new Date(Date.parse(date) + days * DAY_MS).toISOString().slice(0, 10);
+
+function parseBackfill(value: unknown): Backfill | null {
+  if (!value || typeof value !== "object") return null;
+  const entry = value as Record<string, unknown>;
+  const read = (v: unknown) => (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+  const parsed = { inbox: read(entry.inbox), sent: read(entry.sent) };
+  return parsed.inbox || parsed.sent ? parsed : null;
+}
+
+/**
+ * Syncs one account's inbox and sent mail for the last 90 days into the Postgres cache. With a
  * stored change cursor it fetches only what changed since; with none, with an expired one or with
- * too many changes it lists the 14-day window and stores a fresh cursor.
+ * too many changes it lists the newest 200 messages of the window and stores a fresh cursor. What
+ * is older is cached 100 messages per query per run, newest first (`backfill` on the state row).
  * One conditional UPDATE is both the 60-second throttle and the in-flight claim; the write
  * transaction re-checks the claim token under a row lock, so a sync that lost its claim writes
  * nothing. Provider errors are recorded on the state row, never thrown. A successful sync, with or
@@ -95,7 +122,7 @@ export async function syncMailbox(
       AND status = 'connected'
     ON CONFLICT DO NOTHING`;
   const claimed = await prisma.$queryRaw<
-    Array<{ connectionId: string; changeCursor?: string | null }>
+    Array<{ connectionId: string; changeCursor?: string | null; backfill?: unknown }>
   >`
     UPDATE mail_sync_states s
     SET "syncStartedAt" = ${DB_NOW}, "claimToken" = ${token}
@@ -105,9 +132,10 @@ export async function syncMailbox(
       AND (s."lastSyncedAt" IS NULL OR s."lastSyncedAt" < ${DB_NOW} - interval '60 seconds')
       AND (s."backoffUntil" IS NULL OR s."backoffUntil" < ${DB_NOW})
       AND (s."syncStartedAt" IS NULL OR s."syncStartedAt" < ${DB_NOW} - interval '5 minutes')
-    RETURNING s."connectionId", s."changeCursor"`;
+    RETURNING s."connectionId", s."changeCursor", s."backfill"`;
   if (claimed.length === 0) return "skipped";
   const previousCursor = claimed[0]?.changeCursor ?? null;
+  const pendingBackfill = parseBackfill(claimed[0]?.backfill);
 
   const fail = async (error: unknown): Promise<"failed" | "skipped"> => {
     // The token check keeps a sync that lost its claim from clearing its replacement's.
@@ -186,8 +214,12 @@ export async function syncMailbox(
     const deletedIds: string[] = [];
     /** Stored after a complete sync; undefined keeps the stored one. */
     let nextCursor: string | undefined;
-    /** Set when the window was listed, also to refill a full inbox: clears messages no longer in it. */
+    /** Set when the window was listed: clears messages no longer in it. */
     let inbox: Listed | undefined;
+    /** Stored with a complete sync; undefined keeps the stored one, null clears it. */
+    let nextBackfill: Backfill | null | undefined;
+    /** Inbox rows in this range that the continuation page did not list have left the inbox. */
+    let continued: { oldest: Date; newest: Date; ids: string[] } | undefined;
     let partial = false;
     /** True when the labels of the fetched messages are the truth, as in a change sync. */
     let incremental = false;
@@ -225,32 +257,6 @@ export async function syncMailbox(
         );
         nextCursor = changes.cursor;
         incremental = true;
-        // The first sync keeps at most 200 inbox messages, so a full cache may hide older ones.
-        // When mail leaves a full inbox, list the window again to bring the next ones in.
-        const leaving = deletedIds.length > 0 || [...merged.values()].some((e) => !e.inInbox);
-        if (
-          leaving &&
-          (await deps.prisma.cachedMailMessage.count({
-            where: { connectionId: account.id, spaceId, userId, inInbox: true },
-          })) >= MAX_MESSAGES
-        ) {
-          inbox = await listWindow(
-            deps.mail,
-            account,
-            timed,
-            "in:inbox",
-            after,
-            windowStart,
-            ranOutOfTime,
-          );
-          partial = partial || inbox.partial;
-          for (const message of inbox.messages)
-            merged.set(message.id, {
-              message,
-              inInbox: true,
-              fromSelf: merged.get(message.id)?.fromSelf ?? false,
-            });
-        }
       } else {
         if (previousCursor)
           getLogger().info("mail sync is listing the window again", {
@@ -267,8 +273,7 @@ export async function syncMailbox(
           account,
           timed,
           "in:inbox",
-          after,
-          windowStart,
+          { after, windowStart, max: MAX_MESSAGES },
           ranOutOfTime,
         );
         // Out of time: keep what loaded and list sent mail on a later run.
@@ -280,11 +285,17 @@ export async function syncMailbox(
                 account,
                 timed,
                 "in:sent",
-                after,
-                windowStart,
+                { after, windowStart, max: MAX_MESSAGES },
                 ranOutOfTime,
               );
         partial = inbox.partial || sent.partial;
+        // A list that hit its cap leaves older mail to the next runs.
+        const marker = (listed: Listed) =>
+          listed.capped && listed.messages.length
+            ? day(listed.messages.at(-1)?.date as string)
+            : null;
+        const [inboxMarker, sentMarker] = [marker(inbox), marker(sent)];
+        nextBackfill = inboxMarker || sentMarker ? { inbox: inboxMarker, sent: sentMarker } : null;
         for (const [listed, flag] of [
           [inbox, "inInbox"],
           [sent, "fromSelf"],
@@ -335,6 +346,19 @@ export async function syncMailbox(
             now,
           );
           priorContactResults = await checkPriorContact(deps.mail, account, timed, picked);
+        }
+        if (incremental && pendingBackfill && !timed.signal.aborted) {
+          const next = await continueBackfill(
+            deps.mail,
+            account,
+            timed,
+            pendingBackfill,
+            windowStart,
+            ranOutOfTime,
+            merged,
+          );
+          nextBackfill = next.backfill;
+          continued = next.inbox;
         }
       } catch (error) {
         getLogger().warn("mail sync extras failed", {
@@ -409,6 +433,17 @@ export async function syncMailbox(
             where: { ...scope, inInbox: true, receivedAt: { lt: windowStart } },
             data: { inInbox: false },
           });
+          if (continued && !partial) {
+            await tx.cachedMailMessage.updateMany({
+              where: {
+                ...scope,
+                inInbox: true,
+                providerMessageId: { notIn: continued.ids },
+                receivedAt: { gt: continued.oldest, lt: continued.newest },
+              },
+              data: { inInbox: false },
+            });
+          }
           if (inbox && !partial) {
             // A capped list shows only the newest 200, so older rows cannot be judged.
             const oldest = inbox.messages.at(-1);
@@ -463,6 +498,7 @@ export async function syncMailbox(
           UPDATE mail_sync_states
           SET "lastSyncedAt" = ${DB_NOW}, "lastErrorAt" = NULL, "needsReconnect" = false, "lastErrorKind" = NULL, "backoffUntil" = NULL,
               "changeCursor" = COALESCE(${nextCursor ?? null}::text, "changeCursor"),
+              "backfill" = CASE WHEN ${nextBackfill !== undefined} THEN ${nextBackfill ? JSON.stringify(nextBackfill) : null}::jsonb ELSE "backfill" END,
               "syncStartedAt" = NULL, "claimToken" = NULL
           WHERE "connectionId" = ${account.id} AND "claimToken" = ${token}`;
           return "synced" as const;
@@ -548,16 +584,19 @@ function errorName(error: unknown): string {
   return error instanceof Error ? error.name : "unknown";
 }
 
-/** Collects up to 200 messages of one query inside the window, newest first. */
+/**
+ * Collects up to `max` messages of one query inside the window, newest first. `before` (YYYY-MM-DD,
+ * Gmail's exclusive upper bound) pages down from a day instead of starting at the newest mail.
+ */
 async function listWindow(
   mail: MailProvider,
   account: MailAccount,
   context: AdapterContext,
   query: string,
-  after: string,
-  windowStart: Date,
+  range: { after: string; before?: string; windowStart: Date; max: number },
   ranOutOfTime: (error: unknown) => boolean,
 ): Promise<Listed> {
+  const { after, before, windowStart, max } = range;
   const messages: MailMessageSummary[] = [];
   let pageToken: string | undefined;
   let partial = false;
@@ -566,7 +605,14 @@ async function listWindow(
     try {
       page = await mail.listMessages(
         account,
-        { query, after, pageSize: PAGE_SIZE, pageToken, useCache: false },
+        {
+          query,
+          after,
+          ...(before ? { before } : {}),
+          pageSize: PAGE_SIZE,
+          pageToken,
+          useCache: false,
+        },
         context,
       );
     } catch (error) {
@@ -578,15 +624,91 @@ async function listWindow(
     messages.push(...page.messages);
     partial = (page.unhydratedIds?.length ?? 0) > 0;
     pageToken = page.nextPageToken;
-  } while (pageToken && !partial && !context.signal.aborted && messages.length < MAX_MESSAGES);
+  } while (pageToken && !partial && !context.signal.aborted && messages.length < max);
   // Stopped by the deadline with pages left, which the provider cannot report as unhydrated.
-  if (pageToken && context.signal.aborted && messages.length < MAX_MESSAGES) partial = true;
+  if (pageToken && context.signal.aborted && messages.length < max) partial = true;
 
-  const capped = messages.length > MAX_MESSAGES || (messages.length >= MAX_MESSAGES && !!pageToken);
+  const capped = messages.length > max || (messages.length >= max && !!pageToken);
   const inWindow = messages
-    .slice(0, MAX_MESSAGES)
+    .slice(0, max)
     .filter((m) => new Date(m.date).getTime() >= windowStart.getTime());
   return { messages: inWindow, capped, partial };
+}
+
+/**
+ * Caches the next 100 older messages of each unfinished query (inbox, sent), newest first, from the
+ * day marker the last run left. The messages join the merge; labels are the truth for their flags.
+ * Returns the markers to store (null: window complete) and the inbox range the page covers, whose
+ * unlisted inbox rows have been archived since. A list whose page was incomplete does not advance.
+ * Provider errors are logged and leave the marker for a later run.
+ */
+async function continueBackfill(
+  mail: MailProvider,
+  account: MailAccount,
+  context: AdapterContext,
+  pending: Backfill,
+  windowStart: Date,
+  ranOutOfTime: (error: unknown) => boolean,
+  merged: Map<string, { message: MailMessageSummary; inInbox: boolean; fromSelf: boolean }>,
+): Promise<{ backfill: Backfill | null; inbox?: { oldest: Date; newest: Date; ids: string[] } }> {
+  const after = day(windowStart);
+  const next: Backfill = { ...pending };
+  let inboxRange: { oldest: Date; newest: Date; ids: string[] } | undefined;
+  for (const [key, query] of [
+    ["inbox", "in:inbox"],
+    ["sent", "in:sent"],
+  ] as const) {
+    const marker = pending[key];
+    if (!marker || context.signal.aborted) continue;
+    try {
+      // One day past the marker, so mail near the day boundary (Gmail counts days in its own zone) is not missed.
+      const listed = await listWindow(
+        mail,
+        account,
+        context,
+        query,
+        { after, before: addDays(marker, 1), windowStart, max: BACKFILL_PAGE },
+        ranOutOfTime,
+      );
+      for (const message of listed.messages) {
+        if (message.labelIds.includes("TRASH")) continue;
+        merged.set(message.id, {
+          message,
+          inInbox: message.labelIds.includes("INBOX"),
+          fromSelf: message.labelIds.includes("SENT"),
+        });
+      }
+      if (listed.partial) continue;
+      const oldest = listed.messages.at(-1);
+      const newest = listed.messages[0];
+      if (!listed.capped || !oldest) {
+        next[key] = null;
+      } else {
+        const oldestDay = day(oldest.date);
+        // ponytail: more than 100 messages on one day skips the rest of that day. Page by Gmail
+        // page token within a day if mailboxes that busy matter.
+        next[key] = oldestDay < marker ? oldestDay : addDays(marker, -1);
+        if (next[key] < after) next[key] = null;
+      }
+      if (key === "inbox" && newest && oldest) {
+        // A finished list covers everything down to the window start.
+        inboxRange = {
+          oldest: listed.capped ? new Date(oldest.date) : windowStart,
+          newest: new Date(newest.date),
+          ids: listed.messages.map((m) => m.id),
+        };
+      }
+    } catch (error) {
+      getLogger().warn("mail backfill failed", {
+        connectionId: account.id,
+        reason: error instanceof MailProviderError ? error.kind : errorName(error),
+      });
+    }
+  }
+  return {
+    backfill: next.inbox || next.sent ? next : null,
+    ...(inboxRange ? { inbox: inboxRange } : {}),
+  };
 }
 
 /**
@@ -603,31 +725,4 @@ export async function deleteMailConnectionData(
   await tx.cachedMailMessage.deleteMany({ where: { connectionId, spaceId, userId } });
   await tx.mailSenderStat.deleteMany({ where: { spaceId, userId, connectionId } });
   await tx.mailSyncState.deleteMany({ where: { connectionId, connection: { spaceId, userId } } });
-}
-
-/**
- * Syncs the account again right after a send, so the sent message is in the cache and triage can
- * see the thread was answered. A send is a real change, so it skips the 60-second throttle. Waits
- * at most `waitMs`; the sync carries on in the background after that. Never throws.
- */
-export async function syncAfterSend(
-  deps: MailSyncDeps,
-  account: MailAccount,
-  context: AdapterContext,
-  waitMs = 4_000,
-): Promise<void> {
-  const sync = (async () => {
-    await deps.prisma.mailSyncState.updateMany({
-      where: { connectionId: account.id },
-      data: { lastSyncedAt: null },
-    });
-    await syncMailbox(deps, account, context);
-  })().catch((error: unknown) => {
-    getLogger().warn("mail sync after send failed", {
-      reason: error instanceof Error ? error.name : "error",
-    });
-  });
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  await Promise.race([sync, new Promise<void>((resolve) => (timer = setTimeout(resolve, waitMs)))]);
-  clearTimeout(timer);
 }

@@ -12,7 +12,7 @@ export const listMailInbox = (connectionId?: string) =>
 const REFRESH_TIMEOUT_MS = 90_000;
 
 export const refreshMailInbox = () =>
-  rpc<{ ok: true }>("inbox/refresh", {}, { timeoutMs: REFRESH_TIMEOUT_MS });
+  rpc<{ ok: true }>("inbox/refresh", { waitMs: 8_000 }, { timeoutMs: REFRESH_TIMEOUT_MS });
 
 export const getMailMessage = (messageId: string) => rpc<InboxMessage>("inbox/get", { messageId });
 

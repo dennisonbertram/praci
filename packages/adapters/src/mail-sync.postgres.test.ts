@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import type {
   AdapterContext,
   BackgroundJob,
@@ -202,10 +203,11 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     await close();
   });
 
-  it("syncs the inbox and sent mail of the last 14 days on the first run", async () => {
+  it("syncs the inbox and sent mail of the last 90 days on the first run", async () => {
     seed("first", [
       message("in-1", 1, ["INBOX", "UNREAD"]),
-      message("in-old", 20, ["INBOX"]),
+      message("in-old", 80, ["INBOX"]),
+      message("in-ancient", 100, ["INBOX"]),
       message("sent-1", 2, ["SENT"], { from: "me@example.test", to: "ann@example.test" }),
       message("both", 3, ["INBOX", "SENT"]),
     ]);
@@ -214,7 +216,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(await sync(account)).toBe("synced");
 
     const byId = Object.fromEntries((await rows(account.id)).map((r) => [r.providerMessageId, r]));
-    expect(Object.keys(byId).sort()).toEqual(["both", "in-1", "sent-1"]);
+    expect(Object.keys(byId).sort()).toEqual(["both", "in-1", "in-old", "sent-1"]);
     expect(byId["in-1"]).toMatchObject({
       inInbox: true,
       fromSelf: false,
@@ -445,7 +447,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       expect((await byId(account.id)).old?.inInbox ?? false).toBe(false);
     });
 
-    it("refills the inbox from older mail when archiving leaves the cache below its cap", async () => {
+    it("does not list the window again when archiving mail from a full cache", async () => {
       seed(
         "inc-refill",
         Array.from({ length: 250 }, (_, i) => message(`b${i}`, i * 0.04, ["INBOX"])),
@@ -458,10 +460,14 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
 
       modify("inc-refill", "b0", { removeLabelIds: ["INBOX"] });
       await expireThrottle(account.id);
+      const lists = listCalls();
       expect(await sync(account)).toBe("synced");
 
-      expect(await inInbox()).toBe(200);
+      // The 50 older messages came in through the backfill; b0 is archived.
+      expect(await inInbox()).toBe(249);
       expect((await byId(account.id)).b0?.inInbox).toBe(false);
+      // Only the backfill of older mail lists, one inbox page, never the whole window.
+      expect(listCalls() - lists).toBe(1);
     });
 
     it("keeps the cursor when some changed messages could not be fetched, and finishes next time", async () => {
@@ -922,10 +928,10 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     ).toHaveLength(200);
   });
 
-  it("deletes search-cached rows unseen for 14 days and keeps recent ones", async () => {
+  it("prunes beyond 90 days: the inbox flag goes off and unseen archived rows are deleted", async () => {
     seed("expire", [message("a", 1, ["INBOX"])]);
     const account = await connect("expire");
-    const cached = (id: string, seenDaysAgo: number) => ({
+    const cached = (id: string, receivedDaysAgo: number, seenDaysAgo: number, inInbox = false) => ({
       spaceId,
       userId,
       connectionId: account.id,
@@ -934,18 +940,203 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       fromAddress: "x@example.test",
       subject: id,
       snippet: "",
-      receivedAt: new Date(Date.now() - 100 * DAY),
+      receivedAt: new Date(Date.now() - receivedDaysAgo * DAY),
       unread: false,
+      inInbox,
       seenAt: new Date(Date.now() - seenDaysAgo * DAY),
     });
     await prisma.cachedMailMessage.createMany({
-      data: [cached("stale-search", 15), cached("fresh-search", 1)],
+      data: [
+        cached("stale-search", 120, 91),
+        cached("fresh-search", 100, 89),
+        cached("old-inbox", 95, 1, true),
+        cached("recent-archived", 60, 40),
+      ],
     });
 
     await sync(account);
 
-    const ids = (await rows(account.id)).map((r) => r.providerMessageId).sort();
-    expect(ids).toEqual(["a", "fresh-search"]);
+    const stored = await rows(account.id);
+    expect(stored.map((r) => r.providerMessageId).sort()).toEqual([
+      "a",
+      "fresh-search",
+      "old-inbox",
+      "recent-archived",
+    ]);
+    expect(stored.find((r) => r.providerMessageId === "old-inbox")?.inInbox).toBe(false);
+  });
+
+  describe("90-day window, paged", () => {
+    const byId = async (connectionId: string) =>
+      Object.fromEntries((await rows(connectionId)).map((r) => [r.providerMessageId, r]));
+    const backfillOf = async (connectionId: string) => (await state(connectionId)).backfill;
+    const spread = (count: number, spanDays: number, label: string, flags = ["INBOX"]) =>
+      Array.from({ length: count }, (_, i) =>
+        message(`${label}-${i}`, 0.5 + (i * spanDays) / count, flags),
+      );
+    const dayOf = (days: number) => daysAgo(days).slice(0, 10);
+
+    it("bounds the work of every run and finishes the window over several runs", async () => {
+      seed("bound", spread(350, 80, "in"));
+      const account = await connect("bound");
+
+      expect(await sync(account)).toBe("synced");
+      expect(await rows(account.id)).toHaveLength(200);
+      const marker = (await backfillOf(account.id)) as {
+        inbox: string | null;
+        sent: string | null;
+      };
+      expect(marker.inbox).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(marker.sent).toBeNull();
+
+      for (const expected of [true, false]) {
+        await expireThrottle(account.id);
+        const gets = getCalls();
+        const lists = listCalls();
+        expect(await sync(account)).toBe("synced");
+        // One inbox page of 100 at most; sent mail was complete.
+        expect(listCalls() - lists).toBe(1);
+        expect(getCalls() - gets).toBeLessThanOrEqual(100);
+        expect((await backfillOf(account.id)) !== null).toBe(expected);
+      }
+      expect(await rows(account.id)).toHaveLength(350);
+    });
+
+    it("caches the rest of the window for a connection that synced before the migration", async () => {
+      seed("existing", [message("recent", 1, ["INBOX"]), message("older", 40, ["INBOX"])]);
+      const account = await connect("existing");
+      await sync(account);
+      // What the old release left: a change cursor, no backfill, and only the recent mail cached.
+      await prisma.cachedMailMessage.deleteMany({
+        where: { connectionId: account.id, providerMessageId: "older" },
+      });
+      expect(await backfillOf(account.id)).toBeNull();
+
+      const migration = readFileSync(
+        new URL(
+          "../../db/prisma/migrations/20261114000000_mail_background_sync/migration.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      const seedSql = migration.slice(migration.indexOf("UPDATE")).replace(/;\s*$/, "");
+      await prisma.$executeRawUnsafe(`${seedSql} AND "connectionId" = $1`, account.id);
+      expect(await backfillOf(account.id)).toEqual({ inbox: dayOf(14), sent: dayOf(14) });
+
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+
+      expect(Object.keys(await byId(account.id)).sort()).toEqual(["older", "recent"]);
+      expect(await backfillOf(account.id)).toBeNull();
+    });
+
+    it("keeps inInbox for a message in both lists when its sent page arrives later", async () => {
+      seed("both", [
+        ...spread(250, 50, "in"),
+        ...spread(250, 50, "sent", ["SENT"]),
+        message("both", 75, ["INBOX", "SENT"]),
+      ]);
+      const account = await connect("both");
+      await sync(account);
+      expect((await byId(account.id)).both).toBeUndefined();
+
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+
+      expect((await byId(account.id)).both).toMatchObject({ inInbox: true, fromSelf: true });
+      expect(await backfillOf(account.id)).toBeNull();
+    });
+
+    it("clears an archived message inside a backfill page but nothing newer or older", async () => {
+      seed("range", spread(350, 80, "in"));
+      const account = await connect("range");
+      await sync(account);
+      const stale = (id: string, days: number) => ({
+        spaceId,
+        userId,
+        connectionId: account.id,
+        providerMessageId: id,
+        threadId: id,
+        fromAddress: "x@example.test",
+        subject: id,
+        snippet: "",
+        receivedAt: new Date(Date.now() - days * DAY),
+        unread: false,
+        inInbox: true,
+        signalsVersion: MAIL_SIGNALS_VERSION,
+        seenAt: new Date(),
+      });
+      // The backfill page covers roughly days 46 to 69; these are not in Gmail's inbox.
+      await prisma.cachedMailMessage.createMany({
+        data: [stale("newer", 3.3), stale("inside", 58.1), stale("older", 79.9)],
+      });
+
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+
+      const stored = await byId(account.id);
+      expect(stored.inside?.inInbox).toBe(false);
+      expect(stored.newer?.inInbox).toBe(true);
+      expect(stored.older?.inInbox).toBe(true);
+    });
+
+    it("moves on by a day when more than 100 messages share the marker day", async () => {
+      const noon = (days: number) => new Date(`${dayOf(days)}T12:00:00Z`);
+      const crowded = Array.from({ length: 250 }, (_, i) =>
+        message(`day-${i}`, 0, ["INBOX"], {
+          date: new Date(noon(40).getTime() - i * 60_000).toISOString(),
+        }),
+      );
+      seed("crowd", [...spread(100, 10, "new"), ...crowded]);
+      const account = await connect("crowd");
+      await sync(account);
+      expect((await backfillOf(account.id)) as unknown).toEqual({ inbox: dayOf(40), sent: null });
+
+      await expireThrottle(account.id);
+      await sync(account);
+      const previousDay = new Date(noon(40).getTime() - DAY).toISOString().slice(0, 10);
+      expect(await backfillOf(account.id)).toEqual({ inbox: previousDay, sent: null });
+
+      await expireThrottle(account.id);
+      await sync(account);
+      expect(await backfillOf(account.id)).toBeNull();
+    });
+
+    it("does not fail the sync when the backfill errors, and keeps the marker", async () => {
+      seed("bf-error", spread(350, 80, "in"));
+      const account = await connect("bf-error");
+      await sync(account);
+      const before = await backfillOf(account.id);
+      await expireThrottle(account.id);
+      gmail.failNext(500, { times: 20, urlIncludes: "before" });
+
+      expect(await sync(account)).toBe("synced");
+
+      expect((await state(account.id)).lastErrorAt).toBeNull();
+      expect(await backfillOf(account.id)).toEqual(before);
+      gmail.clearFailures();
+      await expireThrottle(account.id);
+      await sync(account);
+      // The page overlaps the marker day, so a little under 100 new messages arrive.
+      expect((await rows(account.id)).length).toBeGreaterThan(285);
+      expect((await rows(account.id)).length).toBeLessThanOrEqual(300);
+    });
+
+    it("takes at most 50 stale-signal rows per run across the window", async () => {
+      const many = Array.from({ length: 120 }, (_, i) =>
+        message(`s${String(i).padStart(3, "0")}`, 1 + i * 0.7, ["INBOX"]),
+      );
+      seed("wide-stale", many);
+      const account = await connect("wide-stale");
+      await sync(account);
+      await prisma.$executeRaw`UPDATE mail_messages SET "signalsVersion" = 0, signals = NULL WHERE "connectionId" = ${account.id}`;
+      await expireThrottle(account.id);
+      const gets = getCalls();
+
+      expect(await sync(account)).toBe("synced");
+
+      expect(getCalls() - gets).toBe(50);
+    });
   });
 
   it("does not sync a revoked connection", async () => {

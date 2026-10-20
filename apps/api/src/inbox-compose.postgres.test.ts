@@ -1,12 +1,18 @@
 import { createRouterClient } from "@orpc/server";
 import type {
   AdapterContext,
+  BackgroundJob,
   ConnectorProxyRequest,
   JobPublisher,
   MailProvider,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
-import { createMailProvider, GmailApiEmulator, parseRawMime } from "@rakazo/adapters";
+import {
+  createMailProvider,
+  GmailApiEmulator,
+  parseRawMime,
+  runMailSyncJob,
+} from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
@@ -60,7 +66,17 @@ describePostgres("inbox compose (PostgreSQL)", () => {
   let connC: string;
   let revokedA: string;
   let requests: ConnectorProxyRequest[];
-  const jobs = { enqueue: async () => {} } as unknown as JobPublisher;
+  /** Runs an immediate mail.sync job before enqueue returns, as a worker would. */
+  const queued: BackgroundJob[] = [];
+  const jobs: JobPublisher = {
+    enqueue: async (job) => {
+      queued.push(job);
+      if (job.name === "mail.sync" && !job.availableAt)
+        await runMailSyncJob({ prisma, mail, jobs }, job.payload);
+    },
+    cancel: async () => {},
+    close: async () => {},
+  };
   const deps = (extra: { mailWritesDisabled?: boolean } = {}) => ({ prisma, mail, jobs, ...extra });
 
   const connector = {
@@ -589,9 +605,13 @@ describePostgres("inbox compose (PostgreSQL)", () => {
       expect(gmail.sentOf("box-a")).toHaveLength(0);
     });
 
-    it("syncs the mailbox afterwards so the sent message is cached", async () => {
+    it("syncs the mailbox afterwards through the sync job so the sent message is cached", async () => {
       const input = fields();
+      queued.length = 0;
       await inboxComposeSend(deps(), a, input);
+      expect(queued.filter((job) => job.name === "mail.sync").map((job) => job.payload)).toEqual([
+        { spaceId: a.spaceId, userId: a.userId, connectionId: connA },
+      ]);
       const sent = gmail.sentOf("box-a")[0];
       const cached = await prisma.cachedMailMessage.findFirst({
         where: { connectionId: connA, providerMessageId: sent?.id },

@@ -29,7 +29,7 @@ import { Prisma, type PrismaClient } from "@rakazo/db";
 import { withRetryProgress } from "./google-api-request.js";
 import { inboxOverview } from "./inbox-overview.js";
 import { buildRawMessage, parseRecipients } from "./mail-compose.js";
-import { syncAfterSend } from "./mail-sync.js";
+import { syncAfterSend } from "./mail-sync-job.js";
 
 export const MAIL_TOOL_NAMES = new Set([
   "mail_search",
@@ -78,6 +78,8 @@ export type MailToolDeps = {
   /** Stable per tool call, from the run; mail_send keys its send record on it so a replay never sends twice. */
   idempotencyKey?: string;
   deadlineMs?: number;
+  /** How long the inbox overview waits for the queued sync; defaults to 8 seconds. */
+  syncWaitMs?: number;
   now?: () => Date;
   /** One line of what the tool is doing, for the owner's activity view. Never part of the result. */
   progress?: (progress: ToolProgress) => void;
@@ -1003,7 +1005,7 @@ async function mailSend(
     sending = false;
     await record({ state: "sent", providerMessageId: sent.messageId || null });
     // So the Inbox shows the reply in its conversation, and the thread leaves Needs reply.
-    await syncAfterSend({ prisma: deps.prisma, mail: deps.mail, jobs: deps.jobs }, account, {
+    await syncAfterSend({ prisma: deps.prisma, jobs: deps.jobs }, account, {
       ...context,
       spaceId: deps.scope.spaceId,
       userId: deps.scope.userId,

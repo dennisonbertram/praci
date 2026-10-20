@@ -12,6 +12,7 @@ import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
+import { runMailSyncJob } from "./mail-sync-job.js";
 import { type MailToolDeps, mailToolFromTool } from "./mail-tools.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -87,7 +88,11 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
   /** A tenant with one Gmail emulator mailbox per key. */
   async function harness(
     boxes: Record<string, EmulatedMessage[]>,
-    options: { wrap?: (provider: MailProvider) => MailProvider } = {},
+    options: {
+      wrap?: (provider: MailProvider) => MailProvider;
+      /** When a queued mail.sync job runs: before enqueue returns, after a short delay, or never (no worker). */
+      worker?: "inline" | "delayed" | "none";
+    } = {},
   ) {
     const scope = await tenant();
     const gmail = new GmailApiEmulator({
@@ -133,15 +138,21 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
       accounts.push(listed.find((a) => a.id === row.id) as MailAccount);
     }
     const enqueued: unknown[] = [];
+    const mail = options.wrap ? options.wrap(provider) : provider;
+    const worker = options.worker ?? "inline";
     const jobs: JobPublisher = {
       enqueue: async (job) => {
         enqueued.push(job);
+        if (job.name !== "mail.sync" || job.availableAt || worker === "none") return;
+        const run = () => runMailSyncJob({ prisma, mail, jobs }, job.payload);
+        if (worker === "inline") await run();
+        else setTimeout(() => void run(), 300);
       },
       cancel: async () => undefined,
       close: async () => undefined,
     };
     const deps: MailToolDeps = {
-      mail: options.wrap ? options.wrap(provider) : provider,
+      mail,
       prisma,
       jobs,
       accounts: async () => accounts,
@@ -413,5 +424,25 @@ describePostgres("inbox_overview (PostgreSQL + Gmail emulator)", () => {
     ]);
     expect(result.recent.join("\n")).toContain("From A");
     expect(result.accounts[1]?.lastSyncedAt).toBeNull();
+  });
+
+  it("waits for the queued sync and answers from the fresh cache", async () => {
+    const t = await harness(
+      { a: [message("m1", 1, { subject: "Fresh subject" })] },
+      { worker: "delayed" },
+    );
+    const started = Date.now();
+    const result = await t.overview();
+    expect(Date.now() - started).toBeGreaterThan(250);
+    expect(result.accounts[0]).toMatchObject({ sync: "synced" });
+    expect(result.recent.join("\n")).toContain("Fresh subject");
+  });
+
+  it("answers from the cache after the wait with sync 'syncing' when no worker runs", async () => {
+    const t = await harness({ a: [message("m1", 1)] }, { worker: "none" });
+    const result = await t.overview({ ...t.deps, syncWaitMs: 400 });
+    expect(result.accounts[0]).toMatchObject({ sync: "syncing", lastSyncedAt: null });
+    expect(result.recent).toEqual([]);
+    expect(t.listCalls()).toBe(0);
   });
 });

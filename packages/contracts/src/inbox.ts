@@ -117,6 +117,23 @@ export const MailRowSchema = z.object({
 /** Which account a request covers; omitted means every connected mail account. */
 export const InboxScopeInputSchema = z.object({ connectionId: Id.optional() });
 
+/** `waitMs` holds the reply until the queued sync finishes, up to that long (a client that lists right after). */
+export const InboxRefreshInputSchema = InboxScopeInputSchema.extend({
+  waitMs: z.number().int().min(0).max(10_000).optional(),
+});
+
+/** Refresh queues the sync and returns at once; the new fields are optional for older clients and servers. */
+export const InboxRefreshOutputSchema = z.object({
+  ok: z.literal(true),
+  /** A sync is queued or running for at least one account. */
+  syncing: z.boolean().optional(),
+  /** Newest successful sync across the accounts, ISO 8601; null when none has finished. */
+  syncedAt: z.string().nullable().optional(),
+  /** Accounts whose last sync failed. */
+  failedAccounts: z.array(Id).optional(),
+});
+export type InboxRefreshOutput = z.infer<typeof InboxRefreshOutputSchema>;
+
 /** Gmail filters, each one a fixed Gmail search term. */
 export const InboxFilterSchema = z.enum([
   "unread",

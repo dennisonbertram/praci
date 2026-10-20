@@ -9,13 +9,21 @@ import type {
 } from "@rakazo/adapter-kit";
 import { inboxTriageJob, MailProviderError } from "@rakazo/adapter-kit";
 import type { TriageReadinessDeps } from "@rakazo/adapters";
-import { isMailConnection, syncMailbox, triageReadiness, triageStatus } from "@rakazo/adapters";
+import {
+  isMailConnection,
+  mailSyncStatus,
+  requestMailSync,
+  triageReadiness,
+  triageStatus,
+  waitForMailSync,
+} from "@rakazo/adapters";
 import type {
   Actor,
   InboxFeedbackInput,
   InboxListInput,
   InboxListOutput,
   InboxMark,
+  InboxRefreshOutput,
   InboxTodo,
   MailRow,
 } from "@rakazo/contracts";
@@ -38,7 +46,6 @@ export interface InboxDeps {
 
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_ROWS = 200;
-const SYNC_PARALLELISM = 4;
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
 /** Messages asked of Gmail per account for one page of a filtered or searched list. */
 const SEARCH_PAGE_SIZE = 50;
@@ -453,32 +460,17 @@ export async function inboxFeedbackSet(
   return { mark: input.mark };
 }
 
-/** A sync inside a rate-limit backoff is skipped, so "Try again" would do nothing: wait it out (at most 30 s). */
-async function waitOutBackoff(prisma: PrismaClient, connectionId: string, signal?: AbortSignal) {
-  if (signal?.aborted) return;
-  // The remaining time comes from Postgres' clock, the one that set backoffUntil and that sync compares it to.
-  const [row] = await prisma.$queryRaw<Array<{ waitMs: number | null }>>`
-    SELECT EXTRACT(EPOCH FROM ("backoffUntil" - timezone('utc', now()))) * 1000 AS "waitMs"
-    FROM mail_sync_states WHERE "connectionId" = ${connectionId}`;
-  const wait = Number(row?.waitMs ?? 0);
-  if (!(wait > 0) || wait > 30_000 || signal?.aborted) return;
-  await new Promise<void>((resolve) => {
-    const done = () => {
-      clearTimeout(timer);
-      signal?.removeEventListener("abort", done);
-      resolve();
-    };
-    const timer = setTimeout(done, wait + 50);
-    signal?.addEventListener("abort", done, { once: true });
-  });
-}
-
+/**
+ * Queues a background sync for each account and returns at once with where the syncs stand; the
+ * client lists again when none is syncing. `waitMs` holds the reply for a client that lists right
+ * after (it waits for the job, never runs one). A sync inside the 60-second throttle is not queued.
+ */
 export async function inboxRefresh(
   deps: InboxDeps,
   actor: Actor,
-  input: { connectionId?: string },
+  input: { connectionId?: string; waitMs?: number },
   signal?: AbortSignal,
-): Promise<{ ok: true }> {
+): Promise<InboxRefreshOutput> {
   const context = mailContext(actor, "inbox.refresh", signal);
   const mine = await deps.mail.listAccounts(
     { spaceId: actor.spaceId, userId: actor.userId },
@@ -486,17 +478,21 @@ export async function inboxRefresh(
   );
   if (input.connectionId && !mine.some((a) => a.id === input.connectionId)) throw notFound();
   const accounts = mine.filter((a) => !input.connectionId || a.id === input.connectionId);
+  const scope = { spaceId: actor.spaceId, userId: actor.userId };
 
-  // At most four accounts at a time; syncMailbox records provider errors instead of throwing.
-  const queue = [...accounts];
-  const worker = async () => {
-    for (let account = queue.shift(); account && !signal?.aborted; account = queue.shift()) {
-      await waitOutBackoff(deps.prisma, account.id, signal);
-      if (signal?.aborted) return;
-      await syncMailbox(deps, account, context);
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(SYNC_PARALLELISM, accounts.length) }, worker));
+  // A failed enqueue only delays the sync to the next refresh, so it must not fail the page.
+  await Promise.all(
+    accounts.map((account) =>
+      requestMailSync(deps, { ...scope, connectionId: account.id }, "refresh").catch((error) => {
+        getLogger().warn("mail sync enqueue failed", {
+          connectionId: account.id,
+          reason: error instanceof Error ? error.name : "error",
+        });
+      }),
+    ),
+  );
+  const ids = accounts.map((a) => a.id);
+  if (input.waitMs) await waitForMailSync(deps.prisma, scope, ids, input.waitMs, signal);
 
   // A sync only queues triage when it ran. One throttled, or incomplete before the user allowed the
   // model, would leave cached mail untriaged, so refresh queues it whenever mail is waiting.
@@ -510,7 +506,16 @@ export async function inboxRefresh(
   ) {
     await enqueueTriage(deps, actor);
   }
-  return { ok: true };
+
+  const statuses = await mailSyncStatus(deps.prisma, scope, ids);
+  const synced = statuses.flatMap((s) => (s.lastSyncedAt ? [s.lastSyncedAt.getTime()] : []));
+  const failedAccounts = statuses.filter((s) => s.failed).map((s) => s.connectionId);
+  return {
+    ok: true,
+    syncing: statuses.some((s) => s.syncing),
+    syncedAt: synced.length ? new Date(Math.max(...synced)).toISOString() : null,
+    ...(failedAccounts.length ? { failedAccounts } : {}),
+  };
 }
 
 /** The caller's cached message and the connected account it came from, or NOT_FOUND. */

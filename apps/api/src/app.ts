@@ -33,6 +33,7 @@ import {
   createCloudAgentConnection,
   createConnectorStack,
   createFinanceCallToolFor,
+  createGmailPushVerifier,
   createJobReconciler,
   createMailProvider,
   createMessagingContextLoader,
@@ -49,6 +50,7 @@ import {
   EmailEmulator,
   ExpoPushProvider,
   GraphileJobPublisher,
+  gmailPushConfigFromEnv,
   ImessageNotificationChannel,
   InMemoryJobQueue,
   InMemoryRealtimeFanout,
@@ -82,6 +84,7 @@ import {
   syncCryptoHoldings,
   toTeamChatInbound,
   triageStatus,
+  wakeMailConnections,
   withSecretPersistence,
 } from "@rakazo/adapters";
 import { createAuth, isBlockedAuthPath, loopbackTwinOrigins } from "@rakazo/auth";
@@ -123,6 +126,7 @@ import { loadEnv } from "./env.js";
 import { healthRoutes } from "./health.js";
 import { mountInboxAttachment } from "./inbox-attachment.js";
 import { mountLocalSettings } from "./local-settings.js";
+import { mountMailPushRoute } from "./mail-push.js";
 import {
   createMessagingInboundHandler,
   teamChatSenderCanWakeMessageRoutines,
@@ -420,6 +424,7 @@ export async function createApp(
   const connector = stack.destination;
   // One instance serves the Inbox handlers (and the mail tools that reuse it later).
   const mail = createMailProvider({ prisma, connectors: stack.connector });
+  const gmailPush = gmailPushConfigFromEnv(process.env, env.webOrigin);
   await connector.start();
   integrationSettings.warmDirectories();
   const runtime =
@@ -584,6 +589,8 @@ export async function createApp(
         ? [new ImessageNotificationChannel({ prisma, jobs, appUrl: env.webOrigin })]
         : []),
     ],
+    mail,
+    gmailPush,
   });
   if (inMemoryJobs) {
     await inMemoryJobs.start(jobHandlers);
@@ -820,6 +827,13 @@ export async function createApp(
     return actor;
   });
   mountWebhookHttpRoutes(app, { prisma, secrets, events, jobs });
+  // Gmail push is off unless the deployment sets a Pub/Sub topic and service account.
+  if (gmailPush) {
+    mountMailPushRoute(app, {
+      verify: createGmailPushVerifier(gmailPush),
+      wake: (address) => wakeMailConnections({ prisma, jobs }, address),
+    });
+  }
   if (billing && billingProvider) {
     mountBillingRoutes(app, {
       billing,

@@ -56,6 +56,9 @@ import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
 const ALL = "all";
+/** While a refresh reports its sync still running, ask again this often, at most this many times. */
+const SYNC_POLL_MS = 2_000;
+const SYNC_POLL_MAX = 60;
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 12;
@@ -324,8 +327,20 @@ export function InboxPage({
     polls.current = 0;
     setStalled(false);
     let live = true;
-    rpc.inbox
-      .refresh({})
+    let wake: (() => void) | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    // The server queues the sync and answers at once; ask again until it is done, then list.
+    const sync = async () => {
+      let result = await rpc.inbox.refresh({});
+      for (let i = 0; i < SYNC_POLL_MAX && live && result?.syncing; i++) {
+        await new Promise<void>((resolve) => {
+          wake = resolve;
+          timer = setTimeout(resolve, SYNC_POLL_MS);
+        });
+        if (live) result = await rpc.inbox.refresh({});
+      }
+    };
+    sync()
       .catch((cause) => {
         if (live) setError(errorText(cause));
       })
@@ -339,6 +354,8 @@ export function InboxPage({
       });
     return () => {
       live = false;
+      clearTimeout(timer);
+      wake?.();
     };
   }, [paused, attempt]);
 

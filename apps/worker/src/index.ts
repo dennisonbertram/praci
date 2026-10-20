@@ -2,6 +2,7 @@ import type { JobPublisher, JobWorkerHost } from "@rakazo/adapter-kit";
 import {
   ComposioConnector,
   createMailProvider,
+  gmailPushConfigFromEnv,
   IntegrationProviderSettings,
 } from "@rakazo/adapters";
 import { loadRootEnv } from "@rakazo/core/node/load-root-env";
@@ -202,6 +203,11 @@ async function main() {
     pushSessionExpiresAt(prisma, sessionId),
   );
   const shutdown = new AbortController();
+  const mail = createMailProvider({ prisma, connectors: stack.connector });
+  const gmailPush = gmailPushConfigFromEnv(
+    process.env,
+    process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173",
+  );
   const executor = createRunExecutor({
     shutdownSignal: shutdown.signal,
     prisma,
@@ -246,7 +252,7 @@ async function main() {
     messaging: messaging ? createMessagingContextLoader(prisma, messaging) : undefined,
     web: createWebProvider(),
     cloudAgent,
-    mail: createMailProvider({ prisma, connectors: stack.connector }),
+    mail,
     mailWritesDisabled: process.env.MAIL_WRITES_DISABLED === "true",
   });
 
@@ -281,6 +287,8 @@ async function main() {
           ]
         : []),
     ],
+    mail,
+    gmailPush,
   });
   // graphile-worker run() connects through the shared pool. createPool already
   // retries connect() on 53300 a finite number of times. Keep retrying start

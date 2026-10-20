@@ -699,11 +699,15 @@ describe("mail write tools", () => {
       },
       mailSyncState: {
         upsert: async (arg: unknown) => sync.push(arg),
-        updateMany: async (arg: unknown) => {
-          resyncs.push(arg);
-          return { count: 1 };
-        },
       },
+      // requestMailSync and waitForMailSync: a sync that is not running and not throttled.
+      $executeRaw: async (strings: TemplateStringsArray, ...values: unknown[]) => {
+        resyncs.push(JSON.stringify([strings, values]));
+        return 1;
+      },
+      $queryRaw: async () => [
+        { claimed: false, requested: false, throttleMs: 0, backoffMs: 0, syncing: false },
+      ],
     };
     const { deps, gmail } = setup({ a: inbox }, { prisma });
     return {
@@ -734,7 +738,13 @@ describe("mail write tools", () => {
   it("syncs the account again after a send, skipping the throttle, so the Inbox shows the reply", async () => {
     const { deps, resyncs } = withSends();
     expect(await run(deps, "mail_send", message)).toMatchObject({ ok: true });
-    expect(resyncs).toEqual([{ where: { connectionId: "conn-a" }, data: { lastSyncedAt: null } }]);
+    expect(resyncs.some((query) => String(query).includes("lastSyncedAt"))).toBe(true);
+    expect(deps.jobs.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        name: "mail.sync",
+        payload: { spaceId: deps.scope.spaceId, userId: deps.scope.userId, connectionId: "conn-a" },
+      }),
+    );
   });
 
   it("sends once when the same tool call runs twice", async () => {

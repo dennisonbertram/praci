@@ -70,6 +70,20 @@ export async function assertMailConformance(
     (error) => error instanceof MailProviderError && error.kind === "not_found",
   );
 
+  // Push is optional: a provider that offers it answers null (this route cannot watch) or a future expiry.
+  if (provider.watchChanges) {
+    const watch = await provider.watchChanges(
+      a,
+      { topic: "projects/example/topics/mail" },
+      context,
+    );
+    if (watch) {
+      assert.ok(watch.cursor);
+      assert.ok(Date.parse(watch.expiresAt) > Date.now(), "a watch expires in the future");
+    }
+  }
+  if (provider.stopWatch) await provider.stopWatch(b, context);
+
   emulator.gmail.failNext(401);
   await assert.rejects(
     provider.listMessages(a, everything, context),

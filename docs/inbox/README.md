@@ -40,13 +40,22 @@ Approved design: [approved-mockup.html](approved-mockup.html).
    continued with `mail_search({ continueFrom: searchId })`; there is no date-only
    `before` bound, which would skip the rest of a cut-off day. Ids already in item 4's
    metadata cache are not fetched again.
-3. **Inbox sync is on demand.** The 60-second throttle and the in-flight claim are one
-   conditional `UPDATE` on `MailSyncState` that stores a random `claimToken`. The sync
-   collects provider results under a 90-second deadline (shorter than the 2-minute
-   stale window), then writes everything in one transaction that first locks the state
-   row and checks the token, so a sync that lost its claim writes nothing. The cache
-   also stores the user's sent mail for the same 14-day window. `inbox.list` returns
-   the Inbox agent (or null) and the accounts (empty means none connected).
+3. **Inbox sync runs in a background job.** Each connection has a `mail.sync` job (job
+   key `mail.sync:<connectionId>`, so repeated requests collapse) that runs
+   `syncMailbox` in the worker. `inbox.refresh`, the agent's inbox overview and
+   sync-after-send only enqueue it; `inbox.refresh` answers at once with the sync status
+   and the page asks again until the sync is done. The 60-second throttle and the
+   in-flight claim are one conditional `UPDATE` on `MailSyncState` that stores a random
+   `claimToken`, so several API and worker processes never sync one account twice. The
+   sync collects provider results under a deadline shorter than the 5-minute stale
+   claim, then writes everything in one transaction that first locks the state row and
+   checks the token, so a sync that lost its claim writes nothing. The cache keeps 90
+   days of inbox and sent mail: the first run lists the newest 200 messages of each, and
+   the next runs add 100 older ones per query until the window is complete. Readers
+   such as the Inbox page and triage still look at the last 14 days. On a deployment
+   with a Google Cloud Pub/Sub topic configured, Gmail push wakes the job for native
+   Google connections; polling stays as the fallback. `inbox.list` returns the Inbox
+   agent (or null) and the accounts (empty means none connected).
 4. **Inbox agent identity** is `spawnKey = "inbox-agent:<userId>"`, built only by
    `inboxAgentSpawnKey()`. The only creation path is item 3's `ensureInboxAgent`
    behind `inbox.agent`. Its name is "Inbox agent", as in the mockup.
@@ -154,9 +163,8 @@ Notes:
 - **Gmail page-token lifetime is undocumented.** A `continueFrom` long after the first
   search may get its token rejected; that query reports an error and the bot searches
   again.
-- **Synchronous sync in the API request.** Slow providers make `inbox.refresh` slow
-  (bounded by the 90-second deadline). Move it to a worker job when that shows up; the
-  Postgres claim stays.
+- **Worker slots.** A first sync of a large mailbox can hold one worker slot for up to
+  four minutes; the slots are shared with runs and triage.
 - **Rare duplicate triage calls** when two triage jobs for one user overlap. Data stays
   correct; the cost is one extra model call.
 - **Triage results can lag.** The page refetches for at most 30 seconds while triage is

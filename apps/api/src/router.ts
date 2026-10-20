@@ -127,6 +127,7 @@ import {
   scriptedCatalogEntry,
   selectDefaultCredentialId,
   serializeModelSecret,
+  stopMailWatch,
   storeBotSecret,
   takeoverLeaseMs,
   toComputerRef,
@@ -6161,6 +6162,15 @@ export function createRouter(deps: RouterDeps) {
             userId: context.actor.userId,
           },
         });
+        // The watch needs the login, which the revoke below removes. Best effort: a watch that
+        // is not stopped lapses within 7 days and its pushes match no connection.
+        if (snapshot?.connectorId === "google" && isMailConnection(snapshot)) {
+          await stopMailWatch(
+            { prisma: deps.prisma, mail: deps.mail },
+            { spaceId: context.actor.spaceId, userId: context.actor.userId },
+            snapshot.id,
+          );
+        }
         const needsProvider =
           snapshot &&
           snapshot.status === "connected" &&

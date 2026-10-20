@@ -927,3 +927,21 @@ it("keeps the chosen account tab after leaving the Inbox and coming back", async
   );
   await click(again ?? null);
 });
+
+it("polls refresh while it reports syncing and reloads the list once when it stops", async () => {
+  rpcMock.refresh
+    .mockResolvedValueOnce({ ok: true, syncing: true })
+    .mockResolvedValueOnce({ ok: true, syncing: true })
+    .mockResolvedValue({ ok: true, syncing: false });
+  await render();
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(1);
+  const lists = rpcMock.list.mock.calls.length;
+  await dwell(2_000);
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(2);
+  expect(rpcMock.list.mock.calls.length).toBe(lists);
+  await dwell(2_000);
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(3);
+  expect(rpcMock.list.mock.calls.length).toBe(lists + 1);
+  await dwell(10_000);
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(3);
+});

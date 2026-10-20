@@ -1,13 +1,20 @@
 import { createRouterClient } from "@orpc/server";
 import type {
   AdapterContext,
+  BackgroundJob,
   ConnectorProxyRequest,
   JobPublisher,
+  MailAccount,
   MailProvider,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
 import { inboxTriageJob } from "@rakazo/adapter-kit";
-import { aiRecipient, createMailProvider, GmailApiEmulator } from "@rakazo/adapters";
+import {
+  aiRecipient,
+  createMailProvider,
+  GmailApiEmulator,
+  runMailSyncJob,
+} from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION, inboxAgentSpawnKey } from "@rakazo/contracts";
 import { groupInbox, TRIAGE_VERSION } from "@rakazo/core";
@@ -63,6 +70,26 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
     mail: MailProvider;
     jobs: JobPublisher;
     resolveModel?: (scope: { userId: string; spaceId: string; botId?: string }) => Promise<never>;
+  };
+
+  /** Where a queued mail.sync job runs: before enqueue returns, after a short delay, or not at all. */
+  let workerMode: "inline" | "delayed" | "none" = "inline";
+  const queuedSyncs: BackgroundJob[] = [];
+  /** Queues like the real publisher and runs an immediate mail.sync job the way the worker would. */
+  const syncingJobs = (onOther?: (job: BackgroundJob) => void): JobPublisher => {
+    const publisher: JobPublisher = {
+      enqueue: async (job) => {
+        if (job.name !== "mail.sync") return onOther?.(job);
+        queuedSyncs.push(job);
+        if (job.availableAt || workerMode === "none") return;
+        const run = () => runMailSyncJob({ prisma, mail, jobs: publisher }, job.payload);
+        if (workerMode === "inline") await run();
+        else setTimeout(() => void run(), 300);
+      },
+      cancel: async () => {},
+      close: async () => {},
+    };
+    return publisher;
   };
 
   let connA: string;
@@ -142,6 +169,8 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
     });
 
   const wipe = async () => {
+    workerMode = "inline";
+    queuedSyncs.length = 0;
     await prisma.cachedMailMessage.deleteMany({
       where: { spaceId: { in: [spaceA, spaceB] } },
     });
@@ -207,7 +236,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       connectors: { managed: () => connector },
       sleep: async () => {},
     });
-    deps = { prisma, mail, jobs: { enqueue: async () => {} } as unknown as JobPublisher };
+    deps = { prisma, mail, jobs: syncingJobs() };
   });
 
   afterAll(async () => {
@@ -658,7 +687,12 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await wipe();
       seedMailboxes();
 
-      expect(await inboxRefresh(deps, a, {})).toEqual({ ok: true });
+      const result = await inboxRefresh(deps, a, {});
+      expect(result).toMatchObject({ ok: true, syncing: false });
+      expect(result.syncedAt).not.toBeNull();
+      expect(queuedSyncs.map((job) => job.payload)).toEqual([
+        { spaceId: spaceA, userId: userA, connectionId: connA },
+      ]);
 
       const synced = await prisma.cachedMailMessage.findMany({
         where: { spaceId: { in: [spaceA, spaceB] } },
@@ -682,17 +716,57 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await inboxRefresh(deps, a, {});
       expect(await status()).toEqual({ failed: [connA], reconnect: [connA] });
 
+      // A failed sync throttles the next one for 60 seconds, so age the error first.
+      await prisma.mailSyncState.update({
+        where: { connectionId: connA },
+        data: { lastErrorAt: new Date(Date.now() - 120_000) },
+      });
       gmail.failNext(503, { times: 1000 });
       await inboxRefresh(deps, a, {});
       expect(await status()).toEqual({ failed: [connA], reconnect: [] });
 
       // One message cannot be hydrated (rate limit): the rest loaded, so this is not a failure.
+      await prisma.mailSyncState.update({
+        where: { connectionId: connA },
+        data: { lastErrorAt: new Date(Date.now() - 120_000) },
+      });
       gmail.failNext(429, { times: 1000, urlIncludes: "messages/a-1" });
       await inboxRefresh(deps, a, {});
       expect(await status()).toEqual({ failed: [], reconnect: [] });
     });
 
-    it("waits out a rate-limit backoff and then syncs, so Try again is not a dead button", async () => {
+    it("returns at once with syncing true and calls Gmail zero times", async () => {
+      await wipe();
+      seedMailboxes();
+      workerMode = "none";
+
+      const started = Date.now();
+      const result = await inboxRefresh(deps, a, {});
+
+      expect(Date.now() - started).toBeLessThan(1000);
+      expect(result).toEqual({ ok: true, syncing: true, syncedAt: null });
+      expect(gmail.requests).toEqual([]);
+      expect(queuedSyncs).toHaveLength(1);
+      // A second refresh while the job waits reports the same and queues nothing more.
+      expect((await inboxRefresh(deps, a, {})).syncing).toBe(true);
+      expect(queuedSyncs).toHaveLength(1);
+    });
+
+    it("waits for the queued job when asked to", async () => {
+      await wipe();
+      seedMailboxes();
+      workerMode = "delayed";
+
+      const started = Date.now();
+      const result = await inboxRefresh(deps, a, { waitMs: 5000 });
+
+      expect(Date.now() - started).toBeGreaterThan(250);
+      expect(result.syncing).toBe(false);
+      expect(result.syncedAt).not.toBeNull();
+      expect(await prisma.cachedMailMessage.count({ where: { userId: userA } })).toBe(1);
+    });
+
+    it("returns at once during a rate-limit backoff and schedules the job at its end", async () => {
       await wipe();
       seedMailboxes();
       await prisma.mailSyncState.create({
@@ -700,18 +774,18 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
           connectionId: connA,
           lastErrorAt: new Date(),
           lastErrorKind: "rate_limited",
-          backoffUntil: new Date(Date.now() + 1500),
+          backoffUntil: new Date(Date.now() + 20_000),
         },
       });
 
       const started = Date.now();
-      await inboxRefresh(deps, a, { connectionId: connA });
+      const result = await inboxRefresh(deps, a, { connectionId: connA });
 
-      expect(Date.now() - started).toBeGreaterThanOrEqual(1000);
-      const out = await inboxList(deps, a, {});
-      expect(out.syncedAt).not.toBeNull();
-      expect(out.failedAccounts).toEqual([]);
-      expect(out.rateLimitedAccounts).toEqual([]);
+      expect(Date.now() - started).toBeLessThan(1000);
+      expect(result.syncing).toBe(true);
+      const wait = (queuedSyncs[0]?.availableAt?.getTime() ?? 0) - Date.now();
+      expect(wait).toBeGreaterThan(18_000);
+      expect(gmail.requests).toEqual([]);
     });
 
     it("does not wait or sync when the request is already aborted", async () => {
@@ -731,6 +805,20 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
 
       expect(Date.now() - started).toBeLessThan(1000);
       expect(gmail.requests).toEqual([]);
+    });
+
+    it("only queues syncs for the caller's own connected accounts", async () => {
+      await wipe();
+      seedMailboxes();
+      workerMode = "none";
+
+      await inboxRefresh(deps, a, {});
+      await inboxRefresh(deps, c, {});
+
+      expect(queuedSyncs.map((job) => job.payload)).toEqual([
+        { spaceId: spaceA, userId: userA, connectionId: connA },
+        { spaceId: spaceB, userId: userC, connectionId: connC },
+      ]);
     });
 
     it("rejects someone else's, a revoked or an unknown connection id with NOT_FOUND", async () => {
@@ -1043,9 +1131,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
 
     describe("refresh starts triage", () => {
       const queued: unknown[] = [];
-      const jobs = {
-        enqueue: async (job: unknown) => void queued.push(job),
-      } as unknown as JobPublisher;
+      const jobs = syncingJobs((job) => void queued.push(job));
       const job = inboxTriageJob(userA, spaceA);
       const refresh = (extra: object = ready) => inboxRefresh({ ...deps, ...extra, jobs }, a, {});
 
@@ -1775,6 +1861,90 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(await prisma.cachedMailMessage.count({ where: { connectionId: connA } })).toBe(1);
       expect(await prisma.mailSyncState.count({ where: { connectionId: connA } })).toBe(1);
       await prisma.connection.delete({ where: { id: doomed } });
+    });
+
+    describe("with a Gmail push watch", () => {
+      const googleConnection = async (ref: string) =>
+        (
+          await prisma.connection.create({
+            data: {
+              spaceId: spaceA,
+              userId: userA,
+              connectorId: "google",
+              provider: "gmail",
+              displayName: `Mailbox ${ref}`,
+              status: "connected",
+              providerRef: ref,
+              metadata: { mailAddress: `${ref}@example.test` },
+            },
+          })
+        ).id;
+      const watched = async (ref: string) => {
+        const id = await googleConnection(ref);
+        await prisma.mailSyncState.create({
+          data: {
+            connectionId: id,
+            watchAddress: `${ref}@example.test`,
+            watchExpiresAt: new Date(Date.now() + 5 * 86_400_000),
+          },
+        });
+        return id;
+      };
+      const revokeWith = (stop: (connectionId: string) => Promise<void>) =>
+        createRouterClient(
+          createRouter({
+            prisma,
+            mail: {
+              listAccounts: mail.listAccounts.bind(mail),
+              stopWatch: async (account: MailAccount) => stop(account.id),
+            },
+            connectors: { managed: () => connector },
+          } as unknown as RouterDeps),
+          { context: { actor: a } as never },
+        );
+
+      it("stops the watch before the connection is marked revoked", async () => {
+        await wipe();
+        const doomed = await watched("box-watched");
+        const seen: string[] = [];
+
+        await revokeWith(async (connectionId) => {
+          seen.push(
+            (await prisma.connection.findUniqueOrThrow({ where: { id: connectionId } })).status,
+          );
+        }).connections.revoke({ connectionId: doomed });
+
+        expect(seen).toEqual(["connected"]);
+        expect((await prisma.connection.findUniqueOrThrow({ where: { id: doomed } })).status).toBe(
+          "revoked",
+        );
+        await prisma.connection.delete({ where: { id: doomed } });
+      });
+
+      it("still revokes when stopping the watch fails", async () => {
+        await wipe();
+        const doomed = await watched("box-watch-fails");
+
+        await revokeWith(async () => {
+          throw new Error("gmail down");
+        }).connections.revoke({ connectionId: doomed });
+
+        expect((await prisma.connection.findUniqueOrThrow({ where: { id: doomed } })).status).toBe(
+          "revoked",
+        );
+        await prisma.connection.delete({ where: { id: doomed } });
+      });
+
+      it("does not call Gmail for a connection without a watch", async () => {
+        await wipe();
+        const doomed = await googleConnection("box-unwatched");
+        let calls = 0;
+
+        await revokeWith(async () => void calls++).connections.revoke({ connectionId: doomed });
+
+        expect(calls).toBe(0);
+        await prisma.connection.delete({ where: { id: doomed } });
+      });
     });
 
     it("keeps the user's sender marks, which belong to the sender and not to one account", async () => {

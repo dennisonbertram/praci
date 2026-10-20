@@ -8,6 +8,7 @@ import {
   historyCompactJobKey,
   inboxTriageJob,
   mailSearchExpireJob,
+  mailSyncJob,
   messagingDeliverJob,
   parseBackgroundJob,
 } from "./background-jobs.js";
@@ -29,6 +30,8 @@ function handlers(): BackgroundJobHandlers {
     "cloud_agent.poll": vi.fn(async () => undefined),
     "mail.search.expire": vi.fn(async () => undefined),
     "inbox.triage": vi.fn(async () => undefined),
+    "mail.sync": vi.fn(async () => undefined),
+    "mail.watch.renew": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
     "dataroom.blob.delete": vi.fn(async () => undefined),
     "dataroom.ingest": vi.fn(async () => undefined),
@@ -90,6 +93,35 @@ describe("background job contracts", () => {
     expect(inboxTriageJob("user-2", "space-1").replaceKey).not.toBe(
       inboxTriageJob("user-1", "space-1").replaceKey,
     );
+  });
+
+  it("mail.sync payload needs spaceId, userId and connectionId", () => {
+    const payload = { spaceId: "s", userId: "u", connectionId: "c" };
+    expect(parseBackgroundJob("mail.sync", payload).payload).toEqual(payload);
+    for (const key of Object.keys(payload))
+      expect(() => parseBackgroundJob("mail.sync", { ...payload, [key]: undefined })).toThrow();
+  });
+
+  it("mailSyncJob keys one job per connection", () => {
+    const at = new Date("2026-11-14T00:00:00Z");
+    const job = mailSyncJob({ spaceId: "s", userId: "u", connectionId: "c1" }, at);
+    expect(job).toEqual({
+      name: "mail.sync",
+      payload: { spaceId: "s", userId: "u", connectionId: "c1" },
+      replaceKey: "mail.sync:c1",
+      maxAttempts: 3,
+      availableAt: at,
+    });
+    expect(mailSyncJob({ spaceId: "s", userId: "u", connectionId: "c1" })).not.toHaveProperty(
+      "availableAt",
+    );
+    expect(mailSyncJob({ spaceId: "s", userId: "u", connectionId: "c2" }).replaceKey).not.toBe(
+      job.replaceKey,
+    );
+  });
+
+  it("mail.watch.renew takes an empty payload", () => {
+    expect(parseBackgroundJob("mail.watch.renew", {}).payload).toEqual({});
   });
 
   it("validates finance.sync and keys one queued job per user and space", async () => {
