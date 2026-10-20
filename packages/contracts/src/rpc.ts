@@ -29,6 +29,15 @@ import {
   CapTableStateSchema,
 } from "./carta.js";
 import {
+  CompanyImportActionInputSchema,
+  CompanyImportConsentInputSchema,
+  CompanyImportCreateInputSchema,
+  CompanyImportEventSchema,
+  CompanyImportModelConsentStatusSchema,
+  CompanyImportProgressSchema,
+  CompanyImportRunIdInputSchema,
+} from "./company-import.js";
+import {
   ContactLinkedSchema,
   ContactListInputSchema,
   ContactSaveInputSchema,
@@ -1462,6 +1471,21 @@ export const appContract = {
       list: oc.input(InboxScopeInputSchema).output(InboxTodosOutputSchema),
       setDone: oc.input(z.object({ id: Id, done: z.boolean() })).output(InboxTodoSchema),
     },
+  },
+  companyImport: {
+    create: oc.input(CompanyImportCreateInputSchema).output(CompanyImportProgressSchema),
+    progress: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportProgressSchema),
+    consentStatus: oc
+      .input(CompanyImportConsentInputSchema)
+      .output(CompanyImportModelConsentStatusSchema),
+    grantConsent: oc
+      .input(CompanyImportConsentInputSchema)
+      .output(CompanyImportModelConsentStatusSchema),
+    start: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportProgressSchema),
+    action: oc.input(CompanyImportActionInputSchema).output(CompanyImportProgressSchema),
+    subscribe: oc
+      .input(CompanyImportRunIdInputSchema)
+      .output(eventIterator(CompanyImportEventSchema)),
   },
   dataRoom: {
     /** Idempotent: creates the Data room agent; returns the bot to open in the side panel. */

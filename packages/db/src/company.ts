@@ -761,10 +761,12 @@ async function createCandidate(
     sourceKey: string;
     quote: string;
     contentHash: string;
+    importRunId?: string | null;
   },
 ): Promise<string> {
   const candidateData = {
     ...data,
+    importRunId: data.importRunId ?? null,
     proposedFact: data.proposedFact as Prisma.InputJsonValue,
   };
   const existing = await db.companyCandidate.findFirst({
@@ -922,6 +924,7 @@ async function importEntity(
         sourceKey: key,
         quote: input.evidence.quote,
         contentHash: input.evidence.contentHash,
+        importRunId: input.evidence.extractorRunId ?? null,
       });
       return { deferred: true, record: null, candidateId };
     }
@@ -983,6 +986,7 @@ async function importEntity(
       sourceKey: key,
       quote: input.evidence.quote,
       contentHash: input.evidence.contentHash,
+      importRunId: input.evidence.extractorRunId ?? null,
     });
   } else if (input.entity.kind === "company") {
     const company = await db.companyEntity.findFirst({
@@ -1032,6 +1036,7 @@ async function importEntity(
         sourceKey: key,
         quote: input.evidence.quote,
         contentHash: input.evidence.contentHash,
+        importRunId: input.evidence.extractorRunId ?? null,
       });
     }
   }
@@ -1082,6 +1087,7 @@ async function importEntity(
         sourceKey: key,
         quote: input.evidence.quote,
         contentHash: input.evidence.contentHash,
+        importRunId: input.evidence.extractorRunId ?? null,
       });
     }
   }
@@ -1466,6 +1472,7 @@ async function importEvent(
         sourceKey: assertedSourceKey,
         quote: input.evidence.quote,
         contentHash: input.evidence.contentHash,
+        importRunId: input.evidence.extractorRunId ?? null,
       });
       return { deferred: true, record: null, candidateId };
     }
