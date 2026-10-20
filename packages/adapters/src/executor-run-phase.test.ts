@@ -1,13 +1,25 @@
 import type { AdapterContext } from "@rakazo/adapter-kit";
 import type { RunPhase } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
+import type * as BotMessagesModule from "./bot-messages.js";
 import type * as ComputerLifecycleModule from "./computer-lifecycle.js";
-import { ComputerBusyError } from "./computer-lifecycle.js";
-import { createRunExecutor, REQUEUE_LIMIT, requeueLimitReached } from "./executor.js";
+import { ComputerBusyError, IN_LINE_BEHIND_SAME_BOT } from "./computer-lifecycle.js";
+import {
+  createRunExecutor,
+  REQUEUE_LIMIT,
+  requeueLimitReached,
+  runPhaseWriter,
+} from "./executor.js";
 
 const lifecycle = vi.hoisted(() => ({
   provision: vi.fn(async (): Promise<unknown> => ({ id: "computer-1", kind: "desktop" })),
   acquire: vi.fn(async (): Promise<unknown> => null),
+}));
+const botMessages = vi.hoisted(() => ({ returnOutcome: vi.fn(async () => undefined) }));
+vi.mock("./bot-messages.js", async (importOriginal) => ({
+  ...(await importOriginal<typeof BotMessagesModule>()),
+  loadBotMessageContext: async () => undefined,
+  returnBotMessageOutcome: botMessages.returnOutcome,
 }));
 vi.mock("./computer-lifecycle.js", async (importOriginal) => ({
   ...(await importOriginal<typeof ComputerLifecycleModule>()),
@@ -29,7 +41,7 @@ const history = [
   },
 ];
 
-async function continueRun(storedPhase: RunPhase | null = null) {
+async function continueRun(storedPhase: RunPhase | null = null, trigger = "user") {
   const run: Record<string, unknown> = {
     id: "run-1",
     botId: "bot-1",
@@ -38,7 +50,8 @@ async function continueRun(storedPhase: RunPhase | null = null) {
     spaceId: "space-1",
     userId: "user-1",
     status: "queued",
-    trigger: "user",
+    trigger,
+    sourceMessageId: trigger === "bot_message" ? "current" : null,
     leaseFence: 0,
     phase: storedPhase,
   };
@@ -214,7 +227,7 @@ describe("run phases", () => {
   });
 
   it("does not count waiting in line behind another run of the same bot", async () => {
-    lifecycle.acquire.mockRejectedValueOnce(new ComputerBusyError("in use by another run"));
+    lifecycle.acquire.mockRejectedValueOnce(new ComputerBusyError(IN_LINE_BEHIND_SAME_BOT));
     const { phases, finalizeRun } = await continueRun({
       kind: "computer_wait",
       at: minutesAgo(30),
@@ -225,10 +238,123 @@ describe("run phases", () => {
     expect(phases.at(-1)).toMatchObject({ kind: "computer_wait", count: REQUEUE_LIMIT.count + 5 });
   });
 
+  it("counts and stops a computer that stays unavailable for its lease", async () => {
+    lifecycle.acquire.mockRejectedValueOnce(new ComputerBusyError("under maintenance"));
+    const { finalizeRun } = await continueRun({
+      kind: "computer_wait",
+      at: minutesAgo(16),
+      since: minutesAgo(16),
+      count: REQUEUE_LIMIT.count - 1,
+    });
+    expect(finalizeRun).toHaveBeenCalledWith(expect.objectContaining({ outcome: "failed" }));
+  });
+
   it("needs both the count and the time before it stops a run", () => {
     expect(requeueLimitReached({ since: minutesAgo(16), count: 19 })).toBe(false);
     expect(requeueLimitReached({ since: minutesAgo(14), count: 50 })).toBe(false);
     expect(requeueLimitReached({ since: minutesAgo(16), count: 20 })).toBe(true);
     expect(requeueLimitReached(undefined)).toBe(false);
+  });
+
+  it("reports a breaker stop back to the bot that delegated the request", async () => {
+    botMessages.returnOutcome.mockClear();
+    lifecycle.provision.mockRejectedValueOnce(
+      new ComputerBusyError("another start is in progress"),
+    );
+    const { finalizeRun } = await continueRun(
+      {
+        kind: "computer_wait",
+        at: minutesAgo(16),
+        since: minutesAgo(16),
+        count: REQUEUE_LIMIT.count - 1,
+      },
+      "bot_message",
+    );
+    expect(finalizeRun).toHaveBeenCalledWith(expect.objectContaining({ outcome: "failed" }));
+    expect(botMessages.returnOutcome).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ id: "run-1" }),
+      expect.objectContaining({ id: "bot-1" }),
+      expect.stringContaining("Stopped after 15 minutes waiting for the computer"),
+      "status",
+      { forceUnread: true },
+    );
+  });
+});
+
+describe("runPhaseWriter", () => {
+  function fakeRun(trigger: string, phase: RunPhase | null = null) {
+    const row = {
+      id: "run-1",
+      spaceId: "space-1",
+      threadId: "thread-1",
+      botId: "bot-1",
+      trigger,
+      status: "running",
+      leaseFence: 1,
+      phase: phase as unknown,
+    };
+    const updateMany = vi.fn(
+      async ({
+        where,
+        data,
+      }: {
+        where: { status: { in: string[] } };
+        data: { phase: unknown };
+      }) => {
+        if (!where.status.in.includes(row.status)) return { count: 0 };
+        row.phase = data.phase;
+        return { count: 1 };
+      },
+    );
+    const append = vi.fn(async () => undefined);
+    const deps = { prisma: { run: { updateMany } }, events: { append } } as never;
+    return { row, deps, append, writer: () => runPhaseWriter(deps, row, 1) };
+  }
+
+  it("keeps a background run's streak on the row across workers without showing it", async () => {
+    const f = fakeRun("tickets");
+    await f.writer().requeued({ kind: "computer_wait" }, "busy", true);
+    // A later claim starts a fresh writer from the stored row.
+    const streak = await f.writer().requeued({ kind: "computer_wait" }, "busy", true);
+    expect(streak.count).toBe(2);
+    expect(f.row.phase).toMatchObject({ kind: "computer_wait", count: 2 });
+    expect(f.append).not.toHaveBeenCalled();
+  });
+
+  it("keeps counting a requeue that comes after the model was called", async () => {
+    const f = fakeRun("user", {
+      kind: "retrying",
+      at: minutesAgo(5),
+      since: minutesAgo(5),
+      count: 3,
+    });
+    const writer = f.writer();
+    await writer.write({ kind: "model_wait", name: "gpt-6-luna" });
+    await writer.write({ kind: "thinking" });
+    const streak = await writer.requeued({ kind: "retrying" }, "database interruption", true);
+    expect(streak.count).toBe(4);
+  });
+
+  it("ends the streak once the run produces a tool call or text", async () => {
+    const f = fakeRun("user", {
+      kind: "retrying",
+      at: minutesAgo(5),
+      since: minutesAgo(5),
+      count: 3,
+    });
+    const writer = f.writer();
+    await writer.progressed();
+    expect(f.row.phase).not.toHaveProperty("since");
+    const streak = await writer.requeued({ kind: "retrying" }, "database interruption", true);
+    expect(streak.count).toBe(1);
+  });
+
+  it("does not write a phase onto a finished run", async () => {
+    const f = fakeRun("user");
+    f.row.status = "failed";
+    await f.writer().write({ kind: "thinking" });
+    expect(f.row.phase).toBeNull();
+    expect(f.append).not.toHaveBeenCalled();
   });
 });

@@ -86,6 +86,30 @@ const INTERRUPTION_MESSAGES = [
   "terminating connection due to administrator command",
 ];
 
+/**
+ * Wording Prisma 7 and node-postgres use for a server that is restarting or gone. Prisma puts
+ * the SQLSTATE in the message (P2010 "Raw query failed. Code: `57P03`…", P2039, …), not in
+ * `code`. These phrases are generic enough that they count only on an error from that stack.
+ */
+const DATABASE_STACK_INTERRUPTION_MESSAGES = [
+  "the database system is shutting down",
+  "the database system is starting up",
+  "Server has closed the connection",
+  "Can't reach database server",
+];
+
+/** An error thrown by Prisma (any PrismaClient*Error or driver adapter error) or by pg. */
+function isDatabaseStackError(error: object): boolean {
+  const name = error instanceof Error ? error.name : "";
+  return (
+    name.startsWith("PrismaClient") ||
+    name === "DriverAdapterError" ||
+    "clientVersion" in error ||
+    // pg's DatabaseError carries the server's severity next to the SQLSTATE.
+    ("severity" in error && "code" in error)
+  );
+}
+
 /** True for connectivity and shutdown failures: the work did not fail, the database went away. */
 export function isDatabaseInterruption(error: unknown): boolean {
   const seen = new Set<unknown>();
@@ -96,6 +120,12 @@ export function isDatabaseInterruption(error: unknown): boolean {
     if (typeof code === "string" && INTERRUPTION_CODES.has(code)) return true;
     const message = current instanceof Error ? current.message : "";
     if (INTERRUPTION_MESSAGES.some((text) => message.includes(text))) return true;
+    if (
+      isDatabaseStackError(current) &&
+      DATABASE_STACK_INTERRUPTION_MESSAGES.some((text) => message.includes(text))
+    ) {
+      return true;
+    }
     current = current instanceof Error ? current.cause : undefined;
   }
   return false;

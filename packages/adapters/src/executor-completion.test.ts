@@ -1,4 +1,5 @@
 import { cartaAgentSpawnKey, integrationAgentSpawnKey } from "@rakazo/contracts";
+import { Prisma } from "@rakazo/db";
 import { describe, expect, it } from "vitest";
 import {
   classifyRunFailure,
@@ -559,7 +560,10 @@ describe("classifyRunFailure", () => {
   it("still treats node-postgres disconnects as interrupted", () => {
     for (const error of [
       new Error("Connection terminated unexpectedly"),
-      Object.assign(new Error("terminating connection"), { code: "57P01" }),
+      new Prisma.PrismaClientKnownRequestError("the database system is shutting down", {
+        code: "P2039",
+        clientVersion: "7.10.0",
+      }),
     ]) {
       expect(classifyRunFailure(error, [])).toEqual({ interrupted: true });
     }

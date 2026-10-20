@@ -32,6 +32,7 @@ import {
   DEFAULT_AVATAR_STYLE,
   LEGAL_AGENT_MODEL,
   MESSAGE_REACTIONS,
+  RunPhaseSchema,
 } from "@rakazo/contracts";
 import type { ComposerMention, SlashActionId } from "@rakazo/core";
 import {
@@ -1618,6 +1619,15 @@ export function ShellPage() {
           pinnedAroundRef.current = null;
           historyEpoch.current += 1;
         }
+        if (event.type === "run.phase") {
+          // A phase changes often; patch the sidebar row instead of reloading the whole list.
+          const runPhase = RunPhaseSchema.safeParse(event.payload).data;
+          if (runPhase) {
+            setBots((current) =>
+              current.map((bot) => (bot.id === event.botId ? { ...bot, runPhase } : bot)),
+            );
+          }
+        }
         if (event.type === "bot.archived") {
           void refreshBots(true).catch(() => undefined);
         } else if (
@@ -1625,7 +1635,6 @@ export function ShellPage() {
           event.type === "bot.deleted" ||
           event.type === "bot.updated" ||
           event.type === "run.started" ||
-          event.type === "run.phase" ||
           isRunTerminalEvent(event) ||
           event.type === "thread.cleared"
         ) {

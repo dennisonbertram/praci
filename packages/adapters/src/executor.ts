@@ -70,6 +70,7 @@ import {
 } from "@rakazo/contracts";
 import type { ActionApprovalRule, ToolCallStreak } from "@rakazo/core";
 import {
+  ACTIVE_RUN_STATUSES,
   appendTextSegment,
   appendToolCallSegment,
   applyJudgeDecision,
@@ -252,6 +253,7 @@ import {
   acquireComputerExecutionLease,
   ComputerBusyError,
   holdComputerExecutionLeaseForTakeover,
+  IN_LINE_BEHIND_SAME_BOT,
   provisionComputer,
   releaseComputerExecutionLease,
   renewComputerExecutionLease,
@@ -3493,9 +3495,17 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
       } catch (error) {
         if (!(error instanceof ComputerBusyError)) throw error;
-        // Another run of this bot holds the computer: waiting in line is normal, so it is not
-        // counted toward the circuit breaker.
-        await phases.requeued({ kind: "computer_wait" }, error.reason, false);
+        // Waiting in line behind another run of this bot is normal and is not counted toward the
+        // circuit breaker; a computer that stays in maintenance or asleep is.
+        const counted = error.reason !== IN_LINE_BEHIND_SAME_BOT;
+        const streak = await phases.requeued({ kind: "computer_wait" }, error.reason, counted);
+        if (counted && requeueLimitReached(streak)) {
+          const stopping = await deps.prisma.attempt.create({
+            data: { runId, fence, status: "running" },
+          });
+          await stopRequeuedRun(deps, run, stopping.id, workerId, fence, {});
+          return;
+        }
         await requeueComputerRun(deps, runId, workerId, fence, resumeCheckpoint, heldForTakeover);
         return;
       }
@@ -8039,6 +8049,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               firstRuntimeEvent = false;
               void phases.write({ kind: "thinking" });
             }
+            if (event.type === "text" || event.type === "tool") void phases.progressed();
             if (approvalPausePending) return;
             if (!leaseValid) return;
             const now = Date.now();
@@ -8570,8 +8581,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
               shutdown ? "worker shutdown" : "database interruption",
               !shutdown,
             );
-            if (requeueLimitReached(streak)) {
-              await stopRequeuedRun(deps, run, thread.id, attempt.id, workerId, fence, {
+            if (!shutdown && requeueLimitReached(streak)) {
+              await stopRequeuedRun(deps, run, attempt.id, workerId, fence, {
                 retrying: "the database connection kept dropping",
               });
               return;
@@ -8591,43 +8602,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           const { message, rawMessage } = failure;
           if (message !== rawMessage) getLogger().error("run failed", { runId, error: rawMessage });
-          const failed = await deps.events.finalizeRun({
-            spaceId: run.spaceId,
-            threadId: thread.id,
-            botId: bot.id,
-            runId,
-            taskId: run.taskId,
-            attemptId: attempt.id,
-            leaseOwner: workerId,
-            leaseFence: fence,
-            outcome: "failed",
-            error: message,
-          });
-          if (!failed) return;
-          if (failed.continuationRunId) {
-            await deps.jobs
-              .enqueue(runContinueJob(failed.continuationRunId))
-              .catch((error) => getLogger().error("steering continuation enqueue", error));
-          }
-          if (run.trigger === "bot_message") {
-            await returnBotMessageOutcome(
-              deps,
-              { ...run, sourceMessageId: run.sourceMessageId },
-              { id: bot.id, name: bot.name },
-              `Could not complete the delegated request: ${message}`,
-              "status",
-              { forceUnread: true },
-            ).catch((returnError) => getLogger().error("bot message failure return", returnError));
-          }
-          if (runSendsFinishNotification(run.trigger) && !failed.continuationRunId) {
-            await notifyRun(deps, run, {
-              kind: "failure",
-              title: `${bot.name} failed`,
-              body: message.slice(0, 180),
-              botId: bot.id,
-              threadId: thread.id,
-            });
-          }
+          await failRun(deps, run, bot, attempt.id, workerId, fence, message);
         }
       } catch (setupError) {
         const computerBusy = setupError instanceof ComputerBusyError;
@@ -8645,7 +8620,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           retryForever,
         );
         if (retryForever && requeueLimitReached(streak)) {
-          await stopRequeuedRun(deps, run, run.threadId, attempt.id, workerId, fence, {
+          await stopRequeuedRun(deps, run, attempt.id, workerId, fence, {
             ...(computerBusy ? {} : { retrying: "the database stayed busy" }),
           });
           return;
@@ -9829,22 +9804,24 @@ export function runPhaseWriter(
   fence: number,
 ) {
   const stored = RunPhaseSchema.safeParse(run.phase).data;
-  // A streak runs until the run reaches the model; a requeue continues it.
+  // A streak runs until the run makes real progress (its first tool call or text); a requeue
+  // continues it.
   let streak: RequeueStreak | undefined = stored?.since
     ? { since: stored.since, ...(stored.count ? { count: stored.count } : {}) }
     : undefined;
+  let progressed = false;
   let chain: Promise<void> = Promise.resolve();
   const write = (phase: { kind: RunPhase["kind"]; name?: string }): Promise<void> => {
-    if (phase.kind === "model_wait" || phase.kind === "thinking") streak = undefined;
-    if (isBackgroundRunTrigger(run.trigger)) return chain;
     const value: RunPhase = { ...phase, at: new Date().toISOString(), ...(streak ?? {}) };
     chain = chain
       .then(async () => {
+        // Fenced on an active status too, so a late write cannot land on a finished run.
         const written = await deps.prisma.run.updateMany({
-          where: { id: run.id, leaseFence: fence },
+          where: { id: run.id, leaseFence: fence, status: { in: [...ACTIVE_RUN_STATUSES] } },
           data: { phase: value },
         });
-        if (written.count !== 1) return;
+        // Background runs keep the streak on the row but show nothing.
+        if (written.count !== 1 || isBackgroundRunTrigger(run.trigger)) return;
         await deps.events.append({
           spaceId: run.spaceId,
           threadId: run.threadId,
@@ -9859,6 +9836,14 @@ export function runPhaseWriter(
   };
   return {
     write,
+    /** The run produced a tool call or text: its requeue streak is over. */
+    progressed(): Promise<void> {
+      if (progressed) return chain;
+      progressed = true;
+      if (!streak) return chain;
+      streak = undefined;
+      return write({ kind: "thinking" });
+    },
     /** Logs why the run is requeued, extends the streak (counted when it is not normal waiting). */
     async requeued(
       phase: { kind: RunPhase["kind"]; name?: string },
@@ -9880,8 +9865,7 @@ export function runPhaseWriter(
 /** Ends a run whose requeues hit REQUEUE_LIMIT, with a reason the user can act on. */
 async function stopRequeuedRun(
   deps: ExecutorDeps,
-  run: { id: string; spaceId: string; botId: string; taskId: string },
-  threadId: string,
+  run: RunRow,
   attemptId: string,
   workerId: string,
   fence: number,
@@ -9892,22 +9876,64 @@ async function stopRequeuedRun(
     ? `Stopped after ${minutes} minutes of retrying because ${cause.retrying}. Try again.`
     : `Stopped after ${minutes} minutes waiting for the computer. Try again, or restart the computer.`;
   getLogger().warn("run stopped after repeated requeues", { runId: run.id, error });
+  const bot = await deps.prisma.bot.findUniqueOrThrow({
+    where: { id: run.botId },
+    select: { id: true, name: true },
+  });
+  await failRun(deps, run, bot, attemptId, workerId, fence, error);
+}
+
+type RunRow = NonNullable<Awaited<ReturnType<ExecutorDeps["prisma"]["run"]["findUnique"]>>>;
+
+/**
+ * Records a failed run and tells whoever waits on it: the steering continuation, the bot that
+ * delegated the request, and the owner's finish notification.
+ */
+async function failRun(
+  deps: ExecutorDeps,
+  run: RunRow,
+  bot: { id: string; name: string },
+  attemptId: string,
+  workerId: string,
+  fence: number,
+  message: string,
+) {
   const failed = await deps.events.finalizeRun({
     spaceId: run.spaceId,
-    threadId,
-    botId: run.botId,
+    threadId: run.threadId,
+    botId: bot.id,
     runId: run.id,
     taskId: run.taskId,
     attemptId,
     leaseOwner: workerId,
     leaseFence: fence,
     outcome: "failed",
-    error,
+    error: message,
   });
-  if (failed && failed.continuationRunId) {
+  if (!failed) return;
+  if (failed.continuationRunId) {
     await deps.jobs
       .enqueue(runContinueJob(failed.continuationRunId))
-      .catch((enqueueError) => getLogger().error("steering continuation enqueue", enqueueError));
+      .catch((error) => getLogger().error("steering continuation enqueue", error));
+  }
+  if (run.trigger === "bot_message") {
+    await returnBotMessageOutcome(
+      deps,
+      { ...run, sourceMessageId: run.sourceMessageId },
+      { id: bot.id, name: bot.name },
+      `Could not complete the delegated request: ${message}`,
+      "status",
+      { forceUnread: true },
+    ).catch((returnError) => getLogger().error("bot message failure return", returnError));
+  }
+  if (runSendsFinishNotification(run.trigger) && !failed.continuationRunId) {
+    await notifyRun(deps, run, {
+      kind: "failure",
+      title: `${bot.name} failed`,
+      body: message.slice(0, 180),
+      botId: bot.id,
+      threadId: run.threadId,
+    });
   }
 }
 

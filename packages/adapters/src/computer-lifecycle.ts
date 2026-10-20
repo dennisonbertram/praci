@@ -142,6 +142,9 @@ async function hasLiveForeignRunLease(
   return live !== null;
 }
 
+/** The busy reason for a computer lease another run of the same bot holds: waiting in line. */
+export const IN_LINE_BEHIND_SAME_BOT = "in line behind another run of this bot";
+
 export class ComputerBusyError extends Error {
   /** Why, for the requeue log line. The message stays the same for callers that show it. */
   constructor(readonly reason = "busy") {
@@ -610,7 +613,7 @@ export async function acquireComputerExecutionLease(
       fence: created.fence,
     });
   } catch (error) {
-    if (isUniqueViolation(error)) throw new ComputerBusyError("in use by another run");
+    if (isUniqueViolation(error)) throw new ComputerBusyError(IN_LINE_BEHIND_SAME_BOT);
     throw error;
   }
 }
@@ -629,7 +632,7 @@ async function validateAcquiredComputerLease(
   )
     return lease;
   await releaseComputerExecutionLease(prisma, lease);
-  throw new ComputerBusyError("in use by another run");
+  throw new ComputerBusyError("changed after the lease was taken");
 }
 
 export async function renewComputerExecutionLease(
