@@ -1,4 +1,8 @@
 export const ZH_MESSAGES: Record<string, string> = {
+  "Sheets": "工作表",
+  "This sheet is empty.": "此工作表为空。",
+  "Load more": "加载更多",
+  "Could not load more rows.": "无法加载更多行。",
   "Phone notifications": "手机通知",
   "Share with all agents": "与所有代理共享",
   "Couldn't refresh — showing the last loaded messages.": "无法刷新——显示最近加载的消息。",

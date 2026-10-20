@@ -1,4 +1,8 @@
 export const RU_MESSAGES: Record<string, string> = {
+  "Sheets": "Листы",
+  "This sheet is empty.": "Этот лист пуст.",
+  "Load more": "Загрузить ещё",
+  "Could not load more rows.": "Не удалось загрузить ещё строки.",
   "Phone notifications": "Уведомления на телефоне",
   "Share with all agents": "Поделиться со всеми агентами",
   "Couldn't refresh — showing the last loaded messages.":

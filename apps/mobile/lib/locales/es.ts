@@ -1,4 +1,8 @@
 export const ES_MESSAGES: Record<string, string> = {
+  "Sheets": "Hojas",
+  "This sheet is empty.": "Esta hoja está vacía.",
+  "Load more": "Cargar más",
+  "Could not load more rows.": "No se pudieron cargar más filas.",
   "Phone notifications": "Notificaciones del teléfono",
   "Share with all agents": "Compartir con todos los agentes",
   "Couldn't refresh — showing the last loaded messages.":

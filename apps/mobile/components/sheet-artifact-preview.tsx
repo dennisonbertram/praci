@@ -1,5 +1,5 @@
 import { formatSheetCell, isNumericSheetCell } from "@rakazo/core";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getSpreadsheetPreview } from "../lib/artifacts";
 import { useI18n } from "../lib/i18n";
@@ -30,6 +30,8 @@ export function SheetArtifactPreview({ artifactId }: { artifactId: string }) {
   const [sheet, setSheet] = useState<string | undefined>(undefined);
   const [state, setState] = useState<State>({ status: "loading" });
   const [more, setMore] = useState<"idle" | "loading" | "error">("idle");
+  // Bumped whenever the artifact or sheet changes, so a late "Load more" page is dropped.
+  const generation = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -62,15 +64,18 @@ export function SheetArtifactPreview({ artifactId }: { artifactId: string }) {
       });
     return () => {
       cancelled = true;
+      generation.current += 1;
     };
   }, [artifactId, sheet, t]);
 
   const loadMore = () => {
     if (state.status !== "ready") return;
     const current = state;
+    const started = generation.current;
     setMore("loading");
     getSpreadsheetPreview(artifactId, { sheet: current.sheet, offset: current.rows.length })
       .then((next) => {
+        if (started !== generation.current) return;
         if (next.status !== "ready") throw new Error("unsupported");
         // A page with no rows ends the sheet (a wide sheet can be cut short with nothing left).
         setState({
@@ -80,7 +85,9 @@ export function SheetArtifactPreview({ artifactId }: { artifactId: string }) {
         });
         setMore("idle");
       })
-      .catch(() => setMore("error"));
+      .catch(() => {
+        if (started === generation.current) setMore("error");
+      });
   };
 
   if (state.status === "loading") {
