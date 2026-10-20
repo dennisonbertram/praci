@@ -80,7 +80,8 @@ function senderIdentities(row: SenderGroupRow): { address: string | null; ids: s
   const ids = [`address:${address}`];
   const base = baseDomain(domain);
   if (name !== full && name !== address && !SHARED_MAILBOX_DOMAINS.has(base))
-    ids.push(`name:${name}|${base}`);
+    // The bare name also joins platform-sent and self-sent mail of one newsletter.
+    ids.push(`name:${name}|${base}`, `name:${name}`);
   return { address, ids };
 }
 
