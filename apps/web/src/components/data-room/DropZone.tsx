@@ -24,13 +24,15 @@ const failureText = (reason: UploadFailure) =>
       ? t`This folder no longer exists`
       : reason === "zip-too-large"
         ? t`This zip is too large to unpack`
-        : reason === "zip-encrypted"
-          ? t`This zip is password-protected`
-          : reason === "zip-unsafe"
-            ? t`This zip has unsafe file paths`
-            : reason === "zip-invalid"
-              ? t`This zip can't be read`
-              : t`Upload failed`;
+        : reason === "zip-too-many-files"
+          ? t`This zip has more than 10,000 files`
+          : reason === "zip-encrypted"
+            ? t`This zip is password-protected`
+            : reason === "zip-unsafe"
+              ? t`This zip has unsafe file paths`
+              : reason === "zip-invalid"
+                ? t`This zip can't be read`
+                : t`Upload failed`;
 
 /** The one line under an upload card's name while a zip is opened, filed and read. */
 export const importingText = (name: string, progress: DataRoomApiImport | null) => {

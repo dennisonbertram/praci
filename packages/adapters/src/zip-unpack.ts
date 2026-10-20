@@ -6,16 +6,16 @@ import { streamChunks } from "./stream-chunks.js";
 // flags) before any byte is inflated, and inflation itself never trusts the sizes it declares.
 // Entries are read from a random-access source (stored object or bytes) and streamed out, so no
 // file is ever held whole in memory.
-export const ZIP_MAX_ENTRIES = 1_000;
+export const ZIP_MAX_ENTRIES = 10_000;
 export const ZIP_MAX_RATIO = 100;
-/** The central directory is read whole; 1,000 entries need far less than this. */
+/** The central directory is read whole; 10,000 entries need far less than this. */
 const ZIP_MAX_DIRECTORY_BYTES = 32 * 1024 * 1024;
 /** Small files may compress better than the ratio (a page of spaces); only larger ones are bombs. */
 const RATIO_FLOOR_BYTES = 1024 * 1024;
 /** Input is inflated in slices so output can be stopped between them. */
 const SLICE_BYTES = 8 * 1024;
 
-export type ZipRefusalCode = "too-large" | "encrypted" | "unsafe" | "invalid";
+export type ZipRefusalCode = "too-large" | "too-many-files" | "encrypted" | "unsafe" | "invalid";
 
 /** The whole zip is refused: it is unreadable, protected, unsafe, or larger than it may expand. */
 export class ZipRefusal extends Error {
@@ -23,6 +23,7 @@ export class ZipRefusal extends Error {
     super(
       {
         "too-large": "This zip is too large to unpack",
+        "too-many-files": "This zip has more than 10,000 files",
         encrypted: "This zip is password-protected",
         unsafe: "This zip has unsafe file paths",
         invalid: "This zip can't be read",
@@ -210,7 +211,7 @@ export async function listZip(source: ZipSource): Promise<ZipEntry[]> {
     if (size > RATIO_FLOOR_BYTES && size > compressedSize * ZIP_MAX_RATIO) {
       throw new ZipRefusal("too-large");
     }
-    if (entries.length >= ZIP_MAX_ENTRIES) throw new ZipRefusal("too-large");
+    if (entries.length >= ZIP_MAX_ENTRIES) throw new ZipRefusal("too-many-files");
     entries.push({
       folders: parts.filter(Boolean),
       name,

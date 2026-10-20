@@ -14,6 +14,7 @@ export type UploadFailure =
   | "invalid"
   | "folder-gone"
   | "zip-too-large"
+  | "zip-too-many-files"
   | "zip-encrypted"
   | "zip-unsafe"
   | "zip-invalid"
@@ -22,6 +23,7 @@ const UPLOAD_FAILURES = [
   "invalid",
   "folder-gone",
   "zip-too-large",
+  "zip-too-many-files",
   "zip-encrypted",
   "zip-unsafe",
   "zip-invalid",

@@ -8770,6 +8770,10 @@ msgid "This zip can't be read"
 msgstr "This zip can't be read"
 
 #: src/components/data-room/DropZone.tsx
+msgid "This zip has more than 10,000 files"
+msgstr "This zip has more than 10,000 files"
+
+#: src/components/data-room/DropZone.tsx
 msgid "This zip has unsafe file paths"
 msgstr "This zip has unsafe file paths"
 

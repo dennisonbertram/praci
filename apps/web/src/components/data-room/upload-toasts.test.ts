@@ -96,6 +96,17 @@ it("reports why a zip was refused, without starting an import", async () => {
   window.removeEventListener("rakazo:data-room-import-started", started);
 });
 
+it("reports a zip with too many files as its own refusal", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockRejectedValue(new DataRoomUploadError("zip-too-many-files"));
+  uploadFilesToDataRoom([file("huge.zip")]);
+  await flush();
+  expect(getUploadToasts()[0]?.state).toMatchObject({
+    kind: "error",
+    reason: "zip-too-many-files",
+  });
+});
+
 it("keeps a zip's card and follows its import row until it is added", async () => {
   setUploadScope("u1");
   const started = vi.fn();

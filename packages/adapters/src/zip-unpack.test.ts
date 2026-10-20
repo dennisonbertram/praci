@@ -87,10 +87,16 @@ describe("listZip", () => {
     expect(await refusal(() => readAll(zip, { ...entry, size: 5000 }))).toBe("invalid");
   });
 
-  it("refuses more than 1,000 files", async () => {
+  it("refuses more than 10,000 files", async () => {
     const files: Zippable = {};
     for (let i = 0; i <= ZIP_MAX_ENTRIES; i++) files[`f${i}.txt`] = text("x");
-    expect(await refusal(() => list(zipSync(files)))).toBe("too-large");
+    expect(await refusal(() => list(zipSync(files)))).toBe("too-many-files");
+  });
+
+  it("accepts a zip of 1,104 files", async () => {
+    const files: Zippable = {};
+    for (let i = 0; i < 1_104; i++) files[`f${i}.txt`] = text("x");
+    expect(await list(zipSync(files))).toHaveLength(1_104);
   });
 
   it("refuses an encrypted zip", async () => {
