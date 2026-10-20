@@ -129,6 +129,40 @@ export default function InboxMessageScreen() {
           ) : null}
         </View>
       </View>
+      {message.attachments.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.chips}
+          contentContainerStyle={styles.chipsRow}
+        >
+          {message.attachments.map((attachment) => (
+            <Pressable
+              key={attachment.id}
+              accessibilityRole="button"
+              accessibilityLabel={attachment.filename}
+              style={styles.chip}
+              onPress={() =>
+                router.push({
+                  pathname: "/inbox-attachment",
+                  params: {
+                    messageId,
+                    attachmentId: attachment.id,
+                    filename: attachment.filename,
+                    mimeType: attachment.mimeType,
+                    size: String(attachment.size),
+                  },
+                })
+              }
+            >
+              <NativeSymbol ios="paperclip" android="attach-outline" size={14} />
+              <Text style={styles.chipText} numberOfLines={1}>
+                {attachment.filename}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
       {message.html ? (
         <SandboxedHtmlPreview html={message.html} email onOpenLink={openLink} />
       ) : (
@@ -155,5 +189,19 @@ function createStyles() {
     text: { padding: 16 },
     body: { color: native.label, fontSize: 15, lineHeight: 21 },
     headerButton: { padding: 8 },
+    chips: { flexGrow: 0, flexShrink: 0 },
+    chipsRow: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
+    chip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      maxWidth: 220,
+      height: 32,
+      paddingHorizontal: 12,
+      borderRadius: 16,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: native.separator,
+    },
+    chipText: { color: native.label, fontSize: 13, flexShrink: 1 },
   });
 }

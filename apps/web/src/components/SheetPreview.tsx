@@ -1,7 +1,7 @@
 import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { SpreadsheetPreview } from "@rakazo/contracts";
+import type { SpreadsheetPreview, SpreadsheetPreviewInput } from "@rakazo/contracts";
 import { formatSheetCell, isNumericSheetCell } from "@rakazo/core";
 import {
   Button,
@@ -24,7 +24,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-pref
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
-export type SheetSource = { artifactId: string } | { dataRoomItemId: string };
+export type SheetSource = SpreadsheetPreviewInput["source"];
 type Ready = Extract<SpreadsheetPreview, { status: "ready" }>;
 type Cell = Ready["header"][number];
 
