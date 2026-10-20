@@ -6,7 +6,13 @@ import { useIntegrations } from "../components/integrations/useIntegrations";
 import { IntegrationSetupPage } from "./IntegrationSetup";
 
 /** The Integrations page: home, app and MCP server detail, and server setup, in the shell's main pane. */
-export function IntegrationsPage({ activeBotId }: { activeBotId?: string }) {
+export function IntegrationsPage({
+  activeBotId,
+  onOpenMessaging,
+}: {
+  activeBotId?: string;
+  onOpenMessaging?: () => void;
+}) {
   const data = useIntegrations();
   return (
     <Routes>
@@ -16,7 +22,16 @@ export function IntegrationsPage({ activeBotId }: { activeBotId?: string }) {
       />
       <Route path="mcp/:serverId" element={<McpDetail data={data} />} />
       <Route path="setup" element={<IntegrationSetupPage />} />
-      <Route path="*" element={<IntegrationsHome data={data} activeBotId={activeBotId} />} />
+      <Route
+        path="*"
+        element={
+          <IntegrationsHome
+            data={data}
+            activeBotId={activeBotId}
+            onOpenMessaging={onOpenMessaging}
+          />
+        }
+      />
     </Routes>
   );
 }

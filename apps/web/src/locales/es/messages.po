@@ -801,6 +801,10 @@ msgstr ""
 msgid "Adding a contact"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Address"
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 msgid "Address or ENS"
@@ -1056,6 +1060,10 @@ msgstr "Respondido: {answer}"
 
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Anyone who can reach this address can talk to your Mac's server. Use a private network or a tunnel."
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1615,6 +1623,7 @@ msgstr "No se puede alcanzar el servidor."
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/components/MailApprovalCard.tsx
@@ -1782,6 +1791,7 @@ msgid "Chart hidden while amounts are hidden"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Chat"
@@ -1797,6 +1807,14 @@ msgstr "Apps de chat, canales de grupo y conexiones de agentes."
 
 #: src/pages/Shell.tsx
 msgid "Chat settings"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Chat with your agents over iMessage"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Chat with your agents over iMessage from your Mac"
 msgstr ""
 
 #: src/pages/SpaceSearch.tsx
@@ -2208,6 +2226,7 @@ msgstr "Confirma que la URL es accesible desde esta sesión del navegador y vuel
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -2303,6 +2322,7 @@ msgid "Connect Treg"
 msgstr "Conectar Treg"
 
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/parts.tsx
@@ -2400,12 +2420,14 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Copied"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -3595,6 +3617,7 @@ msgstr ""
 msgid "Earlier"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Edit"
@@ -4313,6 +4336,14 @@ msgstr ""
 msgid "Image upload area"
 msgstr "Área de carga de imagen"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "iMessage (BlueBubbles)"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "iMessage (Photon)"
+msgstr ""
+
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Import"
@@ -4670,6 +4701,7 @@ msgstr "Issue de Linear"
 msgid "Link"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
 msgstr "Vincular una app de chat"
@@ -6354,8 +6386,13 @@ msgstr ""
 msgid "Private workspace with its own bots and groups."
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Project ID"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Project secret"
 msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
@@ -6846,6 +6883,10 @@ msgstr ""
 msgid "Reopen"
 msgstr "Reabrir"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Replace"
+msgstr ""
+
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Replace API key"
@@ -6923,6 +6964,10 @@ msgstr "Restableciendo…"
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
 msgstr "Cambiar tamaño del panel"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Restart required"
+msgstr ""
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
@@ -7083,6 +7128,7 @@ msgstr ""
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
 #: src/pages/CapTable.tsx
@@ -7130,6 +7176,7 @@ msgid "Save the workspace and install current software."
 msgstr "Guardar el espacio de trabajo e instalar el software actual."
 
 #: src/components/AskCard.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -7433,12 +7480,21 @@ msgstr ""
 msgid "Server integrations"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Server password"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Server URL"
 msgstr "URL del servidor"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Set by server"
+msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
@@ -8052,6 +8108,10 @@ msgstr "Probar"
 msgid "Test API key"
 msgstr "Probar clave de API"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Test connection"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Test run"
 msgstr "Ejecución de prueba"
@@ -8060,6 +8120,7 @@ msgstr "Ejecución de prueba"
 msgid "Test sign-in"
 msgstr "Probar inicio de sesión"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/ModelConnectionPreflightNotice.tsx
 msgid "Testing…"
 msgstr "Probando…"
@@ -8902,6 +8963,18 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 msgid "Webhook"
 msgstr "Webhook"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Webhook signing secret"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Webhook token"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Webhook URL"
+msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Website login"

@@ -34,6 +34,7 @@ import type {
   IntegrationProviderSettings,
   McpConnector,
   MemoryProviderResolver,
+  MessagingSettings,
   PiOAuthLogins,
   RemoteConnectorDependencies,
   TicketChangeNotifier,
@@ -862,6 +863,7 @@ export interface RouterDeps {
     provider: string,
   ) => void;
   integrationSettings?: IntegrationProviderSettings;
+  messagingSettings?: MessagingSettings;
   composio?: ComposioProvider;
   mcpOAuth?: McpOAuthBroker;
   /** Replaces the network for Box calls; tests point it at the Box emulator. */
@@ -5319,6 +5321,38 @@ export function createRouter(deps: RouterDeps) {
           });
         }
         return { ok: true as const };
+      }),
+    },
+    messagingSetup: {
+      get: authed.messagingSetup.get.handler(async ({ context }) => {
+        const canConfigure = context.actor.isDeploymentOwner;
+        return {
+          canConfigure,
+          providers:
+            canConfigure && deps.messagingSettings
+              ? await deps.messagingSettings.state(deps.messaging?.providers ?? [])
+              : [],
+        };
+      }),
+      save: authed.messagingSetup.save.handler(async ({ context, input }) => {
+        if (!context.actor.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
+        if (!deps.messagingSettings) throw new ORPCError("NOT_IMPLEMENTED");
+        try {
+          await deps.messagingSettings.save(
+            input,
+            connectionContext(context.actor, "messagingSetup.save", context.signal),
+          );
+        } catch (error) {
+          throw new ORPCError("BAD_REQUEST", {
+            message: error instanceof Error ? error.message : "Could not save these settings",
+          });
+        }
+        return { ok: true as const };
+      }),
+      test: authed.messagingSetup.test.handler(async ({ context, input }) => {
+        if (!context.actor.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
+        if (!deps.messagingSettings) throw new ORPCError("NOT_IMPLEMENTED");
+        return deps.messagingSettings.test(input.provider);
       }),
     },
     connections: {

@@ -212,6 +212,11 @@ import {
 } from "./legal.js";
 import { McpOauthClientSchema } from "./mcp.js";
 import {
+  MessagingSetupSaveSchema,
+  MessagingSetupStateSchema,
+  MessagingSetupTestResultSchema,
+} from "./messaging-setup.js";
+import {
   NotificationKindSchema,
   NotificationSchema,
   NotificationSignalSchema,
@@ -1021,6 +1026,13 @@ export const appContract = {
     ),
   },
   /** External messaging surface: link state, group channels, agent connections. */
+  messagingSetup: {
+    get: oc.output(MessagingSetupStateSchema),
+    save: oc.input(MessagingSetupSaveSchema).output(z.object({ ok: z.literal(true) })),
+    test: oc
+      .input(z.object({ provider: z.enum(["bluebubbles", "photon"]) }))
+      .output(MessagingSetupTestResultSchema),
+  },
   messaging: {
     status: oc.output(MessagingStatusSchema),
     link: {

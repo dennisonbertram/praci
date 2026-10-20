@@ -4828,7 +4828,10 @@ export function ShellPage() {
         {integrationsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
-              <IntegrationsPage activeBotId={activeBotId.current} />
+              <IntegrationsPage
+                activeBotId={activeBotId.current}
+                onOpenMessaging={() => setMessagingSettingsOpen(true)}
+              />
             </Suspense>
           </ErrorBoundary>
         ) : dataRoomMode ? (
