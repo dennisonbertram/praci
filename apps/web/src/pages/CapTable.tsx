@@ -35,6 +35,7 @@ import { PieChart, Plus, RefreshCw } from "lucide-react";
 import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
+import { OwnershipDonut } from "../components/cap-table/OwnershipDonut";
 import { DataRoomImportMenu } from "../components/data-room/DataRoomImportMenu";
 import { FolderDocuments } from "../components/data-room/FolderDocuments";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
@@ -923,6 +924,14 @@ export function CapTablePage({
       ) : null}
 
       {showHoldings ? <Summary snapshot={snapshot} /> : null}
+      {snapshot ? (
+        <OwnershipDonut
+          classes={snapshot.shareClasses}
+          fullyDilutedShares={snapshot.fullyDilutedShares}
+          selectable={rows.flatMap((row) => rowSecurity(row) ?? [])}
+          onSelect={(name) => setParam("security", name)}
+        />
+      ) : null}
       {snapshot ? <OwnershipBar classes={snapshot.shareClasses} /> : null}
       {reading ? (
         <p className="mb-3 text-sm text-muted-foreground">

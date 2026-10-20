@@ -281,18 +281,36 @@ export function spendTotals(
   };
 }
 
-export type CashGranularity = "day" | "week" | "month";
+export type CashGranularity = "day" | "week" | "month" | "quarter" | "year";
 
 /** Monday on or before `day`. */
 const weekStart = (day: Day): Day => addDays(day, -((dayNum(day) + 3) % 7)); // 1970-01-01 was a Thursday
-const lastDayOfMonth = (month: Month): Day => addDays(`${addMonths(month, 1)}-01`, -1);
+const monthIndex = (day: Day) => Number(day.slice(0, 4)) * 12 + Number(day.slice(5, 7));
+/** Months per bucket for the month-based granularities. */
+const MONTHS = { month: 1, quarter: 3, year: 12 } as const;
+
+/** First day of the bucket holding `day`. */
+function bucketStart(granularity: CashGranularity, day: Day): Day {
+  if (granularity === "day") return day;
+  if (granularity === "week") return weekStart(day);
+  const month = monthOf(day);
+  return `${addMonths(month, -((Number(month.slice(5, 7)) - 1) % MONTHS[granularity]))}-01`;
+}
+
+/** First day of the bucket `n` buckets after the one starting on `start`. */
+function bucketAfter(granularity: CashGranularity, start: Day, n: number): Day {
+  if (granularity === "day") return addDays(start, n);
+  if (granularity === "week") return addDays(start, 7 * n);
+  return `${addMonths(monthOf(start), MONTHS[granularity] * n)}-01`;
+}
 
 /**
- * Out, revenue and financing per bucket for the last `buckets` days, Monday-start weeks or calendar
- * months ending with the one that holds `now`, oldest first, zero-filled. The last bucket is `partial`.
- * A bucket's `start` and `end` are inclusive UTC days. Classification and day rules match spendTotals.
- * With `from` instead of `buckets`, the buckets run from the one holding `from` and the first one
- * starts on `from`, so the chart covers the same days as `spendTotals` for that period.
+ * Out, revenue and financing per bucket for the last `buckets` days, Monday-start weeks, calendar
+ * months, quarters or years ending with the one that holds `now`, oldest first, zero-filled. The
+ * last bucket is `partial`. A bucket's `start` and `end` are inclusive UTC days. Classification and
+ * day rules match spendTotals. With `from` instead of `buckets`, the buckets run from the one
+ * holding `from` and the first one starts on `from`, so the chart covers the same days as
+ * `spendTotals` for that period.
  */
 export function cashSeries(
   txns: FinanceTransaction[],
@@ -300,35 +318,24 @@ export function cashSeries(
 ): CashPoint[] {
   const { granularity, now } = opts;
   const today = dayOf(now.toISOString());
-  const startOf = (day: Day): Day =>
-    granularity === "day" ? day : granularity === "week" ? weekStart(day) : `${monthOf(day)}-01`;
+  const current = bucketStart(granularity, today);
   const from = "from" in opts ? opts.from : undefined;
-  const monthIndex = (day: Day) => Number(day.slice(0, 4)) * 12 + Number(day.slice(5, 7));
   const buckets =
     from === undefined
       ? (opts as { buckets: number }).buckets
       : granularity === "day"
         ? dayNum(today) - dayNum(from) + 1
         : granularity === "week"
-          ? (dayNum(weekStart(today)) - dayNum(weekStart(from))) / 7 + 1
-          : monthIndex(today) - monthIndex(from) + 1;
+          ? (dayNum(current) - dayNum(weekStart(from))) / 7 + 1
+          : (monthIndex(current) - monthIndex(bucketStart(granularity, from))) /
+              MONTHS[granularity] +
+            1;
   const points = new Map<Day, CashPoint>();
   for (let i = buckets - 1; i >= 0; i--) {
-    const start =
-      granularity === "day"
-        ? addDays(today, -i)
-        : granularity === "week"
-          ? addDays(weekStart(today), -7 * i)
-          : `${addMonths(monthOf(today), -i)}-01`;
-    const end =
-      granularity === "day"
-        ? start
-        : granularity === "week"
-          ? addDays(start, 6)
-          : lastDayOfMonth(monthOf(start));
+    const start = bucketAfter(granularity, current, -i);
     points.set(start, {
       start,
-      end,
+      end: addDays(bucketAfter(granularity, start, 1), -1),
       outCents: 0,
       revenueCents: 0,
       financingCents: 0,
@@ -339,7 +346,7 @@ export function cashSeries(
   if (first && from !== undefined && from > first.start) first.start = from;
   for (const t of txns) {
     const day = txnDay(t);
-    const point = points.get(startOf(day));
+    const point = points.get(bucketStart(granularity, day));
     if (!point || !counts(t) || (from !== undefined && day < from)) continue;
     if (t.classification === "spend") point.outCents -= t.amountCents;
     else if (t.classification === "revenue") point.revenueCents += t.amountCents;

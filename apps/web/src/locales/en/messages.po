@@ -4030,6 +4030,7 @@ msgstr "From the latest 409A valuation"
 msgid "Fullscreen"
 msgstr "Fullscreen"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Fully diluted shares"
 msgstr "Fully diluted shares"
@@ -5231,6 +5232,7 @@ msgstr "Moved \"{0}\" to Inbox"
 msgid "Mute"
 msgstr "Mute"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -6058,6 +6060,7 @@ msgstr "Organization API key"
 msgid "Original message unavailable"
 msgstr "Original message unavailable"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/pages/CapTable.tsx
@@ -6105,6 +6108,7 @@ msgstr "overlaps"
 msgid "Owner"
 msgstr "Owner"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Ownership"
 msgstr "Ownership"
@@ -7489,6 +7493,7 @@ msgstr "Shareholder"
 msgid "Shareholders"
 msgstr "Shareholders"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Shares"
 msgstr "Shares"

@@ -4030,6 +4030,7 @@ msgstr ""
 msgid "Fullscreen"
 msgstr "Plein écran"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Fully diluted shares"
 msgstr ""
@@ -5231,6 +5232,7 @@ msgstr ""
 msgid "Mute"
 msgstr "Couper le micro"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -6058,6 +6060,7 @@ msgstr "Clé API de l'organisation"
 msgid "Original message unavailable"
 msgstr "Message d’origine indisponible"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/pages/CapTable.tsx
@@ -6105,6 +6108,7 @@ msgstr ""
 msgid "Owner"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Ownership"
 msgstr ""
@@ -7489,6 +7493,7 @@ msgstr ""
 msgid "Shareholders"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Shares"
 msgstr ""

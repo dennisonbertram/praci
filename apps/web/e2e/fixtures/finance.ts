@@ -24,14 +24,9 @@ const totals = (period: SpendTotals["period"], current: number, previous: number
   previousEnd: "2026-09-15",
 });
 
-const out = [8000, 9500, 7200, 10400, 8800, 9100, 7600, 11000, 8300, 9700, 8900, 3600];
-const revenue = [0, 0, 6000, 0, 0, 5000, 0, 0, 7000, 0, 0, 0];
-const financing = [0, 0, 0, 0, 0, 0, 25000, 0, 0, 0, 0, 0];
-
 // Invented bar values for the Burn chart: the newest day is Wed 2026-10-14, the newest week starts Mon 2026-10-12.
 const DAY_MS = 86_400_000;
 const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-const TODAY_MS = Date.UTC(2026, 9, 14);
 const point = (i: number, count: number, start: number, end: number): CashPoint => ({
   start: isoDay(start),
   end: isoDay(end),
@@ -40,15 +35,16 @@ const point = (i: number, count: number, start: number, end: number): CashPoint 
   financingCents: 0,
   partial: i === count - 1,
 });
-const dailyPoints = (count: number): CashPoint[] =>
-  Array.from({ length: count }, (_, i) => {
-    const day = TODAY_MS - (count - 1 - i) * DAY_MS;
-    return point(i, count, day, day);
-  });
 const weeklyPoints = (count: number): CashPoint[] =>
   Array.from({ length: count }, (_, i) => {
     const start = Date.UTC(2026, 9, 12) - (count - 1 - i) * 7 * DAY_MS;
     return point(i, count, start, start + 6 * DAY_MS);
+  });
+/** Calendar buckets of `size` months ending with the one that holds 2026-10-14. */
+const calendarPoints = (count: number, size: number, first: number): CashPoint[] =>
+  Array.from({ length: count }, (_, i) => {
+    const start = Date.UTC(2026, first - (count - 1 - i) * size, 1);
+    return point(i, count, start, Date.UTC(2026, first - (count - 1 - i) * size + size, 0));
   });
 
 const brexCard = { provider: "brex", kind: "card", name: "Card", lastFour: "0001" } as const;
@@ -119,20 +115,10 @@ export const connectedOverview: FinanceOverview = {
     year: totals("year", 11_725_000, 10_500_000),
   },
   cashSeries: {
-    week: dailyPoints(7),
-    month: dailyPoints(30),
-    quarter: weeklyPoints(13),
-    year: out.map((o, i) => {
-      const month = `${i < 2 ? 2025 : 2026}-${String(((10 + i) % 12) + 1).padStart(2, "0")}`;
-      return {
-        start: `${month}-01`,
-        end: `${month}-28`,
-        outCents: o * 100,
-        revenueCents: revenue[i]! * 100,
-        financingCents: financing[i]! * 100,
-        partial: i === 11,
-      };
-    }),
+    week: weeklyPoints(12),
+    month: calendarPoints(12, 1, 9),
+    quarter: calendarPoints(8, 3, 9),
+    year: calendarPoints(2, 12, 0),
   },
   breakdown: {
     category: [
