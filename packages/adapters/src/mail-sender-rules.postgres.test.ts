@@ -11,11 +11,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import { GMAIL_SETTINGS_BASIC } from "./google-connector.js";
+import type { SenderRuleDeps } from "./mail-sender-rules.js";
 import {
   applyPendingSenderRules,
   ensureSenderRule,
   removeSenderRules,
-  type SenderRuleDeps,
 } from "./mail-sender-rules.js";
 import { runMailSyncJob } from "./mail-sync-job.js";
 

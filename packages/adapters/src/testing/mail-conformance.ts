@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { type AdapterContext, type MailProvider, MailProviderError } from "@rakazo/adapter-kit";
+import type { AdapterContext, MailProvider } from "@rakazo/adapter-kit";
+import { MailProviderError } from "@rakazo/adapter-kit";
 import type { MailEmulator } from "../gmail-api-emulator.js";
 import { GMAIL_SETTINGS_BASIC } from "../google-connector.js";
 import { parseRawMime } from "../mime-parse.js";

@@ -32,7 +32,8 @@ import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import type { InboxDeps } from "./inbox.js";
 import { connectedMailConnections, mailAccountsOf, mailContext, notFound } from "./inbox.js";
-import { inboxCleanupMove, type ModifyDeps } from "./inbox-modify.js";
+import type { ModifyDeps } from "./inbox-modify.js";
+import { inboxCleanupMove } from "./inbox-modify.js";
 
 /** Conversations one cleanup call changes. */
 const PAGE = 50;

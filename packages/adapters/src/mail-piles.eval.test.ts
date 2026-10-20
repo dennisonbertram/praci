@@ -8,7 +8,8 @@
  * matches a learned decision must not use it.
  */
 import type { InboxPile } from "@rakazo/contracts";
-import { classifyPile, type LearnedPile } from "@rakazo/core";
+import type { LearnedPile } from "@rakazo/core";
+import { classifyPile } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
 import { parseMailSignals } from "./mail-signals.js";
 

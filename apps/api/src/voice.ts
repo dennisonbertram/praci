@@ -12,6 +12,7 @@ import {
 } from "@rakazo/adapters";
 import type { Actor, VoiceCredential, VoiceStatus } from "@rakazo/contracts";
 import { toUtterances } from "@rakazo/core";
+import type { PrismaClient } from "@rakazo/db";
 import {
   deleteUnreferencedCredentialSecret,
   findDefaultVoiceCredential,
@@ -19,7 +20,6 @@ import {
   IsolationError,
   newestVoiceCredentialOrder,
   Prisma,
-  type PrismaClient,
   selectSpaceVoicePreference,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";

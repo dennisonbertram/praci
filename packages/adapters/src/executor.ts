@@ -230,9 +230,9 @@ import {
 } from "./browser-tools.js";
 import { INBOX_SEARCH_SKILL_NAME } from "./builtin-skills.js";
 import { agentConnectionTools, builtinAgentTools, sharedMemorySaveError } from "./builtin-tools.js";
+import type { CalendarAccount } from "./calendar-tools.js";
 import {
   CALENDAR_TOOL_NAMES,
-  type CalendarAccount,
   calendarToolFromTool,
   listCalendarAccounts,
   selectCalendarTools,
@@ -322,9 +322,9 @@ import {
   selectCompactedHistory,
   shouldEnqueueCompaction,
 } from "./history-compaction.js";
+import type { IMessageSurface } from "./imessage-tools.js";
 import {
   IMESSAGE_TOOL_NAMES,
-  type IMessageSurface,
   imessageLineProviders,
   imessageToolFromTool,
   imessageToolsAllowed,

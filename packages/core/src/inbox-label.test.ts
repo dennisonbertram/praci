@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { type InboxLabel, inboxLabel } from "./inbox-label.js";
+import type { InboxLabel } from "./inbox-label.js";
+import { inboxLabel } from "./inbox-label.js";
 
 type Row = Parameters<typeof inboxLabel>[0];
 const triaged = (extra: Partial<NonNullable<Row>> = {}) => ({

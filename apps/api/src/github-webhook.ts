@@ -3,13 +3,12 @@ import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
 import type { Hono } from "hono";
 import { readBoundedBody } from "./http-body.js";
 import { safeEqual } from "./safe-equal.js";
+import type { WebhookDeps, WebhookSecretCache } from "./webhook-inbound.js";
 import {
   deliverWebhookEvent,
   loadWebhookTarget,
   parseWebhookPayload,
   WEBHOOK_MAX_BODY_BYTES,
-  type WebhookDeps,
-  type WebhookSecretCache,
 } from "./webhook-inbound.js";
 
 export function hasValidGithubSignature(

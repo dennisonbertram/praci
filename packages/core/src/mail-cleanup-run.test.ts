@@ -1,6 +1,7 @@
 import type { CleanupSender, UnsubscribeOutput } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { type CleanupApi, runCleanup } from "./mail-cleanup-run.js";
+import type { CleanupApi } from "./mail-cleanup-run.js";
+import { runCleanup } from "./mail-cleanup-run.js";
 
 const sender = (address: string, patch: Partial<CleanupSender> = {}): CleanupSender => ({
   connectionId: "c1",

@@ -1,12 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ReactNode } from "react";
 import { expect, userEvent, within } from "storybook/test";
-import {
-  ChatMarkdown,
-  type LinkFavicons,
-  LinkFaviconsContext,
-  LinkifiedText,
-} from "./markdown.web";
+import type { LinkFavicons } from "./markdown.web";
+import { ChatMarkdown, LinkFaviconsContext, LinkifiedText } from "./markdown.web";
 
 const icon =
   "data:image/svg+xml;utf8," +

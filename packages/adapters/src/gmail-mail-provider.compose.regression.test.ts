@@ -1,10 +1,10 @@
-import {
-  type AdapterContext,
-  type ConnectorProxyRequest,
-  type MailAccount,
-  MailProviderError,
-  type ManagedConnectorProvider,
+import type {
+  AdapterContext,
+  ConnectorProxyRequest,
+  MailAccount,
+  ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it } from "vitest";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";

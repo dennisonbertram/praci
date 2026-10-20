@@ -5,7 +5,8 @@ import {
   LOCAL_SETTINGS_RPC,
   LOCAL_SETTINGS_TOKEN_HEADER,
 } from "@rakazo/contracts";
-import { type PrismaClient, requireMembership } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { requireMembership } from "@rakazo/db";
 import type { Hono } from "hono";
 import { safeEqual } from "./safe-equal.js";
 

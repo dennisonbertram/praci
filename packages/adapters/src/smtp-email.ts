@@ -1,5 +1,6 @@
 import type { TransactionalEmail, TransactionalEmailProvider } from "@rakazo/adapter-kit";
-import nodemailer, { type Transporter } from "nodemailer";
+import type { Transporter } from "nodemailer";
+import nodemailer from "nodemailer";
 
 export interface SmtpEmailConfig {
   url: string;

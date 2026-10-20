@@ -1,18 +1,14 @@
-import {
-  type AdapterContext,
-  ConnectorProxyError,
-  type ConnectorProxyRequest,
-  type ConnectorProxyResponse,
-  type MailAccount,
-  MailProviderError,
-  type ManagedConnectorProvider,
+import type {
+  AdapterContext,
+  ConnectorProxyRequest,
+  ConnectorProxyResponse,
+  MailAccount,
+  ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { ConnectorProxyError, MailProviderError } from "@rakazo/adapter-kit";
 import { describe, expect, it, vi } from "vitest";
-import {
-  createMailEmulator,
-  type EmulatedMessage,
-  GmailApiEmulator,
-} from "./gmail-api-emulator.js";
+import type { EmulatedMessage } from "./gmail-api-emulator.js";
+import { createMailEmulator, GmailApiEmulator } from "./gmail-api-emulator.js";
 import {
   createMailProvider,
   GmailMailProvider,

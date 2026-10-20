@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
+import type { MessagingInboundDeps } from "./messaging-inbound.js";
 import {
   createMessagingInboundHandler,
-  type MessagingInboundDeps,
   teamChatSenderCanWakeMessageRoutines,
   wakeMessageRoutines,
 } from "./messaging-inbound.js";

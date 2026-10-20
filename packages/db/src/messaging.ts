@@ -1,5 +1,6 @@
 import { createHash, randomBytes, randomInt } from "node:crypto";
-import { bootstrapUserSpace, type SignupPolicyEnv } from "./bootstrap-user.js";
+import type { SignupPolicyEnv } from "./bootstrap-user.js";
+import { bootstrapUserSpace } from "./bootstrap-user.js";
 import type { PrismaClient } from "./client.js";
 import { isUniqueViolation } from "./prisma-errors.js";
 import { createRepos } from "./repos.js";

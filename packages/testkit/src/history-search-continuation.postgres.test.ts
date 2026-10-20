@@ -5,7 +5,8 @@ import type { HistorySearchInput } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { historyFixture } from "./evals/history-fixtures.js";
 import { runTrial } from "./evals/runner.js";
-import { type ModelEmulatorRequest, startModelEmulator } from "./model-emulator.js";
+import type { ModelEmulatorRequest } from "./model-emulator.js";
+import { startModelEmulator } from "./model-emulator.js";
 
 const enabled = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);
 describe.skipIf(!enabled)("unfinished broad history search", () => {

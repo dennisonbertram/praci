@@ -54,8 +54,8 @@ vi.mock("@rakazo/adapters", async (importOriginal) => ({
   createBrexFinanceSource: () => ({ receiptUrl: adapters.receiptUrl }),
 }));
 
+import type { FinanceDeps } from "./finance.js";
 import {
-  type FinanceDeps,
   financeAccountDetail,
   financeAccounts,
   financeBalanceSeries,

@@ -9,12 +9,12 @@ import type {
   JobPublisher,
 } from "@rakazo/adapter-kit";
 import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
+import type { TriageItem } from "@rakazo/core";
 import {
   MAX_OPEN_TODOS,
   MAX_TRIAGE_PER_RUN,
   TRIAGE_BATCH_SIZE,
   TRIAGE_VERSION,
-  type TriageItem,
 } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";

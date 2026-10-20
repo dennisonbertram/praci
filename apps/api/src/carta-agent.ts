@@ -8,12 +8,8 @@ import {
   pageAgentColor,
 } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
-import {
-  appendEventInTransaction,
-  type createRepos,
-  createThreadMessageInTransaction,
-  type PrismaClient,
-} from "@rakazo/db";
+import type { createRepos, PrismaClient } from "@rakazo/db";
+import { appendEventInTransaction, createThreadMessageInTransaction } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 
 const CARTA_AGENT_INSTRUCTIONS =

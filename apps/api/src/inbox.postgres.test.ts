@@ -38,7 +38,8 @@ import {
   inboxUnarchive,
   inboxUnarchiveMany,
 } from "./inbox-modify.js";
-import { createRouter, type RouterDeps } from "./router.js";
+import type { RouterDeps } from "./router.js";
+import { createRouter } from "./router.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =

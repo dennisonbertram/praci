@@ -3,12 +3,11 @@ import { CLOUD_METADATA_HOSTNAMES } from "@rakazo/contracts";
 import { abortError, readBoundedResponseBytes, withAbort } from "@rakazo/core";
 import { Agent } from "undici";
 import { combineSignals } from "./connector-safety.js";
+import type { ResolvedAddress, ResolveHostname } from "./network-address.js";
 import {
   createAddressCheckedLookup,
   defaultResolveHostname,
   isPrivateAddress,
-  type ResolvedAddress,
-  type ResolveHostname,
 } from "./network-address.js";
 import { fetchPairedWithDispatcher } from "./undici-fetch.js";
 

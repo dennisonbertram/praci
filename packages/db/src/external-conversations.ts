@@ -1,9 +1,5 @@
-import {
-  type Actor,
-  AutomatedSenderPoliciesSchema,
-  type ExternalConversation,
-  type ExternalConversationPolicy,
-} from "@rakazo/contracts";
+import type { Actor, ExternalConversation, ExternalConversationPolicy } from "@rakazo/contracts";
+import { AutomatedSenderPoliciesSchema } from "@rakazo/contracts";
 import type { PrismaClient } from "./client.js";
 import { IsolationError } from "./scope.js";
 import { previewFromBlocks } from "./thread-listing.js";

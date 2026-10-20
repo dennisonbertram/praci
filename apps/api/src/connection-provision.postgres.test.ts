@@ -7,7 +7,8 @@ import { createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { completeNativeOAuth } from "./connection-oauth.js";
 import { provisionConnectionAgent } from "./integration-agent.js";
-import { createRouter, type RouterDeps } from "./router.js";
+import type { RouterDeps } from "./router.js";
+import { createRouter } from "./router.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =

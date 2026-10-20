@@ -1,7 +1,7 @@
 import type { CleanupSender } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
+import type { CleanupCandidate } from "./mail-cleanup.js";
 import {
-  type CleanupCandidate,
   cleanupChoiceCounts,
   cleanupTargets,
   isCleanupPreselected,

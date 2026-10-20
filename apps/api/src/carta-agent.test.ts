@@ -6,9 +6,9 @@ import {
   cartaAgentSpawnKey,
 } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
+import type { CartaSyncDeps } from "./carta-agent.js";
 import {
   assignToExistingCartaAgent,
-  type CartaSyncDeps,
   ensureCartaAgent,
   isCartaSyncing,
   onMcpServerConnected,

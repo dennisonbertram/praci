@@ -5,7 +5,8 @@ import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb, IsolationError } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { dataRoomReferenceLines, type ThreadTarget } from "./thread-target.js";
+import type { ThreadTarget } from "./thread-target.js";
+import { dataRoomReferenceLines } from "./thread-target.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =

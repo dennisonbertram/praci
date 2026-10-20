@@ -1,5 +1,6 @@
 import type { RealtimeFanout } from "@rakazo/adapter-kit";
-import { NOTIFICATION_CATCH_UP_ID, type NotificationSignal } from "@rakazo/contracts";
+import type { NotificationSignal } from "@rakazo/contracts";
+import { NOTIFICATION_CATCH_UP_ID } from "@rakazo/contracts";
 import { followRealtimeTopic } from "./realtime-follow.js";
 
 type Owner = { spaceId: string; userId: string };

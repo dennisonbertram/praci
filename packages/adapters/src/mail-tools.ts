@@ -13,19 +13,19 @@ import type {
 import { MailProviderError, mailSearchExpireJob } from "@rakazo/adapter-kit";
 import type { EmailCard, MessageBlock } from "@rakazo/contracts";
 import { EmailUrgency, MAX_EMAIL_CARDS } from "@rakazo/contracts";
+import type { MailQueryOutcome, MailResultRow } from "@rakazo/core";
 import {
   clampInt,
   createGrepScan,
   isLiteralOnly,
-  type MailQueryOutcome,
-  type MailResultRow,
   normalizePatterns,
   resultRow,
   stripQuotedReply,
   summarizeResults,
   triageUrgency,
 } from "@rakazo/core";
-import { Prisma, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { Prisma } from "@rakazo/db";
 import { withRetryProgress } from "./google-api-request.js";
 import { inboxOverview } from "./inbox-overview.js";
 import { buildRawMessage, parseRecipients } from "./mail-compose.js";

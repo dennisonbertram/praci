@@ -1,12 +1,12 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { ColorTokens } from "./index.js";
 import {
   accentForeground,
   botAccentHex,
   botAccentStyle,
   botColors,
-  type ColorTokens,
   cssVariableName,
   darkTokens,
   lightTokens,

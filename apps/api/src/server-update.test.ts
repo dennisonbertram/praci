@@ -2,13 +2,13 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { UpdaterProxyConfig } from "./server-update.js";
 import {
   applyServerUpdate,
   checkServerUpdate,
   isUpdaterConfigured,
   MAX_UPDATER_RESPONSE_BYTES,
   readServerUpdateStatus,
-  type UpdaterProxyConfig,
   UpdaterProxyError,
 } from "./server-update.js";
 

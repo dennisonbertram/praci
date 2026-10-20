@@ -1,7 +1,8 @@
 import type { MemoryStore } from "@rakazo/adapter-kit";
 import type { Actor, MessageBlock } from "@rakazo/contracts";
 import { selectableMessageText } from "@rakazo/core";
-import { IsolationError, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { IsolationError } from "@rakazo/db";
 import type { ThreadTarget } from "./thread-target.js";
 
 const REMEMBERED_PREFIX = "remembered/";

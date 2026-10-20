@@ -7,10 +7,10 @@ import type {
 } from "@rakazo/adapter-kit";
 import { describe, expect, it, vi } from "vitest";
 import { LlmInboxClassifier } from "./llm-inbox-classifier.js";
+import type { TypesafeAnswers } from "./typesafe-inbox-classifier.js";
 import {
   fromDomain,
   mapTypesafeAnswers,
-  type TypesafeAnswers,
   TypesafeInboxClassifier,
 } from "./typesafe-inbox-classifier.js";
 

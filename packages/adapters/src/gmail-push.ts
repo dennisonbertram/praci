@@ -1,4 +1,5 @@
-import { createPublicKey, type JsonWebKey, type KeyObject, verify } from "node:crypto";
+import type { JsonWebKey, KeyObject } from "node:crypto";
+import { createPublicKey, verify } from "node:crypto";
 import type { AdapterContext, JobPublisher, MailAccount, MailProvider } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";

@@ -1,6 +1,7 @@
 import { execFile, execFileSync } from "node:child_process";
 import { mkdir, rm, writeFile } from "node:fs/promises";
-import { createServer, type Server } from "node:http";
+import type { Server } from "node:http";
+import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { serve } from "@hono/node-server";
@@ -10,7 +11,8 @@ import {
   PipedreamConnector,
   ThirdPartyConnectorEmulator,
 } from "@rakazo/adapters";
-import { createThreadMessage, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { createThreadMessage } from "@rakazo/db";
 import { sessionCookieHeader } from "../index.js";
 import { runProcess } from "./process.js";
 

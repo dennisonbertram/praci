@@ -1,4 +1,5 @@
-import { type MailMessage, MailProviderError } from "@rakazo/adapter-kit";
+import type { MailMessage } from "@rakazo/adapter-kit";
+import { MailProviderError } from "@rakazo/adapter-kit";
 import { describe, expect, it } from "vitest";
 import { decodeEncodedWords } from "./gmail-mail-provider.js";
 import { buildRawMessage, parseRecipients, replyPrefill } from "./mail-compose.js";

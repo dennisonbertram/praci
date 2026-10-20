@@ -1,11 +1,11 @@
 import type { RealtimeFanout } from "@rakazo/adapter-kit";
-import {
-  type BotSecretDestination,
-  type MailApproval,
-  type MessageBlock,
-  MessageBlock as MessageBlockSchema,
-  type ProductEvent,
+import type {
+  BotSecretDestination,
+  MailApproval,
+  MessageBlock,
+  ProductEvent,
 } from "@rakazo/contracts";
+import { MessageBlock as MessageBlockSchema } from "@rakazo/contracts";
 import {
   callIdFromClientNonce,
   isApprovalAskBlock,

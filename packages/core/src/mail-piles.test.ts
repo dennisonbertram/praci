@@ -1,12 +1,11 @@
-import { InboxCategorySchema, type MailSignals } from "@rakazo/contracts";
+import type { MailSignals } from "@rakazo/contracts";
+import { InboxCategorySchema } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
+import type { LearnContext, LearnVote, PileInput } from "./mail-piles.js";
 import {
   classifyPile,
   LEARN_MIN_AGREEING,
-  type LearnContext,
-  type LearnVote,
   learnSenderPile,
-  type PileInput,
   pileFromCategory,
   resolvePile,
 } from "./mail-piles.js";

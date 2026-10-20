@@ -1,12 +1,10 @@
 import { readFileSync } from "node:fs";
 import type { Actor } from "@rakazo/contracts";
-import { createDb, createThreadMessage, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb, createThreadMessage } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import {
-  setThreadUnreadState,
-  type ThreadTarget,
-  threadSnapshotForReader,
-} from "./thread-target.js";
+import type { ThreadTarget } from "./thread-target.js";
+import { setThreadUnreadState, threadSnapshotForReader } from "./thread-target.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
