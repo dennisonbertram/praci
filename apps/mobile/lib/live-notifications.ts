@@ -1,7 +1,9 @@
+import { maskCurrencyText } from "@rakazo/chat-ui/mask-currency";
 import { requireNativeModule } from "expo-modules-core";
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { apiBaseWarning, normalizeApiBase } from "./endpoint";
+import { getHideAmounts } from "./hide-amounts";
 import { t } from "./i18n";
 import { isOpenSurface } from "./open-surface";
 
@@ -68,6 +70,27 @@ export function configureForegroundNotifications(): void {
     handleNotification: async ({ request }) => {
       const data = request.content.data;
       const show = !notificationTargetsThread(data, openThread) && !isOpenSurface(data?.surface);
+      if (show && getHideAmounts()) {
+        // The OS shows the sender's text, so swap it for a masked copy. A copy that masks to
+        // itself is shown as is, which also stops the swap from repeating.
+        const { title, body } = request.content;
+        const masked = {
+          title: title && maskCurrencyText(title),
+          body: body && maskCurrencyText(body),
+        };
+        if (masked.title !== title || masked.body !== body) {
+          await Notifications.scheduleNotificationAsync({
+            content: { ...masked, data },
+            trigger: null,
+          });
+          return {
+            shouldShowBanner: false,
+            shouldShowList: false,
+            shouldPlaySound: false,
+            shouldSetBadge: false,
+          };
+        }
+      }
       return {
         shouldShowBanner: show,
         shouldShowList: show,

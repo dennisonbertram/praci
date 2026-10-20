@@ -9,6 +9,7 @@ import { mailSyncJob } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { applyPendingSenderRules } from "./mail-sender-rules.js";
 import { applySkipInbox } from "./mail-skip-inbox.js";
 import { syncMailbox } from "./mail-sync.js";
 
@@ -262,6 +263,19 @@ export async function runMailSyncJob(
       });
     });
   }
+
+  // Filters that waited for the account to be reconnected with the permission. Not tied to the
+  // sync's outcome: a throttled run right after the reconnect is the one that should make them.
+  await applyPendingSenderRules(
+    { prisma, mail: deps.mail, writesDisabled: deps.mailWritesDisabled },
+    account,
+    context,
+  ).catch((error: unknown) => {
+    getLogger().warn("sender rules failed", {
+      connectionId,
+      reason: error instanceof Error ? error.name : "error",
+    });
+  });
 
   await deps.afterSync?.(account, context).catch((error: unknown) => {
     getLogger().warn("mail sync follow-up failed", {

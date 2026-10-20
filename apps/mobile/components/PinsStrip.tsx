@@ -1,8 +1,10 @@
+import { maskPinFigures } from "@rakazo/chat-ui/mask-currency";
 import type { BotPins } from "@rakazo/contracts";
 import { useFocusEffect } from "expo-router";
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getPins, refreshPins } from "../lib/agent-pins";
+import { useHideAmounts } from "../lib/hide-amounts";
 import { useI18n } from "../lib/i18n";
 import { native, useThemedStyles } from "../lib/native";
 import { NativeSymbol } from "./native-symbol";
@@ -39,6 +41,8 @@ export function PinsStrip({
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
   const [running, setRunning] = useState(false);
+  const hidden = useHideAmounts();
+  const shown = (text: string) => (hidden ? maskPinFigures(text) : text);
 
   async function refresh() {
     setRunning(true);
@@ -75,11 +79,11 @@ export function PinsStrip({
               ) : null}
             </View>
             <Text numberOfLines={1} style={styles.value}>
-              {stat.value}
+              {shown(stat.value)}
             </Text>
             {stat.detail ? (
               <Text numberOfLines={1} style={styles.detail}>
-                {stat.detail}
+                {shown(stat.detail)}
               </Text>
             ) : null}
           </View>

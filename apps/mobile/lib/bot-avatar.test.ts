@@ -1,6 +1,6 @@
 import { resolvePersonaColorDef, shippedBotAvatarShapePath } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
-import { mobileBotAvatarPresentation } from "./bot-avatar.js";
+import { mobileBotAvatarPresentation, recolorBotAvatar } from "./bot-avatar.js";
 
 describe("mobile bot avatar presentation", () => {
   it("keeps the stored shape path instead of dropping it to a color fill", () => {
@@ -35,5 +35,20 @@ describe("mobile bot avatar presentation", () => {
       kind: "other",
       raw: "https://evil.example/track.png",
     });
+  });
+});
+
+describe("recolorBotAvatar", () => {
+  it("replaces a plain colour", () => {
+    expect(recolorBotAvatar("#111111", "#8B5CF6")).toBe("#8B5CF6");
+  });
+
+  it("keeps the shape when the colour changes", () => {
+    expect(recolorBotAvatar("#111111::shape_3", "#8B5CF6")).toBe("#8B5CF6::shape_3");
+  });
+
+  it("never overwrites an uploaded image", () => {
+    const image = "data:image/webp;base64,AAAA";
+    expect(recolorBotAvatar(image, "#8B5CF6")).toBe(image);
   });
 });

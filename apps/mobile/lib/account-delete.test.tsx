@@ -160,6 +160,10 @@ vi.mock("./native", () => ({
   useThemedStyles: (factory: () => unknown) => factory(),
 }));
 vi.mock("./push", () => ({ registerPushToken: vi.fn() }));
+vi.mock("./hide-amounts", () => ({
+  useHideAmounts: () => false,
+  setHideAmounts: vi.fn(),
+}));
 vi.mock("./remote-images-preference", () => ({
   getCachedRemoteImagesEnabled: () => false,
   setRemoteImagesPreference: vi.fn(),

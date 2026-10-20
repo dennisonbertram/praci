@@ -37,6 +37,7 @@ export const NotificationSchema = z.object({
   body: z.string().nullable(),
   link: z.string().nullable(),
   importance: NotificationImportanceSchema,
+  kind: NotificationKindSchema.optional(),
   createdAt: z.string(),
   seenAt: z.string().nullable(),
   shownAt: z.string().nullable(),

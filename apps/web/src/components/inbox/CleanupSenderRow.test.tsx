@@ -83,7 +83,33 @@ it("shows Skipping with a Stop button only for a skipped sender", async () => {
   expect(document.body.textContent).not.toContain("Skipping");
 });
 
+it("shows the learned pile with a Forget button only for a sender with one", async () => {
+  const onForgetLearned = vi.fn();
+  await show({ sender: { ...sender, learnedPile: "newsletters" }, onForgetLearned });
+  expect(document.body.textContent).toContain("Learned");
+  expect(document.body.textContent).toContain("Newsletters");
+  await act(async () =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Forget")?.click(),
+  );
+  expect(onForgetLearned).toHaveBeenCalledTimes(1);
+  await show({ sender: { ...sender, learnedPile: null }, onForgetLearned });
+  expect(document.body.textContent).not.toContain("Learned");
+});
+
 it("names the account when the list has several", async () => {
   await show({ accountLabel: "Work" });
   expect(document.body.textContent).toContain("Work");
+});
+
+it("says when the Gmail filter could not be added, and stays quiet otherwise", async () => {
+  const skipping = { ...sender, skipInbox: true };
+  await show({ sender: { ...skipping, rule: "full" } });
+  expect(document.body.textContent).toContain("Gmail filter limit reached");
+  expect(document.body.textContent).not.toContain("Couldn't add Gmail filter");
+  await show({ sender: { ...skipping, rule: "failed" } });
+  expect(document.body.textContent).toContain("Couldn't add Gmail filter");
+  for (const rule of ["active", "pending", undefined] as const) {
+    await show({ sender: { ...skipping, rule } });
+    expect(document.body.textContent).not.toContain("Gmail filter");
+  }
 });

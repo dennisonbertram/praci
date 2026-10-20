@@ -5,7 +5,7 @@ import { ComposerError } from "./composer-error";
 const meta = {
   title: "Shell/Composer error",
   component: ComposerError,
-  args: { onDismiss: () => {}, onOpenModelSettings: () => {} },
+  args: { onDismiss: () => {}, onOpenModelSettings: () => {}, onNavigate: () => {} },
   decorators: [
     (Story) => (
       <div className="max-w-xl">
@@ -27,5 +27,13 @@ export const LegalNeedsOwnKey: Story = { args: { message: LEGAL_MODEL_REQUIRED_M
 export const KeyRejected: Story = {
   args: {
     message: "The model provider did not accept your API key. Check it in Settings > Models.",
+  },
+};
+
+/** The Legal agent's Data Room consent is missing: the error offers the page that grants it. */
+export const ConsentRequired: Story = {
+  args: {
+    message:
+      "Data Room consent is required for OpenRouter before the Legal agent can run. Allow it on the Legal page.",
   },
 };

@@ -32,7 +32,8 @@ import {
   TooltipTrigger,
 } from "@rakazo/ui-web";
 import { PieChart, Plus, RefreshCw } from "lucide-react";
-import { type FormEvent, useCallback, useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
 import { OwnershipDonut } from "../components/cap-table/OwnershipDonut";
@@ -44,6 +45,7 @@ import { useIntegrations } from "../components/integrations/useIntegrations";
 import { PickFilter, SearchField, SortControl } from "../components/ListControls";
 import { PageHeader } from "../components/PageHeader";
 import { hasConnectedCarta } from "../lib/carta-agent";
+import { DATA_ROOM_CHANGED } from "../lib/data-room";
 import { percentFigure, shareCount, usdFigure } from "../lib/finance-format";
 import { useHideAmounts } from "../lib/hide-amounts-preference";
 import { FIRST_PARTY_MCP } from "../lib/integrations";
@@ -216,49 +218,6 @@ function Summary({ snapshot }: { snapshot: Snapshot | null }) {
       ) : (
         [0, 1, 2, 3].map((n) => <Skeleton key={n} className="h-[76px] w-full rounded-xl" />)
       )}
-    </div>
-  );
-}
-
-/** One ink lightness per share class (the app is monochrome), distinct in light and dark. */
-// ponytail: five lightness steps, then they repeat; the legend names every class, so colour never carries meaning alone.
-const SEGMENT_COLORS = [
-  "bg-foreground",
-  "bg-foreground/70",
-  "bg-foreground/50",
-  "bg-foreground/35",
-  "bg-foreground/20",
-];
-const segmentColor = (i: number) => SEGMENT_COLORS[i % SEGMENT_COLORS.length];
-
-export function OwnershipBar({ classes }: { classes: Snapshot["shareClasses"] }) {
-  // While amounts are hidden, equal segments keep the bar from showing who owns how much.
-  const hidden = useHideAmounts();
-  if (classes.length === 0) return null;
-  return (
-    <div className="mb-5">
-      {/* With amounts hidden the segments are equal, so their widths give away no split. */}
-      <div
-        className="flex h-3 gap-0.5 overflow-hidden rounded-full bg-muted"
-        aria-hidden="true"
-        data-testid="ownership-bar"
-      >
-        {classes.map((c, i) => (
-          <div
-            key={c.name}
-            className={segmentColor(i)}
-            style={{ width: hidden ? `${100 / classes.length}%` : `${c.percent}%` }}
-          />
-        ))}
-      </div>
-      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-        {classes.map((c, i) => (
-          <li key={c.name} className="flex items-center gap-1.5">
-            <span className={`size-2 rounded-full ${segmentColor(i)}`} aria-hidden="true" />
-            {c.name} <span className="tabular-nums">{pct(c.percent)}</span>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }
@@ -827,7 +786,10 @@ export function CapTablePage({
             ) : null}
             <DataRoomImportMenu
               folderPath={CAP_TABLE_FOLDER}
-              onDone={(text) => text && setToast({ text })}
+              onDone={(text, changed) => {
+                if (changed) window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
+                if (text) setToast({ text });
+              }}
             />
             <Button variant={cartaConnected ? "default" : "outline"} onClick={addContact}>
               <Plus aria-hidden="true" />
@@ -932,7 +894,6 @@ export function CapTablePage({
           onSelect={(name) => setParam("security", name)}
         />
       ) : null}
-      {snapshot ? <OwnershipBar classes={snapshot.shareClasses} /> : null}
       {reading ? (
         <p className="mb-3 text-sm text-muted-foreground">
           <Trans>Reading Carta…</Trans>
