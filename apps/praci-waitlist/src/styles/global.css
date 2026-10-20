@@ -168,8 +168,3 @@ button:focus-visible {
   border-radius: 12px;
   border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
 }
-.shot figcaption {
-  margin-top: 8px;
-  font-size: 13px;
-  opacity: 0.6;
-}
