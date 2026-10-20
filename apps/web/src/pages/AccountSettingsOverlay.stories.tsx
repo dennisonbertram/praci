@@ -77,7 +77,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="w-[560px]">
+      <div className="w-full max-w-[560px]">
         <Story />
       </div>
     ),
@@ -116,6 +116,16 @@ export const GeneralWithMessaging: Story = {
 
 export const GeneralWithTimeZone: Story = {
   args: { timezone: "America/New_York", onTimezoneChange: async () => undefined },
+  beforeEach: accountSecurity(security),
+};
+
+export const GeneralTimeZoneSaveFails: Story = {
+  args: {
+    timezone: "America/New_York",
+    onTimezoneChange: async () => {
+      throw new Error("offline");
+    },
+  },
   beforeEach: accountSecurity(security),
 };
 

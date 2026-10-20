@@ -3052,6 +3052,10 @@ msgstr "Could not save the setting"
 msgid "Could not save this choice"
 msgstr "Could not save this choice"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Could not save time zone"
+msgstr "Could not save time zone"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Could not search"
 msgstr "Could not search"
@@ -5875,6 +5879,7 @@ msgstr "No mail connected"
 msgid "No mail matches this filter"
 msgstr "No mail matches this filter"
 
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
@@ -7663,6 +7668,7 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8906,6 +8912,10 @@ msgstr "Time of day"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Time zone"
 msgstr "Time zone"
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Time zone updated"
+msgstr "Time zone updated"
 
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx

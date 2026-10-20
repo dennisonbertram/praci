@@ -3052,6 +3052,10 @@ msgstr ""
 msgid "Could not save this choice"
 msgstr "Impossible d'enregistrer ce choix"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Could not save time zone"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Could not search"
 msgstr ""
@@ -5875,6 +5879,7 @@ msgstr ""
 msgid "No mail matches this filter"
 msgstr ""
 
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
@@ -7663,6 +7668,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8905,6 +8911,10 @@ msgstr "Heure de la journée"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Time zone"
+msgstr ""
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Time zone updated"
 msgstr ""
 
 #: src/pages/Board.tsx
