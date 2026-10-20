@@ -210,7 +210,7 @@ describe("schedule tool persistence", () => {
       nextRunAt: args.data.nextRunAt,
     }));
     const deps = {
-      prisma: { routine: { create } },
+      prisma: { routine: { create }, user: { findUnique: vi.fn(async () => null) } },
       events: { append },
       jobs: { enqueue, cancel: vi.fn(async () => undefined) },
     } as unknown as Parameters<typeof createScheduleFromTool>[0];
@@ -248,6 +248,7 @@ describe("schedule tool persistence", () => {
     const remove = vi.fn(async () => undefined);
     const deps = {
       prisma: {
+        user: { findUnique: vi.fn(async () => null) },
         routine: {
           create: vi.fn(async () => ({
             id: "routine-1",
@@ -285,6 +286,7 @@ describe("schedule tool persistence", () => {
     const remove = vi.fn(async () => undefined);
     const deps = {
       prisma: {
+        user: { findUnique: vi.fn(async () => null) },
         routine: {
           create: vi.fn(async () => ({
             id: "routine-1",
@@ -322,6 +324,7 @@ describe("schedule tool persistence", () => {
     const update = vi.fn(async () => undefined);
     const deps = {
       prisma: {
+        user: { findUnique: vi.fn(async () => null) },
         routine: {
           create: vi.fn(async () => ({
             id: "routine-1",
@@ -364,6 +367,7 @@ describe("schedule tool persistence", () => {
   it("propagates when enqueue rollback cannot deactivate", async () => {
     const deps = {
       prisma: {
+        user: { findUnique: vi.fn(async () => null) },
         routine: {
           create: vi.fn(async () => ({
             id: "routine-1",

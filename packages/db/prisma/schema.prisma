@@ -37,6 +37,8 @@ model User {
   createdAt                   DateTime                     @default(now())
   updatedAt                   DateTime                     @updatedAt
   avatarStyle                 String                       @default("organic")
+  /// IANA time zone reported by the owner's clients; null until one signs in.
+  timezone                    String?
   sessions                    Session[]
   accounts                    Account[]
   cachedMailMessages          CachedMailMessage[]

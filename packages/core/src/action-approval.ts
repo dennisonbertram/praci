@@ -19,10 +19,12 @@ const APPROVAL_EXEMPT_TOOLS = new Set([
   "request_secret",
   "run_subagent",
   "spawn_bot",
-  "schedule_create",
   "schedule_list",
   "schedule_cancel",
+  "schedule_runs",
 ]);
+// schedule_create and schedule_update are not listed: they ask only for repeating schedules, which
+// depends on the call's arguments, so the executor decides (see scheduleApproval in the adapters).
 
 const APPROVAL_REQUIRED_BUILTIN_TOOLS = new Set([
   "destination.write",
@@ -61,6 +63,7 @@ const UNATTENDED_SAFE_BUILTIN_TOOLS = new Set([
   "run_subagent",
   "task_catalog",
   "schedule_list",
+  "schedule_runs",
   "scratchpad_list",
   "search_data_room",
   "read_data_room_item",

@@ -114,6 +114,11 @@ export const GeneralWithMessaging: Story = {
   beforeEach: accountSecurity(security),
 };
 
+export const GeneralWithTimeZone: Story = {
+  args: { timezone: "America/New_York", onTimezoneChange: async () => undefined },
+  beforeEach: accountSecurity(security),
+};
+
 export const GeneralWithoutEmail: Story = {
   args: { email: null },
   beforeEach: accountSecurity(security),

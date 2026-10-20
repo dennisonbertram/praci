@@ -33,22 +33,36 @@ export function buildApprovalAskBlock(
     serviceName?: string;
     /** Who an imessage_send goes to, resolved from the call (a thread id alone names no one). */
     imessage?: { recipient: string; line: string; disclosure?: string };
+    /** A repeating schedule in plain words and local time, with its whole prompt. */
+    schedule?: { summary: string; detail: string };
   },
 ): MessageBlock {
-  const summary = describeApprovalAction(
-    toolName,
-    options?.imessage ? { ...args, to: options.imessage.recipient } : args,
-    options?.serviceName,
-  );
+  const summary =
+    options?.schedule?.summary ??
+    describeApprovalAction(
+      toolName,
+      options?.imessage ? { ...args, to: options.imessage.recipient } : args,
+      options?.serviceName,
+    );
   const fullDetail =
-    options?.fullMail || options?.integrationWriteTool !== undefined || options?.imessage;
-  const detail = options?.imessage
-    ? imessageSendDetail(args, options.imessage, options.reviewReason)
-    : options?.fullMail
-      ? fullMailDetail(args, options.reviewReason)
-      : options?.integrationWriteTool !== undefined
-        ? integrationWriteDetail(toolName, options.integrationWriteTool, args, options.reviewReason)
-        : formatApprovalDetail(toolName, args, options?.reviewReason);
+    options?.fullMail ||
+    options?.integrationWriteTool !== undefined ||
+    options?.imessage ||
+    options?.schedule;
+  const detail = options?.schedule
+    ? [options.reviewReason?.trim(), options.schedule.detail].filter(Boolean).join("\n")
+    : options?.imessage
+      ? imessageSendDetail(args, options.imessage, options.reviewReason)
+      : options?.fullMail
+        ? fullMailDetail(args, options.reviewReason)
+        : options?.integrationWriteTool !== undefined
+          ? integrationWriteDetail(
+              toolName,
+              options.integrationWriteTool,
+              args,
+              options.reviewReason,
+            )
+          : formatApprovalDetail(toolName, args, options?.reviewReason);
   const safeDetail = detail ? redactSecrets(detail, secrets) : undefined;
   return {
     kind: "ask",

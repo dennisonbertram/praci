@@ -262,6 +262,16 @@ export function nextCronDateAcrossStrict(
   return earliest;
 }
 
+/** True for an IANA zone name the runtime knows, e.g. "America/New_York". */
+export function isValidTimezone(timezone: string): boolean {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function validTimezoneOrUtc(timezone: string): string {
   try {
     new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format();

@@ -84,7 +84,11 @@ const scheduleCreateProperties = {
     description:
       "Concrete steps for when the schedule fires: name the connected plugin tools to call (e.g. GITHUB_LIST_RELEASES for owner/repo), what to extract, and how to report. Prefer plugin tools over computer browser or web search for app data.",
   },
-  timezone: { type: "string", description: "IANA timezone (default UTC)." },
+  timezone: {
+    type: "string",
+    description:
+      "IANA timezone for cron times. Default: the user's own time zone; omit it unless asked for another.",
+  },
 };
 
 const scheduleTimingNames = [
@@ -1749,12 +1753,13 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "schedule_create",
     description:
-      'Create a reminder or recurring job for this bot. Use for "remind me in 10 minutes" or "every morning send a joke". Repeats: cron or every/unit (min 1 minute). One-shot: runAt, delayMinutes, or delaySeconds.',
+      'Create a reminder or recurring job for this bot. Use for "remind me in 10 minutes" or "every morning send a joke". One-shot (runAt, delayMinutes, or delaySeconds) is free and runs without asking. Repeating (cron or every/unit, min 1 minute) pauses for the user to approve a card that shows the schedule and the full prompt, so write the prompt as the exact instructions to run each time. Times are in the user\'s time zone unless you pass timezone.',
     inputSchema: scheduleCreateInputSchema,
   },
   {
     name: "schedule_list",
-    description: "List this bot's active and inactive schedules (routines).",
+    description:
+      "List this bot's active and inactive schedules (routines) with their ids, prompts, and plain-words schedules.",
     inputSchema: { type: "object", properties: {} },
   },
   {
@@ -1766,6 +1771,41 @@ export const builtinAgentTools: ConnectorTool[] = [
         routineId: { type: "string" },
         name: { type: "string" },
       },
+    },
+  },
+  {
+    name: "schedule_update",
+    description:
+      "Change a schedule you made, keeping its id and run history. Send only what changes. prompt replaces the whole saved prompt, so include everything it should say. schedule is one timing method (cron, every+unit, runAt, delayMinutes, or delaySeconds). enabled false pauses it. Returns the saved schedule; read it back before telling the user. Making a schedule repeat, or changing the prompt of a repeating one, pauses for the user to approve a card; other changes run without asking.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "routineId from schedule_list." },
+        prompt: { type: "string", description: "The complete new prompt." },
+        schedule: {
+          type: "object",
+          properties: scheduleTimingSpecs,
+          additionalProperties: false,
+        },
+        timezone: { type: "string", description: "IANA timezone for cron times." },
+        enabled: { type: "boolean" },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "schedule_runs",
+    description:
+      "Recent runs of one schedule, newest first: status, time, whether it sent the user a notification, and a short error if it failed. Use it to answer whether a schedule ran and what happened.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: { type: "string", description: "routineId from schedule_list." },
+        limit: { type: "number", description: "How many runs (default 10, max 25)." },
+      },
+      required: ["id"],
+      additionalProperties: false,
     },
   },
   {

@@ -103,6 +103,8 @@ export const BUILTIN_TOOL_NAMES = [
   "schedule_create",
   "schedule_list",
   "schedule_cancel",
+  "schedule_update",
+  "schedule_runs",
   "end_call",
   "skill_read",
   "skill_create",

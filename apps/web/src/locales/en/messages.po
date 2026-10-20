@@ -8749,6 +8749,10 @@ msgstr "Tickets track work for your bots. Bots add them when you ask them to tra
 msgid "Time of day"
 msgstr "Time of day"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Time zone"
+msgstr "Time zone"
+
 #: src/pages/Board.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Title"

@@ -2699,6 +2699,7 @@ description: Prepare standup notes
         findUniqueOrThrow: vi.fn(async () => ({ status: "leased", startedAt: null })),
         updateMany: vi.fn(async () => ({ count: 1 })),
       },
+      user: { findUnique: vi.fn(async () => null) },
       bot: { findUniqueOrThrow: botLookup },
       computer: {
         findUniqueOrThrow: vi.fn(async () => ({ scope: "private", state: "running" })),
@@ -2781,6 +2782,7 @@ description: Prepare standup notes
         findUniqueOrThrow: vi.fn(async () => ({ status: "leased", startedAt: null })),
         updateMany: vi.fn(async () => ({ count: 1 })),
       },
+      user: { findUnique: vi.fn(async () => null) },
       bot: {
         findUniqueOrThrow: vi.fn(async (args: { select?: { computerId?: boolean } }) =>
           args.select?.computerId

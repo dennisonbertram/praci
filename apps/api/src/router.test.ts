@@ -39,6 +39,7 @@ describe("account preferences", () => {
           email: "user@rakazo.test",
           name: "Test User",
           avatarStyle,
+          timezone: null,
         }),
       },
       spaceModelPreference: { findFirst: vi.fn().mockResolvedValue(null) },
@@ -129,6 +130,29 @@ describe("account preferences", () => {
     await expect(response.json()).resolves.toEqual({
       json: expect.objectContaining({ avatarStyle: "organic" }),
     });
+  });
+
+  it("stores a reported time zone and rejects an unknown one", async () => {
+    const { update, actor, handler } = preferencesDeps("organic");
+    const send = (timezone: string) =>
+      handler.handle(
+        new Request("http://127.0.0.1/rpc/preferences/update", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ json: { timezone } }),
+        }),
+        { prefix: "/rpc", context: { actor } },
+      );
+
+    expect((await send("Europe/Paris")).response?.status).toBe(200);
+    expect(update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: { timezone: "Europe/Paris" },
+    });
+
+    update.mockClear();
+    expect((await send("Not/AZone")).response?.status).toBeGreaterThanOrEqual(400);
+    expect(update).not.toHaveBeenCalled();
   });
 
   it("rejects avatar styles outside robot|organic", async () => {

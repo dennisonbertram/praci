@@ -2,9 +2,12 @@ import type { JobPublisher } from "@rakazo/adapter-kit";
 import { routineJobKey, routineWakeupJob } from "@rakazo/adapter-kit";
 import {
   cronFromPreset,
+  formatCron,
   isOneShotRoutineCron,
   isOneShotRoutineCrons,
+  isValidTimezone,
   nextCronDate,
+  nextCronDateAcross,
   ONCE_ROUTINE_CRON,
 } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
@@ -12,7 +15,13 @@ import { OWNER_INITIATED_TRIGGERS } from "./mail-tools.js";
 
 export { isOneShotRoutineCron, ONCE_ROUTINE_CRON };
 
-export const SCHEDULE_TOOL_NAMES = new Set(["schedule_create", "schedule_list", "schedule_cancel"]);
+export const SCHEDULE_TOOL_NAMES = new Set([
+  "schedule_create",
+  "schedule_list",
+  "schedule_cancel",
+  "schedule_update",
+  "schedule_runs",
+]);
 
 export function filterBuiltinToolsForRun<T extends { name: string }>(
   tools: T[],
@@ -22,7 +31,7 @@ export function filterBuiltinToolsForRun<T extends { name: string }>(
   // so only a run the owner started may create one (routine runs never chain a new schedule).
   return OWNER_INITIATED_TRIGGERS.has(runTrigger) && runTrigger !== "routine"
     ? tools
-    : tools.filter((tool) => tool.name !== "schedule_create");
+    : tools.filter((tool) => tool.name !== "schedule_create" && tool.name !== "schedule_update");
 }
 
 /** Keep cross-bot messaging thread-specific while exposing schedules in DMs and groups. */
@@ -223,7 +232,10 @@ export async function createScheduleFromTool(
   if (!name) return { error: "name is required." };
   if (!prompt) return { error: "prompt is required." };
 
-  const timezone = String(input.timezone ?? "UTC");
+  // Without an explicit zone, times are the owner's local time.
+  const timezone =
+    input.timezone?.trim() || (await loadUserTimezone(deps.prisma, input.userId)) || "UTC";
+  if (!isValidTimezone(timezone)) return { error: `Unknown time zone: ${timezone}.` };
   const resolved = resolveScheduleTiming(input.schedule, timezone);
   if (!resolved.ok) return { error: resolved.error };
 
@@ -275,6 +287,8 @@ export async function createScheduleFromTool(
     routineId: row.id,
     name: row.name,
     cron: row.crons[0],
+    timezone: row.timezone,
+    schedule: describeSchedule(row.crons, row.timezone, row.nextRunAt),
     nextRunAt: row.nextRunAt?.toISOString() ?? null,
     oneShot: resolved.oneShot,
   };
@@ -301,6 +315,8 @@ export async function listSchedulesFromTool(
       prompt: row.prompt,
       crons: row.crons,
       active: row.active,
+      timezone: row.timezone,
+      schedule: describeSchedule(row.crons, row.timezone, row.nextRunAt),
       nextRunAt: row.nextRunAt?.toISOString() ?? null,
       oneShot: isOneShotRoutineCrons(row.crons),
     })),
@@ -339,4 +355,274 @@ export async function cancelScheduleFromTool(
   await deps.prisma.routine.delete({ where: { id: existing.id } });
   await deps.jobs.cancel(routineJobKey(existing.id));
   return { ok: true as const, routineId: existing.id, name: existing.name };
+}
+
+/** A user's stored zone, or null before any client reported one. */
+export async function loadUserTimezone(
+  prisma: Pick<PrismaClient, "user">,
+  userId: string,
+): Promise<string | null> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+  return user?.timezone ?? null;
+}
+
+/** A moment as the user reads it in their zone, e.g. "Wednesday, October 21, 2026 at 8:00 AM". */
+function formatLocal(date: Date, timezone: string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+/** A schedule in plain words and the routine's own zone, e.g. "Every day at 8:00 AM (America/New_York)". */
+export function describeSchedule(crons: string[], timezone: string, nextRunAt?: Date | null) {
+  if (isOneShotRoutineCrons(crons)) {
+    return nextRunAt
+      ? `Once, ${formatLocal(nextRunAt, timezone)} (${timezone})`
+      : "Once (already ran or paused)";
+  }
+  if (crons.length === 0) return "No schedule";
+  return crons
+    .map((cron) => {
+      const words = formatCron(cron);
+      // A clock time needs its zone; "Every 30 minutes" does not.
+      return words.includes(" at ") ? `${words} (${timezone})` : words;
+    })
+    .join("; ");
+}
+
+export type ScheduleScope = {
+  spaceId: string;
+  botId: string;
+  userId: string;
+  /** Set in a group chat, where an agent only manages the schedules made in that thread. */
+  threadId?: string;
+};
+
+/** A routine is managed by the bot and owner that made it, in one space (and one thread in a group). */
+function ownedRoutine(scope: ScheduleScope, id: string) {
+  return {
+    id,
+    spaceId: scope.spaceId,
+    botId: scope.botId,
+    userId: scope.userId,
+    ...(scope.threadId ? { threadId: scope.threadId } : {}),
+  };
+}
+
+const TIMING_FIELDS = ["cron", "every", "unit", "runAt", "delayMinutes", "delaySeconds"] as const;
+
+function timingOf(input: unknown): Record<string, unknown> {
+  const source = input && typeof input === "object" ? (input as Record<string, unknown>) : {};
+  return compactScheduleInput(Object.fromEntries(TIMING_FIELDS.map((key) => [key, source[key]])));
+}
+
+/**
+ * Change a bot's schedule. The prompt is replaced whole; `schedule` replaces the timing; only the
+ * fields given change. Returns the saved routine so the model can read it back.
+ */
+export async function updateScheduleFromTool(
+  deps: ScheduleToolDeps,
+  input: ScheduleScope & {
+    id: string;
+    prompt?: unknown;
+    schedule?: unknown;
+    timezone?: unknown;
+    enabled?: unknown;
+  },
+) {
+  const id = input.id.trim();
+  if (!id) return { error: "id is required." };
+  const existing = await deps.prisma.routine.findFirst({ where: ownedRoutine(input, id) });
+  if (!existing) return { error: "Schedule not found." };
+
+  const hasPrompt = isScheduleValueProvided(input.prompt);
+  const prompt = hasPrompt ? String(input.prompt).trim() : existing.prompt;
+  const timezone = isScheduleValueProvided(input.timezone)
+    ? String(input.timezone).trim()
+    : existing.timezone;
+  if (!isValidTimezone(timezone)) return { error: `Unknown time zone: ${timezone}.` };
+  const timing = timingOf(input.schedule);
+  const hasTiming = Object.keys(timing).length > 0;
+  const enabled = typeof input.enabled === "boolean" ? input.enabled : existing.active;
+
+  let crons = existing.crons;
+  let nextRunAt = existing.nextRunAt;
+  if (hasTiming) {
+    const resolved = resolveScheduleTiming(timing, timezone);
+    if (!resolved.ok) return { error: resolved.error };
+    crons = [resolved.cron];
+    nextRunAt = resolved.nextRunAt;
+  } else if (
+    !isOneShotRoutineCrons(crons) &&
+    (timezone !== existing.timezone || (enabled && !nextRunAt))
+  ) {
+    nextRunAt = nextCronDateAcross(crons, new Date(), timezone);
+  }
+  if (
+    enabled &&
+    isOneShotRoutineCrons(crons) &&
+    (!nextRunAt || nextRunAt.getTime() <= Date.now())
+  ) {
+    return { error: "This one-time reminder already ran. Create a new one." };
+  }
+  if (enabled && crons.length > 0 && !nextRunAt) return { error: "That schedule has no next run." };
+
+  const row = await deps.prisma.routine.update({
+    where: { id: existing.id },
+    data: { prompt, timezone, crons, active: enabled, nextRunAt: enabled ? nextRunAt : null },
+  });
+  if (row.active && row.nextRunAt) {
+    await deps.jobs.enqueue(routineWakeupJob(row.id, row.nextRunAt));
+  } else {
+    await deps.jobs.cancel(routineJobKey(row.id));
+  }
+  if (row.threadId) {
+    try {
+      await deps.events.append({
+        spaceId: row.spaceId,
+        threadId: row.threadId,
+        botId: row.botId,
+        type: "routine.updated",
+        payload: { routineId: row.id, active: row.active },
+      });
+    } catch {
+      // The change is saved even if the thread signal fails.
+    }
+  }
+  return {
+    ok: true as const,
+    routineId: row.id,
+    name: row.name,
+    prompt: row.prompt,
+    schedule: describeSchedule(row.crons, row.timezone, row.nextRunAt),
+    crons: row.crons,
+    timezone: row.timezone,
+    enabled: row.active,
+    nextRunAt: row.nextRunAt?.toISOString() ?? null,
+    oneShot: isOneShotRoutineCrons(row.crons),
+  };
+}
+
+const RUNS_DEFAULT_LIMIT = 10;
+const RUNS_MAX_LIMIT = 25;
+const RUN_ERROR_MAX = 300;
+
+/** Recent runs of one schedule: status, time, whether it notified the owner, and what failed. */
+export async function scheduleRunsFromTool(
+  deps: Pick<ScheduleToolDeps, "prisma">,
+  input: ScheduleScope & { id: string; limit?: unknown },
+) {
+  const id = input.id.trim();
+  if (!id) return { error: "id is required." };
+  const routine = await deps.prisma.routine.findFirst({
+    where: ownedRoutine(input, id),
+    select: { id: true, name: true },
+  });
+  if (!routine) return { error: "Schedule not found." };
+  const requested = Math.trunc(Number(input.limit));
+  const limit = Number.isFinite(requested)
+    ? Math.min(Math.max(requested, 1), RUNS_MAX_LIMIT)
+    : RUNS_DEFAULT_LIMIT;
+  const runs = await deps.prisma.run.findMany({
+    where: {
+      routineId: routine.id,
+      botId: input.botId,
+      spaceId: input.spaceId,
+      userId: input.userId,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: limit,
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      startedAt: true,
+      completedAt: true,
+      error: true,
+    },
+  });
+  const notified = runs.length
+    ? await deps.prisma.notification.findMany({
+        where: {
+          spaceId: input.spaceId,
+          userId: input.userId,
+          routineId: routine.id,
+          runId: { in: runs.map((run) => run.id) },
+        },
+        select: { runId: true },
+      })
+    : [];
+  const notifiedRuns = new Set(notified.map((row) => row.runId));
+  return {
+    routineId: routine.id,
+    name: routine.name,
+    runs: runs.map((run) => ({
+      runId: run.id,
+      status: run.status,
+      at: (run.startedAt ?? run.createdAt).toISOString(),
+      finishedAt: run.completedAt?.toISOString() ?? null,
+      notificationCreated: notifiedRuns.has(run.id),
+      ...(run.error ? { error: run.error.slice(0, RUN_ERROR_MAX) } : {}),
+    })),
+  };
+}
+
+export type ScheduleApproval = { summary: string; detail: string };
+
+/**
+ * What the owner must approve for a schedule tool call, or undefined when it needs no approval.
+ * Only repeating schedules do: a repeating job runs its saved prompt with the owner's mail and
+ * Drive on every fire, while a one-off reminder fires once. Changing a repeating schedule's prompt
+ * or making any schedule repeat counts as creating it.
+ */
+export async function scheduleApproval(
+  deps: Pick<ScheduleToolDeps, "prisma">,
+  scope: ScheduleScope,
+  toolName: string,
+  args: Record<string, unknown>,
+  userTimezone: string | null,
+): Promise<ScheduleApproval | undefined> {
+  if (toolName !== "schedule_create" && toolName !== "schedule_update") return undefined;
+  const create = toolName === "schedule_create";
+  const existing = create
+    ? undefined
+    : await deps.prisma.routine.findFirst({ where: ownedRoutine(scope, String(args.id ?? "")) });
+  // The tool reports "not found" without any effect.
+  if (!create && !existing) return undefined;
+
+  const timing = create ? timingOf(args) : timingOf(args.schedule);
+  const timezone =
+    (isScheduleValueProvided(args.timezone) ? String(args.timezone) : undefined) ??
+    existing?.timezone ??
+    userTimezone ??
+    "UTC";
+  if (!isValidTimezone(timezone)) return undefined;
+  const resolved = Object.keys(timing).length > 0 ? resolveScheduleTiming(timing, timezone) : null;
+  if (resolved && !resolved.ok) return undefined;
+  const newlyRepeats = resolved?.ok === true && !resolved.oneShot;
+  const promptChanges = !create && isScheduleValueProvided(args.prompt);
+  const existingRepeats = Boolean(existing) && !isOneShotRoutineCrons(existing?.crons ?? []);
+  if (!newlyRepeats && !(promptChanges && existingRepeats)) return undefined;
+
+  const name = create ? String(args.name ?? "").trim() : (existing?.name ?? "");
+  const lines: string[] = [];
+  if (resolved?.ok) {
+    lines.push(
+      `repeats: ${describeSchedule([resolved.cron], timezone)}`,
+      `next run: ${formatLocal(resolved.nextRunAt, timezone)}`,
+    );
+  } else if (existing) {
+    lines.push(`repeats: ${describeSchedule(existing.crons, existing.timezone)}`);
+  }
+  if (isScheduleValueProvided(args.prompt)) lines.push(`prompt: ${String(args.prompt).trim()}`);
+  return {
+    summary: `${create ? "creating" : "changing"} the repeating schedule “${name}”`,
+    detail: lines.join("\n"),
+  };
 }

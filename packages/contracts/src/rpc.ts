@@ -375,7 +375,14 @@ export const appContract = {
     portal: oc.output(z.object({ url: z.string().url() })),
   },
   preferences: {
-    update: oc.input(z.object({ avatarStyle: AvatarStyleSchema })).output(MeSchema),
+    update: oc
+      .input(
+        z.object({
+          avatarStyle: AvatarStyleSchema.optional(),
+          timezone: z.string().min(1).max(64).optional(),
+        }),
+      )
+      .output(MeSchema),
   },
   spaces: {
     list: oc.output(SpaceNavigationSchema),
