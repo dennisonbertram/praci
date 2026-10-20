@@ -1,52 +1,20 @@
-export type BotListSection<T> = {
-  key: string;
-  title: string | null;
-  bots: T[];
-};
-
-type Section = { id: string; name: string };
-type SectionedBot = { pinned: boolean; sectionId: string | null };
-
-export function groupBotsForSidebar<T extends SectionedBot>(
-  bots: readonly T[],
-  sections: readonly Section[],
-): BotListSection<T>[] {
-  const knownSectionIds = new Set(sections.map((section) => section.id));
-  const pinned: T[] = [];
-  const sectionMembers = new Map<string, T[]>();
-  const unassigned: T[] = [];
-  const grouped: BotListSection<T>[] = [];
-
-  for (const bot of bots) {
-    if (bot.pinned) {
-      pinned.push(bot);
-    } else if (bot.sectionId && knownSectionIds.has(bot.sectionId)) {
-      const members = sectionMembers.get(bot.sectionId) ?? [];
-      members.push(bot);
-      sectionMembers.set(bot.sectionId, members);
-    } else {
-      unassigned.push(bot);
-    }
-  }
-
-  if (pinned.length > 0) {
-    grouped.push({ key: "pinned", title: "Pinned", bots: pinned });
-  }
-  for (const section of sections) {
-    const members = sectionMembers.get(section.id) ?? [];
-    if (members.length > 0) {
-      grouped.push({ key: `section:${section.id}`, title: section.name, bots: members });
-    }
-  }
-  if (unassigned.length > 0) {
-    grouped.push({
-      key: "unassigned",
-      title: pinned.length > 0 || sections.length > 0 ? "Unassigned" : null,
-      bots: unassigned,
-    });
-  }
-
-  return grouped;
+/**
+ * The sidebar's lists for one space: pinned items, then each folder in order, then the unfiled
+ * rest. An item whose folder no longer exists counts as unfiled. Folders are kept even when empty.
+ */
+export function sidebarSections<T extends Placement, S extends { id: string }>(
+  items: readonly T[],
+  sections: readonly S[],
+): { pinned: T[]; folders: Array<{ section: S; items: T[] }>; root: T[] } {
+  const known = new Set(sections.map((section) => section.id));
+  const placed = items.map((item) =>
+    item.sectionId && !known.has(item.sectionId) ? { ...item, sectionId: null } : item,
+  );
+  return {
+    pinned: placed.filter((item) => item.pinned),
+    folders: sections.map((section) => ({ section, items: sidebarContainer(placed, section.id) })),
+    root: sidebarContainer(placed, null),
+  };
 }
 
 export function reorderBotTo<T extends { id: string }>(
@@ -134,4 +102,50 @@ export function nestRosterByParent<T extends RosterParentable>(
     if (!visited.has(item.id)) visit(item, 0, null, new Set());
   }
   return rows;
+}
+
+/** An item the sidebar can place: a bot or a group, in a folder (sectionId) or at the root. */
+type Placement = {
+  sectionId: string | null;
+  /** Null until ordered by hand; null items follow the positioned ones in list order. */
+  position?: number | null;
+  pinned: boolean;
+};
+
+export type SidebarPlaced = Placement & { kind: "bot" | "group"; id: string };
+
+type ItemRef = { kind: "bot" | "group"; id: string };
+
+/**
+ * One folder's items (or the root's) in display order. Pass bots then groups in the order the
+ * lists load; ties keep that order, so nothing moves until the user orders something by hand.
+ * Pinned items show in their own list and are left out.
+ */
+export function sidebarContainer<T extends Placement>(
+  items: readonly T[],
+  sectionId: string | null,
+): T[] {
+  const at = (item: T) => item.position ?? Number.POSITIVE_INFINITY;
+  return items
+    .filter((item) => item.sectionId === sectionId && !item.pinned)
+    .sort((a, b) => (at(a) === at(b) ? 0 : at(a) < at(b) ? -1 : 1));
+}
+
+/**
+ * Where every item of the destination ends up after moving `item` into `folderId` before
+ * `beforeItem` (or last): dense positions 0..n-1. Null when the item or the anchor is not found.
+ */
+export function planSidebarMove<T extends SidebarPlaced>(
+  items: readonly T[],
+  move: { item: ItemRef; folderId: string | null; beforeItem?: ItemRef | null },
+): Array<{ item: T; sectionId: string | null; position: number }> | null {
+  const same = (a: ItemRef) => (b: ItemRef) => a.kind === b.kind && a.id === b.id;
+  const moving = items.find(same(move.item));
+  if (!moving) return null;
+  const others = sidebarContainer(items, move.folderId).filter((item) => item !== moving);
+  const before = move.beforeItem;
+  const index = before ? others.findIndex(same(before)) : others.length;
+  if (index < 0) return null;
+  others.splice(index, 0, moving);
+  return others.map((item, position) => ({ item, sectionId: move.folderId, position }));
 }

@@ -1,5 +1,5 @@
 import type { SpaceBot, SpaceGroup } from "@rakazo/contracts";
-import { groupBotsForSidebar, nestRosterByParent } from "@rakazo/core";
+import { nestRosterByParent, sidebarSections } from "@rakazo/core";
 import {
   adoptDeletedSpaceFallback,
   type MobileBot,
@@ -51,6 +51,7 @@ export function spaceInboxItems(
         id: chat.id,
         parentBotId: chat.parentBotId,
         pinned: chat.pinned,
+        position: chat.position,
         sectionId: chat.sectionId,
       })),
       ...space.groups.map((chat) => ({
@@ -58,6 +59,7 @@ export function spaceInboxItems(
         group: chat,
         id: chat.id,
         pinned: chat.pinned,
+        position: chat.position,
         sectionId: chat.sectionId,
       })),
     ];
@@ -65,11 +67,24 @@ export function spaceInboxItems(
     if (spaces.length > 1 || !space.isDefault || chats.length === 0) {
       items.push({ type: "heading", key: space.id, title: space.name, space });
     }
-    for (const group of groupBotsForSidebar(chats, space.botSections)) {
-      if (group.title) {
-        items.push({ type: "heading", key: `${space.id}:${group.key}`, title: group.title });
+    // Folders are headings in the web sidebar's order; moving things around is web-only for now.
+    const { pinned, folders, root } = sidebarSections(chats, space.botSections);
+    const showRootHeading = pinned.length > 0 || folders.some(({ items }) => items.length > 0);
+    const blocks = [
+      { key: "pinned", title: "Pinned", chats: pinned },
+      ...folders.map(({ section, items }) => ({
+        key: `section:${section.id}`,
+        title: section.name,
+        chats: items,
+      })),
+      { key: "unassigned", title: showRootHeading ? "Unassigned" : null, chats: root },
+    ];
+    for (const block of blocks) {
+      if (block.chats.length === 0) continue;
+      if (block.title) {
+        items.push({ type: "heading", key: `${space.id}:${block.key}`, title: block.title });
       }
-      for (const row of nestRosterByParent(group.bots, collapsedParentIds)) {
+      for (const row of nestRosterByParent(block.chats, collapsedParentIds)) {
         if (row.item.type === "bot") {
           items.push({
             type: "bot",

@@ -32,6 +32,7 @@ export * from "./push-endpoints.js";
 export * from "./repos.js";
 export * from "./scope.js";
 export * from "./sessions.js";
+export * from "./sidebar-folders.js";
 export * from "./sidebar-pages.js";
 export * from "./spaces.js";
 export * from "./transaction-retry.js";

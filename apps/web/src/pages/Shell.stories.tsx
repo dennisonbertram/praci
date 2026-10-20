@@ -146,6 +146,142 @@ export const ConversationAppAgent: Story = {
   ),
 };
 
+const STAMP = "2026-01-01T00:00:00.000Z";
+const folderSection = (id: string, name: string, position: number, collapsed = false) => ({
+  id,
+  name,
+  position,
+  collapsed,
+  createdAt: STAMP,
+  updatedAt: STAMP,
+});
+const agent = (
+  id: string,
+  name: string,
+  color: string,
+  over: Partial<ReturnType<typeof makeBot>> = {},
+) => makeBot({ id, name, title: "", color, threadId: `thread_${id}`, ...over });
+const folderBots = [
+  agent("bot_chief", "Chief", "#6366f1", { position: 0 }),
+  agent("bot_ledger", "Ledger agent", BOT_COLORS[2], {
+    sectionId: "folder_workspace",
+    position: 0,
+    spawnKey: "finance-agent:user_demo",
+  }),
+  agent("bot_counsel", "Counsel agent", BOT_COLORS[3], {
+    sectionId: "folder_workspace",
+    position: 1,
+    spawnKey: "legal-agent:user_demo",
+    unread: true,
+  }),
+  agent("bot_relay", "Relay agent", BOT_COLORS[5], {
+    sectionId: "folder_apps",
+    position: 0,
+    spawnKey: "integration-agent:server_relay",
+  }),
+  agent("bot_atlas", "Atlas agent", BOT_COLORS[1], {
+    sectionId: "folder_apps",
+    position: 1,
+    spawnKey: "integration-agent:server_atlas",
+  }),
+  agent("bot_scout", "Scout", BOT_COLORS[0], { position: 1 }),
+];
+const operationsGroup = {
+  id: "group_operations",
+  spaceId: "space_demo",
+  name: "Operations",
+  pinned: false,
+  sectionId: null,
+  position: null,
+  archivedAt: null,
+  members: [
+    { botId: "bot_chief", name: "Chief", color: "#6366f1" },
+    { botId: "bot_scout", name: "Scout", color: BOT_COLORS[0] },
+    { botId: "bot_ledger", name: "Ledger agent", color: BOT_COLORS[2] },
+  ],
+  threadId: "thread_group_operations",
+  preview: "",
+  unread: false,
+  updatedAt: STAMP,
+  createdAt: STAMP,
+};
+
+const demoMe = {
+  ticketBoardEnabled: false,
+  userId: "user_demo",
+  email: "demo@example.com",
+  name: "Demo User",
+  spaceId: "space_demo",
+  isDeploymentOwner: true,
+  needsModel: false,
+  defaultProvider: null,
+  defaultModel: null,
+  hostCredentialProvider: null,
+  hostCredentialSource: null,
+  computerHost: null,
+  canChooseHostComputer: false,
+  sandboxProvider: "docker",
+  avatarStyle: "organic",
+  billingEnabled: false,
+};
+
+/** The Personnel list with two folders (Apps closed, its needs-input status still showing), a chat and a group at the root. */
+export const PersonnelFolders: Story = {
+  decorators: [at("/app/bot_chief")],
+  beforeEach: () => {
+    loadedWith(folderBots[0] as ReturnType<typeof makeBot>)();
+    const sections = [
+      folderSection("folder_workspace", "Workspace", 0),
+      folderSection("folder_apps", "Apps", 1, true),
+    ];
+    mockRpc({
+      // Folders live in this list so a refresh after New folder keeps what was added.
+      "spaces.list": () => ({
+        ...navigation,
+        current: {
+          ...navigation.current,
+          bots: folderBots,
+          groups: [operationsGroup],
+          botSections: [...sections],
+        },
+      }),
+      bootstrap: {
+        me: demoMe,
+        bots: folderBots,
+        groups: [operationsGroup],
+        botSections: [...sections],
+        archivedBots: [],
+        archivedGroups: [],
+        thread: { ...snapshot, botId: "bot_chief" },
+        routines: [],
+        spaces: [{ ...space, bots: [], groups: [], botSections: [...sections] }],
+      },
+      "botSections.add": (input: unknown) => {
+        const created = folderSection("folder_new", (input as { name: string }).name, 2);
+        sections.push(created);
+        return created;
+      },
+      "botSections.update": (input: unknown) => {
+        const { sectionId, name } = input as { sectionId: string; name: string };
+        const found = sections.find((section) => section.id === sectionId);
+        if (found) found.name = name;
+        return found;
+      },
+      "sidebar.autoGroup": {
+        placements: [{ item: { kind: "bot", id: "bot_scout" }, folderId: null, position: 1 }],
+        createdFolderIds: [],
+      },
+      "notifications.unseenCounts": { counts: {} },
+      "notifications.glance": {
+        financeRunwayMonths: null,
+        legalDueSoon: 0,
+        dataRoomWaiting: 0,
+        botKinds: { bot_relay: "needs_input" },
+      },
+    });
+  },
+};
+
 export const Conversation: Story = {
   decorators: [at("/app/bot_ada")],
   beforeEach: loaded,
