@@ -2356,6 +2356,7 @@ msgstr "Prüfe, ob die URL aus dieser Browsersitzung erreichbar ist, und teste e
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -2376,6 +2377,7 @@ msgstr "Verbinden"
 msgid "Connect {0}"
 msgstr ""
 
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
@@ -2454,7 +2456,12 @@ msgstr ""
 msgid "Connect Treg"
 msgstr "Treg verbinden"
 
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Connect your apps"
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2526,6 +2533,7 @@ msgid "Context limit"
 msgstr "Kontextlimit"
 
 #: src/components/integrations/AgentStep.tsx
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/Onboarding.tsx
 msgid "Continue"
@@ -5910,6 +5918,10 @@ msgstr ""
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "No matching apps"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
 msgstr ""
@@ -6494,6 +6506,10 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 msgid "Other model…"
 msgstr "Anderes Modell…"
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Other ways to connect"
+msgstr ""
 
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
@@ -7711,6 +7727,7 @@ msgstr ""
 msgid "Search and read files and folders"
 msgstr ""
 
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -7956,6 +7973,14 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Set up"
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Set up {name}"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -8210,6 +8235,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Skip"
 msgstr "Überspringen"
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Skip for now"
+msgstr ""
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Skip inbox"

@@ -27,9 +27,9 @@ export async function rpc<T>(page: Page, procedure: string, body: unknown): Prom
 
 export async function completeOnboarding(page: Page, testInfo?: TestInfo) {
   await page.waitForURL(/\/(onboarding|app)/, { timeout: 20_000 });
-  // Optional Server integrations step (needsSetup). Skip when shown, then the
+  // Optional Connect your apps step (needsSetup). Skip when shown, then the
   // first bot is created automatically — land in Chief's chat with no form.
-  const integrations = page.getByRole("heading", { name: "Server integrations", exact: true });
+  const integrations = page.getByRole("heading", { name: "Connect your apps", exact: true });
   const chief = page.getByText("Chief").first();
   await integrations.or(chief).or(page.getByText("Opening chat…")).waitFor({ timeout: 20_000 });
   if ((await chief.isVisible().catch(() => false)) && page.url().includes("/app")) {
@@ -41,7 +41,7 @@ export async function completeOnboarding(page: Page, testInfo?: TestInfo) {
   }
   if (await integrations.isVisible().catch(() => false)) {
     if (testInfo) await captureScreenshot(page, testInfo, "02-connect-apps");
-    await page.getByRole("button", { name: "Skip", exact: true }).click();
+    await page.getByRole("button", { name: "Skip for now", exact: true }).click();
   }
   await page.waitForURL(/\/app\//, { timeout: 20_000 });
   await expect(page.getByText("Chief").first()).toBeVisible();

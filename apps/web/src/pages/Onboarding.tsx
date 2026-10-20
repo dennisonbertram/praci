@@ -34,7 +34,7 @@ import {
 import { Check, Copy } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { IntegrationSetup } from "../components/integrations/IntegrationSetup";
+import { OnboardingConnectApps } from "../components/integrations/ConnectAppsStep";
 import {
   ModelPreflightFeedback,
   modelPreflightTestingLabel,
@@ -1085,9 +1085,8 @@ export function OnboardingPage() {
           </div>
         ) : null}
         {step === "integrations" ? (
-          <IntegrationSetup
-            serverSetup
-            initialState={integrationSetup}
+          <OnboardingConnectApps
+            setup={integrationSetup}
             onDone={() => setStep("bot")}
             onServerConnected={(id) =>
               setIntegrationServers((current) => [...new Set([...current, id])])
