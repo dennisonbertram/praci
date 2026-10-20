@@ -1642,6 +1642,10 @@ msgstr ""
 msgid "Bots lose access to this account."
 msgstr ""
 
+#: src/components/RunsOnPicker.tsx
+msgid "Bots run on"
+msgstr ""
+
 #: src/pages/Welcome.tsx
 msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
 msgstr ""
@@ -1947,7 +1951,6 @@ msgid "Chats"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
 msgstr ""
 
@@ -1991,7 +1994,6 @@ msgstr ""
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "확인 중…"
 
@@ -3001,6 +3003,7 @@ msgstr ""
 msgid "Could not run routine"
 msgstr "루틴을 실행할 수 없습니다"
 
+#: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -3039,10 +3042,6 @@ msgstr "확인 규칙을 저장하지 못했습니다."
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "스킬을 저장하지 못했습니다"
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Could not save that choice"
-msgstr "선택 내용을 저장하지 못했습니다."
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not save that speech model"
@@ -3668,17 +3667,9 @@ msgstr "표시 이름"
 msgid "Dividends"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker"
-msgstr "Docker"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr ""
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
-msgstr "Docker는 보안을 위해 컴퓨터 접근을 제한합니다. {hostLabel}에서는 Bot이 로컬 파일과 도구로 작업할 수 있습니다."
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
@@ -5096,10 +5087,6 @@ msgstr "불러오는 중…"
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Local"
 msgstr "로컬"
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Local access lets bots run commands without asking. Avoid it on shared or public servers."
-msgstr "로컬 접근을 허용하면 Bot이 묻지 않고 명령을 실행할 수 있습니다. 공유 서버나 공개 서버에서는 허용하지 마세요."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Local command"
@@ -6548,6 +6535,7 @@ msgid "Page not found"
 msgstr ""
 
 #: src/components/SidebarPages.tsx
+#: src/components/SidebarPagesGroup.tsx
 msgid "Page options"
 msgstr ""
 
@@ -7547,6 +7535,14 @@ msgstr "실행 중 · 중지"
 msgid "Running…"
 msgstr "실행 중…"
 
+#: src/components/RunsOnPicker.tsx
+msgid "Runs commands without asking. Avoid on shared or public servers."
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Runs on"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr ""
@@ -7571,6 +7567,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
+msgstr ""
+
+#: src/components/RunsOnPicker.tsx
+msgid "Sandbox"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -8852,9 +8852,9 @@ msgstr "이 작업은 되돌릴 수 없습니다."
 msgid "This chat is view-only"
 msgstr "이 채팅은 읽기 전용입니다"
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this computer"
-msgstr "이 컴퓨터"
+#: src/components/RunsOnPicker.tsx
+msgid "This computer"
+msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "This connection no longer exists."
@@ -8885,9 +8885,9 @@ msgstr ""
 msgid "This link is wrong or the page is no longer available."
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this Mac"
-msgstr "이 Mac"
+#: src/components/RunsOnPicker.tsx
+msgid "This Mac"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -9446,10 +9446,6 @@ msgstr "사용량"
 msgid "Use {0}"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Use {hostLabel}"
-msgstr "{hostLabel} 사용"
-
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Use a found model"
@@ -9722,10 +9718,6 @@ msgstr ""
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Where it went"
 msgstr ""
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Where should bots run?"
-msgstr "Bot을 어디에서 실행할까요?"
 
 #: src/components/PageAgentIntro.tsx
 msgid "Which bills are unpaid?"

@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 235 of 235
-- Web and shared components: 647
+- Web and shared components: 648
 - Mobile components: 137 in 94 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -97,6 +97,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | PageEmptyState | [apps/web/src/components/PageEmptyState.tsx](../../apps/web/src/components/PageEmptyState.tsx) | [PageEmptyState.stories.tsx](../../apps/web/src/components/PageEmptyState.stories.tsx) | web |
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
+| RunsOnPicker, DefaultRunsOnSection | [apps/web/src/components/RunsOnPicker.tsx](../../apps/web/src/components/RunsOnPicker.tsx) | [RunsOnPicker.stories.tsx](../../apps/web/src/components/RunsOnPicker.stories.tsx) | web |
 | SandboxedHtmlViewer | [apps/web/src/components/SandboxedHtmlViewer.tsx](../../apps/web/src/components/SandboxedHtmlViewer.tsx) | [SandboxedHtmlViewer.stories.tsx](../../apps/web/src/components/SandboxedHtmlViewer.stories.tsx) | web |
 | SheetPreview, SheetRow | [apps/web/src/components/SheetPreview.tsx](../../apps/web/src/components/SheetPreview.tsx) | [SheetPreview.stories.tsx](../../apps/web/src/components/SheetPreview.stories.tsx) | web |
 | OpeningSpace, ShellSkeleton | [apps/web/src/components/ShellSkeleton.tsx](../../apps/web/src/components/ShellSkeleton.tsx) | [ShellSkeleton.stories.tsx](../../apps/web/src/components/ShellSkeleton.stories.tsx) | web |
@@ -277,7 +278,6 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ReceiptIcon, ReceiptThumb, CheckReceipt, FinanceTransactionPage, FinanceReceiptPage | [apps/web/src/pages/finance/FinanceTransaction.tsx](../../apps/web/src/pages/finance/FinanceTransaction.tsx) | [FinanceTransaction.stories.tsx](../../apps/web/src/pages/finance/FinanceTransaction.stories.tsx) | web |
 | GoogleOAuthCallbackPage | [apps/web/src/pages/GoogleOAuthCallback.tsx](../../apps/web/src/pages/GoogleOAuthCallback.tsx) | [GoogleOAuthCallback.stories.tsx](../../apps/web/src/pages/GoogleOAuthCallback.stories.tsx) | web |
 | MemberPicker, CreateGroupForm, GroupSettings | [apps/web/src/pages/GroupPanel.tsx](../../apps/web/src/pages/GroupPanel.tsx) | [GroupPanel.stories.tsx](../../apps/web/src/pages/GroupPanel.stories.tsx) | web |
-| HostComputerPrompt | [apps/web/src/pages/HostComputerPrompt.tsx](../../apps/web/src/pages/HostComputerPrompt.tsx) | [HostComputerPrompt.stories.tsx](../../apps/web/src/pages/HostComputerPrompt.stories.tsx) | web |
 | InboxPage, InboxListPage | [apps/web/src/pages/Inbox.tsx](../../apps/web/src/pages/Inbox.tsx) | [Inbox.stories.tsx](../../apps/web/src/pages/Inbox.stories.tsx) | web |
 | IntegrationsPage | [apps/web/src/pages/Integrations.tsx](../../apps/web/src/pages/Integrations.tsx) | [Integrations.stories.tsx](../../apps/web/src/pages/Integrations.stories.tsx) | web |
 | IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/pages/IntegrationSetup.stories.tsx) | web |

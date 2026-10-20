@@ -1,5 +1,12 @@
 import { useLingui } from "@lingui/react/macro";
-import { ChevronDown } from "lucide-react";
+import {
+  Button,
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@rakazo/ui-web";
+import { ChevronDown, MoreHorizontal } from "lucide-react";
 import type { ReactNode } from "react";
 import { createContext, useContext } from "react";
 
@@ -17,12 +24,19 @@ export function SidebarPagesGroup({
   collapsed,
   rail = false,
   onToggle,
+  pages = [],
+  hidden = [],
+  onToggleHidden,
   children,
 }: {
   title: string;
   collapsed: boolean;
   rail?: boolean;
   onToggle: () => void;
+  /** Every page that can be shown or hidden; with `onToggleHidden`, adds the "⋯" menu. */
+  pages?: readonly { key: string; label: string }[];
+  hidden?: readonly string[];
+  onToggleHidden?: (key: string) => void;
   children: ReactNode;
 }) {
   const { t } = useLingui();
@@ -46,6 +60,34 @@ export function SidebarPagesGroup({
               aria-hidden="true"
             />
           </button>
+          {onToggleHidden ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={t`Page options`}
+                    className="text-muted-foreground/60 hover:text-foreground"
+                  />
+                }
+              >
+                <MoreHorizontal size={14} aria-hidden="true" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" aria-label={t`Page options`} className="w-[200px]">
+                {pages.map((page) => (
+                  <DropdownMenuCheckboxItem
+                    key={page.key}
+                    checked={!hidden.includes(page.key)}
+                    onCheckedChange={() => onToggleHidden(page.key)}
+                  >
+                    {page.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : null}
         </div>
       )}
       {children}
