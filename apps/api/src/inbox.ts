@@ -23,9 +23,9 @@ import type {
   InboxListInput,
   InboxListOutput,
   InboxMark,
-  InboxRefreshOutput,
   InboxPile,
   InboxPileCounts,
+  InboxRefreshOutput,
   InboxTodo,
   MailRow,
 } from "@rakazo/contracts";
