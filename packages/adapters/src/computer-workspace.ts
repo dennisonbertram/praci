@@ -57,9 +57,10 @@ export async function restoreComputerWorkspace(
   homeKey: string,
   computer: ComputerRef,
   context: AdapterContext,
+  /** True when the computer mounts a live directory the lifecycle already made current. */
+  liveDirectoryCurrent = false,
 ): Promise<void> {
-  // A Docker computer mounts the live directory, which the lifecycle already made current.
-  if (computer.kind === "docker" && home.liveDirectory) return;
+  if (computer.kind === "docker" && liveDirectoryCurrent) return;
   await sandbox.importWorkspace(computer, home.exportHome(homeKey, context), context);
 }
 

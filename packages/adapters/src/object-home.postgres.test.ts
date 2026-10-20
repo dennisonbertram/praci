@@ -68,11 +68,12 @@ describePostgres("object-storage agent homes (PostgreSQL)", () => {
     const artifacts = new LocalArtifactStore(artifactDir);
     const a = new ObjectAgentHomeStore(prisma, artifacts, dataDir);
     const b = new ObjectAgentHomeStore(prisma, artifacts, dataDir);
-    const [pathA, pathB] = await Promise.all([
+    const [liveA, liveB] = await Promise.all([
       a.liveDirectory(homeKey, ctx()),
       b.liveDirectory(homeKey, ctx()),
     ]);
-    expect(pathA).toBe(pathB);
+    const pathA = liveA.path;
+    expect(pathA).toBe(liveB.path);
     expect(await readFile(path.join(pathA, "old.txt"), "utf8")).toBe("legacy");
     const row = await prisma.computer.findFirstOrThrow({ where: { homeKey } });
     expect(row.homeSnapshotId).toBeTruthy();
@@ -113,7 +114,7 @@ describePostgres("object-storage agent homes (PostgreSQL)", () => {
       const started = Date.now();
       await Promise.all(
         homes.map(async (key) => {
-          const live = await store.liveDirectory(key, ctx());
+          const live = (await store.liveDirectory(key, ctx())).path;
           await writeFile(path.join(live, "f.txt"), key);
           await store.revise(key, ctx());
           await store.writeFile(key, "g.txt", "g", ctx());
@@ -143,7 +144,7 @@ describePostgres("object-storage agent homes (PostgreSQL)", () => {
     await prisma.computer.create({
       data: { spaceId, userId, scopeKey: `shared:${suffix}`, homeKey: key, kind: "docker" },
     });
-    const live = await stores[0]!.liveDirectory(key, ctx());
+    const live = (await stores[0]!.liveDirectory(key, ctx())).path;
     await Promise.all(
       stores.map(async (store, i) => {
         for (let round = 0; round < 3; round++) {

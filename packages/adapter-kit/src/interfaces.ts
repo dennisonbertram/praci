@@ -125,7 +125,10 @@ export interface SandboxProvider {
     context: AdapterContext,
   ): Promise<ComputerRef>;
   /** Read-only probe: true only when this exact reference is already running. */
-  isRunning?(computer: ComputerRef, context: AdapterContext): Promise<boolean>;
+  /** `undefined` when the provider cannot tell (for example its supervisor did not answer). */
+  isRunning?(computer: ComputerRef, context: AdapterContext): Promise<boolean | undefined>;
+  /** The kind of computer `provision` would create now, when it can differ from `describe().id`. */
+  provisionKind?(context: AdapterContext): Promise<ComputerRef["kind"]>;
   /** Perform idempotent provider setup after the lifecycle has captured the reference. */
   prepare(computer: ComputerRef, context: AdapterContext): Promise<void>;
   execute(
@@ -430,15 +433,16 @@ export interface AgentHomeStore {
   removeEntry(botId: string, parent: string, name: string, context: AdapterContext): Promise<void>;
   /**
    * Present when a sandbox on this host (Docker) may use the home as its live working directory.
-   * While that directory exists it is the newest copy of the home. A newer stored revision
-   * replaces it only when `unmounted` confirms no container is using it; the store calls it only
-   * when it has something to replace.
+   * While that directory holds the current revision it is the newest copy of the home. A newer
+   * stored revision replaces it only when `unmounted` confirms no container is using it; the
+   * store calls it only when it has something to replace. `current` is false when the directory
+   * was left as it was and does not hold the current revision, so the caller must restore it.
    */
   liveDirectory?(
     botId: string,
     context: AdapterContext,
     options?: { unmounted?: () => Promise<boolean> },
-  ): Promise<string>;
+  ): Promise<{ path: string; current: boolean }>;
   /** Records the live directory's current contents as a new revision. */
   revise?(botId: string, context: AdapterContext): Promise<string>;
 }

@@ -117,7 +117,10 @@ describe("home archives", () => {
     await writeFile(path.join(deep, "with\nnewline.txt"), "deep");
 
     const { out, skipped } = await roundTrip(src);
-    expect(skipped).toEqual([path.relative(src, path.join(deep, "with\nnewline.txt"))]);
+    expect(skipped).toEqual({
+      changed: [],
+      unreadable: [path.relative(src, path.join(deep, "with\nnewline.txt"))],
+    });
     for (const [name, mode] of [...modes, ["locked", 0o555] as const]) {
       expect(((await stat(path.join(out, name))).mode & 0o7777).toString(8)).toBe(mode.toString(8));
     }
@@ -136,6 +139,16 @@ describe("home archives", () => {
     const deepOut = path.join(out, path.relative(src, deep));
     expect(await readFile(path.join(deepOut, "long.txt"), "utf8")).toBe("deep");
     expect(await readFile(path.join(out, "short\nname.txt"), "utf8")).toBe("short");
+  });
+
+  it("reports a file the host cannot read separately from files that changed", async () => {
+    const src = await tmp();
+    await writeFile(path.join(src, "locked.txt"), "no");
+    await chmod(path.join(src, "locked.txt"), 0o000);
+    await writeFile(path.join(src, "ok.txt"), "ok");
+    const { out, skipped } = await roundTrip(src);
+    expect(skipped).toEqual({ changed: [], unreadable: ["locked.txt"] });
+    expect(await readdir(out)).toEqual(["ok.txt"]);
   });
 
   it("leaves browser caches out but not ordinary files", () => {
@@ -296,7 +309,7 @@ describe("archiving a home an agent is changing", () => {
         const { out, skipped } = await roundTrip(home);
         expect(await readFile(path.join(out, "steady.txt"), "utf8")).toBe("steady");
         const busy = await readFile(path.join(out, "busy.txt"), "utf8").catch(() => null);
-        if (busy === null) expect(skipped).toContain("busy.txt");
+        if (busy === null) expect(skipped.changed).toContain("busy.txt");
         else expect(busy).toMatch(/^x*$/); // one consistent read, never stitched or zero-filled
       }
     } finally {
@@ -363,7 +376,7 @@ describe("a 300 MB home", () => {
         new LocalArtifactStore(artifactDir),
         await tmp(),
       );
-      const live = await other.liveDirectory("k", ctx);
+      const live = (await other.liveDirectory("k", ctx)).path;
       expect((await stat(path.join(live, "file-29.bin"))).size).toBe(10 * 1024 * 1024);
     } finally {
       clearInterval(timer);

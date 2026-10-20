@@ -99,10 +99,15 @@ export class HostAwareSandbox implements SandboxProvider {
     );
   }
 
-  async isRunning(computer: ComputerRef, context: AdapterContext): Promise<boolean> {
+  async isRunning(computer: ComputerRef, context: AdapterContext) {
     const provider = (await this.hostEnabled()) ? this.host : this.isolated;
     if (provider.describe().id !== computer.kind) return false;
-    return provider.isRunning?.(computer, context) ?? false;
+    return provider.isRunning ? provider.isRunning(computer, context) : false;
+  }
+
+  async provisionKind() {
+    const provider = (await this.hostEnabled()) ? this.host : this.isolated;
+    return provider.describe().id as ComputerRef["kind"];
   }
 
   prepare(computer: ComputerRef, context: AdapterContext) {

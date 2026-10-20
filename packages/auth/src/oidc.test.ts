@@ -59,6 +59,7 @@ function setup(options: Partial<AuthEnv> = {}) {
     spaceMember: { findFirst: vi.fn(async () => ({ id: "existing-space" })) },
     member: { findMany: vi.fn(async () => []) },
     dataRoomItem: { findMany: vi.fn(async () => []) },
+    computer: { findMany: vi.fn(async () => []) },
     messagingIdentity: { deleteMany: vi.fn(async () => ({})) },
     organization: { deleteMany: vi.fn(async () => ({})) },
   };

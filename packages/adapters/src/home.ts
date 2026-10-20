@@ -81,10 +81,11 @@ export class LocalAgentHomeStore implements AgentHomeStore {
     });
   }
 
-  async liveDirectory(botId: string, _context?: AdapterContext): Promise<string> {
+  /** The home itself is the only copy, so it is always current. */
+  async liveDirectory(botId: string, _context?: AdapterContext) {
     const dir = this.pathFor(botId);
     await mkdir(dir, { recursive: true });
-    return dir;
+    return { path: dir, current: true };
   }
 
   async remove(botId: string, _context?: AdapterContext) {
@@ -244,7 +245,7 @@ export async function liveHomeDirectory(
 ) {
   return home.liveDirectory
     ? home.liveDirectory(homeKey, context, options)
-    : path.resolve(dataDir, "homes", homeKey);
+    : { path: path.resolve(dataDir, "homes", homeKey), current: true }; // the path is the home
 }
 
 function safeJoin(root: string, rel: string) {

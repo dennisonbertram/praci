@@ -451,6 +451,9 @@ variables together; any `RAKAZO_S3_*` variable that is set turns object storage 
 - `RAKAZO_S3_ACCESS_KEY_ID` and `RAKAZO_S3_SECRET_ACCESS_KEY`: credentials with read, write and delete access to the bucket.
 - `RAKAZO_S3_REGION`: defaults to `us-east-1`, which AWS, R2 and SeaweedFS all accept.
 - `RAKAZO_S3_FORCE_PATH_STYLE`: set to `true` for SeaweedFS, MinIO and other stores without bucket subdomains.
+- Give the access key `s3:ListBucket` on the bucket as well as object read, write and delete. Without
+  it, AWS S3 answers 403 instead of 404 for a missing object, and Rakazo treats a 403 as an error
+  rather than looking for an older copy under `DATA_DIR/artifacts`.
 - `RAKAZO_S3_PREFIX`: optional key prefix.
 
 Plain `http` endpoints are accepted only for localhost, private network addresses and single-word hostnames such as `seaweedfs`; use `https` for anything else.
@@ -471,13 +474,18 @@ has not changed since it was read, so two workers cannot overwrite each other. N
 or lock is held while a home is archived, uploaded or downloaded. Every lookup is scoped to the
 Computer's space. The snapshot before the current one is kept until the next save, then deleted.
 
-`DATA_DIR/homes/<key>` is the live workspace of a Docker computer, which the supervisor mounts. While
-it exists it is the newest copy of the home: saves archive it, and Rakazo replaces it with a newer
-snapshot only while the computer is being started and the supervisor reports that its container is not
-running (for example after the computer ran on another provider). A replacement is extracted into a
-new folder beside it and renamed into place; Rakazo never writes a snapshot into a folder a container
-can change. Remote providers (E2B, Daytona and so on) restore from the snapshot, and reads of their
-homes use a per-revision copy under `DATA_DIR/home-cache`.
+`DATA_DIR/homes/<key>` is the live workspace of a Docker computer, which the supervisor mounts. The
+host that provisions the computer installs the current snapshot there when the folder is missing, or
+while the computer is being started and the supervisor confirms its container is not running (for
+example after the computer ran on another provider); if the supervisor cannot answer, the folder is
+left alone and the workspace is restored through the container instead. A replacement is extracted
+into a new folder beside it and renamed into place; Rakazo never writes a snapshot into a folder a
+container can change. From then on that host saves from the folder. Any other host, and any host
+whose folder is older than the current revision, reads the home from a per-revision copy under
+`DATA_DIR/home-cache` and saves edits from a private copy, never from its own folder, so API and
+worker processes do not need to share `DATA_DIR`. The cache drops revisions unused for a day and
+keeps itself under 2 GiB; scratch folders a crashed process left behind are removed after six hours.
+Remote providers (E2B, Daytona and so on) restore from the snapshot.
 
 An existing deployment migrates on its own. The first time a Computer's home is used and it has no
 snapshot, Rakazo uploads the existing `DATA_DIR/homes/<key>` directory and uses the snapshot from then

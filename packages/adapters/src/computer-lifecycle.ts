@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import type {
   AdapterContext,
@@ -150,6 +151,38 @@ export class ComputerBusyError extends Error {
 
 export { toComputerRef } from "./computer-support.js";
 
+/**
+ * Runs `work` while refreshing the booting claim's stamp, so a long home install does not let
+ * another caller treat the claim as abandoned. The stamp stays the claim's fence.
+ */
+async function keepBootClaim<T>(
+  prisma: PrismaClient,
+  computerId: string,
+  stamp: () => Date,
+  setStamp: (stamp: Date) => void,
+  work: () => Promise<T>,
+): Promise<T> {
+  let refreshing = Promise.resolve();
+  const timer = setInterval(() => {
+    refreshing = refreshing.then(async () => {
+      const next = new Date(Math.max(Date.now(), stamp().getTime() + 1));
+      const kept = await prisma.computer
+        .updateMany({
+          where: { id: computerId, state: "booting", updatedAt: stamp() },
+          data: { updatedAt: next },
+        })
+        .catch(() => ({ count: 0 }));
+      if (kept.count === 1) setStamp(next);
+    });
+  }, BOOT_CLAIM_STALE_MS / 3);
+  try {
+    return await work();
+  } finally {
+    clearInterval(timer);
+    await refreshing;
+  }
+}
+
 export async function provisionComputer(
   deps: {
     prisma: PrismaClient;
@@ -174,6 +207,15 @@ export async function provisionComputer(
       throw new Error("computer control revocation is still in progress");
     }
   }
+  // Decide by the provider that will provision, not by the kind the row last ran on: a Computer
+  // that ran on E2B or the desktop host may be provisioned by Docker now.
+  const nextKind =
+    (await deps.sandbox.provisionKind?.(context)) ?? deps.sandbox.describe?.().id ?? existing.kind; // partial test doubles have no describe()
+  const dockerHome = path.resolve(deps.dataDir ?? "./data", "homes", existing.homeKey);
+  // Created here, as this process's user, so a supervisor running as root cannot create the
+  // mount source root-owned.
+  if (nextKind === "docker") await mkdir(dockerHome, { recursive: true });
+
   // Re-provisioning a live computer enters booting and revokes its screen URLs.
   // A provider-confirmed live reference needs setup, not a new lifecycle claim.
   if (existing.state === "running" && existing.providerRef && deps.sandbox.isRunning) {
@@ -302,7 +344,7 @@ export async function provisionComputer(
   // otherwise a booting self-transition would leave the CAS token unchanged and a second
   // worker that observed the same stamp could also claim and provision.
   const observedStamp = reclaimStamp ?? suspendStamp ?? existing.updatedAt;
-  const claimStamp = new Date(Math.max(Date.now(), observedStamp.getTime() + 1));
+  let claimStamp = new Date(Math.max(Date.now(), observedStamp.getTime() + 1));
   const claimed = await deps.prisma.computer.updateMany({
     where: {
       id: computerId,
@@ -317,19 +359,29 @@ export async function provisionComputer(
   try {
     // Only a computer that mounts a host path (Docker) uses the store's live directory; remote
     // providers ignore the path and restore from the store. The live directory may be replaced
-    // by a newer snapshot only while this claim holds and the supervisor reports no running
-    // container for it.
+    // by a newer snapshot only while this claim holds and the supervisor confirms no container
+    // is running for it; an unknown answer counts as running.
     // ponytail: with no providerRef an orphaned container from a lost provision response is not
     // asked about; ask the supervisor by home key if that case shows up.
-    const homePath =
-      existing.kind === "docker"
-        ? await liveHomeDirectory(deps.home, existing.homeKey, context, deps.dataDir ?? "./data", {
-            unmounted: async () =>
-              !existing.providerRef ||
-              (deps.sandbox.isRunning !== undefined &&
-                !(await deps.sandbox.isRunning(toComputerRef(existing), context))),
-          })
-        : path.resolve(deps.dataDir ?? "./data", "homes", existing.homeKey);
+    const live =
+      nextKind === "docker"
+        ? await keepBootClaim(
+            deps.prisma,
+            computerId,
+            () => claimStamp,
+            (stamp) => {
+              claimStamp = stamp;
+            },
+            () =>
+              liveHomeDirectory(deps.home, existing.homeKey, context, deps.dataDir ?? "./data", {
+                unmounted: async () =>
+                  !existing.providerRef ||
+                  (deps.sandbox.isRunning !== undefined &&
+                    (await deps.sandbox.isRunning(toComputerRef(existing), context)) === false),
+              }),
+          )
+        : { path: dockerHome, current: false };
+    const homePath = live.path;
     await onProgress?.("recreating");
     const ref = await deps.sandbox.provision(
       {
@@ -347,9 +399,17 @@ export async function provisionComputer(
       !existing.providerRef ||
       existing.providerRef !== ref.providerRef ||
       existing.kind !== ref.kind;
-    if (replacement) {
+    // A Docker directory left stale (its container state was unknown) is restored even on resume.
+    if (replacement || (ref.kind === "docker" && !live.current)) {
       await onProgress?.("restoring");
-      await restoreComputerWorkspace(deps.home, deps.sandbox, existing.homeKey, ref, context);
+      await restoreComputerWorkspace(
+        deps.home,
+        deps.sandbox,
+        existing.homeKey,
+        ref,
+        context,
+        live.current,
+      );
     }
     await onProgress?.("reconnecting");
     await ensureComputerWorkspaceLayout(

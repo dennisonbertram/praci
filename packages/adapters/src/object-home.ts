@@ -7,6 +7,7 @@ import {
   readFile,
   rename,
   stat,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import path from "node:path";
@@ -48,6 +49,19 @@ const HOME_COLUMNS = {
 const HEAVY_OPERATIONS = 2;
 /** Attempts for a save that keeps losing the revision race to other processes. */
 const SAVE_ATTEMPTS = 5;
+/** Temporary folders older than this belong to a process that died; younger ones may be in use. */
+const LEFTOVER_MS = 6 * 60 * 60_000;
+/** A cached revision used within this time is never removed, so a reader holding it can finish. */
+const CACHE_READER_GRACE_MS = 60 * 60_000;
+/** Cached revisions unused for this long are removed. */
+const CACHE_TTL_MS = 24 * 60 * 60_000;
+/** Above this many bytes in the cache, the least recently used revisions are removed. */
+const CACHE_MAX_BYTES = 2 * 1024 ** 3;
+export const HOME_CACHE_LIMITS = {
+  readerGraceMs: CACHE_READER_GRACE_MS,
+  ttlMs: CACHE_TTL_MS,
+  leftoverMs: LEFTOVER_MS,
+};
 
 export type ObjectHomePrisma = Pick<PrismaClient, "computer">;
 
@@ -57,14 +71,16 @@ export type ObjectHomePrisma = Pick<PrismaClient, "computer">;
  * revision; no database connection or lock is held while bytes move.
  *
  * Local copies under DATA_DIR:
- * - `homes/<key>` is the live directory of a Docker Computer, which the supervisor mounts.
- *   While it exists it is the newest copy of the home: saves archive it, and a snapshot is only
- *   installed into it when the caller confirms nothing mounts it (`liveDirectory` with
- *   `unmounted`), or when it does not exist on this host yet. An install extracts into a new
- *   directory beside it and renames it into place; nothing is ever written into a tree an agent
- *   can change. `home-sync/<key>/<revision>` records each revision saved from it here.
- * - `home-cache/<key>/homes/<revision>` is a read-only copy of one revision for every other
- *   Computer kind, made on first read. Edits work on a private extraction and publish from it.
+ * - `homes/<key>` is the live directory of a Docker Computer, which the supervisor mounts. Only
+ *   `liveDirectory` (called while provisioning) installs a snapshot into it: when it is missing,
+ *   or when the caller confirms nothing mounts it. An install extracts into a new directory
+ *   beside it and renames it into place; nothing is ever written into a tree an agent can change.
+ *   `home-sync/<key>/<revision>` records the revisions saved from or installed into it here.
+ *   This host is authoritative for the home while that record matches the current revision:
+ *   reads and edits then use the live directory and saves archive it.
+ * - `home-cache/<key>/homes/<revision>` is a read-only copy of one revision, made on first read,
+ *   for every other Computer kind and for Docker homes this host is not authoritative for.
+ *   Edits there work on a private extraction and publish from it, never from the cache.
  *
  * Every operation looks the Computer up by home key and the caller's space, so one space cannot
  * touch another's home. Team Computers are shared inside their space, so the user is not checked.
@@ -73,11 +89,13 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
   private readonly live: LocalAgentHomeStore;
   private readonly chains = new Map<string, Promise<unknown>>();
   private readonly heavy = semaphore(HEAVY_OPERATIONS);
+  private leftovers?: Promise<void>;
 
   constructor(
     private readonly prisma: ObjectHomePrisma,
     private readonly artifacts: ArtifactStore,
     private readonly dataDir: string,
+    private readonly cacheMaxBytes = CACHE_MAX_BYTES,
   ) {
     this.live = new LocalAgentHomeStore(dataDir);
   }
@@ -111,9 +129,9 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
   }
 
   /**
-   * Saves the live directory. It is the newest copy of a Docker home, so a revision another
-   * process saved meanwhile does not reject the save: the directory is archived again and the
-   * save retried.
+   * Saves the live directory a running Docker container mounts. It is the newest copy of the
+   * home, so a revision another process saved meanwhile does not reject the save: the directory
+   * is archived again and the save retried.
    */
   async revise(botId: string, context: AdapterContext) {
     return this.locked(botId, () => this.saveLive(botId, context));
@@ -121,8 +139,9 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
 
   /**
    * The live directory for a Docker Computer. A missing directory is created from the snapshot.
-   * An existing one is replaced by a newer snapshot only when `unmounted` confirms no container
-   * uses it (the caller has claimed the Computer and its container is not running).
+   * An existing one that does not hold the current revision is replaced only when `unmounted`
+   * confirms no container uses it (the caller has claimed the Computer and its container is not
+   * running). `current` says whether the directory now holds the current revision.
    */
   async liveDirectory(
     botId: string,
@@ -130,10 +149,10 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
     options?: { unmounted?: () => Promise<boolean> },
   ) {
     return this.locked(botId, async () => {
-      await this.withCurrentRow(botId, context, (row) =>
+      const current = await this.withCurrentRow(botId, context, (row) =>
         this.prepareLive(botId, row, context, options?.unmounted),
       );
-      return this.live.pathFor(botId);
+      return { path: this.live.pathFor(botId), current };
     });
   }
 
@@ -232,25 +251,35 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
     return this.row(botId, context);
   }
 
-  /** The local store and id that hold the current revision, made current first. */
+  /** Whether this host's live directory holds (or is newer than) the current revision. */
+  private async authoritative(botId: string, row: HomeRow) {
+    return (
+      row.kind === "docker" &&
+      (await this.savedFromLive(botId, row.homeRevision)) &&
+      (await isDirectory(this.live.pathFor(botId)))
+    );
+  }
+
+  /** The local store and id that hold the current revision. Reads never install into `homes/`. */
   private view(botId: string, context: AdapterContext) {
     return this.withCurrentRow(botId, context, async (row) => {
-      if (row.kind === "docker") {
-        await this.prepareLive(botId, row, context);
-        return { store: this.live, id: botId };
-      }
+      if (await this.authoritative(botId, row)) return { store: this.live, id: botId };
       const store = new LocalAgentHomeStore(this.cacheRoot(botId));
       if (row.homeSnapshotId) {
         const directory = store.pathFor(row.homeRevision);
-        if (!(await isDirectory(directory))) {
-          await this.install(row, context, directory, false);
-          await this.pruneCache(botId, row.homeRevision);
+        if (await isDirectory(directory)) {
+          await touch(sizeFile(directory));
+        } else {
+          const bytes = await this.install(row, context, directory, false);
+          await writeFile(sizeFile(directory), String(bytes));
+          await this.sweepCache();
         }
       }
       return { store, id: row.homeRevision };
     });
   }
 
+  /** Makes the live directory hold the current revision if it may; returns whether it does. */
   private async prepareLive(
     botId: string,
     row: HomeRow,
@@ -260,51 +289,61 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
     const directory = this.live.pathFor(botId);
     if (!row.homeSnapshotId) {
       await mkdir(directory, { recursive: true });
-      return;
+      await this.markLive(botId, row.homeRevision);
+      return true;
     }
-    if (
-      (await isDirectory(directory)) &&
-      (!unmounted || (await this.savedFromLive(botId, row.homeRevision)) || !(await unmounted()))
-    ) {
-      return;
+    if (await isDirectory(directory)) {
+      if (await this.savedFromLive(botId, row.homeRevision)) return true;
+      if (!unmounted || !(await unmounted())) return false;
+      await this.install(row, context, directory, true);
+    } else {
+      await this.install(row, context, directory, false);
     }
-    await this.install(row, context, directory, true);
-    await this.markLive(botId, row.homeRevision, true);
+    await this.markLive(botId, row.homeRevision);
+    return true;
   }
 
   /**
    * Extracts the row's snapshot into a new directory beside `directory`, then renames it into
-   * place. With `replace`, an existing directory is moved aside and deleted afterwards; without
-   * it, a directory another process installed first is kept.
+   * place, and returns the bytes extracted. With `replace` (only for a directory the caller
+   * confirmed nothing mounts), the existing directory is moved aside and deleted. Without it, a
+   * directory that appears meanwhile (another process installed it first) is kept, and this
+   * extraction is discarded.
    */
   private async install(
     row: HomeRow,
     context: AdapterContext,
     directory: string,
     replace: boolean,
-  ): Promise<void> {
+  ): Promise<number> {
     const parent = path.dirname(directory);
     const fresh = path.join(parent, `.${path.basename(directory)}.install-${randomUUID()}`);
     const aside = `${fresh}.old`;
     const scratch = await this.scratch();
     try {
       await mkdir(parent, { recursive: true });
-      await this.heavy(async () => {
+      const { bytes } = await this.heavy(async () => {
         const archive = path.join(scratch, "home.tgz");
         await this.download(row.homeSnapshotId!, archive, context);
-        await unpackArchive(archive, fresh);
+        return unpackArchive(archive, fresh);
       });
-      if (replace) await rename(directory, aside).catch(ignoreMissing);
-      try {
-        await rename(fresh, directory);
-      } catch (error) {
-        if (replace) {
+      if (replace) {
+        await rename(directory, aside).catch(ignoreMissing);
+        try {
+          await rename(fresh, directory);
+        } catch (error) {
           await rename(aside, directory).catch(() => undefined);
           throw error;
         }
-        if (!(await isDirectory(directory))) throw error;
+        await removeTree(aside);
+        // ponytail: an empty directory created in the instant between this check and the rename
+        // is still replaced; Node has no rename that refuses to replace.
+      } else if (!(await lstat(directory).catch(() => null))) {
+        await rename(fresh, directory).catch(async (error: NodeJS.ErrnoException) => {
+          if (!(await isDirectory(directory))) throw error;
+        });
       }
-      if (replace) await removeTree(aside);
+      return bytes;
     } finally {
       await removeTree(fresh);
       await removeTree(scratch);
@@ -339,8 +378,7 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
   ) {
     return this.locked(botId, async () => {
       let row = await this.migrated(botId, await this.row(botId, context), context);
-      if (row.kind === "docker") {
-        await this.prepareLive(botId, row, context);
+      if (await this.authoritative(botId, row)) {
         await change(this.live, botId);
         return this.saveLive(botId, context);
       }
@@ -379,7 +417,8 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
   private async saveLive(botId: string, context: AdapterContext) {
     const requestedAt = Date.now();
     for (let attempt = 1; ; attempt++) {
-      const row = await this.migrated(botId, await this.row(botId, context), context);
+      // No legacy migration step here: the first save of this directory is that migration.
+      const row = await this.row(botId, context);
       try {
         return await this.publish(botId, row, this.live.pathFor(botId), context, true);
       } catch (error) {
@@ -415,10 +454,16 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
         const archive = path.join(scratch, "home.tgz");
         await mkdir(source, { recursive: true });
         const { skipped } = await packDirectory(source, archive);
-        if (skipped.length > 0) {
+        if (skipped.changed.length > 0) {
           getLogger().warn("agent home entries changed while saving and were left out", {
             homeKey: botId,
-            count: skipped.length,
+            count: skipped.changed.length,
+          });
+        }
+        if (skipped.unreadable.length > 0) {
+          getLogger().warn("agent home entries cannot be read or stored and were left out", {
+            homeKey: botId,
+            count: skipped.unreadable.length,
           });
         }
         return this.upload(botId, archive, context);
@@ -437,7 +482,7 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
         await this.artifacts.remove(stored.id, context).catch(() => undefined);
         throw new AgentHomeConflictError(botId);
       }
-      if (fromLive) await this.markLive(botId, revision, false);
+      if (fromLive) await this.markLive(botId, revision);
       // Keep the snapshot just replaced for one more save, so a reader holding its id can finish.
       if (row.homePreviousSnapshotId) {
         await this.artifacts.remove(row.homePreviousSnapshotId, context).catch(() => undefined);
@@ -460,20 +505,87 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
   }
 
   private async scratch() {
+    this.leftovers ??= this.removeLeftovers().catch((error) => {
+      getLogger().error("agent home leftover cleanup", error);
+    });
+    await this.leftovers;
     const root = path.join(this.dataDir, "home-staging");
     await mkdir(root, { recursive: true });
     return mkdtemp(path.join(root, "op-"));
+  }
+
+  /**
+   * Deletes scratch and install folders a crashed process left behind, once per store. Age, not
+   * name, protects folders another live process is still using.
+   */
+  private async removeLeftovers() {
+    const cutoff = Date.now() - LEFTOVER_MS;
+    const sweep = async (directory: string, match: (name: string) => boolean) => {
+      for (const name of await readdir(directory).catch(() => [])) {
+        if (!match(name)) continue;
+        const info = await lstat(path.join(directory, name)).catch(() => null);
+        if (info && info.mtimeMs < cutoff) await removeTree(path.join(directory, name));
+      }
+    };
+    const installing = (name: string) => name.startsWith(".") && name.includes(".install-");
+    await sweep(path.join(this.dataDir, "home-staging"), (name) => name.startsWith("op-"));
+    await sweep(path.join(this.dataDir, "homes"), installing);
+    const cache = path.join(this.dataDir, "home-cache");
+    for (const key of await readdir(cache).catch(() => [])) {
+      await sweep(path.join(cache, key, "homes"), installing);
+    }
   }
 
   private cacheRoot(botId: string) {
     return path.join(this.dataDir, "home-cache", botId);
   }
 
-  private async pruneCache(botId: string, keep: string) {
-    const homes = path.join(this.cacheRoot(botId), "homes");
-    for (const name of await readdir(homes).catch(() => [])) {
-      if (name !== keep && !name.startsWith(".")) await removeTree(path.join(homes, name));
+  /**
+   * Bounds the read cache across all homes. Nothing used within the reader grace period is
+   * removed; beyond it, older revisions of a home go first, then anything unused for a day, then
+   * the least recently used until the cache is under its size cap.
+   */
+  private async sweepCache() {
+    const now = Date.now();
+    const cache = path.join(this.dataDir, "home-cache");
+    const entries: Array<{ directory: string; key: string; used: number; bytes: number }> = [];
+    for (const key of await readdir(cache).catch(() => [])) {
+      const homes = path.join(cache, key, "homes");
+      for (const name of await readdir(homes).catch(() => [])) {
+        if (name.startsWith(".")) continue;
+        const directory = path.join(homes, name);
+        const marker = await stat(sizeFile(directory)).catch(() => null);
+        const bytes = Number(await readFile(sizeFile(directory), "utf8").catch(() => "0")) || 0;
+        const used = marker?.mtimeMs ?? (await lstat(directory).catch(() => null))?.mtimeMs ?? 0;
+        entries.push({ directory, key, used, bytes });
+      }
     }
+    const newest = new Map<string, number>();
+    for (const entry of entries)
+      newest.set(entry.key, Math.max(newest.get(entry.key) ?? 0, entry.used));
+    const expired = (entry: (typeof entries)[number]) =>
+      now - entry.used > CACHE_TTL_MS ||
+      (entry.used < newest.get(entry.key)! && now - entry.used > CACHE_READER_GRACE_MS);
+    let total = 0;
+    const kept = [];
+    for (const entry of entries) {
+      if (expired(entry)) await this.dropCached(entry.directory);
+      else {
+        kept.push(entry);
+        total += entry.bytes;
+      }
+    }
+    for (const entry of kept.sort((a, b) => a.used - b.used)) {
+      if (total <= this.cacheMaxBytes) break;
+      if (now - entry.used <= CACHE_READER_GRACE_MS) continue;
+      await this.dropCached(entry.directory);
+      total -= entry.bytes;
+    }
+  }
+
+  private async dropCached(directory: string) {
+    await removeTree(directory);
+    await removeTree(sizeFile(directory));
   }
 
   private syncDir(botId: string) {
@@ -482,15 +594,18 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
 
   /**
    * One empty file per revision saved from (or installed into) the live directory on this host.
-   * Writers only ever add their own file, so concurrent saves cannot overwrite each other's record.
+   * Writers only add their own file and delete older ones, so concurrent saves never remove each
+   * other's record of a newer revision.
    */
-  private async markLive(botId: string, revision: string, only: boolean) {
+  private async markLive(botId: string, revision: string) {
     const directory = this.syncDir(botId);
     await mkdir(directory, { recursive: true });
     await writeFile(path.join(directory, revision), "");
-    if (!only) return;
+    const saved = packedAt(revision);
     for (const name of await readdir(directory)) {
-      if (name !== revision) await removeTree(path.join(directory, name));
+      if (name !== revision && packedAt(name) <= saved) {
+        await removeTree(path.join(directory, name));
+      }
     }
   }
 
@@ -514,12 +629,23 @@ export class ObjectAgentHomeStore implements AgentHomeStore {
   }
 }
 
+/** Beside each cached revision: its size in bytes, with the file's mtime as the time it was last used. */
+function sizeFile(directory: string) {
+  return path.join(path.dirname(directory), `.${path.basename(directory)}.size`);
+}
+
+async function touch(file: string) {
+  const now = new Date();
+  await utimes(file, now, now).catch(() => writeFile(file, "0"));
+}
+
 /** A snapshot that is gone: a local store reports ENOENT, S3 a 404. */
 function isMissingObject(error: unknown) {
   if ((error as NodeJS.ErrnoException)?.code === "ENOENT") return true;
   return /\b404\b|NoSuchKey|not found/i.test(String((error as Error)?.message));
 }
 
+/** The time a revision's archive started reading its source; 0 for "empty" and older ids. */
 function packedAt(revision: string) {
   return Number(/^rev-(\d+)-/.exec(revision)?.[1] ?? 0);
 }

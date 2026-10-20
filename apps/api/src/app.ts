@@ -459,11 +459,23 @@ export async function createApp(
       );
       await removePiUserSessions(env.dataDir, userId);
     },
-    afterDeleteUserData: async (blobs) => {
+    afterDeleteUserData: async (blobs, homes, userId) => {
       for (const { spaceId, storageKey } of blobs) {
         await jobs
           .enqueue(dataRoomBlobDeleteJob(spaceId, storageKey))
           .catch((error) => getLogger().error("data room blob cleanup", error));
+      }
+      for (const { spaceId, homeKey, ...deletedRow } of homes) {
+        const context = {
+          operationId: `account-delete-home:${homeKey}`,
+          traceId: `account-delete:${userId}`,
+          spaceId,
+          userId,
+          signal: new AbortController().signal,
+        };
+        await home
+          .remove(homeKey, context, deletedRow)
+          .catch((error) => getLogger().error("agent home cleanup", error));
       }
     },
     // The session change already happened, so a push token failure must not fail sign-out.

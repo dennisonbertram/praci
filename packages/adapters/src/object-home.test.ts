@@ -8,6 +8,7 @@ import {
   readFile,
   stat,
   symlink,
+  utimes,
   writeFile,
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -24,6 +25,7 @@ import { removeTree } from "./home-archive.js";
 import {
   AgentHomeConflictError,
   createAgentHomeStore,
+  HOME_CACHE_LIMITS,
   ObjectAgentHomeStore,
 } from "./object-home.js";
 
@@ -89,7 +91,10 @@ function fakes(kind = "e2b") {
     },
   };
   const objects = new Map<string, Uint8Array>();
-  const hooks = { beforePut: undefined as (() => Promise<void> | void) | undefined };
+  const hooks = {
+    beforePut: undefined as (() => Promise<void> | void) | undefined,
+    beforeGet: undefined as (() => Promise<void> | void) | undefined,
+  };
   let counter = 0;
   const calls = { put: 0 };
   const artifacts: ArtifactStore = {
@@ -109,6 +114,9 @@ function fakes(kind = "e2b") {
       return { id, hash: createHash("sha256").update(artifact.bytes).digest("hex") };
     },
     get: async (id, context) => {
+      const hook = hooks.beforeGet;
+      hooks.beforeGet = undefined;
+      await hook?.();
       const bytes = id.startsWith(`${context.spaceId}/`) ? objects.get(id) : undefined;
       if (!bytes) throw new Error("not found");
       return bytes;
@@ -328,7 +336,7 @@ describe("a Docker live directory", () => {
     const writer = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
     await writer.commit("team-a", await source({ "f.txt": "one" }), ctx("space-a"));
     const fresh = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
-    const live = await fresh.liveDirectory("team-a", ctx("space-a"));
+    const live = (await fresh.liveDirectory("team-a", ctx("space-a"))).path;
     expect(await readFile(path.join(live, "f.txt"), "utf8")).toBe("one");
   });
 
@@ -338,7 +346,7 @@ describe("a Docker live directory", () => {
     // Two processes on the host that owns the Docker computer, for example the API and a worker.
     const a = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
     const b = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
-    const live = await a.liveDirectory("team-a", ctx("space-a"));
+    const live = (await a.liveDirectory("team-a", ctx("space-a"))).path;
     await writeFile(path.join(live, "base.txt"), "base");
     await a.revise("team-a", ctx("space-a"));
     await writeFile(path.join(live, "botA.txt"), "A");
@@ -370,16 +378,21 @@ describe("a Docker live directory", () => {
     const dataDir = await tmp();
     const host = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
     await host.commit("team-a", await source({ "f.txt": "one" }), ctx("space-a"));
-    const live = await host.liveDirectory("team-a", ctx("space-a"));
+    const live = (await host.liveDirectory("team-a", ctx("space-a"))).path;
     const inode = (await stat(live)).ino;
     // Another writer (say, the Computer ran on a remote provider meanwhile) saves a newer revision.
     const other = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
     await other.commit("team-a", await source({ "f.txt": "two" }), ctx("space-a"));
 
     await host.liveDirectory("team-a", ctx("space-a"));
-    // The supervisor still reports a running container.
-    await host.liveDirectory("team-a", ctx("space-a"), { unmounted: async () => false });
-    expect(await host.readFile("team-a", "f.txt", ctx("space-a"))).toBe("one");
+    // The supervisor still reports a running container: the directory is left alone, and this
+    // host is no longer authoritative, so reads serve the newer snapshot from the cache.
+    expect(
+      (await host.liveDirectory("team-a", ctx("space-a"), { unmounted: async () => false }))
+        .current,
+    ).toBe(false);
+    expect(await readFile(path.join(live, "f.txt"), "utf8")).toBe("one");
+    expect(await host.readFile("team-a", "f.txt", ctx("space-a"))).toBe("two");
     expect((await stat(live)).ino).toBe(inode);
 
     await host.liveDirectory("team-a", ctx("space-a"), { unmounted: async () => true });
@@ -391,7 +404,7 @@ describe("a Docker live directory", () => {
   it("keeps an unmounted directory whose newest revision was saved from it", async () => {
     const f = fakes("docker");
     const host = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
-    const live = await host.liveDirectory("team-a", ctx("space-a"));
+    const live = (await host.liveDirectory("team-a", ctx("space-a"))).path;
     await writeFile(path.join(live, "saved.txt"), "saved");
     await host.revise("team-a", ctx("space-a"));
     await writeFile(path.join(live, "unsaved.txt"), "written before the container stopped");
@@ -407,7 +420,7 @@ describe("a Docker live directory", () => {
     for (let i = 0; i < 20; i++) await writeFile(path.join(outside, `host-${i}.txt`), "precious");
     const host = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
     await host.commit("team-a", await source({ "d/wanted.txt": "w" }), ctx("space-a"));
-    const live = await host.liveDirectory("team-a", ctx("space-a"));
+    const live = (await host.liveDirectory("team-a", ctx("space-a"))).path;
     // The agent keeps swapping d for a symlink to a host directory while saves and installs run.
     const child = spawn(
       process.execPath,
@@ -445,7 +458,7 @@ describe("a Docker live directory", () => {
   it("replaces a directory with read-only git objects when unmounted", async () => {
     const f = fakes("docker");
     const host = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
-    const live = await host.liveDirectory("team-a", ctx("space-a"));
+    const live = (await host.liveDirectory("team-a", ctx("space-a"))).path;
     await mkdir(path.join(live, ".git/objects/ab"), { recursive: true });
     await writeFile(path.join(live, ".git/objects/ab/cd"), "o");
     await chmod(path.join(live, ".git/objects/ab/cd"), 0o444);
@@ -468,13 +481,157 @@ describe("a Docker live directory", () => {
       ctx("space-a"),
     );
     const { readlink } = await import("node:fs/promises");
-    const live = await new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp()).liveDirectory(
-      "team-a",
-      ctx("space-a"),
-    );
+    const live = (
+      await new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp()).liveDirectory(
+        "team-a",
+        ctx("space-a"),
+      )
+    ).path;
     expect(await readlink(path.join(live, "dangling"))).toBe("/outside/target");
   });
 });
+
+describe("hosts, caches and leftovers", () => {
+  it("keeps a live directory another process installed while a slow install ran", async () => {
+    const f = fakes("docker");
+    await new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp()).commit(
+      "team-a",
+      await source({ "f.txt": "one" }),
+      ctx("space-a"),
+    );
+    const dataDir = await tmp();
+    const slow = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
+    const fast = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
+    let mountedInode = 0;
+    // While the slow store downloads, the fast one installs and a container starts using it.
+    f.hooks.beforeGet = async () => {
+      const live = (await fast.liveDirectory("team-a", ctx("space-a"))).path;
+      await writeFile(path.join(live, "container.txt"), "written by the container");
+      mountedInode = (await stat(live)).ino;
+    };
+    const live = (await slow.liveDirectory("team-a", ctx("space-a"))).path;
+    expect((await stat(live)).ino).toBe(mountedInode);
+    expect(await readFile(path.join(live, "container.txt"), "utf8")).toBe(
+      "written by the container",
+    );
+    expect((await readdir(path.join(dataDir, "homes"))).filter((n) => n.startsWith("."))).toEqual(
+      [],
+    );
+  });
+
+  it("serves a Docker home from the cache on a host that is not authoritative, and never publishes its stale copy", async () => {
+    const f = fakes("docker");
+    await new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp()).commit(
+      "team-a",
+      await source({ "f.txt": "current" }),
+      ctx("space-a"),
+    );
+    const dataDir = await tmp();
+    // An old copy on a host that does not run the computer (no record of the current revision).
+    await mkdir(path.join(dataDir, "homes/team-a"), { recursive: true });
+    await writeFile(path.join(dataDir, "homes/team-a/f.txt"), "stale");
+    await writeFile(path.join(dataDir, "homes/team-a/stale-only.txt"), "stale");
+    const other = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
+    expect(await other.readFile("team-a", "f.txt", ctx("space-a"))).toBe("current");
+    await other.writeFile("team-a", "new.txt", "n", ctx("space-a"));
+    const reader = new ObjectAgentHomeStore(f.prisma, f.artifacts, await tmp());
+    expect(await reader.readFile("team-a", "f.txt", ctx("space-a"))).toBe("current");
+    expect(await reader.readFile("team-a", "new.txt", ctx("space-a"))).toBe("n");
+    await expect(reader.readFile("team-a", "stale-only.txt", ctx("space-a"))).rejects.toThrow();
+    expect(await readFile(path.join(dataDir, "homes/team-a/f.txt"), "utf8")).toBe("stale");
+  });
+
+  it("uploads a legacy live directory once on its first save", async () => {
+    const f = fakes("docker");
+    const dataDir = await tmp();
+    await mkdir(path.join(dataDir, "homes/team-a"), { recursive: true });
+    await writeFile(path.join(dataDir, "homes/team-a/old.txt"), "legacy");
+    await new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir).revise("team-a", ctx("space-a"));
+    expect(f.calls.put).toBe(1);
+  });
+
+  it("keeps only the newest record of what the live directory holds", async () => {
+    const f = fakes("docker");
+    const dataDir = await tmp();
+    const store = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
+    await store.liveDirectory("team-a", ctx("space-a"));
+    await store.revise("team-a", ctx("space-a"));
+    const last = await store.revise("team-a", ctx("space-a"));
+    expect(await readdir(path.join(dataDir, "home-sync/team-a"))).toEqual([last]);
+  });
+
+  it("removes scratch and install folders left by a crashed process, but not recent ones", async () => {
+    const f = fakes();
+    const dataDir = await tmp();
+    const old = new Date(Date.now() - HOME_CACHE_LIMITS.leftoverMs - 60_000);
+    const paths = {
+      oldOp: path.join(dataDir, "home-staging/op-old"),
+      newOp: path.join(dataDir, "home-staging/op-new"),
+      oldInstall: path.join(dataDir, "homes/.team-a.install-old"),
+      newInstall: path.join(dataDir, "homes/.team-a.install-new"),
+      oldCache: path.join(dataDir, "home-cache/team-a/homes/.rev.install-old"),
+    };
+    for (const [name, dir] of Object.entries(paths)) {
+      await mkdir(dir, { recursive: true });
+      if (name.startsWith("old")) await utimes(dir, old, old);
+    }
+    const store = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
+    await store.commit("team-a", await source({ "f.txt": "1" }), ctx("space-a"));
+    for (const [name, dir] of Object.entries(paths)) {
+      expect([name, await isPresent(dir)]).toEqual([name, !name.startsWith("old")]);
+    }
+  });
+
+  it("keeps a cached revision an export is still reading", async () => {
+    const f = fakes();
+    const dataDir = await tmp();
+    const store = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir);
+    const files = Object.fromEntries(Array.from({ length: 5 }, (_, i) => [`f${i}.txt`, `${i}`]));
+    await store.commit("team-a", await source(files), ctx("space-a"));
+    const exported: string[] = [];
+    for await (const file of store.exportHome("team-a", ctx("space-a"))) {
+      exported.push(file.path);
+      if (exported.length === 1) {
+        await store.commit("team-a", await source({ "g.txt": "g" }), ctx("space-a"));
+        expect(await store.readFile("team-a", "g.txt", ctx("space-a"))).toBe("g");
+      }
+    }
+    expect(exported.sort()).toEqual(Object.keys(files).sort());
+  });
+
+  it("removes cached revisions unused for a day and the least recently used above the cap", async () => {
+    const f = fakes();
+    f.rows.push({ ...f.rows[0]!, id: "c3", homeKey: "team-c" });
+    const dataDir = await tmp();
+    const store = new ObjectAgentHomeStore(f.prisma, f.artifacts, dataDir, 15);
+    const cached = (key: string) => readdir(path.join(dataDir, "home-cache", key, "homes"));
+    const age = async (key: string, ms: number) => {
+      const homes = path.join(dataDir, "home-cache", key, "homes");
+      const when = new Date(Date.now() - ms);
+      for (const name of await readdir(homes)) await utimes(path.join(homes, name), when, when);
+    };
+    for (const key of ["team-a", "team-c"]) {
+      await store.commit(key, await source({ "f.txt": "0123456789" }), ctx("space-a"));
+      await store.readFile(key, "f.txt", ctx("space-a"));
+    }
+    await age("team-a", HOME_CACHE_LIMITS.ttlMs + 60_000);
+    await age("team-c", HOME_CACHE_LIMITS.readerGraceMs + 60_000);
+    // A third cached home pushes the total (10 bytes each) past the 15-byte cap.
+    f.rows.push({ ...f.rows[0]!, id: "c4", homeKey: "team-d" });
+    await store.commit("team-d", await source({ "f.txt": "0123456789" }), ctx("space-a"));
+    await store.readFile("team-d", "f.txt", ctx("space-a"));
+    expect(await cached("team-a")).toEqual([]); // past the TTL
+    expect(await cached("team-c")).toEqual([]); // least recently used, over the cap
+    expect((await cached("team-d")).filter((n) => !n.startsWith("."))).toHaveLength(1);
+  });
+});
+
+async function isPresent(target: string) {
+  return stat(target).then(
+    () => true,
+    () => false,
+  );
+}
 
 describe("workspace checkpoints use the store interface", () => {
   const computer = { id: "c", botId: "b", kind: "docker", providerRef: "p" } as never;
@@ -496,7 +653,7 @@ describe("workspace checkpoints use the store interface", () => {
       quiesceBrowsers: true,
     });
     expect(execute).toHaveBeenCalledTimes(1);
-    await restoreComputerWorkspace(home, sandbox, "k", computer, ctx("space-a"));
+    await restoreComputerWorkspace(home, sandbox, "k", computer, ctx("space-a"), true);
     expect(home.exportHome).not.toHaveBeenCalled();
   });
 

@@ -52,12 +52,13 @@ const CHUNK_BYTES = 256 * 1024;
  * access times, extended attributes, sockets, FIFOs and devices.
  *
  * A file that changes while it is read is read again; after a few attempts it is left out, or,
- * above 8 MiB, written with its missing tail as zeros. Those paths, and entries that vanish or
- * cannot be opened, are returned in `skipped`.
+ * above 8 MiB, written with its missing tail as zeros. Those paths, and entries that vanished or
+ * were swapped, are returned in `skipped.changed`. Entries the host cannot read (permissions, or
+ * a name tar cannot store) are in `skipped.unreadable`; the next save will not fix those.
  */
 export async function packDirectory(directory: string, file: string) {
   const root = await realpath(directory);
-  const skipped: string[] = [];
+  const skipped: Skipped = { changed: [], unreadable: [] };
   await pipeline(
     Readable.from(archiveBlocks(root, skipped)),
     createGzip({ level: 3 }),
@@ -66,7 +67,9 @@ export async function packDirectory(directory: string, file: string) {
   return { skipped };
 }
 
-async function* archiveBlocks(root: string, skipped: string[]): AsyncGenerator<Buffer> {
+type Skipped = { changed: string[]; unreadable: string[] };
+
+async function* archiveBlocks(root: string, skipped: Skipped): AsyncGenerator<Buffer> {
   // A root entry keeps an archive of an empty home readable; extraction skips it.
   yield header({ path: "./", type: "Directory", mode: 0o755, mtime: new Date(0) });
   yield* walk(root, "", new Map(), skipped);
@@ -77,34 +80,37 @@ async function* walk(
   root: string,
   relative: string,
   links: Map<string, string>,
-  skipped: string[],
+  skipped: Skipped,
 ): AsyncGenerator<Buffer> {
   const directory = relative ? path.join(root, relative) : root;
   // ponytail: realpath-then-readdir can still race a swap and list one outside directory's
   // names; file contents are protected by the opened-file check. Use openat-style walking if
   // Node ever exposes it.
   if ((await realpath(directory).catch(() => null)) !== directory) {
-    skipped.push(relative);
+    skipped.changed.push(relative);
     return;
   }
-  const names = await readdir(directory).catch(() => null);
-  if (!names) {
-    skipped.push(relative);
-    return;
-  }
+  const names = await readdir(directory).catch((error: NodeJS.ErrnoException) => {
+    (error.code === "ENOENT" ? skipped.changed : skipped.unreadable).push(relative);
+    return null;
+  });
+  if (!names) return;
   for (const name of names.sort()) {
     const child = relative ? `${relative}/${name}` : name;
     if (skipSnapshotPath(child)) continue;
     const full = path.join(directory, name);
     const info = await lstat(full).catch(() => null);
-    if (!info || unreadable(info.isDirectory() ? `${child}/` : child)) {
-      skipped.push(child);
+    if (!info) {
+      skipped.changed.push(child);
+    } else if (unreadable(info.isDirectory() ? `${child}/` : child)) {
+      skipped.unreadable.push(child);
     } else if (info.isDirectory()) {
       yield header({ path: `${child}/`, type: "Directory", mode: info.mode, mtime: info.mtime });
       yield* walk(root, child, links, skipped);
     } else if (info.isSymbolicLink()) {
       const target = await readlink(full).catch(() => null);
-      if (target === null || unreadable(child, target)) skipped.push(child);
+      if (target === null) skipped.changed.push(child);
+      else if (unreadable(child, target)) skipped.unreadable.push(child);
       else yield header({ path: child, type: "SymbolicLink", linkpath: target, mtime: info.mtime });
     } else if (info.isFile()) {
       yield* fileEntry(root, full, child, links, skipped);
@@ -117,17 +123,25 @@ async function* fileEntry(
   full: string,
   relative: string,
   links: Map<string, string>,
-  skipped: string[],
+  skipped: Skipped,
 ): AsyncGenerator<Buffer> {
   for (let attempt = 0; attempt < FILE_ATTEMPTS; attempt++) {
     const handle = await open(
       full,
       constants.O_RDONLY | constants.O_NOFOLLOW | (constants.O_NONBLOCK ?? 0),
-    ).catch(() => null);
-    if (!handle) break;
+    ).catch((error: NodeJS.ErrnoException) => {
+      // ENOENT and ELOOP mean it vanished or became a link; anything else will not change.
+      const changed = error.code === "ENOENT" || error.code === "ELOOP";
+      (changed ? skipped.changed : skipped.unreadable).push(relative);
+      return null;
+    });
+    if (!handle) return;
     try {
       const info = await handle.stat();
-      if (!info.isFile() || !isInside(root, await fileHandlePath(handle.fd))) break;
+      if (!info.isFile() || !isInside(root, await fileHandlePath(handle.fd))) {
+        skipped.changed.push(relative); // swapped for something else while it was opened
+        return;
+      }
       const linkKey = info.nlink > 1 ? `${info.dev}:${info.ino}` : undefined;
       const first = linkKey ? links.get(linkKey) : undefined;
       if (first) {
@@ -166,7 +180,7 @@ async function* fileEntry(
           left -= read;
         }
         if (left > 0) {
-          skipped.push(relative); // it shrank while it was read; the rest of the entry is zeros
+          skipped.changed.push(relative); // it shrank while it was read; the rest of the entry is zeros
           yield Buffer.alloc(left);
         }
       }
@@ -177,7 +191,7 @@ async function* fileEntry(
       await handle.close();
     }
   }
-  skipped.push(relative);
+  skipped.changed.push(relative);
 }
 
 async function readInto(handle: FileHandle, buffer: Buffer) {
@@ -252,10 +266,11 @@ const UNSAFE = "Home snapshot contains an unsafe entry";
  * - no entry at or below a path an earlier entry made a symlink, and no path twice (compared
  *   ignoring case and Unicode normalization, for macOS file systems);
  * - a hard link only to a regular file extracted earlier in the archive.
- * Devices, FIFOs and other special entries are skipped.
+ * Devices, FIFOs and other special entries are skipped. Returns the bytes of regular files written.
  */
 export async function unpackArchive(file: string, cwd: string) {
   await mkdir(cwd);
+  let bytes = 0;
   const key = (entry: string) => entry.normalize("NFC").toLowerCase();
   const seen = new Set<string>();
   const symlinks = new Set<string>();
@@ -287,6 +302,7 @@ export async function unpackArchive(file: string, cwd: string) {
       case "ContiguousFile":
         files.add(key(relative));
         fileModes.push({ path: relative, mode: entry.mode ?? 0o644 });
+        bytes += entry.size ?? 0;
         break;
       case "SymbolicLink":
         symlinks.add(key(relative));
@@ -334,6 +350,7 @@ export async function unpackArchive(file: string, cwd: string) {
     if (directory.mtime) await utimes(target, directory.mtime, directory.mtime);
     await chmod(target, directory.mode & 0o7777);
   }
+  return { bytes };
 }
 
 /**
