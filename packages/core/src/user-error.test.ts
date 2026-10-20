@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   authErrorMessage,
   credentialIssue,
+  dismissedThreadRunError,
   isNetworkFailure,
   isServerUnreachable,
   isTechnicalErrorMessage,
+  KEY_REJECTED_PATTERN,
   providerErrorMessage,
+  threadRunError,
   userErrorMessage,
 } from "./user-error.js";
 
@@ -187,5 +190,27 @@ describe("providerErrorMessage", () => {
     expect(userErrorMessage(new Error('400 {"error":{"message":"Not allowed here"}}'), copy)).toBe(
       "Not allowed here",
     );
+  });
+});
+
+describe("run errors", () => {
+  const snapshot = (error: string | null, status = "failed") =>
+    ({ run: { id: "r1", status, error } }) as unknown as Parameters<typeof threadRunError>[0];
+  const describeError = (error: string) =>
+    KEY_REJECTED_PATTERN.test(error) ? "key rejected" : error;
+
+  it("recognises a provider 401", () => {
+    expect(KEY_REJECTED_PATTERN.test('401 {"error":"bad key"}')).toBe(true);
+    expect(KEY_REJECTED_PATTERN.test('{"error":{"code": 401}}')).toBe(true);
+    expect(KEY_REJECTED_PATTERN.test("500 upstream")).toBe(false);
+  });
+
+  it("shows a failed run's error until dismissed, then keeps a note", () => {
+    const snap = snapshot("401 nope");
+    expect(threadRunError(snap, describeError)).toBe("key rejected");
+    expect(threadRunError(snap, describeError, new Set(["r1"]))).toBeNull();
+    expect(dismissedThreadRunError(snap, describeError, new Set(["r1"]))).toBe("key rejected");
+    expect(dismissedThreadRunError(snap, describeError, new Set())).toBeNull();
+    expect(threadRunError(snapshot(null, "running"), describeError)).toBeNull();
   });
 });
