@@ -99,9 +99,11 @@ export async function ensureSenderRule(
 
 /**
  * Deletes the Gmail filters of these decisions and clears them from the rows. A filter that is
- * already gone counts as removed, and so does one Rakazo can no longer manage (`auth`: the
- * permission was withdrawn). Any other failure counts in `failed`, so the caller can keep the
- * decision and let the user retry. Decisions without a `ruleId` need nothing.
+ * already gone counts as removed, and so does one Rakazo can no longer manage (`auth` on an account
+ * known to lack the permission). Any other failure counts in `failed`, so the caller can keep the
+ * decision and let the user retry: an `auth` error on an account that has the permission is an
+ * expired or revoked token, and the filter is still in the mailbox. A missing account counts as
+ * failed too. Decisions without a `ruleId` need nothing.
  */
 export async function removeSenderRules(
   deps: SenderRuleDeps,
@@ -113,7 +115,7 @@ export async function removeSenderRules(
   if (withRule.length === 0) return { failed: 0 };
   if (deps.writesDisabled) return { failed: withRule.length };
   const { prisma, mail } = deps;
-  if (!account || !mail.deleteSenderRule) return { failed: 0 };
+  if (!account || !mail.deleteSenderRule) return { failed: withRule.length };
   const removed: string[] = [];
   let failed = 0;
   for (const { id, ruleId } of withRule) {
@@ -121,7 +123,12 @@ export async function removeSenderRules(
       await mail.deleteSenderRule(account, ruleId, context);
       removed.push(id);
     } catch (error) {
-      if (error instanceof MailProviderError && error.kind === "auth") removed.push(id);
+      if (
+        error instanceof MailProviderError &&
+        error.kind === "auth" &&
+        account.senderRules !== "ready"
+      )
+        removed.push(id);
       else {
         failed += 1;
         getLogger().warn("sender rule delete failed", {

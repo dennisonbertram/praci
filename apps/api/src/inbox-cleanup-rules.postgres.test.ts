@@ -1,6 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { inboxFeedbackSet } from "./inbox.js";
 import { inboxActionsUndo } from "./inbox-actions.js";
 import { inboxCleanupArchive, inboxCleanupForget, inboxCleanupList } from "./inbox-cleanup.js";
+import { inboxMoveMany } from "./inbox-modify.js";
 import { createMailFixture, daysAgo, type MailFixture } from "./test-support/mail-fixture.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -226,6 +228,17 @@ describePostgres("Gmail filters for skipped senders (PostgreSQL + Gmail emulator
       expect(f.gmail.filtersOf(ref)).toHaveLength(0);
     });
 
+    it("keeps the decision when the account cannot be listed", async () => {
+      const { ref, connectionId } = await box(true);
+      await skip(connectionId);
+      await f.prisma.connection.update({ where: { id: connectionId }, data: { status: "error" } });
+
+      await expect(forget(connectionId)).rejects.toMatchObject({ code: "BAD_GATEWAY" });
+
+      expect(f.gmail.filtersOf(ref)).toHaveLength(1);
+      expect((await decision(connectionId)).ruleId).toBeTruthy();
+    });
+
     it("refuses while mail writes are off when a filter exists, but forgets a decision with none", async () => {
       const withRule = await box(true);
       await skip(withRule.connectionId);
@@ -351,6 +364,65 @@ describePostgres("Gmail filters for skipped senders (PostgreSQL + Gmail emulator
       });
 
       expect(f.gmail.filtersOf(ref)).toHaveLength(1);
+    });
+  });
+  describe("important sender", () => {
+    const messageOf = (connectionId: string) =>
+      f.prisma.cachedMailMessage.findFirstOrThrow({ where: { connectionId } });
+
+    it("deletes the filter when the sender is marked important", async () => {
+      const { ref, connectionId } = await box(true);
+      await skip(connectionId);
+      const message = await messageOf(connectionId);
+
+      await inboxFeedbackSet(f.deps, f.a, { messageId: message.id, mark: "important" });
+
+      expect(f.gmail.filtersOf(ref)).toHaveLength(0);
+      expect(await decision(connectionId)).toMatchObject({ ruleId: null, ruleStatus: null });
+      expect(await f.prisma.inboxSenderFeedback.count({ where: { senderAddress: NEWS } })).toBe(1);
+    });
+
+    it("keeps the filter tracked and reports it when it cannot be deleted", async () => {
+      const { ref, connectionId } = await box(true);
+      await skip(connectionId);
+      const message = await messageOf(connectionId);
+      f.gmail.failNext(503, { urlIncludes: FILTERS, times: 50 });
+
+      await expect(
+        inboxFeedbackSet(f.deps, f.a, { messageId: message.id, mark: "important" }),
+      ).rejects.toMatchObject({ code: "BAD_GATEWAY" });
+      f.gmail.clearFailures();
+
+      expect(f.gmail.filtersOf(ref)).toHaveLength(1);
+      expect((await decision(connectionId)).ruleId).toBeTruthy();
+      // Marking again retries the delete.
+      await inboxFeedbackSet(f.deps, f.a, { messageId: message.id, mark: "important" });
+      expect(f.gmail.filtersOf(ref)).toHaveLength(0);
+    });
+
+    it("leaves the filter when the sender is marked as noise", async () => {
+      const { ref, connectionId } = await box(true);
+      await skip(connectionId);
+      const message = await messageOf(connectionId);
+
+      await inboxFeedbackSet(f.deps, f.a, { messageId: message.id, mark: "noise" });
+
+      expect(f.gmail.filtersOf(ref)).toHaveLength(1);
+    });
+
+    it("deletes the filter when a message from the sender is marked not spam", async () => {
+      const { ref, connectionId } = await box(true);
+      await skip(connectionId);
+      const message = await messageOf(connectionId);
+      await f.prisma.cachedMailMessage.update({
+        where: { id: message.id },
+        data: { pile: "spam" },
+      });
+
+      await inboxMoveMany(f.deps, f.a, { op: "notSpam", messageIds: [message.id] });
+
+      expect(f.gmail.filtersOf(ref)).toHaveLength(0);
+      expect(await decision(connectionId)).toMatchObject({ ruleId: null });
     });
   });
 });

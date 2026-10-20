@@ -361,15 +361,30 @@ describePostgres("Gmail sender rules (PostgreSQL + Gmail emulator)", () => {
     );
   });
 
-  it("treats a withdrawn permission on removal as nothing left to manage", async () => {
+  it("treats an auth error as nothing left to manage only on an account without the permission", async () => {
     const a = await connect({ scope: "settings" });
     await skip(a);
     await ensure(a);
     const d = await decision(a);
     gmail.revokeScope(a.accountRef, GMAIL_SETTINGS_BASIC);
 
-    expect(await removeSenderRules(deps(), a, context(), [d])).toEqual({ failed: 0 });
+    // The account still says it has the permission, so this is a token problem: keep the filter id.
+    expect(await removeSenderRules(deps(), a, context(), [d])).toEqual({ failed: 1 });
+    expect(await decision(a)).toMatchObject({ ruleId: d.ruleId });
+
+    const withdrawn = { ...a, senderRules: "needs_permission" as const };
+    expect(await removeSenderRules(deps(), withdrawn, context(), [d])).toEqual({ failed: 0 });
     expect(await decision(a)).toMatchObject({ ruleId: null });
+  });
+
+  it("counts a filter as failed when its account cannot be reached", async () => {
+    const a = await connect({ scope: "settings" });
+    await skip(a);
+    await ensure(a);
+    const d = await decision(a);
+
+    expect(await removeSenderRules(deps(), undefined, context(), [d])).toEqual({ failed: 1 });
+    expect(await decision(a)).toMatchObject({ ruleId: d.ruleId });
   });
 
   it("gives at most 20 waiting senders a filter per run", async () => {

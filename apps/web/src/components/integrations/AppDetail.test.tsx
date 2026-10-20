@@ -466,8 +466,11 @@ it("opens the sign-in that replaces an account and asks for the filter permissio
   expect(dialog()?.getAttribute("data-permission")).toBe("mail_rules");
   expect(dialog()?.getAttribute("data-confirm-first")).toBe("true");
   expect(dialog()?.getAttribute("data-account-name")).toBe("Mail b");
-  // Closing the dialog drops the permission, so a later Reconnect does not ask for it.
+  revoke.mockClear();
+  // Closing the dialog drops the permission, so a later Reconnect does not ask for it. The working
+  // account is not revoked: the server replaces it only when the same Google account signed in.
   await act(async () => (dialog() as HTMLButtonElement).click());
+  expect(revoke).not.toHaveBeenCalled();
   expect(where()).toBe("/app/inbox");
 });
 

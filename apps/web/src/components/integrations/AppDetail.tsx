@@ -334,8 +334,10 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
         onConnected={
           replacing || next
             ? async () => {
-                // The new sign-in takes the old account's place, so its mail is not listed twice.
-                if (replacing) {
+                // The new sign-in takes the old signed-out account's place, so its mail is not listed
+                // twice. A working account being reconnected for the filter permission is replaced by
+                // the server when it is the same Google account; a different one is kept as it is.
+                if (replacing && !permission) {
                   await rpc.connections
                     .revoke({ connectionId: replacing.id })
                     .catch(() => undefined);

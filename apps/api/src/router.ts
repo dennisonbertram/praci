@@ -7313,7 +7313,11 @@ export function createRouter(deps: RouterDeps) {
         inboxUnreadCount(deps, context.actor),
       ),
       feedback: authed.inbox.feedback.handler(({ context, input }) =>
-        inboxFeedbackSet(deps, context.actor, input),
+        inboxFeedbackSet(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+        ),
       ),
       markRead: authed.inbox.markRead.handler(({ context, input }) =>
         inboxMarkRead(

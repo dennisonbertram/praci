@@ -42,6 +42,7 @@ import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { proxyEmailImages } from "./email-image-proxy.js";
+import { removeFiltersOfSender } from "./inbox-sender-rules.js";
 
 export interface InboxDeps {
   prisma: PrismaClient;
@@ -505,10 +506,11 @@ async function pileCounts(
 
 /**
  * Marks or unmarks the sender of one of the caller's cached messages. The mark belongs to the
- * sender address, so it covers all the caller's accounts. Nothing is written to Gmail.
+ * sender address, so it covers all the caller's accounts. Only an important mark writes to Gmail: it
+ * deletes the sender's filters.
  */
 export async function inboxFeedbackSet(
-  deps: InboxDeps,
+  deps: InboxDeps & { mailWritesDisabled?: boolean },
   actor: Actor,
   input: InboxFeedbackInput,
 ): Promise<{ mark: InboxMark | null }> {
@@ -529,6 +531,12 @@ export async function inboxFeedbackSet(
   } else {
     await deps.prisma.inboxSenderFeedback.deleteMany({ where: key });
   }
+  // Gmail filters archive every message from the sender, so an important sender cannot keep them.
+  if (
+    input.mark === "important" &&
+    (await removeFiltersOfSender(deps, actor, senderAddress, "inbox.feedback")) > 0
+  )
+    throw new ORPCError("BAD_GATEWAY", { message: "Couldn't remove the Gmail filter" });
   // A triage run with nothing new to classify still re-syncs the to-dos under the new mark.
   if (await triageEnabled(deps, actor)) await enqueueTriage(deps, actor);
   return { mark: input.mark };

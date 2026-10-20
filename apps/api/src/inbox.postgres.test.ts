@@ -1873,9 +1873,12 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         const message = await prisma.cachedMailMessage.findFirstOrThrow({
           where: { providerMessageId: "m1" },
         });
-        const client = createRouterClient(createRouter({ ...on() } as unknown as RouterDeps), {
-          context: { actor: a } as never,
-        });
+        const client = createRouterClient(
+          createRouter({ ...on(), env: {} } as unknown as RouterDeps),
+          {
+            context: { actor: a } as never,
+          },
+        );
 
         expect(await client.inbox.feedback({ messageId: message.id, mark: "important" })).toEqual({
           mark: "important",

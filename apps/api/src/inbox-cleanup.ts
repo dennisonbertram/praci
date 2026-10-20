@@ -263,10 +263,11 @@ export async function inboxCleanupArchive(
   // A failure is kept on the decision and shown on the sender; pressing Skip inbox again retries it.
   if (input.kind === "skip_inbox" && input.batchId === undefined) {
     const context = mailContext(actor, "inbox.cleanup.rule", signal);
-    const account = await deps.mail
-      .listAccounts({ spaceId: actor.spaceId, userId: actor.userId }, context)
-      .then((accounts) => accounts.find((a) => a.id === input.connectionId))
-      .catch(() => undefined);
+    const accounts = await deps.mail.listAccounts(
+      { spaceId: actor.spaceId, userId: actor.userId },
+      context,
+    );
+    const account = accounts.find((a) => a.id === input.connectionId);
     if (account)
       await ensureSenderRule(
         { prisma, mail: deps.mail, writesDisabled: deps.mailWritesDisabled },
@@ -341,10 +342,11 @@ export async function inboxCleanupForget(
     if (deps.mailWritesDisabled)
       throw new ORPCError("BAD_REQUEST", { message: "Changing mail is turned off." });
     const context = mailContext(actor, "inbox.cleanup.forget", signal);
-    const account = await deps.mail
-      .listAccounts({ spaceId: actor.spaceId, userId: actor.userId }, context)
-      .then((accounts) => accounts.find((a) => a.id === input.connectionId))
-      .catch(() => undefined);
+    const accounts = await deps.mail.listAccounts(
+      { spaceId: actor.spaceId, userId: actor.userId },
+      context,
+    );
+    const account = accounts.find((a) => a.id === input.connectionId);
     const { failed } = await removeSenderRules(
       { prisma: deps.prisma, mail: deps.mail },
       account,
