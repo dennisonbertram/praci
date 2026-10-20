@@ -507,3 +507,38 @@ it("still lists native Google apps when the managed catalog is not set up", asyn
   expect(container.querySelector('[data-testid="catalog-not-set-up"]')).not.toBeNull();
   expect(container.querySelector('[aria-label="Connect gmail"]')).not.toBeNull();
 });
+
+it("labels Composio and Pipedream tiles, catalog and connected, but not Google or MCP tiles", async () => {
+  const value = data(true, true);
+  value.catalog = [
+    ...value.catalog,
+    { ...google("slack"), connectorId: "composio", name: "Slack" },
+    { ...google("notion"), connectorId: "pipedream", name: "Notion" },
+  ];
+  value.connections = [
+    {
+      id: "c1",
+      connectorId: "composio",
+      provider: "trello",
+      displayName: "Demo board",
+      status: "connected",
+      error: null,
+      capabilities: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+    {
+      id: "c2",
+      connectorId: "google",
+      provider: "gmail",
+      displayName: "demo@example.com",
+      status: "connected",
+      error: null,
+      capabilities: [],
+      createdAt: "2026-01-01T00:00:00.000Z",
+    },
+  ];
+  value.servers = [zernioServer];
+  await show(value);
+  const labels = [...container.querySelectorAll("[data-source]")].map((el) => el.textContent);
+  expect(labels.sort()).toEqual(["via Composio", "via Composio", "via Pipedream"]);
+});

@@ -1,9 +1,9 @@
-import { useLingui } from "@lingui/react/macro";
+import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
-import { BotAvatar, cn, Switch } from "@rakazo/ui-web";
+import { Badge, BotAvatar, cn, Switch } from "@rakazo/ui-web";
 import type { ComponentProps, ReactNode } from "react";
 import { Link } from "react-router-dom";
-import type { StatusKind } from "../../lib/integrations";
+import { providerLabel, type StatusKind } from "../../lib/integrations";
 import { AppLogo } from "./AppLogo";
 
 export function IntegrationTile({ className, ...props }: ComponentProps<"div">) {
@@ -125,5 +125,16 @@ export function SectionTitle({ children }: { children: ReactNode }) {
     <h2 className="mb-2.5 mt-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
       {children}
     </h2>
+  );
+}
+
+/** Marks apps that run through a third-party broker; direct integrations show nothing. */
+export function SourceBadge({ connectorId }: { connectorId: string }) {
+  if (connectorId !== "composio" && connectorId !== "pipedream") return null;
+  const provider = providerLabel(connectorId);
+  return (
+    <Badge variant="outline" className="text-muted-foreground" data-source={connectorId}>
+      <Trans>via {provider}</Trans>
+    </Badge>
   );
 }

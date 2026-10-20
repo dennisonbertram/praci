@@ -24,7 +24,7 @@ import { errorText } from "../../lib/user-error";
 import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { IntegrationAgentSection } from "./IntegrationAgentSection";
-import { AgentToggleList, StatusBadge } from "./parts";
+import { AgentToggleList, SourceBadge, StatusBadge } from "./parts";
 import type { ConnectionAccess, IntegrationsData } from "./useIntegrations";
 
 type Tool = { name: string; description: string };
@@ -391,6 +391,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
               <h1 className="text-xl font-semibold">{name}</h1>
               <div className="flex flex-wrap items-center gap-2.5 text-muted-foreground">
                 {status ? <StatusBadge status={status} /> : null}
+                <SourceBadge connectorId={connectorId} />
               </div>
             </div>
           </div>

@@ -269,3 +269,14 @@ export const AddAnotherAccount: Story = {
     );
   },
 };
+
+export const ViaComposio: Story = {
+  render: () => (
+    <Page
+      to="/app/composio/sample-mail"
+      data={demoIntegrations({
+        connections: [demoConnection({ connectorId: "composio" })],
+      })}
+    />
+  ),
+};
