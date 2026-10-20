@@ -61,10 +61,10 @@ export async function beginOpenRouterOAuth(options: {
     },
   });
   const url = new URL(OPENROUTER_AUTH_URL);
-  url.searchParams.set("callback_url", expected);
+  // OpenRouter returns only ?code, so the state travels in the callback path.
+  url.searchParams.set("callback_url", `${expected}/${state}`);
   url.searchParams.set("code_challenge", createHash("sha256").update(verifier).digest("base64url"));
   url.searchParams.set("code_challenge_method", "S256");
-  url.searchParams.set("state", state);
   return { authorizationUrl: url.toString() };
 }
 
