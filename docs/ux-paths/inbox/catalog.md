@@ -670,7 +670,6 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ##### Variations
 - She drags the downloaded file onto the Inbox list → the overlay "**Drop to add to Data room**" appears and the file uploads without leaving the Inbox.
 - She drops it on an open composer instead → it attaches to the email, not the Data room (the composer takes the drop first, `DropZone.tsx:61-65`).
-- Over 50 MB → "Over the 50 MB limit" on the toast (`DropZone.tsx:18-23`).
 
 ##### Edge Cases
 - DR-SEEDED: uploading the same PDF again → the toast says "**Already in your Data room**" with **View** instead of "Uploaded" (`DropZone.tsx:25-32, 153-161`).
