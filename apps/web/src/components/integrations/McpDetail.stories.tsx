@@ -1,6 +1,8 @@
 import type { McpServer } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Navigate, Route, Routes } from "react-router-dom";
+import { userEvent, within } from "storybook/test";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import { makeBot, mockAssignments, mockIntegrations, mockServer } from "../../stories/fixtures";
 import { McpDetail } from "./McpDetail";
 
@@ -68,6 +70,18 @@ const mercury = (extra: Partial<McpServer> = {}) =>
 
 export const CanCreateAgent: Story = {
   parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: { data: mockIntegrations({ servers: [mercury()] }) },
+};
+
+/** While the agent is being created every header button is disabled. */
+export const CreatingAgent: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  beforeEach: () => mockRpc({ "integrationAgents.create": () => new Promise(() => undefined) }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      await within(canvasElement).findByRole("button", { name: "Create agent" }),
+    );
+  },
   args: { data: mockIntegrations({ servers: [mercury()] }) },
 };
 
