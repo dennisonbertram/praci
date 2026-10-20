@@ -1,6 +1,6 @@
 # iMessage through Photon and BlueBubbles
 
-Status: approved plan; phases 1, 2, 3, 5 and 6 done (phase 2, 5 and 6 notes at the end). Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
+Status: approved plan; phases 1, 2, 3, 5, 6 and 7 done (notes at the end).. Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
 
 ## Owner answers
 
@@ -225,3 +225,12 @@ All earlier questions are answered in "Owner answers". Remaining: confirm the ex
 - **Preference.** `channels.imessage` in `NotificationPreference` (missing means on); Settings shows an "iMessage" switch next to "Browser" and "Phone" once a verified identity is linked (`hasImessage`).
 - **Not done: Hide amounts.** The setting lives only in the browser (`rakazo.hideAmounts` in local storage), so the server cannot mask agent-written notification text with `maskCurrencyWhenHidden`. Masking needs the switch stored per user; until then amounts in an `attention` notification go out as written.
 - **Privacy.** The body of a DM row is blanked when it is sent through an iMessage provider; pending and failed rows keep it for retry. The new `messaging.retention` cron job (daily 03:23) deletes `MessagingOutbound` rows and `MessagingInboundClaim` rows older than 7 days in batches of 1000; it replaces the in-process hourly claim prune. Inbound text is stored only as thread messages (the user's chat history), so there is nothing else to clean. Credentials are deployment-wide (env or `IntegrationProviderConfig`), not per identity, so unlinking has nothing to delete; per-user credential deletion belongs to phase 6 of the PR list (per-user BlueBubbles connections), if built.
+
+## Phase 7 (agent tools): done
+
+- **Tools.** `imessage_list_conversations` and `imessage_read` (read, no card) and `imessage_send` (write). They act only on the deployment's own line: the second Apple ID on the BlueBubbles Mac, or the Photon line. Direct iMessage chats only; groups and SMS/RCS are never listed, read or sent to.
+- **History.** `BlueBubblesAdapter` and `PhotonAdapter` implement `IMessageHistory` (`packages/adapter-kit/src/types.ts`) and the surface exposes it through `MessagingSurface.history(provider)`. BlueBubbles uses `/chat/query` and `/message/query`. Photon has no chat-list call, so conversations are built from the newest 500 messages (`messages.listRecent`), and a message page comes from `messages.listInChat`.
+- **Approval.** `imessage_send` is in the explicit-approval set (`action-approval.ts`), so no saved rule or Auto Review can allow it and the card has no "Always allow" button. The card shows the recipient, the line and the full text.
+- **Who gets the tools.** Same rule as mail (`mailToolsAllowed`): the owner's own direct run with an owner-initiated trigger. Not on messaging, group, `bot_message` or webhook runs. Photon is withheld from the Finance and Legal agents. Tool results are marked `untrusted` and the shared guidance names text messages as untrusted content.
+- **Sending.** The send reuses the adapter path (plain-text conversion, 2000-character chunks, five-chunk cap) with the run's effect key as the send id, and the effect record makes an approved send run once. On Photon, the first message to a person with no history is preceded by the AI disclosure, and the card says so.
+- **Not covered.** The 140-message consecutive cap and Photon's 50 new conversations per day are not applied to tool sends. BlueBubbles sending to a handle with no existing chat, the real `/chat/query` and `/message/query` response shapes, and Photon's list calls are checked only against offline emulators.
