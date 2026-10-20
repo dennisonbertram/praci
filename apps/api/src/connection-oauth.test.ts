@@ -29,6 +29,7 @@ function setup(replacesConnectionId?: string) {
   for (const row of Object.values(rows)) Object.assign(row, owner);
   const todos = [{ id: "t1", connectionId: "old" }];
   const messages = [{ id: "m1", connectionId: "old" }];
+  const stats = [{ id: "s1", connectionId: "old" }];
   const secrets = new Set(["sec-old", "sec-new"]);
   const move = (list: { connectionId: string }[]) =>
     vi.fn(
@@ -62,6 +63,7 @@ function setup(replacesConnectionId?: string) {
       }),
     },
     cachedMailMessage: { updateMany: move(messages) },
+    mailSenderStat: { updateMany: move(stats), deleteMany: vi.fn(async () => ({ count: 0 })) },
     inboxTodo: { updateMany: move(todos) },
     composeSend: { updateMany: vi.fn(async () => ({ count: 0 })) },
     botConnectionAccess: {
@@ -96,7 +98,7 @@ function setup(replacesConnectionId?: string) {
       context: {} as never,
       lock: async () => undefined,
     });
-  return { rows, todos, messages, secrets, run, prisma };
+  return { rows, todos, messages, stats, tx, secrets, run, prisma };
 }
 
 describe("completeNativeOAuth, after the commit", () => {
@@ -129,5 +131,15 @@ describe("completeNativeOAuth, same account again", () => {
     expect(f.messages[0]?.connectionId).toBe("pending");
     expect(f.rows.old).toBeUndefined();
     expect(f.secrets.has("sec-old")).toBe(false);
+  });
+
+  it("moves sender stats to the new connection on reconnect", async () => {
+    const f = setup("old");
+    await f.run();
+    expect(f.stats[0]?.connectionId).toBe("pending");
+    // The new connection's own rows are cleared first, so the move cannot hit the unique key.
+    expect(f.tx.mailSenderStat.deleteMany).toHaveBeenCalledWith({
+      where: { connectionId: "pending" },
+    });
   });
 });

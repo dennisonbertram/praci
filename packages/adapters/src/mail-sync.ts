@@ -7,9 +7,20 @@ import type {
   MailProvider,
 } from "@rakazo/adapter-kit";
 import { inboxTriageJob, MAIL_REQUEST_ABORTED, MailProviderError } from "@rakazo/adapter-kit";
+import { MAIL_SIGNALS_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { applyPileRules } from "./mail-piles.js";
+import {
+  checkPriorContact,
+  MAX_PRIOR_CONTACT_CHECKS,
+  markPriorContactFromSent,
+  type PriorContactResult,
+  pickPriorContactCandidates,
+  refreshSenderStats,
+  storePriorContact,
+} from "./mail-sender-stats.js";
 
 const WINDOW_MS = 14 * 86_400_000;
 const PAGE_SIZE = 100;
@@ -27,6 +38,8 @@ const TEXT_CAP = 500;
 const UPSERT_CHUNK = 200;
 /** Most changes applied one by one; more than this is cheaper to take from the window lists. */
 const MAX_CHANGES = 500;
+/** Cached rows from before the signal columns that one sync fetches again. */
+const BACKFILL_BATCH = 50;
 
 /** Stored timestamps are UTC without a zone, so compare against Postgres' UTC clock. */
 const DB_NOW = Prisma.sql`timezone('utc', now())`;
@@ -195,9 +208,9 @@ export async function syncMailbox(
         const returned = new Set(page.messages.map((m) => m.id));
         partial = unhydrated.size > 0;
         for (const message of page.messages) {
-          // The window lists skip trash and spam, so a message moved there is gone from the cache.
-          if (message.labelIds.includes("TRASH") || message.labelIds.includes("SPAM"))
-            deletedIds.push(message.id);
+          // The window lists skip trash, so a message moved there is gone from the cache. Spam is
+          // kept with its flag, which the Spam count and the safety rules read.
+          if (message.labelIds.includes("TRASH")) deletedIds.push(message.id);
           else
             merged.set(message.id, {
               message,
@@ -292,6 +305,46 @@ export async function syncMailbox(
     // The caller left, wherever that landed (a hydrate returns a partial page instead of throwing).
     if (context.signal.aborted) return fail(undefined);
 
+    // These two steps are extras: they never change the outcome of the sync or mark it incomplete.
+    const scope = { connectionId: account.id, spaceId, userId };
+    let priorContactResults: PriorContactResult[] = [];
+    if (!partial && !timed.signal.aborted) {
+      try {
+        await backfillSignals(
+          deps.mail,
+          prisma,
+          account,
+          timed,
+          scope,
+          windowStart,
+          merged,
+          deletedIds,
+        );
+        if (!timed.signal.aborted) {
+          const fresh = [...merged.values()]
+            .filter((entry) => !entry.fromSelf)
+            .sort((a, b) => b.message.date.localeCompare(a.message.date))
+            .flatMap((entry) =>
+              entry.message.from ? [entry.message.from.address.toLowerCase()] : [],
+            );
+          const picked = await pickPriorContactCandidates(
+            prisma,
+            scope,
+            fresh,
+            MAX_PRIOR_CONTACT_CHECKS,
+            now,
+          );
+          priorContactResults = await checkPriorContact(deps.mail, account, timed, picked);
+        }
+      } catch (error) {
+        getLogger().warn("mail sync extras failed", {
+          connectionId: account.id,
+          reason: error instanceof MailProviderError ? error.kind : errorName(error),
+        });
+      }
+      if (context.signal.aborted) return fail(undefined);
+    }
+
     try {
       const outcome = await prisma.$transaction(
         async (tx) => {
@@ -308,20 +361,26 @@ export async function syncMailbox(
             : Prisma.sql`EXCLUDED."inInbox"`;
           const entries = [...merged.values()];
           for (let i = 0; i < entries.length; i += UPSERT_CHUNK) {
-            const values = entries.slice(i, i + UPSERT_CHUNK).map(
-              ({ message: m, inInbox, fromSelf }) => Prisma.sql`(
+            const values = entries
+              .slice(i, i + UPSERT_CHUNK)
+              .map(({ message: m, inInbox, fromSelf }) => {
+                const isSpam = m.signals?.categories.spam ?? m.labelIds.includes("SPAM");
+                // Every freshly fetched row gets the current version, even without signals, so a
+                // provider that returns none is not fetched again on every sync.
+                return Prisma.sql`(
               ${randomUUID()}, ${spaceId}, ${userId}, ${account.id}, ${m.id}, ${m.threadId},
               ${m.from?.name ?? null}, ${m.from?.address ?? ""},
               ${m.to.map((a) => a.address)}::text[], ${m.cc.map((a) => a.address)}::text[],
               ${m.subject.slice(0, TEXT_CAP)}, ${m.snippet.slice(0, TEXT_CAP)},
-              ${new Date(m.date)}, ${m.unread}, ${inInbox}, ${fromSelf}, ${now})`,
-            );
+              ${new Date(m.date)}, ${m.unread}, ${inInbox && !isSpam}, ${fromSelf}, ${now},
+              ${m.signals ? JSON.stringify(m.signals) : null}::jsonb, ${MAIL_SIGNALS_VERSION}, ${isSpam})`;
+              });
             // Metadata only: triage columns are never in the update list, and the flags only turn on.
             await tx.$executeRaw`
             INSERT INTO mail_messages (
               id, "spaceId", "userId", "connectionId", "providerMessageId", "threadId",
               "fromName", "fromAddress", "toAddresses", "ccAddresses", subject, snippet,
-              "receivedAt", unread, "inInbox", "fromSelf", "seenAt")
+              "receivedAt", unread, "inInbox", "fromSelf", "seenAt", signals, "signalsVersion", "isSpam")
             VALUES ${Prisma.join(values)}
             ON CONFLICT ("connectionId", "providerMessageId") DO UPDATE SET
               "threadId" = EXCLUDED."threadId",
@@ -335,10 +394,12 @@ export async function syncMailbox(
               unread = EXCLUDED.unread,
               "inInbox" = ${inInboxUpdate},
               "fromSelf" = mail_messages."fromSelf" OR EXCLUDED."fromSelf",
-              "seenAt" = EXCLUDED."seenAt"`;
+              "seenAt" = EXCLUDED."seenAt",
+              signals = EXCLUDED.signals,
+              "signalsVersion" = EXCLUDED."signalsVersion",
+              "isSpam" = EXCLUDED."isSpam"`;
           }
 
-          const scope = { connectionId: account.id, spaceId, userId };
           if (deletedIds.length) {
             await tx.cachedMailMessage.deleteMany({
               where: { ...scope, providerMessageId: { in: deletedIds } },
@@ -365,6 +426,26 @@ export async function syncMailbox(
           await tx.cachedMailMessage.deleteMany({
             where: { ...scope, inInbox: false, seenAt: { lt: windowStart } },
           });
+
+          // Sender stats first, then prior contact (the user's own sent mail, then the lookups), then
+          // the pile rules that read them. All of it sits under the claim lock.
+          await refreshSenderStats(tx, scope, windowStart);
+          await markPriorContactFromSent(
+            tx,
+            scope,
+            [
+              ...new Set(
+                entries
+                  .filter((entry) => entry.fromSelf)
+                  .flatMap(({ message }) =>
+                    [...message.to, ...message.cc].map((a) => a.address.toLowerCase()),
+                  ),
+              ),
+            ],
+            now,
+          );
+          await storePriorContact(tx, scope, priorContactResults, now);
+          await applyPileRules(tx, scope, windowStart);
 
           // An incomplete sync is not an error: the mail that loaded is shown. It leaves lastSyncedAt
           // alone, so the 60-second throttle does not start, but it is usually a rate limit, so the
@@ -411,6 +492,56 @@ export async function syncMailbox(
   } finally {
     clearTimeout(deadlineTimer);
   }
+}
+
+/**
+ * Fetches again, by id, up to 50 cached inbox rows from before the current signal version, so they
+ * get their headers. The results join the merge. Rows that are gone are dropped and rows that could
+ * not be fetched (rate limit, deadline) stay at the old version for a later sync.
+ */
+async function backfillSignals(
+  mail: MailProvider,
+  prisma: PrismaClient,
+  account: MailAccount,
+  context: AdapterContext,
+  scope: { connectionId: string; spaceId: string; userId: string },
+  windowStart: Date,
+  merged: Map<string, { message: MailMessageSummary; inInbox: boolean; fromSelf: boolean }>,
+  deletedIds: string[],
+): Promise<void> {
+  const stale = await prisma.cachedMailMessage.findMany({
+    where: {
+      ...scope,
+      inInbox: true,
+      fromSelf: false,
+      signalsVersion: { lt: MAIL_SIGNALS_VERSION },
+      receivedAt: { gte: windowStart },
+      providerMessageId: { notIn: [...merged.keys()] },
+    },
+    orderBy: { receivedAt: "desc" },
+    take: BACKFILL_BATCH,
+    select: { providerMessageId: true },
+  });
+  if (stale.length === 0) return;
+  const ids = stale.map((row) => row.providerMessageId);
+  const page = await mail.listMessages(
+    account,
+    { query: "", pageSize: PAGE_SIZE, ids, useCache: false },
+    context,
+  );
+  const unhydrated = new Set(page.unhydratedIds ?? []);
+  const returned = new Set(page.messages.map((m) => m.id));
+  for (const message of page.messages) {
+    if (message.labelIds.includes("TRASH")) deletedIds.push(message.id);
+    else
+      merged.set(message.id, {
+        message,
+        inInbox: message.labelIds.includes("INBOX"),
+        fromSelf: message.labelIds.includes("SENT"),
+      });
+  }
+  // Deleted since it was cached: the provider no longer has it.
+  deletedIds.push(...ids.filter((id) => !returned.has(id) && !unhydrated.has(id)));
 }
 
 function errorName(error: unknown): string {
@@ -470,6 +601,7 @@ export async function deleteMailConnectionData(
   // Done to-dos quote the account's mail too, so every to-do goes, not just open ones.
   await tx.inboxTodo.deleteMany({ where: { spaceId, userId, connectionId } });
   await tx.cachedMailMessage.deleteMany({ where: { connectionId, spaceId, userId } });
+  await tx.mailSenderStat.deleteMany({ where: { spaceId, userId, connectionId } });
   await tx.mailSyncState.deleteMany({ where: { connectionId, connection: { spaceId, userId } } });
 }
 
