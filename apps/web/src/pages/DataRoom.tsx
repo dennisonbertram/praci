@@ -681,6 +681,7 @@ export function DataRoomPage({
       ) : null}
       {autoSorting ? (
         <AutoSortDialog
+          files={rows.map(({ item }) => ({ id: item.id, name: item.name }))}
           onClose={() => setAutoSorting(false)}
           onApplied={({ batchId, items }) => {
             showSortedToast(items, batchId);

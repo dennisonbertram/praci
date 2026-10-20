@@ -11,7 +11,7 @@ import {
 } from "@rakazo/ui-web";
 import { useNavigate } from "react-router-dom";
 import { CountCryptoButton } from "../../components/finance/CountCryptoButton";
-import { BurnBars, LineChart, StackBar } from "../../components/finance/charts";
+import { BurnLines, LineChart, StackBar } from "../../components/finance/charts";
 import {
   BreakdownRows,
   BurnLegend,
@@ -98,7 +98,7 @@ export function FinanceBurnPage() {
             />
           </div>
           <Section title={<Trans>Burn</Trans>} action={<BurnLegend />}>
-            <BurnBars
+            <BurnLines
               series={series.map(({ month, ...rest }) => ({
                 ...rest,
                 start: `${month}-01`,

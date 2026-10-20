@@ -22,7 +22,7 @@ vi.mock("../../lib/rpc", () => ({
   withSpaceHeaders: () => new Headers(),
 }));
 
-import { AutoSortDialog } from "./AutoSortDialog";
+import { AutoSortDialog, type AutoSortFile } from "./AutoSortDialog";
 import { getUploadToasts, setUploadScope, showSortedToast } from "./upload-toasts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -72,8 +72,8 @@ afterEach(() => {
 });
 
 const flush = () => act(async () => void (await Promise.resolve()));
-const render = async (onApplied = vi.fn(), onClose = vi.fn()) => {
-  act(() => root.render(<AutoSortDialog onClose={onClose} onApplied={onApplied} />));
+const render = async (onApplied = vi.fn(), onClose = vi.fn(), files: AutoSortFile[] = []) => {
+  act(() => root.render(<AutoSortDialog files={files} onClose={onClose} onApplied={onApplied} />));
   await flush();
   return { onApplied, onClose };
 };
@@ -143,4 +143,66 @@ it("does not call a plan with no model 'Already tidy.', and offers Retry", async
   expect(document.body.textContent).not.toContain("Already tidy.");
   expect(document.body.textContent).toContain("The model could not sort your files.");
   expect(button("Retry")).toBeTruthy();
+});
+
+const names = ["plan.pdf", "Screenshot 2026-10-18 at 9.10.50 AM.png", "notes.txt"];
+const files = names.map((name, n) => ({ id: `i${n + 1}`, name }));
+const items = () => Array.from(document.querySelectorAll("li")).map((li) => li.textContent);
+const motion = (reduce: boolean) =>
+  vi.stubGlobal("matchMedia", () => ({ matches: reduce }) as MediaQueryList);
+
+it("lists the files being reviewed while the plan is made, and Apply waits", async () => {
+  motion(false);
+  autoSort.plan.mockReturnValue(new Promise(() => undefined));
+  await render(vi.fn(), vi.fn(), files);
+  expect(document.body.textContent).toContain("Reviewing 3 files");
+  expect(items()).toEqual(names);
+  expect(button("Apply").hasAttribute("disabled")).toBe(true);
+});
+
+it("reveals each file's outcome in turn, then shows the review", async () => {
+  motion(false);
+  vi.useFakeTimers();
+  autoSort.plan.mockResolvedValue(plan);
+  await render(vi.fn(), vi.fn(), files);
+  expect(items()).toEqual(names);
+  await act(() => vi.advanceTimersByTimeAsync(50));
+  expect(items()[0]).toBe("plan.pdfMove → Benefits / Health");
+  expect(items()[1]).toBe(names[1]);
+  await act(() => vi.advanceTimersByTimeAsync(50));
+  expect(items()[1]).toContain("Rename → Cap table - Example Co.png");
+  expect(button("Apply").hasAttribute("disabled")).toBe(true);
+  await act(() => vi.advanceTimersByTimeAsync(300));
+  expect(items()).toEqual([]);
+  expect(boxes()).toHaveLength(3);
+  expect(button("Apply").hasAttribute("disabled")).toBe(false);
+  vi.useRealTimers();
+});
+
+it("shows No change for a file the plan leaves alone", async () => {
+  motion(false);
+  vi.useFakeTimers();
+  autoSort.plan.mockResolvedValue(plan);
+  await render(vi.fn(), vi.fn(), files);
+  await act(() => vi.advanceTimersByTimeAsync(150));
+  expect(items()[2]).toBe("notes.txtNo change");
+  vi.useRealTimers();
+});
+
+it("skips the reveal when the user prefers reduced motion", async () => {
+  motion(true);
+  autoSort.plan.mockResolvedValue(plan);
+  await render(vi.fn(), vi.fn(), files);
+  expect(items()).toEqual([]);
+  expect(boxes()).toHaveLength(3);
+  expect(button("Apply").hasAttribute("disabled")).toBe(false);
+});
+
+it("lists at most 300 files and counts the rest", async () => {
+  motion(false);
+  autoSort.plan.mockReturnValue(new Promise(() => undefined));
+  const many = Array.from({ length: 305 }, (_, n) => ({ id: `m${n}`, name: `file ${n}.pdf` }));
+  await render(vi.fn(), vi.fn(), many);
+  expect(items()).toHaveLength(301);
+  expect(items().at(-1)).toBe("+5 more");
 });

@@ -1454,4 +1454,62 @@ describePostgres("Data room API (PostgreSQL)", () => {
       failed: 1,
     });
   });
+
+  it("queues one thumbnail job per PDF or image the list shows, once", async () => {
+    const c = client(actors.a);
+    const before = enqueued.filter((j) => j.name === "dataroom.thumbnail").length;
+    const pdf = await upload("a", `name=thumbs-${run}.pdf`, "%PDF-1.4 thumbs", "application/pdf");
+    await upload("a", `name=thumbs-${run}.txt`, "just text");
+    const { item } = (await pdf.json()) as { item: DataRoomApiItem };
+    await c.dataRoom.items.list({ limit: 100 });
+    await c.dataRoom.items.list({ limit: 100 });
+    const jobs = enqueued.filter((j) => j.name === "dataroom.thumbnail").slice(before);
+    expect(jobs.map((j) => (j.payload as { itemId: string }).itemId)).toContain(item.id);
+    expect(jobs.filter((j) => (j.payload as { itemId: string }).itemId === item.id)).toHaveLength(
+      1,
+    );
+    const text = (await c.dataRoom.items.list({ limit: 100 })).items.find(
+      (i) => i.name === `thumbs-${run}.txt`,
+    );
+    expect(jobs.some((j) => (j.payload as { itemId: string }).itemId === text?.id)).toBe(false);
+    await c.dataRoom.itemDelete({ id: item.id });
+  });
+
+  it("serves a thumbnail only to its owner, as an image that is cached privately", async () => {
+    const created = await upload("a", `name=pic-${run}.png`, "not really a png", "image/png");
+    const { item: pic } = (await created.json()) as { item: DataRoomApiItem };
+    expect((await send("a", `/api/data-room/items/${pic.id}/thumbnail`)).status).toBe(404);
+    expect(pic.hasThumbnail).toBe(false);
+    const stored = await new LocalArtifactStore(root).put(
+      { name: "t.webp", mimeType: "image/webp", bytes: new TextEncoder().encode("RIFFwebp") },
+      {
+        operationId: "t",
+        traceId: "t",
+        spaceId: actors.a.spaceId,
+        userId: actors.a.userId,
+        signal: new AbortController().signal,
+      },
+    );
+    await prisma.dataRoomItem.update({ where: { id: pic.id }, data: { thumbnailKey: stored.id } });
+    const res = await send("a", `/api/data-room/items/${pic.id}/thumbnail`);
+    expect(res.status).toBe(200);
+    expect(await res.text()).toBe("RIFFwebp");
+    expect(res.headers.get("content-type")).toBe("image/webp");
+    expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+    expect(res.headers.get("cache-control")).toBe("private, max-age=86400");
+    expect((await client(actors.a).dataRoom.item({ id: pic.id })).hasThumbnail).toBe(true);
+    for (const who of ["b", "a2"]) {
+      expect((await send(who, `/api/data-room/items/${pic.id}/thumbnail`)).status).toBe(404);
+    }
+    expect((await send(null, `/api/data-room/items/${pic.id}/thumbnail`)).status).toBe(401);
+    // Deleting the item also queues the thumbnail's own cleanup.
+    const mark = enqueued.length;
+    await client(actors.a).dataRoom.itemDelete({ id: pic.id });
+    const keys = enqueued
+      .slice(mark)
+      .filter((j) => j.name === "dataroom.blob.delete")
+      .map((j) => (j.payload as { storageKey: string }).storageKey);
+    expect(keys).toContain(stored.id);
+    expect(keys).toHaveLength(2);
+  });
 });

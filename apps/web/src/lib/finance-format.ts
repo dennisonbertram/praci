@@ -110,6 +110,10 @@ export const monthAxisLabels = (months: string[], locale?: string): string[] =>
       : monthShort(month, locale),
   );
 
+/** `Q3 '26`, for the quarter that starts on `day`. */
+export const quarterLabel = (day: string): string =>
+  `Q${Math.floor((Number(day.slice(5, 7)) - 1) / 3) + 1} ${yearTick(day)}`;
+
 /** Day axis ticks: `Oct 9`, with the year on the first tick and on each new year when the range crosses one. */
 export function dayAxisLabels(days: string[], locale?: string): string[] {
   const crosses = days.length > 0 && days[0]?.slice(0, 4) !== days.at(-1)?.slice(0, 4);
