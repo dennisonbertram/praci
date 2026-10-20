@@ -101,7 +101,6 @@ test("custom connections persist reasoning support and bot thinking", async ({
   const saved = page.waitForResponse(
     (response) => response.url().includes("/rpc/bots/update") && response.ok(),
   );
-  await settings.getByRole("button", { name: "Save", exact: true }).click();
   await saved;
   await page.reload();
   await page.locator("main").getByRole("button", { name: "Chief", exact: true }).click();
