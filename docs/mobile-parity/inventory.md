@@ -51,8 +51,8 @@ Status: FULL / PARTIAL / MISSING / N/A. Size: S = UI over existing API, M = UI p
 | Image artifact | message-cards.tsx `ArtifactImage` | components/inline-image-attachment.tsx, image-artifact-viewer.tsx, app/image.tsx | FULL | - | |
 | Chart block | message-cards.tsx `ChartBlockView`/`ChartCanvas` | none in thread (chart only appears in agent-page code) | MISSING | L | Needs a native chart renderer or WebView. Shows only the text "[chart: name]". |
 | Email cards (`emails` block) | components/EmailCards.tsx | `blockText` in lib/api.ts shows a plain-text list | PARTIAL | M | Plain text only. Mobile has a separate mail inbox screen (app/inbox.tsx), not these cards. |
-| Finance cards (`finance` block) | components/FinanceCards.tsx | `blockText` returns "", so the bubble renders nothing | MISSING | M | Message disappears. |
-| Skill draft card (`skill_draft`, save/test/add to routine) | components/teach/SkillDraftCard.tsx | none | MISSING | M | Teaching itself records the bot computer, so the recording side may be N/A on phone; the draft card (review, save, add to routine) is plain UI. |
+| Finance cards (`finance` block) | components/FinanceCards.tsx | `financeCardText` in `lib/api.ts`, shown as plain text | PARTIAL | M | Text fallback only; no native card, no links to finance pages. |
+| Skill draft card (`skill_draft`, save/test/add to routine) | components/teach/SkillDraftCard.tsx | text fallback in `blockText` (`lib/api.ts`): name, status, goal and numbered steps | PARTIAL | M | No review, save or add-to-routine actions.  Teaching itself records the bot computer, so the recording side may be N/A on phone; the draft card (review, save, add to routine) is plain UI. |
 | Cloud agent card | components/CloudAgentCard.tsx | thread.tsx `special.kind === "cloud_agent"` | FULL | - | |
 | Subagent and child-bot cards | Shell.tsx MessageView | thread.tsx | FULL | - | |
 | Computer card (Open) | Shell.tsx `computer-card` | components/ComputerCard.tsx | FULL | - | |
@@ -67,11 +67,11 @@ Status: FULL / PARTIAL / MISSING / N/A. Size: S = UI over existing API, M = UI p
 
 ### Note: cards without a mobile renderer
 
-Mobile renders these blocks through `blockText` in apps/mobile/lib/api.ts. Email blocks become a plain-text list and charts become "[chart: name]". Finance blocks return an empty string, so a finance-only message shows nothing. `skill_draft` has no branch at all.
+Mobile renders these blocks through `blockText` in apps/mobile/lib/api.ts. Email blocks become a plain-text list and charts become "[chart: name]". Finance blocks use `financeCardText` and `skill_draft` blocks list their name, goal and steps, so neither message disappears, but both are plain text.
 
 ### Biggest gaps (by user impact)
 
-1. Email, finance and chart blocks have no interactive card on mobile. Email shows as a plain-text list and charts as "[chart: name]", but finance renders nothing.
+1. Email, finance and chart blocks have no interactive card on mobile. Email shows as a plain-text list and charts as "[chart: name]", and finance and skill drafts as plain text.
 2. Skill draft card is missing, so a taught skill cannot be reviewed, saved, or added to a routine from a phone.
 3. Peer messages cannot be opened (chip only), so bot-to-bot work is unreadable on mobile.
 4. Group archive and restore, bot and group duplicate, and mark-unread are missing from the mobile chat list (all have existing RPCs, S each); rename space is also missing.
@@ -143,7 +143,7 @@ Web hosts: apps/web/src/pages/Shell.tsx. Mobile hosts: apps/mobile/app/thread.ts
 | Artifact versions, share/download, delete | Artifacts.tsx "Version", Download, Delete | app/artifact.tsx (Versions, Share, Delete) | FULL | - | |
 | Artifact file cards in chat (inline preview, download) | components/ArtifactFileCard.tsx | thread.tsx attachments + components/inline-image-attachment.tsx; opens app/artifact.tsx | FULL | - | |
 | Teach flow: record on computer, stop, capture overlay | components/teach/TeachRecordingChrome.tsx, TeachCaptureOverlay.tsx, TeachComputerOverlay.tsx | none | MISSING | L | Needs recording input chain over the mobile computer view (web: teach-computer-input-chain.ts). |
-| Skill draft card (review/save taught skill, add routine) | components/teach/SkillDraftCard.tsx; Shell.tsx:7367 | none (no `skill_draft` handling in apps/mobile) | MISSING | M | Without it, a taught skill created on desktop shows nothing in the mobile thread. |
+| Skill draft card (review/save taught skill, add routine) | components/teach/SkillDraftCard.tsx; Shell.tsx:7367 | text fallback in `blockText` (`lib/api.ts`) | PARTIAL | M | A taught skill shows as text; review, save and add to routine are missing. |
 | Subagent / child bot / cloud agent cards in chat | CloudAgentCard.tsx; Shell.tsx:7145,7183,7352 | thread.tsx:3365,3421,3479 | FULL | - | |
 | Tool activity disclosure ("steps") | components/ToolActivityDisclosure.tsx | lib/api.ts text only; no steps UI found in thread.tsx (UNSURE: grep for `steps` in thread.tsx gave only progress hits) | UNSURE | M | Check whether mobile hides tool steps by design. |
 | Computer card in chat | Shell.tsx:7374 | components/ComputerCard.tsx | FULL | - | |
@@ -155,7 +155,7 @@ Web hosts: apps/web/src/pages/Shell.tsx. Mobile hosts: apps/mobile/app/thread.ts
 2. Approval rules and Auto Review cannot be viewed or revoked on mobile, so "always allow" grants made there cannot be audited (S, safety relevant).
 3. Bot credentials/secrets, memory scope, and disabled tools are web-only in bot settings (M).
 4. Knowledge, scratchpad, and the ticket Board have no mobile UI; skills are only used for composer suggestions (S each).
-5. PDF artifacts show "No preview for this file type" on mobile, and chat chart blocks and skill-draft cards are not rendered (S/M).
+5. PDF artifacts show "No preview for this file type" on mobile, and chat chart blocks and skill-draft cards have only a text fallback (S/M).
 
 Also worth planning: Avatar Studio shapes/upload (M), computer Files and Terminal (M/L), Teach (L), bot duplicate/export/mark-unread/reorder (S/M).
 
@@ -185,7 +185,7 @@ RPC names below are the web `rpc.<ns>.<method>` calls; mobile only calls `rpc(".
 | Mail outbox: "Sending... Undo", Sent, draft restore | `components/MailOutbox.tsx`, `lib/outbox.ts` | none for mail. `lib/outbox-disk.ts` / `lib/unsent-sends.ts` are chat unsent-message retry, not mail. | MISSING | M | Follows compose. |
 | Send approval for agent-drafted email | `components/EmailCards.tsx` (emails block), `ComposeEmail.tsx` opens seeded draft | `lib/api.ts` L1129 flattens `emails` block to text only (`emailCardsText`); no card component | MISSING | M | Agent email cards render as plain text on mobile; no way to review/edit/send an agent draft. UNSURE how agent drafts are approved server-side (not traced). |
 | Emails chat card (list of emails with due buckets, attachments flag) | `components/EmailCards.tsx` | text fallback in `lib/api.ts` only | PARTIAL | S | Block contract `kind: "emails"` in `packages/contracts/src/events.ts` L303. |
-| Finance chat card | `components/FinanceCards.tsx` (links to finance pages) | `lib/api.ts` L1130 returns `""` | MISSING | M | `kind: "finance"` block, `FinanceCardSchema` in `packages/contracts/src/finance.ts`. Renders nothing on mobile. |
+| Finance chat card | `components/FinanceCards.tsx` (links to finance pages) | `financeCardText` in `lib/api.ts`, plain text | PARTIAL | M | `kind: "finance"` block, `FinanceCardSchema` in `packages/contracts/src/finance.ts`. Text fallback only. |
 | Finance dashboard (cash, burn, runway, spend, crypto KPIs, charts, sync/refresh) | `pages/Finance.tsx` (`finance.overview`) | none | MISSING | L | No finance screen in `apps/mobile/app`. Contracts in `packages/contracts/src/finance.ts` exist; charts need a mobile chart approach. |
 | Finance accounts list and account detail (balance series, yield) | `pages/finance/FinanceAccounts.tsx` (`finance.accounts/account/balanceSeries`) | none | MISSING | L | |
 | Burn and runway pages | `pages/finance/FinanceBurn.tsx` (`finance.burn/month/runway`) | none | MISSING | L | |
@@ -215,7 +215,7 @@ RPC names below are the web `rpc.<ns>.<method>` calls; mobile only calls `rpc(".
 | External (team) conversation settings per conversation (listen policy, guidance, sender handling, rollup hours) | `pages/ExternalConversationSettings.tsx`, `MessagingSettingsOverlay.tsx` (`externalConversations.updatePolicy`) | none | MISSING | M | |
 
 ### Biggest gaps
-1. Finance has no mobile surface at all (dashboard, accounts, burn, spend, crypto, transactions, statement import, and the chat finance card renders as empty text). L.
+1. Finance has no mobile surface at all (dashboard, accounts, burn, spend, crypto, transactions, statement import, and the chat finance card is plain text only). L.
 2. No way to compose, reply, forward, or send email on mobile; agent email drafts cannot be reviewed or approved, and the mail outbox/undo does not exist. L.
 3. Inbox on mobile is read-only: no archive, mark read/unread, important/noise feedback, search, filters, or paging. S each, over existing `inbox/*` APIs.
 4. Message view lacks attachments (download/share). M, endpoint exists.
@@ -311,3 +311,20 @@ Web route table is `App.tsx`. Items below are not in chat/threads, bots/agents/r
 3. Memory settings (provider connect/disconnect, default scope) are missing; each provider has a React form on web with no native counterpart.
 4. Messaging settings (link chat apps, channel and agent-connection approvals, team conversation policy) are missing on mobile.
 5. Approval rules and Auto Review (space-level action confirmations) cannot be changed on mobile; API exists, so this is a small UI task. Also missing: model preflight tests, archived groups, space rename, and the "Show tool activity" toggle (all S/M).
+
+## Parity: pages and features added after the first inventory
+
+Added 2026-10-20 from a code read at `origin/main`. Web pages are in `apps/web/src/pages`, components in `apps/web/src/components`. Nothing here was exercised in a running app. Rows are MISSING until a merged change says otherwise.
+
+| Feature | Web evidence | Mobile evidence | Status | Size | Notes |
+|---|---|---|---|---|---|
+| Legal page | `pages/Legal.tsx`, `pages/legal/` | none in `apps/mobile/app` | MISSING | L | Merged on web only. Ship on mobile or record why not. |
+| Cap table page | `pages/CapTable.tsx` | none in `apps/mobile/app` | MISSING | L | Merged on web only. |
+| Data room (drive, folders, import, auto-sort, consent) | `pages/DataRoom.tsx`, `components/data-room/` | none in `apps/mobile/app` | MISSING | L | Merged on web only. Mobile work is tracked as #59. |
+| Hide amounts toggle | `components/HideAmountsToggle.tsx`, `components/finance/ui.tsx` | none | MISSING | S | Belongs with the finance screens (Phase 7); until then the text fallback of the finance card shows amounts. |
+| Spreadsheet preview: sheet tabs and row paging | `components/SheetPreview.tsx` (`spreadsheetPreview` with `sheet`) | none; `app/artifact.tsx` previews html, markdown and image only | MISSING | M | Server reads the file; mobile needs a table view with sheet picker and next-page. |
+| PDF preview | `components/PdfViewer.tsx` | none; `app/artifact.tsx` shows "No preview for this file type." | MISSING | S | Same gap as the Artifact viewer: PDF row above. |
+| Chart blocks in chat | `ChartBlockView` in `Shell.tsx` | text only: `[chart: name]` in `lib/api.ts` | MISSING | M | Same gap as the Inline chart message block row above. |
+| Mail approval: edit before send | `components/MailApprovalCard.tsx` (`MailEdits`, edit then send, Discard denies) | none; mobile answers approvals without editing the draft | MISSING | M | Mobile approval cards cannot change recipients, subject or body. |
+| Mark as unread (chat) | `rpc.threads.markUnread` | `threads/markRead` only | MISSING | S | Same gap as the mark-unread rows above. |
+| Remember a message to memory | `lib/use-remembered-messages.ts` (`onRemember`) | none in `apps/mobile` | MISSING | S | Mobile has no action that saves an agent message to memory, and shows no remembered state. |
