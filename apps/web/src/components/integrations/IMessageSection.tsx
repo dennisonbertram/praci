@@ -231,9 +231,12 @@ function SetupDialog({
 /** iMessage tiles for the deployment owner; hidden from everyone else. */
 export function IMessageSection({
   query = "",
+  flat = false,
   onOpenMessaging,
 }: {
   query?: string;
+  /** Results among other tiles: no heading of its own. */
+  flat?: boolean;
   onOpenMessaging?: () => void;
 }) {
   const { t } = useLingui();
@@ -264,11 +267,16 @@ export function IMessageSection({
   const open = tiles.find((tile) => tile.id === editing);
   const providerOf = (id: Provider["id"]) => state.providers.find((p) => p.id === id);
   return (
-    <div>
-      <SectionTitle>
-        <Trans>Chat</Trans>
-      </SectionTitle>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
+    <div data-flat={flat ? "" : undefined}>
+      {flat ? null : (
+        <SectionTitle>
+          <Trans>Chat</Trans>
+        </SectionTitle>
+      )}
+      <div
+        data-flat={flat ? "" : undefined}
+        className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+      >
         {tiles.map((tile) => {
           const provider = providerOf(tile.id);
           if (!provider) return null;

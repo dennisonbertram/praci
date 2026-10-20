@@ -1144,10 +1144,6 @@ msgstr "승인"
 msgid "Approve this server to let your bot use its tools."
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Apps"
-msgstr ""
-
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr ""
@@ -3226,6 +3222,10 @@ msgstr "생성됨"
 #. placeholder {0}: folder.name
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Creating agent"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx

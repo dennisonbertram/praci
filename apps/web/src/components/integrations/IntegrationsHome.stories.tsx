@@ -86,6 +86,33 @@ export const WithConnections: Story = {
   },
 };
 
+/** A connected app whose sign-in lapsed offers Reconnect on its tile; its label equals its name. */
+export const NeedsReconnect: Story = {
+  args: {
+    data: mockIntegrations({
+      connections: [
+        {
+          id: "conn_slack",
+          connectorId: "composio",
+          provider: "slack",
+          displayName: "Slack",
+          status: "connected",
+          error: null,
+          capabilities: [],
+          createdAt: "2026-01-01T00:00:00.000Z",
+          needsReconnect: true,
+        },
+      ],
+    }),
+  },
+};
+
+/** A search shows matches as one flat grid and hides the Connected tiles. */
+export const SearchActive: Story = {
+  parameters: { initialEntries: ["/app/integrations?q=s"] },
+  args: { data: mockIntegrations({ connections: mockConnections }) },
+};
+
 export const NothingConnected: Story = {
   args: { data: mockIntegrations() },
 };

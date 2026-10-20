@@ -25,6 +25,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
   const [removing, setRemoving] = useState(false);
   const [confirmingWrites, setConfirmingWrites] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const back = (
@@ -196,7 +197,7 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
           {server.transport !== "stdio" ? (
             <Button
               variant={status === "reconnect" ? "default" : "outline"}
-              disabled={reconnect.busy}
+              disabled={reconnect.busy || busy}
               onClick={() => void reconnect.run()}
             >
               <Trans>Reconnect</Trans>
@@ -223,15 +224,20 @@ export function McpDetail({ data }: { data: IntegrationsData }) {
               disabled={busy}
               onClick={() =>
                 void run(async () => {
-                  const { botId } = await rpc.integrationAgents.create({ serverId: server.id });
-                  navigate(`/app/${botId}`);
+                  setCreating(true);
+                  try {
+                    const { botId } = await rpc.integrationAgents.create({ serverId: server.id });
+                    navigate(`/app/${botId}`);
+                  } finally {
+                    setCreating(false);
+                  }
                 }, t`Could not create agent`)
               }
             >
-              <Trans>Create agent</Trans>
+              {creating ? <Trans>Creating agent</Trans> : <Trans>Create agent</Trans>}
             </Button>
           ) : null}
-          <Button variant="outline" onClick={() => setDraft(server.name)}>
+          <Button variant="outline" disabled={busy} onClick={() => setDraft(server.name)}>
             <Trans>Rename</Trans>
           </Button>
         </div>
