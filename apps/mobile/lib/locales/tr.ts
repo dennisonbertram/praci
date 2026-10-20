@@ -818,6 +818,8 @@ export const TR_MESSAGES: Record<string, string> = {
   "{count} messages · {percent}% read": "{count} ileti · %{percent} okundu",
   "Looks like spam": "Spam gibi görünüyor",
   Skipping: "Atlanıyor",
+  "Gmail filter limit reached": "Gmail filtre sınırına ulaşıldı",
+  "Couldn't add Gmail filter": "Gmail filtresi eklenemedi",
   History: "Geçmiş",
   Undo: "Geri al",
   "Send an unsubscribe email to {address}?":
