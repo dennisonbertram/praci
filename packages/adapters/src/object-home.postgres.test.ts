@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createDb, type PrismaClient } from "@rakazo/db";
@@ -63,7 +63,6 @@ describePostgres("object-storage agent homes (PostgreSQL)", () => {
   it("migrates a legacy home once when two processes share the volume and race", async () => {
     const dataDir = await tmp();
     const artifactDir = await tmp();
-    const { mkdir } = await import("node:fs/promises");
     await mkdir(path.join(dataDir, "homes", homeKey), { recursive: true });
     await writeFile(path.join(dataDir, "homes", homeKey, "old.txt"), "legacy");
     const artifacts = new LocalArtifactStore(artifactDir);
@@ -94,6 +93,71 @@ describePostgres("object-storage agent homes (PostgreSQL)", () => {
     expect(results.filter((r) => r.status === "fulfilled")).toHaveLength(1);
     const rejected = results.find((r) => r.status === "rejected") as PromiseRejectedResult;
     expect(rejected.reason).toBeInstanceOf(AgentHomeConflictError);
+  });
+
+  it("runs more concurrent homes than the pool has connections without waiting on a lock", async () => {
+    const db = createDb(databaseUrl!, { poolMax: 4 });
+    const homes = Array.from({ length: 10 }, (_, i) => `${homeKey}-pool-${i}`);
+    try {
+      for (const [i, key] of homes.entries()) {
+        await prisma.computer.create({
+          data: { spaceId, userId, scopeKey: `pool:${suffix}:${i}`, homeKey: key, kind: "docker" },
+        });
+      }
+      const dataDir = await tmp();
+      const store = new ObjectAgentHomeStore(
+        db.prisma,
+        new LocalArtifactStore(await tmp()),
+        dataDir,
+      );
+      const started = Date.now();
+      await Promise.all(
+        homes.map(async (key) => {
+          const live = await store.liveDirectory(key, ctx());
+          await writeFile(path.join(live, "f.txt"), key);
+          await store.revise(key, ctx());
+          await store.writeFile(key, "g.txt", "g", ctx());
+          expect(await store.list(key, "", ctx())).toHaveLength(2);
+        }),
+      );
+      // The pool waits up to 10 s for a connection; holding one per home would stall here.
+      expect(Date.now() - started).toBeLessThan(8_000);
+      const rows = await prisma.computer.findMany({ where: { homeKey: { in: homes } } });
+      expect(rows.every((row) => row.homeSnapshotId)).toBe(true);
+    } finally {
+      await prisma.computer.deleteMany({ where: { homeKey: { in: homes } } });
+      await db.prisma.$disconnect();
+      await db.pool.end();
+    }
+  });
+
+  it("lets concurrent checkpoints of one shared Docker home all succeed", async () => {
+    const dataDir = await tmp();
+    const artifacts = new LocalArtifactStore(await tmp());
+    // Separate stores stand in for the API and worker processes on the Docker host.
+    const stores = Array.from(
+      { length: 4 },
+      () => new ObjectAgentHomeStore(prisma, artifacts, dataDir),
+    );
+    const key = `${homeKey}-shared`;
+    await prisma.computer.create({
+      data: { spaceId, userId, scopeKey: `shared:${suffix}`, homeKey: key, kind: "docker" },
+    });
+    const live = await stores[0]!.liveDirectory(key, ctx());
+    await Promise.all(
+      stores.map(async (store, i) => {
+        for (let round = 0; round < 3; round++) {
+          await writeFile(path.join(live, `bot-${i}-${round}.txt`), "work");
+          await store.revise(key, ctx());
+        }
+      }),
+    );
+    // The last save each bot made holds its own files: a fresh host sees all twelve.
+    const reader = new ObjectAgentHomeStore(prisma, artifacts, await tmp());
+    expect((await reader.list(key, "", ctx())).map((entry) => entry.path).sort()).toEqual(
+      (await readdir(live)).sort(),
+    );
+    expect(await readdir(live)).toHaveLength(12);
   });
 
   it("does not expose a home to another space", async () => {

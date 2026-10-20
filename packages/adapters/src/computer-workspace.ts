@@ -282,14 +282,21 @@ export async function checkpointComputerWorkspace(
   homeKey: string,
   computer: ComputerRef,
   context: AdapterContext,
-  /** The revision this caller read before it started; a newer stored revision rejects the save. */
+  /**
+   * The revision this caller read before it started; a newer stored revision rejects the save.
+   * Not used for a Docker live directory, which is always the newest copy.
+   */
   expectedRevision?: string,
+  /**
+   * Stop the computer's browsers first so their profiles are consistent on disk. Only for a
+   * computer that is about to stop or be replaced: it kills browsers other runs may be using.
+   */
+  options?: { quiesceBrowsers?: boolean },
 ): Promise<string> {
   if (computer.kind === "docker" && home.liveDirectory && home.revise) {
-    // The remote providers stop browsers before they export; do the same before archiving the
-    // live directory. A failure here is logged, not fatal: saving the files matters more.
-    await quiesceDockerBrowsers(sandbox, computer, context);
-    return home.revise(homeKey, context, expectedRevision);
+    // A failure here is logged, not fatal: saving the files matters more.
+    if (options?.quiesceBrowsers) await quiesceDockerBrowsers(sandbox, computer, context);
+    return home.revise(homeKey, context);
   }
   const staging = await mkdtemp(path.join(tmpdir(), "rakazo-workspace-"));
   try {

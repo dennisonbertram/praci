@@ -240,9 +240,10 @@ export async function liveHomeDirectory(
   homeKey: string,
   context: AdapterContext,
   dataDir = "./data",
+  options?: { unmounted?: () => Promise<boolean> },
 ) {
   return home.liveDirectory
-    ? home.liveDirectory(homeKey, context)
+    ? home.liveDirectory(homeKey, context, options)
     : path.resolve(dataDir, "homes", homeKey);
 }
 

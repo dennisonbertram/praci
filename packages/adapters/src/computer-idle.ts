@@ -261,6 +261,7 @@ export async function sleepComputerIfIdle(
       ref,
       ctx,
       computer.homeRevision,
+      { quiesceBrowsers: true },
     );
     const saved = await deps.prisma.computer.updateMany({
       where: suspensionClaim,

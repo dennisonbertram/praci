@@ -174,13 +174,6 @@ export async function provisionComputer(
       throw new Error("computer control revocation is still in progress");
     }
   }
-  // Only a computer that mounts a host path (Docker) uses the store's live directory; remote
-  // providers ignore the path and restore from the store.
-  const homePath =
-    existing.kind === "docker"
-      ? await liveHomeDirectory(deps.home, existing.homeKey, context, deps.dataDir ?? "./data")
-      : path.resolve(deps.dataDir ?? "./data", "homes", existing.homeKey);
-
   // Re-provisioning a live computer enters booting and revokes its screen URLs.
   // A provider-confirmed live reference needs setup, not a new lifecycle claim.
   if (existing.state === "running" && existing.providerRef && deps.sandbox.isRunning) {
@@ -322,6 +315,21 @@ export async function provisionComputer(
   if (claimed.count !== 1) throw new ComputerBusyError();
   let provisioned: ComputerRef | undefined;
   try {
+    // Only a computer that mounts a host path (Docker) uses the store's live directory; remote
+    // providers ignore the path and restore from the store. The live directory may be replaced
+    // by a newer snapshot only while this claim holds and the supervisor reports no running
+    // container for it.
+    // ponytail: with no providerRef an orphaned container from a lost provision response is not
+    // asked about; ask the supervisor by home key if that case shows up.
+    const homePath =
+      existing.kind === "docker"
+        ? await liveHomeDirectory(deps.home, existing.homeKey, context, deps.dataDir ?? "./data", {
+            unmounted: async () =>
+              !existing.providerRef ||
+              (deps.sandbox.isRunning !== undefined &&
+                !(await deps.sandbox.isRunning(toComputerRef(existing), context))),
+          })
+        : path.resolve(deps.dataDir ?? "./data", "homes", existing.homeKey);
     await onProgress?.("recreating");
     const ref = await deps.sandbox.provision(
       {
@@ -845,6 +853,7 @@ export async function replaceComputer(
           oldRef,
           context,
           existing.homeRevision,
+          { quiesceBrowsers: true },
         );
         const recorded = await deps.prisma.computer.updateMany({
           where: { id: computerId, state: "suspending", updatedAt: claimStamp },

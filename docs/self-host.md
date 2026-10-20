@@ -460,19 +460,24 @@ fall back to local disk under `DATA_DIR`, which is only safe for a single proces
 
 ### Agent homes
 
-Each Computer's persistent workspace (its home) is saved as one gzip tar snapshot in the object store,
-with symlinks, empty folders, file modes and times kept and browser and package caches left out. The
-archive is written to a temporary file and uploaded from it (multipart for large homes), so memory does
-not grow with the size of the home. The Computer row in Postgres holds the current revision and
-snapshot id, and a save succeeds only if that revision has not changed since it was read, so two
-workers cannot overwrite each other. A Postgres advisory lock serializes work on one home across
-processes. Every lookup is scoped to the Computer's space. The snapshot before the current one is kept
-until the next save, then deleted.
+Each Computer's persistent workspace (its home) is saved as one gzip tar snapshot in the object store.
+The snapshot keeps file contents, symlinks (targets exactly as written), hard links inside the home,
+empty folders, permission bits, and file and folder times. It leaves out owners, extended attributes,
+sockets, devices, browser and package caches, and files that keep changing while they are read (they
+are logged and picked up by the next save). The archive is written to a temporary file and uploaded
+from it (multipart for large homes), so memory does not grow with the size of the home. The Computer
+row in Postgres holds the current revision and snapshot id, and a save succeeds only if that revision
+has not changed since it was read, so two workers cannot overwrite each other. No database connection
+or lock is held while a home is archived, uploaded or downloaded. Every lookup is scoped to the
+Computer's space. The snapshot before the current one is kept until the next save, then deleted.
 
-`DATA_DIR/homes/<key>` is a working copy: the Docker supervisor mounts it, and Rakazo refreshes it from
-the snapshot when another process saved a newer revision. It is updated in place and never replaced,
-so a running Docker computer keeps seeing the same directory. Only Docker computers use it as their
-workspace; remote providers (E2B, Daytona and so on) restore from the snapshot.
+`DATA_DIR/homes/<key>` is the live workspace of a Docker computer, which the supervisor mounts. While
+it exists it is the newest copy of the home: saves archive it, and Rakazo replaces it with a newer
+snapshot only while the computer is being started and the supervisor reports that its container is not
+running (for example after the computer ran on another provider). A replacement is extracted into a
+new folder beside it and renamed into place; Rakazo never writes a snapshot into a folder a container
+can change. Remote providers (E2B, Daytona and so on) restore from the snapshot, and reads of their
+homes use a per-revision copy under `DATA_DIR/home-cache`.
 
 An existing deployment migrates on its own. The first time a Computer's home is used and it has no
 snapshot, Rakazo uploads the existing `DATA_DIR/homes/<key>` directory and uses the snapshot from then

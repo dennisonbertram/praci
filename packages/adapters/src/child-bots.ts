@@ -1,5 +1,3 @@
-import { lstat, realpath, rm, unlink } from "node:fs/promises";
-import path from "node:path";
 import type {
   AdapterContext,
   AgentHomeStore,
@@ -439,12 +437,6 @@ export async function destroyBot(
   }
   // Keep the bot deletion transaction from committing if raw transcript cleanup fails.
   await removePiBotSessions(deps.dataDir, bot.userId, bot.id);
-  // Both stored snapshots go while the Computer row still proves this space owns them.
-  if (dedicated) {
-    await deps.home.remove(dedicated.homeKey, context).catch((error) => {
-      getLogger().error("dedicated home cleanup", error);
-    });
-  }
   const deletion = await withTransactionRetry(() =>
     deps.prisma.$transaction(async (tx) => {
       // Connection rows before the bot row, the order every other path uses.
@@ -499,8 +491,16 @@ export async function destroyBot(
           where: { id: webhookSecretId, kind: "webhook", spaceId: bot.spaceId },
         });
       }
-      if (dedicated) await tx.computer.delete({ where: { id: dedicated.id } });
+      // The deleted row names the snapshots to remove once this commits; a save racing the
+      // delete either lands first (and is named here) or loses its swap and deletes its upload.
+      const deletedHome = dedicated
+        ? await tx.computer.delete({
+            where: { id: dedicated.id },
+            select: { homeSnapshotId: true, homePreviousSnapshotId: true },
+          })
+        : null;
       return {
+        deletedHome,
         artifactKeys: [
           ...botArtifacts.map((artifact) => artifact.storageKey),
           ...groupCleanup.artifactKeys,
@@ -532,6 +532,11 @@ export async function destroyBot(
         .catch(() => undefined);
     }),
   );
+  if (dedicated && deletion.deletedHome) {
+    await deps.home.remove(dedicated.homeKey, context, deletion.deletedHome).catch((error) => {
+      getLogger().error("dedicated home cleanup", error);
+    });
+  }
   await removeTeamBrowserProfile(deps, bot.id, sharedComputer, context);
   await removeTeamBotWorkspace(deps, bot, context).catch((error) => {
     getLogger().error("team bot folder cleanup", error);
@@ -777,8 +782,4 @@ async function removeTeamBotWorkspace(
   ).catch((error) => {
     getLogger().error("team bot folder cleanup", error);
   });
-}
-
-function isMissing(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
