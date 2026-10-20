@@ -59,6 +59,11 @@ export const RuleFailed: Story = {
   args: { sender: { ...sender, skipInbox: true, rule: "failed" }, onStop: () => undefined },
 };
 
+/** The model kept putting this sender in Newsletters, so its mail goes there on its own; Forget undoes that. */
+export const Learned: Story = {
+  args: { sender: { ...sender, learnedPile: "newsletters" }, onForgetLearned: () => undefined },
+};
+
 /** Never ticked, and Skip inbox and Unsubscribe leave it out. */
 export const LooksLikeSpam: Story = {
   args: {
