@@ -466,6 +466,8 @@ model Bot {
   modelId                String?
   thinkingLevel          String?
   disabledBuiltinTools   String[]              @default([])
+  // Where this bot runs commands; null follows DeploymentSettings.computerHost.
+  runsOn                 String?
   webhookSecretId        String?
   teamChatAmbientEnabled Boolean               @default(false)
   teamChatRules          String                @default("")

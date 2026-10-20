@@ -1642,6 +1642,10 @@ msgstr ""
 msgid "Bots lose access to this account."
 msgstr ""
 
+#: src/components/RunsOnPicker.tsx
+msgid "Bots run on"
+msgstr ""
+
 #: src/pages/Welcome.tsx
 msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
 msgstr ""
@@ -1947,7 +1951,6 @@ msgid "Chats"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
 msgstr ""
 
@@ -1991,7 +1994,6 @@ msgstr ""
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "Comprobando…"
 
@@ -2993,6 +2995,7 @@ msgstr ""
 msgid "Could not run routine"
 msgstr "No se pudo ejecutar la rutina"
 
+#: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -3031,10 +3034,6 @@ msgstr "No se pudo guardar la regla"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "No se pudo guardar la habilidad"
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Could not save that choice"
-msgstr "No se pudo guardar esa opción"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not save that speech model"
@@ -3660,17 +3659,9 @@ msgstr "Nombre para mostrar"
 msgid "Dividends"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker"
-msgstr "Docker"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr ""
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
-msgstr "Docker limita el acceso a tu computadora para mayor seguridad. Usar {hostLabel} permite que los bots trabajen con tus archivos y herramientas locales."
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
@@ -5088,10 +5079,6 @@ msgstr "Cargando…"
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Local"
 msgstr "Local"
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Local access lets bots run commands without asking. Avoid it on shared or public servers."
-msgstr "El acceso local permite que los bots ejecuten comandos sin preguntar. Evítalo en servidores compartidos o públicos."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Local command"
@@ -7531,6 +7518,14 @@ msgstr "En ejecución · Detener"
 msgid "Running…"
 msgstr "Ejecutando…"
 
+#: src/components/RunsOnPicker.tsx
+msgid "Runs commands without asking. Avoid on shared or public servers."
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Runs on"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr ""
@@ -7555,6 +7550,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
+msgstr ""
+
+#: src/components/RunsOnPicker.tsx
+msgid "Sandbox"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -8823,9 +8822,9 @@ msgstr "Esto no se puede deshacer."
 msgid "This chat is view-only"
 msgstr "Este chat es de solo lectura"
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this computer"
-msgstr "esta computadora"
+#: src/components/RunsOnPicker.tsx
+msgid "This computer"
+msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "This connection no longer exists."
@@ -8856,9 +8855,9 @@ msgstr ""
 msgid "This link is wrong or the page is no longer available."
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this Mac"
-msgstr "esta Mac"
+#: src/components/RunsOnPicker.tsx
+msgid "This Mac"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -9417,10 +9416,6 @@ msgstr "Uso"
 msgid "Use {0}"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Use {hostLabel}"
-msgstr "Usar {hostLabel}"
-
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Use a found model"
@@ -9693,10 +9688,6 @@ msgstr ""
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Where it went"
 msgstr ""
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Where should bots run?"
-msgstr "¿Dónde deben ejecutarse los bots?"
 
 #: src/components/PageAgentIntro.tsx
 msgid "Which bills are unpaid?"

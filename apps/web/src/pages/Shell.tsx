@@ -146,6 +146,7 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
+import { canOfferHostComputer } from "../components/RunsOnPicker";
 import { OpeningSpace } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
@@ -276,7 +277,6 @@ import { CapTablePage } from "./CapTable";
 import { DataRoomPage } from "./DataRoom";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
-import { HostComputerPrompt } from "./HostComputerPrompt";
 import { InboxPage } from "./Inbox";
 import { LegalPage } from "./Legal";
 import { NotFoundPage } from "./NotFound";
@@ -3748,9 +3748,6 @@ export function ShellPage() {
           if (active) void refreshThread(active.id);
         }}
       />
-      {bootstrapMe !== undefined ? (
-        <HostComputerPrompt initialMe={bootstrapMe ?? undefined} onMeUpdated={setBootstrapMe} />
-      ) : null}
       {mobileSidebarOpen ? (
         <button
           type="button"
@@ -5391,6 +5388,11 @@ export function ShellPage() {
                 bot={active}
                 focusName={namingBotId === active.id}
                 memoryProviderConfigured={memoryProviderConfig != null}
+                hostComputer={
+                  canOfferHostComputer(bootstrapMe)
+                    ? { defaultHost: bootstrapMe?.computerHost ?? "docker" }
+                    : undefined
+                }
                 onSkillsChange={setAgentSkills}
                 skillsRefreshKey={skillsRefreshKey}
                 onSave={async ({ computerMode, ...patch }) => {
