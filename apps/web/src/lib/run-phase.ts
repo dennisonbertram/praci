@@ -12,7 +12,7 @@ export function runPhaseLine(phase: RunPhase): string | null {
     case "connecting":
       return name ? t`Connecting to ${name}` : t`Connecting to tools`;
     case "model_wait":
-      return name ? t`Waiting for ${name}` : t`Waiting for the model`;
+      return t`Waiting for the model`;
     case "retrying":
       return name ? t`Retrying: ${name}` : t`Retrying`;
     default:
@@ -29,7 +29,7 @@ export function runPhaseWaitingOn(phase: RunPhase): string | null {
     case "connecting":
       return phase.name ?? t`tools`;
     case "model_wait":
-      return phase.name ?? t`the model`;
+      return t`the model`;
     default:
       return null;
   }
