@@ -6,13 +6,20 @@ vi.mock("./i18n", () => ({ t: (text: string) => text, dateLocaleForUi: () => "en
 
 import {
   archiveMailMessages,
+  cleanupArchive,
   completeMailTodo,
   ensureMailAgent,
+  forgetCleanupSender,
   getMailMessage,
+  listCleanup,
+  listMailActions,
   listMailInbox,
   listMailTodos,
+  moveMailMessages,
   refreshMailInbox,
   todoDueLabel,
+  undoMailAction,
+  unsubscribeSender,
 } from "./mail-inbox";
 
 // Braces: a returned mock would run as the test's cleanup hook.
@@ -32,7 +39,7 @@ it("calls the inbox procedures with the account only when one is chosen", async 
     ["inbox/list", {}],
     ["inbox/list", { connectionId: "c1" }],
     ["inbox/todos/list", { connectionId: "c1" }],
-    ["inbox/refresh", {}, { timeoutMs: 90_000 }],
+    ["inbox/refresh", { waitMs: 8_000 }, { timeoutMs: 90_000 }],
     ["inbox/todos/setDone", { id: "t1", done: true }],
     ["inbox/agent"],
     ["inbox/get", { messageId: "m1" }],
@@ -70,4 +77,41 @@ it("archives 120 messages in calls of at most 50", async () => {
   const result = await archiveMailMessages(ids);
   expect(rpc.mock.calls.map(([, body]) => body.messageIds.length)).toEqual([50, 50, 20]);
   expect(result.done).toEqual(ids);
+});
+
+it("calls the cleanup procedures with the account, address and batch", async () => {
+  await listCleanup();
+  await listCleanup("c1");
+  await cleanupArchive({ kind: "archive", connectionId: "c1", address: "a@example.test" });
+  await forgetCleanupSender("c1", "a@example.test");
+  await unsubscribeSender({ connectionId: "c1", address: "a@example.test", confirmMailto: true });
+  await listMailActions();
+  await undoMailAction("b1");
+  expect(rpc.mock.calls).toEqual([
+    ["inbox/cleanup/list", {}],
+    ["inbox/cleanup/list", { connectionId: "c1" }],
+    ["inbox/cleanup/archive", { kind: "archive", connectionId: "c1", address: "a@example.test" }],
+    ["inbox/cleanup/forget", { connectionId: "c1", address: "a@example.test" }],
+    ["inbox/unsubscribe", { connectionId: "c1", address: "a@example.test", confirmMailto: true }],
+    ["inbox/actions/list", {}],
+    ["inbox/actions/undo", { batchId: "b1" }],
+  ]);
+});
+
+it("moves messages in slices of 50 and returns each slice's batch id for Undo", async () => {
+  const ids = Array.from({ length: 120 }, (_, i) => `m${i}`);
+  let call = 0;
+  rpc.mockImplementation(async (_path: string, input: { messageIds: string[] }) => ({
+    done: input.messageIds,
+    failed: [],
+    batchId: `batch-${++call}`,
+  }));
+  const result = await moveMailMessages("trash", ids);
+  expect(rpc.mock.calls.map(([path, input]) => [path, input.op, input.messageIds.length])).toEqual([
+    ["inbox/moveMany", "trash", 50],
+    ["inbox/moveMany", "trash", 50],
+    ["inbox/moveMany", "trash", 20],
+  ]);
+  expect(result.done).toHaveLength(120);
+  expect(result.batchIds).toEqual(["batch-1", "batch-2", "batch-3"]);
 });

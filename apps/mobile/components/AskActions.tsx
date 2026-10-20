@@ -13,14 +13,19 @@ const KNOWN_ASK_ACTION_LABELS: Record<string, string> = {
   deny: "Deny",
 };
 
+const CONSENT_ASK_ACTION_LABELS: Record<string, string> = { allow: "Allow", deny: "Not now" };
+
 export function AskActions({
   actions,
+  consent,
   disabled,
   onAnswer,
   accessibilityActions,
   onAccessibilityAction,
 }: {
   actions: AskAction[];
+  /** An AI data sharing request: its buttons read Allow and Not now. */
+  consent?: boolean;
   disabled?: boolean;
   onAnswer: (answer: string) => Promise<void>;
   accessibilityActions?: ViewProps["accessibilityActions"];
@@ -30,6 +35,7 @@ export function AskActions({
   const tokens = mobileTokens();
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const submitting = pendingAction !== null;
+  const labels = consent ? CONSENT_ASK_ACTION_LABELS : KNOWN_ASK_ACTION_LABELS;
 
   async function submit(answer: string) {
     if (disabled || submitting) return;
@@ -72,8 +78,8 @@ export function AskActions({
             >
               {pendingAction === action.id
                 ? t("Sending…")
-                : Object.hasOwn(KNOWN_ASK_ACTION_LABELS, action.id)
-                  ? t(KNOWN_ASK_ACTION_LABELS[action.id]!)
+                : Object.hasOwn(labels, action.id)
+                  ? t(labels[action.id]!)
                   : action.label}
             </Text>
           </Pressable>
