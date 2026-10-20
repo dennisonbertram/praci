@@ -3645,7 +3645,7 @@ msgid "Done"
 msgstr "Done"
 
 #: src/components/computer/FilesApp.tsx
-#: src/components/data-room/Preview.tsx
+#: src/components/data-room/PreviewActions.tsx
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
 msgid "Download"
@@ -4208,6 +4208,10 @@ msgstr "From the latest 409A valuation"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "From URL"
 msgstr "From URL"
+
+#: src/components/data-room/PreviewActions.tsx
+msgid "Full screen"
+msgstr "Full screen"
 
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
@@ -6127,7 +6131,6 @@ msgstr "Only empty spaces can be deleted. Delete its bots and groups first."
 msgid "Only if the server does not use sign-in"
 msgstr "Only if the server does not use sign-in"
 
-#: src/components/data-room/Preview.tsx
 #: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -6224,6 +6227,10 @@ msgstr "Open in full window"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open in Mercury"
 msgstr "Open in Mercury"
+
+#: src/components/data-room/PreviewActions.tsx
+msgid "Open in new tab"
+msgstr "Open in new tab"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"

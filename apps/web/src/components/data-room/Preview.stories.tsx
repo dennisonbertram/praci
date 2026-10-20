@@ -98,3 +98,13 @@ export const Untagged: Story = {
     },
   },
 };
+
+/** Full screen opens the file in a near full-viewport dialog; Open and Download are in its header. */
+export const FullScreen: Story = {
+  beforeEach: () => serveFile("pdf"),
+  args: { item: { ...readyItem, name: "Sample agreement.pdf", mimeType: "application/pdf" } },
+  play: async ({ canvasElement }) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Full screen"]')?.click();
+  },
+};
