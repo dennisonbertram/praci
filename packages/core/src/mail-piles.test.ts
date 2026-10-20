@@ -283,6 +283,20 @@ describe("classifyPile newsletters versus updates", () => {
     }
   });
 
+  it("does not read a newsletter subject with delivered, shipped or order digits as transactional", () => {
+    for (const subject of [
+      "Today's top stories, delivered",
+      "Fresh ideas shipped weekly",
+      "Pre-order 2 get 1",
+      "Border 5 tips",
+      "Disorder 3 ways",
+    ]) {
+      expect(classifyPile(input({ signals: updatesNewsletter, subject })).pile, subject).toBe(
+        "newsletters",
+      );
+    }
+  });
+
   it("does not read a promo that says order now as transactional", () => {
     expect(classifyPile(input({ signals: listMail, subject: "Order now and save 20%" })).pile).toBe(
       "newsletters",

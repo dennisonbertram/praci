@@ -404,6 +404,15 @@ const cases: Case[] = [
     labels: ["CATEGORY_UPDATES"],
   },
   {
+    name: "newsletter whose subject ends in delivered",
+    kind: "marketing",
+    expected: "newsletters",
+    from: "Daily <daily@news.example.test>",
+    subject: "Today's top stories, delivered",
+    headers: [pass("news.example.test"), ...unsubscribe("news.example.test")],
+    labels: ["CATEGORY_UPDATES"],
+  },
+  {
     // Documents the known trade-off: a List-Id means a mailing list, so it is read as one.
     name: "notifications@ sender with a List-Id",
     kind: "notification",

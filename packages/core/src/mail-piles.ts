@@ -90,7 +90,7 @@ const SENSITIVE_SUBJECT =
 
 // ponytail: narrow on purpose. "Order now and save" must not match; an invoice never gets here (SENSITIVE_SUBJECT).
 const TRANSACTIONAL_SUBJECT =
-  /receipt|your order|order\s*(confirm|#|no\.?\s*\d|number|\d)|shipped|delivered|out for delivery/i;
+  /\b(receipt|your order|order (confirmation|#\s*\d+|number)|(has|was) shipped|has been delivered|(package|parcel|order) delivered|out for delivery)\b/i;
 
 const NO_REPLY_LOCAL = /^(no[-_.]?reply|do[-_.]?not[-_.]?reply|notifications?)$/i;
 

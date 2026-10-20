@@ -41,6 +41,21 @@ const newestFirst = (a: SenderGroupRow, b: SenderGroupRow) =>
 // second-level label such as co.uk. Add a real list if a registry outside that pattern shows up.
 const SECOND_LEVEL = new Set(["co", "com", "org", "net", "gov", "ac"]);
 
+// Different people share a display name on these, so a name there is not a sender identity.
+const SHARED_MAILBOX_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "yahoo.com",
+  "icloud.com",
+  "me.com",
+  "aol.com",
+  "proton.me",
+  "protonmail.com",
+]);
+
 function baseDomain(domain: string): string {
   const labels = domain.split(".");
   const tld = labels[labels.length - 1] ?? "";
@@ -63,7 +78,9 @@ function senderIdentities(row: SenderGroupRow): { address: string | null; ids: s
   const address = `${full.slice(0, at).split("+")[0]}@${domain}`;
   const name = row.from.trim().replace(/\s+/g, " ").toLowerCase();
   const ids = [`address:${address}`];
-  if (name !== full && name !== address) ids.push(`name:${name}|${baseDomain(domain)}`);
+  const base = baseDomain(domain);
+  if (name !== full && name !== address && !SHARED_MAILBOX_DOMAINS.has(base))
+    ids.push(`name:${name}|${base}`);
   return { address, ids };
 }
 

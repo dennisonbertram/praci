@@ -134,6 +134,14 @@ describe("groupBySender", () => {
       expect(groups).toHaveLength(4);
     });
 
+    it("keeps two people with one display name on a shared mailbox domain apart", () => {
+      const groups = groupBySender([
+        research("a", { from: "Alex Kim", fromAddress: "alex.kim@gmail.com" }),
+        research("b", { from: "Alex Kim", fromAddress: "akim99@gmail.com" }),
+      ]);
+      expect(groups).toHaveLength(2);
+    });
+
     it("groups rows without a display name by normalized address", () => {
       const bare = (id: string, address: string) =>
         row(id, { from: address, fromAddress: address });
