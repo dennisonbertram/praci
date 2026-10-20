@@ -38,7 +38,7 @@ Source: `docs/ux-paths/inbox/catalog.md`.
 
 
 Generated: 2026-10-17
-Code read: `/Users/dennison/develop/rakazo-ux` at `559a76ad` (branch `docs/ux-pass`, merged with current `origin/main`). PR #109 (`origin/feat/legal`) was read with `git show` for the Data room import only; it is not part of this commit.
+Code read: `the repository root` at `559a76ad` (branch `docs/ux-pass`, merged with current `origin/main`). PR #109 (`origin/feat/legal`) was read with `git show` for the Data room import only; it is not part of this commit.
 Total Stories: 40 (short 23, medium 13, long 4)
 Previous catalog: 2026-10-16, 24 stories (STORY-INB-001..024). This version keeps every id, rewrites the steps to match the code as it is now, and adds STORY-INB-025..040.
 
@@ -1233,7 +1233,7 @@ Source: `docs/ux-paths/finance/catalog.md`.
 
 
 Generated: 2026-10-17
-Code read at: `559a76ad` (`/Users/dennison/develop/rakazo-ux`, branch `docs/ux-pass`), read-only.
+Code read at: `559a76ad` (`the repository root`, branch `docs/ux-pass`), read-only.
 Scope: `/app/finance/*` (dashboard and detail pages), the Add account dialog, statement upload,
 crypto wallets and exchanges, finance tiles on `/app/integrations?category=finance`, the Finance
 agent side panel, finance cards in chat, agent pins and checklists, and the **Hide amounts**
@@ -4077,7 +4077,7 @@ Source: `docs/ux-paths/dataroom/catalog.md`.
 
 
 Generated: 2026-10-17
-Repository: `/Users/dennison/develop/rakazo-ux` (branch `docs/ux-pass`, code read at HEAD `559a76ad`). PR #109 stories were read from `origin/feat/legal` at commit `f2b8fc1e` ("Legal: regenerate translation catalogs after the e2e fixes").
+Repository: `the repository root` (branch `docs/ux-pass`, code read at HEAD `559a76ad`). PR #109 stories were read from `origin/feat/legal` at commit `f2b8fc1e` ("Legal: regenerate translation catalogs after the e2e fixes").
 Total Stories: 44 (short 26, medium 17, long 1)
 Persona for every story: Maya, a naive first-time founder of Northwind Robotics ("Northwind Robotics") who has never seen Rakazo, does not know its vocabulary ("Data room", "folder", "filing", "agent", "approval", "space"), and wants to keep the company's documents in order and find them again.
 

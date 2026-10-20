@@ -4,7 +4,7 @@ Source: `docs/ux-paths/dataroom/catalog.md`.
 
 
 Generated: 2026-10-17
-Repository: `/Users/dennison/develop/rakazo-ux` (branch `docs/ux-pass`, code read at HEAD `559a76ad`). PR #109 stories were read from `origin/feat/legal` at commit `f2b8fc1e` ("Legal: regenerate translation catalogs after the e2e fixes").
+Repository: `the repository root` (branch `docs/ux-pass`, code read at HEAD `559a76ad`). PR #109 stories were read from `origin/feat/legal` at commit `f2b8fc1e` ("Legal: regenerate translation catalogs after the e2e fixes").
 Total Stories: 44 (short 26, medium 17, long 1)
 Persona for every story: Maya, a naive first-time founder of Northwind Robotics ("Northwind Robotics") who has never seen Rakazo, does not know its vocabulary ("Data room", "folder", "filing", "agent", "approval", "space"), and wants to keep the company's documents in order and find them again.
 

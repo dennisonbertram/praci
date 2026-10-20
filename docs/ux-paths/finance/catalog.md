@@ -4,7 +4,7 @@ Source: `docs/ux-paths/finance/catalog.md`.
 
 
 Generated: 2026-10-17
-Code read at: `559a76ad` (`/Users/dennison/develop/rakazo-ux`, branch `docs/ux-pass`), read-only.
+Code read at: `559a76ad` (`the repository root`, branch `docs/ux-pass`), read-only.
 Scope: `/app/finance/*` (dashboard and detail pages), the Add account dialog, statement upload,
 crypto wallets and exchanges, finance tiles on `/app/integrations?category=finance`, the Finance
 agent side panel, finance cards in chat, agent pins and checklists, and the **Hide amounts**
