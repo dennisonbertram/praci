@@ -11,7 +11,9 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-vi.mock("@rakazo/ui-web", () => ({
+vi.mock("@rakazo/ui-web", async () => ({
+  ...(await vi.importActual("@rakazo/ui-web/components/ui/command")),
+  ...(await vi.importActual("@rakazo/ui-web/components/ui/popover")),
   BotAvatar: () => null,
   Button: ({ children, ...props }: React.ComponentProps<"button">) => (
     <button type="button" {...props}>
@@ -86,7 +88,9 @@ vi.mock("../components/AiDataSharing", () => ({ AiDataSharingSection: () => null
 vi.mock("../components/NotificationSettings", () => ({ NotificationSettingsSection: () => null }));
 vi.mock("../components/DataExport", () => ({ DataExportSection: () => null }));
 vi.mock("../components/ApprovalRulesSettings", () => ({ ApprovalRulesSettings: () => null }));
-vi.mock("../components/ai/primitives", () => ({ SuccessPop: () => null }));
+vi.mock("../components/ai/primitives", () => ({
+  SuccessPop: ({ label }: { label: string }) => <span>{label}</span>,
+}));
 vi.mock("../components/ComputersUnavailableHint", () => ({
   ComputersUnavailableHint: () => null,
 }));
@@ -109,6 +113,100 @@ import { GeneralSettingsPanels, UpdatesSettingsPanel } from "./AccountSettingsOv
 
 afterEach(() => {
   localStorage.clear();
+  document.body.innerHTML = "";
+});
+
+// cmdk measures and scrolls its list, which jsdom does not implement.
+globalThis.ResizeObserver ??= class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+};
+Element.prototype.scrollIntoView ??= () => {};
+
+async function renderTimezone(onTimezoneChange: (zone: string) => Promise<void>) {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(
+      <GeneralSettingsPanels
+        name="Jamie"
+        avatarStyle="robot"
+        onAvatarStyleChange={async () => undefined}
+        timezone="America/New_York"
+        onTimezoneChange={onTimezoneChange}
+      />,
+    );
+  });
+  const trigger = container.querySelector<HTMLButtonElement>('[aria-label="Time zone"]');
+  if (!trigger) throw new Error("Missing time zone control");
+  await act(async () => trigger.click());
+  return { container, trigger, root };
+}
+
+const zoneOptions = () => [...document.querySelectorAll('[data-slot="command-item"]')];
+
+it("lists the browser time zone first with its UTC offset", async () => {
+  vi.spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions").mockReturnValue({
+    timeZone: "Asia/Tokyo",
+  } as Intl.ResolvedDateTimeFormatOptions);
+  const { root } = await renderTimezone(async () => undefined);
+  try {
+    expect(zoneOptions()[0]?.textContent).toContain("Tokyo (UTC+9)");
+  } finally {
+    vi.restoreAllMocks();
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+it("narrows the time zone list as you type", async () => {
+  const { root } = await renderTimezone(async () => undefined);
+  try {
+    const input = document.querySelector<HTMLInputElement>('[data-slot="command-input"]');
+    if (!input) throw new Error("Missing search box");
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+        input,
+        "york",
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    const options = zoneOptions();
+    expect(options.length).toBeLessThan(10);
+    expect(options[0]?.textContent).toMatch(/New York \(UTC-[45]\)/);
+  } finally {
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+it("keeps the old time zone and shows an error when saving fails", async () => {
+  const { container, trigger, root } = await renderTimezone(() => Promise.reject(new Error("no")));
+  try {
+    const tokyo = zoneOptions().find((el) => el.textContent?.includes("Tokyo"));
+    if (!tokyo) throw new Error("Missing Tokyo");
+    await act(async () => (tokyo as HTMLElement).click());
+    expect(trigger.textContent).toContain("New York");
+    expect(container.querySelector('[role="alert"]')?.textContent).toBe("Could not save time zone");
+  } finally {
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
+});
+
+it("shows a saved state after the time zone saves", async () => {
+  const { container, root } = await renderTimezone(async () => undefined);
+  try {
+    const tokyo = zoneOptions().find((el) => el.textContent?.includes("Tokyo"));
+    await act(async () => (tokyo as HTMLElement).click());
+    expect(container.textContent).toContain("Time zone updated");
+  } finally {
+    await act(async () => root.unmount());
+    vi.unstubAllGlobals();
+  }
 });
 
 it("flips the stored tool activity preference from the settings toggle", async () => {

@@ -524,7 +524,7 @@ msgid "{yieldAmount} last month"
 msgstr ""
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "@{0}"
 msgstr "@{0}"
 
@@ -627,7 +627,7 @@ msgstr ""
 msgid "Action confirmations"
 msgstr "कार्रवाई की पुष्टि"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Actions"
 msgstr ""
 
@@ -1339,7 +1339,7 @@ msgstr "{timeSelect} बजे"
 msgid "At least 8 characters."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "फ़ाइल संलग्न करें"
 
@@ -1351,8 +1351,8 @@ msgstr ""
 msgid "Attached {path}"
 msgstr ""
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attachment"
 msgstr "अटैचमेंट"
 
@@ -1703,7 +1703,7 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Call Elio"
 msgstr ""
 
@@ -1917,7 +1917,7 @@ msgstr ""
 msgid "Chat apps, group channels, and agent connections."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr ""
 
@@ -3052,6 +3052,10 @@ msgstr ""
 msgid "Could not save this choice"
 msgstr "यह विकल्प सहेजा नहीं जा सका"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Could not save time zone"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Could not search"
 msgstr ""
@@ -3608,6 +3612,7 @@ msgstr "डिस्कनेक्ट हो रहा है…"
 #: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr ""
@@ -5306,7 +5311,7 @@ msgstr "मेमोरी"
 msgid "Memory scope"
 msgstr "मेमोरी स्कोप"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Mentions"
 msgstr ""
 
@@ -5324,16 +5329,16 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "संदेश"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message {activeName}"
 msgstr "{activeName} को संदेश भेजें"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr ""
 
@@ -5345,7 +5350,7 @@ msgstr ""
 msgid "Message from {peer}"
 msgstr "{peer} का संदेश"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message…"
 msgstr "संदेश…"
 
@@ -5628,7 +5633,7 @@ msgstr ""
 msgid "Needs reply"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Needs sign-in"
 msgstr ""
 
@@ -5875,6 +5880,7 @@ msgstr ""
 msgid "No mail matches this filter"
 msgstr ""
 
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
@@ -5884,7 +5890,7 @@ msgstr ""
 msgid "No matches in chats, pages, documents or artifacts."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
@@ -6350,7 +6356,7 @@ msgstr ""
 msgid "Open server integrations"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Open Settings"
 msgstr ""
 
@@ -6644,8 +6650,8 @@ msgstr ""
 msgid "Phone"
 msgstr ""
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Photo"
 msgstr "फ़ोटो"
 
@@ -7137,7 +7143,7 @@ msgstr "हटाएं"
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove {0}"
 msgstr "{0} हटाएं"
 
@@ -7190,7 +7196,7 @@ msgid "Remove link"
 msgstr ""
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove mention {0}"
 msgstr "उल्लेख {0} हटाएं"
 
@@ -7203,7 +7209,7 @@ msgid "Remove schedule"
 msgstr ""
 
 #. placeholder {0}: slashSkillLabel(selectedSkill).title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove skill {0}"
 msgstr "स्किल {0} हटाएं"
 
@@ -7313,12 +7319,12 @@ msgstr "उत्तर दें"
 msgid "Reply all"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
 msgstr ""
 
 #. placeholder {0}: replyNameRef.current
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
 msgstr ""
 
@@ -7504,7 +7510,7 @@ msgstr "चल रहा है · रोकें"
 msgid "Running…"
 msgstr "चल रहा है…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr ""
 
@@ -7663,6 +7669,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -7784,7 +7791,7 @@ msgstr "खोजा जा रहा है…"
 msgid "Security"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "See usage"
 msgstr ""
 
@@ -7827,7 +7834,7 @@ msgstr ""
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr "भेजें"
 
@@ -8147,16 +8154,16 @@ msgid "Size"
 msgstr ""
 
 #. placeholder {0}: label.title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skill {0}"
 msgstr "स्किल {0}"
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills and actions"
 msgstr ""
 
@@ -8410,6 +8417,7 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Stop"
 msgstr "रोकें"
 
@@ -8905,6 +8913,10 @@ msgstr "दिन का समय"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Time zone"
+msgstr ""
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Time zone updated"
 msgstr ""
 
 #: src/pages/Board.tsx
