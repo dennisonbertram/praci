@@ -9,6 +9,7 @@ import {
   createBackgroundJobHandlers,
   DRIVE_IMPORT_MAX_FILES,
   DriveApiEmulator,
+  emulatedDriveStream,
   LocalArtifactStore,
   runBoxFileImport,
   runBoxImport,
@@ -21,6 +22,7 @@ import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb, settleDataRoomImport } from "@rakazo/db";
 import { Hono } from "hono";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { MemoryArtifacts, makeZip } from "../../../packages/adapters/src/data-room-test-fakes.js";
 import { createDataRoomService, mountDataRoomRoutes } from "./data-room.js";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
@@ -28,8 +30,6 @@ import { createRouter } from "./router.js";
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
   process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
-
-const CAP = 64;
 
 describePostgres("Data room API (PostgreSQL)", () => {
   const run = randomUUID().slice(0, 8);
@@ -63,7 +63,10 @@ describePostgres("Data room API (PostgreSQL)", () => {
     boxItem("62", "loose.pdf"),
   ]);
   const boxOAuth = {
-    providerFor: async () => ({ tokens: async () => ({ access_token: "box-token" }) }),
+    providerFor: async () => ({
+      tokens: async () => ({ access_token: "box-token" }),
+      renew: async () => undefined,
+    }),
   };
 
   const client = (who: Actor | null) =>
@@ -165,9 +168,14 @@ describePostgres("Data room API (PostgreSQL)", () => {
   });
   let driveDownloads = 0;
   const driveConnector = {
-    proxy: async (r: { accountRef: string; url: string; method: string }) => {
+    proxy: async (r: {
+      accountRef: string;
+      url: string;
+      method: string;
+      responseType?: string;
+    }) => {
       if (r.url.includes("/export")) driveDownloads += 1;
-      return emulator.handle(r.accountRef, r.url, r.method);
+      return emulatedDriveStream(emulator.handle(r.accountRef, r.url, r.method), r.responseType);
     },
   };
 
@@ -249,7 +257,6 @@ describePostgres("Data room API (PostgreSQL)", () => {
         prisma,
         artifacts: new LocalArtifactStore(root),
         jobs: { enqueue: async (j) => void enqueued.push(j) },
-        maxUploadBytes: CAP,
       },
       async (request) => actors[request.headers.get("x-test-actor") ?? ""] ?? null,
     );
@@ -363,23 +370,150 @@ describePostgres("Data room API (PostgreSQL)", () => {
     await prisma.dataRoomItem.update({ where: { id: item.id }, data: { status: "pending" } });
   });
 
-  it("refuses an upload over the cap with 413 and stores no blob", async () => {
-    const before = await blobCount(actors.A.spaceId);
-    expect((await upload("a", "name=big.bin", new Uint8Array(CAP + 1))).status).toBe(413);
-    // No content-length: the cap is enforced while reading the stream.
-    const stream = new ReadableStream({
-      start(c) {
-        c.enqueue(new Uint8Array(CAP));
-        c.enqueue(new Uint8Array(CAP));
-        c.close();
-      },
+  describe("streamed uploads", () => {
+    const CHUNK = 64 * 1024;
+    /** An app over a store that cannot take a whole body, so only a stream gets through. */
+    function streamingApp() {
+      const memory = new MemoryArtifacts();
+      memory.failPut = true;
+      const mem = new Hono();
+      mountDataRoomRoutes(
+        mem,
+        { prisma, artifacts: memory, jobs: { enqueue: async (j) => void enqueued.push(j) } },
+        async (request) => actors[request.headers.get("x-test-actor") ?? ""] ?? null,
+      );
+      const post = (query: string, body: ReadableStream, extra: RequestInit = {}) =>
+        mem.request(`/api/data-room/upload?${query}`, {
+          method: "POST",
+          body,
+          duplex: "half",
+          headers: { "x-test-actor": "a", "content-type": "application/octet-stream" },
+          ...extra,
+        } as RequestInit);
+      return { memory, post };
+    }
+
+    it("takes a 100 MB upload with no cap, one chunk at a time, never as one buffer", async () => {
+      const { memory, post } = streamingApp();
+      const total = 100 * 1024 * 1024;
+      const chunk = new Uint8Array(CHUNK).fill(7);
+      chunk.set(new TextEncoder().encode(`big-${run}`));
+      let produced = 0;
+      let lead = 0;
+      const body = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          // How far the source is ahead of what the store has taken.
+          lead = Math.max(lead, produced - memory.consumedBytes);
+          if (produced >= total) return controller.close();
+          controller.enqueue(chunk);
+          produced += CHUNK;
+        },
+      });
+      const res = await post("name=big.bin", body);
+      expect(res.status).toBe(201);
+      const created = (await res.json()) as { item: DataRoomApiItem; duplicate: boolean };
+      expect(created.item.size).toBe(total);
+      expect(memory.chunks).toBeGreaterThan(1_000);
+      expect(memory.maxChunkBytes).toBeLessThanOrEqual(1024 * 1024);
+      expect(lead).toBeLessThan(8 * 1024 * 1024);
+      const row = await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: created.item.id } });
+      expect(row.size).toBe(BigInt(total));
+      expect(row.sha256).toHaveLength(64);
+      expect(memory.blobs.get(row.storageKey ?? "")?.byteLength).toBe(total);
+      await prisma.dataRoomItem.delete({ where: { id: row.id } });
+    }, 60_000);
+
+    it("removes the partial object and files nothing when the body fails or the client leaves", async () => {
+      const { memory, post } = streamingApp();
+      const items = await prisma.dataRoomItem.count({ where: { userId: actors.a.userId } });
+      const ingests = enqueued.length;
+      const piece = new Uint8Array(CHUNK).fill(1);
+
+      let sent = 0;
+      const failing = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (sent >= 10) return controller.error(new Error("connection reset"));
+          controller.enqueue(piece);
+          sent += 1;
+        },
+      });
+      const res = await post("name=cut.bin", failing);
+      expect(res.status).toBeGreaterThanOrEqual(500);
+      expect(memory.chunks).toBeGreaterThan(0);
+
+      const controller = new AbortController();
+      let pulled = 0;
+      const leaving = new ReadableStream<Uint8Array>({
+        pull(c) {
+          if (++pulled === 5) controller.abort();
+          c.enqueue(piece);
+          if (pulled > 50) c.close();
+        },
+      });
+      const gone = await post("name=left.bin", leaving, { signal: controller.signal });
+      expect(gone.status).toBe(499);
+
+      expect(memory.partial.size).toBe(0);
+      expect(memory.blobs.size).toBe(0);
+      expect(await prisma.dataRoomItem.count({ where: { userId: actors.a.userId } })).toBe(items);
+      expect(enqueued.length).toBe(ingests);
     });
-    const res = await send("a", "/api/data-room/upload?name=big2.bin", {
-      method: "POST",
-      body: stream,
-      duplex: "half",
-    } as RequestInit);
-    expect(res.status).toBe(413);
+  });
+
+  it("accepts a zip with 202, stores it, queues one unpack job and files no item", async () => {
+    const before = await blobCount(actors.A.spaceId);
+    const items = await prisma.dataRoomItem.count({ where: { userId: actors.a.userId } });
+    const start = enqueued.length;
+    const zip = makeZip({ "one.txt": `one ${run}`, "dir/two.txt": `two ${run}` });
+    const res = await upload("a", "name=bundle.zip", zip, "application/zip");
+    expect(res.status).toBe(202);
+    const { importId } = (await res.json()) as { importId: string };
+    expect(await blobCount(actors.A.spaceId)).toBe(before + 1);
+    expect(await prisma.dataRoomItem.count({ where: { userId: actors.a.userId } })).toBe(items);
+    const unpacks = enqueued.slice(start).filter((j) => j.name === "dataroom.zip.unpack");
+    expect(unpacks).toHaveLength(1);
+    expect(unpacks[0]?.payload).toMatchObject({
+      spaceId: actors.A.spaceId,
+      userId: actors.a.userId,
+      importId,
+      entries: 2,
+      size: zip.length,
+    });
+    expect(
+      await prisma.dataRoomImport.findUniqueOrThrow({ where: { id: importId } }),
+    ).toMatchObject({
+      source: "upload",
+      total: 2,
+      userId: actors.a.userId,
+    });
+    // Another user cannot see the import.
+    expect((await client(actors.b).dataRoom.imports()).map((i) => i.id)).not.toContain(importId);
+    // Later tests count blobs: drop this one the way the unpack job would.
+    const [unpack] = unpacks as [(typeof unpacks)[number]];
+    await new LocalArtifactStore(root).remove(
+      (unpack.payload as unknown as { storageKey: string }).storageKey,
+      { spaceId: actors.A.spaceId } as never,
+    );
+  });
+
+  it("refuses an unsafe or unreadable zip with 400 and its code, and leaves no blob", async () => {
+    const before = await blobCount(actors.A.spaceId);
+    const unsafe = await upload(
+      "a",
+      "name=evil.zip",
+      makeZip({ "../evil.txt": "x" }),
+      "application/zip",
+    );
+    expect(unsafe.status).toBe(400);
+    expect(await unsafe.json()).toMatchObject({ code: "unsafe" });
+    const junk = await upload(
+      "a",
+      "name=junk.zip",
+      "not a zip at all, only text",
+      "application/zip",
+    );
+    expect(junk.status).toBe(400);
+    expect(await junk.json()).toMatchObject({ code: "invalid" });
     expect(await blobCount(actors.A.spaceId)).toBe(before);
   });
 
@@ -409,6 +543,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");
     expect(res.headers.get("content-security-policy")).toMatch(/^sandbox/);
     expect(res.headers.get("content-type")).toBe("application/octet-stream");
+    expect(res.headers.get("content-length")).toBe(String("<script>alert(1)</script>".length));
     await client(actors.a).dataRoom.itemDelete({ id: html.id });
     enqueued.length = 0;
   });
@@ -938,14 +1073,27 @@ describePostgres("Data room API (PostgreSQL)", () => {
     const listed = await client(actors.a).dataRoom.driveList({});
     expect(listed.files.map((f) => f.id).sort()).toEqual(["dir1", "doc1", "solo"]);
 
+    // Even a single pick is queued: the file streams into storage in a job, never in the request.
     const before = enqueued.length;
-    await expect(
-      client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] }),
-    ).resolves.toMatchObject({
-      imported: 1,
-      duplicates: 0,
-      failed: 0,
-    });
+    const queue: BackgroundJob[] = [];
+    const deps = {
+      prisma,
+      artifacts: new LocalArtifactStore(root),
+      jobs: { enqueue: async (job: BackgroundJob) => void queue.push(job) },
+      connectors: { managed: () => driveConnector },
+    } as never;
+    /** Runs the plan queued since `from`, then the file jobs it queued. */
+    const runPicks = async (from: number) => {
+      for (const job of enqueued.slice(from).filter((j) => j.name === "dataroom.drive.import"))
+        await runDriveImport(deps, job.payload as never);
+      for (const job of queue.splice(0).filter((j) => j.name === "dataroom.drive.file"))
+        await runDriveFileImport(deps, job.payload as never);
+    };
+    const first = await client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] });
+    expect(first).toMatchObject({ imported: 0, duplicates: 0, failed: 0, queued: 1, total: 1 });
+    expect(enqueued.slice(before).map((j) => j.name)).toEqual(["dataroom.drive.import"]);
+    expect(await prisma.dataRoomItem.count({ where: { externalId: "doc1" } })).toBe(0);
+    await runPicks(before);
     const row = await prisma.dataRoomItem.findFirstOrThrow({
       where: { spaceId: actors.A.spaceId, externalId: "doc1" },
     });
@@ -954,18 +1102,20 @@ describePostgres("Data room API (PostgreSQL)", () => {
       sourceConnectionId: connection.id,
       name: "Plan_2026.pdf",
       mimeType: "application/pdf",
+      importId: first.importId,
     });
     expect(row.sourceUrl).toContain("doc1");
-    expect(enqueued.slice(before).map((j) => j.name)).toEqual(["dataroom.ingest"]);
 
     // A repeat is a duplicate and downloads nothing.
     const downloads = driveDownloads;
-    await expect(
-      client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] }),
-    ).resolves.toMatchObject({
-      imported: 0,
+    const again = enqueued.length;
+    const repeat = await client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"] });
+    await runPicks(again);
+    expect(
+      await prisma.dataRoomImport.findUniqueOrThrow({ where: { id: repeat.importId } }),
+    ).toMatchObject({
       duplicates: 1,
-      failed: 0,
+      rejected: 0,
     });
     expect(driveDownloads).toBe(downloads);
 
@@ -985,9 +1135,18 @@ describePostgres("Data room API (PostgreSQL)", () => {
       client(actors.a).dataRoom.importDrive({ fileIds: ["doc1"], folderId: folderB.id }),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     // A file that cannot be imported is counted and does not stop the others.
-    await expect(
-      client(actors.a).dataRoom.importDrive({ fileIds: ["dir1", "missing", "doc1"] }),
-    ).resolves.toMatchObject({ imported: 0, duplicates: 1, failed: 2 });
+    const mixedAt = enqueued.length;
+    const mixed = await client(actors.a).dataRoom.importDrive({
+      fileIds: ["dir1", "missing", "doc1"],
+    });
+    expect(mixed).toMatchObject({ queued: 3, total: 3 });
+    await runPicks(mixedAt);
+    expect(
+      await prisma.dataRoomImport.findUniqueOrThrow({ where: { id: mixed.importId } }),
+    ).toMatchObject({
+      duplicates: 1,
+      rejected: 2,
+    });
   });
 
   it("imports Drive folders as Data room folders, once, only through the caller's own Drive", async () => {
@@ -1347,17 +1506,30 @@ describePostgres("Data room API (PostgreSQL)", () => {
     expect(listing.files.map((f) => f.name).sort()).toEqual(["Box Deals", "loose.pdf"]);
     expect(box.requests.at(-1)?.authorization).toBe("Bearer box-token");
 
-    // A direct pick is filed inline, once, with its Box source and link.
-    await expect(a.dataRoom.importBox({ fileIds: ["62"] })).resolves.toMatchObject({
-      imported: 1,
-      duplicates: 0,
-      failed: 0,
-    });
-    await expect(a.dataRoom.importBox({ fileIds: ["62"] })).resolves.toMatchObject({
-      imported: 0,
-      duplicates: 1,
-      failed: 0,
-    });
+    // Even a single pick is queued and filed by a job, once, with its Box source and link.
+    const boxQueue: BackgroundJob[] = [];
+    const boxDeps = {
+      prisma,
+      artifacts: new LocalArtifactStore(root),
+      jobs: { enqueue: async (job: BackgroundJob) => void boxQueue.push(job) },
+      box: { accessToken: async () => "box-token", fetch: box.fetch },
+    } as never;
+    const runBoxPicks = async (from: number) => {
+      for (const job of enqueued.slice(from).filter((j) => j.name === "dataroom.box.import"))
+        await runBoxImport(boxDeps, job.payload as never);
+      for (const job of boxQueue.splice(0).filter((j) => j.name === "dataroom.box.file"))
+        await runBoxFileImport(boxDeps, job.payload as never);
+    };
+    const pickAt = enqueued.length;
+    const pick = await a.dataRoom.importBox({ fileIds: ["62"] });
+    expect(pick).toMatchObject({ imported: 0, duplicates: 0, failed: 0, queued: 1, total: 1 });
+    await runBoxPicks(pickAt);
+    const repeatAt = enqueued.length;
+    const repeatPick = await a.dataRoom.importBox({ fileIds: ["62"] });
+    await runBoxPicks(repeatAt);
+    expect(
+      await prisma.dataRoomImport.findUniqueOrThrow({ where: { id: repeatPick.importId } }),
+    ).toMatchObject({ duplicates: 1, rejected: 0 });
     const loose = await prisma.dataRoomItem.findFirstOrThrow({
       where: { spaceId: actors.A.spaceId, externalId: "box:62" },
     });
@@ -1372,13 +1544,6 @@ describePostgres("Data room API (PostgreSQL)", () => {
     // A folder import queues one plan; running it and its file jobs recreates the tree.
     const target = await a.dataRoom.folderCreate({ name: `Box target ${run}` });
     const start = enqueued.length;
-    const queue: BackgroundJob[] = [];
-    const deps = {
-      prisma,
-      artifacts: new LocalArtifactStore(root),
-      jobs: { enqueue: async (job: BackgroundJob) => void queue.push(job) },
-      box: { accessToken: async () => "box-token", fetch: box.fetch },
-    } as never;
     const result = await a.dataRoom.importBox({ boxFolderIds: ["50"], folderId: target.id });
     expect(result).toMatchObject({
       imported: 0,
@@ -1391,8 +1556,9 @@ describePostgres("Data room API (PostgreSQL)", () => {
     const plans = enqueued.slice(start).filter((j) => j.name === "dataroom.box.import");
     expect(plans).toHaveLength(1);
     for (let round = 0; round < 2; round++) {
-      for (const job of plans) await runBoxImport(deps, job.payload as never);
-      for (const job of queue.splice(0)) await runBoxFileImport(deps, job.payload as never);
+      for (const job of plans) await runBoxImport(boxDeps, job.payload as never);
+      for (const job of boxQueue.splice(0).filter((j) => j.name === "dataroom.box.file"))
+        await runBoxFileImport(boxDeps, job.payload as never);
     }
     const folders = await a.dataRoom.folders();
     const deals = folders.find((f) => f.name === "Box Deals");
@@ -1435,7 +1601,7 @@ describePostgres("Data room API (PostgreSQL)", () => {
       code: "PRECONDITION_FAILED",
     });
     const foreign = { spaceId: actors.A.spaceId, userId: actors.a2.userId, folderId: null };
-    await runBoxFileImport(deps, {
+    await runBoxFileImport(boxDeps, {
       ...foreign,
       connectionId: server.id,
       externalId: "60",
@@ -1448,10 +1614,13 @@ describePostgres("Data room API (PostgreSQL)", () => {
     box.failWith = 401;
     await expect(a.dataRoom.boxList({})).rejects.toMatchObject({ code: "PRECONDITION_FAILED" });
     box.failWith = undefined;
-    await expect(a.dataRoom.importBox({ fileIds: ["70"] })).resolves.toMatchObject({
-      imported: 0,
-      duplicates: 0,
-      failed: 1,
+    const goneAt = enqueued.length;
+    const gone = await a.dataRoom.importBox({ fileIds: ["70"] });
+    await runBoxPicks(goneAt);
+    expect(
+      await prisma.dataRoomImport.findUniqueOrThrow({ where: { id: gone.importId } }),
+    ).toMatchObject({
+      rejected: 1,
     });
   });
 

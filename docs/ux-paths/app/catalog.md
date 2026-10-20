@@ -3249,7 +3249,7 @@ Fifteen new journeys plus the rewritten Monday morning. Short ones (200, 201, 20
 - Priya asks to see "the room". Maya looks for **Invite** or **Share** and finds none (STORY-DRM-022).
 
 ##### Edge Cases
-- Over 50 MB: "Over the 50 MB limit" (STORY-DRM-004).
+- Over 50 MB: uploads normally (STORY-DRM-004).
 
 ---
 

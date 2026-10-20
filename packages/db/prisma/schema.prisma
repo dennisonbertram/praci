@@ -2486,12 +2486,14 @@ model DataRoomItem {
   storageKey         String?
   name               String
   mimeType           String
-  size               Int
+  size               BigInt
   sourceUrl          String?
   sourceUpdatedAt    DateTime?
   /// "pending", "extracting", "classifying", "indexing", "ready" or "failed".
   status             String            @default("pending")
   error              String?
+  /// True when the file is stored and listed but too large to read for search.
+  notIndexed         Boolean           @default(false)
   docType            String?
   docDate            DateTime?
   parties            String[]
@@ -2564,7 +2566,7 @@ model DataRoomImport {
   spaceId    String
   space      Space          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId     String
-  /// "drive", "box", "gmail" or "upload" (a zip unpacked on upload).
+  /// "drive", "box", "gmail" or "upload" (a zip unpacked after upload).
   source     String
   /// Files the import set out to file, including the ones skipped below.
   total      Int

@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { fakeAi, MemoryArtifacts, RecordingJobs } from "./data-room-test-fakes.js";
 import type { DataRoomToolDeps } from "./data-room-tools.js";
 import { dataRoomToolFromTool } from "./data-room-tools.js";
-import { DriveApiEmulator } from "./drive-api-emulator.js";
+import { DriveApiEmulator, emulatedDriveStream } from "./drive-api-emulator.js";
 import type { DriveAccount } from "./drive-tools.js";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
@@ -58,8 +58,12 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
     connectors: {
       managed: () =>
         ({
-          proxy: async (r: { accountRef: string; url: string; method: string }) =>
-            drive.handle(r.accountRef, r.url, r.method),
+          proxy: async (r: {
+            accountRef: string;
+            url: string;
+            method: string;
+            responseType?: string;
+          }) => emulatedDriveStream(drive.handle(r.accountRef, r.url, r.method), r.responseType),
         }) as unknown as ManagedConnectorProvider,
     },
     driveAccounts: async () => (over.denyDrive ? [] : [driveAccount]),
@@ -179,6 +183,12 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
                   size: 0,
                   data: b64("%PDF-invoice"),
                 },
+                {
+                  filename: "long-report.pdf",
+                  mimeType: "application/pdf",
+                  size: 0,
+                  data: b64("%PDF-a-report-that-is-longer-than-three-bytes"),
+                },
                 { filename: "dot.png", mimeType: "image/png", size: 0, data: b64("png") },
                 {
                   filename: "invite.ics",
@@ -217,6 +227,12 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
               bytes: new TextEncoder().encode("%PDF-contract"),
             },
             { id: "tiny", name: "logo.png", mimeType: "image/png", bytes: new Uint8Array(100) },
+            {
+              id: "big1",
+              name: "board-deck.bin",
+              mimeType: "application/octet-stream",
+              bytes: new Uint8Array(60 * 1024 * 1024).fill(9),
+            },
           ],
         },
       },
@@ -278,6 +294,70 @@ describePostgres("Data room agent tools (PostgreSQL, Gmail and Drive emulators)"
     expect(await call("add_to_data_room", { drive_file_id: "tiny" })).toEqual({
       text: "Not a document.",
     });
+  });
+
+  it("adds a large Drive file by streaming it into storage", async () => {
+    artifacts.failPut = true;
+    artifacts.maxChunkBytes = 0;
+    try {
+      expect(await call("add_to_data_room", { drive_file_id: "big1" })).toEqual({
+        text: "Added board-deck.bin to the Data room.",
+      });
+    } finally {
+      artifacts.failPut = false;
+    }
+    const row = await prisma.dataRoomItem.findFirstOrThrow({
+      where: { spaceId: users.a?.spaceId, externalId: "big1" },
+    });
+    expect(Number(row.size)).toBe(60 * 1024 * 1024);
+    expect(artifacts.maxChunkBytes).toBeLessThanOrEqual(1024 * 1024);
+  });
+
+  it("copies an artifact over 50 MB store to store without reading it whole", async () => {
+    const a = users.a as Actor;
+    const stored = await artifacts.put({ bytes: new Uint8Array(60 * 1024 * 1024).fill(5) });
+    const row = await prisma.artifact.create({
+      data: {
+        spaceId: a.spaceId,
+        userId: a.userId,
+        name: "dump.bin",
+        mimeType: "application/octet-stream",
+        size: 60 * 1024 * 1024,
+        hash: stored.hash,
+        storageKey: stored.id,
+      },
+    });
+    const realGet = artifacts.get.bind(artifacts);
+    artifacts.failPut = true;
+    artifacts.get = async () => {
+      throw new Error("get is not allowed here");
+    };
+    try {
+      expect(await call("add_to_data_room", { artifact_id: row.id })).toEqual({
+        text: "Added dump.bin to the Data room.",
+      });
+    } finally {
+      artifacts.failPut = false;
+      artifacts.get = realGet;
+    }
+    expect(
+      Number(
+        (
+          await prisma.dataRoomItem.findFirstOrThrow({
+            where: { externalId: `artifact:${row.id}` },
+          })
+        ).size,
+      ),
+    ).toBe(60 * 1024 * 1024);
+  });
+
+  it("keeps the mail provider's bound on an attachment", async () => {
+    const id = await attachmentId("m1", "long-report.pdf");
+    expect(
+      await call("add_to_data_room", { message_id: "m1", attachment_id: id }, users.a as Actor, {
+        maxBytes: 3,
+      }),
+    ).toEqual({ error: "The attachment is too large to add." });
   });
 
   it("files only the owner's artifacts of this space", async () => {

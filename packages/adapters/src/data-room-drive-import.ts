@@ -6,7 +6,6 @@ import type {
 } from "@rakazo/adapter-kit";
 import { dataRoomDriveFileJob } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
-import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import {
   createDataRoomRepos,
@@ -18,12 +17,13 @@ import { createFileDataRoomItem, dataRoomFileFields, dataRoomSafeName } from "./
 import type { DriveFilesDeps } from "./drive-files.js";
 import {
   DriveFileError,
-  downloadDriveFile,
   getDriveFile,
   isImportableDriveFile,
   listDriveFiles,
+  streamDriveFile,
 } from "./drive-files.js";
 import { listDriveAccounts } from "./drive-tools.js";
+import { streamChunks } from "./stream-chunks.js";
 
 /** The most files, and the most folders, one folder import takes. */
 export const DRIVE_IMPORT_MAX_FILES = 500;
@@ -38,7 +38,7 @@ export type DrivePlan = {
   folders: { name: string; parent: number | null }[];
   /** Files to import; `folder` indexes `folders`, null is the import target (direct picks). */
   files: { id: string; folder: number | null }[];
-  /** Selected ids that are not folders, and files that cannot be imported (type or size). */
+  /** Selected ids that are not folders, and files that cannot be imported (type). */
   skipped: number;
 };
 
@@ -60,7 +60,7 @@ export type FolderSource = {
 /**
  * Walks the selected folders and all their subfolders, read-only. Throws `limitError` before
  * anything is written when the selection is over the limit. Children that cannot be imported
- * (type, size, shortcuts) are skipped and counted, never followed. A selected folder inside another
+ * (type, shortcuts) are skipped and counted, never followed. A selected folder inside another
  * selected folder stays nested; a directly picked file inside a selected folder goes to that
  * folder, and the other direct picks go to the import target.
  */
@@ -170,7 +170,6 @@ export function planDriveFolders(
     connectionId: string;
     folderIds: string[];
     directFileIds?: string[];
-    maxBytes: number;
     maxScanned?: number;
   },
 ): Promise<DrivePlan> {
@@ -191,17 +190,12 @@ export function planDriveFolders(
           ...(pageToken ? { pageToken } : {}),
         });
         return {
-          children: page.files.map((child) => {
-            const tooBig = child.size !== undefined && child.size > input.maxBytes;
-            return {
-              id: child.id,
-              name: child.name,
-              isFolder: child.isFolder,
-              importable:
-                isImportableDriveFile(child) &&
-                !(tooBig && !child.mimeType.startsWith("application/vnd.google-apps.")),
-            };
-          }),
+          children: page.files.map((child) => ({
+            id: child.id,
+            name: child.name,
+            isFolder: child.isFolder,
+            importable: isImportableDriveFile(child),
+          })),
           ...(page.nextPageToken ? { nextPageToken: page.nextPageToken } : {}),
         };
       },
@@ -245,7 +239,7 @@ export interface DriveFileImportDeps {
 /**
  * Imports one Drive file of a folder import, as the job's own user. Safe to run twice: a file
  * already filed from this Drive connection is left alone. Files that can never import (gone,
- * unsupported, too large) end the job quietly; anything else throws so the queue retries.
+ * unsupported) end the job quietly; anything else throws so the queue retries.
  */
 export async function runDriveFileImport(
   deps: DriveFileImportDeps,
@@ -273,11 +267,11 @@ export async function runDriveFileImport(
     return;
   }
   const operationId = `data-room.drive-folder:${payload.externalId}`;
-  const file = await downloadDriveFile(
+  const file = await streamDriveFile(
     { prisma: deps.prisma, connectors: deps.connectors, google: deps.google },
     { operationId, traceId: operationId, spaceId: actor.spaceId, userId: actor.userId, signal },
     payload.externalId,
-    { connectionId: payload.connectionId, maxBytes: DATA_ROOM_UPLOAD_MAX_BYTES },
+    { connectionId: payload.connectionId },
   ).catch((error: unknown) => {
     if (
       error instanceof DriveFileError &&
@@ -292,6 +286,8 @@ export async function runDriveFileImport(
     const { created } = await fileItem(actor, {
       source: "drive",
       ...dataRoomFileFields(file, "file"),
+      content: { stream: streamChunks(file.stream) },
+      signal,
       folderId: payload.folderId,
       ...(importId ? { importId } : {}),
       sourceConnectionId: payload.connectionId,

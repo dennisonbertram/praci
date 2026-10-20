@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { EmulatedBoxItem } from "./box-api-emulator.js";
 import { BoxApiEmulator } from "./box-api-emulator.js";
 import type { BoxFilesDeps } from "./box-files.js";
-import { BoxFileError, downloadBoxFile, listBoxFiles } from "./box-files.js";
+import { BoxFileError, listBoxFiles, streamBoxFile } from "./box-files.js";
 import { planBoxFolders } from "./data-room-box-import.js";
 import { DRIVE_IMPORT_MAX_DEPTH } from "./data-room-drive-import.js";
 
@@ -55,17 +55,17 @@ function setup(
   return { box, deps };
 }
 const plan = (deps: BoxFilesDeps, folderIds: string[], extra = {}) =>
-  planBoxFolders(deps, scope, { connectionId: "box-1", folderIds, maxBytes: 1000, ...extra });
+  planBoxFolders(deps, scope, { connectionId: "box-1", folderIds, ...extra });
 
 describe("planBoxFolders", () => {
-  it("keeps the folder structure, empty folders included, and skips folders' web links and big files", async () => {
+  it("keeps the folder structure, empty folders included, plans big files and never lists web links", async () => {
     const { deps } = setup([
       folder("10", "Deals"),
       folder("11", "2026", "10"),
       folder("12", "Empty", "11"),
       file("20", "a.pdf", "10"),
       file("21", "b.pdf", "11"),
-      file("22", "huge.pdf", "11", { size: 5000 }),
+      file("22", "huge.pdf", "11", { size: 50_000_000_000 }),
       { id: "30", type: "web_link", name: "Elsewhere", parent: "10" },
     ]);
     const result = await plan(deps, ["10"]);
@@ -77,9 +77,10 @@ describe("planBoxFolders", () => {
     expect(result.files.map((f) => [f.id, f.folder]).sort()).toEqual([
       ["20", 0],
       ["21", 1],
+      ["22", 1],
     ]);
-    // Only the oversized file is counted: the web link is never listed as an item at all.
-    expect(result.skipped).toBe(1);
+    // Size does not skip a file, and the web link is never listed as an item at all.
+    expect(result.skipped).toBe(0);
   });
 
   it("follows every page of a folder and handles several picked folders", async () => {
@@ -152,9 +153,9 @@ describe("Box account scoping", () => {
     await expect(
       listBoxFiles(deps, scope, { folderId: "https://app.box.com/s/abc123" }),
     ).rejects.toMatchObject({ code: "not_found" });
-    await expect(
-      downloadBoxFile(deps, scope, "../users/me", { maxBytes: 100 }),
-    ).rejects.toMatchObject({ code: "not_found" });
+    await expect(streamBoxFile(deps, scope, "../users/me")).rejects.toMatchObject({
+      code: "not_found",
+    });
     expect(box.requests).toHaveLength(0);
   });
 });
@@ -196,27 +197,37 @@ describe("listBoxFiles", () => {
   });
 });
 
-describe("downloadBoxFile", () => {
-  it("downloads through Box's download host without sending the token there", async () => {
+const readAll = async (stream: ReadableStream<Uint8Array>) =>
+  new Uint8Array(await new Response(stream).arrayBuffer());
+
+describe("streamBoxFile", () => {
+  it("streams through Box's download host without sending the token there", async () => {
     const { deps, box } = setup([file("20", "a.pdf", "0")]);
-    const result = await downloadBoxFile(deps, scope, "20", { maxBytes: 1000 });
-    expect(new TextDecoder().decode(result.bytes)).toBe("bytes of a.pdf");
+    const result = await streamBoxFile(deps, scope, "20");
+    expect(new TextDecoder().decode(await readAll(result.stream))).toBe("bytes of a.pdf");
     expect(result.webViewLink).toBe("https://app.box.com/file/20");
     const download = box.requests.find((r) => r.url.includes("dl.boxcloud.com"));
     expect(download?.authorization).toBeNull();
   });
 
-  it("refuses a file over the limit, by its size and by its bytes", async () => {
-    const { deps } = setup([
-      file("20", "big.bin", "0", { size: 5000 }),
-      file("21", "liar.bin", "0", { size: 1, bytes: new Uint8Array(5000) }),
-    ]);
-    await expect(downloadBoxFile(deps, scope, "20", { maxBytes: 1000 })).rejects.toMatchObject({
-      code: "too_large",
-    });
-    await expect(downloadBoxFile(deps, scope, "21", { maxBytes: 1000 })).rejects.toMatchObject({
-      code: "too_large",
-    });
+  it("passes the body through unread, whatever its size", async () => {
+    const big = new Uint8Array(60 * 1024 * 1024).fill(3);
+    const { deps, box } = setup([file("20", "big.bin", "0", { size: big.length, bytes: big })]);
+    const result = await streamBoxFile(deps, scope, "20");
+    expect(result.stream.locked).toBe(false);
+    // The download request has been made, but nothing has read the body into memory here.
+    expect(box.requests.some((r) => r.url.includes("dl.boxcloud.com"))).toBe(true);
+    expect((await readAll(result.stream)).byteLength).toBe(big.length);
+  });
+
+  it("maps a 413 from Box to too_large", async () => {
+    const { deps, box } = setup([file("20", "a.pdf", "0")]);
+    const real = box.fetch;
+    deps.fetch = async (input, init) =>
+      String(input).endsWith("/files/20/content")
+        ? new Response("", { status: 413 })
+        : real(input, init);
+    await expect(streamBoxFile(deps, scope, "20")).rejects.toMatchObject({ code: "too_large" });
   });
 
   it("fails, storing nothing, when Box is still preparing the file after the retries", async () => {
@@ -230,9 +241,7 @@ describe("downloadBoxFile", () => {
       }
       return real(input, init);
     };
-    await expect(downloadBoxFile(deps, scope, "20", { maxBytes: 1000 })).rejects.toMatchObject({
-      code: "failed",
-    });
+    await expect(streamBoxFile(deps, scope, "20")).rejects.toMatchObject({ code: "failed" });
     expect(contentCalls).toBe(4);
   });
 
@@ -240,20 +249,14 @@ describe("downloadBoxFile", () => {
     const { deps, box } = setup([
       file("20", "a.pdf", "0", { downloadUrl: "https://evil.example/steal" }),
     ]);
-    await expect(downloadBoxFile(deps, scope, "20", { maxBytes: 1000 })).rejects.toBeInstanceOf(
-      BoxFileError,
-    );
+    await expect(streamBoxFile(deps, scope, "20")).rejects.toBeInstanceOf(BoxFileError);
     expect(box.requests.some((r) => r.url.includes("evil.example"))).toBe(false);
   });
 
   it("refuses a folder and reports a 401 as reconnect", async () => {
     const { deps, box } = setup([folder("10", "Deals")]);
-    await expect(downloadBoxFile(deps, scope, "10", { maxBytes: 1000 })).rejects.toMatchObject({
-      code: "not_found",
-    });
+    await expect(streamBoxFile(deps, scope, "10")).rejects.toMatchObject({ code: "not_found" });
     box.failWith = 401;
-    await expect(downloadBoxFile(deps, scope, "10", { maxBytes: 1000 })).rejects.toMatchObject({
-      code: "reconnect",
-    });
+    await expect(streamBoxFile(deps, scope, "10")).rejects.toMatchObject({ code: "reconnect" });
   });
 });

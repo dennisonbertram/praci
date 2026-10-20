@@ -9,6 +9,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import { DATA_ROOM_EMBEDDING_DIMENSIONS } from "@rakazo/adapter-kit";
 import type { DataRoomClassification } from "@rakazo/contracts";
+import { strToU8, zipSync } from "fflate";
 import type { DataRoomAi } from "./data-room-models.js";
 
 /**
@@ -39,8 +40,29 @@ export function makePdf(text: string): Uint8Array {
   return new TextEncoder().encode(pdf);
 }
 
+/** A zip of the given files (text or bytes), keyed by their path inside the zip. */
+export function makeZip(files: Record<string, string | Uint8Array>): Uint8Array {
+  return zipSync(
+    Object.fromEntries(
+      Object.entries(files).map(([path, data]) => [
+        path,
+        typeof data === "string" ? strToU8(data) : data,
+      ]),
+    ),
+  );
+}
+
 export class MemoryArtifacts implements ArtifactStore {
   readonly blobs = new Map<string, Uint8Array>();
+  /** Objects whose stream is still being written; empty once every put settled. */
+  readonly partial = new Set<string>();
+  /** Chunks, largest chunk and bytes received so far by `putStream`, across all calls. */
+  chunks = 0;
+  maxChunkBytes = 0;
+  consumedBytes = 0;
+  /** Makes `put` throw, so a route that buffers a whole body fails its test. */
+  failPut = false;
+  private next = 0;
   describe() {
     return {
       id: "memory",
@@ -50,14 +72,55 @@ export class MemoryArtifacts implements ArtifactStore {
     };
   }
   async put(artifact: { bytes: Uint8Array }) {
-    const id = `blob-${this.blobs.size + 1}`;
+    if (this.failPut) throw new Error("put is not allowed here");
+    const id = `blob-${++this.next}`;
     this.blobs.set(id, artifact.bytes);
-    return { id, hash: id };
+    return { id, hash: createHash("sha256").update(artifact.bytes).digest("hex") };
+  }
+  async putStream(
+    body: AsyncIterable<Uint8Array>,
+    _file: { name: string; mimeType: string },
+    context: AdapterContext,
+  ) {
+    const id = `blob-${++this.next}`;
+    const hash = createHash("sha256");
+    const parts: Uint8Array[] = [];
+    let size = 0;
+    this.partial.add(id);
+    try {
+      for await (const chunk of body) {
+        context.signal?.throwIfAborted();
+        hash.update(chunk);
+        parts.push(chunk);
+        size += chunk.byteLength;
+        this.chunks += 1;
+        this.consumedBytes += chunk.byteLength;
+        this.maxChunkBytes = Math.max(this.maxChunkBytes, chunk.byteLength);
+      }
+      context.signal?.throwIfAborted();
+      this.blobs.set(id, Buffer.concat(parts));
+    } finally {
+      this.partial.delete(id);
+    }
+    return { id, hash: hash.digest("hex"), size };
   }
   async get(id: string) {
     const bytes = this.blobs.get(id);
     if (!bytes) throw new Error("missing blob");
     return bytes;
+  }
+  async getStream(id: string, _context: AdapterContext, range?: { start: number; end: number }) {
+    const bytes = this.blobs.get(id);
+    if (!bytes) throw new Error("missing blob");
+    let at = range?.start ?? 0;
+    const end = Math.min(range?.end ?? bytes.byteLength, bytes.byteLength);
+    return new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (at >= end) return controller.close();
+        controller.enqueue(bytes.subarray(at, Math.min(end, at + 64 * 1024)));
+        at += 64 * 1024;
+      },
+    });
   }
   async remove(id: string) {
     this.blobs.delete(id);

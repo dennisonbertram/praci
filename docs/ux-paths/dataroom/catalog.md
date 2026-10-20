@@ -12,7 +12,7 @@ Persona for every story: Maya, a naive first-time founder of Northwind Robotics 
 
 The Data room changed a lot on main since the last catalog (`git log -- apps/web/src/components/data-room apps/web/src/pages/DataRoom.tsx`, most recent: `78d97779` phone toolbar, `b302756f` folder URL authoritative, `f162d56f` folder in the URL, `a2d42924` folder rename/move/delete, `c3e1c923` consent prompt on the page, `ab20ab44` delete confirm + duplicate toast).
 
-- **Kept, text unchanged in substance**: STORY-DRM-004 (50 MB refusal toast, 15 s).
+- **Retired**: STORY-DRM-004 (50 MB refusal toast). Uploads have no size limit; a file too large to read is stored and the preview says "Too large to search inside".
 - **Changed (same id, rewritten to match code)**:
   - 001 empty state now has a sentence ("Keep contracts, board decks and investor documents in one place.").
   - 002, 003 the finished-upload toast says "Uploaded" (no longer "Filed"), stays 10 s.
@@ -47,7 +47,7 @@ Main (`559a76ad`):
 - Page `apps/web/src/pages/DataRoom.tsx`. Empty state: dashed box, "Drop files here", "Keep contracts, board decks and investor documents in one place.", button "Choose files" (`:347-361`). Otherwise: header with List view / Grid view toggles and "+" (aria "Add files"), consent card (when relevant), filter bar, folder tree (container at least 800 px) or a folder pill (below 800 px), list/grid/search results, "Load more", preview beside the list (page body at least 560 px) or in a dialog (narrower).
 - **The open folder is the URL**: `?folder=<id>` (`DataRoom.tsx:83-111`). Choosing a folder pushes a history entry, so Back returns to the previous folder. A folder id that does not exist is removed from the URL after the folder list loads (`:122-141`). `?item=<id>` opens that item's folder and previews it (`:191-213`); a bad item id is ignored silently.
 - Folder tree has no menu. Sub-folders of the open folder appear as rows (list) or tiles (grid) above the files, each with a "…" menu: Move, Rename, Delete (`ItemRows.tsx:228-290`). A folder shows only the files directly in it (`packages/db/src/data-room.ts:168-172` is an equality test), not those of its sub-folders.
-- Drop anywhere in the app: overlay "Drop to add to Data room" and one toast per file: percentage, then "Uploaded" + "View", or "Already in …", or "Over the 50 MB limit" / "Unsupported file name" / "Upload failed" (`DropZone.tsx`). Files go into the folder the Data room page shows, or the root from any other page (`upload-toasts.ts:122-133`). Toasts last 10 s (done), 15 s (failed), 5 s ("Deleted"); they pause while the pointer is over them.
+- Drop anywhere in the app: overlay "Drop to add to Data room" and one toast per file: percentage, then "Uploaded" + "View", or "Already in …", or "Unsupported file name" / "Upload failed" (`DropZone.tsx`). Files go into the folder the Data room page shows, or the root from any other page (`upload-toasts.ts:122-133`). Toasts last 10 s (done), 15 s (failed), 5 s ("Deleted"); they pause while the pointer is over them.
 - Filter bar (`FilterBar.tsx`): search box (placeholder "Search names and text", aria "Search documents", debounced 300 ms, server-side, Escape clears), then "Type", "Party", "Document date", "Source" and "Sort: …" plus an ascending/descending arrow. Type, Party and Source are pick lists built from the rows on screen (Source always offers Upload, Google Drive, Gmail, Chat, Finance). A filter appears only when there is something to pick (Type, Party, Document date), or is already set.
 - Status: while a background job works the row shows a spinner and the word "Reading"; failed shows "Failed" in red with the reason as a hover tooltip. Ready rows show nothing. The list re-reads working items every 3 s (`use-data-room-list.ts:34`).
 - Preview (`Preview.tsx`): "Preview" header with "…" and a close X; name; image (for png/jpg/gif/webp up to 10 MB; hidden when Hide amounts is on); summary or "Reading" or "Couldn't read this file" + reason; Type, Date, Parties, Amount, Tags, Folder, Source, Size; failed files lead with a red "Delete"; every file has "Download".
@@ -119,7 +119,7 @@ Every story names the subset it needs. The full seed is:
 STORY-DRM-001 (Find the Data room, empty)
 ├── STORY-DRM-002 (First upload with Choose files)
 │   ├── STORY-DRM-003 (Drop on another page)
-│   ├── STORY-DRM-004 (File too large)
+│   ├── STORY-DRM-004 (Large file)
 │   ├── STORY-DRM-005 (Same file twice)
 │   ├── STORY-DRM-006 (Upload into the open folder)
 │   └── STORY-DRM-007 (Watch it get read)
@@ -231,22 +231,21 @@ STORY-DRM-001 (Find the Data room, empty)
 ##### Edge Cases
 - Dragging text or a link (not a file) → no overlay (`dragHasFiles`).
 
-#### STORY-DRM-004: Try to upload a file that is too big
+#### STORY-DRM-004: Upload a file that is over 50 MB
 
 **Type**: short
-**Topic**: Upload limits
+**Topic**: Large uploads
 **Persona**: Maya, trying to keep the board meeting recording.
 **Goal**: Store a 60 MB video.
 **Preconditions**: S1; walker has `MOCK board-video.mp4` (~60 MB). On main.
-**Ideal path**: 1 — attempt, get a clear refusal before waiting.
+**Ideal path**: 1 — upload it and download it again.
 **Alternate paths**: none found.
 
 ##### Steps
-1. Click "+" ("Add files") and choose the video → A toast immediately shows the name and, in red, "Over the 50 MB limit" with an X; it stays 15 s. Nothing is sent (`upload-toasts.ts:101`).
-2. Look for a way to store it anyway → None: no compression hint, no larger-file option.
+1. Click "+" ("Add files") and choose the video → A toast shows the name and a progress bar, then "Uploaded". There is no size limit.
+2. Open the item → Download works. A PDF, Office file or image over 50 MB also shows "Too large to search inside", because it is stored but not read for search.
 
 ##### Edge Cases
-- A file just under 50 MB that the server still counts as too big → server answers 413 and the toast says the same words.
 - The server refuses a file name with a slash (400) → "Unsupported file name". A real file name cannot contain a slash, so the walker can only reach this by calling the upload endpoint directly.
 
 #### STORY-DRM-005: Upload the same file twice
@@ -562,7 +561,7 @@ STORY-DRM-001 (Find the Data room, empty)
 1. Sign in; look for "Documents" in the sidebar → Finds "Data room" after scanning (STORY-DRM-001 hesitation).
 2. Click it → The dashed box "Drop files here" and "Choose files". No card yet; the consent card shows only once the room is not empty.
 3. Select all ten PDFs plus the video in Finder and drag them onto the box → Overlay "Drop to add to Data room"; drop.
-4. Toasts stack at the lower right: ten progress bars and one red "Over the 50 MB limit" for the video.
+4. Toasts stack at the lower right: eleven progress bars, including the video.
 5. Toasts turn to "Uploaded" and disappear after 10 s → She believes everything is filed in folders. **Misread risk.**
 6. The list shows ten rows, each with a spinner and "Reading", then plain rows with no Type or Date (no consent, so nothing was classified).
 7. Above the list a card "Let Praci read your documents" with an Allow button explains the documents will be sent to a model provider. **Hesitation:** privacy of incorporation documents.
@@ -1058,7 +1057,7 @@ STORY-DRM-001 (Find the Data room, empty)
 1. Open the Drive dialog and open two folders deep → The back arrow goes up one level at a time.
 2. Look at `Customer survey` (a Google Form) → Its checkbox is disabled with no explanation (`ImportFromDrive.tsx:44-47`). **Hesitation:** she wonders why this file is locked.
 3. Tick a Google Doc → Allowed (becomes a PDF).
-4. Tick the video above 50 MB → The import ends with "Couldn't import 1 file" for that file.
+4. Tick the large video → It is queued like any other file; there is no size limit.
 5. Tick 20 files → The rest become disabled.
 6. Type in "Search Drive" → Results across Drive; the back arrow hides.
 

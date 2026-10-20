@@ -46,6 +46,7 @@ function handlers(overrides: Partial<BackgroundJobHandlers> = {}): BackgroundJob
     "dataroom.drive.file": vi.fn(async () => undefined),
     "dataroom.box.import": vi.fn(async () => undefined),
     "dataroom.box.file": vi.fn(async () => undefined),
+    "dataroom.zip.unpack": vi.fn(async () => undefined),
     ...overrides,
   };
 }

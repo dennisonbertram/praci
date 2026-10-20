@@ -22,6 +22,7 @@ import { scheduleComputerSleep, sleepComputerIfIdle } from "./computer-idle.js";
 import { performComputerUpdate } from "./computer-update.js";
 import { runBoxFileImport, runBoxImport } from "./data-room-box-import.js";
 import { runDriveFileImport, runDriveImport } from "./data-room-drive-import.js";
+import { DATA_ROOM_STREAM_TIMEOUT_MS } from "./data-room-files.js";
 import type { DataRoomJobDeps } from "./data-room-jobs.js";
 import {
   runDataRoomClassify,
@@ -30,6 +31,7 @@ import {
   runDataRoomThumbnail,
 } from "./data-room-jobs.js";
 import { resolveDataRoomAi } from "./data-room-models.js";
+import { runDataRoomZipUnpack } from "./data-room-zip-import.js";
 import type { DriveFilesDeps } from "./drive-files.js";
 import { syncExchanges } from "./exchange-sync.js";
 import type { createRunExecutor } from "./executor.js";
@@ -239,6 +241,14 @@ export function createBackgroundJobHandlers(deps: {
     "dataroom.classify": (payload) => runDataRoomClassify(dataRoomDeps(), payload),
     "dataroom.index": (payload) => runDataRoomIndex(dataRoomDeps(), payload),
     "dataroom.thumbnail": (payload) => runDataRoomThumbnail(dataRoomDeps(), payload),
+    "dataroom.zip.unpack": async (payload) => {
+      if (!deps.artifacts) throw new Error("Zip import is not configured");
+      await runDataRoomZipUnpack(
+        { prisma: deps.prisma, jobs: deps.jobs, artifacts: deps.artifacts },
+        payload,
+        AbortSignal.timeout(DATA_ROOM_STREAM_TIMEOUT_MS),
+      );
+    },
     "dataroom.drive.import": (payload) =>
       runDriveImport({ prisma: deps.prisma, jobs: deps.jobs }, payload),
     "dataroom.drive.file": async (payload) => {
@@ -251,7 +261,7 @@ export function createBackgroundJobHandlers(deps: {
           connectors: deps.connectors,
         },
         payload,
-        AbortSignal.timeout(120_000),
+        AbortSignal.timeout(DATA_ROOM_STREAM_TIMEOUT_MS),
       );
     },
     "dataroom.box.import": (payload) =>
@@ -266,7 +276,7 @@ export function createBackgroundJobHandlers(deps: {
           box: { accessToken: deps.boxAccessToken },
         },
         payload,
-        AbortSignal.timeout(120_000),
+        AbortSignal.timeout(DATA_ROOM_STREAM_TIMEOUT_MS),
       );
     },
     "finance.sync": async (payload) => {

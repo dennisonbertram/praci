@@ -122,6 +122,7 @@ async function load(
     if (!item?.storageKey || !isAttachmentImageMimeType(item.mimeType)) {
       throw new Error("image not found");
     }
+    if (Number(item.size) > ATTACHMENT_MAX_BYTES) throw new Error("image is larger than 10 MiB");
     const bytes = await deps.artifacts.get(item.storageKey, dataRoomBlobContext(actor, "agent"));
     return store(deps, bytes, item.name, alt, caption);
   }

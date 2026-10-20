@@ -115,6 +115,12 @@ function fakes(kind = "e2b") {
       objects.set(id, artifact.bytes);
       return { id, hash: createHash("sha256").update(artifact.bytes).digest("hex") };
     },
+    putStream: async () => {
+      throw new Error("not used");
+    },
+    getStream: async () => {
+      throw new Error("not used");
+    },
     get: async (id, context) => {
       const hook = hooks.beforeGet;
       hooks.beforeGet = undefined;

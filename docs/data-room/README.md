@@ -180,7 +180,11 @@ payload map and `background-job-handlers.ts`):
    vision-capable model when one is configured; plain text, Markdown, CSV, HTML, JSON;
    .docx, .xlsx and .pptx read locally from their XML with a 50 MB unzip cap; legacy
    binary .doc, .xls and .ppt give no text). Items that were stored without text are
-   re-ingested when the user grants AI consent (`requeueReady("ingest")`).
+   re-ingested when the user grants AI consent (`requeueReady("ingest")`). Reading is
+   bounded, storing is not: a text file is read from its first 5 MiB at any size, and a
+   PDF, Office file or image over 50 MiB is stored, listed and downloadable but not read.
+   Ingest marks it `notIndexed` (the preview says "Too large to search inside") and it
+   stays findable by name. Video and other types with no reader are never fetched.
 2. `dataroom.classify`: fill the facets and propose a folder. New items are filed
    automatically; the user can move them, and moves are kept as examples for the
    classifier.
@@ -195,6 +199,30 @@ bounded by the retry limit. Each step writes only if the item has not changed
 since the step started, so a stale job cannot overwrite newer results. A job
 that exhausts its retries leaves the item `failed` with the error shown on the
 item.
+
+## Uploads and imports of any size
+
+No path holds a whole file in memory, so there is no size limit.
+
+- **Direct upload.** The request body goes straight to the blob store through
+  `ArtifactStore.putStream`, hashed and counted on the way (S3 uses 8 MiB multipart
+  parts, so the limit is about 78 GiB per object). A dropped connection aborts the
+  write and removes the partial object. A repeat of the same bytes is found after the
+  write and its blob is removed. `DataRoomItem.size` is a `BIGINT`.
+- **Zip.** The upload answers `202` with an import id. The zip is stored, its directory
+  checked (encrypted, unsafe paths, symlinks, more than 1,000 files and bomb-like
+  compression ratios are refused with `400` before anything is queued), and the job
+  `dataroom.zip.unpack` reads it from storage with ranged requests (Zip64 included) and
+  streams each entry back as its own item. Progress is the import row. The stored zip
+  is removed when the job finishes; a delayed `dataroom.blob.delete` job is a backstop.
+- **Drive and Box.** Files stream from the provider into the store in queued jobs,
+  including a single direct pick. Drive streaming needs the native Google connector.
+- **Agent tools.** `add_to_data_room` streams Drive files and copies artifacts store to
+  store. Mail attachments keep the mail provider's bound (about 50 MB), because that
+  contract returns an attachment as one buffer.
+- **Limits that remain.** Reading for search is bounded as above. The API server allows
+  a request 12 hours (`requestTimeout`), and a download job 3 hours. The browser still
+  downloads a file whole (`response.blob()`).
 
 ## Search
 
@@ -212,8 +240,7 @@ Design: [mockup.html](mockup.html) (sample data only).
 
 - **Drop anywhere.** A drop zone over the whole web and Electron app shell. Dropped
   files upload to the current space's Data room and show progress in a toast that
-  links to the filed item. Size cap TBD (the chat attachment cap of 10 MB is too
-  small for contracts and statements).
+  links to the filed item. There is no size limit (see Uploads and imports of any size).
 - **Data room page.** Folder tree, list and grid views, and one bar holding search,
   facet filters and sort. Search, filtering, sorting and pagination all run on the
   server; the client never sorts or filters a fetched page. Hovering or moving the
@@ -284,8 +311,9 @@ a space.
 
 ## Defaults chosen for the first build
 
-- Uploads go through the API, streamed to the store, with a 50 MB cap per file.
-  Presigned direct uploads can follow if large files become common.
+- Uploads go through the API, streamed to the store with no size cap (see Uploads and
+  imports of any size). Presigned direct uploads can follow if the API becomes the
+  bottleneck for very large files.
 - Vectors have a fixed 1024 dimensions for the deployment. The embedder asks for
   1024 dimensions where the endpoint supports it, and an embedder that returns
   another size is reported as misconfigured and search stays keyword-only.

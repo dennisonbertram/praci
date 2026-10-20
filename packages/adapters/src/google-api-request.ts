@@ -118,7 +118,7 @@ export interface GoogleApiCall {
   body?: unknown;
   /** Media type of a raw string `body`; omit for JSON. */
   contentType?: string;
-  responseType?: "text" | "bytes";
+  responseType?: "text" | "bytes" | "stream";
   /** Required with `responseType: "bytes"`. */
   maxBytes?: number;
   /** Only `signal` is read here; the whole context goes to the connector. */

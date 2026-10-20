@@ -35,6 +35,7 @@ const receipt = {
   sourceUrl: null,
   status: "ready",
   error: null,
+  notIndexed: false,
   facets: {
     docType: null,
     docDate: null,
@@ -153,6 +154,34 @@ it("opens a readable PDF in the browser, and says an untagged file is not tagged
   expect(container.textContent).toContain("Not tagged yet");
   act(() => icon("Open in new tab").click());
   expect(openItem).toHaveBeenCalledWith(pdf);
+});
+
+it("says a file too large to read is not searchable inside, instead of not tagged yet", async () => {
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, notIndexed: true }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).toContain("Too large to search inside");
+  expect(container.textContent).not.toContain("Not tagged yet");
+
+  // A file still being read shows neither line.
+  await act(async () => {
+    root.render(
+      <Preview
+        item={{ ...receipt, notIndexed: true, status: "extracting" }}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+  });
+  expect(container.textContent).not.toContain("Too large to search inside");
 });
 
 it("disables Open for a file the browser cannot show, and Full screen opens a spreadsheet", async () => {

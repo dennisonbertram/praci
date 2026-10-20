@@ -57,10 +57,13 @@ export type DriveFileSummary = {
   isFolder: boolean;
 };
 
-export type DriveFileDownload = {
+export type DriveFileStream = {
   name: string;
   mimeType: string;
-  bytes: Uint8Array;
+  /** The file's bytes, unread. The caller must read it to the end or cancel it. */
+  stream: ReadableStream<Uint8Array>;
+  /** The Drive file's size when Drive reports one (not for Google documents, which are exported). */
+  size?: number;
   webViewLink: string;
   modifiedTime: string;
 };
@@ -90,7 +93,7 @@ async function connect(deps: DriveFilesDeps, context: AdapterContext, target: Ta
   const google = deps.google ?? new GoogleApiClient();
   return (
     url: string,
-    init: { bytes?: { maxBytes: number } } = {},
+    init: { stream?: boolean } = {},
   ): Promise<{ data: unknown; contentType?: string }> =>
     google
       .request({
@@ -102,7 +105,7 @@ async function connect(deps: DriveFilesDeps, context: AdapterContext, target: Ta
         },
         method: "GET",
         url,
-        ...(init.bytes ? { responseType: "bytes" as const, maxBytes: init.bytes.maxBytes } : {}),
+        ...(init.stream ? { responseType: "stream" as const } : {}),
         context,
       })
       .catch((cause: unknown) => {
@@ -130,7 +133,7 @@ function hasReason(data: unknown, reason: string): boolean {
   return Array.isArray(errors) && errors.some((entry) => asRecord(entry)?.reason === reason);
 }
 
-/** Whether `downloadDriveFile` can fetch this file: plain files and the Google types Drive exports to PDF. */
+/** Whether `streamDriveFile` can fetch this file: plain files and the Google types Drive exports to PDF. */
 export function isImportableDriveFile(file: Pick<DriveFileSummary, "mimeType">): boolean {
   return !file.mimeType.startsWith(GOOGLE_APPS) || PDF_EXPORTS.has(file.mimeType);
 }
@@ -197,40 +200,36 @@ export async function getDriveFile(
 }
 
 /**
- * One file's bytes. Google Docs, Sheets, Slides and Drawings are exported as PDF (Drive caps an
- * export at 10 MB); other files are downloaded as they are. Throws `DriveFileError`: `unsupported` for
- * folders, shortcuts, Forms and other files with no content, `too_large` over `maxBytes`.
+ * One file's bytes as a stream, with no size limit: the caller writes it to storage as it arrives.
+ * Google Docs, Sheets, Slides and Drawings are exported as PDF (Drive caps an export at 10 MB);
+ * other files are downloaded as they are. Throws `DriveFileError`: `unsupported` for folders,
+ * shortcuts, Forms and other files with no content, `too_large` when Drive refuses an export.
  */
-export async function downloadDriveFile(
+export async function streamDriveFile(
   deps: DriveFilesDeps,
   context: AdapterContext,
   fileId: string,
-  options: Target & { maxBytes: number },
-): Promise<DriveFileDownload> {
+  options: Target = {},
+): Promise<DriveFileStream> {
   const request = await connect(deps, context, options);
   const id = encodeURIComponent(fileId);
   const file = summary((await request(`${API}/files/${id}?fields=${FIELDS}&${SHARED}`)).data);
   const exported = PDF_EXPORTS.has(file.mimeType);
   if (file.mimeType.startsWith(GOOGLE_APPS) && !exported)
     throw new DriveFileError("unsupported", "This kind of Google file can't be imported");
-  // A Workspace file's size is the source document's, not the PDF's; the export is capped as it streams.
-  if (!exported && file.size !== undefined && file.size > options.maxBytes)
-    throw new DriveFileError("too_large", "The file is too large to import");
   const url = exported
     ? `${API}/files/${id}/export?mimeType=application%2Fpdf`
     : `${API}/files/${id}?alt=media&${SHARED}`;
-  const { data, contentType } = await request(url, { bytes: { maxBytes: options.maxBytes } });
-  if (!(data instanceof Uint8Array))
+  const { data, contentType } = await request(url, { stream: true });
+  if (!(data instanceof ReadableStream))
     throw new DriveFileError("failed", "This Drive connection cannot download files");
-  // A connector that ignores maxBytes must not get past the cap.
-  if (data.byteLength > options.maxBytes)
-    throw new DriveFileError("too_large", "The file is too large to import");
   return {
     name: exported && !/\.pdf$/i.test(file.name) ? `${file.name}.pdf` : file.name,
     mimeType: exported
       ? "application/pdf"
       : file.mimeType || contentType || "application/octet-stream",
-    bytes: data,
+    stream: data,
+    ...(!exported && file.size !== undefined ? { size: file.size } : {}),
     webViewLink: file.webViewLink,
     modifiedTime: file.modifiedTime,
   };

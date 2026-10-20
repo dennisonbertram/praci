@@ -1,9 +1,6 @@
 import * as z from "zod";
 import { Id } from "./ids.js";
 
-/** Uploads are streamed through the API and refused above this size. */
-export const DATA_ROOM_UPLOAD_MAX_BYTES = 50 * 1024 * 1024;
-
 /** A file or folder name: 1 to 255 characters, no path separators or control characters. */
 export const DataRoomApiName = z
   .string()
@@ -49,6 +46,8 @@ export const DataRoomApiItemSchema = z.object({
   status: z.string(),
   /** Why the last step failed. A `ready` item can carry one (for example, filing was skipped). */
   error: z.string().nullable(),
+  /** True when the file is stored and listed but too large to search inside. */
+  notIndexed: z.boolean(),
   facets: DataRoomApiFacetsSchema,
   createdAt: z.string().datetime(),
   /** A thumbnail can be fetched from `/api/data-room/items/:id/thumbnail`. */
@@ -122,10 +121,11 @@ export const DataRoomApiSearchOutputSchema = z.object({
   nextCursor: Id.nullable(),
 });
 
-export const DataRoomApiUploadResponseSchema = z.object({
-  item: DataRoomApiItemSchema,
-  duplicate: z.boolean(),
-});
+/** A file answers with its item (201, or 200 for a repeat); a zip answers 202 with its import. */
+export const DataRoomApiUploadResponseSchema = z.union([
+  z.object({ item: DataRoomApiItemSchema, duplicate: z.boolean() }),
+  z.object({ importId: Id }),
+]);
 export type DataRoomApiUploadResponse = z.infer<typeof DataRoomApiUploadResponseSchema>;
 
 /** Bump when the disclosure below changes; it invalidates earlier consent. */

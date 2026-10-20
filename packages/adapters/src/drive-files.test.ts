@@ -1,9 +1,9 @@
 import type { AdapterContext, ManagedConnectorProvider } from "@rakazo/adapter-kit";
 import { describe, expect, it } from "vitest";
 import type { EmulatedDriveFile } from "./drive-api-emulator.js";
-import { DriveApiEmulator } from "./drive-api-emulator.js";
+import { DriveApiEmulator, emulatedDriveStream } from "./drive-api-emulator.js";
 import type { DriveFilesDeps } from "./drive-files.js";
-import { DriveFileError, downloadDriveFile, listDriveFiles } from "./drive-files.js";
+import { DriveFileError, listDriveFiles, streamDriveFile } from "./drive-files.js";
 import { GoogleApiClient } from "./google-api-request.js";
 
 const context: AdapterContext = {
@@ -43,7 +43,10 @@ const rows = [
   metadata: null,
 }));
 
-function setup(files: EmulatedDriveFile[], ignoreMaxBytes = false) {
+const readAll = async (stream: ReadableStream<Uint8Array>) =>
+  new Uint8Array(await new Response(stream).arrayBuffer());
+
+function setup(files: EmulatedDriveFile[]) {
   const emulator = new DriveApiEmulator({
     accounts: {
       "acct-a": { email: "ann@example.test", files },
@@ -54,15 +57,8 @@ function setup(files: EmulatedDriveFile[], ignoreMaxBytes = false) {
     },
   });
   const connector = {
-    proxy: async (r: { accountRef: string; url: string; method: string; maxBytes?: number }) => {
-      const response = emulator.handle(r.accountRef, r.url, r.method);
-      return response.data instanceof Uint8Array &&
-        r.maxBytes &&
-        !ignoreMaxBytes &&
-        response.data.byteLength > r.maxBytes
-        ? { status: 413, data: {} }
-        : response;
-    },
+    proxy: async (r: { accountRef: string; url: string; method: string; responseType?: string }) =>
+      emulatedDriveStream(emulator.handle(r.accountRef, r.url, r.method), r.responseType),
   } as unknown as ManagedConnectorProvider;
   const deps: DriveFilesDeps = {
     prisma: {
@@ -85,7 +81,7 @@ const code = (promise: Promise<unknown>) =>
     (error) => (error instanceof DriveFileError ? error.code : String(error)),
   );
 
-describe("downloadDriveFile", () => {
+describe("streamDriveFile", () => {
   const files: EmulatedDriveFile[] = [
     { id: "doc1", name: "Roadmap", mimeType: DOC, pdf: PDF },
     { id: "pdf1", name: "scan.pdf", mimeType: "application/pdf", bytes: PDF },
@@ -93,51 +89,75 @@ describe("downloadDriveFile", () => {
     { id: "dir1", name: "Folder", mimeType: "application/vnd.google-apps.folder" },
   ];
 
-  it("exports a Google Doc as PDF bytes with a .pdf name", async () => {
+  it("exports a Google Doc as a PDF stream with a .pdf name", async () => {
     const { deps } = setup(files);
-    const result = await downloadDriveFile(deps, context, "doc1", { maxBytes: 10_000 });
+    const result = await streamDriveFile(deps, context, "doc1");
     expect(result).toMatchObject({ name: "Roadmap.pdf", mimeType: "application/pdf" });
-    expect(Array.from(result.bytes)).toEqual(Array.from(PDF));
+    expect(Array.from(await readAll(result.stream))).toEqual(Array.from(PDF));
     expect(result.webViewLink).toContain("doc1");
   });
 
-  it("downloads a regular file byte for byte and keeps its name", async () => {
+  it("streams a regular file byte for byte and keeps its name and size", async () => {
     const { deps } = setup(files);
-    const result = await downloadDriveFile(deps, context, "pdf1", { maxBytes: 10_000 });
+    const result = await streamDriveFile(deps, context, "pdf1");
     expect(result.name).toBe("scan.pdf");
-    expect(Array.from(result.bytes)).toEqual(Array.from(PDF));
+    expect(result.size).toBe(PDF.byteLength);
+    expect(Array.from(await readAll(result.stream))).toEqual(Array.from(PDF));
   });
 
-  it("rejects a file over the cap, whether the size is known, the connector enforces it, or neither", async () => {
+  it("has no size limit: a file larger than 50 MB is handed back as a stream", async () => {
+    const big = new Uint8Array(60 * 1024 * 1024);
+    const { deps } = setup([
+      { id: "big", name: "big.bin", mimeType: "application/octet-stream", bytes: big },
+    ]);
+    const result = await streamDriveFile(deps, context, "big");
+    expect(result.size).toBe(big.byteLength);
+    let total = 0;
+    let largest = 0;
+    for await (const chunk of result.stream as unknown as AsyncIterable<Uint8Array>) {
+      total += chunk.byteLength;
+      largest = Math.max(largest, chunk.byteLength);
+    }
+    expect(total).toBe(big.byteLength);
+    expect(largest).toBeLessThanOrEqual(64 * 1024);
+  });
+
+  it("asks the connector for a stream and maps Drive's export limit to too_large", async () => {
+    const { deps } = setup(files);
+    const seen: Array<string | undefined> = [];
+    const refusing = {
+      proxy: async (r: { url: string; responseType?: string }) => {
+        seen.push(r.responseType);
+        return r.url.includes("/export")
+          ? { status: 413, data: {} }
+          : { status: 200, data: { id: "doc1", name: "Big", mimeType: DOC } };
+      },
+    } as unknown as ManagedConnectorProvider;
     expect(
-      await code(downloadDriveFile(setup(files).deps, context, "pdf1", { maxBytes: 100 })),
+      await code(
+        streamDriveFile({ ...deps, connectors: { managed: () => refusing } }, context, "doc1"),
+      ),
     ).toBe("too_large");
-    // Google-native: size is unknown, so the connector's 413 is what stops it.
+    expect(seen).toEqual([undefined, "stream"]);
+  });
+
+  it("fails clearly when the connector cannot stream", async () => {
+    const { deps } = setup(files);
+    const buffering = {
+      proxy: async () => ({ status: 200, data: { id: "pdf1", name: "scan.pdf", mimeType: "x/y" } }),
+    } as unknown as ManagedConnectorProvider;
     expect(
-      await code(downloadDriveFile(setup(files).deps, context, "doc1", { maxBytes: 100 })),
-    ).toBe("too_large");
-    expect(
-      await code(downloadDriveFile(setup(files, true).deps, context, "doc1", { maxBytes: 100 })),
-    ).toBe("too_large");
+      await code(
+        streamDriveFile({ ...deps, connectors: { managed: () => buffering } }, context, "pdf1"),
+      ),
+    ).toBe("failed");
   });
 
   it("refuses Google files that have no content", async () => {
     const { deps } = setup(files);
-    expect(await code(downloadDriveFile(deps, context, "form1", { maxBytes: 10_000 }))).toBe(
-      "unsupported",
-    );
-    expect(await code(downloadDriveFile(deps, context, "dir1", { maxBytes: 10_000 }))).toBe(
-      "unsupported",
-    );
-    expect(await code(downloadDriveFile(deps, context, "missing", { maxBytes: 10_000 }))).toBe(
-      "not_found",
-    );
-  });
-
-  it("imports a Doc whose source size is large but whose PDF is small", async () => {
-    const { deps } = setup([{ id: "big", name: "Big", mimeType: DOC, size: "5000000", pdf: PDF }]);
-    const result = await downloadDriveFile(deps, context, "big", { maxBytes: 10_000 });
-    expect(result.bytes.byteLength).toBe(PDF.byteLength);
+    expect(await code(streamDriveFile(deps, context, "form1"))).toBe("unsupported");
+    expect(await code(streamDriveFile(deps, context, "dir1"))).toBe("unsupported");
+    expect(await code(streamDriveFile(deps, context, "missing"))).toBe("not_found");
   });
 
   it("maps a 403 userRateLimitExceeded to rate_limited", async () => {
@@ -150,28 +170,20 @@ describe("downloadDriveFile", () => {
     } as unknown as ManagedConnectorProvider;
     expect(
       await code(
-        downloadDriveFile({ ...deps, connectors: { managed: () => limited } }, context, "pdf1", {
-          maxBytes: 10_000,
-        }),
+        streamDriveFile({ ...deps, connectors: { managed: () => limited } }, context, "pdf1"),
       ),
     ).toBe("rate_limited");
   });
 
   it("only uses the caller's own connection", async () => {
     const { deps } = setup(files);
-    expect(
-      await code(
-        downloadDriveFile(deps, context, "secret", { maxBytes: 10_000, connectionId: "conn-b" }),
-      ),
-    ).toBe("not_connected");
-    expect(
-      await code(
-        downloadDriveFile(deps, { ...context, spaceId: "space-2" }, "pdf1", { maxBytes: 10_000 }),
-      ),
-    ).toBe("not_connected");
-    expect(await code(downloadDriveFile(deps, context, "secret", { maxBytes: 10_000 }))).toBe(
-      "not_found",
+    expect(await code(streamDriveFile(deps, context, "secret", { connectionId: "conn-b" }))).toBe(
+      "not_connected",
     );
+    expect(await code(streamDriveFile(deps, { ...context, spaceId: "space-2" }, "pdf1"))).toBe(
+      "not_connected",
+    );
+    expect(await code(streamDriveFile(deps, context, "secret"))).toBe("not_found");
   });
 });
 

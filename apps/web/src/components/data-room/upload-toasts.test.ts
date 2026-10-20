@@ -71,7 +71,7 @@ it("ignores an upload that finishes after the session changed", async () => {
 
 it("dismisses a failed upload by itself after a while", async () => {
   setUploadScope("u1");
-  hoisted.upload.mockRejectedValue(new DataRoomUploadError("too-large"));
+  hoisted.upload.mockRejectedValue(new DataRoomUploadError("failed"));
   uploadFilesToDataRoom([file("big.bin")]);
   await flush();
   expect(names()).toEqual(["big.bin"]);
@@ -79,7 +79,7 @@ it("dismisses a failed upload by itself after a while", async () => {
   expect(names()).toEqual([]);
 });
 
-it("reports why a zip was refused and shows the import row for it", async () => {
+it("reports why a zip was refused, without starting an import", async () => {
   setUploadScope("u1");
   const started = vi.fn();
   window.addEventListener("rakazo:data-room-import-started", started);
@@ -87,8 +87,31 @@ it("reports why a zip was refused and shows the import row for it", async () => 
   uploadFilesToDataRoom([file("locked.zip")]);
   await flush();
   expect(getUploadToasts()[0]?.state).toMatchObject({ kind: "error", reason: "zip-encrypted" });
-  expect(started).toHaveBeenCalled();
+  expect(started).not.toHaveBeenCalled();
   window.removeEventListener("rakazo:data-room-import-started", started);
+});
+
+it("hands a zip over to the import row: the toast goes away and progress is read at once", async () => {
+  setUploadScope("u1");
+  const started = vi.fn();
+  window.addEventListener("rakazo:data-room-import-started", started);
+  hoisted.upload.mockResolvedValue({ importId: "import-1" });
+  uploadFilesToDataRoom([file("bundle.zip")]);
+  await flush();
+  expect(names()).toEqual([]);
+  expect(started).toHaveBeenCalledTimes(1);
+  window.removeEventListener("rakazo:data-room-import-started", started);
+});
+
+it("sends a 200 MB file without checking its size", async () => {
+  setUploadScope("u1");
+  hoisted.upload.mockResolvedValue({ item: { id: "i1", name: "huge.bin" }, duplicate: false });
+  const huge = new File(["x"], "huge.bin");
+  Object.defineProperty(huge, "size", { value: 200 * 1024 * 1024 });
+  uploadFilesToDataRoom([huge]);
+  await flush();
+  expect(hoisted.upload).toHaveBeenCalledTimes(1);
+  expect(getUploadToasts()[0]?.state).toMatchObject({ kind: "uploaded", itemId: "i1" });
 });
 
 it("uploads into the folder the Data room page has open, else the root", async () => {

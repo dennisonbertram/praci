@@ -1,5 +1,4 @@
 import { t } from "@lingui/core/macro";
-import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
 import {
   DATA_ROOM_CHANGED,
   DataRoomUploadError,
@@ -11,7 +10,6 @@ import { errorText } from "../../lib/user-error";
 import { folderNodes } from "./folders";
 
 export type UploadFailure =
-  | "too-large"
   | "invalid"
   | "folder-gone"
   | "zip-too-large"
@@ -20,7 +18,6 @@ export type UploadFailure =
   | "zip-invalid"
   | "failed";
 const UPLOAD_FAILURES = [
-  "too-large",
   "invalid",
   "folder-gone",
   "zip-too-large",
@@ -128,15 +125,18 @@ async function uploadOne(file: File, folderId: string | undefined) {
     update(id, { kind: "error", reason, ...(toTop ? { toTop } : {}) });
     dismissLater(id, FAILED_TOAST_MS);
   };
-  // The server enforces the limit; this only avoids sending a file that will be refused.
-  if (file.size > DATA_ROOM_UPLOAD_MAX_BYTES) return fail("too-large");
-  // A zip is unpacked while the request is open: let the import row show its progress.
-  const isZip = /\.zip$/i.test(file.name);
-  if (isZip) dataRoomImportStarted();
   try {
-    const { item, duplicate } = await uploadToDataRoom(file, folderId, (fraction) => {
+    const uploaded = await uploadToDataRoom(file, folderId, (fraction) => {
       if (current()) update(id, { kind: "uploading", fraction });
     });
+    // A zip is unpacked in the background: the import row shows its progress from here.
+    if (!("item" in uploaded)) {
+      if (!current()) return;
+      dismissUploadToast(id);
+      dataRoomImportStarted();
+      return;
+    }
+    const { item, duplicate } = uploaded;
     // Where the file already is: without it "Already there" leaves the user to go looking.
     const folder =
       duplicate && item.folderId
@@ -159,7 +159,6 @@ async function uploadOne(file: File, folderId: string | undefined) {
         : {}),
     });
     window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
-    if (isZip) dataRoomImportStarted();
     dismissLater(id, DONE_TOAST_MS);
   } catch (error) {
     if (!current()) return;
