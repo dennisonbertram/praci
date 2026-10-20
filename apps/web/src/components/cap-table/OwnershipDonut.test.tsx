@@ -9,7 +9,7 @@ vi.mock("@lingui/core/macro", () => ({
 }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
-import { groupClasses, OwnershipDonut } from "./OwnershipDonut";
+import { groupClasses, OwnershipDonut, sliceArcs } from "./OwnershipDonut";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -52,20 +52,50 @@ it("describes the top classes and lists every value in a hidden table", async ()
   setHideAmounts(false);
 });
 
-it("shows a tooltip on hover and on focus", async () => {
+it("links a legend row and its slice in both directions", async () => {
   const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={1000} />);
-  expect(el.querySelector("[role=tooltip]")).toBeNull();
+  const centre = () => el.querySelector("[data-testid=donut-centre]")?.textContent ?? "";
+  expect(centre()).toBe("1,000Shares");
+  const slices = () => [...el.querySelectorAll("[data-testid=donut-slice]")];
   await act(async () => {
-    el.querySelectorAll("[data-testid=donut-slice]")[1]?.dispatchEvent(
-      new MouseEvent("mouseover", { bubbles: true }),
-    );
+    slices()[1]?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
   });
-  expect(el.querySelector("[role=tooltip]")?.textContent).toContain("Series A Preferred");
-  expect(el.querySelector("[role=tooltip]")?.textContent).toContain("30.00%");
+  expect(centre()).toBe("300Series A Preferred");
+  expect(el.querySelectorAll("li > div")[1]?.className).toContain("bg-foreground/10");
+  expect(slices()[0]?.getAttribute("class")).toContain("opacity-30");
   await act(async () => {
     el.querySelectorAll("li > div")[2]?.dispatchEvent(new FocusEvent("focusin", { bubbles: true }));
   });
-  expect(el.querySelector("[role=tooltip]")?.textContent).toContain("Options");
+  expect(centre()).toBe("100Options");
+  expect(slices()[2]?.getAttribute("class")).not.toContain("opacity-30");
+});
+
+it("adds a slice for shares no class holds, so the legend matches the centre", async () => {
+  const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={1250} />);
+  expect(el.querySelector("[data-testid=donut-centre]")?.textContent).toBe(
+    "1,250Fully diluted shares",
+  );
+  const rows = [...el.querySelectorAll("table.sr-only tbody tr")].map((r) => r.textContent);
+  expect(rows).toContain("Options and pool20.00%250");
+  expect(el.querySelectorAll("[data-testid=donut-slice]")).toHaveLength(4);
+});
+
+it("falls back to the listed total when the classes exceed fully diluted", async () => {
+  const el = await mount(<OwnershipDonut classes={classes} fullyDilutedShares={500} />);
+  expect(el.querySelectorAll("[data-testid=donut-slice]")).toHaveLength(3);
+  expect(el.querySelector("[data-testid=donut-centre]")?.textContent).toBe("1,000Shares");
+});
+
+it("draws a tiny slice at the minimum angle and a single class as a full ring", () => {
+  const tiny = sliceArcs([9934, 66])[1];
+  const m = /^M([\d.]+),([\d.]+)A90,90 0 \d 1 ([\d.]+),([\d.]+)/.exec(tiny ?? "");
+  const angle = (x: number, y: number) => Math.atan2(x - 96, 96 - y);
+  const span =
+    (angle(Number(m?.[3]), Number(m?.[4])) - angle(Number(m?.[1]), Number(m?.[2]))) % (2 * Math.PI);
+  // 66 / 10000 is 0.66%; it is drawn wider (about 7 degrees minus the gap), never narrower than 3.
+  expect(Math.abs(span)).toBeGreaterThan((3 * Math.PI) / 180);
+  expect(sliceArcs([5])).toHaveLength(1);
+  expect(sliceArcs([5])[0]).toContain("A90,90 0 1 1");
 });
 
 it("selects a class only when it maps to a security", async () => {

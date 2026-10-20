@@ -6275,6 +6275,10 @@ msgstr ""
 msgid "Options"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Options and pool"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "또는 API 키 연결"

@@ -6275,6 +6275,10 @@ msgstr "Optional faster balance reads"
 msgid "Options"
 msgstr "Options"
 
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Options and pool"
+msgstr "Options and pool"
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Or connect an API key"
 msgstr "Or connect an API key"
