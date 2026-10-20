@@ -1,11 +1,12 @@
 import type { Space } from "@rakazo/contracts";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import { Alert, ScrollView, Text, TextInput } from "react-native";
 import { NativeActionButton } from "../components/native-action-button";
 import { cancelHeaderOptions } from "../components/sheet-header";
 import { rpc, selectSpace } from "../lib/api";
 import { useI18n } from "../lib/i18n";
+import { SPACE_NAME_MAX } from "../lib/inbox-spaces";
 import { native, useMobileTokens } from "../lib/native";
 import { errorText } from "../lib/user-error";
 
@@ -13,7 +14,9 @@ export default function NewSpace() {
   const { t } = useI18n();
   const tokens = useMobileTokens();
   const router = useRouter();
-  const [name, setName] = useState("");
+  // Android rename reuses this screen: the list passes the space to rename.
+  const rename = useLocalSearchParams<{ spaceId?: string; name?: string }>();
+  const [name, setName] = useState(rename.name ?? "");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +26,11 @@ export default function NewSpace() {
     setPending(true);
     setError(null);
     try {
+      if (rename.spaceId) {
+        await rpc("spaces/rename", { spaceId: rename.spaceId, name: trimmed });
+        router.back();
+        return;
+      }
       const space = await rpc<Space>("spaces/create", { name: trimmed });
       if (!(await selectSpace(space.id))) {
         Alert.alert(t("Space created"), t("It could not be opened. Try again from the sidebar."));
@@ -33,7 +41,12 @@ export default function NewSpace() {
       router.dismissAll();
       router.replace("/");
     } catch (reason) {
-      setError(errorText(reason, t("Could not create space")));
+      setError(
+        errorText(
+          reason,
+          rename.spaceId ? t("Could not rename space") : t("Could not create space"),
+        ),
+      );
       setPending(false);
     }
   }
@@ -51,7 +64,7 @@ export default function NewSpace() {
         <TextInput
           autoFocus
           value={name}
-          maxLength={60}
+          maxLength={SPACE_NAME_MAX}
           onChangeText={setName}
           onSubmitEditing={() => void create()}
           placeholder={t("Customer support")}
@@ -69,7 +82,7 @@ export default function NewSpace() {
         {error ? <Text style={{ color: tokens.destructive, marginTop: 14 }}>{error}</Text> : null}
         <NativeActionButton
           disabled={!name.trim() || pending}
-          label={pending ? t("Creating…") : t("Create space")}
+          label={rename.spaceId ? t("Rename space") : pending ? t("Creating…") : t("Create space")}
           onPress={() => void create()}
           style={{ marginTop: 20 }}
         />

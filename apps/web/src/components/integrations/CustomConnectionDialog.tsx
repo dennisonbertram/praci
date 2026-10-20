@@ -491,11 +491,7 @@ export function CustomConnectionDialog({
             <DialogDescription>
               {service && apiKey ? (
                 keyHint
-              ) : service ? (
-                <Trans>
-                  Click Sign in with {service}. A {service} window opens for you to approve access.
-                </Trans>
-              ) : (
+              ) : service ? null : (
                 <Trans>Paste the MCP server URL from the app's documentation.</Trans>
               )}
             </DialogDescription>
@@ -534,6 +530,34 @@ export function CustomConnectionDialog({
             {needsClient ? (
               <div className="mt-3 space-y-3 text-xs text-muted-foreground">
                 <div>
+                  <Trans>Callback URL</Trans>
+                  <Input
+                    aria-label={t`Callback URL`}
+                    className="mt-1 w-full font-mono text-xs"
+                    readOnly
+                    value={callbackUrl}
+                  />
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    className="mt-1.5"
+                    onClick={() => copy(callbackUrl)}
+                  >
+                    {copied ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
+                  </Button>
+                  <p className="mt-1.5">
+                    {service ? (
+                      <Trans>
+                        Create an app in {service}'s developer settings with this callback URL.
+                      </Trans>
+                    ) : (
+                      <Trans>
+                        Create an app in the provider's developer settings with this callback URL.
+                      </Trans>
+                    )}
+                  </p>
+                </div>
+                <div>
                   <Trans>Client ID</Trans>
                   <Input
                     aria-label={t`Client ID`}
@@ -552,20 +576,6 @@ export function CustomConnectionDialog({
                     value={clientSecret}
                     onChange={(event) => setClientSecret(event.target.value)}
                   />
-                </div>
-                <div>
-                  <Trans>Callback URL</Trans>
-                  <div className="mt-1 flex gap-2">
-                    <Input
-                      aria-label={t`Callback URL`}
-                      className="font-mono text-sm"
-                      readOnly
-                      value={callbackUrl}
-                    />
-                    <Button variant="outline" onClick={() => copy(callbackUrl)}>
-                      {copied ? <Trans>Copied</Trans> : <Trans>Copy</Trans>}
-                    </Button>
-                  </div>
                 </div>
               </div>
             ) : null}
@@ -671,6 +681,11 @@ export function CustomConnectionDialog({
               </details>
             ) : null}
             {errorLine}
+            {needsClient && !clientId.trim() ? (
+              <p className="mt-3 text-xs text-muted-foreground">
+                <Trans>Enter a Client ID to sign in.</Trans>
+              </p>
+            ) : null}
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="outline" onClick={close}>
                 <Trans>Cancel</Trans>
@@ -849,13 +864,11 @@ export function CustomConnectionDialog({
             <DialogTitle className="text-center">
               <Trans>{serverName} connected</Trans>
             </DialogTitle>
-            <DialogDescription className="text-center">
-              {carta ? (
+            {carta ? (
+              <DialogDescription className="text-center">
                 <Trans>The Carta agent can now read your cap table.</Trans>
-              ) : (
-                <Trans>It now appears under Connected.</Trans>
-              )}
-            </DialogDescription>
+              </DialogDescription>
+            ) : null}
             <div className="mt-4 flex justify-end">
               <Button onClick={close}>
                 <Trans>Done</Trans>

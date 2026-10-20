@@ -1,13 +1,14 @@
 import type { NotificationDto } from "@rakazo/contracts";
 import { BotAvatar, NotificationToaster } from "@rakazo/ui-web";
 import { useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMatch, useNavigate } from "react-router-dom";
 import { lookupAgentApp } from "../lib/agent-app";
 import { authClient } from "../lib/auth";
 import { i18n } from "../lib/i18n";
 import {
   attentionFromDto,
   deliverNotification,
+  failureShownInOpenChat,
   NOTIFICATION_SETTINGS_CHANGED,
 } from "../lib/notification-delivery";
 import { followNotifications } from "../lib/notification-stream";
@@ -52,6 +53,9 @@ export function AppToaster() {
   const userId = authClient.useSession().data?.user.id;
   const userIdRef = useRef(userId);
   userIdRef.current = userId;
+  const openBotId = useMatch("/app/:botId")?.params.botId;
+  const openBotIdRef = useRef(openBotId);
+  openBotIdRef.current = openBotId;
   useEffect(() => {
     const controller = new AbortController();
     // The browser switch, loaded once and reloaded when the settings change.
@@ -72,24 +76,27 @@ export function AppToaster() {
         changed: announceChange,
         sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
         deliver: async (n) =>
-          deliverNotification(
-            {
-              ...attentionFromDto(n),
-              avatar: await avatarFor(n, userIdRef.current),
-              onSeen: () => void markOpened(n),
-            },
-            {
-              onShown: async (id) => {
-                await rpc.notifications.markShown({ id });
-                announceChange();
-              },
-              wasShown: () => wasShown(n),
-              browserEnabled: () => {
-                browserOn ??= loadBrowserOn();
-                return browserOn;
-              },
-            },
-          ),
+          // The open chat already shows its own failure above the composer.
+          failureShownInOpenChat(n, openBotIdRef.current)
+            ? "skipped"
+            : deliverNotification(
+                {
+                  ...attentionFromDto(n),
+                  avatar: await avatarFor(n, userIdRef.current),
+                  onSeen: () => void markOpened(n),
+                },
+                {
+                  onShown: async (id) => {
+                    await rpc.notifications.markShown({ id });
+                    announceChange();
+                  },
+                  wasShown: () => wasShown(n),
+                  browserEnabled: () => {
+                    browserOn ??= loadBrowserOn();
+                    return browserOn;
+                  },
+                },
+              ),
       },
       controller.signal,
     );

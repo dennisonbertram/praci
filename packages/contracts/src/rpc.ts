@@ -1027,6 +1027,8 @@ export const appContract = {
           redirect: z.literal("desktop").optional(),
           /** Reconnect: the account of this connection may sign in again and takes its place. */
           replacesConnectionId: Id.optional(),
+          /** Native Google only: also ask for permission to manage Gmail filters. */
+          permission: z.literal("mail_rules").optional(),
         }),
       )
       .output(z.object({ connectionId: Id, authorizationUrl: z.string().nullable() })),

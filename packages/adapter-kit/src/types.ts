@@ -1006,6 +1006,11 @@ export interface MailAccount {
   userId: string;
   /** Mailbox address from the provider profile; null when the lookup failed. */
   address: string | null;
+  /**
+   * Whether the mailbox can keep a sender out of the inbox itself (a Gmail filter): "ready", "needs_permission"
+   * (the account must be reconnected with one more permission) or "unsupported" (this route cannot).
+   */
+  senderRules?: "ready" | "needs_permission" | "unsupported";
 }
 
 export interface MailAddress {
@@ -1167,6 +1172,8 @@ export type MailErrorKind =
   | "unavailable"
   | "too_large"
   | "invalid"
+  /** The provider's quota for stored rules is full (Gmail filters). */
+  | "limit"
   | "unknown";
 
 /** Message of the `unavailable` error a provider throws when the request's signal aborted. */

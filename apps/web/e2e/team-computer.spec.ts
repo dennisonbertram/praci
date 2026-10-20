@@ -306,7 +306,6 @@ async function setComputerMode(
   await settings
     .getByRole("button", { name: mode === "team" ? "Team" : "Private", exact: true })
     .click();
-  await settings.getByRole("button", { name: "Save", exact: true }).click();
   await expect
     .poll(async () => {
       const bots = await rpc<Array<{ id: string; computerMode: string }>>(page, "bots/list", {});

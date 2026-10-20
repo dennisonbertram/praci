@@ -1,5 +1,4 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import { UI_ARTIFACT_MIME_TYPE } from "@rakazo/contracts";
 import { Button, Dialog, DialogClose, DialogContent, DialogTitle } from "@rakazo/ui-web";
 import { Code2, Download, FileText, X } from "lucide-react";
@@ -9,9 +8,7 @@ import type { ArtifactTarget } from "../lib/artifact-open";
 import { downloadArtifact, downloadArtifactBytes, fetchArtifactBytes } from "../lib/artifact-open";
 import { formatBytes } from "../lib/format-bytes";
 import { errorText } from "../lib/user-error";
-import { PdfViewer } from "./PdfViewer";
-import { SandboxedHtmlViewer } from "./SandboxedHtmlViewer";
-import { UiArtifactView } from "./UiArtifactView";
+import { ArtifactPreview, canPreviewArtifact } from "./ArtifactPreview";
 
 type ArtifactFileCardProps = {
   target: ArtifactTarget;
@@ -21,17 +18,11 @@ type ArtifactFileCardProps = {
   size: number;
 };
 
-const PREVIEWABLE_MIME_TYPES = new Set([
-  "text/markdown",
-  "text/html",
-  "application/pdf",
-  UI_ARTIFACT_MIME_TYPE,
-]);
 const TEXT_MIME_TYPES = new Set(["text/markdown", "text/html", UI_ARTIFACT_MIME_TYPE]);
 
 export function ArtifactFileCard(props: ArtifactFileCardProps) {
   const { t } = useLingui();
-  const previewable = PREVIEWABLE_MIME_TYPES.has(props.mimeType);
+  const previewable = canPreviewArtifact(props);
   const previewButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -46,24 +37,6 @@ export function ArtifactFileCard(props: ArtifactFileCardProps) {
     }
   }
 
-  if (!previewable) {
-    return (
-      <div>
-        <button
-          type="button"
-          onClick={() => void startDownload()}
-          className="rounded-2xl border border-border bg-card px-4 py-3 text-left text-[14px] text-foreground hover:bg-accent"
-        >
-          <div className="font-medium">{props.name}</div>
-          <div className="mt-1 text-muted-foreground">
-            {props.mimeType} · {formatBytes(props.size)}
-          </div>
-        </button>
-        {downloadError ? <DownloadError message={downloadError} /> : null}
-      </div>
-    );
-  }
-
   return (
     <>
       <div>
@@ -71,8 +44,8 @@ export function ArtifactFileCard(props: ArtifactFileCardProps) {
           <button
             ref={previewButton}
             type="button"
-            aria-label={t`Preview ${props.name}`}
-            onClick={() => setPreviewOpen(true)}
+            aria-label={previewable ? t`Preview ${props.name}` : t`Download ${props.name}`}
+            onClick={() => (previewable ? setPreviewOpen(true) : void startDownload())}
             className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left hover:bg-accent"
           >
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px] bg-muted text-foreground">
@@ -101,16 +74,18 @@ export function ArtifactFileCard(props: ArtifactFileCardProps) {
         </div>
         {downloadError ? <DownloadError message={downloadError} /> : null}
       </div>
-      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent
-          showCloseButton={false}
-          initialFocus={closeButton}
-          finalFocus={previewButton}
-          className="flex h-[min(88vh,900px)] w-[min(960px,94vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
-        >
-          <FilePreview {...props} closeButtonRef={closeButton} />
-        </DialogContent>
-      </Dialog>
+      {previewable ? (
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent
+            showCloseButton={false}
+            initialFocus={closeButton}
+            finalFocus={previewButton}
+            className="flex h-[min(88vh,900px)] w-[min(960px,94vw)] flex-col gap-0 overflow-hidden p-0 sm:max-w-none"
+          >
+            <FilePreview {...props} closeButtonRef={closeButton} />
+          </DialogContent>
+        </Dialog>
+      ) : null}
     </>
   );
 }
@@ -212,17 +187,9 @@ function FilePreview({
           <div className="m-5 rounded-xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive">
             {state.message}
           </div>
-        ) : mimeType === "text/html" && state.text !== undefined ? (
-          <SandboxedHtmlViewer html={state.text} title={name} />
-        ) : mimeType === UI_ARTIFACT_MIME_TYPE && state.text !== undefined ? (
-          <UiArtifactView source={state.text} />
-        ) : mimeType === "application/pdf" ? (
-          <PdfViewer bytes={state.bytes} title={name} />
-        ) : state.text !== undefined ? (
-          <article className="mx-auto w-full max-w-[760px] px-8 py-10 text-[16px] leading-7 text-foreground sm:px-12 sm:py-12">
-            <ChatMarkdown>{state.text}</ChatMarkdown>
-          </article>
-        ) : null}
+        ) : (
+          <ArtifactPreview artifact={{ id: artifactId, name, mimeType }} bytes={state.bytes} />
+        )}
       </div>
     </>
   );
