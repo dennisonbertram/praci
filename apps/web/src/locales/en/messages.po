@@ -570,6 +570,10 @@ msgstr "A Safe multisig. Its owners and threshold are shown."
 msgid "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 msgstr "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "A skill with that name already exists"
+msgstr "A skill with that name already exists"
+
 #: src/components/finance/WalletDialog.tsx
 msgid "A smart contract that holds funds."
 msgstr "A smart contract that holds funds."
@@ -3688,10 +3692,6 @@ msgstr "Edit contact"
 #: src/components/AskCard.tsx
 msgid "Edit first"
 msgstr "Edit first"
-
-#: src/pages/BotContextMenu.tsx
-msgid "Edit profile"
-msgstr "Edit profile"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Edit wallet"
@@ -7216,7 +7216,6 @@ msgstr "Sales & CRM"
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
@@ -7592,6 +7591,7 @@ msgid "Set up app catalog"
 msgstr "Set up app catalog"
 
 #: src/components/call/CallCard.tsx
+#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8732,9 +8732,10 @@ msgstr "Unknown bot"
 msgid "Unknown source: {unknownSource}"
 msgstr "Unknown source: {unknownSource}"
 
+#. placeholder {0}: unknown.join(", ")
 #: src/pages/shell/bot-panel.tsx
-msgid "Unknown tool"
-msgstr "Unknown tool"
+msgid "Unknown tool: {0}"
+msgstr "Unknown tool: {0}"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Unlink"

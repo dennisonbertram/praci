@@ -226,7 +226,7 @@ describe("thread composer isolation", () => {
 
   it("clears a slash query before routing and uses the call control for an empty draft", () => {
     type("/settings");
-    press("Chat Settings");
+    press("Settings");
     expect(props.onSlashAction).toHaveBeenCalledWith("chat-settings");
     expect(container.querySelector("input")!.value).toBe("");
     expect(container.querySelector('[data-testid="slash-picker"]')).toBeNull();

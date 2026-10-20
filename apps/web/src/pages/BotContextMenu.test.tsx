@@ -52,10 +52,10 @@ async function menuText(props: { isGroup?: boolean; onRoutines?: () => void }) {
 it("offers Routines for a bot and names the group panel Group settings", async () => {
   const bot = await menuText({ onRoutines: noop });
   expect(bot).toContain("Routines");
-  expect(bot).toContain("Edit profile");
+  expect(bot).toContain("Settings");
 
   const group = await menuText({ isGroup: true, onRoutines: noop });
   expect(group).not.toContain("Routines");
-  expect(group).not.toContain("Edit profile");
+  expect(group).not.toContain("Settings");
   expect(group).toContain("Group settings");
 });
