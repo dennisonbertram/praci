@@ -905,6 +905,12 @@ model AgentSkill {
   content     String
   /// user | builtin | plugin — only user skills are writable via API/tools.
   source      String   @default("user")
+  /// user | agent — who wrote it. Agent-written skills need the owner's approval.
+  origin      String   @default("user")
+  /// active | draft — a draft is in no catalog until the owner approves it.
+  status      String   @default("active")
+  /// An agent's proposed full SKILL.md for an active skill, applied when the owner approves.
+  pendingContent String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

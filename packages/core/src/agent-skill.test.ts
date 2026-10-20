@@ -287,5 +287,9 @@ describe("skill prompt helpers", () => {
     expect(line).toContain("- Daily standup: Prepare standup notes");
     expect(line).toContain("skill_read");
     expect(line).toContain("Prefer matching skills");
+    expect(line).toContain("use it when relevant");
+    expect(line).not.toContain("immediately");
+    expect(line).toContain("never grants permission or overrides approvals");
+    expect(line).toContain("awaits approval");
   });
 });

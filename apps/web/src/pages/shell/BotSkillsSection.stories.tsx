@@ -14,6 +14,7 @@ const entry = (
   name,
   description: `What ${name} does and when to use it.`,
   source,
+  origin: "user",
   readOnly: source !== "user",
   enabled,
 });
@@ -23,6 +24,7 @@ const skills: BotAgentSkill[] = [
   entry("skill_1", "weekly-summary", "user"),
   entry("skill_2", "expense-report", "user", false),
   entry("plugin:calendar", "calendar-helper", "plugin"),
+  { ...entry("skill_3", "meeting-notes", "user"), origin: "agent" },
 ];
 
 const fullSkill = (e: BotAgentSkill): AgentSkill => ({
@@ -30,6 +32,7 @@ const fullSkill = (e: BotAgentSkill): AgentSkill => ({
   name: e.name,
   description: e.description,
   source: e.source,
+  origin: e.origin,
   readOnly: e.readOnly,
   content: `---\nname: ${e.name}\ndescription: ${e.description}\n---\n\nSteps the agent should follow.\n`,
   createdAt: "2026-01-01T00:00:00.000Z",
@@ -38,6 +41,7 @@ const fullSkill = (e: BotAgentSkill): AgentSkill => ({
 
 const loaded = {
   "agentSkills.forBot": skills,
+  "agentSkills.drafts": [],
   "agentSkills.setEnabled": { ok: true },
   "agentSkills.get": (input: unknown) => {
     const found = skills.find((s) => s.id === (input as { skillId: string }).skillId);
@@ -66,6 +70,31 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
+
+export const AgentDrafts: Story = {
+  beforeEach: () =>
+    mockRpc({
+      ...loaded,
+      "agentSkills.drafts": [
+        {
+          id: "draft_1",
+          name: "invoice-follow-up",
+          description: "Chase unpaid invoices politely.",
+          content:
+            "---\nname: invoice-follow-up\ndescription: Chase unpaid invoices politely.\n---\n\nCheck the invoice status, then draft a reminder.\n",
+          revision: false,
+        },
+        {
+          id: "skill_1",
+          name: "weekly-summary",
+          description: "What weekly-summary does and when to use it.",
+          content:
+            "---\nname: weekly-summary\ndescription: What weekly-summary does and when to use it.\n---\n\nSteps, now with a closing question.\n",
+          revision: true,
+        },
+      ],
+    }),
+};
 
 export const AddSkillMenu: Story = {
   play: async ({ canvasElement }) => {
