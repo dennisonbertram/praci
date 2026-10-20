@@ -84,11 +84,11 @@ export async function openBrowserAuth(
             !code ||
             target.searchParams.has("error")
           ) {
-            response.writeHead(400).end("Sign-in callback rejected. Return to Rakazo to retry.");
+            response.writeHead(400).end("Sign-in callback rejected. Return to Praci to retry.");
             return;
           }
           consumed = true;
-          response.end("You can close this tab and return to Rakazo.", close);
+          response.end("You can close this tab and return to Praci.", close);
           options.onCallback({ code, state });
         });
         server.requestTimeout = 10_000;

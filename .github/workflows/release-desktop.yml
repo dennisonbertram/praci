@@ -171,13 +171,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          app="apps/desktop/out/mac-universal/Rakazo.app"
+          app="apps/desktop/out/mac-universal/Praci.app"
           codesign --verify --deep --strict --verbose=2 "$app"
           xcrun stapler validate "$app"
           spctl --assess --type execute --verbose=2 "$app"
           grep -Fqx "provider: github" "$app/Contents/Resources/app-update.yml"
-          grep -Fqx "owner: elie222" "$app/Contents/Resources/app-update.yml"
-          grep -Fqx "repo: rakazo" "$app/Contents/Resources/app-update.yml"
+          grep -Fqx "owner: dennisonbertram" "$app/Contents/Resources/app-update.yml"
+          grep -Fqx "repo: praci" "$app/Contents/Resources/app-update.yml"
 
       - name: Require Windows signing credentials
         if: runner.os == 'Windows'
@@ -218,7 +218,7 @@ jobs:
             throw "Windows update config is not bound to the signing publisher."
           }
           $feed = Get-Content -Raw $config
-          foreach ($expected in @("provider: github", "owner: elie222", "repo: rakazo")) {
+          foreach ($expected in @("provider: github", "owner: dennisonbertram", "repo: praci")) {
             if ($feed -notmatch "(?m)^$([regex]::Escape($expected))\r?$") {
               throw "Windows update config missing '$expected'."
             }
@@ -243,8 +243,8 @@ jobs:
           test -n "$config"
           test -f "$config"
           grep -Fqx "provider: github" "$config"
-          grep -Fqx "owner: elie222" "$config"
-          grep -Fqx "repo: rakazo" "$config"
+          grep -Fqx "owner: dennisonbertram" "$config"
+          grep -Fqx "repo: praci" "$config"
           test -f apps/desktop/out/latest-linux.yml
           grep -Fqx "version: $RELEASE_VERSION" apps/desktop/out/latest-linux.yml
 
@@ -334,7 +334,7 @@ jobs:
           RELEASE_TAG: ${{ needs.validate.outputs.tag }}
         run: >-
           gh release create "$RELEASE_TAG" release-artifacts/*
-          --draft --generate-notes --title "Rakazo $RELEASE_TAG" --verify-tag
+          --draft --generate-notes --title "Praci $RELEASE_TAG" --verify-tag
       - name: Publish the completed release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
