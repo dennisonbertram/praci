@@ -29,6 +29,7 @@ msgstr ""
 msgid " (new)"
 msgstr ""
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
@@ -1181,6 +1182,10 @@ msgstr "Archivar"
 #. placeholder {0}: counts.archive
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Archive {0}"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Archive all"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3475,6 +3480,10 @@ msgstr ""
 msgid "Didn't open?"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Digest"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Disable drafts for {botName}"
 msgstr ""
@@ -4120,6 +4129,10 @@ msgstr ""
 msgid "Folders"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Forget"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "¿Olvidaste la contraseña?"
@@ -4511,6 +4524,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
@@ -4776,6 +4790,10 @@ msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Learned"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -5599,6 +5617,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
@@ -5723,6 +5742,7 @@ msgstr ""
 msgid "No longer active"
 msgstr "Ya no está activo"
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -6073,6 +6093,7 @@ msgid "Only if the server does not use sign-in"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
@@ -9001,6 +9022,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
