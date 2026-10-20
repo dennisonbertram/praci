@@ -2,6 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type {
   AgentSkillCatalogEntry,
   Bot,
+  ComputerHost,
   ComputerMode,
   Me,
   ModelCatalogEntry,
@@ -33,6 +34,7 @@ import {
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { SuccessPop } from "../../components/ai/primitives";
 import { ErrorBoundary, SectionLoadFailed } from "../../components/ErrorBoundary";
+import { RunsOnPicker } from "../../components/RunsOnPicker";
 import { botProfilePatch } from "../../lib/bot-profile-patch";
 import { thinkingLevelLabel } from "../../lib/model-catalog";
 import { rpc } from "../../lib/rpc";
@@ -98,8 +100,11 @@ export function BotSettings({
   onExport,
   onClear,
   focusName = false,
+  hostComputer,
 }: {
   bot: Bot;
+  /** Set only where the bot may run on the host computer; carries the deployment default. */
+  hostComputer?: { defaultHost: ComputerHost };
   /** A bot just created as "New bot": focus and select its name so it gets named first. */
   focusName?: boolean;
   onSkillsChange: (skills: AgentSkillCatalogEntry[]) => void;
@@ -114,6 +119,7 @@ export function BotSettings({
     color?: string;
     notifyOnFinish?: boolean;
     computerMode: ComputerMode;
+    runsOn?: ComputerHost;
     memoryScope?: "isolated" | "shared" | null;
     autoSpeak?: boolean;
     voiceId?: string | null;
@@ -139,6 +145,11 @@ export function BotSettings({
   const [color, setColor] = useState(bot.color);
   const [notifyOnFinish, setNotifyOnFinish] = useState(bot.notifyOnFinish ?? true);
   const [computerMode, setComputerMode] = useState(bot.computerMode);
+  const [runsOn, setRunsOn] = useState<ComputerHost>(
+    bot.runsOn ?? hostComputer?.defaultHost ?? "docker",
+  );
+  // Choosing a different place can give the bot its own computer; follow what the server did.
+  useEffect(() => setComputerMode(bot.computerMode), [bot.computerMode]);
   const [memoryScope, setMemoryScope] = useState(bot.memoryScope);
   const [autoSpeak, setAutoSpeak] = useState(bot.autoSpeak);
   const [voiceId, setVoiceId] = useState(bot.voiceId ?? "");
@@ -283,6 +294,7 @@ export function BotSettings({
         ...(nextColor !== bot.color ? { color: nextColor } : {}),
         notifyOnFinish: nextNotify,
         computerMode,
+        ...(hostComputer && runsOn !== (bot.runsOn ?? hostComputer.defaultHost) ? { runsOn } : {}),
         memoryScope,
         autoSpeak,
         voiceId: voiceId || null,
@@ -490,6 +502,17 @@ export function BotSettings({
           value={computerMode}
           onChange={(value) => saveOnChange(() => setComputerMode(value))}
         />
+        {hostComputer ? (
+          <div className="mt-4">
+            <div className="text-[13.5px] font-medium text-foreground">
+              <Trans>Runs on</Trans>
+            </div>
+            <RunsOnPicker
+              value={runsOn}
+              onChange={(value) => saveOnChange(() => setRunsOn(value))}
+            />
+          </div>
+        ) : null}
         <ErrorBoundary fallback={<SectionLoadFailed />}>
           <Suspense fallback={null}>
             <ScratchpadSection botId={bot.id} />

@@ -42,6 +42,7 @@ model User {
   timezone                    String?
   /// Set when the owner finishes or skips the first-run tour; null means it has not been shown.
   tourSeenAt                  DateTime?
+  hiddenPages                 String[]                     @default([])
   sessions                    Session[]
   accounts                    Account[]
   cachedMailMessages          CachedMailMessage[]
@@ -468,6 +469,8 @@ model Bot {
   modelId                String?
   thinkingLevel          String?
   disabledBuiltinTools   String[]              @default([])
+  // Where this bot runs commands; null follows DeploymentSettings.computerHost.
+  runsOn                 String?
   webhookSecretId        String?
   teamChatAmbientEnabled Boolean               @default(false)
   teamChatRules          String                @default("")

@@ -1643,6 +1643,10 @@ msgstr ""
 msgid "Bots lose access to this account."
 msgstr ""
 
+#: src/components/RunsOnPicker.tsx
+msgid "Bots run on"
+msgstr ""
+
 #: src/pages/Welcome.tsx
 msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
 msgstr ""
@@ -1952,7 +1956,6 @@ msgid "Chats"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
 msgstr ""
 
@@ -1996,7 +1999,6 @@ msgstr ""
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr ""
 
@@ -2361,6 +2363,7 @@ msgstr "Prüfe, ob die URL aus dieser Browsersitzung erreichbar ist, und teste e
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -2381,6 +2384,7 @@ msgstr "Verbinden"
 msgid "Connect {0}"
 msgstr ""
 
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
@@ -2463,7 +2467,12 @@ msgstr ""
 msgid "Connect Treg"
 msgstr "Treg verbinden"
 
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Connect your apps"
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2535,6 +2544,7 @@ msgid "Context limit"
 msgstr "Kontextlimit"
 
 #: src/components/integrations/AgentStep.tsx
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/Onboarding.tsx
 msgid "Continue"
@@ -3002,6 +3012,7 @@ msgstr ""
 msgid "Could not run routine"
 msgstr ""
 
+#: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -3040,10 +3051,6 @@ msgstr "Regel konnte nicht gespeichert werden"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "Skill konnte nicht gespeichert werden"
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Could not save that choice"
-msgstr "Auswahl konnte nicht gespeichert werden"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not save that speech model"
@@ -3673,17 +3680,9 @@ msgstr "Anzeigename"
 msgid "Dividends"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker"
-msgstr "Docker"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr ""
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
-msgstr "Docker begrenzt für mehr Sicherheit den Zugriff auf deinen Computer. Wenn {hostLabel} verwendet wird, können Bots mit deinen lokalen Dateien und Werkzeugen arbeiten."
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
@@ -5115,10 +5114,6 @@ msgstr "Wird geladen…"
 msgid "Local"
 msgstr "Lokal"
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Local access lets bots run commands without asking. Avoid it on shared or public servers."
-msgstr "Mit lokalem Zugriff können Bots ohne Rückfrage Befehle ausführen. Vermeide dies auf gemeinsam genutzten oder öffentlichen Servern."
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Local command"
 msgstr ""
@@ -5937,6 +5932,10 @@ msgstr ""
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "No matching apps"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "No matching artifacts on this page."
 msgstr ""
@@ -6522,6 +6521,10 @@ msgstr ""
 msgid "Other model…"
 msgstr "Anderes Modell…"
 
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Other ways to connect"
+msgstr ""
+
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -6559,6 +6562,7 @@ msgid "Page not found"
 msgstr ""
 
 #: src/components/SidebarPages.tsx
+#: src/components/SidebarPagesGroup.tsx
 msgid "Page options"
 msgstr ""
 
@@ -7558,6 +7562,14 @@ msgstr "Wird ausgeführt · Stoppen"
 msgid "Running…"
 msgstr "Wird ausgeführt…"
 
+#: src/components/RunsOnPicker.tsx
+msgid "Runs commands without asking. Avoid on shared or public servers."
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Runs on"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr ""
@@ -7582,6 +7594,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
+msgstr ""
+
+#: src/components/RunsOnPicker.tsx
+msgid "Sandbox"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -7738,6 +7754,7 @@ msgstr ""
 msgid "Search and read files and folders"
 msgstr ""
 
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -7987,6 +8004,14 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Set up"
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Set up {name}"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -8245,6 +8270,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Skip"
 msgstr "Überspringen"
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Skip for now"
+msgstr ""
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Skip inbox"
@@ -8870,9 +8899,9 @@ msgstr "Dies kann nicht rückgängig gemacht werden."
 msgid "This chat is view-only"
 msgstr "Dieser Chat ist schreibgeschützt"
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this computer"
-msgstr "dieser Computer"
+#: src/components/RunsOnPicker.tsx
+msgid "This computer"
+msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "This connection no longer exists."
@@ -8903,9 +8932,9 @@ msgstr ""
 msgid "This link is wrong or the page is no longer available."
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this Mac"
-msgstr "dieser Mac"
+#: src/components/RunsOnPicker.tsx
+msgid "This Mac"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -9468,10 +9497,6 @@ msgstr "Nutzung"
 msgid "Use {0}"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Use {hostLabel}"
-msgstr "{hostLabel} verwenden"
-
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Use a found model"
@@ -9744,10 +9769,6 @@ msgstr ""
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Where it went"
 msgstr ""
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Where should bots run?"
-msgstr "Wo sollen Bots ausgeführt werden?"
 
 #: src/components/PageAgentIntro.tsx
 msgid "Which bills are unpaid?"
