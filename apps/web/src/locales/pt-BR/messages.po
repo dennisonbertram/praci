@@ -1257,6 +1257,10 @@ msgstr ""
 msgid "Ask the server owner to set up the app catalog."
 msgstr ""
 
+#: src/pages/shell/working-label.ts
+msgid "Asking another agent"
+msgstr ""
+
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/legal/LegalGraph.tsx
 msgid "Asset"
@@ -4866,7 +4870,6 @@ msgstr "Carregando provedores de voz..."
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/Shell.tsx
@@ -6014,6 +6017,10 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
+#: src/pages/shell/composer-error.tsx
+msgid "Open Data room"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr ""
@@ -6056,6 +6063,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
+msgstr ""
+
+#: src/pages/shell/composer-error.tsx
+msgid "Open Legal"
 msgstr ""
 
 #: src/pages/shell/composer-error.tsx
@@ -6107,11 +6118,7 @@ msgstr "Abriu a conversa."
 msgid "Opening an email"
 msgstr ""
 
-#: src/pages/Onboarding.tsx
-msgid "Opening chat…"
-msgstr "Abrindo o chat…"
-
-#: src/App.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Opening your Space…"
 msgstr "Abrindo seu espaço de trabalho..."
 
@@ -8354,6 +8361,7 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Pensando"
 

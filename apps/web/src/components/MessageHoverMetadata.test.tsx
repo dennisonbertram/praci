@@ -42,6 +42,8 @@ describe("MessageHoverMetadata", () => {
     );
     expect(html).toContain("@max-sm:[@media(hover:hover)]:top-full");
     expect(html).toContain("@max-sm:[@media(hover:hover)]:start-0");
+    // The time sits on its own line under the bubble, so the buttons start below it.
+    expect(html).toContain("@max-sm:[@media(hover:hover)]:mt-6");
   });
 
   it("drops the rail in-flow below the bubble on touch", () => {

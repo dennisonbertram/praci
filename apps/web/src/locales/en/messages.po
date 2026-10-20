@@ -1257,6 +1257,10 @@ msgstr "Ask the server owner to configure this provider."
 msgid "Ask the server owner to set up the app catalog."
 msgstr "Ask the server owner to set up the app catalog."
 
+#: src/pages/shell/working-label.ts
+msgid "Asking another agent"
+msgstr "Asking another agent"
+
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/legal/LegalGraph.tsx
 msgid "Asset"
@@ -4866,7 +4870,6 @@ msgstr "Loading voice providers…"
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/Shell.tsx
@@ -6014,6 +6017,10 @@ msgstr "Open chat"
 msgid "Open computer settings"
 msgstr "Open computer settings"
 
+#: src/pages/shell/composer-error.tsx
+msgid "Open Data room"
+msgstr "Open Data room"
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr "Open deadlines"
@@ -6057,6 +6064,10 @@ msgstr "Open in Mercury"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
 msgstr "Open Inbox"
+
+#: src/pages/shell/composer-error.tsx
+msgid "Open Legal"
+msgstr "Open Legal"
 
 #: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
@@ -6107,11 +6118,7 @@ msgstr "Opened its thread."
 msgid "Opening an email"
 msgstr "Opening an email"
 
-#: src/pages/Onboarding.tsx
-msgid "Opening chat…"
-msgstr "Opening chat…"
-
-#: src/App.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Opening your Space…"
 msgstr "Opening your Space…"
 
@@ -8354,6 +8361,7 @@ msgstr "These saved settings can't be read. Remove it and add it again."
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Thinking"
 

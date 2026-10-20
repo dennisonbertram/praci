@@ -6,6 +6,8 @@ import { createContext, useContext, useEffect, useSyncExternalStore } from "reac
 export type ChatMarkdownProps = {
   children: string;
   streaming?: boolean;
+  /** Web only: opens an in-app /app/ link through the router instead of a full page load. */
+  onNavigate?: (href: string) => void;
 };
 
 type LinkifyRules = {
