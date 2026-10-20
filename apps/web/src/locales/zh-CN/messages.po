@@ -853,6 +853,7 @@ msgid "after fees"
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Agent"
 msgstr ""
 
@@ -1143,6 +1144,7 @@ msgid "Approval boundaries"
 msgstr "审批边界"
 
 #: src/pages/MessagingSettingsOverlay.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Approve"
 msgstr "批准"
@@ -2543,6 +2545,10 @@ msgstr "无法添加"
 msgid "Could not add the connection"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Could not approve skill"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Could not approve this server"
 msgstr "无法批准此服务器"
@@ -2684,6 +2690,10 @@ msgstr ""
 
 #: src/pages/Artifacts.tsx
 msgid "Could not delete this artifact."
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Could not discard skill"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -3515,6 +3525,7 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReviewCard.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Discard"
 msgstr ""
 
@@ -3707,6 +3718,10 @@ msgstr "技能草稿"
 #: src/components/PageAgentIntro.tsx
 #: src/pages/Shell.tsx
 msgid "Draft this month's investor update"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Drafts"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -9079,6 +9094,7 @@ msgid "Upcoming · 30 days"
 msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Update"
 msgstr "更新"
 

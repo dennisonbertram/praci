@@ -62,6 +62,7 @@ import {
   AgentSecretInputSchema,
   AgentSecretSchema,
   AgentSkillCatalogEntrySchema,
+  AgentSkillDraftSchema,
   AgentSkillSchema,
   AppBootstrapSchema,
   ArtifactSchema,
@@ -871,6 +872,10 @@ export const appContract = {
     create: oc.input(CreateAgentSkillInput).output(AgentSkillSchema),
     update: oc.input(UpdateAgentSkillInput).output(AgentSkillSchema),
     remove: oc.input(z.object({ skillId: Id })).output(z.object({ ok: z.literal(true) })),
+    /** Agent-written skills and revisions waiting for the owner. */
+    drafts: oc.output(z.array(AgentSkillDraftSchema)),
+    approveDraft: oc.input(z.object({ skillId: Id })).output(AgentSkillSchema),
+    discardDraft: oc.input(z.object({ skillId: Id })).output(z.object({ ok: z.literal(true) })),
     /** The catalog with this bot's on/off switch per skill. */
     forBot: oc.input(botId).output(z.array(BotAgentSkillSchema)),
     setEnabled: oc

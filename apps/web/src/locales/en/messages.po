@@ -853,6 +853,7 @@ msgid "after fees"
 msgstr "after fees"
 
 #: src/components/integrations/IntegrationAgentSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Agent"
 msgstr "Agent"
 
@@ -1143,6 +1144,7 @@ msgid "Approval boundaries"
 msgstr "Approval boundaries"
 
 #: src/pages/MessagingSettingsOverlay.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Approve"
 msgstr "Approve"
@@ -2543,6 +2545,10 @@ msgstr "Could not add"
 msgid "Could not add the connection"
 msgstr "Could not add the connection"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Could not approve skill"
+msgstr "Could not approve skill"
+
 #: src/pages/shell/message-cards.tsx
 msgid "Could not approve this server"
 msgstr "Could not approve this server"
@@ -2685,6 +2691,10 @@ msgstr "Could not delete space"
 #: src/pages/Artifacts.tsx
 msgid "Could not delete this artifact."
 msgstr "Could not delete this artifact."
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Could not discard skill"
+msgstr "Could not discard skill"
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -3515,6 +3525,7 @@ msgstr "Disabled tools"
 #: src/components/ComposeEmail.tsx
 #: src/components/finance/StatementReviewCard.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Discard"
 msgstr "Discard"
 
@@ -3708,6 +3719,10 @@ msgstr "Draft skill"
 #: src/pages/Shell.tsx
 msgid "Draft this month's investor update"
 msgstr "Draft this month's investor update"
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Drafts"
+msgstr "Drafts"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Drafts are off for {botName}. Turn them back on in its tools."
@@ -9079,6 +9094,7 @@ msgid "Upcoming · 30 days"
 msgstr "Upcoming · 30 days"
 
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Update"
 msgstr "Update"
 
