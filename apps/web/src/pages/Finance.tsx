@@ -101,10 +101,10 @@ const CONNECT_PATH = "/app/integrations?category=finance";
 const MAX_ROWS = 7;
 /** The Burn chart's bucket size for each period. */
 const BAR_GRANULARITY: Record<SpendPeriod, BarGranularity> = {
-  week: "day",
-  month: "day",
-  quarter: "week",
-  year: "month",
+  week: "week",
+  month: "month",
+  quarter: "quarter",
+  year: "year",
 };
 
 /** The Finance area: the dashboard at /app/finance and its detail pages. */

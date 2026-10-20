@@ -20,12 +20,22 @@ const DAY_MS = 86_400_000;
 const day = (offset: number) =>
   new Date(Date.UTC(2026, 9, 15) + offset * DAY_MS).toISOString().slice(0, 10);
 
-function series(count: number, step: number): CashPoint[] {
+/** `count` buckets of `size` ("week" or months) ending with the one that holds 2026-10-14. */
+function series(count: number, size: "week" | 1 | 3 | 12): CashPoint[] {
   return Array.from({ length: count }, (_, i) => {
-    const end = count - 1 - i;
+    const back = count - 1 - i;
+    const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+    const start =
+      size === "week"
+        ? Date.UTC(2026, 9, 12) - back * 7 * DAY_MS
+        : Date.UTC(2026, size === 12 ? -12 * back : 9 - size * back, 1);
+    const end =
+      size === "week"
+        ? start + 6 * DAY_MS
+        : Date.UTC(new Date(start).getUTCFullYear(), new Date(start).getUTCMonth() + size, 0);
     return {
-      start: day(-end * step - (step - 1)),
-      end: day(-end * step),
+      start: iso(start),
+      end: iso(end),
       outCents: 120_000 + ((i * 37_000) % 90_000),
       revenueCents: i % 3 === 0 ? 150_000 : 40_000,
       financingCents: i === 2 ? 500_000 : 0,
@@ -89,10 +99,10 @@ const overview: FinanceOverview = {
     year: totals("year", 38_000_000, null),
   },
   cashSeries: {
-    week: series(7, 1),
-    month: series(30, 1),
-    quarter: series(13, 7),
-    year: series(12, 30),
+    week: series(12, "week"),
+    month: series(12, 1),
+    quarter: series(8, 3),
+    year: series(2, 12),
   },
   breakdown: {
     category: [
