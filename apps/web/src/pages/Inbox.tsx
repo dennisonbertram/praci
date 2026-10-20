@@ -8,7 +8,7 @@ import type {
   MailRow,
 } from "@rakazo/contracts";
 import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
-import { archivableIds, bulkInChunks, groupBySender, groupInbox } from "@rakazo/core";
+import { archivableIds, bulkInChunks, digestRows, groupBySender, groupInbox } from "@rakazo/core";
 import {
   Button,
   DropdownMenu,
@@ -29,20 +29,36 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { Archive, ListFilter, Mail, MailWarning, Search, SquarePen, X } from "lucide-react";
+import {
+  Archive,
+  ListChecks,
+  ListFilter,
+  Mail,
+  MailWarning,
+  Newspaper,
+  Search,
+  ShieldAlert,
+  ShieldCheck,
+  SquarePen,
+  Trash2,
+  X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
 import { AskBotButton } from "../components/AskBotButton";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
+import { InboxCleanup } from "../components/inbox/InboxCleanup";
+import { InboxDigest } from "../components/inbox/InboxDigest";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
 import { InboxPileTabs } from "../components/inbox/InboxPileTabs";
-import { InboxGroup } from "../components/inbox/InboxRow";
+import { InboxGroup, type MailMoveOp } from "../components/inbox/InboxRow";
 import {
   InboxSenderGroup,
   isSenderGroupId,
@@ -61,6 +77,7 @@ import {
   setInboxListParam,
 } from "../lib/inbox-list-input";
 import { INBOX_CHANGED_EVENT, prefetchInboxMessage } from "../lib/inbox-message-cache";
+import { moveInChunks } from "../lib/inbox-move";
 import { syncErrorText } from "../lib/inbox-sync-error";
 import { MAIL_SENT_EVENT } from "../lib/outbox";
 import { rpc } from "../lib/rpc";
@@ -90,6 +107,13 @@ type Status =
   | { kind: "marked"; messageId: string; mark: InboxMark; sender: string }
   | { kind: "archived"; messageId: string; subject: string }
   | { kind: "archivedMany"; messageIds: string[] }
+  | {
+      kind: "junked";
+      op: MailMoveOp;
+      count: number;
+      /** The action-log batches of the call, once it has returned; Undo waits for it. */
+      batches: Promise<string[]>;
+    }
   | { kind: "moved"; messageId: string; subject: string };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
@@ -118,17 +142,35 @@ const categoryLabels = (): Record<InboxViewCategory, string> => ({
   personal: t`Personal`,
 });
 
-export function InboxPage({
-  onConnectMail,
-  onReconnectMail,
-  onRefreshed,
-  onShowAgent,
-  paused,
-  spaceName,
-}: {
+/**
+ * The Inbox, or with `?cleanup=1` the cleanup screen. They are one route so the browser's Back
+ * returns from cleanup to the list.
+ */
+export function InboxPage(props: InboxPageProps) {
+  const [params, setParams] = useSearchParams();
+  if (params.get("cleanup") !== "1") return <InboxListPage {...props} />;
+  return (
+    <InboxCleanup
+      connectionId={rememberedTab}
+      onRefreshed={props.onRefreshed}
+      onAllowMailRules={props.onAllowMailRules}
+      onBack={() =>
+        setParams((before) => {
+          const next = new URLSearchParams(before);
+          next.delete("cleanup");
+          return next;
+        })
+      }
+    />
+  );
+}
+
+type InboxPageProps = {
   onConnectMail: () => void;
   /** Opens Gmail's page, where a lapsed account can be removed and connected again. */
   onReconnectMail?: () => void;
+  /** Starts the sign-in that lets Rakazo make Gmail filters for one account. */
+  onAllowMailRules?: (connectionId: string) => void;
   /** The space's name, when the user has more than one, so they know whose mail this is. */
   spaceName?: string;
   /** Called after a sync so the sidebar can refresh its unread count. */
@@ -137,7 +179,16 @@ export function InboxPage({
   onShowAgent?: () => void;
   /** True while the Integrations overlay is open; the page reloads when it closes. */
   paused: boolean;
-}) {
+};
+
+function InboxListPage({
+  onConnectMail,
+  onReconnectMail,
+  onRefreshed,
+  onShowAgent,
+  paused,
+  spaceName,
+}: InboxPageProps) {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
   const navigate = useNavigate();
@@ -182,6 +233,9 @@ export function InboxPage({
   const lastPicked = useRef<string | undefined>(undefined);
   // Sender groups opened in the Updates and Newsletters piles, by group key.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  // The Newsletters pile read as one card per issue; it ends when another pile opens.
+  const [digest, setDigest] = useState(false);
+  useEffect(() => setDigest(false), [pile]);
   // The last pile counts the server sent; a filtered list carries none, so the Spam count stays.
   const [pileCounts, setPileCounts] = useState<InboxPileCounts | undefined>();
   const [help, setHelp] = useState(false);
@@ -420,6 +474,11 @@ export function InboxPage({
   // Updates and Newsletters list one group per sender; Spam is a flat list; Important is dated.
   const grouped = pile === "updates" || pile === "newsletters";
   const senderGroups = useMemo(() => (grouped ? groupBySender(rows) : []), [grouped, rows]);
+  const digestOn = digest && pile === "newsletters";
+  const digestList = useMemo(
+    () => (digestOn ? digestRows(rows, new Date()) : []),
+    [digestOn, rows],
+  );
   const groups = useMemo(
     () =>
       groupInbox(
@@ -441,6 +500,7 @@ export function InboxPage({
   );
   // Display order. A group header takes its own id; a sender with one message shows as that message.
   const ids = useMemo(() => {
+    if (digestOn) return digestList.map((row) => row.id);
     if (grouped)
       return senderGroups.flatMap((group) =>
         group.count === 1
@@ -452,7 +512,7 @@ export function InboxPage({
       );
     if (pile === "spam") return rows.map((row) => row.id);
     return [...groups.needsReply, ...groups.today, ...groups.earlier].map((row) => row.id);
-  }, [grouped, senderGroups, expanded, pile, rows, groups]);
+  }, [digestOn, digestList, grouped, senderGroups, expanded, pile, rows, groups]);
   // The messages the open message's arrows and the prefetch can reach.
   const messageIds = useMemo(() => ids.filter((id) => !isSenderGroupId(id)), [ids]);
   const accounts = data?.accounts ?? [];
@@ -592,12 +652,9 @@ export function InboxPage({
     else pick(id, { shift: false });
   };
   // One action archives the whole selection or group (50 threads per call); Undo puts back what it archived.
-  const archiveMany = (candidates: MailRow[]) => {
-    const messageIds = archivableIds(candidates, spamView);
-    if (messageIds.length === 0) return;
-    const gone = new Set(messageIds);
+  // The rows leave the list at once; the selection moves on to the nearest row or group that stays.
+  const dropFromView = (gone: Set<string>) => {
     setPicked(new Set());
-    // The selection moves on to the nearest row or group that stays.
     const stays = (id: string) =>
       isSenderGroupId(id) ? !groupRows(id).every((row) => gone.has(row.id)) : !gone.has(id);
     if (selectedId && !stays(selectedId)) {
@@ -611,6 +668,11 @@ export function InboxPage({
         ? list.map((row) => (gone.has(row.id) ? { ...row, inInbox: false } : row))
         : list.filter((row) => !gone.has(row.id)),
     );
+  };
+  const archiveMany = (candidates: MailRow[]) => {
+    const messageIds = archivableIds(candidates, spamView);
+    if (messageIds.length === 0) return;
+    dropFromView(new Set(messageIds));
     setStatus({ kind: "archivedMany", messageIds });
     setError("");
     // A pending Move to Inbox finishes first, so the archive is not overtaken by it.
@@ -654,6 +716,45 @@ export function InboxPage({
       .catch((cause) => setError(errorText(cause)))
       .then(() => setReload((n) => n + 1));
   };
+  // Spam, not spam and trash work like a bulk archive: the rows leave at once and Undo reverses the logged batches.
+  const moveMany = (op: MailMoveOp, candidates: MailRow[]) => {
+    const messageIds = candidates
+      .filter((row) => (op === "notSpam" ? row.pile === "spam" : row.inInbox))
+      .map((row) => row.id);
+    if (messageIds.length === 0) return;
+    dropFromView(new Set(messageIds));
+    setError("");
+    const batchIds: string[] = [];
+    const batches = moveInChunks(op, messageIds, (input) => rpc.inbox.moveMany(input), batchIds)
+      .then((result) => {
+        onRefreshed();
+        if (result.failed.length) setError(couldNotArchive(result.failed.length));
+        // Failed ids come back with the real list, and the pile counts follow.
+        setReload((n) => n + 1);
+        return batchIds;
+      })
+      .catch((cause) => {
+        setError(errorText(cause));
+        setReload((n) => n + 1);
+        return batchIds;
+      });
+    setStatus({ kind: "junked", op, count: messageIds.length, batches });
+  };
+  const undoMove = async (batches: Promise<string[]>) => {
+    setStatus(null);
+    const batchIds = await batches;
+    if (batchIds.length === 0) return;
+    setError("");
+    Promise.all(batchIds.map((batchId) => rpc.inbox.actions.undo({ batchId })))
+      .then(onRefreshed)
+      .catch((cause) => setError(errorText(cause)))
+      .then(() => setReload((n) => n + 1));
+  };
+  const moveOne = (op: MailMoveOp, messageId: string) =>
+    moveMany(
+      op,
+      rows.filter((row) => row.id === messageId),
+    );
   // The checked rows when there are any, else the focused row or group.
   const archiveFocused = (id: string | undefined) => {
     if (pickedRows.length > 0) return archiveMany(pickedRows);
@@ -860,6 +961,14 @@ export function InboxPage({
             <Trans>Archived</Trans>
           )}
         </span>
+      ) : status.kind === "junked" ? (
+        status.op === "spam" ? (
+          <Trans>Marked {status.count} as spam</Trans>
+        ) : status.op === "trash" ? (
+          <Trans>Moved {status.count} to trash</Trans>
+        ) : (
+          <Trans>Marked {status.count} as not spam</Trans>
+        )
       ) : status.kind === "moved" ? (
         <span className="min-w-0 truncate" dir="auto">
           <Trans>Moved "{maskCurrencyWhenHidden(status.subject)}" to Inbox</Trans>
@@ -875,11 +984,13 @@ export function InboxPage({
         onClick={() =>
           status.kind === "archivedMany"
             ? unarchiveMany(status.messageIds)
-            : status.kind === "archived"
-              ? unarchive(status.messageId)
-              : status.kind === "moved"
-                ? archive(status.messageId)
-                : mark(status.messageId, null)
+            : status.kind === "junked"
+              ? undoMove(status.batches)
+              : status.kind === "archived"
+                ? unarchive(status.messageId)
+                : status.kind === "moved"
+                  ? archive(status.messageId)
+                  : mark(status.messageId, null)
         }
       >
         <Trans>Undo</Trans>
@@ -957,6 +1068,25 @@ export function InboxPage({
         actions={
           <>
             <HideAmountsButton />
+            {accounts.length > 0 ? (
+              <Button
+                variant="outline"
+                size="sm"
+                data-testid="inbox-cleanup"
+                aria-label={t`Cleanup`}
+                title={t`Cleanup`}
+                className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                onClick={() =>
+                  setParams((before) => {
+                    const next = new URLSearchParams(before);
+                    next.set("cleanup", "1");
+                    return next;
+                  })
+                }
+              >
+                <ListChecks aria-hidden="true" />
+              </Button>
+            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger
                 data-testid="inbox-filter"
@@ -1052,11 +1182,24 @@ export function InboxPage({
         }
       />
       {accounts.length > 0 ? (
-        <InboxPileTabs
-          value={pile}
-          counts={pileCounts}
-          onChange={(next) => setParam("pile", next === "important" ? "" : next)}
-        />
+        <div className="flex items-start justify-between gap-2">
+          <InboxPileTabs
+            value={pile}
+            counts={pileCounts}
+            onChange={(next) => setParam("pile", next === "important" ? "" : next)}
+          />
+          {pile === "newsletters" ? (
+            <Toggle
+              size="sm"
+              className="-mt-2 mb-4"
+              aria-label={t`Digest`}
+              pressed={digest}
+              onPressedChange={setDigest}
+            >
+              <Newspaper aria-hidden="true" />
+            </Toggle>
+          ) : null}
+        </div>
       ) : null}
       {accounts.length > 1 ? (
         <Tabs
@@ -1217,12 +1360,37 @@ export function InboxPage({
                 <Archive aria-hidden="true" />
                 <Trans>Archive</Trans>
               </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={spamView ? t`Not spam` : t`Spam`}
+                title={spamView ? t`Not spam` : t`Spam`}
+                onClick={() => moveMany(spamView ? "notSpam" : "spam", pickedRows)}
+              >
+                {spamView ? <ShieldCheck aria-hidden="true" /> : <ShieldAlert aria-hidden="true" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                aria-label={t`Trash`}
+                title={t`Trash`}
+                onClick={() => moveMany("trash", pickedRows)}
+              >
+                <Trash2 aria-hidden="true" />
+              </Button>
               <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
                 <Trans>Clear</Trans>
               </Button>
             </div>
           ) : null}
-          {grouped ? (
+          {digestOn ? (
+            <InboxDigest
+              rows={digestList}
+              onOpen={openMessage}
+              onArchiveAll={() => archiveMany(digestList)}
+              selectedId={selectedId}
+            />
+          ) : grouped ? (
             <section className="mb-5">
               <div className="border-t border-foreground/10">
                 {senderGroups.map((group) => (
@@ -1240,6 +1408,7 @@ export function InboxPage({
                     selectedId={selectedId}
                     pickedIds={pickedSet}
                     onPick={pick}
+                    onMove={moveOne}
                     hideNewsletter={pile === "newsletters"}
                   />
                 ))}
@@ -1255,6 +1424,7 @@ export function InboxPage({
               selectedId={selectedId}
               pickedIds={pickedSet}
               onPick={pick}
+              onMove={moveOne}
               showArchived={false}
             />
           ) : (
@@ -1270,6 +1440,7 @@ export function InboxPage({
                 selectedId={selectedId}
                 pickedIds={pickedSet}
                 onPick={pick}
+                onMove={moveOne}
               />
               {resultsView ? (
                 <InboxGroup
@@ -1281,6 +1452,7 @@ export function InboxPage({
                   selectedId={selectedId}
                   pickedIds={pickedSet}
                   onPick={pick}
+                  onMove={moveOne}
                 />
               ) : (
                 <>
@@ -1301,6 +1473,7 @@ export function InboxPage({
                     selectedId={selectedId}
                     pickedIds={pickedSet}
                     onPick={pick}
+                    onMove={moveOne}
                   />
                   <InboxGroup
                     title={<Trans>Earlier</Trans>}
@@ -1312,6 +1485,7 @@ export function InboxPage({
                     selectedId={selectedId}
                     pickedIds={pickedSet}
                     onPick={pick}
+                    onMove={moveOne}
                   />
                 </>
               )}

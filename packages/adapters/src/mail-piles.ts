@@ -1,5 +1,12 @@
-import { MailSignalsSchema } from "@rakazo/contracts";
-import { classifyPile, resolvePile, senderMarkMap } from "@rakazo/core";
+import { InboxPileSchema, MailSignalsSchema } from "@rakazo/contracts";
+import {
+  classifyPile,
+  type LearnedPile,
+  type LearnVote,
+  learnSenderPile,
+  resolvePile,
+  senderMarkMap,
+} from "@rakazo/core";
 import type { Prisma } from "@rakazo/db";
 import type { SenderScope } from "./mail-sender-stats.js";
 
@@ -8,6 +15,8 @@ import type { SenderScope } from "./mail-sender-stats.js";
  * the result: `rulePile` and `ruleReasons` from the rules, `pile` as the rules' pile or else the
  * model's category mapped to a pile. Every sync recomputes, so a changed sender mark or a resolved
  * prior-contact check takes effect without version tracking. Only rows whose answer changed are written.
+ * It also learns a sender's pile from the model's verdicts (see `learnSenderPile`) and feeds it back
+ * into the rules in the same pass.
  */
 export async function applyPileRules(
   tx: Prisma.TransactionClient,
@@ -34,22 +43,85 @@ export async function applyPileRules(
       rulePile: true,
       ruleReasons: true,
       pile: true,
+      notSpamAt: true,
+      receivedAt: true,
     },
   });
   if (rows.length === 0) return;
   const senders = [...new Set(rows.map((row) => row.fromAddress.toLowerCase()))];
-  const [feedback, stats] = await Promise.all([
+  const [feedback, stats, skipping] = await Promise.all([
     tx.inboxSenderFeedback.findMany({
       where: { spaceId, userId },
       select: { senderAddress: true, mark: true },
     }),
     tx.mailSenderStat.findMany({
       where: { spaceId, userId, connectionId, senderAddress: { in: senders } },
-      select: { senderAddress: true, priorContact: true },
+      select: {
+        senderAddress: true,
+        priorContact: true,
+        learnedPile: true,
+        learnedCount: true,
+        learnedForgottenAt: true,
+      },
+    }),
+    tx.mailSenderDecision.findMany({
+      where: { spaceId, userId, connectionId, skipInboxAt: { not: null } },
+      select: { senderAddress: true },
     }),
   ]);
+  const skipped = new Set(skipping.map((decision) => decision.senderAddress));
   const marks = senderMarkMap(feedback);
+  const statByAddress = new Map(stats.map((stat) => [stat.senderAddress, stat]));
   const prior = new Map(stats.map((stat) => [stat.senderAddress, stat.priorContact]));
+
+  const parsedSignals = new Map(
+    rows.map((row) => {
+      const parsed = MailSignalsSchema.safeParse(row.signals);
+      return [row.id, parsed.success ? parsed.data : null] as const;
+    }),
+  );
+  const votesBySender = new Map<string, LearnVote[]>();
+  for (const row of rows) {
+    const address = row.fromAddress.toLowerCase();
+    const votes = votesBySender.get(address) ?? [];
+    votes.push({
+      category: row.category,
+      modelDecided: row.rulePile === null || row.ruleReasons.includes("learned_sender"),
+      signals: parsedSignals.get(row.id) ?? null,
+      receivedAt: row.receivedAt,
+      notSpam: row.notSpamAt !== null,
+      ruleIsSpam: row.rulePile === "spam",
+    });
+    votesBySender.set(address, votes);
+  }
+  const learned = new Map<string, LearnedPile | null>();
+  for (const [address, votes] of votesBySender) {
+    const stat = statByAddress.get(address);
+    if (!stat) continue;
+    const stored = InboxPileSchema.safeParse(stat.learnedPile);
+    const storedPile = stored.success && stored.data !== "spam" ? stored.data : null;
+    const result = learnSenderPile(votes, {
+      mark: marks.get(address) ?? null,
+      priorContact: stat.priorContact,
+      skipInbox: skipped.has(address),
+      forgottenAt: stat.learnedForgottenAt,
+      current: storedPile,
+    });
+    if ("keep" in result) {
+      learned.set(address, storedPile);
+      continue;
+    }
+    learned.set(address, result.pile);
+    if (result.pile === storedPile && result.count === stat.learnedCount) continue;
+    await tx.mailSenderStat.updateMany({
+      where: { spaceId, userId, connectionId, senderAddress: address },
+      data: {
+        learnedPile: result.pile,
+        learnedCount: result.count,
+        ...(result.pile === storedPile ? {} : { learnedAt: result.pile ? new Date() : null }),
+      },
+    });
+  }
 
   // Rows that end with the same answer are written together.
   const groups = new Map<
@@ -58,17 +130,18 @@ export async function applyPileRules(
   >();
   for (const row of rows) {
     const address = row.fromAddress.toLowerCase();
-    const parsed = MailSignalsSchema.safeParse(row.signals);
     const decision = classifyPile({
       fromName: row.fromName,
       fromAddress: address,
       subject: row.subject,
-      signals: parsed.success ? parsed.data : null,
+      signals: parsedSignals.get(row.id) ?? null,
       senderMark: marks.get(address) ?? null,
       priorContact: prior.get(address) ?? null,
+      skipInbox: skipped.has(address),
+      learnedPile: learned.get(address) ?? null,
     });
     const rulePile = decision.pile;
-    const pile = resolvePile(rulePile, row.category);
+    const pile = resolvePile(rulePile, row.category, row.notSpamAt !== null);
     const unchanged =
       row.rulePile === rulePile &&
       row.pile === pile &&

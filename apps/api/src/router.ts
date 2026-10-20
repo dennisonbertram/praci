@@ -7,6 +7,7 @@ import type {
   ConnectorCatalogItem,
   JobPublisher,
   MailProvider,
+  MailUnsubscriber,
   MemoryStore,
   SandboxProvider,
   SecretStore,
@@ -43,6 +44,7 @@ import type {
 import {
   acquireComputerExecutionLease,
   applyCodexLiveCatalog,
+  applyPendingSenderRules,
   applyTeachingDesktopInput,
   archiveBot,
   assertSafeRemoteUrl,
@@ -382,8 +384,11 @@ import {
   inboxTodoSetDone,
   inboxTodosList,
   inboxUnreadCount,
+  mailContext,
 } from "./inbox.js";
+import { inboxActionsList, inboxActionsUndo } from "./inbox-actions.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
+import { inboxCleanupArchive, inboxCleanupForget, inboxCleanupList } from "./inbox-cleanup.js";
 import {
   inboxComposeDiscard,
   inboxComposeDraftSave,
@@ -394,9 +399,11 @@ import {
   inboxArchive,
   inboxArchiveMany,
   inboxMarkRead,
+  inboxMoveMany,
   inboxUnarchive,
   inboxUnarchiveMany,
 } from "./inbox-modify.js";
+import { inboxUnsubscribe } from "./inbox-unsubscribe.js";
 import {
   connectionAgentSpawnKeys,
   ensureConnectedAppAgent,
@@ -846,6 +853,8 @@ function toNotificationDto(row: Notification): NotificationDto {
 }
 
 export interface RouterDeps {
+  /** Sends one-click unsubscribe POSTs; without it a one-click sender degrades to its link. */
+  unsubscriber?: MailUnsubscriber;
   /** The model call behind Data room auto-sort; without it only duplicate folders are merged. */
   proposeSort?: Parameters<typeof createDataRoomService>[0]["proposeSort"];
   cloudAgent?: CloudAgentConnection | null;
@@ -5492,6 +5501,9 @@ export function createRouter(deps: RouterDeps) {
         if (input.redirect === "desktop" && input.connectorId !== "google") {
           throw new ORPCError("BAD_REQUEST", { message: "Desktop sign-in is only for Google" });
         }
+        if (input.permission && input.connectorId !== "google") {
+          throw new ORPCError("BAD_REQUEST", { message: "This permission is only for Google" });
+        }
         const redirectUrl =
           input.redirect === "desktop" ? GOOGLE_DESKTOP_REDIRECT_URI : `${deps.env.webOrigin}/app`;
         const connector =
@@ -5558,7 +5570,11 @@ export function createRouter(deps: RouterDeps) {
         });
         try {
           const auth = await connector.begin(
-            { provider: input.provider, redirectUrl },
+            {
+              provider: input.provider,
+              redirectUrl,
+              ...(input.permission ? { permission: input.permission } : {}),
+            },
             connectionContext(context.actor, "connections.begin", context.signal),
           );
           // Re-take the provider lock and only advance still-pending rows so a
@@ -5732,6 +5748,31 @@ export function createRouter(deps: RouterDeps) {
             lock: (tx, connectorId, provider) =>
               lockProviderConnectionScope(tx, context.actor, connectorId, provider),
             provision: (connectionId) => provisionForActor(context.actor, connectionId),
+            // Skipped senders that waited for the filter permission get their filters now, on a
+            // signal of their own because this request ends first.
+            afterConnect: (connectionId) => {
+              const background = mailContext(context.actor, "connections.rules");
+              void deps.mail
+                .listAccounts(
+                  { spaceId: context.actor.spaceId, userId: context.actor.userId },
+                  background,
+                )
+                .then((accounts) => accounts.find((a) => a.id === connectionId))
+                .then((account) =>
+                  account
+                    ? applyPendingSenderRules(
+                        {
+                          prisma: deps.prisma,
+                          mail: deps.mail,
+                          writesDisabled: deps.env.mailWritesDisabled,
+                        },
+                        account,
+                        background,
+                      )
+                    : undefined,
+                )
+                .catch(() => undefined);
+            },
           });
         }
         // An undefined id would match any of the caller's rows; the input schema forbids it.
@@ -7272,7 +7313,11 @@ export function createRouter(deps: RouterDeps) {
         inboxUnreadCount(deps, context.actor),
       ),
       feedback: authed.inbox.feedback.handler(({ context, input }) =>
-        inboxFeedbackSet(deps, context.actor, input),
+        inboxFeedbackSet(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+        ),
       ),
       markRead: authed.inbox.markRead.handler(({ context, input }) =>
         inboxMarkRead(
@@ -7314,6 +7359,56 @@ export function createRouter(deps: RouterDeps) {
           context.signal,
         ),
       ),
+      moveMany: authed.inbox.moveMany.handler(({ context, input }) =>
+        inboxMoveMany(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
+      unsubscribe: authed.inbox.unsubscribe.handler(({ context, input }) =>
+        inboxUnsubscribe(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
+      cleanup: {
+        list: authed.inbox.cleanup.list.handler(({ context, input }) =>
+          inboxCleanupList(deps, context.actor, input),
+        ),
+        archive: authed.inbox.cleanup.archive.handler(({ context, input }) =>
+          inboxCleanupArchive(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+            context.signal,
+          ),
+        ),
+        forget: authed.inbox.cleanup.forget.handler(({ context, input }) =>
+          inboxCleanupForget(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+            context.signal,
+          ),
+        ),
+      },
+      actions: {
+        list: authed.inbox.actions.list.handler(({ context }) =>
+          inboxActionsList(deps, context.actor),
+        ),
+        undo: authed.inbox.actions.undo.handler(({ context, input }) =>
+          inboxActionsUndo(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+            context.signal,
+          ),
+        ),
+      },
       compose: {
         prefill: authed.inbox.compose.prefill.handler(({ context, input }) =>
           inboxComposePrefill(deps, context.actor, input, context.signal),
