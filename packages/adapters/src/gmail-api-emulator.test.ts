@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { GmailApiEmulator } from "./gmail-api-emulator.js";
+import { FILTER_LIMIT, GmailApiEmulator } from "./gmail-api-emulator.js";
+import { GMAIL_SETTINGS_BASIC } from "./google-connector.js";
 
 const BASE = "https://gmail.googleapis.com/gmail/v1/users/me";
 const NOW = new Date("2026-10-01T12:00:00Z");
@@ -371,5 +372,82 @@ describe("isolate", () => {
     expect(ids(gmail, "GMAIL:1", "is:unread")).toEqual([]);
     expect(ids(gmail, "GMAIL:2", "is:unread")).toEqual(["m1"]);
     expect(() => gmail.isolate("GMAIL:3", "missing", seed)).toThrow("No seeded mailbox missing");
+  });
+});
+
+describe("settings.filters", () => {
+  const mailbox = (address: string) => ({ address, messages: [] });
+  const make = () => {
+    const gmail = new GmailApiEmulator({
+      mailboxes: { a: mailbox("a@example.test"), b: mailbox("b@example.test") },
+    });
+    gmail.grantScope("a", GMAIL_SETTINGS_BASIC);
+    return gmail;
+  };
+  const body = {
+    criteria: { from: "news@lists.example.test" },
+    action: { removeLabelIds: ["INBOX"] },
+  };
+  const reason = (res: { data: unknown }) =>
+    (res.data as { error: { errors: Array<{ reason: string }> } }).error.errors[0]?.reason;
+
+  it("creates, lists, gets and deletes a filter", () => {
+    const gmail = make();
+    const created = gmail.handle("a", `${BASE}/settings/filters`, "POST", body);
+    expect(created.status).toBe(200);
+    const { id } = created.data as { id: string };
+    expect(gmail.handle("a", `${BASE}/settings/filters`).data).toEqual({
+      filter: [{ id, ...body }],
+    });
+    expect(gmail.handle("a", `${BASE}/settings/filters/${id}`).data).toEqual({ id, ...body });
+    expect(gmail.handle("a", `${BASE}/settings/filters/${id}`, "DELETE").status).toBe(204);
+    expect(gmail.handle("a", `${BASE}/settings/filters`).data).toEqual({});
+    expect(gmail.handle("a", `${BASE}/settings/filters/${id}`, "DELETE").status).toBe(404);
+    expect(gmail.handle("a", `${BASE}/settings/filters/${id}`).status).toBe(404);
+  });
+
+  it("answers 403 insufficientPermissions without gmail.settings.basic", () => {
+    const gmail = make();
+    for (const method of ["GET", "POST"] as const) {
+      const res = gmail.handle("b", `${BASE}/settings/filters`, method, body);
+      expect(res.status).toBe(403);
+      expect(reason(res)).toBe("insufficientPermissions");
+    }
+    expect(gmail.handle("b", `${BASE}/settings/filters/x`, "DELETE").status).toBe(403);
+    expect(gmail.filtersOf("b")).toEqual([]);
+  });
+
+  it("refuses a create at the 1,000 filter limit", () => {
+    const gmail = make();
+    gmail.fillFilters("a", FILTER_LIMIT);
+    const res = gmail.handle("a", `${BASE}/settings/filters`, "POST", body);
+    expect(res.status).toBe(400);
+    expect(gmail.filtersOf("a")).toHaveLength(FILTER_LIMIT);
+  });
+
+  it("refuses a body without a sender or an action", () => {
+    const gmail = make();
+    for (const bad of [
+      {},
+      { criteria: {}, action: {} },
+      { criteria: { from: "nobody" }, action: {} },
+      { criteria: { from: "a@b.test" } },
+    ])
+      expect(gmail.handle("a", `${BASE}/settings/filters`, "POST", bad).status).toBe(400);
+    expect(gmail.filtersOf("a")).toEqual([]);
+  });
+
+  it("keeps each mailbox's filters apart", () => {
+    const gmail = make();
+    gmail.grantScope("b", GMAIL_SETTINGS_BASIC);
+    gmail.handle("a", `${BASE}/settings/filters`, "POST", body);
+    expect(gmail.filtersOf("b")).toEqual([]);
+    const id = gmail.filtersOf("a")[0]?.id;
+    expect(gmail.handle("b", `${BASE}/settings/filters/${id}`, "DELETE").status).toBe(404);
+    expect(gmail.filtersOf("a")).toHaveLength(1);
+  });
+
+  it("does not require the scope for mail itself", () => {
+    expect(make().handle("b", `${BASE}/labels`).status).toBe(200);
   });
 });

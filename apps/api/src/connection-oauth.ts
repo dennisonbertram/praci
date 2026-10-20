@@ -50,7 +50,7 @@ export async function completeNativeOAuth(options: {
   } catch (error) {
     throw new ORPCError("BAD_REQUEST", { message: connectionFailureMessage(error) });
   }
-  const { connectionRef, secretId } = completed;
+  const { connectionRef, secretId, scope } = completed;
   if (!secretId)
     throw new ORPCError("BAD_REQUEST", { message: "Connection did not return a credential" });
 
@@ -94,6 +94,14 @@ export async function completeNativeOAuth(options: {
           // own rows, if it synced already, are rebuilt from its mail on the next sync.
           await tx.mailSenderStat.deleteMany({ where: { connectionId: current.id } });
           await tx.mailSenderStat.updateMany({ where: { connectionId: taken.id }, data: next });
+          // Skip decisions and the action log cascade-delete with the old row, so they move too. A
+          // decision keeps its Gmail filter id: it is the same Google account.
+          await tx.mailSenderDecision.deleteMany({ where: { connectionId: current.id } });
+          await tx.mailSenderDecision.updateMany({
+            where: { connectionId: taken.id },
+            data: next,
+          });
+          await tx.mailActionLog.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.inboxTodo.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
           // A Calendar or Drive agent is keyed by its connection, so it follows the new id; the
@@ -125,7 +133,8 @@ export async function completeNativeOAuth(options: {
             status: "connected",
             providerRef: connectionRef,
             secretId,
-            metadata: {},
+            // The granted scopes tell the mail provider whether it may manage Gmail filters.
+            metadata: scope ? { scope } : {},
             ...carried,
           },
         });

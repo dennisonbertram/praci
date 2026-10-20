@@ -34,10 +34,20 @@ import {
   isGoogleRateLimited,
 } from "./google-api-request.js";
 import { buildRawMessage } from "./mail-compose.js";
+import { senderRulesState } from "./mail-sender-rules.js";
 import { parseMailSignals } from "./mail-signals.js";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 const MAX_PAGE_SIZE = 500;
+/** Gmail allows 1,000 filters per user; documented, so a create is refused before it is sent. */
+export const GMAIL_FILTER_LIMIT = 1000;
+/**
+ * A sender address safe to put in a filter's `from`, which Gmail reads as a search expression: one
+ * `@`, and none of the characters that are search operators (spaces, quotes, braces, parentheses,
+ * commas, a leading `-`). ponytail: rarer address characters (such as ') are refused; widen if real
+ * senders hit it.
+ */
+const FILTER_ADDRESS = /^[a-z0-9._%+=&][a-z0-9._%+=&-]*@[a-z0-9-]+(\.[a-z0-9-]+)+$/;
 const CONCURRENCY = GOOGLE_API_CONCURRENCY;
 const MAX_TEXT = 40_000;
 const MAX_HTML = 200_000;
@@ -128,6 +138,7 @@ export class GmailMailProvider implements MailProvider {
           spaceId: row.spaceId,
           userId: row.userId,
           address: typeof known === "string" && known ? known : null,
+          senderRules: senderRulesState(row.connectorId, metadata),
         };
         if (account.address) return account;
         try {
@@ -595,6 +606,60 @@ export class GmailMailProvider implements MailProvider {
     await this.request(account, context, `${GMAIL}/stop`, { method: "POST" });
   }
 
+  /**
+   * A Gmail filter that skips the inbox for one sender. Only the account's own Google login can hold
+   * one: Composio and Pipedream do not ask for gmail.settings.basic. Without that scope Google answers
+   * 403, which is `auth`. Reuses an identical filter instead of creating a second.
+   */
+  async createSenderRule(
+    account: MailAccount,
+    rule: { from: string; skipInbox: true },
+    context: AdapterContext,
+  ): Promise<{ ruleId: string; created: boolean } | null> {
+    assertScope(account, context);
+    if (account.connectorId !== NATIVE_GOOGLE) return null;
+    const from = rule.from.trim().toLowerCase();
+    if (from.length > 254 || !FILTER_ADDRESS.test(from))
+      throw new MailProviderError("invalid", "Not a plain sender address");
+    const listed = asRecord(await this.request(account, context, `${GMAIL}/settings/filters`));
+    const filters = (Array.isArray(listed?.filter) ? listed.filter : []).map(asRecord);
+    if (filters.length >= GMAIL_FILTER_LIMIT)
+      throw new MailProviderError("limit", "Gmail filter limit reached");
+    const same = filters.find((f) => f && isSkipInboxFilter(f, from));
+    if (typeof same?.id === "string") return { ruleId: same.id, created: false };
+    const created = asRecord(
+      await this.request(account, context, `${GMAIL}/settings/filters`, {
+        method: "POST",
+        body: { criteria: { from }, action: { removeLabelIds: ["INBOX"] } },
+      }),
+    );
+    if (typeof created?.id !== "string" || !created.id)
+      throw new MailProviderError("unavailable", "Unexpected mail response");
+    return { ruleId: created.id, created: true };
+  }
+
+  async deleteSenderRule(
+    account: MailAccount,
+    ruleId: string,
+    context: AdapterContext,
+  ): Promise<void> {
+    assertScope(account, context);
+    if (account.connectorId !== NATIVE_GOOGLE) return;
+    try {
+      await this.request(
+        account,
+        context,
+        `${GMAIL}/settings/filters/${encodeURIComponent(ruleId)}`,
+        {
+          method: "DELETE",
+        },
+      );
+    } catch (error) {
+      // Removed in Gmail already: the goal is met.
+      if (!(error instanceof MailProviderError && error.kind === "not_found")) throw error;
+    }
+  }
+
   async createDraft(
     account: MailAccount,
     draft: MailDraftInput,
@@ -822,6 +887,22 @@ export function createMailProvider(
 function assertScope(account: MailAccount, context: AdapterContext): void {
   if (account.spaceId !== context.spaceId || account.userId !== context.userId)
     throw new MailProviderError("auth", "Mail is not available for this user");
+}
+
+/** True for a filter that only moves one sender's mail out of the inbox, so it can stand in for ours. */
+function isSkipInboxFilter(filter: Record<string, unknown>, from: string): boolean {
+  const criteria = asRecord(filter.criteria);
+  const action = asRecord(filter.action);
+  if (!criteria || !action) return false;
+  return (
+    Object.keys(criteria).length === 1 &&
+    typeof criteria.from === "string" &&
+    criteria.from.trim().toLowerCase() === from &&
+    Array.isArray(action.removeLabelIds) &&
+    action.removeLabelIds.includes("INBOX") &&
+    action.addLabelIds === undefined &&
+    action.forward === undefined
+  );
 }
 
 function buildQuery(request: MailListRequest): string {

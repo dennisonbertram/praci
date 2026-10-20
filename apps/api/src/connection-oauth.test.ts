@@ -30,6 +30,8 @@ function setup(replacesConnectionId?: string) {
   const todos = [{ id: "t1", connectionId: "old" }];
   const messages = [{ id: "m1", connectionId: "old" }];
   const stats = [{ id: "s1", connectionId: "old" }];
+  const decisions = [{ id: "d1", connectionId: "old", ruleId: "filter-1" }];
+  const actionLogs = [{ id: "l1", connectionId: "old" }];
   const secrets = new Set(["sec-old", "sec-new"]);
   const move = (list: { connectionId: string }[]) =>
     vi.fn(
@@ -64,6 +66,11 @@ function setup(replacesConnectionId?: string) {
     },
     cachedMailMessage: { updateMany: move(messages) },
     mailSenderStat: { updateMany: move(stats), deleteMany: vi.fn(async () => ({ count: 0 })) },
+    mailSenderDecision: {
+      updateMany: move(decisions),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
+    mailActionLog: { updateMany: move(actionLogs) },
     inboxTodo: { updateMany: move(todos) },
     composeSend: { updateMany: vi.fn(async () => ({ count: 0 })) },
     botConnectionAccess: {
@@ -90,7 +97,11 @@ function setup(replacesConnectionId?: string) {
       actor,
       connector: {
         prepare: undefined,
-        complete: async () => ({ connectionRef: "acct-1", secretId: "sec-new" }),
+        complete: async () => ({
+          connectionRef: "acct-1",
+          secretId: "sec-new",
+          scope: "openid email gmail.readonly",
+        }),
       } as never,
       connectorId: "google",
       state: "state-1",
@@ -98,7 +109,7 @@ function setup(replacesConnectionId?: string) {
       context: {} as never,
       lock: async () => undefined,
     });
-  return { rows, todos, messages, stats, tx, secrets, run, prisma };
+  return { rows, todos, messages, stats, decisions, actionLogs, tx, secrets, run, prisma };
 }
 
 describe("completeNativeOAuth, after the commit", () => {
@@ -141,5 +152,22 @@ describe("completeNativeOAuth, same account again", () => {
     expect(f.tx.mailSenderStat.deleteMany).toHaveBeenCalledWith({
       where: { connectionId: "pending" },
     });
+  });
+
+  it("moves skip decisions and action logs to the new connection, keeping the Gmail filter id", async () => {
+    const f = setup("old");
+    await f.run();
+    // The old row is deleted and both tables cascade on it, so they must move first.
+    expect(f.decisions[0]).toMatchObject({ connectionId: "pending", ruleId: "filter-1" });
+    expect(f.actionLogs[0]?.connectionId).toBe("pending");
+    expect(f.tx.mailSenderDecision.deleteMany).toHaveBeenCalledWith({
+      where: { connectionId: "pending" },
+    });
+  });
+
+  it("stores the scope Google granted on the connection", async () => {
+    const f = setup("old");
+    await f.run();
+    expect(f.rows.pending?.metadata).toEqual({ scope: "openid email gmail.readonly" });
   });
 });
