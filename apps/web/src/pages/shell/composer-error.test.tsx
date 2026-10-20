@@ -78,3 +78,34 @@ it("shows any other error with only Dismiss", async () => {
   );
   expect(dismiss).toHaveBeenCalledTimes(1);
 });
+
+const pageButton = (label: string) =>
+  [...container.querySelectorAll("button")].find((b) => b.textContent === label);
+
+it.each([
+  ["Legal", "/app/legal", "Allow it on the Legal page."],
+  ["Data room", "/app/data-room", "Allow it on the Data room page."],
+])("offers a button to the %s page when consent is missing", async (label, path, remedy) => {
+  const navigate = vi.fn();
+  await act(async () =>
+    root.render(
+      <ComposerError
+        message={`Data Room consent is required for OpenRouter before the Legal agent can run. ${remedy}`}
+        onDismiss={() => {}}
+        onNavigate={navigate}
+      />,
+    ),
+  );
+  await act(async () => pageButton(`Open ${label}`)?.click());
+  expect(navigate).toHaveBeenCalledWith(path);
+});
+
+it("has no page button for other errors", async () => {
+  await act(async () =>
+    root.render(
+      <ComposerError message="Network down" onDismiss={() => {}} onNavigate={() => {}} />,
+    ),
+  );
+  expect(pageButton("Open Legal")).toBeUndefined();
+  expect(pageButton("Open Data room")).toBeUndefined();
+});

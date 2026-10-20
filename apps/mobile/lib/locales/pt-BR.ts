@@ -584,6 +584,8 @@ export const PT_BR_MESSAGES: Record<string, string> = {
   "Make sure nothing is still running on this computer.":
     "Confirme que nada ainda está em execução neste computador.",
   "Nothing is still running": "Nada ainda está em execução",
+  Reconnect: "Reconectar",
+  "Try again": "Tentar novamente",
   Reconnecting: "Reconectando",
   "Recovering Team Computer": "Recuperando o computador da equipe",
   "Recovering {name}’s Computer": "Recuperando o computador de {name}",
@@ -825,6 +827,13 @@ export const PT_BR_MESSAGES: Record<string, string> = {
   "{count} messages · {percent}% read": "{count} mensagens · {percent}% lidas",
   "Looks like spam": "Parece spam",
   Skipping: "Ignorando",
+  "Gmail filter limit reached": "Limite de filtros do Gmail atingido",
+  "Couldn't add Gmail filter": "Não foi possível adicionar o filtro do Gmail",
+  Learned: "Aprendido",
+  Forget: "Esquecer",
+  Senders: "Remetentes",
+  Digest: "Resumo",
+  "Archive all": "Arquivar tudo",
   History: "Histórico",
   Undo: "Desfazer",
   "Send an unsubscribe email to {address}?":

@@ -582,6 +582,8 @@ export const TR_MESSAGES: Record<string, string> = {
   "Make sure nothing is still running on this computer.":
     "Bu bilgisayarda hâlâ çalışan bir şey olmadığından emin ol.",
   "Nothing is still running": "Hâlâ çalışan bir şey yok",
+  Reconnect: "Yeniden bağlan",
+  "Try again": "Tekrar dene",
   Reconnecting: "Yeniden bağlanıyor",
   "Recovering Team Computer": "Takım Bilgisayarı kurtarılıyor",
   "Recovering {name}’s Computer": "{name} adlı kişinin bilgisayarı kurtarılıyor",
@@ -820,6 +822,13 @@ export const TR_MESSAGES: Record<string, string> = {
   "{count} messages · {percent}% read": "{count} ileti · %{percent} okundu",
   "Looks like spam": "Spam gibi görünüyor",
   Skipping: "Atlanıyor",
+  "Gmail filter limit reached": "Gmail filtre sınırına ulaşıldı",
+  "Couldn't add Gmail filter": "Gmail filtresi eklenemedi",
+  Learned: "Öğrenildi",
+  Forget: "Unut",
+  Senders: "Gönderenler",
+  Digest: "Özet",
+  "Archive all": "Tümünü arşivle",
   History: "Geçmiş",
   Undo: "Geri al",
   "Send an unsubscribe email to {address}?":

@@ -3,6 +3,7 @@ import type { InboxMoveInput, InboxPile, InboxTodo, MailRow } from "@rakazo/cont
 import type { SenderGroup } from "@rakazo/core";
 import {
   archivableIds,
+  digestRows,
   dueTone,
   groupBySender,
   groupInbox,
@@ -75,6 +76,8 @@ export default function InboxScreen() {
   const [dataPile, setDataPile] = useState<InboxPile>();
   // Open sender groups, by group key.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  // The Newsletters pile read as a flat list of recent issues; another pile ends it.
+  const [digest, setDigest] = useState(false);
   const [data, setData] = useState<Awaited<ReturnType<typeof listMailInbox>> | null>(null);
   const [todos, setTodos] = useState<InboxTodo[]>([]);
   const [error, setError] = useState("");
@@ -181,6 +184,7 @@ export default function InboxScreen() {
     setPile(value);
     pileRef.current = value;
     setExpanded(new Set());
+    setDigest(false);
     void load(tabRef.current, false);
   };
 
@@ -349,7 +353,23 @@ export default function InboxScreen() {
 
   const current = dataPile === pile;
   const rows = useMemo(() => (current ? (data?.rows ?? []) : []), [current, data]);
+  const digestOn = digest && pile === "newsletters";
+  const digestList = useMemo(
+    () => (digestOn ? digestRows(rows, new Date()) : []),
+    [digestOn, rows],
+  );
+  const confirmArchiveAll = () => {
+    if (digestList.length === 0) return;
+    Alert.alert(t("Archive all"), undefined, [
+      { text: t("Cancel"), style: "cancel" },
+      { text: t("Archive all"), onPress: () => void archiveRows(digestList) },
+    ]);
+  };
   const sections = useMemo(() => {
+    if (digestOn)
+      return digestList.length > 0
+        ? [{ key: "digest", title: "", data: digestList.map((row) => messageItem(row)) }]
+        : [];
     if (pile === "updates" || pile === "newsletters") {
       // A sender with one message is that message; a larger group is a header, then its messages when open.
       const items = groupBySender(rows).flatMap((group): ListItem[] =>
@@ -376,7 +396,7 @@ export default function InboxScreen() {
       { key: "today", title: t("Today"), data: groups.today.map((row) => messageItem(row)) },
       { key: "earlier", title: t("Earlier"), data: groups.earlier.map((row) => messageItem(row)) },
     ].filter((section) => section.data.length > 0);
-  }, [pile, rows, expanded, t]);
+  }, [pile, rows, expanded, digestOn, digestList, t]);
 
   const choices = [
     { key: ALL, label: t("All") },
@@ -418,6 +438,21 @@ export default function InboxScreen() {
       </View>
     ) : null;
 
+  const viewPicker =
+    pile === "newsletters" && accounts.length > 0 ? (
+      <View style={styles.picker}>
+        <NativeSegmentedControl
+          accessibilityLabel={t("Newsletters")}
+          value={digest ? "digest" : "senders"}
+          onChange={(value) => setDigest(value === "digest")}
+          options={[
+            { value: "senders" as const, label: t("Senders") },
+            { value: "digest" as const, label: t("Digest") },
+          ]}
+        />
+      </View>
+    ) : null;
+
   const loading = !data || !current || (rows.length === 0 && !synced);
   const empty =
     data && accounts.length === 0 ? (
@@ -455,6 +490,16 @@ export default function InboxScreen() {
           <>
             {picker}
             {pilePicker}
+            {viewPicker}
+            {digestList.length > 0 ? (
+              <View style={styles.picker}>
+                <NativeActionButton
+                  label={t("Archive all")}
+                  prominence="plain"
+                  onPress={confirmArchiveAll}
+                />
+              </View>
+            ) : null}
             {error && !loading ? <Text style={styles.empty}>{error}</Text> : null}
             {pile === "important" && todos.length > 0 ? (
               <TodoCard todos={todos} onComplete={completeTodo} />

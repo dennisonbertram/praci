@@ -35,6 +35,7 @@ export function ConnectAppDialog({
   confirmFirst = false,
   accountName,
   replacesConnectionId,
+  permission,
 }: {
   item: ConnectionCatalogItem;
   data: IntegrationsData;
@@ -48,6 +49,8 @@ export function ConnectAppDialog({
   accountName?: string;
   /** Reconnect: this connection is replaced by the new sign-in, keeping its Inbox data. */
   replacesConnectionId?: string;
+  /** Google only: also ask for permission to make Gmail filters. */
+  permission?: "mail_rules";
 }) {
   const { t } = useLingui();
   const [phase, setPhase] = useState<Phase>(
@@ -149,6 +152,7 @@ export function ConnectAppDialog({
           nextAccountLabel(item.name, rows.filter((entry) => entry.status === "connected").length),
         ...(viaSystemBrowser ? { redirect: "desktop" as const } : {}),
         ...(replacesConnectionId ? { replacesConnectionId } : {}),
+        ...(permission ? { permission } : {}),
       });
       connectionId.current = begun.connectionId;
       for (const old of stale)
