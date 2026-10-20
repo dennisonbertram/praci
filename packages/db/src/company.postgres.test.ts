@@ -1597,6 +1597,7 @@ describePostgres("company foundation (PostgreSQL)", () => {
     await company.editEvent({
       eventId: unknownFirst.id,
       title: `Owner corrected unknown subject ${suffix}`,
+      entityIds: [entityId(firstPerson)],
     });
     const unknownReplay = persisted(
       await company.importEvent({
@@ -1610,6 +1611,12 @@ describePostgres("company foundation (PostgreSQL)", () => {
     expect(unknownReplay).toMatchObject({
       id: unknownFirst.id,
       title: `Owner corrected unknown subject ${suffix}`,
+      entityIds: [entityId(firstPerson)],
+    });
+    expect(
+      await prisma.companyEvent.findUniqueOrThrow({ where: { id: unknownFirst.id } }),
+    ).toMatchObject({
+      subjectKey: `entities:${JSON.stringify([entityId(firstPerson)])}`,
     });
     const unknownOtherSource = persisted(
       await company.importEvent({
@@ -1618,6 +1625,27 @@ describePostgres("company foundation (PostgreSQL)", () => {
       }),
     );
     expect(unknownOtherSource.id).not.toBe(unknownFirst.id);
+    await company.rejectEvent(unknownFirst.id, "Unknown subject was corrected");
+    const rejectedKnownSubject = await company.importEvent({
+      event: {
+        ...unknownInput.event,
+        title: `Owner corrected unknown subject ${suffix}`,
+        entityIds: [entityId(firstPerson)],
+      },
+      evidence: evidence("unknown-subject-fresh-known-a", "unknown-subject-fresh-known-a-hash"),
+    });
+    expect(rejectedKnownSubject).toMatchObject({ suppressed: true });
+    const distinctKnownSubject = persisted(
+      await company.importEvent({
+        event: {
+          ...unknownInput.event,
+          title: `Owner corrected unknown subject ${suffix}`,
+          entityIds: [entityId(secondPerson)],
+        },
+        evidence: evidence("unknown-subject-fresh-known-b", "unknown-subject-fresh-known-b-hash"),
+      }),
+    );
+    expect(distinctKnownSubject.id).not.toBe(unknownFirst.id);
 
     const mergeRoot = await company.importEntity(
       person(
@@ -1664,6 +1692,41 @@ describePostgres("company foundation (PostgreSQL)", () => {
         { entityId: entityId(mergeRoot) },
       ]),
     );
+
+    const historicalSubjectEventInput = {
+      event: {
+        ...sharedEventInput.event,
+        title: `Historical subject event ${suffix}`,
+        entityIds: [entityId(firstPerson)],
+      },
+      evidence: evidence("historical-subject-event-source", "historical-subject-event-hash"),
+    };
+    const historicalSubjectEvent = persisted(
+      await company.importEvent(historicalSubjectEventInput),
+    );
+    await company.editEvent({
+      eventId: historicalSubjectEvent.id,
+      confidence: 0.7,
+    });
+    await company.disconnect("slack", "subject-person-a");
+    const liveSubjectEvent = persisted(
+      await company.importEvent({
+        ...historicalSubjectEventInput,
+        event: {
+          ...historicalSubjectEventInput.event,
+          entityIds: [entityId(secondPerson)],
+        },
+        evidence: evidence(
+          "historical-subject-event-live-b",
+          "historical-subject-event-live-b-hash",
+        ),
+      }),
+    );
+    expect(liveSubjectEvent.id).not.toBe(historicalSubjectEvent.id);
+    await company.rejectEvent(historicalSubjectEvent.id, "Historical subject is gone");
+    expect(
+      await company.eventDetail(historicalSubjectEvent.id, { includeRejected: true }),
+    ).toMatchObject({ status: "rejected" });
   });
 
   it("rejects edits and confirmations for rejected entities without adding evidence", async () => {

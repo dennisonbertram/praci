@@ -506,6 +506,29 @@ async function canonicalEventEntityIds(
   ].sort();
 }
 
+async function canonicalStoredEventEntityIds(
+  db: CompanyDb,
+  scope: Scope,
+  entityIds: string[],
+): Promise<string[]> {
+  const uniqueIds = [...new Set(entityIds)];
+  if (uniqueIds.length === 0) return [];
+  const scopedEntities = await db.companyEntity.findMany({
+    where: { ...scope, id: { in: uniqueIds } },
+    select: { id: true },
+  });
+  const extantIds = new Set(scopedEntities.map((entity) => entity.id));
+  return [
+    ...new Set(
+      await Promise.all(
+        uniqueIds.map((entityId) =>
+          extantIds.has(entityId) ? resolveSurvivorId(db, scope, entityId) : entityId,
+        ),
+      ),
+    ),
+  ].sort();
+}
+
 function entitySubjectKey(entityIds: string[]): string {
   return `entities:${JSON.stringify([...new Set(entityIds)].sort())}`;
 }
@@ -525,7 +548,7 @@ async function canonicalEventSubjectKey(
   if (!Array.isArray(entityIds) || !entityIds.every((id) => typeof id === "string")) {
     throw new IsolationError("Invalid stored event subject key");
   }
-  return entitySubjectKey(await canonicalEventEntityIds(db, scope, entityIds));
+  return entitySubjectKey(await canonicalStoredEventEntityIds(db, scope, entityIds));
 }
 
 async function eventSubjectKeyForFingerprint(
@@ -540,7 +563,7 @@ async function eventSubjectKeyForFingerprint(
     });
     if (links.length > 0) {
       return entitySubjectKey(
-        await canonicalEventEntityIds(
+        await canonicalStoredEventEntityIds(
           db,
           scope,
           links.map((link) => link.entityId),
@@ -1259,7 +1282,7 @@ async function importEvent(
         select: { entityId: true },
       });
       const linkedSubjectKey = entitySubjectKey(
-        await canonicalEventEntityIds(
+        await canonicalStoredEventEntityIds(
           db,
           scope,
           links.map((link) => link.entityId),
@@ -1753,7 +1776,7 @@ async function editEvent(
   const canonicalEditedEntityIds =
     entityIds && entityIds.length > 0 ? await canonicalEventEntityIds(db, scope, entityIds) : [];
   const correctedSubjectKey =
-    entityIds !== undefined && entityIds.length > 0 && !row.subjectKey.startsWith("source:")
+    entityIds !== undefined && entityIds.length > 0
       ? entitySubjectKey(canonicalEditedEntityIds)
       : row.subjectKey;
   const updates = Object.entries(fields).filter(([, value]) => value !== undefined);
