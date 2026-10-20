@@ -17,7 +17,7 @@ import {
   TableHeadRow,
   TableRow,
 } from "@rakazo/ui-web";
-import { FileImage, FileSpreadsheet, FileText, Folder } from "lucide-react";
+import { FileArchive, FileImage, FileSpreadsheet, FileText, Folder } from "lucide-react";
 import type { KeyboardEvent, ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { dataRoomThumbnailUrl, splitSnippet } from "../../lib/data-room";
@@ -132,7 +132,13 @@ const SHEET = /^text\/(csv|tab-separated-values)$|spreadsheet|ms-excel/;
 const isSheet = ({ mimeType, name }: Pick<DataRoomApiItem, "mimeType" | "name">) =>
   SHEET.test(mimeType) || /\.(csv|tsv|xlsx?)$/i.test(name);
 export const fileIcon = (item: Pick<DataRoomApiItem, "mimeType" | "name">) =>
-  item.mimeType.startsWith("image/") ? FileImage : isSheet(item) ? FileSpreadsheet : FileText;
+  item.mimeType.startsWith("image/")
+    ? FileImage
+    : isSheet(item)
+      ? FileSpreadsheet
+      : /zip/.test(item.mimeType) || /\.zip$/i.test(item.name)
+        ? FileArchive
+        : FileText;
 
 const DASH = "—";
 const empty = <span className="text-muted-foreground">{DASH}</span>;

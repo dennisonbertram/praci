@@ -29,7 +29,7 @@ The Shell was reworked after the earlier catalog (commits `bca9a32b`, `72feab12`
 
 ### Persona (applies to every story)
 
-Maya Chen, cofounder and CEO of "MOCK DEMO DATA — Northwind Robotics" (a 9-person warehouse-robotics startup). She has never seen Rakazo. She does not know the words "bot", "agent", "space", "group", "triage", "routine", "artifact", "Data room", "approval" or "provider". She wants one place to run the company: read email, know the cash position, keep the cap table and investor documents straight, and hand repeat work to someone reliable. **Hesitation** marks where she would pause or misread. "Expects" gives the outcome a first-timer would assume.
+Maya Chen, cofounder and CEO of "Northwind Robotics" (a 9-person warehouse-robotics startup). She has never seen Rakazo. She does not know the words "bot", "agent", "space", "group", "triage", "routine", "artifact", "Data room", "approval" or "provider". She wants one place to run the company: read email, know the cash position, keep the cap table and investor documents straight, and hand repeat work to someone reliable. **Hesitation** marks where she would pause or misread. "Expects" gives the outcome a first-timer would assume.
 
 ### Mock demo data and preconditions (shared seed)
 
@@ -39,13 +39,13 @@ Every user-visible string in the seed contains `MOCK DEMO DATA`.
 |---|---|
 | User | Maya Chen, `maya@northwind.example` (MOCK), password set |
 | New user (sign-up stories) | `maya.new@northwind.example` (MOCK), no account yet |
-| Space | "MOCK DEMO DATA — Northwind Robotics" (default). Second space "MOCK DEMO DATA — Side project" only where a story says so |
+| Space | "Northwind Robotics" (default). Second space "Side project" only where a story says so |
 | Bots | "Chief" (first bot, onboarding done), "MOCK Finance helper", "MOCK Hiring helper", archived "MOCK Old intern bot"; page agents "Inbox agent", "Finance agent", "Carta agent" once created |
-| Group / section | Group "MOCK DEMO DATA — Leadership" (Chief and Finance helper); section "MOCK Ops" |
+| Group / section | Group "Leadership" (Chief and Finance helper); section "MOCK Ops" |
 | Chief thread | 12+ messages, one saying "MOCK DEMO DATA SAFE discount 20%" |
 | Inbox | 20 cached MOCK messages, 3 unread |
-| Data room | 3 MOCK documents, e.g. "MOCK DEMO DATA — Seed SAFE.pdf" |
-| Artifacts | 6 MOCK artifacts made by Chief and the Finance helper, among them "MOCK DEMO DATA — Q3 investor update draft" (3 versions, Markdown), "MOCK DEMO DATA — Board deck.pdf", "MOCK DEMO DATA — Runway dashboard.html" |
+| Data room | 3 MOCK documents, e.g. "Seed SAFE.pdf" |
+| Artifacts | 6 MOCK artifacts made by Chief and the Finance helper, among them "Q3 investor update draft" (3 versions, Markdown), "Board deck.pdf", "Runway dashboard.html" |
 | Activity | 1 running run, 1 "Needs input" run, 4 finished runs |
 | Server | Billing enabled for paywall stories (second account with no subscription); password reset configured; SSO provider "MOCK Okta" only for story 104 |
 | Browser | Notification permission "default" unless a story says otherwise; storage enabled |
@@ -204,7 +204,7 @@ STORY-APP-137..143 need nothing from the seed.
 **Topic**: Paywall
 **Persona**: Naive first-time founder
 **Goal**: "Start using it."
-**Preconditions**: Billing enabled on the server; account "MOCK DEMO DATA — Paywall tester" with no subscription and permission to manage billing.
+**Preconditions**: Billing enabled on the server; account "Paywall tester" with no subscription and permission to manage billing.
 **Ideal path**: 2 — click the trial button, finish checkout.
 **Alternate paths**: "Manage billing" appears only for past-due, incomplete or canceled customers (STORY-APP-115).
 
@@ -556,7 +556,7 @@ STORY-APP-137..143 need nothing from the seed.
 **Topic**: Navigation to Artifacts
 **Persona**: Naive first-time founder
 **Goal**: "Find the document Chief wrote for me."
-**Preconditions**: Artifact "MOCK DEMO DATA — Q3 investor update draft" exists; Data room holds 3 other MOCK documents.
+**Preconditions**: Artifact "Q3 investor update draft" exists; Data room holds 3 other MOCK documents.
 **Ideal path**: 2 — open the documents area and click the file.
 **Alternate paths**: Scroll Chief's thread to the file card (STORY-APP-133); type "investor" in the sidebar search; Cmd+K then "Artifacts".
 
@@ -578,7 +578,7 @@ STORY-APP-137..143 need nothing from the seed.
 **Topic**: Sidebar search
 **Persona**: Naive first-time founder
 **Goal**: "Find where we talked about the SAFE."
-**Preconditions**: Chief message containing "MOCK DEMO DATA SAFE discount 20%"; Data room document "MOCK DEMO DATA — Seed SAFE.pdf".
+**Preconditions**: Chief message containing "MOCK DEMO DATA SAFE discount 20%"; Data room document "Seed SAFE.pdf".
 **Ideal path**: 2 — type, click a result.
 **Alternate paths**: Cmd+K searches names only (STORY-APP-008); Inbox has its own box.
 
@@ -672,14 +672,14 @@ STORY-APP-137..143 need nothing from the seed.
 **Topic**: Sidebar with several spaces
 **Persona**: Naive first-time founder
 **Goal**: "Keep my side project away from Northwind."
-**Preconditions**: A second space "MOCK DEMO DATA — Side project" with one bot; the user is in the first space.
+**Preconditions**: A second space "Side project" with one bot; the user is in the first space.
 **Ideal path**: 2 — click a bot in the other space.
 **Alternate paths**: none found.
 
 ##### Steps
-1. Sees space names as small upper-case headings with a lock icon, such as "MOCK DEMO DATA — NORTHWIND ROBOTICS · MOCK OPS" for a section, and a separate heading for the second space (`pages/shell/space-sidebar.ts:50-66`, `Shell.tsx:3580-3640`). With only one space, none of this shows. **Hesitation:** the space heading doubles as a collapse button, and the section text is joined to the space name with "·", which gets long.
+1. Sees space names as small upper-case headings with a lock icon, such as "NORTHWIND ROBOTICS · MOCK OPS" for a section, and a separate heading for the second space (`pages/shell/space-sidebar.ts:50-66`, `Shell.tsx:3580-3640`). With only one space, none of this shows. **Hesitation:** the space heading doubles as a collapse button, and the section text is joined to the space name with "·", which gets long.
 2. Clicks a bot in the Side project space. If it is another space, the whole page reloads at that bot's URL so every request carries the right space (`openSpaceChat`, `:1710-1725`). She sees a brief skeleton ("Opening your Space…").
-3. Clicks "Actions for MOCK DEMO DATA — Northwind Robotics" (the "..." button at the heading) to rename or delete the space (`:3665-3690`).
+3. Clicks "Actions for Northwind Robotics" (the "..." button at the heading) to rename or delete the space (`:3665-3690`).
 4. An empty space shows only its heading. Clicking it opens that space's onboarding (`group.emptySpaceId`, `:3590-3595`).
 
 ##### Edge Cases
@@ -839,7 +839,7 @@ STORY-APP-137..143 need nothing from the seed.
 
 ##### Variations
 - Status words: Queued, Starting, Running, Needs input, Needs takeover, Done, Failed, Cancelled (`:430-450`).
-- Run in a group: the title reads "MOCK Finance helper · MOCK DEMO DATA — Leadership".
+- Run in a group: the title reads "MOCK Finance helper · Leadership".
 
 ##### Edge Cases
 - The load fails: an alert with the reason and "Try again" (`:235-240`).
@@ -952,7 +952,7 @@ STORY-APP-137..143 need nothing from the seed.
 1. Clicks "Artifacts" in the sidebar. The page title "Artifacts" appears with a "Filters" button and a pair of view buttons, "Card view" and "List view" (`pages/Artifacts.tsx:210-262`). Cards are in a grid: file icon, the name, up to two lines of description, a short file-type badge, and "v3" when there are several versions, the bot's avatar and name, and a relative time (`:621-688`).
 2. Clicks "List view". Rows replace cards; her choice is remembered (`localStorage rakazo:artifacts-view-mode`, `:46-65`).
 3. Clicks "Filters". A search box "Search artifacts…", a date menu ("All time", "Today", "This week", "This month") and chips "All bots" plus one per bot appear (`:262-290`). Types "board" in the search box; the list narrows. Clicks the "MOCK Finance helper" chip; the list reloads for that bot only (`:111-128`).
-4. Clicks the card "MOCK DEMO DATA — Board deck.pdf". It opens (STORY-APP-130).
+4. Clicks the card "Board deck.pdf". It opens (STORY-APP-130).
 
 ##### Variations
 - A list of more than 60: "Load more" at the bottom fetches the next page (`:130-153,436-444`). A filter that finds nothing on loaded pages keeps loading pages automatically (`:175-186`).
@@ -968,7 +968,7 @@ STORY-APP-137..143 need nothing from the seed.
 **Topic**: Artifact preview
 **Persona**: Naive first-time founder
 **Goal**: "Read the investor update, compare with the older draft, and send it to my accountant."
-**Preconditions**: "MOCK DEMO DATA — Q3 investor update draft" with 3 versions (Markdown). A PDF and an HTML artifact exist.
+**Preconditions**: "Q3 investor update draft" with 3 versions (Markdown). A PDF and an HTML artifact exist.
 **Ideal path**: 3 — open, read, Download.
 **Alternate paths**: Download from the chat file card (STORY-APP-133).
 
@@ -977,7 +977,7 @@ STORY-APP-137..143 need nothing from the seed.
 2. The document header shows the name, description, a "Version" menu ("v3 · 2d ago", "v2 · 5d ago", "v1 · 9d ago"), "Download" and a maximize square (`:776-880`). Markdown renders as a reading column.
 3. Selects "v2". The page reloads that version (`:790-815`).
 4. Clicks "Maximize" (tooltip). The list hides; the label becomes "Show list". Clicks it again to return.
-5. Clicks "Download". The browser saves `MOCK DEMO DATA — Q3 investor update draft` with the original type (`lib/artifact-open.ts:25-32`). No extension is added to the name if the artifact name lacks one. **Hesitation:** on Windows, a file with no extension opens in the wrong app.
+5. Clicks "Download". The browser saves `Q3 investor update draft` with the original type (`lib/artifact-open.ts:25-32`). No extension is added to the name if the artifact name lacks one. **Hesitation:** on Windows, a file with no extension opens in the wrong app.
 6. Opens the HTML artifact. A dark pill at the bottom right reads "Isolated preview — no access to your account" (`:905-918`), and the page runs in a sandbox (`components/SandboxedHtmlViewer.tsx`).
 
 ##### Variations
@@ -1001,7 +1001,7 @@ STORY-APP-137..143 need nothing from the seed.
 
 ##### Steps
 1. Hovers a card or row. A small trash icon fades in at the bottom right of the card or at the right of the row ("Delete {name}") (`pages/Artifacts.tsx:670-686,738-744`). It also shows when the card has keyboard focus.
-2. Clicks it. A dialog: "Delete "MOCK DEMO DATA — Q3 investor update draft"?" and "This deletes all 3 versions of this artifact. This can't be undone." For a one-version file: "This can't be undone." Buttons "Cancel" and "Delete" (`:329-370`). **Hesitation:** deletion removes every version, not only the one on screen.
+2. Clicks it. A dialog: "Delete "Q3 investor update draft"?" and "This deletes all 3 versions of this artifact. This can't be undone." For a one-version file: "This can't be undone." Buttons "Cancel" and "Delete" (`:329-370`). **Hesitation:** deletion removes every version, not only the one on screen.
 3. Clicks "Delete". The button reads "Deleting…". On success the card disappears; if that artifact was open, the page returns to `/app/artifacts` (`:191-206`).
 
 ##### Edge Cases
@@ -1299,9 +1299,9 @@ STORY-APP-137..143 need nothing from the seed.
 2. Notices a dot beside "MOCK Finance helper" (unread) and the Inbox badge "3".
 3. Clicks the bell. "Needs you" shows Chief "Needs input". Clicks it; Chief's chat opens with the question. Answers. Clicks the bell again to close the block.
 4. Presses Cmd+K, types "cap", Enter. Cap table opens. Clicks the eye icon in its header ("Hide amounts") so the call does not show holdings.
-5. Presses Cmd+K, types "arti", Enter. Artifacts opens. Switches to List view. Opens "MOCK DEMO DATA — Q3 investor update draft", picks version v3, reads it.
+5. Presses Cmd+K, types "arti", Enter. Artifacts opens. Switches to List view. Opens "Q3 investor update draft", picks version v3, reads it.
 6. Clicks "Download". Saves the file.
-7. Types "SAFE" in "Search chats". Clicks the Documents result "MOCK DEMO DATA — Seed SAFE.pdf". Data room opens with it selected.
+7. Types "SAFE" in "Search chats". Clicks the Documents result "Seed SAFE.pdf". Data room opens with it selected.
 8. Clicks "Search mail for “SAFE”" next time; the Inbox filters the mail.
 9. Clicks "Hide sidebar" so the screen share shows only the chat. Opens Chief and sends "Draft the board update opening paragraph" (part B).
 10. Switches to another tab; Chief finishes; a notification shows with the first lines of the reply, currency masked because Hide amounts is on (`browser-notifications.ts:85`).
@@ -1418,7 +1418,7 @@ Part A owns APP-001..009 and the journeys agent owns APP-024. This file owns APP
 
 ### Persona (applies to every story)
 
-Maya Chen, cofounder and CEO of "MOCK DEMO DATA — Northwind Robotics" (a 9-person warehouse-robotics startup). She has never seen Rakazo. She does not know the words "bot", "space", "group", "MCP", "routine", "provider", "thinking", "scratchpad", "webhook" or "token". She wants one place to run the company: read email, know the cash position, keep the cap table and investor documents straight, and hand repeat work to someone reliable. Each story records what she tries in her own words, what she expects, and where she pauses. Pauses are marked **Hesitation:**.
+Maya Chen, cofounder and CEO of "Northwind Robotics" (a 9-person warehouse-robotics startup). She has never seen Rakazo. She does not know the words "bot", "space", "group", "MCP", "routine", "provider", "thinking", "scratchpad", "webhook" or "token". She wants one place to run the company: read email, know the cash position, keep the cap table and investor documents straight, and hand repeat work to someone reliable. Each story records what she tries in her own words, what she expects, and where she pauses. Pauses are marked **Hesitation:**.
 
 ### Mock demo data and preconditions (shared seed)
 
@@ -1427,10 +1427,10 @@ Every user-visible string in the seed contains `MOCK DEMO DATA` or starts with `
 | Seed item | Value |
 |---|---|
 | User | Maya Chen, `maya@northwind.example` (MOCK DEMO DATA), password set, deployment owner unless a story says otherwise |
-| Space | "MOCK DEMO DATA — Northwind Robotics" |
+| Space | "Northwind Robotics" |
 | Model | One working deployment model; no personal API key |
 | Bots | "Chief" (onboarding finished), "MOCK Finance helper" (title Finance), "MOCK Hiring helper" (title Recruiting), archived "MOCK Old intern bot" |
-| Group | "MOCK DEMO DATA — Leadership" with Chief and MOCK Finance helper |
+| Group | "Leadership" with Chief and MOCK Finance helper |
 | Section | "MOCK Ops" containing MOCK Hiring helper |
 | Chief thread | 12+ messages: one reply with a 14-row table ("MOCK DEMO DATA monthly burn by category", columns Category, Amount, Change), one message with a 👍 reaction, one user reply to an earlier message, one peer-message marker "Messaged MOCK Finance helper" |
 | Integrations | Gmail connected (`maya@northwind.example`, MOCK), Slack connected (MOCK workspace), one custom connection "MOCK DEMO DATA Docs MCP" at `https://mcp.mock-northwind.example/mcp` |
@@ -1562,10 +1562,10 @@ Seed (shared) ── Chief chat (012)
 ##### Steps
 1. "+" → clicks the "About groups" info button. → Dialog "Groups": "Shared chat with 2-6 bots. They all reply in the same thread." (`pages/shell/dialogs.tsx:200-206`). **Hesitation:** She now expects every bot to answer every message. The behavior is different (see STORY-APP-168).
 2. Clicks "About spaces". → "Spaces": "Private workspace with its own bots and groups." She wonders if her cofounder can join one; he cannot (STORY-APP-023).
-3. Clicks "New group". → Right panel "New group" with "Name" ("Name this group"), "Members (pick 2–6)", a list of bots, and "Create group" disabled until the name and 2 members are set (`pages/GroupPanel.tsx:83-146`). Types "MOCK DEMO DATA — Leadership", clicks Chief and MOCK Finance helper (check marks appear). → Clicks "Create group"; lands on `/app/g/<id>`.
+3. Clicks "New group". → Right panel "New group" with "Name" ("Name this group"), "Members (pick 2–6)", a list of bots, and "Create group" disabled until the name and 2 members are set (`pages/GroupPanel.tsx:83-146`). Types "Leadership", clicks Chief and MOCK Finance helper (check marks appear). → Clicks "Create group"; lands on `/app/g/<id>`.
 4. Types "Draft three bullet points on Q3 burn" and sends. → One bot answers (the first member), not both. See STORY-APP-168 for the full behavior.
-5. Clicks the group name in the header. → "Group settings": rename, change members, "Save", "Delete group" (`GroupPanel.tsx:228-278`). Rename to "MOCK DEMO DATA — Leadership team" and save; the panel closes after a successful save (`GroupPanel.tsx:221`).
-6. "+" → "New space". → Dialog "New space" with "Name" (placeholder "Customer support") and "Create space" (`dialogs.tsx:60-96`). Types "MOCK DEMO DATA — Side project". → Sidebar groups by space (part A).
+5. Clicks the group name in the header. → "Group settings": rename, change members, "Save", "Delete group" (`GroupPanel.tsx:228-278`). Rename to "Leadership team" and save; the panel closes after a successful save (`GroupPanel.tsx:221`).
+6. "+" → "New space". → Dialog "New space" with "Name" (placeholder "Customer support") and "Create space" (`dialogs.tsx:60-96`). Types "Side project". → Sidebar groups by space (part A).
 
 ##### Variations
 - Only one bot picked: "Create group" stays disabled; there is no message saying why. **Hesitation:** She cannot tell if the Name or the member count is missing.
@@ -2012,8 +2012,8 @@ Seed (shared) ── Chief chat (012)
 **Alternate paths**: Open the group from the sidebar and type there.
 
 ##### Steps
-1. Types "@Lead". → A list (aria-label "Mentions") shows "MOCK DEMO DATA — Leadership" with subtitle "Group", and other bots, routines and apps that match (`pages/Shell.tsx:6790-6830`, `packages/core/src/composer-mentions.ts:196-251`). **Hesitation:** The list mixes people-like items and apps; subtitles "Bot", "Group", "Runs on send · …", "Connected" are small.
-2. Presses Enter to pick. → A chip is added in the field. Types "please review the deck" and sends. → The message is delivered to the group, and Chief's chat does not show it. A line under the chat says "Sent to MOCK DEMO DATA — Leadership" with an "Open" link (`Shell.tsx:3178-3197`).
+1. Types "@Lead". → A list (aria-label "Mentions") shows "Leadership" with subtitle "Group", and other bots, routines and apps that match (`pages/Shell.tsx:6790-6830`, `packages/core/src/composer-mentions.ts:196-251`). **Hesitation:** The list mixes people-like items and apps; subtitles "Bot", "Group", "Runs on send · …", "Connected" are small.
+2. Presses Enter to pick. → A chip is added in the field. Types "please review the deck" and sends. → The message is delivered to the group, and Chief's chat does not show it. A line under the chat says "Sent to Leadership" with an "Open" link (`Shell.tsx:3178-3197`).
 3. Clicks "Open". → Goes to `/app/g/<id>`.
 
 ##### Variations
@@ -2805,7 +2805,7 @@ Each was read in code; none was run in a browser unless the story says so.
 
 ### Preconditions used by these journeys
 
-- Persona: Maya Chen, "MOCK DEMO DATA — Northwind Robotics", a first-time founder. Mock people: Luis Park at Acme Logistics (`luis@acme-logistics.example`), Priya Shah (investor, Harbor Ventures), counsel Ellis Law (`counsel@ellis-law.example`), cofounder Sam Lee.
+- Persona: Maya Chen, "Northwind Robotics", a first-time founder. Mock people: Luis Park at Acme Logistics (`luis@acme-logistics.example`), Priya Shah (investor, Harbor Ventures), counsel Ellis Law (`counsel@ellis-law.example`), cofounder Sam Lee.
 - **PR #109 (`origin/feat/legal`)** adds the Data room buttons "Import from email" and "Import from Google Drive" (icon-only on the Data room header), the agent tool `add_to_data_room`, and the Legal page. Every step that uses them is tagged **[needs PR #109]**. On `main` today there is no Legal tab and no import control (STORY-INB-016, STORY-LEG-020, STORY-DRM-041).
 - Hide amounts is one browser-side switch (account menu row, the eye on Finance and Cap table). It does not hide everything (see Suspected problems).
 - Seeds named as in the area catalogs: A1 Inbox account, M-numbers for mail (M3 Luis demo mail, M6 signed MSA, M9 board prep, M2 Invoice #4471), D2 Legal deadlines, NW-BASE Finance, `carta-connected` Cap table.
@@ -3261,7 +3261,7 @@ Fifteen new journeys plus the rewritten Monday morning. Short ones (200, 201, 20
 **Topic**: Moving between features
 **Persona**: Naive founder, second week of use
 **Goal**: "Check email, cash and equity, file the signed SAFE, and leave Chief a to-do."
-**Preconditions**: Full shared seed with 3 unread MOCK mails (one with attachment "MOCK DEMO DATA — Signed SAFE.pdf"); NW-BASE; `carta-connected`. **Steps tagged [needs PR #109] use Data room import.**
+**Preconditions**: Full shared seed with 3 unread MOCK mails (one with attachment "Signed SAFE.pdf"); NW-BASE; `carta-connected`. **Steps tagged [needs PR #109] use Data room import.**
 **Ideal path**: 10 — Inbox, open mail, file attachment, Finance, Cap table, Chief, ask, done.
 **Alternate paths**: download and drag onto any page (STORY-INB-016); ask the Inbox agent panel instead of Chief; Cmd+K to reach bots (STORY-APP-008).
 

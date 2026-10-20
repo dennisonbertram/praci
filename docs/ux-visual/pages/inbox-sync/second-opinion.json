@@ -121,7 +121,7 @@
           {
             "level": "layout",
             "element": "Tablet layout: left sidebar (~45% of width) retained beside the rate-limited empty state",
-            "problem": "At 768px the sidebar keeps full desktop width proportion, squeezing the content column so the empty state sits in a narrow strip while the majority of the screen is navigation the user cannot act on. Mobile handles this better with a hamburger, making the tablet breakpoint the awkward middle child; on mobile the two-line 'MOCK DEMO DATA — Mail rate-limited' subtitle also pushes 'Search mail' down and crowds the header icons.",
+            "problem": "At 768px the sidebar keeps full desktop width proportion, squeezing the content column so the empty state sits in a narrow strip while the majority of the screen is navigation the user cannot act on. Mobile handles this better with a hamburger, making the tablet breakpoint the awkward middle child; on mobile the two-line 'Mail rate-limited' subtitle also pushes 'Search mail' down and crowds the header icons.",
             "norm": "Responsive layout: content should reclaim space as width shrinks; primary content must not be subordinated to chrome at intermediate breakpoints.",
             "severity": "P3",
             "screenshot": "768x1024-rate-limited.png",
@@ -220,7 +220,7 @@
           },
           {
             "level": "layout",
-            "element": "Docked left sidebar and wrapping Inbox header ('MOCK DEMO DATA — Mail rate-limited') at 768x1024",
+            "element": "Docked left sidebar and wrapping Inbox header ('Mail rate-limited') at 768x1024",
             "problem": "On the 768x1024 portrait tablet view, keeping the ~280px sidebar permanently docked narrows the main panel enough that the subtitle wraps onto two lines while the four right-hand action icons float unevenly beside the first line, and 'Search mail' drops to a second row.",
             "norm": "Hierarchy & Layout alignment",
             "severity": "P2",

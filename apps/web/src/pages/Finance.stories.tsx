@@ -220,8 +220,8 @@ export const NamedSpace: Story = {
     onAskAgent: () => {},
     // The switcher leaves off the words every name starts with, so it reads "Northwind Robotics".
     spaces: [
-      { id: "s1", name: "MOCK DEMO DATA — Northwind Robotics" },
-      { id: "s2", name: "MOCK DEMO DATA — Empty space" },
+      { id: "s1", name: "Northwind Robotics" },
+      { id: "s2", name: "Empty space" },
     ],
     spaceId: "s1",
     onSwitchSpace: () => {},

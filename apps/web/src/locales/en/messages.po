@@ -8705,6 +8705,22 @@ msgstr "This subscription sign-in is not available in Rakazo yet. Use a deployme
 msgid "This week"
 msgstr "This week"
 
+#: src/components/data-room/DropZone.tsx
+msgid "This zip can't be read"
+msgstr "This zip can't be read"
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip has unsafe file paths"
+msgstr "This zip has unsafe file paths"
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip is password-protected"
+msgstr "This zip is password-protected"
+
+#: src/components/data-room/DropZone.tsx
+msgid "This zip is too large to unpack"
+msgstr "This zip is too large to unpack"
+
 #: src/pages/Board.tsx
 msgid "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."
 msgstr "Tickets track work for your bots. Bots add them when you ask them to track a task, or press New ticket."

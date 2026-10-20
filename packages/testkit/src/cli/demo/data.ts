@@ -19,19 +19,19 @@ import { fakeRpc } from "../../../../adapters/src/rpc-crypto-fake-fetch.js";
  */
 
 export const MOCK_NOTE = "Mock demo data";
-export const DEMO_COMPANY = "MOCK DEMO DATA — Northwind Robotics";
+export const DEMO_COMPANY = "Northwind Robotics";
 /** A space with nothing connected, for the first-run and empty states. */
-export const DEMO_EMPTY_SPACE = "MOCK DEMO DATA — Empty space";
+export const DEMO_EMPTY_SPACE = "Empty space";
 /** A space whose only Gmail account lost its sign-in, for the Reconnect state. */
-export const DEMO_RECONNECT_SPACE = "MOCK DEMO DATA — Mail needs reconnect";
+export const DEMO_RECONNECT_SPACE = "Mail needs reconnect";
 /** A space whose Gmail answers every call with a rate limit. */
-export const DEMO_RATE_LIMIT_SPACE = "MOCK DEMO DATA — Mail rate-limited";
+export const DEMO_RATE_LIMIT_SPACE = "Mail rate-limited";
 /** Mail sent to this domain fails, so a failed send can be tried (for example bounce@…). */
 export const DEMO_BOUNCE_DOMAIN = "send-fail.example.test";
 /** How long after the stack starts the mock new email arrives. */
 export const DEMO_NEW_MAIL_DELAY_MS = 3 * 60_000;
 /** A company whose Mercury sign-in has expired, for the Finance Reconnect path. */
-export const DEMO_FINANCE_RECONNECT_SPACE = "MOCK DEMO DATA — Reconnect needed";
+export const DEMO_FINANCE_RECONNECT_SPACE = "Reconnect needed";
 export const DEMO_USER_NAME = "Maya Chen (Mock)";
 /** A second member of the company, so sharing and privacy can be looked at. */
 export const DEMO_COFOUNDER = {

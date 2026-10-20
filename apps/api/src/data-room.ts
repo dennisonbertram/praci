@@ -36,6 +36,7 @@ import {
   listDriveFiles,
   planBoxFolders,
   planDriveFolders,
+  ZipRefusal,
 } from "@rakazo/adapters";
 import type {
   Actor,
@@ -1016,15 +1017,22 @@ export function mountDataRoomRoutes(
       return respond(existing, true);
     }
 
-    const { item, created } = await fileItem(actor, {
-      source: "upload",
-      sha256: body.sha256,
-      name: name.data,
-      mimeType: type,
-      bytes: body.bytes,
-      folderId,
-    });
-    return respond(item, !created);
+    try {
+      const { item, created } = await fileItem(actor, {
+        source: "upload",
+        sha256: body.sha256,
+        name: name.data,
+        mimeType: type,
+        bytes: body.bytes,
+        folderId,
+      });
+      return respond(item, !created);
+    } catch (error) {
+      // A zip that cannot be unpacked is the caller's file, not a server fault.
+      if (error instanceof ZipRefusal)
+        return c.json({ error: error.message, code: error.code }, 400);
+      throw error;
+    }
   });
 
   app.get("/api/data-room/items/:id/content", async (c) => {
