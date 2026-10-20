@@ -48,12 +48,12 @@ Ratings used in Walk result: OK, MISSING, CONFUSING, CONTRADICTS-PLAN. "Mockup-o
 
 ### Steps
 1. Click "Linear" → panel "Connect Linear" with a "Team" select (Growth, Platform, Design), "Access" toggle, "Back", "Connect". She thinks: "I want Platform and Growth; it only lets me pick one."
-2. Click "Read only" in "Access" → it highlights. She wonders: "Does Read only mean Rakazo cannot touch Linear at all, including the bot?"
+2. Click "Read only" in "Access" → it highlights. She wonders: "Does Read only mean Praci cannot touch Linear at all, including the bot?"
 3. Click "Connect" → board appears with "Read-only" badge.
 4. Try to drag a Linear card (for example "Onboarding emails" ENG-42) → expects a refusal she understands.
 
 ### Walk result
-1. CONTRADICTS-PLAN: S2 says "pick which to show" (teams, plural); "Team" is a single select (W5 text: "Team Growth Platform Design"). Also no OAuth step, so she never sees what Rakazo is asking Linear for.
+1. CONTRADICTS-PLAN: S2 says "pick which to show" (teams, plural); "Team" is a single select (W5 text: "Team Growth Platform Design"). Also no OAuth step, so she never sees what Praci is asking Linear for.
 2. OK: toggle works; default is "Read and write", so choosing Read only is deliberate. CONFUSING: no copy says what each option allows, and the plan says Read only uses a different endpoint, which she cannot know.
 3. CONTRADICTS-PLAN: no first-sync count or progress (S2). Board shows 14 cards at once, including GitHub, Notion and Native (w5-after-linear-ro.png); Sources button shows 3 3 4 Native 6 although she connected only Linear.
 4. CONFUSING: the 10 non-native cards are not draggable (walk: 4 of 14 draggable) but there is no tooltip. The badge "Read-only" has no title attribute explaining it.
@@ -105,7 +105,7 @@ Ratings used in Walk result: OK, MISSING, CONFUSING, CONTRADICTS-PLAN. "Mockup-o
 ### Steps
 1. Click "Notion" → "Connect Notion" with heading "Map properties" inside it.
 2. Choose "Database" "Launch tasks" (default) → fields below should refresh for that database.
-3. Review "Status", "Assignee", "Start", "End". Sees "Assignee" defaulting to "Owner". She thinks: "In my database Owner means who is accountable. Rakazo has an Owner and an Assignee. Which one am I mapping?"
+3. Review "Status", "Assignee", "Start", "End". Sees "Assignee" defaulting to "Owner". She thinks: "In my database Owner means who is accountable. Praci has an Owner and an Assignee. Which one am I mapping?"
 4. Leave "Blocked by" (optional) at "None" although the dropdown lists "Blocked by" and "Depends on" → she assumes it is off for a reason.
 5. Click "Connect" with "Read and write" (default).
 6. Open "Timeline" → expects arrows. Gets the note "Notion has no dependency relation" with "Add relation" (after "Notion: no relation" is ticked in the mockup).
@@ -114,8 +114,8 @@ Ratings used in Walk result: OK, MISSING, CONFUSING, CONTRADICTS-PLAN. "Mockup-o
 ### Walk result
 1. CONFUSING: panel has "Connect Notion" h2 and a second h2 "Map properties" directly beneath (w4-notion.png). Two headings for one screen.
 2. MISSING: changing "Database" does not change the property options (the options are static). Mockup-only; the real adapter must repopulate.
-3. CONFUSING: "Assignee" preselects "Owner". README S29 makes Owner and Assignee separate Rakazo fields; there is no "Owner" mapping row at all, though S4 lists "optional" mapping only for blocked-by and estimate and the capability matrix says Owner is an optional mapped person property. CONTRADICTS-PLAN.
-4. OK for the two optionals. CONFUSING: both options are real relations yet default is "None"; the user cannot tell whether "None" means "ignore" or "create one" (S4 says Rakazo offers to create the relation).
+3. CONFUSING: "Assignee" preselects "Owner". README S29 makes Owner and Assignee separate Praci fields; there is no "Owner" mapping row at all, though S4 lists "optional" mapping only for blocked-by and estimate and the capability matrix says Owner is an optional mapped person property. CONTRADICTS-PLAN.
+4. OK for the two optionals. CONFUSING: both options are real relations yet default is "None"; the user cannot tell whether "None" means "ignore" or "create one" (S4 says Praci offers to create the relation).
 5. MISSING: no confirmation, no sync progress.
 6. OK: note and button exist on Timeline (h-norel-timeline.png). On Board with no relation there is no note (walk: 0 note rows), so the user who never opens Timeline never learns why "Blocked" markers vanished.
 7. CONTRADICTS-PLAN: toast only; S4 requires an approval card. The label "Add relation" does not say it writes a new property into her Notion database.
@@ -155,7 +155,7 @@ Ratings used in Walk result: OK, MISSING, CONFUSING, CONTRADICTS-PLAN. "Mockup-o
 ---
 
 ## CONNECT-SOURCES-FIRST-RUN-06: User wants to disconnect Notion and delete its data
-**Type**: short  **Persona**: Dev, designer who tried Notion for a month and now wants Rakazo to forget it  **Goal**: remove the Notion source and its synced tasks
+**Type**: short  **Persona**: Dev, designer who tried Notion for a month and now wants Praci to forget it  **Goal**: remove the Notion source and its synced tasks
 **Preconditions**: populated board with all four sources
 **README stories**: S7
 **Ideal path**: 3. Sources button → "Notion" row action "Disconnect" → confirm "Delete synced data". (The mockup has none of these.)
@@ -260,7 +260,7 @@ Ranked. "Ships" = a real design problem that would ship if the mockup were built
 1. **High, story 07 (and 06): No way to disconnect, and no way to add a second source from a populated page. Ships.** S6 (combine sources) and S7 (disconnect) are v1 in the README, but the only connect UI is the empty state and the Sources dropdown only filters. Fix: add an "Add source" row (or "Connect another source") at the bottom of the Sources dropdown, opening the same connect panel, and a per-source "Disconnect" action with a confirmation that offers "Delete synced data".
 2. **High, stories 02, 07: Access mode is one global flag. Ships if copied.** Choosing Read only for Linear locks GitHub and Notion cards and shows one "Read-only" badge. S24 is per tracker. Fix: store access per source; show a lock only on that source's cards and in its Sources row; show the badge only if all connected trackers are read only.
 3. **High, story 01: "New project" shows another project's board. Ships.** S1 promises a working board from nothing. Fix: on "New project", prompt for a name (or use "Untitled project"), show empty columns with an "Add task" control, and give native tasks title, status, assignee, dates.
-4. **Medium, stories 03, 04: Mapping defaults and copy collide with Owner vs Assignee.** The Notion form preselects Owner for "Assignee" while Rakazo has its own Owner (S29, capability matrix has an optional Owner mapping). Fix: add an optional "Owner" row and default Assignee to a property named like "Assignee" or "Assigned to", or to "None" if unsure.
+4. **Medium, stories 03, 04: Mapping defaults and copy collide with Owner vs Assignee.** The Notion form preselects Owner for "Assignee" while Praci has its own Owner (S29, capability matrix has an optional Owner mapping). Fix: add an optional "Owner" row and default Assignee to a property named like "Assignee" or "Assigned to", or to "None" if unsure.
 5. **Medium, stories 02, 03, 04, 07: No sign-in, first-sync progress or count (S2, S3, S4). Partly mockup-only.** Everything appears instantly and all sources appear after one connect. Fix for the real build: after "Connect" show a sync state with "Syncing 42 issues" and a "Retry" on failure; the mockup could add one toast "Synced 14 tasks" and show only the connected source's cards.
 6. **Medium, stories 03: The board never names its status rule (S3).** Fix: show a quiet line in the Sources dropdown row ("Status: open/closed and labels") or in the source drawer chip; no persistent banner (copy budget).
 7. **Medium, story 05: Sync error banner lacks reason and age.** "GitHub sync failed" plus "Retry" gives no cause or "last synced" time, and the dot is the only marker on the Sources button, with no matching mark inside the dropdown. Fix: add "Last synced 2h ago" to the banner and a red dot beside the GitHub row in the dropdown; keep "Retry". Add a "Reconnect" variant for expired tokens.

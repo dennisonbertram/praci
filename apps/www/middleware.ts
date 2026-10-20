@@ -7,8 +7,8 @@ import {
 } from "./src/agent-content.js";
 
 const VARY_HEADER = "Accept, Accept-Encoding";
-const APEX_ORIGIN = "https://rakazo.com";
-const WWW_HOST = "www.rakazo.com";
+const APEX_ORIGIN = "https://praci.ai";
+const WWW_HOST = "www.praci.ai";
 
 export const config = {
   matcher: ["/((?!api|_astro|.*\\..*).*)", "/sitemap.xml"],

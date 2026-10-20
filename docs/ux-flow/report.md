@@ -36,7 +36,7 @@ Ranked by how central the journey is, multiplied by friction removed and divided
 3. **Opening marks read.** This matches Gmail, gives the dot meaning again, and removes a manual step per email. Mark unread stays in the reader. Effort S. Helps J1, J2 and J5. Decided with the user.
 4. **Give the list the width.** Start the Inbox agent panel collapsed until an agent exists. Effort S. Helps J1 and J4. Decided with the user.
 5. **End the list honestly.** After the last row, show a quiet line that points to search for older mail. Show "No more results" when paging runs out, and a busy state on Load more. Effort S. Helps J2, J3 and J4.
-6. **Label the filter menu.** Add group headings ("Gmail tabs" and the Rakazo categories) so the user knows which grouping does what. Effort S. Helps J6.
+6. **Label the filter menu.** Add group headings ("Gmail tabs" and the Praci categories) so the user knows which grouping does what. Effort S. Helps J6.
 7. **Show why a row needs a reply.** `MailRow.reason` is already sent but never shown. Use it as the row's title tooltip on Needs reply rows. Effort S. Helps J2.
 8. **Dates with a year** for mail from an earlier year. Effort S. Helps J4.
 9. **Pace prefetching.** Debounce the j/k selection prefetch, and stop prefetching for a while after a failed load. Effort S. A real user holding j causes the same rate limits.

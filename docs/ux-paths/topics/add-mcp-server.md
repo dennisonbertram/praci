@@ -170,16 +170,16 @@ Key code facts used throughout:
 **Alternate paths**: Manage MCP servers → "Connect OAuth" has the same blocked-popup fallback but assignments there are chips, so access is not lost.
 ### Steps
 1. "Integrations" → "Browse MCP servers" → "Add server URL" → paste `https://api.brex.com/mcp` → "Connect". Thought: "I clicked once; why is the page doing nothing?" → Server "Brex" is created; the app asks the API for the authorization URL, then `window.open` returns null.
-2. The page navigates. → The current tab leaves Rakazo for Brex's authorization page (`window.location.assign`). No message is shown first. Thought: "Did I just get kicked out? What happened to my chat?" Any unsent text in the app is lost.
+2. The page navigates. → The current tab leaves Praci for Brex's authorization page (`window.location.assign`). No message is shown first. Thought: "Did I just get kicked out? What happened to my chat?" Any unsent text in the app is lost.
 3. Sign in at Brex. **[REAL SIGN-IN]** → Brex redirects to `/mcp/oauth/callback`. The page shows "Finishing MCP connection…".
 4. Wait. → The code finishes `mcp.oauth.complete`, broadcasts "mcp-oauth-complete", and because this tab is not a popup, navigates to `/app?mcp_oauth=connected`. No toast is shown (the query parameter is not read by the code found). Thought: "Is Brex connected?"
 5. Open "Integrations". → A "Brex" row exists with subtitle `api.brex.com`. The original code that assigns the active agent ran in the page that was navigated away, so `assignments.approve` never ran.
 6. Ravi asks his agent about Brex expenses. → The agent has no Brex tools (access not granted; inferred from the control flow). He must open Advanced → "Manage MCP servers" and click his agent's chip on the Brex card.
 ### Variations
-- If the callback fails in a non-popup tab, the page shows "OAuth connection failed", the error text, and a "Return to Rakazo" button (not shown in a popup).
+- If the callback fails in a non-popup tab, the page shows "OAuth connection failed", the error text, and a "Return to Praci" button (not shown in a popup).
 - If Ravi allows popups and retries "Connect": the existing Brex server is reused, `begin` returns "already_connected" since the token is stored, and the app proceeds as success and assigns the agent. No explanation is shown.
 ### Edge Cases
-- Other browser tabs of Rakazo open at the same time receive the BroadcastChannel message; the Manage MCP servers dialog refreshes if open.
+- Other browser tabs of Praci open at the same time receive the BroadcastChannel message; the Manage MCP servers dialog refreshes if open.
 - Some login pages sever the opener: the tab-scoped sessionStorage marker `rakazo-mcp-oauth-popup` keeps the popup window closing correctly.
 
 ---

@@ -1,6 +1,6 @@
 # Brief: Integrations surfaces (mock demo data)
 
-**App.** Rakazo is a founder's AI chief of staff. It has bots (agents) for inbox, finance, cap table and data room. Integrations is where the founder connects outside apps (Gmail, Mercury, Brex, Carta, Blockscout) and chooses which bots may use each one. The data is invented (company "Northwind Robotics", user "Maya Chen (Mock)").
+**App.** Praci is a founder's AI chief of staff. It has bots (agents) for inbox, finance, cap table and data room. Integrations is where the founder connects outside apps (Gmail, Mercury, Brex, Carta, Blockscout) and chooses which bots may use each one. The data is invented (company "Northwind Robotics", user "Maya Chen (Mock)").
 
 **Persona.** A startup founder who knows what Mercury and Gmail are. She does not know what "MCP" means and has not thought about "agents" as separate from the chat bots she already uses. She wants one answer: "can the right bot use this app, and can it change things without asking me?"
 

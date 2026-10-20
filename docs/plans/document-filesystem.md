@@ -107,7 +107,7 @@ counts and ranking never leak across owners.
 
 `DocumentNode`: `id`, `spaceId`, `userId`, `parentId`, `kind` (`folder` or `file`),
 `name`, `blobId` (files only), `mimeType`, `source` (`upload`, `artifact`, `agent`,
-`drive`, `box`, `gmail`, `chat`, `finance`), `system` (true for folders Rakazo
+`drive`, `box`, `gmail`, `chat`, `finance`), `system` (true for folders Praci
 creates), `botId`, `groupId`, `runId`, `versionOf` (replaces `rootArtifactId`),
 `version`, `createdAt`, `deletedAt`. Unique on `(spaceId, userId, parentId, name)`
 for live nodes, so a path resolves to at most one node.

@@ -1,6 +1,6 @@
-# Contributing to Rakazo
+# Contributing to Praci
 
-Thanks for helping improve Rakazo. Keep changes focused and testable.
+Thanks for helping improve Praci. Keep changes focused and testable.
 
 ## Run locally
 
@@ -86,8 +86,7 @@ capability config, fixtures, logs, or snapshots; use the encrypted secret store 
 
 ## Contact
 
-| Address | Use for |
+| Channel | Use for |
 | --- | --- |
-| [security@rakazo.com](mailto:security@rakazo.com) | Vulnerabilities only — see [SECURITY.md](SECURITY.md) |
-| [support@rakazo.com](mailto:support@rakazo.com) | User and support questions |
-| [elie@rakazo.com](mailto:elie@rakazo.com) | Maintainer |
+| [Private vulnerability report](https://github.com/dennisonbertram/praci/security/advisories/new) | Vulnerabilities only, see [SECURITY.md](SECURITY.md) |
+| [GitHub issues](https://github.com/dennisonbertram/praci/issues) | User and support questions |

@@ -151,7 +151,7 @@ is on web and desktop."
   groups below its minimum size; this page instead names people, because the owner
   asked "whom do I take care of first". The protections are owner-only access,
   approved self-view, Exclude, metadata only, and the "What this reads" disclosure.
-- **Teammates who are not Rakazo users** appear in the roster marked "Not a Rakazo
+- **Teammates who are not Praci users** appear in the roster marked "Not a Praci
   user"; telling them is the owner's responsibility.
 - **EU teams need legal review** before enabling; this plan does not cover
   works-council or national employee-monitoring rules.

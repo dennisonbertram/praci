@@ -2,8 +2,8 @@
 
 ## Goal
 
-Give each user an Inbox in Rakazo: one list of recent mail across every Gmail account
-they connected (through Composio, Pipedream, or Rakazo's own Google OAuth client), a
+Give each user an Inbox in Praci: one list of recent mail across every Gmail account
+they connected (through Composio, Pipedream, or Praci's own Google OAuth client), a
 Needs reply group and a short To do list filled by background triage, and an Inbox
 agent beside the list that can search the user's whole mail history with built-in
 tools. It ships on web and desktop (Electron hosts the web UI) and on mobile. It is
@@ -153,7 +153,7 @@ Notes:
   `get`s per minute per account; the reference implementation's identical approach is
   fast in practice, which is unexplained. Measure in each adapter's manual smoke test.
 - **Managed-OAuth limits are invisible.** Composio and Pipedream proxy calls add a hop,
-  and their shared Google projects have per-project limits Rakazo cannot see.
+  and their shared Google projects have per-project limits Praci cannot see.
 - **Composio query strings** with repeated parameters in an absolute endpoint are
   unconfirmed until the 2a smoke test.
 - **Pipedream account refs** (`providerRef = "gmail"` on existing rows) were found by

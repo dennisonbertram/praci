@@ -47,7 +47,7 @@ Verdict: Confusing at step 4. The request-and-approve path (steps 1 to 3) is def
 ### Edge Cases
 - Sam is the sole author of 24 of 24 checkout-api changes and a Revenue-line dependency. Giving him 4 more reviews loads the person the page already flags as a single point of failure. The button label names Sam but nothing says why Sam was chosen. The README does not say the agent considers the target's load. Undefined.
 - Jonah reviewed 14 of 17 checkout-api PRs, and only people who know that repo can review it. Sam may be the only candidate, which makes this suggestion circular.
-- Sam is not a Rakazo user; his consent or awareness is not part of the flow. He is simply notified by GitHub.
+- Sam is not a Praci user; his consent or awareness is not part of the flow. He is simply notified by GitHub.
 ### Does it make sense?
 Verdict: Confusing at step 2. The suggested target is chosen without a visible reason, and the same page lists Sam as a key-person risk. Smallest fix: the approval prompt must show the 4 PRs and Sam's current open reviews, and the agent should choose a target with no current workload signal and say why; if only Sam qualifies, the prompt says "Sam is the only reviewer who knows checkout-api" so the owner decides knowingly.
 
@@ -196,7 +196,7 @@ Verdict: Makes sense, with one caveat at step 3: the answer must state "no PTO d
 ### Variations
 - Hiding someone who currently has a card in "Take care of first". The owner could hide Maya to make the problem go away; no warning is defined.
 ### Edge Cases
-- Hidden person who is linked to a Rakazo account (self-view link): they lose their own card? Undefined.
+- Hidden person who is linked to a Praci account (self-view link): they lose their own card? Undefined.
 - After a split, 15-week history for each new person needs recomputing. Undefined whether history is split by source id or lost.
 ### Does it make sense?
 Verdict: Broken at step 1. The plan promises roster correction, but there is no screen, so a wrong merge produces wrong named-person signals with no remedy. Smallest fix: add a "…" menu to each row in "8 others" and the Table with "Hide" and "Split…", plus a "Hidden (N)" line below the others list to restore people.
@@ -204,14 +204,14 @@ Verdict: Broken at step 1. The plan promises roster correction, but there is no 
 ## STORY-410: Acting from a phone
 **Type**: short
 **Topic**: Acting on signals
-**Persona**: Ines Hargrove is at an airport with the Rakazo mobile app and wants to approve the 1:1 draft for Maya.
+**Persona**: Ines Hargrove is at an airport with the Praci mobile app and wants to approve the 1:1 draft for Maya.
 **Goal**: Complete or at least not lose an action while away from a desktop.
 **Preconditions**: Mobile page is phase 6; until then mobile shows no Team health link (README intro).
 **Basis**: README intro and phase 6; mockup `@media (max-width:760px)` (web narrow layout only).
 **Ideal path**: 3 steps. Open the approval notification, review, approve.
 **Alternate paths**: Open the web page in a mobile browser at narrow width.
 ### Steps
-1. Open the Rakazo mobile app → no Team health entry exists. Correct and safe per the plan.
+1. Open the Praci mobile app → no Team health entry exists. Correct and safe per the plan.
 2. Pending approval from an earlier desktop request → whether per-action approvals created from Team health appear in the mobile inbox is Undefined. The Carta pattern uses the shared approval path, so it likely does, but the approval card would have no card context.
 3. Approve on mobile → event is created. Result appears when the owner next opens the web page; see STORY-401, step 4.
 ### Variations
