@@ -1,5 +1,6 @@
 import * as z from "zod";
 import { botSecretDestinationSchema } from "./bot-secrets.js";
+import { ChartDataSchema, ChartSpecSchema, refineChartRows } from "./chart.js";
 import { Id } from "./ids.js";
 import { MAX_COMPOSE_BODY } from "./inbox.js";
 import { McpTransportSchema } from "./mcp.js";
@@ -64,20 +65,7 @@ export const MessageRole = z.enum(["user", "bot", "system"]);
 export const BotMessageIntent = z.enum(["request", "result", "question", "status", "fyi"]);
 export type BotMessageIntent = z.infer<typeof BotMessageIntent>;
 
-export const MAX_CHART_DATA_ROWS = 5_000;
-
-const ChartSpec = z.record(z.string(), z.any());
-
-function embeddedChartRowCount(spec: Record<string, unknown>): number {
-  const specData = Array.isArray(spec.data) ? spec.data.length : 0;
-  const markData = Array.isArray(spec.marks)
-    ? spec.marks.reduce((total, mark) => {
-        if (!mark || typeof mark !== "object" || !Array.isArray(mark.data)) return total;
-        return total + mark.data.length;
-      }, 0)
-    : 0;
-  return specData + markData;
-}
+export { MAX_CHART_DATA_ROWS } from "./chart.js";
 
 const ChartBlock = z
   .object({
@@ -85,16 +73,10 @@ const ChartBlock = z
     name: z.string(),
     /** Declarative Observable Plot spec, validated by render_plot before publish.
         z.any keeps the inferred type JSON-assignable for persistence. */
-    spec: ChartSpec,
-    data: z.array(z.any()).max(MAX_CHART_DATA_ROWS),
+    spec: ChartSpecSchema,
+    data: ChartDataSchema,
   })
-  .superRefine((block, ctx) => {
-    if (block.data.length + embeddedChartRowCount(block.spec) <= MAX_CHART_DATA_ROWS) return;
-    ctx.addIssue({
-      code: "custom",
-      message: `Chart data exceeds the ${MAX_CHART_DATA_ROWS.toLocaleString("en-US")}-row limit`,
-    });
-  });
+  .superRefine(refineChartRows);
 
 export const SecretAskPurpose = z.enum(["otp", "password", "api_key"]);
 export type SecretAskPurpose = z.infer<typeof SecretAskPurpose>;
