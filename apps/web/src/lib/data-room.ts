@@ -1,4 +1,8 @@
-import type { DataRoomApiFolder, DataRoomApiItem, DataRoomApiUploadResponse } from "@rakazo/contracts";
+import type {
+  DataRoomApiFolder,
+  DataRoomApiItem,
+  DataRoomApiUploadResponse,
+} from "@rakazo/contracts";
 import { DataRoomApiUploadResponseSchema } from "@rakazo/contracts";
 import { rpc, withSpaceHeaders } from "./rpc";
 
