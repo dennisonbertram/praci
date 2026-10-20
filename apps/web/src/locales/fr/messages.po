@@ -29,6 +29,7 @@ msgstr ""
 msgid " (new)"
 msgstr ""
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
@@ -201,21 +202,6 @@ msgstr ""
 msgid "{0} handling"
 msgstr "Gestion de {0}"
 
-#. placeholder {0}: row?.displayName ?? item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} is ready."
-msgstr ""
-
-#. placeholder {0}: format(size / 1024)
-#: src/lib/format-bytes.ts
-msgid "{0} KB"
-msgstr "{0} Ko"
-
-#. placeholder {0}: format(size / (1024 * 1024))
-#: src/lib/format-bytes.ts
-msgid "{0} MB"
-msgstr "{0} Mo"
-
 #. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
@@ -231,11 +217,6 @@ msgstr ""
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
 msgid "{0} non-USD not counted"
-msgstr ""
-
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} now appears under Connected."
 msgstr ""
 
 #. placeholder {0}: wallet.safeThreshold
@@ -480,10 +461,6 @@ msgstr ""
 msgid "{service} agent"
 msgstr ""
 
-#: src/lib/format-bytes.ts
-msgid "{size} B"
-msgstr "{size} o"
-
 #: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
 msgstr ""
@@ -554,10 +531,6 @@ msgstr ""
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "3-mo avg, after revenue"
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "3-mo change"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -831,7 +804,7 @@ msgstr ""
 msgid "Added"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Adding a contact"
 msgstr ""
 
@@ -1040,6 +1013,10 @@ msgstr ""
 msgid "Already tidy."
 msgstr ""
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Also in Gmail"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr "Agir toujours"
@@ -1161,10 +1138,6 @@ msgstr "Approuver"
 msgid "Approve this server to let your bot use its tools."
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Apps"
-msgstr ""
-
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr ""
@@ -1181,6 +1154,10 @@ msgstr "Archiver"
 #. placeholder {0}: counts.archive
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Archive {0}"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Archive all"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1286,6 +1263,14 @@ msgstr "Demandez au propriétaire du serveur de configurer ce fournisseur."
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Asking {agentName}"
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Asking another agent"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -1834,6 +1819,10 @@ msgstr ""
 msgid "Change password"
 msgstr "Changer le mot de passe"
 
+#: src/pages/Finance.tsx
+msgid "Change, 3 months"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Changes your account"
 msgstr ""
@@ -1891,6 +1880,7 @@ msgstr ""
 msgid "Chat with your agents over iMessage from your Mac"
 msgstr ""
 
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Chats"
 msgstr ""
@@ -1981,7 +1971,7 @@ msgstr ""
 msgid "Choose when it runs"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
 msgstr ""
 
@@ -2023,6 +2013,7 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
@@ -2040,10 +2031,6 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
 msgstr "Effacement en cours…"
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Click Sign in with {service}. A {service} window opens for you to approve access."
-msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -3075,6 +3062,10 @@ msgstr ""
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Couldn't add Gmail filter"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Couldn't archive {count}"
 msgstr ""
@@ -3181,6 +3172,14 @@ msgstr "Créer un compte"
 msgid "Create agent"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in {service}'s developer settings with this callback URL."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in the provider's developer settings with this callback URL."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Create Data room agent"
 msgstr ""
@@ -3221,6 +3220,10 @@ msgstr "Créé"
 #. placeholder {0}: folder.name
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Creating agent"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
@@ -3471,6 +3474,10 @@ msgstr ""
 msgid "Didn't open?"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Digest"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Disable drafts for {botName}"
 msgstr ""
@@ -3606,6 +3613,7 @@ msgstr "Vous n'avez pas de compte ?"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
@@ -3793,6 +3801,10 @@ msgstr ""
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
 msgstr "Répondre quand... Ignorer..."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Enter a Client ID to sign in."
+msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a folder name without slashes"
@@ -4112,6 +4124,10 @@ msgstr ""
 msgid "Folders"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Forget"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "Mot de passe oublié ?"
@@ -4215,6 +4231,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Gmail didn't respond. Try again."
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Gmail filter limit reached"
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts
@@ -4499,6 +4519,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
@@ -4628,10 +4649,6 @@ msgstr "Aperçu isolé — aucun accès à votre compte"
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
-msgstr ""
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "It now appears under Connected."
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -4764,6 +4781,10 @@ msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Learned"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -4921,7 +4942,6 @@ msgstr "Chargement des fournisseurs vocaux…"
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/Shell.tsx
@@ -5221,6 +5241,10 @@ msgstr "A contacté {peer}"
 msgid "Messaging"
 msgstr "Messagerie"
 
+#: src/pages/shell/working-label.ts
+msgid "Messaging you"
+msgstr ""
+
 #: src/lib/call-session.ts
 msgid "Microphone failed"
 msgstr "Le microphone a échoué"
@@ -5316,7 +5340,6 @@ msgstr ""
 msgid "Month to date"
 msgstr ""
 
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
@@ -5454,6 +5477,10 @@ msgstr "Nommez cette routine"
 msgid "Needs a monthly burn"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Needs a server restart"
+msgstr ""
+
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr ""
@@ -5587,6 +5614,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
@@ -5711,6 +5739,7 @@ msgstr ""
 msgid "No longer active"
 msgstr "Plus actif"
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -5799,6 +5828,10 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr "Aucun serveur MCP distant trouvé"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "No response from the server. Check the address."
+msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
@@ -6061,6 +6094,7 @@ msgid "Only if the server does not use sign-in"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
@@ -6113,6 +6147,10 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
+#: src/pages/shell/composer-error.tsx
+msgid "Open Data room"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr ""
@@ -6155,6 +6193,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
+msgstr ""
+
+#: src/pages/shell/composer-error.tsx
+msgid "Open Legal"
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
@@ -6206,15 +6248,11 @@ msgstr ""
 msgid "Opened its thread."
 msgstr "Fil ouvert."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Opening an email"
 msgstr ""
 
-#: src/pages/Onboarding.tsx
-msgid "Opening chat…"
-msgstr "Ouverture de la conversation…"
-
-#: src/App.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Opening your Space…"
 msgstr "Ouverture de votre espace…"
 
@@ -6409,6 +6447,14 @@ msgstr "Collez l'adresse compatible OpenAI de votre serveur. Rakazo ajoute /v1 s
 msgid "Paste the web address an app gives you"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into BlueBubbles"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into Photon"
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste your API key"
 msgstr "Collez votre clé API"
@@ -6434,6 +6480,10 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Per month"
+msgstr ""
+
 #: src/components/finance/ui.tsx
 msgid "Period"
 msgstr ""
@@ -6443,11 +6493,8 @@ msgid "Person"
 msgstr ""
 
 #: src/pages/Inbox.tsx
-msgid "Personal"
-msgstr ""
-
 #: src/pages/Shell.tsx
-msgid "Personnel"
+msgid "Personal"
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
@@ -6533,8 +6580,8 @@ msgstr ""
 msgid "Preview {0}"
 msgstr "Aperçu de {0}"
 
+#: src/components/ArtifactPreview.tsx
 #: src/components/SheetPreview.tsx
-#: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr "L'aperçu n'est pas disponible pour ce type de fichier — téléchargez-le pour le consulter."
 
@@ -6685,7 +6732,7 @@ msgstr ""
 msgid "Reading {0} again"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr ""
 
@@ -6693,7 +6740,7 @@ msgstr ""
 msgid "Reading Carta…"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading the cap table"
 msgstr ""
 
@@ -6701,15 +6748,15 @@ msgstr ""
 msgid "Reading this file. You can keep working while it finishes."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your cap table from Carta"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your contacts"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr ""
 
@@ -7140,7 +7187,7 @@ msgid "Resize panel"
 msgstr "Redimensionner le panneau"
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "Restart required"
+msgid "Restart the Rakazo server to start using iMessage."
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -7382,7 +7429,7 @@ msgstr "Enregistré."
 msgid "Saved. Rotate to reveal."
 msgstr "Enregistré. Tournez pour révéler."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Saving a contact"
 msgstr ""
 
@@ -7541,7 +7588,7 @@ msgstr ""
 msgid "Searching in {openFolderPath}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr ""
 
@@ -7814,7 +7861,7 @@ msgstr "Afficher la transcription"
 msgid "Showing the {shown} most connected of {total} items."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Showing the emails it found"
 msgstr ""
 
@@ -8489,6 +8536,7 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Réflexion"
 
@@ -8990,6 +9038,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -9005,7 +9054,7 @@ msgstr "Mise à jour de l'ordinateur de {0}"
 msgid "Updating Team Computer"
 msgstr "Mise à jour de l'ordinateur d'équipe"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Updating the cap table"
 msgstr ""
 
@@ -9120,6 +9169,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Utilise les identifiants {hostCredentialSource} propres à ce serveur pour accéder à {selectedProviderName}."
+
+#: src/pages/Finance.tsx
+msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -9260,10 +9313,6 @@ msgstr ""
 msgid "Webhook token"
 msgstr ""
 
-#: src/components/integrations/IMessageSection.tsx
-msgid "Webhook URL"
-msgstr ""
-
 #: src/pages/shell/bot-credentials.tsx
 msgid "Website login"
 msgstr ""
@@ -9402,7 +9451,7 @@ msgstr ""
 msgid "Writing"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Writing a draft email"
 msgstr ""
 
@@ -9426,7 +9475,7 @@ msgstr ""
 msgid "Yearly"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/lib/roster-time.ts
 #: src/pages/shell/chat-context.tsx
 msgid "Yesterday"
 msgstr "Hier"

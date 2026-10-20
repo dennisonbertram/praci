@@ -16,7 +16,7 @@ const INNER = 52;
 
 /**
  * The largest classes by shares, the rest merged into "Other" so there are at most six slices.
- * Percents have one decimal and are spread by largest remainder so they always sum to 100.
+ * Percents have two decimals, like the holders table, and are spread by largest remainder so they always sum to 100.
  */
 export function groupClasses(classes: DonutClass[]): Slice[] {
   const sorted = classes.filter((c) => c.shares > 0).sort((a, b) => b.shares - a.shares);
@@ -24,17 +24,17 @@ export function groupClasses(classes: DonutClass[]): Slice[] {
   const rest = sorted.slice(kept.length);
   if (rest.length) kept.push({ name: t`Other`, shares: rest.reduce((n, c) => n + c.shares, 0) });
   const total = kept.reduce((n, c) => n + c.shares, 0);
-  const tenths = kept.map((c) => (c.shares * 1000) / total);
-  const floors = tenths.map(Math.floor);
-  let left = 1000 - floors.reduce((n, v) => n + v, 0);
-  for (const i of tenths
+  const hundredths = kept.map((c) => (c.shares * 10000) / total);
+  const floors = hundredths.map(Math.floor);
+  let left = 10000 - floors.reduce((n, v) => n + v, 0);
+  for (const i of hundredths
     .map((v, index) => ({ index, frac: v - Math.floor(v) }))
     .sort((a, b) => b.frac - a.frac)
     .map((e) => e.index)) {
     if (left-- <= 0) break;
     floors[i] = (floors[i] ?? 0) + 1;
   }
-  return kept.map((c, i) => ({ ...c, percent: (floors[i] ?? 0) / 10 }));
+  return kept.map((c, i) => ({ ...c, percent: (floors[i] ?? 0) / 100 }));
 }
 
 const point = (angle: number, radius: number) =>
@@ -71,7 +71,7 @@ export function OwnershipDonut({
   const canSelect = (s: Slice) => !!onSelect && selectable.includes(s.name);
   const label = `${t`Ownership`}: ${slices
     .slice(0, 3)
-    .map((s) => `${s.name} ${percentFigure(s.percent, 1)}`)
+    .map((s) => `${s.name} ${percentFigure(s.percent)}`)
     .join(", ")}`;
   let angle = 0;
   const arcs = slices.map((s) => {
@@ -124,7 +124,7 @@ export function OwnershipDonut({
           >
             <div className="font-medium">{tip.name}</div>
             <div className="tabular-nums text-muted-foreground">
-              {percentFigure(tip.percent, 1)} · {shareCount(tip.shares, locale)} {t`Shares`}
+              {percentFigure(tip.percent)} · {shareCount(tip.shares, locale)} {t`Shares`}
             </div>
           </div>
         ) : null}
@@ -139,7 +139,7 @@ export function OwnershipDonut({
                 aria-hidden="true"
               />
               <span className="min-w-0 flex-1 truncate">{s.name}</span>
-              <span className="tabular-nums">{percentFigure(s.percent, 1)}</span>
+              <span className="tabular-nums">{percentFigure(s.percent)}</span>
               <span className="w-20 shrink-0 text-end tabular-nums text-muted-foreground">
                 {shareCount(s.shares, locale)}
               </span>
@@ -174,7 +174,7 @@ export function OwnershipDonut({
           {slices.map((s) => (
             <tr key={s.name}>
               <td>{s.name}</td>
-              <td>{percentFigure(s.percent, 1)}</td>
+              <td>{percentFigure(s.percent)}</td>
               <td>{shareCount(s.shares, locale)}</td>
             </tr>
           ))}

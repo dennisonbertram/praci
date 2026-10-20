@@ -12,7 +12,7 @@ import {
 
 export type InboxSpace = Pick<
   MobileSpace,
-  "id" | "name" | "isDefault" | "hasContent" | "canDelete" | "botSections"
+  "id" | "name" | "isDefault" | "hasContent" | "canDelete" | "canRename" | "botSections"
 > & {
   bots: (MobileBot | SpaceBot)[];
   groups: (MobileGroup | SpaceGroup)[];
@@ -26,7 +26,33 @@ export type InboxSpaceItem =
       hasChildren: boolean;
     }
   | { type: "group"; group: MobileGroup | SpaceGroup }
-  | { type: "heading"; key: string; title: string; space?: InboxSpace };
+  | {
+      type: "heading";
+      key: string;
+      title: string;
+      space?: InboxSpace;
+      /** Set on section headings: the fixed ones' title is an English fallback translated at render, folder names are user data. */
+      kind?: "pinned" | "unassigned" | "folder";
+      collapsed?: boolean;
+    };
+
+/** Same limit as the server's space name and the new-space screen. */
+export const SPACE_NAME_MAX = 60;
+
+export function canRenameInboxSpace(space: Pick<InboxSpace, "canRename">) {
+  return space.canRename === true;
+}
+
+export async function renameInboxSpace(
+  spaceId: string,
+  name: string,
+  refresh: () => Promise<void>,
+) {
+  const trimmed = name.trim();
+  if (!trimmed) return;
+  await rpc("spaces/rename", { spaceId, name: trimmed });
+  await refresh();
+}
 
 export function canDeleteInboxSpace(
   space: Pick<InboxSpace, "isDefault" | "hasContent" | "canDelete">,
@@ -41,6 +67,7 @@ export function inboxNeedsCreateHint(items: readonly { type: string }[]): boolea
 
 export function spaceInboxItems(
   spaces: InboxSpace[],
+  // Bot ids that are collapsed, plus heading keys of folders toggled locally away from section.collapsed.
   collapsedParentIds: ReadonlySet<string> = new Set(),
 ): InboxSpaceItem[] {
   return spaces.flatMap((space): InboxSpaceItem[] => {
@@ -71,19 +98,44 @@ export function spaceInboxItems(
     const { pinned, folders, root } = sidebarSections(chats, space.botSections);
     const showRootHeading = pinned.length > 0 || folders.some(({ items }) => items.length > 0);
     const blocks = [
-      { key: "pinned", title: "Pinned", chats: pinned },
+      {
+        key: "pinned",
+        kind: "pinned" as const,
+        title: "Pinned",
+        heading: true,
+        collapsed: false,
+        chats: pinned,
+      },
       ...folders.map(({ section, items }) => ({
         key: `section:${section.id}`,
+        kind: "folder" as const,
         title: section.name,
+        heading: true,
+        collapsed:
+          section.collapsed !== collapsedParentIds.has(`${space.id}:section:${section.id}`),
         chats: items,
       })),
-      { key: "unassigned", title: showRootHeading ? "Unassigned" : null, chats: root },
+      {
+        key: "unassigned",
+        kind: "unassigned" as const,
+        title: "Unassigned",
+        heading: showRootHeading,
+        collapsed: false,
+        chats: root,
+      },
     ];
     for (const block of blocks) {
       if (block.chats.length === 0) continue;
-      if (block.title) {
-        items.push({ type: "heading", key: `${space.id}:${block.key}`, title: block.title });
+      if (block.heading) {
+        items.push({
+          type: "heading",
+          key: `${space.id}:${block.key}`,
+          kind: block.kind,
+          title: block.title,
+          collapsed: block.collapsed,
+        });
       }
+      if (block.collapsed) continue;
       for (const row of nestRosterByParent(block.chats, collapsedParentIds)) {
         if (row.item.type === "bot") {
           items.push({

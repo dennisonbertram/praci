@@ -14,20 +14,31 @@ function modelSettingsFor(message: string): { provider: string } | null {
   return message === runErrorText("401") ? { provider: "" } : null;
 }
 
+/** The page that grants a missing Data Room consent, when the error says to allow it there. */
+function consentPageFor(message: string): { path: string; label: string } | null {
+  if (!message.startsWith("Data Room consent is required")) return null;
+  if (message.includes("Legal page")) return { path: "/app/legal", label: "Legal" };
+  if (message.includes("Data room page")) return { path: "/app/data-room", label: "Data room" };
+  return null;
+}
+
 /** A send or run error above the composer; a model-setup error also offers the settings that fix it. */
 export function ComposerError({
   ref,
   message,
   onDismiss,
   onOpenModelSettings,
+  onNavigate,
 }: {
   ref?: Ref<HTMLDivElement>;
   message: string;
   onDismiss: () => void;
   onOpenModelSettings?: (provider?: string) => void;
+  onNavigate?: (path: string) => void;
 }) {
   const { t } = useLingui();
   const settings = modelSettingsFor(message);
+  const page = consentPageFor(message);
   return (
     <div
       ref={ref}
@@ -44,6 +55,11 @@ export function ComposerError({
             onClick={() => onOpenModelSettings(settings.provider)}
           >
             <Trans>Open Models settings</Trans>
+          </Button>
+        ) : null}
+        {page && onNavigate ? (
+          <Button size="sm" variant="outline" onClick={() => onNavigate(page.path)}>
+            {page.label === "Legal" ? <Trans>Open Legal</Trans> : <Trans>Open Data room</Trans>}
           </Button>
         ) : null}
         <button

@@ -40,6 +40,10 @@ export const OtherFile: Story = {
   args: { name: "data.zip", mimeType: "application/zip", size: 4_500_000 },
 };
 
+export const Csv: Story = {
+  args: { name: "forecast.csv", mimeType: "text/csv", size: 3_200 },
+};
+
 export const LongName: Story = {
   args: {
     name: "a-very-long-sample-file-name-that-keeps-going-and-going-for-the-quarterly-summary.md",

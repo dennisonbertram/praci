@@ -1,6 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import {
   type CapabilityInstall,
+  type Connection,
   type ConnectionCatalogItem,
   isCryptoEndpoint,
   type McpServer,
@@ -35,6 +36,7 @@ import {
   mcpStatus,
   popularApps,
 } from "../../lib/integrations";
+import { appReturnPath } from "../../lib/return-to";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { AppLogo } from "./AppLogo";
@@ -57,11 +59,6 @@ import {
 } from "./parts";
 import { agentsFor, type IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
-
-/** An in-app path to return to, or null for anything that could leave the app. */
-export function safeAppPath(value: string | null) {
-  return value?.startsWith("/app/") && !value.includes("//") ? value : null;
-}
 
 function hostOf(value: string | null) {
   if (!value) return "";
@@ -171,22 +168,29 @@ function AppCard({
   app,
   data,
   onRetry,
+  onReconnect,
 }: {
   app: ConnectedApp;
   data: IntegrationsData;
   onRetry: (app: ConnectedApp) => void;
+  onReconnect: (app: ConnectedApp, row: Connection) => void;
 }) {
+  // An account labelled with the app's own name says nothing new, so show what the app does instead.
   const accounts = app.rows
-    .filter((row) => row.status === "connected")
+    .filter((row) => row.status === "connected" && row.displayName !== app.name)
     .map((row) => row.displayName)
     .join(", ");
   const working = app.rows.find((row) => row.status === "connected");
+  const lapsed = app.rows.find((row) => row.status === "connected" && row.needsReconnect);
+  const description = data.catalog.find(
+    (item) => item.connectorId === app.connectorId && item.slug === app.provider,
+  )?.description;
   return (
     <Card>
       <CardHead
         name={app.name}
         logo={app.logo}
-        sub={accounts || app.rows[0]?.displayName}
+        sub={accounts || description || undefined}
         to={appPath({ connectorId: app.connectorId, slug: app.provider })}
       />
       <div className="mt-auto flex min-h-7 items-center gap-2">
@@ -196,6 +200,15 @@ function AppCard({
           <OpenPageLink to="/app/inbox">
             <Trans>Open Inbox</Trans>
           </OpenPageLink>
+        ) : null}
+        {app.status === "reconnect" && lapsed ? (
+          <Button
+            size="sm"
+            className="relative z-10 ms-auto"
+            onClick={() => onReconnect(app, lapsed)}
+          >
+            <Trans>Reconnect</Trans>
+          </Button>
         ) : null}
         {app.status === "failed" ? (
           <Button
@@ -308,10 +321,12 @@ export function IntegrationsHome({
   // /app/integrations?open=gmail shows that app's page, where its accounts can be removed or added.
   const openOnLoad = useRef(params.get("open"));
   // ...&returnTo=/app/cap-table sends the founder back there when that dialog closes.
-  const returnTo = useRef(safeAppPath(params.get("returnTo")));
+  const returnTo = useRef(appReturnPath(params.get("returnTo")));
   const navigate = useNavigate();
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
   const [connecting, setConnecting] = useState<ConnectionCatalogItem | null>(null);
+  /** The signed-out account a reconnect replaces once the new sign-in succeeds. */
+  const [replacing, setReplacing] = useState<Connection | null>(null);
   const [custom, setCustom] = useState<{
     url: string;
     /** The first-party service this dialog connects; titles the dialog. */
@@ -338,9 +353,19 @@ export function IntegrationsHome({
     () => groupConnections(data.connections, data.catalog),
     [data.connections, data.catalog],
   );
-  const results = useMemo(
-    () => filterCatalog(popularApps(data.catalog, data.connections), { query, category }),
-    [data.catalog, data.connections, query, category],
+  const open = useMemo(
+    () => popularApps(data.catalog, data.connections),
+    [data.catalog, data.connections],
+  );
+  const results = useMemo(() => filterCatalog(open, { query, category }), [open, query, category]);
+  // A chip that leads to no app is not offered. Finance always has its own tiles.
+  const chips = CATEGORY_IDS.filter(
+    (id) =>
+      id === "all" ||
+      id === "finance" ||
+      id === category ||
+      open.some((item) => item.category === id) ||
+      FIRST_PARTY_MCP.some((entry) => entry.category === id),
   );
   const firstPartySections = { social: t`Social`, equity: t`Equity`, tools: t`Tools` };
   const firstPartyDescription = {
@@ -435,8 +460,9 @@ export function IntegrationsHome({
     returnTo.current = null;
   }, [data.loaded, data.catalog, firstPartyMcp, navigate]);
 
-  function retry(app: ConnectedApp) {
+  function retry(app: ConnectedApp, lapsed: Connection | null = null) {
     const item = data.catalog.find((entry) => `${entry.connectorId}:${entry.slug}` === app.key);
+    setReplacing(lapsed);
     setConnecting(
       item ?? {
         connectorId: app.connectorId,
@@ -492,14 +518,20 @@ export function IntegrationsHome({
         ) : null}
         {data.loaded ? (
           <>
-            {hasConnected ? (
+            {hasConnected && !filtering ? (
               <>
                 <SectionTitle>
                   <Trans>Connected</Trans>
                 </SectionTitle>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
                   {apps.map((app) => (
-                    <AppCard key={app.key} app={app} data={data} onRetry={retry} />
+                    <AppCard
+                      key={app.key}
+                      app={app}
+                      data={data}
+                      onRetry={retry}
+                      onReconnect={retry}
+                    />
                   ))}
                   {servers.map((server) => (
                     <McpCard
@@ -623,7 +655,7 @@ export function IntegrationsHome({
                   aria-label={t`Category`}
                   className="m-0 mb-1.5 flex min-w-0 flex-wrap gap-1.5 border-0 p-0"
                 >
-                  {CATEGORY_IDS.map((id) => (
+                  {chips.map((id) => (
                     <button
                       key={id}
                       type="button"
@@ -642,85 +674,110 @@ export function IntegrationsHome({
                     </button>
                   ))}
                 </fieldset>
-                {results.length === 0 && otherMatches ? null : (
-                  <>
-                    <SectionTitle>
-                      {filtering ? <Trans>Apps</Trans> : <Trans>Popular</Trans>}
-                    </SectionTitle>
-                    {results.length === 0 && !otherMatches ? (
-                      <p className="py-2 text-muted-foreground" data-testid="no-apps">
-                        <Trans>No apps match.</Trans>
-                      </p>
-                    ) : (
-                      <div
-                        data-testid="app-grid"
-                        className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
-                      >
-                        {results.slice(0, visible).map((item) => (
-                          <AppTile
-                            key={`${item.connectorId}:${item.slug}`}
-                            connectorId={item.connectorId}
-                            name={item.name}
-                            logo={item.logo}
-                            description={item.description}
-                            onConnect={() => setConnecting(item)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-                {results.length > visible ? (
-                  <div className="mt-4 flex justify-center">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setVisible((n) => n + CONNECTION_CATALOG_PAGE_SIZE)}
-                    >
-                      <Trans>Show more</Trans>
-                    </Button>
-                  </div>
-                ) : null}
               </>
             )}
+            {/* While filtering, every kind of match shares this one grid; its parts drop their own. */}
+            <div
+              className={
+                filtering
+                  ? "mt-3 grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))] [&_[data-flat]]:contents [&_[data-testid=finance-section]]:contents"
+                  : undefined
+              }
+            >
+              {notSetUp ? null : (
+                <>
+                  {results.length === 0 && otherMatches ? null : (
+                    <>
+                      {filtering ? null : (
+                        <SectionTitle>
+                          <Trans>Popular</Trans>
+                        </SectionTitle>
+                      )}
+                      {results.length === 0 && !otherMatches ? (
+                        <p className="py-2 text-muted-foreground" data-testid="no-apps">
+                          <Trans>No apps match.</Trans>
+                        </p>
+                      ) : (
+                        <div
+                          data-testid="app-grid"
+                          data-flat={filtering ? "" : undefined}
+                          className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+                        >
+                          {results.slice(0, visible).map((item) => (
+                            <AppTile
+                              key={`${item.connectorId}:${item.slug}`}
+                              connectorId={item.connectorId}
+                              name={item.name}
+                              logo={item.logo}
+                              description={item.description}
+                              onConnect={() => setConnecting(item)}
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                  {results.length > visible ? (
+                    <div className="col-span-full mt-4 flex justify-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setVisible((n) => n + CONNECTION_CATALOG_PAGE_SIZE)}
+                      >
+                        <Trans>Show more</Trans>
+                      </Button>
+                    </div>
+                  ) : null}
+                </>
+              )}
 
-            {showFinance ? (
-              <div ref={financeRef} className="scroll-mt-4">
-                <SectionTitle>
-                  <Trans>Finance</Trans>
-                </SectionTitle>
-                <FinanceSection
-                  mode="available"
-                  sources={data.financeSources}
-                  status={financeStatus}
-                  onChanged={() => void data.refresh()}
-                />
-              </div>
-            ) : null}
-
-            {(["social", "equity", "tools"] as const).map((section) => {
-              const entries = firstPartyMcp.filter((entry) => entry.section === section);
-              return entries.length > 0 ? (
-                <div key={section}>
-                  <SectionTitle>{firstPartySections[section]}</SectionTitle>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]">
-                    {entries.map((entry) => (
-                      <AppTile
-                        key={entry.id}
-                        name={entry.name}
-                        logo={entry.logo}
-                        description={firstPartyDescription[entry.id]}
-                        onConnect={() => connectFirstParty(entry)}
-                      />
-                    ))}
-                  </div>
+              {showFinance ? (
+                <div
+                  ref={financeRef}
+                  data-flat={filtering ? "" : undefined}
+                  className="scroll-mt-4"
+                >
+                  {filtering ? null : (
+                    <SectionTitle>
+                      <Trans>Finance</Trans>
+                    </SectionTitle>
+                  )}
+                  <FinanceSection
+                    mode="available"
+                    sources={data.financeSources}
+                    status={financeStatus}
+                    onChanged={() => void data.refresh()}
+                  />
                 </div>
-              ) : null;
-            })}
+              ) : null}
 
-            {category === "all" || category === "chat" ? (
-              <IMessageSection query={query} onOpenMessaging={onOpenMessaging} />
-            ) : null}
+              {(["social", "equity", "tools"] as const).map((section) => {
+                const entries = firstPartyMcp.filter((entry) => entry.section === section);
+                return entries.length > 0 ? (
+                  <div key={section} data-flat={filtering ? "" : undefined}>
+                    {filtering ? null : <SectionTitle>{firstPartySections[section]}</SectionTitle>}
+                    <div
+                      data-flat={filtering ? "" : undefined}
+                      className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(260px,1fr))]"
+                    >
+                      {entries.map((entry) => (
+                        <AppTile
+                          key={entry.id}
+                          name={entry.name}
+                          logo={entry.logo}
+                          description={firstPartyDescription[entry.id]}
+                          onConnect={() => connectFirstParty(entry)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ) : null;
+              })}
+
+              {category === "all" || category === "chat" ? (
+                <IMessageSection query={query} flat={filtering} onOpenMessaging={onOpenMessaging} />
+              ) : null}
+            </div>
 
             <SectionTitle>
               <Trans>Anything else</Trans>
@@ -748,7 +805,23 @@ export function IntegrationsHome({
           item={connecting}
           data={data}
           activeBotId={activeBotId}
-          onClose={() => setConnecting(null)}
+          accountName={replacing?.displayName}
+          replacesConnectionId={replacing?.id}
+          onClose={() => {
+            setConnecting(null);
+            setReplacing(null);
+          }}
+          onConnected={
+            replacing
+              ? async () => {
+                  // The new sign-in takes the old account's place, so its mail is not listed twice.
+                  await rpc.connections
+                    .revoke({ connectionId: replacing.id })
+                    .catch(() => undefined);
+                  await data.refresh();
+                }
+              : undefined
+          }
         />
       ) : null}
       {custom ? (

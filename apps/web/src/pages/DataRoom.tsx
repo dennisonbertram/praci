@@ -17,6 +17,7 @@ import {
 } from "../components/data-room/FilterBar";
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderContents, folderNodes } from "../components/data-room/folders";
+import { alreadyText } from "../components/data-room/format";
 import { ImportActivity } from "../components/data-room/ImportActivity";
 import { ImportSources } from "../components/data-room/ImportFromEmail";
 import {
@@ -407,7 +408,8 @@ export function DataRoomPage({
 
   const [notice, setNotice] = useState("");
   const showNotice = useCallback((message: string, changed: boolean) => {
-    setNotice(message);
+    // The import activity strip reports what was imported; only "already there" has no strip.
+    setNotice(message === alreadyText() ? message : "");
     if (changed) window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
   }, []);
   useEffect(() => {
@@ -661,6 +663,8 @@ export function DataRoomPage({
                 folderPath={folderPath(shown.folderId)}
                 onAction={interaction.onAction}
                 onClose={closePreview}
+                agents={agents}
+                onSendToAgent={onSendToAgent}
               />
             ) : null}
           </div>
@@ -675,6 +679,8 @@ export function DataRoomPage({
               folderPath={folderPath(shown.folderId)}
               onAction={interaction.onAction}
               onClose={closePreview}
+              agents={agents}
+              onSendToAgent={onSendToAgent}
             />
           </DialogContent>
         </Dialog>

@@ -72,7 +72,11 @@ const data = (connections: Connection[] = []): IntegrationsData => ({
   refresh: vi.fn().mockResolvedValue(undefined),
 });
 
-async function mount(connections: Connection[] = [], confirmFirst = false) {
+async function mount(
+  connections: Connection[] = [],
+  confirmFirst = false,
+  extra: Partial<Parameters<typeof ConnectAppDialog>[0]> = {},
+) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
@@ -84,6 +88,7 @@ async function mount(connections: Connection[] = [], confirmFirst = false) {
         data={data(connections)}
         confirmFirst={confirmFirst}
         onClose={vi.fn()}
+        {...extra}
       />,
     );
   });
@@ -160,6 +165,24 @@ it("creates no connection until Connect is clicked when opened by a link", async
   expect(api.begin).toHaveBeenCalledTimes(1);
 });
 
+it("passes the filter permission and the replaced account to the sign-in only when given", async () => {
+  vi.spyOn(window, "open").mockReturnValue(null);
+  await mount([], true, { permission: "mail_rules", replacesConnectionId: "old" });
+  await act(async () => {
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Connect")?.click();
+  });
+  expect(api.begin).toHaveBeenCalledWith(
+    expect.objectContaining({ permission: "mail_rules", replacesConnectionId: "old" }),
+  );
+  document.body.innerHTML = "";
+  api.begin.mockClear();
+  await mount([], true);
+  await act(async () => {
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Connect")?.click();
+  });
+  expect(api.begin.mock.calls[0]?.[0]).not.toHaveProperty("permission");
+});
+
 async function connect(connected: Connection) {
   vi.spyOn(window, "open").mockReturnValue(null);
   api.complete.mockResolvedValue(connected);
@@ -187,4 +210,11 @@ it("does not promise a bot choice before sign-in", async () => {
   await mount([], true);
   expect(text()).toContain("You'll sign in to Slack in a new window.");
   expect(text()).not.toContain("Then you choose");
+});
+
+it("shows only the title once connected, without repeating the result", async () => {
+  await connect(pendingRow("connected", { agentBotId: "bot_1" }));
+  expect(text()).toContain("Slack connected");
+  expect(text()).not.toContain("is ready");
+  expect(text()).not.toContain("now appears under Connected");
 });

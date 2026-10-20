@@ -30,6 +30,8 @@ export function toBotSection(section: {
 type Row = SidebarPlaced & {
   spawnKey: string | null;
   parentBotId: string | null;
+  /** Last-activity time; sidebar writes pass it back so Prisma's @updatedAt does not bump it. */
+  updatedAt: Date;
 };
 
 async function loadRows(tx: Tx, actor: Scope): Promise<Row[]> {
@@ -44,12 +46,13 @@ async function loadRows(tx: Tx, actor: Scope): Promise<Row[]> {
         pinned: true,
         spawnKey: true,
         parentBotId: true,
+        updatedAt: true,
       },
       orderBy: { createdAt: "asc" },
     }),
     tx.chatGroup.findMany({
       where: scope,
-      select: { id: true, sectionId: true, position: true, pinned: true },
+      select: { id: true, sectionId: true, position: true, pinned: true, updatedAt: true },
       orderBy: { updatedAt: "desc" },
     }),
   ]);
@@ -62,6 +65,7 @@ async function loadRows(tx: Tx, actor: Scope): Promise<Row[]> {
       pinned: bot.pinned,
       spawnKey: bot.spawnKey,
       parentBotId: bot.parentBotId,
+      updatedAt: bot.updatedAt,
     })),
     ...groups.map((group) => ({
       kind: "group" as const,
@@ -71,6 +75,7 @@ async function loadRows(tx: Tx, actor: Scope): Promise<Row[]> {
       pinned: group.pinned,
       spawnKey: null,
       parentBotId: null,
+      updatedAt: group.updatedAt,
     })),
   ];
 }
@@ -89,10 +94,13 @@ async function write(
       )
       .map(({ row, sectionId, position }) =>
         row.kind === "bot"
-          ? tx.bot.updateMany({ where: { id: row.id, ...scope }, data: { sectionId, position } })
+          ? tx.bot.updateMany({
+              where: { id: row.id, ...scope },
+              data: { sectionId, position, updatedAt: row.updatedAt },
+            })
           : tx.chatGroup.updateMany({
               where: { id: row.id, ...scope },
-              data: { sectionId, position },
+              data: { sectionId, position, updatedAt: row.updatedAt },
             }),
       ),
   );
@@ -281,16 +289,39 @@ export async function restoreSidebar(
       const owned = await tx.botSection.count({ where: { id: { in: folderIds }, ...scope } });
       if (owned !== folderIds.length) throw new IsolationError();
     }
+    const ids = (kind: "bot" | "group") => ({
+      where: {
+        id: {
+          in: snapshot.placements.filter(({ item }) => item.kind === kind).map((p) => p.item.id),
+        },
+        ...scope,
+      },
+      select: { id: true, updatedAt: true },
+    });
+    const [bots, groups] = await Promise.all([
+      tx.bot.findMany(ids("bot")),
+      tx.chatGroup.findMany(ids("group")),
+    ]);
+    const updatedAt = new Map([
+      ...bots.map((row) => [`bot:${row.id}`, row.updatedAt] as const),
+      ...groups.map((row) => [`group:${row.id}`, row.updatedAt] as const),
+    ]);
     for (const { item, folderId, position } of snapshot.placements) {
+      const kept = updatedAt.get(`${item.kind}:${item.id}`);
+      if (!kept) throw new IsolationError();
       const { count } =
         item.kind === "bot"
           ? await tx.bot.updateMany({
               where: { id: item.id, ...scope },
-              data: { sectionId: folderId, ...(position === null ? {} : { position }) },
+              data: {
+                sectionId: folderId,
+                ...(position === null ? {} : { position }),
+                updatedAt: kept,
+              },
             })
           : await tx.chatGroup.updateMany({
               where: { id: item.id, ...scope },
-              data: { sectionId: folderId, position },
+              data: { sectionId: folderId, position, updatedAt: kept },
             });
       if (count !== 1) throw new IsolationError();
     }

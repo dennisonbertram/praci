@@ -129,6 +129,15 @@ describePostgres("Data room imports (PostgreSQL)", () => {
     expect(await notifications(a)).toHaveLength(1);
   });
 
+  it("counts a file in the last step (indexing) as done in the list", async () => {
+    const row = await createDataRoomImport(prisma, a, { source: "drive", total: 2 });
+    const items = await files(a, row.id, ["idx-one.txt", "idx-two.txt"]);
+    await setStatus(items[0]!.item.id, "indexing");
+    await setStatus(items[1]!.item.id, "classifying");
+    const view = (await listDataRoomImports(prisma, a)).find((i) => i.id === row.id);
+    expect(view).toMatchObject({ done: 1, inProgress: 1, finished: false });
+  });
+
   it("finishes an import whose files were all skipped, failed, or never existed", async () => {
     const skipped = await createDataRoomImport(prisma, a, { source: "drive", total: 2 });
     await recordImportSkips(prisma, skipped.id, { rejected: 1 });
