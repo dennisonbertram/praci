@@ -2879,6 +2879,10 @@ msgstr ""
 msgid "Could not load the cap table, so holdings are missing."
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not load the embedding model"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
 msgstr "Impossible de charger cet artefact."
@@ -4275,10 +4279,6 @@ msgstr ""
 msgid "Found {total} files"
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Free"
-msgstr "Gratuit"
-
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
@@ -5079,6 +5079,13 @@ msgstr "Chargement des paramètres de mémoire…"
 msgid "Loading model catalog…"
 msgstr "Chargement du catalogue de modèles…"
 
+#: src/pages/ModelBackupsSettings.tsx
+#: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+#: src/pages/shell/bot-panel.tsx
+msgid "Loading models…"
+msgstr ""
+
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "Chargement de l'aperçu…"
@@ -5449,10 +5456,6 @@ msgstr "Le modèle \"{modelId}\" n'est pas dans la liste."
 #: src/pages/Onboarding.tsx
 msgid "Model id"
 msgstr "ID du modèle"
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Model options"
-msgstr "Options du modèle"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Model spend uses your provider keys."
@@ -5940,7 +5943,10 @@ msgstr ""
 msgid "No matching artifacts on this page."
 msgstr "Aucun artefact correspondant sur cette page."
 
+#: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+#: src/pages/shell/bot-panel.tsx
 msgid "No matching models"
 msgstr "Aucun modèle correspondant"
 
@@ -7735,7 +7741,6 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
@@ -7806,7 +7811,10 @@ msgstr ""
 msgid "Search mail, e.g. from:sam has:attachment"
 msgstr ""
 
+#: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+#: src/pages/shell/bot-panel.tsx
 msgid "Search models"
 msgstr "Rechercher des modèles"
 

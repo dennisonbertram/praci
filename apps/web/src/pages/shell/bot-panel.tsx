@@ -31,6 +31,7 @@ import {
   Textarea,
   Toggle,
 } from "@rakazo/ui-web";
+import { ModelPicker } from "@rakazo/ui-web/components/ui/model-picker";
 import { lazy, Suspense, useEffect, useId, useRef, useState } from "react";
 import { SuccessPop } from "../../components/ai/primitives";
 import { ErrorBoundary, SectionLoadFailed } from "../../components/ErrorBoundary";
@@ -527,35 +528,49 @@ export function BotSettings({
         ) : null}
         <label htmlFor={`${ids}-model`} className={advancedLabelClass}>
           <Trans>Model</Trans>
-          <NativeSelect
+          <ModelPicker
             id={`${ids}-model`}
             className="mt-2 w-full"
+            label={t`Model`}
+            searchLabel={t`Search models`}
+            emptyLabel={t`No matching models`}
+            loadingLabel={t`Loading models…`}
+            loading={!modelMetaReady}
             value={selectedModelKey}
-            onChange={(event) => {
+            options={[
+              {
+                value: "",
+                label:
+                  t`Space default` +
+                  (me?.defaultModel
+                    ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
+                    : ""),
+              },
+              ...(selectedModelKey &&
+              !connectedOptions.some((option) => option.key === selectedModelKey)
+                ? [
+                    {
+                      value: selectedModelKey,
+                      label: selectedModel?.modelId ?? selectedModelKey,
+                      provider: selectedModel?.provider,
+                    },
+                  ]
+                : []),
+              ...connectedOptions.map((option) => ({
+                ...option,
+                value: option.key,
+                id: option.modelId,
+                providerName: catalog.find((entry) => entry.provider === option.provider)
+                  ?.providerName,
+              })),
+            ]}
+            onChange={(value) => {
               saveOnChange(() => {
-                setModelKey(event.target.value);
+                setModelKey(value);
                 setThinkingLevel("");
               });
             }}
-          >
-            <NativeSelectOption value="">
-              {t`Space default`}
-              {me?.defaultModel
-                ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
-                : ""}
-            </NativeSelectOption>
-            {selectedModelKey &&
-            !connectedOptions.some((option) => option.key === selectedModelKey) ? (
-              <NativeSelectOption value={selectedModelKey}>
-                {selectedModel?.modelId ?? selectedModelKey}
-              </NativeSelectOption>
-            ) : null}
-            {connectedOptions.map((option) => (
-              <NativeSelectOption key={option.key} value={option.key}>
-                {option.label}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+          />
         </label>
         {thinkingOptions.length ? (
           <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>

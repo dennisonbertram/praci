@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@rakazo/ui-web";
+import { ModelPicker } from "@rakazo/ui-web/components/ui/model-picker";
 import { Check, Copy } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -278,7 +279,7 @@ export function OnboardingPage() {
     [providers],
   );
   const modelItems = useMemo(
-    () => modelsForProvider.map((entry) => ({ value: entry.id, label: entry.label })),
+    () => modelsForProvider.map((entry) => ({ ...entry, value: entry.id })),
     [modelsForProvider],
   );
   const thinkingLevelItems = useMemo(
@@ -796,9 +797,14 @@ export function OnboardingPage() {
                         <Trans>Model</Trans>
                       </span>
                       {probeModels.length && !manualModelId ? (
-                        <Select
+                        <ModelPicker
+                          label={t`Models from server`}
+                          searchLabel={t`Search models`}
+                          emptyLabel={t`No matching models`}
+                          loadingLabel={t`Loading models…`}
+                          className="mt-2 w-full"
                           value={modelId}
-                          onValueChange={(value) => {
+                          onChange={(value) => {
                             if (typeof value !== "string") return;
                             const next = value;
                             invalidatePreflight();
@@ -810,22 +816,8 @@ export function OnboardingPage() {
                               setModelId(next);
                             }
                           }}
-                          items={probeModelItems}
-                        >
-                          <SelectTrigger aria-label={t`Models from server`} className="mt-2 w-full">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {probeModels.map((id) => (
-                              <SelectItem key={id} value={id}>
-                                {id}
-                              </SelectItem>
-                            ))}
-                            <SelectItem value={CUSTOM_MODEL_OPTION}>
-                              <Trans>Other model…</Trans>
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                          options={probeModelItems}
+                        />
                       ) : (
                         <Input
                           value={modelId}
@@ -895,9 +887,14 @@ export function OnboardingPage() {
                     <span className="font-medium">
                       <Trans>Model</Trans>
                     </span>
-                    <Select
+                    <ModelPicker
+                      label={t`Model`}
+                      searchLabel={t`Search models`}
+                      emptyLabel={t`No matching models`}
+                      loadingLabel={t`Loading models…`}
+                      className="mt-2 w-full"
                       value={selected?.id ?? modelId}
-                      onValueChange={(value) => {
+                      onChange={(value) => {
                         if (typeof value !== "string" || !value) return;
                         if (value === modelId) return;
                         cancelOAuthAttempt();
@@ -905,19 +902,8 @@ export function OnboardingPage() {
                         setThinkingLevel(null);
                         invalidatePreflight();
                       }}
-                      items={modelItems}
-                    >
-                      <SelectTrigger aria-label={t`Model`} className="mt-2 w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {modelsForProvider.map((entry) => (
-                          <SelectItem key={`${entry.provider}:${entry.id}`} value={entry.id}>
-                            {entry.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      options={modelItems}
+                    />
                     {catalogThinkingLevels.length ? (
                       <div className="mt-4 block">
                         <span className="font-medium">

@@ -2879,6 +2879,10 @@ msgstr ""
 msgid "Could not load the cap table, so holdings are missing."
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not load the embedding model"
+msgstr ""
+
 #: src/pages/Artifacts.tsx
 msgid "Could not load this artifact."
 msgstr ""
@@ -4275,10 +4279,6 @@ msgstr ""
 msgid "Found {total} files"
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Free"
-msgstr ""
-
 #: src/components/ComposeEmail.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/MailApprovalCard.tsx
@@ -5079,6 +5079,13 @@ msgstr "मेमोरी सेटिंग्स लोड हो रही �
 msgid "Loading model catalog…"
 msgstr "मॉडल कैटलॉग लोड हो रहा है…"
 
+#: src/pages/ModelBackupsSettings.tsx
+#: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+#: src/pages/shell/bot-panel.tsx
+msgid "Loading models…"
+msgstr ""
+
 #: src/components/ArtifactFileCard.tsx
 msgid "Loading preview…"
 msgstr "प्रीव्यू लोड हो रहा है…"
@@ -5449,10 +5456,6 @@ msgstr "मॉडल \"{modelId}\" सूची में नहीं था।
 #: src/pages/Onboarding.tsx
 msgid "Model id"
 msgstr "मॉडल आईडी"
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Model options"
-msgstr "मॉडल विकल्प"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Model spend uses your provider keys."
@@ -5940,7 +5943,10 @@ msgstr ""
 msgid "No matching artifacts on this page."
 msgstr ""
 
+#: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+#: src/pages/shell/bot-panel.tsx
 msgid "No matching models"
 msgstr ""
 
@@ -7735,7 +7741,6 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/command-palette.tsx
@@ -7806,7 +7811,10 @@ msgstr ""
 msgid "Search mail, e.g. from:sam has:attachment"
 msgstr ""
 
+#: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+#: src/pages/shell/bot-panel.tsx
 msgid "Search models"
 msgstr ""
 

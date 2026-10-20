@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { userEvent, within } from "storybook/test";
+import { screen, userEvent, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
-import { scoutBot } from "../../stories/fixtures";
+import { mockMe, mockModelCatalog, mockModelCredentials, scoutBot } from "../../stories/fixtures";
 import { BotSettings } from "./bot-panel";
 
 const manySkills = Array.from({ length: 13 }, (_, index) => ({
@@ -43,7 +43,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div className="w-96 p-4">
+      <div className="w-full max-w-96 p-4">
         <Story />
       </div>
     ),
@@ -53,6 +53,21 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+
+export const ConnectedModelPicker: Story = {
+  beforeEach: () => {
+    setup();
+    mockRpc({
+      "models.credentials": mockModelCredentials,
+      "models.list": mockModelCatalog,
+      me: mockMe,
+    });
+  },
+  play: async ({ canvasElement }) => {
+    await userEvent.click(within(canvasElement).getByText("Advanced"));
+    await userEvent.click(await screen.findByRole("combobox", { name: "Model" }));
+  },
+};
 
 const openAdvanced: Story["play"] = async ({ canvasElement }) => {
   await userEvent.click(await within(canvasElement).findByText("Advanced"));
