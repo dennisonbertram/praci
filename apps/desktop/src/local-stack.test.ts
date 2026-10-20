@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { RunDocker, RunDockerResult } from "./docker-cli.js";
+import { classifyDockerFailure, missingImageName } from "./docker-cli.js";
 import type { LocalStackDeps } from "./local-stack.js";
 import {
   COMPOSE_WAIT_TIMEOUT_S,
@@ -10,6 +11,7 @@ import {
   ensureStackToken,
   initialStackState,
   LocalStackController,
+  readStackImages,
   readStackToken,
   reduceStackState,
   renderStackEnv,
@@ -35,10 +37,18 @@ describe("stack locations", () => {
 
   it("reads resources from the bundle when packaged and from the repo otherwise", () => {
     expect(
-      stackResourceDir({ packaged: true, resourcesPath: "/App/Resources", appPath: "/x" }),
+      stackResourceDir({
+        packaged: true,
+        resourcesPath: "/App/Resources",
+        appPath: "/x",
+      }),
     ).toBe(path.join("/App/Resources", "stack"));
     expect(
-      stackResourceDir({ packaged: false, resourcesPath: "/x", appPath: "/repo/apps/desktop" }),
+      stackResourceDir({
+        packaged: false,
+        resourcesPath: "/x",
+        appPath: "/repo/apps/desktop",
+      }),
     ).toBe(path.resolve("/repo/infra/compose"));
   });
 });
@@ -54,9 +64,13 @@ describe("resolveImageTag", () => {
   });
 
   it("lets RAKAZO_IMAGE_TAG override everything", () => {
-    expect(resolveImageTag({ version: "0.2.0", packaged: true, override: " v9.9.9 " })).toBe(
-      "v9.9.9",
-    );
+    expect(
+      resolveImageTag({
+        version: "0.2.0",
+        packaged: true,
+        override: " v9.9.9 ",
+      }),
+    ).toBe("v9.9.9");
     expect(resolveImageTag({ version: "0.2.0", packaged: true, override: "" })).toBe("v0.2.0");
   });
 });
@@ -172,6 +186,59 @@ describe("stack identity", () => {
   );
 });
 
+describe("stack env credentials", () => {
+  it("generates object store credentials, including into an env that left them empty", async () => {
+    const template = "RAKAZO_S3_ACCESS_KEY_ID=\nRAKAZO_S3_SECRET_ACCESS_KEY=\nKEEP=1";
+    expect(renderStackEnv(template, fakeHex)).toBe(
+      `RAKAZO_S3_ACCESS_KEY_ID=${"ab".repeat(10)}\nRAKAZO_S3_SECRET_ACCESS_KEY=${"ab".repeat(20)}\nKEEP=1`,
+    );
+    const dir = await mkdtemp(path.join(tmpdir(), "stack-env-"));
+    await writeFile(path.join(dir, STACK_ENV_FILE), template, "utf8");
+    await expect(ensureStackEnv(dir, template, fakeHex)).resolves.toBe("kept");
+    await expect(readFile(path.join(dir, STACK_ENV_FILE), "utf8")).resolves.toContain(
+      `RAKAZO_S3_SECRET_ACCESS_KEY=${"ab".repeat(20)}`,
+    );
+    await rm(dir, { recursive: true, force: true });
+  });
+});
+
+describe("missing image failures", () => {
+  const output =
+    "Network rakazo-desktop_data error during connect: Post /networks/create: No such image: busybox:1";
+
+  it("names the missing image instead of blaming the daemon", () => {
+    expect(classifyDockerFailure(output)).toBe("image-not-found");
+    expect(
+      stackFailureMessage("image-not-found", "starting", "local", missingImageName(output)),
+    ).toContain("Could not get image busybox:1");
+  });
+});
+
+describe("readStackImages", () => {
+  it("returns nothing for a normal build", () => {
+    expect(readStackImages({ name: "@rakazo/desktop" })).toBeUndefined();
+    expect(readStackImages({ rakazoStackImages: { image: "a" } })).toBeUndefined();
+  });
+
+  it("reads the refs baked in at pack time", () => {
+    expect(
+      readStackImages({
+        rakazoStackImages: {
+          image: "praci/app",
+          computerImage: "praci/computer",
+          tag: "local",
+          local: true,
+        },
+      }),
+    ).toEqual({
+      image: "praci/app",
+      computerImage: "praci/computer",
+      tag: "local",
+      local: true,
+    });
+  });
+});
+
 describe("reduceStackState", () => {
   const start = initialStackState("edge");
 
@@ -210,7 +277,10 @@ describe("reduceStackState", () => {
     ]) {
       state = reduceStackState(state, { type: "output", line });
     }
-    expect(state.layerBytes).toEqual({ a235d761c5d1: 1.02e9, "37d39b5cad9d": 491_500 });
+    expect(state.layerBytes).toEqual({
+      a235d761c5d1: 1.02e9,
+      "37d39b5cad9d": 491_500,
+    });
 
     expect(reduceStackState(state, { type: "check-start" }).layerBytes).toEqual({});
   });
@@ -219,7 +289,10 @@ describe("reduceStackState", () => {
     let state = reduceStackState(start, { type: "check-start" });
     state = reduceStackState(state, { type: "pull-start" });
     for (let index = 0; index < STACK_OUTPUT_LINES + 5; index += 1) {
-      state = reduceStackState(state, { type: "output", line: `line ${index}` });
+      state = reduceStackState(state, {
+        type: "output",
+        line: `line ${index}`,
+      });
     }
     expect(state.output).toHaveLength(STACK_OUTPUT_LINES);
     expect(state.output[0]).toBe("line 5");
@@ -228,14 +301,24 @@ describe("reduceStackState", () => {
   it("holds terminal phases until the next check-start clears them", () => {
     let state = reduceStackState(start, { type: "check-start" });
     state = reduceStackState(state, { type: "pull-start" });
-    state = reduceStackState(state, { type: "output", line: "manifest unknown" });
-    state = reduceStackState(state, { type: "failed", message: "Pull failed." });
+    state = reduceStackState(state, {
+      type: "output",
+      line: "manifest unknown",
+    });
+    state = reduceStackState(state, {
+      type: "failed",
+      message: "Pull failed.",
+    });
     expect(state).toMatchObject({ phase: "failed", message: "Pull failed." });
     expect(reduceStackState(state, { type: "ready" })).toBe(state);
     expect(reduceStackState(state, { type: "output", line: "late" })).toBe(state);
 
     state = reduceStackState(state, { type: "check-start" });
-    expect(state).toMatchObject({ phase: "checking-docker", message: null, output: [] });
+    expect(state).toMatchObject({
+      phase: "checking-docker",
+      message: null,
+      output: [],
+    });
   });
 
   it("records why Docker is unavailable", () => {
@@ -320,7 +403,11 @@ describe("LocalStackController", () => {
     const probe = overrides.probe ?? (async () => "v1.2.3");
     const deps: LocalStackDeps = {
       platform: "linux",
-      env: { PATH: "/usr/bin", HOME: "/home/me", OPENROUTER_API_KEY: "sk-secret" },
+      env: {
+        PATH: "/usr/bin",
+        HOME: "/home/me",
+        OPENROUTER_API_KEY: "sk-secret",
+      },
       exists: (file) => file === "/usr/bin/docker",
       allocatePort: async () => 45174,
       stackDir: path.join(root, "stack"),
@@ -363,12 +450,59 @@ describe("LocalStackController", () => {
     ]);
   });
 
+  it("keeps the compose image defaults and pulls when no image override is baked in", async () => {
+    const stack = controller();
+    await stack.start();
+    expect(calls.some((call) => call.args.includes("pull"))).toBe(true);
+    expect(calls.at(-1)?.args).not.toContain("never");
+    for (const call of calls) {
+      expect(call.env).not.toHaveProperty("RAKAZO_IMAGE");
+      expect(call.env).not.toHaveProperty("RAKAZO_COMPUTER_IMAGE");
+    }
+  });
+
+  it("uses baked local images and never pulls them", async () => {
+    const stack = controller({
+      imageTag: "local",
+      images: {
+        image: "praci/app",
+        computerImage: "praci/computer",
+        local: true,
+      },
+      probe: async () => "local",
+    });
+    expect(await stack.start()).toMatchObject({ phase: "ready" });
+    const pulls = calls.filter(
+      (call) => call.args.includes("pull") && !call.args.includes("--pull"),
+    );
+    expect(pulls).toHaveLength(1);
+    expect(pulls[0]?.args.slice(-4)).toEqual([
+      "postgres",
+      "data-init",
+      "seaweedfs",
+      "seaweedfs-init",
+    ]);
+    expect(calls.at(-1)?.args).toContain("--pull");
+    expect(calls.at(-1)?.args).toContain("never");
+    for (const call of calls) {
+      expect(call.env).toMatchObject({
+        RAKAZO_IMAGE: "praci/app",
+        RAKAZO_COMPUTER_IMAGE: "praci/computer",
+        RAKAZO_IMAGE_TAG: "local",
+      });
+    }
+  });
+
   it("installs the compose project and walks every phase to ready", async () => {
     const stack = controller();
     expect(stack.state()).toEqual(initialStackState("v1.2.3"));
 
     const state = await stack.start();
-    expect(state).toMatchObject({ phase: "ready", message: null, imageTag: "v1.2.3" });
+    expect(state).toMatchObject({
+      phase: "ready",
+      message: null,
+      imageTag: "v1.2.3",
+    });
     expect(state.output).toEqual([
       "app Pulled",
       "computer Pulled",
@@ -516,7 +650,10 @@ describe("LocalStackController", () => {
   it("waits for the daemon when docker info fails", async () => {
     const stack = controller({}, (args) =>
       args[0] === "info"
-        ? { code: 1, stderr: "Cannot connect to the Docker daemon at unix:///var/run/docker.sock" }
+        ? {
+            code: 1,
+            stderr: "Cannot connect to the Docker daemon at unix:///var/run/docker.sock",
+          }
         : ok(args),
     );
     const state = await stack.start();
@@ -530,7 +667,10 @@ describe("LocalStackController", () => {
   it("explains the docker group when the socket is not accessible", async () => {
     const stack = controller({}, (args) =>
       args[0] === "info"
-        ? { code: 1, stderr: "permission denied while trying to connect to the Docker daemon" }
+        ? {
+            code: 1,
+            stderr: "permission denied while trying to connect to the Docker daemon",
+          }
         : ok(args),
     );
     const state = await stack.start();
@@ -661,7 +801,10 @@ describe("LocalStackController", () => {
         true,
       );
       exhausted = false;
-      expect(await stack.start()).toMatchObject({ phase: "ready", message: null });
+      expect(await stack.start()).toMatchObject({
+        phase: "ready",
+        message: null,
+      });
     },
   );
 
@@ -717,7 +860,9 @@ describe("LocalStackController", () => {
 
   it("reports a stop when docker has gone missing since the start", async () => {
     let installed = true;
-    const stack = controller({ exists: (file) => installed && file === "/usr/bin/docker" });
+    const stack = controller({
+      exists: (file) => installed && file === "/usr/bin/docker",
+    });
     await stack.start();
     installed = false;
     const state = await stack.stop();
@@ -731,7 +876,10 @@ describe("LocalStackController", () => {
   it("reports a stop that docker refused instead of pretending the stack is down", async () => {
     const stack = controller({}, (args) =>
       args[7] === "stop"
-        ? { code: 1, stderr: "/Users/me/secret-path: Cannot connect to the Docker daemon" }
+        ? {
+            code: 1,
+            stderr: "/Users/me/secret-path: Cannot connect to the Docker daemon",
+          }
         : ok(args),
     );
     await stack.start();

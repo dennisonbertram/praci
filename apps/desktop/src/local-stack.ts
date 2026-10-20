@@ -7,6 +7,7 @@ import {
   classifyDockerFailure,
   composeSupportsWaitTimeout,
   dockerSpawnEnv,
+  missingImageName,
   resolveDockerBinary,
 } from "./docker-cli.js";
 import { readPrivateFile, writePrivateFile } from "./setup-store.js";
@@ -88,12 +89,43 @@ export function resolveImageTag(input: {
   return "edge";
 }
 
+/**
+ * Image refs baked into the packaged app (`rakazoStackImages` in package.json, set with
+ * `-c.extraMetadata` at pack time). Absent in normal builds, which keep the compose defaults.
+ * `local` images exist only in the local Docker daemon, so they are never pulled.
+ */
+export interface StackImages {
+  image: string;
+  computerImage: string;
+  tag: string;
+  local: boolean;
+}
+
+export function readStackImages(metadata: unknown): StackImages | undefined {
+  const raw = (metadata as { rakazoStackImages?: Partial<StackImages> } | null)?.rakazoStackImages;
+  if (!raw || typeof raw.image !== "string" || typeof raw.computerImage !== "string") {
+    return undefined;
+  }
+  if (typeof raw.tag !== "string" || raw.tag === "") return undefined;
+  return {
+    image: raw.image,
+    computerImage: raw.computerImage,
+    tag: raw.tag,
+    local: raw.local === true,
+  };
+}
+
+const HELPER_SERVICES = ["postgres", "data-init", "seaweedfs", "seaweedfs-init"];
+
 const GENERATED_SECRETS: Record<string, number> = {
   POSTGRES_PASSWORD: 16,
   BETTER_AUTH_SECRET: 32,
   ENCRYPTION_KEY: 32,
   SCREEN_PROXY_SECRET: 32,
   SANDBOX_SUPERVISOR_TOKEN: 32,
+  // The bundled object store refuses to start without credentials of at least 8 characters.
+  RAKAZO_S3_ACCESS_KEY_ID: 10,
+  RAKAZO_S3_SECRET_ACCESS_KEY: 20,
 };
 const LAUNCH_SUPPLIED = ["RAKAZO_IMAGE_TAG", "RAKAZO_COMPUTER_IMAGE_TAG"];
 
@@ -127,7 +159,13 @@ export async function ensureStackEnv(
   const destination = path.join(dir, STACK_ENV_FILE);
   try {
     const info = await lstat(destination);
-    if (!info.isSymbolicLink()) return "kept";
+    if (!info.isSymbolicLink()) {
+      // Fill generated credentials an earlier version left empty (the object store needs them).
+      const existing = await readFile(destination, "utf8");
+      const repaired = renderStackEnv(existing, randomHex);
+      if (repaired !== existing) await writePrivateFile(destination, repaired);
+      return "kept";
+    }
   } catch {
     // Missing files are created below.
   }
@@ -192,7 +230,13 @@ export function reduceStackState(
   event: LocalStackEvent,
 ): DesktopLocalStackState {
   if (event.type === "check-start") {
-    return { ...state, phase: "checking-docker", message: null, output: [], layerBytes: {} };
+    return {
+      ...state,
+      phase: "checking-docker",
+      message: null,
+      output: [],
+      layerBytes: {},
+    };
   }
   // Terminal phases only leave through the next check-start.
   if (state.phase === "ready" || state.phase === "failed") return state;
@@ -239,9 +283,13 @@ export function stackFailureMessage(
   kind: DockerFailureKind,
   phase: "pulling" | "starting",
   imageTag: string,
+  missingImage: string | null = null,
 ): string {
   switch (kind) {
     case "image-not-found":
+      if (missingImage !== null) {
+        return `Could not get image ${missingImage}. Make sure it exists locally or can be pulled, then retry.`;
+      }
       return `Images for ${imageTag} are not published yet. Try again in a few minutes.`;
     case "port-in-use":
       return "Could not bind a local port after retrying. Retry to choose another port.";
@@ -281,6 +329,8 @@ export interface LocalStackDeps {
   localWebUrl: string;
   allocatePort?: () => Promise<number>;
   imageTag: string;
+  /** Overrides the compose image refs; `local` skips every pull. */
+  images?: Pick<StackImages, "image" | "computerImage" | "local">;
   /** Returns the authenticated running image tag, or null for any other listener. */
   probe: (url: string, signal: AbortSignal, token: string) => Promise<string | null>;
   randomHex: (bytes: number) => string;
@@ -415,7 +465,10 @@ export class LocalStackController {
       await this.attempt(controller.signal);
     } catch {
       // Copying the bundled compose files failed; the path would not help the person.
-      this.push({ type: "failed", message: "Could not prepare the local stack. Retry." });
+      this.push({
+        type: "failed",
+        message: "Could not prepare the local stack. Retry.",
+      });
     } finally {
       if (this.inFlight === controller) this.inFlight = null;
     }
@@ -428,7 +481,10 @@ export class LocalStackController {
 
     const binary = resolveDockerBinary(this.deps.platform, this.deps.env, this.deps.exists);
     if (binary === null) {
-      this.push({ type: "docker-missing", message: "Docker is not installed on this computer." });
+      this.push({
+        type: "docker-missing",
+        message: "Docker is not installed on this computer.",
+      });
       return;
     }
     const version = await this.docker(
@@ -475,22 +531,39 @@ export class LocalStackController {
     const stackToken = await ensureStackToken(this.deps.stackDir, this.deps.randomHex);
     this.currentStackToken = stackToken;
 
+    const localImages = this.deps.images?.local === true;
     this.push({ type: "pull-start" });
-    const pulled = await this.compose(binary, ["pull"], PULL_TIMEOUT_MS, signal);
+    // Local images are never pulled, but the third-party helpers (Postgres, busybox, object store) still are.
+    const pulled = await this.compose(
+      binary,
+      localImages ? ["pull", ...HELPER_SERVICES] : ["pull"],
+      PULL_TIMEOUT_MS,
+      signal,
+    );
     if (interrupted(signal, pulled))
       return this.push({ type: "failed", message: START_INTERRUPTED });
     if (pulled.code !== 0) {
       this.push({
         type: "failed",
-        message: stackFailureMessage(failureKind(pulled), "pulling", this.deps.imageTag),
+        message: stackFailureMessage(
+          failureKind(pulled),
+          "pulling",
+          this.deps.imageTag,
+          missingImageName(`${pulled.stdout}\n${pulled.stderr}`),
+        ),
       });
       return;
     }
 
     this.push({ type: "up-start" });
-    const upArgs = composeSupportsWaitTimeout(version.stdout)
-      ? ["up", "-d", "--wait", "--wait-timeout", String(COMPOSE_WAIT_TIMEOUT_S)]
-      : ["up", "-d"];
+    const upArgs = [
+      "up",
+      "-d",
+      ...(localImages ? ["--pull", "never"] : []),
+      ...(composeSupportsWaitTimeout(version.stdout)
+        ? ["--wait", "--wait-timeout", String(COMPOSE_WAIT_TIMEOUT_S)]
+        : []),
+    ];
     await writePrivateFile(path.join(this.deps.stackDir, STACK_WEB_URL_FILE), this.currentWebUrl);
     let up = await this.compose(binary, upArgs, UP_TIMEOUT_MS, signal);
     for (
@@ -510,7 +583,12 @@ export class LocalStackController {
       await this.compose(binary, ["logs", "--tail", "30", "--no-color"], LOGS_TIMEOUT_MS, signal);
       this.push({
         type: "failed",
-        message: stackFailureMessage(failureKind(up), "starting", this.deps.imageTag),
+        message: stackFailureMessage(
+          failureKind(up),
+          "starting",
+          this.deps.imageTag,
+          missingImageName(`${up.stdout}\n${up.stderr}`),
+        ),
       });
       return;
     }
@@ -540,6 +618,12 @@ export class LocalStackController {
       env: dockerSpawnEnv(this.deps.platform, this.deps.env, binary, {
         RAKAZO_IMAGE_TAG: this.deps.imageTag,
         RAKAZO_COMPUTER_IMAGE_TAG: this.deps.imageTag,
+        ...(this.deps.images
+          ? {
+              RAKAZO_IMAGE: this.deps.images.image,
+              RAKAZO_COMPUTER_IMAGE: this.deps.images.computerImage,
+            }
+          : {}),
         ...(this.currentStackToken === null
           ? {}
           : { RAKAZO_DESKTOP_STACK_TOKEN: this.currentStackToken }),

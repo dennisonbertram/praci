@@ -53,3 +53,24 @@ git push origin v0.1.1
 
 The workflow refuses tags that do not match the desktop version, are not on
 `main`, or are not newer than the latest published release.
+
+## Self-contained local build
+
+A normal build pulls `ghcr.io/elie222/rakazo/*` images pinned to its own version. To
+run Praci fully from this checkout instead, build the images locally and bake their
+names into the app:
+
+```sh
+pnpm desktop:images                   # praci/app, praci/updater, praci/computer at :local
+pnpm --filter @rakazo/desktop pack:local   # unsigned app in apps/desktop/out/mac-arm64
+```
+
+`pack:local` writes `rakazoStackImages` (`image`, `computerImage`, `tag`, `local`) into
+the packaged `package.json` with `-c.extraMetadata`. When it is present, "This
+computer" passes those refs to Compose as `RAKAZO_IMAGE` and `RAKAZO_COMPUTER_IMAGE`
+and the tag as the stack tag. With `local: true` the app skips `compose pull` and runs
+`compose up --pull never`, so the images must already exist in the local Docker.
+Builds without the field are unchanged. `RAKAZO_IMAGE_TAG` at launch still overrides
+the tag. The image builds use the host architecture (set `PRACI_IMAGE_PLATFORM` to
+change it). The stack uses the `rakazo-desktop` Compose project and its own volumes,
+and port 45173 by default, so it does not touch a `pnpm dev` stack.
