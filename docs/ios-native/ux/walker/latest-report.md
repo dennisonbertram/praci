@@ -21,8 +21,8 @@
 | --- | --- | --- | --- | --- |
 | Critical | 1 | 0 | 0 | 1 |
 | High | 38 | 0 | 0 | 38 |
-| Medium | 76 | 2 | 0 | 74 |
-| Low | 36 | 9 (3 partial) | 0 | 27 |
+| Medium | 76 | 2 (1 partial) | 0 | 74 |
+| Low | 36 | 9 (2 partial) | 0 | 27 |
 | Suggestion | 5 | n/a | n/a | 5 |
 | **Total** | **156** | **11 (3 partial)** | **0** | **145** |
 
