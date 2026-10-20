@@ -480,6 +480,30 @@ describe("web external link confirmation", () => {
     await view.cleanup();
   });
 
+  it("hands a plain click on an in-app link to onNavigate and leaves modified clicks alone", async () => {
+    const onNavigate = vi.fn();
+    const view = await render(
+      <ChatMarkdown onNavigate={onNavigate}>{"[Plan](/app/artifacts/a1)"}</ChatMarkdown>,
+    );
+    const link = view.container.querySelector("a");
+    const click = (init: MouseEventInit) => {
+      const event = new MouseEvent("click", { bubbles: true, cancelable: true, ...init });
+      link?.dispatchEvent(event);
+      return event;
+    };
+    await act(async () => {
+      expect(click({ button: 0 }).defaultPrevented).toBe(true);
+    });
+    expect(onNavigate).toHaveBeenCalledExactlyOnceWith("/app/artifacts/a1");
+    onNavigate.mockClear();
+    await act(async () => {
+      expect(click({ button: 0, ctrlKey: true }).defaultPrevented).toBe(false);
+      expect(click({ button: 1 }).defaultPrevented).toBe(false);
+    });
+    expect(onNavigate).not.toHaveBeenCalled();
+    await view.cleanup();
+  });
+
   it("asks before an external bot link and opens it only after confirmation", async () => {
     const open = vi.spyOn(window, "open").mockReturnValue(null);
     const view = await render(

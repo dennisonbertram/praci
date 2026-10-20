@@ -1,10 +1,10 @@
 import { Domain } from "chat-adapter-lark";
 import { describe, expect, it, vi } from "vitest";
+import type { MessagingEnvironmentValues } from "./messaging-platforms.js";
 import {
   enrichSlackTeamRoom,
   isMessagingEnabled,
   isMessagingSurfaceEnabled,
-  type MessagingEnvironmentValues,
   messagingEnvFromProcess,
   messagingPlatformsFromEnv,
   parseSendblueStatus,

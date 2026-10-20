@@ -1,22 +1,18 @@
-import { isIP, type LookupFunction } from "node:net";
-import {
-  createProvider,
-  type Model,
-  type MutableModels,
-  type Provider,
-  type ProviderStreams,
-} from "@earendil-works/pi-ai";
+import type { LookupFunction } from "node:net";
+import { isIP } from "node:net";
+import type { Model, MutableModels, Provider, ProviderStreams } from "@earendil-works/pi-ai";
+import { createProvider } from "@earendil-works/pi-ai";
 import { openAICompletionsApi } from "@earendil-works/pi-ai/api/openai-completions.lazy";
 import { DEFAULT_MODEL_CONTEXT_WINDOW, DEFAULT_MODEL_MAX_TOKENS } from "@rakazo/contracts";
 import { Agent } from "undici";
 import { declaredVisionModelIds, inputModalities } from "./model-modalities.js";
+import type { ResolveHostname } from "./network-address.js";
 import {
   createAddressCheckedLookup,
   defaultResolveHostname,
   isCloudMetadataAddress,
   isLinkLocalAddress,
   isPrivateAddress,
-  type ResolveHostname,
 } from "./network-address.js";
 import {
   assertAllowedOpenAiCompatibleRequestUrl,

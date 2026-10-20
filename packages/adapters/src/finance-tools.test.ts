@@ -2,10 +2,10 @@ import type { MessageBlock } from "@rakazo/contracts";
 import { financeAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { selectBuiltinToolsForRun } from "./executor.js";
+import type { FinanceToolDeps } from "./finance-tools.js";
 import {
   describeFinanceActivity,
   FINANCE_TOOL_NAMES,
-  type FinanceToolDeps,
   financeAgentRunLine,
   financeToolFromTool,
   financeToolsAllowed,

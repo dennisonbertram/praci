@@ -19,12 +19,12 @@ import type {
   WebhookOptions,
 } from "chat";
 import { ConsoleLogger, Message, parseMarkdown, stringifyMarkdown } from "chat";
+import type { ResolveHostname } from "./network-address.js";
 import {
   defaultResolveHostname,
   isCloudMetadataAddress,
   isLinkLocalAddress,
   normalizeUrlHostname,
-  type ResolveHostname,
   withPinnedDnsLookup,
 } from "./network-address.js";
 
@@ -136,7 +136,7 @@ export function clipHistoryText(text: string, max: number): string {
 }
 
 /** An offset cursor, as the tool gets it back from the model: anything but a small integer starts over. */
-export function parseOffsetCursor(cursor: string | undefined): number {
+function parseOffsetCursor(cursor: string | undefined): number {
   return cursor && /^\d{1,6}$/.test(cursor) ? Number(cursor) : 0;
 }
 

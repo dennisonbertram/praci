@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { BoxApiEmulator, type EmulatedBoxItem } from "./box-api-emulator.js";
-import { BoxFileError, type BoxFilesDeps, downloadBoxFile, listBoxFiles } from "./box-files.js";
+import type { EmulatedBoxItem } from "./box-api-emulator.js";
+import { BoxApiEmulator } from "./box-api-emulator.js";
+import type { BoxFilesDeps } from "./box-files.js";
+import { BoxFileError, downloadBoxFile, listBoxFiles } from "./box-files.js";
 import { planBoxFolders } from "./data-room-box-import.js";
 import { DRIVE_IMPORT_MAX_DEPTH } from "./data-room-drive-import.js";
 

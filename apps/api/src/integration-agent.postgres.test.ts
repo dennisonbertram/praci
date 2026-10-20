@@ -174,7 +174,8 @@ describePostgres("integration agents (PostgreSQL)", () => {
     });
     expect(bot.instructions).toContain("Mercury");
     expect(bot.instructions).toContain("Mercury may also hold it for its own approval");
-    expect(bot.description).toContain("message_bot");
+    expect(bot.description).toContain("Your Mercury account");
+    expect(bot.description).not.toContain("message_bot");
     expect(bot.instructions).toContain('turn on "Allow changes in Mercury"');
     const rows = await prisma.botMcpServer.findMany({ where: { serverId: server.id } });
     expect(rows).toMatchObject([{ botId: first.botId, allowAllTools: true }]);

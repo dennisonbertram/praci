@@ -1,5 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import { maskPinFigures } from "@rakazo/chat-ui/mask-currency";
 import type { BotPins, PinItem, PinList } from "@rakazo/contracts";
 import {
   addItem,
@@ -34,9 +35,6 @@ export function useBotPins(botId: string | undefined, reloadKey: number) {
   const setPins = (next: BotPins) => setState({ botId: next.botId, pins: next });
   return [pins, setPins] as const;
 }
-
-/** While amounts are hidden, every figure in a pin is masked and its unit kept: "$•••", "••• mo". */
-export const maskPinFigures = (text: string) => text.replace(/\d(?:[\d,.\s]*\d)?/g, "•••");
 
 export function PinsStrip({ pins, onPins }: { pins: BotPins; onPins: (pins: BotPins) => void }) {
   const hidden = useHideAmounts();

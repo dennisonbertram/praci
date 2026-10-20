@@ -1,4 +1,5 @@
-import { createDb, createNotificationEvents, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb, createNotificationEvents } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { defaultNotificationSurface, runNotifyUser } from "./notify-user.js";
 

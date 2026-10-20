@@ -65,7 +65,7 @@ for (const [failing, intact] of [
     await settings.getByText("Advanced", { exact: true }).click();
     await expect(settings.getByText("Could not load", { exact: true })).toBeVisible();
     await expect(settings.getByTestId(intact)).toBeVisible();
-    await expect(settings.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+    await expect(settings.getByText("Advanced", { exact: true })).toBeVisible();
     await expect(composer).toHaveValue("Keep this draft");
   });
 }

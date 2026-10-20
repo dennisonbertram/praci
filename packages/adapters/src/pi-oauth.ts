@@ -30,7 +30,7 @@ import { createManualAnthropicOAuthLogin } from "./pi-anthropic-oauth.js";
 export const CHATGPT_OAUTH_PROVIDER = "openai-codex";
 export const COPILOT_OAUTH_PROVIDER = "github-copilot";
 export const XAI_OAUTH_PROVIDER = "xai";
-export const ANTHROPIC_OAUTH_PROVIDER = "anthropic";
+const ANTHROPIC_OAUTH_PROVIDER = "anthropic";
 
 export const SUBSCRIPTION_SIGN_IN_PROVIDERS: Record<
   string,
@@ -242,7 +242,7 @@ export class RetiredModelCredentialError extends Error {
   }
 }
 
-export function markRetiredModelCredentialError(error: unknown): void {
+function markRetiredModelCredentialError(error: unknown): void {
   if (typeof error === "object" && error !== null) retiredCredentialErrors.add(error);
 }
 
@@ -253,7 +253,7 @@ export function isRetiredModelCredentialError(error: unknown): boolean {
   );
 }
 
-export type StoredModelLimits = ModelContextLimits;
+type StoredModelLimits = ModelContextLimits;
 
 function modelLimits(value: Record<string, unknown>): StoredModelLimits {
   const cache = ModelContextLimitsSchema.shape.cacheCapabilities.safeParse(value.cacheCapabilities);
@@ -285,7 +285,7 @@ export type StoredModelSecret =
       maxImagesPerPrompt?: number;
     } & StoredModelLimits);
 
-export type PiOAuthConnected = {
+type PiOAuthConnected = {
   status: "connected";
   credential: OAuthCredential;
   provider: string;
@@ -295,12 +295,12 @@ export type PiOAuthConnected = {
   signal: AbortSignal;
 };
 
-export type PiOAuthComplete =
+type PiOAuthComplete =
   | { status: "pending" }
   | PiOAuthConnected
   | { status: "error"; error: string };
 
-export type PiOAuthFinish<T> =
+type PiOAuthFinish<T> =
   | { status: "pending" }
   | { status: "connected"; value: T }
   | { status: "error"; error: string };
@@ -556,7 +556,7 @@ export function codexComputeResidency(accessToken: string | undefined): string |
   return claim;
 }
 
-export function loadProviderOAuth(providerId: string): OAuthAuth | undefined {
+function loadProviderOAuth(providerId: string): OAuthAuth | undefined {
   return providerCatalog().getProvider(providerId)?.auth.oauth;
 }
 

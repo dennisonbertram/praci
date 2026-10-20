@@ -1567,7 +1567,7 @@ raise SystemExit(1)
   }
 }
 
-export function isUnrecoverableCreateOSError(error: unknown): boolean {
+function isUnrecoverableCreateOSError(error: unknown): boolean {
   if (error instanceof CreateOSHttpError && error.status === 404) return true;
   return (
     error instanceof Error &&

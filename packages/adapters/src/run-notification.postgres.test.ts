@@ -3,7 +3,8 @@ import type {
   NotificationEndpointRef,
   NotificationEnvelope,
 } from "@rakazo/adapter-kit";
-import { createDb, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { deliverDueNotifications } from "./notification-outbox.js";
 import { notifyThreadEvent } from "./run-notification.js";

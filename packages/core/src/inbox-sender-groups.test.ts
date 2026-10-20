@@ -116,6 +116,26 @@ describe("groupBySender", () => {
       expect(groups[0]?.count).toBe(7);
     });
 
+    it("merges one name across a newsletter platform and the brand's own subdomain", () => {
+      const named = (id: string, fromAddress: string) =>
+        row(id, { from: "Example Research", fromAddress });
+      const groups = groupBySender([
+        named("a", "a@newsletters.example"),
+        named("b", "b@newsletters.example"),
+        named("c", "news@update.exampleresearch.test"),
+      ]);
+      expect(groups).toHaveLength(1);
+      expect(groups[0]?.count).toBe(3);
+    });
+
+    it("keeps same-named people on a shared mailbox domain apart", () => {
+      const groups = groupBySender([
+        row("a", { from: "Sam Lee", fromAddress: "sam1@gmail.com" }),
+        row("b", { from: "Sam Lee", fromAddress: "sam2@gmail.com" }),
+      ]);
+      expect(groups).toHaveLength(2);
+    });
+
     it("keeps different display names on one domain apart", () => {
       const groups = groupBySender([
         research("a"),
@@ -124,14 +144,14 @@ describe("groupBySender", () => {
       expect(groups).toHaveLength(2);
     });
 
-    it("keeps the same display name on different domains apart", () => {
+    it("merges the same display name on different domains", () => {
       const groups = groupBySender([
         research("a"),
         research("b", { fromAddress: "digest@other-research.example" }),
         research("c", { fromAddress: "digest@shop.co.uk" }),
         research("d", { fromAddress: "digest@other.co.uk" }),
       ]);
-      expect(groups).toHaveLength(4);
+      expect(groups).toHaveLength(1);
     });
 
     it("keeps two people with one display name on a shared mailbox domain apart", () => {

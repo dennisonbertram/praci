@@ -1,4 +1,10 @@
 export const TR_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Tutarları gizle",
+  "Show amounts": "Tutarları göster",
+  Sheets: "Sayfalar",
+  "This sheet is empty.": "Bu sayfa boş.",
+  "Load more": "Daha fazla yükle",
+  "Could not load more rows.": "Daha fazla satır yüklenemedi.",
   "Phone notifications": "Telefon bildirimleri",
   "Share with all agents": "Tüm ajanlarla paylaş",
   "Couldn't refresh — showing the last loaded messages.":
@@ -554,6 +560,10 @@ export const TR_MESSAGES: Record<string, string> = {
   "Save section name": "Bölüm adını kaydet",
   "Section name": "Bölüm adı",
   "Silence notifications": "Bildirimleri sessize al",
+  Pinned: "Sabitlenenler",
+  "Rename space": "Alanı yeniden adlandır",
+  Rename: "Yeniden adlandır",
+  "Could not rename space": "Alan yeniden adlandırılamadı",
   Unassigned: "Atanmamış",
   Unpin: "Sabitlemeyi kaldır",
   "Could not update computer": "Bilgisayar güncellenemedi",
@@ -786,6 +796,9 @@ export const TR_MESSAGES: Record<string, string> = {
   "Archive {count} conversations from {sender}?":
     "{sender} göndericisinin {count} görüşmesi arşivlensin mi?",
   "Could not archive {count}": "{count} görüşme arşivlenemedi",
+  "Could not load skills": "Beceriler yüklenemedi",
+  "Could not update skills": "Beceriler güncellenemedi",
+  "Custom image": "Özel görsel",
   "Waiting for the computer": "Bilgisayar bekleniyor",
   "Starting the computer": "Bilgisayar başlatılıyor",
   "Connecting to {name}": "{name} bağlantısı kuruluyor",

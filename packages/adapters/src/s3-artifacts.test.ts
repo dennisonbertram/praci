@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { createServer, type IncomingMessage, type Server } from "node:http";
+import type { IncomingMessage, Server } from "node:http";
+import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { LocalArtifactStore } from "./artifacts.js";

@@ -534,3 +534,16 @@ it("labels the header of a Composio or Pipedream app with its provider, and a di
   );
   expect(container.textContent).not.toContain("via ");
 });
+
+it("hides the account name when it only repeats the app name", async () => {
+  const notion = { ...gmail, connectorId: "composio", slug: "notion", name: "Notion" };
+  await show(
+    APP_PAGE,
+    data({ catalog: [notion], connections: [appConnection({ displayName: "Notion" })] }),
+  );
+  expect(container.querySelector("b")).toBeNull();
+  await act(async () => root.unmount());
+  container.remove();
+  await show(APP_PAGE, data({ catalog: [notion], connections: [appConnection()] }));
+  expect(container.querySelector("b")?.textContent).toBe("Sample workspace");
+});

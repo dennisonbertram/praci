@@ -54,7 +54,12 @@ vi.mock("@rakazo/ui-web", () => ({
     pressed?: boolean;
     onPressedChange?: (pressed: boolean) => void;
   }) => (
-    <button type="button" aria-pressed={pressed} {...props}>
+    <button
+      type="button"
+      aria-pressed={pressed}
+      onClick={() => _onPressedChange?.(!pressed)}
+      {...props}
+    >
       {props.children}
     </button>
   ),
@@ -134,14 +139,6 @@ function descriptionField(): HTMLTextAreaElement {
   return textarea;
 }
 
-function saveButton(): HTMLButtonElement {
-  const found = [...container.querySelectorAll("button")].find(
-    (button) => button.textContent === "Save",
-  );
-  if (!(found instanceof HTMLButtonElement)) throw new Error("Missing Save button");
-  return found;
-}
-
 async function setDescription(value: string) {
   const textarea = descriptionField();
   await act(async () => {
@@ -153,10 +150,11 @@ async function setDescription(value: string) {
   });
 }
 
+/** Leaving the description field is how a text edit is saved. */
 async function clickSave() {
   const before = onSave.mock.calls.length;
   await act(async () => {
-    saveButton().click();
+    descriptionField().dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
@@ -269,5 +267,58 @@ describe("BotSettings description saves", () => {
       description: "Invoices",
       instructions: "Invoices",
     });
+  });
+});
+
+describe("BotSettings saving without a Save button", () => {
+  it("has no Save button", async () => {
+    await render();
+    expect([...container.querySelectorAll("button")].map((b) => b.textContent)).not.toContain(
+      "Save",
+    );
+  });
+
+  it("saves Advanced choices as soon as they change", async () => {
+    await render();
+    const privateMode = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "Private",
+    );
+    await act(async () => privateMode?.click());
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0]?.[0]).toMatchObject({ computerMode: "dedicated" });
+  });
+
+  it("shows Saved after a save and clears it after about two seconds", async () => {
+    vi.useFakeTimers();
+    try {
+      await render();
+      await clickSave();
+      expect(container.textContent).toContain("Saved");
+      await act(async () => {
+        vi.advanceTimersByTime(2100);
+      });
+      expect(container.textContent).not.toContain("Saved");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("names the unknown tool right under the Disabled tools field", async () => {
+    await render();
+    const input = container.querySelector<HTMLInputElement>("input[placeholder='web_search']");
+    if (!input) throw new Error("Missing disabled tools field");
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
+        input,
+        "nonexistent_tool, web_search",
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () => {
+      input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true }));
+    });
+    const message = input.closest("label")?.nextElementSibling;
+    expect(message?.textContent).toBe("Unknown tool: nonexistent_tool");
+    expect(onSave).not.toHaveBeenCalled();
   });
 });

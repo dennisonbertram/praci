@@ -198,6 +198,8 @@ export const canOpenInBrowser = (item: Pick<DataRoomApiItem, "mimeType">) =>
  * file in a frame that fills it.
  */
 export async function openDataRoomItem(item: Pick<DataRoomApiItem, "id" | "mimeType" | "name">) {
+  // Any other type could run scripts in the app's origin when framed from a blob URL.
+  if (!canOpenInBrowser(item)) return saveDataRoomItem(item);
   const tab = window.open("", "_blank");
   // Electron's window policy (and pop-up blockers) can refuse the tab; save the file instead.
   if (!tab) return saveDataRoomItem(item);

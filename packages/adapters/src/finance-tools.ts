@@ -71,14 +71,6 @@ export function financeAgentRunLine(financeEnabled: boolean, trigger: string): s
   return undefined;
 }
 
-/** Drop the finance tools when the run may not use them. */
-export function selectFinanceTools<T extends { name: string }>(
-  tools: T[],
-  financeEnabled: boolean,
-): T[] {
-  return financeEnabled ? tools : tools.filter((tool) => !FINANCE_TOOL_NAMES.has(tool.name));
-}
-
 type Scope = { spaceId: string; userId: string };
 
 export type FinanceToolDeps = {

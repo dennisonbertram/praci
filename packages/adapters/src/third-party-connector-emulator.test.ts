@@ -1,7 +1,8 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { describe, expect, it } from "vitest";
-import { type OAuthMaterial, StoredMcpOAuthProvider } from "./mcp-oauth.js";
+import type { OAuthMaterial } from "./mcp-oauth.js";
+import { StoredMcpOAuthProvider } from "./mcp-oauth.js";
 import { ThirdPartyConnectorEmulator } from "./third-party-connector-emulator.js";
 
 const ENDPOINT = "https://mcp.mock-equity.test/mcp";

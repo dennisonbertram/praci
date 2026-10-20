@@ -21,7 +21,7 @@ const financeRpc = vi.hoisted(() => ({
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { finance: financeRpc } }));
 
-import { IntegrationsHome, safeAppPath } from "./IntegrationsHome";
+import { IntegrationsHome } from "./IntegrationsHome";
 import type { IntegrationsData } from "./useIntegrations";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -493,11 +493,29 @@ it("opens a catalog app's page from ?open=, without starting a connect", async (
   );
 });
 
-it("only returns to in-app paths", () => {
-  expect(safeAppPath("/app/cap-table")).toBe("/app/cap-table");
-  expect(safeAppPath("https://evil.example.test/app/")).toBeNull();
-  expect(safeAppPath("/app//evil.example.test")).toBeNull();
-  expect(safeAppPath(null)).toBeNull();
+it("ignores a returnTo that appReturnPath rejects", async () => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+  function Search() {
+    const location = useLocation();
+    return <output data-testid="where">{location.pathname + location.search}</output>;
+  }
+  await act(async () =>
+    root.render(
+      <MemoryRouter
+        initialEntries={["/app/integrations?connect=gmail&returnTo=%2Fapp%2F%252e%2Fx"]}
+      >
+        <Routes>
+          <Route path="/app/integrations" element={<IntegrationsHome data={data(true, true)} />} />
+          <Route path="/app/integrations/app/:connectorId/:slug" element={<Search />} />
+        </Routes>
+      </MemoryRouter>,
+    ),
+  );
+  expect(container.querySelector('[data-testid="where"]')?.textContent).toBe(
+    "/app/integrations/app/google/gmail?connect=1",
+  );
 });
 
 it("still lists native Google apps when the managed catalog is not set up", async () => {
@@ -541,4 +559,63 @@ it("labels Composio and Pipedream tiles, catalog and connected, but not Google o
   await show(value);
   const labels = [...container.querySelectorAll("[data-source]")].map((el) => el.textContent);
   expect(labels.sort()).toEqual(["via Composio", "via Composio", "via Pipedream"]);
+});
+
+const composioGmail = (over: Record<string, unknown> = {}) => ({
+  id: "g1",
+  connectorId: "composio",
+  provider: "gmail",
+  displayName: "Gmail",
+  status: "connected" as const,
+  error: null,
+  capabilities: [],
+  createdAt: "2026-01-01T00:00:00.000Z",
+  ...over,
+});
+
+it("offers Reconnect on a connected Composio tile that needs it, and hides the repeated name", async () => {
+  const value = data(true, true);
+  value.catalog = [{ ...google("gmail"), connectorId: "composio", name: "Gmail" }];
+  value.connections = [composioGmail({ needsReconnect: true })];
+  await show(value);
+  const tile = container.querySelector("main, div")?.textContent ?? "";
+  expect(tile).toContain("Needs reconnect");
+  const buttons = [...container.querySelectorAll("button")].map((b) => b.textContent);
+  expect(buttons).toContain("Reconnect");
+  // The account label equals the app name, so it is not shown a second time.
+  expect(container.textContent?.match(/Gmail/g)?.length).toBe(1);
+});
+
+it("shows no Reconnect on a healthy Composio tile", async () => {
+  const value = data(true, true);
+  value.catalog = [{ ...google("gmail"), connectorId: "composio", name: "Gmail" }];
+  value.connections = [composioGmail()];
+  await show(value);
+  expect([...container.querySelectorAll("button")].map((b) => b.textContent)).not.toContain(
+    "Reconnect",
+  );
+});
+
+it("hides category chips that have no apps", async () => {
+  const value = data(true, true);
+  value.catalog = [
+    { ...google("slack"), connectorId: "composio", name: "Slack", connected: false },
+  ];
+  await show(value);
+  const chips = [...container.querySelectorAll("fieldset button")].map((b) => b.textContent);
+  expect(chips).toContain("Email & calendar");
+  expect(chips).not.toContain("Sales & CRM");
+});
+
+it("lists results as one flat grid without headings and hides Connected while searching", async () => {
+  const value = data(true, true);
+  value.catalog = [
+    { ...google("slack"), connectorId: "composio", name: "Slack", connected: false },
+  ];
+  value.connections = [composioGmail()];
+  await show(value, "/app/integrations?q=sla");
+  const headings = [...container.querySelectorAll("h2")].map((h) => h.textContent);
+  expect(headings).not.toContain("Apps");
+  expect(headings).not.toContain("Connected");
+  expect(container.textContent).toContain("Slack");
 });
