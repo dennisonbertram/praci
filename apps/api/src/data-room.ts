@@ -733,6 +733,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
     },
 
     imports: (actor: Actor) => listDataRoomImports(deps.prisma, actor),
+    processing: (actor: Actor) => repo.processing(actor),
 
     boxList: (
       actor: Actor,

@@ -438,6 +438,10 @@ msgstr "{pickedCount} selected"
 msgid "{readPercent}% read"
 msgstr "{readPercent}% read"
 
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "{remaining, plural, one {Processing # file} other {Processing # files}}"
+msgstr "{remaining, plural, one {Processing # file} other {Processing # files}}"
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "{remaining} left · bot is watching, not acting"
@@ -906,6 +910,10 @@ msgstr "All crypto counts as cash in this runway."
 #: src/components/FinanceCards.tsx
 msgid "all dates"
 msgstr "all dates"
+
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "All files processed"
+msgstr "All files processed"
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
@@ -3508,6 +3516,10 @@ msgstr "Desktop redirect URI"
 msgid "Desktop update"
 msgstr "Desktop update"
 
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Details"
+msgstr "Details"
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Developer"
 msgstr "Developer"
@@ -4023,6 +4035,7 @@ msgstr "failed"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
+#: src/components/data-room/ProcessingStrip.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -4634,6 +4647,11 @@ msgstr "Inbox & email"
 #: src/components/AiDataSharing.tsx
 msgid "Inbox sorting and Data room files"
 msgstr "Inbox sorting and Data room files"
+
+#: src/components/data-room/format.ts
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Indexing for search"
+msgstr "Indexing for search"
 
 #: src/pages/shell/bot-panel.tsx
 msgid "Inherit default"
@@ -6709,6 +6727,10 @@ msgstr "Private key"
 msgid "Private workspace with its own bots and groups."
 msgstr "Private workspace with its own bots and groups."
 
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Processing"
+msgstr "Processing"
+
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Project ID"
@@ -6826,6 +6848,11 @@ msgstr "Reading a connected app"
 #: src/pages/CapTable.tsx
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
+
+#: src/components/data-room/format.ts
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Reading text"
+msgstr "Reading text"
 
 #: src/pages/shell/working-label.ts
 msgid "Reading the cap table"
@@ -8401,6 +8428,11 @@ msgstr "Syncing…"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
 msgstr "System"
+
+#: src/components/data-room/format.ts
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Tagging"
+msgstr "Tagging"
 
 #: src/components/data-room/Preview.tsx
 msgid "Tags"

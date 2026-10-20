@@ -1,0 +1,85 @@
+import { plural, t } from "@lingui/core/macro";
+import type { DataRoomApiProcessing } from "@rakazo/contracts";
+import { Button, cn } from "@rakazo/ui-web";
+import { ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { maskCurrencyWhenHidden } from "../../lib/hide-amounts-preference";
+import { Shimmer } from "../ai/primitives";
+
+export const processingRemaining = (p: DataRoomApiProcessing) => p.reading + p.tagging + p.indexing;
+
+/**
+ * One slim line at the top of the list while files are still being read, tagged and indexed:
+ * how many are left, a thin bar of how far the batch has come, and per-step counts on demand.
+ * `total` is the most files left at once since the batch began; `finished` shows the brief
+ * "All files processed" before the page hides the strip.
+ */
+export function ProcessingStrip({
+  processing,
+  total,
+  finished = false,
+}: {
+  processing: DataRoomApiProcessing;
+  total: number;
+  finished?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const remaining = processingRemaining(processing);
+  const row = "border-b border-border px-3 py-1.5 text-xs text-muted-foreground";
+  if (finished) {
+    return (
+      <div role="status" className={row}>
+        <span className="text-foreground">{t`All files processed`}</span>
+      </div>
+    );
+  }
+  const percent = total > 0 ? Math.round(((total - remaining) / total) * 100) : 0;
+  const steps = [
+    { label: t`Reading text`, count: processing.reading },
+    { label: t`Indexing for search`, count: processing.indexing },
+    { label: t`Tagging`, count: processing.tagging },
+    { label: t`Failed`, count: processing.failed },
+  ].filter((step) => step.count > 0);
+  return (
+    <div role="status" className={cn(row, "relative pb-2")}>
+      <div className="flex items-center gap-x-2">
+        <Shimmer>
+          {plural(remaining, { one: "Processing # file", other: "Processing # files" })}
+        </Shimmer>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          className="ms-auto"
+          aria-label={t`Details`}
+          aria-expanded={open}
+          onClick={() => setOpen(!open)}
+        >
+          <ChevronDown aria-hidden="true" className={cn(open && "rotate-180")} />
+        </Button>
+      </div>
+      {open ? (
+        <ul className="mt-1 flex flex-col gap-0.5">
+          {steps.map((step) => (
+            <li key={step.label} className="flex justify-between tabular-nums">
+              <span>{step.label}</span>
+              <span>{step.count}</span>
+            </li>
+          ))}
+          {processing.current ? (
+            <li className="truncate">{maskCurrencyWhenHidden(processing.current)}</li>
+          ) : null}
+        </ul>
+      ) : null}
+      <div
+        role="progressbar"
+        aria-label={t`Processing`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={percent}
+        className="absolute inset-x-0 bottom-0 h-0.5 bg-border"
+      >
+        <div className="h-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}

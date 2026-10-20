@@ -236,6 +236,18 @@ export const DataRoomApiImportSchema = z.object({
   latest: z.array(z.object({ id: z.string(), name: z.string() })),
 });
 export type DataRoomApiImport = z.infer<typeof DataRoomApiImportSchema>;
+/** How many of the caller's items each pipeline step still has, and the one being worked on. */
+export const DataRoomApiProcessingSchema = z.object({
+  /** Waiting for or in text extraction. */
+  reading: z.number().int(),
+  /** Waiting for or in classification. */
+  tagging: z.number().int(),
+  /** Waiting for or in chunking and embedding. */
+  indexing: z.number().int(),
+  failed: z.number().int(),
+  current: z.string().nullable(),
+});
+export type DataRoomApiProcessing = z.infer<typeof DataRoomApiProcessingSchema>;
 /** The caller's Box for the import picker. Lists and files have the same shape as Drive's. */
 export const DataRoomApiBoxListInputSchema = DataRoomApiDriveListInputSchema;
 export const DataRoomApiBoxListOutputSchema = DataRoomApiDriveListOutputSchema;

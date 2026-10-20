@@ -22,7 +22,7 @@ import type { KeyboardEvent, ReactElement, ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { dataRoomThumbnailUrl, splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
-import { dateText, isSettled, statusLabel, typeLabel } from "./format";
+import { dateText, isSettled, stageLabel, statusLabel, typeLabel } from "./format";
 import type { ItemAction } from "./ItemMenu";
 import { ItemMenu, ItemMenuItems } from "./ItemMenu";
 import type { SendTarget } from "./SendToAgent";
@@ -115,13 +115,15 @@ function Marker({ item }: { item: DataRoomApiItem }) {
       <Icon role="img" aria-label={t`Failed`} className="size-3.5 shrink-0 text-destructive" />
     );
   }
-  if (!isSettled(item.status)) {
+  if (item.status !== "ready") {
     return (
-      <Spinner
-        role="presentation"
-        aria-hidden="true"
-        className="size-3.5 shrink-0 text-muted-foreground"
-      />
+      <span title={stageLabel(item.status)} className="inline-flex shrink-0">
+        <Spinner
+          role="presentation"
+          aria-hidden="true"
+          className="size-3.5 text-muted-foreground"
+        />
+      </span>
     );
   }
   const Icon = fileIcon(item);

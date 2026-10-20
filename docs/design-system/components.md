@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 226 of 226
-- Web and shared components: 629
+- Web and shared component files with stories: 227 of 227
+- Web and shared components: 630
 - Mobile components: 136 in 93 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -166,6 +166,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | FileContext, Marker, Columns, ListHead, RetryButton, ItemRow, SubfolderList, ListView, ThumbnailImage, TextPreview, TilePreview, GridView, NotTagged, TypeAndDate, Snippet | [apps/web/src/components/data-room/ItemRows.tsx](../../apps/web/src/components/data-room/ItemRows.tsx) | [ItemRows.stories.tsx](../../apps/web/src/components/data-room/ItemRows.stories.tsx) | web |
 | Field, Tag, Preview | [apps/web/src/components/data-room/Preview.tsx](../../apps/web/src/components/data-room/Preview.tsx) | [Preview.stories.tsx](../../apps/web/src/components/data-room/Preview.stories.tsx) | web |
 | FileViewer, IconAction, PreviewActions, FullScreenPreview | [apps/web/src/components/data-room/PreviewActions.tsx](../../apps/web/src/components/data-room/PreviewActions.tsx) | [PreviewActions.stories.tsx](../../apps/web/src/components/data-room/PreviewActions.stories.tsx) | web |
+| ProcessingStrip | [apps/web/src/components/data-room/ProcessingStrip.tsx](../../apps/web/src/components/data-room/ProcessingStrip.tsx) | [ProcessingStrip.stories.tsx](../../apps/web/src/components/data-room/ProcessingStrip.stories.tsx) | web |
 | SendToAgentMenu | [apps/web/src/components/data-room/SendToAgent.tsx](../../apps/web/src/components/data-room/SendToAgent.tsx) | [SendToAgent.stories.tsx](../../apps/web/src/components/data-room/SendToAgent.stories.tsx) | web |
 
 ## Web components/finance
