@@ -221,7 +221,9 @@ async function triagePass(
             priority: item?.priority ?? null,
             category: item?.category ?? null,
             // The free rules win when they decided, unless the model calls it spam; its category fills the rest.
-            pile: item ? resolvePile(row.rulePile, item.category) : row.rulePile,
+            pile: item
+              ? resolvePile(row.rulePile, item.category, row.notSpamAt !== null)
+              : row.rulePile,
             reason: item?.reason || null,
             todoText: item?.todo ?? null,
             dueOn: item?.due ? new Date(`${item.due}T00:00:00Z`) : null,

@@ -1,6 +1,8 @@
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { MailApproval, MailEdits, MessageBlock } from "@rakazo/contracts";
 import {
+  AI_DATA_DISCLOSURES,
+  AI_DISCLOSURE_VERSION,
   CARTA_WRITE_TOOLS,
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
@@ -87,6 +89,30 @@ export function buildApprovalAskBlock(
               : [{ id: "always", label: "Always allow this tool" }]),
             { id: "deny", label: "Deny" },
           ],
+  };
+}
+
+/**
+ * The inline request to allow AI data sharing for mail. It is an approval card, so it pauses the
+ * run and the owner's answer resumes it. "Allow" records consent for the recipient named in the
+ * effect (never the card), at this disclosure version.
+ */
+export function buildConsentAskBlock(
+  effectId: string,
+  recipient: { name: string; detail?: string },
+): MessageBlock {
+  return {
+    kind: "ask",
+    approvalEffectId: effectId,
+    text: `Allow your mail to be sent to ${recipient.name}${recipient.detail ? ` (${recipient.detail})` : ""}?`,
+    // The clause says the permission is standing, not for this one read.
+    detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Account settings.`,
+    consent: { version: AI_DISCLOSURE_VERSION },
+    status: "pending",
+    actions: [
+      { id: "allow", label: "Allow" },
+      { id: "deny", label: "Not now" },
+    ],
   };
 }
 

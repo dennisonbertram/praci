@@ -239,8 +239,10 @@ function formatApprovalAnswer(
   answer: string | undefined,
   actions: AskAction[] | undefined,
   approval: boolean,
+  consent = false,
 ): string {
   if (!answer) return t("Answered");
+  if (consent && approval) return answer === "allow" ? t("Allowed") : t("Not now");
   const selectedAction = actions?.find((action) => action.id === answer);
   const outcome = selectedAction?.outcome;
   if (approval && outcome === "created") return t("Created");
@@ -3755,11 +3757,13 @@ const MessageBubble = memo(function MessageBubble({
                 askBlock.answer,
                 askBlock.actions,
                 isApprovalAskBlock(askBlock),
+                Boolean(askBlock.consent),
               )}
             </Text>
           ) : canAnswer && onAnswer ? (
             <AskActions
               actions={askBlock.actions}
+              consent={Boolean(askBlock.consent)}
               accessibilityActions={actionProps.accessibilityActions}
               onAccessibilityAction={actionProps.onAccessibilityAction}
               onAnswer={(answer) => onAnswer(message, answer)}
