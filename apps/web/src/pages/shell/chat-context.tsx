@@ -1,6 +1,14 @@
+import { t } from "@lingui/core/macro";
 import { useLingui } from "@lingui/react/macro";
 import type { ReplyPreview, ThreadMessage } from "@rakazo/contracts";
-import { formatTimeSeparator, isPeerReceiptBlocks, replyLabel } from "@rakazo/core";
+import {
+  formatTimeSeparator,
+  isPeerReceiptBlocks,
+  plainTextFromMarkdown,
+  replyAttachment,
+  replyLabel,
+} from "@rakazo/core";
+import { financeCardSummary } from "@rakazo/core/message-quote";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ArtifactTarget } from "../../lib/artifact-open";
@@ -176,4 +184,24 @@ export function ReplyLine({
       </span>
     </button>
   );
+}
+
+export function previewMessageText(message: ThreadMessage): string {
+  const text = message.blocks
+    .map((block) => {
+      if (block.kind === "channel_message") return block.text;
+      if (block.kind === "finance") return financeCardSummary(block.card);
+      if (block.kind === "text") {
+        // Bot text is Markdown; user text is already plain.
+        return message.role === "bot" ? plainTextFromMarkdown(block.text) : block.text;
+      }
+      return "";
+    })
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+  if (text) return maskCurrencyWhenHidden(text);
+  const attachment = replyAttachment(message.blocks);
+  if (attachment) return attachment.kind === "image" ? t`Photo` : attachment.name || t`Attachment`;
+  return t`Message`;
 }
