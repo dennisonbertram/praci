@@ -575,6 +575,8 @@ export const KO_MESSAGES: Record<string, string> = {
   "Make sure nothing is still running on this computer.":
     "이 컴퓨터에서 실행 중인 작업이 없는지 확인하세요.",
   "Nothing is still running": "실행 중인 작업 없음",
+  Reconnect: "다시 연결",
+  "Try again": "다시 시도",
   Reconnecting: "다시 연결 중",
   "Recovering Team Computer": "팀 컴퓨터 복구 중",
   "Recovering {name}’s Computer": "{name}의 컴퓨터 복구 중",

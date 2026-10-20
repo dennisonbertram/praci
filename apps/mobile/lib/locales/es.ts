@@ -580,6 +580,8 @@ export const ES_MESSAGES: Record<string, string> = {
   "Make sure nothing is still running on this computer.":
     "Asegúrate de que no quede nada en ejecución en este ordenador.",
   "Nothing is still running": "No queda nada en ejecución",
+  Reconnect: "Reconectar",
+  "Try again": "Intentar de nuevo",
   Reconnecting: "Reconectando",
   "Recovering Team Computer": "Recuperando la computadora del equipo",
   "Recovering {name}’s Computer": "Recuperando la computadora de {name}",

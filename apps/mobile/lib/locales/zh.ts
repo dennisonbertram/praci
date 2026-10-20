@@ -31,6 +31,8 @@ export const ZH_MESSAGES: Record<string, string> = {
   Dismiss: "关闭",
   "Dismissed. Reconnect anytime from MCP settings.": "已暂缓。随时可在 MCP 设置中重新连接。",
   "Getting ready": "正在准备",
+  Reconnect: "重新连接",
+  "Try again": "重试",
   Reconnecting: "正在重新连接",
   "Recovering Team Computer": "正在恢复团队电脑",
   "Recovering {name}’s Computer": "正在恢复 {name} 的电脑",
