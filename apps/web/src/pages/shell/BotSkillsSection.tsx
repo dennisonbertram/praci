@@ -14,6 +14,7 @@ import {
 } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
+import { errorText } from "../../lib/user-error";
 
 export function SkillSourceBadge({ source }: { source: AgentSkillCatalogEntry["source"] }) {
   if (source !== "builtin" && source !== "plugin") return null;
@@ -34,6 +35,16 @@ description: What this skill does and when the agent should use it.
 
 Steps the agent should follow.
 `;
+
+/** A new skill needs front matter with a non-empty name and description, and must not be the template. */
+function isNewSkillReady(draft: string) {
+  const text = draft.trim();
+  return (
+    text !== NEW_SKILL_TEMPLATE.trim() &&
+    /^name:\s*\S/m.test(text) &&
+    /^description:\s*\S/m.test(text)
+  );
+}
 
 const fieldClass = "mt-2 w-full font-mono text-[13px] leading-relaxed";
 
@@ -105,6 +116,7 @@ export function BotSkillsSection({
     setCreating(false);
     setUrlOpen(false);
     setConfirmingDelete(false);
+    setError(null);
   }
 
   async function reload() {
@@ -159,8 +171,11 @@ export function BotSkillsSection({
       await action();
       closeEditor();
       await reload();
-    } catch {
-      setError(failure);
+    } catch (err) {
+      const code = err && typeof err === "object" && "code" in err ? err.code : undefined;
+      setError(
+        code === "CONFLICT" ? t`A skill with that name already exists` : errorText(err, failure),
+      );
     } finally {
       setBusy(false);
     }
@@ -225,7 +240,7 @@ export function BotSkillsSection({
                 onClick={() => {
                   closeEditor();
                   setCreating(true);
-                  setDraft(NEW_SKILL_TEMPLATE);
+                  setDraft("");
                   setError(null);
                 }}
               >
@@ -290,8 +305,9 @@ export function BotSkillsSection({
         </div>
       ) : null}
       {loading ? <Skeleton className="mt-2 h-10 w-full" /> : null}
-      {!editorOpen && !urlOpen
-        ? skills.map((entry) => (
+      {!editorOpen && !urlOpen ? (
+        <div className="max-h-72 overflow-y-auto" data-testid="bot-skills-list">
+          {skills.map((entry) => (
             <div key={entry.id} className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -319,8 +335,9 @@ export function BotSkillsSection({
                 onCheckedChange={(checked) => void toggle(entry, checked)}
               />
             </div>
-          ))
-        : null}
+          ))}
+        </div>
+      ) : null}
       {editorOpen ? (
         <div className="px-2.5 pb-2">
           {open ? (
@@ -333,6 +350,7 @@ export function BotSkillsSection({
           ) : null}
           <Textarea
             aria-label="SKILL.md"
+            placeholder={creating ? NEW_SKILL_TEMPLATE : undefined}
             disabled={busy}
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
@@ -346,7 +364,10 @@ export function BotSkillsSection({
               <Button
                 variant="ghost"
                 type="button"
-                disabled={busy || !draft.trim() || (!creating && draft === open?.content)}
+                disabled={
+                  busy ||
+                  (creating ? !isNewSkillReady(draft) : !draft.trim() || draft === open?.content)
+                }
                 onClick={() => void save()}
                 className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"
               >

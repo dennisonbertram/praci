@@ -26,7 +26,7 @@ function asSource(value: string): AgentSkillSource {
   return "user";
 }
 
-export function mapAgentSkill(row: AgentSkillRow): AgentSkill {
+function mapAgentSkill(row: AgentSkillRow): AgentSkill {
   const source = asSource(row.source);
   return {
     id: row.id,
@@ -53,7 +53,7 @@ function builtinCatalog(): AgentSkill[] {
   }));
 }
 
-export function resolveSkillContent(input: {
+function resolveSkillContent(input: {
   content?: string;
   name?: string;
   description?: string;

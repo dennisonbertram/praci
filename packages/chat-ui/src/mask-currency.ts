@@ -119,3 +119,6 @@ export function maskCurrencyText(text: string): string {
   }
   return out + text.slice(at);
 }
+
+/** While amounts are hidden, every figure in a pin is masked and its unit kept: "$•••", "••• mo". */
+export const maskPinFigures = (text: string) => text.replace(/\d(?:[\d,.\s]*\d)?/g, "•••");

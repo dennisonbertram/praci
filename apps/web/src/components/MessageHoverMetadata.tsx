@@ -25,7 +25,7 @@ export function MessageHoverMetadata({
         side === "end"
           ? "start-full ps-1.5 @max-sm:[@media(hover:hover)]:start-0 @max-sm:[@media(hover:hover)]:ps-0"
           : "end-full pe-1.5 @max-sm:[@media(hover:hover)]:end-0 @max-sm:[@media(hover:hover)]:pe-0"
-      } @max-sm:[@media(hover:hover)]:top-full @max-sm:[@media(hover:hover)]:bottom-auto ${reveal} [@media(hover:none)]:static [@media(hover:none)]:mt-1 [@media(hover:none)]:w-full [@media(hover:none)]:p-0 ${
+      } @max-sm:[@media(hover:hover)]:top-full @max-sm:[@media(hover:hover)]:mt-6 @max-sm:[@media(hover:hover)]:bottom-auto ${reveal} [@media(hover:none)]:static [@media(hover:none)]:mt-1 [@media(hover:none)]:w-full [@media(hover:none)]:p-0 ${
         side === "end"
           ? "[@media(hover:none)]:ms-0 [@media(hover:none)]:justify-start"
           : "[@media(hover:none)]:me-0 [@media(hover:none)]:justify-end"

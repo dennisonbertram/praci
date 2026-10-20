@@ -12,7 +12,11 @@ const text = vi.hoisted(
     (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
 );
-vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/core/macro", () => ({
+  t: text,
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
+}));
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: text, i18n: { locale: "en" } }),
   Trans: ({ children }: { children: ReactNode }) => children,
@@ -68,6 +72,7 @@ vi.mock("../components/integrations/useIntegrations", () => ({
   }),
 }));
 
+import { DATA_ROOM_CHANGED } from "../lib/data-room";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { CapTablePage, rowKind } from "./CapTable";
 
@@ -247,8 +252,8 @@ it("shows the summary, ownership legend and joined investors", async () => {
   expect(text).toContain("$1.25");
   // The 409A figure is named for what it is, with the term explained underneath.
   expect(text).toContain("Common share price$1.25From the latest 409A valuation");
-  expect(text).toContain("Series Seed Preferred 30.00%");
-  expect(text).toContain("Common 70.00%");
+  expect(text).toContain("Series Seed Preferred");
+  expect(text).toContain("70.00%");
   expect(text).toContain("1,000,000");
   expect(text).toContain("10.00%");
   expect(text).toContain("Example Ventures");
@@ -644,12 +649,6 @@ it("hides dollar amounts but keeps shares and ownership in place while amounts a
   for (const shown of ["10,000,000", "1,000,000", "10.00%", "70.00%"])
     expect(text).toContain(shown);
   expect(text).toContain("Example Ventures");
-  // The ownership bar's segments do not keep their proportions either.
-  const segments = [...container.querySelectorAll<HTMLElement>(".h-3 > div")].map(
-    (el) => el.style.width,
-  );
-  expect(segments.length).toBeGreaterThan(1);
-  expect(new Set(segments).size).toBe(1);
   await click(
     button("Show amounts") ??
       (document.querySelector("[data-testid=hide-amounts-toggle]") as HTMLElement),
@@ -799,13 +798,6 @@ it("shows All and drops ?kind when its tab is missing without a cap table", asyn
   expect(container.textContent).toContain("Ada");
 });
 
-it("colors the ownership bar in ink steps, not status colors", async () => {
-  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
-  await show();
-  const classes = container.querySelector("[data-testid=ownership-bar]")?.innerHTML ?? "";
-  expect(classes).not.toMatch(/bg-(link|warning|success|destructive)/);
-});
-
 it("has no Shareholders or Options tab without a cap table", async () => {
   await show();
   expect(button("Shareholders")).toBeUndefined();
@@ -831,16 +823,11 @@ it("shows a holder's Carta email and offers Save as contact instead of Add email
   expect(document.body.textContent).toContain("Save Priya Holder as a contact");
 });
 
-it("draws the ownership bar with equal segments while amounts are hidden", async () => {
+it("has one ownership chart: no stacked bar, true split while amounts are hidden", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  setHideAmounts(true);
   await show();
-  const widths = () =>
-    [...(container.querySelector("[data-testid=ownership-bar]")?.children ?? [])].map(
-      (el) => (el as HTMLElement).style.width,
-    );
-  expect(widths()).toEqual(["70%", "30%"]);
-  await act(async () => setHideAmounts(true));
-  expect(widths()).toEqual(["50%", "50%"]);
+  expect(container.querySelector("[data-testid=ownership-bar]")).toBeNull();
 });
 
 const folder = (id: string, name: string, parentId: string | null) => ({
@@ -900,6 +887,8 @@ it("files an import into Finance / Cap Table, creating the folder when it is mis
     files: [{ id: "g1", name: "Plan.pdf", mimeType: "application/pdf", isFolder: false, size: 10 }],
   });
   rpcMock.importDrive.mockResolvedValue({ imported: 1, duplicates: 0, failed: 0 });
+  const changed = vi.fn();
+  window.addEventListener(DATA_ROOM_CHANGED, changed);
   await show();
   await click(document.querySelector<HTMLElement>('[aria-haspopup="menu"]') ?? undefined);
   await click(
@@ -918,6 +907,10 @@ it("files an import into Finance / Cap Table, creating the folder when it is mis
     driveFolderIds: [],
     folderId: "cap",
   });
+  await flush();
+  // The Documents list under the table reloads on this event.
+  expect(changed).toHaveBeenCalled();
+  window.removeEventListener(DATA_ROOM_CHANGED, changed);
 });
 
 describe("search, filter and sort", () => {

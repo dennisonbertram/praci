@@ -1,7 +1,8 @@
 import type { Dirent } from "node:fs";
 import { readdir, rm, stat } from "node:fs/promises";
 import path from "node:path";
-import { type AgentMessage, type Branch, JsonlSessionRepo } from "@earendil-works/pi-agent-core";
+import type { AgentMessage, Branch } from "@earendil-works/pi-agent-core";
+import { JsonlSessionRepo } from "@earendil-works/pi-agent-core";
 import { BACKGROUND_CONTEXT } from "@earendil-works/pi-agent-core/harness/context";
 import { NodeExecutionEnv } from "@earendil-works/pi-agent-core/node";
 import { getLogger } from "@rakazo/logging";

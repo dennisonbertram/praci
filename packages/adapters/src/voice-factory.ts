@@ -37,7 +37,7 @@ export { SCRIPTED_VOICE_CATALOG_ENTRY };
 export type HostedVoiceProviderId = (typeof VOICE_CATALOG)[number]["id"];
 export type VoiceProviderId = HostedVoiceProviderId | "scripted";
 
-export function scriptedVoiceEnabled() {
+function scriptedVoiceEnabled() {
   return process.env.AGENT_RUNTIME === "scripted";
 }
 

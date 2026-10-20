@@ -120,6 +120,8 @@ async function main() {
     prisma,
   });
   const allowPrivateEndpoint = process.env.MCP_ALLOW_PRIVATE_ENDPOINT === "true";
+  const webOrigin = process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173";
+  const encryptionKey = resolveEncryptionKey(process.env);
   const mcpOAuth = new McpOAuthBroker(prisma, secrets, {}, allowPrivateEndpoint);
   const mcp = new McpConnector(
     prisma,
@@ -140,7 +142,7 @@ async function main() {
     pipedreamClientSecret: process.env.PIPEDREAM_CLIENT_SECRET,
     pipedreamProjectId: process.env.PIPEDREAM_PROJECT_ID,
     pipedreamEnvironment: process.env.PIPEDREAM_ENVIRONMENT,
-    encryptionKey: resolveEncryptionKey(process.env),
+    encryptionKey,
   });
   const pipedream = isPipedreamEnabled(pipedreamConfig)
     ? new PipedreamConnector(pipedreamConfig)
@@ -160,17 +162,12 @@ async function main() {
   })
     ? new ChatSdkMessagingSurface(messagingPlatforms)
     : undefined;
-  const integrationSettings = new IntegrationProviderSettings(
-    prisma,
-    secrets,
-    resolveEncryptionKey(process.env),
-    {
-      composio: isComposioEnabled(process.env.COMPOSIO_API_KEY)
-        ? new ComposioConnector(process.env.COMPOSIO_API_KEY)
-        : undefined,
-      pipedream,
-    },
-  );
+  const integrationSettings = new IntegrationProviderSettings(prisma, secrets, encryptionKey, {
+    composio: isComposioEnabled(process.env.COMPOSIO_API_KEY)
+      ? new ComposioConnector(process.env.COMPOSIO_API_KEY)
+      : undefined,
+    pipedream,
+  });
   const stack = createConnectorStack(false, undefined, [
     new InstalledConnectorProvider(prisma, secrets, {}, allowPrivateEndpoint),
     ...integrationSettings.providers(),
@@ -204,10 +201,7 @@ async function main() {
   );
   const shutdown = new AbortController();
   const mail = createMailProvider({ prisma, connectors: stack.connector });
-  const gmailPush = gmailPushConfigFromEnv(
-    process.env,
-    process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173",
-  );
+  const gmailPush = gmailPushConfigFromEnv(process.env, webOrigin);
   const executor = createRunExecutor({
     shutdownSignal: shutdown.signal,
     prisma,
@@ -240,7 +234,7 @@ async function main() {
       process.env.TYPESAFE_API_KEY ?? "",
     ].filter(Boolean),
     secretStore: secrets,
-    mcpAllowPrivateEndpoint: process.env.MCP_ALLOW_PRIVATE_ENDPOINT === "true",
+    mcpAllowPrivateEndpoint: allowPrivateEndpoint,
     deploymentModelKey,
     deploymentModelConfigured,
     dataDir,
@@ -282,7 +276,7 @@ async function main() {
             new ImessageNotificationChannel({
               prisma,
               jobs,
-              appUrl: process.env.WEB_ORIGIN ?? "http://127.0.0.1:5173",
+              appUrl: webOrigin,
             }),
           ]
         : []),

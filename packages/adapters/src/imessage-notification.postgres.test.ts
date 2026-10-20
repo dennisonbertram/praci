@@ -1,9 +1,9 @@
 import type { MessagingSurface } from "@rakazo/adapter-kit";
+import type { PrismaClient } from "@rakazo/db";
 import {
   createDb,
   createNotification,
   deleteExpiredMessagingTransport,
-  type PrismaClient,
   updateNotificationPreferences,
 } from "@rakazo/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";

@@ -114,7 +114,7 @@ export const CANCEL_PRIMARY_BROWSER_WORK = [
   'rm -f "$HOME/.browser-profiles/chromium/SingletonLock" "$HOME/.browser-profiles/chromium/SingletonCookie" "$HOME/.browser-profiles/chromium/SingletonSocket" 2>/dev/null || true',
 ].join("; ");
 
-export function cancelComputerRunWorkArgv(computerId: string, runId: string): string[] {
+function cancelComputerRunWorkArgv(computerId: string, runId: string): string[] {
   return ["bash", "-c", CANCEL_COMPUTER_RUN_WORK, "rakazo-cancel-run-work", computerId, runId];
 }
 

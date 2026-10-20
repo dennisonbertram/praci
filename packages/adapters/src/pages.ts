@@ -1,5 +1,5 @@
 import type { BotPage, PageAuthor, PageChart } from "@rakazo/contracts";
-import { BOT_PAGE_MAX_CHARS, BOT_PAGE_MAX_CHARTS } from "@rakazo/contracts";
+import { BOT_PAGE_MAX_CHARS, BOT_PAGE_MAX_CHARTS, PageChartInputSchema } from "@rakazo/contracts";
 import { splitPage } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { isUniqueViolation } from "@rakazo/db";
@@ -57,7 +57,7 @@ export async function renderPageChartSvg(chart: PageChart): Promise<string> {
 }
 
 /** Throws PageValidationError unless every chart fence parses and renders with the PlotSpec rules. */
-export async function validatePageContent(content: string): Promise<void> {
+async function validatePageContent(content: string): Promise<void> {
   if (content.length > BOT_PAGE_MAX_CHARS) {
     throw new PageValidationError(
       `The page is ${content.length} characters; the limit is ${BOT_PAGE_MAX_CHARS}.`,
@@ -68,7 +68,13 @@ export async function validatePageContent(content: string): Promise<void> {
     if (segment.kind === "invalid_chart") {
       throw new PageValidationError(`Invalid chart block: ${segment.error}`);
     }
-    if (segment.kind === "chart") charts.push(segment.chart);
+    if (segment.kind === "chart") {
+      const checked = PageChartInputSchema.safeParse(segment.chart);
+      if (!checked.success) {
+        throw new PageValidationError(`Invalid chart block: ${checked.error.issues[0]?.message}`);
+      }
+      charts.push(segment.chart);
+    }
   }
   if (charts.length > BOT_PAGE_MAX_CHARTS) {
     throw new PageValidationError(

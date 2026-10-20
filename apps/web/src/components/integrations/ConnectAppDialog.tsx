@@ -295,11 +295,8 @@ export function ConnectAppDialog({
             <DialogTitle className="text-center">
               <Trans>{item.name} connected</Trans>
             </DialogTitle>
-            <DialogDescription className="text-center">
-              {t`${row?.displayName ?? item.name} is ready.`}
-            </DialogDescription>
-            <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
-              {phase.agents === "skipped" ? null : (
+            {phase.agents === "skipped" ? null : (
+              <ul className="mt-3 space-y-1.5 text-sm text-muted-foreground">
                 <li>
                   <span className="font-bold text-success">✓ </span>
                   {phase.agents === "all" ? (
@@ -310,12 +307,8 @@ export function ConnectAppDialog({
                     <Trans>No bot uses {item.name} yet. Choose bots on its page.</Trans>
                   )}
                 </li>
-              )}
-              <li>
-                <span className="font-bold text-success">✓ </span>
-                <Trans>{item.name} now appears under Connected.</Trans>
-              </li>
-            </ul>
+              </ul>
+            )}
             <div className="mt-4 flex justify-end">
               <Button onClick={close}>
                 <Trans>Done</Trans>

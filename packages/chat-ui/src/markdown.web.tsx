@@ -184,6 +184,8 @@ type EnclosingLink = false | "open" | "rejected";
 const InsideLinkContext = createContext<EnclosingLink>(false);
 
 const ConfirmLinkContext = createContext<(url: string) => void>(() => undefined);
+/** Set by the app to open its own /app/ links through its router instead of a page load. */
+const NavigateContext = createContext<((href: string) => void) | undefined>(undefined);
 
 function pageOrigin() {
   if (typeof window === "undefined") return null;
@@ -254,6 +256,7 @@ function useExternalLinkConfirm() {
 
 function ConfirmableAnchor({ href, ...props }: React.ComponentPropsWithoutRef<"a">) {
   const request = useContext(ConfirmLinkContext);
+  const navigate = useContext(NavigateContext);
   // An in-app path such as /app/finance opens in place, like any other link in the app.
   const inApp = typeof href === "string" && href.startsWith("/") && !href.startsWith("//");
   return (
@@ -266,7 +269,16 @@ function ConfirmableAnchor({ href, ...props }: React.ComponentPropsWithoutRef<"a
       href={href}
       target={inApp ? undefined : "_blank"}
       rel={inApp ? undefined : "noreferrer noopener"}
-      onClick={(event) => holdExternalLink(event, request)}
+      onClick={(event) => {
+        const plain =
+          event.button === 0 && !(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey);
+        if (navigate && plain && typeof href === "string" && href.startsWith("/app/")) {
+          event.preventDefault();
+          navigate(href);
+          return;
+        }
+        holdExternalLink(event, request);
+      }}
       onAuxClick={(event) => holdExternalLink(event, request)}
     />
   );
@@ -541,6 +553,7 @@ export function LinkifiedText({ children: raw }: { children: string }) {
 export const ChatMarkdown = memo(function ChatMarkdown({
   children,
   streaming = false,
+  onNavigate,
 }: ChatMarkdownProps) {
   const { request, dialog } = useExternalLinkConfirm();
   const source = streaming ? closeUnterminatedFence(children) : children;
@@ -551,27 +564,29 @@ export const ChatMarkdown = memo(function ChatMarkdown({
 
   return (
     <ConfirmLinkContext.Provider value={request}>
-      <div
-        className={streaming ? "rk-chat-markdown rk-chat-markdown-streaming" : "rk-chat-markdown"}
-      >
-        <LinkFaviconsPausedContext.Provider value={streaming}>
-          <MarkdownTableSourceContext.Provider value={source}>
-            <ReactMarkdown
-              components={components}
-              remarkPlugins={[remarkGfm]}
-              rehypePlugins={rehypePlugins}
-              skipHtml
-              // MarkdownImage decides what an image source may do, so it receives the source as written.
-              urlTransform={(url, key) =>
-                key === "src" ? url : (sanitizeMarkdownUrl(url, true) ?? "")
-              }
-            >
-              {source}
-            </ReactMarkdown>
-          </MarkdownTableSourceContext.Provider>
-        </LinkFaviconsPausedContext.Provider>
-        {streaming ? <span aria-hidden="true" className="rk-chat-markdown-cursor" /> : null}
-      </div>
+      <NavigateContext.Provider value={onNavigate}>
+        <div
+          className={streaming ? "rk-chat-markdown rk-chat-markdown-streaming" : "rk-chat-markdown"}
+        >
+          <LinkFaviconsPausedContext.Provider value={streaming}>
+            <MarkdownTableSourceContext.Provider value={source}>
+              <ReactMarkdown
+                components={components}
+                remarkPlugins={[remarkGfm]}
+                rehypePlugins={rehypePlugins}
+                skipHtml
+                // MarkdownImage decides what an image source may do, so it receives the source as written.
+                urlTransform={(url, key) =>
+                  key === "src" ? url : (sanitizeMarkdownUrl(url, true) ?? "")
+                }
+              >
+                {source}
+              </ReactMarkdown>
+            </MarkdownTableSourceContext.Provider>
+          </LinkFaviconsPausedContext.Provider>
+          {streaming ? <span aria-hidden="true" className="rk-chat-markdown-cursor" /> : null}
+        </div>
+      </NavigateContext.Provider>
       {dialog}
     </ConfirmLinkContext.Provider>
   );

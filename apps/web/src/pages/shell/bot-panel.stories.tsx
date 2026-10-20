@@ -4,6 +4,15 @@ import { mockRpc } from "../../lib/__mocks__/rpc";
 import { scoutBot } from "../../stories/fixtures";
 import { BotSettings } from "./bot-panel";
 
+const manySkills = Array.from({ length: 13 }, (_, index) => ({
+  id: `user_${index}`,
+  name: `skill-${index + 1}`,
+  description: `What skill ${index + 1} does and when to use it.`,
+  source: "user" as const,
+  readOnly: false,
+  enabled: true,
+}));
+
 // Registered per story: responses reset after a meta-level beforeEach would run.
 const setup = () => {
   mockRpc({
@@ -17,7 +26,7 @@ const setup = () => {
     "botSecrets.list": [],
     "memory.list": [],
     "agentSkills.list": [],
-    "agentSkills.forBot": [],
+    "agentSkills.forBot": manySkills,
   });
 };
 
@@ -53,6 +62,9 @@ export const Default: Story = { beforeEach: setup };
 
 export const AdvancedOpen: Story = { beforeEach: setup, play: openAdvanced };
 
+/** 13 skills scroll inside their own list, so Advanced stays reachable. */
+export const ThirteenSkillsAdvancedOpen: Story = { beforeEach: setup, play: openAdvanced };
+
 export const AdvancedWithMemoryScopeAndDisabledTools: Story = {
   beforeEach: setup,
   args: {
@@ -87,7 +99,9 @@ export const SaveFailed: Story = {
     },
   },
   play: async ({ canvasElement }) => {
-    await userEvent.click(await within(canvasElement).findByRole("button", { name: "Save" }));
+    const canvas = within(canvasElement);
+    await userEvent.click(await canvas.findByLabelText("Name"));
+    await userEvent.tab();
   },
 };
 

@@ -106,7 +106,7 @@ export interface DataRoomDeps {
   blobDeleteDelayMs?: number;
 }
 
-export const folderDto = (folder: DataRoomFolderRecord): DataRoomApiFolder => ({
+const folderDto = (folder: DataRoomFolderRecord): DataRoomApiFolder => ({
   id: folder.id,
   name: folder.name,
   parentId: folder.parentId,
@@ -114,7 +114,7 @@ export const folderDto = (folder: DataRoomFolderRecord): DataRoomApiFolder => ({
 });
 
 /** The storage key stays on the server. */
-export const itemDto = (item: DataRoomItemRecord): DataRoomApiItem => ({
+const itemDto = (item: DataRoomItemRecord): DataRoomApiItem => ({
   id: item.id,
   name: item.name,
   mimeType: item.mimeType,
@@ -139,7 +139,7 @@ export const itemDto = (item: DataRoomItemRecord): DataRoomApiItem => ({
 });
 
 /** A record the actor cannot see is "not found"; a folder name clash or cycle is a conflict. */
-export async function dataRoomCall<T>(run: () => Promise<T>): Promise<T> {
+async function dataRoomCall<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run();
   } catch (error) {

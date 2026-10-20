@@ -4,7 +4,7 @@ import { memo, useCallback } from "react";
 import { Pressable, Text, View } from "react-native";
 import type { MobileBot, MobileGroup } from "../lib/api";
 import type { InboxSpace, InboxSpaceItem } from "../lib/inbox-spaces";
-import { canDeleteInboxSpace } from "../lib/inbox-spaces";
+import { canDeleteInboxSpace, canRenameInboxSpace } from "../lib/inbox-spaces";
 import { useThemedStyles } from "../lib/native";
 import { searchHitRowPreview } from "../lib/search-list";
 import { BotRow, GroupRow } from "./inbox-rows";
@@ -49,6 +49,7 @@ export type InboxRenderItemDeps = {
   collapsedRosterParents: ReadonlySet<string>;
   confirmDeleteSpace: (space: InboxSpace) => void;
   day: number;
+  renameSpace: (space: InboxSpace) => void;
   meSpaceId: string | undefined;
   openBot: Callback<[MobileBot | SpaceBot]>;
   openGroup: Callback<[MobileGroup | SpaceGroup]>;
@@ -70,6 +71,7 @@ export function useInboxRenderItem({
   collapsedRosterParents,
   confirmDeleteSpace,
   day,
+  renameSpace,
   meSpaceId,
   openBot,
   openGroup,
@@ -104,19 +106,38 @@ export function useInboxRenderItem({
             >
               <Text style={styles.spaceTitle}>{item.title}</Text>
             </Pressable>
-            {canDeleteInboxSpace(item.space) ? (
+            {canDeleteInboxSpace(item.space) || canRenameInboxSpace(item.space) ? (
               <MenuView
                 actions={[
-                  {
-                    id: "delete",
-                    title: t("Delete space"),
-                    image: "trash",
-                    attributes: { destructive: true, disabled: spaceBusy || !!spaceRecoveryId },
-                  },
+                  ...(canRenameInboxSpace(item.space)
+                    ? [
+                        {
+                          id: "rename",
+                          title: t("Rename space"),
+                          image: "pencil" as const,
+                          attributes: { disabled: spaceBusy || !!spaceRecoveryId },
+                        },
+                      ]
+                    : []),
+                  ...(canDeleteInboxSpace(item.space)
+                    ? [
+                        {
+                          id: "delete",
+                          title: t("Delete space"),
+                          image: "trash" as const,
+                          attributes: {
+                            destructive: true,
+                            disabled: spaceBusy || !!spaceRecoveryId,
+                          },
+                        },
+                      ]
+                    : []),
                 ]}
                 colorScheme={appearance}
-                onPressAction={() => {
-                  if (item.space) confirmDeleteSpace(item.space);
+                onPressAction={({ nativeEvent }) => {
+                  if (!item.space) return;
+                  if (nativeEvent.event === "rename") renameSpace(item.space);
+                  else confirmDeleteSpace(item.space);
                 }}
               >
                 <View
@@ -129,8 +150,22 @@ export function useInboxRenderItem({
               </MenuView>
             ) : null}
           </View>
+        ) : item.kind === "folder" ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: !item.collapsed }}
+            onPress={() => toggleRosterParent(item.key)}
+          >
+            <Text style={styles.sectionHeading}>{item.title}</Text>
+          </Pressable>
         ) : (
-          <Text style={styles.sectionHeading}>{item.title}</Text>
+          <Text style={styles.sectionHeading}>
+            {item.kind === "pinned"
+              ? t("Pinned")
+              : item.kind === "unassigned"
+                ? t("Unassigned")
+                : item.title}
+          </Text>
         )
       ) : item.type === "group" ? (
         <GroupRow
@@ -157,6 +192,7 @@ export function useInboxRenderItem({
       collapsedRosterParents,
       confirmDeleteSpace,
       day,
+      renameSpace,
       meSpaceId,
       openBot,
       openGroup,

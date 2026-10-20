@@ -14,7 +14,8 @@ import {
   CommandShortcut,
   Kbd,
 } from "@rakazo/ui-web";
-import { Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 
 function isApplePlatform() {
   if (typeof navigator === "undefined") return false;
