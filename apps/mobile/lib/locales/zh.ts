@@ -107,7 +107,7 @@ export const ZH_MESSAGES: Record<string, string> = {
   "Add Treg": "添加 Treg",
   "Agent messages": "智能体消息",
   "Alerts from routines": "来自例行任务的提醒",
-  "Allowed": "已允许",
+  Allowed: "已允许",
   "Allowed once": "已允许一次",
   "Allow once": "允许一次",
   "Already have an account?": "已有账户？",

@@ -100,7 +100,7 @@ export const PT_BR_MESSAGES: Record<string, string> = {
   "Add a voice provider in Voice settings.":
     "Adicione um provedor de voz nas configurações de Voz.",
   Agent: "Agente",
-  "Allowed": "Permitido",
+  Allowed: "Permitido",
   "Allowed once": "Permitido uma vez",
   "Always allowed": "Sempre permitido",
   Answer: "Resposta",

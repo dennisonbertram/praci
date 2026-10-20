@@ -98,7 +98,7 @@ export const KO_MESSAGES: Record<string, string> = {
   "@{name}": "@{name}",
   "Add a voice provider in Voice settings.": "음성 설정에서 음성 제공업체를 추가하세요.",
   Agent: "에이전트",
-  "Allowed": "허용됨",
+  Allowed: "허용됨",
   "Allowed once": "한 번 허용됨",
   "Always allowed": "항상 허용됨",
   Answer: "답변",
