@@ -1,5 +1,7 @@
 ---
 import "../styles/global.css";
+// Switch to https://github.com/dennisonbertram/praci once that repository exists.
+const github = "https://github.com/dennisonbertram/rakazo";
 ---
 
 <html lang="en">
@@ -7,27 +9,49 @@ import "../styles/global.css";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Praci</title>
-    <meta name="description" content="An open-source AI coworker. Join the waitlist." />
+    <meta name="description" content="Open-source AI agents that run your inbox, cash, cap table and investor documents." />
   </head>
   <body>
+    <header>
+      <a class="brand" href="/">Praci</a>
+      <a href={github}>GitHub</a>
+    </header>
     <main>
-      <h1>Praci</h1>
-      <p>An open-source AI coworker. Join the waitlist.</p>
-      <form id="join" novalidate>
-        <label class="sr-only" for="email">Email address</label>
-        <input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="254" required />
-        <div hidden><input name="contactNote" type="text" autocomplete="off" tabindex="-1" /></div>
-        <button type="submit">Join</button>
-      </form>
-      <p id="status" aria-live="polite"></p>
+      <h1>An AI team for the work that runs your company.</h1>
+      <p class="lead">
+        Praci is open-source agents that run your inbox, cash, cap table and investor documents.
+        Run it yourself, or use the hosted version.
+      </p>
+      <ul>
+        <li>Open source, with your own keys and models.</li>
+        <li>Agents ask before they send, pay or change anything.</li>
+        <li>Self-host it, or let us run it for you.</li>
+      </ul>
+      <section id="hosted">
+        <h2>Get the hosted version</h2>
+        <form id="join" novalidate>
+          <label class="sr-only" for="email">Email address</label>
+          <input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="254" placeholder="Email" required />
+          <label class="sr-only" for="name">Name (optional)</label>
+          <input id="name" name="name" type="text" autocomplete="name" maxlength="100" placeholder="Name (optional)" />
+          <label class="sr-only" for="company">Company (optional)</label>
+          <input id="company" name="company" type="text" autocomplete="organization" maxlength="100" placeholder="Company (optional)" />
+          <div hidden><input name="contactNote" type="text" autocomplete="off" tabindex="-1" /></div>
+          <button type="submit">Join the waitlist</button>
+        </form>
+        <p id="status" aria-live="polite"></p>
+      </section>
     </main>
+    <footer>
+      <span>Praci</span>
+      <a href={github}>GitHub</a>
+    </footer>
     <script>
       const form = document.querySelector<HTMLFormElement>("#join")!;
       const status = document.querySelector<HTMLElement>("#status")!;
+      const field = (name: string) => (form.elements.namedItem(name) as HTMLInputElement).value;
       const email = form.elements.namedItem("email") as HTMLInputElement;
-      const note = form.elements.namedItem("contactNote") as HTMLInputElement;
       const submit = form.querySelector("button")!;
-      const ref = new URLSearchParams(location.search).get("ref") ?? undefined;
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
@@ -38,13 +62,19 @@ import "../styles/global.css";
           const response = await fetch("/api/join", {
             method: "POST",
             headers: { "content-type": "application/json" },
-            body: JSON.stringify({ email: email.value, ref, contactNote: note.value }),
+            body: JSON.stringify({
+              email: email.value,
+              name: field("name"),
+              company: field("company"),
+              contactNote: field("contactNote"),
+            }),
           });
+          if (response.status === 429) throw new Error("Too many attempts. Try again later.");
           if (!response.ok) throw new Error();
           form.hidden = true;
-          status.textContent = "Check your email to confirm.";
-        } catch {
-          status.textContent = "Something went wrong. Try again.";
+          status.textContent = "You are on the list. We will email you when the hosted version is ready.";
+        } catch (error) {
+          status.textContent = (error as Error).message || "Something went wrong. Try again.";
           submit.disabled = false;
         }
       });
