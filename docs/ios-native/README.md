@@ -6,7 +6,7 @@ Status: research only. Nothing here is built. The phased build plan is in [plan.
 
 ## 1. Recommendation
 
-Build a native SwiftUI app under the same bundle id and App Store record as the Expo app, with an iOS 26 minimum and the Xcode 27.1 SDK. Gate iPhone Duo APIs behind `if #available(iOS 27.1, *)`.
+Build a native SwiftUI app under the same bundle id and App Store record as the Expo app, with the Xcode 27.1 SDK and a proposed (not yet decided) iOS 26 minimum. Gate iPhone Duo APIs behind `if #available(iOS 27.1, *)`.
 
 Why native rather than more Expo:
 - The Expo app is already a thin client over one typed RPC API. It has one small Swift module and no widgets, share extension, Live Activities or App Intents, so there is little native code to migrate.
@@ -19,7 +19,7 @@ Cost of going native: losing over-the-air JS updates (`eas update`), a second cl
 
 - Server: `apps/api` (Hono + oRPC), handlers in `apps/api/src/router.ts`. A separate worker (`apps/worker`) runs jobs, agent runs and push. Postgres, with LISTEN/NOTIFY for realtime fan-out across API processes. Caddy proxies `/api/*` and `/rpc/*` to the API.
 - Every call is `POST {base}/rpc/<namespace>/<procedure>` with body `{"json": input}` and response `{"json": output}`. Nested procedures use `/` (`inbox/compose/send`).
-- Errors: non-2xx with `{"json": {"code", "status", "message"}}`. Show `message`. Codes in use: BAD_REQUEST, CONFLICT, FORBIDDEN, NOT_FOUND, UNAUTHORIZED, SERVICE_UNAVAILABLE, BAD_GATEWAY, NOT_IMPLEMENTED.
+- Errors on `/rpc/*`: non-2xx with `{"json": {"defined", "code", "status", "message", "data"}}`. Show `message`. Codes in use: BAD_REQUEST, CONFLICT, FORBIDDEN, NOT_FOUND, UNAUTHORIZED, PRECONDITION_FAILED, PAYLOAD_TOO_LARGE, TOO_MANY_REQUESTS, SERVICE_UNAVAILABLE, BAD_GATEWAY, NOT_IMPLEMENTED, INTERNAL_SERVER_ERROR. The plain HTTP routes (`/api/data-room/*`, `/api/voice/*`, `/api/inbox/messages/*`) return `{"error": "..."}` with a plain status instead.
 - Headers on every call: `authorization: Bearer <token>`, `x-rakazo-space-id: <space>` (when chosen), `origin: rakazo://` (required by Better Auth's origin check), `content-type: application/json`.
 - Limits: 16 MB request body on `/rpc/*`, 64 KB on `/api/auth/*`. Mobile uses an 8 s timeout and a 16 MB response cap.
 - No API versioning. `health` returns a fixed version. Servers are self-hosted and can lag, so the client must treat a 404 on a newer procedure as "not supported" and tolerate missing optional fields.
@@ -50,22 +50,23 @@ Better Auth under `/api/auth/*` (`packages/auth/src/index.ts`), bearer plugin.
 
 ## 5. Realtime and the thread
 
-- Transport is SSE over oRPC, not WebSocket. `POST /rpc/threads/subscribe` with `accept: text/event-stream` and `{botId|groupId, cursor}`. Frames are `data: {"json": ProductEvent}` separated by blank lines; ignore `[DONE]`.
+- Transport is SSE over oRPC, not WebSocket. `POST /rpc/threads/subscribe` with `accept: text/event-stream` and `{botId|groupId, cursor}`. The stream opens with a `: ` comment line. Each frame has an `event:` line: `event: message` with `data: {"json": ProductEvent}`, `event: done` (clean close), or `event: error` with the RPC error body. An `error` frame with status 401 means the session ended or the user left the space mid-stream; sign out or re-select the space instead of reconnecting. The server never sends `[DONE]`.
 - `ProductEvent` is `{id, spaceId, threadId, botId, seq, type, runId?, createdAt, payload}`. About 45 types: `thread.message.created/updated/reaction`, `thread.progress`, `thread.ask`, `thread.choice`, `thread.computer`, `run.started/waiting_input/completed/failed/cancelled`, `computer.takeover.*`, `pins.updated`, `heartbeat`, and more (`packages/contracts/src/events.ts`).
-- Heartbeat every 20 s with `seq: 0`; never advance the cursor on it. Reconnect after 45 s of silence. On every drop: fetch `threads/get`, then resubscribe from the highest `seq` seen, with backoff 250 ms doubling to 5 s. In Swift: `URLSession.bytes(for:)` plus a frame splitter and a watchdog.
+- A heartbeat event (`seq: 0`) arrives after 20 s with no other event; never advance the cursor on it. Reconnect after 45 s of silence. On every drop: fetch `threads/get`, then resubscribe from the highest `seq` seen, with backoff 250 ms doubling to 5 s. In Swift: `URLSession.bytes(for:)` plus a frame splitter and a watchdog.
 - Snapshot: `threads/get` returns `{threadId, cursor, messages, olderCursor, lastReadSeq, run, activeRuns, computer, members}`. Older pages through `threads/messages`.
 - Port target: `reduceThreadSnapshot` in `packages/core/src/thread-snapshot-reducer.ts` (shared by web and mobile), plus `events.ts` (live progress folding) and `thread-subscription.ts`.
 - Streaming text: `thread.progress` events carry `delta` or `text` and build a synthetic `progress:<runId>` message that the final `thread.message.created` replaces. Mobile hides streamed text by default (a "Response streaming" preference) and shows tool steps.
 - Message blocks (`kind`): text (markdown), image, file, ask, choice, card, app_connect, connect, computer, voice_call, meta, progress, steps, subagent, child_bot, cloud_agent, skill_draft, chart (Observable Plot spec), mcp_approval, emails, finance, handoff, channel and bot messages.
-- Sending: upload each attachment with `artifacts/create` (base64, 10 MB, up to 4), then `threads/send {target, text, artifactIds, dataRoomItemIds, mentions, replyToMessageId, replyQuote, clientNonce}`. Without a connected model the server returns "Connect a model to start a run".
-- Durable outbox (port `apps/mobile/lib/outbox-disk.ts` and `thread-feedback.ts`): states queued, pending, failed, refused; unreachable or 429 re-queues; other 4xx refuse; keep the accepted `seq` until the echo arrives.
-- Reactions: six fixed reactions through `threads/react`. Replies and quotes: `replyToMessageId` and `replyQuote`. Messages are not editable. Read state: `lastReadSeq`, `threads/markRead`, `threads/markUnread`.
+- Sending: upload each attachment with `artifacts/create` (base64, 10 MB, up to 4; mobile allows 60 s for uploads), then `threads/send {botId|groupId, text, artifactIds, dataRoomItemIds, mentions, replyToMessageId, replyQuote, clientNonce}`. Allowed attachment types are a fixed list in `packages/contracts/src/attachments.ts` (jpeg, png, webp, gif, pdf, text and a few file types), so convert HEIC photos to JPEG first. Without a connected model the server returns "Connect a model to start a run".
+- Durable outbox (port `apps/mobile/lib/outbox-disk.ts` and `thread-feedback.ts`): stored states queued, failed, refused. Unreachable or 429 goes back to queued; 4xx other than 408, 425 and 429 is refused; anything else is failed. Caps: 20 entries and 50 MB, in the OS cache directory, which the system may evict. Keep the accepted `seq` until the echo arrives.
+- Reactions: six fixed reactions through `threads/react`. Replies and quotes: `replyToMessageId` and `replyQuote`. Messages are not editable.
+- Read state: `lastReadSeq` is a message sequence number, but rows built from live events carry the event sequence number in `seq`. Compute the unread divider only from the `threads/get` snapshot, and call `threads/markRead` with `upToMessageId` (or `toEnd`); `threads/markUnread` also exists.
 
 ## 6. Approvals
 
 All approvals are message blocks answered through RPC; the run waits in `waiting_input`. The client renders and relays and makes no policy decisions.
 
-- Tool and write approval: an `ask` block with `approvalEffectId` and actions `allow`, `always`, `deny`. Answer with `threads/answer {target, runId, messageId, answer, clientNonce}`. A second answer returns CONFLICT.
+- Tool and write approval: an `ask` block with `approvalEffectId` and actions `allow`, `always`, `deny`. Answer with `threads/answer {botId|groupId, runId, messageId, answer, clientNonce}`. A second answer returns CONFLICT.
 - Mail approval: `ask.mail` (`mail_draft` or `mail_send`, recipients, subject, body, outcome). Edit-and-send uses `answer: "allow"` plus `mail: {to, cc, bcc, subject, body}`. Outcomes: sent, saved, unknown, failed.
 - Secret asks (`input: "secret"`): never log, cache or persist the value. Login secrets also send `username`.
 - MCP approval: `mcp/assignments/approve` or `dismiss`. If OAuth is needed, send the user to the web app.
@@ -78,12 +79,12 @@ All approvals are message blocks answered through RPC; the run waits in `waiting
 | --- | --- | --- |
 | Bootstrap | `bootstrap`, `me`, `spaces.list` | `me.needsModel` means the user must connect a model first |
 | Bots, groups, sections | `bots.*`, `groups.*` (2-6 bots), `botSections.*` | Avatar `color` is hex, `#hex::shape_N`, or a data URL; parse like `parseBotAvatarValue` |
-| Inbox | `inbox.list/get/refresh/markRead/archive/unarchive/feedback`, `inbox.compose.*`, `inbox.todos.*` | Needs reply, Important and categories are client groupings over row fields. Never auto-retry a send that returns `unknown`. `MAIL_WRITES_DISABLED` turns writes off |
-| Mail attachments | `GET /api/inbox/messages/:id/attachments/:attachmentId` | Remote images go through a signed proxy; render HTML in a no-network web view |
-| Finance | `finance.*` | Integer cents, USD only. Mercury and Brex connect through MCP OAuth. Hide amounts is client-only; mask chat finance cards too |
+| Inbox | `inbox.list/get/refresh/markRead/archive/unarchive/feedback`, `inbox.compose.*`, `inbox.todos.*` | Needs reply, Important and categories are client groupings over row fields. Compose returns saved, sent, unknown, reconnect, disabled or failed; never auto-retry `unknown`. When the server turns mail writes off, compose returns `disabled` and archive or mark read fail with "Changing mail is turned off." |
+| Mail attachments | `GET /api/inbox/messages/:id/attachments/:attachmentId` | Render HTML with scripts off, navigation blocked and a CSP of `script-src 'none'; img-src data: https:`; remote images load through the signed `/api/inbox/image` proxy URLs |
+| Finance | `finance.*` | Money in integer cents; transactions carry a currency and non-USD ones are left out of totals. Mercury and Brex connect through MCP OAuth. Hide amounts is client-only; mask chat finance cards too |
 | Legal | `legal.*` | Runs only with the user's own OpenRouter key; show `modelBlocker` |
 | Cap table | `carta.*` | `snapshot: null` until Carta is connected |
-| Data room | `dataRoom.*`, `POST /api/data-room/upload`, `GET …/content`, `GET …/thumbnail` | Upload raw bytes up to 50 MB; items process asynchronously; search highlights use U+0001/U+0002 as plain-text markers; no share links |
+| Data room | `dataRoom.*`, `POST /api/data-room/upload?name=…&folderId=…`, `GET …/content`, `GET …/thumbnail` | Upload raw bytes up to 50 MB (201 when new, 200 with `duplicate` when the same file exists); items process asynchronously; search highlights use U+0001/U+0002 as plain-text markers; no share links |
 | Artifacts | `artifacts.*` | Preview by MIME type: sandboxed HTML, markdown, PDF, images; others download or share |
 | Integrations, MCP | `connections.*`, `mcp.*`, `integrationSetup.*`, `capabilities.*` | Connect: open `authorizationUrl` in Safari, then poll `connections.complete` every 2 s. MCP OAuth is web-only. Never offer `stdio` MCP on iOS |
 | Routines | `routines.*`, `runs.list` | New routines start inactive and need a trigger |
@@ -100,7 +101,7 @@ Not available to a native client: desktop-only settings RPC, Electron features, 
 ## 8. Voice and Team Computer
 
 - Voice has no WebRTC. A call is a turn loop: on-device dictation (`SFSpeechRecognizer`, with the app's own 1.2 s silence endpointer and an upload-and-transcribe fallback), then `threads/send`, then wait for the run to settle, then speak the reply (`/api/voice/speak` mp3, or on-device speech when the user prefers). Barge-in stops speech. `threads/endCall` files the summary. Port `apps/mobile/lib/call-session.ts` and `dictation.ts`. Voice needs AI consent for `voice`.
-- Team Computer is a noVNC page. `computer/screenUrl` returns a one-hour capability URL; load it in `WKWebView`. Poll `computer/status` about every 2 s, call `computer/heartbeat` every 60 s, and renew the URL at 50 minutes without reloading the view. Take control with `computer/takeover` (15-minute lease) and give it back with `computer/release {reason: done|skipped}`. The keyboard bar diffs text into commands and runs them with `evaluateJavaScript("window.rakazoComputerKeyboard?.run(…)")`; listen for the ready message with `WKScriptMessageHandler`. Do not reimplement VNC.
+- Team Computer is a noVNC page. `computer/screenUrl` returns a one-hour capability URL, or null; load it in `WKWebView`. The URL is view-only unless the user holds the control lease, so re-read it after take control and release, and whenever the control holder changes in `computer/status`. Poll `computer/status` about every 2 s, call `computer/heartbeat` every 60 s, and renew the URL at 50 minutes without reloading the view. Take control with `computer/takeover` and use its `expiresAt` (the lease defaults to 15 minutes but is configurable), and give it back with `computer/release {reason: done|skipped}`. The keyboard bar diffs text into commands and runs them with `evaluateJavaScript("window.rakazoComputerKeyboard?.run(…)")`. The page's ready probe posts through `window.ReactNativeWebView.postMessage`, so inject a shim with that name that forwards to a `WKScriptMessageHandler`. Do not reimplement VNC.
 
 ## 9. Push notifications (needs a server change)
 
@@ -110,6 +111,7 @@ The server sends only through Expo's push service and stores Expo push tokens (`
 
 - Keychain: session token, server origin, selected space, preferences. Wipe every cache when the session, server or space changes.
 - Saved chats: show the last saved snapshot instantly (last 100 messages per chat, 40 chats, 20 MB total), redact secret asks, and replace it with `threads/get` as soon as it arrives. The server always wins.
+- A saved Home snapshot (bots, groups, sections, spaces, `me`; up to 10 per scope), an integrations cache and an artifact cache, so Home shows while offline.
 - Outbox for unsent messages (section 5). Nothing else works offline.
 
 ## 11. App structure
@@ -135,7 +137,7 @@ Decided:
 - Push: add an APNs provider to the server that accepts raw device tokens alongside Expo tokens.
 
 Open:
-3. Minimum iOS version (26 recommended; Textual needs 18+).
-4. Whether to add the OpenAPI export to `packages/contracts` (needed for generated Swift models).
-5. Billing on iOS: in-app purchase or "manage on web".
-6. Whether to add missing APIs the designs assume: space member management, data-room share links, mail labels.
+1. Minimum iOS version (26 recommended; Textual needs 18+).
+2. Whether to add the OpenAPI export to `packages/contracts` (needed for generated Swift models).
+3. Billing on iOS: in-app purchase or "manage on web".
+4. Whether to add missing APIs the designs assume: space member management, data-room share links, mail labels.

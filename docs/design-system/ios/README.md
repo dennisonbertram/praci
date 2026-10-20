@@ -2,7 +2,7 @@
 
 Design source for the Rakazo iOS app in Apple's Liquid Glass style, including the iPhone Duo outer and inner displays. These are design boards, not shipped code. The tokens in `@rakazo/ui-tokens` stay the single source of truth for color; the boards only apply them.
 
-The boards are `.dc.html` design-canvas files. They load the canvas runtime (`support.js`), so open them in the design canvas rather than directly in a browser. `canvas.json` holds the board layout.
+The boards are `.dc.html` design-canvas files. They load the canvas runtime (`support.js`), which the design canvas provides and this repo does not include, so open them in the design canvas rather than directly in a browser. Opened directly, they show unstyled markup and the boards that fill rows from data stay empty. `canvas.json` holds the board layout.
 
 ## Contents
 
@@ -31,4 +31,4 @@ The boards are `.dc.html` design-canvas files. They load the canvas runtime (`su
 
 ## Estimates
 
-Apple publishes pixel sizes for iPhone Duo but not point sizes, corner radius, fold width or the Dynamic Island position. The point sizes here are the panel resolution divided by 3, and the other values are marked "est." on the boards. Board heights were set by hand and may need trimming after review.
+Apple publishes pixel sizes for iPhone Duo but not point sizes, corner radius, fold width or the Dynamic Island position. The point sizes here are the panel resolutions from Apple's specs page (outer 1398×2034, inner 1878×2670) divided by 3; the App Store screenshot sizes for the inner display are larger (2007×2853), so the inner sizes are less certain, and the other values are marked "est." on the boards. Board heights were set by hand and may need trimming after review.
