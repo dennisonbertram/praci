@@ -351,6 +351,26 @@ describe("cleanup screen", () => {
     expect(content).not.toContain("Also in Gmail");
   });
 
+  it("shows the learned pile with Forget, which forgets only the learned pile", async () => {
+    const learned = sender("news@lists.example.test", { learnedPile: "newsletters" });
+    listReply = () => ({
+      accounts: [{ connectionId: "c1", label: "Me" }],
+      senders: [learned],
+      syncedAt: null,
+    });
+    await render();
+    expect(container.textContent).toContain("Learned Newsletters");
+    const forget = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "Forget",
+    );
+    await act(async () => forget?.click());
+    expect(state.rpc).toHaveBeenCalledWith("inbox/cleanup/forget", {
+      connectionId: "c1",
+      address: "news@lists.example.test",
+      learned: true,
+    });
+  });
+
   it("lists the history and undoes an action after a confirm", async () => {
     historyReply = () => ({
       actions: [

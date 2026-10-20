@@ -193,9 +193,13 @@ export function InboxCleanup({
     }
   };
 
-  const stop = async (connection: string, address: string) => {
+  const stop = async (connection: string, address: string, learned = false) => {
     try {
-      await rpc.inbox.cleanup.forget({ connectionId: connection, address });
+      await rpc.inbox.cleanup.forget({
+        connectionId: connection,
+        address,
+        ...(learned && { learned }),
+      });
     } catch (cause) {
       setError(errorText(cause));
     }
@@ -295,6 +299,7 @@ export function InboxCleanup({
                         manyAccounts ? accountLabels.get(sender.connectionId) : undefined
                       }
                       onStop={() => void stop(sender.connectionId, sender.address)}
+                      onForgetLearned={() => void stop(sender.connectionId, sender.address, true)}
                       disabled={busy}
                     />
                   );

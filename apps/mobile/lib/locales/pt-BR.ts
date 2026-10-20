@@ -825,6 +825,11 @@ export const PT_BR_MESSAGES: Record<string, string> = {
   Skipping: "Ignorando",
   "Gmail filter limit reached": "Limite de filtros do Gmail atingido",
   "Couldn't add Gmail filter": "Não foi possível adicionar o filtro do Gmail",
+  Learned: "Aprendido",
+  Forget: "Esquecer",
+  Senders: "Remetentes",
+  Digest: "Resumo",
+  "Archive all": "Arquivar tudo",
   History: "Histórico",
   Undo: "Desfazer",
   "Send an unsubscribe email to {address}?":

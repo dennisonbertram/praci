@@ -8,7 +8,7 @@ import type {
   MailRow,
 } from "@rakazo/contracts";
 import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
-import { archivableIds, bulkInChunks, groupBySender, groupInbox } from "@rakazo/core";
+import { archivableIds, bulkInChunks, digestRows, groupBySender, groupInbox } from "@rakazo/core";
 import {
   Button,
   DropdownMenu,
@@ -29,6 +29,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -39,6 +40,7 @@ import {
   ListFilter,
   Mail,
   MailWarning,
+  Newspaper,
   Search,
   ShieldAlert,
   ShieldCheck,
@@ -53,6 +55,7 @@ import { AskBotButton } from "../components/AskBotButton";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { InboxCleanup } from "../components/inbox/InboxCleanup";
+import { InboxDigest } from "../components/inbox/InboxDigest";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
 import { InboxPileTabs } from "../components/inbox/InboxPileTabs";
 import { InboxGroup, type MailMoveOp } from "../components/inbox/InboxRow";
@@ -230,6 +233,9 @@ function InboxListPage({
   const lastPicked = useRef<string | undefined>(undefined);
   // Sender groups opened in the Updates and Newsletters piles, by group key.
   const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  // The Newsletters pile read as one card per issue; it ends when another pile opens.
+  const [digest, setDigest] = useState(false);
+  useEffect(() => setDigest(false), [pile]);
   // The last pile counts the server sent; a filtered list carries none, so the Spam count stays.
   const [pileCounts, setPileCounts] = useState<InboxPileCounts | undefined>();
   const [help, setHelp] = useState(false);
@@ -468,6 +474,11 @@ function InboxListPage({
   // Updates and Newsletters list one group per sender; Spam is a flat list; Important is dated.
   const grouped = pile === "updates" || pile === "newsletters";
   const senderGroups = useMemo(() => (grouped ? groupBySender(rows) : []), [grouped, rows]);
+  const digestOn = digest && pile === "newsletters";
+  const digestList = useMemo(
+    () => (digestOn ? digestRows(rows, new Date()) : []),
+    [digestOn, rows],
+  );
   const groups = useMemo(
     () =>
       groupInbox(
@@ -489,6 +500,7 @@ function InboxListPage({
   );
   // Display order. A group header takes its own id; a sender with one message shows as that message.
   const ids = useMemo(() => {
+    if (digestOn) return digestList.map((row) => row.id);
     if (grouped)
       return senderGroups.flatMap((group) =>
         group.count === 1
@@ -500,7 +512,7 @@ function InboxListPage({
       );
     if (pile === "spam") return rows.map((row) => row.id);
     return [...groups.needsReply, ...groups.today, ...groups.earlier].map((row) => row.id);
-  }, [grouped, senderGroups, expanded, pile, rows, groups]);
+  }, [digestOn, digestList, grouped, senderGroups, expanded, pile, rows, groups]);
   // The messages the open message's arrows and the prefetch can reach.
   const messageIds = useMemo(() => ids.filter((id) => !isSenderGroupId(id)), [ids]);
   const accounts = data?.accounts ?? [];
@@ -1170,11 +1182,24 @@ function InboxListPage({
         }
       />
       {accounts.length > 0 ? (
-        <InboxPileTabs
-          value={pile}
-          counts={pileCounts}
-          onChange={(next) => setParam("pile", next === "important" ? "" : next)}
-        />
+        <div className="flex items-start justify-between gap-2">
+          <InboxPileTabs
+            value={pile}
+            counts={pileCounts}
+            onChange={(next) => setParam("pile", next === "important" ? "" : next)}
+          />
+          {pile === "newsletters" ? (
+            <Toggle
+              size="sm"
+              className="-mt-2 mb-4"
+              aria-label={t`Digest`}
+              pressed={digest}
+              onPressedChange={setDigest}
+            >
+              <Newspaper aria-hidden="true" />
+            </Toggle>
+          ) : null}
+        </div>
       ) : null}
       {accounts.length > 1 ? (
         <Tabs
@@ -1358,7 +1383,14 @@ function InboxListPage({
               </Button>
             </div>
           ) : null}
-          {grouped ? (
+          {digestOn ? (
+            <InboxDigest
+              rows={digestList}
+              onOpen={openMessage}
+              onArchiveAll={() => archiveMany(digestList)}
+              selectedId={selectedId}
+            />
+          ) : grouped ? (
             <section className="mb-5">
               <div className="border-t border-foreground/10">
                 {senderGroups.map((group) => (

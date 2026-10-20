@@ -105,8 +105,17 @@ message on with its hints.
    `Precedence: bulk|list`, `Auto-Submitted`, Gmail's promotions/social/updates
    categories, no-reply senders. Decides Newsletters or Updates for clear cases. Mail
    that looks like a security alert, a bill or a direct ask goes to the model instead.
+   Mail with list headers (`List-Id`, `List-Unsubscribe`, bulk precedence) goes to
+   Newsletters, even when Gmail filed it under Updates, unless a transactional hint keeps
+   it in Updates: `Auto-Submitted`, Gmail's social category, a receipt, order, shipping or
+   delivery subject, or a no-reply sender without a `List-Id` or promotions category.
 5. **Learned sender decision**: once the model has put an authenticated sender in the
    same pile a few times with high confidence, store that as the sender's decision.
+   Built as: three agreeing, conflict-free model verdicts (the model's confidence is not
+   stored), DKIM or SPF passing and none failing, no prior contact. It applies only after
+   every rule above has passed, so headers and safety win. It does not skip the model: triage
+   still reads every new message for the summary. What it adds is a pile that is set by
+   rules alone, which also works with no model or consent.
 6. **Model**: the optional first-pass classifier provider, then the user's model, with
    headers, snippet, sender stats and the last few corrections for that sender. Output
    keeps today's fields, turns `reason` into a one-line summary, and adds one to three
@@ -237,6 +246,14 @@ stories.
    `GMAIL_PUSH_SERVICE_ACCOUNT` are set.
 6. **Newsletter digest and learned sender decisions.** Digest reading view; promote
    repeated model decisions to sender decisions. Mobile: digest view.
+   Landed: a Digest toggle on the Newsletters pile (web) and a Senders / Digest control (mobile)
+   with one card or row per issue from the last 7 days, newest first, and Archive all (undo on
+   web, a confirm on mobile). Learned sender decisions are columns on `mail_sender_stats`
+   (`learnedPile`, `learnedCount`, `learnedAt`, `learnedForgottenAt`), set by `applyPileRules`.
+   A sender mark, Not spam, skip inbox, prior contact, a spam verdict or a conflicting verdict
+   clears one; the cleanup row shows it with Forget, after which only newer mail counts.
+   Also fixed: one sender listed twice (rows join by address without a +tag, or by display
+   name on one base domain), newsletters filed under Updates, and a flaky sync job test.
 
 ## Decisions
 

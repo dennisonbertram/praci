@@ -29,6 +29,7 @@ msgstr " (needs input)"
 msgid " (new)"
 msgstr " (new)"
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
@@ -1182,6 +1183,10 @@ msgstr "Archive"
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Archive {0}"
 msgstr "Archive {0}"
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Archive all"
+msgstr "Archive all"
 
 #: src/pages/Shell.tsx
 msgid "archived"
@@ -3475,6 +3480,10 @@ msgstr "Developer"
 msgid "Didn't open?"
 msgstr "Didn't open?"
 
+#: src/pages/Inbox.tsx
+msgid "Digest"
+msgstr "Digest"
+
 #: src/components/MailApprovalCard.tsx
 msgid "Disable drafts for {botName}"
 msgstr "Disable drafts for {botName}"
@@ -4120,6 +4129,10 @@ msgstr "Folder"
 msgid "Folders"
 msgstr "Folders"
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Forget"
+msgstr "Forget"
+
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "Forgot password?"
@@ -4511,6 +4524,7 @@ msgstr "Import from email"
 msgid "Import from Google Drive"
 msgstr "Import from Google Drive"
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
@@ -4777,6 +4791,10 @@ msgstr "Latest {0} of {1}"
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
 msgstr "Launched {app}"
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Learned"
+msgstr "Learned"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Leave"
@@ -5599,6 +5617,7 @@ msgstr "New ticket"
 msgid "Newsletter"
 msgstr "Newsletter"
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
@@ -5723,6 +5742,7 @@ msgstr "No investors yet"
 msgid "No longer active"
 msgstr "No longer active"
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr "No mail"
@@ -6073,6 +6093,7 @@ msgid "Only if the server does not use sign-in"
 msgstr "Only if the server does not use sign-in"
 
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
@@ -9001,6 +9022,7 @@ msgstr "Updated {0}"
 msgid "Updated {updated}"
 msgstr "Updated {updated}"
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
