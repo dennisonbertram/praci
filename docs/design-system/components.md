@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 223 of 223
-- Web and shared components: 618
+- Web and shared components: 619
 - Mobile components: 135 in 92 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -127,7 +127,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| OwnershipDonut | [apps/web/src/components/cap-table/OwnershipDonut.tsx](../../apps/web/src/components/cap-table/OwnershipDonut.tsx) | [OwnershipDonut.stories.tsx](../../apps/web/src/components/cap-table/OwnershipDonut.stories.tsx) | web |
+| Projection, OwnershipDonut | [apps/web/src/components/cap-table/OwnershipDonut.tsx](../../apps/web/src/components/cap-table/OwnershipDonut.tsx) | [OwnershipDonut.stories.tsx](../../apps/web/src/components/cap-table/OwnershipDonut.stories.tsx) | web |
 
 ## Web components/compose
 

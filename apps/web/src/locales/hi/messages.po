@@ -1409,6 +1409,7 @@ msgstr "अवतार स्टूडियो"
 msgid "Avatars"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
@@ -6320,6 +6321,10 @@ msgstr ""
 msgid "Other crypto"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Other holders"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Other mail today"
 msgstr ""
@@ -7806,6 +7811,11 @@ msgstr ""
 msgid "Shell"
 msgstr "शेल"
 
+#. placeholder {0}: s.name
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Show {0} breakdown"
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
 msgstr ""
@@ -8873,6 +8883,7 @@ msgstr ""
 msgid "Type your answer"
 msgstr "अपना उत्तर लिखें"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Unallocated pool"
 msgstr ""
