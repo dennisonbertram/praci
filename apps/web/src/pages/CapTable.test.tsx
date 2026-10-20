@@ -85,6 +85,7 @@ const contact = (id: string, name: string, kind: Contact["kind"]): Contact => ({
   organization: null,
   kind,
   notes: null,
+  addedBy: null,
   createdAt: "2026-10-15T00:00:00.000Z",
   updatedAt: "2026-10-15T00:00:00.000Z",
 });
@@ -764,6 +765,32 @@ it("filters Carta's shareholders and option grants on their own tabs", async () 
   await click(button("Options"));
   expect(container.textContent).toContain("Granted options");
   expect(container.textContent).not.toContain("Founder Person");
+});
+
+it("lists only investors, auditors and other contacts, plus holders joined from Carta", async () => {
+  const joined = { ...holder("Joined Holder", "Common", 100, 1), email: "carol@example.test" };
+  rpcMock.list.mockResolvedValue([
+    contact("c1", "Ada", "investor"),
+    contact("c2", "Bo", "vendor"),
+    contact("c3", "Cy", "legal"),
+    contact("c4", "Carol", "customer"),
+  ]);
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: { ...snapshot, holders: [joined] },
+    syncing: false,
+  });
+  await show();
+  const rows = container.querySelector("table:not(.sr-only) tbody")?.textContent ?? "";
+  expect(rows).toContain("Ada");
+  expect(rows).toContain("Carol");
+  expect(rows).not.toContain("Bo");
+  expect(rows).not.toContain("Cy");
+});
+
+it("shows the Carta hint in the contact dialog only here", async () => {
+  await show();
+  await click(button("Add contact"));
+  expect(document.body.textContent).toContain("They do not change Carta");
 });
 
 it("keeps an option grant on Options when a contact with the holder's email is Other", async () => {

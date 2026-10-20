@@ -20,6 +20,8 @@ export const ContactSchema = z.object({
   organization: z.string().nullable(),
   kind: ContactKindSchema,
   notes: z.string().nullable(),
+  /** The agent that added the contact; null for a contact added by hand. */
+  addedBy: z.object({ id: Id, name: z.string() }).nullable(),
   createdAt: IsoDate,
   updatedAt: IsoDate,
 });

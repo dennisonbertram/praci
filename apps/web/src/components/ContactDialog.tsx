@@ -56,6 +56,7 @@ export function ContactDialog({
   onSaved,
   onDeleted,
   onOpenContact,
+  fromCapTable = false,
 }: {
   contact: Contact | null;
   prefill?: ContactPrefill;
@@ -65,6 +66,8 @@ export function ContactDialog({
   onSaved: (saved: Contact) => void;
   onDeleted?: (contact: Contact) => void;
   onOpenContact?: (contact: Contact) => void;
+  /** Opened from the Cap table, where a hint says contacts do not change Carta. */
+  fromCapTable?: boolean;
 }) {
   const [name, setName] = useState(contact?.name ?? prefill?.name ?? "");
   const [email, setEmail] = useState(contact?.email ?? prefill?.email ?? "");
@@ -112,6 +115,18 @@ export function ContactDialog({
     );
   }
 
+  // An email another contact already has is reported under the Email field, anything else at the end.
+  const errorBlock = error ? (
+    <div role="alert" className="flex flex-wrap items-center gap-2 text-sm">
+      <span className="text-destructive">{error}</span>
+      {sameEmail && onOpenContact ? (
+        <Button type="button" variant="outline" size="sm" onClick={() => onOpenContact(sameEmail)}>
+          <Trans>Open {sameEmail.name}</Trans>
+        </Button>
+      ) : null}
+    </div>
+  ) : null;
+
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
       <DialogContent>
@@ -152,6 +167,7 @@ export function ContactDialog({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            {sameEmail ? errorBlock : null}
           </div>
           <div className="flex flex-col gap-1.5">
             <Label htmlFor="contact-organization">
@@ -185,29 +201,22 @@ export function ContactDialog({
             </Label>
             <Textarea
               id="contact-notes"
-              aria-describedby="contact-notes-hint"
+              aria-describedby={fromCapTable ? "contact-notes-hint" : undefined}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
-            <p id="contact-notes-hint" className="text-xs text-muted-foreground">
-              <Trans>Contacts are your address book. They do not change Carta.</Trans>
-            </p>
+            {fromCapTable ? (
+              <p id="contact-notes-hint" className="text-xs text-muted-foreground">
+                <Trans>Contacts are your address book. They do not change Carta.</Trans>
+              </p>
+            ) : null}
           </div>
-          {error ? (
-            <div role="alert" className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-destructive">{error}</span>
-              {sameEmail && onOpenContact ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onOpenContact(sameEmail)}
-                >
-                  <Trans>Open {sameEmail.name}</Trans>
-                </Button>
-              ) : null}
-            </div>
+          {contact?.addedBy ? (
+            <p className="text-xs text-muted-foreground">
+              <Trans>Added by {contact.addedBy.name}</Trans>
+            </p>
           ) : null}
+          {sameEmail ? null : errorBlock}
           <DialogFooter>
             {contact ? (
               <Button

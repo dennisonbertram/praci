@@ -81,6 +81,7 @@ describe("contact tools", () => {
       organization: null,
       kind: "investor",
       notes: null,
+      bot: null,
       createdAt: new Date(0),
       updatedAt: new Date(0),
     };
@@ -90,9 +91,18 @@ describe("contact tools", () => {
     const updateMany = vi.fn();
     const prisma = { contact: { findFirst, create, update, updateMany } } as never;
     const args = { name: "Ada Fund", email: "ada@example.test" };
-    const added = await contactToolFromTool("contacts_add", { prisma, scope }, args);
+    // The agent comes from the run; a botId in the model's arguments is dropped.
+    const added = await contactToolFromTool(
+      "contacts_add",
+      { prisma, scope, botId: "bot1" },
+      { ...args, botId: "someone-else" },
+    );
     expect(added).toEqual({ contact: expect.objectContaining({ id: "c1" }) });
-    expect(create).toHaveBeenCalledWith({ data: expect.objectContaining({ ...scope, ...args }) });
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ ...scope, ...args, botId: "bot1" }),
+      }),
+    );
     const again = await contactToolFromTool(
       "contacts_add",
       { prisma, scope },

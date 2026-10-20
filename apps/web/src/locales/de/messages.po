@@ -838,6 +838,11 @@ msgstr ""
 msgid "Added"
 msgstr ""
 
+#. placeholder {0}: contact.addedBy.name
+#: src/components/ContactDialog.tsx
+msgid "Added by {0}"
+msgstr ""
+
 #. placeholder {0}: currentName ?? ""
 #: src/components/data-room/DropZone.tsx
 msgid "Adding {added} of {total} · {0}"
@@ -2090,6 +2095,7 @@ msgstr ""
 #: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
 msgstr ""
@@ -3016,7 +3022,7 @@ msgstr "Diagramm konnte nicht angezeigt werden"
 msgid "Could not reset password"
 msgstr "Passwort konnte nicht zurückgesetzt werden"
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactNotice.tsx
 msgid "Could not restore {name}: {reason}. If you dismiss this, {name} stays deleted."
 msgstr ""
 
@@ -3533,7 +3539,7 @@ msgstr "gelöscht"
 msgid "Deleted"
 msgstr ""
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactNotice.tsx
 msgid "Deleted {name}"
 msgstr ""
 
@@ -3653,11 +3659,11 @@ msgid "Disconnecting…"
 msgstr "Verbindung wird getrennt…"
 
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
@@ -7476,7 +7482,7 @@ msgstr "Den zuletzt gespeicherten Arbeitsbereich wiederherstellen."
 msgid "Restore the last saved workspace. Unsaved work on the computer is lost."
 msgstr ""
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactNotice.tsx
 msgid "Restored {name}"
 msgstr ""
 
@@ -9216,6 +9222,7 @@ msgid "Try {name} again"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
@@ -9227,6 +9234,7 @@ msgstr ""
 #: src/components/integrations/SignInStep.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -9307,13 +9315,13 @@ msgstr ""
 msgid "Undid {restored}, skipped {skipped}"
 msgstr ""
 
+#: src/components/ContactNotice.tsx
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/inbox/CleanupHistory.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Undo"

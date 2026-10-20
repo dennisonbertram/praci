@@ -42,6 +42,7 @@ import {
   contactAddLabels,
   contactKindNames as kindNames,
 } from "../components/ContactDialog";
+import { ContactNotice, useContactNotices } from "../components/ContactNotice";
 import { OwnershipDonut } from "../components/cap-table/OwnershipDonut";
 import { DataRoomImportMenu } from "../components/data-room/DataRoomImportMenu";
 import { FolderDocuments } from "../components/data-room/FolderDocuments";
@@ -79,10 +80,10 @@ const FILTERS = [
 const CARTA_FILTERS: readonly Filter[] = ["shareholder", "options"];
 const isContactKind = (filter: Filter): filter is CapKind =>
   filter === "investor" || filter === "auditor" || filter === "other";
+/** The contact kinds this page lists on its own; a holder from Carta shows with any kind. */
+const CAP_TABLE_KINDS: readonly ContactKind[] = ["investor", "auditor", "other"];
 const parseFilter = (value: string | null): Filter =>
   FILTERS.find((filter) => filter === value) ?? "all";
-/** How long a "Saved" or "Deleted, Undo" notice stays on screen. */
-const TOAST_MS = 8000;
 
 /** How often the page asks again while the Carta agent is still reading. */
 const POLL_MS = 3000;
@@ -186,8 +187,10 @@ function joinRows(snapshot: Snapshot | null, contacts: Contact[]): Row[] {
       },
     });
   }
+  // Customers, vendors and the other newer kinds stay on the Contacts page unless Carta lists them.
   for (const contact of contacts)
-    if (!used.has(contact.id)) rows.push({ key: contact.id, contact, holder: null });
+    if (!used.has(contact.id) && CAP_TABLE_KINDS.includes(contact.kind))
+      rows.push({ key: contact.id, contact, holder: null });
   return rows;
 }
 
@@ -307,19 +310,6 @@ export function CapTablePage({
     );
   const query = params.get("q") ?? "";
   const [editing, setEditing] = useState<Contact | Prefill | "new" | null>(null);
-  const [toast, setToast] = useState<{
-    text: string;
-    undo?: () => void;
-    /** A failed restore offers Try again instead of Undo. */
-    failed?: boolean;
-  } | null>(null);
-  // A notice with Undo stays until it is used or dismissed: there is no delete confirmation, so a
-  // founder who looks away must not lose the only way to get the contact back.
-  useEffect(() => {
-    if (!toast || toast.undo) return;
-    const timer = setTimeout(() => setToast(null), TOAST_MS);
-    return () => clearTimeout(timer);
-  }, [toast]);
   const names = rowKindNames();
   const [connecting, setConnecting] = useState(false);
   const statusRef = useRef(onCartaStatus);
@@ -338,6 +328,12 @@ export function CapTablePage({
       );
   }, []);
   useEffect(load, [load]);
+  const container = useRef<HTMLDivElement>(null);
+  const { notice, setNotice, savedId, setSavedId, deleted } = useContactNotices(
+    load,
+    container,
+    contacts,
+  );
 
   const [capFailed, setCapFailed] = useState(false);
   const latestCap = useRef(0);
@@ -429,17 +425,6 @@ export function CapTablePage({
   const reading = cartaConnected && syncing && !snapshot && !capFailed;
   // Connected, but nothing has been read and no read is running, e.g. no model was set up yet.
   const neverRead = cartaConnected && cap !== null && !snapshot && !syncing && !capFailed;
-  // The contact just saved: its row scrolls into view and stands out, since a new one lands last.
-  const container = useRef<HTMLDivElement>(null);
-  const [savedId, setSavedId] = useState<string | null>(null);
-  useEffect(() => {
-    if (!savedId) return;
-    container.current
-      ?.querySelector(`[data-contact-id="${CSS.escape(savedId)}"]`)
-      ?.scrollIntoView?.({ block: "center", behavior: "smooth" });
-    const timer = setTimeout(() => setSavedId(null), TOAST_MS);
-    return () => clearTimeout(timer);
-  }, [savedId, contacts]);
   const rows = joinRows(snapshot, contacts ?? []);
   const filters = FILTERS.filter((value) => snapshot || !CARTA_FILTERS.includes(value));
   // A link to a tab that is not there (no cap table) shows All, and the URL says so too.
@@ -505,34 +490,6 @@ export function CapTablePage({
     setEditing(
       isContactKind(filter) ? { name: "", email: null, organization: null, kind: filter } : "new",
     );
-  const deleted = (gone: Contact) => {
-    load();
-    const { name, email, organization, kind, notes } = gone;
-    let restoring = false;
-    const restore = () => {
-      if (restoring) return;
-      restoring = true;
-      rpc.contacts
-        .save({ name, email, organization, kind, notes })
-        .then(() => {
-          setToast({ text: t`Restored ${name}` });
-          load();
-        })
-        .catch((cause) => {
-          const reason = errorText(cause).replace(/\.$/, "");
-          setToast({
-            text: t`Could not restore ${name}: ${reason}. If you dismiss this, ${name} stays deleted.`,
-            undo: restore,
-            failed: true,
-          });
-        })
-        .finally(() => {
-          restoring = false;
-        });
-    };
-    setToast({ text: t`Deleted ${name}`, undo: restore });
-  };
-
   return (
     <div
       ref={container}
@@ -588,7 +545,7 @@ export function CapTablePage({
               folderPath={CAP_TABLE_FOLDER}
               onDone={(text, changed) => {
                 if (changed) window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
-                if (text) setToast({ text });
+                if (text) setNotice({ text });
               }}
             />
             <Button variant={cartaConnected ? "default" : "outline"} onClick={addContact}>
@@ -967,25 +924,7 @@ export function CapTablePage({
 
       <FolderDocuments folderPath={CAP_TABLE_FOLDER} />
 
-      {/* Pinned to the bottom of the page column and after the table in the page flow: showing or
-          hiding it never moves the rows, and scrolled to the end it sits below the last row. */}
-      <div role="status" className="sticky bottom-0 pt-3 empty:hidden">
-        {toast ? (
-          <div className="flex flex-wrap items-center gap-x-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
-            <span className="min-w-0 flex-1 py-1">{toast.text}</span>
-            {toast.undo ? (
-              <Button variant="ghost" size="sm" onClick={toast.undo}>
-                {toast.failed ? <Trans>Try again</Trans> : <Trans>Undo</Trans>}
-              </Button>
-            ) : null}
-            {toast.undo ? (
-              <Button variant="ghost" size="sm" onClick={() => setToast(null)}>
-                <Trans>Dismiss</Trans>
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-      </div>
+      <ContactNotice notice={notice} onDismiss={() => setNotice(null)} />
 
       {connecting ? (
         <ConnectCartaDialog
@@ -995,12 +934,13 @@ export function CapTablePage({
           }}
           onFailed={(message) => {
             setConnecting(false);
-            setToast({ text: message });
+            setNotice({ text: message });
           }}
         />
       ) : null}
       {editing ? (
         <ContactDialog
+          fromCapTable
           key={editing === "new" ? "new" : "id" in editing ? editing.id : "prefill"}
           contact={editing === "new" || !("id" in editing) ? null : editing}
           prefill={editing !== "new" && !("id" in editing) ? editing : undefined}
@@ -1009,7 +949,7 @@ export function CapTablePage({
           onSaved={(saved) => {
             load();
             setSavedId(saved.id);
-            setToast({ text: t`Saved ${saved.name}` });
+            setNotice({ text: t`Saved ${saved.name}` });
           }}
           onDeleted={deleted}
           onOpenContact={setEditing}

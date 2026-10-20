@@ -4436,7 +4436,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return finish(
               await contactToolFromTool(
                 name,
-                { prisma: deps.prisma, scope: { spaceId: run.spaceId, userId: bot.userId } },
+                {
+                  prisma: deps.prisma,
+                  scope: { spaceId: run.spaceId, userId: bot.userId },
+                  botId: bot.id,
+                },
                 args,
               ),
             );
