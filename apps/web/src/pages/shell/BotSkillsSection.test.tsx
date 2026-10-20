@@ -155,16 +155,71 @@ it("opens built-ins read-only and user skills for editing", async () => {
   await view.unmount();
 });
 
+function typeInto(el: HTMLTextAreaElement | HTMLInputElement | null, value: string) {
+  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement : HTMLInputElement;
+  const setValue = Object.getOwnPropertyDescriptor(proto.prototype, "value")?.set;
+  return act(async () => {
+    setValue?.call(el, value);
+    el?.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+const SKILL_MD = "---\nname: my-skill\ndescription: Does a thing.\n---\n\nSteps.\n";
+
+it("starts New skill empty with the template as a placeholder and cannot save it untouched", async () => {
+  const view = await mount();
+  await act(async () => view.button("New skill").click());
+  const area = view.container.querySelector("textarea");
+  expect(area?.value).toBe("");
+  expect(area?.placeholder).toContain("name: my-skill");
+  expect((view.button("Save") as HTMLButtonElement).disabled).toBe(true);
+  // The template text pasted back in is still not a skill.
+  await typeInto(area ?? null, area?.placeholder ?? "");
+  expect((view.button("Save") as HTMLButtonElement).disabled).toBe(true);
+  await typeInto(area ?? null, SKILL_MD);
+  expect((view.button("Save") as HTMLButtonElement).disabled).toBe(false);
+  await view.unmount();
+});
+
 it("creates a skill from New skill and shows it in the list", async () => {
   api.create.mockResolvedValue({});
   const view = await mount();
   await act(async () => view.button("New skill").click());
+  await typeInto(view.container.querySelector("textarea"), SKILL_MD);
   await act(async () => view.button("Save").click());
-  expect(api.create).toHaveBeenCalledWith({ content: expect.stringContaining("my-skill") });
+  expect(api.create).toHaveBeenCalledWith({ content: SKILL_MD });
   catalog = [...catalog, skill("user-2", "my-skill", "user")];
   await view.render(0);
   await act(async () => undefined);
   expect(api.forBot).toHaveBeenCalledTimes(2);
+  await view.unmount();
+});
+
+it("shows the server's reason when a skill cannot be saved, and clears it on retry and Cancel", async () => {
+  const view = await mount();
+  await act(async () => view.button("New skill").click());
+  await typeInto(view.container.querySelector("textarea"), SKILL_MD);
+  api.create.mockRejectedValueOnce(new Error("Skill front matter needs a name."));
+  await act(async () => view.button("Save").click());
+  expect(view.container.textContent).toContain("Skill front matter needs a name.");
+  expect(view.container.textContent).not.toContain("Could not save skill");
+  api.create.mockRejectedValueOnce(Object.assign(new Error("Conflict"), { code: "CONFLICT" }));
+  await act(async () => view.button("Save").click());
+  expect(view.container.textContent).toContain("A skill with that name already exists");
+  expect(view.container.textContent).not.toContain("needs a name");
+  api.create.mockRejectedValueOnce(new Error("rpc agentSkills.create failed (500)"));
+  await act(async () => view.button("Save").click());
+  expect(view.container.textContent).toContain("Could not save skill");
+  await act(async () => view.button("Cancel").click());
+  expect(view.container.textContent).not.toContain("Could not save skill");
+  await view.unmount();
+});
+
+it("caps the skills list height so it scrolls on its own", async () => {
+  const view = await mount();
+  expect(view.container.querySelector("[data-testid=bot-skills-list]")?.className).toContain(
+    "overflow-y-auto",
+  );
   await view.unmount();
 });
 

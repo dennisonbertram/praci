@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
-import { createDb, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { BlueBubblesAdapter } from "./bluebubbles-adapter.js";
 import { BlueBubblesEmulator, createEmulatedBlueBubblesPlatform } from "./bluebubbles-emulator.js";

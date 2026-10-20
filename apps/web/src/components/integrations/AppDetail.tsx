@@ -42,6 +42,7 @@ function AccountRow({
   onChanged,
   onRemove,
   onReconnect,
+  appName,
   onCreateAgent,
   busy,
   children,
@@ -52,6 +53,8 @@ function AccountRow({
   onRemove?: (row: Connection) => void;
   /** Offered when the provider refuses this account's sign-in. */
   onReconnect?: (row: Connection) => void;
+  /** The app's name; an account labelled the same is not named a second time. */
+  appName?: string;
   onCreateAgent?: () => void;
   busy?: boolean;
   children?: ReactNode;
@@ -77,7 +80,9 @@ function AccountRow({
     <div className="flex flex-wrap items-center gap-3 border-t border-border px-3.5 py-2.5 first:border-t-0">
       <div className="min-w-40 flex-1">
         {draft === null ? (
-          <b className="break-all">{row.displayName}</b>
+          row.displayName === appName ? null : (
+            <b className="break-all">{row.displayName}</b>
+          )
         ) : (
           <Input
             autoFocus
@@ -439,6 +444,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
               <AccountRow
                 key={row.id}
                 row={row}
+                appName={name}
                 onChanged={() => void data.refresh()}
                 busy={busy}
                 onCreateAgent={

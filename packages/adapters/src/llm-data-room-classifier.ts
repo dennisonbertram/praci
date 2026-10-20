@@ -19,7 +19,8 @@ import {
 } from "@rakazo/contracts";
 import type { UsageAttribution } from "@rakazo/db";
 import type { z } from "zod";
-import { AUTO_SORT_INSTRUCTIONS, type AutoSortItem, autoSortPrompt } from "./data-room-autosort.js";
+import type { AutoSortItem } from "./data-room-autosort.js";
+import { AUTO_SORT_INSTRUCTIONS, autoSortPrompt } from "./data-room-autosort.js";
 
 /** Characters of document text sent to the model: the head and tail halves of this budget. */
 export const DATA_ROOM_TEXT_LIMIT = 24_000;
@@ -76,7 +77,7 @@ const uniq = (v: unknown, n: number, lower = false): unknown => {
 };
 
 /** Repairs small, safe slips (length, case, "/") so one is not a failed job. Unfixable fields still fail validation. */
-export function cleanClassification(raw: unknown): unknown {
+function cleanClassification(raw: unknown): unknown {
   if (typeof raw !== "object" || raw === null) return raw;
   const o: Obj = { ...raw };
   if (typeof o.title === "string") o.title = o.title.trim().slice(0, 200);

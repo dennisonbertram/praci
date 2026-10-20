@@ -212,7 +212,7 @@ async function main() {
   };
   save();
   if (values["cache-probe"]) {
-    const { PiAgentRuntime } = await import("../../../adapters/src/pi-runtime.ts");
+    const { PiAgentRuntime } = await import("@rakazo/adapters");
     const { runCachePrefixProbe } = await import("../evals/cache-probe.js");
     const decisions: CacheDecisionMeasurement[] = [];
     const runtime = new PiAgentRuntime({

@@ -26,6 +26,7 @@ import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
 import { dateText, isSettled, sizeText, typeLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
+import type { SendTarget } from "./SendToAgent";
 
 function amountText(item: DataRoomApiItem) {
   const { amountCents, currency } = item.facets;
@@ -178,6 +179,8 @@ export function Preview({
   folderPath,
   onAction,
   onClose,
+  agents,
+  onSendToAgent,
   inDialog = false,
 }: {
   /** Shown inside a Dialog, which brings its own close button and title. */
@@ -186,6 +189,8 @@ export function Preview({
   folderPath: string;
   onAction: (action: ItemAction, item: DataRoomApiItem) => void;
   onClose: () => void;
+  agents?: SendTarget[];
+  onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
 }) {
   const [error, setError] = useState("");
   const { facets } = item;
@@ -229,7 +234,13 @@ export function Preview({
             <Trans>Preview</Trans>
           </h2>
         )}
-        <ItemMenu item={item} onAction={onAction} canRetry={item.status === "failed"} />
+        <ItemMenu
+          item={item}
+          onAction={onAction}
+          canRetry={item.status === "failed"}
+          agents={agents}
+          onSendToAgent={onSendToAgent}
+        />
         {inDialog ? null : (
           <Button variant="ghost" size="icon-sm" aria-label={t`Close preview`} onClick={onClose}>
             <X aria-hidden="true" />

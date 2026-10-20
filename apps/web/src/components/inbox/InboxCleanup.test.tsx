@@ -297,6 +297,20 @@ describe("InboxCleanup", () => {
     });
   });
 
+  it("forgets only the learned pile on Forget and reloads the list", async () => {
+    const learned = sender("news@lists.example.test", { learnedPile: "newsletters" });
+    rpcMock.list.mockResolvedValueOnce(output([learned])).mockResolvedValue(output([news]));
+    await render();
+    expect(document.body.textContent).toContain("Learned");
+    await click(button("Forget"));
+    expect(rpcMock.forget).toHaveBeenCalledWith({
+      connectionId: "c1",
+      address: "news@lists.example.test",
+      learned: true,
+    });
+    expect(document.body.textContent).not.toContain("Learned");
+  });
+
   it("marks the ticked senders as spam from the More menu", async () => {
     rpcMock.list.mockResolvedValue(output([news]));
     await render();

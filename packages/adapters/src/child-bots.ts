@@ -9,14 +9,13 @@ import { routineJobKey, runContinueJob, runJobKey } from "@rakazo/adapter-kit";
 import type { Actor, Bot, ComputerMode } from "@rakazo/contracts";
 import { GROUP_MEMBER_MIN, isVoiceAgentSpawnKey } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
+import type { Prisma, PrismaClient } from "@rakazo/db";
 import {
   cancelRunsInTransaction,
   computerScopeKey,
   createRepos,
   createThreadMessageInTransaction,
   expireComputerExecutionLeases,
-  type Prisma,
-  type PrismaClient,
   withTransactionRetry,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";

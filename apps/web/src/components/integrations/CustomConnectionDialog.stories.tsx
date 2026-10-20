@@ -45,6 +45,11 @@ export const FirstPartySignIn: Story = {
   args: { initialUrl: "https://mcp.app.carta.com/mcp", service: "Carta" },
 };
 
+/** A first-party service that needs the person's own OAuth app, such as X or Box. */
+export const FirstPartyClientId: Story = {
+  args: { initialUrl: "https://api.x.com/mcp", service: "X", oauthClient: true },
+};
+
 /** A first-party service that takes an API key: only the key is asked for. */
 export const FirstPartyApiKey: Story = {
   args: {

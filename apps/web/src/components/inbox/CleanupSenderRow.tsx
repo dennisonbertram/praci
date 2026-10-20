@@ -10,6 +10,7 @@ export function CleanupSenderRow({
   onToggle,
   accountLabel,
   onStop,
+  onForgetLearned,
   disabled = false,
 }: {
   sender: CleanupSender;
@@ -19,9 +20,12 @@ export function CleanupSenderRow({
   accountLabel?: string;
   /** Forgets the sender's skip decision; shown only on a sender that is skipping the inbox. */
   onStop?: () => void;
+  /** Forgets the learned pile; shown only on a sender that has one. */
+  onForgetLearned?: () => void;
   disabled?: boolean;
 }) {
   const { t } = useLingui();
+  const pileNames = { important: t`Important`, updates: t`Updates`, newsletters: t`Newsletters` };
   const readPercent = Math.round((sender.readCount / Math.max(sender.messageCount, 1)) * 100);
   return (
     <div
@@ -43,7 +47,7 @@ export function CleanupSenderRow({
             {sender.address}
           </span>
         </div>
-        {accountLabel || sender.spamLike || sender.skipInbox ? (
+        {accountLabel || sender.spamLike || sender.skipInbox || sender.learnedPile ? (
           <div className="flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
             {accountLabel ? <span dir="auto">{accountLabel}</span> : null}
             {sender.spamLike ? (
@@ -73,6 +77,22 @@ export function CleanupSenderRow({
                   <span>
                     <Trans>Couldn't add Gmail filter</Trans>
                   </span>
+                ) : null}
+              </span>
+            ) : null}
+            {sender.learnedPile ? (
+              <span className="flex items-center gap-1">
+                <Trans>Learned</Trans> {pileNames[sender.learnedPile as keyof typeof pileNames]}
+                {onForgetLearned ? (
+                  <Button
+                    variant="link"
+                    size="xs"
+                    className="h-auto p-0 text-xs"
+                    onClick={onForgetLearned}
+                    disabled={disabled}
+                  >
+                    <Trans>Forget</Trans>
+                  </Button>
                 ) : null}
               </span>
             ) : null}

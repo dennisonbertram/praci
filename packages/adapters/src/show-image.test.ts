@@ -1,7 +1,8 @@
 import type { ArtifactStore } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
-import { type ShowImageDeps, showImages, sniffImageType } from "./show-image.js";
+import type { ShowImageDeps } from "./show-image.js";
+import { showImages, sniffImageType } from "./show-image.js";
 
 const attach = vi.hoisted(() => vi.fn());
 const getItem = vi.hoisted(() => vi.fn());

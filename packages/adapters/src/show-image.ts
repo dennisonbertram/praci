@@ -7,7 +7,8 @@ import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, IsolationError } from "@rakazo/db";
 import { dataRoomBlobContext } from "./data-room-files.js";
 import { attachWorkspaceFileToThread } from "./thread-artifacts.js";
-import { fetchSafeWebBytes, type SafeWebFetchOptions } from "./web-ssrf.js";
+import type { SafeWebFetchOptions } from "./web-ssrf.js";
+import { fetchSafeWebBytes } from "./web-ssrf.js";
 
 export const SHOW_IMAGE_MAX = 6;
 const FETCH_TIMEOUT_MS = 10_000;

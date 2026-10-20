@@ -1,8 +1,10 @@
 import { createHmac } from "node:crypto";
-import { createServer, type Server } from "node:http";
+import type { Server } from "node:http";
+import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
 import type { MessagingPlatform } from "./chat-sdk-surface.js";
-import { PhotonAdapter, type PhotonAdapterConfig, photonTransport } from "./photon-adapter.js";
+import type { PhotonAdapterConfig } from "./photon-adapter.js";
+import { PhotonAdapter, photonTransport } from "./photon-adapter.js";
 
 export interface PhotonEmulatorMessage {
   id?: string;

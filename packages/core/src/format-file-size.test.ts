@@ -21,4 +21,9 @@ describe("formatFileSize", () => {
     expect(formatFileSize(Number.POSITIVE_INFINITY)).toBe("");
     expect(formatFileSize(-1)).toBe("");
   });
+
+  it("shows one decimal in the given locale", () => {
+    expect(formatFileSize(3 * 1024 * 1024, "en")).toBe("3.0 MB");
+    expect(formatFileSize(1536, "de")).toBe("1,5 KB");
+  });
 });

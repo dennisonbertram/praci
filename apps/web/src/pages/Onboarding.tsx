@@ -40,6 +40,7 @@ import {
   ModelPreflightFeedback,
   modelPreflightTestingLabel,
 } from "../components/ModelConnectionPreflightNotice";
+import { ShellSkeleton } from "../components/ShellSkeleton";
 import { useCopyText } from "../lib/copy-text";
 import type { ModelCatalogEntry } from "../lib/model-auth";
 import { thinkingLevelLabel } from "../lib/model-catalog";
@@ -552,14 +553,11 @@ export function OnboardingPage() {
     void createFirstBot();
   }, [step]);
 
+  if (step === "loading" || (step === "bot" && !error)) return <ShellSkeleton />;
+
   return (
     <div className="min-h-full bg-background px-6 py-12">
       <div className="mx-auto w-full max-w-[560px]">
-        {step === "loading" ? (
-          <p className="text-muted-foreground">
-            <Trans>Loading…</Trans>
-          </p>
-        ) : null}
         {step === "model" ? (
           <div>
             <h1 className="text-[32px] font-medium text-foreground">
@@ -1041,11 +1039,7 @@ export function OnboardingPage() {
                   <Trans>Try again</Trans>
                 </Button>
               </div>
-            ) : (
-              <p className="text-muted-foreground">
-                <Trans>Opening chat…</Trans>
-              </p>
-            )}
+            ) : null}
           </div>
         ) : null}
       </div>

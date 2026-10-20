@@ -1,10 +1,9 @@
 import path from "node:path";
+import type { DaytonaConfig, Sandbox } from "@daytona/sdk";
 import {
   Daytona,
-  type DaytonaConfig,
   DaytonaNotFoundError,
   DaytonaProcessExecutionTimeoutError,
-  type Sandbox,
   SandboxState,
 } from "@daytona/sdk";
 import type {
@@ -540,7 +539,7 @@ export class DaytonaSandboxProvider implements SandboxProvider {
   }
 }
 
-export function isUnrecoverableDaytonaError(error: unknown): boolean {
+function isUnrecoverableDaytonaError(error: unknown): boolean {
   if (error instanceof DaytonaNotFoundError) return true;
   if (!error || typeof error !== "object") return false;
   const details = error as {

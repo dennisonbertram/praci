@@ -1,10 +1,9 @@
 import { createHash, createHmac, randomUUID, timingSafeEqual } from "node:crypto";
+import type { AdvancedIMessage, Message as PhotonMessage } from "@photon-ai/advanced-imessage";
 import {
-  type AdvancedIMessage,
   ConnectionError,
   createHttpClient,
   IMessageError,
-  type Message as PhotonMessage,
   RateLimitError,
 } from "@photon-ai/advanced-imessage";
 import type {

@@ -5,8 +5,10 @@ import {
   DRIVE_IMPORT_MAX_FILES,
   planDriveFolders,
 } from "./data-room-drive-import.js";
-import { DriveApiEmulator, type EmulatedDriveFile } from "./drive-api-emulator.js";
-import { DriveFileError, type DriveFilesDeps } from "./drive-files.js";
+import type { EmulatedDriveFile } from "./drive-api-emulator.js";
+import { DriveApiEmulator } from "./drive-api-emulator.js";
+import type { DriveFilesDeps } from "./drive-files.js";
+import { DriveFileError } from "./drive-files.js";
 import { GoogleApiClient } from "./google-api-request.js";
 
 const context = {

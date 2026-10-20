@@ -1,4 +1,4 @@
-import { BOT_PAGE_MAX_CHARS, BOT_PAGE_MAX_CHARTS } from "@rakazo/contracts";
+import { BOT_PAGE_MAX_CHARS, BOT_PAGE_MAX_CHARTS, MAX_CHART_DATA_ROWS } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import { pageToolFromTool, renderPageChartSvg, saveBotPage } from "./pages.js";
@@ -113,6 +113,14 @@ describe("saveBotPage", () => {
       /Chart "Sales" is invalid/,
     );
     expect(pages).toHaveLength(0);
+  });
+
+  it("rejects a chart whose spec-embedded rows pass the row limit", async () => {
+    const { save } = setup();
+    const rows = Array.from({ length: MAX_CHART_DATA_ROWS + 1 }, (_, i) => ({ x: i }));
+    const spec = { marks: [{ type: "dot", data: rows, x: "x" }] };
+    const fence = `\`\`\`chart\n${JSON.stringify({ name: "Big", spec, data: [] })}\n\`\`\``;
+    await expect(save(fence, 0)).rejects.toThrow(/row limit/);
   });
 
   it("enforces the size and chart-count limits", async () => {
