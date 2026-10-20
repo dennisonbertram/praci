@@ -982,7 +982,7 @@ function writerFor(db: CompanyDb, actor: Actor) {
   };
 }
 
-function companyWriter(tx: Prisma.TransactionClient, actor: Actor) {
+export function companyWriter(tx: Prisma.TransactionClient, actor: Actor) {
   return writerFor(tx, actor);
 }
 
