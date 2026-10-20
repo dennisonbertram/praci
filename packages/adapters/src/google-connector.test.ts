@@ -5,12 +5,13 @@ import { describe, expect, it, vi } from "vitest";
 import { createMailEmulator } from "./gmail-api-emulator.js";
 import { GmailMailProvider } from "./gmail-mail-provider.js";
 import { GoogleApiClient } from "./google-api-request.js";
-import { GoogleConnector } from "./google-connector.js";
+import { GMAIL_SETTINGS_BASIC, GoogleConnector } from "./google-connector.js";
 import { EncryptedSecretStore } from "./secrets.js";
 import {
   assertMailChangesConformance,
   assertMailConformance,
   assertMailModifyConformance,
+  assertMailSenderRuleConformance,
   assertMailWriteConformance,
 } from "./testing/mail-conformance.js";
 
@@ -232,6 +233,34 @@ describe("GoogleConnector.begin", () => {
     expect(a.state).not.toBe(b.state);
   });
 
+  it("adds the filter permission on top of the defaults when asked, and keeps the other grants", async () => {
+    const { connector } = setup();
+    const { authorizationUrl } = await connector.begin(
+      { provider: "gmail", redirectUrl: "", permission: "mail_rules" },
+      context,
+    );
+    const p = new URL(authorizationUrl as string).searchParams;
+    expect(p.get("scope")).toBe(
+      `openid email ${GMAIL_READONLY} ${GMAIL_COMPOSE} ${GMAIL_MODIFY} ${GMAIL_SETTINGS_BASIC}`,
+    );
+    expect(p.get("include_granted_scopes")).toBe("true");
+  });
+
+  it("ignores the filter permission for other apps and unknown values", async () => {
+    const { connector } = setup();
+    const scopeOf = async (provider: string, permission: unknown) =>
+      new URL(
+        (
+          await connector.begin(
+            { provider, redirectUrl: "", permission: permission as "mail_rules" },
+            context,
+          )
+        ).authorizationUrl as string,
+      ).searchParams.get("scope");
+    expect(await scopeOf("googlecalendar", "mail_rules")).not.toContain(GMAIL_SETTINGS_BASIC);
+    expect(await scopeOf("gmail", "everything")).not.toContain(GMAIL_SETTINGS_BASIC);
+  });
+
   it("refuses apps other than Google's and a missing redirect URI", async () => {
     await expect(
       setup().connector.begin({ provider: "slack", redirectUrl: "" }, context),
@@ -312,6 +341,14 @@ describe("GoogleConnector.complete", () => {
       sub: "sub-1",
       email: "ann@example.test",
     });
+  });
+
+  it("returns the scopes Google granted", async () => {
+    const s = setup();
+    s.google.scope = `openid ${GMAIL_READONLY} ${GMAIL_SETTINGS_BASIC}`;
+    const { state } = await s.connector.begin({ provider: "gmail", redirectUrl: "" }, context);
+    const result = await s.connector.complete({ state, code: "code-1" }, context);
+    expect(result.scope).toBe(`openid ${GMAIL_READONLY} ${GMAIL_SETTINGS_BASIC}`);
   });
 
   it("rejects a grant without gmail.readonly, stores nothing, and revokes what Google issued", async () => {
@@ -690,6 +727,8 @@ describe("GoogleConnector as a mail connector", () => {
     const provider = new GmailMailProvider({
       prisma: s.db.prisma,
       connectors: { managed: () => s.connector as unknown as ManagedConnectorProvider },
+      // No pacing between requests: the conformance suites send hundreds.
+      sleep: async () => {},
     });
     // The connector retries a 401 once with a fresh token, so a lasting failure takes two.
     const gmail = Object.assign(Object.create(emulator.gmail), {
@@ -701,6 +740,7 @@ describe("GoogleConnector as a mail connector", () => {
     await assertMailWriteConformance(provider, { gmail, accounts: emulator.accounts });
     await assertMailModifyConformance(provider, { gmail, accounts: emulator.accounts });
     await assertMailChangesConformance(provider, { gmail, accounts: emulator.accounts });
+    await assertMailSenderRuleConformance(provider, { gmail, accounts: emulator.accounts });
     const writes = s.google.gmailRequests.filter((r) => r.method !== "GET");
     expect(writes.map((r) => r.method)).toContain("POST");
     expect(writes.map((r) => r.method)).toContain("PUT");

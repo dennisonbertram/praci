@@ -11,7 +11,10 @@ import {
   GRANOLA_MCP_ENDPOINT,
   WISPR_FLOW_MCP_ENDPOINT,
 } from "@rakazo/contracts";
-import { matchFeaturedConnectorId } from "@rakazo/core";
+import type { StatusKind } from "@rakazo/core";
+import { appStatus, matchFeaturedConnectorId } from "@rakazo/core";
+
+export type { StatusKind };
 
 export type CategoryFilter = "all" | Exclude<ConnectionCategory, "other">;
 
@@ -41,20 +44,7 @@ export function filterCatalog(
   );
 }
 
-export type StatusKind = "connected" | "reconnect" | "failed" | "connecting";
-
-/** Status of one managed app, from all of its account rows. A working account wins. */
-export function appStatus(
-  rows: readonly Pick<Connection, "status" | "needsReconnect">[],
-): StatusKind | null {
-  const live = rows.filter((row) => row.status === "connected");
-  if (live.some((row) => !row.needsReconnect)) return "connected";
-  // Every account is connected on paper, but its provider refuses the sign-in.
-  if (live.length > 0) return "reconnect";
-  if (rows.some((row) => row.status === "pending")) return "connecting";
-  if (rows.some((row) => row.status === "error")) return "failed";
-  return null;
-}
+export { appStatus };
 
 /**
  * Status of an MCP server. It needs a reconnect when its stored sign-in lapsed, or when a sign-in
@@ -242,14 +232,27 @@ export function appKey(item: Pick<ConnectionCatalogItem, "connectorId" | "slug">
 
 /**
  * An app's detail page. `connect` opens its connect dialog on arrival; `next` (a path under /app) is
- * where the person lands once connected.
+ * where the person lands once connected. `reconnect` opens the dialog to sign the connection in again.
  */
 export function appPath(
   item: Pick<ConnectionCatalogItem, "connectorId" | "slug">,
-  { connect, next }: { connect?: boolean; next?: string } = {},
+  {
+    connect,
+    next,
+    reconnect,
+  }: {
+    connect?: boolean;
+    next?: string;
+    /** A connection to sign in again with permission to make Gmail filters, replacing it. */
+    reconnect?: string;
+  } = {},
 ): string {
   const query = new URLSearchParams();
   if (connect) query.set("connect", "1");
+  if (reconnect) {
+    query.set("reconnect", reconnect);
+    query.set("permission", "mail_rules");
+  }
   if (next) query.set("next", next);
   const suffix = query.toString() ? `?${query}` : "";
   return `/app/integrations/app/${encodeURIComponent(item.connectorId)}/${encodeURIComponent(item.slug)}${suffix}`;

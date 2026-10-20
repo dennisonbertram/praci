@@ -6,13 +6,27 @@ import type {
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
-import { createMailProvider, type GmailMailProviderDeps } from "./gmail-mail-provider.js";
+import {
+  createMailProvider,
+  GMAIL_FILTER_LIMIT,
+  type GmailMailProviderDeps,
+} from "./gmail-mail-provider.js";
+import { GMAIL_SETTINGS_BASIC } from "./google-connector.js";
 import { parseRawMime } from "./mime-parse.js";
 
 const PREFIX = "/gmail/v1/users/me/";
 const DAY_MS = 86_400_000;
 const HISTORY_START = 1000;
 const DEFAULT_NOW = new Date("2026-10-01T12:00:00Z");
+/** What a mailbox is granted by default: the connect flow's scopes, without gmail.settings.basic. */
+const DEFAULT_SCOPES = [
+  "openid",
+  "email",
+  "https://www.googleapis.com/auth/gmail.readonly",
+  "https://www.googleapis.com/auth/gmail.compose",
+  "https://www.googleapis.com/auth/gmail.modify",
+];
+export const FILTER_LIMIT = GMAIL_FILTER_LIMIT;
 const SYSTEM_LABELS = [
   "INBOX",
   "SENT",
@@ -117,6 +131,15 @@ interface Mailbox {
   history: HistoryEvent[];
   /** The active `users.watch` subscription, if any. */
   watch?: EmulatedWatch;
+  /** OAuth scopes the account's token holds; `settings/filters` needs gmail.settings.basic. */
+  scopes: Set<string>;
+  filters: EmulatedFilter[];
+}
+/** A Gmail filter as `users.settings.filters` stores it. */
+export interface EmulatedFilter {
+  id: string;
+  criteria: Record<string, unknown>;
+  action: { addLabelIds?: string[]; removeLabelIds?: string[]; forward?: string };
 }
 /** What `users.watch` stored: the Pub/Sub topic, the labels it covers and when it lapses. */
 export interface EmulatedWatch {
@@ -164,6 +187,8 @@ export class GmailApiEmulator {
         historyId: HISTORY_START,
         historyFloor: HISTORY_START,
         history: [],
+        scopes: new Set(DEFAULT_SCOPES),
+        filters: [],
       });
     }
   }
@@ -198,7 +223,60 @@ export class GmailApiEmulator {
       historyId: HISTORY_START,
       historyFloor: HISTORY_START,
       history: [],
+      scopes: new Set(DEFAULT_SCOPES),
+      filters: [],
     });
+  }
+
+  /** Gives the account's token one more OAuth scope, as a reconnect that asked for it would. */
+  grantScope(accountRef: string, scope: string): void {
+    this.mailbox(accountRef).scopes.add(scope);
+  }
+
+  /** Takes a scope away again, as the user revoking the app's access would. */
+  revokeScope(accountRef: string, scope: string): void {
+    this.mailbox(accountRef).scopes.delete(scope);
+  }
+
+  /** Adds an empty mailbox under a new account reference. */
+  addMailbox(accountRef: string, address = `${accountRef}@example.test`): void {
+    this.mailboxes.set(accountRef, {
+      address,
+      messages: [],
+      drafts: new Map(),
+      historyId: HISTORY_START,
+      historyFloor: HISTORY_START,
+      history: [],
+      scopes: new Set(DEFAULT_SCOPES),
+      filters: [],
+    });
+  }
+
+  /** The scopes the account's token holds. */
+  scopesOf(accountRef: string): string[] {
+    return [...this.mailbox(accountRef).scopes];
+  }
+
+  /** The mailbox's Gmail filters, oldest first. */
+  filtersOf(accountRef: string): EmulatedFilter[] {
+    return [...(this.mailboxes.get(accountRef)?.filters ?? [])];
+  }
+
+  /** Adds a filter the user made in Gmail itself. */
+  addFilter(accountRef: string, filter: Omit<EmulatedFilter, "id">): EmulatedFilter {
+    const added = { id: `filter-${++this.sequence}`, ...filter };
+    this.mailbox(accountRef).filters.push(added);
+    return added;
+  }
+
+  /** Fills the mailbox with unrelated filters until it holds `count`. */
+  fillFilters(accountRef: string, count: number): void {
+    const { filters } = this.mailbox(accountRef);
+    while (filters.length < count)
+      this.addFilter(accountRef, {
+        criteria: { from: `filler-${filters.length}@filters.example.test` },
+        action: { removeLabelIds: ["INBOX"] },
+      });
   }
 
   /** Delivers a message, as if it arrived from outside. It lands in the change log. */
@@ -310,6 +388,8 @@ export class GmailApiEmulator {
     if (threadModify)
       return modifyThread(mailbox, decodeURIComponent(threadModify[1]!), method, body);
     if (path === "watch" || path === "stop") return this.watch(mailbox, path, method, body);
+    if (path === "settings/filters" || path.startsWith("settings/filters/"))
+      return this.filters(mailbox, path.slice("settings/filters".length), method, body);
     if (method !== "GET") return fail(405, "methodNotAllowed", "Method not allowed");
     if (path === "labels") return { status: 200, data: { labels: LABELS } };
     if (path === "profile")
@@ -330,6 +410,54 @@ export class GmailApiEmulator {
     if (file)
       return attachment(mailbox, decodeURIComponent(file[1]!), decodeURIComponent(file[2]!));
     return fail(404, "notFound", "Not found");
+  }
+
+  /**
+   * `users.settings.filters` create, list, get and delete (Gmail has no update). Needs
+   * gmail.settings.basic. At FILTER_LIMIT a create is refused with 400 failedPrecondition: Google
+   * does not document that error, so this shape is an assumption.
+   */
+  private filters(
+    mailbox: Mailbox,
+    rest: string,
+    method: ConnectorProxyRequest["method"],
+    body: unknown,
+  ): ConnectorProxyResponse {
+    if (!mailbox.scopes.has(GMAIL_SETTINGS_BASIC))
+      return fail(
+        403,
+        "insufficientPermissions",
+        "Request had insufficient authentication scopes.",
+      );
+    if (rest === "") {
+      if (method === "GET")
+        return {
+          status: 200,
+          data: mailbox.filters.length ? { filter: mailbox.filters } : {},
+        };
+      if (method !== "POST") return fail(405, "methodNotAllowed", "Method not allowed");
+      const { criteria, action } = (body ?? {}) as Record<string, unknown>;
+      const from = (criteria as { from?: unknown } | undefined)?.from;
+      if (typeof from !== "string" || !from.includes("@") || typeof action !== "object" || !action)
+        return fail(400, "invalidArgument", "Invalid filter");
+      if (mailbox.filters.length >= FILTER_LIMIT)
+        return fail(400, "failedPrecondition", "Filter limit reached");
+      const filter = {
+        id: `filter-${++this.sequence}`,
+        criteria: criteria as Record<string, unknown>,
+        action: action as EmulatedFilter["action"],
+      };
+      mailbox.filters.push(filter);
+      return { status: 200, data: filter };
+    }
+    const id = decodeURIComponent(rest.slice(1));
+    const filter = mailbox.filters.find((f) => f.id === id);
+    if (!rest.startsWith("/") || !filter)
+      return fail(404, "notFound", "Requested entity was not found.");
+    if (method === "GET") return { status: 200, data: filter };
+    if (method !== "DELETE") return fail(405, "methodNotAllowed", "Method not allowed");
+    mailbox.filters = mailbox.filters.filter((f) => f !== filter);
+    return { status: 204, data: undefined };
   }
 
   /** `users.watch` and `users.stop`. A watch lasts seven days; watching again renews it. */
@@ -1013,13 +1141,17 @@ export interface MailEmulator {
 }
 
 export function createMailEmulator(
-  options: { now?: Date } & Pick<GmailMailProviderDeps, "sleep" | "random"> = {},
+  options: {
+    now?: Date;
+    /** Accounts are connected through the app's own Google login, the only route that can hold filters. */
+    native?: boolean;
+  } & Pick<GmailMailProviderDeps, "sleep" | "random"> = {},
 ): MailEmulator {
   const gmail = new GmailApiEmulator({ now: options.now });
   const owner = { spaceId: "space-emulator", userId: "user-emulator" };
   const accounts: MailAccount[] = gmail.accountRefs().map((accountRef) => ({
     id: `conn-${accountRef}`,
-    connectorId: "emulator",
+    connectorId: options.native ? "google" : "emulator",
     app: "gmail",
     accountRef,
     label: `Mailbox ${accountRef}`,
@@ -1035,13 +1167,22 @@ export function createMailEmulator(
     status: "connected",
     spaceId: account.spaceId,
     userId: account.userId,
-    metadata: { mailAddress: account.address },
+    mailAddress: account.address,
   }));
   // Stands in for the Connection table so the production listAccounts runs.
   const prisma = {
     connection: {
       findMany: async ({ where }: { where: { spaceId: string; userId: string } }) =>
-        rows.filter((row) => row.spaceId === where.spaceId && row.userId === where.userId),
+        rows
+          .filter((row) => row.spaceId === where.spaceId && row.userId === where.userId)
+          .map(({ mailAddress, ...row }) => ({
+            ...row,
+            // Read on every call, so a scope granted later shows in listAccounts.
+            metadata: {
+              mailAddress,
+              ...(options.native ? { scope: gmail.scopesOf(row.providerRef).join(" ") } : {}),
+            },
+          })),
       updateMany: async () => ({ count: 0 }),
     },
   } as unknown as Pick<PrismaClient, "connection">;

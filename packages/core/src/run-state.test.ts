@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   assertTransition,
   canTransition,
+  hasRunPhaseLine,
   isBackgroundRunTrigger,
   isConversationalRun,
+  isRunWorking,
 } from "./run-state.js";
 
 describe("run state machine", () => {
@@ -50,5 +52,26 @@ describe("run state machine", () => {
         },
       ),
     );
+  });
+});
+
+describe("isRunWorking", () => {
+  it("counts only runs the bot is executing or about to execute", () => {
+    for (const status of ["queued", "leased", "running"] as const) {
+      expect(isRunWorking(status)).toBe(true);
+    }
+    for (const status of ["waiting_input", "waiting_takeover", "failed", "completed"] as const) {
+      expect(isRunWorking(status)).toBe(false);
+    }
+    expect(isRunWorking(undefined)).toBe(false);
+  });
+});
+
+describe("hasRunPhaseLine", () => {
+  it("is true for phases that name something awaited", () => {
+    const at = "2026-10-11T00:00:00.000Z";
+    expect(hasRunPhaseLine({ kind: "model_wait", at })).toBe(true);
+    expect(hasRunPhaseLine({ kind: "retrying", at })).toBe(true);
+    expect(hasRunPhaseLine({ kind: "thinking", at })).toBe(false);
   });
 });

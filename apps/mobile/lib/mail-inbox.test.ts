@@ -84,6 +84,7 @@ it("calls the cleanup procedures with the account, address and batch", async () 
   await listCleanup("c1");
   await cleanupArchive({ kind: "archive", connectionId: "c1", address: "a@example.test" });
   await forgetCleanupSender("c1", "a@example.test");
+  await forgetCleanupSender("c1", "a@example.test", true);
   await unsubscribeSender({ connectionId: "c1", address: "a@example.test", confirmMailto: true });
   await listMailActions();
   await undoMailAction("b1");
@@ -92,6 +93,7 @@ it("calls the cleanup procedures with the account, address and batch", async () 
     ["inbox/cleanup/list", { connectionId: "c1" }],
     ["inbox/cleanup/archive", { kind: "archive", connectionId: "c1", address: "a@example.test" }],
     ["inbox/cleanup/forget", { connectionId: "c1", address: "a@example.test" }],
+    ["inbox/cleanup/forget", { connectionId: "c1", address: "a@example.test", learned: true }],
     ["inbox/unsubscribe", { connectionId: "c1", address: "a@example.test", confirmMailto: true }],
     ["inbox/actions/list", {}],
     ["inbox/actions/undo", { batchId: "b1" }],
