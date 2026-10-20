@@ -724,5 +724,7 @@ export async function deleteMailConnectionData(
   await tx.inboxTodo.deleteMany({ where: { spaceId, userId, connectionId } });
   await tx.cachedMailMessage.deleteMany({ where: { connectionId, spaceId, userId } });
   await tx.mailSenderStat.deleteMany({ where: { spaceId, userId, connectionId } });
+  await tx.mailSenderDecision.deleteMany({ where: { spaceId, userId, connectionId } });
+  await tx.mailActionLog.deleteMany({ where: { spaceId, userId, connectionId } });
   await tx.mailSyncState.deleteMany({ where: { connectionId, connection: { spaceId, userId } } });
 }

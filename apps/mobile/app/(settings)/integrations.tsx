@@ -2,6 +2,7 @@ import type { CapabilityInstall, Connection, ConnectionCatalogItem } from "@raka
 import { preferNativeGoogle } from "@rakazo/contracts";
 import {
   abortableDelay,
+  appStatus,
   buildFeaturedConnectorTiles,
   CONNECTION_CATALOG_PAGE_SIZE,
   EMPTY_PLUGIN_CATALOG_MESSAGE,
@@ -94,7 +95,7 @@ export default function Integrations() {
     setLabelDrafts((current) =>
       Object.fromEntries(
         next.connections
-          .filter((row) => row.status === "connected" || row.status === "pending")
+          .filter((row) => row.status !== "revoked")
           .map((row) => [row.id, current[row.id] ?? row.displayName]),
       ),
     );
@@ -346,12 +347,12 @@ export default function Integrations() {
       (row) =>
         row.connectorId === item.connectorId &&
         row.provider === item.slug &&
-        (row.status === "connected" || row.status === "pending"),
+        row.status !== "revoked",
     );
   }
 
-  function itemConnected(item: ConnectionCatalogItem) {
-    return item.connected || accountsFor(item).some((row) => row.status === "connected");
+  function itemStatus(item: ConnectionCatalogItem) {
+    return appStatus(accountsFor(item)) ?? (item.connected ? "connected" : null);
   }
 
   async function notifyAppConnected(item: ConnectionCatalogItem, isCurrent: () => boolean) {
@@ -553,9 +554,22 @@ export default function Integrations() {
 
   function renderCatalogActions(item: ConnectionCatalogItem, label: string) {
     const key = itemKey(item);
-    const connected = itemConnected(item);
+    const status = itemStatus(item);
     const connecting = pending === key;
-    if (connected) {
+    if (status === "reconnect" || status === "failed") {
+      const action = status === "reconnect" ? t("Reconnect") : t("Try again");
+      return (
+        <NativeActionButton
+          accessibilityLabel={`${action} ${label}`}
+          disabled={connecting}
+          fill={false}
+          label={connecting ? t("Working…") : action}
+          onPress={() => void connect(item)}
+          prominence="secondary"
+        />
+      );
+    }
+    if (status === "connected") {
       return (
         <NativeActionButton
           accessibilityLabel={t("Added")}
@@ -580,7 +594,8 @@ export default function Integrations() {
   }
 
   function renderCatalogTile(item: ConnectionCatalogItem, label: string) {
-    const connected = itemConnected(item);
+    const connected = itemStatus(item) === "connected";
+    const failure = accountsFor(item).find((row) => row.status === "error" && row.error)?.error;
     const body = (
       <>
         <ConnectorIcon logo={item.logo} name={label} size={LOGO_SIZE} />
@@ -588,6 +603,11 @@ export default function Integrations() {
           <Text numberOfLines={1} style={styles.title}>
             {label}
           </Text>
+          {failure && itemStatus(item) === "failed" ? (
+            <Text numberOfLines={2} style={styles.secondary}>
+              {failure}
+            </Text>
+          ) : null}
         </View>
         {renderCatalogActions(item, label)}
       </>

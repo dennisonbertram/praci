@@ -1,5 +1,5 @@
 import type { SpaceBot, SpaceGroup } from "@rakazo/contracts";
-import { ACTIVE_RUN_STATUSES } from "@rakazo/core";
+import { isRunWorking } from "@rakazo/core";
 import { botColors } from "@rakazo/ui-tokens";
 import { memo } from "react";
 import type { MobileBot, MobileGroup } from "../lib/api";
@@ -7,6 +7,7 @@ import { mobileBotAvatarPresentation } from "../lib/bot-avatar";
 import { useI18n } from "../lib/i18n";
 import { botTag, formatThreadTime } from "../lib/inbox";
 import { previewSnippet } from "../lib/preview";
+import { botRowStatus } from "../lib/run-status";
 import { BotAvatar } from "./bot-avatar";
 import { ConversationRow } from "./conversation-row";
 import { GroupAvatar } from "./group-avatar";
@@ -34,10 +35,11 @@ export const BotRow = memo(function BotRow({
   onLongPress?: (bot: MobileBot | SpaceBot) => void;
 }) {
   const { t } = useI18n();
-  const preview = previewSnippet(bot.preview, 40) || bot.title || t("No messages yet");
+  const preview =
+    botRowStatus(bot) ?? (previewSnippet(bot.preview, 40) || bot.title || t("No messages yet"));
   const time = bot.updatedAt ? formatThreadTime(bot.updatedAt, new Date(day)) : "";
   const tag = botTag(bot.title, bot.name);
-  const working = ACTIVE_RUN_STATUSES.some((status) => status === bot.status);
+  const working = isRunWorking(bot.status);
   // Only flat avatars carry a usable color; image avatars fall back to the muted dot.
   const presentation = mobileBotAvatarPresentation(bot.color || FALLBACK_COLOR);
   const tint =

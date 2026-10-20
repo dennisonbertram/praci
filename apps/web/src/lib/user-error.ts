@@ -1,14 +1,13 @@
 import { t } from "@lingui/core/macro";
 import type { CredentialField } from "@rakazo/core";
-import { authErrorMessage, userErrorMessage } from "@rakazo/core";
+import { authErrorMessage, KEY_REJECTED_PATTERN, userErrorMessage } from "@rakazo/core";
 
 /** Text for a failure: human messages pass through; network and implementation detail become copy. */
 export function errorText(error: unknown, fallback = t`Something went wrong. Try again.`): string {
   return userErrorMessage(error, { fallback, offline: t`Could not reach the server` });
 }
 
-/** A provider's raw "401" for a run, in words that say what to fix. */
-export const KEY_REJECTED_PATTERN = /^401\b|"code":\s*401\b/;
+export { KEY_REJECTED_PATTERN };
 
 /** A run's stored error as the user reads it: a rejected API key says where to fix it. */
 export function runErrorText(error: string): string {
