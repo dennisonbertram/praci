@@ -27,8 +27,8 @@ vi.mock("@lingui/react/macro", () => {
 vi.mock("@rakazo/ui-web", () => {
   const Container = ({ children }: { children?: ReactNode }) => <div>{children}</div>;
   return {
-    Button: ({ variant: _v, ...props }: ComponentProps<"button"> & { variant?: string }) => (
-      <button {...props} />
+    Button: ({ variant, ...props }: ComponentProps<"button"> & { variant?: string }) => (
+      <button data-variant={variant ?? "default"} {...props} />
     ),
     Input: (props: ComponentProps<"input">) => <input {...props} />,
     Textarea: (props: ComponentProps<"textarea">) => <textarea {...props} />,
@@ -285,6 +285,21 @@ it("shows agent drafts with their content and approves one", async () => {
   await act(async () => view.button("Approve").click());
   expect(api.approveDraft).toHaveBeenCalledWith({ skillId: "draft-1" });
   expect(view.container.querySelector('[data-testid="bot-skills-drafts"]')).toBeNull();
+});
+
+it("opens a draft by default with a count, one description and a primary Approve", async () => {
+  api.drafts.mockResolvedValueOnce([draftSkill]).mockResolvedValue([]);
+  const view = await mount();
+  const drafts = view.container.querySelector('[data-testid="bot-skills-drafts"]');
+  expect(drafts?.querySelector("details")?.hasAttribute("open")).toBe(true);
+  expect(drafts?.querySelector("h4")?.textContent).toBe("Drafts1");
+  expect(drafts?.querySelector("summary svg")).toBeTruthy();
+  expect(view.button("Approve").getAttribute("data-variant")).toBe("default");
+  expect(view.button("Discard").getAttribute("data-variant")).toBe("ghost");
+  expect(drafts?.textContent?.split("Summarise the week.").length).toBe(2);
+  expect(drafts?.textContent).toContain("Steps.");
+  expect(drafts?.textContent).not.toContain("---");
+  await view.unmount();
 });
 
 it("discards a draft and marks a revision of an active skill", async () => {
