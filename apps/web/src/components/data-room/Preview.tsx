@@ -20,7 +20,9 @@ import {
   maskCurrencyWhenHidden,
   useHideAmounts,
 } from "../../lib/hide-amounts-preference";
+import { canPreviewSpreadsheet } from "../../lib/spreadsheet";
 import { errorText } from "../../lib/user-error";
+import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
 import { dateText, isSettled, sizeText, typeLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
@@ -235,7 +237,11 @@ export function Preview({
         )}
       </div>
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
-      {hidden && (canPreviewImage(item) || canPreviewPdf(item)) ? (
+      {item.status !== "failed" && canPreviewSpreadsheet(item.name, item.mimeType) ? (
+        <div className="h-[50vh] shrink-0 overflow-hidden rounded-md border border-border">
+          <SheetPreview key={item.id} source={{ dataRoomItemId: item.id }} />
+        </div>
+      ) : hidden && (canPreviewImage(item) || canPreviewPdf(item)) ? (
         <p className="text-sm text-muted-foreground">
           {canPreviewImage(item)
             ? t`Image hidden while amounts are hidden`

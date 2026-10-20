@@ -118,6 +118,8 @@ import {
   SpaceMemoryConfigSchema,
   SpaceNavigationSchema,
   SpaceSchema,
+  SpreadsheetPreviewInputSchema,
+  SpreadsheetPreviewSchema,
   TaughtSkillSchema,
   TeachRecordingEventSchema,
   ThinkingLevelSchema,
@@ -1101,6 +1103,10 @@ export const appContract = {
     get: oc.input(threadTarget.and(z.object({ artifactId: Id }))).output(ArtifactWithContentSchema),
     getById: oc.input(z.object({ artifactId: Id })).output(ArtifactWithContentSchema),
     remove: oc.input(z.object({ artifactId: Id })).output(z.object({ ok: z.literal(true) })),
+  },
+  files: {
+    /** One page of a spreadsheet (.xlsx, .xlsm, .csv, .tsv) from an artifact or a Data room item. */
+    spreadsheetPreview: oc.input(SpreadsheetPreviewInputSchema).output(SpreadsheetPreviewSchema),
   },
   usage: {
     list: oc.output(z.array(UsageRecordSchema)),

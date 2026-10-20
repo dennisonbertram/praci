@@ -1,4 +1,4 @@
-import type { Artifact, ArtifactVersion } from "@rakazo/contracts";
+import type { Artifact, ArtifactVersion, SpreadsheetPreview } from "@rakazo/contracts";
 import { rpc } from "./api";
 import type { MobileArtifactTarget } from "./artifact-open";
 
@@ -34,4 +34,21 @@ export function artifactThreadTarget(
   if (artifact.groupId) return { groupId: artifact.groupId };
   if (artifact.botId) return { botId: artifact.botId };
   return null;
+}
+
+/** The first sheet of a spreadsheet artifact, read by the server. */
+export function getSpreadsheetPreview(artifactId: string): Promise<SpreadsheetPreview> {
+  return rpc<SpreadsheetPreview>("files/spreadsheetPreview", { source: { artifactId } });
+}
+
+/** .xlsx, .xlsm, .csv and .tsv; legacy .xls is not previewed. */
+export function isSpreadsheetArtifact(name: string, mimeType: string): boolean {
+  const ext = /\.([a-z0-9]+)$/i.exec(name)?.[1]?.toLowerCase();
+  if (ext === "xls" || mimeType === "application/vnd.ms-excel") return false;
+  return (
+    ["xlsx", "xlsm", "csv", "tsv"].includes(ext ?? "") ||
+    mimeType.includes("spreadsheetml.sheet") ||
+    mimeType === "text/csv" ||
+    mimeType === "text/tab-separated-values"
+  );
 }

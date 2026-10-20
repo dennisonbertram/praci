@@ -289,7 +289,7 @@ it("puts the unallocated pool right after the granted options, before the SAFEs"
     syncing: false,
   });
   await show();
-  const names = [...container.querySelectorAll("tbody tr")].map(
+  const names = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].map(
     (tr) => tr.querySelector("td")?.textContent ?? "",
   );
   const at = (name: string) => names.findIndex((n) => n.startsWith(name));
@@ -300,7 +300,7 @@ it("puts the unallocated pool right after the granted options, before the SAFEs"
 it("shows Ownership in the same font as the other figures", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
   await show();
-  const cells = [...container.querySelectorAll("tbody td")].filter((td) =>
+  const cells = [...container.querySelectorAll("table:not(.sr-only) tbody td")].filter((td) =>
     td.textContent?.includes("10.00%"),
   );
   expect(cells).toHaveLength(1);
@@ -586,14 +586,15 @@ it("lists only investors on the Investors tab and offers Add email only to inves
   ].filter((b) => b.textContent === "Add email");
   expect(adds).toHaveLength(1);
   // A contact with no holding shows a dash, the same as a holder with no shares.
-  const rows = [...container.querySelectorAll("tbody tr")];
+  const rows = [...container.querySelectorAll("table:not(.sr-only) tbody tr")];
   const bo = rows.find((row) => row.textContent?.includes("Bo"));
   expect(bo?.querySelectorAll("td")[4]?.textContent).toBe("—");
 });
 
 it("keeps the Kind column with or without Carta", async () => {
   await show();
-  const headers = () => [...container.querySelectorAll("th")].map((th) => th.textContent);
+  const headers = () =>
+    [...container.querySelectorAll("table:not(.sr-only) th")].map((th) => th.textContent);
   expect(headers()).toEqual(["Name", "Email", "Kind"]);
   await act(async () => root.unmount());
   root = createRoot(container);
@@ -775,7 +776,7 @@ it("keeps an option grant on Options when a contact with the holder's email is O
   });
   await show("/app/cap-table?kind=options");
   expect(container.textContent).not.toContain("No option grants in Carta");
-  expect(container.querySelector("tbody")?.textContent).toContain("Bo");
+  expect(container.querySelector("table:not(.sr-only) tbody")?.textContent).toContain("Bo");
 });
 
 it("shows All and drops ?kind when its tab is missing without a cap table", async () => {
@@ -820,7 +821,7 @@ it("shows a holder's Carta email and offers Save as contact instead of Add email
     syncing: false,
   });
   await show();
-  const row = [...container.querySelectorAll("tbody tr")].find((r) =>
+  const row = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].find((r) =>
     r.textContent?.includes("Priya Holder"),
   );
   expect(row?.textContent).toContain("priya@fund.test");
@@ -949,7 +950,7 @@ describe("search, filter and sort", () => {
     ],
   };
   const rowNames = () =>
-    [...container.querySelectorAll("tbody tr")].map(
+    [...container.querySelectorAll("table:not(.sr-only) tbody tr")].map(
       (tr) => tr.querySelector("td")?.firstElementChild?.textContent ?? "",
     );
   const search = () => document.querySelector<HTMLInputElement>("input[name=cap-table-search]");
@@ -1039,6 +1040,16 @@ describe("search, filter and sort", () => {
     );
     await flush();
     expect(container.textContent).not.toContain("Security");
+  });
+
+  it("sets the Security filter from the ownership donut", async () => {
+    await showAt("/app/cap-table");
+    expect(container.querySelector("[data-testid=ownership-donut]")).not.toBeNull();
+    const legend = [...container.querySelectorAll("ul button")].find((b) =>
+      b.textContent?.startsWith("Series Seed Preferred"),
+    );
+    await click(legend as HTMLElement);
+    expect(search$).toContain("security=Series+Seed+Preferred");
   });
 
   it("keeps search in the URL and clears it from the empty state", async () => {

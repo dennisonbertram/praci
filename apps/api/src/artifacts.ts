@@ -13,7 +13,7 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import { IsolationError, isRecordNotFound, Prisma, withResolvedArtifactVersion } from "@rakazo/db";
 
-function adapterContext(actor: Actor, botId: string, operationId: string) {
+export function adapterContext(actor: Actor, botId: string, operationId: string) {
   return {
     operationId,
     traceId: operationId,

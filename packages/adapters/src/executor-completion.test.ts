@@ -1,12 +1,14 @@
 import { cartaAgentSpawnKey, integrationAgentSpawnKey } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import {
+  classifyRunFailure,
   completionMarksUnread,
   completionMessageSegments,
   completionNotificationBody,
   completionNotificationPreview,
   DELEGATED_EMPTY_NOTICE,
   emptyDelegatedToolTurnShouldFail,
+  GENERIC_RUN_ERROR,
   INBOX_OWNER_GUIDANCE,
   isExactNoResponse,
   LONG_WORK_PROGRESS_GUIDANCE,
@@ -525,5 +527,46 @@ describe("subagentMarksUnread", () => {
     expect(subagentMarksUnread("bot_message", "completed")).toBe(false);
     expect(subagentMarksUnread("bot_message", "failed")).toBe(true);
     expect(subagentMarksUnread("bot_message", "completed", true)).toBe(true);
+  });
+});
+
+describe("classifyRunFailure", () => {
+  const prismaText =
+    "Invalid `tx.run.findUnique()` invocation in packages/db/src/messages.ts:108:28";
+
+  it("treats database disconnects as interrupted", () => {
+    for (const error of [
+      Object.assign(new Error("closed"), { code: "P1017" }),
+      Object.assign(new Error("x"), { code: "P2024" }),
+      new Error("Engine is not yet connected."),
+      new Error("Cannot use a pool after calling end on the pool"),
+      new Error(prismaText, { cause: Object.assign(new Error("c"), { code: "P1001" }) }),
+    ]) {
+      expect(classifyRunFailure(error, [])).toEqual({ interrupted: true });
+    }
+  });
+
+  it("treats a shutdown abort as interrupted", () => {
+    const shutdown = new AbortController();
+    shutdown.abort(new Error("Worker shutting down"));
+    expect(classifyRunFailure(new Error("aborted"), [], shutdown.signal)).toEqual({
+      interrupted: true,
+    });
+  });
+
+  it("keeps a genuine tool error as is", () => {
+    expect(classifyRunFailure(new Error("Tool crashed"), [])).toEqual({
+      interrupted: false,
+      message: "Tool crashed",
+      rawMessage: "Tool crashed",
+    });
+  });
+
+  it("maps raw Prisma text to the generic message and keeps the raw text for logs", () => {
+    expect(classifyRunFailure(new Error(prismaText), [])).toEqual({
+      interrupted: false,
+      message: GENERIC_RUN_ERROR,
+      rawMessage: prismaText,
+    });
   });
 });
