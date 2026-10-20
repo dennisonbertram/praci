@@ -140,4 +140,4 @@ systemctl enable --now apparmor auditd fail2ban unattended-upgrades
 systemctl restart fail2ban
 systemctl reload ssh
 
-echo "Rakazo host hardening applied. Verify a fresh SSH session before closing the current one."
+echo "Praci host hardening applied. Verify a fresh SSH session before closing the current one."

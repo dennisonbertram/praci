@@ -293,7 +293,7 @@ export function linkFaviconOrigin(href: string): string | undefined {
 }
 
 /**
- * Where link icons come from. Apps load them through the Rakazo API, which fetches and caches
+ * Where link icons come from. Apps load them through the Praci API, which fetches and caches
  * them, so a device never contacts the linked site or an icon service. `globe` is the native
  * fallback glyph; web draws its own.
  */

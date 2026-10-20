@@ -28,7 +28,7 @@ export const TR_MESSAGES: Record<string, string> = {
   "Chat Settings": "Sohbet Ayarları",
   "Configure a plugin catalog on the server to connect apps.":
     "Uygulamaları bağlamak için sunucuda bir eklenti kataloğu yapılandır.",
-  "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.":
+  "Paste the OpenAI-compatible address from your server. Praci adds /v1 if needed.":
     "Sunucundaki OpenAI uyumlu adresi yapıştır. Gerekirse Praci /v1 ekler.",
   "Settings: General": "Ayarlar: Genel",
   "Settings: Usage": "Ayarlar: Kullanım",

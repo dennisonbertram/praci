@@ -109,7 +109,7 @@ const RESERVED_COMMAND_VARIABLE_NAMES = new Set([
   "SSH_ASKPASS",
   "SSH_ASKPASS_REQUIRE",
 ]);
-// Whole families a single variable name cannot enumerate: dynamic-loader injection, Rakazo's own
+// Whole families a single variable name cannot enumerate: dynamic-loader injection, Praci's own
 // namespace, git's config file set, and npm's configuration overrides.
 const RESERVED_COMMAND_VARIABLE_PREFIXES = [
   "LD_",

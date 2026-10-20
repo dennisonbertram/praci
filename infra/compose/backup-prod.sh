@@ -60,4 +60,4 @@ chmod 600 "${SNAPSHOT_DIR}"/*
 # cleanup can never expand to an environment-controlled or broad path.
 find "${BACKUP_ROOT}" -mindepth 1 -maxdepth 1 -type d -mtime +6 -exec rm -rf -- {} +
 
-echo "Verified Rakazo backup written to ${SNAPSHOT_DIR}"
+echo "Verified Praci backup written to ${SNAPSHOT_DIR}"

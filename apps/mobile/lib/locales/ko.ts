@@ -28,7 +28,7 @@ export const KO_MESSAGES: Record<string, string> = {
   "Chat Settings": "채팅 설정",
   "Configure a plugin catalog on the server to connect apps.":
     "앱을 연결하려면 서버에 플러그인 카탈로그를 설정하세요.",
-  "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.":
+  "Paste the OpenAI-compatible address from your server. Praci adds /v1 if needed.":
     "서버의 OpenAI 호환 주소를 붙여넣으세요. 필요하면 Praci가 /v1을 추가합니다.",
   "Settings: General": "설정: 일반",
   "Settings: Usage": "설정: 사용량",

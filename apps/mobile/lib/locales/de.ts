@@ -30,7 +30,7 @@ export const DE_MESSAGES: Record<string, string> = {
   "Chat Settings": "Chat-Einstellungen",
   "Configure a plugin catalog on the server to connect apps.":
     "Richte auf dem Server einen Plugin-Katalog ein, um Apps zu verbinden.",
-  "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.":
+  "Paste the OpenAI-compatible address from your server. Praci adds /v1 if needed.":
     "Füge die OpenAI-kompatible Adresse deines Servers ein. Praci ergänzt /v1 bei Bedarf.",
   "Settings: General": "Einstellungen: Allgemein",
   "Settings: Usage": "Einstellungen: Nutzung",
