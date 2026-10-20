@@ -3,7 +3,7 @@
  * not a usable app. After session resolves, wait for a bootstrapped shell
  * (`data-ready` / shell-ready mark) or an auth/welcome/onboarding surface so a
  * bare Suspense fallback or pre-bootstrap ShellPage cannot pass. Plain e2e
- * fixtures omit the Rakazo app-state marker. Runs in the renderer.
+ * fixtures omit the Praci app-state marker. Runs in the renderer.
  */
 export const APP_DOCUMENT_STATE_SCRIPT = `(() => {
   const appState =
@@ -36,7 +36,7 @@ export const APP_DOCUMENT_STATE_SCRIPT = `(() => {
     performance.getEntriesByName("rk:renderer:session-committed").length > 0;
   if (sessionReady && surfaceReady) return "ready";
 
-  // Desktop e2e fixtures mount a plain page without Rakazo app-state markers.
+  // Desktop e2e fixtures mount a plain page without Praci app-state markers.
   if (appState === null) {
     const bodyText = (document.body?.innerText || "").trim();
     if (bodyText.includes("Opening your Space")) return "pending";

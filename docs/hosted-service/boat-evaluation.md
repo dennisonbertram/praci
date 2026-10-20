@@ -8,7 +8,7 @@ definitions of `@boatdev/sdk@1.10.0`. Boat's comparison with E2B comes from Boat
 ## Verdict
 
 Worth watching, not an adapter yet. Compute is much cheaper than E2B, but Boat has no
-memory-preserving pause and no screenshot or input API. A Rakazo computer would cold-boot its
+memory-preserving pause and no screenshot or input API. A Praci computer would cold-boot its
 desktop and Chrome on every wake. The adapter would also have to provide screen control,
 view-only screens and egress rules itself.
 

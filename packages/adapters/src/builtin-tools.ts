@@ -1560,7 +1560,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "save_memory",
     description:
-      "Store a durable fact in this bot's semantic memory (preferences, decisions, recurring context). Use for anything worth recalling in future conversations.",
+      "Store a durable fact in this bot's semantic memory: a stable preference, fact or decision. Never store secrets, codes, credentials or raw transcripts. Recall first, and use forget_memory on an outdated entry instead of saving a near-duplicate. Report it as saved only if this call succeeds.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1830,7 +1830,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "skill_read",
     description:
-      "Load a Claude Agent Skill (SKILL.md recipe) by exact name. Call this when a catalog skill matches the user's request, then follow it immediately.",
+      "Load a Claude Agent Skill (SKILL.md recipe) by exact name. Call this when a catalog skill matches the user's request, then use it when relevant.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1842,7 +1842,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "skill_create",
     description:
-      "Create a reusable Claude Agent Skill (generic how-to SKILL.md) shared across assistants. The Pi runtime already understands this format; we persist and inject them. Use when a multi-step task is worth repeating or the user asks to save a skill. Do not include account names, channels, or inboxes — those belong in a routine.",
+      "Create a reusable Claude Agent Skill (generic how-to SKILL.md) shared across assistants. The Pi runtime already understands this format; we persist and inject them. The skill is saved as a draft that the owner must approve before anyone can use it. Use when a multi-step task is worth repeating or the user asks to save a skill. Do not include account names, channels, or inboxes — those belong in a routine.",
     inputSchema: {
       type: "object",
       properties: {
@@ -1866,7 +1866,7 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "skill_update",
     description:
-      "Update a user-created skill by name or id. Builtin and plugin skills are read-only.",
+      "Propose a change to a user-created skill by name or id. The owner must approve it before it takes effect. Builtin and plugin skills are read-only.",
     inputSchema: {
       type: "object",
       properties: {

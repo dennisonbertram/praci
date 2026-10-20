@@ -12,10 +12,12 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 const imageUrl = vi.hoisted(() => vi.fn());
 const openItem = vi.hoisted(() => vi.fn());
+const saveItem = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/data-room", async (original) => ({
   ...(await original<typeof import("../../lib/data-room")>()),
   dataRoomFileUrl: imageUrl,
   openDataRoomItem: openItem,
+  saveDataRoomItem: saveItem,
 }));
 
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
@@ -62,6 +64,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
+const icon = (label: string) =>
+  container.querySelector(`button[aria-label="${label}"]`) as HTMLButtonElement;
+
 const render = () =>
   act(async () => {
     root.render(
@@ -93,12 +98,13 @@ it("disables Open, with a reason, while amounts are hidden", async () => {
       );
     });
   const openButton = () =>
-    Array.from(container.querySelectorAll("button")).find((b) => b.textContent === "Open");
+    container.querySelector<HTMLButtonElement>('button[aria-label="Open in new tab"]');
   await show();
   expect(openButton()?.disabled).toBe(false);
   await act(async () => setHideAmounts(true));
   expect(openButton()?.disabled).toBe(true);
   expect(container.textContent).toContain("Hidden while amounts are hidden");
+  expect(container.querySelector('button[aria-label="Full screen"]')).toBeNull();
 });
 
 it("leads a failed file with Try again, and keeps Delete as a quieter button", async () => {
@@ -110,7 +116,7 @@ it("leads a failed file with Try again, and keeps Delete as a quieter button", a
     );
   });
   const buttons = Array.from(container.querySelectorAll("aside > div:last-child > button"));
-  expect(buttons.map((button) => button.textContent)).toEqual(["Try again", "Download", "Delete"]);
+  expect(buttons.map((button) => button.textContent)).toEqual(["Try again", "Delete"]);
   act(() => (buttons[0] as HTMLButtonElement).click());
   expect(onAction).toHaveBeenCalledWith("retry", failed);
 });
@@ -145,13 +151,11 @@ it("opens a readable PDF in the browser, and says an untagged file is not tagged
     );
   });
   expect(container.textContent).toContain("Not tagged yet");
-  const buttons = Array.from(container.querySelectorAll("aside > div:last-child > button"));
-  expect(buttons.map((button) => button.textContent)).toEqual(["Open", "Download"]);
-  act(() => (buttons[0] as HTMLButtonElement).click());
+  act(() => icon("Open in new tab").click());
   expect(openItem).toHaveBeenCalledWith(pdf);
 });
 
-it("offers only Download for a file the browser cannot show", async () => {
+it("disables Open for a file the browser cannot show, and Full screen opens a spreadsheet", async () => {
   const sheet = {
     ...receipt,
     name: "budget.csv",
@@ -163,8 +167,8 @@ it("offers only Download for a file the browser cannot show", async () => {
       <Preview item={sheet} folderPath="" onAction={() => undefined} onClose={() => undefined} />,
     );
   });
-  const buttons = Array.from(container.querySelectorAll("aside > div:last-child > button"));
-  expect(buttons.map((button) => button.textContent)).toEqual(["Download"]);
+  expect(icon("Open in new tab").disabled).toBe(true);
+  expect(icon("Full screen")).not.toBeNull();
   expect(container.textContent).not.toContain("Not tagged yet");
 });
 
@@ -274,4 +278,25 @@ it("offers Send to agent in the preview's More actions menu when there are agent
     e.textContent?.trim(),
   );
   expect(names).toEqual(["Send to agent", "Move", "Rename", "Delete"]);
+});
+
+it("downloads from the header icon", async () => {
+  saveItem.mockResolvedValue(undefined);
+  await render();
+  act(() => icon("Download").click());
+  expect(saveItem).toHaveBeenCalledWith(receipt);
+});
+
+it("opens the picture in a full-screen dialog without fetching it again, and Escape closes it", async () => {
+  await render();
+  expect(imageUrl).toHaveBeenCalledTimes(1);
+  await act(async () => icon("Full screen").click());
+  const dialog = document.body.querySelector('[data-slot="dialog-content"]');
+  expect(dialog?.querySelector("img")?.getAttribute("src")).toBe("blob:receipt");
+  expect(dialog?.textContent).toContain("receipt.png");
+  expect(imageUrl).toHaveBeenCalledTimes(1);
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+  expect(document.body.querySelector('[data-slot="dialog-content"]')).toBeNull();
 });

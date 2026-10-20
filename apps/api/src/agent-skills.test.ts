@@ -21,6 +21,8 @@ function savedSkill(name: string, source = "user") {
     description: "Saved review recipe",
     content: buildSkillMd({ name, description: "Saved review recipe", body: "Saved steps" }),
     source,
+    origin: "user",
+    status: "active",
     createdAt: new Date(0),
     updatedAt: new Date(0),
   };
@@ -254,5 +256,19 @@ describe("importing a skill from a URL", () => {
     await expect(
       service.create(actor, { content: "---\nname: Only name\n---\nBody" }),
     ).rejects.toThrow(/description/);
+  });
+});
+
+describe("agent skill drafts", () => {
+  const draftRow = () => ({
+    ...savedSkill("Agent draft"),
+    id: "draft-1",
+    origin: "agent",
+    status: "draft",
+  });
+
+  it("keeps drafts out of the catalog", async () => {
+    const { service } = setup([draftRow() as never]);
+    expect((await service.list(actor)).map((skill) => skill.name)).not.toContain("Agent draft");
   });
 });

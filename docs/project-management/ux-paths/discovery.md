@@ -1,10 +1,10 @@
-# App Discovery: Rakazo Projects (mockup)
+# App Discovery: Praci Projects (mockup)
 
 Scope: the planned Projects page and Project bot only. Sources read in full: `docs/project-management/README.md` (stories S1-S30, decisions, capability matrix) and `docs/project-management/mockup.html` (593 lines, vanilla JS). Tags: [mockup] = built in the mockup, [plan only] = README requires it but the mockup has no UI for it, [both] = both agree. All data is invented. The mockup's "today" is Oct 16 (seed day 11 from Oct 5).
 
 ## Application Type
 
-Projects page inside the Rakazo app shell: a Kanban board and a Waterfall timeline of projects/tasks, plus a Project bot in a right-hand side panel. Task source is pluggable (GitHub, Linear, Notion, or native Rakazo tasks). Web and Electron first; mobile is a later follow-up.
+Projects page inside the Praci app shell: a Kanban board and a Waterfall timeline of projects/tasks, plus a Project bot in a right-hand side panel. Task source is pluggable (GitHub, Linear, Notion, or native Praci tasks). Web and Electron first; mobile is a later follow-up.
 
 ## Tech Stack
 
@@ -70,7 +70,7 @@ Timeline (Waterfall)
 
 Task drawer (opens from card, bar, row label, chip, blocker, citation chip)
 - Header: title, "Send to bot" menu (Project bot, Research, Writer), close. [both]
-- Source row: kind and location (e.g. "GitHub issue #142 · acme/web", "Native task · Product launch"), "Synced 2 min ago" or "Saved in Rakazo", "Open in <source>". [both]
+- Source row: kind and location (e.g. "GitHub issue #142 · acme/web", "Native task · Product launch"), "Synced 2 min ago" or "Saved in Praci", "Open in <source>". [both]
 - Fields: Status, Owner, Assignee (or "<bot> · working on it" with "Open thread"), Dates, Label, Estimate (derived "N pts"). Read-only text, not editable. [mockup]
 - "Blocked by" chips with source icon, id, title, status; "None"; "No relation property" in Notion no-relation mode. [both]
 - Bot "Suggestion" card (reason line, "Accept" for native / "Open in <source>" for tracker, "Dismiss"); appears only when task has no assignee or has an open blocker. [both]
@@ -118,22 +118,22 @@ Cross-cutting
 - Project: name (Product launch, Docs refresh), phases (Plan, Build, Launch prep, Launch). Plan: `Project` in `packages/core`; one project may combine sources.
 - Task: id, title, status (+ plan `statusCategory` todo/doing/done), label, start/end dates, milestone flag, unscheduled flag, estimate, blocked-by list, source, source id, `sourceVersion` (plan). 16 seed tasks.
 - Task sources: `gh` GitHub issue (acme/web; ids #142, #145, #151), `lin` Linear issue (Growth; ENG-31, ENG-42, ENG-47), `no` Notion page (Launch tasks; no id), `nat` Native (Product launch; PL-n ids).
-- Owner: person accountable (Ada, Bo, Eli among seeds). Rakazo-side field for GitHub/Linear; mapped property for Notion.
-- Assignee: person (Ada Park, Bo Reyes, Cy Novak, Di Okafor, Eli Brandt) or bot (Research on ENG-31, Writer on Press kit and Post-launch survey), or none (Partner outreach list). Bot assignment lives on Rakazo's row only.
+- Owner: person accountable (Ada, Bo, Eli among seeds). Praci-side field for GitHub/Linear; mapped property for Notion.
+- Assignee: person (Ada Park, Bo Reyes, Cy Novak, Di Okafor, Eli Brandt) or bot (Research on ENG-31, Writer on Press kit and Post-launch survey), or none (Partner outreach list). Bot assignment lives on Praci's row only.
 - Dependency: blocker -> dependent (`TaskDependency`); drives Blocked marker, arrows, critical path, conflict.
 - Milestone: Beta ready (PL-8), Launch day (PL-14).
 - Source connection: `McpServer` (+ OAuth session) with access mode ro/rw, per-source selection (team, repository, Notion database and property map), counts, last synced.
 - Bot thread: Project bot conversation; per-task thread with Research or Writer.
 - Suggestion: reason-bearing item with Accept / "Open in <source>" / Dismiss (drawer card and bot panel card).
 - Approval card: proposal (batch of native tasks) or status change (task, target tracker, old -> new, Approve/Reject); backed by `ActionApprovalRule` for "always allow".
-- Column WIP limit: Rakazo-side only.
+- Column WIP limit: Praci-side only.
 
 ## Integrations
 
 - GitHub: issues, sub-issues, milestones, Project fields, dependencies; repo or Project picker; "Status from" Project field or open/closed + labels; first external tracker in the plan; PAT vs OAuth app is an open question.
 - Linear: official MCP (`mcp.linear.app/mcp`, read-only variant); team picker; due dates on issues; owner has no confirmed issue field.
 - Notion: official MCP; database + property mapping (status, assignee, start, end, optional blocked-by and estimate); dependencies only if relation properties exist; "Add relation" is a write needing approval.
-- Native: Rakazo Postgres, shared in the space, no sync, no account needed.
+- Native: Praci Postgres, shared in the space, no sync, no account needed.
 - All three trackers are written only by (a) the user's own drag/edit (immediate, via adapter, with source version check) and (b) the bot's status-change tool behind an approval card. The bot never writes other tracker fields.
 
 ## States
@@ -156,7 +156,7 @@ Cross-cutting
 2. `board-work` - Board: reading cards, source ids, Blocked marker, drag to change status (native vs tracker writes), group by assignee with bot lanes, person/bot filter, WIP over limit, read-only drag lock, task drawer (source row, Owner/Assignee, comments).
 3. `timeline-planning` - Timeline: phases, arrows, critical path, milestones, conflict marker, drag-reschedule with dependents preview, Unscheduled lane, Notion no-relation and "Add relation", stale-write "Update conflict" (Keep mine / Use GitHub).
 4. `bot-conversation-approvals` - Project bot panel: "Ask bot", blocked-work answer with citation chips, "Create 4 tasks in Product launch" proposal (Accept all / selected), status-change approval (Approve / Reject), tracker suggestion with "Open in <source>", weekly report and "Save to thread", drawer suggestion Accept/Dismiss.
-5. `delegate-to-bots-ownership` - Delegating and ownership: "Send to bot" (Project bot, Research, Writer), "working on it" assignee row, "Open thread", bot lane and avatar on board/timeline, Owner vs Assignee, people-and-bots filter, bot assignment stays Rakazo-side, read-only effects on delegation.
+5. `delegate-to-bots-ownership` - Delegating and ownership: "Send to bot" (Project bot, Research, Writer), "working on it" assignee row, "Open thread", bot lane and avatar on board/timeline, Owner vs Assignee, people-and-bots filter, bot assignment stays Praci-side, read-only effects on delegation.
 
 ## Plan vs mockup mismatches noticed
 
@@ -173,7 +173,7 @@ Missing from the mockup (README promises):
 10. S23: the approval cards lack the "Always allow this kind" option. Drawer "Accept" on a native suggestion only toasts "Sent for approval" with no approval card; "Add relation" in the Notion note also only toasts "Sent for approval" (S4 says it needs approval).
 11. S24: read-only disables drag but shows no tooltip explanation; the bot's "Change status" approval card (for GitHub #142) still appears in read-only mode, contradicting "a read-only connection also removes the bot's status change". "Open in Linear" and similar remain fine.
 12. S26: no "last synced only when stale" behavior; the drawer always shows "Synced N min ago". The conflict modal appears only from the Mockup states toggle and shows values (Nov 13 vs Nov 6) that do not match the seed due date of #145 (Nov 10).
-13. S28: Notion tasks have no source id (card shows only the icon; timeline bar label is blank; drawer chips show "Page" or empty), where the plan says a Notion page icon; native ids "PL-n" match "Rakazo id". Sources button counts are for all tasks across projects, ignoring the filter state beyond dimming.
+13. S28: Notion tasks have no source id (card shows only the icon; timeline bar label is blank; drawer chips show "Page" or empty), where the plan says a Notion page icon; native ids "PL-n" match "Praci id". Sources button counts are for all tasks across projects, ignoring the filter state beyond dimming.
 14. S30: "Open thread" for a task sent to Project bot opens the generic canned Project bot conversation, not a task thread. Nothing shows that the tracker's own assignee is unchanged (e.g. ENG-31 is assigned to Research, with the Linear-side assignee Cy Novak hidden). A bot-assigned task can be re-sent but there is no way to unassign or see it finish.
 15. S25: no representation of shared native vs per-user tracker scope, or of any role difference between members.
 16. Left nav Project bot / Research / Writer rows and Integrations are inert; the README says the bot opens via "Ask bot" (Decision 7) so this is consistent, but bot rows in the nav look clickable.

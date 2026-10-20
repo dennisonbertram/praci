@@ -10,7 +10,7 @@ import { getLogger } from "@rakazo/logging";
 /**
  * Finish a native OAuth connect (Google) from the callback page. The pending row is found by
  * `state`, which `begin` stored in `providerRef`, and only for the signed-in owner, so a link
- * sent by someone else cannot attach their account to this user's Rakazo account.
+ * sent by someone else cannot attach their account to this user's Praci account.
  */
 export async function completeNativeOAuth(options: {
   prisma: PrismaClient;

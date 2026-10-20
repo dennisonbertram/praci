@@ -1039,7 +1039,7 @@ async function mailSend(
           update: { lastErrorAt: now, needsReconnect: true, lastErrorKind: "auth" },
         })
         .catch(() => undefined);
-      return { error: "Mail needs to be reconnected in Rakazo before it can send." };
+      return { error: "Mail needs to be reconnected in Praci before it can send." };
     }
     throw error;
   }

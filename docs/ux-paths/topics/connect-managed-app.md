@@ -247,7 +247,7 @@ Key facts from the code (used below):
 4. Failure variation: Ravi denies access → the popup shows "OAuth connection failed" with the provider's description or "OAuth authorization was cancelled." and "You can close this window."; the overlay keeps polling until 90 s, then shows the pending message.
 5. Desktop: the same "Add" uses `redirect: "desktop"`; the system browser opens (Google refuses embedded browsers). **[REAL THIRD-PARTY SIGN-IN]** The shell catches the code on loopback, the window calls `connections.complete({state, code})`, and the tile reads "Added" with no popup window.
 ### Variations
-- Opening `/integrations/google/callback` directly in a normal tab (not the popup): on success it navigates to `/app`; on error it shows "Return to Rakazo".
+- Opening `/integrations/google/callback` directly in a normal tab (not the popup): on success it navigates to `/app`; on error it shows "Return to Praci".
 - Missing `code` or `state` in the URL: "OAuth connection failed" with "OAuth authorization was cancelled."
 ### Edge Cases
 - `completeNativeOAuth` rejects the state if it does not match the user and space; the error shows in the popup, not the overlay.

@@ -14,6 +14,9 @@ const api = vi.hoisted(() => ({
   update: vi.fn(),
   remove: vi.fn(),
   importFromUrl: vi.fn(),
+  drafts: vi.fn(),
+  approveDraft: vi.fn(),
+  discardDraft: vi.fn(),
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: { agentSkills: api } }));
 vi.mock("@lingui/react/macro", () => {
@@ -69,6 +72,7 @@ const skill = (
   name,
   description: `${name} description`,
   source,
+  origin: "user",
   readOnly: source !== "user",
   enabled,
 });
@@ -82,6 +86,7 @@ beforeEach(() => {
     skill("user-1", "greeting", "user", false),
   ];
   api.forBot.mockImplementation(async () => catalog);
+  api.drafts.mockResolvedValue([]);
   api.get.mockImplementation(async ({ skillId }: { skillId: string }) => {
     const entry = catalog.find((s) => s.id === skillId);
     return { ...entry, content: "Steps", createdAt: "", updatedAt: "" };
@@ -260,4 +265,45 @@ it("reloads when the refresh key changes", async () => {
   expect(api.forBot).toHaveBeenCalledTimes(2);
   expect(view.button("agent-made")).toBeTruthy();
   await view.unmount();
+});
+
+const draftSkill = {
+  id: "draft-1",
+  name: "weekly-report",
+  description: "Summarise the week.",
+  content: "---\nname: weekly-report\ndescription: Summarise the week.\n---\n\nSteps.\n",
+  revision: false,
+};
+
+it("shows agent drafts with their content and approves one", async () => {
+  api.drafts.mockResolvedValueOnce([draftSkill]).mockResolvedValue([]);
+  api.approveDraft.mockResolvedValue({});
+  const view = await mount();
+  const drafts = view.container.querySelector('[data-testid="bot-skills-drafts"]');
+  expect(drafts?.textContent).toContain("weekly-report");
+  expect(drafts?.textContent).toContain("Steps.");
+  await act(async () => view.button("Approve").click());
+  expect(api.approveDraft).toHaveBeenCalledWith({ skillId: "draft-1" });
+  expect(view.container.querySelector('[data-testid="bot-skills-drafts"]')).toBeNull();
+});
+
+it("discards a draft and marks a revision of an active skill", async () => {
+  api.drafts.mockResolvedValueOnce([{ ...draftSkill, revision: true }]).mockResolvedValue([]);
+  api.discardDraft.mockResolvedValue({ ok: true });
+  const view = await mount();
+  expect(view.container.querySelector('[data-testid="bot-skills-drafts"]')?.textContent).toContain(
+    "Update",
+  );
+  await act(async () => view.button("Discard").click());
+  expect(api.discardDraft).toHaveBeenCalledWith({ skillId: "draft-1" });
+});
+
+it("badges only agent-written skills", async () => {
+  catalog = [
+    { ...skill("a-1", "from-agent", "user"), origin: "agent" },
+    skill("u-1", "mine", "user"),
+  ];
+  const view = await mount();
+  expect(view.button("from-agent").textContent).toContain("Agent");
+  expect(view.button("mine").textContent).not.toContain("Agent");
 });

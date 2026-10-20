@@ -9,7 +9,7 @@ done
 case "$DOWNLOAD_BASE" in
   https://*) ;;
   *)
-    echo "Rakazo setup failed: RAKAZO_DOWNLOAD_BASE must use https." >&2
+    echo "Praci setup failed: RAKAZO_DOWNLOAD_BASE must use https." >&2
     exit 1
     ;;
 esac
@@ -66,7 +66,7 @@ cleanup() {
 trap cleanup EXIT
 
 fail() {
-  echo "Rakazo setup failed: $*" >&2
+  echo "Praci setup failed: $*" >&2
   exit 1
 }
 
@@ -364,7 +364,7 @@ validate_required_secrets
 validate_bundled_storage
 
 if [[ "$prepare_only" == true ]]; then
-  echo "Rakazo files are ready. Edit .env, then run: bash install-images.sh"
+  echo "Praci files are ready. Edit .env, then run: bash install-images.sh"
   exit 0
 fi
 
@@ -395,4 +395,4 @@ else
   docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d ${up_pull_args[@]+"${up_pull_args[@]}"}
 fi
 
-echo "Rakazo is starting at http://127.0.0.1:5173"
+echo "Praci is starting at http://127.0.0.1:5173"

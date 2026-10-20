@@ -9,6 +9,7 @@ import type {
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
+import { zipSync } from "fflate";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MemoryArtifacts, RecordingJobs } from "./data-room-test-fakes.js";
 import type { EmulatedMessage } from "./gmail-api-emulator.js";
@@ -29,6 +30,21 @@ const file = (filename: string, mimeType: string, bytes = 20_000) => ({
   size: bytes,
   data: Buffer.alloc(bytes, "x").toString("base64"),
 });
+// A real zip: the Data room unpacks zip attachments and files each entry as its own item.
+const zip = (filename: string, entries: Record<string, string>) => {
+  const bytes = zipSync(
+    Object.fromEntries(
+      Object.entries(entries).map(([name, text]) => [name, new TextEncoder().encode(text)]),
+    ),
+    { level: 0 }, // stored, so the zip is big enough to be filed
+  );
+  return {
+    filename,
+    mimeType: "application/zip",
+    size: bytes.length,
+    data: Buffer.from(bytes).toString("base64"),
+  };
+};
 const pdf = (filename = "contract.pdf") => file(filename, "application/pdf");
 
 describePostgres(
@@ -160,7 +176,7 @@ describePostgres(
     it("queues a job for a new recent message and files its document into the Data room", async () => {
       const account = await connect("new-1", [
         message("m1", 1, {
-          attachments: [pdf("contract.pdf"), file("q3.xlsx", "application/zip")],
+          attachments: [pdf("contract.pdf"), zip("q3.zip", { "q3.csv": "a,b\n".repeat(6_000) })],
         }),
       ]);
       const queued = await sync(account);
@@ -171,7 +187,7 @@ describePostgres(
       });
       await runJob(queued[0] as BackgroundJob);
       const filed = (await items(owner)).filter((i) => i.sourceConnectionId === account.id);
-      expect(filed.map((i) => i.name)).toEqual(["contract.pdf", "q3.xlsx"]);
+      expect(filed.map((i) => i.name)).toEqual(["contract.pdf", "q3.csv"]);
       expect(filed.every((i) => i.source === "gmail")).toBe(true);
       expect(filed[0]?.externalId).toMatch(/^gmail:m1:/);
       expect(sink.all.some((job) => job.name === "dataroom.ingest")).toBe(true);

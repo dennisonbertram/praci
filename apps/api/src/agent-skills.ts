@@ -1,7 +1,13 @@
 import { ORPCError } from "@orpc/server";
 import type { ResolveHostname } from "@rakazo/adapters";
 import { BUILTIN_AGENT_SKILLS, fetchSafeWebText } from "@rakazo/adapters";
-import type { Actor, AgentSkill, AgentSkillSource, BotAgentSkill } from "@rakazo/contracts";
+import type {
+  Actor,
+  AgentSkill,
+  AgentSkillDraft,
+  AgentSkillSource,
+  BotAgentSkill,
+} from "@rakazo/contracts";
 import type { SkillSource } from "@rakazo/core";
 import {
   buildSkillMd,
@@ -19,6 +25,7 @@ type AgentSkillRow = {
   description: string;
   content: string;
   source: string;
+  origin: string;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -36,6 +43,7 @@ function mapAgentSkill(row: AgentSkillRow): AgentSkill {
     description: row.description,
     content: row.content,
     source,
+    origin: row.origin === "agent" ? "agent" : "user",
     readOnly: isSkillReadOnly(source as SkillSource),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -49,6 +57,7 @@ function builtinCatalog(): AgentSkill[] {
     description: skill.description,
     content: skill.content,
     source: "builtin" as const,
+    origin: "user" as const,
     readOnly: true,
     createdAt: new Date(0).toISOString(),
     updatedAt: new Date(0).toISOString(),
@@ -142,12 +151,14 @@ export function createAgentSkillsService(
     if (!bot) throw new IsolationError();
   }
 
+  /** An active skill. Drafts are invisible here; only approveDraft and discardDraft reach them. */
   async function owned(actor: Actor, skillId: string) {
     const row = await prisma.agentSkill.findFirst({
       where: {
         id: skillId,
         spaceId: actor.spaceId,
         userId: actor.userId,
+        status: "active",
       },
     });
     if (!row) throw new IsolationError();
@@ -157,7 +168,7 @@ export function createAgentSkillsService(
   return {
     async list(actor: Actor): Promise<Omit<AgentSkill, "content">[]> {
       const rows = await prisma.agentSkill.findMany({
-        where: { spaceId: actor.spaceId, userId: actor.userId },
+        where: { spaceId: actor.spaceId, userId: actor.userId, status: "active" },
         orderBy: [{ name: "asc" }, { id: "asc" }],
       });
       return mergeBuiltinSkills(builtinCatalog(), rows.map(mapAgentSkill)).map(
@@ -167,7 +178,7 @@ export function createAgentSkillsService(
 
     async listWithContent(actor: Actor): Promise<AgentSkill[]> {
       const rows = await prisma.agentSkill.findMany({
-        where: { spaceId: actor.spaceId, userId: actor.userId },
+        where: { spaceId: actor.spaceId, userId: actor.userId, status: "active" },
         orderBy: [{ name: "asc" }, { id: "asc" }],
       });
       return mergeBuiltinSkills(builtinCatalog(), rows.map(mapAgentSkill));
@@ -249,6 +260,7 @@ export function createAgentSkillsService(
         where: {
           spaceId: actor.spaceId,
           userId: actor.userId,
+          status: "active",
         },
         orderBy: [{ name: "asc" }, { id: "asc" }],
       });
@@ -341,6 +353,8 @@ export function createAgentSkillsService(
             name: resolved.name,
             description: resolved.description,
             content: resolved.content,
+            // The owner's own edit settles any revision an agent proposed.
+            pendingContent: null,
           },
         });
         if (updated.count !== 1) throw new IsolationError();
@@ -360,6 +374,87 @@ export function createAgentSkillsService(
       });
       if (!row) throw new IsolationError();
       return mapAgentSkill(row);
+    },
+
+    async drafts(actor: Actor): Promise<AgentSkillDraft[]> {
+      const rows = await prisma.agentSkill.findMany({
+        where: {
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          OR: [{ status: "draft" }, { pendingContent: { not: null } }],
+        },
+        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
+      });
+      return rows.flatMap((row) => {
+        const revision = row.status === "active";
+        const content = revision ? (row.pendingContent ?? "") : row.content;
+        const parsed = parseSkillMd(content);
+        if ("error" in parsed) return [];
+        return [
+          { id: row.id, name: parsed.name, description: parsed.description, content, revision },
+        ];
+      });
+    },
+
+    async approveDraft(actor: Actor, skillId: string): Promise<AgentSkill> {
+      const row = await prisma.agentSkill.findFirst({
+        where: {
+          id: skillId,
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          OR: [{ status: "draft" }, { pendingContent: { not: null } }],
+        },
+      });
+      if (!row) throw new IsolationError();
+      const where = { id: row.id, spaceId: actor.spaceId, userId: actor.userId, source: "user" };
+      if (row.status === "draft") {
+        await prisma.agentSkill.updateMany({
+          where: { ...where, status: "draft" },
+          data: { status: "active" },
+        });
+      } else {
+        const parsed = parseSkillMd(row.pendingContent ?? "");
+        if ("error" in parsed) throw new ORPCError("BAD_REQUEST", { message: parsed.error });
+        const clash = await prisma.agentSkill.findFirst({
+          where: {
+            spaceId: actor.spaceId,
+            userId: actor.userId,
+            name: { equals: parsed.name, mode: "insensitive" },
+            NOT: { id: row.id },
+          },
+        });
+        if (clash) {
+          throw new ORPCError("CONFLICT", { message: "A skill with that name already exists." });
+        }
+        await prisma.agentSkill.updateMany({
+          where: { ...where, pendingContent: row.pendingContent },
+          data: {
+            name: parsed.name,
+            description: parsed.description,
+            content: buildSkillMd(parsed),
+            pendingContent: null,
+          },
+        });
+      }
+      const approved = await prisma.agentSkill.findFirst({
+        where: { id: row.id, spaceId: actor.spaceId, userId: actor.userId },
+      });
+      if (!approved) throw new IsolationError();
+      return mapAgentSkill(approved);
+    },
+
+    /** Deletes a new draft, or drops a proposed revision and keeps the active skill as it was. */
+    async discardDraft(actor: Actor, skillId: string): Promise<{ ok: true }> {
+      const scope = { id: skillId, spaceId: actor.spaceId, userId: actor.userId };
+      const deleted = await prisma.agentSkill.deleteMany({ where: { ...scope, status: "draft" } });
+      if (deleted.count === 0) {
+        const cleared = await prisma.agentSkill.updateMany({
+          where: { ...scope, status: "active", pendingContent: { not: null } },
+          data: { pendingContent: null },
+        });
+        if (cleared.count !== 1) throw new IsolationError();
+      }
+      return { ok: true };
     },
 
     async remove(actor: Actor, skillId: string): Promise<{ ok: true }> {

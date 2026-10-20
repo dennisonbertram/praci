@@ -3,18 +3,11 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
-import { Download, ExternalLink, FileText, RotateCw, Trash2, X } from "lucide-react";
+import { FileText, RotateCw, Trash2, X } from "lucide-react";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  canOpenInBrowser,
-  canPreviewImage,
-  canPreviewPdf,
-  dataRoomFileUrl,
-  openDataRoomItem,
-  saveDataRoomItem,
-} from "../../lib/data-room";
+import { canPreviewImage, canPreviewPdf } from "../../lib/data-room";
 import { MASK } from "../../lib/finance-format";
 import {
   getHideAmounts,
@@ -22,12 +15,18 @@ import {
   useHideAmounts,
 } from "../../lib/hide-amounts-preference";
 import { canPreviewSpreadsheet } from "../../lib/spreadsheet";
-import { errorText } from "../../lib/user-error";
 import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
 import { dateText, isSettled, sizeText, typeLabel } from "./format";
 import type { ItemAction } from "./ItemMenu";
 import { ItemMenu } from "./ItemMenu";
+import {
+  FileViewer,
+  FullScreenPreview,
+  isShowable,
+  PreviewActions,
+  useFileUrl,
+} from "./PreviewActions";
 import type { SendTarget } from "./SendToAgent";
 
 function amountText(item: DataRoomApiItem) {
@@ -126,55 +125,6 @@ function usePaneWidth() {
   return { width, handle };
 }
 
-/**
- * The file itself: the picture, or the browser's PDF viewer in a frame. A skeleton shows while it
- * loads; the file icon stands in when the type cannot be shown or the bytes cannot be read.
- */
-function FilePreview({ item }: { item: DataRoomApiItem }) {
-  const [url, setUrl] = useState("");
-  const [failed, setFailed] = useState(false);
-  const { id, mimeType } = item;
-  const showable = canPreviewImage(item) || canPreviewPdf(item);
-  useEffect(() => {
-    if (!showable) return;
-    let live = true;
-    let made = "";
-    setUrl("");
-    setFailed(false);
-    dataRoomFileUrl({ id, mimeType })
-      .then((next) => {
-        made = next;
-        if (live) setUrl(next);
-        else URL.revokeObjectURL(next);
-      })
-      .catch(() => live && setFailed(true));
-    return () => {
-      live = false;
-      if (made) URL.revokeObjectURL(made);
-    };
-  }, [id, mimeType, showable]);
-  if (!showable || failed) {
-    return (
-      <div className="flex h-24 items-center justify-center rounded-md bg-muted">
-        <FileText aria-hidden="true" className="size-8 text-muted-foreground" />
-      </div>
-    );
-  }
-  if (!url)
-    return (
-      <div data-testid="preview-skeleton" className="h-48 animate-pulse rounded-md bg-muted" />
-    );
-  return mimeType === "application/pdf" ? (
-    <iframe
-      src={url}
-      title={item.name}
-      className="h-[60vh] w-full shrink-0 rounded-md border border-border bg-muted"
-    />
-  ) : (
-    <img src={url} alt={item.name} className="max-h-64 w-full rounded-md bg-muted object-contain" />
-  );
-}
-
 /** The summary, facets and source of one item, with Download and the item menu. */
 export function Preview({
   item,
@@ -199,14 +149,12 @@ export function Preview({
   const hidden = useHideAmounts();
   const amount = amountText(item);
   const { width, handle } = usePaneWidth();
-  const download = () => {
-    setError("");
-    saveDataRoomItem(item).catch((cause) => setError(errorText(cause)));
-  };
-  const open = () => {
-    setError("");
-    openDataRoomItem(item).catch((cause) => setError(errorText(cause)));
-  };
+  const [fullScreen, setFullScreen] = useState(false);
+  const sheet = item.status !== "failed" && canPreviewSpreadsheet(item.name, item.mimeType);
+  const showFile = !sheet && !(hidden && (canPreviewImage(item) || canPreviewPdf(item)));
+  const file = useFileUrl(item, showFile);
+  const canFullScreen =
+    item.status !== "failed" && (sheet || (showFile && isShowable(item) && !file.failed));
   return (
     <aside
       aria-label={t`Preview`}
@@ -236,6 +184,12 @@ export function Preview({
             <Trans>Preview</Trans>
           </h2>
         )}
+        <PreviewActions
+          item={item}
+          hidden={hidden}
+          onError={setError}
+          onFullScreen={canFullScreen ? () => setFullScreen(true) : undefined}
+        />
         <ItemMenu
           item={item}
           onAction={onAction}
@@ -250,7 +204,7 @@ export function Preview({
         )}
       </div>
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
-      {item.status !== "failed" && canPreviewSpreadsheet(item.name, item.mimeType) ? (
+      {sheet ? (
         <div className="h-[50vh] shrink-0 overflow-hidden rounded-md border border-border">
           <SheetPreview key={item.id} source={{ dataRoomItemId: item.id }} />
         </div>
@@ -261,7 +215,7 @@ export function Preview({
             : t`Hidden while amounts are hidden`}
         </p>
       ) : (
-        <FilePreview key={item.id} item={item} />
+        <FileViewer item={item} file={file} />
       )}
       {item.status === "failed" ? (
         <div className="flex flex-col gap-1 text-sm">
@@ -282,8 +236,8 @@ export function Preview({
       ) : isSettled(item.status) && !facets.docType ? (
         <p className="text-xs text-muted-foreground">
           <Trans>
-            Not tagged yet. Files are tagged once you let Rakazo read documents; you can still
-            search it by name and text.
+            Not tagged yet. Files are tagged once you let Praci read documents; you can still search
+            it by name and text.
           </Trans>
         </p>
       ) : null}
@@ -330,7 +284,7 @@ export function Preview({
         </Field>
         <Field label={t`Size`}>{sizeText(item.size)}</Field>
       </dl>
-      {/* The same full-width actions for every item; a file that can't be read leads with Try again. */}
+      {/* Try again and Delete for a file that can't be read; Open and Download are in the header. */}
       <div className="flex flex-col gap-1.5">
         {item.status === "failed" ? (
           <Button onClick={() => onAction("retry", item)}>
@@ -338,21 +292,6 @@ export function Preview({
             <Trans>Try again</Trans>
           </Button>
         ) : null}
-        {item.status !== "failed" && canOpenInBrowser(item) ? (
-          <>
-            <Button onClick={open} disabled={hidden}>
-              <ExternalLink aria-hidden="true" />
-              <Trans>Open</Trans>
-            </Button>
-            {hidden ? (
-              <p className="text-xs text-muted-foreground">{t`Hidden while amounts are hidden`}</p>
-            ) : null}
-          </>
-        ) : null}
-        <Button variant="outline" onClick={download}>
-          <Download aria-hidden="true" />
-          <Trans>Download</Trans>
-        </Button>
         {item.status === "failed" ? (
           <Button
             variant="ghost"
@@ -365,6 +304,14 @@ export function Preview({
         ) : null}
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
       </div>
+      {fullScreen ? (
+        <FullScreenPreview
+          item={item}
+          file={file}
+          hidden={hidden}
+          onClose={() => setFullScreen(false)}
+        />
+      ) : null}
     </aside>
   );
 }

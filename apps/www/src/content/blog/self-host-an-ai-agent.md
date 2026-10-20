@@ -1,30 +1,30 @@
 ---
 title: "How to self-host an AI agent in 10 minutes"
-description: "Install Rakazo with the published Docker images, create an account, connect a model, and keep the database on your machine. Image pulls vary, and a public server takes longer."
+description: "Install Praci with the published Docker images, create an account, connect a model, and keep the database on your machine. Image pulls vary, and a public server takes longer."
 published: "2026-10-07"
 updated: "2026-10-07"
 author: "Elie Steinbock"
 category: "guides"
 tldr: "The published-image installer is a short script: Docker, Compose, curl, and OpenSSL, then an account and a model. Pull time depends on your connection. A public hostname, TLS, and a secrets review are a longer job than the first local chat."
 sources:
-  - label: "Rakazo self-hosting guide"
-    href: "https://github.com/elie222/rakazo/blob/main/docs/self-host.md"
+  - label: "Praci self-hosting guide"
+    href: "https://github.com/dennisonbertram/praci/blob/main/docs/self-host.md"
   - label: "Self-hosted AI agent"
-    href: "https://rakazo.com/self-hosted-ai-agent/"
+    href: "https://praci.ai/self-hosted-ai-agent/"
   - label: "Self-host secrets checklist"
-    href: "https://github.com/elie222/rakazo/blob/main/docs/self-host-secrets.md"
+    href: "https://github.com/dennisonbertram/praci/blob/main/docs/self-host-secrets.md"
 related:
   - href: "/self-hosted-ai-agent/"
     title: "Self-hosted AI agent"
     description: "The same install, with the server and source paths."
   - href: "/openclaw-alternative/"
     title: "Open source OpenClaw alternative"
-    description: "How Rakazo's chat compares with OpenClaw's gateway."
+    description: "How Praci's chat compares with OpenClaw's gateway."
   - href: "/hermes-alternative/"
     title: "Open source Hermes alternative"
-    description: "Desktop and CLI setup next to Rakazo's installer."
+    description: "Desktop and CLI setup next to Praci's installer."
   - href: "/blog/openclaw-vs-hermes-vs-rakazo/"
-    title: "OpenClaw vs Hermes Agent vs Rakazo"
+    title: "OpenClaw vs Hermes Agent vs Praci"
     description: "Which shape is simplest depends on the product you want."
   - href: "/alternatives/"
     title: "Open source alternatives"
@@ -36,8 +36,8 @@ faq:
     answer: "No. The published-image path needs Docker Engine 26 or newer, the Compose plugin, curl, and OpenSSL. Node.js is for a source checkout."
   - question: "Where does the data live?"
     answer: "Postgres, bot files, browser profiles, and the audit log stay on the deployment you run. Prompts you send to a model provider are processed by that provider."
-  - question: "Is hosted Rakazo Cloud required?"
-    answer: "No. Hosted Rakazo Cloud is not generally available. Self-hosting is the way to run it."
+  - question: "Is hosted Praci Cloud required?"
+    answer: "No. Hosted Praci Cloud is not generally available. Self-hosting is the way to run it."
 comparison:
   caption: "The short local install, and the longer production path."
   columns:
@@ -59,36 +59,36 @@ comparison:
         - "Publishing port 3100. The web server proxies /api."
     - topic: "Source checkout"
       cells:
-        - "Clone, env, Postgres, and the dev commands when you are changing Rakazo."
+        - "Clone, env, Postgres, and the dev commands when you are changing Praci."
         - "Required for running the published images."
 ---
 
-The title is the shape of the local install, not a stopwatch result. Rakazo's published images start from one script. Docker then downloads the images, and that download is the part that varies. When the app is up, you create an account, connect a model, and the first chat is the product. A hostname on the public internet, TLS, and a review of secrets are a separate piece of work.
+The title is the shape of the local install, not a stopwatch result. Praci's published images start from one script. Docker then downloads the images, and that download is the part that varies. When the app is up, you create an account, connect a model, and the first chat is the product. A hostname on the public internet, TLS, and a review of secrets are a separate piece of work.
 
-This page follows the [self-hosting guide](https://github.com/elie222/rakazo/blob/main/docs/self-host.md) and the [self-hosted AI agent page](/self-hosted-ai-agent/). Those stay the reference if a command changes.
+This page follows the [self-hosting guide](https://github.com/dennisonbertram/praci/blob/main/docs/self-host.md) and the [self-hosted AI agent page](/self-hosted-ai-agent/). Those stay the reference if a command changes.
 
 ## What you are running
 
-A signed-in Rakazo deployment is not a static site. The guide describes a long-running API, a Graphile Worker, Postgres, and a computer provider. The computer defaults to Docker. E2B, Daytona, CreateOS, and Box are optional remote computers, each with its own API key. The web app, the Electron desktop app, and the Expo mobile app are clients of that API.
+A signed-in Praci deployment is not a static site. The guide describes a long-running API, a Graphile Worker, Postgres, and a computer provider. The computer defaults to Docker. E2B, Daytona, CreateOS, and Box are optional remote computers, each with its own API key. The web app, the Electron desktop app, and the Expo mobile app are clients of that API.
 
 Postgres, bot files, browser profiles, and the audit log stay on the machine you operate. Content you send to a model provider is processed by that provider under its terms. You choose the provider and the keys. There is no seat fee for the open source software. You pay the model provider and any remote computer you turn on.
 
 <figure class="post-figure">
-  <img src="/graphics/architecture.svg" width="1200" height="720" alt="Diagram of a Rakazo deployment. Web, desktop, and mobile clients talk to an API. A worker and Postgres sit beside it. The computer defaults to Docker, with E2B, Daytona, CreateOS, or Box optional. Model prompts go to the provider you configure." />
-  <figcaption>A Rakazo deployment. Postgres, bot files, and the audit log stay on the machine you run. Prompts still go to the model provider you choose.</figcaption>
+  <img src="/graphics/architecture.svg" width="1200" height="720" alt="Diagram of a Praci deployment. Web, desktop, and mobile clients talk to an API. A worker and Postgres sit beside it. The computer defaults to Docker, with E2B, Daytona, CreateOS, or Box optional. Model prompts go to the provider you configure." />
+  <figcaption>A Praci deployment. Postgres, bot files, and the audit log stay on the machine you run. Prompts still go to the model provider you choose.</figcaption>
 </figure>
 
-The software is Apache-2.0. Hosted Rakazo Cloud is not generally available, so this install is how you run it today.
+The software is Apache-2.0. Hosted Praci Cloud is not generally available, so this install is how you run it today.
 
 ## What the machine needs
 
 For published images, the guide asks for Docker Engine 26 or newer, because bot home volumes use API 1.45 subpaths. You also need the Compose plugin, curl, and OpenSSL. You do not install Node.js for this path.
 
-A source checkout is different. It wants Node.js 22.22.2 or newer on the 22.x line, Node.js 24.x, or Node.js 26 or newer, plus pnpm 9 and Docker. Node.js 23.x and 25.x are not supported. Use that path when you are developing Rakazo. It is not required to run the published images.
+A source checkout is different. It wants Node.js 22.22.2 or newer on the 22.x line, Node.js 24.x, or Node.js 26 or newer, plus pnpm 9 and Docker. Node.js 23.x and 25.x are not supported. Use that path when you are developing Praci. It is not required to run the published images.
 
 ## Install the published images
 
-From an empty directory on the machine that should run Rakazo:
+From an empty directory on the machine that should run Praci:
 
 ```bash
 mkdir -p rakazo && cd rakazo &&
@@ -96,7 +96,7 @@ curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/
 bash install-images.sh
 ```
 
-The installer downloads the Compose file and `.env.images.example`, creates `.env` with random secrets, and starts Rakazo. Run it again and it keeps an existing `.env`. The default image tag is `edge`, which tracks builds from the main branch for `linux/amd64` and `linux/arm64`. Do not assume a `latest` tag until a stable release exists.
+The installer downloads the Compose file and `.env.images.example`, creates `.env` with random secrets, and starts Praci. Run it again and it keeps an existing `.env`. The default image tag is `edge`, which tracks builds from the main branch for `linux/amd64` and `linux/arm64`. Do not assume a `latest` tag until a stable release exists.
 
 If you want to set the public URL, the image tag, or an optional provider before the first start, run `bash install-images.sh --prepare-only`, edit `.env`, then run `bash install-images.sh` again. The flags `--prepare-only` and `--local` can be combined.
 
@@ -111,7 +111,7 @@ The image pull is the variable part. A fast link and a warm cache finish sooner 
 After the account exists, the product is chat. A new bot asks for a name, a title, and a description, and you pick whether it shares the team computer or gets a private one. The form below is the real create-bot screen, filled with demo data. Nothing in the shot is a customer account.
 
 <figure class="post-figure">
-  <img src="/graphics/chat/create-bot.png" width="1200" height="800" alt="The new bot form in Rakazo, filled with a demo bot named Inbox." />
+  <img src="/graphics/chat/create-bot.png" width="1200" height="800" alt="The new bot form in Praci, filled with a demo bot named Inbox." />
   <figcaption>Creating a bot. The name, title, and description are demo data.</figcaption>
 </figure>
 
@@ -150,7 +150,7 @@ An approval is a card in the thread. The bot states the action, shows the detail
   <figcaption>The bot stops on the card. The audit log records the action.</figcaption>
 </figure>
 
-Optional connectors can attach Slack, WhatsApp, Telegram, iMessage via Sendblue, and Feishu/Lark. They are extras. Chat in the Rakazo apps does not require them.
+Optional connectors can attach Slack, WhatsApp, Telegram, iMessage via Sendblue, and Feishu/Lark. They are extras. Chat in the Praci apps does not require them.
 
 ## When the machine is a server
 
@@ -162,7 +162,7 @@ A minimal Caddy site is a reverse proxy to `127.0.0.1:5173`. Replace the example
 
 In the mobile app, tap **Use a custom server** on the sign-in screen and enter the same HTTPS origin as `WEB_ORIGIN`.
 
-This server path is why a public install is not the same job as the local script. You are choosing a hostname, a TLS terminator, who may sign up, and where secrets live. The [secrets checklist](https://github.com/elie222/rakazo/blob/main/docs/self-host-secrets.md) names the values and how to recover them. The [restricted-network guide](https://github.com/elie222/rakazo/blob/main/docs/self-host-restricted-network.md) covers mirrors when the installer or the image pull is blocked.
+This server path is why a public install is not the same job as the local script. You are choosing a hostname, a TLS terminator, who may sign up, and where secrets live. The [secrets checklist](https://github.com/dennisonbertram/praci/blob/main/docs/self-host-secrets.md) names the values and how to recover them. The [restricted-network guide](https://github.com/dennisonbertram/praci/blob/main/docs/self-host-restricted-network.md) covers mirrors when the installer or the image pull is blocked.
 
 ## Install from source only if you are developing
 
@@ -170,7 +170,7 @@ Clone the repository, copy `.env.example` to `.env`, and set `POSTGRES_PASSWORD`
 
 For host-side development with Docker Desktop, set `SANDBOX_CONTROL_VIA_LOOPBACK=true` so the supervisor publishes its control service on a loopback port. Leave that unset when the supervisor runs inside Compose. `docker compose down -v` deletes Postgres data.
 
-The published images are enough to run Rakazo. The source path is for changing it.
+The published images are enough to run Praci. The source path is for changing it.
 
 ## What to skip on the first afternoon
 
@@ -182,6 +182,6 @@ The desktop app's **This computer** option is the same published images, started
 
 ## How this sits next to other agents
 
-OpenClaw and Hermes Agent are also open source and can run on hardware you control. Their install docs describe a gateway or a desktop app and a CLI, plus config files under a home directory. Rakazo's published-image path is the script above, then chat. The [comparison of those three](/blog/openclaw-vs-hermes-vs-rakazo/) is about that difference in shape, not a race.
+OpenClaw and Hermes Agent are also open source and can run on hardware you control. Their install docs describe a gateway or a desktop app and a CLI, plus config files under a home directory. Praci's published-image path is the script above, then chat. The [comparison of those three](/blog/openclaw-vs-hermes-vs-rakazo/) is about that difference in shape, not a race.
 
 If the first chat on loopback is the goal, stay on the published images, create the owner account, and connect one model. If the goal is a public URL, budget time for TLS and the secrets checklist after the installer finishes.

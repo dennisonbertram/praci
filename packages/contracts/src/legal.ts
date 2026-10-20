@@ -158,7 +158,7 @@ export const LegalOverviewSchema = z.object({
   }),
   /**
    * The model the Legal agent will actually run on. Without the user's own credential for the
-   * preferred provider, Rakazo falls back to the space default, so this can differ from LEGAL_AGENT_MODEL.
+   * preferred provider, Praci falls back to the space default, so this can differ from LEGAL_AGENT_MODEL.
    * Null when the agent does not exist yet or no model resolves.
    */
   model: z.object({ provider: z.string(), id: z.string(), isPreferred: z.boolean() }).nullable(),

@@ -5,7 +5,7 @@
 Let agents use paid tools (Exa and Parallel search, Apollo and People Data Labs
 enrichment, ZeroBounce, Higgsfield video, scraping, transcription) without anyone
 opening an account with each vendor, by turning on
-[Composio Instant](https://composio.dev/blog/composio-instant) in Rakazo's
+[Composio Instant](https://composio.dev/blog/composio-instant) in Praci's
 existing Composio integration. Instant (launched 2026-10-08) charges each call to
 the Composio organization's wallet: $2 of starting credit, $29 a month on Pro,
 failed calls free, and no charge when the user has connected their own account for
@@ -16,7 +16,7 @@ needs no new UI unless the spend view (decision 5) is added there later.
 
 ## Who pays
 
-Rakazo holds **one Composio key per deployment** (`COMPOSIO_API_KEY`, or the key
+Praci holds **one Composio key per deployment** (`COMPOSIO_API_KEY`, or the key
 the deployment owner saves in integration setup). Every Instant charge from any
 user in any space is billed to that one wallet. For a self-hosted install the
 owner is paying for their own use. On a shared deployment, one user's agent spends
@@ -28,7 +28,7 @@ the operator's money. Every decision below follows from that.
    (`integrationSetup.save`, already limited to `isDeploymentOwner`) gains an
    Instant switch and the list of Instant toolkits to offer. Nothing changes for a
    deployment that never turns it on.
-2. **Instant toolkits connect like no-auth toolkits.** Rakazo already stores
+2. **Instant toolkits connect like no-auth toolkits.** Praci already stores
    no-auth Composio apps as a `Connection` row whose `providerRef` is the toolkit
    slug (`composio-connector.ts`, `sessionForExecute`). An Instant toolkit does the
    same, so per-agent access (`BotConnectionAccess`) and the catalog keep working.
@@ -40,7 +40,7 @@ the operator's money. Every decision below follows from that.
    **permits** Instant once the project allows it, including in existing
    sessions, and that allowing one toolkit does not exclude the others. So:
    - When Instant is off for the deployment, every catalog and execute session
-     passes `instant: false`. This is needed even before Rakazo uses Instant,
+     passes `instant: false`. This is needed even before Praci uses Instant,
      in case someone turns it on in the Composio dashboard.
    - When it is on, execute sessions allow only the toolkits the owner enabled
      **and** the user connected through Instant, excluding everything else (the
@@ -60,7 +60,7 @@ the operator's money. Every decision below follows from that.
    outer tool name; the agent calls them one at a time.
 5. **Spending is reserved before the call and reconciled after.** Composio has no
    spending cap, and `instantCharge` arrives only after execution. Its docs
-   prescribe an application-side budget, which Rakazo implements in Postgres:
+   prescribe an application-side budget, which Praci implements in Postgres:
    - An `InstantCharge` row is **reserved** before the call with a trusted upper
      bound on its cost, in the same transaction that checks the user's remaining
      monthly budget, so concurrent workers cannot spend the same balance. A call
@@ -83,13 +83,13 @@ the operator's money. Every decision below follows from that.
 They overlap: both sell pay-per-call tools. Treg bills **the user's own Treg
 balance** and covers more providers (about 111); Instant bills **the deployment
 owner's Composio wallet** and covers about 100 toolkits inside the Composio setup
-Rakazo already has. Keep both. Instant suits a self-hosted owner who already pays
+Praci already has. Keep both. Instant suits a self-hosted owner who already pays
 for Composio; Treg suits users who should pay for themselves. Neither is required
-to run Rakazo.
+to run Praci.
 
 ## Not in v1
 
-- Billing users for what they spend (Rakazo only records and caps).
+- Billing users for what they spend (Praci only records and caps).
 - Instant on mobile beyond the existing approval card.
 - Long-running Instant jobs (browser tasks, phone calls), which Composio has not
   shipped.
@@ -104,7 +104,7 @@ to run Rakazo.
 2. `instant: false` on every catalog and execute session, in the cache key. Ships
    first and on its own, because it closes a gap that exists today: a project
    where someone turns on Instant in the Composio dashboard would otherwise spend
-   without Rakazo knowing.
+   without Praci knowing.
 3. The safeguards, with nothing able to turn Instant on yet: mandatory approval
    for paid calls, the batch-execution refusal, the `InstantCharge` reservation,
    the per-user cap, emulator support and tests.
@@ -116,7 +116,7 @@ to run Rakazo.
 ## Open risks
 
 - **The SDK jump is six minor versions.** 0.18 → 0.24 may change session or
-  connection behavior Rakazo relies on (multi-account selection,
+  connection behavior Praci relies on (multi-account selection,
   `connectedAccounts`). The spike runs the full Composio test set first.
 - **Price before the call is not guaranteed.** Search prices are an experimental
   option, and Composio says not to treat the published price as a quote. If the

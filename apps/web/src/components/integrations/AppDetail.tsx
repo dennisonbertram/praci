@@ -622,7 +622,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
           </li>
           {isGmail ? (
             <li>
-              <Trans>Mail data from this account that Rakazo cached is removed.</Trans>
+              <Trans>Mail data from this account that Praci cached is removed.</Trans>
             </li>
           ) : null}
           <li>
@@ -643,7 +643,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
           {isGmail ? (
             <>
               <li>
-                <Trans>Mail data Rakazo cached from these accounts is removed.</Trans>
+                <Trans>Mail data Praci cached from these accounts is removed.</Trans>
               </li>
               <li>
                 <Trans>The Inbox page stops showing new mail until you reconnect.</Trans>

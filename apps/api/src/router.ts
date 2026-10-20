@@ -4432,6 +4432,15 @@ export function createRouter(deps: RouterDeps) {
       remove: authed.agentSkills.remove.handler(async ({ context, input }) =>
         agentSkills.remove(context.actor, input.skillId),
       ),
+      drafts: authed.agentSkills.drafts.handler(async ({ context }) =>
+        agentSkills.drafts(context.actor),
+      ),
+      approveDraft: authed.agentSkills.approveDraft.handler(async ({ context, input }) =>
+        agentSkills.approveDraft(context.actor, input.skillId),
+      ),
+      discardDraft: authed.agentSkills.discardDraft.handler(async ({ context, input }) =>
+        agentSkills.discardDraft(context.actor, input.skillId),
+      ),
       forBot: authed.agentSkills.forBot.handler(async ({ context, input }) =>
         agentSkills.forBot(context.actor, input.botId),
       ),

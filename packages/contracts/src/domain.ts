@@ -582,12 +582,17 @@ export type TaughtSkill = z.infer<typeof TaughtSkillSchema>;
 export const AgentSkillSourceSchema = z.enum(["user", "builtin", "plugin"]);
 export type AgentSkillSource = z.infer<typeof AgentSkillSourceSchema>;
 
+export const AgentSkillOriginSchema = z.enum(["user", "agent"]);
+export type AgentSkillOrigin = z.infer<typeof AgentSkillOriginSchema>;
+
 export const AgentSkillSchema = z.object({
   id: Id,
   name: z.string(),
   description: z.string(),
   content: z.string(),
   source: AgentSkillSourceSchema,
+  /** Who wrote it. Agent-written skills carry a badge in settings. */
+  origin: AgentSkillOriginSchema.optional(),
   readOnly: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
@@ -599,6 +604,7 @@ export const AgentSkillCatalogEntrySchema = AgentSkillSchema.pick({
   name: true,
   description: true,
   source: true,
+  origin: true,
   readOnly: true,
 });
 export type AgentSkillCatalogEntry = z.infer<typeof AgentSkillCatalogEntrySchema>;
@@ -606,6 +612,18 @@ export type AgentSkillCatalogEntry = z.infer<typeof AgentSkillCatalogEntrySchema
 /** A catalog entry with this bot's switch. A skill with no stored setting is on. */
 export const BotAgentSkillSchema = AgentSkillCatalogEntrySchema.extend({ enabled: z.boolean() });
 export type BotAgentSkill = z.infer<typeof BotAgentSkillSchema>;
+
+/** An agent-written skill (new, or a revision of an active one) waiting for the owner. */
+export const AgentSkillDraftSchema = z.object({
+  id: Id,
+  name: z.string(),
+  description: z.string(),
+  /** The proposed SKILL.md. */
+  content: z.string(),
+  /** True when it changes an active skill; false when the skill is new. */
+  revision: z.boolean(),
+});
+export type AgentSkillDraft = z.infer<typeof AgentSkillDraftSchema>;
 
 export const CreateAgentSkillInput = z
   .object({
@@ -702,7 +720,7 @@ export const ConnectionCatalogItemSchema = z.object({
 });
 export type ConnectionCatalogItem = z.infer<typeof ConnectionCatalogItemSchema>;
 
-// Apps Rakazo's own Google connector offers, compared by slug without case or punctuation.
+// Apps Praci's own Google connector offers, compared by slug without case or punctuation.
 const NATIVE_GOOGLE_APPS = new Set(["gmail", "googlecalendar", "googledrive"]);
 const nativeGoogleKey = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 

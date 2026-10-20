@@ -1,6 +1,6 @@
 # iOS design system (Liquid Glass)
 
-Design source for the Rakazo iOS app in Apple's Liquid Glass style, including the iPhone Duo outer and inner displays. These are design boards, not shipped code. The tokens in `@rakazo/ui-tokens` stay the single source of truth for color; the boards only apply them.
+Design source for the Praci iOS app in Apple's Liquid Glass style, including the iPhone Duo outer and inner displays. These are design boards, not shipped code. The tokens in `@rakazo/ui-tokens` stay the single source of truth for color; the boards only apply them.
 
 The boards are `.dc.html` design-canvas files. They load the canvas runtime (`support.js`), which the design canvas provides and this repo does not include, so open them in the design canvas rather than directly in a browser. Opened directly, they show unstyled markup and the boards that fill rows from data stay empty. `canvas.json` holds the board layout.
 
