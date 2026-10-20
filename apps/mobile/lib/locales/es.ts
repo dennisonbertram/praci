@@ -248,6 +248,8 @@ export const ES_MESSAGES: Record<string, string> = {
   Name: "Nombre",
   "Name this bot": "Ponle nombre a este bot",
   "Read replies aloud": "Leer respuestas en voz alta",
+  Skills: "Habilidades",
+  "Use {name}": "Usar {name}",
   Save: "Guardar",
   "Saving…": "Guardando…",
   "Space default": "Predeterminado del espacio",

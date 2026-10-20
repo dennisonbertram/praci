@@ -1185,7 +1185,9 @@ export function createRouter(deps: RouterDeps) {
     home: deps.home,
     dataDir: deps.dataDir,
   });
-  const agentSkills = createAgentSkillsService(deps.prisma);
+  const agentSkills = createAgentSkillsService(deps.prisma, {
+    resolveHostname: deps.remoteConnectors?.resolveHostname,
+  });
   const dataRoom = createDataRoomService({
     prisma: deps.prisma,
     artifacts: deps.artifacts,
@@ -4415,6 +4417,15 @@ export function createRouter(deps: RouterDeps) {
       ),
       remove: authed.agentSkills.remove.handler(async ({ context, input }) =>
         agentSkills.remove(context.actor, input.skillId),
+      ),
+      forBot: authed.agentSkills.forBot.handler(async ({ context, input }) =>
+        agentSkills.forBot(context.actor, input.botId),
+      ),
+      setEnabled: authed.agentSkills.setEnabled.handler(async ({ context, input }) =>
+        agentSkills.setEnabled(context.actor, input),
+      ),
+      importFromUrl: authed.agentSkills.importFromUrl.handler(async ({ context, input }) =>
+        agentSkills.importFromUrl(context.actor, input),
       ),
     },
     capabilities: {

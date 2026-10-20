@@ -105,7 +105,6 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
   await settings.getByText("Advanced", { exact: true }).click();
   const knowledge = settings.getByTestId("bot-knowledge");
   await expect(knowledge).toBeVisible();
-  await expect(knowledge.getByRole("tablist", { name: "Knowledge" })).toBeVisible();
 
   // Bot creation seeds MEMORY.md (`# Chief`); edit it and assert the revision bumps.
   const botMemory = knowledge.getByTestId("bot-knowledge-memory");
@@ -130,12 +129,13 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
   await expect(botDocEditor).toHaveValue(new RegExp(botMarker));
   await botMemory.getByRole("button", { name: "Cancel", exact: true }).click();
 
-  await knowledge.getByRole("tab", { name: "Shared skills", exact: true }).click();
-  const builtinSkill = knowledge.getByRole("button", { name: /Interrogate/ });
+  const skills = page.getByTestId("bot-skills");
+  const builtinSkill = skills.getByRole("button", { name: /Interrogate/ });
   await expect(builtinSkill).toBeVisible();
   await expect(builtinSkill.getByText("Built-in", { exact: true })).toBeVisible();
-  await knowledge.getByRole("button", { name: "New skill", exact: true }).click();
-  const editor = knowledge.locator("textarea");
+  await skills.getByRole("button", { name: "Add skill", exact: true }).click();
+  await page.getByRole("menuitem", { name: "New skill", exact: true }).click();
+  const editor = skills.locator("textarea");
   await editor.fill(
     [
       "---",
@@ -147,13 +147,13 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
     ].join("\n"),
   );
   await captureScreenshot(page, testInfo, "81-knowledge-skill-editor");
-  await knowledge.getByRole("button", { name: "Save", exact: true }).click();
-  const skillRow = knowledge.getByRole("button", { name: /greet-politely/ });
+  await skills.getByRole("button", { name: "Save", exact: true }).click();
+  const skillRow = skills.getByRole("button", { name: /greet-politely/ });
   await expect(skillRow).toBeVisible();
-  await expect(knowledge.getByText("Say hello before anything else.")).toBeVisible();
+  await expect(skills.getByText("Say hello before anything else.")).toBeVisible();
   await expect(builtinSkill.getByText("Built-in", { exact: true })).toBeVisible();
   const listedShot = testInfo.outputPath("82-knowledge-skill-listed.png");
-  await knowledge.screenshot({ animations: "disabled", caret: "hide", path: listedShot });
+  await skills.screenshot({ animations: "disabled", caret: "hide", path: listedShot });
   await testInfo.attach("82-knowledge-skill-listed", {
     contentType: "image/png",
     path: listedShot,

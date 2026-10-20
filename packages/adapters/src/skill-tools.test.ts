@@ -10,9 +10,17 @@ import {
   skillUpdateFromTool,
 } from "./skill-tools.js";
 
-function makePrisma(rows: Array<Record<string, unknown>> = []) {
+function makePrisma(
+  rows: Array<Record<string, unknown>> = [],
+  settings: Array<{ botId: string; skillKey: string; enabled: boolean }> = [],
+) {
   const store = [...rows];
   return {
+    botSkillSetting: {
+      findMany: vi.fn(async ({ where }: { where: { botId: string } }) =>
+        settings.filter((row) => row.botId === where.botId && !row.enabled),
+      ),
+    },
     agentSkill: {
       findMany: vi.fn(async ({ where }: { where?: Record<string, string> } = {}) =>
         store
@@ -87,6 +95,52 @@ function makePrisma(rows: Array<Record<string, unknown>> = []) {
 }
 
 const owner = { spaceId: "ws-1", userId: "user-1" };
+
+describe("skills switched off for a bot", () => {
+  const owner = { spaceId: "space-1", userId: "user-1" };
+  const row = {
+    id: "skill-1",
+    spaceId: "space-1",
+    userId: "user-1",
+    name: "Daily standup",
+    description: "Summarize",
+    content: buildSkillMd({ name: "Daily standup", description: "Summarize", body: "Steps" }),
+    source: "user",
+  };
+  const off = [
+    { botId: "bot-1", skillKey: "skill-1", enabled: false },
+    { botId: "bot-1", skillKey: "builtin:Interrogate", enabled: false },
+  ];
+
+  it("leaves them out of the catalog and skill_read for that bot only", async () => {
+    const prisma = makePrisma([row], off);
+    const names = (await listAgentSkillRecords(prisma as never, { ...owner, botId: "bot-1" })).map(
+      (skill) => skill.name,
+    );
+    expect(names).not.toContain("Daily standup");
+    expect(names).not.toContain("Interrogate");
+    expect(names.length).toBeGreaterThan(0);
+    expect(
+      await skillReadFromTool(
+        prisma as never,
+        { ...owner, botId: "bot-1" },
+        { name: "Daily standup" },
+      ),
+    ).toEqual({ error: "Skill not found." });
+    const other = await listAgentSkillRecords(prisma as never, { ...owner, botId: "bot-2" });
+    expect(other.map((skill) => skill.name)).toContain("Daily standup");
+  });
+
+  it("keeps every skill on when no setting is stored", async () => {
+    const prisma = makePrisma([row]);
+    const read = await skillReadFromTool(
+      prisma as never,
+      { ...owner, botId: "bot-1" },
+      { name: "Daily standup" },
+    );
+    expect(read).toMatchObject({ name: "Daily standup" });
+  });
+});
 
 describe("skill tools", () => {
   let prisma: ReturnType<typeof makePrisma>;
