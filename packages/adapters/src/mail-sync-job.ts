@@ -69,7 +69,7 @@ export async function requestMailSync(
     SELECT
       (s."syncStartedAt" IS NOT NULL AND s."syncStartedAt" > ${DB_NOW} - ${CLAIM_LIVE}) AS "claimed",
       (s."syncRequestedAt" IS NOT NULL AND s."syncRequestedAt" > ${DB_NOW} - ${REQUEST_LIVE}) AS "requested",
-      COALESCE(GREATEST(0, EXTRACT(EPOCH FROM (s."lastSyncedAt" + interval '60 seconds' - ${DB_NOW})) * 1000), 0)::float8 AS "throttleMs",
+      COALESCE(GREATEST(0, EXTRACT(EPOCH FROM (GREATEST(s."lastSyncedAt", s."lastErrorAt") + interval '60 seconds' - ${DB_NOW})) * 1000), 0)::float8 AS "throttleMs",
       COALESCE(GREATEST(0, EXTRACT(EPOCH FROM (s."backoffUntil" - ${DB_NOW})) * 1000), 0)::float8 AS "backoffMs"
     FROM mail_sync_states s
     JOIN connections c ON c.id = s."connectionId"

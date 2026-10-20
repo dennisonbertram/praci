@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
 import type {
   AdapterContext,
   BackgroundJob,
@@ -999,6 +1000,34 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
         expect((await backfillOf(account.id)) !== null).toBe(expected);
       }
       expect(await rows(account.id)).toHaveLength(350);
+    });
+
+    it("caches the rest of the window for a connection that synced before the migration", async () => {
+      seed("existing", [message("recent", 1, ["INBOX"]), message("older", 40, ["INBOX"])]);
+      const account = await connect("existing");
+      await sync(account);
+      // What the old release left: a change cursor, no backfill, and only the recent mail cached.
+      await prisma.cachedMailMessage.deleteMany({
+        where: { connectionId: account.id, providerMessageId: "older" },
+      });
+      expect(await backfillOf(account.id)).toBeNull();
+
+      const migration = readFileSync(
+        new URL(
+          "../../db/prisma/migrations/20261114000000_mail_background_sync/migration.sql",
+          import.meta.url,
+        ),
+        "utf8",
+      );
+      const seedSql = migration.slice(migration.indexOf("UPDATE")).replace(/;\s*$/, "");
+      await prisma.$executeRawUnsafe(`${seedSql} AND "connectionId" = $1`, account.id);
+      expect(await backfillOf(account.id)).toEqual({ inbox: dayOf(14), sent: dayOf(14) });
+
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+
+      expect(Object.keys(await byId(account.id)).sort()).toEqual(["older", "recent"]);
+      expect(await backfillOf(account.id)).toBeNull();
     });
 
     it("keeps inInbox for a message in both lists when its sent page arrives later", async () => {

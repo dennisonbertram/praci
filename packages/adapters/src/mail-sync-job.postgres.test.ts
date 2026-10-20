@@ -220,6 +220,19 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
       expect(enqueued).toEqual([]);
     });
 
+    it("queues nothing for a refresh right after a failed sync", async () => {
+      seed("req-failed", [message("a", 1)]);
+      const account = await connect("req-failed");
+      gmail.failNext(503, { times: 100 });
+      await request(account.id, "refresh");
+      await runMailSyncJob({ prisma, mail, jobs }, scopeOf(account.id));
+      expect((await state(account.id)).lastErrorAt).not.toBeNull();
+      enqueued = [];
+
+      expect(await request(account.id, "refresh")).toEqual({ syncing: false });
+      expect(enqueued).toEqual([]);
+    });
+
     it("schedules the job at the end of a rate-limit backoff", async () => {
       seed("req-backoff", [message("a", 1)]);
       const account = await connect("req-backoff");
