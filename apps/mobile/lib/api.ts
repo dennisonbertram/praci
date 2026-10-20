@@ -946,7 +946,7 @@ export type MobileBot = Pick<
   | "thinkingLevel"
   | "autoSpeak"
 > &
-  Partial<Pick<Bot, "parentBotId" | "spaceId">>;
+  Partial<Pick<Bot, "parentBotId" | "spaceId" | "runPhase" | "runErrorId">>;
 
 export type MobileBotSection = BotSection;
 
