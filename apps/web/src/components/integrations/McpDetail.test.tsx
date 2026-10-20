@@ -295,7 +295,7 @@ it("disables the row buttons and shows Creating agent while the agent is being c
   await show(false, undefined, {
     agentBotId: null,
     agentExclusive: false,
-    transport: "http",
+    transport: "streamable_http",
     oauthStatus: "connected",
   });
   await press("Create agent");
