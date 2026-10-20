@@ -198,6 +198,75 @@ afterEach(async () => {
   vi.clearAllMocks();
 });
 
+describe("Newsletters digest", () => {
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString();
+  const issues = [
+    row("old", { receivedAt: daysAgo(10), pile: "newsletters" }),
+    row("d2", { receivedAt: daysAgo(2), pile: "newsletters", reason: "Second issue" }),
+    row("d1", { receivedAt: daysAgo(1), pile: "newsletters", unread: true }),
+    row("d3", { receivedAt: daysAgo(5), pile: "newsletters" }),
+  ];
+  const toggle = (c: HTMLElement) => c.querySelector<HTMLElement>('button[aria-label="Digest"]');
+  beforeEach(() => {
+    rpcMock.list.mockImplementation(async (input: { pile?: string }) =>
+      list(input.pile === "newsletters" ? issues : updates, {
+        pileCounts: { important: 0, updates: 2, newsletters: 4, spam: 0 },
+      }),
+    );
+  });
+
+  it("offers the Digest toggle on the Newsletters pile only", async () => {
+    const newsletters = await render("/app/inbox?pile=newsletters");
+    expect(toggle(newsletters)).not.toBeNull();
+    const other = await render("/app/inbox?pile=updates");
+    expect(toggle(other)).toBeNull();
+  });
+
+  it("shows one card per issue from the last 7 days, newest first, in place of the sender groups", async () => {
+    const c = await render("/app/inbox?pile=newsletters");
+    await click(toggle(c));
+    expect(rowIds(c)).toEqual(["d1", "d2", "d3"]);
+    expect(c.textContent).toContain("Second issue");
+    await click(toggle(c));
+    expect(rowIds(c)).toContain(headerKey);
+  });
+
+  it("opens an issue in the message viewer", async () => {
+    const c = await render("/app/inbox?pile=newsletters");
+    await click(toggle(c));
+    await click(c.querySelector('[data-row-id="d2"] button'));
+    expect(c.querySelector('[data-testid="message"]')?.textContent).toBe("d2");
+  });
+
+  it("moves through the cards with j", async () => {
+    const c = await render("/app/inbox?pile=newsletters");
+    await click(toggle(c));
+    await press("j");
+    await press("j");
+    expect(c.querySelector('[data-row-id="d2"]')?.getAttribute("aria-current")).toBe("true");
+  });
+
+  it("archives only the issues shown with Archive all, and Undo restores them", async () => {
+    const c = await render("/app/inbox?pile=newsletters");
+    await click(toggle(c));
+    await click(c.querySelector('button[aria-label="Archive all"]'));
+    expect(rpcMock.archiveMany).toHaveBeenCalledWith({ messageIds: ["d1", "d2", "d3"] });
+    const toast = c.querySelector('[role="status"]') as HTMLElement;
+    expect(toast.textContent).toContain("Archived 3");
+    await click(byText(toast, "Undo"));
+    expect(rpcMock.unarchiveMany).toHaveBeenCalledWith({ messageIds: ["d1", "d2", "d3"] });
+  });
+
+  it("leaves the digest when another pile opens", async () => {
+    const c = await render("/app/inbox?pile=newsletters");
+    await click(toggle(c));
+    expect(toggle(c)?.getAttribute("aria-pressed")).toBe("true");
+    await click(byText(c, "Updates"));
+    await click(byText(c, "Newsletters"));
+    expect(toggle(c)?.getAttribute("aria-pressed")).toBe("false");
+  });
+});
+
 describe("Updates and Newsletters pile", () => {
   it("shows one row per sender with the count and the newest summary, and a single message as a row", async () => {
     const c = await render("/app/inbox?pile=updates");

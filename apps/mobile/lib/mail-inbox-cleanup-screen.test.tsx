@@ -330,6 +330,47 @@ describe("cleanup screen", () => {
     });
   });
 
+  it("notes a Gmail filter that could not be added, and offers no reconnect", async () => {
+    const skipping = (address: string, rule?: "full" | "failed" | "active" | "pending") =>
+      sender(address, { skipInbox: true, preselected: false, ...(rule ? { rule } : {}) });
+    listReply = () => ({
+      accounts: [{ connectionId: "c1", label: "Me", senderRules: "needs_permission" }],
+      senders: [
+        skipping("full@lists.example.test", "full"),
+        skipping("failed@lists.example.test", "failed"),
+        skipping("active@lists.example.test", "active"),
+        skipping("pending@lists.example.test", "pending"),
+        skipping("plain@lists.example.test"),
+      ],
+      syncedAt: null,
+    });
+    await render();
+    const content = container.textContent ?? "";
+    expect(content.match(/Gmail filter limit reached/g)).toHaveLength(1);
+    expect(content.match(/Couldn't add Gmail filter/g)).toHaveLength(1);
+    expect(content).not.toContain("Also in Gmail");
+  });
+
+  it("shows the learned pile with Forget, which forgets only the learned pile", async () => {
+    const learned = sender("news@lists.example.test", { learnedPile: "newsletters" });
+    listReply = () => ({
+      accounts: [{ connectionId: "c1", label: "Me" }],
+      senders: [learned],
+      syncedAt: null,
+    });
+    await render();
+    expect(container.textContent).toContain("Learned Newsletters");
+    const forget = [...container.querySelectorAll("button")].find(
+      (b) => b.textContent === "Forget",
+    );
+    await act(async () => forget?.click());
+    expect(state.rpc).toHaveBeenCalledWith("inbox/cleanup/forget", {
+      connectionId: "c1",
+      address: "news@lists.example.test",
+      learned: true,
+    });
+  });
+
   it("lists the history and undoes an action after a confirm", async () => {
     historyReply = () => ({
       actions: [
