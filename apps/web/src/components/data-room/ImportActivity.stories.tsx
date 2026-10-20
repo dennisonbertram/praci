@@ -52,3 +52,6 @@ export const AllFailed: Story = {
 export const TwoRunning: Story = {
   args: { imports: [base, { ...base, id: "imp_2", total: 2, done: 1, inProgress: 1 }] },
 };
+
+/** Hidden while the processing line shows the running import. */
+export const RunningHidden: Story = { args: { hideRunning: true } };

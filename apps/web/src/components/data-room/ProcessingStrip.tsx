@@ -1,6 +1,6 @@
 import { plural, t } from "@lingui/core/macro";
 import type { DataRoomApiProcessing } from "@rakazo/contracts";
-import { Button, cn } from "@rakazo/ui-web";
+import { Button, cn, Spinner } from "@rakazo/ui-web";
 import { ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { maskCurrencyWhenHidden } from "../../lib/hide-amounts-preference";
@@ -18,10 +18,13 @@ export function ProcessingStrip({
   processing,
   total,
   finished = false,
+  importing,
 }: {
   processing: DataRoomApiProcessing;
   total: number;
   finished?: boolean;
+  /** Imports still running, shown ahead of the count on the same line. */
+  importing?: { done: number; total: number } | null;
 }) {
   const [open, setOpen] = useState(false);
   const remaining = processingRemaining(processing);
@@ -43,6 +46,13 @@ export function ProcessingStrip({
   return (
     <div role="status" className={cn(row, "relative pb-2")}>
       <div className="flex items-center gap-x-2">
+        {importing ? (
+          <>
+            <Spinner aria-hidden="true" className="size-3.5" />
+            <span>{t`Importing ${importing.done} of ${importing.total}`}</span>
+            <span aria-hidden="true">·</span>
+          </>
+        ) : null}
         <Shimmer>
           {plural(remaining, { one: "Processing # file", other: "Processing # files" })}
         </Shimmer>

@@ -12,15 +12,18 @@ import { ResizableFolders } from "./ResizableFolders";
 
 let container: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
+let body: HTMLDivElement;
+const tree = () => <ResizableFolders bounds={body}>tree</ResizableFolders>;
 beforeEach(() => {
   localStorage.clear();
   // A 1000px page: the tree may grow to 500px.
-  vi.spyOn(HTMLElement.prototype, "clientWidth", "get").mockReturnValue(1000);
+  body = document.createElement("div");
+  Object.defineProperty(body, "clientWidth", { configurable: true, value: 1000 });
   HTMLElement.prototype.setPointerCapture = () => undefined;
   container = document.createElement("div");
   document.body.append(container);
   root = createRoot(container);
-  act(() => root.render(<ResizableFolders>tree</ResizableFolders>));
+  act(() => root.render(tree()));
 });
 afterEach(() => {
   act(() => root.unmount());
@@ -58,6 +61,27 @@ it("resizes with the arrow keys within the minimum and the half-page maximum", (
   expect(width()).toBe("500");
 });
 
+it("takes its maximum from the body, not from its own column width", () => {
+  // The column itself reports 244px (as a shrink-to-fit parent would); the body is 1000px.
+  const column = container.firstElementChild as HTMLElement;
+  Object.defineProperty(column, "clientWidth", { configurable: true, value: 244 });
+  Object.defineProperty(column.parentElement, "clientWidth", { configurable: true, value: 244 });
+  expect(column.style.maxWidth).toBe("");
+  key("End");
+  expect(width()).toBe("500");
+});
+
+it("shows a narrower width when the body shrinks, and keeps the saved one", () => {
+  key("End");
+  Object.defineProperty(body, "clientWidth", { configurable: true, value: 600 });
+  act(() => root.render(tree()));
+  act(() => root.unmount());
+  root = createRoot(container);
+  act(() => root.render(tree()));
+  expect(width()).toBe("300");
+  expect(localStorage.getItem("rakazo:data-room-folders-width")).toBe("500");
+});
+
 it("resizes by dragging, remembers the width and resets on double-click", () => {
   pointer("pointerdown", 100);
   pointer("pointermove", 160);
@@ -69,10 +93,10 @@ it("resizes by dragging, remembers the width and resets on double-click", () => 
   expect(width()).toBe("500");
   expect(localStorage.getItem("rakazo:data-room-folders-width")).toBe("500");
 
-  act(() => root.render(<ResizableFolders>tree</ResizableFolders>));
+  act(() => root.render(tree()));
   act(() => root.unmount());
   root = createRoot(container);
-  act(() => root.render(<ResizableFolders>tree</ResizableFolders>));
+  act(() => root.render(tree()));
   expect(width()).toBe("500");
 
   act(() => {

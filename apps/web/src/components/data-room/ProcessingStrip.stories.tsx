@@ -39,3 +39,8 @@ export const WithFailures: Story = {
 export const Done: Story = {
   args: { processing: { ...base, reading: 0, indexing: 0, tagging: 0 }, finished: true },
 };
+
+/** Imports still running share the line with the processing count. */
+export const WithImport: Story = {
+  args: { importing: { done: 399, total: 1_104 } },
+};

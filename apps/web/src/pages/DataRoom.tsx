@@ -24,7 +24,7 @@ import {
 import { FolderTree } from "../components/data-room/FolderTree";
 import { folderContents, folderNodes } from "../components/data-room/folders";
 import { alreadyText } from "../components/data-room/format";
-import { ImportActivity } from "../components/data-room/ImportActivity";
+import { ImportActivity, importProgress } from "../components/data-room/ImportActivity";
 import { ImportSources } from "../components/data-room/ImportFromEmail";
 import type { DataRoomEntry } from "../components/data-room/ItemDialogs";
 import { ItemDialog, isFolder, NewFolderDialog } from "../components/data-room/ItemDialogs";
@@ -586,7 +586,7 @@ export function DataRoomPage({
           />
           <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
             <div className="hidden self-stretch border-e border-border @min-[800px]/bd:flex">
-              <ResizableFolders>
+              <ResizableFolders bounds={bodyEl}>
                 <FolderTree
                   nodes={nodes}
                   selected={filters.folderId}
@@ -633,9 +633,11 @@ export function DataRoomPage({
                   imports={importActivity.imports}
                   onOpenItem={openImported}
                   onDismiss={importActivity.dismiss}
+                  hideRunning={processing.active}
                 />
                 {processing.processing && (processing.active || processing.finished) ? (
                   <ProcessingStrip
+                    importing={processing.active ? importProgress(importActivity.imports) : null}
                     processing={processing.processing}
                     total={processing.total}
                     finished={!processing.active}
