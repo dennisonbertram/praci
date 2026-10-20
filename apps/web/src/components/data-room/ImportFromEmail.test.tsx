@@ -158,7 +158,7 @@ it("imports the ticked attachment into the open folder", async () => {
     picks: [{ messageId: "m1", attachmentId: "a1" }],
     folderId: "f1",
   });
-  expect(onDone).toHaveBeenCalledWith("", true);
+  expect(onDone).toHaveBeenCalledWith("Imported 1 file", true);
 });
 
 it("says so when everything picked was already imported", async () => {
@@ -181,7 +181,7 @@ it("keeps the picker open and says how many files failed", async () => {
   await choose("Email");
   await click(fileBox("invoice.pdf"));
   await click(button("Import 1 file"));
-  expect(onDone).toHaveBeenCalledWith("", true);
+  expect(onDone).toHaveBeenCalledWith("Imported 1 file", true);
   expect(document.body.textContent).toContain("Couldn't import 2 files");
 });
 
