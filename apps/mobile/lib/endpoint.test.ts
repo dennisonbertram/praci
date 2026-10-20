@@ -92,7 +92,7 @@ describe("display and warnings", () => {
 });
 
 describe("probeApiBase", () => {
-  it("accepts a Rakazo /rpc/health response", async () => {
+  it("accepts a Praci /rpc/health response", async () => {
     const fetchImpl = vi.fn(
       async () =>
         new Response(JSON.stringify({ json: { ok: true, version: "0.1.0" } }), { status: 200 }),
@@ -107,7 +107,7 @@ describe("probeApiBase", () => {
     );
   });
 
-  it("rejects a host that is up but is not Rakazo", async () => {
+  it("rejects a host that is up but is not Praci", async () => {
     const fetchImpl = vi.fn(
       async () => new Response("ok", { status: 200 }),
     ) as unknown as typeof fetch;

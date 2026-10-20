@@ -29,7 +29,7 @@ export const KO_MESSAGES: Record<string, string> = {
   "Configure a plugin catalog on the server to connect apps.":
     "앱을 연결하려면 서버에 플러그인 카탈로그를 설정하세요.",
   "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.":
-    "서버의 OpenAI 호환 주소를 붙여넣으세요. 필요하면 Rakazo가 /v1을 추가합니다.",
+    "서버의 OpenAI 호환 주소를 붙여넣으세요. 필요하면 Praci가 /v1을 추가합니다.",
   "Settings: General": "설정: 일반",
   "Settings: Usage": "설정: 사용량",
   "Sign-in did not return a session": "로그인 후 세션이 반환되지 않았습니다",
@@ -59,7 +59,7 @@ export const KO_MESSAGES: Record<string, string> = {
   "Custom server {host}": "사용자 지정 서버 {host}",
   "Don’t have an account?": "계정이 없나요?",
   Email: "이메일",
-  "Enter your Rakazo server address.": "Rakazo 서버 주소를 입력하세요.",
+  "Enter your Praci server address.": "Praci 서버 주소를 입력하세요.",
   "Forgot password?": "비밀번호를 잊으셨나요?",
   "Loading…": "불러오는 중…",
   Password: "비밀번호",
@@ -68,9 +68,9 @@ export const KO_MESSAGES: Record<string, string> = {
   "Reset your password": "비밀번호를 재설정하세요",
   "Send reset link": "재설정 링크 보내기",
   Server: "서버",
-  "Sign in to Rakazo": "Rakazo 로그인",
+  "Sign in to Praci": "Praci 로그인",
   "Sign up": "가입하기",
-  "Sign up for Rakazo": "Rakazo 가입하기",
+  "Sign up for Praci": "Praci 가입하기",
   "Use a custom server": "사용자 지정 서버 사용",
   "Use default server": "기본 서버 사용",
   Activity: "활동",
@@ -380,8 +380,8 @@ export const KO_MESSAGES: Record<string, string> = {
   "Switching…": "전환 중…",
   "The final page may not load. Paste its URL or code here.":
     "마지막 페이지가 열리지 않을 수 있습니다. 해당 URL이나 코드를 여기에 붙여넣으세요.",
-  "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider.":
-    "이 구독 로그인 방식은 아직 Rakazo에서 지원되지 않습니다. 서버에 설정된 인증 정보를 사용하거나 다른 서비스를 선택하세요.",
+  "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider.":
+    "이 구독 로그인 방식은 아직 Praci에서 지원되지 않습니다. 서버에 설정된 인증 정보를 사용하거나 다른 서비스를 선택하세요.",
   "Use a found model": "찾은 모델 중에서 선택",
   "Use this model": "이 모델 사용",
   "Waiting for sign-in…": "로그인을 기다리는 중…",
@@ -653,7 +653,7 @@ export const KO_MESSAGES: Record<string, string> = {
   "Enter a server URL": "서버 URL을 입력하세요",
   "Public servers need https://. HTTP only works on your local network.":
     "공개 서버는 https://가 필요합니다. HTTP는 로컬 네트워크에서만 작동합니다.",
-  "That URL did not look like a Rakazo server": "해당 URL은 Rakazo 서버처럼 보이지 않습니다",
+  "That URL did not look like a Praci server": "해당 URL은 Praci 서버처럼 보이지 않습니다",
   "That URL is missing a host": "해당 URL에 호스트가 없습니다",
   "That doesn’t look like a URL": "URL처럼 보이지 않습니다",
   "Use an http or https URL": "http 또는 https URL을 사용하세요",
@@ -727,7 +727,7 @@ export const KO_MESSAGES: Record<string, string> = {
   "AI models": "AI 모델",
   Memory: "기억",
   "Privacy policies": "개인정보 처리방침",
-  Rakazo: "Rakazo",
+  Praci: "Praci",
   "Withdraw all permissions": "모든 권한 철회",
   "Withdraw all permissions?": "모든 권한을 철회할까요?",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":
