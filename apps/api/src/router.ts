@@ -173,6 +173,7 @@ import {
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
+  isMailThreadAgentSpawnKey,
   isRetiredVoiceAgentSpawnKey,
   isVoiceAgentSpawnKey,
   NOTIFICATION_HEARTBEAT_ID,
@@ -401,6 +402,7 @@ import {
   inboxUnarchive,
   inboxUnarchiveMany,
 } from "./inbox-modify.js";
+import { inboxAskAgent } from "./inbox-thread-agent.js";
 import { inboxUnsubscribe } from "./inbox-unsubscribe.js";
 import {
   connectionAgentSpawnKeys,
@@ -2025,6 +2027,7 @@ export function createRouter(deps: RouterDeps) {
         // inbox.agent is the only way to create an Inbox agent; reserve its key prefix.
         if (
           isInboxAgentSpawnKey(input.spawnKey) ||
+          isMailThreadAgentSpawnKey(input.spawnKey) ||
           isFinanceAgentSpawnKey(input.spawnKey) ||
           isLegalAgentSpawnKey(input.spawnKey) ||
           isDataRoomAgentSpawnKey(input.spawnKey) ||
@@ -7247,6 +7250,13 @@ export function createRouter(deps: RouterDeps) {
         ensureInboxAgent(repos, context.actor).catch((error: unknown) => {
           throw mapSpaceLifecycleError(error);
         }),
+      ),
+      askAgent: authed.inbox.askAgent.handler(({ context, input }) =>
+        inboxAskAgent({ ...deps, repos }, context.actor, input, context.signal).catch(
+          (error: unknown) => {
+            throw mapSpaceLifecycleError(error);
+          },
+        ),
       ),
       list: authed.inbox.list.handler(({ context, input }) =>
         inboxList(deps, context.actor, input, context.signal),

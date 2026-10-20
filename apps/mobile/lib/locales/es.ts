@@ -771,6 +771,7 @@ export const ES_MESSAGES: Record<string, string> = {
     "SSO no está disponible temporalmente. Inténtalo de nuevo.",
   Inbox: "Bandeja de entrada",
   "Inbox agent": "Agente de la bandeja de entrada",
+  "Ask agent": "Preguntar al agente",
   Sent: "Enviado",
   "Could not load mail.": "No se pudo cargar el correo.",
   "Needs reply": "Pendiente de respuesta",

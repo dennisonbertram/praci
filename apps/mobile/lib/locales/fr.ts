@@ -773,6 +773,7 @@ export const FR_MESSAGES: Record<string, string> = {
   "SSO is temporarily unavailable. Try again.": "SSO est temporairement indisponible. Réessayez.",
   Inbox: "Boîte de réception",
   "Inbox agent": "Agent de la boîte de réception",
+  "Ask agent": "Demander à l'agent",
   Sent: "Envoyé",
   "Could not load mail.": "Impossible de charger les e-mails.",
   "Needs reply": "Réponse requise",

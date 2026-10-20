@@ -792,6 +792,7 @@ export const ZH_MESSAGES: Record<string, string> = {
   "SSO is temporarily unavailable. Try again.": "SSO 暂时不可用，请重试。",
   Inbox: "收件箱",
   "Inbox agent": "收件箱助手",
+  "Ask agent": "询问助手",
   Sent: "已发送",
   "Could not load mail.": "无法加载邮件。",
   "Needs reply": "待回复",

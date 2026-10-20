@@ -1,5 +1,5 @@
 import { i18n } from "@lingui/core";
-import { plural, t } from "@lingui/core/macro";
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ComposeMode, InboxThreadMessage } from "@rakazo/contracts";
 import {
@@ -13,12 +13,10 @@ import {
 } from "@rakazo/ui-web";
 import {
   Archive,
+  Bot,
   Check,
   ChevronDown,
   ChevronUp,
-  FileArchive,
-  FileImage,
-  FileText,
   Forward,
   Inbox,
   Mail,
@@ -31,7 +29,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ComposeEmail } from "../../components/ComposeEmail";
 import { recallClosed } from "../../components/compose/draft-memory";
 import { SandboxedHtmlViewer } from "../../components/SandboxedHtmlViewer";
-import { formatBytes } from "../../lib/format-bytes";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { allowStep } from "../../lib/inbox-keyboard";
 import type { InboxMessageOutput } from "../../lib/inbox-message-cache";
@@ -41,8 +38,8 @@ import {
   prefetchInboxMessage,
 } from "../../lib/inbox-message-cache";
 import { MAIL_SENT_EVENT } from "../../lib/outbox";
-import { withSpaceHeaders } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { MailAttachments } from "./MailAttachments";
 
 /** Opens one cached message in a modal; full screen on phones. Shared by the Inbox and chat email cards. */
 export function InboxMessageDialog({
@@ -56,6 +53,7 @@ export function InboxMessageDialog({
   onArchive,
   onMoveToInbox,
   onRead,
+  onAskAgent,
   notice,
   onClose,
 }: {
@@ -77,6 +75,8 @@ export function InboxMessageDialog({
   /** Offered while the message is archived, such as a search result. */
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  /** Adds Ask agent: opens the chat made for this conversation. A rejection shows in the dialog. */
+  onAskAgent?: () => Promise<unknown>;
   /** A brief message with its own action, shown here because the page behind the dialog is inert. */
   notice?: React.ReactNode;
   onClose: () => void;
@@ -117,6 +117,7 @@ export function InboxMessageDialog({
             onArchive={onArchive}
             onMoveToInbox={onMoveToInbox}
             onRead={onRead}
+            onAskAgent={onAskAgent}
             notice={notice}
             composing={composing}
             setComposing={setComposing}
@@ -140,6 +141,7 @@ function InboxMessage({
   onArchive,
   onMoveToInbox,
   onRead,
+  onAskAgent,
   notice,
   composing,
   setComposing,
@@ -154,6 +156,7 @@ function InboxMessage({
   onArchive?: () => void;
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  onAskAgent?: () => Promise<unknown>;
   notice?: React.ReactNode;
   composing: ComposeMode | null;
   setComposing: (mode: ComposeMode | null) => void;
@@ -167,6 +170,8 @@ function InboxMessage({
   // A stale link: the email was deleted or moved, so trying again cannot help.
   const [gone, setGone] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [asking, setAsking] = useState(false);
+  const [askError, setAskError] = useState("");
   const seed = useMemo(
     () => (composing ? ({ kind: composing, messageId } as const) : null),
     [composing, messageId],
@@ -336,9 +341,35 @@ function InboxMessage({
               {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
             </Button>
           ) : null}
+          {onAskAgent ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={asking}
+              onClick={() => {
+                setAsking(true);
+                setAskError("");
+                onAskAgent().then(
+                  () => setAsking(false),
+                  (cause) => {
+                    setAsking(false);
+                    setAskError(errorText(cause));
+                  },
+                );
+              }}
+            >
+              <Bot aria-hidden="true" />
+              <Trans>Ask agent</Trans>
+            </Button>
+          ) : null}
           {/* In the toolbar, so it neither covers the email nor moves the dialog. */}
           {notice ? <div className="ms-auto flex min-w-0 max-w-full">{notice}</div> : null}
         </div>
+      ) : null}
+      {askError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {askError}
+        </p>
       ) : null}
       {message && !composing && draft ? (
         <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -399,7 +430,7 @@ function InboxMessage({
           </p>
         )}
         {message?.attachments.length ? (
-          <InboxAttachments messageId={messageId} attachments={message.attachments} />
+          <MailAttachments messageId={messageId} attachments={message.attachments} />
         ) : null}
         {message?.later?.length ? (
           <div className="mt-4">
@@ -453,81 +484,6 @@ function splitSender(from: string): { name: string; address: string } {
   const name = (match[1] ?? "").trim();
   const address = (match[2] ?? "").trim();
   return name ? { name, address } : { name: address, address: "" };
-}
-
-type MailAttachmentItem = InboxMessageOutput["attachments"][number];
-
-function AttachmentIcon({ mimeType }: { mimeType: string }) {
-  if (mimeType.startsWith("image/")) return <FileImage />;
-  if (/zip|compressed|tar/.test(mimeType)) return <FileArchive />;
-  return <FileText />;
-}
-
-/** Fetches with the session and space header, then saves the bytes; the file is never opened in the page. */
-async function saveAttachment(messageId: string, attachment: MailAttachmentItem) {
-  const response = await fetch(
-    `/api/inbox/messages/${encodeURIComponent(messageId)}/attachments/${encodeURIComponent(attachment.id)}`,
-    { headers: withSpaceHeaders(), credentials: "include" },
-  );
-  if (!response.ok) throw new Error(`Attachment download failed (${response.status})`);
-  const url = URL.createObjectURL(await response.blob());
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = attachment.filename;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}
-
-function InboxAttachments({
-  messageId,
-  attachments,
-}: {
-  messageId: string;
-  attachments: MailAttachmentItem[];
-}) {
-  const [result, setResult] = useState<{ ok: boolean; filename: string } | null>(null);
-  return (
-    <div className="mt-3">
-      <ul aria-label={t`Attachments`} className="flex flex-wrap gap-2">
-        {attachments.map((attachment) => (
-          <li key={attachment.id}>
-            <Button
-              variant="outline"
-              className="h-auto max-w-64 justify-start gap-2 px-3 py-2 text-start [&_svg]:size-4 [&_svg]:text-muted-foreground"
-              onClick={() => {
-                setResult(null);
-                saveAttachment(messageId, attachment).then(
-                  () => setResult({ ok: true, filename: attachment.filename }),
-                  () => setResult({ ok: false, filename: attachment.filename }),
-                );
-              }}
-            >
-              <AttachmentIcon mimeType={attachment.mimeType} />
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate">{attachment.filename}</span>
-                <span className="text-xs text-muted-foreground">
-                  {formatBytes(attachment.size)}
-                </span>
-              </span>
-            </Button>
-          </li>
-        ))}
-      </ul>
-      <p
-        role={result && !result.ok ? "alert" : "status"}
-        className={cn(
-          "mt-2 text-sm empty:hidden",
-          result?.ok ? "text-muted-foreground" : "text-destructive",
-        )}
-      >
-        {result
-          ? result.ok
-            ? t`Downloaded ${result.filename}`
-            : t`Couldn't download ${result.filename}`
-          : null}
-      </p>
-    </div>
-  );
 }
 
 /** Shown on a message the user sent; the provider only reports a message as sent once it left. */

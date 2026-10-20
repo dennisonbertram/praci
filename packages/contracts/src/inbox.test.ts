@@ -209,3 +209,13 @@ describe("cleanup contracts", () => {
     );
   });
 });
+
+describe("mail thread agent spawn key", () => {
+  it("is one key per account and thread, and is reserved by its prefix", async () => {
+    const { isMailThreadAgentSpawnKey, mailThreadAgentSpawnKey } = await import("./inbox.js");
+    expect(mailThreadAgentSpawnKey("conn-1", "thread-9")).toBe("mail-thread:conn-1:thread-9");
+    expect(isMailThreadAgentSpawnKey(mailThreadAgentSpawnKey("c", "t"))).toBe(true);
+    expect(isMailThreadAgentSpawnKey("inbox-agent:user-1")).toBe(false);
+    expect(isMailThreadAgentSpawnKey(null)).toBe(false);
+  });
+});

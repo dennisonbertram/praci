@@ -1322,6 +1322,8 @@ export const appContract = {
   },
   inbox: {
     agent: oc.output(BotSchema),
+    /** Idempotent per mail conversation: opens the agent made for the message's thread, with the thread as context. */
+    askAgent: oc.input(z.object({ messageId: Id })).output(BotSchema),
     list: oc.input(InboxListInputSchema).output(InboxListOutputSchema),
     refresh: oc.input(InboxRefreshInputSchema).output(InboxRefreshOutputSchema),
     get: oc.input(z.object({ messageId: Id })).output(InboxMessageSchema),

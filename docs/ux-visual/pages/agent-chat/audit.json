@@ -192,19 +192,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -246,8 +246,8 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -258,32 +258,32 @@
      "h": 35
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.group/button.inline-flex \"Actions for R\"",
      "b": "button#base-ui-_r_a_ \"MCMaya Chen (Mock)\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Mail nee\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Open Mail nee\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Mail rat\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Open Mail rat\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -598,19 +598,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -652,44 +652,44 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.group/button.inline-flex \"Actions for E\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 26
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Mail nee\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Open Mail nee\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.group/button.inline-flex \"Actions for M\"",
      "b": "button#base-ui-_r_a_ \"MCMaya Chen (Mock)\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Mail rat\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Open Mail rat\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -996,19 +996,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -1050,8 +1050,8 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -1074,26 +1074,26 @@
      "h": 17
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Mail nee\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Open Mail nee\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Mail rat\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Open Mail rat\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     }
@@ -1434,19 +1434,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -1492,31 +1492,31 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.group/button.inline-flex \"Actions for M\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
@@ -1528,8 +1528,8 @@
      "h": 7
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -1862,19 +1862,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -1920,8 +1920,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -1938,26 +1938,26 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     }
@@ -2295,19 +2295,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -2353,44 +2353,44 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.group/button.inline-flex \"Actions for R\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.group/button.inline-flex \"Actions for E\"",
      "b": "button#base-ui-_r_a_ \"MCMaya Chen (Mock)\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -2709,19 +2709,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -2779,44 +2779,44 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.group/button.inline-flex \"Actions for R\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.group/button.inline-flex \"Actions for E\"",
      "b": "button#base-ui-_r_6_ \"MCMaya Chen (Mock)\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -3147,19 +3147,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -3217,31 +3217,31 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.group/button.inline-flex \"Actions for M\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
@@ -3253,8 +3253,8 @@
      "h": 7
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -3593,19 +3593,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -3663,8 +3663,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -3681,26 +3681,26 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     }
@@ -4008,19 +4008,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -4078,44 +4078,44 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.group/button.inline-flex \"Actions for R\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.group/button.inline-flex \"Actions for E\"",
      "b": "button#base-ui-_r_6_ \"MCMaya Chen (Mock)\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -4456,19 +4456,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -4526,31 +4526,31 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.group/button.inline-flex \"Actions for M\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
@@ -4562,8 +4562,8 @@
      "h": 7
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -4923,19 +4923,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -4993,8 +4993,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -5011,26 +5011,26 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -5344,19 +5344,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -5414,44 +5414,44 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.group/button.inline-flex \"Actions for R\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.group/button.inline-flex \"Actions for E\"",
      "b": "button#base-ui-_r_6_ \"MCMaya Chen (Mock)\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -5796,19 +5796,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -5866,31 +5866,31 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.group/button.inline-flex \"Actions for M\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
@@ -5902,8 +5902,8 @@
      "h": 7
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -6281,19 +6281,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -6351,8 +6351,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -6369,26 +6369,26 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     }
@@ -6709,19 +6709,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -6787,44 +6787,44 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.group/button.inline-flex \"Actions for R\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.group/button.inline-flex \"Actions for E\"",
      "b": "button#base-ui-_r_a_ \"MCMaya Chen (Mock)\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -7193,19 +7193,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -7271,31 +7271,31 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.group/button.inline-flex \"Actions for M\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
@@ -7307,8 +7307,8 @@
      "h": 7
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -7688,19 +7688,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -7766,8 +7766,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -7784,26 +7784,26 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -8141,19 +8141,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -8219,8 +8219,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -8237,26 +8237,26 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -8602,19 +8602,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -8680,31 +8680,31 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.group/button.inline-flex \"Actions for M\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
@@ -8716,8 +8716,8 @@
      "h": 7
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -9117,19 +9117,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -9203,31 +9203,31 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.group/button.inline-flex \"Actions for M\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
@@ -9239,8 +9239,8 @@
      "h": 7
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -9637,19 +9637,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -9723,8 +9723,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -9741,26 +9741,26 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -10092,19 +10092,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -10146,8 +10146,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -10158,38 +10158,38 @@
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.group/button.inline-flex \"Actions for R\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.group/button.inline-flex \"Actions for E\"",
      "b": "button#base-ui-_r_a_ \"MCMaya Chen (Mock)\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -10510,19 +10510,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -10564,8 +10564,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -10576,25 +10576,25 @@
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.group/button.inline-flex \"Actions for M\"",
      "b": "button.mx-3.mb-1 \"Connect appsGGS\"",
      "w": 26,
      "h": 20
@@ -10606,8 +10606,8 @@
      "h": 7
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
@@ -10920,19 +10920,19 @@
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Reconnect nee\"",
+     "el": "span.line-clamp-2.text-start \"Reconnect nee\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Empty space\"",
+     "el": "span.line-clamp-2.text-start \"Empty space\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail needs re\"",
+     "el": "span.line-clamp-2.text-start \"Mail needs re\"",
      "ratio": 1.32
     },
     {
-     "el": "span.line-clamp-2.text-start \"MOCK DEMO DATA — Mail rate-lim\"",
+     "el": "span.line-clamp-2.text-start \"Mail rate-lim\"",
      "ratio": 1.32
     },
     {
@@ -10974,8 +10974,8 @@
      "h": 25
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Nort\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — N\"",
+     "a": "button.flex.min-w-0 \"Collapse Nort\"",
+     "b": "button.group/button.inline-flex \"Actions for N\"",
      "w": 28,
      "h": 28
     },
@@ -10992,26 +10992,26 @@
      "h": 9
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Reconnec\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — R\"",
+     "a": "button.flex.min-w-0 \"Open Reconnec\"",
+     "b": "button.group/button.inline-flex \"Actions for R\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Open MOCK DEMO DATA — Empty sp\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — E\"",
+     "a": "button.flex.min-w-0 \"Open Empty sp\"",
+     "b": "button.group/button.inline-flex \"Actions for E\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     },
     {
-     "a": "button.flex.min-w-0 \"Collapse MOCK DEMO DATA — Mail\"",
-     "b": "button.group/button.inline-flex \"Actions for MOCK DEMO DATA — M\"",
+     "a": "button.flex.min-w-0 \"Collapse Mail\"",
+     "b": "button.group/button.inline-flex \"Actions for M\"",
      "w": 28,
      "h": 28
     }

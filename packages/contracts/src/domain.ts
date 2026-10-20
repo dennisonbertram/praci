@@ -895,7 +895,14 @@ export const SPREADSHEET_PREVIEW_MAX_LIMIT = 1000;
 
 /** A spreadsheet is in an artifact or in a Data room item, never both. */
 export const SpreadsheetPreviewInputSchema = z.object({
-  source: z.union([z.object({ artifactId: Id }), z.object({ dataRoomItemId: Id })]),
+  source: z.union([
+    z.object({ artifactId: Id }),
+    z.object({ dataRoomItemId: Id }),
+    /** An attachment of the caller's own cached mail message. */
+    z.object({
+      mailAttachment: z.object({ messageId: Id, attachmentId: z.string().min(1).max(500) }),
+    }),
+  ]),
   /** Defaults to the first sheet. */
   sheet: z.string().min(1).max(200).optional(),
   /** Data rows to skip after the header row. */

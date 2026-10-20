@@ -2556,7 +2556,7 @@ model DataRoomImport {
   spaceId    String
   space      Space          @relation(fields: [spaceId], references: [id], onDelete: Cascade)
   userId     String
-  /// "drive", "box" or "gmail".
+  /// "drive", "box", "gmail" or "upload" (a zip unpacked on upload).
   source     String
   /// Files the import set out to file, including the ones skipped below.
   total      Int

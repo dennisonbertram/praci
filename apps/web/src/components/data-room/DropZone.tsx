@@ -22,7 +22,15 @@ const failureText = (reason: UploadFailure) =>
       ? t`Unsupported file name`
       : reason === "folder-gone"
         ? t`This folder no longer exists`
-        : t`Upload failed`;
+        : reason === "zip-too-large"
+          ? t`This zip is too large to unpack`
+          : reason === "zip-encrypted"
+            ? t`This zip is password-protected`
+            : reason === "zip-unsafe"
+              ? t`This zip has unsafe file paths`
+              : reason === "zip-invalid"
+                ? t`This zip can't be read`
+                : t`Upload failed`;
 
 const duplicateText = ({ name, folder }: { name?: string; folder?: string }) =>
   folder

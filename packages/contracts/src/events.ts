@@ -341,6 +341,26 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     kind: z.literal("emails"),
     emails: z.array(EmailCardSchema).min(1).max(MAX_EMAIL_CARDS),
   }),
+  z.object({
+    /**
+     * A mail conversation handed to an agent as context. The chat shows it as a collapsed card;
+     * the model reads `messages` only after the owner has allowed AI data sharing for mail.
+     */
+    kind: z.literal("mail_thread"),
+    subject: z.string(),
+    messages: z
+      .array(
+        z.object({
+          from: z.string(),
+          to: z.string(),
+          cc: z.string().optional(),
+          date: z.string(),
+          text: z.string(),
+          attachments: z.array(z.string()).optional(),
+        }),
+      )
+      .min(1),
+  }),
   z.object({ kind: z.literal("finance"), card: FinanceCardSchema }),
   z.object({
     kind: z.literal("image"),

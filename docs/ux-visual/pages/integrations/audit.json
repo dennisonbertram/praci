@@ -3048,7 +3048,7 @@
       "ratio": 1.23
      },
      {
-      "el": "b.break-all \"Founder mail (Mock)\"",
+      "el": "b.break-all \"Founder mail\"",
       "ratio": 1.37
      },
      {
@@ -3060,7 +3060,7 @@
       "ratio": 1.37
      },
      {
-      "el": "b.break-all \"Sales mail (Mock)\"",
+      "el": "b.break-all \"Sales mail\"",
       "ratio": 1.37
      },
      {
@@ -7390,7 +7390,7 @@
       "ratio": 1.23
      },
      {
-      "el": "b.break-all \"Founder mail (Mock)\"",
+      "el": "b.break-all \"Founder mail\"",
       "ratio": 1.37
      },
      {
@@ -7402,7 +7402,7 @@
       "ratio": 1.37
      },
      {
-      "el": "b.break-all \"Sales mail (Mock)\"",
+      "el": "b.break-all \"Sales mail\"",
       "ratio": 1.37
      },
      {
@@ -11285,7 +11285,7 @@
       "ratio": 1.23
      },
      {
-      "el": "b.break-all \"Founder mail (Mock)\"",
+      "el": "b.break-all \"Founder mail\"",
       "ratio": 1.37
      },
      {
@@ -11297,7 +11297,7 @@
       "ratio": 1.37
      },
      {
-      "el": "b.break-all \"Sales mail (Mock)\"",
+      "el": "b.break-all \"Sales mail\"",
       "ratio": 1.37
      },
      {

@@ -4,7 +4,7 @@ Source: `docs/ux-paths/finance/catalog.md`.
 
 
 Generated: 2026-10-17
-Code read at: `559a76ad` (`/Users/dennison/develop/rakazo-ux`, branch `docs/ux-pass`), read-only.
+Code read at: `559a76ad` (`the repository root`, branch `docs/ux-pass`), read-only.
 Scope: `/app/finance/*` (dashboard and detail pages), the Add account dialog, statement upload,
 crypto wallets and exchanges, finance tiles on `/app/integrations?category=finance`, the Finance
 agent side panel, finance cards in chat, agent pins and checklists, and the **Hide amounts**
@@ -39,7 +39,7 @@ optional). All 23 earlier ids still apply; most had labels or steps fixed.
 
 ### Persona (applies to every story)
 
-A first-time user. Maya, a startup founder at "MOCK DEMO DATA — Northwind Robotics", has never seen
+A first-time user. Maya, a startup founder at "Northwind Robotics", has never seen
 Rakazo or its code. She does not know its terms ("burn", "runway scope", "MCP", "Blockscout",
 "pins", "Hide amounts"). She wants to run her company clearly and consistently: know how much money
 she has, what she spends it on, and when it runs out. Steps are written in her words.
@@ -51,7 +51,7 @@ wrong control.
 The walk runs against a seeded mock demo account. Every visible company, vendor, and person name
 must be clearly fake. The baseline seed is called **NW-BASE**:
 
-- Space or company name: `MOCK DEMO DATA — Northwind Robotics`. The signed-in user is the founder
+- Space or company name: `Northwind Robotics`. The signed-in user is the founder
   (for example `Mock Founder`). With more than one space, the space name shows beside the page title.
 - Mercury source with status `ok`, synced within the last 15 minutes. It has:
   - `MOCK Checking ••4821` with about $412,000.
@@ -90,7 +90,7 @@ Extra seeds named in story preconditions:
   (`MOCK First Mock Bank ••5502`) whose next statement is due, so the reminder banner shows.
   Test files: `mock-firstbank-2026-09.csv` (balances match), `mock-firstbank-2026-08.pdf`
   (balances off by $12.40), `notes.docx` (wrong type), and one file over the size limit.
-- **NW-EMPTY**: a fresh `MOCK DEMO DATA — Northwind Robotics` space with no finance sources, no
+- **NW-EMPTY**: a fresh `Northwind Robotics` space with no finance sources, no
   statement accounts, no wallets and no exchanges.
 - **NW-RECONNECT**: NW-BASE with the Mercury source set to `needs_reconnect`.
 - **NW-AGENT**: NW-BASE plus an existing Finance agent whose thread holds one earlier turn with 3

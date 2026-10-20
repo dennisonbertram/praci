@@ -174,6 +174,8 @@ function replyBlockText(block: MessageBlock): string {
       return block.name;
     case "emails":
       return block.emails[0]?.subject ?? "";
+    case "mail_thread":
+      return block.subject;
     case "finance":
       return financeCardSummary(block.card);
     case "image":

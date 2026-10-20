@@ -1,6 +1,7 @@
 import { formatSheetCell, isNumericSheetCell } from "@rakazo/core";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import type { SheetSource } from "../lib/artifacts";
 import { getSpreadsheetPreview } from "../lib/artifacts";
 import { useI18n } from "../lib/i18n";
 import { native, useThemedStyles } from "../lib/native";
@@ -24,7 +25,7 @@ type State =
   | Ready;
 
 /** A read-only table of one sheet. The server reads the file; more rows load on request. */
-export function SheetArtifactPreview({ artifactId }: { artifactId: string }) {
+export function SheetArtifactPreview({ source }: { source: SheetSource }) {
   const { t, locale } = useI18n();
   const styles = useThemedStyles(createStyles);
   const [sheet, setSheet] = useState<string | undefined>(undefined);
@@ -32,12 +33,13 @@ export function SheetArtifactPreview({ artifactId }: { artifactId: string }) {
   const [more, setMore] = useState<"idle" | "loading" | "error">("idle");
   // Bumped whenever the artifact or sheet changes, so a late "Load more" page is dropped.
   const generation = useRef(0);
+  const sourceKey = JSON.stringify(source);
 
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
     setMore("idle");
-    void getSpreadsheetPreview(artifactId, { sheet })
+    void getSpreadsheetPreview(source, { sheet })
       .then((page) => {
         if (cancelled) return;
         setState(
@@ -66,14 +68,14 @@ export function SheetArtifactPreview({ artifactId }: { artifactId: string }) {
       cancelled = true;
       generation.current += 1;
     };
-  }, [artifactId, sheet, t]);
+  }, [sourceKey, sheet, t]);
 
   const loadMore = () => {
     if (state.status !== "ready") return;
     const current = state;
     const started = generation.current;
     setMore("loading");
-    getSpreadsheetPreview(artifactId, { sheet: current.sheet, offset: current.rows.length })
+    getSpreadsheetPreview(source, { sheet: current.sheet, offset: current.rows.length })
       .then((next) => {
         if (started !== generation.current) return;
         if (next.status !== "ready") throw new Error("unsupported");

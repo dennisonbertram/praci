@@ -4,7 +4,7 @@ Source: PRs #115 and #134. Code read: `apps/api/src/inbox.ts` (`searchMail`, `in
 
 ## How a walker reaches this state on the mock demo stack
 
-- **Sync rate limit: reachable.** `pnpm demo:up` seeds a space named "MOCK DEMO DATA — Mail rate-limited" (`DEMO_RATE_LIMIT_SPACE`, `packages/testkit/src/cli/demo/data.ts`) with a Gmail account labeled "Busy mail (Mock)". In `packages/testkit/src/cli/demo.ts` the `accountState` hook makes `createE2eComposio` (`packages/testkit/src/cli/e2e-mail.ts`) answer every Gmail call for that account with HTTP 429 `RESOURCE_EXHAUSTED`. The seed calls `inbox/refresh` once, so the account already has a rate-limit error recorded. The walker switches to that space and opens Inbox.
+- **Sync rate limit: reachable.** `pnpm demo:up` seeds a space named "Mail rate-limited" (`DEMO_RATE_LIMIT_SPACE`, `packages/testkit/src/cli/demo/data.ts`) with a Gmail account labeled "Busy mail". In `packages/testkit/src/cli/demo.ts` the `accountState` hook makes `createE2eComposio` (`packages/testkit/src/cli/e2e-mail.ts`) answer every Gmail call for that account with HTTP 429 `RESOURCE_EXHAUSTED`. The seed calls `inbox/refresh` once, so the account already has a rate-limit error recorded. The walker switches to that space and opens Inbox.
 - **The 429 never stops in that space.** The account answers 429 for every call, for as long as the stack runs. The cache is empty (the seed only runs one refresh that fails), so the Inbox shows the full-page state, not a line above rows. The notice therefore cannot be seen to clear by waiting, and there is no message in that space to open or reply to.
 - **`GmailApiEmulator.failNext(429, { retryAfter, urlIncludes, times, skip })`** (`packages/adapters/src/gmail-api-emulator.ts`) can force a one-time or limited 429, but it is only called from Vitest tests (for example `apps/api/src/inbox.postgres.test.ts`, `inbox-compose.postgres.test.ts`) and is not wired to the demo CLI, an env var, or an HTTP route. A walker on the demo stack cannot call it.
 - **Conclusion.** GR-1 and GR-2 are walkable in the rate-limited space. GR-3 (notice clears) and GR-4 (Reply fallback with a failing Gmail) cannot be reached on the unmodified demo stack: GR-3 needs a 429 that stops, GR-4 needs a cached message plus a failing single-message fetch. To walk them, add a demo hook for `failNext` (or a second seeded space with a populated cache) first. Until then, record them as "not reachable" and read the Vitest cases listed in each story.
@@ -15,14 +15,14 @@ Source: PRs #115 and #134. Code read: `apps/api/src/inbox.ts` (`searchMail`, `in
 
 **Type**: short
 **Topic**: Gmail rate-limit notice
-**Persona**: Maya, first-time founder at MOCK DEMO DATA — Northwind Robotics, opening her Inbox while Gmail is throttling her account
+**Persona**: Maya, first-time founder at Northwind Robotics, opening her Inbox while Gmail is throttling her account
 **Goal**: Understand why her mail is not showing and what to do.
-**Preconditions**: Demo stack running; signed in; the space "MOCK DEMO DATA — Mail rate-limited" selected (account "Busy mail (Mock)", always 429, empty cache).
+**Preconditions**: Demo stack running; signed in; the space "Mail rate-limited" selected (account "Busy mail", always 429, empty cache).
 **Ideal path**: 1 — read the notice and press **Try again** once (GR-2); nothing else is needed.
 **Alternate paths**: A populated inbox with a throttled account shows the same text as a red line above the rows with a small **Try again** button (not walkable on the demo stack; see the top of this file). Searching while throttled (`searchMail`) also reports the account as rate limited.
 
 ### Steps
-1. Switches to the space "MOCK DEMO DATA — Mail rate-limited" in the space switcher, then clicks **Inbox** → `/app/inbox`. While the first sync runs, the page shows its loading state (UNVERIFIED: how long; the API call `inbox.refresh` runs first, then the list reloads).
+1. Switches to the space "Mail rate-limited" in the space switcher, then clicks **Inbox** → `/app/inbox`. While the first sync runs, the page shows its loading state (UNVERIFIED: how long; the API call `inbox.refresh` runs first, then the list reloads).
 2. The sync fails with a 429; `inboxList` returns the account under `failedAccounts` and `rateLimitedAccounts` → because there are no rows, the page shows a full-page empty state with a mail-warning icon, the title "**Your mail didn't load**", the line "**Gmail is limiting requests right now. Try again in a minute.**" (`syncErrorText`), and a **Try again** button. She does not see **Reconnect Gmail**, because the error is not a sign-in problem. **Hesitation**: "in a minute" is not exact (the server pauses the account for 30 seconds), and the title says "didn't load" without saying the cause; the cause is only in the line below.
 3. Looks for what is broken in her account → nothing else on the page changes; the filter, search and pen icon (Compose) stay as they were for an account without mail (UNVERIFIED: whether Compose is enabled with a throttled account).
 
