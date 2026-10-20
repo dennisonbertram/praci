@@ -3,6 +3,7 @@ import type { MessageBlock } from "@rakazo/contracts";
 const PROVIDER_LABELS: Record<string, string> = {
   sendblue: "iMessage",
   bluebubbles: "iMessage",
+  photon: "iMessage",
   slack: "Slack",
   whatsapp: "WhatsApp",
   telegram: "Telegram",

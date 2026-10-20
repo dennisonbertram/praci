@@ -1,6 +1,6 @@
 # iMessage through Photon and BlueBubbles
 
-Status: approved plan; phase 1 in progress. Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
+Status: approved plan; phases 1 and 2 done (phase 2 notes at the end). Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
 
 ## Owner answers
 
@@ -209,3 +209,12 @@ Verification for each PR: offline conformance and unit tests locally; a manual e
 ## Open questions
 
 All earlier questions are answered in "Owner answers". Remaining: confirm the exact approval-card wording for the send tool in phase 7, and whether the BlueBubbles Private API (SIP off) is ever wanted on the second-account Mac (the plan assumes not).
+
+## Phase 2 (Photon): done
+
+- **Integration.** `chat-adapter-imessage` was not used. It depends on `spectrum-ts`, which installs about 110 MB across 180 packages including a native `better-sqlite3` build, and its webhook path hands messages to the Chat SDK without waiting, so a failed inbound handler would still return 200 and Photon would not retry. Photon's HTTP SDK `@photon-ai/advanced-imessage` (MIT, pinned at 2.2.0, published 2026-09-20) is a `fetch` client with one pure JavaScript dependency (about 5 MB), so `photon-adapter.ts` is a thin Chat SDK adapter like the BlueBubbles one: it verifies the Spectrum signature itself, mints the line token from the project credentials, and sends through that client with `clientMessageId` as the vendor idempotency key.
+- **Config.** `PHOTON_PROJECT_ID`, `PHOTON_PROJECT_SECRET`, `PHOTON_WEBHOOK_SECRET` (all required) and optional `PHOTON_IMESSAGE_ADDRESS`. A short signing secret or bad address disables only Photon.
+- **Behavior.** Direct iMessage only (groups, SMS/RCS, reactions and non-text content other than attachments are ignored with a 200); the BlueBubbles chunking, five-chunk cap and plain-text conversion; Photon joins the 140-message consecutive-outbound cap.
+- **Disclosure (terms 3.6).** The first outbound message to a Photon conversation is preceded by "You're messaging an AI assistant." The identity's `disclosedAt` records it. The wording still needs the owner's review.
+- **Finance and Legal (terms 3.8(b)).** Refused when a Photon identity is pointed at either agent (`messaging.identities.setBot`), when a link code is issued while Photon is the only provider, and when a code for either agent is sent over Photon (the code is kept and a linked sender is told why).
+- **Not verified live.** Everything above runs against an offline fake; see the PR notes for what needs a real Photon account (the HTTP endpoint address, the inbound payload's transport field, token minting, `clientMessageId` deduplication).

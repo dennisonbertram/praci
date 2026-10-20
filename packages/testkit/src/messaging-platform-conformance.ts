@@ -1,6 +1,6 @@
 import type { AdapterContext, MessagingInboundMessage } from "@rakazo/adapter-kit";
 import { ChatSdkMessagingSurface, type MessagingPlatform } from "@rakazo/adapters";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 /**
  * What the suite needs from one messaging platform wired to a fake vendor:
@@ -8,7 +8,11 @@ import { describe, expect, it } from "vitest";
  * sends the fake vendor recorded. Each case builds a fresh harness.
  */
 export interface MessagingPlatformHarness {
-  platform: MessagingPlatform;
+  /** Valid after `start()` when the harness has one. */
+  readonly platform: MessagingPlatform;
+  /** Bring up a fake vendor that needs a listening socket. */
+  start?(): Promise<void>;
+  stop?(): Promise<void>;
   /** An authentic inbound direct message from `from`. */
   inbound(input: { from: string; text: string; handle?: string }): Request;
   /** Same shape as `inbound`, but failing the vendor's signature or token check. */
@@ -42,8 +46,15 @@ export function describeMessagingPlatformConformance(
   name: string,
   create: () => MessagingPlatformHarness,
 ): void {
-  function setup() {
+  const started: MessagingPlatformHarness[] = [];
+  afterEach(async () => {
+    await Promise.all(started.splice(0).map((harness) => harness.stop?.()));
+  });
+
+  async function setup() {
     const harness = create();
+    started.push(harness);
+    await harness.start?.();
     const surface = new ChatSdkMessagingSurface([harness.platform]);
     const messages: MessagingInboundMessage[] = [];
     surface.onInbound(async (event) => {
@@ -55,7 +66,7 @@ export function describeMessagingPlatformConformance(
 
   describe(`messaging platform conformance: ${name}`, () => {
     it("turns an authentic direct message into one provider-neutral inbound event", async () => {
-      const { harness, surface, messages, provider } = setup();
+      const { harness, surface, messages, provider } = await setup();
       const response = await surface.handleWebhook(
         provider,
         harness.inbound({ from: OWNER, text: "hello agent" }),
@@ -73,7 +84,7 @@ export function describeMessagingPlatformConformance(
     });
 
     it("rejects a forged signature or token and produces no event", async () => {
-      const { harness, surface, messages, provider } = setup();
+      const { harness, surface, messages, provider } = await setup();
       const response = await surface.handleWebhook(
         provider,
         harness.forged({ from: OWNER, text: "forged" }),
@@ -84,7 +95,7 @@ export function describeMessagingPlatformConformance(
     });
 
     it("gives a replayed delivery the same handle so the downstream nonce dedupes it", async () => {
-      const { harness, surface, messages, provider } = setup();
+      const { harness, surface, messages, provider } = await setup();
       const request = () => harness.inbound({ from: OWNER, text: "twice", handle: "replay-1" });
       await surface.handleWebhook(provider, request());
       await surface.handleWebhook(provider, request());
@@ -93,14 +104,14 @@ export function describeMessagingPlatformConformance(
     });
 
     it("never surfaces our own outgoing messages", async () => {
-      const { harness, surface, messages, provider } = setup();
+      const { harness, surface, messages, provider } = await setup();
       const response = await surface.handleWebhook(provider, harness.ownEcho({ text: "echo" }));
       expect(response?.status).toBe(200);
       expect(messages).toHaveLength(0);
     });
 
     it("sends text to the thread an inbound message came from", async () => {
-      const { harness, surface, messages, provider } = setup();
+      const { harness, surface, messages, provider } = await setup();
       await surface.handleWebhook(provider, harness.inbound({ from: OWNER, text: "hi" }));
       const sent = await surface.sendToThread(
         { threadId: messages[0]!.threadId, body: "hello" },
@@ -111,7 +122,7 @@ export function describeMessagingPlatformConformance(
     });
 
     it("opens the direct thread for an address and sends into it", async () => {
-      const { harness, surface, provider } = setup();
+      const { harness, surface, provider } = await setup();
       const threadId = await surface.openDirectThread(provider, OWNER, context);
       expect(threadId.startsWith(`${provider}:`)).toBe(true);
       await surface.sendToThread({ threadId, body: "proactive" }, context);
@@ -119,7 +130,7 @@ export function describeMessagingPlatformConformance(
     });
 
     it("rejects a send the vendor refused, so the outbox retries it", async () => {
-      const { harness, surface, provider } = setup();
+      const { harness, surface, provider } = await setup();
       const threadId = await surface.openDirectThread(provider, OWNER, context);
       harness.failNextSends(1, 503);
       const error = await surface.sendToThread({ threadId, body: "will fail" }, context).then(
@@ -134,7 +145,7 @@ export function describeMessagingPlatformConformance(
 
     if (create().classifiesErrors) {
       it("separates retryable from permanent send errors", async () => {
-        const { harness, surface, provider } = setup();
+        const { harness, surface, provider } = await setup();
         const threadId = await surface.openDirectThread(provider, OWNER, context);
         const failure = async (status: number) => {
           harness.failNextSends(1, status);
@@ -153,7 +164,7 @@ export function describeMessagingPlatformConformance(
     const otherTransport = create().otherTransport;
     if (otherTransport) {
       it("ignores messages from a transport that must not wake an agent", async () => {
-        const { harness, surface, messages, provider } = setup();
+        const { harness, surface, messages, provider } = await setup();
         await surface.handleWebhook(
           provider,
           harness.otherTransport!({ from: OWNER, text: "from sms" }),
@@ -165,7 +176,7 @@ export function describeMessagingPlatformConformance(
     const limit = create().maxChunkLength;
     if (limit) {
       it("splits a long reply into ordered chunks within the limit", async () => {
-        const { harness, surface, provider } = setup();
+        const { harness, surface, provider } = await setup();
         const threadId = await surface.openDirectThread(provider, OWNER, context);
         const body = Array.from({ length: 6 }, (_, i) => `para ${i} ${"x".repeat(900)}`).join(
           "\n\n",

@@ -137,6 +137,8 @@ export * from "./openai-compatible-url.js";
 export * from "./openai-voice.js";
 export * from "./page-browser-session.js";
 export * from "./pages.js";
+export * from "./photon-adapter.js";
+export * from "./photon-emulator.js";
 export * from "./pi-catalog-availability.js";
 export * from "./pi-codex-catalog.js";
 export * from "./pi-credentials.js";

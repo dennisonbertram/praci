@@ -1569,6 +1569,40 @@ describe("createMessagingInboundHandler durable replay claim", () => {
     expect(deps.prisma.messagingLinkCode.findUnique).toHaveBeenCalledTimes(1);
   });
 
+  it("does not redeem a Finance or Legal link code over Photon, and keeps the code", async () => {
+    for (const spawnKey of ["finance-agent:user-web", "legal-agent:user-web"]) {
+      const deps = createDeps({ identity: null, linkCode: { ...liveCode } });
+      (deps as unknown as { openSignup: boolean }).openSignup = false;
+      deps.prisma.bot.findUnique = vi.fn(async () => ({ name: "Regulated", spawnKey }));
+      const handle = createMessagingInboundHandler(deps);
+      await handle({ ...dmEvent, provider: "photon", content: "abcd-2345", handle: "p-1" });
+      expect(deps.createdIdentities).toHaveLength(0);
+      expect(deps.prisma.messagingLinkCode.deleteMany).not.toHaveBeenCalled();
+    }
+  });
+
+  it("tells a linked Photon sender why a Finance code was refused", async () => {
+    const deps = createDeps({ linkCode: { ...liveCode } });
+    deps.prisma.bot.findUnique = vi.fn(async () => ({
+      name: "Finance",
+      spawnKey: "finance-agent:user-web",
+    }));
+    const handle = createMessagingInboundHandler(deps);
+    await handle({ ...dmEvent, provider: "photon", content: "abcd-2345", handle: "p-2" });
+    expect(deps.outboundRows).toEqual([
+      expect.objectContaining({ body: expect.stringContaining("can't be linked to iMessage") }),
+    ]);
+  });
+
+  it("still redeems an ordinary agent's code over Photon", async () => {
+    const deps = createDeps({ identity: null, linkCode: { ...liveCode } });
+    (deps as unknown as { openSignup: boolean }).openSignup = false;
+    deps.prisma.bot.findUnique = vi.fn(async () => ({ name: "Chief", spawnKey: null }));
+    const handle = createMessagingInboundHandler(deps);
+    await handle({ ...dmEvent, provider: "photon", content: "abcd-2345", handle: "p-3" });
+    expect(deps.createdIdentities).toHaveLength(1);
+  });
+
   it("releases the claim when processing fails, so the retry is processed", async () => {
     const deps = createDeps();
     deps.sendUserMessage.mockRejectedValueOnce(new Error("db down"));

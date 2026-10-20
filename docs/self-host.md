@@ -379,6 +379,25 @@ Do not commit `.env`. Never put `COMPOSIO_API_KEY`, OpenRouter keys, or provider
 
 Optional messaging platforms (iMessage, Slack, WhatsApp, Telegram, Feishu/Lark) mount when their env credentials are set — see `.env.example`. Point a Feishu/Lark bot event subscription at `/api/v1/messaging/webhook/lark` (webhook/HTTP inbound only; do not enable long connection). Groups stay iMessage-only.
 
+### iMessage through Photon
+
+Photon (photon.codes) runs a hosted iMessage line, so no Mac is needed. Its free plan (a shared number, up to 10 users) is the default for a self-hosted install.
+
+1. Create a Photon project and copy its project ID and project secret.
+2. Register a webhook for your public API URL, `<public API url>/api/v1/messaging/webhook/photon`, and copy the signing secret Photon shows once.
+3. Set `PHOTON_PROJECT_ID`, `PHOTON_PROJECT_SECRET` and `PHOTON_WEBHOOK_SECRET`, then restart. Photon turns on only when all three are set. A bad value turns off Photon and leaves the other platforms running.
+4. In Rakazo, link an agent to Photon from the messaging settings and text the link code to the Photon number.
+
+What to know before turning it on:
+
+- Messages pass through Photon, which keeps a licence to message content (terms 5.1 and 5.2). Tell your users.
+- Only direct iMessages wake an agent. Groups and SMS or RCS fallback messages are ignored.
+- The first reply in a new conversation starts with "You're messaging an AI assistant.", because Photon's terms (3.6) require it. You must also keep your users' consent records and honor opt-outs.
+- The Finance and Legal agents cannot be linked to Photon, because its terms (3.8(b)) forbid automated financial or legal advice without professional supervision.
+- Photon retries a webhook six times and then drops it, so messages sent while the API is down for longer than that are lost.
+- Limits: 5 requests per second per project, 5,000 outbound messages per server per day, and 50 new conversations per line per day. Rakazo only replies; it never starts a conversation.
+- `PHOTON_IMESSAGE_ADDRESS` is optional and overrides the iMessage endpoint (a host, or an http(s) URL).
+
 ## Choosing a computer provider
 
 The Electron desktop app is a client of the same API. Docker and E2B still apply. On first launch, Electron asks the deployment owner whether bots should keep using Docker or run on this Mac as you. `SANDBOX_PROVIDER=desktop` is a separate, explicit provider that always runs commands on the service host.
