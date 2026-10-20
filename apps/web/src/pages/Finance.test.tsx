@@ -66,24 +66,25 @@ const totals = (period: SpendTotals["period"], current: number, previous: number
   previousEnd: "2026-09-15",
 });
 
-/** `count` bars ending 2026-10-14 (a Wednesday), the last one partial; weeks start Monday. */
-const bars = (count: number, size: "day" | "week" | "month"): CashPoint[] =>
+/** `count` buckets ending with the one holding 2026-10-14 (a Wednesday), the last one partial; weeks start Monday. */
+const bars = (count: number, size: "day" | "week" | "month" | "quarter" | "year"): CashPoint[] =>
   Array.from({ length: count }, (_, i) => {
     const back = count - 1 - i;
     const iso = (d: Date) => d.toISOString().slice(0, 10);
     const at = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d));
+    const months = { month: 1, quarter: 3, year: 12 } as const;
     const start =
       size === "day"
         ? at(2026, 9, 14 - back)
         : size === "week"
           ? at(2026, 9, 12 - 7 * back)
-          : at(2026, 9 - back, 1);
+          : at(2026, size === "year" ? -12 * back : 9 - months[size] * back, 1);
     const end =
       size === "day"
         ? start
         : size === "week"
           ? at(2026, start.getUTCMonth(), start.getUTCDate() + 6)
-          : at(2026, start.getUTCMonth() + 1, 0);
+          : at(start.getUTCFullYear(), start.getUTCMonth() + months[size], 0);
     return {
       start: iso(start),
       end: iso(end),
@@ -117,10 +118,10 @@ const connectedOverview = (over: Partial<FinanceOverview> = {}): FinanceOverview
     year: totals("year", 7_777_700, 9_000_000),
   },
   cashSeries: {
-    week: bars(7, "day"),
-    month: bars(30, "day"),
-    quarter: bars(13, "week"),
-    year: bars(12, "month"),
+    week: bars(12, "week"),
+    month: bars(12, "month"),
+    quarter: bars(8, "quarter"),
+    year: bars(2, "year"),
   },
   breakdown: {
     category: [{ key: "software", label: "Software", cents: 120_000 }],
@@ -872,32 +873,37 @@ it("redraws the Burn chart for the selected period and opens the matching detail
       (barLinks()[i] as SVGElement).dispatchEvent(new MouseEvent("click", { bubbles: true })),
     );
 
-  // Month is the default: 30 daily bars labelled with day numbers.
+  // Month is the default: 12 monthly points, the current one partial.
   await home();
-  expect(barLinks().length).toBe(30);
-  expect(labels().at(-1)).toBe("14*");
+  expect(barLinks().length).toBe(12);
+  expect(labels()).toEqual(
+    expect.arrayContaining(["Nov '25", "Dec", "Jan '26", "Feb", "Sep", "Oct*"]),
+  );
   expect(container.textContent).toContain("* So far");
-  await clickBar(29);
-  expect(where).toBe("/app/finance/spend?period=month&from=2026-10-14&to=2026-10-14");
+  await clickBar(11);
+  expect(where).toBe("/app/finance/month/2026-10");
 
   await home();
   await act(async () => (tab("Week") as HTMLElement).click());
-  expect(barLinks().length).toBe(7);
-  expect(labels()).toContain("Mon");
-  expect(labels().at(-1)).toBe("Wed*");
+  expect(barLinks().length).toBe(12);
+  expect(labels().at(-1)).toBe("Oct 12*");
+  expect(labels()).toContain("Oct 5");
+  await clickBar(10);
+  expect(where).toBe("/app/finance/spend?period=week&from=2026-10-05&to=2026-10-11");
 
+  await home();
   await act(async () => (tab("Quarter") as HTMLElement).click());
-  expect(barLinks().length).toBe(13);
-  expect(labels()).toContain("Oct 12*");
-  await clickBar(11);
-  expect(where).toBe("/app/finance/spend?period=quarter&from=2026-10-05&to=2026-10-11");
+  expect(barLinks().length).toBe(8);
+  expect(labels()).toEqual(expect.arrayContaining(["Q1 '25", "Q3 '26", "Q4 '26*"]));
+  await clickBar(6);
+  expect(where).toBe("/app/finance/spend?period=quarter&from=2026-07-01&to=2026-09-30");
 
   await home();
   await act(async () => (tab("Year") as HTMLElement).click());
-  expect(barLinks().length).toBe(12);
-  expect(labels()).toContain("Oct*");
-  await clickBar(11);
-  expect(where).toBe("/app/finance/month/2026-10");
+  expect(barLinks().length).toBe(2);
+  expect(labels()).toEqual(expect.arrayContaining(["2025", "2026*"]));
+  await clickBar(0);
+  expect(where).toBe("/app/finance/spend?period=year&from=2025-01-01&to=2025-12-31");
   width.mockRestore();
 });
 

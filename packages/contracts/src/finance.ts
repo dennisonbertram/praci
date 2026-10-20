@@ -522,9 +522,8 @@ export const FinanceOverviewSchema = z.object({
     year: SpendTotalsSchema,
   }),
   /**
-   * Burn chart buckets per period, oldest first, the last one partial, covering the same days as
-   * `spendTotals`: week and month by day, quarter by week, year by month. The first bucket starts on
-   * the period's first day.
+   * Burn chart buckets per tab, oldest first, the last one partial: weeks (last 12), months (last
+   * 12), quarters (last 8) and years (every year with data, at least 2).
    */
   cashSeries: z.object({
     week: z.array(CashPointSchema),

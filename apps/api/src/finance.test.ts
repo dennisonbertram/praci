@@ -1171,7 +1171,57 @@ describe("finance pages with the real calculations", () => {
     expect(burn.brexCents).toBe(30_000);
   });
 
-  it("shows each period's chart and breakdown over the same days as its total", async () => {
+  it("groups each tab's chart by its own bucket size over a recent lookback", async () => {
+    // One charge on the 9th of 14 months, Sep 2025 to Oct 2026; the amount grows by $10 a month.
+    const months = Array.from({ length: 14 }, (_, i) => {
+      const index = 8 + i; // 0-based month count from Jan 2025
+      return `${2025 + Math.floor(index / 12)}-${String((index % 12) + 1).padStart(2, "0")}`;
+    });
+    const { deps } = setup({
+      financeAccount: [account(a)],
+      financeTransaction: months.map((m, i) => ({
+        ...txn(a, {
+          id: `t-${m}`,
+          externalId: `x-${m}`,
+          postedAt: new Date(`${m}-09T00:00:00Z`),
+          amountCents: -BigInt(100_000 + i * 1_000),
+        }),
+      })),
+    });
+    const { cashSeries: series, spendTotals } = await financeOverview(deps, a);
+    expect(series.month).toHaveLength(12);
+    expect(series.month.map((p) => p.start.slice(0, 7))).toEqual(months.slice(2));
+    // Each month's total is the sum of its transactions; the current month is the partial one.
+    expect(series.month.map((p) => p.outCents)).toEqual(
+      months.slice(2).map((_, i) => 100_000 + (i + 2) * 1_000),
+    );
+    expect(series.month.map((p) => p.partial)).toEqual([...Array(11).fill(false), true]);
+    expect(series.week).toHaveLength(12);
+    expect(series.week.at(-1)).toMatchObject({ start: "2026-10-12", partial: true });
+    expect(series.quarter.map((p) => p.start)).toEqual([
+      "2025-01-01",
+      "2025-04-01",
+      "2025-07-01",
+      "2025-10-01",
+      "2026-01-01",
+      "2026-04-01",
+      "2026-07-01",
+      "2026-10-01",
+    ]);
+    // Q3 2026 is Jul, Aug and Sep, the 11th to 13th charges.
+    expect(series.quarter[6]?.outCents).toBe(110_000 + 111_000 + 112_000);
+    expect(series.quarter.at(-1)).toMatchObject({ outCents: 113_000, partial: true });
+    expect(series.year.map((p) => p.start)).toEqual(["2025-01-01", "2026-01-01"]);
+    expect(series.year[0]?.outCents).toBe(100_000 + 101_000 + 102_000 + 103_000);
+    expect(series.year[1]?.outCents).toBe(
+      Array.from({ length: 10 }, (_, i) => 104_000 + i * 1_000).reduce((x, y) => x + y, 0),
+    );
+    expect(series.year[1]?.partial).toBe(true);
+    // The header total keeps its own range.
+    expect(spendTotals.month.start).toBe("2026-10-01");
+  });
+
+  it("breaks down each period over the same days as its total", async () => {
     const { deps } = setup({
       financeAccount: [account(a)],
       financeTransaction: [
@@ -1180,12 +1230,6 @@ describe("finance pages with the real calculations", () => {
       ],
     });
     const overview = await financeOverview(deps, a);
-    const month = overview.cashSeries.month;
-    expect(month[0]?.start).toBe(overview.spendTotals.month.start);
-    expect(month.at(-1)?.start).toBe("2026-10-14");
-    expect(month.reduce((sum, p) => sum + p.outCents, 0)).toBe(
-      overview.spendTotals.month.currentCents,
-    );
     expect(overview.breakdownByPeriod?.month.vendor).toEqual([
       { key: "cloudnine-hosting", label: "Cloudnine Hosting", cents: 481_200 },
     ]);

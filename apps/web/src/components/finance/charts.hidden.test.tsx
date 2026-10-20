@@ -200,3 +200,138 @@ it("keeps the last axis label and carries a skipped year onto the next label sho
   expect(axisTicks(labels, 3).filter(Boolean)).toEqual(["Mar '26", "Jun", "Sep", "Dec", "Mar '27"]);
   expect(axisTicks(["a", "b"], 1)).toEqual(["a", "b"]);
 });
+
+const bucket = (start: string, end: string, outCents: number, partial = false) => ({
+  start,
+  end,
+  outCents,
+  revenueCents: 0,
+  financingCents: 0,
+  partial,
+});
+
+const axisLabels = (el: HTMLElement) =>
+  [...el.querySelectorAll("g[role=link] text")].map((t) => t.textContent);
+
+it("labels weeks, months, quarters and years, and names the bucket in the tooltip", async () => {
+  await withWidth(async (el) => {
+    const root = createRoot(el);
+    const render = (
+      granularity: "week" | "month" | "quarter" | "year",
+      series: ReturnType<typeof bucket>[],
+    ) =>
+      act(async () =>
+        root.render(
+          <BurnLines label="Burn" granularity={granularity} series={series} onOpen={() => {}} />,
+        ),
+      );
+    await render("week", [
+      bucket("2026-10-05", "2026-10-11", 10_000),
+      bucket("2026-10-12", "2026-10-18", 20_000, true),
+    ]);
+    expect(axisLabels(el)).toEqual(["Oct 5", "Oct 12*"]);
+    await render("month", [
+      bucket("2025-12-01", "2025-12-31", 10_000),
+      bucket("2026-01-01", "2026-01-31", 20_000),
+      bucket("2026-02-01", "2026-02-28", 30_000, true),
+    ]);
+    expect(axisLabels(el)).toEqual(["Dec '25", "Jan '26", "Feb*"]);
+    await render("quarter", [
+      bucket("2026-07-01", "2026-09-30", 10_000),
+      bucket("2026-10-01", "2026-12-31", 20_000, true),
+    ]);
+    expect(axisLabels(el)).toEqual(["Q3 '26", "Q4 '26*"]);
+    await act(async () =>
+      el
+        .querySelectorAll("g[role=link]")[0]
+        ?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })),
+    );
+    const tip = el.querySelector("[data-testid=burn-tooltip]")?.textContent;
+    expect(tip).toContain("Q3 '26");
+    expect(tip).toContain("$100");
+    await render("year", [
+      bucket("2025-01-01", "2025-12-31", 10_000),
+      bucket("2026-01-01", "2026-12-31", 20_000, true),
+    ]);
+    expect(axisLabels(el)).toEqual(["2025", "2026*"]);
+    act(() => root.unmount());
+  });
+});
+
+it("dashes only the last segment, and keeps few buckets at the left edge", async () => {
+  await withWidth(async (el) => {
+    const root = createRoot(el);
+    const segments = (id: string) =>
+      (el.querySelector(`[data-testid=${id}]`)?.getAttribute("d")?.match(/C/g) ?? []).length;
+    const render = (series: ReturnType<typeof bucket>[]) =>
+      act(async () =>
+        root.render(
+          <BurnLines label="Burn" granularity="week" series={series} onOpen={() => {}} />,
+        ),
+      );
+    await render([
+      bucket("2026-09-28", "2026-10-04", 10_000),
+      bucket("2026-10-05", "2026-10-11", 30_000),
+      bucket("2026-10-12", "2026-10-18", 20_000, true),
+    ]);
+    expect(segments("burn-out-line")).toBe(1);
+    expect(segments("burn-out-partial")).toBe(1);
+    // Three buckets of a 600px chart do not spread over the full width.
+    const x = (i: number) => Number(el.querySelectorAll("g[role=link] text")[i]?.getAttribute("x"));
+    expect(x(0)).toBeLessThan(100);
+    expect(x(2)).toBeLessThan(300);
+
+    // Two buckets: the one segment is the last, so it is the dashed one.
+    await render([
+      bucket("2026-10-05", "2026-10-11", 10_000),
+      bucket("2026-10-12", "2026-10-18", 20_000, true),
+    ]);
+    expect(segments("burn-out-line")).toBe(0);
+    expect(segments("burn-out-partial")).toBe(1);
+    act(() => root.unmount());
+  });
+});
+
+it("draws a single bucket as a dot, with no line, dashed segment or area", async () => {
+  await withWidth(async (el) => {
+    const root = createRoot(el);
+    await act(async () =>
+      root.render(
+        <BurnLines
+          label="Burn"
+          granularity="week"
+          series={[bucket("2026-10-12", "2026-10-18", 18_000, true)]}
+          onOpen={() => {}}
+        />,
+      ),
+    );
+    expect(el.querySelector("svg")).not.toBeNull();
+    expect(el.querySelector("[data-testid=burn-out-end]")).not.toBeNull();
+    for (const id of ["burn-out-line", "burn-out-partial", "burn-out-area"])
+      expect(el.querySelector(`[data-testid=${id}]`)).toBeNull();
+    act(() => root.unmount());
+  });
+});
+
+it("hides the grouped Burn chart while amounts are hidden", async () => {
+  await withWidth(async (el) => {
+    const root = createRoot(el);
+    setHideAmounts(true);
+    await act(async () =>
+      root.render(
+        <BurnLines
+          label="Burn"
+          granularity="quarter"
+          series={[
+            bucket("2026-07-01", "2026-09-30", 10_000),
+            bucket("2026-10-01", "2026-12-31", 20_000, true),
+          ]}
+          onOpen={() => {}}
+        />,
+      ),
+    );
+    expect(el.querySelector("svg")).toBeNull();
+    expect(el.textContent).not.toContain("$");
+    act(() => root.unmount());
+  });
+});

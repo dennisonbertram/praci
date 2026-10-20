@@ -105,20 +105,92 @@ export const BurnDays: Story = {
   ),
 };
 
+const iso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+/** Invented buckets: `count` of `months` months (0 for weeks) ending with the one holding 2026-10-14. */
+const buckets = (count: number, months: number) =>
+  Array.from({ length: count }, (_, i) => {
+    const back = count - 1 - i;
+    const start =
+      months === 0
+        ? Date.UTC(2026, 9, 12) - back * 7 * 86_400_000
+        : Date.UTC(2026, 9 - months * back, 1);
+    const end =
+      months === 0
+        ? start + 6 * 86_400_000
+        : Date.UTC(new Date(start).getUTCFullYear(), new Date(start).getUTCMonth() + months, 0);
+    return {
+      start: iso(start),
+      end: iso(end),
+      outCents: 90_000 * Math.max(months, 1) + ((i * 53_000) % 70_000),
+      revenueCents: i % 3 === 0 ? 60_000 : 0,
+      financingCents: 0,
+      partial: i === count - 1,
+    };
+  });
+
 export const BurnWeeks: Story = {
   render: () => (
     <BurnLines
       granularity="week"
       label="Cash out by week"
       onOpen={() => undefined}
-      series={Array.from({ length: 8 }, (_, i) => ({
-        start: `2026-05-${String(4 + i * 7).padStart(2, "0")}`,
-        end: `2026-05-${String(10 + i * 7).padStart(2, "0")}`,
-        outCents: 90_000 + i * 20_000,
-        revenueCents: i % 3 === 0 ? 60_000 : 0,
-        financingCents: 0,
-        partial: false,
-      }))}
+      series={buckets(12, 0)}
+    />
+  ),
+};
+
+export const BurnMonths: Story = {
+  render: () => (
+    <BurnLines
+      granularity="month"
+      label="Cash out by month"
+      onOpen={() => undefined}
+      series={buckets(12, 1)}
+    />
+  ),
+};
+
+export const BurnQuarters: Story = {
+  render: () => (
+    <BurnLines
+      granularity="quarter"
+      label="Cash out by quarter"
+      onOpen={() => undefined}
+      series={buckets(8, 3)}
+    />
+  ),
+};
+
+export const BurnYears: Story = {
+  render: () => (
+    <BurnLines
+      granularity="year"
+      label="Cash out by year"
+      onOpen={() => undefined}
+      series={buckets(2, 12)}
+    />
+  ),
+};
+
+/** A new account: three weeks of history stay at the left edge instead of spreading across the chart. */
+export const BurnFewPoints: Story = {
+  render: () => (
+    <BurnLines
+      granularity="week"
+      label="Cash out by week"
+      onOpen={() => undefined}
+      series={buckets(3, 0)}
+    />
+  ),
+};
+
+export const BurnSinglePoint: Story = {
+  render: () => (
+    <BurnLines
+      granularity="week"
+      label="Cash out by week"
+      onOpen={() => undefined}
+      series={buckets(1, 0)}
     />
   ),
 };

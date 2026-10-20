@@ -7,6 +7,7 @@ import {
   dayMonth,
   money,
   monthAxisLabels,
+  quarterLabel,
   weekdayShort,
 } from "../../lib/finance-format";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
@@ -277,10 +278,15 @@ const keyActivate = (action: () => void) => (event: React.KeyboardEvent) => {
   }
 };
 
-export type BarGranularity = "day" | "week" | "month";
+export type BarGranularity = "day" | "week" | "month" | "quarter" | "year";
 
-/** Axis labels: weekdays for a week of days, day numbers for more days, `Oct 6` for weeks, `Oct` for months (years on the first tick and January). */
+/** Fewest slots the x-axis divides into, so a few buckets start at the left edge instead of spreading across the width. */
+const MIN_SLOTS = 6;
+
+/** Axis labels: weekdays for a week of days, day numbers for more days, `Oct 6` for weeks, `Oct` for months (years on the first tick and January), `Q3 '26` for quarters, `2026` for years. */
 function barLabels(series: CashPoint[], granularity: BarGranularity): string[] {
+  if (granularity === "year") return series.map((p) => p.start.slice(0, 4));
+  if (granularity === "quarter") return series.map((p) => quarterLabel(p.start));
   if (granularity === "month") return monthAxisLabels(series.map((p) => p.start.slice(0, 7)));
   if (granularity === "week") return dayAxisLabels(series.map((p) => p.start));
   return series.map((p) =>
@@ -354,7 +360,7 @@ export function BurnLines({
         );
         const clipped = series.some((m) => m.financingCents > scale.top);
         const top = clipped ? 22 : 10;
-        const slot = (width - left - right) / Math.max(series.length, 1);
+        const slot = (width - left - right) / Math.max(series.length, MIN_SLOTS);
         // Skip labels that would collide, counting back from the newest point.
         const labelEvery = Math.max(1, Math.ceil(36 / slot));
         const names = barLabels(series, granularity);
@@ -538,7 +544,7 @@ export function BurnLines({
                   key={m.start}
                   role="link"
                   tabIndex={0}
-                  aria-label={`${granularity === "month" ? name : dayMonth(m.start)}: ${money(m.outCents)}`}
+                  aria-label={`${granularity === "day" ? dayMonth(m.start) : name}: ${money(m.outCents)}`}
                   className="cursor-pointer outline-none"
                   onClick={open}
                   onKeyDown={keyActivate(open)}
@@ -602,7 +608,7 @@ export function BurnLines({
                   className="fill-foreground"
                   fontWeight={600}
                 >
-                  {granularity === "month" ? (names[active] ?? "") : dayMonth(shown.start)}
+                  {granularity === "day" ? dayMonth(shown.start) : (names[active] ?? "")}
                 </text>
                 {rows.map((r, j) => (
                   <g key={r.key}>
