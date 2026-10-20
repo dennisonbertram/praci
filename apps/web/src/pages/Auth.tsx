@@ -41,7 +41,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
   const title = sent ? (
     <Trans>Check your email</Trans>
   ) : mode === "in" ? (
-    <Trans>Sign in to Rakazo</Trans>
+    <Trans>Sign in to Praci</Trans>
   ) : mode === "up" ? (
     <Trans>Create your account</Trans>
   ) : (

@@ -397,7 +397,7 @@ export function UpdatesSettingsPanel({
     <div className="space-y-5">
       {/* Both sections can render nothing (hosted installs), so the tab is never blank. */}
       <p className="text-[13.5px] text-muted-foreground">
-        <Trans>Rakazo keeps itself up to date. If an update ever needs you, it shows here.</Trans>
+        <Trans>Praci keeps itself up to date. If an update ever needs you, it shows here.</Trans>
       </p>
       <DesktopUpdateSection />
       <SoftwareUpdateSection isDeploymentOwner={isDeploymentOwner} />

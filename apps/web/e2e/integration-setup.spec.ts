@@ -339,7 +339,7 @@ test("the Google callback page shows the failure and a way back when Google deni
   await completeOnboarding(page);
   await page.goto("/integrations/google/callback?error=access_denied");
   await expect(page.getByText("OAuth connection failed")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Return to Rakazo" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Return to Praci" })).toBeVisible();
 });
 
 test("Executor setup has Connect as its only action, without Continue or Skip", async ({

@@ -249,7 +249,7 @@ it("explains the Updates tab even when no update channel has anything to show", 
   const root = createRoot(container);
   try {
     await act(async () => root.render(<UpdatesSettingsPanel isDeploymentOwner />));
-    expect(container.textContent).toContain("Rakazo keeps itself up to date");
+    expect(container.textContent).toContain("Praci keeps itself up to date");
   } finally {
     await act(async () => root.unmount());
     container.remove();

@@ -52,7 +52,7 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
         size="sm"
         className="flex-row flex-wrap items-center gap-x-2 gap-y-0 px-3.5 py-2 text-xs text-muted-foreground"
       >
-        <Trans>Rakazo doesn't tag new files.</Trans>
+        <Trans>Praci doesn't tag new files.</Trans>
         <Button
           variant="link"
           size="xs"
@@ -62,7 +62,7 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
             setDismissed(null);
           }}
         >
-          <Trans>Let Rakazo read documents</Trans>
+          <Trans>Let Praci read documents</Trans>
         </Button>
       </Card>
     );
@@ -81,7 +81,7 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
   return (
     <ConsentCard
       id="data-room-consent"
-      heading={<Trans>Let Rakazo read your documents</Trans>}
+      heading={<Trans>Let Praci read your documents</Trans>}
       onAllow={async () => {
         setStatus(await rpc.dataRoom.consentGrant({ key: status.key, version: status.version }));
         onAllowed();
@@ -92,7 +92,7 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
       }}
     >
       <Trans>
-        Rakazo can tag files you add and sort them into folders. To do that, their text (and images)
+        Praci can tag files you add and sort them into folders. To do that, their text (and images)
         is sent to the AI service that runs your bots ({names}). Files that already have tags keep
         them.
       </Trans>
