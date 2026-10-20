@@ -10,6 +10,7 @@ describe("RECURRING_JOBS", () => {
       "notifications.deliver",
       "notifications.retention",
       "messaging.retention",
+      "mail.watch.renew",
     ]);
   });
 });

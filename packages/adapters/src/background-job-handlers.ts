@@ -4,6 +4,7 @@ import type {
   ArtifactStore,
   BackgroundJobHandlers,
   JobPublisher,
+  MailProvider,
   MessagingSurface,
   NotificationChannel,
   SandboxProvider,
@@ -34,9 +35,11 @@ import { syncExchanges } from "./exchange-sync.js";
 import type { createRunExecutor } from "./executor.js";
 import type { FinanceSyncDeps } from "./finance-sync.js";
 import { syncFinanceForUser } from "./finance-sync.js";
+import { ensureMailWatch, type GmailPushConfig, runMailWatchRenewal } from "./gmail-push.js";
 import { compactHistory } from "./history-compaction.js";
 import { createInboxClassifierProvider } from "./inbox-classifier-factory.js";
 import { runInboxTriage } from "./inbox-triage.js";
+import { runMailSyncJob } from "./mail-sync-job.js";
 import { expireMailSearch } from "./mail-tools.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
 import { deliverMessagingOutbound, mirrorMessagingOutbound } from "./messaging-delivery.js";
@@ -71,6 +74,10 @@ export function createBackgroundJobHandlers(deps: {
   boxAccessToken?: BoxFilesDeps["accessToken"];
   /** External notification channels the outbox can send through; none means none are sent. */
   notificationChannels?: NotificationChannel[];
+  /** Mail provider the `mail.sync` job syncs through: every process that runs jobs must pass it, or queued syncs fail. */
+  mail?: MailProvider;
+  /** Gmail push settings; absent means polling only, and the watch renewal job does nothing. */
+  gmailPush?: GmailPushConfig;
 }): BackgroundJobHandlers {
   const deliverMessaging = async (runId?: string) => {
     if (!deps.messaging) return;
@@ -151,6 +158,34 @@ export function createBackgroundJobHandlers(deps: {
     },
     "mail.search.expire": async (payload) => {
       await expireMailSearch(deps.prisma, payload.searchId);
+    },
+    "mail.sync": (payload) => {
+      const { mail } = deps;
+      if (!mail) throw new Error("Mail sync is not configured");
+      return runMailSyncJob(
+        {
+          prisma: deps.prisma,
+          mail,
+          jobs: deps.jobs,
+          ...(deps.gmailPush
+            ? {
+                afterSync: (account, context) =>
+                  ensureMailWatch(
+                    { prisma: deps.prisma, mail },
+                    deps.gmailPush as GmailPushConfig,
+                    account,
+                    context,
+                  ),
+              }
+            : {}),
+        },
+        payload,
+      );
+    },
+    "mail.watch.renew": async () => {
+      if (!deps.gmailPush) return;
+      if (!deps.mail) throw new Error("Mail sync is not configured");
+      await runMailWatchRenewal({ prisma: deps.prisma, mail: deps.mail, push: deps.gmailPush });
     },
     "inbox.triage": async (payload) => {
       await runInboxTriage(

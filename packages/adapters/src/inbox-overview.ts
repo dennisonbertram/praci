@@ -1,10 +1,10 @@
 import type { AdapterContext, MailAccount } from "@rakazo/adapter-kit";
 import { MAIL_GREP_BUDGET } from "@rakazo/core";
-import { syncMailbox } from "./mail-sync.js";
+import { mailSyncStatus, requestMailSync, waitForMailSync } from "./mail-sync-job.js";
 import type { MailToolDeps } from "./mail-tools.js";
 
-/** A sync that is not done in this time is dropped; the overview answers from what is cached. */
-const SYNC_DEADLINE_MS = 8_000;
+/** The queued sync is waited for this long; the overview then answers from what is cached. */
+const SYNC_WAIT_MS = 8_000;
 /** Same window and row cap as the Inbox page. */
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_CACHED = 200;
@@ -26,28 +26,32 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
   const accounts = await deps.accounts();
   if (accounts.length === 0) return { error: "No connected mail account" };
 
-  // Accounts sync together; syncMailbox applies the 60 second throttle and never throws on provider errors.
+  // Each account's sync runs in a background job; the 60 second throttle skips one that is fresh.
   const owner = { ...context, spaceId: scope.spaceId, userId: scope.userId };
-  const outcomes = await Promise.all(
+  const queued = await Promise.all(
     accounts.map((account) =>
-      syncMailbox(
-        {
-          prisma,
-          mail: deps.mail,
-          jobs: deps.jobs,
-          deadlineMs: SYNC_DEADLINE_MS,
-          ...(deps.now ? { now: deps.now } : {}),
-        },
-        account,
-        owner,
-      ).catch(() => "failed" as const),
+      requestMailSync(
+        { prisma, jobs: deps.jobs },
+        { spaceId: scope.spaceId, userId: scope.userId, connectionId: account.id },
+        "refresh",
+      ).then(
+        (result) => result.syncing,
+        () => false,
+      ),
     ),
+  );
+  await waitForMailSync(
+    prisma,
+    scope,
+    accounts.map((a) => a.id),
+    deps.syncWaitMs ?? SYNC_WAIT_MS,
+    owner.signal,
   );
 
   const own = { spaceId: scope.spaceId, userId: scope.userId };
   const ids = accounts.map((account) => account.id);
   const now = (deps.now ?? (() => new Date()))();
-  const [cached, todos, openTodos, states] = await Promise.all([
+  const [cached, todos, openTodos, states, statuses] = await Promise.all([
     prisma.cachedMailMessage.findMany({
       where: {
         ...own,
@@ -71,6 +75,7 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
       where: { connectionId: { in: ids }, connection: own },
       select: { connectionId: true, lastSyncedAt: true },
     }),
+    mailSyncStatus(prisma, scope, ids),
   ]);
 
   // Newest message of each thread, as on the Inbox page.
@@ -126,7 +131,10 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
         needsReply: mine.filter(wantsReply).length,
         untriaged: mine.filter((m) => m.needsReply === null).length,
         lastSyncedAt: lastSyncedAt?.toISOString() ?? null,
-        sync: outcomes[index] === "skipped" ? "cached" : outcomes[index],
+        sync: syncLabel(
+          statuses.find((st) => st.connectionId === account.id),
+          queued[index],
+        ),
       };
     }),
     needsReply,
@@ -146,6 +154,16 @@ export async function inboxOverview(deps: MailToolDeps, context: AdapterContext)
         ? `complete: all ${waiting.length} messages that need a reply are listed`
         : `${needsReply.length} of ${waiting.length} listed, highest priority first`,
   };
+}
+
+/** "syncing": the job is still running; "failed": the last sync failed; "synced": a job just ran; "cached": the sync was fresh. */
+function syncLabel(
+  status: { syncing: boolean; failed: boolean } | undefined,
+  queued: boolean | undefined,
+): "syncing" | "failed" | "synced" | "cached" {
+  if (status?.syncing) return "syncing";
+  if (status?.failed) return "failed";
+  return queued ? "synced" : "cached";
 }
 
 function accountLabel(account: MailAccount): string {

@@ -33,6 +33,12 @@ const payloadSchemas = {
   "cloud_agent.poll": z.object({ agentId: z.string().min(1) }),
   "mail.search.expire": z.object({ searchId: z.string().min(1) }),
   "inbox.triage": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
+  "mail.sync": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    connectionId: z.string().min(1),
+  }),
+  "mail.watch.renew": z.object({}),
   "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
   "dataroom.blob.delete": z.object({ spaceId: z.string().min(1), storageKey: z.string().min(1) }),
   "dataroom.ingest": dataRoomStepPayload,
@@ -254,6 +260,28 @@ export function inboxTriageJob(userId: string, spaceId: string, availableAt?: Da
     replaceKey: inboxTriageJobKey(userId, spaceId),
     // Each attempt can make up to five paid model calls.
     maxAttempts: 3,
+  };
+}
+
+export function mailSyncJobKey(connectionId: string): string {
+  return `mail.sync:${connectionId}`;
+}
+
+/**
+ * One queued sync per connection: the key replaces a queued job, so the latest request wins and
+ * runs now. A running job loses its key and a second one queues; the sync's claim and 60-second
+ * throttle make that second one a no-op.
+ */
+export function mailSyncJob(
+  scope: BackgroundJobPayloads["mail.sync"],
+  availableAt?: Date,
+): BackgroundJob {
+  return {
+    name: "mail.sync",
+    payload: scope,
+    replaceKey: mailSyncJobKey(scope.connectionId),
+    maxAttempts: 3,
+    ...(availableAt ? { availableAt } : {}),
   };
 }
 

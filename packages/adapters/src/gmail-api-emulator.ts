@@ -115,6 +115,15 @@ interface Mailbox {
   /** History before this id has expired: a `startHistoryId` below it is a 404, as in Gmail. */
   historyFloor: number;
   history: HistoryEvent[];
+  /** The active `users.watch` subscription, if any. */
+  watch?: EmulatedWatch;
+}
+/** What `users.watch` stored: the Pub/Sub topic, the labels it covers and when it lapses. */
+export interface EmulatedWatch {
+  topicName: string;
+  labelIds: string[];
+  /** Epoch milliseconds, as Gmail returns it. */
+  expiration: number;
 }
 /** A draft or sent message as the emulator holds it: the base64url-decoded RFC 2822 text. */
 export interface EmulatedDraft {
@@ -243,6 +252,11 @@ export class GmailApiEmulator {
     this.failure = undefined;
   }
 
+  /** The active push watch of the mailbox, if any. */
+  watchOf(accountRef: string): EmulatedWatch | undefined {
+    return this.mailboxes.get(accountRef)?.watch;
+  }
+
   /** Drafts not yet sent, oldest first. */
   draftsOf(accountRef: string): EmulatedDraft[] {
     return [...(this.mailboxes.get(accountRef)?.drafts.values() ?? [])];
@@ -295,6 +309,7 @@ export class GmailApiEmulator {
     const threadModify = /^threads\/([^/]+)\/modify$/.exec(path);
     if (threadModify)
       return modifyThread(mailbox, decodeURIComponent(threadModify[1]!), method, body);
+    if (path === "watch" || path === "stop") return this.watch(mailbox, path, method, body);
     if (method !== "GET") return fail(405, "methodNotAllowed", "Method not allowed");
     if (path === "labels") return { status: 200, data: { labels: LABELS } };
     if (path === "profile")
@@ -315,6 +330,44 @@ export class GmailApiEmulator {
     if (file)
       return attachment(mailbox, decodeURIComponent(file[1]!), decodeURIComponent(file[2]!));
     return fail(404, "notFound", "Not found");
+  }
+
+  /** `users.watch` and `users.stop`. A watch lasts seven days; watching again renews it. */
+  private watch(
+    mailbox: Mailbox,
+    path: "watch" | "stop",
+    method: ConnectorProxyRequest["method"],
+    body: unknown,
+  ): ConnectorProxyResponse {
+    if (method !== "POST") return fail(405, "methodNotAllowed", "Method not allowed");
+    if (path === "stop") {
+      mailbox.watch = undefined;
+      return { status: 204, data: undefined };
+    }
+    const request = (body ?? {}) as Record<string, unknown>;
+    if (
+      typeof request.topicName !== "string" ||
+      !/^projects\/[^/]+\/topics\/[^/]+$/.test(request.topicName)
+    )
+      return fail(400, "invalidArgument", "Invalid topicName");
+    const labelIds = Array.isArray(request.labelIds)
+      ? request.labelIds.filter((l): l is string => typeof l === "string")
+      : [];
+    if (
+      request.labelFilterBehavior !== undefined &&
+      request.labelFilterBehavior !== "include" &&
+      request.labelFilterBehavior !== "exclude"
+    )
+      return fail(400, "invalidArgument", "Invalid labelFilterBehavior");
+    mailbox.watch = {
+      topicName: request.topicName,
+      labelIds,
+      expiration: this.clock().getTime() + 7 * DAY_MS,
+    };
+    return {
+      status: 200,
+      data: { historyId: String(mailbox.historyId), expiration: String(mailbox.watch.expiration) },
+    };
   }
 
   private drafts(

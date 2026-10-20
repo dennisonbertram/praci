@@ -693,6 +693,10 @@ export interface BackgroundJobPayloads {
   "mail.search.expire": { searchId: string };
   /** Classifies a user's new inbox mail and syncs their to-dos; one queued job per user and space. */
   "inbox.triage": { userId: string; spaceId: string };
+  /** Syncs one mail connection into the cache; one queued job per connection. */
+  "mail.sync": { spaceId: string; userId: string; connectionId: string };
+  /** Renews the Gmail push watches that are close to expiring; run daily by the worker's cron. */
+  "mail.watch.renew": Record<string, never>;
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
   "finance.sync": { userId: string; spaceId: string };
   /** Removes a deleted Data room item's blob. Idempotent: a missing blob is success. */
@@ -1081,6 +1085,14 @@ export interface MailMessage extends MailMessageSummary {
 }
 
 /** Mail that changed since a cursor. */
+/** A provider-side subscription that tells Rakazo when a mailbox changes. */
+export interface MailWatch {
+  /** Provider change cursor when the watch started. Informational: sync keeps its own cursor. */
+  cursor: string;
+  /** ISO 8601. The provider stops notifying after this unless the watch is renewed. */
+  expiresAt: string;
+}
+
 export interface MailChanges {
   /** Pass to the next `listChanges`. */
   cursor: string;

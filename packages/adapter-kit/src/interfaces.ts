@@ -56,6 +56,7 @@ import type {
   MailMessage,
   MailMessagePage,
   MailSent,
+  MailWatch,
   MemoryCapabilities,
   MemoryCommitRequest,
   MemoryExportRequest,
@@ -303,6 +304,18 @@ export interface MailProvider {
     cursor: string,
     context: AdapterContext,
   ): Promise<MailChanges | null>;
+  /**
+   * Optional. Asks the provider to notify `request.topic` when the mailbox changes; calling it
+   * again renews. Returns null when this account's route cannot watch. Notifications can be lost
+   * and carry no change list, so sync keeps polling and uses them only as a wake-up.
+   */
+  watchChanges?(
+    account: MailAccount,
+    request: { topic: string },
+    context: AdapterContext,
+  ): Promise<MailWatch | null>;
+  /** Optional. Ends the watch; succeeds when none is active. */
+  stopWatch?(account: MailAccount, context: AdapterContext): Promise<void>;
   /** Saves a new draft. Never retried after an unclear failure, so it cannot leave two drafts. */
   createDraft(
     account: MailAccount,
