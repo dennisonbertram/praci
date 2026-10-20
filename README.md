@@ -25,7 +25,7 @@ The screenshots show invented demo data from `pnpm demo:up`, not a real company.
 - **Self-hosting.** Run the published images or a source checkout on your own machine or a server.
   See the [self-hosting guide](./docs/self-host.md).
 - **Hosted.** A hosted version is planned. Join the waitlist at
-  [praci-waitlist.vercel.app](https://praci-waitlist.vercel.app).
+  [praci-waitlist.vercel.app](https://praci.ai).
 
 ## Features
 
