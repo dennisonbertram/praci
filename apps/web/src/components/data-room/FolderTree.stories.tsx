@@ -36,17 +36,20 @@ export const FolderMenuOpen: StoryObj = {
 
 /** The column's end edge is a handle: drag it, use the arrow keys, or double-click to reset. */
 export const Resizable: StoryObj = {
-  render: () => (
-    <div className="flex h-96 w-full border border-border">
-      <div className="border-e border-border">
-        <ResizableFolders>
-          <FolderTree
-            nodes={folderNodes(folders)}
-            selected="fld_sample"
-            onSelect={() => undefined}
-          />
-        </ResizableFolders>
+  render: () => {
+    const [body, setBody] = useState<HTMLDivElement | null>(null);
+    return (
+      <div ref={setBody} className="flex h-96 w-full border border-border">
+        <div className="self-stretch border-e border-border">
+          <ResizableFolders bounds={body}>
+            <FolderTree
+              nodes={folderNodes(folders)}
+              selected="fld_sample"
+              onSelect={() => undefined}
+            />
+          </ResizableFolders>
+        </div>
       </div>
-    </div>
-  ),
+    );
+  },
 };

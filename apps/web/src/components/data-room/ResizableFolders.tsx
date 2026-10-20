@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 const WIDTH_KEY = "rakazo:data-room-folders-width";
 export const MIN_FOLDERS_WIDTH = 180;
@@ -19,14 +19,32 @@ function savedWidth() {
 
 /**
  * The folder column. Its end edge is a handle: drag it or use the arrow keys to resize (at least
- * 180px, at most half the page); double-click resets it. The width is remembered in this browser.
+ * 180px, at most half of `bounds`, the page body); double-click resets it. The width is
+ * remembered in this browser.
  */
-export function ResizableFolders({ children }: { children: ReactNode }) {
-  const box = useRef<HTMLDivElement>(null);
-  const [width, setWidth] = useState(savedWidth);
+export function ResizableFolders({
+  bounds,
+  children,
+}: {
+  bounds: HTMLElement | null;
+  children: ReactNode;
+}) {
+  const [saved, setWidth] = useState(savedWidth);
   const [start, setStart] = useState<{ x: number; width: number } | null>(null);
-  const maxWidth = () =>
-    Math.max(MIN_FOLDERS_WIDTH, Math.round((box.current?.parentElement?.clientWidth ?? 0) / 2));
+  const [bodyWidth, setBodyWidth] = useState(0);
+  useEffect(() => {
+    if (!bounds) return;
+    const measure = () => setBodyWidth(bounds.clientWidth);
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(bounds);
+    return () => observer.disconnect();
+  }, [bounds]);
+  // Half the body, never the column itself: the column's own width comes from this box.
+  const maxWidth = () => Math.max(MIN_FOLDERS_WIDTH, Math.round(bodyWidth / 2));
+  // A narrower window shrinks the shown width without forgetting the saved one.
+  const width = Math.min(saved, maxWidth());
   const change = (next: number) => {
     const value = Math.max(MIN_FOLDERS_WIDTH, Math.min(maxWidth(), Math.round(next)));
     setWidth(value);
@@ -51,8 +69,7 @@ export function ResizableFolders({ children }: { children: ReactNode }) {
   };
   return (
     <div
-      ref={box}
-      style={{ width, minWidth: MIN_FOLDERS_WIDTH, maxWidth: "50%" }}
+      style={{ width, minWidth: MIN_FOLDERS_WIDTH }}
       className="relative flex shrink-0 self-stretch"
     >
       {children}
@@ -63,7 +80,7 @@ export function ResizableFolders({ children }: { children: ReactNode }) {
         aria-valuemin={MIN_FOLDERS_WIDTH}
         aria-valuemax={maxWidth()}
         aria-valuenow={width}
-        className="absolute inset-y-0 -end-1 z-10 m-0 h-full w-2 touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-border focus-visible:outline-none"
+        className="absolute inset-y-0 -end-[3px] z-20 m-0 h-full w-[7px] touch-none cursor-col-resize border-0 bg-transparent hover:bg-border focus-visible:bg-border focus-visible:outline-none"
         onPointerDown={(event: PointerEvent<HTMLHRElement>) => {
           if (event.button !== 0) return;
           event.preventDefault();

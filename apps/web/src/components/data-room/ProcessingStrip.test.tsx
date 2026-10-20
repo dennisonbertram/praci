@@ -7,7 +7,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 
 vi.mock("@lingui/core/macro", () => ({
-  t: (parts: TemplateStringsArray) => parts.join(""),
+  t: (parts: TemplateStringsArray, ...values: unknown[]) => String.raw({ raw: parts }, ...values),
   plural: (n: number, o: { one: string; other: string }) =>
     (n === 1 ? o.one : o.other).replace("#", String(n)),
 }));
@@ -74,4 +74,15 @@ it("leaves out steps with nothing left, and says when all files are processed", 
   );
   expect(container.textContent).toBe("All files processed");
   expect(container.querySelector('[role="progressbar"]')).toBeNull();
+});
+
+it("puts running imports on the same line as the processing count", () => {
+  act(() =>
+    root.render(
+      <ProcessingStrip processing={counts} total={1_104} importing={{ done: 399, total: 1_104 }} />,
+    ),
+  );
+  expect(container.children).toHaveLength(1);
+  expect(container.textContent).toContain("Importing 399 of 1104");
+  expect(container.textContent).toContain("Processing 837 files");
 });

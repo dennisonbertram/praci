@@ -8,6 +8,12 @@ import { isNarratedImport } from "./upload-toasts";
 const sum = (entries: DataRoomApiImport[], key: "total" | "done" | "failed") =>
   entries.reduce((n, entry) => n + entry[key], 0);
 
+/** Progress of the imports still running (a zip upload is narrated on its own card), or null. */
+export function importProgress(imports: DataRoomApiImport[]) {
+  const running = imports.filter((entry) => !entry.finished && !isNarratedImport(entry.id));
+  return running.length > 0 ? { done: sum(running, "done"), total: sum(running, "total") } : null;
+}
+
 /**
  * One row for all of the user's imports: progress while any is running, then what the finished
  * ones filed, with the newest files to open, until it is dismissed.
@@ -16,10 +22,13 @@ export function ImportActivity({
   imports,
   onOpenItem,
   onDismiss,
+  hideRunning = false,
 }: {
   imports: DataRoomApiImport[];
   onOpenItem: (id: string) => void;
   onDismiss: (ids: string[]) => void;
+  /** The processing line shows running imports, so this row stays out of its way. */
+  hideRunning?: boolean;
 }) {
   // A zip upload is narrated on its own upload card.
   imports = imports.filter((entry) => !isNarratedImport(entry.id));
@@ -27,6 +36,7 @@ export function ImportActivity({
   const running = imports.filter((entry) => !entry.finished);
   const row = "flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs";
   if (running.length > 0) {
+    if (hideRunning) return null;
     const done = sum(running, "done");
     const total = sum(running, "total");
     const text = t`Importing ${done} of ${total}`;

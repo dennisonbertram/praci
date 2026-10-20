@@ -49,6 +49,33 @@ export const Importing: Story = {
     });
   },
 };
+/** An import and file processing at once share one status line. */
+export const ImportingAndProcessing: Story = {
+  beforeEach: () => {
+    load(items);
+    mockRpc({
+      "dataRoom.imports": [
+        {
+          id: "imp_1",
+          source: "drive",
+          total: 1104,
+          done: 399,
+          failed: 0,
+          inProgress: 20,
+          finished: false,
+          latest: [],
+        },
+      ],
+      "dataRoom.processing": {
+        reading: 400,
+        indexing: 300,
+        tagging: 77,
+        failed: 0,
+        current: "Sample agreement.pdf",
+      },
+    });
+  },
+};
 /** The Ask button opens the Data room agent's panel. */
 export const WithAskAgent: Story = {
   beforeEach: () => load(items),
