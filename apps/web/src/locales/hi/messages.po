@@ -360,7 +360,7 @@ msgstr ""
 msgid "{folders, plural, one {# folder} other {# folders}}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "{from} handed off to {to}"
 msgstr ""
 
@@ -432,7 +432,7 @@ msgstr ""
 msgid "{name}, paid with {paidWith}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "{newCount, plural, one {# new message} other {# new messages}}"
 msgstr ""
 
@@ -516,7 +516,7 @@ msgstr ""
 msgid "{unpriced} unpriced"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} काम कर रहा है"
 
@@ -1213,7 +1213,7 @@ msgstr ""
 msgid "Archive all"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "archived"
 msgstr "आर्काइव किया गया"
 
@@ -1244,7 +1244,7 @@ msgstr ""
 msgid "Archived {n}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Archived. Chat, memory, and files kept."
 msgstr "आर्काइव किया गया। चैट, मेमोरी और फ़ाइलें सुरक्षित रखी गईं।"
 
@@ -1361,7 +1361,6 @@ msgid "Attached {path}"
 msgstr ""
 
 #: src/pages/shell/chat-context.tsx
-#: src/pages/shell/composer.tsx
 msgid "Attachment"
 msgstr "अटैचमेंट"
 
@@ -1591,13 +1590,14 @@ msgstr "लाइव डेस्कटॉप शुरू हो रहा ह�
 msgid "Booting up {0}’s computer"
 msgstr "{0} का कंप्यूटर शुरू हो रहा है"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "bot"
 msgstr "बॉट"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Bot"
 msgstr "बॉट"
 
@@ -1625,7 +1625,7 @@ msgstr "बॉट का मॉडल"
 msgid "Bots"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Bots are working"
 msgstr "बॉट काम कर रहे हैं"
 
@@ -2284,8 +2284,8 @@ msgid "Compose"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "कंप्यूटर"
 
@@ -2571,7 +2571,7 @@ msgstr ""
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Copy"
 msgstr "कॉपी करें"
 
@@ -3489,7 +3489,7 @@ msgstr ""
 msgid "Delete the folder {0}?"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "deleted"
 msgstr "डिलीट किया गया"
 
@@ -3623,9 +3623,9 @@ msgstr "डिस्कनेक्ट हो रहा है…"
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Dismiss"
 msgstr ""
 
@@ -4206,6 +4206,10 @@ msgstr ""
 #: src/pages/McpOAuthCallback.tsx
 msgid "Finishing MCP connection…"
 msgstr "MCP कनेक्शन पूरा हो रहा है…"
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Finishing sign-in…"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "First seen"
@@ -4791,7 +4795,7 @@ msgstr ""
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "इसकी बातचीत, फ़ाइलें और रूटीन स्थायी रूप से डिलीट कर दिए जाएंगे। इसके बनाए बॉट आपकी सूची में बने रहेंगे।"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Jump to latest"
 msgstr "नवीनतम संदेश पर जाएँ"
 
@@ -4860,11 +4864,11 @@ msgstr ""
 msgid "Last month vs 3 mo ago"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Last run failed: {failedNote}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Last run failed."
 msgstr ""
 
@@ -5011,7 +5015,7 @@ msgstr ""
 msgid "Live data, enrichment and generation tools"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Load earlier messages"
 msgstr "पुराने संदेश लोड करें"
 
@@ -5077,7 +5081,7 @@ msgstr "आवाज़ प्रोवाइडर्स लोड हो र�
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Loading…"
 msgstr "लोड हो रहा है…"
 
@@ -5340,6 +5344,7 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/shell/chat-context.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Message"
@@ -5357,7 +5362,7 @@ msgstr ""
 msgid "Message event"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Message from {peer}"
 msgstr "{peer} का संदेश"
 
@@ -5365,7 +5370,7 @@ msgstr "{peer} का संदेश"
 msgid "Message…"
 msgstr "संदेश…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Messaged {peer}"
 msgstr "{peer} को संदेश भेजा"
 
@@ -5507,7 +5512,7 @@ msgstr ""
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "More"
 msgstr ""
 
@@ -5680,7 +5685,7 @@ msgstr ""
 msgid "new"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
 
@@ -6249,6 +6254,7 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Open"
 msgstr "खोलें"
 
@@ -6396,7 +6402,7 @@ msgstr "OpenAI-संगत सर्वर URL"
 msgid "Opened {path}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Opened its thread."
 msgstr "इसका थ्रेड खोला।"
 
@@ -6666,7 +6672,6 @@ msgid "Phone"
 msgstr ""
 
 #: src/pages/shell/chat-context.tsx
-#: src/pages/shell/composer.tsx
 msgid "Photo"
 msgstr "फ़ोटो"
 
@@ -6851,15 +6856,15 @@ msgstr "कतार में"
 msgid "Quick status check from everyone, please"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Quote"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "React"
 msgstr "प्रतिक्रिया दें"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Reactions"
 msgstr "प्रतिक्रियाएँ"
 
@@ -7125,11 +7130,11 @@ msgstr ""
 msgid "Relevance"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Remember"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Remembered"
 msgstr ""
 
@@ -7235,7 +7240,7 @@ msgstr ""
 msgid "Remove webhook"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Removed with chat, computer, and memory."
 msgstr "चैट, कंप्यूटर और मेमोरी सहित हटाया गया।"
 
@@ -7321,7 +7326,7 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Reply"
 msgstr "उत्तर दें"
 
@@ -7666,11 +7671,11 @@ msgstr ""
 msgid "Scanning…"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Scheduled run failed: {failedNote}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Scheduled run failed."
 msgstr ""
 
@@ -8118,6 +8123,15 @@ msgstr "SSO लिंक करने के लिए अपने मौजू
 msgid "Sign in with {service}"
 msgstr ""
 
+#: src/pages/Onboarding.tsx
+msgid "Sign in with ChatGPT"
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sign in with OpenRouter"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
 msgstr "सब्सक्रिप्शन से साइन इन करें, या इसके बजाय API कुंजी का परीक्षण करें।"
@@ -8148,6 +8162,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Sign-in was denied or failed."
+msgstr ""
+
+#: src/pages/Onboarding.tsx
+msgid "Signed in with {signedInLabel}"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -8307,7 +8325,7 @@ msgstr ""
 msgid "Spam {0}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Speak"
 msgstr "बोलें"
 
@@ -8319,7 +8337,7 @@ msgstr "बोलें + लिप्यंतरण करें"
 msgid "Speak only"
 msgstr "केवल बोलें"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Speak this reply"
 msgstr "यह उत्तर बोलकर सुनाएं"
 
@@ -8385,7 +8403,7 @@ msgid "Start recording"
 msgstr "रिकॉर्डिंग शुरू करें"
 
 #: src/pages/ActivityList.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Starting"
 msgstr "शुरू हो रहा है"
 
@@ -8431,17 +8449,18 @@ msgstr ""
 msgid "Steps"
 msgstr "चरण"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
 msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Stop"
 msgstr "रोकें"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Stop speaking"
 msgstr "बोलना रोकें"
 
@@ -8465,7 +8484,7 @@ msgstr ""
 msgid "Sub-folders"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "subagent"
 msgstr "सबएजेंट"
 
@@ -8765,8 +8784,8 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/transcript.tsx
 #: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "सोच रहा है"
@@ -9407,6 +9426,10 @@ msgstr "{hostLabel} का उपयोग करें"
 msgid "Use a found model"
 msgstr "मिला हुआ मॉडल उपयोग करें"
 
+#: src/pages/Onboarding.tsx
+msgid "Use an API key instead"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "कुंजी जाँचने के लिए कनेक्ट करें का उपयोग करें।"
@@ -9724,7 +9747,7 @@ msgstr ""
 msgid "Write"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Writing"
 msgstr ""
 
@@ -9764,6 +9787,7 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "You"
 msgstr "आप"
 

@@ -2790,3 +2790,17 @@ model AccountExport {
   @@index([expiresAt])
   @@map("account_exports")
 }
+
+/// Pending "Sign in with OpenRouter" attempt: the state is the id, the PKCE verifier is encrypted.
+model ModelOAuthState {
+  id                 String   @id
+  userId             String
+  spaceId            String
+  provider           String
+  verifierCiphertext String
+  createdAt          DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, spaceId, provider])
+  @@map("model_oauth_states")
+}
