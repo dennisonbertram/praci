@@ -28,7 +28,7 @@ export const HI_MESSAGES: Record<string, string> = {
   "Configure a plugin catalog on the server to connect apps.":
     "ऐप्स कनेक्ट करने के लिए सर्वर पर प्लगइन कैटलॉग कॉन्फ़िगर करें।",
   "Paste the OpenAI-compatible address from your server. Praci adds /v1 if needed.":
-    "अपने सर्वर से OpenAI-संगत पता पेस्ट करें। ज़रूरत होने पर Rakazo /v1 जोड़ देता है।",
+    "अपने सर्वर से OpenAI-संगत पता पेस्ट करें। ज़रूरत होने पर Praci /v1 जोड़ देता है।",
   "Settings: General": "सेटिंग्स: सामान्य",
   "Settings: Usage": "सेटिंग्स: उपयोग",
   "Sign-in did not return a session": "साइन-इन से सत्र नहीं मिला",
@@ -58,7 +58,7 @@ export const HI_MESSAGES: Record<string, string> = {
   "Custom server {host}": "कस्टम सर्वर {host}",
   "Don’t have an account?": "खाता नहीं है?",
   Email: "ईमेल",
-  "Enter your Rakazo server address.": "अपने Rakazo सर्वर का पता दर्ज करें।",
+  "Enter your Praci server address.": "अपने Praci सर्वर का पता दर्ज करें।",
   "Forgot password?": "पासवर्ड भूल गए?",
   "Loading…": "लोड हो रहा है…",
   Password: "पासवर्ड",
@@ -67,9 +67,9 @@ export const HI_MESSAGES: Record<string, string> = {
   "Reset your password": "अपना पासवर्ड रीसेट करें",
   "Send reset link": "रीसेट लिंक भेजें",
   Server: "सर्वर",
-  "Sign in to Rakazo": "Rakazo में साइन इन करें",
+  "Sign in to Praci": "Praci में साइन इन करें",
   "Sign up": "साइन अप करें",
-  "Sign up for Rakazo": "Rakazo के लिए साइन अप करें",
+  "Sign up for Praci": "Praci के लिए साइन अप करें",
   "Use a custom server": "कस्टम सर्वर इस्तेमाल करें",
   "Use default server": "डिफ़ॉल्ट सर्वर इस्तेमाल करें",
   Activity: "गतिविधि",
@@ -379,8 +379,8 @@ export const HI_MESSAGES: Record<string, string> = {
   "Switching…": "बदला जा रहा है…",
   "The final page may not load. Paste its URL or code here.":
     "आख़िरी पेज लोड न हो, तो उसका URL या कोड यहाँ पेस्ट करें।",
-  "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider.":
-    "यह सब्सक्रिप्शन साइन-इन अभी Rakazo में उपलब्ध नहीं है। किसी डिप्लॉयमेंट क्रेडेंशियल का उपयोग करें या दूसरा प्रोवाइडर चुनें।",
+  "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider.":
+    "यह सब्सक्रिप्शन साइन-इन अभी Praci में उपलब्ध नहीं है। किसी डिप्लॉयमेंट क्रेडेंशियल का उपयोग करें या दूसरा प्रोवाइडर चुनें।",
   "Use a found model": "मिला हुआ मॉडल उपयोग करें",
   "Use this model": "यह मॉडल उपयोग करें",
   "Waiting for sign-in…": "साइन-इन का इंतज़ार है…",
@@ -651,7 +651,7 @@ export const HI_MESSAGES: Record<string, string> = {
   "Enter a server URL": "सर्वर URL दर्ज करें",
   "Public servers need https://. HTTP only works on your local network.":
     "सार्वजनिक सर्वर के लिए https:// ज़रूरी है। HTTP सिर्फ़ आपके लोकल नेटवर्क पर काम करता है।",
-  "That URL did not look like a Rakazo server": "वह URL Rakazo सर्वर जैसा नहीं लगता",
+  "That URL did not look like a Praci server": "वह URL Praci सर्वर जैसा नहीं लगता",
   "That URL is missing a host": "उस URL में होस्ट नहीं है",
   "That doesn’t look like a URL": "यह URL जैसा नहीं लगता",
   "Use an http or https URL": "http या https URL इस्तेमाल करें",
@@ -724,7 +724,7 @@ export const HI_MESSAGES: Record<string, string> = {
   "AI models": "AI मॉडल",
   Memory: "मेमोरी",
   "Privacy policies": "गोपनीयता नीतियाँ",
-  Rakazo: "Rakazo",
+  Praci: "Praci",
   "Withdraw all permissions": "सभी अनुमतियाँ वापस लें",
   "Withdraw all permissions?": "सभी अनुमतियाँ वापस लें?",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":

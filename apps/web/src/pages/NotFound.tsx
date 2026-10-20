@@ -14,7 +14,7 @@ export function NotFoundPage() {
         description={<Trans>This link is wrong or the page is no longer available.</Trans>}
       >
         <Button render={<Link to="/app" />}>
-          <Trans>Go to Rakazo</Trans>
+          <Trans>Go to Praci</Trans>
         </Button>
       </PageEmptyState>
     </main>

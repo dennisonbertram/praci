@@ -1,4 +1,4 @@
-appId: com.rakazo.app
+appId: ai.praci.app
 name: Search
 ---
 - runFlow:

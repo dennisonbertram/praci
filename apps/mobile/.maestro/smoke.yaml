@@ -1,21 +1,21 @@
-appId: com.rakazo.app
-name: Rakazo mobile smoke
+appId: ai.praci.app
+name: Praci mobile smoke
 ---
 - launchApp:
     clearState: true
 
-- assertVisible: "Sign in to Rakazo"
+- assertVisible: "Sign in to Praci"
 - assertVisible: "Sign up"
 - tapOn: "Sign up"
-- assertVisible: "Sign up for Rakazo"
+- assertVisible: "Sign up for Praci"
 - assertVisible: "Name"
 - tapOn: "Sign in"
-- assertVisible: "Sign in to Rakazo"
+- assertVisible: "Sign in to Praci"
 - tapOn: "Email"
 - inputText: ${RAKAZO_E2E_EMAIL}
 - tapOn: "Password"
 - inputText: ${RAKAZO_E2E_PASSWORD}
-- tapOn: "Sign in to Rakazo"
+- tapOn: "Sign in to Praci"
 - tapOn: "Sign in"
 
 - extendedWaitUntil:
