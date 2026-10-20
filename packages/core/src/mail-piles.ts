@@ -42,7 +42,7 @@ export function pileFromCategory(category: string | null): InboxPile | null {
 }
 
 /** The stored pile: the free rules win, except that a model verdict of spam, scam or suspicious always wins. */
-export function resolvePile(rulePile: InboxPile | null, category: string | null): InboxPile | null {
+export function resolvePile(rulePile: string | null, category: string | null): string | null {
   const modelPile = pileFromCategory(category);
   return modelPile === "spam" ? "spam" : (rulePile ?? modelPile);
 }
