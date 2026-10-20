@@ -9,6 +9,22 @@ const classes = [
   { name: "Warrants", shares: 300_000 },
 ];
 
+/** Invented holders. Common is held by many, so the tail merges into "Other holders". */
+const holdings = [
+  { name: "Ada Founder", security: "Common", shares: 2_400_000 },
+  { name: "Ben Cofounder", security: "Common", shares: 1_800_000 },
+  { name: "Cleo Advisor", security: "Common", shares: 600_000 },
+  { name: "Dev Employee", security: "Common", shares: 400_000 },
+  { name: "Eli Employee", security: "Common", shares: 300_000 },
+  { name: "Fay Employee", security: "Common", shares: 200_000 },
+  { name: "Gus Employee", security: "Common", shares: 100_000 },
+  { name: "Example Seed Fund", security: "Series Seed Preferred", shares: 1_000_000 },
+  { name: "Sample Angels", security: "Series Seed Preferred", shares: 600_000 },
+  { name: "Placeholder Ventures", security: "Series A Preferred", shares: 1_400_000 },
+  { name: "Hana Engineer", security: "Options", shares: 250_000 },
+  { name: "Ivo Designer", security: "Options", shares: 150_000 },
+];
+
 const meta = {
   title: "Cap table/OwnershipDonut",
   component: OwnershipDonut,
@@ -19,7 +35,7 @@ const meta = {
       </div>
     ),
   ],
-  args: { classes, fullyDilutedShares: 11_200_000 },
+  args: { classes, fullyDilutedShares: 10_200_000, holdings, optionPoolAvailable: 700_000 },
 } satisfies Meta<typeof OwnershipDonut>;
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -61,8 +77,20 @@ export const ManyClasses: Story = {
   },
 };
 
-export const Selectable: Story = {
-  args: { selectable: ["Common", "Series A Preferred"], onSelect: () => {} },
+/** Click a slice or legend row: the donut steps aside, turned toward the holder breakdown. Warrants have no holders, so they stay plain. */
+export const BreakdownOpen: Story = {
+  play: async ({ canvasElement }) => {
+    const row = canvasElement.querySelector<HTMLElement>("button[aria-label^='Show Common']");
+    row?.click();
+  },
+};
+
+export const BreakdownOptionsAndPool: Story = {
+  play: async ({ canvasElement }) => {
+    canvasElement
+      .querySelector<HTMLElement>("button[aria-label^='Show Options and pool']")
+      ?.click();
+  },
 };
 
 export const Narrow: Story = {
@@ -73,4 +101,25 @@ export const Narrow: Story = {
       </div>
     ),
   ],
+};
+
+export const NarrowBreakdown: Story = {
+  ...Narrow,
+  play: BreakdownOpen.play,
+};
+
+export const ReducedMotion: Story = {
+  parameters: { reducedMotion: true },
+  decorators: [
+    (Story) => {
+      window.matchMedia = ((query: string) => ({
+        matches: query.includes("reduce"),
+        media: query,
+        addEventListener() {},
+        removeEventListener() {},
+      })) as unknown as typeof window.matchMedia;
+      return <Story />;
+    },
+  ],
+  play: BreakdownOpen.play,
 };

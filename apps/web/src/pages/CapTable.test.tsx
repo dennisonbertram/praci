@@ -1035,14 +1035,16 @@ describe("search, filter and sort", () => {
     expect(container.textContent).not.toContain("Security");
   });
 
-  it("sets the Security filter from the ownership donut", async () => {
+  it("opens the holder breakdown from the ownership donut", async () => {
     await showAt("/app/cap-table");
     expect(container.querySelector("[data-testid=ownership-donut]")).not.toBeNull();
     const legend = [...container.querySelectorAll("ul button")].find((b) =>
       b.textContent?.startsWith("Series Seed Preferred"),
     );
     await click(legend as HTMLElement);
-    expect(search$).toContain("security=Series+Seed+Preferred");
+    expect(container.querySelector("[data-testid=breakdown]")?.getAttribute("data-open")).toBe(
+      "true",
+    );
   });
 
   it("keeps search in the URL and clears it from the empty state", async () => {

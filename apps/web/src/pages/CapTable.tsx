@@ -890,8 +890,8 @@ export function CapTablePage({
         <OwnershipDonut
           classes={snapshot.shareClasses}
           fullyDilutedShares={snapshot.fullyDilutedShares}
-          selectable={rows.flatMap((row) => rowSecurity(row) ?? [])}
-          onSelect={(name) => setParam("security", name)}
+          holdings={snapshot.holders}
+          optionPoolAvailable={snapshot.optionPoolAvailable}
         />
       ) : null}
       {reading ? (

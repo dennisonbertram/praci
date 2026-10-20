@@ -1409,6 +1409,7 @@ msgstr "Avatar Studio"
 msgid "Avatars"
 msgstr "Avatars"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
@@ -6320,6 +6321,10 @@ msgstr "Other connection types"
 msgid "Other crypto"
 msgstr "Other crypto"
 
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Other holders"
+msgstr "Other holders"
+
 #: src/pages/Inbox.tsx
 msgid "Other mail today"
 msgstr "Other mail today"
@@ -7806,6 +7811,11 @@ msgstr "Sheets"
 msgid "Shell"
 msgstr "Shell"
 
+#. placeholder {0}: s.name
+#: src/components/cap-table/OwnershipDonut.tsx
+msgid "Show {0} breakdown"
+msgstr "Show {0} breakdown"
+
 #: src/pages/Finance.tsx
 msgid "Show all {total}"
 msgstr "Show all {total}"
@@ -8873,6 +8883,7 @@ msgstr "Type without recording"
 msgid "Type your answer"
 msgstr "Type your answer"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Unallocated pool"
 msgstr "Unallocated pool"
