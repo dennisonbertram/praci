@@ -1,6 +1,6 @@
 # iMessage through Photon and BlueBubbles
 
-Status: approved plan; phases 1, 2, 3, 5, 6 and 7 done (notes at the end).. Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
+Status: approved plan; phases 1, 2, 3, 5, 6 and 7 done (notes at the end). Line numbers refer to `main` when written (2026-10-19). Vendor facts come from the official sources linked inline and were read on that date; they can change.
 
 ## Owner answers
 
