@@ -2,6 +2,8 @@ import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import {
   Button,
+  ContextMenuItem,
+  ContextMenuSeparator,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -9,11 +11,70 @@ import {
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
 import { FolderInput, MoreHorizontal, Pencil, RotateCw, Trash2 } from "lucide-react";
+import type { ElementType } from "react";
 import { type SendTarget, SendToAgentMenu } from "./SendToAgent";
 
 export type ItemAction = "move" | "rename" | "delete" | "retry";
 
-/** Move, Rename and Delete for one item or folder, led by Try again for a file that failed. */
+const PARTS = {
+  dropdown: { Item: DropdownMenuItem, Separator: DropdownMenuSeparator },
+  context: { Item: ContextMenuItem, Separator: ContextMenuSeparator },
+} satisfies Record<string, Record<string, ElementType>>;
+
+/**
+ * The actions for one item or folder, shared by the "..." dropdown and the right-click menu: Send
+ * to agent (files with agents), Move, Rename and Delete, led by Try again for a file that failed.
+ */
+export function ItemMenuItems<T extends { name: string }>({
+  menu,
+  item,
+  onAction,
+  canRetry = false,
+  agents,
+  onSendToAgent,
+}: {
+  menu: keyof typeof PARTS;
+  item: T;
+  onAction: (action: ItemAction, item: T) => void;
+  canRetry?: boolean;
+  agents?: SendTarget[];
+  onSendToAgent?: (item: T, agent: SendTarget) => void;
+}) {
+  const { Item, Separator } = PARTS[menu];
+  return (
+    <>
+      {canRetry ? (
+        <>
+          <Item onClick={() => onAction("retry", item)}>
+            <RotateCw aria-hidden="true" />
+            <Trans>Try again</Trans>
+          </Item>
+          <Separator />
+        </>
+      ) : null}
+      <SendToAgentMenu
+        menu={menu}
+        agents={onSendToAgent ? agents : undefined}
+        onPick={(agent) => onSendToAgent?.(item, agent)}
+      />
+      <Item onClick={() => onAction("move", item)}>
+        <FolderInput aria-hidden="true" />
+        <Trans>Move</Trans>
+      </Item>
+      <Item onClick={() => onAction("rename", item)}>
+        <Pencil aria-hidden="true" />
+        <Trans>Rename</Trans>
+      </Item>
+      <Separator />
+      <Item variant="destructive" onClick={() => onAction("delete", item)}>
+        <Trash2 aria-hidden="true" />
+        <Trans>Delete</Trans>
+      </Item>
+    </>
+  );
+}
+
+/** The "..." button and its menu of {@link ItemMenuItems}. */
 export function ItemMenu<T extends { name: string }>({
   item,
   onAction,
@@ -54,33 +115,14 @@ export function ItemMenu<T extends { name: string }>({
         className="min-w-40"
         onClick={(event) => event.stopPropagation()}
       >
-        {canRetry ? (
-          <>
-            <DropdownMenuItem onClick={() => onAction("retry", item)}>
-              <RotateCw aria-hidden="true" />
-              <Trans>Try again</Trans>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-          </>
-        ) : null}
-        <SendToAgentMenu
+        <ItemMenuItems
           menu="dropdown"
-          agents={onSendToAgent ? agents : undefined}
-          onPick={(agent) => onSendToAgent?.(item, agent)}
+          item={item}
+          onAction={onAction}
+          canRetry={canRetry}
+          agents={agents}
+          onSendToAgent={onSendToAgent}
         />
-        <DropdownMenuItem onClick={() => onAction("move", item)}>
-          <FolderInput aria-hidden="true" />
-          <Trans>Move</Trans>
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => onAction("rename", item)}>
-          <Pencil aria-hidden="true" />
-          <Trans>Rename</Trans>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onClick={() => onAction("delete", item)}>
-          <Trash2 aria-hidden="true" />
-          <Trans>Delete</Trans>
-        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

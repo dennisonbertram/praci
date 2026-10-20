@@ -13,7 +13,14 @@ export const MailAccountSchema = z.object({
   label: z.string(),
   /** The mailbox address, once Gmail has reported it; optional for older servers. */
   address: z.string().optional(),
+  /**
+   * Whether the mailbox can keep skipped senders out of the inbox itself (a Gmail filter): "ready",
+   * "needs_permission" (reconnect with one more permission) or "unsupported". Optional for older servers.
+   */
+  senderRules: z.enum(["ready", "needs_permission", "unsupported"]).optional(),
 });
+
+export type MailAccountSummary = z.infer<typeof MailAccountSchema>;
 
 export const InboxPrioritySchema = z.enum(["critical", "important", "normal", "low"]);
 export type InboxPriority = z.infer<typeof InboxPrioritySchema>;
@@ -249,6 +256,10 @@ export const UnsubscribeStatusSchema = z.enum([
   "refused",
 ]);
 
+/** Where a skipped sender's Gmail filter stands: made, waiting for permission, over the cap, or failed. */
+export const SenderRuleStatusSchema = z.enum(["active", "pending", "full", "failed"]);
+export type SenderRuleStatus = z.infer<typeof SenderRuleStatusSchema>;
+
 /** One sender on one mail account, over the 90-day cache window. */
 export const CleanupSenderSchema = z.object({
   connectionId: Id,
@@ -267,6 +278,10 @@ export const CleanupSenderSchema = z.object({
   /** Future mail from this sender is archived during sync. */
   skipInbox: z.boolean(),
   unsubscribeStatus: UnsubscribeStatusSchema.nullable(),
+  /** The Gmail filter for a skipped sender; omitted when there is none. */
+  rule: SenderRuleStatusSchema.optional(),
+  /** The pile the model chose for this sender often enough that its mail now goes there without it. Optional so older apps still parse. */
+  learnedPile: InboxPileSchema.nullable().optional(),
 });
 
 export const CleanupListInputSchema = InboxScopeInputSchema;
@@ -295,6 +310,8 @@ export const CleanupArchiveOutputSchema = z.object({
 export const CleanupForgetInputSchema = z.object({
   connectionId: Id,
   address: z.string().min(3).max(320),
+  /** True: forget only the learned pile and keep the skip and unsubscribe decision. */
+  learned: z.boolean().optional(),
 });
 
 export const UnsubscribeInputSchema = z.object({

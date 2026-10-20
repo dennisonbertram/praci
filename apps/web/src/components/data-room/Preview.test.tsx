@@ -253,3 +253,25 @@ it("resizes from its left edge by keyboard and drag, within limits, and remember
   await show(receipt);
   expect(width()).toBe("420px");
 });
+
+it("offers Send to agent in the preview's More actions menu when there are agents", async () => {
+  await act(async () => {
+    root.render(
+      <Preview
+        item={receipt}
+        folderPath=""
+        onAction={() => undefined}
+        onClose={() => undefined}
+        agents={[{ id: "bot_ada", name: "Ada", color: "#6366f1" }]}
+        onSendToAgent={() => undefined}
+      />,
+    );
+  });
+  const button = container.querySelector('button[aria-label^="More actions for"]') as HTMLElement;
+  await act(async () => button.click());
+  await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
+  const names = Array.from(document.body.querySelectorAll('[role="menuitem"]')).map((e) =>
+    e.textContent?.trim(),
+  );
+  expect(names).toEqual(["Send to agent", "Move", "Rename", "Delete"]);
+});

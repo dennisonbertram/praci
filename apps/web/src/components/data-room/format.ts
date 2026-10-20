@@ -57,9 +57,11 @@ export function sizeText(bytes: number) {
 }
 
 /** The notice after an import finishes. */
+export const alreadyText = () => t`Already in the Data room`;
+
 export const importedText = (imported: number, duplicates: number) =>
   imported === 0 && duplicates > 0
-    ? t`Already in the Data room`
+    ? alreadyText()
     : plural(imported, { one: "Imported # file", other: "Imported # files" });
 
 export const importingText = (files: number) =>

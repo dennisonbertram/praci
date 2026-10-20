@@ -29,6 +29,7 @@ msgstr ""
 msgid " (new)"
 msgstr ""
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
@@ -823,7 +824,7 @@ msgstr ""
 msgid "Added"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Adding a contact"
 msgstr ""
 
@@ -1032,6 +1033,10 @@ msgstr ""
 msgid "Already tidy."
 msgstr ""
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Also in Gmail"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr "Всегда выполнять"
@@ -1175,6 +1180,10 @@ msgstr "Архивировать"
 msgid "Archive {0}"
 msgstr ""
 
+#: src/components/inbox/InboxDigest.tsx
+msgid "Archive all"
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "archived"
 msgstr "в архиве"
@@ -1278,6 +1287,14 @@ msgstr "Попросите владельца сервера настроить 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Asking {agentName}"
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Asking another agent"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -1887,6 +1904,7 @@ msgstr ""
 msgid "Chat with your agents over iMessage from your Mac"
 msgstr ""
 
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Chats"
 msgstr ""
@@ -1977,7 +1995,7 @@ msgstr ""
 msgid "Choose when it runs"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
 msgstr ""
 
@@ -3071,6 +3089,10 @@ msgstr ""
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Couldn't add Gmail filter"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Couldn't archive {count}"
 msgstr ""
@@ -3465,6 +3487,10 @@ msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Didn't open?"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Digest"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -4112,6 +4138,10 @@ msgstr ""
 msgid "Folders"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Forget"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "Забыли пароль?"
@@ -4215,6 +4245,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Gmail didn't respond. Try again."
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Gmail filter limit reached"
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts
@@ -4499,6 +4533,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
@@ -4766,6 +4801,10 @@ msgstr ""
 msgid "Launched {app}"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Learned"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Leave"
 msgstr "Выйти"
@@ -4921,7 +4960,6 @@ msgstr "Загрузка поставщиков голосовой связи…
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/Shell.tsx
@@ -5220,6 +5258,10 @@ msgstr "Отправлено сообщение {peer}"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Messaging"
 msgstr "Обмен сообщениями"
+
+#: src/pages/shell/working-label.ts
+msgid "Messaging you"
+msgstr ""
 
 #: src/lib/call-session.ts
 msgid "Microphone failed"
@@ -5586,6 +5628,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
@@ -5710,6 +5753,7 @@ msgstr ""
 msgid "No longer active"
 msgstr "Больше не активен"
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -6060,6 +6104,7 @@ msgid "Only if the server does not use sign-in"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
@@ -6112,6 +6157,10 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
+#: src/pages/shell/composer-error.tsx
+msgid "Open Data room"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr ""
@@ -6154,6 +6203,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
+msgstr ""
+
+#: src/pages/shell/composer-error.tsx
+msgid "Open Legal"
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
@@ -6205,15 +6258,11 @@ msgstr ""
 msgid "Opened its thread."
 msgstr "Диалог открыт."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Opening an email"
 msgstr ""
 
-#: src/pages/Onboarding.tsx
-msgid "Opening chat…"
-msgstr ""
-
-#: src/App.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Opening your Space…"
 msgstr "Открытие вашего пространства…"
 
@@ -6446,11 +6495,8 @@ msgid "Person"
 msgstr ""
 
 #: src/pages/Inbox.tsx
-msgid "Personal"
-msgstr ""
-
 #: src/pages/Shell.tsx
-msgid "Personnel"
+msgid "Personal"
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
@@ -6688,7 +6734,7 @@ msgstr ""
 msgid "Reading {0} again"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr ""
 
@@ -6696,7 +6742,7 @@ msgstr ""
 msgid "Reading Carta…"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading the cap table"
 msgstr ""
 
@@ -6704,15 +6750,15 @@ msgstr ""
 msgid "Reading this file. You can keep working while it finishes."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your cap table from Carta"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your contacts"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr ""
 
@@ -7386,7 +7432,7 @@ msgstr "Сохранено."
 msgid "Saved. Rotate to reveal."
 msgstr "Сохранено. Поверните, чтобы раскрыть."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Saving a contact"
 msgstr ""
 
@@ -7545,7 +7591,7 @@ msgstr ""
 msgid "Searching in {openFolderPath}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr ""
 
@@ -7817,7 +7863,7 @@ msgstr "Показать расшифровку"
 msgid "Showing the {shown} most connected of {total} items."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Showing the emails it found"
 msgstr ""
 
@@ -8492,6 +8538,7 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "рассуждение"
 
@@ -8992,6 +9039,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -9007,7 +9055,7 @@ msgstr "Обновление компьютера {0}"
 msgid "Updating Team Computer"
 msgstr "Обновление компьютера команды"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Updating the cap table"
 msgstr ""
 
@@ -9408,7 +9456,7 @@ msgstr ""
 msgid "Writing"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Writing a draft email"
 msgstr ""
 
@@ -9432,7 +9480,7 @@ msgstr ""
 msgid "Yearly"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/lib/roster-time.ts
 #: src/pages/shell/chat-context.tsx
 msgid "Yesterday"
 msgstr "Вчера"

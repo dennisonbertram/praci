@@ -1,6 +1,7 @@
 import { i18n } from "@lingui/core";
 import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
+import type { ChatMarkdownProps } from "@rakazo/chat-ui/web";
 import { ChatMarkdown, LinkifiedText } from "@rakazo/chat-ui/web";
 import type {
   AgentSkillCatalogEntry,
@@ -16,6 +17,7 @@ import type {
   ProductEvent,
   Routine,
   SearchHit,
+  SidebarSnapshot,
   Space,
   SpaceMemoryConfig,
   TaughtSkill,
@@ -34,7 +36,6 @@ import {
   MESSAGE_REACTIONS,
   NOTIFICATION_KINDS,
   RunPhaseSchema,
-  type SidebarSnapshot,
 } from "@rakazo/contracts";
 import type { ComposerMention, SlashActionId } from "@rakazo/core";
 import {
@@ -158,6 +159,7 @@ import type {
   RefObject,
 } from "react";
 import {
+  createContext,
   Fragment,
   lazy,
   memo,
@@ -186,11 +188,8 @@ import { AgentPanelIntro } from "../components/AgentPanelIntro";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
-import {
-  type BotToolControls,
-  BotToolControlsContext,
-  type ComposerDraft,
-} from "../components/BotToolControls";
+import type { BotToolControls, ComposerDraft } from "../components/BotToolControls";
+import { BotToolControlsContext } from "../components/BotToolControls";
 import { CloudAgentCard } from "../components/CloudAgentCard";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { ComputerMaintenanceActions } from "../components/ComputerMaintenanceActions";
@@ -213,16 +212,13 @@ import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
+import { OpeningSpace } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import { SidebarPagesGroup } from "../components/SidebarPagesGroup";
 import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
-import {
-  type DropResult,
-  itemDragId,
-  ROOT_CONTAINER,
-  type SidebarLayout,
-} from "../components/sidebar-folders/drop-target";
+import type { DropResult, SidebarLayout } from "../components/sidebar-folders/drop-target";
+import { itemDragId, ROOT_CONTAINER } from "../components/sidebar-folders/drop-target";
 import { FolderHeader } from "../components/sidebar-folders/FolderHeader";
 import {
   RootEnd,
@@ -291,6 +287,7 @@ import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
+import { appPath } from "../lib/integrations";
 import { findLegalAgent } from "../lib/legal-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
@@ -318,11 +315,14 @@ import {
   rosterHasUndismissedRunError,
   rosterWorkStatusLabel,
 } from "../lib/roster-status";
-import { type MissingBotSeen, resolveRouteBot } from "../lib/route-bot";
+import { formatRosterTime } from "../lib/roster-time";
+import type { MissingBotSeen } from "../lib/route-bot";
+import { resolveRouteBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { runPhaseLine, runPhaseWaitingOn } from "../lib/run-phase";
-import { type DataRoomRef, planSendToAgent, sendTargets } from "../lib/send-to-agent";
+import type { DataRoomRef } from "../lib/send-to-agent";
+import { planSendToAgent, sendTargets } from "../lib/send-to-agent";
 import { sharedInflight } from "../lib/shared-inflight";
 import {
   PANEL_DOCKED_QUERY,
@@ -370,11 +370,12 @@ import {
   transcriptUserJustSent,
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
-import { type RememberControls, useRememberedMessages } from "../lib/use-remembered-messages";
+import type { RememberControls } from "../lib/use-remembered-messages";
+import { useRememberedMessages } from "../lib/use-remembered-messages";
 import { useAttended, useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
-import type { WorkingActivity } from "../lib/working-activity";
-import { type ToolAction, workingActivity } from "../lib/working-activity";
+import type { ToolAction, WorkingActivity } from "../lib/working-activity";
+import { workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CapTablePage } from "./CapTable";
@@ -396,8 +397,10 @@ import {
   routineNeedsOneShotArm,
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
-import { type SearchLink, SpaceSearchResults } from "./SpaceSearch";
-import { BotPagePanel, type PageRemoteUpdate } from "./shell/bot-page-panel";
+import type { SearchLink } from "./SpaceSearch";
+import { SpaceSearchResults } from "./SpaceSearch";
+import type { PageRemoteUpdate } from "./shell/bot-page-panel";
+import { BotPagePanel } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
 import { PinsList, PinsStrip, useBotPins } from "./shell/bot-pins";
@@ -425,6 +428,7 @@ import {
 } from "./shell/message-cards";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
+import { toolActionLabel } from "./shell/working-label";
 import { WindowChrome } from "./WindowChrome";
 
 const ArtifactsPage = lazy(() =>
@@ -799,6 +803,7 @@ export function ShellPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const sidebarDocked = useSidebarDocked();
   const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
   useDrawerFocus(mobileSidebarOpen, closeMobileSidebar, sidebarRef);
   const mobileSidebarSwipeRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -810,6 +815,10 @@ export function ShellPage() {
   const [botsSidebarCollapsed, setBotsSidebarCollapsed] = useState(false);
   // Collapsed on a docked sidebar is the icon rail; below the dock width the drawer is unchanged.
   const rail = sidebarRail(botsSidebarCollapsed, sidebarDocked);
+  // The rail starts at the top, not where the expanded list was scrolled to.
+  useEffect(() => {
+    if (rail) sidebarScrollRef.current?.scrollTo({ top: 0 });
+  }, [rail]);
   const focusSearchOnExpand = useRef(false);
   useEffect(() => {
     if (botsSidebarCollapsed || !focusSearchOnExpand.current) return;
@@ -1079,6 +1088,11 @@ export function ShellPage() {
   computerOpenRef.current = computerOpen;
   computerBotIdRef.current = computerBotId ?? active?.id;
   const activeGroup = groups.find((group) => group.id === groupId);
+  const opening = chatIsOpening({
+    hasChat: Boolean(active || activeGroup),
+    botsLoaded: initialBotsLoaded,
+    routeWaiting: routeBot.waiting,
+  });
   const forwardedName = forwarded
     ? (groups.find((group) => group.id === forwarded.groupId)?.name ?? t`the group`)
     : "";
@@ -1768,7 +1782,7 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId, t`Personnel`);
+    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId, t`Personal`);
   }, [bootstrapMe, botSections, bots, groups, spaces, query, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
@@ -1798,7 +1812,7 @@ export function ShellPage() {
       if (kind === "folder") return botSections.find((section) => section.id === id)?.name ?? "";
       if (kind === "bot") return bots.find((bot) => bot.id === id)?.name ?? "";
       if (kind === "group") return groups.find((group) => group.id === id)?.name ?? "";
-      return dragId === "root-end" ? t`Personnel` : "";
+      return dragId === "root-end" ? t`Personal` : "";
     },
     [bots, groups, botSections, t],
   );
@@ -3749,6 +3763,7 @@ export function ShellPage() {
                 // "" is a rejected key: open the provider the failed run used.
                 openSettings("models", provider || (activeSnapshot?.run?.modelProvider ?? ""))
               }
+              onNavigate={navigate}
               sending={sending}
               fileInputRef={fileInputRef}
               onAttachmentPick={onAttachmentPick}
@@ -4017,7 +4032,10 @@ export function ShellPage() {
             )
           }
         />
-        <div className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
+        <div
+          ref={sidebarScrollRef}
+          className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
+        >
           {/* While searching, matching pages are listed with the results instead. */}
           {showSpaceSearch && !rail ? null : (
             // Inside the scroll area, so on a short screen the chats are never squeezed out.
@@ -4196,7 +4214,7 @@ export function ShellPage() {
                     group.canRenameSpace ||
                     group.canDeleteSpace ||
                     (activeSpace && Boolean(group.title) && ["head", "space"].includes(group.kind));
-                  // "Personnel" replaces the lone space's name, so the name stays in the label.
+                  // "Personal" replaces the lone space's name, so the name stays in the label.
                   const sidebarHeader = {
                     name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
                   };
@@ -4331,6 +4349,14 @@ export function ShellPage() {
                           ) : null}
                         </div>
                       ) : null}
+                      {!rail &&
+                      group.kind === "root" &&
+                      group.parentKey &&
+                      group.bots.length > 0 ? (
+                        <div className="mt-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground/80">
+                          <Trans>Chats</Trans>
+                        </div>
+                      ) : null}
                       {rail || !collapsed ? (
                         <SortableList
                           ids={nestedRows.map(({ item }) =>
@@ -4393,7 +4419,9 @@ export function ShellPage() {
                                   <div
                                     ref={row.setNodeRef}
                                     data-drops-before={row.dropsBefore ? "" : undefined}
-                                    className="group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring"
+                                    className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
+                                      !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
+                                    }`}
                                     style={{ ...row.style, opacity: row.isDragging ? 0.4 : 1 }}
                                   >
                                     {hasChildren && !rail ? (
@@ -5028,7 +5056,7 @@ export function ShellPage() {
                   >
                     {inGroup
                       ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                      : (active?.name ?? t`Select a bot`)}
+                      : (active?.name ?? (opening ? "" : t`Select a bot`))}
                   </span>
                 </span>
               </button>
@@ -5170,13 +5198,23 @@ export function ShellPage() {
             onRefreshed={refreshInboxUnread}
             onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
             onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
+            onAllowMailRules={(connectionId) =>
+              navigate(
+                appPath(
+                  { connectorId: "google", slug: "gmail" },
+                  { reconnect: connectionId, next: "/app/inbox?cleanup=1" },
+                ),
+              )
+            }
             spaceName={
               spaces.length > 1
                 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
                 : undefined
             }
           />
-        ) : !active && !activeGroup && initialBotsLoaded && !routeBot.waiting ? (
+        ) : opening ? (
+          <OpeningSpace />
+        ) : !active && !activeGroup ? (
           <div className="grid flex-1 place-items-center">
             <Button onClick={() => void createBot()}>
               <Plus size={16} aria-hidden="true" />
@@ -6325,9 +6363,29 @@ export function ShellPage() {
 
   return (
     <AvatarStyleProvider value={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}>
-      {missingPath === pathname ? <NotFoundPage /> : shell}
+      <AppNavigateContext.Provider value={navigate}>
+        {missingPath === pathname ? <NotFoundPage /> : shell}
+      </AppNavigateContext.Provider>
     </AvatarStyleProvider>
   );
+}
+
+/** Opens an in-app path through the router; unset outside the page, where links load normally. */
+const AppNavigateContext = createContext<((href: string) => void) | undefined>(undefined);
+
+/** Chat markdown whose /app/ links navigate in place instead of reloading the page. */
+function ThreadMarkdown(props: ChatMarkdownProps) {
+  const onNavigate = useContext(AppNavigateContext);
+  return <ChatMarkdown {...props} onNavigate={onNavigate} />;
+}
+
+/** Whether the pane is still waiting for its chat: the bot list loads, or the route's bot is not in it yet. */
+export function chatIsOpening(input: {
+  hasChat: boolean;
+  botsLoaded: boolean;
+  routeWaiting: boolean;
+}): boolean {
+  return !input.hasChat && (!input.botsLoaded || input.routeWaiting);
 }
 
 /** A thin line in the bot's accent (neutral without one) marking where unread messages start. */
@@ -6496,38 +6554,6 @@ export const Transcript = memo(function Transcript({
                 ? t`${workingBotName} is working`
                 : t`Bots are working`;
   const waitingLabel = (service: string) => t`Still waiting on ${service}`;
-  function toolActionLabel(action: ToolAction | undefined): string | undefined {
-    switch (action) {
-      case "contact-add":
-        return t`Adding a contact`;
-      case "contact-save":
-        return t`Saving a contact`;
-      case "contacts-read":
-        return t`Reading your contacts`;
-      case "cap-table-read":
-        return t`Reading the cap table`;
-      case "cap-table-update":
-        return t`Updating the cap table`;
-      case "carta-cap-table":
-        return t`Reading your cap table from Carta`;
-      case "carta-company":
-        return t`Choosing your company in Carta`;
-      case "connected-app":
-        return t`Reading a connected app`;
-      case "mail-search":
-        return t`Searching your mail`;
-      case "mail-open":
-        return t`Opening an email`;
-      case "mail-draft":
-        return t`Writing a draft email`;
-      case "mail-show":
-        return t`Showing the emails it found`;
-      case "finance":
-        return t`Reading your finances`;
-      default:
-        return undefined;
-    }
-  }
   const [quoteDraft, setQuoteDraft] = useState<{
     message: ThreadMessage;
     text: string;
@@ -6839,9 +6865,16 @@ export const Transcript = memo(function Transcript({
 
   return (
     <div className="@container relative flex min-h-0 flex-1">
+      {/* Announces the working phase once per change; the elapsed timer stays out of it. */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {running ? workingLabel : ""}
+      </div>
       <div
         ref={scrollRef}
         data-testid="transcript"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
         onPointerDown={(event) => {
           lastScrollTop.current = event.currentTarget.scrollTop;
           autoScrolling.current = false;
@@ -7275,6 +7308,7 @@ export const Composer = memo(function Composer({
   onRunErrorPresented,
   onDismissError,
   onOpenModelSettings,
+  onNavigate,
   sending,
   fileInputRef,
   onAttachmentPick,
@@ -7309,6 +7343,7 @@ export const Composer = memo(function Composer({
   onDismissError: () => void;
   /** Opens the Models settings a model-setup run error points to. */
   onOpenModelSettings?: (provider?: string) => void;
+  onNavigate?: (path: string) => void;
   sending: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onAttachmentPick: (files: FileList | null) => boolean;
@@ -7831,6 +7866,7 @@ export const Composer = memo(function Composer({
           ref={runErrorRef}
           message={(sendError ?? runError) as string}
           onOpenModelSettings={!sendError ? onOpenModelSettings : undefined}
+          onNavigate={!sendError ? onNavigate : undefined}
           onDismiss={() => {
             onDismissError();
             window.requestAnimationFrame(() => textareaRef.current?.focus());
@@ -8420,37 +8456,6 @@ function previewMessageText(message: ThreadMessage): string {
   return t`Message`;
 }
 
-function formatRosterTime(isoDate?: string | null): string {
-  if (!isoDate) return "";
-  try {
-    const d = new Date(isoDate);
-    if (Number.isNaN(d.getTime())) return "";
-    const locale = i18n.locale || "en";
-    const now = new Date();
-    const isToday =
-      d.getDate() === now.getDate() &&
-      d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear();
-    if (isToday) {
-      return d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
-    }
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-    const isYesterday =
-      d.getDate() === yesterday.getDate() &&
-      d.getMonth() === yesterday.getMonth() &&
-      d.getFullYear() === yesterday.getFullYear();
-    if (isYesterday) return t`Yesterday`;
-    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays < 7) {
-      return d.toLocaleDateString(locale, { weekday: "short" });
-    }
-    return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
-  } catch {
-    return "";
-  }
-}
-
 function MessageHoverActions({
   message,
   side,
@@ -8862,7 +8867,9 @@ const MessageView = memo(function MessageView({
                     key={i}
                     data-quote-message-id={block.kind === "text" ? quoteMessageId : undefined}
                   >
-                    <ChatMarkdown streaming={block.kind === "progress"}>{block.text}</ChatMarkdown>
+                    <ThreadMarkdown streaming={block.kind === "progress"}>
+                      {block.text}
+                    </ThreadMarkdown>
                   </div>
                 );
               }
@@ -8967,7 +8974,7 @@ const MessageView = memo(function MessageView({
                 className="max-w-full rounded-[20px] bg-muted px-[18px] py-3 text-[15.5px] leading-[1.5] text-foreground/90"
                 dir="auto"
               >
-                <ChatMarkdown streaming>{block.text}</ChatMarkdown>
+                <ThreadMarkdown streaming>{block.text}</ThreadMarkdown>
               </div>
             </div>
           );
@@ -9002,9 +9009,9 @@ const MessageView = memo(function MessageView({
               <div className="mt-2 text-[13.5px] text-muted-foreground">{block.task}</div>
               {block.progress || block.result ? (
                 <div className="mt-2.5 text-[14.5px] leading-[1.5] text-foreground/75">
-                  <ChatMarkdown streaming={running}>
+                  <ThreadMarkdown streaming={running}>
                     {block.result || block.progress || ""}
-                  </ChatMarkdown>
+                  </ThreadMarkdown>
                 </div>
               ) : null}
             </div>
@@ -9126,7 +9133,7 @@ const MessageView = memo(function MessageView({
                 dir="auto"
               >
                 <div data-quote-message-id={quoteMessageId}>
-                  <ChatMarkdown>{block.text}</ChatMarkdown>
+                  <ThreadMarkdown>{block.text}</ThreadMarkdown>
                 </div>
                 {voiceReady ? (
                   <button
@@ -9246,7 +9253,7 @@ const MessageView = memo(function MessageView({
                 </span>
               </div>
               <div className="my-2.5 text-[14.5px] leading-[1.5] text-foreground/75">
-                <ChatMarkdown>{block.text}</ChatMarkdown>
+                <ThreadMarkdown>{block.text}</ThreadMarkdown>
               </div>
               <Button
                 type="button"

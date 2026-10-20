@@ -4,8 +4,11 @@ import {
   attachmentExtensionForMimeType,
   attachmentsForBot,
   blocksToAgentHistoryText,
+  canPreviewSpreadsheet,
   decodeAttachmentBase64,
+  formatSheetCell,
   inferAttachmentMimeType,
+  isNumericSheetCell,
   promptTextForAttachments,
   userTurnMessageForRun,
   validateAttachmentMimeType,
@@ -167,5 +170,32 @@ describe("ask history", () => {
         { kind: "ask", text: "API key", input: "secret", status: "answered", answer: "" },
       ]),
     ).toBe("API key");
+  });
+});
+
+describe("canPreviewSpreadsheet", () => {
+  it("ignores MIME parameters and case, accepts macro workbooks, rejects legacy xls", () => {
+    expect(canPreviewSpreadsheet("export.dat", "text/csv; charset=utf-8")).toBe(true);
+    expect(canPreviewSpreadsheet("a.bin", "Application/Vnd.MS-Excel.Sheet.MacroEnabled.12")).toBe(
+      true,
+    );
+    expect(canPreviewSpreadsheet("a.xlsx", "application/octet-stream")).toBe(true);
+    expect(canPreviewSpreadsheet("a.xls", "application/vnd.ms-excel")).toBe(false);
+    expect(canPreviewSpreadsheet("a.pdf", "application/pdf")).toBe(false);
+  });
+});
+
+describe("formatSheetCell", () => {
+  it("formats numbers, booleans and ISO dates and leaves other text alone", () => {
+    expect(formatSheetCell(null, "en-US")).toBe("");
+    expect(formatSheetCell(1234.5, "en-US")).toBe("1,234.5");
+    expect(formatSheetCell(true, "en-US")).toBe("TRUE");
+    expect(formatSheetCell("2025-03-04", "en-US")).toBe("Mar 4, 2025");
+    expect(formatSheetCell("hello", "en-US")).toBe("hello");
+  });
+  it("recognises numeric cells", () => {
+    expect(isNumericSheetCell(3)).toBe(true);
+    expect(isNumericSheetCell("1,250.50")).toBe(true);
+    expect(isNumericSheetCell("abc")).toBe(false);
   });
 });

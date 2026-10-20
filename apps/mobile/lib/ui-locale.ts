@@ -1,3 +1,15 @@
+import type { UiLocale } from "@rakazo/core";
+import { pickUiLocale } from "@rakazo/core";
+
+export type { UiLocale } from "@rakazo/core";
+export {
+  isUiLocale,
+  normalizeUiLocale,
+  UI_LOCALE_LABELS,
+  UI_LOCALE_STORAGE_KEY,
+} from "@rakazo/core";
+
+// Picker order differs from web, so the mobile list stays here.
 export const UI_LOCALES = [
   "en",
   "zh-CN",
@@ -9,54 +21,11 @@ export const UI_LOCALES = [
   "hi",
   "ko",
   "tr",
-] as const;
-
-export type UiLocale = (typeof UI_LOCALES)[number];
-
-export const UI_LOCALE_STORAGE_KEY = "rakazo.uiLocale";
-
-export const UI_LOCALE_LABELS: Record<UiLocale, string> = {
-  en: "English",
-  "zh-CN": "简体中文",
-  ru: "Русский",
-  de: "Deutsch",
-  es: "Español",
-  fr: "Français",
-  "pt-BR": "Português (Brasil)",
-  hi: "हिन्दी",
-  ko: "한국어",
-  tr: "Türkçe",
-};
+] as const satisfies readonly UiLocale[];
 
 /** Convert an internal locale identifier to the document language tag. */
 export function htmlLangForLocale(locale: string): string {
   return locale === "zh-CN" ? "zh-CN" : locale;
-}
-
-/** Return whether a value is one of the supported mobile UI locales. */
-export function isUiLocale(value: string | null | undefined): value is UiLocale {
-  return (UI_LOCALES as readonly string[]).includes(value ?? "");
-}
-
-/** Normalize BCP-47 tags to a mobile UI locale, else `en`. */
-export function normalizeUiLocale(raw: string | null | undefined): UiLocale {
-  if (!raw) return "en";
-  const normalized = raw.trim().toLowerCase().replace(/_/g, "-");
-  // Simplified Chinese only. Do not fold zh-TW / zh-HK / zh-Hant into zh-CN.
-  if (
-    normalized === "zh" ||
-    normalized === "zh-cn" ||
-    normalized === "zh-hans" ||
-    normalized === "zh-sg" ||
-    normalized.startsWith("zh-hans-") ||
-    normalized.startsWith("zh-cn-")
-  ) {
-    return "zh-CN";
-  }
-  if (normalized === "ru" || normalized.startsWith("ru-")) return "ru";
-  if (normalized === "pt" || normalized.startsWith("pt-")) return "pt-BR";
-  const primary = normalized.split("-")[0] ?? "";
-  return isUiLocale(primary) ? primary : "en";
 }
 
 export type ResolveUiLocaleOptions = {
@@ -69,8 +38,5 @@ export type ResolveUiLocaleOptions = {
  * Order: saved choice → `EXPO_PUBLIC_DEFAULT_UI_LOCALE` → device language → English.
  */
 export function resolveUiLocale(options: ResolveUiLocaleOptions = {}): UiLocale {
-  if (options.stored) return normalizeUiLocale(options.stored);
-  if (options.envDefault) return normalizeUiLocale(options.envDefault);
-  if (options.deviceLanguage) return normalizeUiLocale(options.deviceLanguage);
-  return "en";
+  return pickUiLocale(options.stored, options.envDefault, options.deviceLanguage);
 }

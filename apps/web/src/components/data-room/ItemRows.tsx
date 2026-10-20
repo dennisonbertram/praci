@@ -19,7 +19,6 @@ import {
 } from "@rakazo/ui-web";
 import { FileImage, FileSpreadsheet, FileText, Folder } from "lucide-react";
 import {
-  cloneElement,
   type KeyboardEvent,
   type ReactElement,
   type ReactNode,
@@ -30,8 +29,8 @@ import {
 import { dataRoomThumbnailUrl, splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { dateText, isSettled, statusLabel, typeLabel } from "./format";
-import { type ItemAction, ItemMenu } from "./ItemMenu";
-import { type SendTarget, SendToAgentMenu } from "./SendToAgent";
+import { type ItemAction, ItemMenu, ItemMenuItems } from "./ItemMenu";
+import type { SendTarget } from "./SendToAgent";
 import type { Row, SortField } from "./use-data-room-list";
 
 /** What the list tells the page about pointer, keyboard and menu use. */
@@ -50,7 +49,7 @@ export type RowInteraction = {
   onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
 };
 
-/** A file's row or tile, with "Send to agent" on a right-click (or a long press on touch). */
+/** A file's row or tile, with the item menu on a right-click (or a long press on touch). */
 function FileContext({
   item,
   o,
@@ -62,16 +61,18 @@ function FileContext({
   render: ReactElement<{ children?: ReactNode }>;
   children: ReactNode;
 }) {
-  if (!o.agents?.length || !o.onSendToAgent) return cloneElement(render, undefined, children);
   return (
     <ContextMenu>
       <ContextMenuTrigger render={render}>{children}</ContextMenuTrigger>
       {/* React events bubble out of the portal into the row, which would pin it. */}
       <ContextMenuContent onClick={(event) => event.stopPropagation()}>
-        <SendToAgentMenu
+        <ItemMenuItems
           menu="context"
+          item={item}
+          onAction={o.onAction}
+          canRetry={item.status === "failed"}
           agents={o.agents}
-          onPick={(agent) => o.onSendToAgent?.(item, agent)}
+          onSendToAgent={o.onSendToAgent}
         />
       </ContextMenuContent>
     </ContextMenu>
