@@ -169,6 +169,31 @@ function identityParts(input: CompanyEntityImportInput["entity"]): Array<[string
   });
 }
 
+function identityPartsFor(
+  kind: string,
+  displayName: string,
+  attrs: Record<string, unknown>,
+): Array<[string, string, string]> {
+  return identityParts({
+    kind,
+    displayName,
+    attrs,
+    confidence: 0,
+  } as CompanyEntityImportInput["entity"]);
+}
+
+function identityFieldPath(identityType: string): string {
+  if (identityType === "name") return "displayName";
+  const attr = {
+    email: "workEmails",
+    slack: "slackId",
+    github: "githubLogin",
+    linear: "linearId",
+    domain: "domain",
+  }[identityType];
+  return attr ? `attrs.${attr}` : `attrs.${identityType}`;
+}
+
 async function requireMember(db: CompanyDb, scope: Scope): Promise<void> {
   const member = await db.spaceMember.findUnique({
     where: { spaceId_userId: { spaceId: scope.spaceId, userId: scope.ownerUserId } },
@@ -296,13 +321,13 @@ async function mapEntity(
   db: CompanyDb,
   scope: Scope,
   row: Prisma.CompanyEntityGetPayload<{ include: typeof ENTITY_INCLUDE }>,
-  options: { includeRejected?: boolean } = {},
+  options: { includeMerged?: boolean; includeRejected?: boolean } = {},
 ): Promise<CompanyEntityRecord> {
   const parentMerge = await db.companyMerge.findFirst({
     where: { ...scope, sourceEntityId: row.id },
     select: { survivorEntityId: true },
   });
-  if (parentMerge) {
+  if (parentMerge && !options.includeMerged) {
     const survivor = await db.companyEntity.findFirstOrThrow({
       where: { ...scope, id: parentMerge.survivorEntityId },
       include: ENTITY_INCLUDE,
@@ -460,16 +485,86 @@ async function resolveSurvivorId(db: CompanyDb, scope: Scope, entityId: string):
   return merge?.survivorEntityId ?? entityId;
 }
 
+async function canonicalEventEntityIds(
+  db: CompanyDb,
+  scope: Scope,
+  entityIds: string[],
+): Promise<string[]> {
+  const uniqueIds = [...new Set(entityIds)];
+  if (uniqueIds.length === 0) return [];
+  const scopedEntities = await db.companyEntity.findMany({
+    where: { ...scope, id: { in: uniqueIds } },
+    select: { id: true },
+  });
+  if (scopedEntities.length !== uniqueIds.length) {
+    throw new IsolationError("Event subjects must be scoped company entities");
+  }
+  return [
+    ...new Set(
+      await Promise.all(uniqueIds.map((entityId) => resolveSurvivorId(db, scope, entityId))),
+    ),
+  ].sort();
+}
+
+function entitySubjectKey(entityIds: string[]): string {
+  return `entities:${JSON.stringify([...new Set(entityIds)].sort())}`;
+}
+
+async function canonicalEventSubjectKey(
+  db: CompanyDb,
+  scope: Scope,
+  subjectKey: string,
+): Promise<string> {
+  if (!subjectKey.startsWith("entities:")) return subjectKey;
+  let entityIds: unknown;
+  try {
+    entityIds = JSON.parse(subjectKey.slice("entities:".length));
+  } catch {
+    throw new IsolationError("Invalid stored event subject key");
+  }
+  if (!Array.isArray(entityIds) || !entityIds.every((id) => typeof id === "string")) {
+    throw new IsolationError("Invalid stored event subject key");
+  }
+  return entitySubjectKey(await canonicalEventEntityIds(db, scope, entityIds));
+}
+
+async function eventSubjectKeyForFingerprint(
+  db: CompanyDb,
+  scope: Scope,
+  event: Pick<Prisma.CompanyEventGetPayload<object>, "id" | "subjectKey">,
+): Promise<string> {
+  if (event.subjectKey.startsWith("legacy:")) {
+    const links = await db.companyEventEntity.findMany({
+      where: { ...scope, eventId: event.id },
+      select: { entityId: true },
+    });
+    if (links.length > 0) {
+      return entitySubjectKey(
+        await canonicalEventEntityIds(
+          db,
+          scope,
+          links.map((link) => link.entityId),
+        ),
+      );
+    }
+  }
+  return canonicalEventSubjectKey(db, scope, event.subjectKey);
+}
+
 type EvidenceLocator = CompanyEntityImportInput["evidence"];
 
-function sourceKey(evidence: EvidenceLocator, claimFingerprint: string): string {
+function sourceLocatorKey(evidence: EvidenceLocator): string {
   return `source:${hash([
     evidence.sourceKind,
     evidence.connectionId ?? "",
     evidence.mcpServerId ?? "",
     evidence.dataRoomItemId ?? (evidence.sourceKind === "data_room" ? evidence.sourceItemId : ""),
     evidence.sourceItemId,
-  ])}:claim:${claimFingerprint}`;
+  ])}`;
+}
+
+function sourceKey(evidence: EvidenceLocator, claimFingerprint: string): string {
+  return `${sourceLocatorKey(evidence)}:claim:${claimFingerprint}`;
 }
 
 function claimFingerprintFromSourceKey(value: string): string | null {
@@ -585,11 +680,13 @@ function strongEntityAliases(input: CompanyEntityImportInput["entity"]): string[
   return identifiers.map((identifier) => `${input.kind}:${identifier}`);
 }
 
-function entityAliases(input: CompanyEntityImportInput["entity"]): string[] {
+function entityAliases(input: CompanyEntityImportInput["entity"], sourceKey: string): string[] {
   const strong = strongEntityAliases(input);
-  return strong.length > 0
-    ? strong
-    : [`${input.kind}:name:${normalizeCompanyName(input.displayName)}`];
+  const aliases =
+    strong.length > 0 || input.kind === "person"
+      ? strong
+      : [`${input.kind}:name:${normalizeCompanyName(input.displayName)}`];
+  return [...aliases, `source:${sourceKey}`];
 }
 
 async function linkedDataRoomItemId(
@@ -646,10 +743,6 @@ async function importEntity(
   raw: CompanyEntityImportInput,
 ): Promise<CompanyWriteResult> {
   const input = CompanyEntityImportInputSchema.parse(raw);
-  const aliases = entityAliases(input.entity);
-  const rejection = await findSuppression(db, scope, input.entity.kind, aliases);
-  if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
-
   const identifiers = identityParts(input.entity);
   const strongIdentifiers = identifiers
     .filter(([, identityType]) => identityType !== "name")
@@ -665,6 +758,10 @@ async function importEntity(
       : {}),
   });
   const key = sourceKey(input.evidence, claimFingerprint);
+  const aliases = entityAliases(input.entity, key);
+  const rejection = await findSuppression(db, scope, input.entity.kind, aliases);
+  if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
+
   const existingEvidence = await db.companyEvidence.findFirst({
     where: {
       ...scope,
@@ -674,12 +771,16 @@ async function importEntity(
     select: { factId: true },
   });
 
-  const matches = identifiers.length
+  const matchingIdentifiers =
+    input.entity.kind === "organisation"
+      ? identifiers.filter(([, identityType]) => identityType !== "name")
+      : identifiers;
+  const matches = matchingIdentifiers.length
     ? await db.companyIdentity.findMany({
         where: {
           ...scope,
           entityKind: input.entity.kind,
-          OR: identifiers.map(([, identityType, identityValue]) => ({
+          OR: matchingIdentifiers.map(([, identityType, identityValue]) => ({
             identityType,
             identityValue,
           })),
@@ -732,15 +833,54 @@ async function importEntity(
     });
     if (company) entityId = company.id;
   } else if (input.entity.kind === "organisation") {
-    const existing = await db.companyEntity.findFirst({
+    const normalizedName = normalizeCompanyName(input.entity.displayName);
+    const sameName = await db.companyEntity.findMany({
       where: {
         ...scope,
         kind: "organisation",
-        normalizedName: normalizeCompanyName(input.entity.displayName),
+        normalizedName,
       },
       include: ENTITY_INCLUDE,
     });
-    if (existing) entityId = existing.id;
+    const incomingDomain = input.entity.attrs.domain;
+    const matchingDomains = incomingDomain
+      ? sameName.filter(
+          (existing) => (existing.attrs as { domain?: unknown }).domain === incomingDomain,
+        )
+      : [];
+    const matchingDomain = matchingDomains[0];
+    const domainlessMatches = sameName.filter(
+      (existing) => !(existing.attrs as { domain?: unknown }).domain,
+    );
+    const domainlessMatch = domainlessMatches[0];
+    if (incomingDomain && matchingDomains.length === 1 && matchingDomain) {
+      entityId = matchingDomain.id;
+    } else if (
+      !incomingDomain &&
+      sameName.length === 1 &&
+      domainlessMatches.length === 1 &&
+      domainlessMatch
+    ) {
+      entityId = domainlessMatch.id;
+    } else if (sameName.length > 0) {
+      await createCandidate(db, scope, {
+        kind: "organisation",
+        reason:
+          incomingDomain && matchingDomains.length === 0
+            ? "conflicting_organisation_domain"
+            : "ambiguous_organisation_name",
+        entityIds: sameName.map((existing) => existing.id),
+        proposedFact: input.entity,
+        sourceKind: input.evidence.sourceKind,
+        connectionId: input.evidence.connectionId ?? null,
+        mcpServerId: input.evidence.mcpServerId ?? null,
+        dataRoomItemId: await linkedDataRoomItemId(db, scope, input.evidence),
+        sourceItemId: input.evidence.sourceItemId,
+        sourceKey: key,
+        quote: input.evidence.quote,
+        contentHash: input.evidence.contentHash,
+      });
+    }
   }
 
   if (!entityId && input.entity.kind === "person") {
@@ -876,9 +1016,23 @@ async function importEntity(
         confidence: input.entity.confidence,
       },
     });
-    if (identifiers.length > 0 && matchedGroups.length <= 1) {
+    const persistedIdentifiers = identifiers.filter(([, identityType, identityValue]) => {
+      const fieldPath = identityFieldPath(identityType);
+      if (!effectiveEntity.lockedFields.includes(fieldPath)) return true;
+      const lockedValue =
+        fieldPath === "displayName"
+          ? effectiveEntity.displayName
+          : effectiveEntity.attrs[fieldPath.slice("attrs.".length)];
+      if (identityType === "name") {
+        return normalizeCompanyName(String(lockedValue ?? "")) === identityValue;
+      }
+      return Array.isArray(lockedValue)
+        ? lockedValue.includes(identityValue)
+        : lockedValue === identityValue;
+    });
+    if (persistedIdentifiers.length > 0 && matchedGroups.length <= 1) {
       await db.companyIdentity.createMany({
-        data: identifiers.map(([entityKind, identityType, identityValue]) => ({
+        data: persistedIdentifiers.map(([entityKind, identityType, identityValue]) => ({
           ...scope,
           entityId: originalEntityId,
           entityKind,
@@ -994,6 +1148,8 @@ async function importEdge(
       },
     }));
   const contradicts =
+    (row.lockedFields.includes("fromId") && row.fromId !== input.edge.fromId) ||
+    (row.lockedFields.includes("toId") && row.toId !== input.edge.toId) ||
     (row.lockedFields.includes("relation") && row.relation !== input.edge.relation) ||
     (row.lockedFields.includes("startsOn") &&
       JSON.stringify(partialDate(row.startsOn, row.startsPrecision)) !==
@@ -1012,9 +1168,23 @@ async function importEdge(
     edgeClaimFingerprint(row),
     fingerprint,
   );
+  const updateData: Prisma.CompanyEdgeUncheckedUpdateInput = { claimFingerprints };
+  if (!row.lockedFields.includes("fromId")) updateData.fromId = input.edge.fromId;
+  if (!row.lockedFields.includes("toId")) updateData.toId = input.edge.toId;
+  if (!row.lockedFields.includes("relation")) updateData.relation = input.edge.relation;
+  if (!row.lockedFields.includes("startsOn")) {
+    updateData.startsOn = startsOn;
+    updateData.startsPrecision = datePrecision(input.edge.startsOn);
+  }
+  if (!row.lockedFields.includes("endsOn")) {
+    updateData.endsOn = endsOn;
+    updateData.endsPrecision = datePrecision(input.edge.endsOn);
+  }
+  if (!row.lockedFields.includes("role")) updateData.role = input.edge.role ?? null;
+  if (!row.lockedFields.includes("confidence")) updateData.confidence = input.edge.confidence;
   const updated = await db.companyEdge.update({
     where: { id: row.id },
-    data: { claimFingerprints },
+    data: updateData,
   });
   const edgeEvidence = await evidenceCreateData(
     db,
@@ -1051,10 +1221,17 @@ async function importEvent(
 ): Promise<CompanyEventRecord | CompanySuppressedResult> {
   const input = CompanyEventImportInputSchema.parse(raw);
   const normalizedTitle = normalizeCompanyName(input.event.title);
-  const fingerprint = hash({
+  const canonicalEntityIds = await canonicalEventEntityIds(db, scope, input.event.entityIds);
+  const subjectKey =
+    canonicalEntityIds.length > 0
+      ? entitySubjectKey(canonicalEntityIds)
+      : sourceLocatorKey(input.evidence);
+  const fingerprint = eventClaimFingerprint({
     kind: input.event.kind,
     normalizedTitle,
-    occursOn: input.event.occursOn ?? null,
+    occursOn: dateValue(input.event.occursOn),
+    occursPrecision: datePrecision(input.event.occursOn),
+    subjectKey,
   });
   const key = sourceKey(input.evidence, fingerprint);
   const rejection = await findFactSuppression(db, scope, "event", [
@@ -1063,22 +1240,51 @@ async function importEvent(
   ]);
   if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
   const replayId = await findClaimReplayId(db, scope, "event", fingerprint);
-  const replay =
-    replayId === null
-      ? null
-      : await db.companyEvent.findFirst({ where: { ...scope, id: replayId } });
-  if (replay?.status === "rejected") throw new IsolationError("Rejected events cannot be replayed");
+  const candidates = await db.companyEvent.findMany({
+    where: {
+      ...scope,
+      kind: input.event.kind,
+      normalizedTitle,
+      occursOn: dateValue(input.event.occursOn),
+      occursPrecision: datePrecision(input.event.occursOn),
+    },
+  });
+  const matchingCandidates: typeof candidates = [];
+  for (const candidate of candidates) {
+    const savedSubjectKey = await canonicalEventSubjectKey(db, scope, candidate.subjectKey);
+    let matchesSubject = savedSubjectKey === subjectKey;
+    if (!matchesSubject && subjectKey.startsWith("entities:")) {
+      const links = await db.companyEventEntity.findMany({
+        where: { ...scope, eventId: candidate.id },
+        select: { entityId: true },
+      });
+      const linkedSubjectKey = entitySubjectKey(
+        await canonicalEventEntityIds(
+          db,
+          scope,
+          links.map((link) => link.entityId),
+        ),
+      );
+      matchesSubject = linkedSubjectKey === subjectKey;
+    }
+    if (matchesSubject) matchingCandidates.push(candidate);
+  }
+  const matchingIds = [
+    ...new Set([
+      ...(replayId ? [replayId] : []),
+      ...matchingCandidates.map((candidate) => candidate.id),
+    ]),
+  ];
+  if (matchingIds.length > 1) {
+    throw new IsolationError("Ambiguous event subject replay");
+  }
+  const eventId = matchingIds[0];
   const event =
-    replay ??
-    (await db.companyEvent.findFirst({
-      where: {
-        ...scope,
-        kind: input.event.kind,
-        normalizedTitle,
-        occursOn: dateValue(input.event.occursOn),
-        occursPrecision: input.event.occursOn?.precision ?? null,
-      },
-    }));
+    eventId === undefined
+      ? null
+      : (matchingCandidates.find((candidate) => candidate.id === eventId) ??
+        (await db.companyEvent.findFirst({ where: { ...scope, id: eventId } })));
+  if (event?.status === "rejected") throw new IsolationError("Rejected events cannot be replayed");
   const row =
     event ??
     (await db.companyEvent.create({
@@ -1088,6 +1294,7 @@ async function importEvent(
         kind: input.event.kind,
         title: input.event.title,
         normalizedTitle,
+        subjectKey,
         occursOn: dateValue(input.event.occursOn),
         occursPrecision: input.event.occursOn?.precision ?? null,
         endsOn: dateValue(input.event.endsOn),
@@ -1104,12 +1311,17 @@ async function importEvent(
   });
   const existingEntityIds = linksBefore.map((link) => link.entityId);
   const entityIdsLocked = row.lockedFields.includes("entityIds");
-  const incomingEntityIds = new Set(input.event.entityIds);
-  const existingEntityIdSet = new Set(existingEntityIds);
-  const contradictsEntityIds =
-    entityIdsLocked &&
-    (incomingEntityIds.size !== existingEntityIdSet.size ||
-      [...incomingEntityIds].some((entityId) => !existingEntityIdSet.has(entityId)));
+  const incomingEntityIds = new Set(canonicalEntityIds);
+  const existingEntityIdSet = new Set(await canonicalEventEntityIds(db, scope, existingEntityIds));
+  const entityIdsMatch =
+    incomingEntityIds.size === existingEntityIdSet.size &&
+    [...incomingEntityIds].every((entityId) => existingEntityIdSet.has(entityId));
+  const contradictsEntityIds = entityIdsLocked && !entityIdsMatch;
+  const amountCurrencyLocked =
+    row.lockedFields.includes("amountCents") || row.lockedFields.includes("currency");
+  const amountCurrencyChanged =
+    (row.amountCents === null ? null : Number(row.amountCents)) !==
+      (input.event.amountCents ?? null) || row.currency !== (input.event.currency ?? null);
   const contradicts =
     (row.lockedFields.includes("stream") && row.stream !== input.event.stream) ||
     (row.lockedFields.includes("kind") && row.kind !== input.event.kind) ||
@@ -1120,9 +1332,7 @@ async function importEvent(
     (row.lockedFields.includes("endsOn") &&
       JSON.stringify(partialDate(row.endsOn, row.endsPrecision)) !==
         JSON.stringify(input.event.endsOn ?? null)) ||
-    (row.lockedFields.includes("amountCents") &&
-      Number(row.amountCents ?? 0) !== (input.event.amountCents ?? 0)) ||
-    (row.lockedFields.includes("currency") && row.currency !== (input.event.currency ?? null)) ||
+    (amountCurrencyLocked && amountCurrencyChanged) ||
     (row.lockedFields.includes("confidence") && row.confidence !== input.event.confidence) ||
     contradictsEntityIds;
   const claimFingerprints = await currentClaimFingerprints(
@@ -1134,9 +1344,32 @@ async function importEvent(
     eventClaimFingerprint(row),
     fingerprint,
   );
+  const updateData: Prisma.CompanyEventUpdateInput = {
+    claimFingerprints,
+    subjectKey: entityIdsLocked && !entityIdsMatch ? row.subjectKey : subjectKey,
+  };
+  if (!row.lockedFields.includes("stream")) updateData.stream = input.event.stream;
+  if (!row.lockedFields.includes("kind")) updateData.kind = input.event.kind;
+  if (!row.lockedFields.includes("title")) {
+    updateData.title = input.event.title;
+    updateData.normalizedTitle = normalizedTitle;
+  }
+  if (!row.lockedFields.includes("occursOn")) {
+    updateData.occursOn = dateValue(input.event.occursOn);
+    updateData.occursPrecision = datePrecision(input.event.occursOn);
+  }
+  if (!row.lockedFields.includes("endsOn")) {
+    updateData.endsOn = dateValue(input.event.endsOn);
+    updateData.endsPrecision = datePrecision(input.event.endsOn);
+  }
+  if (!row.lockedFields.includes("amountCents") && !row.lockedFields.includes("currency")) {
+    updateData.amountCents = input.event.amountCents ?? null;
+    updateData.currency = input.event.currency ?? null;
+  }
+  if (!row.lockedFields.includes("confidence")) updateData.confidence = input.event.confidence;
   const updated = await db.companyEvent.update({
     where: { id: row.id },
-    data: { claimFingerprints },
+    data: updateData,
   });
   if (!entityIdsLocked) {
     await db.companyEventEntity.createMany({
@@ -1249,7 +1482,53 @@ async function editEntity(
   if (row.status === "rejected") throw new IsolationError("Rejected entities cannot be edited");
   if (row.kind !== input.kind) throw new IsolationError("Entity kind does not match edit");
   const updates = touchedFields(input);
-  const attrs = { ...(row.attrs as Record<string, unknown>), ...(input.attrs ?? {}) };
+  const currentAttrs = row.attrs as Record<string, unknown>;
+  const attrs = { ...currentAttrs, ...(input.attrs ?? {}) };
+  const displayName = input.displayName ?? row.displayName;
+  const previousIdentityParts = identityPartsFor(row.kind, row.displayName, currentAttrs);
+  const nextIdentityParts = identityPartsFor(row.kind, displayName, attrs);
+  const previousIdentityValues = new Map<string, string[]>();
+  const nextIdentityValues = new Map<string, string[]>();
+  for (const [, identityType, identityValue] of previousIdentityParts) {
+    previousIdentityValues.set(identityType, [
+      ...(previousIdentityValues.get(identityType) ?? []),
+      identityValue,
+    ]);
+  }
+  for (const [, identityType, identityValue] of nextIdentityParts) {
+    nextIdentityValues.set(identityType, [
+      ...(nextIdentityValues.get(identityType) ?? []),
+      identityValue,
+    ]);
+  }
+  const identityTypes = new Set([...previousIdentityValues.keys(), ...nextIdentityValues.keys()]);
+  const changedIdentityTypes = new Set(
+    [...identityTypes].filter(
+      (identityType) =>
+        JSON.stringify(previousIdentityValues.get(identityType) ?? []) !==
+        JSON.stringify(nextIdentityValues.get(identityType) ?? []),
+    ),
+  );
+  const touchedIdentityTypes = new Map<string, string>();
+  for (const [path] of updates) {
+    if (path === "displayName") {
+      if (previousIdentityValues.has("name") || nextIdentityValues.has("name")) {
+        touchedIdentityTypes.set("name", path);
+      }
+      continue;
+    }
+    const identityType = {
+      "attrs.workEmails": "email",
+      "attrs.slackId": "slack",
+      "attrs.githubLogin": "github",
+      "attrs.linearId": "linear",
+      "attrs.domain": "domain",
+    }[path];
+    if (identityType) touchedIdentityTypes.set(identityType, path);
+  }
+  for (const identityType of touchedIdentityTypes.keys()) {
+    changedIdentityTypes.add(identityType);
+  }
   const lockedFields = [...new Set([...row.lockedFields, ...updates.map(([path]) => path)])];
   const evidenceIds = await Promise.all(
     updates.map(([path, value]) => manualEvidence(db, scope, "entity", row.id, path, value)),
@@ -1276,18 +1555,23 @@ async function editEntity(
       lockedFields,
     },
   });
-  const workEmails = input.kind === "person" ? input.attrs?.workEmails : undefined;
-  if (workEmails && workEmails.length > 0) {
-    await db.companyIdentity.createMany({
-      data: workEmails.map((identityValue) => ({
-        ...scope,
-        entityId: row.id,
-        entityKind: row.kind,
-        identityType: "email",
-        identityValue,
-      })),
-      skipDuplicates: true,
+  for (const identityType of changedIdentityTypes) {
+    await db.companyIdentity.deleteMany({
+      where: { ...scope, entityId: row.id, identityType },
     });
+    const identityValues = nextIdentityValues.get(identityType) ?? [];
+    if (identityValues.length > 0) {
+      await db.companyIdentity.createMany({
+        data: identityValues.map((identityValue) => ({
+          ...scope,
+          entityId: row.id,
+          entityKind: row.kind,
+          identityType,
+          identityValue,
+        })),
+        skipDuplicates: true,
+      });
+    }
   }
   return mapEntity(
     db,
@@ -1354,12 +1638,27 @@ async function rejectEntity(
     where: { ...scope, entityId: { in: [...groupIds] } },
     select: { entityId: true, entityKind: true, identityType: true, identityValue: true },
   });
+  const sourceEvidence = await db.companyEvidence.findMany({
+    where: {
+      ...scope,
+      factKind: "entity",
+      factId: { in: [...groupIds] },
+      NOT: { sourceKind: "manual" },
+    },
+    select: { sourceKey: true },
+  });
   const strongAliases = identities
     .filter((identity) => identity.identityType !== "name")
     .map((identity) => `${row.kind}:${identity.identityType}:${identity.identityValue}`);
-  const aliases = strongAliases.length
-    ? strongAliases
-    : groupRows.map((member) => `${member.kind}:name:${member.normalizedName}`);
+  const nameAliases =
+    row.kind === "person"
+      ? []
+      : groupRows.map((member) => `${member.kind}:name:${member.normalizedName}`);
+  const aliases = [
+    ...strongAliases,
+    ...sourceEvidence.map((evidence) => `source:${evidence.sourceKey}`),
+    ...(strongAliases.length > 0 ? [] : nameAliases),
+  ];
   const uniqueAliases = [...new Set(aliases)].sort();
   await db.companyRejection.upsert({
     where: { spaceId_ownerUserId_fingerprint: { ...scope, fingerprint: hash(uniqueAliases) } },
@@ -1451,6 +1750,12 @@ async function editEvent(
   const row = await db.companyEvent.findFirstOrThrow({ where: { ...scope, id: input.eventId } });
   if (row.status === "rejected") throw new IsolationError("Rejected events cannot be edited");
   const { eventId: _eventId, entityIds, ...fields } = input;
+  const canonicalEditedEntityIds =
+    entityIds && entityIds.length > 0 ? await canonicalEventEntityIds(db, scope, entityIds) : [];
+  const correctedSubjectKey =
+    entityIds !== undefined && entityIds.length > 0 && !row.subjectKey.startsWith("source:")
+      ? entitySubjectKey(canonicalEditedEntityIds)
+      : row.subjectKey;
   const updates = Object.entries(fields).filter(([, value]) => value !== undefined);
   const data: Prisma.CompanyEventUpdateInput = {};
   for (const [field, value] of updates) {
@@ -1469,6 +1774,7 @@ async function editEvent(
   const correctedEvent = {
     ...row,
     kind: input.kind ?? row.kind,
+    subjectKey: correctedSubjectKey,
     normalizedTitle:
       input.title === undefined ? row.normalizedTitle : normalizeCompanyName(input.title),
     occursOn: input.occursOn === undefined ? row.occursOn : dateValue(input.occursOn),
@@ -1501,7 +1807,7 @@ async function editEvent(
   }
   const updated = await db.companyEvent.update({
     where: { id: row.id },
-    data: { ...data, lockedFields, claimFingerprints },
+    data: { ...data, lockedFields, claimFingerprints, subjectKey: correctedSubjectKey },
   });
   const links = await db.companyEventEntity.findMany({
     where: { ...scope, eventId: row.id },
@@ -1575,11 +1881,13 @@ function eventClaimFingerprint(event: {
   normalizedTitle: string;
   occursOn: Date | null;
   occursPrecision: string | null;
+  subjectKey: string;
 }): string {
   return hash({
     kind: event.kind,
     normalizedTitle: event.normalizedTitle,
     occursOn: partialDate(event.occursOn, event.occursPrecision),
+    subjectKey: event.subjectKey,
   });
 }
 
@@ -1598,7 +1906,14 @@ async function rejectFact(
   const claimFingerprint =
     factKind === "edge"
       ? edgeClaimFingerprint(current as Prisma.CompanyEdgeGetPayload<object>)
-      : eventClaimFingerprint(current as Prisma.CompanyEventGetPayload<object>);
+      : eventClaimFingerprint({
+          ...(current as Prisma.CompanyEventGetPayload<object>),
+          subjectKey: await eventSubjectKeyForFingerprint(
+            db,
+            scope,
+            current as Prisma.CompanyEventGetPayload<object>,
+          ),
+        });
   const sourceEvidence = await db.companyEvidence.findMany({
     where: { ...scope, factKind, factId },
     select: { sourceKey: true },
@@ -1949,7 +2264,12 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
       const records = await Promise.all(
         expandedRows
           .filter((row) => !hidden.has(row.id))
-          .map((row) => mapEntity(prisma, scope, row, { includeRejected: filter.includeRejected })),
+          .map((row) =>
+            mapEntity(prisma, scope, row, {
+              includeMerged: filter.includeMerged,
+              includeRejected: filter.includeRejected,
+            }),
+          ),
       );
       return [...new Map(records.map((record) => [record.id, record])).values()];
     },
@@ -1995,7 +2315,10 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
       });
       if (row?.status === "rejected" && !options.includeRejected) return null;
       return row
-        ? mapEntity(prisma, scope, row, { includeRejected: options.includeRejected })
+        ? mapEntity(prisma, scope, row, {
+            includeMerged: options.includeMerged,
+            includeRejected: options.includeRejected,
+          })
         : null;
     },
     evidence: async (entityId: string, options: { includeRejected?: boolean } = {}) => {

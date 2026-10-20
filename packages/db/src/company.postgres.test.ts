@@ -263,6 +263,152 @@ describePostgres("company foundation (PostgreSQL)", () => {
     expect(CompanyEntityRecordSchema.parse(first)).toMatchObject({ id: first.id, kind: "person" });
   });
 
+  it("keeps same-name organisations separate when domains conflict", async () => {
+    const company = companyForActor(prisma, actor);
+    const organisation = (domain: string | undefined, sourceItemId: string) => ({
+      entity: {
+        kind: "organisation" as const,
+        displayName: "Shared organisation",
+        attrs: domain ? { domain } : {},
+        confidence: 0.9,
+      },
+      evidence: evidence(sourceItemId, `${sourceItemId}-hash`),
+    });
+    const first = persisted(
+      await company.importEntity(organisation("one.example.test", "organisation-one")),
+    );
+    const second = persisted(
+      await company.importEntity(organisation("two.example.test", "organisation-two")),
+    );
+    expect(second.id).not.toBe(first.id);
+    expect(
+      await company.importEntity(organisation("one.example.test", "organisation-one-replay")),
+    ).toMatchObject({ id: first.id });
+    expect(
+      (await company.candidates()).some(
+        (item) =>
+          item.kind === "organisation" &&
+          item.reason === "conflicting_organisation_domain" &&
+          item.entityIds.includes(first.id),
+      ),
+    ).toBe(true);
+
+    const ambiguousNameOnly = persisted(
+      await company.importEntity(organisation(undefined, "organisation-name-only")),
+    );
+    expect([first.id, second.id]).not.toContain(ambiguousNameOnly.id);
+    expect(
+      (await company.candidates()).some(
+        (item) =>
+          item.kind === "organisation" &&
+          item.reason === "ambiguous_organisation_name" &&
+          item.entityIds.includes(first.id),
+      ),
+    ).toBe(true);
+
+    const nameOnly = organisation(undefined, "organisation-name-only-safe");
+    nameOnly.entity.displayName = "Unambiguous organisation";
+    const nameOnlyFirst = persisted(await company.importEntity(nameOnly));
+    const nameOnlyReplay = persisted(
+      await company.importEntity({
+        ...nameOnly,
+        evidence: evidence(
+          "organisation-name-only-safe-replay",
+          "organisation-name-only-safe-replay-hash",
+        ),
+      }),
+    );
+    expect(nameOnlyReplay.id).toBe(nameOnlyFirst.id);
+  });
+
+  it("reconciles edited identity rows and preserves locked identities on replay", async () => {
+    const company = companyForActor(prisma, actor);
+    const oldEmail = `identity-old-${suffix}@example.test`;
+    const newEmail = `identity-new-${suffix}@example.test`;
+    const originalInput = person(
+      `Identity edit ${suffix}`,
+      "identity-edit-source",
+      "identity-edit-original-hash",
+      oldEmail,
+    );
+    const original = persisted(await company.importEntity(originalInput));
+    await company.edit({
+      entityId: original.id,
+      kind: "person",
+      attrs: { workEmails: [newEmail] },
+    });
+    const replay = persisted(
+      await company.importEntity({
+        ...originalInput,
+        evidence: {
+          ...originalInput.evidence,
+          contentHash: "identity-edit-replay-hash",
+        },
+      }),
+    );
+    expect(replay.id).toBe(original.id);
+    expect(replay.attrs).toMatchObject({ workEmails: [newEmail] });
+    expect(replay.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentHash: "identity-edit-replay-hash",
+          stance: "contradicts",
+        }),
+      ]),
+    );
+    expect(
+      await prisma.companyIdentity.findMany({
+        where: { spaceId, ownerUserId: userId, entityId: original.id, identityType: "email" },
+        select: { identityValue: true },
+      }),
+    ).toEqual([{ identityValue: newEmail }]);
+
+    const oldEmailImport = persisted(
+      await company.importEntity({
+        ...originalInput,
+        evidence: evidence("identity-old-new-source", "identity-old-new-source-hash"),
+      }),
+    );
+    expect(oldEmailImport.id).not.toBe(original.id);
+    const newEmailImport = persisted(
+      await company.importEntity({
+        ...originalInput,
+        entity: { ...originalInput.entity, attrs: { workEmails: [newEmail] } },
+        evidence: evidence("identity-new-source", "identity-new-source-hash"),
+      }),
+    );
+    expect(newEmailImport.id).toBe(original.id);
+  });
+
+  it("scopes name-only person rejection aliases to their source", async () => {
+    const company = companyForActor(prisma, actor);
+    const rejectedInput = person(
+      `Rejected same-name ${suffix}`,
+      "rejected-name-source",
+      "rejected-name-original-hash",
+    );
+    const rejected = persisted(await company.importEntity(rejectedInput));
+    await company.reject(rejected.id, "Synthetic name-only rejection");
+    const otherSource = persisted(
+      await company.importEntity({
+        ...rejectedInput,
+        evidence: evidence("other-name-source", "other-name-source-hash"),
+      }),
+    );
+    expect(otherSource.id).not.toBe(rejected.id);
+
+    await company.disconnect("slack", "rejected-name-source");
+    expect(
+      await company.importEntity({
+        ...rejectedInput,
+        evidence: {
+          ...rejectedInput.evidence,
+          contentHash: "rejected-name-after-disconnect-hash",
+        },
+      }),
+    ).toMatchObject({ suppressed: true });
+  });
+
   it("keeps same-document claims separate and namespaces identities by entity kind", async () => {
     const company = companyForActor(prisma, actor);
     const sharedEvidence = evidence("shared-document", "shared-document-hash");
@@ -545,6 +691,7 @@ describePostgres("company foundation (PostgreSQL)", () => {
             kind: "other",
             title: "No evidence event",
             normalizedTitle: "no evidence event",
+            subjectKey: "source:test-no-evidence",
             occursOn: null,
             occursPrecision: null,
             endsOn: null,
@@ -968,9 +1115,36 @@ describePostgres("company foundation (PostgreSQL)", () => {
       evidence: [expect.objectContaining({ contentHash: "lifecycle-edge-hash" })],
     });
     await company.editEdge({ edgeId: edge.id, role: "Owner corrected" });
-    const edgeReplay = persisted(await company.importEdge(edgeInput));
-    expect(edgeReplay).toMatchObject({ id: edge.id, role: "Owner corrected" });
+    const edgeReplay = persisted(
+      await company.importEdge({
+        ...edgeInput,
+        edge: { ...edgeInput.edge, confidence: 0.65 },
+        evidence: evidence("lifecycle-edge-replay", "lifecycle-edge-replay-hash"),
+      }),
+    );
+    expect(edgeReplay).toMatchObject({
+      id: edge.id,
+      role: "Owner corrected",
+      confidence: 0.65,
+    });
     expect(edgeReplay.evidence.some((item) => item.stance === "contradicts")).toBe(true);
+    await company.editEdge({ edgeId: edge.id, confidence: 0.9 });
+    const lockedConfidenceReplay = persisted(
+      await company.importEdge({
+        ...edgeInput,
+        edge: { ...edgeInput.edge, confidence: 0.6 },
+        evidence: evidence("lifecycle-edge-locked-replay", "lifecycle-edge-locked-hash"),
+      }),
+    );
+    expect(lockedConfidenceReplay).toMatchObject({ id: edge.id, confidence: 0.9 });
+    expect(lockedConfidenceReplay.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentHash: "lifecycle-edge-locked-hash",
+          stance: "contradicts",
+        }),
+      ]),
+    );
     await company.confirmEdge(edge.id);
     expect(await company.edgeDetail(edge.id)).toMatchObject({
       status: "confirmed",
@@ -993,9 +1167,9 @@ describePostgres("company foundation (PostgreSQL)", () => {
         title: "Joined the team",
         occursOn: { date: "2020-01-01", precision: "year" as const },
         endsOn: { date: "2021-01-01", precision: "year" as const },
-        entityIds: [],
-        amountCents: null,
-        currency: null,
+        entityIds: [entityId(from)],
+        amountCents: 10_000,
+        currency: "USD",
         confidence: 0.75,
       },
       evidence: evidence("lifecycle-event", "lifecycle-event-hash"),
@@ -1003,20 +1177,34 @@ describePostgres("company foundation (PostgreSQL)", () => {
     const event = persisted(await company.importEvent(eventInput));
     expect(event).toMatchObject({
       id: expect.any(String),
-      entityIds: [],
+      entityIds: [entityId(from)],
       occursOn: { date: "2020-01-01", precision: "year" },
       endsOn: { date: "2021-01-01", precision: "year" },
     });
-    expect(await company.eventDetail(event.id)).toMatchObject({ id: event.id, entityIds: [] });
+    expect(await company.eventDetail(event.id)).toMatchObject({
+      id: event.id,
+      entityIds: [entityId(from)],
+    });
     await company.editEvent({
       eventId: event.id,
       title: "Owner corrected event",
       entityIds: [],
     });
+    await company.editEvent({
+      eventId: event.id,
+      amountCents: 25_000,
+      currency: "GBP",
+    });
     const lockedLinkReplay = persisted(
       await company.importEvent({
         ...eventInput,
-        event: { ...eventInput.event, entityIds: [entityId(from)] },
+        event: {
+          ...eventInput.event,
+          endsOn: { date: "2022-01-01", precision: "year" },
+          amountCents: 20_000,
+          currency: "EUR",
+          confidence: 0.7,
+        },
         evidence: evidence("lifecycle-event-linked-replay", "lifecycle-event-linked-hash"),
       }),
     );
@@ -1024,6 +1212,10 @@ describePostgres("company foundation (PostgreSQL)", () => {
       id: event.id,
       title: "Owner corrected event",
       entityIds: [],
+      endsOn: { date: "2022-01-01", precision: "year" },
+      amountCents: 25_000,
+      currency: "GBP",
+      confidence: 0.7,
     });
     expect(lockedLinkReplay.evidence).toEqual(
       expect.arrayContaining([
@@ -1033,16 +1225,60 @@ describePostgres("company foundation (PostgreSQL)", () => {
         }),
       ]),
     );
+    const lockedAmountReplay = persisted(
+      await company.importEvent({
+        ...eventInput,
+        event: {
+          ...eventInput.event,
+          amountCents: 30_000,
+          currency: "CAD",
+        },
+        evidence: evidence("lifecycle-event-amount-replay", "lifecycle-event-amount-hash"),
+      }),
+    );
+    expect(lockedAmountReplay).toMatchObject({
+      id: event.id,
+      amountCents: 25_000,
+      currency: "GBP",
+    });
+    expect(lockedAmountReplay.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentHash: "lifecycle-event-amount-hash",
+          stance: "contradicts",
+        }),
+      ]),
+    );
 
     const linkUnionInput = {
       event: {
         ...eventInput.event,
-        title: "Unlocked event link union",
+        title: "Subject-specific event",
         entityIds: [entityId(from)],
       },
       evidence: evidence("lifecycle-link-union-first", "lifecycle-link-union-first-hash"),
     };
     const linkUnion = persisted(await company.importEvent(linkUnionInput));
+    const clearedEventAmounts = persisted(
+      await company.importEvent({
+        ...linkUnionInput,
+        event: {
+          ...linkUnionInput.event,
+          endsOn: null,
+          amountCents: null,
+          currency: null,
+          confidence: 0.6,
+        },
+        evidence: evidence("lifecycle-event-cleared-scalars", "lifecycle-event-cleared-hash"),
+      }),
+    );
+    expect(clearedEventAmounts).toMatchObject({
+      id: linkUnion.id,
+      endsOn: null,
+      amountCents: null,
+      currency: null,
+      confidence: 0.6,
+    });
     const linkReplay = persisted(
       await company.importEvent({
         ...linkUnionInput,
@@ -1050,16 +1286,27 @@ describePostgres("company foundation (PostgreSQL)", () => {
         evidence: evidence("lifecycle-link-union-second", "lifecycle-link-union-second-hash"),
       }),
     );
-    expect(linkReplay.id).toBe(linkUnion.id);
-    expect(linkReplay.entityIds).toEqual(expect.arrayContaining([entityId(from), entityId(to)]));
+    expect(linkReplay.id).not.toBe(linkUnion.id);
+    expect(linkReplay.entityIds).toEqual([entityId(to)]);
+    await company.disconnect("slack", "lifecycle-event");
+    await company.disconnect("slack", "lifecycle-event-linked-replay");
     await company.rejectEvent(event.id, "Incorrect event");
     expect(await company.eventDetail(event.id)).toBeNull();
     expect(await company.eventDetail(event.id, { includeRejected: true })).toMatchObject({
       status: "rejected",
       confirmedByUserId: null,
     });
-    expect(await company.importEvent(eventInput)).toMatchObject({ suppressed: true });
-    expect(await company.countEvents()).toBe(baselineEvents + 1);
+    await company.disconnect("slack", "lifecycle-event-amount-replay");
+    expect(
+      await company.importEvent({
+        ...eventInput,
+        evidence: {
+          ...eventInput.evidence,
+          contentHash: "lifecycle-event-after-disconnect-rejection-hash",
+        },
+      }),
+    ).toMatchObject({ suppressed: true });
+    expect(await company.countEvents()).toBe(baselineEvents + 2);
   });
 
   it("keeps edge and event claim aliases through edits, disconnects, and rejection", async () => {
@@ -1124,7 +1371,7 @@ describePostgres("company foundation (PostgreSQL)", () => {
         title: "Alias original event",
         occursOn: { date: "2022-01-01", precision: "year" as const },
         endsOn: null,
-        entityIds: [],
+        entityIds: [entityId(from)],
         amountCents: null,
         currency: null,
         confidence: 0.8,
@@ -1170,6 +1417,255 @@ describePostgres("company foundation (PostgreSQL)", () => {
     ).toMatchObject({ suppressed: true });
   });
 
+  it("uses canonical subjects to isolate and corroborate event identities", async () => {
+    const company = companyForActor(prisma, actor);
+    const firstPerson = await company.importEntity(
+      person(
+        `Subject A ${suffix}`,
+        "subject-person-a",
+        "subject-person-a-hash",
+        `subject-a-${suffix}@example.test`,
+      ),
+    );
+    const secondPerson = await company.importEntity(
+      person(
+        `Subject B ${suffix}`,
+        "subject-person-b",
+        "subject-person-b-hash",
+        `subject-b-${suffix}@example.test`,
+      ),
+    );
+    const thirdPerson = await company.importEntity(
+      person(
+        `Subject C ${suffix}`,
+        "subject-person-c",
+        "subject-person-c-hash",
+        `subject-c-${suffix}@example.test`,
+      ),
+    );
+    const otherOwnerEntity = await companyForActor(prisma, otherActor).importEntity(
+      person(`Other owner subject ${suffix}`, "other-owner-subject", "other-owner-subject-hash"),
+    );
+    await expect(
+      company.importEvent({
+        event: {
+          stream: "people",
+          kind: "hire",
+          title: `Out of scope subject ${suffix}`,
+          occursOn: { date: "2021-01-01", precision: "year" },
+          endsOn: null,
+          entityIds: [entityId(otherOwnerEntity)],
+          amountCents: null,
+          currency: null,
+          confidence: 0.8,
+        },
+        evidence: evidence("out-of-scope-subject", "out-of-scope-subject-hash"),
+      }),
+    ).rejects.toThrow(/scoped company entities/i);
+    const personAEventInput = {
+      event: {
+        stream: "people" as const,
+        kind: "hire" as const,
+        title: `Person-specific event ${suffix}`,
+        occursOn: { date: "2021-01-01", precision: "year" as const },
+        endsOn: null,
+        entityIds: [entityId(firstPerson)],
+        amountCents: null,
+        currency: null,
+        confidence: 0.8,
+      },
+      evidence: evidence("subject-event-person-a", "subject-event-person-a-hash"),
+    };
+    const personAEvent = persisted(await company.importEvent(personAEventInput));
+    const personBEvent = persisted(
+      await company.importEvent({
+        ...personAEventInput,
+        event: { ...personAEventInput.event, entityIds: [entityId(secondPerson)] },
+        evidence: evidence("subject-event-person-b", "subject-event-person-b-hash"),
+      }),
+    );
+    expect(personBEvent.id).not.toBe(personAEvent.id);
+    await company.rejectEvent(personAEvent.id, "Different person");
+    expect(
+      await company.importEvent({
+        ...personAEventInput,
+        event: { ...personAEventInput.event, entityIds: [entityId(secondPerson)] },
+        evidence: evidence("subject-event-person-b-replay", "subject-event-person-b-replay-hash"),
+      }),
+    ).toMatchObject({ id: personBEvent.id });
+
+    const sharedEventInput = {
+      event: {
+        stream: "people" as const,
+        kind: "hire" as const,
+        title: `Same date and title ${suffix}`,
+        occursOn: { date: "2021-01-01", precision: "year" as const },
+        endsOn: null,
+        entityIds: [entityId(firstPerson), entityId(secondPerson), entityId(firstPerson)],
+        amountCents: null,
+        currency: null,
+        confidence: 0.8,
+      },
+      evidence: evidence("subject-event-first-source", "subject-event-first-hash"),
+    };
+    const firstEvent = persisted(await company.importEvent(sharedEventInput));
+    const corroboratingEvent = persisted(
+      await company.importEvent({
+        ...sharedEventInput,
+        event: {
+          ...sharedEventInput.event,
+          entityIds: [entityId(secondPerson), entityId(firstPerson)],
+        },
+        evidence: evidence("subject-event-second-source", "subject-event-second-hash"),
+      }),
+    );
+    expect(corroboratingEvent.id).toBe(firstEvent.id);
+    expect(corroboratingEvent.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ contentHash: "subject-event-second-hash" }),
+      ]),
+    );
+
+    const thirdPersonEvent = persisted(
+      await company.importEvent({
+        ...sharedEventInput,
+        event: { ...sharedEventInput.event, entityIds: [entityId(thirdPerson)] },
+        evidence: evidence("subject-event-third-source", "subject-event-third-hash"),
+      }),
+    );
+    expect(thirdPersonEvent.id).not.toBe(firstEvent.id);
+    await company.rejectEvent(firstEvent.id, "Different subject set");
+    const thirdPersonReplay = await company.importEvent({
+      ...sharedEventInput,
+      event: { ...sharedEventInput.event, entityIds: [entityId(thirdPerson)] },
+      evidence: evidence("subject-event-third-replay", "subject-event-third-replay-hash"),
+    });
+    expect(thirdPersonReplay).toMatchObject({ id: thirdPersonEvent.id });
+
+    const changedSubjectEventInput = {
+      event: {
+        ...sharedEventInput.event,
+        title: `Owner changed subjects ${suffix}`,
+        entityIds: [entityId(firstPerson)],
+      },
+      evidence: evidence("owner-changed-subject-source", "owner-changed-subject-hash"),
+    };
+    const changedSubjectEvent = persisted(await company.importEvent(changedSubjectEventInput));
+    await company.editEvent({
+      eventId: changedSubjectEvent.id,
+      entityIds: [entityId(secondPerson)],
+    });
+    const oldSubjectReplay = persisted(
+      await company.importEvent({
+        ...changedSubjectEventInput,
+        evidence: evidence("owner-changed-subject-replay", "owner-changed-subject-replay-hash"),
+      }),
+    );
+    expect(oldSubjectReplay).toMatchObject({
+      id: changedSubjectEvent.id,
+      entityIds: [entityId(secondPerson)],
+    });
+    expect(oldSubjectReplay.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentHash: "owner-changed-subject-replay-hash",
+          stance: "contradicts",
+        }),
+      ]),
+    );
+    expect(
+      await prisma.companyEvent.findUniqueOrThrow({ where: { id: changedSubjectEvent.id } }),
+    ).toMatchObject({
+      subjectKey: `entities:${JSON.stringify([entityId(secondPerson)])}`,
+    });
+
+    const unknownInput = {
+      event: {
+        ...sharedEventInput.event,
+        title: `Unknown subject event ${suffix}`,
+        entityIds: [],
+      },
+      evidence: evidence("unknown-subject-source-one", "unknown-subject-hash-one"),
+    };
+    const unknownFirst = persisted(await company.importEvent(unknownInput));
+    await expect(
+      company.editEvent({
+        eventId: unknownFirst.id,
+        entityIds: [entityId(otherOwnerEntity)],
+      }),
+    ).rejects.toThrow(/scoped company entities/i);
+    await company.editEvent({
+      eventId: unknownFirst.id,
+      title: `Owner corrected unknown subject ${suffix}`,
+    });
+    const unknownReplay = persisted(
+      await company.importEvent({
+        ...unknownInput,
+        evidence: {
+          ...unknownInput.evidence,
+          contentHash: "unknown-subject-hash-changed",
+        },
+      }),
+    );
+    expect(unknownReplay).toMatchObject({
+      id: unknownFirst.id,
+      title: `Owner corrected unknown subject ${suffix}`,
+    });
+    const unknownOtherSource = persisted(
+      await company.importEvent({
+        ...unknownInput,
+        evidence: evidence("unknown-subject-source-two", "unknown-subject-hash-two"),
+      }),
+    );
+    expect(unknownOtherSource.id).not.toBe(unknownFirst.id);
+
+    const mergeRoot = await company.importEntity(
+      person(
+        `Subject merge root ${suffix}`,
+        "subject-merge-root",
+        "subject-merge-root-hash",
+        `subject-merge-root-${suffix}@example.test`,
+      ),
+    );
+    const mergeChild = await company.importEntity(
+      person(
+        `Subject merge child ${suffix}`,
+        "subject-merge-child",
+        "subject-merge-child-hash",
+        `subject-merge-child-${suffix}@example.test`,
+      ),
+    );
+    const childEventInput = {
+      event: {
+        ...sharedEventInput.event,
+        title: `Canonicalized subject ${suffix}`,
+        entityIds: [entityId(mergeChild)],
+      },
+      evidence: evidence("canonical-subject-child-source", "canonical-subject-child-hash"),
+    };
+    const childEvent = persisted(await company.importEvent(childEventInput));
+    await company.merge(entityId(mergeChild), entityId(mergeRoot));
+    const rootSubjectReplay = persisted(
+      await company.importEvent({
+        ...childEventInput,
+        event: { ...childEventInput.event, entityIds: [entityId(mergeRoot)] },
+        evidence: evidence("canonical-subject-root-source", "canonical-subject-root-hash"),
+      }),
+    );
+    expect(rootSubjectReplay.id).toBe(childEvent.id);
+    expect(
+      await prisma.companyEventEntity.findMany({
+        where: { spaceId, ownerUserId: userId, eventId: childEvent.id },
+        select: { entityId: true },
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        { entityId: entityId(mergeChild) },
+        { entityId: entityId(mergeRoot) },
+      ]),
+    );
+  });
+
   it("rejects edits and confirmations for rejected entities without adding evidence", async () => {
     const company = companyForActor(prisma, actor);
     const saved = await company.importEntity(
@@ -1199,9 +1695,16 @@ describePostgres("company foundation (PostgreSQL)", () => {
 
   it("keeps owner corrections through disconnect and erases corrections and rejections", async () => {
     const company = companyForActor(prisma, actor);
-    const saved = await company.importEntity(
-      person("Correction Person", "correction-item", "correction-hash", "source@example.test"),
-    );
+    const correctionEntity = {
+      kind: "person" as const,
+      displayName: "Correction Person",
+      attrs: { workEmails: ["source@example.test"], slackId: "correction-slack" },
+      confidence: 0.9,
+    };
+    const saved = await company.importEntity({
+      entity: correctionEntity,
+      evidence: evidence("correction-item", "correction-hash"),
+    });
     const edited = await company.edit({
       entityId: entityId(saved),
       kind: "person",
@@ -1210,9 +1713,10 @@ describePostgres("company foundation (PostgreSQL)", () => {
     expect(edited.lockedFields).toContain("attrs.workEmails");
     expect(edited.attrs).toMatchObject({ workEmails: [] });
     await company.confirm(entityId(saved));
-    await company.importEntity(
-      person("Correction Person", "conflicting-item", "conflicting-hash", "source@example.test"),
-    );
+    await company.importEntity({
+      entity: correctionEntity,
+      evidence: evidence("conflicting-item", "conflicting-hash"),
+    });
     expect(
       await prisma.companyEvidence.count({
         where: { factId: entityId(saved), factKind: "entity", stance: "contradicts" },
@@ -1419,9 +1923,27 @@ describePostgres("company foundation (PostgreSQL)", () => {
     expect(
       (await company.search(childName.replaceAll(" ", "   "))).map((record) => record.id),
     ).toEqual([entityId(root)]);
-    expect((await company.search(suffix)).map((record) => record.id)).toEqual([entityId(root)]);
     expect(await company.list({ kind: "company", text: childName })).toEqual([]);
-    expect(await companyForActor(prisma, otherActor).search(suffix)).toEqual([]);
+    expect(await companyForActor(prisma, otherActor).search(childName)).toEqual([]);
+    const childRaw = await company.detail(entityId(child), { includeMerged: true });
+    expect(childRaw).toMatchObject({
+      id: entityId(child),
+      displayName: childName,
+      attrs: { aliases: [], timezone: "Europe/London" },
+      mergedFrom: [],
+    });
+    expect(childRaw?.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ contentHash: "locked-child-source-hash" }),
+      ]),
+    );
+    expect(childRaw?.evidence).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ contentHash: "locked-child-root-hash" })]),
+    );
+    const includeMergedRows = await company.list({ includeMerged: true });
+    expect(includeMergedRows.filter((record) => record.id === entityId(root))).toHaveLength(1);
+    expect(includeMergedRows.filter((record) => record.id === entityId(child))).toHaveLength(1);
+    expect(await company.count({ includeMerged: true })).toBe(includeMergedRows.length);
 
     await company.split(entityId(child));
     expect(await company.detail(entityId(child))).toMatchObject({
