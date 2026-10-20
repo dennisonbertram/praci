@@ -83,12 +83,12 @@ export function InboxConsentPrompt({
     <ConsentCard
       id="inbox-consent"
       className="mb-5"
-      heading={<Trans>Let Rakazo sort your mail</Trans>}
+      heading={<Trans>Let Praci sort your mail</Trans>}
       onAllow={() => allowRecipient(recipient.key).then(onAllowed)}
       onDismiss={onDismiss}
     >
       <Trans>
-        Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and
+        Praci finds what needs a reply, lists your to-dos and groups mail like bills and
         newsletters. Senders, recipients, subjects and short previews are sent to the AI service
         that runs your bots ({name}).
       </Trans>
@@ -137,8 +137,8 @@ export function AiDataSharingSection() {
       <p className="mt-1 text-[13px] text-muted-foreground">
         <Trans>
           Your bots always answer through the AI service chosen in Models. A switch below also lets
-          that service read your mail and documents, so Rakazo can sort your Inbox and read Data
-          room files.
+          that service read your mail and documents, so Praci can sort your Inbox and read Data room
+          files.
         </Trans>
       </p>
       {error ? (

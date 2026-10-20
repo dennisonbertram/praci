@@ -85,7 +85,7 @@ const structuredData = post
 {
   post && Content ? (
     <SiteFrame
-      title={`${post.data.title} – Rakazo`}
+      title={`${post.data.title} – Praci`}
       description={post.data.description}
       structuredData={structuredData}
       ogImage={ogPublicPath(blogOgId(post.id))}
@@ -155,8 +155,8 @@ const structuredData = post
   ) : (
     category && (
       <SiteFrame
-        title={`${CATEGORY_LABEL[category]} – Rakazo blog`}
-        description={`${CATEGORY_LABEL[category]} from the Rakazo blog.`}
+        title={`${CATEGORY_LABEL[category]} – Praci blog`}
+        description={`${CATEGORY_LABEL[category]} from the Praci blog.`}
         index={indexed}
       >
         <p class="alt-crumb">

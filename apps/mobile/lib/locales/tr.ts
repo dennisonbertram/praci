@@ -29,7 +29,7 @@ export const TR_MESSAGES: Record<string, string> = {
   "Configure a plugin catalog on the server to connect apps.":
     "Uygulamaları bağlamak için sunucuda bir eklenti kataloğu yapılandır.",
   "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.":
-    "Sunucundaki OpenAI uyumlu adresi yapıştır. Gerekirse Rakazo /v1 ekler.",
+    "Sunucundaki OpenAI uyumlu adresi yapıştır. Gerekirse Praci /v1 ekler.",
   "Settings: General": "Ayarlar: Genel",
   "Settings: Usage": "Ayarlar: Kullanım",
   "Sign-in did not return a session": "Giriş bir oturum döndürmedi",
@@ -59,7 +59,7 @@ export const TR_MESSAGES: Record<string, string> = {
   "Custom server {host}": "Özel sunucu {host}",
   "Don’t have an account?": "Hesabın yok mu?",
   Email: "E-posta",
-  "Enter your Rakazo server address.": "Rakazo sunucu adresini gir.",
+  "Enter your Praci server address.": "Praci sunucu adresini gir.",
   "Forgot password?": "Parolanızı mı unuttunuz?",
   "Loading…": "Yükleniyor…",
   Password: "Parola",
@@ -68,9 +68,9 @@ export const TR_MESSAGES: Record<string, string> = {
   "Reset your password": "Parolanızı sıfırlayın",
   "Send reset link": "Sıfırlama bağlantısı gönder",
   Server: "Sunucu",
-  "Sign in to Rakazo": "Rakazo'da oturum aç",
+  "Sign in to Praci": "Praci'da oturum aç",
   "Sign up": "Kaydol",
-  "Sign up for Rakazo": "Rakazo'ya kaydol",
+  "Sign up for Praci": "Praci'ya kaydol",
   "Use a custom server": "Özel sunucu kullan",
   "Use default server": "Varsayılan sunucuyu kullan",
   Activity: "Etkinlik",
@@ -380,8 +380,8 @@ export const TR_MESSAGES: Record<string, string> = {
   "Switching…": "Geçiliyor…",
   "The final page may not load. Paste its URL or code here.":
     "Son sayfa yüklenmeyebilir. URL'sini veya kodunu buraya yapıştır.",
-  "This subscription sign-in is not available in Rakazo yet. Use a deployment credential or choose another provider.":
-    "Bu abonelik girişi Rakazo'da henüz kullanılamıyor. Bir dağıtım kimlik bilgisi kullan veya başka bir sağlayıcı seç.",
+  "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider.":
+    "Bu abonelik girişi Praci'da henüz kullanılamıyor. Bir dağıtım kimlik bilgisi kullan veya başka bir sağlayıcı seç.",
   "Use a found model": "Bulunan bir modeli kullan",
   "Use this model": "Bu modeli kullan",
   "Waiting for sign-in…": "Giriş bekleniyor…",
@@ -655,7 +655,7 @@ export const TR_MESSAGES: Record<string, string> = {
   "Enter a server URL": "Bir sunucu URL'si gir",
   "Public servers need https://. HTTP only works on your local network.":
     "Herkese açık sunucular https:// gerektirir. HTTP yalnızca yerel ağında çalışır.",
-  "That URL did not look like a Rakazo server": "Bu URL bir Rakazo sunucusuna benzemiyor",
+  "That URL did not look like a Praci server": "Bu URL bir Praci sunucusuna benzemiyor",
   "That URL is missing a host": "Bu URL'de ana makine adı eksik",
   "That doesn’t look like a URL": "Bu bir URL'ye benzemiyor",
   "Use an http or https URL": "Bir http veya https URL'si kullan",
@@ -729,7 +729,7 @@ export const TR_MESSAGES: Record<string, string> = {
   "AI models": "AI modelleri",
   Memory: "Hafıza",
   "Privacy policies": "Gizlilik politikaları",
-  Rakazo: "Rakazo",
+  Praci: "Praci",
   "Withdraw all permissions": "Tüm izinleri geri çek",
   "Withdraw all permissions?": "Tüm izinler geri çekilsin mi?",
   "New mobile actions won't send data to these services. Runs already in progress and routines keep going until you stop them.":

@@ -1,9 +1,9 @@
-# App Discovery: Rakazo Inbox
+# App Discovery: Praci Inbox
 
 Scope: WEB inbox (Electron hosts the same UI). Mobile noted briefly. All refs verified against the repo on 2026-10-14.
 
 ## Application Type
-Multi-bot AI workspace ("Rakazo") whose Inbox is a Gmail-backed mail triage surface inside the app shell, next to an "Inbox agent" chat panel. Web (React SPA), Electron desktop (same web UI), Expo mobile (separate, smaller inbox).
+Multi-bot AI workspace ("Praci") whose Inbox is a Gmail-backed mail triage surface inside the app shell, next to an "Inbox agent" chat panel. Web (React SPA), Electron desktop (same web UI), Expo mobile (separate, smaller inbox).
 
 ## Tech Stack
 - Web: React + react-router (`apps/web/src/App.tsx:188`), Lingui i18n (`<Trans>`/`t`), `@rakazo/ui-web` components, Tailwind container queries (`@container`, `@md/@xl/@3xl` row layouts).
@@ -57,7 +57,7 @@ Single role: signed-in user (per space) who has connected one or more Gmail acco
 **Compose / reply / forward** (`components/ComposeEmail.tsx`, 852 lines): header "New message"/"Reply"/"Reply all"/"Forward"; From picker (multi-account), To/Cc/Bcc, Subject, rich text with "Formatting options", "Attach files" (max 20 files, 10 MB total `contracts/inbox.ts` MAX_COMPOSE_*), drag-drop ("Drop files to attach"), quoted-text toggle ("Show quoted text"), Discard (confirms "Discard attachments?" when files), autosave draft every 1.5 s (`AUTOSAVE_MS`, "Draft saved"), recipient validation ("Add a recipient.", "Fix or remove the highlighted addresses."). Reply stays in thread; forward re-attaches original files server-side.
 **Outbox** (`components/MailOutbox.tsx`, `lib/outbox.ts`): after Send, 5 s "Sending... Undo" window (`UNDO_SEND_MS`), then "Sent" (3 s), "Draft discarded" + Undo. Undo/failed send restores the composer. `MAIL_SENT_EVENT` reloads the Inbox. Send results: sent/saved/unknown ("Not confirmed as sent. Check Sent before trying again.")/reconnect/disabled ("Sending is turned off.")/failed ("Couldn't send. Try again.").
 
-**AI / agent**: (a) Inbox agent chat panel beside the list; created on demand (`rpc.inbox.agent`); tools `mail_search`, `mail_grep`, `mail_get`, `mail_draft`, `mail_modify` (approval required), `show_emails` (renders email cards in chat), overview "what's on my email" tool (`adapters/builtin-tools.ts:565-700`). (b) Triage: LLM classification into category/priority/needsReply/reason + to-dos; requires a usable model AND user consent ("Let Rakazo sort your mail" / "Senders, recipients, subjects and short previews are sent to {name}." / Allow, `components/AiDataSharing.tsx`). Approval settings "Ask before email actions" / "Allow email actions without asking" exist in settings (`ApprovalRulesSettings.tsx`).
+**AI / agent**: (a) Inbox agent chat panel beside the list; created on demand (`rpc.inbox.agent`); tools `mail_search`, `mail_grep`, `mail_get`, `mail_draft`, `mail_modify` (approval required), `show_emails` (renders email cards in chat), overview "what's on my email" tool (`adapters/builtin-tools.ts:565-700`). (b) Triage: LLM classification into category/priority/needsReply/reason + to-dos; requires a usable model AND user consent ("Let Praci sort your mail" / "Senders, recipients, subjects and short previews are sent to {name}." / Allow, `components/AiDataSharing.tsx`). Approval settings "Ask before email actions" / "Allow email actions without asking" exist in settings (`ApprovalRulesSettings.tsx`).
 
 **Multi-account**: tabs filter list and to-dos by `connectionId`; composer defaults to the current tab's account (`connectionId={tab}`, `Inbox.tsx:727`); in "All" the account of each row is not shown on the row.
 
@@ -113,7 +113,7 @@ Gmail only (OAuth via Integrations overlay, `gmail` plugin; reconnect needed on 
 - Triage pending: list refetches every 5 s up to 6 times (`TRIAGE_POLL_MS/MAX_POLLS`); no visible "sorting your mail" indicator; labels/Needs reply appear silently later (rows can jump groups).
 - Empty: no account -> only a "Connect mail" button (no explanation text) `Inbox.tsx:582-587`; empty search -> `No results for "{query}"` + "Clear search"; empty filter/category/important -> "No mail matches this filter" + "Clear filter"; empty inbox -> "No mail" (no "inbox zero" message; mobile also "No mail").
 - Error: sync/list failure banner `role=alert` + "Try again": "Gmail needs to be reconnected." or "Couldn't reach Gmail." (`lib/inbox-sync-error.ts`); generic `errorText(cause)` for other failures. Banner does not name which account failed and offers no direct Reconnect action (Try again re-syncs). A partial sync failure still shows cached rows below the banner. Message load error: alert + "Try again" in dialog. Attachment: "Download failed". Failed optimistic changes (read/archive/mark) show the error banner and reload list (row reappears).
-- Consent: "Let Rakazo sort your mail" card with Allow, replaces To-do card when `needs_consent`.
+- Consent: "Let Praci sort your mail" card with Allow, replaces To-do card when `needs_consent`.
 - Transient: "Marked important/noise" + Undo toast (6 s); outbox "Sending... Undo / Sent / Draft discarded".
 
 ## Observed overload / missing-context risks (observations only)
@@ -142,4 +142,4 @@ Gmail only (OAuth via Integrations overlay, `gmail` plugin; reconnect needed on 
 5. `read-with-context` - Reading and context: open message dialog, prev/next, sender/to/cc/date, HTML vs text, attachments download, no thread view, deep link `?mail=` and Back behavior, neighbour navigation after archive.
 6. `act-on-email` - Acting on email: Reply / Reply all / Forward / New message, From picker with multiple accounts, attachments, autosave drafts, 5 s undo-send outbox, send failure/"unknown" outcomes, to-do check-off, and asking the Inbox agent (search, draft, modify with approval, email cards in chat).
 7. `keyboard-power-use` - Keyboard power use: j/k/arrows/Enter/o///c/e/?/r/a/f/Esc across list vs dialog, focus return to the row after closing, help dialog gaps, shortcuts disabled while typing or in filtered view.
-8. `empty-error-sync-states` - Empty, loading, error and sync states: no account (Connect mail overlay round trip), skeletons, "No mail", no results, no filter match, "Couldn't reach Gmail."/"Gmail needs to be reconnected." with Try again, triage consent prompt ("Let Rakazo sort your mail"), triage-pending reshuffle, failed optimistic actions.
+8. `empty-error-sync-states` - Empty, loading, error and sync states: no account (Connect mail overlay round trip), skeletons, "No mail", no results, no filter match, "Couldn't reach Gmail."/"Gmail needs to be reconnected." with Try again, triage consent prompt ("Let Praci sort your mail"), triage-pending reshuffle, failed optimistic actions.

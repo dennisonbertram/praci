@@ -157,7 +157,7 @@ Seed facts used below: ENG-31 "Landing page design" (Linear, Owner Ada Park, tra
 1. OK: badge text `Read-only`.
 2. CONFUSING: GitHub card `draggable` is null, native cards remain true. No explanation (README S24 requires a tooltip).
 3. OK: Send to bot works and is not blocked.
-4. OK in behaviour (bot assignment is Rakazo-side per S30), but MISSING reassurance. This is a fine design if the row says it stays in Rakazo; today it does not.
+4. OK in behaviour (bot assignment is Praci-side per S30), but MISSING reassurance. This is a fine design if the row says it stays in Praci; today it does not.
 5. OK: thread text `Signup API Working on it Signup API #142 Open in GitHub`.
 6. CONTRADICTS-PLAN: `Change status ... Approve` is shown (count 1 each) in read-only mode; S24 removes the bot's status change.
 

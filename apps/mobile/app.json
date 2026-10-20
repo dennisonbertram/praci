@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Rakazo",
+    "name": "Praci",
     "slug": "rakazo",
     "owner": "inbox-zero",
     "scheme": "rakazo",
@@ -23,14 +23,14 @@
         "expo-audio",
         {
           "enableBackgroundPlayback": false,
-          "microphonePermission": "Rakazo uses the microphone for voice calls with your bots."
+          "microphonePermission": "Praci uses the microphone for voice calls with your bots."
         }
       ],
       [
         "expo-speech-recognition",
         {
-          "speechRecognitionPermission": "Rakazo turns your speech into messages during voice calls.",
-          "microphonePermission": "Rakazo uses the microphone for voice calls with your bots."
+          "speechRecognitionPermission": "Praci turns your speech into messages during voice calls.",
+          "microphonePermission": "Praci uses the microphone for voice calls with your bots."
         }
       ],
       "expo-localization",
@@ -45,9 +45,9 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Rakazo uses your photo library so you can attach images to a bot message.",
-          "cameraPermission": "Rakazo uses the camera so you can attach photos to a bot message.",
-          "microphonePermission": "Rakazo uses the microphone for voice calls with your bots."
+          "photosPermission": "Praci uses your photo library so you can attach images to a bot message.",
+          "cameraPermission": "Praci uses the camera so you can attach photos to a bot message.",
+          "microphonePermission": "Praci uses the microphone for voice calls with your bots."
         }
       ],
       "expo-sharing",
@@ -55,7 +55,7 @@
       "./plugins/with-scene-lifecycle"
     ],
     "ios": {
-      "bundleIdentifier": "com.rakazo.app",
+      "bundleIdentifier": "ai.praci.app",
       "buildNumber": "1",
       "supportsTablet": false,
       "icon": "../../packages/ui-tokens/assets/Rakazo.icon",
@@ -63,16 +63,16 @@
         "usesNonExemptEncryption": false
       },
       "infoPlist": {
-        "NSCameraUsageDescription": "Rakazo uses the camera so you can attach photos to a bot message.",
-        "NSPhotoLibraryUsageDescription": "Rakazo uses your photo library so you can attach images to a bot message.",
-        "NSLocalNetworkUsageDescription": "Rakazo connects to a self-hosted Rakazo server on your local network.",
+        "NSCameraUsageDescription": "Praci uses the camera so you can attach photos to a bot message.",
+        "NSPhotoLibraryUsageDescription": "Praci uses your photo library so you can attach images to a bot message.",
+        "NSLocalNetworkUsageDescription": "Praci connects to a self-hosted Praci server on your local network.",
         "NSAppTransportSecurity": {
           "NSAllowsLocalNetworking": true
         }
       }
     },
     "android": {
-      "package": "com.rakazo.app",
+      "package": "ai.praci.app",
       "versionCode": 10,
       "softwareKeyboardLayoutMode": "resize",
       "icon": "./assets/icon.png",

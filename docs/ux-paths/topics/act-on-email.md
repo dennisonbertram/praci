@@ -185,7 +185,7 @@ Cross-cutting observations (apply to several stories):
 6. Agent replies: the draft is saved in his Drafts folder (tool description tells it to say so).
 7. He looks in the Inbox for the draft: nothing in the list; no Drafts view and no "Open draft" button in the composer entry points (observed gap).
 8. He opens Gmail Drafts in another tab, edits, sends there.
-9. Back in Rakazo, the sent mail is not reflected (no `MAIL_SENT_EVENT` since sent outside); list refreshes on next sync/mount.
+9. Back in Praci, the sent mail is not reflected (no `MAIL_SENT_EVENT` since sent outside); list refreshes on next sync/mount.
 10. He asks the agent: "Archive that thread." → `mail_modify` approval card again; he picks "Always allow this tool" this time, card reads "Always allowed".
 11. Thread leaves the list on next refresh.
 ### Variations

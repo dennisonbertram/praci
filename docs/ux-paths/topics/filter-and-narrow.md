@@ -22,7 +22,7 @@ Menu order (Inbox.tsx:481-516): triage ON = Unread, Starred, Has attachment | Pr
 **Alternate paths**: Sidebar "Inbox" badge count shows the unread number but is not clickable to filter (it opens the inbox, unfiltered). Deep link `/app/inbox?filter=unread` (`readInboxListState`). Agent panel: ask "show unread" (email cards, no list filter).
 ### Steps
 1. Click the icon-only Filter button (aria "Filter", `data-testid="inbox-filter"`) next to the "Important" toggle → radio menu opens with 3 groups of items; no group headings, only separators.
-2. Click "Unread" (thinking: "Is this Gmail unread or Rakazo unread?") → menu closes (`closeOnClick`); `?filter=unread`; five skeleton rows while live Gmail query `is:unread` runs; then list; Needs reply group is gone, rows now just Today / Earlier. The button now reads "Unread" with a filled style.
+2. Click "Unread" (thinking: "Is this Gmail unread or Praci unread?") → menu closes (`closeOnClick`); `?filter=unread`; five skeleton rows while live Gmail query `is:unread` runs; then list; Needs reply group is gone, rows now just Today / Earlier. The button now reads "Unread" with a filled style.
 3. Scan rows; notice no Archive hover button → Archive and the `e` key are disabled while a Gmail filter is on (`archive: filtered ? undefined`, Inbox.tsx:380,650).
 4. Open Filter again, click "Clear" at the bottom (only present when active) → back to the default grouped list with To do card.
 ### Variations
@@ -71,7 +71,7 @@ Menu order (Inbox.tsx:481-516): triage ON = Unread, Starred, Has attachment | Pr
 ### Steps
 1. Click Filter → menu shows Unread, Starred, Important, Has attachment | Primary, Promotions, Social, Updates (no categories, no consent card).
 2. Click "Primary" → button label "Primary"; live Gmail `category:primary` list; Today/Earlier groups.
-3. Hesitation: "Is 'Updates' here the same as the 'Notifications' category some people have?" With triage off this question never arises; with triage ON both "Updates" (Gmail tab) and "Notifications"/"Newsletters" (Rakazo category) sit in one menu with no hint of the different source.
+3. Hesitation: "Is 'Updates' here the same as the 'Notifications' category some people have?" With triage off this question never arises; with triage ON both "Updates" (Gmail tab) and "Notifications"/"Newsletters" (Praci category) sit in one menu with no hint of the different source.
 ### Variations
 - Switch to Promotions to bulk-glance at deals; Archive is unavailable there too, so cleanup must be done in Gmail (no bulk actions exist in the web inbox).
 ### Edge Cases
@@ -116,7 +116,7 @@ Menu order (Inbox.tsx:481-516): triage ON = Unread, Starred, Has attachment | Pr
 **Alternate paths**: Search `is:important`. Starred filter as a manual stand-in.
 ### Steps
 1. Triage OFF: open Filter → click "Important" (first group) → `?filter=important`; live Gmail `is:important` (Google's own machine-learned importance); archive disabled; Needs reply gone.
-2. Allow triage (consent card "Let Rakazo sort your mail" → Allow) → list refreshes; "Important" now appears as a toggle left of Filter, and is REMOVED from the Filter menu.
+2. Allow triage (consent card "Let Praci sort your mail" → Allow) → list refreshes; "Important" now appears as a toggle left of Filter, and is REMOVED from the Filter menu.
 3. If `?filter=important` is still in the URL (reload/bookmark), `InboxFilterSchema` still parses it: the list is Gmail-important, the toggle is NOT pressed, the Filter button shows label "Important" (`filterLabels` has it) though the menu has no matching radio (value unmatched). Confusing: two "Important" indicators disagree.
 4. Click the toggle → `?view=important`, `filter` removed; list = priority critical/important OR needs-reply (not handled) OR senders marked important, minus senders marked noise (`inbox.ts:340-362`). Archive works here.
 5. Hover a row, click "Mark noise" on a newsletter sender → toast "Marked noise" + Undo; list reloads and that sender's rows leave the Important view.

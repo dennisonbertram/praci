@@ -1,11 +1,11 @@
 blank_issues_enabled: false
 contact_links:
   - name: Security vulnerabilities
-    url: https://github.com/elie222/rakazo/blob/main/SECURITY.md
-    about: Report security issues to security@rakazo.com — do not open a public issue.
+    url: https://github.com/dennisonbertram/praci/blob/main/SECURITY.md
+    about: Report security issues privately through GitHub — do not open a public issue.
   - name: User support
-    url: mailto:support@rakazo.com
-    about: Questions about using Rakazo or self-hosting help.
+    url: https://github.com/dennisonbertram/praci/issues
+    about: Questions about using Praci or self-hosting help.
   - name: Maintainer
-    url: mailto:elie@rakazo.com
-    about: Reach the maintainer directly.
+    url: https://github.com/dennisonbertram/praci/discussions
+    about: Ask the maintainer a question.

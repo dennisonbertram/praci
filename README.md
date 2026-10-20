@@ -1,39 +1,41 @@
-# Rakazo
+# Praci
 
-[![GitHub stars](https://img.shields.io/github/stars/elie222/rakazo?labelColor=black&style=for-the-badge&color=2563EB)](https://github.com/elie222/rakazo/stargazers)
+Praci is an opinionated fork of [Rakazo](https://github.com/elie222/rakazo) by the Rakazo contributors, under Apache-2.0.
+
+[![GitHub stars](https://img.shields.io/github/stars/dennisonbertram/praci?labelColor=black&style=for-the-badge&color=2563EB)](https://github.com/dennisonbertram/praci/stargazers)
 [![Discord](https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?labelColor=black&style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/RWwKa2Sn7h)
-[![Download on the App Store](https://img.shields.io/badge/App%20Store-Download%20for%20iPhone-black?labelColor=black&style=for-the-badge&logo=apple&logoColor=white)](https://apps.apple.com/app/rakazo/id6801531099)
-[![Download the Android APK](https://img.shields.io/badge/Android-Download%20APK-black?labelColor=black&style=for-the-badge&logo=android&logoColor=white)](https://github.com/elie222/rakazo/releases/download/android/rakazo.apk)
+[![Download on the App Store](https://img.shields.io/badge/App%20Store-Download%20for%20iPhone-black?labelColor=black&style=for-the-badge&logo=apple&logoColor=white)](https://github.com/dennisonbertram/praci/releases)
+[![Download the Android APK](https://img.shields.io/badge/Android-Download%20APK-black?labelColor=black&style=for-the-badge&logo=android&logoColor=white)](https://github.com/dennisonbertram/praci/releases)
 
-![Rakazo — AI teammates you actually own](./docs/readme-hero.png)
+![Praci — AI teammates you actually own](./docs/readme-hero.png)
 
-Rakazo is an open source AI agent for persistent teammates, and a self-hosted AI assistant you
+Praci is an open source AI agent for persistent teammates, and a self-hosted AI assistant you
 can run on your own machine. It is available on the web, as an Electron desktop app, and on
-[iPhone](https://apps.apple.com/app/rakazo/id6801531099) and [Android](https://github.com/elie222/rakazo/releases/download/android/rakazo.apk). Bring your own model
+[iPhone](https://github.com/dennisonbertram/praci/releases) and [Android](https://github.com/dennisonbertram/praci/releases). Bring your own model
 and computer provider, or run the complete stack locally.
 
 It is an open source, self-hosted alternative to Grok Bot, Meta Muse, OpenAI Dots, Instinct,
 OpenClaw, Hermes Agent, and Hark Pro.
 
-Rakazo is in beta. Learn more at [rakazo.com](https://rakazo.com).
+Praci is in beta. Learn more at [praci.ai](https://praci.ai).
 
-## How Rakazo compares
+## How Praci compares
 
-Once Rakazo is running, it is just chat, like Grok Bot: you set up a bot and manage it from that
+Once Praci is running, it is just chat, like Grok Bot: you set up a bot and manage it from that
 chat. Muse, Dots, Instinct, and Hark Pro are hosted assistants. OpenClaw
 and Hermes Agent are also open source agents you can run yourself. Their docs describe installers,
 config files, and a gateway. Hermes Desktop can reach a first chat without the CLI; a messaging
 gateway is a separate process.
 
-- [Grok Bot](https://rakazo.com/grok-bot-alternative/)
-- [Muse](https://rakazo.com/muse-alternative/)
-- [Dots](https://rakazo.com/dots-alternative/)
-- [Instinct](https://rakazo.com/instinct-alternative/), the personal assistant you text or call
-- [OpenClaw](https://rakazo.com/openclaw-alternative/)
-- [Hermes Agent](https://rakazo.com/hermes-alternative/), Nous Research's open source agent
-- [Hark Pro](https://rakazo.com/hark-alternative/), the personal agent at hark.com
-- [All comparisons](https://rakazo.com/alternatives/)
-- [Self-hosting guide](https://rakazo.com/self-hosted-ai-agent/)
+- [Grok Bot](https://praci.ai/grok-bot-alternative/)
+- [Muse](https://praci.ai/muse-alternative/)
+- [Dots](https://praci.ai/dots-alternative/)
+- [Instinct](https://praci.ai/instinct-alternative/), the personal assistant you text or call
+- [OpenClaw](https://praci.ai/openclaw-alternative/)
+- [Hermes Agent](https://praci.ai/hermes-alternative/), Nous Research's open source agent
+- [Hark Pro](https://praci.ai/hark-alternative/), the personal agent at hark.com
+- [All comparisons](https://praci.ai/alternatives/)
+- [Self-hosting guide](https://praci.ai/self-hosted-ai-agent/)
 
 ## Features
 
@@ -69,11 +71,11 @@ You need Docker Engine, the Compose plugin, curl, and OpenSSL. No clone or Node 
 
 ```bash
 mkdir -p rakazo && cd rakazo &&
-curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/install-images.sh &&
+curl -fsSLO https://raw.githubusercontent.com/dennisonbertram/praci/main/infra/compose/install-images.sh &&
 bash install-images.sh
 ```
 
-The installer downloads the Compose files, creates `.env` with random secrets, and starts Rakazo.
+The installer downloads the Compose files, creates `.env` with random secrets, and starts Praci.
 It preserves an existing `.env` when rerun.
 
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173), create an account, and connect a model.
@@ -111,7 +113,7 @@ You need Node.js 22.22.2 or newer in the 22.x line, Node.js 24.x, or Node.js 26+
 pnpm 9; and Docker. Node.js 23.x and 25.x are not supported.
 
 ```bash
-git clone https://github.com/elie222/rakazo.git
+git clone https://github.com/dennisonbertram/praci.git
 cd rakazo
 cp .env.example .env
 ```
@@ -177,7 +179,7 @@ and `desktop:1`.
 
 ## Desktop and mobile
 
-The Electron and Expo apps are clients of the same Rakazo API used by the web app.
+The Electron and Expo apps are clients of the same Praci API used by the web app.
 
 With the development stack running, launch Electron with:
 
@@ -185,18 +187,18 @@ With the development stack running, launch Electron with:
 pnpm --filter @rakazo/desktop dev
 ```
 
-On first run the desktop app asks whether to run Rakazo on this computer or connect to an existing
+On first run the desktop app asks whether to run Praci on this computer or connect to an existing
 server. **This computer** installs and starts the published images with Docker Compose (the same
 files as `infra/compose/install-images.sh`) under the app's data directory, so Docker Desktop,
 OrbStack, or Docker Engine must be installed; the app links to them when it is not. Installed
 builds pin the image tag to their own version; unpackaged builds pull `edge`. Developers running
 `pnpm dev` should pick **Existing instance** with `http://127.0.0.1:5173` instead. Public servers
 must use HTTPS; HTTP is accepted only for loopback and private LAN addresses (not link-local). The
-app verifies Rakazo's health endpoint before saving, and later launches go straight to that
+app verifies Praci's health endpoint before saving, and later launches go straight to that
 instance. The stack keeps running after the app quits; **Stop Local Stack** in the application
 menu turns it off.
 
-Use **Change Rakazo Server…** in the application menu to reconnect. Closing that window without
+Use **Change Praci Server…** in the application menu to reconnect. Closing that window without
 saving returns to the previous instance. For development automation, set `RAKAZO_WEB_URL` to point
 the shell somewhere else without changing the saved instance, or `RAKAZO_FORCE_SETUP=1` to run
 setup again.
@@ -268,6 +270,6 @@ Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) befo
 request. For security vulnerabilities, follow [SECURITY.md](./SECURITY.md) instead of filing a public
 issue.
 
-Rakazo is licensed under the [Apache License 2.0](./LICENSE).
+Praci is licensed under the [Apache License 2.0](./LICENSE).
 
-Questions and ideas are welcome in the [Rakazo Discord community](https://discord.gg/RWwKa2Sn7h).
+Questions and ideas are welcome in the [Praci Discord community](https://discord.gg/RWwKa2Sn7h).

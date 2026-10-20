@@ -40,7 +40,7 @@ Walk result legend: OK, MISSING (README requires it, mockup has no UI), CONFUSIN
 ---
 
 ## BOARD-WORK-02: Drag a native card to In progress
-**Type**: short  **Persona**: Teo, solo founder using Rakazo with no tracker
+**Type**: short  **Persona**: Teo, solo founder using Praci with no tracker
 **Goal**: Mark "Support runbook" (PL-12) as started.
 **Preconditions**: Default mockup state.
 **README stories**: S9, S11
@@ -191,7 +191,7 @@ Walk result legend: OK, MISSING (README requires it, mockup has no UI), CONFUSIN
 ---
 
 ## BOARD-WORK-07: Connect read-only and try to move a card
-**Type**: medium  **Persona**: Kit, cautious engineer who wants Rakazo to never touch the tracker
+**Type**: medium  **Persona**: Kit, cautious engineer who wants Praci to never touch the tracker
 **Goal**: Confirm that tracker cards cannot be moved while native cards still can.
 **Preconditions**: Mockup states menu: "Read-only" checked (equivalent of connecting with Access "Read only").
 **README stories**: S24, S9, S23
@@ -319,7 +319,7 @@ Ranked. "Mockup-only" means fine for a mockup; "ships" means it would reach user
 3. **Med, BOARD-WORK-06. The person/bot filter mixes owner and assignee and hides bot-assigned cards from the human's filter (ships).** README S29 wants an owner filter; users cannot tell why Bo's card appears under Ada, or why ENG-31 is missing for Cy. Fix: separate "Owner" and "Assignee" modes (or show a small "Owner: Ada" label on filtered cards), and show a chip or count for tasks delegated to a bot under Cy's filter.
 4. **Med, BOARD-WORK-06 / 08. A filter changes the WIP count and can hide an over-limit column (ships).** Under Ada's filter, "In progress" reads "1 / 2" with no tint. Fix: compute the WIP count over all visible-by-source cards, not the person filter, or show "1 of 3 / 2" when filtered. The tooltip text "Over the limit of 2" works only with the true count.
 5. **Med, BOARD-WORK-08. "Accept" on the drawer suggestion for a native task shows "Sent for approval" with no approval card and no change (mockup-only shortcut, but the plan gap is real).** S23 requires an approval card naming the project and the change. Fix: Accept should open or scroll to the bot panel approval card, or apply the change and say "Assigned to Cy Novak".
-6. **Med, BOARD-WORK-05. A cross-lane drop silently changes status only (ships).** Users expect a swimlane drop to reassign. Fix: either disable drops outside the card's own lane (highlight only the card's lane) or make a cross-lane drop reassign, with a toast naming the new assignee (and for tracker cards, say that Rakazo stores the bot assignment only).
+6. **Med, BOARD-WORK-05. A cross-lane drop silently changes status only (ships).** Users expect a swimlane drop to reassign. Fix: either disable drops outside the card's own lane (highlight only the card's lane) or make a cross-lane drop reassign, with a toast naming the new assignee (and for tracker cards, say that Praci stores the bot assignment only).
 7. **Med, BOARD-WORK-08. WIP limit exists with no way to set it and is a "later" feature in the README (CONTRADICTS-PLAN).** A fresh native project with no limit would not show it. Fix: keep the state in the mockup but mark it as later, or add a small "Set limit" in the column header menu, hidden until used.
 8. **Med, BOARD-WORK-01 / 06. Blocked and WIP explanations rely on native `title` tooltips (ships).** They do not work on touch or keyboard focus. Fix: make "Blocked" a focusable control that shows the blocker names (a popover) and put the limit text in the column header's accessible name.
 9. **Med, BOARD-WORK-04. No warning when a blocked card is moved to In progress or Done, and no undo after a write to a tracker (ships).** Fix: keep the move (README says it never blocks) but add an "Undo" action to the toast and a toast suffix such as "still blocked by Billing integration".
