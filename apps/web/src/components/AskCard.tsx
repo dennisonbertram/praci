@@ -17,9 +17,11 @@ function formatAnsweredState(
   secret: boolean,
   outcome?: "created" | "cancelled",
   actions?: AskBlock["actions"],
+  consent?: boolean,
 ): string {
   if (secret) return t`Saved`;
   if (!answer) return t`Answered`;
+  if (consent && approval) return answer === "allow" ? t`Allowed` : t`Not now`;
   if (!approval) return t`Answered: ${selectedAskActionLabel(answer, actions)}`;
   if (outcome === "created") return t`Created`;
   if (outcome === "cancelled") return t`Cancelled`;
@@ -48,7 +50,10 @@ function approvalActionLabel(
   id: string,
   fallback: string,
   outcome?: "created" | "cancelled",
+  consent?: boolean,
 ): string {
+  if (consent && id === "allow") return t`Allow`;
+  if (consent && id === "deny") return t`Not now`;
   if (outcome === "created") return t`Create space`;
   if (outcome === "cancelled") return t`Cancel`;
   if (id === "allow") return t`Allow once`;
@@ -129,7 +134,9 @@ export function AskCard({
             : block.credential.origin}
         </div>
       ) : null}
-      {block.detail && !secretInput ? (
+      {block.detail && block.consent ? (
+        <p className="mt-2 text-[13px] text-muted-foreground">{block.detail}</p>
+      ) : block.detail && !secretInput ? (
         <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted px-3.5 py-3 font-mono text-[12.5px] leading-[1.7] text-muted-foreground">
           {block.detail}
         </pre>
@@ -154,6 +161,7 @@ export function AskCard({
                 secretInput,
                 outcome,
                 askActions,
+                Boolean(block.consent),
               )}
             </div>
           );
@@ -175,7 +183,7 @@ export function AskCard({
               {pendingAction === action.id ? (
                 <Trans>Sending…</Trans>
               ) : approvalActions ? (
-                approvalActionLabel(action.id, action.label, action.outcome)
+                approvalActionLabel(action.id, action.label, action.outcome, Boolean(block.consent))
               ) : (
                 action.label
               )}

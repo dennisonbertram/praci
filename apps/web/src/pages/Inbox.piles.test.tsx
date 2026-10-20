@@ -27,6 +27,8 @@ const rpcMock = vi.hoisted(() => ({
   archive: vi.fn(),
   archiveMany: vi.fn(),
   unarchiveMany: vi.fn(),
+  moveMany: vi.fn(),
+  undo: vi.fn(),
   prefetch: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
@@ -39,6 +41,8 @@ vi.mock("../lib/rpc", () => ({
       unarchive: vi.fn(),
       archiveMany: rpcMock.archiveMany,
       unarchiveMany: rpcMock.unarchiveMany,
+      moveMany: rpcMock.moveMany,
+      actions: { undo: rpcMock.undo },
       markRead: async () => ({ ok: true }),
       todos: { list: async () => ({ todos: [] }), setDone: vi.fn() },
     },
@@ -49,6 +53,15 @@ vi.mock("../lib/inbox-message-cache", () => ({
   prefetchInboxMessage: rpcMock.prefetch,
   peekInboxMessage: () => undefined,
   loadInboxMessage: () => new Promise(() => {}),
+}));
+vi.mock("../components/inbox/InboxCleanup", () => ({
+  InboxCleanup: ({ connectionId, onBack }: { connectionId?: string; onBack: () => void }) => (
+    <div data-testid="cleanup-screen" data-connection={connectionId ?? ""}>
+      <button type="button" onClick={onBack}>
+        leave
+      </button>
+    </div>
+  ),
 }));
 vi.mock("../components/AiDataSharing", () => ({ InboxConsentPrompt: () => null }));
 vi.mock("../components/ComposeEmail", () => ({
@@ -172,6 +185,12 @@ beforeEach(() => {
     done: messageIds,
     failed: [],
   }));
+  rpcMock.moveMany.mockImplementation(async ({ messageIds }: { messageIds: string[] }) => ({
+    done: messageIds,
+    failed: [],
+    batchId: "batch-1",
+  }));
+  rpcMock.undo.mockResolvedValue({ restored: 3, failed: 0 });
 });
 afterEach(async () => {
   for (const cleanup of cleanups.splice(0)) await cleanup();
@@ -333,6 +352,83 @@ describe("Updates and Newsletters pile", () => {
     );
     const c = await render("/app/inbox?pile=newsletters");
     expect(c.querySelector("[data-label-dot]")).toBeNull();
+  });
+});
+
+describe("Spam and trash from a selection", () => {
+  const ariaButton = (c: HTMLElement, label: string) =>
+    c.querySelector<HTMLElement>(`button[aria-label="${label}"]`);
+
+  it("reports the checked group as spam in one call, drops the rows and undoes the logged batch", async () => {
+    // The reload that follows the call finds the rows gone, as the server would.
+    rpcMock.moveMany.mockImplementation(async ({ messageIds }: { messageIds: string[] }) => {
+      rpcMock.list.mockResolvedValue(list(updates.filter((r) => !messageIds.includes(r.id))));
+      return { done: messageIds, failed: [], batchId: "batch-1" };
+    });
+    const c = await render("/app/inbox?pile=updates");
+    await click(boxes(c)[0]);
+    await click(ariaButton(c, "Spam"));
+    expect(rpcMock.moveMany).toHaveBeenCalledWith({ op: "spam", messageIds: ["a1", "a2", "a3"] });
+    expect(rowIds(c)).toEqual(["s1"]);
+    const toast = c.querySelector('[role="status"]') as HTMLElement;
+    expect(toast.textContent).toContain("Marked 3 as spam");
+    await click(byText(toast, "Undo"));
+    expect(rpcMock.undo).toHaveBeenCalledWith({ batchId: "batch-1" });
+  });
+
+  it("moves the checked rows to trash with an Undo", async () => {
+    const c = await render("/app/inbox?pile=updates");
+    await click(boxes(c)[0]);
+    await click(ariaButton(c, "Trash"));
+    expect(rpcMock.moveMany).toHaveBeenCalledWith({ op: "trash", messageIds: ["a1", "a2", "a3"] });
+    expect((c.querySelector('[role="status"]') as HTMLElement).textContent).toContain(
+      "Moved 3 to trash",
+    );
+  });
+
+  it("brings the list back when the call fails", async () => {
+    rpcMock.moveMany.mockRejectedValue(new Error("Gmail is busy"));
+    const c = await render("/app/inbox?pile=updates");
+    await click(boxes(c)[0]);
+    await click(ariaButton(c, "Trash"));
+    expect(rpcMock.list.mock.calls.length).toBeGreaterThan(1);
+    expect(c.textContent).toContain("Gmail is busy");
+  });
+
+  it("offers Not spam, not Spam, in the Spam pile", async () => {
+    rpcMock.list.mockResolvedValue(
+      list([row("g1", { pile: "spam", inInbox: false, fromAddress: "x@spam.example" })]),
+    );
+    const c = await render("/app/inbox?pile=spam");
+    await click(boxes(c)[0]);
+    expect(ariaButton(c, "Spam")).toBeNull();
+    await click(ariaButton(c, "Not spam"));
+    expect(rpcMock.moveMany).toHaveBeenCalledWith({ op: "notSpam", messageIds: ["g1"] });
+  });
+});
+
+describe("Cleanup entry", () => {
+  it("shows a Cleanup button beside Filter when an account is connected", async () => {
+    const c = await render("/app/inbox?pile=updates");
+    expect(c.querySelector('[data-testid="inbox-cleanup"]')?.getAttribute("aria-label")).toBe(
+      "Cleanup",
+    );
+  });
+
+  it("opens the cleanup screen from the button and returns to the list from its Back", async () => {
+    const c = await render("/app/inbox?pile=updates");
+    await click(c.querySelector('[data-testid="inbox-cleanup"]'));
+    expect(c.querySelector('[data-testid="cleanup-screen"]')).not.toBeNull();
+    expect(c.querySelector('[data-testid="inbox-cleanup"]')).toBeNull();
+    await click(byText(c, "leave"));
+    expect(c.querySelector('[data-testid="cleanup-screen"]')).toBeNull();
+    expect(c.querySelector('[data-testid="inbox-cleanup"]')).not.toBeNull();
+  });
+
+  it("hides it while no account is connected", async () => {
+    rpcMock.list.mockResolvedValue(list([], { accounts: [] }));
+    const c = await render("/app/inbox");
+    expect(c.querySelector('[data-testid="inbox-cleanup"]')).toBeNull();
   });
 });
 

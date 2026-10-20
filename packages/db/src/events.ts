@@ -1,5 +1,7 @@
 import type { RealtimeFanout } from "@rakazo/adapter-kit";
 import {
+  AI_CONSENT_EFFECT_KIND,
+  AI_DISCLOSURE_VERSION,
   type BotSecretDestination,
   encodeLoginSecret,
   LoginSecretValue,
@@ -633,6 +635,14 @@ async function findPendingAsk(
   return null;
 }
 
+/** The recipient and disclosure version the executor stored on an AI data sharing request. */
+function consentRequest(request: unknown): { recipientKey: string; version: string } | null {
+  const { recipientKey, version } = (request ?? {}) as Record<string, unknown>;
+  return typeof recipientKey === "string" && typeof version === "string"
+    ? { recipientKey, version }
+    : null;
+}
+
 async function commitAnswerRunInput(
   tx: Prisma.TransactionClient,
   input: AnswerRunInput,
@@ -709,7 +719,18 @@ async function commitAnswerRunInput(
       if (run.userId !== input.answeredByUserId) return null;
       approvalUserId = input.answeredByUserId;
     }
+    // Only the run's owner can answer for their data.
+    if (approvalEffect.kind === AI_CONSENT_EFFECT_KIND && run.userId !== input.answeredByUserId) {
+      return null;
+    }
   }
+  // An Allow for a disclosure that has since changed grants nothing. It resumes the run as Not now,
+  // so the run is never stranded; the next mail read asks again under the current version.
+  const staleConsent =
+    approvalAsk &&
+    approvalEffect!.kind === AI_CONSENT_EFFECT_KIND &&
+    input.answer === "allow" &&
+    consentRequest(approvalEffect!.request)?.version !== AI_DISCLOSURE_VERSION;
 
   const queued = await tx.run.updateMany({
     where: {
@@ -725,7 +746,11 @@ async function commitAnswerRunInput(
   });
   if (queued.count !== 1) return null;
 
-  const recordedAnswer = secretAsk ? "" : (selectedChoice?.id ?? input.answer);
+  const recordedAnswer = secretAsk
+    ? ""
+    : staleConsent
+      ? "deny"
+      : (selectedChoice?.id ?? input.answer);
   const callId = callIdFromClientNonce(input.clientNonce);
   const recordsCallUtterance = Boolean(callId && !secretAsk);
 
@@ -752,7 +777,27 @@ async function commitAnswerRunInput(
   }
 
   if (approvalAsk) {
-    const allowed = input.answer === "allow" || input.answer === "always";
+    const allowed = (input.answer === "allow" || input.answer === "always") && !staleConsent;
+    const consent = approvalEffect!.kind === AI_CONSENT_EFFECT_KIND;
+    if (consent && allowed) {
+      const recipientKey = consentRequest(approvalEffect!.request)!.recipientKey;
+      await tx.aiDataConsent.upsert({
+        where: {
+          userId_spaceId_recipientKey: {
+            userId: run.userId,
+            spaceId: input.spaceId,
+            recipientKey,
+          },
+        },
+        create: {
+          userId: run.userId,
+          spaceId: input.spaceId,
+          recipientKey,
+          version: AI_DISCLOSURE_VERSION,
+        },
+        update: { version: AI_DISCLOSURE_VERSION, grantedAt: new Date() },
+      });
+    }
     await tx.externalEffect.update({
       where: { id: approvalEffect!.id },
       data: {
