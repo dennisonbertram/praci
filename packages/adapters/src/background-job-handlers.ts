@@ -40,6 +40,7 @@ import { ensureMailWatch, runMailWatchRenewal } from "./gmail-push.js";
 import { compactHistory } from "./history-compaction.js";
 import { createInboxClassifierProvider } from "./inbox-classifier-factory.js";
 import { runInboxTriage } from "./inbox-triage.js";
+import { runMailAttachmentFiling } from "./mail-attachment-filing.js";
 import { runMailSyncJob } from "./mail-sync-job.js";
 import { expireMailSearch } from "./mail-tools.js";
 import type { MemoryProviderResolver } from "./memory-provider-factory.js";
@@ -183,6 +184,14 @@ export function createBackgroundJobHandlers(deps: {
               }
             : {}),
         },
+        payload,
+      );
+    },
+    "mail.attachments": async (payload) => {
+      const { mail, artifacts } = deps;
+      if (!mail || !artifacts) throw new Error("Mail attachment filing is not configured");
+      await runMailAttachmentFiling(
+        { prisma: deps.prisma, jobs: deps.jobs, mail, artifacts },
         payload,
       );
     },

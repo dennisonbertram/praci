@@ -299,6 +299,7 @@ model SpaceMember {
   voicePreferences SpaceVoicePreference[]
   aiDataConsents   AiDataConsent[]
   backupModels     SpaceBackupModel[]
+  dataRoomPrefs    DataRoomPreference?
 
   @@unique([spaceId, userId])
   @@index([organizationId, userId])
@@ -2608,6 +2609,19 @@ model DataRoomChunk {
   @@index([tsv], type: Gin)
   @@index([spaceId, userId])
   @@map("data_room_chunks")
+}
+
+/// One member's Data room settings. No row means the defaults: everything on.
+model DataRoomPreference {
+  spaceId       String
+  userId        String
+  spaceMember   SpaceMember @relation(fields: [spaceId, userId], references: [spaceId, userId], onDelete: Cascade)
+  /// Sync files the qualifying attachments of new mail into the Data room.
+  autoFileEmail Boolean     @default(true)
+  updatedAt     DateTime    @updatedAt
+
+  @@id([spaceId, userId])
+  @@map("data_room_preferences")
 }
 
 /// Sync throttle and in-flight claim for one source connection (the MailSyncState pattern).

@@ -151,7 +151,8 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
   const enqueued: BackgroundJob[] = [];
   const jobs = {
     enqueue: async (job: BackgroundJob) => {
-      enqueued.push(job);
+      // Attachment filing has its own tests (mail-attachment-filing.postgres.test.ts).
+      if (job.name !== "mail.attachments") enqueued.push(job);
     },
     cancel: async () => {},
     close: async () => {},

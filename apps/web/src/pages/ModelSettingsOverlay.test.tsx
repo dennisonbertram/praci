@@ -11,6 +11,8 @@ const models = vi.hoisted(() => ({
   setBackups: vi.fn(async () => ({ ok: true })),
   embeddingModel: vi.fn(async () => ({ modelId: null })),
   setEmbeddingModel: vi.fn(),
+  autoFileEmail: vi.fn(async () => ({ enabled: true })),
+  setAutoFileEmail: vi.fn(async ({ enabled }: { enabled: boolean }) => ({ enabled })),
   credentials: vi.fn(),
   connect: vi.fn(),
   disconnect: vi.fn(),
@@ -471,4 +473,16 @@ it("lists the server's own provider under Connected, ahead of the A-Z list", asy
   } finally {
     await view.unmount();
   }
+});
+
+it("saves the setting that adds email attachments to the Data room", async () => {
+  const view = await renderSettings();
+  const box = view.container.querySelector<HTMLInputElement>('input[type="checkbox"]');
+  expect(box?.checked).toBe(true);
+  await act(async () => {
+    box?.click();
+  });
+  expect(models.setAutoFileEmail).toHaveBeenCalledWith({ enabled: false });
+  expect(box?.checked).toBe(false);
+  await view.unmount();
 });

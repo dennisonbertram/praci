@@ -740,6 +740,10 @@ msgstr ""
 msgid "Add email"
 msgstr ""
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Add email attachments to the Data room"
+msgstr ""
+
 #. placeholder {0}: prefill.name
 #: src/pages/CapTable.tsx
 msgid "Add email for {0}"
@@ -2985,6 +2989,10 @@ msgstr ""
 
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Could not save the page."
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not save the setting"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx

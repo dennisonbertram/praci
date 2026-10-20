@@ -740,6 +740,10 @@ msgstr "Add custom connection"
 msgid "Add email"
 msgstr "Add email"
 
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Add email attachments to the Data room"
+msgstr "Add email attachments to the Data room"
+
 #. placeholder {0}: prefill.name
 #: src/pages/CapTable.tsx
 msgid "Add email for {0}"
@@ -2986,6 +2990,10 @@ msgstr "Could not save the embedding model"
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Could not save the page."
 msgstr "Could not save the page."
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Could not save the setting"
+msgstr "Could not save the setting"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Could not save this choice"

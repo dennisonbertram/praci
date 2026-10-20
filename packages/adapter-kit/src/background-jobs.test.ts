@@ -31,6 +31,7 @@ function handlers(): BackgroundJobHandlers {
     "mail.search.expire": vi.fn(async () => undefined),
     "inbox.triage": vi.fn(async () => undefined),
     "mail.sync": vi.fn(async () => undefined),
+    "mail.attachments": vi.fn(async () => undefined),
     "mail.watch.renew": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
     "dataroom.blob.delete": vi.fn(async () => undefined),

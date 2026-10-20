@@ -38,6 +38,12 @@ const payloadSchemas = {
     userId: z.string().min(1),
     connectionId: z.string().min(1),
   }),
+  "mail.attachments": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    connectionId: z.string().min(1),
+    messageId: z.string().min(1),
+  }),
   "mail.watch.renew": z.object({}),
   "finance.sync": z.object({ userId: z.string().min(1), spaceId: z.string().min(1) }),
   "dataroom.blob.delete": z.object({ spaceId: z.string().min(1), storageKey: z.string().min(1) }),
@@ -282,6 +288,19 @@ export function mailSyncJob(
     replaceKey: mailSyncJobKey(scope.connectionId),
     maxAttempts: 3,
     ...(availableAt ? { availableAt } : {}),
+  };
+}
+
+/** One queued job per message: a re-sync that stores the message again replaces it. */
+export function mailAttachmentsJob(
+  scope: { spaceId: string; userId: string; connectionId: string },
+  messageId: string,
+): BackgroundJob {
+  return {
+    name: "mail.attachments",
+    payload: { ...scope, messageId },
+    replaceKey: `mail.attachments:${scope.connectionId}:${messageId}`,
+    maxAttempts: 5,
   };
 }
 

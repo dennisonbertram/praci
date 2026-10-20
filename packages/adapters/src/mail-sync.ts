@@ -11,6 +11,7 @@ import { MAIL_SIGNALS_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { enqueueMailAttachmentFiling } from "./mail-attachment-filing.js";
 import { applyPileRules } from "./mail-piles.js";
 import type { PriorContactResult } from "./mail-sender-stats.js";
 import {
@@ -369,6 +370,8 @@ export async function syncMailbox(
       if (context.signal.aborted) return fail(undefined);
     }
 
+    /** Provider ids of the messages this sync stored for the first time (rebuilt if the transaction retries). */
+    const newIds: string[] = [];
     try {
       const outcome = await prisma.$transaction(
         async (tx) => {
@@ -384,6 +387,7 @@ export async function syncMailbox(
             ? Prisma.sql`mail_messages."inInbox" OR EXCLUDED."inInbox"`
             : Prisma.sql`EXCLUDED."inInbox"`;
           const entries = [...merged.values()];
+          newIds.length = 0;
           for (let i = 0; i < entries.length; i += UPSERT_CHUNK) {
             const values = entries
               .slice(i, i + UPSERT_CHUNK)
@@ -400,7 +404,7 @@ export async function syncMailbox(
               ${m.signals ? JSON.stringify(m.signals) : null}::jsonb, ${MAIL_SIGNALS_VERSION}, ${isSpam})`;
               });
             // Metadata only: triage columns are never in the update list, and the flags only turn on.
-            await tx.$executeRaw`
+            const stored = await tx.$queryRaw<Array<{ id: string; inserted: boolean }>>`
             INSERT INTO mail_messages (
               id, "spaceId", "userId", "connectionId", "providerMessageId", "threadId",
               "fromName", "fromAddress", "toAddresses", "ccAddresses", subject, snippet,
@@ -421,7 +425,9 @@ export async function syncMailbox(
               "seenAt" = EXCLUDED."seenAt",
               signals = EXCLUDED.signals,
               "signalsVersion" = EXCLUDED."signalsVersion",
-              "isSpam" = EXCLUDED."isSpam"`;
+              "isSpam" = EXCLUDED."isSpam"
+            RETURNING "providerMessageId" AS id, (xmax = 0) AS inserted`;
+            for (const row of stored) if (row.inserted) newIds.push(row.id);
           }
 
           if (deletedIds.length) {
@@ -510,6 +516,15 @@ export async function syncMailbox(
           connectionId: account.id,
           durationMs: Date.now() - started,
         });
+      }
+      // Mail that is new and recent goes to the Data room as separate jobs; see `isAutoFileMessage`.
+      if (outcome === "synced" || (outcome === "failed" && merged.size > 0)) {
+        await enqueueMailAttachmentFiling(
+          deps,
+          { spaceId, userId, connectionId: account.id },
+          newIds,
+          now,
+        );
       }
       // Rows an incomplete sync stored are usable, so they are triaged too.
       if (outcome === "synced" || (outcome === "failed" && merged.size > 0)) {

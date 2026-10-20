@@ -1224,6 +1224,7 @@ export function ModelSettingsOverlay({
       </div>
 
       <EmbeddingModelField />
+      <AutoFileEmailField />
 
       <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden px-6 py-6 sm:px-8 min-[1040px]:flex-row">
         <div className="flex min-h-0 shrink-0 flex-col min-[1040px]:w-[310px]">
@@ -1647,6 +1648,57 @@ function EmbeddingModelField() {
         </p>
       ) : null}
     </details>
+  );
+}
+
+/** Whether new mail attachments are filed into the Data room automatically. Saved on change. */
+function AutoFileEmailField() {
+  const { t } = useLingui();
+  const [enabled, setEnabled] = useState(true);
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+
+  useEffect(() => {
+    let live = true;
+    rpc.models
+      .autoFileEmail()
+      .then((result) => {
+        if (!live) return;
+        setEnabled(result.enabled);
+        setLoaded(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  async function change(next: boolean) {
+    setFailed(null);
+    try {
+      setEnabled((await rpc.models.setAutoFileEmail({ enabled: next })).enabled);
+    } catch (err) {
+      setFailed(errorText(err, t`Could not save the setting`));
+    }
+  }
+
+  return (
+    <div className="mx-6 mt-3 text-[13px] text-muted-foreground sm:mx-8">
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={enabled}
+          disabled={!loaded}
+          onChange={(event) => void change(event.target.checked)}
+        />
+        <Trans>Add email attachments to the Data room</Trans>
+      </label>
+      {failed ? (
+        <p className="mt-1 text-sm text-destructive" role="alert">
+          {failed}
+        </p>
+      ) : null}
+    </div>
   );
 }
 
