@@ -97,3 +97,24 @@ describe("previewFromBlocks", () => {
     expect(previewFromBlocks(undefined)).toBe("");
   });
 });
+
+describe("previewFromBlocks with tool progress", () => {
+  it("never puts a step line or a live progress line in a sidebar preview", () => {
+    const steps = {
+      kind: "steps",
+      steps: [
+        {
+          label: "Mail search",
+          count: 1,
+          summary: "Searched mail · 1 found",
+          lines: [{ text: 'Reading "Invoice for $12,400" from billing@example.test' }],
+        },
+      ],
+    };
+    const live = { kind: "progress", activity: true, text: 'Searching mail: from "billing"' };
+    for (const preview of [previewFromBlocks([steps]), previewFromBlocks([live, steps])]) {
+      expect(preview).not.toContain("12,400");
+      expect(preview).not.toContain("billing");
+    }
+  });
+});

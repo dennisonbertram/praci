@@ -4,6 +4,7 @@ import {
   type ConnectorProxyRequest,
   type ConnectorProxyResponse,
   type ManagedConnectorProvider,
+  type ToolProgress,
 } from "@rakazo/adapter-kit";
 import { asRecord } from "./connector-http.js";
 
@@ -20,6 +21,22 @@ const START_GAP_MS = 250;
 export const GOOGLE_API_CONCURRENCY = 2;
 const AUTH_REASONS = new Set(["authError", "insufficientPermissions"]);
 const RATE_REASONS = new Set(["rateLimitExceeded", "userRateLimitExceeded"]);
+
+/** The context whose retries are reported as progress lines, such as "Gmail is limiting requests, retrying". */
+export function withRetryProgress(
+  context: AdapterContext,
+  progress: ((progress: ToolProgress) => void) | undefined,
+  service: string,
+): AdapterContext {
+  if (!progress) return context;
+  return {
+    ...context,
+    onRetry: ({ reason }) =>
+      progress({
+        text: reason === "rate_limited" ? `${service} is limiting requests, retrying` : "Retrying",
+      }),
+  };
+}
 
 export type GoogleApiSleep = (ms: number, signal: AbortSignal) => Promise<void>;
 
@@ -208,6 +225,13 @@ export class GoogleApiClient {
       if (!failure.retry || attempt >= MAX_ATTEMPTS || context.signal.aborted) throw failure.error;
       const wait = failure.retryAfterMs ?? BASE_DELAY_MS * 2 ** (attempt - 1) + this.random() * 250;
       if (wait > MAX_RETRY_AFTER_MS) throw failure.error;
+      context.onRetry?.({
+        reason:
+          failure.error.response && isGoogleRateLimited(failure.error.response)
+            ? "rate_limited"
+            : "retry",
+        attempt,
+      });
       await this.sleep(wait, context.signal);
       if (context.signal.aborted) throw failure.error;
     }

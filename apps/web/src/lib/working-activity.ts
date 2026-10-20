@@ -1,11 +1,18 @@
 import type { Run, ThreadMessage } from "@rakazo/contracts";
-import { humanizeToolName } from "@rakazo/core";
+import { humanizeToolName, reportedToolStep } from "@rakazo/core";
 
 export type WorkingActivity =
   | { kind: "starting" }
   | { kind: "thinking" }
   | { kind: "writing" }
-  | { kind: "tool"; label: string; action?: ToolAction };
+  | {
+      kind: "tool";
+      label: string;
+      action?: ToolAction;
+      /** The latest step a Google tool reported, and the service it is waiting on. */
+      detail?: string;
+      service?: string;
+    };
 
 /** Tools a founder sees often, named by what they do so the progress line reads as plain words. */
 export type ToolAction =
@@ -53,9 +60,12 @@ const ACTION_BY_LABEL = new Map(
   ]),
 );
 
-function toolActivity(label: string): WorkingActivity {
+function toolActivity(
+  label: string,
+  reported?: { detail: string; service: string },
+): WorkingActivity {
   const action = ACTION_BY_LABEL.get(label);
-  return action ? { kind: "tool", label, action } : { kind: "tool", label };
+  return { kind: "tool", label, ...(action ? { action } : {}), ...(reported ?? {}) };
 }
 
 /** What a live run is doing now, read from its status and the newest bot message. */
@@ -69,7 +79,8 @@ export function workingActivity(
   if (last.runId && last.runId !== run.id) return { kind: "thinking" };
   const tail = last.blocks.at(-1);
   const pending = tail?.kind === "progress" ? tail.pendingToolNames?.at(-1) : undefined;
-  if (pending) return toolActivity(humanizeToolName(pending));
+  if (pending)
+    return toolActivity(humanizeToolName(pending), reportedToolStep(last.blocks) ?? undefined);
   if (tail?.kind === "steps") {
     const step = tail.steps.at(-1);
     if (step) return toolActivity(step.label);

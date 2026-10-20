@@ -1,8 +1,18 @@
 import { createHash } from "node:crypto";
-import type { AdapterContext, ConnectorTool, ManagedConnectorProvider } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  ConnectorTool,
+  ManagedConnectorProvider,
+  ToolProgress,
+} from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { asRecord } from "./connector-http.js";
-import { GoogleApiClient, GoogleApiError, isGoogleAuthFailure } from "./google-api-request.js";
+import {
+  GoogleApiClient,
+  GoogleApiError,
+  isGoogleAuthFailure,
+  withRetryProgress,
+} from "./google-api-request.js";
 
 export const CALENDAR_TOOL_NAMES = new Set([
   "calendar_list_events",
@@ -38,6 +48,8 @@ export type CalendarToolDeps = {
   /** Stable per tool call, from the run; calendar_create_event derives the event id from it. */
   idempotencyKey?: string;
   now?: () => Date;
+  /** One line of what the tool is doing, for the owner's activity view. */
+  progress?: (progress: ToolProgress) => void;
 };
 
 const SEND_UPDATES = { type: "string", enum: ["all", "externalOnly", "none"] } as const;
@@ -191,6 +203,7 @@ export async function calendarToolFromTool(
   args: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   try {
+    context = withRetryProgress(context, deps.progress, "Google Calendar");
     const account = await resolveAccount(deps, args);
     const calendarId = text(args.calendarId) || "primary";
     const base = `${CALENDAR_API}/calendars/${encodeURIComponent(calendarId)}/events`;
@@ -211,8 +224,24 @@ export async function calendarToolFromTool(
         maxResults: String(max),
       });
       if (text(args.query)) params.set("q", text(args.query));
+      const day = (iso: string) =>
+        new Date(iso).toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          timeZone: "UTC",
+        });
+      deps.progress?.({
+        text: `Searching calendar: ${text(args.query) ? `"${text(args.query).slice(0, 60)}" · ` : ""}${day(params.get("timeMin") ?? "")} to ${day(params.get("timeMax") ?? "")}`,
+      });
       const data = asRecord(await call("GET", `${base}?${params}`));
       const items = Array.isArray(data?.items) ? data.items : [];
+      deps.progress?.({
+        text:
+          items.length === 0
+            ? "No events"
+            : `Found ${items.length} ${items.length === 1 ? "event" : "events"}`,
+        summary: `Searched calendar · ${items.length === 0 ? "none found" : `${items.length} found`}`,
+      });
       return { events: items.map(compactEvent) };
     }
     if (name === "calendar_create_event") {

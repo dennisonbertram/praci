@@ -265,7 +265,10 @@ export function reduceLiveMessageBlocks(
       ? update.payload?.activity === true
       : tail?.kind === "progress" && tail.activity === true;
 
-  if (pendingToolNames.length > 0 && endsSentence(tailText)) {
+  // A status line a tool just reported stays until the next update, whatever its last character is.
+  const reachedBoundary =
+    update.type === "progress" && activity ? tailText.trim() === "" : endsSentence(tailText);
+  if (pendingToolNames.length > 0 && reachedBoundary) {
     let next = activity ? [...segments] : appendTextSegment(segments, tailText);
     for (const name of pendingToolNames) next = appendToolCallSegment(next, name);
     return next;
@@ -289,15 +292,37 @@ function liveMessageText(blocks: readonly MessageBlock[]): string {
     .join("");
 }
 
-export type ToolStep = { label: string; count: number };
+export type ToolStep = Extract<MessageBlock, { kind: "steps" }>["steps"][number];
 
 export function appendToolStep(steps: readonly ToolStep[], toolName: string): ToolStep[] {
   const label = humanizeToolName(toolName);
   const last = steps.at(-1);
   if (last && last.label === label) {
-    return [...steps.slice(0, -1), { label, count: last.count + 1 }];
+    return [...steps.slice(0, -1), { ...last, count: last.count + 1 }];
   }
   return [...steps, { label, count: 1 }];
+}
+
+const MAX_STEP_LINES = 30;
+
+/** Adds what a finished tool call reported to the newest step with that tool's label. */
+export function attachToolNotes(
+  segments: readonly MessageBlock[],
+  toolName: string,
+  notes: { lines: readonly { text: string; failed?: true }[]; summary?: string },
+): MessageBlock[] {
+  const label = humanizeToolName(toolName);
+  const index = segments.findLastIndex((block) => block.kind === "steps");
+  const block = segments[index];
+  if (block?.kind !== "steps" || notes.lines.length === 0) return [...segments];
+  const at = block.steps.findLastIndex((step) => step.label === label);
+  const step = block.steps[at];
+  if (!step) return [...segments];
+  const lines = [...(step.lines ?? []), ...notes.lines].slice(-MAX_STEP_LINES);
+  const steps = block.steps.map((candidate, i) =>
+    i === at ? { ...step, lines, ...(notes.summary ? { summary: notes.summary } : {}) } : candidate,
+  );
+  return segments.map((candidate, i) => (i === index ? { ...block, steps } : candidate));
 }
 
 export type ToolCallStreak = { key: string | undefined; count: number };

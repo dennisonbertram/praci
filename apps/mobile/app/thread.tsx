@@ -36,6 +36,7 @@ import {
   reconcileThreadScrollState,
   reduceThreadSnapshot,
   replyAttachment,
+  reportedToolStep,
   resolveComposerSendPlan,
   resolvePersonaColorDef,
   selectableMessageText,
@@ -690,6 +691,11 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
   activeThreadId.current = notificationThreadId;
   const currentBotStatus = snap ? snap.run?.status : currentBot?.status;
   const hasLiveProgress = visibleMessages.some((message) => message.id.startsWith("progress:"));
+  // The step a Gmail, Calendar or Drive tool last reported, shown beside the working dots.
+  const reportedStep = useMemo(() => {
+    const last = snap?.messages.at(-1);
+    return last?.role === "bot" ? reportedToolStep(last.blocks) : null;
+  }, [snap?.messages]);
   const workingGroupBots = useMemo(() => {
     if (!inGroup) return [];
     const seen = new Set<string>();
@@ -2320,7 +2326,10 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
       : t("{count} new messages", { count: threadScrollState.newCount });
 
   const workingFooter =
-    !inGroup && currentBot && isWorkingStatus(currentBotStatus) && !hasLiveProgress ? (
+    !inGroup &&
+    currentBot &&
+    isWorkingStatus(currentBotStatus) &&
+    (!hasLiveProgress || reportedStep) ? (
       <View
         accessibilityLabel={t("{name} is working", { name: currentBot.name })}
         accessibilityRole="text"
@@ -2339,6 +2348,14 @@ function Thread({ sessionEpoch }: { sessionEpoch: number }) {
           status={currentBotStatus}
         />
         <WorkingIndicator />
+        {reportedStep ? (
+          <Text
+            numberOfLines={1}
+            style={{ flexShrink: 1, color: tokens.mutedForeground, fontSize: 12 }}
+          >
+            {reportedStep.detail}
+          </Text>
+        ) : null}
       </View>
     ) : inGroup && workingGroupBots.length > 0 ? (
       <View

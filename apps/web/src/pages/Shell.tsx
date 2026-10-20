@@ -6229,6 +6229,7 @@ export const Transcript = memo(function Transcript({
             : workingBotName
               ? t`${workingBotName} is working`
               : t`Bots are working`;
+  const waitingLabel = (service: string) => t`Still waiting on ${service}`;
   function toolActionLabel(action: ToolAction | undefined): string | undefined {
     switch (action) {
       case "contact-add":
@@ -6827,7 +6828,17 @@ export const Transcript = memo(function Transcript({
                 block.kind === "progress" && !isToolActivityBlock(block) && Boolean(block.text),
             ),
         ) ? (
-          <ActiveBotGlyph bots={workingBots} label={workingLabel} startedAt={workingStartedAt} />
+          <ActiveBotGlyph
+            bots={workingBots}
+            label={workingLabel}
+            startedAt={workingStartedAt}
+            detail={activity?.kind === "tool" ? activity.detail : undefined}
+            waitingLabel={
+              activity?.kind === "tool" && activity.service
+                ? waitingLabel(activity.service)
+                : undefined
+            }
+          />
         ) : null}
         {!running && failedNote != null ? (
           <p data-testid="transcript-failed-note" className="py-2 text-xs text-destructive">

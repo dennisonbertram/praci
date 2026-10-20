@@ -8,6 +8,7 @@ import type {
   MailLabelChange,
   MailMessageSummary,
   MailProvider,
+  ToolProgress,
 } from "@rakazo/adapter-kit";
 import { MailProviderError, mailSearchExpireJob } from "@rakazo/adapter-kit";
 import type { EmailCard, MessageBlock } from "@rakazo/contracts";
@@ -25,6 +26,7 @@ import {
   triageUrgency,
 } from "@rakazo/core";
 import { Prisma, type PrismaClient } from "@rakazo/db";
+import { withRetryProgress } from "./google-api-request.js";
 import { inboxOverview } from "./inbox-overview.js";
 import { buildRawMessage, parseRecipients } from "./mail-compose.js";
 import { syncAfterSend } from "./mail-sync.js";
@@ -77,7 +79,70 @@ export type MailToolDeps = {
   idempotencyKey?: string;
   deadlineMs?: number;
   now?: () => Date;
+  /** One line of what the tool is doing, for the owner's activity view. Never part of the result. */
+  progress?: (progress: ToolProgress) => void;
 };
+
+const SUBJECT_LIMIT = 60;
+const QUERY_LIMIT = 120;
+
+const clip = (text: string, limit: number) => {
+  const flat = text.replaceAll(/\s+/g, " ").trim();
+  return flat.length > limit ? `${flat.slice(0, limit - 1)}…` : flat;
+};
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+function readableDate(value: string, now: Date): string {
+  const match = /^(\d{4})[/-](\d{1,2})[/-](\d{1,2})$/.exec(value);
+  const month = match ? MONTHS[Number(match[2]) - 1] : undefined;
+  if (!match || !month) return value;
+  const year = Number(match[1]) === now.getUTCFullYear() ? "" : ` ${match[1]}`;
+  return `${month} ${Number(match[3])}${year}`;
+}
+
+const DURATION_UNITS: Record<string, string> = { d: "day", m: "month", y: "year" };
+
+/** A Gmail query in words: `from:kevin after:2026/10/01 "pick a time"` becomes `from kevin · after Oct 1 · "pick a time"`. */
+export function describeMailQuery(query: string, now = new Date()): string {
+  const parts: string[] = [];
+  const words: string[] = [];
+  const token = /(-?)(\w+):("[^"]*"|\S+)|"[^"]*"|\S+/g;
+  for (const match of query.matchAll(token)) {
+    const [whole, negate, key, raw] = match;
+    if (!key || raw === undefined) {
+      if (whole.startsWith('"')) parts.push(whole);
+      else if (!["OR", "AND"].includes(whole)) words.push(whole);
+      continue;
+    }
+    const value = raw.replaceAll('"', "");
+    const lower = key.toLowerCase();
+    let text: string;
+    if (lower === "after" || lower === "before") text = `${lower} ${readableDate(value, now)}`;
+    else if (lower === "newer_than" || lower === "older_than") {
+      const unit = DURATION_UNITS[value.slice(-1)];
+      const count = Number(value.slice(0, -1));
+      const span = unit && count > 0 ? `${count} ${unit}${count > 1 ? "s" : ""}` : value;
+      text = lower === "newer_than" ? `last ${span}` : `older than ${span}`;
+    } else if (lower === "is") text = value;
+    else if (lower === "has") text = `has ${value}`;
+    else text = `${lower} ${value}`;
+    parts.push(negate ? `not ${text}` : text);
+  }
+  if (words.length > 0) parts.push(`"${words.join(" ")}"`);
+  return parts.join(" · ");
+}
+
+const found = (count: number) =>
+  count === 0 ? "No matches" : `Found ${count} ${count === 1 ? "message" : "messages"}`;
+
+/** Why a provider call failed, in words for the owner. */
+function failureReason(error: unknown): string {
+  if (!(error instanceof MailProviderError)) return "Gmail did not answer";
+  if (error.kind === "rate_limited") return "Gmail is limiting requests";
+  if (error.kind === "auth") return "Gmail needs to be reconnected";
+  return "Gmail did not answer";
+}
 
 class WriteDenied extends Error {}
 
@@ -148,6 +213,7 @@ export async function mailToolFromTool(
   args: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   try {
+    context = withRetryProgress(context, deps.progress, "Gmail");
     if (name === "mail_search") return await mailSearch(deps, context, args);
     if (name === "mail_grep") return await mailGrep(deps, args);
     if (name === "mail_get") return await mailGet(deps, context, args);
@@ -159,6 +225,7 @@ export async function mailToolFromTool(
     return { error: `Unknown mail tool ${name}` };
   } catch (error) {
     if (error instanceof WriteDenied) return { error: error.message };
+    deps.progress?.({ text: `Failed: ${failureReason(error)}`, failed: true });
     // Provider errors carry sanitized text; anything else is not shown to the model.
     return { error: error instanceof MailProviderError ? error.message : "Mail tool failed" };
   }
@@ -296,10 +363,18 @@ async function mailSearch(
       const seen = new Set<string>();
       let left = share;
       for (const task of tasks.filter((candidate) => candidate.account.id === account.id)) {
+        const before = seen.size;
+        deps.progress?.({
+          text: clip(
+            `Searching mail: ${describeMailQuery(task.query, currentTime(deps)) || task.query}`,
+            QUERY_LIMIT,
+          ),
+        });
         const result = await runTask(
           deps.mail,
           searchContext,
           task,
+          deps.progress,
           () => left,
           (message) => {
             if (seen.has(message.id)) return false;
@@ -310,7 +385,15 @@ async function mailSearch(
           },
         );
         outcomes.push(result.outcome);
-        if (result.outcome.stoppedReason === "error") failed.add(accountName(account));
+        if (result.outcome.stoppedReason === "error") {
+          failed.add(accountName(account));
+          deps.progress?.({
+            text: `Could not finish this search: ${result.reason ?? "Gmail did not answer"}`,
+            failed: true,
+          });
+        } else if (tasks.length > 1) {
+          deps.progress?.({ text: found(seen.size - before) });
+        }
         if (result.resume) resume.push(result.resume);
       }
     }),
@@ -337,6 +420,10 @@ async function mailSearch(
       index + 1,
     ),
   );
+  deps.progress?.({
+    text: tasks.length > 1 ? `${found(rows.length)} in total` : found(rows.length),
+    summary: `Searched mail · ${rows.length === 0 ? "none found" : `${rows.length} found`}${failed.size > 0 ? " · incomplete" : ""}`,
+  });
   const summary = summarizeResults({
     rows,
     accounts: involved.map(accountName),
@@ -375,9 +462,10 @@ async function runTask(
   mail: MailProvider,
   context: AdapterContext,
   task: Task,
+  progress: MailToolDeps["progress"],
   budget: () => number,
   save: (message: MailMessageSummary) => boolean,
-): Promise<{ outcome: MailQueryOutcome; resume?: ResumeEntry }> {
+): Promise<{ outcome: MailQueryOutcome; resume?: ResumeEntry; reason?: string }> {
   const { account, query } = task;
   let ids = task.start?.unhydratedIds ?? [];
   let token = task.start?.pageToken;
@@ -386,6 +474,8 @@ async function runTask(
   // True until a list call that used the stored token has succeeded.
   let storedTokenUntried = Boolean(token);
   let oldest: string | null = null;
+  let page = 0;
+  let reason: string | undefined;
 
   const stop = (stoppedReason: "cap" | "deadline" | "error", keep = true) => {
     const next: ResumeEntry | undefined =
@@ -407,6 +497,7 @@ async function runTask(
         oldest,
       },
       ...(next ? { resume: next } : {}),
+      ...(reason ? { reason } : {}),
     };
   };
 
@@ -416,8 +507,10 @@ async function runTask(
     if (context.signal.aborted) return stop("deadline");
 
     const fromIds = ids.length > 0;
+    page += 1;
+    if (page > 1) progress?.({ text: `Looking at more results (page ${page})` });
     try {
-      const page = fromIds
+      const listed = fromIds
         ? await mail.listMessages(
             account,
             { query, pageSize: PAGE_SIZE, ids: ids.slice(0, room) },
@@ -428,18 +521,19 @@ async function runTask(
             { query, pageSize: Math.min(PAGE_SIZE, room), ...(token ? { pageToken: token } : {}) },
             context,
           );
-      for (const message of page.messages) {
+      for (const message of listed.messages) {
         if (save(message) && (oldest === null || message.date < oldest)) oldest = message.date;
       }
       const leftover = fromIds ? ids.slice(room) : [];
-      ids = [...(page.unhydratedIds ?? []), ...leftover];
+      ids = [...(listed.unhydratedIds ?? []), ...leftover];
       if (!fromIds) {
         storedTokenUntried = false;
-        token = page.nextPageToken;
+        token = listed.nextPageToken;
         more = Boolean(token);
       }
-      if (page.unhydratedIds?.length) return stop(context.signal.aborted ? "deadline" : "error");
-    } catch {
+      if (listed.unhydratedIds?.length) return stop(context.signal.aborted ? "deadline" : "error");
+    } catch (error) {
+      reason = failureReason(error);
       if (context.signal.aborted) return stop("deadline");
       // A stored token the provider rejects would be rejected again, so it is not offered twice.
       return stop("error", !(storedTokenUntried && !fromIds));
@@ -605,10 +699,18 @@ async function mailGet(deps: MailToolDeps, context: AdapterContext, args: Record
     message = await deps.mail.getMessage(account, id, context);
   } catch (error) {
     if (error instanceof MailProviderError && error.kind === "not_found") {
+      deps.progress?.({ text: "Failed: that message was not found", failed: true });
       return { error: "Message not found" };
     }
     throw error;
   }
+  deps.progress?.({
+    text: clip(
+      `Reading "${clip(message.subject || "(no subject)", SUBJECT_LIMIT)}" from ${message.from?.address ?? "unknown sender"}`,
+      QUERY_LIMIT,
+    ),
+    summary: "Read an email",
+  });
   const maxChars = clampInt(args.maxChars, MIN_BODY_CHARS, MAX_BODY_CHARS, DEFAULT_BODY_CHARS);
   const body = stripQuotedReply(message.text).trimEnd().slice(0, maxChars);
   // Inline pictures the body shows itself are not files to offer.

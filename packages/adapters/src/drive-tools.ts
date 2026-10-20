@@ -2,6 +2,7 @@ import type {
   AdapterContext,
   ConnectorProxyRequest,
   ManagedConnectorProvider,
+  ToolProgress,
 } from "@rakazo/adapter-kit";
 import { clampInt } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
@@ -11,6 +12,7 @@ import {
   GoogleApiError,
   isGoogleAuthFailure,
   isGoogleRateLimited,
+  withRetryProgress,
 } from "./google-api-request.js";
 import { mailToolsAllowed } from "./mail-tools.js";
 
@@ -60,6 +62,8 @@ export type DriveToolDeps = {
   google?: GoogleApiClient;
   /** Called right before each provider write, with nothing awaited between. Text refuses it. */
   beforeWrite?: (account: DriveAccount) => Promise<string | null>;
+  /** One line of what the tool is doing, for the owner's activity view. */
+  progress?: (progress: ToolProgress) => void;
 };
 
 class DriveToolError extends Error {}
@@ -102,6 +106,7 @@ export async function driveToolFromTool(
   args: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   try {
+    context = withRetryProgress(context, deps.progress, "Google Drive");
     const picked = await resolveAccount(deps, context, args);
     if ("error" in picked) return picked;
     const call = new DriveCall(deps, picked.account, context);
@@ -187,6 +192,10 @@ class DriveCall {
     private readonly context: AdapterContext,
   ) {
     this.google = deps.google ?? new GoogleApiClient();
+  }
+
+  progress(progress: ToolProgress) {
+    this.deps.progress?.(progress);
   }
 
   /** A failed write says the outcome is unclear; GoogleApiClient never repeats a POST. */
@@ -284,8 +293,16 @@ async function driveSearch(call: DriveCall, args: Record<string, unknown>) {
     includeItemsFromAllDrives: "true",
     supportsAllDrives: "true",
   });
+  call.progress({ text: `Searching Drive: "${query.slice(0, 60)}"` });
   const data = asRecord(await call.request("GET", `${API}/files?${params}`));
   const files = Array.isArray(data?.files) ? data.files.map(summary) : [];
+  call.progress({
+    text:
+      files.length === 0
+        ? "No files"
+        : `Found ${files.length} ${files.length === 1 ? "file" : "files"}`,
+    summary: `Searched Drive · ${files.length === 0 ? "none found" : `${files.length} found`}`,
+  });
   return { files };
 }
 

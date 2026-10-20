@@ -48,6 +48,33 @@ export const Live: Story = {
   args: { live: true, stepCount: 3, children: <ToolSteps steps={steps} currentIndex={2} /> },
 };
 
+export const DoneWithMailDetails: Story = {
+  args: {
+    stepCount: 2,
+    children: (
+      <ToolSteps
+        steps={[
+          {
+            label: "mail_search",
+            count: 1,
+            summary: "Searched mail · 23 found",
+            lines: [
+              { text: 'Searching mail: from Kevin · after Oct 1 · "pick a time"' },
+              { text: "Found 23 messages" },
+            ],
+          },
+          {
+            label: "mail_get",
+            count: 1,
+            summary: "Read an email",
+            lines: [{ text: 'Reading "Re: Justworks setup" from support@example.test' }],
+          },
+        ]}
+      />
+    ),
+  },
+};
+
 export const StepsWithEarlierHidden: Story = {
   args: {
     live: true,
