@@ -1,10 +1,14 @@
-import type { InboxTodo, MailRow } from "@rakazo/contracts";
+import type { InboxPile, InboxTodo, MailRow } from "@rakazo/contracts";
+import type { SenderGroup } from "@rakazo/core";
 import {
+  archivableIds,
   dueTone,
+  groupBySender,
   groupInbox,
   inboxLabel,
   isSuspiciousCategory,
   localDaysUntil,
+  rowSummary,
 } from "@rakazo/core";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -18,6 +22,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { MailRowMenu } from "../components/mail-row-menu";
 import { MenuPicker } from "../components/menu-picker";
 import { NativeActionButton } from "../components/native-action-button";
 import { NativeSegmentedControl } from "../components/native-segmented-control";
@@ -26,6 +31,7 @@ import { mobileTokens } from "../lib/appearance";
 import { useI18n } from "../lib/i18n";
 import { formatThreadTime } from "../lib/inbox";
 import {
+  archiveMailMessages,
   completeMailTodo,
   ensureMailAgent,
   listMailInbox,
@@ -45,6 +51,16 @@ const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 6;
 const AGENT_SYMBOL = "bubble.left";
 
+/** A list entry: a message, or the header of a sender's group (`group` set, `row` is its newest message). */
+interface ListItem {
+  id: string;
+  row: MailRow;
+  group?: SenderGroup<MailRow>;
+  /** A message inside an open group. */
+  child?: boolean;
+}
+const messageItem = (row: MailRow, child = false): ListItem => ({ id: row.id, row, child });
+
 export default function InboxScreen() {
   const navigation = useNavigation();
   const router = useRouter();
@@ -52,6 +68,11 @@ export default function InboxScreen() {
   const styles = useThemedStyles(createStyles);
 
   const [tab, setTab] = useState<string | undefined>();
+  const [pile, setPile] = useState<InboxPile>("important");
+  // The pile `data` answers, so a pile switch shows loading, not the previous pile's rows.
+  const [dataPile, setDataPile] = useState<InboxPile>();
+  // Open sender groups, by group key.
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
   const [data, setData] = useState<Awaited<ReturnType<typeof listMailInbox>> | null>(null);
   const [todos, setTodos] = useState<InboxTodo[]>([]);
   const [error, setError] = useState("");
@@ -62,13 +83,18 @@ export default function InboxScreen() {
   const generationRef = useRef(0);
   const tabRef = useRef(tab);
   tabRef.current = tab;
+  const pileRef = useRef(pile);
+  pileRef.current = pile;
   const openingAgentRef = useRef(false);
 
   const fetchList = useCallback(async (connectionId: string | undefined, generation: number) => {
-    const list = await listMailInbox(connectionId);
+    const asked = pileRef.current;
+    const list = await listMailInbox(connectionId, asked);
     if (generation !== generationRef.current) return null;
     setData(list);
-    if (list.accounts.length === 0 || !list.enabled) {
+    setDataPile(asked);
+    // To-dos belong to the Important pile.
+    if (asked !== "important" || list.accounts.length === 0 || !list.enabled) {
       setTodos([]);
       return list;
     }
@@ -148,6 +174,53 @@ export default function InboxScreen() {
     void load(next, false);
   };
 
+  const selectPile = (value: InboxPile) => {
+    if (value === pileRef.current) return;
+    setPile(value);
+    pileRef.current = value;
+    setExpanded(new Set());
+    void load(tabRef.current, false);
+  };
+
+  // The rows leave the list at once; a failure puts them back by reloading, and says so.
+  const archiveRows = async (rows: MailRow[]) => {
+    const spamView = pileRef.current === "spam";
+    const ids = archivableIds(rows, spamView);
+    if (ids.length === 0) return;
+    const gone = new Set(ids);
+    setData((current) =>
+      current ? { ...current, rows: current.rows.filter((row) => !gone.has(row.id)) } : current,
+    );
+    try {
+      const result = await archiveMailMessages(ids, spamView);
+      if (result.failed.length > 0)
+        Alert.alert(t("Could not archive {count}", { count: result.failed.length }));
+      // A failed thread comes back with the real list; the Spam count follows the archive.
+      if (result.failed.length > 0 || spamView) void load(tabRef.current, false);
+    } catch (cause) {
+      Alert.alert(errorText(cause, t("Could not archive {count}", { count: ids.length })));
+      void load(tabRef.current, false);
+    }
+  };
+  const confirmArchiveGroup = (group: SenderGroup<MailRow>) => {
+    const count = archivableIds(group.rows, pileRef.current === "spam").length;
+    if (count === 0) return;
+    Alert.alert(
+      t("Archive {count} conversations from {sender}?", { count, sender: group.sender }),
+      undefined,
+      [
+        { text: t("Cancel"), style: "cancel" },
+        { text: t("Archive"), onPress: () => void archiveRows(group.rows) },
+      ],
+    );
+  };
+  const toggleGroup = (key: string) =>
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+
   async function pullToRefresh() {
     setRefreshing(true);
     try {
@@ -220,16 +293,36 @@ export default function InboxScreen() {
     );
   }, [accounts.length, agentName, navigation, openAgent, styles]);
 
-  const groups = useMemo(() => groupInbox(data?.rows ?? [], new Date()), [data]);
-  const sections = useMemo(
-    () =>
-      [
-        { key: "needsReply", title: t("Needs reply"), data: groups.needsReply },
-        { key: "today", title: t("Today"), data: groups.today },
-        { key: "earlier", title: t("Earlier"), data: groups.earlier },
-      ].filter((section) => section.data.length > 0),
-    [groups, t],
-  );
+  const current = dataPile === pile;
+  const rows = useMemo(() => (current ? (data?.rows ?? []) : []), [current, data]);
+  const sections = useMemo(() => {
+    if (pile === "updates" || pile === "newsletters") {
+      // A sender with one message is that message; a larger group is a header, then its messages when open.
+      const items = groupBySender(rows).flatMap((group): ListItem[] =>
+        group.count === 1
+          ? [messageItem(group.newest)]
+          : [
+              { id: `group:${group.key}`, row: group.newest, group },
+              ...(expanded.has(group.key) ? group.rows.map((row) => messageItem(row, true)) : []),
+            ],
+      );
+      return items.length > 0 ? [{ key: pile, title: "", data: items }] : [];
+    }
+    if (pile === "spam")
+      return rows.length > 0
+        ? [{ key: pile, title: "", data: rows.map((row) => messageItem(row)) }]
+        : [];
+    const groups = groupInbox(rows, new Date());
+    return [
+      {
+        key: "needsReply",
+        title: t("Needs reply"),
+        data: groups.needsReply.map((row) => messageItem(row)),
+      },
+      { key: "today", title: t("Today"), data: groups.today.map((row) => messageItem(row)) },
+      { key: "earlier", title: t("Earlier"), data: groups.earlier.map((row) => messageItem(row)) },
+    ].filter((section) => section.data.length > 0);
+  }, [pile, rows, expanded, t]);
 
   const choices = [
     { key: ALL, label: t("All") },
@@ -249,7 +342,29 @@ export default function InboxScreen() {
       <MenuPicker label={t("Account")} choices={choices} value={tab ?? ALL} onChange={selectTab} />
     );
 
-  const loading = !data || (data.rows.length === 0 && !synced);
+  const spamCount = data?.pileCounts?.spam ?? 0;
+  const pileOptions = [
+    { value: "important" as const, label: t("Important") },
+    { value: "updates" as const, label: t("Updates") },
+    { value: "newsletters" as const, label: t("Newsletters") },
+    // Spam shows behind its count, and stays while it is the open pile.
+    ...(spamCount > 0 || pile === "spam"
+      ? [{ value: "spam" as const, label: t("Spam {count}", { count: spamCount }) }]
+      : []),
+  ];
+  const pilePicker =
+    accounts.length > 0 ? (
+      <View style={styles.picker}>
+        <NativeSegmentedControl
+          accessibilityLabel={t("Inbox")}
+          value={pile}
+          onChange={selectPile}
+          options={pileOptions}
+        />
+      </View>
+    ) : null;
+
+  const loading = !data || !current || (rows.length === 0 && !synced);
   const empty =
     data && accounts.length === 0 ? (
       <View style={styles.centered}>
@@ -269,11 +384,11 @@ export default function InboxScreen() {
 
   return (
     <View style={styles.screen}>
-      <SectionList<MailRow, { key: string; title: string; data: MailRow[] }>
+      <SectionList<ListItem, { key: string; title: string; data: ListItem[] }>
         style={styles.list}
         contentInsetAdjustmentBehavior="automatic"
         sections={sections}
-        keyExtractor={(row) => row.id}
+        keyExtractor={(item) => item.id}
         stickySectionHeadersEnabled={false}
         refreshControl={
           <RefreshControl
@@ -285,22 +400,38 @@ export default function InboxScreen() {
         ListHeaderComponent={
           <>
             {picker}
+            {pilePicker}
             {error && !loading ? <Text style={styles.empty}>{error}</Text> : null}
-            {todos.length > 0 ? <TodoCard todos={todos} onComplete={completeTodo} /> : null}
+            {pile === "important" && todos.length > 0 ? (
+              <TodoCard todos={todos} onComplete={completeTodo} />
+            ) : null}
           </>
         }
         ListEmptyComponent={empty}
-        renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionTitle}>{section.title}</Text>
-        )}
-        renderItem={({ item }) => (
-          <MailListRow
-            row={item}
-            onPress={() =>
-              router.push({ pathname: "/inbox-message", params: { messageId: item.id } })
-            }
-          />
-        )}
+        renderSectionHeader={({ section }) =>
+          section.title ? <Text style={styles.sectionTitle}>{section.title}</Text> : null
+        }
+        renderItem={({ item }) =>
+          item.group ? (
+            <MailRowMenu onArchive={() => confirmArchiveGroup(item.group as SenderGroup<MailRow>)}>
+              <MailGroupRow
+                group={item.group}
+                expanded={expanded.has(item.group.key)}
+                onPress={() => toggleGroup((item.group as SenderGroup<MailRow>).key)}
+              />
+            </MailRowMenu>
+          ) : (
+            <MailRowMenu onArchive={() => void archiveRows([item.row])}>
+              <MailListRow
+                row={item.row}
+                indented={item.child}
+                onPress={() =>
+                  router.push({ pathname: "/inbox-message", params: { messageId: item.id } })
+                }
+              />
+            </MailRowMenu>
+          )
+        }
       />
     </View>
   );
@@ -366,7 +497,62 @@ function TodoCard({
   );
 }
 
-function MailListRow({ row, onPress }: { row: MailRow; onPress: () => void }) {
+/** One sender's header in the Updates and Newsletters piles: the count, and the newest mail's summary. */
+function MailGroupRow({
+  group,
+  expanded,
+  onPress,
+}: {
+  group: SenderGroup<MailRow>;
+  expanded: boolean;
+  onPress: () => void;
+}) {
+  const styles = useThemedStyles(createStyles);
+  const { newest } = group;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityState={{ expanded }}
+      onPress={onPress}
+      style={styles.row}
+    >
+      <View style={[styles.unreadDot, group.unreadCount === 0 && styles.readDot]} />
+      <View style={styles.rowBody}>
+        <View style={styles.rowTop}>
+          <Text style={[styles.sender, group.unreadCount > 0 && styles.unread]} numberOfLines={1}>
+            {group.sender}
+          </Text>
+          <Text style={styles.meta}>{group.count}</Text>
+          <NativeSymbol
+            ios={expanded ? "chevron.down" : "chevron.right"}
+            android={expanded ? "chevron-down" : "chevron-forward"}
+            size={12}
+            color={native.secondaryLabel}
+          />
+          <Text style={styles.meta}>{formatThreadTime(newest.receivedAt)}</Text>
+        </View>
+        <Text style={styles.subject} numberOfLines={1}>
+          {newest.subject}
+        </Text>
+        {rowSummary(newest) ? (
+          <Text style={styles.meta} numberOfLines={1}>
+            {rowSummary(newest)}
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
+function MailListRow({
+  row,
+  onPress,
+  indented = false,
+}: {
+  row: MailRow;
+  onPress: () => void;
+  indented?: boolean;
+}) {
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
   const label = inboxLabel(row);
@@ -377,7 +563,7 @@ function MailListRow({ row, onPress }: { row: MailRow; onPress: () => void }) {
     junk: t("Junk"),
   };
   return (
-    <Pressable onPress={onPress} style={styles.row}>
+    <Pressable onPress={onPress} style={[styles.row, indented && styles.indented]}>
       <View style={[styles.unreadDot, !row.unread && styles.readDot]} />
       <View style={[styles.rowBody, row.feedback === "noise" && styles.dimmed]}>
         <View style={styles.rowTop}>
@@ -410,9 +596,9 @@ function MailListRow({ row, onPress }: { row: MailRow; onPress: () => void }) {
         <Text style={styles.subject} numberOfLines={1}>
           {row.subject}
         </Text>
-        {row.snippet ? (
+        {rowSummary(row) ? (
           <Text style={styles.meta} numberOfLines={1}>
-            {row.snippet}
+            {rowSummary(row)}
           </Text>
         ) : null}
       </View>
@@ -455,6 +641,7 @@ function createStyles() {
     todoBody: { flex: 1, minWidth: 0, gap: 2 },
     todoText: { color: native.label, fontSize: 15 },
     row: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingVertical: 8 },
+    indented: { paddingStart: 32 },
     rowBody: { flex: 1, minWidth: 0, gap: 2 },
     rowTop: { flexDirection: "row", alignItems: "baseline", gap: 8 },
     unreadDot: {

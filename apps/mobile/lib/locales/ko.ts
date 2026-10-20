@@ -771,4 +771,10 @@ export const KO_MESSAGES: Record<string, string> = {
   "Could not save this list.": "이 목록을 저장할 수 없습니다.",
   "Call Elio": "Elio에게 전화",
   "Could not start the call": "통화를 시작할 수 없습니다",
+  Important: "중요",
+  Updates: "업데이트",
+  Newsletters: "뉴스레터",
+  "Spam {count}": "스팸 {count}",
+  "Archive {count} conversations from {sender}?": "{sender}의 대화 {count}개를 보관할까요?",
+  "Could not archive {count}": "대화 {count}개를 보관하지 못했습니다",
 };

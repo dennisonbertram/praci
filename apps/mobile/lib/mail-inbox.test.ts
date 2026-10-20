@@ -5,6 +5,7 @@ vi.mock("./api", () => ({ rpc }));
 vi.mock("./i18n", () => ({ t: (text: string) => text, dateLocaleForUi: () => "en-US" }));
 
 import {
+  archiveMailMessages,
   completeMailTodo,
   ensureMailAgent,
   getMailMessage,
@@ -32,6 +33,19 @@ it("calls the inbox procedures with the account only when one is chosen", async 
     ["inbox/todos/setDone", { id: "t1", done: true }],
     ["inbox/agent"],
     ["inbox/get", { messageId: "m1" }],
+  ]);
+});
+
+it("asks for a pile, with or without an account, and archives many messages in one call", async () => {
+  await listMailInbox(undefined, "updates");
+  await listMailInbox("c1", "spam");
+  await archiveMailMessages(["m1", "m2"]);
+  await archiveMailMessages(["m3"], true);
+  expect(rpc.mock.calls).toEqual([
+    ["inbox/list", { pile: "updates" }],
+    ["inbox/list", { connectionId: "c1", pile: "spam" }],
+    ["inbox/archiveMany", { messageIds: ["m1", "m2"] }],
+    ["inbox/archiveMany", { messageIds: ["m3"], allowSpam: true }],
   ]);
 });
 
