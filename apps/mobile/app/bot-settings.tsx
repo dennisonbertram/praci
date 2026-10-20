@@ -5,6 +5,7 @@ import {
   BOT_NAME_MAX_LENGTH,
   BOT_TITLE_MAX_LENGTH,
   normalizeCreateBotProfile,
+  parseBotAvatarValue,
 } from "@rakazo/contracts";
 import {
   connectedModelChoices,
@@ -27,6 +28,7 @@ import { NativeSymbol } from "../components/native-symbol";
 import { Chevron } from "../components/row-accessories";
 import type { MobileBot, MobileMe, MobileModel, MobileModelCredential } from "../lib/api";
 import { rpc } from "../lib/api";
+import { recolorBotAvatar } from "../lib/bot-avatar";
 import { deviceVoices, setVoiceForBot, voiceForBot, voiceLabel } from "../lib/bot-voices";
 import { COMPUTER_LIFECYCLE_TIMEOUT_MS } from "../lib/computer";
 import { loadDeviceVoiceEnabled } from "../lib/device-voice";
@@ -68,6 +70,8 @@ export default function BotSettingsScreen() {
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [skills, setSkills] = useState<BotAgentSkill[]>([]);
+  const [skillsError, setSkillsError] = useState<string | null>(null);
+  const [notifyOnFinish, setNotifyOnFinish] = useState(true);
 
   useEffect(() => {
     if (!botId) return;
@@ -86,25 +90,31 @@ export default function BotSettingsScreen() {
         );
         setThinkingLevel(next.thinkingLevel ?? "");
         setAutoSpeak(next.autoSpeak);
+        setNotifyOnFinish(next.notifyOnFinish);
       })
       .catch((err) => setError(errorText(err, t("Could not load bot"))));
   }, [botId]);
 
-  useEffect(() => {
+  const loadSkills = useCallback(() => {
     if (!botId) return;
+    setSkillsError(null);
     void rpc<BotAgentSkill[]>("agentSkills/forBot", { botId })
       .then((list) => setSkills(Array.isArray(list) ? list : []))
-      .catch(() => setSkills([]));
-  }, [botId]);
+      .catch(() => setSkillsError(t("Could not load skills")));
+  }, [botId, t]);
+
+  useEffect(loadSkills, [loadSkills]);
 
   async function setSkillEnabled(skill: BotAgentSkill, enabled: boolean) {
     const mark = (value: boolean) =>
       setSkills((list) => list.map((s) => (s.id === skill.id ? { ...s, enabled: value } : s)));
     mark(enabled);
+    setSkillsError(null);
     try {
       await rpc("agentSkills/setEnabled", { botId, skillKey: skill.id, enabled });
     } catch {
       mark(!enabled);
+      setSkillsError(t("Could not update skills"));
     }
   }
 
@@ -126,6 +136,9 @@ export default function BotSettingsScreen() {
         setModelMetaError(errorText(err, t("Could not load model settings")));
       });
   }, [t]);
+
+  const avatar = parseBotAvatarValue(color);
+  const avatarSwatch = avatar.kind === "shape" || avatar.kind === "color" ? avatar.color : "";
 
   const connectedOptions = useMemo(
     () => connectedModelChoices(credentials, catalog),
@@ -304,6 +317,7 @@ export default function BotSettingsScreen() {
         modelId?: string | null;
         thinkingLevel?: ThinkingLevel | null;
         autoSpeak?: boolean;
+        notifyOnFinish?: boolean;
       } = { botId };
       if (profile.name !== bot.name) input.name = profile.name;
       if (profile.title !== bot.title) input.title = profile.title;
@@ -327,6 +341,7 @@ export default function BotSettingsScreen() {
           : null;
       }
       if (autoSpeak !== bot.autoSpeak) input.autoSpeak = autoSpeak;
+      if (notifyOnFinish !== bot.notifyOnFinish) input.notifyOnFinish = notifyOnFinish;
       if (computerMode !== bot.computerMode) {
         await rpc(
           "bots/setComputer",
@@ -462,30 +477,36 @@ export default function BotSettingsScreen() {
         <Text style={{ color: tokens.mutedForeground, marginTop: 16, fontSize: 14 }}>
           {t("Color")}
         </Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 10, marginTop: 8 }}
-          accessibilityRole="radiogroup"
-        >
-          {BOT_COLORS.map((option, index) => (
-            <Pressable
-              key={option}
-              accessibilityRole="radio"
-              accessibilityLabel={t("Color {number}", { number: index + 1 })}
-              accessibilityState={{ checked: color === option }}
-              onPress={() => setColor(option)}
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: option,
-                borderWidth: 3,
-                borderColor: color === option ? tokens.foreground : "transparent",
-              }}
-            />
-          ))}
-        </ScrollView>
+        {avatar.kind === "image" ? (
+          <View style={styles.row}>
+            <Text style={[styles.rowLabel, { color: tokens.foreground }]}>{t("Custom image")}</Text>
+          </View>
+        ) : (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ gap: 10, marginTop: 8 }}
+            accessibilityRole="radiogroup"
+          >
+            {BOT_COLORS.map((option, index) => (
+              <Pressable
+                key={option}
+                accessibilityRole="radio"
+                accessibilityLabel={t("Color {number}", { number: index + 1 })}
+                accessibilityState={{ checked: avatarSwatch === option }}
+                onPress={() => setColor((current) => recolorBotAvatar(current, option))}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: option,
+                  borderWidth: 3,
+                  borderColor: avatarSwatch === option ? tokens.foreground : "transparent",
+                }}
+              />
+            ))}
+          </ScrollView>
+        )}
         <ComputerModePicker value={computerMode} onChange={setComputerMode} />
         <View style={[styles.row, { marginTop: 20 }]}>
           <Text style={[styles.rowLabel, { color: tokens.mutedForeground }]}>
@@ -495,6 +516,16 @@ export default function BotSettingsScreen() {
             accessibilityLabel={t("Read replies aloud")}
             onValueChange={setAutoSpeak}
             value={autoSpeak}
+          />
+        </View>
+        <View style={styles.row}>
+          <Text style={[styles.rowLabel, { color: tokens.mutedForeground }]}>
+            {t("Notifications")}
+          </Text>
+          <NativeSwitch
+            accessibilityLabel={t("Notifications")}
+            onValueChange={setNotifyOnFinish}
+            value={notifyOnFinish}
           />
         </View>
         {deviceVoiceEnabled ? (
@@ -511,7 +542,7 @@ export default function BotSettingsScreen() {
             voiceRow
           )
         ) : null}
-        {skills.length ? (
+        {skills.length || skillsError ? (
           <View style={{ marginTop: 20 }}>
             <Text style={{ color: tokens.mutedForeground, fontSize: 14 }}>{t("Skills")}</Text>
             {skills.map((skill) => (
@@ -526,6 +557,19 @@ export default function BotSettingsScreen() {
                 />
               </View>
             ))}
+            {skillsError ? (
+              <Text style={{ color: tokens.destructive, marginTop: 8 }}>{skillsError}</Text>
+            ) : null}
+            {skillsError && !skills.length ? (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={t("Retry")}
+                onPress={loadSkills}
+                style={styles.row}
+              >
+                <Text style={[styles.rowLabel, { color: tokens.foreground }]}>{t("Retry")}</Text>
+              </Pressable>
+            ) : null}
           </View>
         ) : null}
         <Pressable

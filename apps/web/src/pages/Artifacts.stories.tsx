@@ -163,6 +163,18 @@ export const FiltersOpen: Story = {
   },
 };
 
+/** A search that matches nothing, with the Filters panel closed again: the button shows a dot and the list can be reset. */
+export const NoMatch: Story = {
+  beforeEach: () => load(),
+  play: async ({ canvasElement }) => {
+    const view = within(canvasElement);
+    const filters = await view.findByRole("button", { name: "Filters" });
+    await userEvent.click(filters);
+    await userEvent.type(await view.findByPlaceholderText("Search artifacts…"), "zzzz");
+    await userEvent.click(filters);
+  },
+};
+
 export const MarkdownPreview: Story = {
   render: () => <Page at="/app/artifacts/art_md" />,
   beforeEach: () => load(),

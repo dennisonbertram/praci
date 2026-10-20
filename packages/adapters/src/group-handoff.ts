@@ -1,12 +1,12 @@
 import { runContinueJob } from "@rakazo/adapter-kit";
 import { MessageBlock } from "@rakazo/contracts";
 import { botMessageHopExhausted, nextBotMessageHop, renderGroupMembersContext } from "@rakazo/core";
+import type { PrismaClient } from "@rakazo/db";
 import {
   appendEventInTransaction,
   createThreadMessageInTransaction,
   IsolationError,
   lockOwnedGroup,
-  type PrismaClient,
   touchGroupUpdatedAt,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";

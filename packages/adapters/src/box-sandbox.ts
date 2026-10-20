@@ -1,14 +1,8 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
-import {
-  type Box,
-  BoxApi,
-  type Command200Response,
-  type CommandResponse,
-  Configuration,
-  ResponseError,
-} from "@asciidev/box-sdk";
+import type { Box, Command200Response, CommandResponse } from "@asciidev/box-sdk";
+import { BoxApi, Configuration, ResponseError } from "@asciidev/box-sdk";
 import type {
   AdapterContext,
   CommandRequest,

@@ -154,3 +154,18 @@ describe("company focus", () => {
     );
   });
 });
+
+describe("focus choices", () => {
+  it("offers four choices, with no second choice for the same apps as Day-to-day work", async () => {
+    const { deps, actor } = fixture([]);
+    await expect(chooseFocus(deps, actor, "bot", "inbox")).rejects.toThrow();
+  });
+  it("summarizes the company choice by what it connects", async () => {
+    const { deps, actor } = fixture([]);
+    await chooseFocus(deps, actor, "bot", "company");
+    expect(posted[0]?.blocks[0]).toEqual({
+      kind: "text",
+      text: "Got it. Email, calendar, and your company pages. I’ll see what’s already connected so I don’t make you set something up twice.",
+    });
+  });
+});

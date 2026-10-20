@@ -264,3 +264,49 @@ it("shows artifacts as a table in list view and as cards in grid view, and remem
     vi.unstubAllGlobals();
   }
 });
+
+function button(container: HTMLElement, text: string) {
+  return [...container.querySelectorAll("button")].find((b) => b.textContent?.includes(text));
+}
+
+it("keeps a filtered-out list recoverable", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({
+    items: [artifact("Alpha notes", "artifact-1")],
+    nextCursor: null,
+  });
+  const page = await renderArtifacts("/app/artifacts/artifact-1");
+  try {
+    const filters = button(page.container, "Filters");
+    expect(filters?.getAttribute("data-active")).toBeNull();
+    await act(async () => filters?.click());
+    await act(async () => typeSearch(page.container, "zzzz"));
+    await act(async () => filters?.click());
+    expect(page.container.textContent).toContain("No artifacts match these filters.");
+    expect(button(page.container, "Filters")?.getAttribute("data-active")).toBe("true");
+    // The selected artifact is filtered out, so its preview is closed.
+    expect(page.container.textContent).not.toContain("Back to artifacts");
+    await act(async () => button(page.container, "Clear filters")?.click());
+    expect(page.container.textContent).toContain("Alpha notes");
+    expect(button(page.container, "Filters")?.getAttribute("data-active")).toBeNull();
+  } finally {
+    await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});
+
+it("shows delete on touch for card and row buttons", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  api.listSpace.mockResolvedValue({
+    items: [artifact("Alpha notes", "artifact-1")],
+    nextCursor: null,
+  });
+  const page = await renderArtifacts("/app/artifacts/artifact-1");
+  try {
+    const del = page.container.querySelector("button[aria-label^='Delete']");
+    expect(del?.className).toContain("pointer-coarse:opacity-100");
+  } finally {
+    await page.cleanup();
+    vi.unstubAllGlobals();
+  }
+});

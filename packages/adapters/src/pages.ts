@@ -57,7 +57,7 @@ export async function renderPageChartSvg(chart: PageChart): Promise<string> {
 }
 
 /** Throws PageValidationError unless every chart fence parses and renders with the PlotSpec rules. */
-export async function validatePageContent(content: string): Promise<void> {
+async function validatePageContent(content: string): Promise<void> {
   if (content.length > BOT_PAGE_MAX_CHARS) {
     throw new PageValidationError(
       `The page is ${content.length} characters; the limit is ${BOT_PAGE_MAX_CHARS}.`,

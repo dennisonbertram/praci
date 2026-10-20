@@ -3,9 +3,9 @@ import { toolRequiresApproval } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
 import { builtinAgentTools } from "./builtin-tools.js";
 import { CalendarApiEmulator } from "./calendar-api-emulator.js";
+import type { CalendarAccount } from "./calendar-tools.js";
 import {
   CALENDAR_TOOL_NAMES,
-  type CalendarAccount,
   calendarToolFromTool,
   listCalendarAccounts,
 } from "./calendar-tools.js";

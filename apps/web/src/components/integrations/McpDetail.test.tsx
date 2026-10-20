@@ -288,3 +288,24 @@ it("turning Share on lifts exclusivity before assigning every agent, and off ret
     assignments: [],
   });
 });
+
+it("disables the row buttons and shows Creating agent while the agent is being created", async () => {
+  let finish: (value: { server: object; botId: string }) => void = () => {};
+  create.mockReturnValue(new Promise((resolve) => (finish = resolve)));
+  await show(false, undefined, {
+    agentBotId: null,
+    agentExclusive: false,
+    transport: "streamable_http",
+    oauthStatus: "connected",
+  });
+  await press("Create agent");
+  const button = (label: string) =>
+    [...container.querySelectorAll<HTMLButtonElement>("button")].find(
+      (b) => b.textContent === label,
+    );
+  for (const label of ["Reconnect", "Disconnect sign-in", "Rename", "Creating agent"]) {
+    expect(button(label)?.disabled, label).toBe(true);
+  }
+  expect(button("Create agent")).toBeUndefined();
+  await act(async () => finish({ server: {}, botId: "bot_new" }));
+});

@@ -29,6 +29,7 @@ msgstr " (needs input)"
 msgid " (new)"
 msgstr " (new)"
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
@@ -201,21 +202,6 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 msgid "{0} handling"
 msgstr "{0} handling"
 
-#. placeholder {0}: row?.displayName ?? item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} is ready."
-msgstr "{0} is ready."
-
-#. placeholder {0}: format(size / 1024)
-#: src/lib/format-bytes.ts
-msgid "{0} KB"
-msgstr "{0} KB"
-
-#. placeholder {0}: format(size / (1024 * 1024))
-#: src/lib/format-bytes.ts
-msgid "{0} MB"
-msgstr "{0} MB"
-
 #. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
@@ -232,11 +218,6 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 #: src/pages/Finance.tsx
 msgid "{0} non-USD not counted"
 msgstr "{0} non-USD not counted"
-
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} now appears under Connected."
-msgstr "{0} now appears under Connected."
 
 #. placeholder {0}: wallet.safeThreshold
 #. placeholder {1}: wallet.safeOwners.length
@@ -480,10 +461,6 @@ msgstr "{serverName} connected"
 msgid "{service} agent"
 msgstr "{service} agent"
 
-#: src/lib/format-bytes.ts
-msgid "{size} B"
-msgstr "{size} B"
-
 #: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
 msgstr "{soFar} · spent {spentRange}"
@@ -556,10 +533,6 @@ msgstr "0x… or name.eth"
 msgid "3-mo avg, after revenue"
 msgstr "3-mo avg, after revenue"
 
-#: src/pages/Finance.tsx
-msgid "3-mo change"
-msgstr "3-mo change"
-
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr "A bit of everything"
@@ -577,6 +550,10 @@ msgstr "A Safe multisig. Its owners and threshold are shown."
 #: src/pages/Onboarding.tsx
 msgid "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 msgstr "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "A skill with that name already exists"
+msgstr "A skill with that name already exists"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "A smart contract that holds funds."
@@ -827,7 +804,7 @@ msgstr "Add your OpenRouter key above to start. The Legal agent then reads your 
 msgid "Added"
 msgstr "Added"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Adding a contact"
 msgstr "Adding a contact"
 
@@ -1161,10 +1138,6 @@ msgstr "Approve"
 msgid "Approve this server to let your bot use its tools."
 msgstr "Approve this server to let your bot use its tools."
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Apps"
-msgstr "Apps"
-
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr "Apps with their own server"
@@ -1182,6 +1155,10 @@ msgstr "Archive"
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Archive {0}"
 msgstr "Archive {0}"
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Archive all"
+msgstr "Archive all"
 
 #: src/pages/Shell.tsx
 msgid "archived"
@@ -1287,6 +1264,14 @@ msgstr "Ask the server owner to configure this provider."
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
 msgstr "Ask the server owner to set up the app catalog."
+
+#: src/pages/shell/working-label.ts
+msgid "Asking {agentName}"
+msgstr "Asking {agentName}"
+
+#: src/pages/shell/working-label.ts
+msgid "Asking another agent"
+msgstr "Asking another agent"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -1834,6 +1819,10 @@ msgstr "Change"
 msgid "Change password"
 msgstr "Change password"
 
+#: src/pages/Finance.tsx
+msgid "Change, 3 months"
+msgstr "Change, 3 months"
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Changes your account"
 msgstr "Changes your account"
@@ -1891,6 +1880,7 @@ msgstr "Chat with your agents over iMessage"
 msgid "Chat with your agents over iMessage from your Mac"
 msgstr "Chat with your agents over iMessage from your Mac"
 
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Chats"
 msgstr "Chats"
@@ -1981,7 +1971,7 @@ msgstr "Choose the account to connect, then come back here."
 msgid "Choose when it runs"
 msgstr "Choose when it runs"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
 msgstr "Choosing your company in Carta"
 
@@ -2023,6 +2013,7 @@ msgstr "Clear filter"
 msgid "Clear filter {label}"
 msgstr "Clear filter {label}"
 
+#: src/pages/Artifacts.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
@@ -2040,10 +2031,6 @@ msgstr "Clear search"
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
 msgstr "Clearing…"
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Click Sign in with {service}. A {service} window opens for you to approve access."
-msgstr "Click Sign in with {service}. A {service} window opens for you to approve access."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -3185,6 +3172,14 @@ msgstr "Create account"
 msgid "Create agent"
 msgstr "Create agent"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in {service}'s developer settings with this callback URL."
+msgstr "Create an app in {service}'s developer settings with this callback URL."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in the provider's developer settings with this callback URL."
+msgstr "Create an app in the provider's developer settings with this callback URL."
+
 #: src/pages/Shell.tsx
 msgid "Create Data room agent"
 msgstr "Create Data room agent"
@@ -3226,6 +3221,10 @@ msgstr "Created"
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
 msgstr "Created {0}"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Creating agent"
+msgstr "Creating agent"
 
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3475,6 +3474,10 @@ msgstr "Developer"
 msgid "Didn't open?"
 msgstr "Didn't open?"
 
+#: src/pages/Inbox.tsx
+msgid "Digest"
+msgstr "Digest"
+
 #: src/components/MailApprovalCard.tsx
 msgid "Disable drafts for {botName}"
 msgstr "Disable drafts for {botName}"
@@ -3610,6 +3613,7 @@ msgstr "Don’t have an account?"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
@@ -3748,10 +3752,6 @@ msgstr "Edit contact"
 msgid "Edit first"
 msgstr "Edit first"
 
-#: src/pages/BotContextMenu.tsx
-msgid "Edit profile"
-msgstr "Edit profile"
-
 #: src/components/finance/WalletDialog.tsx
 msgid "Edit wallet"
 msgstr "Edit wallet"
@@ -3801,6 +3801,10 @@ msgstr "Ends {day}"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
 msgstr "Engage when... Ignore..."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Enter a Client ID to sign in."
+msgstr "Enter a Client ID to sign in."
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a folder name without slashes"
@@ -4119,6 +4123,10 @@ msgstr "Folder"
 #: src/components/data-room/FolderTree.tsx
 msgid "Folders"
 msgstr "Folders"
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Forget"
+msgstr "Forget"
 
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
@@ -4511,6 +4519,7 @@ msgstr "Import from email"
 msgid "Import from Google Drive"
 msgstr "Import from Google Drive"
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
@@ -4641,10 +4650,6 @@ msgstr "Isolated preview — no access to your account"
 #: src/components/data-room/ItemDialogs.tsx
 msgid "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
 msgstr "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "It now appears under Connected."
-msgstr "It now appears under Connected."
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Italic"
@@ -4777,6 +4782,10 @@ msgstr "Latest {0} of {1}"
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
 msgstr "Launched {app}"
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Learned"
+msgstr "Learned"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Leave"
@@ -4933,7 +4942,6 @@ msgstr "Loading voice providers…"
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/Shell.tsx
@@ -5233,6 +5241,10 @@ msgstr "Messaged {peer}"
 msgid "Messaging"
 msgstr "Messaging"
 
+#: src/pages/shell/working-label.ts
+msgid "Messaging you"
+msgstr "Messaging you"
+
 #: src/lib/call-session.ts
 msgid "Microphone failed"
 msgstr "Microphone failed"
@@ -5328,7 +5340,6 @@ msgstr "Month"
 msgid "Month to date"
 msgstr "Month to date"
 
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
@@ -5466,6 +5477,10 @@ msgstr "Name this routine"
 msgid "Needs a monthly burn"
 msgstr "Needs a monthly burn"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Needs a server restart"
+msgstr "Needs a server restart"
+
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr "Needs an answer"
@@ -5599,6 +5614,7 @@ msgstr "New ticket"
 msgid "Newsletter"
 msgstr "Newsletter"
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
@@ -5723,6 +5739,7 @@ msgstr "No investors yet"
 msgid "No longer active"
 msgstr "No longer active"
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr "No mail"
@@ -5811,6 +5828,10 @@ msgstr "No relationships yet."
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
 msgstr "No remote MCP servers found"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "No response from the server. Check the address."
+msgstr "No response from the server. Check the address."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
@@ -6073,6 +6094,7 @@ msgid "Only if the server does not use sign-in"
 msgstr "Only if the server does not use sign-in"
 
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
@@ -6125,6 +6147,10 @@ msgstr "Open chat"
 msgid "Open computer settings"
 msgstr "Open computer settings"
 
+#: src/pages/shell/composer-error.tsx
+msgid "Open Data room"
+msgstr "Open Data room"
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr "Open deadlines"
@@ -6168,6 +6194,10 @@ msgstr "Open in Mercury"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
 msgstr "Open Inbox"
+
+#: src/pages/shell/composer-error.tsx
+msgid "Open Legal"
+msgstr "Open Legal"
 
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
@@ -6218,15 +6248,11 @@ msgstr "Opened {path}"
 msgid "Opened its thread."
 msgstr "Opened its thread."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Opening an email"
 msgstr "Opening an email"
 
-#: src/pages/Onboarding.tsx
-msgid "Opening chat…"
-msgstr "Opening chat…"
-
-#: src/App.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Opening your Space…"
 msgstr "Opening your Space…"
 
@@ -6421,6 +6447,14 @@ msgstr "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if
 msgid "Paste the web address an app gives you"
 msgstr "Paste the web address an app gives you"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into BlueBubbles"
+msgstr "Paste this into BlueBubbles"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into Photon"
+msgstr "Paste this into Photon"
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste your API key"
 msgstr "Paste your API key"
@@ -6446,6 +6480,10 @@ msgstr "pending"
 msgid "Pending"
 msgstr "Pending"
 
+#: src/pages/Finance.tsx
+msgid "Per month"
+msgstr "Per month"
+
 #: src/components/finance/ui.tsx
 msgid "Period"
 msgstr "Period"
@@ -6455,12 +6493,9 @@ msgid "Person"
 msgstr "Person"
 
 #: src/pages/Inbox.tsx
+#: src/pages/Shell.tsx
 msgid "Personal"
 msgstr "Personal"
-
-#: src/pages/Shell.tsx
-msgid "Personnel"
-msgstr "Personnel"
 
 #: src/components/NotificationSettings.tsx
 msgid "Phone"
@@ -6545,8 +6580,8 @@ msgstr "Preview"
 msgid "Preview {0}"
 msgstr "Preview {0}"
 
+#: src/components/ArtifactPreview.tsx
 #: src/components/SheetPreview.tsx
-#: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr "Preview isn't available for this file type — download it to view it."
 
@@ -6697,7 +6732,7 @@ msgstr "Reading"
 msgid "Reading {0} again"
 msgstr "Reading {0} again"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr "Reading a connected app"
 
@@ -6705,7 +6740,7 @@ msgstr "Reading a connected app"
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading the cap table"
 msgstr "Reading the cap table"
 
@@ -6713,15 +6748,15 @@ msgstr "Reading the cap table"
 msgid "Reading this file. You can keep working while it finishes."
 msgstr "Reading this file. You can keep working while it finishes."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your cap table from Carta"
 msgstr "Reading your cap table from Carta"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your contacts"
 msgstr "Reading your contacts"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr "Reading your finances"
 
@@ -7152,8 +7187,8 @@ msgid "Resize panel"
 msgstr "Resize panel"
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "Restart required"
-msgstr "Restart required"
+msgid "Restart the Rakazo server to start using iMessage."
+msgstr "Restart the Rakazo server to start using iMessage."
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
@@ -7331,7 +7366,6 @@ msgstr "Sales & CRM"
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
@@ -7395,7 +7429,7 @@ msgstr "Saved."
 msgid "Saved. Rotate to reveal."
 msgstr "Saved. Rotate to reveal."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Saving a contact"
 msgstr "Saving a contact"
 
@@ -7554,7 +7588,7 @@ msgstr "Search: {0}"
 msgid "Searching in {openFolderPath}"
 msgstr "Searching in {openFolderPath}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr "Searching your mail"
 
@@ -7715,6 +7749,7 @@ msgid "Set up app catalog"
 msgstr "Set up app catalog"
 
 #: src/components/call/CallCard.tsx
+#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -7826,7 +7861,7 @@ msgstr "Show transcript"
 msgid "Showing the {shown} most connected of {total} items."
 msgstr "Showing the {shown} most connected of {total} items."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Showing the emails it found"
 msgstr "Showing the emails it found"
 
@@ -8501,6 +8536,7 @@ msgstr "These saved settings can't be read. Remove it and add it again."
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Thinking"
 
@@ -8887,9 +8923,10 @@ msgstr "Unknown bot"
 msgid "Unknown source: {unknownSource}"
 msgstr "Unknown source: {unknownSource}"
 
+#. placeholder {0}: unknown.join(", ")
 #: src/pages/shell/bot-panel.tsx
-msgid "Unknown tool"
-msgstr "Unknown tool"
+msgid "Unknown tool: {0}"
+msgstr "Unknown tool: {0}"
 
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Unlink"
@@ -9001,6 +9038,7 @@ msgstr "Updated {0}"
 msgid "Updated {updated}"
 msgstr "Updated {updated}"
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -9016,7 +9054,7 @@ msgstr "Updating {0}’s Computer"
 msgid "Updating Team Computer"
 msgstr "Updating Team Computer"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Updating the cap table"
 msgstr "Updating the cap table"
 
@@ -9131,6 +9169,10 @@ msgstr "Uses Carta figures and asks before sending."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
+
+#: src/pages/Finance.tsx
+msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgstr "Usual charge scaled to a month. A vendor page shows the average of actual spend."
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -9271,10 +9313,6 @@ msgstr "Webhook signing secret"
 msgid "Webhook token"
 msgstr "Webhook token"
 
-#: src/components/integrations/IMessageSection.tsx
-msgid "Webhook URL"
-msgstr "Webhook URL"
-
 #: src/pages/shell/bot-credentials.tsx
 msgid "Website login"
 msgstr "Website login"
@@ -9413,7 +9451,7 @@ msgstr "Write"
 msgid "Writing"
 msgstr "Writing"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Writing a draft email"
 msgstr "Writing a draft email"
 
@@ -9437,7 +9475,7 @@ msgstr "Year"
 msgid "Yearly"
 msgstr "Yearly"
 
-#: src/pages/Shell.tsx
+#: src/lib/roster-time.ts
 #: src/pages/shell/chat-context.tsx
 msgid "Yesterday"
 msgstr "Yesterday"

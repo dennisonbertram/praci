@@ -1,4 +1,5 @@
-import { createDb, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { MessagingSettings } from "./messaging-settings.js";
 import { withSecretPersistence } from "./secret-persistence.js";

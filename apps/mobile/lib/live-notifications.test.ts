@@ -4,6 +4,11 @@ vi.mock("expo-modules-core", () => ({ requireNativeModule: vi.fn() }));
 vi.mock("expo-notifications", () => ({
   setNotificationHandler: vi.fn(),
   getPresentedNotificationsAsync: vi.fn(async () => []),
+  scheduleNotificationAsync: vi.fn(async () => "masked-id"),
+}));
+vi.mock("expo-secure-store", () => ({
+  getItemAsync: vi.fn(async () => null),
+  setItemAsync: vi.fn(async () => undefined),
 }));
 vi.mock("react-native", () => ({ Platform: { OS: "ios" } }));
 
@@ -91,5 +96,34 @@ describe("notification thread targeting", () => {
     await expect(show("inbox")).resolves.toMatchObject({ shouldShowBanner: false });
     await expect(show("finance")).resolves.toMatchObject({ shouldShowBanner: true });
     setOpenSurface(null);
+  });
+});
+
+describe("foreground notifications while amounts are hidden", () => {
+  it("replaces a notification that shows money with a masked copy", async () => {
+    vi.resetModules();
+    const live = await import("./live-notifications");
+    const { setHideAmounts } = await import("./hide-amounts");
+    live.configureForegroundNotifications();
+    const handler = vi.mocked(Notifications.setNotificationHandler).mock.calls.at(-1)?.[0];
+    const request = {
+      content: { title: "Mercury", body: "Paid $1,200 to Acme", data: { botId: "bot-9" } },
+    };
+
+    await expect(handler?.handleNotification({ request } as never)).resolves.toMatchObject({
+      shouldShowBanner: true,
+    });
+    expect(Notifications.scheduleNotificationAsync).not.toHaveBeenCalled();
+
+    await setHideAmounts(true);
+    await expect(handler?.handleNotification({ request } as never)).resolves.toMatchObject({
+      shouldShowBanner: false,
+      shouldShowList: false,
+    });
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith({
+      content: { title: "Mercury", body: "Paid $••• to Acme", data: { botId: "bot-9" } },
+      trigger: null,
+    });
+    await setHideAmounts(false);
   });
 });

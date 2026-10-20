@@ -1,4 +1,10 @@
 export const DE_MESSAGES: Record<string, string> = {
+  "Hide amounts": "Beträge ausblenden",
+  "Show amounts": "Beträge anzeigen",
+  Sheets: "Tabellen",
+  "This sheet is empty.": "Diese Tabelle ist leer.",
+  "Load more": "Mehr laden",
+  "Could not load more rows.": "Weitere Zeilen konnten nicht geladen werden.",
   "Phone notifications": "Handybenachrichtigungen",
   "Share with all agents": "Mit allen Agenten teilen",
   "Couldn't refresh — showing the last loaded messages.":
@@ -580,6 +586,10 @@ export const DE_MESSAGES: Record<string, string> = {
   "Save section name": "Abschnittsnamen speichern",
   "Section name": "Abschnittsname",
   "Silence notifications": "Benachrichtigungen stummschalten",
+  Pinned: "Angeheftet",
+  "Rename space": "Space umbenennen",
+  Rename: "Umbenennen",
+  "Could not rename space": "Space konnte nicht umbenannt werden",
   Unassigned: "Nicht zugewiesen",
   Unpin: "Lösen",
   // components/computer-maintenance-actions.tsx
@@ -836,6 +846,9 @@ export const DE_MESSAGES: Record<string, string> = {
   "Archive {count} conversations from {sender}?":
     "{count} Unterhaltungen von {sender} archivieren?",
   "Could not archive {count}": "{count} Unterhaltungen konnten nicht archiviert werden",
+  "Could not load skills": "Skills konnten nicht geladen werden",
+  "Could not update skills": "Skills konnten nicht aktualisiert werden",
+  "Custom image": "Eigenes Bild",
   "Waiting for the computer": "Warten auf den Computer",
   "Starting the computer": "Computer wird gestartet",
   "Connecting to {name}": "Verbindung zu {name}",
@@ -870,6 +883,11 @@ export const DE_MESSAGES: Record<string, string> = {
   Skipping: "Wird übersprungen",
   "Gmail filter limit reached": "Limit für Gmail-Filter erreicht",
   "Couldn't add Gmail filter": "Gmail-Filter konnte nicht hinzugefügt werden",
+  Learned: "Gelernt",
+  Forget: "Vergessen",
+  Senders: "Absender",
+  Digest: "Zusammenfassung",
+  "Archive all": "Alle archivieren",
   History: "Verlauf",
   Undo: "Rückgängig",
   "Send an unsubscribe email to {address}?": "Abmelde-E-Mail an {address} senden?",

@@ -280,6 +280,8 @@ export const CleanupSenderSchema = z.object({
   unsubscribeStatus: UnsubscribeStatusSchema.nullable(),
   /** The Gmail filter for a skipped sender; omitted when there is none. */
   rule: SenderRuleStatusSchema.optional(),
+  /** The pile the model chose for this sender often enough that its mail now goes there without it. Optional so older apps still parse. */
+  learnedPile: InboxPileSchema.nullable().optional(),
 });
 
 export const CleanupListInputSchema = InboxScopeInputSchema;
@@ -308,6 +310,8 @@ export const CleanupArchiveOutputSchema = z.object({
 export const CleanupForgetInputSchema = z.object({
   connectionId: Id,
   address: z.string().min(3).max(320),
+  /** True: forget only the learned pile and keep the skip and unsubscribe decision. */
+  learned: z.boolean().optional(),
 });
 
 export const UnsubscribeInputSchema = z.object({

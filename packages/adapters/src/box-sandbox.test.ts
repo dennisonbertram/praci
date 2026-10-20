@@ -1,7 +1,8 @@
 import type { Command200Response } from "@asciidev/box-sdk";
 import { parse } from "shell-quote";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { BoxSandboxProvider, type BoxSandboxSdk, isUnrecoverableBoxError } from "./box-sandbox.js";
+import type { BoxSandboxSdk } from "./box-sandbox.js";
+import { BoxSandboxProvider, isUnrecoverableBoxError } from "./box-sandbox.js";
 import { desktopCommandResponder } from "./linux-desktop.test-support.js";
 
 const context = {

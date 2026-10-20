@@ -1,11 +1,11 @@
-import {
-  type AdapterContext,
-  ConnectorProxyError,
-  type ConnectorProxyRequest,
-  type ConnectorProxyResponse,
-  type ManagedConnectorProvider,
-  type ToolProgress,
+import type {
+  AdapterContext,
+  ConnectorProxyRequest,
+  ConnectorProxyResponse,
+  ManagedConnectorProvider,
+  ToolProgress,
 } from "@rakazo/adapter-kit";
+import { ConnectorProxyError } from "@rakazo/adapter-kit";
 import { asRecord } from "./connector-http.js";
 
 const MAX_ATTEMPTS = 3;

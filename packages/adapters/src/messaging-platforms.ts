@@ -7,11 +7,8 @@ import { getLogger } from "@rakazo/logging";
 import type { Adapter } from "chat";
 import { createLarkAdapter, Domain } from "chat-adapter-lark";
 import { createSendblueAdapter } from "chat-adapter-sendblue";
-import {
-  BlueBubblesAdapter,
-  type BlueBubblesPollState,
-  bluebubblesTransport,
-} from "./bluebubbles-adapter.js";
+import type { BlueBubblesPollState } from "./bluebubbles-adapter.js";
+import { BlueBubblesAdapter, bluebubblesTransport } from "./bluebubbles-adapter.js";
 import type { MessagingPlatform } from "./chat-sdk-surface.js";
 import { PhotonAdapter, photonTransport } from "./photon-adapter.js";
 import { isVitestRuntime } from "./test-runtime.js";

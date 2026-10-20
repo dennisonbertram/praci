@@ -10,13 +10,8 @@ import type {
 import { computerControlExpireJobKey } from "@rakazo/adapter-kit";
 import type { ComputerUpdate } from "@rakazo/contracts";
 import { ACTIVE_RUN_STATUSES, parseScreenLeaseId, screenLeaseId } from "@rakazo/core";
-import {
-  expireComputerExecutionLeases,
-  isUniqueViolation,
-  type PrismaClient,
-  parseComputerMode,
-  type ThreadEvents,
-} from "@rakazo/db";
+import type { PrismaClient, ThreadEvents } from "@rakazo/db";
+import { expireComputerExecutionLeases, isUniqueViolation, parseComputerMode } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import {
   clearInactiveUserComputerControl,

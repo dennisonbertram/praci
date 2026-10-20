@@ -2,8 +2,8 @@ import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 import type { JobPublisher } from "@rakazo/adapter-kit";
-import type { ThreadEvents } from "@rakazo/db";
-import { createDb, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient, ThreadEvents } from "@rakazo/db";
+import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LocalArtifactStore } from "./artifacts.js";
 import { provisionComputer } from "./computer-lifecycle.js";

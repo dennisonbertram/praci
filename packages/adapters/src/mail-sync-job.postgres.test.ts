@@ -101,6 +101,15 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
       address: `${ref}@example.test`,
     };
   }
+  /** Gmail calls made for one mailbox, so a run left over from another test does not count. */
+  const callsFor = (accountRef: string) =>
+    gmail.requests.filter((request) => request.accountRef === accountRef).length;
+  /** Polls until the condition holds, for at most 5 seconds. */
+  async function waitFor(condition: () => Promise<boolean>) {
+    for (let i = 0; i < 250 && !(await condition()); i++)
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(await condition()).toBe(true);
+  }
   const state = (connectionId: string) =>
     prisma.mailSyncState.findUniqueOrThrow({ where: { connectionId } });
   const stateRow = (connectionId: string) =>
@@ -349,7 +358,7 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
     it("syncs once more when a request arrives while the job runs, so a sent message is not left for the next poll", async () => {
       seed("run-solo2", [message("a", 1)]);
       await run(await connect("run-solo2"));
-      const single = gmail.requests.length;
+      const single = callsFor("run-solo2");
 
       seed("run-race", [message("a", 1)]);
       const account = await connect("run-race");
@@ -357,16 +366,19 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
       let release!: () => void;
       holds.set(`mail.sync:${account.id}`, new Promise<void>((resolve) => (release = resolve)));
 
+      // The run must finish before the test ends, even when an assertion fails, or it keeps calling
+      // the emulator of the next test and skews that test's request count.
       const running = run(account);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      expect((await state(account.id)).syncStartedAt).not.toBeNull();
-      await new Promise((resolve) => setTimeout(resolve, 20));
-      await request(account.id, "now");
-      release();
-      await running;
+      try {
+        await waitFor(async () => (await state(account.id)).syncStartedAt !== null);
+        await request(account.id, "now");
+      } finally {
+        release();
+        await running;
+      }
 
       expect((await state(account.id)).syncRequestedAt).toBeNull();
-      expect(gmail.requests.length).toBeGreaterThan(single);
+      expect(callsFor("run-race")).toBeGreaterThan(single);
     });
 
     it("calls Gmail once when two runs start together", async () => {
@@ -374,13 +386,13 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
       seed("run-solo", messages);
       const solo = await connect("run-solo");
       await run(solo);
-      const single = gmail.requests.length;
+      const single = callsFor("run-solo");
 
       seed("run-twin", messages);
       const twin = await connect("run-twin");
       await Promise.all([run(twin), run(twin)]);
 
-      expect(gmail.requests.length).toBe(single);
+      expect(callsFor("run-twin")).toBe(single);
       expect(await cachedCount(twin.id)).toBe(2);
     });
 

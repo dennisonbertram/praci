@@ -53,8 +53,8 @@ export const listCleanup = (connectionId?: string) =>
 export const cleanupArchive = (input: CleanupArchiveInput) =>
   rpc<CleanupArchiveOutput>("inbox/cleanup/archive", input);
 
-export const forgetCleanupSender = (connectionId: string, address: string) =>
-  rpc<{ ok: true }>("inbox/cleanup/forget", { connectionId, address });
+export const forgetCleanupSender = (connectionId: string, address: string, learned?: boolean) =>
+  rpc<{ ok: true }>("inbox/cleanup/forget", { connectionId, address, ...(learned && { learned }) });
 
 export const unsubscribeSender = (input: UnsubscribeInput) =>
   rpc<UnsubscribeOutput>("inbox/unsubscribe", input);

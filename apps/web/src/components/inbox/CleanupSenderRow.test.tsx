@@ -83,6 +83,19 @@ it("shows Skipping with a Stop button only for a skipped sender", async () => {
   expect(document.body.textContent).not.toContain("Skipping");
 });
 
+it("shows the learned pile with a Forget button only for a sender with one", async () => {
+  const onForgetLearned = vi.fn();
+  await show({ sender: { ...sender, learnedPile: "newsletters" }, onForgetLearned });
+  expect(document.body.textContent).toContain("Learned");
+  expect(document.body.textContent).toContain("Newsletters");
+  await act(async () =>
+    [...document.querySelectorAll("button")].find((b) => b.textContent === "Forget")?.click(),
+  );
+  expect(onForgetLearned).toHaveBeenCalledTimes(1);
+  await show({ sender: { ...sender, learnedPile: null }, onForgetLearned });
+  expect(document.body.textContent).not.toContain("Learned");
+});
+
 it("names the account when the list has several", async () => {
   await show({ accountLabel: "Work" });
   expect(document.body.textContent).toContain("Work");

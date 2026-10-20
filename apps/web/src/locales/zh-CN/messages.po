@@ -29,6 +29,7 @@ msgstr ""
 msgid " (new)"
 msgstr ""
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
@@ -201,21 +202,6 @@ msgstr ""
 msgid "{0} handling"
 msgstr ""
 
-#. placeholder {0}: row?.displayName ?? item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} is ready."
-msgstr ""
-
-#. placeholder {0}: format(size / 1024)
-#: src/lib/format-bytes.ts
-msgid "{0} KB"
-msgstr "{0} KB"
-
-#. placeholder {0}: format(size / (1024 * 1024))
-#: src/lib/format-bytes.ts
-msgid "{0} MB"
-msgstr "{0} MB"
-
 #. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
@@ -231,11 +217,6 @@ msgstr ""
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
 msgid "{0} non-USD not counted"
-msgstr ""
-
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} now appears under Connected."
 msgstr ""
 
 #. placeholder {0}: wallet.safeThreshold
@@ -480,10 +461,6 @@ msgstr ""
 msgid "{service} agent"
 msgstr ""
 
-#: src/lib/format-bytes.ts
-msgid "{size} B"
-msgstr "{size} B"
-
 #: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
 msgstr ""
@@ -556,10 +533,6 @@ msgstr ""
 msgid "3-mo avg, after revenue"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "3-mo change"
-msgstr ""
-
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr "什么都做一点"
@@ -576,6 +549,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "A skill with that name already exists"
 msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
@@ -827,7 +804,7 @@ msgstr ""
 msgid "Added"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Adding a contact"
 msgstr ""
 
@@ -1161,10 +1138,6 @@ msgstr "批准"
 msgid "Approve this server to let your bot use its tools."
 msgstr ""
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Apps"
-msgstr ""
-
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr ""
@@ -1181,6 +1154,10 @@ msgstr "归档"
 #. placeholder {0}: counts.archive
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Archive {0}"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Archive all"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1286,6 +1263,14 @@ msgstr ""
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Asking {agentName}"
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Asking another agent"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -1834,6 +1819,10 @@ msgstr ""
 msgid "Change password"
 msgstr "修改密码"
 
+#: src/pages/Finance.tsx
+msgid "Change, 3 months"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Changes your account"
 msgstr ""
@@ -1891,6 +1880,7 @@ msgstr ""
 msgid "Chat with your agents over iMessage from your Mac"
 msgstr ""
 
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Chats"
 msgstr ""
@@ -1981,7 +1971,7 @@ msgstr ""
 msgid "Choose when it runs"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
 msgstr ""
 
@@ -2023,6 +2013,7 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
@@ -2040,10 +2031,6 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Clearing…"
 msgstr "正在清空…"
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Click Sign in with {service}. A {service} window opens for you to approve access."
-msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -3185,6 +3172,14 @@ msgstr "创建账户"
 msgid "Create agent"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in {service}'s developer settings with this callback URL."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in the provider's developer settings with this callback URL."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Create Data room agent"
 msgstr ""
@@ -3225,6 +3220,10 @@ msgstr "已创建"
 #. placeholder {0}: folder.name
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Creating agent"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
@@ -3475,6 +3474,10 @@ msgstr ""
 msgid "Didn't open?"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Digest"
+msgstr ""
+
 #: src/components/MailApprovalCard.tsx
 msgid "Disable drafts for {botName}"
 msgstr ""
@@ -3610,6 +3613,7 @@ msgstr "还没有账户？"
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/lib/ticket-status.ts
 #: src/pages/ActivityList.tsx
@@ -3748,10 +3752,6 @@ msgstr ""
 msgid "Edit first"
 msgstr "先编辑"
 
-#: src/pages/BotContextMenu.tsx
-msgid "Edit profile"
-msgstr ""
-
 #: src/components/finance/WalletDialog.tsx
 msgid "Edit wallet"
 msgstr ""
@@ -3800,6 +3800,10 @@ msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Enter a Client ID to sign in."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -4118,6 +4122,10 @@ msgstr ""
 
 #: src/components/data-room/FolderTree.tsx
 msgid "Folders"
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Forget"
 msgstr ""
 
 #: src/pages/Auth.tsx
@@ -4511,6 +4519,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
@@ -4640,10 +4649,6 @@ msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
-msgstr ""
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "It now appears under Connected."
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -4776,6 +4781,10 @@ msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Learned"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -4933,7 +4942,6 @@ msgstr "正在加载语音提供方…"
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/Shell.tsx
@@ -5233,6 +5241,10 @@ msgstr "已发给 {peer}"
 msgid "Messaging"
 msgstr "消息"
 
+#: src/pages/shell/working-label.ts
+msgid "Messaging you"
+msgstr ""
+
 #: src/lib/call-session.ts
 msgid "Microphone failed"
 msgstr "麦克风失败"
@@ -5328,7 +5340,6 @@ msgstr ""
 msgid "Month to date"
 msgstr ""
 
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
@@ -5466,6 +5477,10 @@ msgstr "给这个例行任务命名"
 msgid "Needs a monthly burn"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Needs a server restart"
+msgstr ""
+
 #: src/lib/roster-status.ts
 msgid "Needs an answer"
 msgstr ""
@@ -5599,6 +5614,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
@@ -5723,6 +5739,7 @@ msgstr ""
 msgid "No longer active"
 msgstr "已停用"
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -5810,6 +5827,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "No remote MCP servers found"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "No response from the server. Check the address."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -6073,6 +6094,7 @@ msgid "Only if the server does not use sign-in"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
@@ -6125,6 +6147,10 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
+#: src/pages/shell/composer-error.tsx
+msgid "Open Data room"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr ""
@@ -6167,6 +6193,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
+msgstr ""
+
+#: src/pages/shell/composer-error.tsx
+msgid "Open Legal"
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
@@ -6218,15 +6248,11 @@ msgstr ""
 msgid "Opened its thread."
 msgstr "已打开其对话。"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Opening an email"
 msgstr ""
 
-#: src/pages/Onboarding.tsx
-msgid "Opening chat…"
-msgstr "正在打开聊天…"
-
-#: src/App.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Opening your Space…"
 msgstr "正在打开工作区…"
 
@@ -6421,6 +6447,14 @@ msgstr "粘贴服务器的 OpenAI 兼容地址。需要时 Rakazo 会补上 /v1�
 msgid "Paste the web address an app gives you"
 msgstr ""
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into BlueBubbles"
+msgstr ""
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Paste this into Photon"
+msgstr ""
+
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Paste your API key"
 msgstr "粘贴你的 API 密钥"
@@ -6446,6 +6480,10 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Per month"
+msgstr ""
+
 #: src/components/finance/ui.tsx
 msgid "Period"
 msgstr ""
@@ -6455,11 +6493,8 @@ msgid "Person"
 msgstr ""
 
 #: src/pages/Inbox.tsx
-msgid "Personal"
-msgstr ""
-
 #: src/pages/Shell.tsx
-msgid "Personnel"
+msgid "Personal"
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
@@ -6545,8 +6580,8 @@ msgstr ""
 msgid "Preview {0}"
 msgstr "预览 {0}"
 
+#: src/components/ArtifactPreview.tsx
 #: src/components/SheetPreview.tsx
-#: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr ""
 
@@ -6697,7 +6732,7 @@ msgstr ""
 msgid "Reading {0} again"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr ""
 
@@ -6705,7 +6740,7 @@ msgstr ""
 msgid "Reading Carta…"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading the cap table"
 msgstr ""
 
@@ -6713,15 +6748,15 @@ msgstr ""
 msgid "Reading this file. You can keep working while it finishes."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your cap table from Carta"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your contacts"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr ""
 
@@ -7152,7 +7187,7 @@ msgid "Resize panel"
 msgstr "调整面板大小"
 
 #: src/components/integrations/IMessageSection.tsx
-msgid "Restart required"
+msgid "Restart the Rakazo server to start using iMessage."
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -7331,7 +7366,6 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
@@ -7395,7 +7429,7 @@ msgstr "已保存。"
 msgid "Saved. Rotate to reveal."
 msgstr "已保存。轮换后可查看。"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Saving a contact"
 msgstr ""
 
@@ -7554,7 +7588,7 @@ msgstr ""
 msgid "Searching in {openFolderPath}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr ""
 
@@ -7715,6 +7749,7 @@ msgid "Set up app catalog"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
+#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -7826,7 +7861,7 @@ msgstr "显示文字记录"
 msgid "Showing the {shown} most connected of {total} items."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Showing the emails it found"
 msgstr ""
 
@@ -8501,6 +8536,7 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "思考"
 
@@ -8887,8 +8923,9 @@ msgstr ""
 msgid "Unknown source: {unknownSource}"
 msgstr ""
 
+#. placeholder {0}: unknown.join(", ")
 #: src/pages/shell/bot-panel.tsx
-msgid "Unknown tool"
+msgid "Unknown tool: {0}"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -9001,6 +9038,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -9016,7 +9054,7 @@ msgstr ""
 msgid "Updating Team Computer"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Updating the cap table"
 msgstr ""
 
@@ -9131,6 +9169,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "使用此服务器自己的 {hostCredentialSource} 凭据访问 {selectedProviderName}。"
+
+#: src/pages/Finance.tsx
+msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx
@@ -9271,10 +9313,6 @@ msgstr ""
 msgid "Webhook token"
 msgstr ""
 
-#: src/components/integrations/IMessageSection.tsx
-msgid "Webhook URL"
-msgstr ""
-
 #: src/pages/shell/bot-credentials.tsx
 msgid "Website login"
 msgstr ""
@@ -9413,7 +9451,7 @@ msgstr ""
 msgid "Writing"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Writing a draft email"
 msgstr ""
 
@@ -9437,7 +9475,7 @@ msgstr ""
 msgid "Yearly"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/lib/roster-time.ts
 #: src/pages/shell/chat-context.tsx
 msgid "Yesterday"
 msgstr "昨天"

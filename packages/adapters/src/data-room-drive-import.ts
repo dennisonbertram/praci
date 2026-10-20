@@ -15,9 +15,9 @@ import {
   recordImportSkips,
 } from "@rakazo/db";
 import { createFileDataRoomItem, dataRoomFileFields, dataRoomSafeName } from "./data-room-files.js";
+import type { DriveFilesDeps } from "./drive-files.js";
 import {
   DriveFileError,
-  type DriveFilesDeps,
   downloadDriveFile,
   getDriveFile,
   isImportableDriveFile,

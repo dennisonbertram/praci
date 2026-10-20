@@ -1,4 +1,5 @@
-import { acquirePollLease, advancePollCursor, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { acquirePollLease, advancePollCursor } from "@rakazo/db";
 import type { BlueBubblesPollState } from "./bluebubbles-adapter.js";
 
 /** Poll cursor and lease in Postgres, so every API replica shares one position. */

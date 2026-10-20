@@ -1,5 +1,5 @@
 export const SLASH_ACTIONS = [
-  { id: "chat-settings" as const, label: "Chat Settings" },
+  { id: "chat-settings" as const, label: "Settings" },
   { id: "settings-general" as const, label: "Settings: General" },
   { id: "settings-usage" as const, label: "Settings: Usage" },
 ] as const;
