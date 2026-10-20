@@ -60,6 +60,7 @@ export const ConnectedModelPicker: Story = {
     mockRpc({
       "models.credentials": mockModelCredentials,
       "models.list": mockModelCatalog,
+      "agentSkills.drafts": [],
       me: mockMe,
     });
   },
