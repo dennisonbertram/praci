@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Praci Import company Mockup</title>
+<style>
+/* Colors copied from packages/ui-tokens/src/tokens.css (semantic tokens only). */
+:root,[data-theme="dark"]{color-scheme:dark;--background:#1c1c1a;--foreground:#ecebe6;--card:#252523;--primary:#f1f0eb;--primary-foreground:#1c1c1a;--secondary:#282826;--muted:#252523;--muted-foreground:#9c9a93;--accent:#2a2927;--destructive:#f46262;--border:#2e2d2a;--input:#4a4944;--sidebar:#222220;--sidebar-border:#2a2926;--success:#4ecb71;--warning:#e9c46a;--status-working:#4f8ff7;--radius:.75rem}
+[data-theme="light"]{color-scheme:light;--background:#fafaf8;--foreground:#1a1a1a;--card:#ffffff;--primary:#1a1a1a;--primary-foreground:#f1f1ef;--secondary:#f0f0ed;--muted:#f0f0ed;--muted-foreground:#6c6c70;--accent:#eaeae6;--destructive:#dc2626;--border:#e4e4df;--input:#c8c8c4;--sidebar:#ecece9;--sidebar-border:#e8e8e4;--success:#1a7f3c;--warning:#9a6b00;--status-working:#2563eb}
+@media (prefers-color-scheme:light){:root:not([data-theme]){color-scheme:light;--background:#fafaf8;--foreground:#1a1a1a;--card:#ffffff;--primary:#1a1a1a;--primary-foreground:#f1f1ef;--secondary:#f0f0ed;--muted:#f0f0ed;--muted-foreground:#6c6c70;--accent:#eaeae6;--destructive:#dc2626;--border:#e4e4df;--input:#c8c8c4;--sidebar:#ecece9;--sidebar-border:#e8e8e4;--success:#1a7f3c;--warning:#9a6b00;--status-working:#2563eb}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--foreground);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+h1,h2,h3{margin:0;font-weight:600}
+h1{font-size:18px}h2{font-size:14px}h3{font-size:12px;color:var(--muted-foreground);font-weight:500}
+.top{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--sidebar);flex-wrap:wrap}
+.tabs{display:flex;gap:2px;flex-wrap:wrap}
+.tab{padding:6px 12px;border-radius:8px;color:var(--muted-foreground)}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--foreground);font-weight:600}
+.sp{flex:1}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 48px}
+.panel{display:none}.panel.on{display:block}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.grid{display:grid;gap:16px}
+.grid>*{min-width:0}
+.g2{grid-template-columns:1.3fr 1fr}.g3{grid-template-columns:repeat(3,1fr)}
+@media (max-width:760px){.g2,.g3{grid-template-columns:1fr}}
+.row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.row:last-child{border-bottom:0}
+.grow{flex:1;min-width:0}
+.mut{color:var(--muted-foreground)}
+.small{font-size:11px}
+.btn{padding:6px 12px;border:1px solid var(--input);border-radius:8px}
+.btn.p{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.chip{display:inline-block;padding:1px 8px;border:1px solid var(--border);border-radius:999px;font-size:11px;color:var(--muted-foreground);white-space:nowrap}
+.chip.ok{color:var(--success);border-color:var(--success)}
+.chip.warn{color:var(--warning);border-color:var(--warning)}
+.chip.bad{color:var(--destructive);border-color:var(--destructive)}
+.pw{width:140px;flex:none}@media (max-width:760px){.pw{width:70px}}
+.bar{height:6px;border-radius:3px;background:var(--secondary);overflow:hidden;min-width:80px}
+.bar>i{display:block;height:100%;background:var(--primary)}
+.box{width:16px;height:16px;border:1px solid var(--input);border-radius:4px;display:grid;place-items:center;flex:none;font-size:11px}
+.box.on{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.av{width:28px;height:28px;border-radius:50%;background:var(--accent);display:grid;place-items:center;font-size:11px;font-weight:600;flex:none}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-weight:500;color:var(--muted-foreground);font-size:11px;padding:6px 8px;border-bottom:1px solid var(--border)}
+td{padding:8px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:0}
+.scroll{overflow-x:auto}
+.head{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-top:12px}
+.kv b{display:block;font-size:16px}
+/* waterfall */
+.wf{min-width:760px}
+.wf text{fill:var(--muted-foreground);font-size:11px}
+.wf .lane{fill:var(--secondary)}
+.wf .wb{fill:var(--primary);opacity:.85}
+.wf .wb2{fill:var(--status-working);opacity:.9}
+.wf .ghost{fill:var(--muted-foreground);opacity:.35}
+.wf .mk{fill:var(--background);stroke:var(--foreground);stroke-width:1.6}
+.wf .today{stroke:var(--destructive);stroke-dasharray:3 3}
+.wf .gl{stroke:var(--border)}
+/* calendar */
+.cal{display:grid;grid-template-columns:repeat(7,1fr);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.cal>div{min-height:72px;padding:4px 6px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);font-size:11px;overflow:hidden}
+.cal>div:nth-child(7n){border-right:0}
+.cal .dow{min-height:0;color:var(--muted-foreground);background:var(--secondary)}
+.cal .off{opacity:.4}
+.ev{display:block;margin-top:2px;padding:1px 5px;border-radius:4px;background:var(--accent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev.l{background:var(--primary);color:var(--primary-foreground)}
+@media (max-width:760px){.cal>div{min-height:48px;padding:2px 3px}.ev{font-size:9px}}
+.quote{border-left:2px solid var(--input);padding-left:10px;margin:6px 0;color:var(--muted-foreground)}
+</style>
+</head>
+<body>
+<div class="top">
+  <strong>Company</strong>
+  <div class="tabs" role="tablist" id="tabs">
+    <button class="tab" role="tab" data-p="import" aria-selected="true">Import</button>
+    <button class="tab" role="tab" data-p="company" aria-selected="false">Overview</button>
+    <button class="tab" role="tab" data-p="history" aria-selected="false">History</button>
+    <button class="tab" role="tab" data-p="calendar" aria-selected="false">Calendar</button>
+    <button class="tab" role="tab" data-p="fact" aria-selected="false">Fact</button>
+  </div>
+  <span class="sp"></span>
+  <button class="btn" id="theme" aria-label="Toggle theme">Theme</button>
+</div>
+
+<div class="wrap">
+
+<!-- (a) Import flow -->
+<section class="panel on" id="p-import">
+  <div class="head"><div class="grow"><h1>Import company</h1><div class="mut">Northwind Robotics</div></div>
+    <button class="btn">Pause</button><button class="btn">Cancel</button></div>
+  <div class="grid g2">
+    <div class="card">
+      <h2>Sources</h2>
+      <div class="row"><span class="box on">✓</span><div class="grow">Data room<div class="small mut">Drive, Box, uploads · 412 items</div></div><div class="pw"><div class="bar"><i style="width:100%"></i></div></div><span class="chip ok">Done</span></div>
+      <div class="row"><span class="box on">✓</span><div class="grow">Gmail<div class="small mut">Last 3 years · 8,120 threads</div></div><div class="pw"><div class="bar"><i style="width:64%"></i></div></div><span class="chip">Reading</span></div>
+      <div class="row"><span class="box on">✓</span><div class="grow">Slack<div class="small mut">12 public channels · 3,040 messages</div></div><div class="pw"><div class="bar"><i style="width:38%"></i></div></div><span class="chip">Extracting</span></div>
+      <div class="row"><span class="box on">✓</span><div class="grow">GitHub<div class="small mut">3 repositories · 640 issues</div></div><div class="pw"><div class="bar"><i style="width:12%"></i></div></div><span class="chip">Reading</span></div>
+      <div class="row"><span class="box on">✓</span><div class="grow">Linear<div class="small mut">2 teams · 860 issues</div></div><div class="pw"><div class="bar"><i style="width:0%"></i></div></div><span class="chip">Waiting</span></div>
+      <div class="row"><span class="box"></span><div class="grow">Notion<div class="small mut">Not connected</div></div><button class="btn">Connect</button></div>
+      <div class="row"><span class="box"></span><div class="grow">Add another app</div><button class="btn">Choose</button></div>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <h2>Budget</h2>
+        <div class="kv"><div><span class="small mut">Used</span><b>2.1M</b></div><div><span class="small mut">Cap</span><b>6M tokens</b></div><div><span class="small mut">Estimate</span><b>5–7M</b></div></div>
+        <div class="bar" style="margin-top:12px"><i style="width:35%"></i></div>
+      </div>
+      <div class="card">
+        <h2>Found so far</h2>
+        <div class="kv"><div><span class="small mut">People</span><b>48</b></div><div><span class="small mut">Organisations</span><b>31</b></div><div><span class="small mut">Events</span><b>212</b></div><div><span class="small mut">Review</span><b>17</b></div></div>
+      </div>
+      <div class="card">
+        <h2>Consent</h2>
+        <div class="row"><span class="box on">✓</span><div class="grow">Send source text to <b>Chat model A</b></div></div>
+        <div class="row"><span class="box on">✓</span><div class="grow">Slack: public channels only</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- (b) Company page -->
+<section class="panel" id="p-company">
+  <div class="head"><div class="av" style="width:44px;height:44px;font-size:15px">NR</div>
+    <div class="grow"><h1>Northwind Robotics</h1><div class="mut">Warehouse robots that move pallets without a forklift.</div></div>
+    <button class="btn">Refresh</button><button class="btn p">Ask</button></div>
+  <div class="grid g2">
+    <div class="grid">
+      <div class="card"><h2>What we do</h2>
+        <p>Northwind builds autonomous pallet movers for mid-size warehouses and sells them as a monthly subscription with remote support.</p>
+        <div class="small mut">Not confirmed · 6 sources</div>
+        <div class="kv"><div><span class="small mut">Founded</span><b>Mar 2022</b></div><div><span class="small mut">People</span><b>31</b></div><div><span class="small mut">Customers</span><b>5</b></div><div><span class="small mut">Runway</span><b>••••</b></div></div>
+      </div>
+      <div class="card"><h2>People</h2>
+        <div class="scroll"><table><thead><tr><th>Name</th><th>Role</th><th>Since</th><th></th></tr></thead><tbody>
+          <tr><td><span style="display:inline-flex;align-items:center;gap:8px"><span class="av">IA</span>Ines Alvarez</span></td><td>CEO</td><td>Mar 2022</td><td><span class="chip ok">Confirmed</span></td></tr>
+          <tr><td><span style="display:inline-flex;align-items:center;gap:8px"><span class="av">TB</span>Tomas Brandt</span></td><td>CTO</td><td>Mar 2022</td><td><span class="chip ok">Confirmed</span></td></tr>
+          <tr><td><span style="display:inline-flex;align-items:center;gap:8px"><span class="av">PR</span>Priya Raman</span></td><td>Head of Sales</td><td>Sep 2023</td><td><span class="chip">Not confirmed</span></td></tr>
+          <tr><td><span style="display:inline-flex;align-items:center;gap:8px"><span class="av">JW</span>Jonas Weber</span></td><td>Firmware engineer</td><td>Jun 2022 – Feb 2024, Oct 2024 –</td><td><span class="chip warn">Review</span></td></tr>
+          <tr><td><span style="display:inline-flex;align-items:center;gap:8px"><span class="av">LP</span>Lena Park</span></td><td>Operations</td><td>Jan 2025</td><td><span class="chip">Not confirmed</span></td></tr>
+        </tbody></table></div>
+      </div>
+    </div>
+    <div class="grid">
+      <div class="card"><h2>Organisations</h2>
+        <h3 style="margin-top:8px">Investors</h3>
+        <div class="row"><div class="grow">Harbor Ventures</div><span class="small mut">Seed · Jun 2022</span></div>
+        <div class="row"><div class="grow">Kestrel Capital</div><span class="small mut">Series A · Nov 2024</span></div>
+        <h3 style="margin-top:8px">Customers</h3>
+        <div class="row"><div class="grow">Meridian Logistics</div><span class="small mut">Since Feb 2023</span></div>
+        <div class="row"><div class="grow">Atlas Freight</div><span class="small mut">Since Aug 2024</span></div>
+        <h3 style="margin-top:8px">Law firm</h3>
+        <div class="row"><div class="grow">Pine &amp; Hale LLP</div><span class="small mut">Since Mar 2022</span></div>
+      </div>
+      <div class="card"><h2>Next dates</h2>
+        <div class="row"><div class="grow">Atlas Freight renewal</div><span class="small mut">Nov 18</span></div>
+        <div class="row"><div class="grow">Delaware franchise tax</div><span class="small mut">Mar 1</span></div>
+        <div class="row"><div class="grow">Office lease notice</div><span class="small mut">Mar 31</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- (c) History waterfall -->
+<section class="panel" id="p-history">
+  <div class="head"><div class="grow"><h1>History</h1></div>
+    <button class="btn">Year</button><button class="btn">Quarter</button><button class="btn">Month</button></div>
+  <div class="card scroll">
+    <svg class="wf" viewBox="0 0 900 430" role="img" aria-label="History by stream">
+      <rect class="lane" x="90" y="10" width="800" height="52" rx="6"/><text x="8" y="40">Company</text>
+      <rect class="lane" x="90" y="68" width="800" height="100" rx="6"/><text x="8" y="122">People</text>
+      <rect class="lane" x="90" y="174" width="800" height="52" rx="6"/><text x="8" y="204">Funding</text>
+      <rect class="lane" x="90" y="232" width="800" height="62" rx="6"/><text x="8" y="266">Legal</text>
+      <rect class="lane" x="90" y="300" width="800" height="52" rx="6"/><text x="8" y="330">Product</text>
+      <rect class="lane" x="90" y="358" width="800" height="52" rx="6"/><text x="8" y="388">Customers</text>
+      <line class="gl" x1="190" y1="10" x2="190" y2="410"/><line class="gl" x1="390" y1="10" x2="390" y2="410"/>
+      <line class="gl" x1="590" y1="10" x2="590" y2="410"/><line class="gl" x1="790" y1="10" x2="790" y2="410"/>
+      <circle class="mk" cx="140" cy="36" r="6"/><text x="152" y="40">Founded</text>
+      <text x="176" y="82">Ines Alvarez</text><rect class="wb" x="170" y="86" width="630" height="8" rx="3"/>
+      <text x="176" y="106">Tomas Brandt</text><rect class="wb" x="170" y="110" width="630" height="8" rx="3"/>
+      <text x="236" y="130">Jonas Weber</text><rect class="wb2" x="230" y="134" width="190" height="8" rx="3"/><rect class="wb2" x="570" y="134" width="230" height="8" rx="3"/>
+      <text x="516" y="154">Priya Raman</text><rect class="wb" x="510" y="158" width="290" height="6" rx="3"/>
+      <circle class="mk" cx="205" cy="200" r="6"/><text x="217" y="204">Seed</text>
+      <circle class="mk" cx="730" cy="200" r="6"/><text x="742" y="204">Series A</text>
+      <text x="146" y="250">Pine &amp; Hale LLP</text><rect class="wb" x="140" y="254" width="660" height="8" rx="3"/>
+      <text x="401" y="276">Vendor dispute</text><rect class="wb2" x="395" y="280" width="120" height="8" rx="3"/>
+      <rect class="ghost" x="480" y="320" width="120" height="10" rx="3"/><text x="610" y="329">Prototype (year only)</text>
+      <circle class="mk" cx="690" cy="340" r="6"/><text x="702" y="344">Model 2</text>
+      <circle class="mk" cx="330" cy="384" r="6"/><text x="342" y="388">Meridian</text>
+      <circle class="mk" cx="640" cy="384" r="6"/><text x="652" y="388">Atlas</text>
+      <line class="today" x1="858" y1="6" x2="858" y2="412"/>
+      <text x="92" y="425">2022</text><text x="292" y="425">2023</text><text x="492" y="425">2024</text><text x="692" y="425">2025</text>
+    </svg>
+  </div>
+  <div class="small mut" style="margin-top:8px">Faded bars have a year-only date.</div>
+</section>
+
+<!-- (d) Calendar -->
+<section class="panel" id="p-calendar">
+  <div class="head"><div class="grow"><h1>Calendar</h1><div class="mut">November 2026</div></div>
+    <button class="btn">Month</button><button class="btn">Agenda</button></div>
+  <div class="grid g2">
+    <div class="cal" aria-label="November 2026">
+      <div class="dow">Sun</div><div class="dow">Mon</div><div class="dow">Tue</div><div class="dow">Wed</div><div class="dow">Thu</div><div class="dow">Fri</div><div class="dow">Sat</div>
+      <div class="off">25</div><div class="off">26</div><div class="off">27</div><div class="off">28</div><div class="off">29</div><div class="off">30</div><div class="off">31</div>
+      <div>1</div><div>2</div><div>3<span class="ev">Board call</span></div><div>4</div><div>5</div><div>6</div><div>7</div>
+      <div>8</div><div>9</div><div>10</div><div>11</div><div>12<span class="ev">Jonas · 2 yrs</span></div><div>13</div><div>14</div>
+      <div>15</div><div>16</div><div>17</div><div>18<span class="ev l">Atlas renewal</span></div><div>19</div><div>20</div><div>21</div>
+      <div>22</div><div>23</div><div>24</div><div>25</div><div>26<span class="ev">Kestrel update</span></div><div>27</div><div>28</div>
+      <div>29</div><div>30<span class="ev l">Lease option</span></div><div class="off">1</div><div class="off">2</div><div class="off">3</div><div class="off">4</div><div class="off">5</div>
+    </div>
+    <div class="card"><h2>Upcoming</h2>
+      <div class="row"><div class="grow">Atlas Freight renewal<div class="small mut">Legal · 60 days notice</div></div><span class="small">Nov 18</span></div>
+      <div class="row"><div class="grow">Lease option<div class="small mut">Legal</div></div><span class="small">Nov 30</span></div>
+      <div class="row"><div class="grow">Delaware franchise tax<div class="small mut">Legal</div></div><span class="small">Mar 1</span></div>
+      <div class="row"><div class="grow">Kestrel investor update<div class="small mut">Funding</div></div><span class="small">Nov 26</span></div>
+      <div class="small mut" style="margin-top:8px">Dates are all-day and do not change with time zone.</div>
+    </div>
+  </div>
+</section>
+
+<!-- (e) Fact detail -->
+<section class="panel" id="p-fact">
+  <div class="grid g2">
+    <div class="card">
+      <div class="small mut">Event · People</div>
+      <h1 style="margin:4px 0 8px">Jonas Weber returned</h1>
+      <div class="row"><div class="grow">Date</div><div>Oct 2024 <span class="chip">month</span></div></div>
+      <div class="row"><div class="grow">Person</div><div>Jonas Weber</div></div>
+      <div class="row"><div class="grow">Role</div><div>Firmware engineer</div></div>
+      <div class="row"><div class="grow">State</div><span class="chip warn">Not confirmed</span></div>
+      <div class="row"><div class="grow">Confidence</div><div>0.74</div></div>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap"><button class="btn p">Confirm</button><button class="btn">Edit</button><button class="btn">Reject</button><button class="btn">Share with team</button></div>
+    </div>
+    <div class="grid">
+      <div class="card"><h2>Provenance</h2>
+        <div class="row" style="display:block">
+          <div><b>Gmail</b> <span class="chip">supports</span> <span class="small mut">Thread · Oct 8, 2024</span></div>
+          <div class="quote">"Welcome back, Jonas. First day is Monday the 14th."</div>
+          <div class="small mut">Extracted Oct 20, 2026 · Chat model A · 0.81</div>
+        </div>
+        <div class="row" style="display:block">
+          <div><b>Slack</b> <span class="chip">supports</span> <span class="small mut">#general · Oct 14, 2024</span></div>
+          <div class="quote">"Jonas is back on firmware today."</div>
+          <div class="small mut">Extracted Oct 20, 2026 · Chat model A · 0.66</div>
+        </div>
+        <div class="row" style="display:block">
+          <div><b>Data room</b> <span class="chip bad">contradicts</span> <span class="small mut">Team page.pdf</span></div>
+          <div class="quote">"Jonas Weber, Firmware (joined 2022)"</div>
+          <div class="small mut">Shows one continuous period, no gap</div>
+        </div>
+      </div>
+      <div class="card"><h2>Same person?</h2>
+        <div class="row"><div class="av">JW</div><div class="grow">Jonas Weber <span class="small mut">j.weber@</span></div><button class="btn">Merge</button><button class="btn">Keep apart</button></div>
+        <div class="row"><div class="av">JW</div><div class="grow">J. Weber <span class="small mut">Linear</span></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div>
+<script>
+(function(){
+  var tabs=document.querySelectorAll('.tab');
+  function show(id){
+    tabs.forEach(function(t){t.setAttribute('aria-selected',String(t.dataset.p===id))});
+    document.querySelectorAll('.panel').forEach(function(p){p.classList.toggle('on',p.id==='p-'+id)});
+  }
+  tabs.forEach(function(t){t.addEventListener('click',function(){show(t.dataset.p)})});
+  function fromHash(){var h=location.hash.slice(1); if(h) show(h)} fromHash(); addEventListener("hashchange",fromHash);
+  var d=document.documentElement;
+  document.getElementById('theme').addEventListener('click',function(){
+    var dark=(d.getAttribute('data-theme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'))==='dark';
+    d.setAttribute('data-theme',dark?'light':'dark');
+  });
+  var q=location.search.match(/theme=(light|dark)/); if(q) d.setAttribute('data-theme',q[1]);
+})();
+</script>
+</body>
+</html>
