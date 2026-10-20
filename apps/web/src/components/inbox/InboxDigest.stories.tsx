@@ -73,7 +73,15 @@ export const Loading: Story = { args: { loading: true } };
 /** No issue in the window; there is nothing to archive, so the button is gone. */
 export const Empty: Story = { args: { rows: [] } };
 
+/** At phone width a long sender name is cut off and the summary stops after two lines. */
 export const LongText: Story = {
+  decorators: [
+    (Story) => (
+      <div className="@container w-[340px]">
+        <Story />
+      </div>
+    ),
+  ],
   args: {
     rows: [
       row("long", {
