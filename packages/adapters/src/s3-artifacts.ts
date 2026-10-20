@@ -1,4 +1,8 @@
 import { createHash, randomUUID } from "node:crypto";
+import { createWriteStream } from "node:fs";
+import { open, readFile, rm, writeFile } from "node:fs/promises";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import type { AdapterContext, ArtifactPut, ArtifactStore } from "@rakazo/adapter-kit";
 import { AwsClient } from "aws4fetch";
 import { LocalArtifactStore } from "./artifacts.js";
@@ -93,7 +97,64 @@ export function createArtifactStore(
   dataDir: string,
 ): ArtifactStore {
   const config = s3ArtifactConfigFromEnv(env);
-  return config ? new S3ArtifactStore(config) : new LocalArtifactStore(dataDir);
+  // Files written before object storage was enabled stay readable from the local directory.
+  return config
+    ? new LocalFallbackArtifactStore(new S3ArtifactStore(config), new LocalArtifactStore(dataDir))
+    : new LocalArtifactStore(dataDir);
+}
+
+/** Reads fall back to the local store when the primary does not have the object. Writes go to the primary. */
+export class LocalFallbackArtifactStore implements ArtifactStore {
+  constructor(
+    private readonly primary: ArtifactStore,
+    private readonly legacy: ArtifactStore,
+  ) {}
+
+  describe() {
+    return this.primary.describe();
+  }
+
+  put(artifact: ArtifactPut, context: AdapterContext) {
+    return this.primary.put(artifact, context);
+  }
+
+  putFile(file: { path: string; name: string; mimeType: string }, context: AdapterContext) {
+    return this.primary.putFile
+      ? this.primary.putFile(file, context)
+      : readFile(file.path).then((bytes) => this.primary.put({ ...file, bytes }, context));
+  }
+
+  async get(id: string, context: AdapterContext) {
+    try {
+      return await this.primary.get(id, context);
+    } catch (error) {
+      if (!(error instanceof ArtifactNotFoundError)) throw error;
+      return this.legacy.get(id, context).catch((legacyError: unknown) => {
+        if ((legacyError as NodeJS.ErrnoException)?.code === "ENOENT") throw error;
+        throw legacyError;
+      });
+    }
+  }
+
+  async getFile(id: string, destination: string, context: AdapterContext) {
+    try {
+      return await (this.primary.getFile
+        ? this.primary.getFile(id, destination, context)
+        : writeFile(destination, await this.primary.get(id, context), { flag: "wx" }));
+    } catch (error) {
+      if (!(error instanceof ArtifactNotFoundError)) throw error;
+      await rm(destination, { force: true });
+      return this.legacy.getFile!(id, destination, context).catch((legacyError: unknown) => {
+        if ((legacyError as NodeJS.ErrnoException)?.code === "ENOENT") throw error;
+        throw legacyError;
+      });
+    }
+  }
+
+  async remove(id: string, context: AdapterContext) {
+    await this.primary.remove(id, context);
+    await this.legacy.remove(id, context);
+  }
 }
 
 function segment(value: string, label: string) {
@@ -102,6 +163,8 @@ function segment(value: string, label: string) {
   }
   return value;
 }
+
+const PART_BYTES = 8 * 1024 * 1024;
 
 export class S3ArtifactStore implements ArtifactStore {
   private readonly client: AwsClient;
@@ -143,13 +206,14 @@ export class S3ArtifactStore implements ArtifactStore {
   }
 
   private async send(
-    method: "PUT" | "GET" | "DELETE",
+    method: "PUT" | "GET" | "DELETE" | "POST",
     key: string,
     context: AdapterContext,
     body?: Uint8Array,
+    query?: string,
   ) {
     try {
-      return await this.client.fetch(this.url(key), {
+      return await this.client.fetch(`${this.url(key)}${query ? `?${query}` : ""}`, {
         method,
         body: body as BodyInit | undefined,
         signal: context.signal,
@@ -172,6 +236,76 @@ export class S3ArtifactStore implements ArtifactStore {
     const response = await this.send("PUT", this.key(id, context), context, artifact.bytes);
     if (!response.ok) await this.fail("put", response);
     return { id, hash: createHash("sha256").update(artifact.bytes).digest("hex") };
+  }
+
+  /** Single PUT up to one part; larger files use multipart so memory stays at one part. */
+  async putFile(file: { path: string; name: string; mimeType: string }, context: AdapterContext) {
+    const id = randomUUID();
+    const key = this.key(id, context);
+    const hash = createHash("sha256");
+    const handle = await open(file.path, "r");
+    try {
+      const size = (await handle.stat()).size;
+      const read = async (position: number) => {
+        const length = Math.min(PART_BYTES, size - position);
+        const buffer = new Uint8Array(length);
+        const { bytesRead } = await handle.read(buffer, 0, length, position);
+        if (bytesRead !== length) throw new Error("file changed while uploading");
+        hash.update(buffer);
+        return buffer;
+      };
+      if (size <= PART_BYTES) {
+        const response = await this.send("PUT", key, context, await read(0));
+        if (!response.ok) await this.fail("put", response);
+        return { id, hash: hash.digest("hex") };
+      }
+      const started = await this.send("POST", key, context, undefined, "uploads");
+      if (!started.ok) await this.fail("put", started);
+      const uploadId = /<UploadId>([^<]+)<\/UploadId>/.exec(await started.text())?.[1];
+      if (!uploadId) throw new Error("S3 put failed: no upload id");
+      const query = `uploadId=${encodeURIComponent(uploadId)}`;
+      try {
+        const etags: string[] = [];
+        for (let position = 0; position < size; position += PART_BYTES) {
+          const number = etags.length + 1;
+          const part = await this.send(
+            "PUT",
+            key,
+            context,
+            await read(position),
+            `partNumber=${number}&${query}`,
+          );
+          if (!part.ok) await this.fail("put", part);
+          const etag = part.headers.get("etag");
+          if (!etag) throw new Error("S3 put failed: no part etag");
+          etags.push(etag);
+        }
+        const body = `<CompleteMultipartUpload>${etags
+          .map(
+            (etag, index) =>
+              `<Part><PartNumber>${index + 1}</PartNumber><ETag>${etag}</ETag></Part>`,
+          )
+          .join("")}</CompleteMultipartUpload>`;
+        const done = await this.send("POST", key, context, new TextEncoder().encode(body), query);
+        if (!done.ok || /<Error>/.test(await done.clone().text())) await this.fail("put", done);
+      } catch (error) {
+        await this.send("DELETE", key, context, undefined, query).catch(() => undefined);
+        throw error;
+      }
+      return { id, hash: hash.digest("hex") };
+    } finally {
+      await handle.close();
+    }
+  }
+
+  async getFile(id: string, destination: string, context: AdapterContext) {
+    const response = await this.send("GET", this.key(id, context), context);
+    if (response.status === 404) throw new ArtifactNotFoundError(id);
+    if (!response.ok || !response.body) await this.fail("get", response);
+    await pipeline(
+      Readable.fromWeb(response.body as never),
+      createWriteStream(destination, { flags: "wx", mode: 0o600 }),
+    );
   }
 
   async get(id: string, context: AdapterContext) {

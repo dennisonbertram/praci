@@ -391,7 +391,8 @@ The Electron desktop app is a client of the same API. Docker and E2B still apply
   optional. Keep the supervisor private, as the included Compose files do.
 - **E2B** runs bot computers away from the Rakazo host and is a good choice for public or multi-user
   production deployments. Rakazo checkpoints the portable workspace and browser-profile directory to
-  `DATA_DIR`; the E2B disk is a runtime cache, not the durable source of truth.
+  object storage (see [Object storage](#object-storage-for-artifacts-and-agent-homes)); the E2B disk is
+  a runtime cache, not the durable source of truth.
 - **Daytona** provides the same remote-computer contract through Daytona sandboxes. Configure
   `DAYTONA_API_KEY` and optionally `DAYTONA_API_URL` / `DAYTONA_TARGET` / `DAYTONA_SNAPSHOT`.
 - **CreateOS** provides the same remote-computer contract through CreateOS desktop sandboxes.
@@ -413,22 +414,90 @@ The Electron desktop app is a client of the same API. Docker and E2B still apply
 
 For provider configuration and health checks, see the [provider setup guide](./self-host-sandbox-providers.md).
 
-## Object storage for artifacts
+## Object storage for artifacts and agent homes
 
-By default Rakazo keeps uploaded and generated files on the local disk under `data/`, which is
-only safe when a single API or worker process runs. To run several processes, point Rakazo at any
-S3-compatible store (AWS S3, Cloudflare R2, MinIO). Files are stored under
+The Compose stacks (`docker-compose.yml`, `docker-compose.images.yml` and `docker-compose.prod.yml`)
+can run a bundled S3-compatible store, [SeaweedFS](https://github.com/seaweedfs/seaweedfs) (Apache-2.0),
+with a one-shot `seaweedfs-init` service that creates the bucket. Both belong to the Compose profile
+`bundled-s3` and are not published on the host.
+
+- **New installs** of the published-image stack: `install-images.sh` writes `COMPOSE_PROFILES=bundled-s3`,
+  the matching `RAKAZO_S3_*` values and generated credentials into `.env`, so files and agent homes
+  are stored in object storage from the first start.
+- **Upgrades** keep their current behaviour: an existing `.env` has no `COMPOSE_PROFILES` and no
+  `RAKAZO_S3_*`, so nothing changes and files stay on local disk. To opt in, run
+  `bash install-images.sh --enable-bundled-storage`. It appends the profile and generated credentials to
+  `.env` (it refuses if `.env` already sets `RAKAZO_S3_*`). Files that were already stored under
+  `DATA_DIR/artifacts`, including Data room files, stay readable: when an object is not in the bucket,
+  Rakazo reads the old local file. They are not copied, so keep `DATA_DIR` in your backups.
+- **`docker-compose.prod.yml` and the source-checkout stack** do not edit `.env`. To use the bundled
+  store, add `COMPOSE_PROFILES=bundled-s3`, `RAKAZO_S3_ENDPOINT=http://seaweedfs:8333`,
+  `RAKAZO_S3_BUCKET=rakazo`, `RAKAZO_S3_FORCE_PATH_STYLE=true` and your own
+  `RAKAZO_S3_ACCESS_KEY_ID` and `RAKAZO_S3_SECRET_ACCESS_KEY` to `.env`.
+
+The credentials must be letters and digits, at least 8 characters each. The bundled store refuses to
+start with shorter or missing credentials (the production and published-image stacks have no
+default; the source-checkout stack falls back to placeholder credentials for development only). Do
+not change the credentials after the store has started. Back up the `seaweedfsdata` volume with the
+database.
+
+To use another S3-compatible store (AWS S3, Cloudflare R2, a store you run yourself), set the
+variables below in `.env` and leave the `bundled-s3` profile off. Files are stored under
 `<prefix>/artifacts/<space id>/<id>`, so one bucket can serve many spaces. Set the first four
 variables together; any `RAKAZO_S3_*` variable that is set turns object storage on, and a partial set stops startup and names the missing variable.
 
 - `RAKAZO_S3_ENDPOINT`: the store's URL, for example `https://s3.us-east-1.amazonaws.com`.
 - `RAKAZO_S3_BUCKET`: an existing bucket.
 - `RAKAZO_S3_ACCESS_KEY_ID` and `RAKAZO_S3_SECRET_ACCESS_KEY`: credentials with read, write and delete access to the bucket.
-- `RAKAZO_S3_REGION`: defaults to `us-east-1`, which AWS, R2 and MinIO all accept.
-- `RAKAZO_S3_FORCE_PATH_STYLE`: set to `true` for MinIO and other stores without bucket subdomains.
+- `RAKAZO_S3_REGION`: defaults to `us-east-1`, which AWS, R2 and SeaweedFS all accept.
+- `RAKAZO_S3_FORCE_PATH_STYLE`: set to `true` for SeaweedFS, MinIO and other stores without bucket subdomains.
+- Give the access key `s3:ListBucket` on the bucket as well as object read, write and delete. Without
+  it, AWS S3 answers 403 instead of 404 for a missing object, and Rakazo treats a 403 as an error
+  rather than looking for an older copy under `DATA_DIR/artifacts`.
 - `RAKAZO_S3_PREFIX`: optional key prefix.
 
-Plain `http` endpoints are accepted only for localhost, private network addresses and single-word hostnames such as `minio`; use `https` for anything else. Existing local files are not copied to the bucket.
+Plain `http` endpoints are accepted only for localhost, private network addresses and single-word hostnames such as `seaweedfs`; use `https` for anything else.
+
+Without any `RAKAZO_S3_*` variable (for example `pnpm dev` outside Compose), artifacts and home snapshots
+fall back to local disk under `DATA_DIR`, which is only safe for a single process.
+
+### Agent homes
+
+Each Computer's persistent workspace (its home) is saved as one gzip tar snapshot in the object store.
+The snapshot keeps file contents, symlinks (targets exactly as written), hard links inside the home,
+empty folders, permission bits, and file and folder times. It leaves out owners, extended attributes,
+sockets, devices, browser and package caches, and files that keep changing while they are read (they
+are logged and picked up by the next save). The archive is written to a temporary file and uploaded
+from it (multipart for large homes), so memory does not grow with the size of the home. The Computer
+row in Postgres holds the current revision and snapshot id, and a save succeeds only if that revision
+has not changed since it was read, so two workers cannot overwrite each other. No database connection
+or lock is held while a home is archived, uploaded or downloaded. Every lookup is scoped to the
+Computer's space. The snapshot before the current one is kept until the next save, then deleted.
+
+`DATA_DIR/homes/<key>` is the live workspace of a Docker computer, which the supervisor mounts. The
+host that provisions the computer installs the current snapshot there when the folder is missing, or
+while the computer is being started and the supervisor confirms its container is not running (for
+example after the computer ran on another provider); if the supervisor cannot answer, the folder is
+left alone and the workspace is restored through the container instead. A replacement is extracted
+into a new folder beside it and renamed into place; Rakazo never writes a snapshot into a folder a
+container can change. From then on that host saves from the folder. Any other host, and any host
+whose folder is older than the current revision, reads the home from a per-revision copy under
+`DATA_DIR/home-cache` and saves edits from a private copy, never from its own folder, so API and
+worker processes do not need to share `DATA_DIR`. The cache drops revisions unused for a day and
+keeps itself under 2 GiB; scratch folders a crashed process left behind are removed after six hours.
+Remote providers (E2B, Daytona and so on) restore from the snapshot.
+
+An existing deployment migrates on its own. The first time a Computer's home is used and it has no
+snapshot, Rakazo uploads the existing `DATA_DIR/homes/<key>` directory and uses the snapshot from then
+on. The local directory is not deleted. Set `RAKAZO_AGENT_HOME_STORE=local` to keep homes only on local
+disk; this is a development opt-out and is not safe with more than one API or worker host.
+
+### Pi session recordings
+
+With `PI_SESSION_RECORDING=true` (off by default), Pi writes JSONL transcripts to
+`DATA_DIR/pi-sessions/<user>/<bot>` with 30-day retention. They are diagnostic recordings that nothing
+reads back to run an agent, so they are runtime data and stay on local disk. Moving them to object
+storage is follow-up work; the transcripts are unencrypted, so leave recording off on shared hosts.
 
 ## Backup
 
@@ -889,9 +958,10 @@ rather not grant the capability.
 ## Other deployment layouts
 
 API and worker need always-on processes; serverless request handlers are not sufficient. Use a
-Node.js version supported by the root `package.json`, Postgres 16 and a persistent `DATA_DIR` volume shared by API and worker, with encrypted off-host
-backups. The current home store uses a local filesystem, so deployments on separate hosts need a
-shared filesystem; an object-storage adapter is not available yet.
+Node.js version supported by the root `package.json`, Postgres 16 and an S3-compatible object store, with encrypted off-host backups. Agent homes live in
+the object store, so API and worker processes on separate hosts need no shared filesystem. A Docker
+computer still mounts its working copy under `DATA_DIR/homes`, so Docker computers need the
+supervisor and its `DATA_DIR` on one host.
 
 Use the same HTTPS origin for the web app, `/api`, and `/rpc`. Preserve the authenticated screen
 proxy routes. Choose a [computer provider](#choosing-a-computer-provider) appropriate to the

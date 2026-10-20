@@ -88,7 +88,11 @@ describe("Team run checkpoints", () => {
     const { checkpointRunComputerWorkspace } = await import("./computer-workspace.js");
     const exportWorkspace = vi.fn();
     const updateMany = vi.fn().mockResolvedValue({ count: 0 });
-    const deps = { sandbox: { exportWorkspace }, home: {}, prisma: { computer: { updateMany } } };
+    const deps = {
+      sandbox: { exportWorkspace },
+      home: {},
+      prisma: { computer: { updateMany, findUnique: vi.fn().mockResolvedValue(null) } },
+    };
     const result = await checkpointRunComputerWorkspace(
       deps as never,
       { id: "team", homeKey: "team", scope: "team" },
@@ -117,7 +121,11 @@ describe("Team run checkpoints", () => {
       await Promise.reject(new Error("export failed"));
       yield { path: "unreachable", content: new Uint8Array() };
     });
-    const deps = { sandbox: { exportWorkspace }, home: {}, prisma: { computer: { updateMany } } };
+    const deps = {
+      sandbox: { exportWorkspace },
+      home: {},
+      prisma: { computer: { updateMany, findUnique: vi.fn().mockResolvedValue(null) } },
+    };
     await expect(
       checkpointRunComputerWorkspace(
         deps as never,

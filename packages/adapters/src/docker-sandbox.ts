@@ -175,9 +175,9 @@ export class DockerSandboxProvider implements SandboxProvider {
     };
   }
 
-  async isRunning(computer: ComputerRef, context: AdapterContext): Promise<boolean> {
+  async isRunning(computer: ComputerRef, context: AdapterContext) {
     if (computer.kind !== "docker") return false;
-    return (await this.containerRunning(computer, context)) === true;
+    return (await this.containerRunning(computer, context)) ?? undefined;
   }
 
   async prepare(_computer: ComputerRef, _context: AdapterContext): Promise<void> {}

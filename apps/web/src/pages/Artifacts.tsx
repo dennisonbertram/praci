@@ -49,10 +49,12 @@ import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
 import { PdfViewer } from "../components/PdfViewer";
 import { SandboxedHtmlViewer } from "../components/SandboxedHtmlViewer";
+import { SheetPreview } from "../components/SheetPreview";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
 import { takeInitialBootstrap } from "../lib/bootstrap";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { canPreviewSpreadsheet } from "../lib/spreadsheet";
 import { useObjectUrl } from "../lib/use-object-url";
 import { errorText } from "../lib/user-error";
 
@@ -1126,6 +1128,9 @@ function ArtifactPreview({ artifact, bytes }: { artifact: Artifact; bytes: Uint8
   }
   if (isAttachmentImageMimeType(artifact.mimeType)) {
     return <ImagePreview bytes={bytes} mimeType={artifact.mimeType} name={artifact.name} />;
+  }
+  if (canPreviewSpreadsheet(artifact.name, artifact.mimeType)) {
+    return <SheetPreview key={artifact.id} source={{ artifactId: artifact.id }} />;
   }
   return (
     <div className="grid h-full place-items-center px-6 text-center text-sm text-muted-foreground/80">

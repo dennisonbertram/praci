@@ -42,8 +42,20 @@ export interface AuthEnv {
   email?: TransactionalEmailProvider;
   onEmailError?: (error: unknown) => void;
   beforeDeleteUser?: (userId: string) => Promise<void>;
-  /** Runs after account deletion removed the user's Data room rows, so the caller can delete their blobs. */
-  afterDeleteUserData?: (blobs: Array<{ spaceId: string; storageKey: string }>) => Promise<void>;
+  /**
+   * Runs after account deletion removed the user's Data room rows and the Computers of their
+   * personal spaces, so the caller can delete the blobs and home snapshots those rows named.
+   */
+  afterDeleteUserData?: (
+    blobs: Array<{ spaceId: string; storageKey: string }>,
+    homes: Array<{
+      spaceId: string;
+      homeKey: string;
+      homeSnapshotId: string | null;
+      homePreviousSnapshotId: string | null;
+    }>,
+    userId: string,
+  ) => Promise<void>;
   /** Runs when a session row is deleted. Delivery also drops a token whose session is missing or expired. */
   afterDeleteSession?: (session: AuthSession) => Promise<void>;
   /** Runs when a password change replaces the caller's own session instead of ending it. */
@@ -341,7 +353,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             )
             .map(({ organizationId }) => organizationId);
 
-          const blobs = await prisma.$transaction(async (tx) => {
+          const { blobs, homes } = await prisma.$transaction(async (tx) => {
             // The cascades below remove these rows but not their blobs.
             const items = await tx.dataRoomItem.findMany({
               where: {
@@ -352,6 +364,17 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
                 ],
               },
               select: { spaceId: true, storageKey: true },
+            });
+            // Deleting the personal organizations cascades to their Computers, not to the
+            // home snapshots in object storage.
+            const homes = await tx.computer.findMany({
+              where: { space: { organizationId: { in: personalOrganizationIds } } },
+              select: {
+                spaceId: true,
+                homeKey: true,
+                homeSnapshotId: true,
+                homePreviousSnapshotId: true,
+              },
             });
             await tx.deploymentSettings.updateMany({
               where: { ownerUserId: user.id },
@@ -365,11 +388,14 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
             await tx.organization.deleteMany({
               where: { id: { in: personalOrganizationIds } },
             });
-            return items.flatMap(({ spaceId, storageKey }) =>
-              storageKey ? [{ spaceId, storageKey }] : [],
-            );
+            return {
+              blobs: items.flatMap(({ spaceId, storageKey }) =>
+                storageKey ? [{ spaceId, storageKey }] : [],
+              ),
+              homes,
+            };
           });
-          await env.afterDeleteUserData?.(blobs);
+          await env.afterDeleteUserData?.(blobs, homes, user.id);
         },
       },
     },

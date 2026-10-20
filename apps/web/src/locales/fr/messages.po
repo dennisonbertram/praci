@@ -2659,6 +2659,10 @@ msgstr "Impossible de charger les intégrations"
 msgid "Could not load model settings"
 msgstr "Impossible de charger les paramètres du modèle"
 
+#: src/components/SheetPreview.tsx
+msgid "Could not load more rows."
+msgstr ""
+
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
 msgstr "Impossible de charger l’historique des exécutions"
@@ -2693,6 +2697,7 @@ msgid "Could not load this chat."
 msgstr "Impossible de charger cette conversation."
 
 #: src/components/ArtifactFileCard.tsx
+#: src/components/SheetPreview.tsx
 msgid "Could not load this file."
 msgstr "Impossible de charger ce fichier."
 
@@ -4025,6 +4030,7 @@ msgstr ""
 msgid "Fullscreen"
 msgstr "Plein écran"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Fully diluted shares"
 msgstr ""
@@ -4704,6 +4710,7 @@ msgstr "Charger les messages précédents"
 
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/SheetPreview.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Inbox.tsx
@@ -5225,6 +5232,7 @@ msgstr ""
 msgid "Mute"
 msgstr "Couper le micro"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -6052,6 +6060,7 @@ msgstr "Clé API de l'organisation"
 msgid "Original message unavailable"
 msgstr "Message d’origine indisponible"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/pages/CapTable.tsx
@@ -6099,6 +6108,7 @@ msgstr ""
 msgid "Owner"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Ownership"
 msgstr ""
@@ -6314,6 +6324,7 @@ msgstr ""
 msgid "Preview {0}"
 msgstr "Aperçu de {0}"
 
+#: src/components/SheetPreview.tsx
 #: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr "L'aperçu n'est pas disponible pour ce type de fichier — téléchargez-le pour le consulter."
@@ -7482,8 +7493,13 @@ msgstr ""
 msgid "Shareholders"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Shares"
+msgstr ""
+
+#: src/components/SheetPreview.tsx
+msgid "Sheets"
 msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
@@ -8293,6 +8309,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "This server needs an OAuth client ID."
+msgstr ""
+
+#: src/components/SheetPreview.tsx
+msgid "This sheet is empty."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
