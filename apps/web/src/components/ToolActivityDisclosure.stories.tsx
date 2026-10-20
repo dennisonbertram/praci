@@ -120,3 +120,16 @@ export const OnlyNarration: StoryObj = {
     </div>
   ),
 };
+
+export const MailSendStates: StoryObj = {
+  render: () => (
+    <ToolSteps
+      steps={[
+        { label: "Mail send", count: 1 },
+        { label: "Mail send", count: 1, summary: "Sent email" },
+        { label: "Mail send", count: 1, summary: "Couldn't send" },
+        { label: "Mail draft", count: 1, summary: "Draft saved" },
+      ]}
+    />
+  ),
+};

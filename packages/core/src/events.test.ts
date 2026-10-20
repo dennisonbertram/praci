@@ -8,6 +8,7 @@ import {
   endsSentence,
   humanizeToolName,
   isRunTerminalEvent,
+  mailOutcomeSummary,
   normalizeResponseStreamingPreference,
   projectMessages,
   reduceLiveMessageBlocks,
@@ -619,6 +620,15 @@ describe("tool names for people", () => {
         expect(text.length).toBeLessThanOrEqual(60);
       }
     }
+  });
+
+  it("never says a mail send or draft finished before its outcome is known", () => {
+    expect(toolPhrase("mail_send", "done")).toBe("Email to send");
+    expect(toolPhrase("mail_draft", "done")).toBe("Draft to save");
+    expect(mailOutcomeSummary("mail_send", "sent")).toBe("Sent email");
+    expect(mailOutcomeSummary("mail_send", "failed")).toBe("Couldn't send");
+    expect(mailOutcomeSummary("mail_draft", "saved")).toBe("Draft saved");
+    expect(mailOutcomeSummary("mail_draft", "failed")).toBe("Draft not saved");
   });
 
   it("puts MCP, connector and built-in tools in the present or past tense", () => {

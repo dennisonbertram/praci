@@ -21,6 +21,15 @@ describe("ToolCallLabel", () => {
     expect(html({ name: id, state: "waiting" })).toContain(">Checking banking transactions<");
   });
 
+  it("does not say a held mail send went out, and shows its outcome once known", () => {
+    expect(html({ name: "mail_send" })).toContain(">Email to send<");
+    expect(html({ name: "mail_send" })).not.toContain("Sent");
+    expect(html({ name: "mail_send", summary: "Sent email" })).toContain(">Sent email<");
+    expect(html({ name: "mail_send", summary: "Couldn't send", state: "failed" })).toContain(
+      ">Couldn&#x27;t send<",
+    );
+  });
+
   it("marks each state and shows a count above one", () => {
     expect(html({ name: id, state: "failed" })).toContain('data-state="failed"');
     expect(html({ name: id, count: 3 })).toContain("×3");

@@ -2785,6 +2785,18 @@ describe("mobile thread event reduction", () => {
     );
   });
 
+  it("does not call a held mail send sent, and shows the outcome once known", () => {
+    const text = (summary?: string) =>
+      blockText(
+        mobileMessage("mail-steps", [
+          { kind: "steps", steps: [{ label: "Mail send", count: 1, summary }] },
+        ]),
+      );
+    expect(text()).toBe("Email to send");
+    expect(text("Sent email")).toBe("Sent email");
+    expect(text("Couldn't send")).toBe("Couldn't send");
+  });
+
   it("degrades an emails block to a plain list in urgency order", () => {
     const email = (id: string, urgency: "today" | "later") => ({
       id,
