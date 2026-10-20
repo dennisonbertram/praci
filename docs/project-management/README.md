@@ -6,7 +6,7 @@ A Projects page with a Kanban board and a Waterfall (timeline with dependencies)
 view of projects and tasks, plus a Project bot in a side panel that can create,
 update, triage, plan and report on work. The task source is pluggable: Linear,
 Notion, GitHub (Issues and Projects), another tracker, or nothing at all, in which
-case tasks live natively in Rakazo's Postgres. A mockup will be built from the user
+case tasks live natively in Praci's Postgres. A mockup will be built from the user
 stories below at [mockup.html](mockup.html).
 
 Web and desktop (Electron hosts the web UI) ship first. Mobile is a follow-up; until
@@ -15,7 +15,7 @@ then mobile shows nothing new, which is safe because no existing workflow change
 Everything in this document is a proposal until the maintainer answers the open
 questions at the end. Names and numbers in stories are invented.
 
-## What exists in Rakazo today
+## What exists in Praci today
 
 The plan reuses these instead of adding new primitives:
 
@@ -87,16 +87,16 @@ dates, iterations) are covered by the `projects` toolset. TBD before the adapter
 
 ### Capability matrix
 
-"Native" is Rakazo's own Postgres store. "Map" means the user maps an existing
-property once; "Fallback" says what Rakazo does when the backend lacks the field.
+"Native" is Praci's own Postgres store. "Map" means the user maps an existing
+property once; "Fallback" says what Praci does when the backend lacks the field.
 
 | Field | Native | Linear | Notion | GitHub |
 | --- | --- | --- | --- | --- |
 | Status (Kanban column) | Yes, configurable columns | Yes, workflow states | Map a status/select property | Project single-select field (issue open/closed only if no Project) |
-| Owner (accountable person) | Yes | Project lead only (issue owner: no field confirmed, TBD); fall back to Rakazo-side | Map an optional person property | No owner field on issues (TBD for Project fields); fall back to Rakazo-side |
+| Owner (accountable person) | Yes | Project lead only (issue owner: no field confirmed, TBD); fall back to Praci-side | Map an optional person property | No owner field on issues (TBD for Project fields); fall back to Praci-side |
 | Assignee | Yes | Yes (plus agent delegate) | Map a person property | Yes (issue assignees) |
 | Start / due dates | Yes | Due date on issues; start and target dates on projects (issue start date: TBD) | Map a date or date-range property | Project date fields, optional |
-| Dependencies | Yes (blocked by) | Yes (blocks / blocked by) | Only if relation properties exist; Rakazo can create them | Yes (blocked by / blocking), plan availability TBD |
+| Dependencies | Yes (blocked by) | Yes (blocks / blocked by) | Only if relation properties exist; Praci can create them | Yes (blocked by / blocking), plan availability TBD |
 | Milestones | Yes | Project milestones | Fallback: items flagged as milestone via a checkbox or zero-length date | Issue milestones (have a due date) |
 | Estimates | Yes (points or days) | Yes (estimate field) | Map a number property | Map a Project number field |
 | Comments | Yes | Yes | Yes | Yes |
@@ -153,7 +153,7 @@ Each story ends with v1 or later. "Source" means the task tracker behind the pag
 ### Connecting a source
 
 **S1. Start with no tracker.** As a founder with no tracker, I want to open Projects
-and create my first project and tasks inside Rakazo, so that I get a working board
+and create my first project and tasks inside Praci, so that I get a working board
 without signing up for anything.
 - The empty state offers "New project" and the three connectors; no account is needed
   for the first. "New project" asks for a name and opens an empty board with "Add task".
@@ -187,7 +187,7 @@ the database and map its properties, so that the board and timeline use my colum
 - v1.
 
 **S5. Another tracker.** As a user of Jira, Asana or similar, I want to add its MCP
-server, so that I can use the board even though Rakazo has no built-in adapter.
+server, so that I can use the board even though Praci has no built-in adapter.
 - Not in v1; the adapter interface (Decisions) is what makes this possible.
 - later.
 
@@ -201,7 +201,7 @@ Linear, I want to move my native tasks to the tracker, so that I do not retype t
 - Moving native tasks to a tracker is later.
 
 **S7. Disconnect.** As a user, I want to disconnect a source and choose to delete its
-synced data, so that I stay in control of what Rakazo stores.
+synced data, so that I stay in control of what Praci stores.
 - Removing the `McpServer` deletes the synced tasks of that source in my space.
 - Native tasks are not touched.
 - Disconnect asks whether to keep or delete the synced tasks; kept tasks stay visible and
@@ -222,14 +222,14 @@ of work at a glance.
 
 **S9. Move a card.** As a team member, I want to drag a card to another column, so
 that status stays current.
-- Dropping updates Rakazo's copy immediately and writes to the source; if the write
+- Dropping updates Praci's copy immediately and writes to the source; if the write
   fails, the card returns and an inline error appears. The confirmation has Undo.
 - Status can also be changed without dragging: a Status select in the task detail and a
   "Move to" menu on the card, using the same write.
 - Moving a blocked task to In progress or Done is allowed and shows "still blocked by
   <task>".
 - Dropping a card on another assignee lane reassigns it (a bot lane stores the bot on
-  Rakazo's row only).
+  Praci's row only).
 - For external sources, the write goes through the source adapter. This is the user's
   own action; the bot never makes it.
 - v1.
@@ -249,7 +249,7 @@ project and group rows by assignee, so that I can review one person's load.
 **S11. WIP limit.** As a lead, I want a limit per column, so that I notice overload.
 - Exceeding the limit tints the column header and shows the count; it never blocks a
   drop.
-- Limits are stored in Rakazo, not written to the source.
+- Limits are stored in Praci, not written to the source.
 - The mockup shows the limit only behind a "Later: WIP limit" state; a fresh project has none.
 - later.
 
@@ -312,7 +312,7 @@ meeting note and get proposed tasks, so that planning is faster.
 suggest assignee, status, labels and duplicates with a one-line reason, so that
 intake is quick.
 - Suggestions are a list; each can be accepted or dismissed. For a tracker task, accepting
-  opens the task in the source; Rakazo picks up the change on the next sync.
+  opens the task in the source; Praci picks up the change on the next sync.
 - Reason text is shown on the suggestion, as Linear does, and uses the real state (for
   example the blocker's actual status). One suggestion is one record: dismissing it in the
   task detail or in the panel dismisses both. No assignee suggestion for a bot-held task.
@@ -339,7 +339,7 @@ in progress, blocked and at risk, so that I can send updates without writing the
 **S21. Stale-task nudge.** As a lead, I want the bot to flag tasks with no update for
 a set time, so that nothing rots.
 - A routine posts one digest to the panel, not one message per task.
-- Reuses Rakazo routines; the time threshold is one setting.
+- Reuses Praci routines; the time threshold is one setting.
 - later.
 
 **S22. Estimate.** As a lead, I want the bot to suggest estimates for unestimated
@@ -354,7 +354,7 @@ stay the source of truth, so that the bot cannot change my data in GitHub, Linea
 Notion unseen.
 - The bot reads synced rows. For any field except status (dates, assignee, title, labels,
   estimate) it shows a suggestion with an "Open in <source>" link; I make the change in the
-  source and Rakazo picks it up on the next sync.
+  source and Praci picks it up on the next sync.
 - The bot may change a tracker task's status (for example close GitHub #142, or move
   Linear ENG-42 to In review) only through an approval card: the task with its source
   icon and id, the target tracker, old status and new status, Approve or Reject.
@@ -365,7 +365,7 @@ Notion unseen.
 - v1.
 
 **S24. Read-only mode.** As a cautious user, I want to connect a tracker read-only,
-so that Rakazo can never change it.
+so that Praci can never change it.
 - Linear offers a read-only endpoint; for others the bot's `allowedTools` lists only
   read tools. A read-only connection also removes the bot's status change.
 - Access is per source: a read-only Linear connection locks only Linear tasks (lock icon
@@ -394,7 +394,7 @@ overwrite their change.
 - v1 for refresh and stale-write detection; webhooks are later.
 
 **S27. Task detail.** As a user, I want to open a task and see its fields,
-dependencies, comments and the bot's suggestions, so that I do not leave Rakazo.
+dependencies, comments and the bot's suggestions, so that I do not leave Praci.
 - Edits go through the same write path as drag-and-drop.
 - A link opens the task in the source tracker.
 - Status is a select; dates are date fields; native tasks also edit title and assignee.
@@ -406,7 +406,7 @@ dependencies, comments and the bot's suggestions, so that I do not leave Rakazo.
 separate from the assignee who does the work, so that someone answers for it.
 - Task detail shows Owner above Assignee, both with avatars; the board can filter by owner.
 - Owner comes from the tracker where it has one (Notion: a mapped person property); where it
-  has none (GitHub issues, Linear issues, TBD), it is a Rakazo-side field on our row and is
+  has none (GitHub issues, Linear issues, TBD), it is a Praci-side field on our row and is
   never written to the tracker.
 - v1.
 
@@ -417,7 +417,7 @@ Research, Writer), so that it works on the task in its own thread.
   (the person who sent it stays Owner): the detail shows "<bot> · working on it" in the
   Assignee row with a link to the thread, the card and timeline row show the bot's avatar,
   and the task moves to that bot's swimlane.
-- Rakazo stores the bot assignee on its own row; the tracker's assignee is unchanged and
+- Praci stores the bot assignee on its own row; the tracker's assignee is unchanged and
   shown in the detail.
 - "Unassign bot" in the same menu returns the task; the current bot is marked.
 - The bot's thread is a task thread (task and source link, status line); when the bot
@@ -431,7 +431,7 @@ Research, Writer), so that it works on the task in its own thread.
 **S28. See where each task comes from.** As a user, I want each task to show its source,
 so that I know which system holds the truth.
 - Cards, timeline rows and the detail show a source icon and the source's own id (GitHub
-  `#142`, Linear `ENG-42`, a Notion page icon; native tasks show a Rakazo id).
+  `#142`, Linear `ENG-42`, a Notion page icon; native tasks show a Praci id).
 - The detail starts with a source row: kind and location, last synced, and "Open in
   <source>". Its fields mirror the source.
 - A Sources filter shows or hides each source on the board and timeline; the menu doubles
@@ -443,7 +443,7 @@ so that I know which system holds the truth.
 1. **Name.** "Projects" in the UI and `projects` in code. "Project bot" for the
    agent.
 2. **One normalized model in `packages/core`.** `Project`, `Task` (title, status,
-   statusCategory, `ownerId`, assignee (a person, or a bot: `assigneeKind: user|bot`, `assigneeBotId`; when the tracker cannot represent a bot assignee, Rakazo keeps the bot assignment on its own row, leaves the tracker assignee unchanged and does not write it back), startDate, dueDate, estimate, labels, parentId,
+   statusCategory, `ownerId`, assignee (a person, or a bot: `assigneeKind: user|bot`, `assigneeBotId`; when the tracker cannot represent a bot assignee, Praci keeps the bot assignment on its own row, leaves the tracker assignee unchanged and does not write it back), startDate, dueDate, estimate, labels, parentId,
    isMilestone, url, `sourceVersion`), `TaskDependency` (blockerId, dependentId).
    `statusCategory` (`todo`, `doing`, `done`) lets reports work across backends whose
    status names differ. Contracts in `packages/contracts`.
@@ -455,7 +455,7 @@ so that I know which system holds the truth.
    `callRemoteMcpTool`, with a zod-validated mapper per tool response (the Finance
    approach, since all three servers can change). Vendor names and tool names stay in
    the adapters. A generic "MCP tracker" adapter is later (S5).
-4. **Rakazo reads from Postgres, not the vendor.** Sync stores normalized rows keyed
+4. **Praci reads from Postgres, not the vendor.** Sync stores normalized rows keyed
    by `mcpServerId` and the vendor's id, scoped to space and user, using the
    `MailSyncState` claim-token pattern and a throttle. Removing the server deletes
    its rows. The native source is the same tables with no sync.
@@ -530,9 +530,9 @@ and write PRs.
    (S2), a triage list (S18), a second-member view (S25), "Always allow" (S23), and real
    input in the bot composer.
 
-1. GitHub auth: OAuth needs a registered GitHub App for Rakazo; is a personal access
+1. GitHub auth: OAuth needs a registered GitHub App for Praci; is a personal access
    token acceptable for the first release?
-2. Notion: is a required one-time property mapping acceptable, or should Rakazo create
+2. Notion: is a required one-time property mapping acceptable, or should Praci create
    its own database template?
 3. Should the Project bot be allowed to post to other tools (Slack, email) in the
    weekly report, or stay inside the thread?

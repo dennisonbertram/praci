@@ -1,4 +1,4 @@
-# UX Path Catalog: Rakazo Inbox
+# UX Path Catalog: Praci Inbox
 
 Generated: 2026-10-14
 Total Stories: 62 (71 before deduplication; 9 merged)
@@ -162,7 +162,7 @@ STORY-056  First visit, no Gmail, Connect mail round trip        [fixture: accou
               +-- STORY-055  Keyboard end-to-end                 [after T2, K3, K5]
 
 Triage-dependent branch (requires consent and a usable model)
-STORY-060  Consent card ("Let Rakazo sort your mail")
+STORY-060  Consent card ("Let Praci sort your mail")
   +-- STORY-061  List reshuffles while triage runs
   +-- STORY-025  Which need a reply
   +-- STORY-030  Cold first look
@@ -598,7 +598,7 @@ Each story keeps its original fields. Headings were renumbered; "Catalog note" a
 **Alternate paths**: Sidebar "Inbox" badge count shows the unread number but is not clickable to filter (it opens the inbox, unfiltered). Deep link `/app/inbox?filter=unread` (`readInboxListState`). Agent panel: ask "show unread" (email cards, no list filter).
 ##### Steps
 1. Click the icon-only Filter button (aria "Filter", `data-testid="inbox-filter"`) next to the "Important" toggle → radio menu opens with 3 groups of items; no group headings, only separators.
-2. Click "Unread" (thinking: "Is this Gmail unread or Rakazo unread?") → menu closes (`closeOnClick`); `?filter=unread`; five skeleton rows while live Gmail query `is:unread` runs; then list; Needs reply group is gone, rows now just Today / Earlier. The button now reads "Unread" with a filled style.
+2. Click "Unread" (thinking: "Is this Gmail unread or Praci unread?") → menu closes (`closeOnClick`); `?filter=unread`; five skeleton rows while live Gmail query `is:unread` runs; then list; Needs reply group is gone, rows now just Today / Earlier. The button now reads "Unread" with a filled style.
 3. Scan rows; notice no Archive hover button → Archive and the `e` key are disabled while a Gmail filter is on (`archive: filtered ? undefined`, Inbox.tsx:380,650).
 4. Open Filter again, click "Clear" at the bottom (only present when active) → back to the default grouped list with To do card.
 ##### Variations
@@ -650,7 +650,7 @@ Each story keeps its original fields. Headings were renumbered; "Catalog note" a
 ##### Steps
 1. Click Filter → menu shows Unread, Starred, Important, Has attachment | Primary, Promotions, Social, Updates (no categories, no consent card).
 2. Click "Primary" → button label "Primary"; live Gmail `category:primary` list; Today/Earlier groups.
-3. Hesitation: "Is 'Updates' here the same as the 'Notifications' category some people have?" With triage off this question never arises; with triage ON both "Updates" (Gmail tab) and "Notifications"/"Newsletters" (Rakazo category) sit in one menu with no hint of the different source.
+3. Hesitation: "Is 'Updates' here the same as the 'Notifications' category some people have?" With triage off this question never arises; with triage ON both "Updates" (Gmail tab) and "Notifications"/"Newsletters" (Praci category) sit in one menu with no hint of the different source.
 ##### Variations
 - Switch to Promotions to bulk-glance at deals; Archive is unavailable there too, so cleanup must be done in Gmail (no bulk actions exist in the web inbox).
 ##### Edge Cases
@@ -695,7 +695,7 @@ Each story keeps its original fields. Headings were renumbered; "Catalog note" a
 **Alternate paths**: Search `is:important`. Starred filter as a manual stand-in.
 ##### Steps
 1. Triage OFF: open Filter → click "Important" (first group) → `?filter=important`; live Gmail `is:important` (Google's own machine-learned importance); archive disabled; Needs reply gone.
-2. Allow triage (consent card "Let Rakazo sort your mail" → Allow) → list refreshes; "Important" now appears as a toggle left of Filter, and is REMOVED from the Filter menu.
+2. Allow triage (consent card "Let Praci sort your mail" → Allow) → list refreshes; "Important" now appears as a toggle left of Filter, and is REMOVED from the Filter menu.
 3. If `?filter=important` is still in the URL (reload/bookmark), `InboxFilterSchema` still parses it: the list is Gmail-important, the toggle is NOT pressed, the Filter button shows label "Important" (`filterLabels` has it) though the menu has no matching radio (value unmatched). Confusing: two "Important" indicators disagree.
 4. Click the toggle → `?view=important`, `filter` removed; list = priority critical/important OR needs-reply (not handled) OR senders marked important, minus senders marked noise (`inbox.ts:340-362`). Archive works here.
 5. Hover a row, click "Mark noise" on a newsletter sender → toast "Marked noise" + Undo; list reloads and that sender's rows leave the Important view.
@@ -1438,7 +1438,7 @@ Each story keeps its original fields. Headings were renumbered; "Catalog note" a
 6. Agent replies: the draft is saved in his Drafts folder (tool description tells it to say so).
 7. He looks in the Inbox for the draft: nothing in the list; no Drafts view and no "Open draft" button in the composer entry points (observed gap).
 8. He opens Gmail Drafts in another tab, edits, sends there.
-9. Back in Rakazo, the sent mail is not reflected (no `MAIL_SENT_EVENT` since sent outside); list refreshes on next sync/mount.
+9. Back in Praci, the sent mail is not reflected (no `MAIL_SENT_EVENT` since sent outside); list refreshes on next sync/mount.
 10. He asks the agent: "Archive that thread." → `mail_modify` approval card again; he picks "Always allow this tool" this time, card reads "Always allowed".
 11. Thread leaves the list on next refresh.
 ##### Variations
@@ -1588,7 +1588,7 @@ Each story keeps its original fields. Headings were renumbered; "Catalog note" a
 #### STORY-053: Discover the shortcuts with `?` and find the help incomplete
 **Type**: short
 **Topic**: keyboard-power-use
-**Persona**: Hannah Cole, ex-Gmail power user new to Rakazo
+**Persona**: Hannah Cole, ex-Gmail power user new to Praci
 **Goal**: Learn what keys exist
 **Preconditions**: Inbox list, focus on body
 **Ideal path**: 1 — `?`
@@ -1661,7 +1661,7 @@ Each story keeps its original fields. Headings were renumbered; "Catalog note" a
 #### STORY-056: First visit with no Gmail connected, Connect mail round trip
 **Type**: medium
 **Topic**: empty-error-sync-states
-**Persona**: Priya Raman, new hire at a 12-person design studio, just joined her team's Rakazo space and clicked "Inbox" in the sidebar for the first time
+**Persona**: Priya Raman, new hire at a 12-person design studio, just joined her team's Praci space and clicked "Inbox" in the sidebar for the first time
 **Goal**: Get her Gmail showing in the Inbox
 **Preconditions**: Signed in, no mail account connected, Gmail plugin not yet set up.
 **Ideal path**: 3 — Inbox button, "Connect mail", finish Gmail OAuth in the overlay, then close it.
@@ -1729,7 +1729,7 @@ Each story keeps its original fields. Headings were renumbered; "Catalog note" a
 #### STORY-059: "Gmail needs to be reconnected." and the missing Reconnect action
 **Type**: long
 **Topic**: empty-error-sync-states
-**Persona**: Tomasz Kowalski, founder whose Google password change revoked Rakazo's token last week
+**Persona**: Tomasz Kowalski, founder whose Google password change revoked Praci's token last week
 **Goal**: Restore mail access
 **Preconditions**: Gmail account connected earlier; Google refuses the refresh token, so `MailSyncState.needsReconnect` is true and `lastErrorAt` set; cached rows (14-day window) still present.
 **Ideal path**: 4 — read banner, open Integrations (no direct link), reconnect Gmail, return and reload.
@@ -1751,7 +1751,7 @@ Each story keeps its original fields. Headings were renumbered; "Catalog note" a
 **Related**: STORY-005, STORY-012, STORY-019, STORY-023, STORY-043, STORY-044, STORY-058, STORY-062
 
 
-#### STORY-060: "Let Rakazo sort your mail" consent card
+#### STORY-060: "Let Praci sort your mail" consent card
 **Type**: medium
 **Topic**: empty-error-sync-states
 **Persona**: Elena Vasquez, privacy-conscious lawyer who just got a model configured for her workspace
@@ -1760,7 +1760,7 @@ Each story keeps its original fields. Headings were renumbered; "Catalog note" a
 **Ideal path**: 1 — click Allow on the card.
 **Alternate paths**: Revoke or grant per-model via the "AI data sharing" switches in settings (`AiDataSharingSection`, A:57); ignore the card and use the Inbox untriaged.
 ##### Steps
-1. Open Inbox → above the list a region card: "Let Rakazo sort your mail" / "Senders, recipients, subjects and short previews are sent to {model name}." with an "Allow" button (A:36-52). It replaces the To-do card position (I:624-632) and shows only on the unfiltered, unsearched view.
+1. Open Inbox → above the list a region card: "Let Praci sort your mail" / "Senders, recipients, subjects and short previews are sent to {model name}." with an "Allow" button (A:36-52). It replaces the To-do card position (I:624-632) and shows only on the unfiltered, unsearched view.
 2. Elena thinks "Sent to whom, and does the body go?" The copy lists senders, recipients, subjects and previews but has no link to the settings or privacy page → she decides on that text alone.
 3. Click "Allow" → button disables (`pending`), `allowRecipient(key)` runs, then `onAllowed` bumps `attempt` (re-sync, which queues triage) and `reload` (I:626-631).
 4. List reloads; after sync the card is gone and the To-do card, labels and "Important"/category controls appear once triage finishes (STORY-061).

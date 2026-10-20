@@ -8,7 +8,7 @@ Information shown on more than one surface (noted once here, referenced in stori
 **Folded into**: STORY-008 (see catalog.md). Original steps kept here for reference.
 **Type**: medium
 **Topic**: First-time browse and understand
-**Persona**: Maya, a solo founder who just created her first Rakazo agent and wants it to read her Slack and Notion
+**Persona**: Maya, a solo founder who just created her first Praci agent and wants it to read her Slack and Notion
 **Goal**: Find out which apps she can connect and choose Slack or Notion
 **Preconditions**: Signed in, one agent exists, nothing connected, server has a Composio or Pipedream catalog configured and the catalog has loaded
 **Ideal path**: 3 — open Integrations, read the featured grid, press Add on the chosen tile
@@ -182,7 +182,7 @@ Information shown on more than one surface (noted once here, referenced in stori
 **Old ID**: STORY-108
 **Type**: short
 **Topic**: First-time browse and understand
-**Persona**: Sam, a self-hoster who just deployed Rakazo without provider credentials
+**Persona**: Sam, a self-hoster who just deployed Praci without provider credentials
 **Goal**: Understand why there are no apps to connect
 **Preconditions**: No Composio/Pipedream/Google configured, or the catalog request is slow or failing
 **Ideal path**: 2 — open Integrations, read the message
@@ -218,5 +218,5 @@ Information shown on more than one surface (noted once here, referenced in stori
 - She wants to undo: "Uninstall" in the detail revokes every account with no confirmation, while removing an MCP server asks `Remove {name}?` and "Bots lose access to its tools."
 ### Edge Cases
 - Connecting before understanding is the only way to see what an app does, which is the main hesitation point for cautious users.
-- "Added" suggests installing something to Rakazo, not granting access to her Notion account; the reassuring text "Credentials are encrypted and never sent to the model." is only inside Advanced forms.
+- "Added" suggests installing something to Praci, not granting access to her Notion account; the reassuring text "Credentials are encrypted and never sent to the model." is only inside Advanced forms.
 - The overlay passes `activeBotId` for `onboarding.appConnected`, so an app connects from the context of the current agent, but the UI never says which agent that is.

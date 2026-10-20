@@ -4,16 +4,16 @@ Status: proposal. Nothing here is built yet unless it says so.
 
 ## Goal
 
-Make Rakazo's Inbox the fastest, cleanest way to get through Gmail: the list opens
+Make Praci's Inbox the fastest, cleanest way to get through Gmail: the list opens
 instantly, noise (spam, newsletters, promotions, notifications) is grouped and cleared
 in a few keystrokes, each row says what the mail is about, and Gmail stays in sync with
-what Rakazo decided.
+what Praci decided.
 
 ## What we have today
 
 Checked against the code on main (October 2026):
 
-- Mail reaches Rakazo through `MailProvider` (`packages/adapter-kit/src/interfaces.ts`)
+- Mail reaches Praci through `MailProvider` (`packages/adapter-kit/src/interfaces.ts`)
   and one Gmail adapter (`packages/adapters/src/gmail-mail-provider.ts`) shared by the
   Composio, Pipedream and native Google connections.
 - `inbox.list` reads the Postgres cache. Sync (`packages/adapters/src/mail-sync.ts`)
@@ -45,7 +45,7 @@ Sources: Inbox Zero source code (github.com/elie222/inbox-zero), an earlier priv
 Gmail assistant prototype, official pages for Gmail, HEY, Superhuman, Shortwave,
 Notion Mail, Spark and Apple Mail, Google's Gmail API documentation, and RFC 8058.
 
-| Pattern | Who does it | Take for Rakazo |
+| Pattern | Who does it | Take for Praci |
 | --- | --- | --- |
 | Sender-level decisions cached before any model call | Inbox Zero (learned patterns), HEY (Screener) | Yes: decide per sender once, reuse, model last |
 | Ranked sender list with one-click unsubscribe | Gmail Manage Subscriptions (July 2025), Inbox Zero bulk unsubscriber | Yes: the core of fast cleanup |
@@ -149,7 +149,7 @@ batch modify, sender rule, unsubscribe), with offline conformance tests. The Gma
 adapter translates them. `MAIL_WRITES_DISABLED` and per-connection `writesEnabled`
 cover every new write.
 
-- **Piles stay in Postgres.** Rakazo creates no Gmail labels for them.
+- **Piles stay in Postgres.** Praci creates no Gmail labels for them.
 - **Gmail's own labels are inputs.** Sync stores spam, promotions, social, updates and
   important as flags instead of dropping spam, so the Spam count has data.
 - **Spam** applies Gmail's `SPAM` label. The API has no "report spam" call, so we do
@@ -158,22 +158,22 @@ cover every new write.
 - **Bulk archive** acts on whole threads, like today's archive.
 - **Filters** are created only when the user chooses "always skip the inbox". Gmail
   filters only act on new mail, so the same action archives existing mail with
-  `batchModify` (1,000 ids per call). Rakazo records the filter id so the user can undo
-  it. Gmail allows at most 1,000 filters; at the cap Rakazo keeps the decision on its
+  `batchModify` (1,000 ids per call). Praci records the filter id so the user can undo
+  it. Gmail allows at most 1,000 filters; at the cap Praci keeps the decision on its
   side and says so. The `gmail.settings.basic` scope is requested only on first use,
   through a reconnect.
 - **Unsubscribe** uses RFC 8058 one-click only when `List-Unsubscribe-Post` is
   present, the URL is https, and DKIM covers both headers. It sends a POST with the
   fixed body `List-Unsubscribe=One-Click`, no cookies or credentials, treats redirects
   as failure, and keeps the existing SSRF guard (which today only does GET). Otherwise
-  Rakazo opens the link for the user or sends the `mailto:` with approval. Rakazo never
+  Praci opens the link for the user or sends the `mailto:` with approval. Praci never
   unsubscribes from spam or scam, since that confirms the address to the sender. Every
   unsubscribe is logged and the sender then skips the inbox.
 
 ### Connections
 
-Filters and push need the native Google connection, where Rakazo owns the OAuth
-client and scopes. For Composio and Pipedream connections, Rakazo applies "always skip
+Filters and push need the native Google connection, where Praci owns the OAuth
+client and scopes. For Composio and Pipedream connections, Praci applies "always skip
 the inbox" itself during sync and keeps polling. Filters are offered on native Google
 only, because the Composio and Pipedream default scopes lack `gmail.settings.basic`.
 
@@ -223,7 +223,7 @@ stories.
    `deleteSenderRule` (Gmail `users.settings.filters`: `from` = the sender, remove `INBOX`);
    `MailAccount.senderRules` says whether an account is `ready`, `needs_permission` or
    `unsupported`. The permission is requested only when a user skips a sender on a native
-   account that lacks it: Rakazo still skips on its own, the Cleanup screen shows one "Also in
+   account that lacks it: Praci still skips on its own, the Cleanup screen shows one "Also in
    Gmail" link, and that link runs a reconnect that adds `gmail.settings.basic` to the usual
    scopes and keeps the account's decisions and action log (a reconnect used to delete them).
    Granted scopes are stored in the connection's metadata. A decision keeps `ruleId` and
@@ -233,11 +233,11 @@ stories.
    Gmail would read as a search expression (spaces, `OR`, braces, a leading `-`) is refused.
    Stop and Undo delete the filter first and keep the decision if that fails; both are refused
    while `MAIL_WRITES_DISABLED` is set when a filter exists. At 1,000 filters, or on any
-   provider error, the decision stays on Rakazo's side and the row says so. An unsubscribe still
-   skips the inbox only on Rakazo's side and makes no filter. The per-click `skip_inbox` batch
+   provider error, the decision stays on Praci's side and the row says so. An unsubscribe still
+   skips the inbox only on Praci's side and makes no filter. The per-click `skip_inbox` batch
    is the log entry, so skipping a sender with no inbox mail writes none and Stop removes the
    filter.
-   Mobile shows the Rakazo-side skip and the two notes; native Google is hidden there, so it
+   Mobile shows the Praci-side skip and the two notes; native Google is hidden there, so it
    makes no filters and has no reconnect link. Removing an account does not delete its filters
    in Gmail.
 5. **Background sync and push.** Worker-owned sync for all three callers, wider cache,
@@ -257,7 +257,7 @@ stories.
 
 ## Decisions
 
-- Piles and categories stay Rakazo-only. A `Rakazo/…` label mirror may come later as
+- Piles and categories stay Praci-only. A `Praci/…` label mirror may come later as
   a setting.
 - `gmail.settings.basic` is requested only when a user first chooses "always skip the
   inbox". It is a restricted scope, so it affects Google's verification and security

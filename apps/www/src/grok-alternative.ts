@@ -4,16 +4,16 @@ import { CLAUDE_CHATGPT_SUBSCRIPTION_FAQ } from "./subscription-faq";
 export const GROK_ALTERNATIVE_PATH = "/grok-bot-alternative/";
 
 export const GROK_ALTERNATIVE_TITLE =
-  "Open Source Grok Bot Alternative (Self-Hosted) – Rakazo";
+  "Open Source Grok Bot Alternative (Self-Hosted) – Praci";
 
 export const GROK_ALTERNATIVE_DESCRIPTION =
-  "Rakazo is an open source, self-hosted Grok Bot alternative. Run persistent AI teammates on your machine, with your model keys, under the Apache-2.0 license.";
+  "Praci is an open source, self-hosted Grok Bot alternative. Run persistent AI teammates on your machine, with your model keys, under the Apache-2.0 license.";
 
 export const GROK_ALTERNATIVE_H1 = "Open source, self-hosted Grok Bot alternative";
 
 export const GROK_INTRO = [
-  "Rakazo is just chat. You create a bot and manage it from that conversation. Routines, memory, and approval boundaries stay with the bot.",
-  "Grok Bot is xAI's hosted product for that kind of work: named bots, a computer they can use, routines, and approvals. Rakazo is the version you can run yourself. The source is Apache-2.0, the server is yours, and you bring the model key.",
+  "Praci is just chat. You create a bot and manage it from that conversation. Routines, memory, and approval boundaries stay with the bot.",
+  "Grok Bot is xAI's hosted product for that kind of work: named bots, a computer they can use, routines, and approvals. Praci is the version you can run yourself. The source is Apache-2.0, the server is yours, and you bring the model key.",
 ] as const;
 
 export const COMPARE_ROWS = [
@@ -36,13 +36,13 @@ export const COMPARE_ROWS = [
   {
     topic: "Model",
     rakazo:
-      "Sign in with Claude Pro/Max, ChatGPT Plus/Pro, or SuperGrok, or bring a key. Documented providers include OpenAI, Anthropic, Google, OpenRouter, Vercel AI Gateway, Cursor, custom servers, and a local model (Ollama, LM Studio). Rakazo does not pay the model bill.",
+      "Sign in with Claude Pro/Max, ChatGPT Plus/Pro, or SuperGrok, or bring a key. Documented providers include OpenAI, Anthropic, Google, OpenRouter, Vercel AI Gateway, Cursor, custom servers, and a local model (Ollama, LM Studio). Praci does not pay the model bill.",
     grok: "Included with paid Cursor plans and SuperGrok subscriptions. The Grok Bot docs do not describe connecting your own model provider.",
   },
   {
     topic: "Price",
     rakazo:
-      "No license fee to self-host. You pay your model provider and the computer you run. Hosted Rakazo Cloud is not generally available.",
+      "No license fee to self-host. You pay your model provider and the computer you run. Hosted Praci Cloud is not generally available.",
     grok: "Included with paid individual Cursor plans, Cursor Teams, and SuperGrok subscriptions. SuperGrok is listed at $30/month and includes Grok Bot access. Plans include weekly usage; extra usage can be billed. The free plan on the pricing page does not list Grok Bot.",
   },
   {
@@ -70,14 +70,14 @@ export const GROK_SOURCES = [
 ] as const;
 
 export const INSTALL_COMMAND = `mkdir -p rakazo && cd rakazo &&
-curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/install-images.sh &&
+curl -fsSLO https://raw.githubusercontent.com/dennisonbertram/praci/main/infra/compose/install-images.sh &&
 bash install-images.sh`;
 
 export const SELF_HOST_LEAD =
   "Published images need Docker Engine 26+ (API 1.45+ for bot home volume subpaths), the Compose plugin, curl, and OpenSSL.";
 
 export const SELF_HOST_AFTER = [
-  "On this computer, open http://127.0.0.1:5173, create an account, and connect a model. That address is only on the machine running Rakazo. Local Docker computers are on by default.",
+  "On this computer, open http://127.0.0.1:5173, create an account, and connect a model. That address is only on the machine running Praci. Local Docker computers are on by default.",
   "On a server, run the installer with --prepare-only, set the public HTTPS origin, and create the owner account before anyone else can reach it. The self-hosting guide covers that setup. The desktop app can install the stack on this computer, or connect to an instance you already run.",
 ] as const;
 
@@ -119,7 +119,7 @@ export const GROK_CHAT_FIGURE: GrokFigure = {
   avif: "/graphics/grok/chat.avif",
   width: 1200,
   height: 800,
-  alt: "Rakazo chat with the Inbox bot. The sidebar lists Inbox, Chief, and Sales. The message asks the bot to file demo mail and not send anything.",
+  alt: "Praci chat with the Inbox bot. The sidebar lists Inbox, Chief, and Sales. The message asks the bot to file demo mail and not send anything.",
   caption: "The chat. The roster is the sidebar, and you manage the bot from this conversation.",
 };
 
@@ -137,7 +137,7 @@ export const GROK_MODELS_FIGURE: GrokFigure = {
   avif: "/graphics/grok/models.avif",
   width: 1280,
   height: 900,
-  alt: "Rakazo model settings with Anthropic selected, Claude Sonnet 5.5 in the model menu, and a button to sign in with Claude Pro/Max. The provider list also shows OpenAI Codex and xAI.",
+  alt: "Praci model settings with Anthropic selected, Claude Sonnet 5.5 in the model menu, and a button to sign in with Claude Pro/Max. The provider list also shows OpenAI Codex and xAI.",
   caption: "Sign in with Claude Pro/Max, ChatGPT Plus/Pro, or SuperGrok. An API key works too.",
 };
 
@@ -152,11 +152,11 @@ export const GROK_SECTIONS = [
     ],
   },
   {
-    heading: "What Rakazo keeps from that shape",
+    heading: "What Praci keeps from that shape",
     paragraphs: [
-      "Rakazo is an open source AI agent for persistent teammates, and a self-hosted AI assistant. It is in beta. Each bot keeps conversations, memory, routines, and history. It can use a browser, a terminal, files, and a graphical desktop, and it can hand work to another bot or a short-lived subagent. The clients are the web app, the Electron desktop app, and the Expo mobile app.",
-      "Like Grok Bot, Rakazo is just chat once it is running. You set up the bot and manage it from that chat. A new bot interviews you about the work. Routines are readable Markdown and can run on a schedule. A bot can pause for approval when a task crosses a boundary you set, and actions are recorded in an audit log. Optional connectors can attach Slack, WhatsApp, Telegram, iMessage via Sendblue, and Feishu/Lark. They are not required.",
-      "The parts that are not Grok Bot are the ones you operate. The license is Apache-2.0. You self-host with published Docker images or from source. Hosted Rakazo Cloud is not generally available. Sign in with Claude Pro/Max, ChatGPT Plus/Pro, or SuperGrok, or bring a key for OpenAI, Anthropic, Google, OpenRouter, Vercel AI Gateway, an OpenAI-compatible endpoint, or a local model server such as Ollama or LM Studio. Rakazo does not pay the model bill. Each bot can use a different model. Connector credentials are encrypted on your server and are not returned by the API.",
+      "Praci is an open source AI agent for persistent teammates, and a self-hosted AI assistant. It is in beta. Each bot keeps conversations, memory, routines, and history. It can use a browser, a terminal, files, and a graphical desktop, and it can hand work to another bot or a short-lived subagent. The clients are the web app, the Electron desktop app, and the Expo mobile app.",
+      "Like Grok Bot, Praci is just chat once it is running. You set up the bot and manage it from that chat. A new bot interviews you about the work. Routines are readable Markdown and can run on a schedule. A bot can pause for approval when a task crosses a boundary you set, and actions are recorded in an audit log. Optional connectors can attach Slack, WhatsApp, Telegram, iMessage via Sendblue, and Feishu/Lark. They are not required.",
+      "The parts that are not Grok Bot are the ones you operate. The license is Apache-2.0. You self-host with published Docker images or from source. Hosted Praci Cloud is not generally available. Sign in with Claude Pro/Max, ChatGPT Plus/Pro, or SuperGrok, or bring a key for OpenAI, Anthropic, Google, OpenRouter, Vercel AI Gateway, an OpenAI-compatible endpoint, or a local model server such as Ollama or LM Studio. Praci does not pay the model bill. Each bot can use a different model. Connector credentials are encrypted on your server and are not returned by the API.",
       "Computers are separate from the chat product. Local Docker is the default. E2B, Daytona, CreateOS, and Box are optional remote computers. An explicit desktop provider can run on the host, and it is not the default. Team computers are shared. Private computers are isolated. That split is the opposite of Grok Bot's shared cloud computer for every bot on the account.",
     ],
   },
@@ -172,7 +172,7 @@ export const GROK_SECTIONS = [
 ] as const;
 
 export const GROK_OTHER_LEAD =
-  "Hosted assistants and open source agents are both on the [alternatives roundup](/alternatives/). [OpenClaw vs Hermes Agent vs Rakazo](/blog/openclaw-vs-hermes-vs-rakazo/) compares the three you run yourself, and [best open source AI agents in 2026](/blog/best-open-source-ai-agents-2026/) includes libraries as well as apps.";
+  "Hosted assistants and open source agents are both on the [alternatives roundup](/alternatives/). [OpenClaw vs Hermes Agent vs Praci](/blog/openclaw-vs-hermes-vs-rakazo/) compares the three you run yourself, and [best open source AI agents in 2026](/blog/best-open-source-ai-agents-2026/) includes libraries as well as apps.";
 
 function altShot(file: string, alt: string) {
   return {
@@ -244,22 +244,22 @@ export const GROK_ALTERNATIVE_FAQ = [
   {
     question: "Is Grok Bot open source?",
     answer:
-      "Grok Bot, the hosted teammate app, does not publish its source for you to run. xAI has open-sourced other software: Grok Build, the coding-agent CLI, is Apache-2.0, and the older Grok-1 model weights were released under Apache-2.0. Those projects are not the Grok Bot service. Rakazo is Apache-2.0, and the application source is public on GitHub.",
+      "Grok Bot, the hosted teammate app, does not publish its source for you to run. xAI has open-sourced other software: Grok Build, the coding-agent CLI, is Apache-2.0, and the older Grok-1 model weights were released under Apache-2.0. Those projects are not the Grok Bot service. Praci is Apache-2.0, and the application source is public on GitHub.",
   },
   {
     question: "Can I self-host Grok Bot?",
     answer:
-      "The Grok Bot docs describe a cloud computer assigned to your account. They also describe an optional local computer, where a bot runs approved commands on the machine in front of you. They do not describe installing the Grok Bot service on a server you operate. Rakazo can be self-hosted.",
+      "The Grok Bot docs describe a cloud computer assigned to your account. They also describe an optional local computer, where a bot runs approved commands on the machine in front of you. They do not describe installing the Grok Bot service on a server you operate. Praci can be self-hosted.",
   },
   {
-    question: "How is Rakazo different from Grok Bot?",
+    question: "How is Praci different from Grok Bot?",
     answer:
-      "Both are persistent bots that can use a computer, sign in to tools, keep context, and run routines. Grok Bot hosts that computer for you and comes with paid Cursor plans and SuperGrok subscriptions. Rakazo is open source: you host it, you choose the model, and team computers and private computers stay separate. Hosted Rakazo Cloud is not generally available yet.",
+      "Both are persistent bots that can use a computer, sign in to tools, keep context, and run routines. Grok Bot hosts that computer for you and comes with paid Cursor plans and SuperGrok subscriptions. Praci is open source: you host it, you choose the model, and team computers and private computers stay separate. Hosted Praci Cloud is not generally available yet.",
   },
   {
-    question: "Is Rakazo just chat, like Grok Bot?",
+    question: "Is Praci just chat, like Grok Bot?",
     answer:
-      "After the install, yes. You create an account, connect a model, and manage the bot from that chat. A new bot interviews you. Routines, memory, and approval boundaries stay with the bot. Rakazo is that chat plus the computer you run. Grok Bot is also a chat for named bots. The difference is who hosts the service and who picks the model.",
+      "After the install, yes. You create an account, connect a model, and manage the bot from that chat. A new bot interviews you. Routines, memory, and approval boundaries stay with the bot. Praci is that chat plus the computer you run. Grok Bot is also a chat for named bots. The difference is who hosts the service and who picks the model.",
   },
   CLAUDE_CHATGPT_SUBSCRIPTION_FAQ,
   {
@@ -304,7 +304,7 @@ function figureMarkdown(figure: GrokFigure): string {
 
 function sectionMarkdown(section: (typeof GROK_SECTIONS)[number]): string {
   const figure =
-    section.heading === "What Rakazo keeps from that shape"
+    section.heading === "What Praci keeps from that shape"
       ? GROK_ROUTINE_FIGURE
       : section.heading === "Setup, then the chat"
         ? GROK_MODELS_FIGURE
@@ -315,7 +315,7 @@ function sectionMarkdown(section: (typeof GROK_SECTIONS)[number]): string {
 
 export function grokAlternativeMarkdown(): string {
   const comparison = [
-    "| Topic | Rakazo | Grok Bot |",
+    "| Topic | Praci | Grok Bot |",
     "| --- | --- | --- |",
     ...COMPARE_ROWS.map((row) => `| ${row.topic} | ${row.rakazo} | ${row.grok} |`),
   ].join("\n");
@@ -344,7 +344,7 @@ ${COMPARE_NOTE}
 
 ${sources}
 
-## Self-host Rakazo
+## Self-host Praci
 
 ${SELF_HOST_LEAD}
 
@@ -372,7 +372,7 @@ ${GROK_OTHER_ALTERNATIVES.map((item) => {
 
 ${faq}
 
-- [Rakazo](${SITE_URL}/)
+- [Praci](${SITE_URL}/)
 - [Sitemap](${SITE_URL}/sitemap-index.xml)
 `;
 }

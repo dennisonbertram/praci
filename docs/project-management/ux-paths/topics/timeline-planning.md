@@ -63,7 +63,7 @@ Mockup facts used below (seed, "today" is Oct 16): one day is 14px; bars drag in
 **Preconditions**: Default state, Timeline tab. Security review is a Linear task, read and write connection.
 **README stories**: S13, S14
 **Ideal path**: 1 drag. Reasoning: one pointer gesture, ending the conflict, is the minimum.
-**Alternate paths**: Drawer suggestion "Open in Linear" to change the date in Linear (leaves Rakazo). "Shift dependents" from the conflict marker is README S15 (later), not in mockup.
+**Alternate paths**: Drawer suggestion "Open in Linear" to change the date in Linear (leaves Praci). "Shift dependents" from the conflict marker is README S15 (later), not in mockup.
 
 ### Steps
 1. Open Timeline; identify the "Security review" bar (ENG-47) with a warning triangle at its left edge → Warning visible.
@@ -145,7 +145,7 @@ Mockup facts used below (seed, "today" is Oct 16): one day is 14px; bars drag in
 ---
 
 ## TIMELINE-PLANNING-06: Notion has no dependency relation
-**Type**: medium  **Persona**: Jonas, founder who tracks marketing work in Notion  **Goal**: Understand why Notion tasks have no arrows, and ask Rakazo to add a relation.
+**Type**: medium  **Persona**: Jonas, founder who tracks marketing work in Notion  **Goal**: Understand why Notion tasks have no arrows, and ask Praci to add a relation.
 **Preconditions**: "Mockup states" menu: check "Notion: no relation". Timeline tab.
 **README stories**: S4, S12, S14
 **Ideal path**: 2 (read the note row, click "Add relation"). Reasoning: the note row is the control.

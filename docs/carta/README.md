@@ -68,7 +68,7 @@ reachable through it. PR 1 records this in this file.
 4. **Carta is read-only for the agent.** `CARTA_READ_TOOLS` lists the allowed tools
    explicitly; `assignCartaServers` writes them to `BotMcpServer.allowedTools`, and
    `assignmentAllowsTool` in `mcp-connector.ts` enforces the list for this spawn key
-   even when `allowAllTools` is set (the Finance agent's guard). If Rakazo's OAuth
+   even when `allowAllTools` is set (the Finance agent's guard). If Praci's OAuth
    client can request scopes per server, request only the `read_*` scopes.
    `set_context` stays allowed because it selects a company, not data.
 5. **Writing happens in Gmail and Drive, and every send is approved by hand.** The

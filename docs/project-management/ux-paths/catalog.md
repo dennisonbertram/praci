@@ -1,4 +1,4 @@
-# UX Paths catalog: Rakazo Projects (mockup)
+# UX Paths catalog: Praci Projects (mockup)
 
 > Walked against the mockup before the fixes in this change; findings are kept as the record of what was fixed. See the Status column in the consolidated findings of catalog.md.
 
@@ -127,12 +127,12 @@ Stories keep their original text and Walk result lines; headings use the new STO
 
 ### Steps
 1. Click "Linear" → panel "Connect Linear" with a "Team" select (Growth, Platform, Design), "Access" toggle, "Back", "Connect". She thinks: "I want Platform and Growth; it only lets me pick one."
-2. Click "Read only" in "Access" → it highlights. She wonders: "Does Read only mean Rakazo cannot touch Linear at all, including the bot?"
+2. Click "Read only" in "Access" → it highlights. She wonders: "Does Read only mean Praci cannot touch Linear at all, including the bot?"
 3. Click "Connect" → board appears with "Read-only" badge.
 4. Try to drag a Linear card (for example "Onboarding emails" ENG-42) → expects a refusal she understands.
 
 ### Walk result
-1. CONTRADICTS-PLAN: S2 says "pick which to show" (teams, plural); "Team" is a single select (W5 text: "Team Growth Platform Design"). Also no OAuth step, so she never sees what Rakazo is asking Linear for.
+1. CONTRADICTS-PLAN: S2 says "pick which to show" (teams, plural); "Team" is a single select (W5 text: "Team Growth Platform Design"). Also no OAuth step, so she never sees what Praci is asking Linear for.
 2. OK: toggle works; default is "Read and write", so choosing Read only is deliberate. CONFUSING: no copy says what each option allows, and the plan says Read only uses a different endpoint, which she cannot know.
 3. CONTRADICTS-PLAN: no first-sync count or progress (S2). Board shows 14 cards at once, including GitHub, Notion and Native (w5-after-linear-ro.png); Sources button shows 3 3 4 Native 6 although she connected only Linear.
 4. CONFUSING: the 10 non-native cards are not draggable (walk: 4 of 14 draggable) but there is no tooltip. The badge "Read-only" has no title attribute explaining it.
@@ -186,7 +186,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 ### Steps
 1. Click "Notion" → "Connect Notion" with heading "Map properties" inside it.
 2. Choose "Database" "Launch tasks" (default) → fields below should refresh for that database.
-3. Review "Status", "Assignee", "Start", "End". Sees "Assignee" defaulting to "Owner". She thinks: "In my database Owner means who is accountable. Rakazo has an Owner and an Assignee. Which one am I mapping?"
+3. Review "Status", "Assignee", "Start", "End". Sees "Assignee" defaulting to "Owner". She thinks: "In my database Owner means who is accountable. Praci has an Owner and an Assignee. Which one am I mapping?"
 4. Leave "Blocked by" (optional) at "None" although the dropdown lists "Blocked by" and "Depends on" → she assumes it is off for a reason.
 5. Click "Connect" with "Read and write" (default).
 6. Open "Timeline" → expects arrows. Gets the note "Notion has no dependency relation" with "Add relation" (after "Notion: no relation" is ticked in the mockup).
@@ -195,8 +195,8 @@ Stories keep their original text and Walk result lines; headings use the new STO
 ### Walk result
 1. CONFUSING: panel has "Connect Notion" h2 and a second h2 "Map properties" directly beneath (w4-notion.png). Two headings for one screen.
 2. MISSING: changing "Database" does not change the property options (the options are static). Mockup-only; the real adapter must repopulate.
-3. CONFUSING: "Assignee" preselects "Owner". README S29 makes Owner and Assignee separate Rakazo fields; there is no "Owner" mapping row at all, though S4 lists "optional" mapping only for blocked-by and estimate and the capability matrix says Owner is an optional mapped person property. CONTRADICTS-PLAN.
-4. OK for the two optionals. CONFUSING: both options are real relations yet default is "None"; the user cannot tell whether "None" means "ignore" or "create one" (S4 says Rakazo offers to create the relation).
+3. CONFUSING: "Assignee" preselects "Owner". README S29 makes Owner and Assignee separate Praci fields; there is no "Owner" mapping row at all, though S4 lists "optional" mapping only for blocked-by and estimate and the capability matrix says Owner is an optional mapped person property. CONTRADICTS-PLAN.
+4. OK for the two optionals. CONFUSING: both options are real relations yet default is "None"; the user cannot tell whether "None" means "ignore" or "create one" (S4 says Praci offers to create the relation).
 5. MISSING: no confirmation, no sync progress.
 6. OK: note and button exist on Timeline (h-norel-timeline.png). On Board with no relation there is no note (walk: 0 note rows), so the user who never opens Timeline never learns why "Blocked" markers vanished.
 7. CONTRADICTS-PLAN: toast only; S4 requires an approval card. The label "Add relation" does not say it writes a new property into her Notion database.
@@ -238,7 +238,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 
 ## STORY-006: User wants to disconnect Notion and delete its data  
 *(was CONNECT-SOURCES-FIRST-RUN-06)*
-**Type**: short  **Persona**: Dev, designer who tried Notion for a month and now wants Rakazo to forget it  **Goal**: remove the Notion source and its synced tasks
+**Type**: short  **Persona**: Dev, designer who tried Notion for a month and now wants Praci to forget it  **Goal**: remove the Notion source and its synced tasks
 **Preconditions**: populated board with all four sources
 **README stories**: S7
 **Ideal path**: 3. Sources button → "Notion" row action "Disconnect" → confirm "Delete synced data". (The mockup has none of these.)
@@ -368,7 +368,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 
 ## STORY-010: Drag a native card to In progress  
 *(was BOARD-WORK-02)*
-**Type**: short  **Persona**: Teo, solo founder using Rakazo with no tracker
+**Type**: short  **Persona**: Teo, solo founder using Praci with no tracker
 **Goal**: Mark "Support runbook" (PL-12) as started.
 **Preconditions**: Default mockup state.
 **README stories**: S9, S11
@@ -553,7 +553,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 
 ## STORY-015: Connect read-only and try to move a card  
 *(was BOARD-WORK-07)*
-**Type**: medium  **Persona**: Kit, cautious engineer who wants Rakazo to never touch the tracker
+**Type**: medium  **Persona**: Kit, cautious engineer who wants Praci to never touch the tracker
 **Goal**: Confirm that tracker cards cannot be moved while native cards still can.
 **Preconditions**: Mockup states menu: "Read-only" checked (equivalent of connecting with Access "Read only").
 **README stories**: S24, S9, S23
@@ -599,7 +599,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 1. OK: badge text `Read-only`.
 2. CONFUSING: GitHub card `draggable` is null, native cards remain true. No explanation (README S24 requires a tooltip).
 3. OK: Send to bot works and is not blocked.
-4. OK in behaviour (bot assignment is Rakazo-side per S30), but MISSING reassurance. This is a fine design if the row says it stays in Rakazo; today it does not.
+4. OK in behaviour (bot assignment is Praci-side per S30), but MISSING reassurance. This is a fine design if the row says it stays in Praci; today it does not.
 5. OK: thread text `Signup API Working on it Signup API #142 Open in GitHub`.
 6. CONTRADICTS-PLAN: `Change status ... Approve` is shown (count 1 each) in read-only mode; S24 removes the bot's status change.
 
@@ -761,7 +761,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 **Preconditions**: Default state, Timeline tab. Security review is a Linear task, read and write connection.
 **README stories**: S13, S14
 **Ideal path**: 1 drag. Reasoning: one pointer gesture, ending the conflict, is the minimum.
-**Alternate paths**: Drawer suggestion "Open in Linear" to change the date in Linear (leaves Rakazo). "Shift dependents" from the conflict marker is README S15 (later), not in mockup.
+**Alternate paths**: Drawer suggestion "Open in Linear" to change the date in Linear (leaves Praci). "Shift dependents" from the conflict marker is README S15 (later), not in mockup.
 
 ### Steps
 1. Open Timeline; identify the "Security review" bar (ENG-47) with a warning triangle at its left edge → Warning visible.
@@ -846,7 +846,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 
 ## STORY-023: Notion has no dependency relation  
 *(was TIMELINE-PLANNING-06)*
-**Type**: medium  **Persona**: Jonas, founder who tracks marketing work in Notion  **Goal**: Understand why Notion tasks have no arrows, and ask Rakazo to add a relation.
+**Type**: medium  **Persona**: Jonas, founder who tracks marketing work in Notion  **Goal**: Understand why Notion tasks have no arrows, and ask Praci to add a relation.
 **Preconditions**: "Mockup states" menu: check "Notion: no relation". Timeline tab.
 **README stories**: S4, S12, S14
 **Ideal path**: 2 (read the note row, click "Add relation"). Reasoning: the note row is the control.
@@ -1058,7 +1058,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 
 ## STORY-030: The bot cannot edit Linear; follow its due-date suggestion  
 *(was BOT-CONVERSATION-APPROVALS-04)*
-**Type**: medium  **Persona**: Sam, product manager who keeps the roadmap in Linear  **Goal**: Act on "Onboarding emails will slip a week" without Rakazo changing Linear on its own.
+**Type**: medium  **Persona**: Sam, product manager who keeps the roadmap in Linear  **Goal**: Act on "Onboarding emails will slip a week" without Praci changing Linear on its own.
 **Preconditions**: Default state. Linear connected.
 **README stories**: S19 (later, partly), S23, S18
 **Ideal path**: 3 steps. Read the suggestion, click "Open in Linear", change the date in Linear.
@@ -1073,7 +1073,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 ### Walk result
 1. CONFUSING: the panel card has no reason line, only the move, while the drawer version adds "Blocker is still in progress".
 2. OK: dates and suggestion are consistent with the card (Oct 27 to Nov 3).
-3. OK for a mockup (external link). Real design: the card does not say that the change is made in Linear and that Rakazo picks it up on the next sync. Sam may think the click already changed the date.
+3. OK for a mockup (external link). Real design: the card does not say that the change is made in Linear and that Praci picks it up on the next sync. Sam may think the click already changed the date.
 4. MISSING: dismissed card is not removed or greyed. Dismissing the bot card does not dismiss the drawer's duplicate Suggestion, and the other way round.
 
 ### Variations / Edge cases
@@ -1119,7 +1119,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 **Alternate paths**: Drawer does not offer an assignee control, so this card is the only route in the mockup.
 
 ### Steps
-1. Click the card "Partner outreach list" (PL-16, unassigned) → Drawer: "Native task · Product launch", "Saved in Rakazo", Assignee "Unassigned", and a "Suggestion" card: "Assign to Cy Novak / Lowest open load this week", "Accept", "Dismiss".
+1. Click the card "Partner outreach list" (PL-16, unassigned) → Drawer: "Native task · Product launch", "Saved in Praci", Assignee "Unassigned", and a "Suggestion" card: "Assign to Cy Novak / Lowest open load this week", "Accept", "Dismiss".
 2. Click "Accept" → Toast "Sent for approval".
 3. Noor thinks: "Approval by whom? I am the user." She looks at the Assignee row: still "Unassigned".
 4. Click "Dismiss" → Toast "Dismissed"; the Suggestion card stays.
@@ -1141,7 +1141,7 @@ Stories keep their original text and Walk result lines; headings use the new STO
 
 ## STORY-033: Read-only tracker and a status-change card  
 *(was BOT-CONVERSATION-APPROVALS-07)*
-**Type**: medium  **Persona**: Owen, cautious CTO who connected GitHub read-only  **Goal**: Be sure Rakazo cannot change GitHub.
+**Type**: medium  **Persona**: Owen, cautious CTO who connected GitHub read-only  **Goal**: Be sure Praci cannot change GitHub.
 **Preconditions**: Mockup states: "Read-only" ticked.
 **README stories**: S24, S23
 **Ideal path**: 3 steps. Look for the read-only signal, open the bot, confirm no write is offered.
@@ -1461,7 +1461,7 @@ Merged from the Findings sections of the five topics (about 80 raw items). Sever
 | A16 | Med | Notion "no dependency relation" note appears only on Timeline (Board users silently lose Blocked markers); "Add relation" does not say it writes a property into the user's Notion database; the Linear drawer still lists a Notion blocker while arrows are hidden; Add relation is offered in read-only. | 004, 023 | S4, S24 | Show the note on first Board load and in the Notion Sources row; label the button with what it writes; keep the dependency source consistent across board, chart, drawer and bot; hide Add relation when Notion is read-only. | Fixed |
 | A17 | Med | Sync failure gives no reason or age, the red dot is not repeated in the dropdown row, first-sync progress and count are absent, no Reconnect path for expired tokens, banner persists for a source filtered off. | 002, 003, 005, 007 | S2, S26 | Banner: "GitHub sync failed. Last synced 2h ago" with Retry and Reconnect when auth failed; red dot on the GitHub row; "Syncing 42 issues" then "Synced 14 tasks" after connect. | Fixed (sync progress is a toast) |
 | A18 | Med | Keyboard and screen-reader gaps: timeline bars and the conflict triangle are not focusable or operable; hover-only `title` tooltips for Blocked and WIP; focus is lost when the drawer closes; cards have no role or name; bot-card buttons are 12px high. | 009, 010, 011, 016, 018 | S8, S27 | Bars become buttons (Enter opens, arrows move a day); Blocked becomes a focusable popover; return focus to the opener; give cards role and accessible name with status, id and Blocked. | Fixed |
-| A19 | Med | Cross-lane drop in Group by assignee silently changes status only; the card jumps back to its old lane. | 013 | S10 | Highlight only the card's own lane as a valid drop, or reassign on cross-lane drop with a toast naming the new assignee (bot assignment stays Rakazo-side). | Fixed |
+| A19 | Med | Cross-lane drop in Group by assignee silently changes status only; the card jumps back to its old lane. | 013 | S10 | Highlight only the card's own lane as a valid drop, or reassign on cross-lane drop with a toast naming the new assignee (bot assignment stays Praci-side). | Fixed |
 | A20 | Med | Conflict marker is a dead icon: not clickable, no conflict count, no hint toward Shift dependents. | 021, 025 | S14, S15 | Make the marker focusable and open the preview; add a conflict count; show a disabled "Shift dependents" (labelled Later). | Fixed |
 | A21 | Med | Bot panel navigation: "Ask bot" is hidden while any thread is open and there is no switch between Project bot, Research and Writer threads. Nav bot rows look clickable but do nothing. | 037, 038, 040 | S30, S16 | Bot switcher in the panel header, or wire nav rows to open that bot's latest thread. | Fixed |
 | A22 | Med | Narrow-width behaviour: swipe that starts on a timeline bar reschedules and writes to the tracker; board is a 990px sideways scroll with no cue; header takes 120px. | 017, 026 | S12, S9 | Timeline view-only (or long-press to drag) at narrow widths; board shows one column with a picker. Mobile is out of v1, so decide the narrow-window policy. | Fixed |
@@ -1470,7 +1470,7 @@ Merged from the Findings sections of the five topics (about 80 raw items). Sever
 | A25 | Low | Column headers are not sticky in Group by assignee, so the amber WIP header scrolls away; "Mockup states" overlaps lower lanes. | 013, 016 | S10 | Make the header row sticky. | Fixed |
 | A26 | Low | Critical-path legend never defines "critical"; arrows into milestones overlap the diamond. | 022 | S14 | Tooltip on the legend entry; route arrows to the diamond's left edge. | Fixed |
 | A27 | Low | Bot avatar duplicated on timeline row label and bar end; sits on the dependency arrow exit. | 040 | S30 | Keep the row-label avatar only. | Fixed |
-| A28 | Low | "Open in Linear" does not say the change appears after the next sync; "Send to bot" menu lists bots with no role. | 030, 036 | S18, S30 | Toast "Opened in Linear. Rakazo updates on next sync."; role line on hover only (copy rule). | Fixed (bot role line deferred) |
+| A28 | Low | "Open in Linear" does not say the change appears after the next sync; "Send to bot" menu lists bots with no role. | 030, 036 | S18, S30 | Toast "Opened in Linear. Praci updates on next sync."; role line on hover only (copy rule). | Fixed (bot role line deferred) |
 | A29 | Low | Empty states: filtering to a bot with no cards gives five empty columns; unticking every source gives a blank board; no empty-column text. | 014, 007 | S8 | "No tasks" line; "No sources selected" with Select all. | Fixed |
 | A30 | Low | Access toggle has no explanation; access state is sticky across connect forms; duplicate headings "Connect Notion" / "Map properties"; locked-card tooltip absent. | 002, 003, 004, 008 | S2, S3, S4 | Reset the toggle per form (or store per source); one helper line only when Read and write is chosen (quote in PR per copy rule); drop the second heading. | Fixed |
 

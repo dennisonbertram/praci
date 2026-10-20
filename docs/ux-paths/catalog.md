@@ -1,4 +1,4 @@
-# UX Path Catalog: Rakazo first-time founder pass
+# UX Path Catalog: Praci first-time founder pass
 
 Generated: 2026-10-17
 Branch: docs/ux-pass (merged with origin/main at 559a76ad)
@@ -42,7 +42,7 @@ Code read: `the repository root` at `559a76ad` (branch `docs/ux-pass`, merged wi
 Total Stories: 40 (short 23, medium 13, long 4)
 Previous catalog: 2026-10-16, 24 stories (STORY-INB-001..024). This version keeps every id, rewrites the steps to match the code as it is now, and adds STORY-INB-025..040.
 
-**Persona for every story.** A naive first-time user: a startup founder who has never seen Rakazo or its code, does not know its words ("triage", "noise", "agent", "Data room", "approval"), and only wants to run their company clearly and consistently. In the stories they are called **Maya**, the founder of the mock company. Steps say what Maya would try, in her words, and mark **Hesitation** where she would likely pause or misread a label. "UNVERIFIED" marks a behaviour read from code but not seen running; the walker should record what actually appears.
+**Persona for every story.** A naive first-time user: a startup founder who has never seen Praci or its code, does not know its words ("triage", "noise", "agent", "Data room", "approval"), and only wants to run their company clearly and consistently. In the stories they are called **Maya**, the founder of the mock company. Steps say what Maya would try, in her words, and mark **Hesitation** where she would likely pause or misread a label. "UNVERIFIED" marks a behaviour read from code but not seen running; the walker should record what actually appears.
 
 **Scope note on the Data room.** On this commit the Data room has **no** "Import from email" and the Inbox has no "Save to Data room" action; the agent has only `data_room_search` and `data_room_read` (`builtin-tools.ts:1021-1028`), no tool that adds files. The way to file a mail attachment is: download it, then **Choose files** on the Data room page or drop it on any app page (STORY-INB-016, 022, 024). **PR #109 (`origin/feat/legal`)** adds `ImportFromEmail.tsx` to the Data room page (a button "Import from email", or "Connect Gmail" when none is connected, that opens a picker of mail with attachments). The main-branch path stays the primary path in every story; each Data-room story says what changes once #109 merges.
 
@@ -231,7 +231,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ##### Edge Cases
 - The search box and Filter button are live but have nothing to search.
 
-#### STORY-INB-002: "Let Rakazo sort your mail" — allow AI sorting
+#### STORY-INB-002: "Let Praci sort your mail" — allow AI sorting
 
 **Type**: short
 **Topic**: Triage consent
@@ -243,7 +243,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 
 ##### Steps
 1. Opens Inbox → rows appear in two groups, **Today** and **Earlier**. No "Needs reply" group, no **Important** toggle, no To do card, no Categories in the Filter menu.
-2. At the top a card (`AiDataSharing.tsx:69-96`): "**Let Rakazo sort your mail**" — "Rakazo finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({model name})." Buttons **Allow** and **Not now**. She **expects** a clear yes/no and that "no" leaves her mail alone. **Hesitation**: "the AI service that runs your bots" — she has no bots yet and does not know who that is; the provider name in brackets helps only if she recognises it. The card says the previews go out but not that the full email bodies are not.
+2. At the top a card (`AiDataSharing.tsx:69-96`): "**Let Praci sort your mail**" — "Praci finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({model name})." Buttons **Allow** and **Not now**. She **expects** a clear yes/no and that "no" leaves her mail alone. **Hesitation**: "the AI service that runs your bots" — she has no bots yet and does not know who that is; the provider name in brackets helps only if she recognises it. The card says the previews go out but not that the full email bodies are not.
 3. Clicks **Allow** → the card is replaced by "Sorting your mail…" (STORY-INB-025), then the **Needs reply** group, **Important** toggle and **To do** card appear.
 
 ##### Variations
@@ -282,7 +282,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 **Type**: short
 **Topic**: Consent withdrawal
 **Persona**: Maya, after reading an article about AI and email
-**Goal**: Stop Rakazo sending her mail details to the AI service.
+**Goal**: Stop Praci sending her mail details to the AI service.
 **Preconditions**: A1; CONSENT-GIVEN; T1–T4 present.
 **Ideal path**: 4 — account menu, Settings, switch off, back to Inbox.
 **Alternate paths**: none found (no switch on the Inbox page itself).
@@ -1084,7 +1084,7 @@ Long: 022 (first morning), 023 (agent drafts replies), 024 (term sheet day), 040
 ##### Steps
 1. Sidebar **Inbox** → "No mail connected" → **Connect mail** → Integrations → connects Gmail (STORY-INB-001).
 2. Returns to Inbox by the sidebar → skeleton → **Today** / **Earlier** lists.
-3. Reads the "Let Rakazo sort your mail" card → clicks **Allow** (STORY-INB-002) → "Sorting your mail…" (STORY-INB-025).
+3. Reads the "Let Praci sort your mail" card → clicks **Allow** (STORY-INB-002) → "Sorting your mail…" (STORY-INB-025).
 4. When it finishes, **Needs reply** (M1, M3), the **Important** toggle and the **To do** card appear at once.
 5. **Hesitation**: M11 "Urgent: wire transfer update" has a small red warning triangle before the sender name. It is named "Suspicious" only for screen readers and has no visible text. She nearly opens it as a real message from herself ("Maya Okafor").
 6. Archives M11 with the hover Archive icon → "Archived" + Undo.
@@ -1269,7 +1269,7 @@ optional). All 23 earlier ids still apply; most had labels or steps fixed.
 ### Persona (applies to every story)
 
 A first-time user. Maya, a startup founder at "Northwind Robotics", has never seen
-Rakazo or its code. She does not know its terms ("burn", "runway scope", "MCP", "Blockscout",
+Praci or its code. She does not know its terms ("burn", "runway scope", "MCP", "Blockscout",
 "pins", "Hide amounts"). She wants to run her company clearly and consistently: know how much money
 she has, what she spends it on, and when it runs out. Steps are written in her words.
 **Hesitation** marks a place where a first-timer is likely to stop, misread a label, or pick the
@@ -2099,7 +2099,7 @@ Kraken/Coinbase "Connect".
    the first paint; the icon is the crossed-out eye. The choice is saved in this browser's local
    storage as `rakazo.hideAmounts = on` (`hide-amounts-preference.ts:3-34`).
 2. Close the browser, open it tomorrow → still hidden.
-3. Open Rakazo on her phone or another computer → amounts are **shown**. The choice is per browser,
+3. Open Praci on her phone or another computer → amounts are **shown**. The choice is per browser,
    not per account, and not synced.
    - Hesitation: she assumed "my account" remembers it. On a new device the numbers are visible until
      she clicks the icon.
@@ -2462,7 +2462,7 @@ Source: `docs/ux-paths/legal/catalog.md`.
 Generated: 2026-10-17
 Code read at: `origin/feat/legal` commit **f2b8fc1e** (PR #109, "Legal: regenerate translation catalogs after the e2e fixes"). The checkout this catalog lives in is `559a76ad` (`docs/ux-pass`), which does not contain Legal. The previous catalog read `488048d5`.
 Total Stories: 29 (Short 12, Medium 13, Long 4)
-Persona for every story: Maya, a first-time founder (MOCK DEMO DATA, Northwind Robotics). Maya has never seen Rakazo. She does not know words like "agent", "scan", "consent", "Data room", "node" or "Muse Spark". She wants one thing: run the company without missing a contract date.
+Persona for every story: Maya, a first-time founder (MOCK DEMO DATA, Northwind Robotics). Maya has never seen Praci. She does not know words like "agent", "scan", "consent", "Data room", "node" or "Muse Spark". She wants one thing: run the company without missing a contract date.
 
 ### Read this first: where the Legal code is
 
@@ -2590,7 +2590,7 @@ STORY-LEG-001 (First week: find Legal, set up, first scan, check dates)  [D0]
 
 **Type**: long
 **Topic**: First-time setup, end to end
-**Persona**: Maya, founder of Northwind Robotics, first login, has heard "Rakazo keeps track of contracts"
+**Persona**: Maya, founder of Northwind Robotics, first login, has heard "Praci keeps track of contracts"
 **Goal**: See every contract the company has signed and the next date Maya must act on, without reading legal PDFs
 **Preconditions**: D0. Build includes feat/legal. Signed in as the seeded demo user. Four legal PDFs in Data room > Legal are indexed (status `ready`). No Legal agent, no consent row, no legal rows.
 **Ideal path**: 3 (open Legal, click Allow, read the list). Real path is 4 or more: scanning does not start by itself, so Maya must also find and click Scan now
@@ -4079,7 +4079,7 @@ Source: `docs/ux-paths/dataroom/catalog.md`.
 Generated: 2026-10-17
 Repository: `the repository root` (branch `docs/ux-pass`, code read at HEAD `559a76ad`). PR #109 stories were read from `origin/feat/legal` at commit `f2b8fc1e` ("Legal: regenerate translation catalogs after the e2e fixes").
 Total Stories: 44 (short 26, medium 17, long 1)
-Persona for every story: Maya, a naive first-time founder of Northwind Robotics ("Northwind Robotics") who has never seen Rakazo, does not know its vocabulary ("Data room", "folder", "filing", "agent", "approval", "space"), and wants to keep the company's documents in order and find them again.
+Persona for every story: Maya, a naive first-time founder of Northwind Robotics ("Northwind Robotics") who has never seen Praci, does not know its vocabulary ("Data room", "folder", "filing", "agent", "approval", "space"), and wants to keep the company's documents in order and find them again.
 
 ### Changes since the 2026-10-16 catalog
 
@@ -4093,7 +4093,7 @@ The Data room changed a lot on main since the last catalog (`git log -- apps/web
   - 006 uploads now go into the open folder (it was a gap: uploads always went to the root).
   - 007 status words are now just "Reading" or blank; "Pending" and "Filing" no longer exist (`format.ts:16-17`).
   - 008 a failed file now has "Couldn't read this file", its reason, and a Delete button in the preview.
-  - 009 the consent prompt now exists on the page ("Let Rakazo read your documents", Allow). It used to be a dead end.
+  - 009 the consent prompt now exists on the page ("Let Praci read your documents", Allow). It used to be a dead end.
   - 010 filing now follows the Allow button; the row shows the folder path under the name.
   - 011 the open folder lives in the URL; Back works; a parent folder shows its sub-folders as rows but not their files.
   - 012 view and sort are remembered in the browser (they were not); the Date and Type sort options hide until some item has a value.
@@ -4124,7 +4124,7 @@ Main (`559a76ad`):
 - Filter bar (`FilterBar.tsx`): search box (placeholder "Search names and text", aria "Search documents", debounced 300 ms, server-side, Escape clears), then "Type", "Party", "Document date", "Source" and "Sort: …" plus an ascending/descending arrow. Type, Party and Source are pick lists built from the rows on screen (Source always offers Upload, Google Drive, Gmail, Chat, Finance). A filter appears only when there is something to pick (Type, Party, Document date), or is already set.
 - Status: while a background job works the row shows a spinner and the word "Reading"; failed shows "Failed" in red with the reason as a hover tooltip. Ready rows show nothing. The list re-reads working items every 3 s (`use-data-room-list.ts:34`).
 - Preview (`Preview.tsx`): "Preview" header with "…" and a close X; name; image (for png/jpg/gif/webp up to 10 MB; hidden when Hide amounts is on); summary or "Reading" or "Couldn't read this file" + reason; Type, Date, Parties, Amount, Tags, Folder, Source, Size; failed files lead with a red "Delete"; every file has "Download".
-- Consent card (`ConsentPrompt.tsx`): "Let Rakazo read your documents" + Allow, or, with no model, a grey note telling the founder to set up a model in Settings. After Allow, items that were waiting go through reading and filing again (`apps/api/src/data-room.ts:245-290`).
+- Consent card (`ConsentPrompt.tsx`): "Let Praci read your documents" + Allow, or, with no model, a grey note telling the founder to set up a model in Settings. After Allow, items that were waiting go through reading and filing again (`apps/api/src/data-room.ts:245-290`).
 - Settings: "Embedding model" in the model settings overlay enables semantic search.
 
 Requires PR #109 (origin/feat/legal, commit `f2b8fc1e`):
@@ -4429,7 +4429,7 @@ STORY-DRM-001 (Find the Data room, empty)
 **Alternate paths**: Settings "AI data sharing" switches look relevant but are separate; the Data room has its own card.
 
 ##### Steps
-1. Open Data room → Above the search box a card headed "Let Rakazo read your documents": "To tag new files and sort them into folders for you, their text (and images) is sent to <model provider names>. Until then you can search by name and text and move files into folders yourself." Button "Allow". **Hesitation:** "sent to" a company name; she wonders whether the documents are shared or kept. No "Not now" button.
+1. Open Data room → Above the search box a card headed "Let Praci read your documents": "To tag new files and sort them into folders for you, their text (and images) is sent to <model provider names>. Until then you can search by name and text and move files into folders yourself." Button "Allow". **Hesitation:** "sent to" a company name; she wonders whether the documents are shared or kept. No "Not now" button.
 2. Click "Allow" → The card disappears and the list reloads (`ConsentPrompt.tsx:41-45`).
 3. Watch the rows → Items the server had skipped go back through reading (`apps/api/src/data-room.ts:276-290`); the spinner and "Reading" return, then Type, Date and Parties fill in.
 4. Open the folder tree → New folders the classifier created appear (STORY-DRM-010).
@@ -4638,7 +4638,7 @@ STORY-DRM-001 (Find the Data room, empty)
 4. Toasts stack at the lower right: ten progress bars and one red "Over the 50 MB limit" for the video.
 5. Toasts turn to "Uploaded" and disappear after 10 s → She believes everything is filed in folders. **Misread risk.**
 6. The list shows ten rows, each with a spinner and "Reading", then plain rows with no Type or Date (no consent, so nothing was classified).
-7. Above the list a card "Let Rakazo read your documents" with an Allow button explains the documents will be sent to a model provider. **Hesitation:** privacy of incorporation documents.
+7. Above the list a card "Let Praci read your documents" with an Allow button explains the documents will be sent to a model provider. **Hesitation:** privacy of incorporation documents.
 8. She clicks Allow → The card disappears; rows go back to "Reading".
 9. After a minute, Type, Date and Parties fill in. In the tree, folders such as `Legal`, `Investors`, `Finance / Invoices` and `HR` appear that she did not create.
 10. She clicks a row → The preview shows a summary, Tags, and the Folder.
@@ -5281,7 +5281,7 @@ The Shell was reworked after the earlier catalog (commits `bca9a32b`, `72feab12`
 
 ### Persona (applies to every story)
 
-Maya Chen, cofounder and CEO of "Northwind Robotics" (a 9-person warehouse-robotics startup). She has never seen Rakazo. She does not know the words "bot", "agent", "space", "group", "triage", "routine", "artifact", "Data room", "approval" or "provider". She wants one place to run the company: read email, know the cash position, keep the cap table and investor documents straight, and hand repeat work to someone reliable. **Hesitation** marks where she would pause or misread. "Expects" gives the outcome a first-timer would assume.
+Maya Chen, cofounder and CEO of "Northwind Robotics" (a 9-person warehouse-robotics startup). She has never seen Praci. She does not know the words "bot", "agent", "space", "group", "triage", "routine", "artifact", "Data room", "approval" or "provider". She wants one place to run the company: read email, know the cash position, keep the cap table and investor documents straight, and hand repeat work to someone reliable. **Hesitation** marks where she would pause or misread. "Expects" gives the outcome a first-timer would assume.
 
 ### Mock demo data and preconditions (shared seed)
 
@@ -5381,7 +5381,7 @@ STORY-APP-137..143 need nothing from the seed.
 **Alternate paths**: `/sign-in` then "Sign up" (`pages/Auth.tsx:318-325`); direct `/sign-up`. After sign-up the router sends a signed-in user to `/onboarding` (`App.tsx:145`).
 
 ##### Steps
-1. Opens `/`. Sees the Rakazo logo, "Bots that run your inbox, cash, cap table and investor documents." and two controls, "Sign up →" and "Sign in" (`pages/Welcome.tsx:22-43`). Expects a short explanation or a demo. **Hesitation:** "Bots" is the only noun; she wonders if this is a chatbot or software she must configure. The copy does name her four jobs (inbox, cash, cap table, investor documents), which is better than before.
+1. Opens `/`. Sees the Praci logo, "Bots that run your inbox, cash, cap table and investor documents." and two controls, "Sign up →" and "Sign in" (`pages/Welcome.tsx:22-43`). Expects a short explanation or a demo. **Hesitation:** "Bots" is the only noun; she wonders if this is a chatbot or software she must configure. The copy does name her four jobs (inbox, cash, cap table, investor documents), which is better than before.
 2. Clicks "Sign up". Sees "Create your account" with Name ("Your name"), Email ("Your email address"), Password and the hint "At least 8 characters." (`pages/Auth.tsx:214-280`). A brief "Loading…" shows first while the server reports which sign-in methods exist (`:192-196`).
 3. Types Name "Maya Chen", Email "maya.new@northwind.example", a password. Clicks the eye button ("Show password") to check the typing; the label flips to "Hide password" (`:264-274`).
 4. Clicks "Create account". The button reads "Working…" while it runs, then the app goes to `/onboarding` (`:295-305`, `:114-121`). She sees "Loading…" and then "Opening chat…" (`pages/Onboarding.tsx:559,1046`). **Hesitation:** two plain loading screens in a row with no sign that her account was made.
@@ -5436,7 +5436,7 @@ STORY-APP-137..143 need nothing from the seed.
 **Alternate paths**: `/forgot-password` directly. Settings → Password only while signed in (part B).
 
 ##### Steps
-1. Opens `/sign-in`: "Sign in to Rakazo", Email, Password, "Continue with email", and below "Don't have an account? Sign up" (`pages/Auth.tsx:43,295-325`). Types a wrong password. Sees a red message under the fields (`authErrorText`, `lib/user-error.ts:15-31`). **Hesitation:** the button says "Continue with email" though she is typing her email and password; she may think it sends a code.
+1. Opens `/sign-in`: "Sign in to Praci", Email, Password, "Continue with email", and below "Don't have an account? Sign up" (`pages/Auth.tsx:43,295-325`). Types a wrong password. Sees a red message under the fields (`authErrorText`, `lib/user-error.ts:15-31`). **Hesitation:** the button says "Continue with email" though she is typing her email and password; she may think it sends a code.
 2. Clicks "Forgot password?" under the password box (`:281-287`). The page becomes "Reset your password" with only Email and "Send reset link".
 3. Types her email and clicks "Send reset link". The page changes to "Check your email" with: "If maya@northwind.example has an account, a reset link is on its way. It can take a minute; check your spam folder if it does not arrive." plus "Send again" and "Back to sign in" (`:153-176`).
 4. Opens the email, clicks the link: "Choose a new password" with "New password" and "Confirm password" and "Reset password" (`:347-428`). Enters the same password twice.
@@ -5534,14 +5534,14 @@ STORY-APP-137..143 need nothing from the seed.
 
 **Type**: short
 **Topic**: SSO
-**Persona**: Employee of a company that runs Rakazo on its own server
+**Persona**: Employee of a company that runs Praci on its own server
 **Goal**: "Sign in with my work login."
 **Preconditions**: Server has SSO provider "MOCK Okta" and password sign-in turned off.
 **Ideal path**: 2 — click the SSO button, approve.
 **Alternate paths**: none found.
 
 ##### Steps
-1. Opens `/sign-in`. The title is "Sign in to Rakazo" and there is a single large button "Continue with MOCK Okta"; no email or password fields (`pages/Auth.tsx:197-206`).
+1. Opens `/sign-in`. The title is "Sign in to Praci" and there is a single large button "Continue with MOCK Okta"; no email or password fields (`pages/Auth.tsx:197-206`).
 2. Clicks it. A sign-in window or redirect opens (`lib/sso-flow`, `Auth.tsx:129-149`). On success she lands at `/app`; a new user lands at `/onboarding`.
 3. A failure shows red text: "SSO is temporarily unavailable. Try again.", or "Sign in to your existing account to link SSO" when the same email already has a password account (`user-error.ts:17-18`). **Hesitation:** the second message names no way to sign in to the existing account, because password sign-in is off.
 
@@ -5609,7 +5609,7 @@ STORY-APP-137..143 need nothing from the seed.
 
 **Type**: medium
 **Topic**: Onboarding, model step
-**Persona**: Naive first-time founder on a self-hosted Rakazo
+**Persona**: Naive first-time founder on a self-hosted Praci
 **Goal**: "Get through setup."
 **Preconditions**: Fresh account; `me.needsModel=true`; model catalog lists several providers.
 **Ideal path**: 4 — pick a provider, paste a key, press Continue. For a first-timer this step should not exist.
@@ -5635,7 +5635,7 @@ STORY-APP-137..143 need nothing from the seed.
 
 **Type**: short
 **Topic**: Onboarding, integrations step
-**Persona**: Founder who is also the person who installed Rakazo
+**Persona**: Founder who is also the person who installed Praci
 **Goal**: "Finish setup quickly; I will connect apps later."
 **Preconditions**: Maya is the deployment owner; no app catalog is configured (`integrations.needsSetup=true`); a model is already configured.
 **Ideal path**: 1 — Skip.
@@ -5749,8 +5749,8 @@ STORY-APP-137..143 need nothing from the seed.
 
 ##### Steps
 1. Clicks "Start 14-day free trial". On the web the whole tab navigates to the billing page (`Paywall.tsx:28`).
-2. On desktop the system browser opens and the Rakazo window stays on the paywall. The button is re-enabled after the call returns (`:31-34`). **Hesitation:** nothing says "finish in your browser"; she may click it again and open a second checkout.
-3. Pays. Returns to the Rakazo window. When the window gets focus, the app asks the server again, and the paywall is replaced by the shell skeleton and then the app or onboarding (`SubscriptionGate.tsx:61-81`).
+2. On desktop the system browser opens and the Praci window stays on the paywall. The button is re-enabled after the call returns (`:31-34`). **Hesitation:** nothing says "finish in your browser"; she may click it again and open a second checkout.
+3. Pays. Returns to the Praci window. When the window gets focus, the app asks the server again, and the paywall is replaced by the shell skeleton and then the app or onboarding (`SubscriptionGate.tsx:61-81`).
 4. If payment is slow to register, nothing changes until the next focus event. She switches windows again and it opens.
 
 ##### Edge Cases
@@ -5872,7 +5872,7 @@ STORY-APP-137..143 need nothing from the seed.
 - Typing text that matches nothing shows "No results".
 - Inside the email composer, Cmd+K inserts a link and does not open the palette (`components/compose/RichTextEditor.tsx:70-75`). Inside the chat box it opens the palette.
 
-#### STORY-APP-009: Maya hides the sidebar, then uses Rakazo on her phone
+#### STORY-APP-009: Maya hides the sidebar, then uses Praci on her phone
 
 **Type**: short
 **Topic**: Hide and show the sidebar
@@ -6416,7 +6416,7 @@ STORY-APP-137..143 need nothing from the seed.
 **Type**: short
 **Topic**: Web software update
 **Persona**: Maya as deployment owner
-**Goal**: "Install the latest Rakazo."
+**Goal**: "Install the latest Praci."
 **Preconditions**: Deployment owner; an update available.
 **Ideal path**: 2 — Settings → Updates → update.
 **Alternate paths**: none found.
@@ -6567,12 +6567,12 @@ STORY-APP-137..143 need nothing from the seed.
 - At step 3, the Needs input run belongs to a bot she archived; the row still opens its chat.
 - At step 10, if she is looking at Finance instead of Chief, no notification arrives (STORY-APP-126).
 
-#### STORY-APP-146: Maya, who installed Rakazo herself, sets up the whole server
+#### STORY-APP-146: Maya, who installed Praci herself, sets up the whole server
 
 **Type**: long
 **Topic**: Self-hosted first run
 **Persona**: Maya as both installer and first user
-**Goal**: "Get my own Rakazo running for Northwind, with a model and apps."
+**Goal**: "Get my own Praci running for Northwind, with a model and apps."
 **Preconditions**: Fresh deployment; no model; no Composio key; Maya is the first account (deployment owner); billing off.
 **Ideal path**: 9.
 **Alternate paths**: Configure integrations later in Settings.
@@ -6670,7 +6670,7 @@ Part A owns APP-001..009 and the journeys agent owns APP-024. This file owns APP
 
 ### Persona (applies to every story)
 
-Maya Chen, cofounder and CEO of "Northwind Robotics" (a 9-person warehouse-robotics startup). She has never seen Rakazo. She does not know the words "bot", "space", "group", "MCP", "routine", "provider", "thinking", "scratchpad", "webhook" or "token". She wants one place to run the company: read email, know the cash position, keep the cap table and investor documents straight, and hand repeat work to someone reliable. Each story records what she tries in her own words, what she expects, and where she pauses. Pauses are marked **Hesitation:**.
+Maya Chen, cofounder and CEO of "Northwind Robotics" (a 9-person warehouse-robotics startup). She has never seen Praci. She does not know the words "bot", "space", "group", "MCP", "routine", "provider", "thinking", "scratchpad", "webhook" or "token". She wants one place to run the company: read email, know the cash position, keep the cap table and investor documents straight, and hand repeat work to someone reliable. Each story records what she tries in her own words, what she expects, and where she pauses. Pauses are marked **Hesitation:**.
 
 ### Mock demo data and preconditions (shared seed)
 
@@ -7535,7 +7535,7 @@ Seed (shared) ── Chief chat (012)
 
 ##### Steps
 1. Integrations → Gmail. → "Accounts" lists both with "Connected {date}", "Rename" and "Remove account" (`AppDetail.tsx:60-112`).
-2. Clicks "Remove account" on `old-maya@`. → Dialog "Remove old-maya@northwind.example?": "Bots lose access to this account.", "Mail data from this account that Rakazo cached is removed.", "Your data in Gmail is not deleted." (`AppDetail.tsx:404-420`). Confirms "Remove". → Only one account row left.
+2. Clicks "Remove account" on `old-maya@`. → Dialog "Remove old-maya@northwind.example?": "Bots lose access to this account.", "Mail data from this account that Praci cached is removed.", "Your data in Gmail is not deleted." (`AppDetail.tsx:404-420`). Confirms "Remove". → Only one account row left.
 3. Notices a red "Disconnect Gmail" button at the bottom with "Removes the account and bot access." now that one account is left (`AppDetail.tsx:386-397`). **Hesitation:** With two accounts it said "Removes all 2 accounts and bot access." She misread it as the same as "Remove account".
 4. Goes to Slack → "Disconnect Slack" → dialog "Disconnect Slack?" "Every bot loses access to Slack." "Your data in Slack is not deleted." (`AppDetail.tsx:424-445`). Confirms. → Back at Integrations; Slack is gone from Connected.
 5. If it was Gmail: the dialog adds "The Inbox page stops showing new mail until you reconnect." (`AppDetail.tsx:438`). The Inbox page later shows its connect state.
@@ -7626,9 +7626,9 @@ Seed (shared) ── Chief chat (012)
 **Alternate paths**: Deny on the provider's page.
 
 ##### Steps
-1. In the sign-in window she clicks "Cancel" at the provider. → The window lands on Rakazo's callback page: "OAuth connection failed" with "OAuth authorization was cancelled." (or the provider's own error text) and "You can close this window." (`pages/McpOAuthCallback.tsx:22-72`).
+1. In the sign-in window she clicks "Cancel" at the provider. → The window lands on Praci's callback page: "OAuth connection failed" with "OAuth authorization was cancelled." (or the provider's own error text) and "You can close this window." (`pages/McpOAuthCallback.tsx:22-72`).
 2. Returns to the main window. → The dialog shows the failed state with "Try again".
-3. If she opened the callback address in a normal tab rather than a popup: the same text plus a "Return to Rakazo" button.
+3. If she opened the callback address in a normal tab rather than a popup: the same text plus a "Return to Praci" button.
 
 ##### Variations
 - Success: the popup shows "Connected" and closes itself (`McpOAuthCallback.tsx:44`). Google apps use a separate page with the same texts (`pages/GoogleOAuthCallback.tsx`).
@@ -7768,7 +7768,7 @@ Seed (shared) ── Chief chat (012)
 **Goal**: "Stop sending our documents to an AI service."
 **Preconditions**: The deployment model provider is listed as an AI recipient, consent granted.
 **Ideal path**: 2.
-**Alternate paths**: Inbox consent prompt "Let Rakazo sort your mail" with "Allow" / "Not now" (`components/AiDataSharing.tsx:66-85`).
+**Alternate paths**: Inbox consent prompt "Let Praci sort your mail" with "Allow" / "Not now" (`components/AiDataSharing.tsx:66-85`).
 
 ##### Steps
 1. Settings → General → "AI data sharing". → Text: "Messages, chat history, bot instructions, memories, attachments, screenshots and connected-app content are sent to run your bots, including routines." and one switch per service named "Allow {name}" (`AiDataSharing.tsx:95-130`, `packages/contracts/src/ai-consent.ts:8-9`). If no service is listed the whole card is absent. **Hesitation:** She cannot tell what turning it off will do to Chief.
@@ -7812,7 +7812,7 @@ Seed (shared) ── Chief chat (012)
 **Alternate paths**: Per-bot model in bot Settings → Advanced (STORY-APP-161); the first-run "Connect a model" (part A).
 
 ##### Steps
-1. Settings → Models. → A line "Choose which connected model Rakazo uses." Then "Active model {name} {provider}" and, when set, "Thinking: …"; "Configured by deployment" when the model comes from the server. Below, a collapsed "Data room search model". Left list "Providers" with "Search providers", groups "Connected" and "All providers" (`pages/ModelSettingsOverlay.tsx:1135-1225`). **Hesitation:** "Thinking", "Providers" and "Data room search model" mean nothing to her.
+1. Settings → Models. → A line "Choose which connected model Praci uses." Then "Active model {name} {provider}" and, when set, "Thinking: …"; "Configured by deployment" when the model comes from the server. Below, a collapsed "Data room search model". Left list "Providers" with "Search providers", groups "Connected" and "All providers" (`pages/ModelSettingsOverlay.tsx:1135-1225`). **Hesitation:** "Thinking", "Providers" and "Data room search model" mean nothing to her.
 2. Types "anthropic" in "Search providers" and clicks the provider. → Right pane: "Connect this provider to use it as your personal model." then an "API key" field (placeholder `sk-…`) and, for providers that can be checked, a "Test API key" button (`ModelSettingsOverlay.tsx:1020-1075`, `components/ModelConnectionPreflightNotice.tsx:34`).
 3. Pastes the key and clicks "Test API key". → "Testing…", then a success or failure line. Clicks "Connect API key". → "Connected and using {model}." in green (`ModelSettingsOverlay.tsx:1204-1215`, notice at `:139`). Below: "Connected · {label}" and "Stored securely. Never shown here.", plus model and thinking pickers.
 4. Picks a model and clicks "Use this model" (`ModelSettingsOverlay.tsx:1103-1130`). → "Now using {model}." and "Active model" updates.
@@ -7853,7 +7853,7 @@ Seed (shared) ── Chief chat (012)
 **Type**: medium
 **Topic**: Settings — Memory
 **Persona**: Naive first-time founder
-**Goal**: "See what Rakazo remembers and make sure it forgets one thing."
+**Goal**: "See what Praci remembers and make sure it forgets one thing."
 **Preconditions**: No memory provider connected. Chief and Finance helper each have memory documents.
 **Ideal path**: 2 — scroll to the document list, open one.
 **Alternate paths**: Per-bot Memory tab (STORY-APP-162).
@@ -8091,7 +8091,7 @@ Fifteen new journeys plus the rewritten Monday morning. Short ones (200, 201, 20
 
 **Type**: short
 **Topic**: Inbox to Data room to Legal
-**Persona**: Maya, who has a signed MSA in Luis's email and has heard that Rakazo "knows about contracts"
+**Persona**: Maya, who has a signed MSA in Luis's email and has heard that Praci "knows about contracts"
 **Goal**: "Make my signed MSA show up in the contracts list with its dates."
 **Preconditions**: **Requires PR #109 (origin/feat/legal).** A1; M6 "Acme_Northwind_MSA_signed.pdf"; Gmail connected; Data room consent given (STORY-DRM-009); Legal consent given.
 **Ideal path**: 5 — open mail, Data room, import, Legal, Scan now.
@@ -8285,8 +8285,8 @@ Fifteen new journeys plus the rewritten Monday morning. Short ones (200, 201, 20
 **Alternate paths**: Settings, Account, "AI data sharing" (STORY-INB-026).
 
 ##### Steps
-1. Inbox: card "Let Rakazo sort your mail"; she clicks **Allow** (STORY-INB-002).
-2. Data room: card "Let Rakazo read your documents"; only **Allow** is offered, no **Not now** (STORY-DRM-009, S-DRM-09).
+1. Inbox: card "Let Praci sort your mail"; she clicks **Allow** (STORY-INB-002).
+2. Data room: card "Let Praci read your documents"; only **Allow** is offered, no **Not now** (STORY-DRM-009, S-DRM-09).
 3. **[needs PR #109]** Legal: card "Let the Legal agent read your documents". The Data room and Legal consent are the same underlying consent, shown with different wording; granting it on one releases waiting items on the other (S-LEG-08, STORY-LEG-004). The Inbox consent is separate (`AiDataSharing` switch per model).
 4. She opens Settings, Account, "AI data sharing" to see them all. The page lists one switch per model ("Allow {model name}") and does not list the Data room or Legal grants (STORY-INB-026).
 5. She switches the model switch off. The Inbox groups vanish; the Data room card behaviour is not described in any area catalog. **Unverified:** whether the Data room consent changes too.
@@ -8321,7 +8321,7 @@ Fifteen new journeys plus the rewritten Monday morning. Short ones (200, 201, 20
 7. Clicks **Finance** (`/app/finance`): "No accounts yet" and **Add account** (STORY-FIN-001).
 8. Clicks **Add account**: sections Bank (Mercury, Brex, Upload statements) and Crypto. Clicks Mercury; the sign-in window opens; approves.
 9. Finance shows "Reading…" then the dashboard with Cash, Burn, Runway. Clicks the refresh icon; "Syncing…" then "Updated just now" (STORY-FIN-003).
-10. Clicks **Inbox**: skeleton rows, then mail grouped Today/Earlier. The card "Let Rakazo sort your mail" appears; she clicks **Allow** (STORY-INB-002) and sees "Sorting your mail…" (STORY-INB-025).
+10. Clicks **Inbox**: skeleton rows, then mail grouped Today/Earlier. The card "Let Praci sort your mail" appears; she clicks **Allow** (STORY-INB-002) and sees "Sorting your mail…" (STORY-INB-025).
 11. Opens **Cap table**: "Connect Carta"; she does not have a Carta account yet. Skips it (STORY-CAP-002).
 12. Returns to Chief and types "When do we run out of money?" The reply gives runway and a month.
 13. Clicks the bell: "Activity" block lists the run under "Finished" (STORY-APP-124).
@@ -8553,7 +8553,7 @@ New ones, found at the seams between areas.
 1. **Hide amounts coverage is invisible and uneven.** The helper text names "finance screens" and chat; Inbox subjects, previews and agent cards stay unmasked (STORY-INB-034), Cap table proportions stay visible (CAP-021), and Legal has no eye icon at all (S-LEG-12). A founder cannot learn from the UI which pages are covered. STORY-APP-202.
 2. **Legal reads only what is in the Data room, and Data room import does not tell Legal.** After "Imported 1 file", Legal still waits for **Scan now** and the tile only says "Unreviewed documents" (S-LEG-01). No link from the Data room import notice to Legal. STORY-APP-200, 212.
 3. **Deleting a Data room file silently deletes contracts and manual deadlines in Legal** (S-LEG-12, STORY-LEG-028) and the Data room's delete confirm does not warn. STORY-APP-206.
-4. **Three consent cards for the same idea.** The Inbox "Let Rakazo sort your mail" consent is stored per model in Settings; the Data room and Legal use a shared consent with a different card. Granting one does not grant the other and there is no combined view. STORY-APP-208.
+4. **Three consent cards for the same idea.** The Inbox "Let Praci sort your mail" consent is stored per model in Settings; the Data room and Legal use a shared consent with a different card. Granting one does not grant the other and there is no combined view. STORY-APP-208.
 5. **Each page agent has its own thread, and Chief cannot see them.** A founder who analysed numbers with the Finance panel and then asks Chief gets no context (STORY-APP-167). STORY-APP-203, 211.
 6. **Connection state is read once per page open.** Connecting Gmail and returning to the Data room shows "Connect Gmail" until reload (STORY-DRM-041); Finance, Cap table and Legal each re-read at different times. STORY-APP-207.
 7. **No packet or share concept anywhere.** A diligence request needs Legal, Data room, Cap table and Finance; the product offers download buttons per file and a per-email 10 MB limit, so the founder repeats many manual steps (STORY-DRM-019, 022; INB-011). STORY-APP-214.

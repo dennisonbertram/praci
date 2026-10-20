@@ -33,7 +33,7 @@ function pageHtml(kicker, title) {
     </div>
     <div class="brand">
       <img width="36" height="36" src="data:image/png;base64,${mark}" alt="" />
-      Rakazo
+      Praci
     </div>
   </div>
 </body>

@@ -5,7 +5,7 @@ Source: `docs/ux-paths/legal/catalog.md`.
 Generated: 2026-10-17
 Code read at: `origin/feat/legal` commit **f2b8fc1e** (PR #109, "Legal: regenerate translation catalogs after the e2e fixes"). The checkout this catalog lives in is `559a76ad` (`docs/ux-pass`), which does not contain Legal. The previous catalog read `488048d5`.
 Total Stories: 29 (Short 12, Medium 13, Long 4)
-Persona for every story: Maya, a first-time founder (MOCK DEMO DATA, Northwind Robotics). Maya has never seen Rakazo. She does not know words like "agent", "scan", "consent", "Data room", "node" or "Muse Spark". She wants one thing: run the company without missing a contract date.
+Persona for every story: Maya, a first-time founder (MOCK DEMO DATA, Northwind Robotics). Maya has never seen Praci. She does not know words like "agent", "scan", "consent", "Data room", "node" or "Muse Spark". She wants one thing: run the company without missing a contract date.
 
 ### Read this first: where the Legal code is
 
@@ -133,7 +133,7 @@ STORY-LEG-001 (First week: find Legal, set up, first scan, check dates)  [D0]
 
 **Type**: long
 **Topic**: First-time setup, end to end
-**Persona**: Maya, founder of Northwind Robotics, first login, has heard "Rakazo keeps track of contracts"
+**Persona**: Maya, founder of Northwind Robotics, first login, has heard "Praci keeps track of contracts"
 **Goal**: See every contract the company has signed and the next date Maya must act on, without reading legal PDFs
 **Preconditions**: D0. Build includes feat/legal. Signed in as the seeded demo user. Four legal PDFs in Data room > Legal are indexed (status `ready`). No Legal agent, no consent row, no legal rows.
 **Ideal path**: 3 (open Legal, click Allow, read the list). Real path is 4 or more: scanning does not start by itself, so Maya must also find and click Scan now
