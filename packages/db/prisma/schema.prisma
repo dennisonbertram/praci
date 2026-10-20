@@ -3476,7 +3476,6 @@ model CompanyEvidence {
   contentHash     String
   extractedAt     DateTime
   extractorRunId  String?
-  companyImportRun CompanyImportRun? @relation(fields: [extractorRunId, spaceId, ownerUserId], references: [id, spaceId, ownerUserId], onDelete: Cascade)
   extractorModel  Json?
   confidence      Float
   confirmedByUserId String?
@@ -3594,7 +3593,6 @@ model CompanyImportRun {
   sources               CompanyImportSource[]
   units                 CompanyImportUnit[]
   calls                 CompanyImportCall[]
-  evidence              CompanyEvidence[]
   candidates            CompanyCandidate[]
 
   @@unique([id, spaceId, ownerUserId])
@@ -3693,7 +3691,7 @@ model CompanyImportCall {
   status           String             @default("reserved")
   provider         String?
   model            String?
-  callId           String?            @unique
+  callId           String?
   createdAt        DateTime           @default(now())
   settledAt        DateTime?
 

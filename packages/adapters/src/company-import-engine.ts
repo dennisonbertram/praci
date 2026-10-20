@@ -12,6 +12,7 @@ import type {
   Actor,
   CompanyImportCreateInput,
   CompanyImportEvent,
+  CompanyImportGrantConsentInput,
   CompanyImportProgress,
 } from "@rakazo/contracts";
 import {
@@ -32,6 +33,7 @@ import {
   followRealtimeTopic,
   getCompanyImportProgress,
   getCompanyImportRunForScheduling,
+  grantCompanyImportConsent,
   listCompanyImportUnitsForScheduling,
   reconcileCompanyImportRunIds,
   reserveCompanyImportCall,
@@ -93,9 +95,19 @@ function boundConsentKey(
     scope: unknown;
   },
   recipientKey: string,
+  model: Pick<Model, "provider" | "id">,
 ) {
   return createHash("sha256")
-    .update(JSON.stringify([source.sourceKind, source.connectionId, source.scope, recipientKey]))
+    .update(
+      JSON.stringify([
+        source.sourceKind,
+        source.connectionId,
+        source.scope,
+        recipientKey,
+        model.provider,
+        model.id,
+      ]),
+    )
     .digest("hex");
 }
 
@@ -115,6 +127,15 @@ function assertSafePage(page: unknown): asserts page is {
     throw new CompanyImportWorkerError("invalid_discovery_page");
   }
   const seen = new Set<string>();
+  const serialized = (value: unknown) => {
+    try {
+      const json = JSON.stringify(value);
+      return typeof json === "string" && Buffer.byteLength(json) <= 16_384;
+    } catch {
+      return false;
+    }
+  };
+  if (!serialized(candidate.nextCursor)) throw new CompanyImportWorkerError("cursor_too_large");
   for (const unit of candidate.units) {
     if (
       !unit ||
@@ -126,6 +147,10 @@ function assertSafePage(page: unknown): asserts page is {
       throw new CompanyImportWorkerError("invalid_discovery_unit");
     }
     const key = (unit as { unitKey: string }).unitKey;
+    if (key.startsWith("discover:")) throw new CompanyImportWorkerError("reserved_discovery_unit");
+    if (!serialized((unit as { cursor?: unknown }).cursor)) {
+      throw new CompanyImportWorkerError("cursor_too_large");
+    }
     if (seen.has(key)) throw new CompanyImportWorkerError("duplicate_discovery_unit");
     seen.add(key);
   }
@@ -174,11 +199,20 @@ function assertSafeReadPage(page: unknown): asserts page is CompanyImportReadPag
   }
 }
 
-function assertFactProvenance(page: CompanyImportReadPage, sourceKind: string) {
+function assertFactProvenance(
+  page: CompanyImportReadPage,
+  sourceKind: string,
+  connectionId: string | null,
+) {
   for (const fact of page.facts) {
     const evidence = fact.input.evidence;
     const item = page.items.find((candidate) => candidate.sourceItemId === evidence.sourceItemId);
-    if (evidence.sourceKind !== sourceKind || !item || item.contentHash !== evidence.contentHash) {
+    if (
+      evidence.sourceKind !== sourceKind ||
+      (evidence.connectionId ?? null) !== connectionId ||
+      !item ||
+      item.contentHash !== evidence.contentHash
+    ) {
       throw new CompanyImportWorkerError("invalid_fact_provenance");
     }
   }
@@ -215,7 +249,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     }
   }
 
-  async function getSourceContext(actor: Actor, runId: string, sourceId: string) {
+  async function getSourceContext(actor: Actor, runId: string, sourceId: string, active = false) {
     const member = await deps.prisma.spaceMember.findUnique({
       where: { spaceId_userId: { spaceId: actor.spaceId, userId: actor.userId } },
       select: { userId: true },
@@ -232,19 +266,13 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
       include: { run: { select: { status: true, disclosureVersion: true } } },
     });
     if (!source) throw new CompanyImportWorkerError("not_found");
-    if (source.run.status === "awaiting_consent") throw new CompanyImportConsentRequired();
-    if (source.run.status === "budget_reached") {
-      throw new CompanyImportError("budget_reached");
-    }
-    if (!["running", "paused"].includes(source.run.status)) {
-      throw new CompanyImportWorkerError("stale_claim");
-    }
     if (source.connectionId) {
       const connection = await deps.prisma.connection.findFirst({
         where: {
           id: source.connectionId,
           spaceId: actor.spaceId,
           userId: actor.userId,
+          status: "connected",
         },
         select: { id: true },
       });
@@ -270,6 +298,15 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         if (count !== itemIds.length) throw new CompanyImportConsentRequired();
       }
     }
+    if (active) {
+      if (source.run.status === "awaiting_consent") throw new CompanyImportConsentRequired();
+      if (source.run.status === "budget_reached") {
+        throw new CompanyImportError("budget_reached");
+      }
+      if (!["running", "paused"].includes(source.run.status)) {
+        throw new CompanyImportWorkerError("stale_claim");
+      }
+    }
     return source;
   }
 
@@ -279,7 +316,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     sourceId: string,
     expectedKey?: string,
   ) {
-    const source = await getSourceContext(actor, runId, sourceId);
+    const source = await getSourceContext(actor, runId, sourceId, true);
     let model: Model;
     try {
       if (!deps.resolveModel) throw new Error("model resolver unavailable");
@@ -295,7 +332,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     ) {
       throw new CompanyImportConsentRequired();
     }
-    const recipientKey = boundConsentKey(source, recipient.key);
+    const recipientKey = boundConsentKey(source, recipient.key, model);
     const consent = await deps.prisma.aiDataConsent.findUnique({
       where: {
         userId_spaceId_recipientKey: {
@@ -318,6 +355,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     signal: AbortSignal,
   ): CompanyImportWorkerContext {
     return {
+      actor: { spaceId: actor.spaceId, userId: actor.userId },
       signal,
       executeModelCall: async ({ inputTokenBound, maxOutputTokens, invoke }) => {
         if (
@@ -347,29 +385,49 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         if (stillAllowed.recipientKey !== before.recipientKey) {
           throw new CompanyImportConsentRequired();
         }
-        const result = await invoke();
-        if (result.provider !== before.model.provider || result.model !== before.model.id) {
+        const claim = await deps.prisma.companyImportUnit.findFirst({
+          where: {
+            id: input.unitId,
+            runId: input.runId,
+            sourceId: input.sourceId,
+            spaceId: actor.spaceId,
+            ownerUserId: actor.userId,
+            status: "claimed",
+            claimToken: input.claimToken,
+            claimExpiresAt: { gt: new Date() },
+          },
+          select: { id: true },
+        });
+        if (!claim) throw new CompanyImportWorkerError("stale_claim");
+        if (signal.aborted) throw new CompanyImportWorkerError("aborted");
+        const result = await invoke(stillAllowed.model, signal);
+        if (
+          result.provider !== stillAllowed.model.provider ||
+          result.model !== stillAllowed.model.id
+        ) {
           throw new CompanyImportWorkerError("model_mismatch");
         }
         const inputTokens = result.usage.inputTokens;
         const outputTokens = result.usage.outputTokens;
-        if (Number.isSafeInteger(inputTokens) && Number.isSafeInteger(outputTokens)) {
-          if (
-            (inputTokens as number) > inputTokenBound ||
-            (outputTokens as number) > maxOutputTokens
-          ) {
-            throw new CompanyImportWorkerError("usage_exceeds_reservation");
-          }
-          const settled = await settleCompanyImportCall(deps.prisma, actor, {
-            ...input,
-            reservationId: reservation.reservationId,
-            provider: result.provider,
-            model: result.model,
-            callId: result.callId,
-            usage: result.usage,
-          });
-          if (!settled) throw new CompanyImportWorkerError("stale_claim");
+        if (
+          inputTokens === null ||
+          outputTokens === null ||
+          !Number.isSafeInteger(inputTokens) ||
+          inputTokens < 0 ||
+          !Number.isSafeInteger(outputTokens) ||
+          outputTokens < 0
+        ) {
+          throw new CompanyImportWorkerError("invalid_usage");
         }
+        const settled = await settleCompanyImportCall(deps.prisma, actor, {
+          ...input,
+          reservationId: reservation.reservationId,
+          provider: result.provider,
+          model: result.model,
+          callId: result.callId,
+          usage: result.usage,
+        });
+        if (!settled) throw new CompanyImportWorkerError("stale_claim");
         const after = await currentConsent(
           actor,
           input.runId,
@@ -488,7 +546,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
           context,
         );
         assertSafeReadPage(page);
-        assertFactProvenance(page, source.sourceKind);
+        assertFactProvenance(page, source.sourceKind, source.connectionId);
         await completeCompanyImportUnit(deps.prisma, actor, {
           ...claimInput,
           nextCursor: page.nextCursor,
@@ -536,6 +594,44 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     }
   }
 
+  function recipientView(recipient: NonNullable<ReturnType<typeof recipientFor>>) {
+    return {
+      key: recipient.key,
+      name: recipient.name,
+      detail: recipient.detail,
+      privacyUrl: recipient.privacyUrl ?? null,
+    };
+  }
+
+  async function consentStatus(actor: Actor, runId: string, sourceId: string) {
+    const source = await getSourceContext(actor, runId, sourceId);
+    const model = deps.resolveModel ? await deps.resolveModel(actor).catch(() => null) : null;
+    const recipient = recipientFor(model);
+    const view = recipient ? recipientView(recipient) : null;
+    const consentKey = recipient && model ? boundConsentKey(source, recipient.key, model) : null;
+    const consent = consentKey
+      ? await deps.prisma.aiDataConsent.findUnique({
+          where: {
+            userId_spaceId_recipientKey: {
+              userId: actor.userId,
+              spaceId: actor.spaceId,
+              recipientKey: consentKey,
+            },
+          },
+          select: { version: true },
+        })
+      : null;
+    return {
+      allowed:
+        consent?.version === AI_DISCLOSURE_VERSION &&
+        source.run.disclosureVersion === AI_DISCLOSURE_VERSION,
+      consentKey,
+      sourceKind: source.sourceKind as CompanyImportGrantConsentInput["sourceKind"],
+      recipient: view,
+      version: AI_DISCLOSURE_VERSION,
+    };
+  }
+
   return {
     create: async (actor: Actor, input: CompanyImportCreateInput) => {
       const run = await createCompanyImportRun(deps.prisma, actor, input);
@@ -543,80 +639,47 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     },
     progress: (actor: Actor, runId: string) => getCompanyImportProgress(deps.prisma, actor, runId),
     follow,
-    consentStatus: async (actor: Actor, runId: string, sourceId: string) => {
+    consentStatus,
+    grantConsent: async (actor: Actor, input: CompanyImportGrantConsentInput) => {
+      const { runId, sourceId } = input;
       const source = await getSourceContext(actor, runId, sourceId);
       const model = deps.resolveModel ? await deps.resolveModel(actor).catch(() => null) : null;
       const recipient = recipientFor(model);
-      if (!recipient) {
-        return { allowed: false, recipient: null, version: AI_DISCLOSURE_VERSION };
-      }
-      const consent = await deps.prisma.aiDataConsent.findUnique({
-        where: {
-          userId_spaceId_recipientKey: {
-            userId: actor.userId,
-            spaceId: actor.spaceId,
-            recipientKey: boundConsentKey(source, recipient.key),
-          },
-        },
-        select: { version: true },
+      if (!model || !recipient) throw new CompanyImportWorkerError("model_unavailable");
+      const recipientKey = boundConsentKey(source, recipient.key, model);
+      const view = recipientView(recipient);
+      if (
+        input.consentKey !== recipientKey ||
+        input.version !== AI_DISCLOSURE_VERSION ||
+        input.sourceKind !== source.sourceKind ||
+        JSON.stringify(input.recipient) !== JSON.stringify(view)
+      )
+        throw new CompanyImportWorkerError("consent_changed");
+      const sources = await deps.prisma.companyImportSource.findMany({
+        where: { runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
+        select: { id: true, sourceKind: true, connectionId: true, scope: true },
       });
+      const requiredKeys = [];
+      for (const candidate of sources) {
+        const candidateContext = await getSourceContext(actor, runId, candidate.id);
+        requiredKeys.push(boundConsentKey(candidateContext, recipient.key, model));
+      }
+      const grant = await grantCompanyImportConsent(deps.prisma, actor, {
+        runId,
+        sourceId,
+        recipientKey,
+        version: AI_DISCLOSURE_VERSION,
+        requiredKeys,
+      });
+      if (grant.resumed) await enqueueRun(actor, runId);
+      await publish(actor, runId);
       return {
-        allowed:
-          consent?.version === AI_DISCLOSURE_VERSION &&
-          source.run.disclosureVersion === AI_DISCLOSURE_VERSION,
-        recipient: recipient.name,
+        allowed: grant.allowed,
+        consentKey: recipientKey,
+        sourceKind: source.sourceKind,
+        recipient: view,
         version: AI_DISCLOSURE_VERSION,
       };
-    },
-    grantConsent: async (actor: Actor, runId: string, sourceId: string) => {
-      const source = await getSourceContext(actor, runId, sourceId);
-      const model = deps.resolveModel ? await deps.resolveModel(actor).catch(() => null) : null;
-      const recipient = recipientFor(model);
-      if (!recipient) throw new CompanyImportWorkerError("model_unavailable");
-      const recipientKey = boundConsentKey(source, recipient.key);
-      await deps.prisma.aiDataConsent.upsert({
-        where: {
-          userId_spaceId_recipientKey: {
-            userId: actor.userId,
-            spaceId: actor.spaceId,
-            recipientKey,
-          },
-        },
-        create: {
-          userId: actor.userId,
-          spaceId: actor.spaceId,
-          recipientKey,
-          version: AI_DISCLOSURE_VERSION,
-        },
-        update: { version: AI_DISCLOSURE_VERSION, grantedAt: new Date() },
-      });
-      await deps.prisma.companyImportRun.updateMany({
-        where: { id: runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
-        data: { disclosureVersion: AI_DISCLOSURE_VERSION },
-      });
-      if (source.run.status === "awaiting_consent") {
-        await deps.prisma.companyImportRun.updateMany({
-          where: {
-            id: runId,
-            spaceId: actor.spaceId,
-            ownerUserId: actor.userId,
-            status: "awaiting_consent",
-          },
-          data: { status: "running" },
-        });
-        await deps.prisma.companyImportSource.updateMany({
-          where: {
-            id: sourceId,
-            runId,
-            spaceId: actor.spaceId,
-            ownerUserId: actor.userId,
-          },
-          data: { status: "running" },
-        });
-        await enqueueRun(actor, runId);
-      }
-      await publish(actor, runId);
-      return { allowed: true, recipient: recipient.name, version: AI_DISCLOSURE_VERSION };
     },
     start: async (actor: Actor, runId: string) => {
       await startCompanyImportRun(deps.prisma, actor, runId);

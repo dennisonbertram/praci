@@ -21,6 +21,7 @@ const db = vi.hoisted(() => ({
   getCompanyImportRunForScheduling: vi.fn(),
   listCompanyImportUnitsForScheduling: vi.fn(),
   reconcileCompanyImportRunIds: vi.fn(),
+  grantCompanyImportConsent: vi.fn(async () => ({ allowed: true, resumed: false })),
   reserveCompanyImportCall: vi.fn(async () => ({
     reservationId: "reservation-1",
     reservedInput: 10,
@@ -36,6 +37,7 @@ vi.mock("@rakazo/db", () => ({
   completeCompanyImportUnit: db.completeCompanyImportUnit,
   failCompanyImportUnit: db.failCompanyImportUnit,
   followRealtimeTopic: db.followRealtimeTopic,
+  grantCompanyImportConsent: db.grantCompanyImportConsent,
   getCompanyImportProgress: db.getCompanyImportProgress,
   getCompanyImportRunForScheduling: db.getCompanyImportRunForScheduling,
   listCompanyImportUnitsForScheduling: db.listCompanyImportUnitsForScheduling,
@@ -121,6 +123,7 @@ function createHarness(options?: {
 }) {
   let consentGranted = true;
   let modelId = "synthetic-model";
+  let grantedRecipientKey: string | undefined;
   const invoke = vi.fn(async () => {
     if (options?.revokeConsentAfterCall) consentGranted = false;
     if (options?.changeModelAfterCall) modelId = "changed-model";
@@ -158,8 +161,17 @@ function createHarness(options?: {
       })),
     },
     aiDataConsent: {
-      findUnique: vi.fn(async () => (consentGranted ? { version: AI_DISCLOSURE_VERSION } : null)),
+      findUnique: vi.fn(
+        async (input: { where: { userId_spaceId_recipientKey: { recipientKey: string } } }) => {
+          const recipientKey = input.where.userId_spaceId_recipientKey.recipientKey;
+          if (grantedRecipientKey === undefined) grantedRecipientKey = recipientKey;
+          return consentGranted && recipientKey === grantedRecipientKey
+            ? { version: AI_DISCLOSURE_VERSION }
+            : null;
+        },
+      ),
     },
+    companyImportUnit: { findFirst: vi.fn(async () => ({ id: "unit-1" })) },
   } as unknown as PrismaClient;
   const jobs = { enqueue: vi.fn(async () => undefined) } as unknown as JobPublisher;
   const realtime = { publish: vi.fn(async () => undefined) } as unknown as RealtimeFanout;

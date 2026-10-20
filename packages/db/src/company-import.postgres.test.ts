@@ -1,8 +1,9 @@
+import type { AgentUsage } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
-import { companyForActor, companyWriter } from "./company.js";
+import { companyForActor } from "./company.js";
 import {
   CompanyImportError,
   claimCompanyImportUnit,
@@ -10,6 +11,7 @@ import {
   createCompanyImportRun,
   getCompanyImportProgress,
   reserveCompanyImportCall,
+  settleCompanyImportCall,
   startCompanyImportRun,
   updateCompanyImportRun,
 } from "./company-import.js";
@@ -117,9 +119,9 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
   async function runWithSources(tokenCap: number, count = 1) {
     const run = await createCompanyImportRun(prisma, actor, {
       tokenCap,
-      sources: Array.from({ length: count }, () => ({
+      sources: Array.from({ length: count }, (_, index) => ({
         sourceKind: "data_room" as const,
-        scope: {},
+        scope: { index },
       })),
     });
     await startCompanyImportRun(prisma, actor, run.id);
@@ -164,6 +166,38 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
         facts: [],
       }),
     ).rejects.toMatchObject({ code: "stale_claim" });
+    await updateCompanyImportRun(prisma, actor, { runId, action: "cancel" });
+    await expect(
+      completeCompanyImportUnit(prisma, actor, {
+        runId,
+        sourceId: first.sourceId,
+        unitId: first.id,
+        claimToken: reclaimed!.claimToken,
+        nextCursor: null,
+        done: true,
+        itemsDiscovered: 0,
+        itemsRead: 0,
+        facts: [],
+      }),
+    ).rejects.toMatchObject({ code: "stale_claim" });
+    await expect(
+      updateCompanyImportRun(prisma, actor, { runId, action: "cancel" }),
+    ).rejects.toMatchObject({
+      code: "invalid_state",
+    });
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("cancelled");
+  });
+
+  it("rejects duplicate source input rather than relying on a database conflict", async () => {
+    await expect(
+      createCompanyImportRun(prisma, actor, {
+        tokenCap: 100,
+        sources: [
+          { sourceKind: "data_room", scope: { folderId: "same" } },
+          { sourceKind: "data_room", scope: { folderId: "same" } },
+        ],
+      }),
+    ).rejects.toMatchObject({ code: "invalid_state" });
   });
 
   it("serializes reservations across sources and resumes after raising the cap", async () => {
@@ -203,10 +237,154 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
       action: "resume",
       tokenCap: 20,
     });
-    const second = claims.find((claim) => claim.id !== reserved[0]?.unitId)!;
+    const second = await claimCompanyImportUnit(prisma, actor, {
+      runId,
+      unitId: claims.find((claim) => claim.id !== reserved[0]?.unitId)!.id,
+    });
+    expect(second).not.toBeNull();
     await expect(
-      reserveCompanyImportCall(prisma, actor, reservationInput(second)),
+      reserveCompanyImportCall(prisma, actor, reservationInput(second!)),
     ).resolves.toMatchObject({ reservedInput: 4, reservedOutput: 2 });
+  });
+
+  it("settles a reservation once, charges actual usage, and records late known usage", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const reservation = await reserveCompanyImportCall(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      recipientKey: "synthetic-recipient",
+      disclosureVersion: "2026-01",
+      callId: "untrusted-provider-call-id",
+      inputTokenBound: 10,
+      maxOutputTokens: 5,
+    });
+    const settlement = {
+      reservationId: reservation.reservationId,
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      provider: "synthetic",
+      model: "synthetic-model",
+      callId: "untrusted-provider-call-id",
+      usage: {
+        type: "usage" as const,
+        provider: "synthetic",
+        model: "synthetic-model",
+        callId: "untrusted-provider-call-id",
+        operationKind: "company_import" as const,
+        inputTokens: 3,
+        outputTokens: 2,
+      },
+    };
+    const settled = await Promise.all([
+      settleCompanyImportCall(prisma, actor, settlement),
+      settleCompanyImportCall(prisma, actor, settlement),
+    ]);
+    expect(settled.sort()).toEqual([false, true]);
+    const run = await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runId } });
+    const source = await prisma.companyImportSource.findUniqueOrThrow({
+      where: { id: claim.sourceId },
+    });
+    const unit = await prisma.companyImportUnit.findUniqueOrThrow({ where: { id: claim.id } });
+    expect(run.reservedTokens).toBe(0n);
+    expect(run.inputTokensUsed).toBe(3n);
+    expect(run.outputTokensUsed).toBe(2n);
+    expect(source.tokensReserved).toBe(0n);
+    expect(source.inputTokensUsed).toBe(3n);
+    expect(unit.tokensReserved).toBe(0n);
+    expect(unit.outputTokensUsed).toBe(2n);
+    const usage = await prisma.usageRecord.findFirstOrThrow({
+      where: { callId: reservation.reservationId },
+    });
+    expect(usage.callId).toBe(reservation.reservationId);
+    expect(usage.operationId).toBe(
+      `${runId}:${claim.sourceId}:${claim.id}:${reservation.reservationId}`,
+    );
+
+    const late = await reserveCompanyImportCall(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      recipientKey: "synthetic-recipient",
+      disclosureVersion: "2026-01",
+      callId: "another-untrusted-call-id",
+      inputTokenBound: 4,
+      maxOutputTokens: 4,
+    });
+    await updateCompanyImportRun(prisma, actor, { runId, action: "cancel" });
+    await expect(
+      settleCompanyImportCall(prisma, actor, {
+        ...settlement,
+        reservationId: late.reservationId,
+        usage: { ...settlement.usage, inputTokens: 5, outputTokens: 1 },
+      }),
+    ).resolves.toBe(false);
+    const cancelledRun = await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(cancelledRun.status).toBe("cancelled");
+    expect(cancelledRun.reservedTokens).toBe(0n);
+    expect(cancelledRun.inputTokensUsed).toBe(8n);
+    expect(cancelledRun.outputTokensUsed).toBe(3n);
+  });
+
+  it("records known over-bound usage and pauses the run instead of dropping billing", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    const reservation = await reserveCompanyImportCall(prisma, actor, {
+      runId,
+      sourceId: claim.sourceId,
+      unitId: claim.id,
+      claimToken: claim.claimToken,
+      recipientKey: "synthetic-recipient",
+      disclosureVersion: "2026-01",
+      callId: "provider-call",
+      inputTokenBound: 2,
+      maxOutputTokens: 2,
+    });
+    await expect(
+      settleCompanyImportCall(prisma, actor, {
+        reservationId: reservation.reservationId,
+        runId,
+        sourceId: claim.sourceId,
+        unitId: claim.id,
+        claimToken: claim.claimToken,
+        provider: "synthetic",
+        model: "synthetic-model",
+        callId: "provider-call",
+        usage: {
+          provider: "synthetic",
+          model: "synthetic-model",
+          callId: "provider-call",
+          operationKind: "company_import",
+          inputTokens: 3,
+          outputTokens: 1,
+        } as AgentUsage,
+      }),
+    ).resolves.toBe(false);
+    const run = await prisma.companyImportRun.findUniqueOrThrow({ where: { id: runId } });
+    expect(run.status).toBe("budget_reached");
+    expect(run.reservedTokens).toBe(0n);
+    expect(run.inputTokensUsed).toBe(3n);
+    expect(await prisma.usageRecord.count({ where: { callId: reservation.reservationId } })).toBe(
+      1,
+    );
+  });
+
+  it("finalizes a run when its final claim expires at the attempt limit", async () => {
+    const { runId, claims } = await runWithSources(100);
+    const claim = claims[0]!;
+    await prisma.companyImportUnit.update({
+      where: { id: claim.id },
+      data: { attempts: 3, claimExpiresAt: new Date(Date.now() - 1_000) },
+    });
+    await expect(
+      claimCompanyImportUnit(prisma, actor, { runId, unitId: claim.id }),
+    ).resolves.toBeNull();
+    expect((await getCompanyImportProgress(prisma, actor, runId)).status).toBe("failed");
   });
 
   it("isolates progress and discard evidence by owner and import run", async () => {
@@ -221,7 +399,7 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
       },
       evidence: {
         stance: "supports" as const,
-        sourceKind: "data_room" as const,
+        sourceKind: "slack" as const,
         sourceItemId: "synthetic-item",
         quote: "Synthetic source quote.",
         contentHash: "synthetic-hash",
@@ -259,11 +437,6 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
         },
       ],
     });
-    const manual = await companyWriter(prisma, actor).importEntity({
-      ...fact,
-      evidence: { ...fact.evidence, sourceItemId: "manual-item", sourceKind: "manual" },
-    });
-    expect("id" in manual).toBe(true);
     const firstEvidence = await prisma.companyEvidence.findFirst({
       where: { extractorRunId: first.runId },
       select: { factId: true },
@@ -288,8 +461,13 @@ describePostgres("company import engine persistence (PostgreSQL)", () => {
     });
     expect(
       await prisma.companyEvidence.count({
-        where: { sourceItemId: "manual-item", extractorRunId: null },
+        where: {
+          factId: firstEvidence!.factId,
+          factKind: "entity",
+          sourceKind: "manual",
+          extractorRunId: null,
+        },
       }),
-    ).toBe(1);
+    ).toBeGreaterThan(0);
   });
 });

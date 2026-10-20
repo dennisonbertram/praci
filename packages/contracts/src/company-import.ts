@@ -6,7 +6,13 @@ const identifier = z.string().min(1).max(200);
 export const CompanyImportSourceInputSchema = z.strictObject({
   sourceKind: CompanySourceKindSchema.exclude(["manual"]),
   connectionId: identifier.nullable().optional(),
-  scope: z.record(z.string(), z.unknown()).default({}),
+  scope: z
+    .record(z.string(), z.unknown())
+    .default({})
+    .refine(
+      (value) => new TextEncoder().encode(JSON.stringify(value)).byteLength <= 16_384,
+      "scope too large",
+    ),
 });
 
 export const CompanyImportCreateInputSchema = z.strictObject({
@@ -19,6 +25,18 @@ export const CompanyImportRetryInputSchema = z.strictObject({ runId: identifier 
 export const CompanyImportConsentInputSchema = z.strictObject({
   runId: identifier,
   sourceId: identifier,
+});
+export const CompanyImportConsentRecipientSchema = z.strictObject({
+  key: identifier,
+  name: z.string().min(1).max(200),
+  detail: z.string().max(500),
+  privacyUrl: z.string().url().nullable(),
+});
+export const CompanyImportGrantConsentInputSchema = CompanyImportConsentInputSchema.extend({
+  consentKey: identifier,
+  version: identifier,
+  sourceKind: CompanySourceKindSchema.exclude(["manual"]),
+  recipient: CompanyImportConsentRecipientSchema,
 });
 export const CompanyImportActionInputSchema = z
   .strictObject({
@@ -33,6 +51,13 @@ export const CompanyImportSourceProgressSchema = z.strictObject({
   sourceKind: CompanySourceKindSchema,
   status: z.string(),
   units: z.number().int().nonnegative(),
+  itemsDiscovered: z.number().int().nonnegative(),
+  itemsRead: z.number().int().nonnegative(),
+  factsFound: z.number().int().nonnegative(),
+  reservedTokens: z.number().int().nonnegative(),
+  inputTokensUsed: z.number().int().nonnegative(),
+  outputTokensUsed: z.number().int().nonnegative(),
+  lastError: z.string().nullable(),
 });
 
 export const CompanyImportProgressSchema = z.strictObject({
@@ -53,7 +78,9 @@ export const CompanyImportEventSchema = CompanyImportProgressSchema;
 
 export const CompanyImportModelConsentStatusSchema = z.strictObject({
   allowed: z.boolean(),
-  recipient: z.string().nullable(),
+  consentKey: identifier.nullable(),
+  sourceKind: CompanySourceKindSchema.exclude(["manual"]),
+  recipient: CompanyImportConsentRecipientSchema.nullable(),
   version: z.string(),
 });
 
@@ -62,3 +89,5 @@ export type CompanyImportSourceInput = z.infer<typeof CompanyImportSourceInputSc
 export type CompanyImportProgress = z.infer<typeof CompanyImportProgressSchema>;
 export type CompanyImportEvent = z.infer<typeof CompanyImportEventSchema>;
 export type CompanyImportModelConsentStatus = z.infer<typeof CompanyImportModelConsentStatusSchema>;
+export type CompanyImportGrantConsentInput = z.infer<typeof CompanyImportGrantConsentInputSchema>;
+export type CompanyImportConsentRecipient = z.infer<typeof CompanyImportConsentRecipientSchema>;

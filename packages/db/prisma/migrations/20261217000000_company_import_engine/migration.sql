@@ -131,6 +131,7 @@ CREATE UNIQUE INDEX "company_import_calls_callId_key"
   ON "company_import_calls"("callId");
 CREATE INDEX "company_import_calls_spaceId_ownerUserId_runId_status_idx"
   ON "company_import_calls"("spaceId", "ownerUserId", "runId", "status");
+ALTER TABLE "company_candidates" ADD COLUMN "importRunId" TEXT;
 CREATE INDEX "company_candidates_spaceId_ownerUserId_importRunId_idx"
   ON "company_candidates"("spaceId", "ownerUserId", "importRunId");
 
@@ -177,10 +178,6 @@ ALTER TABLE "company_import_calls" ADD CONSTRAINT "company_import_calls_source_s
 ALTER TABLE "company_import_calls" ADD CONSTRAINT "company_import_calls_unit_scope_fkey"
   FOREIGN KEY ("unitId", "spaceId", "ownerUserId")
   REFERENCES "company_import_units"("id", "spaceId", "ownerUserId")
-  ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "company_evidence" ADD CONSTRAINT "company_evidence_import_run_scope_fkey"
-  FOREIGN KEY ("extractorRunId", "spaceId", "ownerUserId")
-  REFERENCES "company_import_runs"("id", "spaceId", "ownerUserId")
   ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "company_candidates" ADD CONSTRAINT "company_candidates_import_run_scope_fkey"
   FOREIGN KEY ("importRunId", "spaceId", "ownerUserId")

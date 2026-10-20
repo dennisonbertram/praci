@@ -34,10 +34,28 @@ describe("company import RPC", () => {
     const engine = {
       create: vi.fn(async () => progress),
       progress: vi.fn(async () => progress),
-      consentStatus: vi.fn(async () => ({ allowed: false, recipient: null, version: "2026-01" })),
+      consentStatus: vi.fn(async () => ({
+        allowed: false,
+        consentKey: "consent-key",
+        sourceKind: "data_room",
+        recipient: {
+          key: "synthetic/model",
+          name: "Synthetic model",
+          detail: "Synthetic disclosure",
+          privacyUrl: null,
+        },
+        version: "2026-01",
+      })),
       grantConsent: vi.fn(async () => ({
         allowed: true,
-        recipient: "Synthetic model",
+        consentKey: "consent-key",
+        sourceKind: "data_room",
+        recipient: {
+          key: "synthetic/model",
+          name: "Synthetic model",
+          detail: "Synthetic disclosure",
+          privacyUrl: null,
+        },
         version: "2026-01",
       })),
       start: vi.fn(async () => progress),
@@ -60,6 +78,26 @@ describe("company import RPC", () => {
     });
     expect(await client.companyImport.start({ runId: "run-1" })).toEqual(progress);
     expect(engine.start).toHaveBeenCalledWith(actor, "run-1");
+    const consentStatus = await client.companyImport.consentStatus({
+      runId: "run-1",
+      sourceId: "source-1",
+    });
+    expect(consentStatus.allowed).toBe(false);
+    const grantInput = {
+      runId: "run-1",
+      sourceId: "source-1",
+      consentKey: "consent-key",
+      version: "2026-01",
+      sourceKind: "data_room" as const,
+      recipient: {
+        key: "synthetic/model",
+        name: "Synthetic model",
+        detail: "Synthetic disclosure",
+        privacyUrl: null,
+      },
+    };
+    await client.companyImport.grantConsent(grantInput);
+    expect(engine.grantConsent).toHaveBeenCalledWith(actor, grantInput);
     expect(await client.companyImport.action({ runId: "run-1", action: "pause" })).toEqual(
       progress,
     );

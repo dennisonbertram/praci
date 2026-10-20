@@ -7472,7 +7472,7 @@ export function createRouter(deps: RouterDeps) {
         deps.companyImport.consentStatus(context.actor, input.runId, input.sourceId),
       ),
       grantConsent: authed.companyImport.grantConsent.handler(({ context, input }) =>
-        deps.companyImport.grantConsent(context.actor, input.runId, input.sourceId),
+        deps.companyImport.grantConsent(context.actor, input),
       ),
       start: authed.companyImport.start.handler(({ context, input }) =>
         deps.companyImport.start(context.actor, input.runId),

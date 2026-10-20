@@ -46,6 +46,51 @@ async function lockCompanyScope(tx: Prisma.TransactionClient, scope: Scope) {
   await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`company:${scope.spaceId}:${scope.ownerUserId}`}, 0))`;
 }
 
+async function lockRun(tx: Prisma.TransactionClient, scope: Scope, runId: string) {
+  const rows = await tx.$queryRaw<Array<{ id: string; status: string }>>`
+    SELECT "id", "status" FROM "company_import_runs"
+    WHERE "id" = ${runId} AND "spaceId" = ${scope.spaceId} AND "ownerUserId" = ${scope.ownerUserId}
+    FOR UPDATE
+  `;
+  return rows[0] ?? null;
+}
+
+async function finalizeCompanyImportRun(tx: Prisma.TransactionClient, scope: Scope, runId: string) {
+  const pending = await tx.companyImportUnit.count({
+    where: { ...scope, runId, status: { in: ["waiting", "claimed"] } },
+  });
+  if (pending > 0) return;
+  const failed = await tx.companyImportUnit.count({
+    where: { ...scope, runId, status: "failed" },
+  });
+  const done = await tx.companyImportUnit.count({
+    where: { ...scope, runId, status: "done" },
+  });
+  const sources = await tx.companyImportSource.findMany({
+    where: { ...scope, runId },
+    select: { id: true },
+  });
+  for (const source of sources) {
+    const sourceFailed = await tx.companyImportUnit.count({
+      where: { ...scope, runId, sourceId: source.id, status: "failed" },
+    });
+    const sourceDone = await tx.companyImportUnit.count({
+      where: { ...scope, runId, sourceId: source.id, status: "done" },
+    });
+    await tx.companyImportSource.update({
+      where: { ...scope, id: source.id },
+      data: { status: sourceFailed > 0 ? "failed" : sourceDone > 0 ? "completed" : "failed" },
+    });
+  }
+  await tx.companyImportRun.updateMany({
+    where: { ...scope, id: runId, status: { in: ["running", "paused", "budget_reached"] } },
+    data: {
+      status: failed > 0 && done > 0 ? "partial" : failed > 0 ? "failed" : "completed",
+      completedAt: new Date(),
+    },
+  });
+}
+
 function importSourceKey(source: CompanyImportSourceInput): string {
   return createHash("sha256")
     .update(JSON.stringify([source.sourceKind, source.connectionId ?? null, source.scope]))
@@ -54,6 +99,18 @@ function importSourceKey(source: CompanyImportSourceInput): string {
 
 function jsonInput(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
+}
+
+function assertBoundedJson(value: unknown, maxBytes = 16_384) {
+  let serialized: string;
+  try {
+    serialized = JSON.stringify(value);
+  } catch {
+    throw new CompanyImportError("invalid_state");
+  }
+  if (typeof serialized !== "string" || Buffer.byteLength(serialized) > maxBytes) {
+    throw new CompanyImportError("invalid_state");
+  }
 }
 
 export async function createCompanyImportRun(
@@ -65,17 +122,30 @@ export async function createCompanyImportRun(
   if (!Number.isSafeInteger(input.tokenCap) || input.tokenCap <= 0) {
     throw new CompanyImportError("invalid_state");
   }
+  const sourceKeys = new Set<string>();
+  for (const source of input.sources) {
+    assertBoundedJson(source.scope);
+    const key = importSourceKey(source);
+    if (sourceKeys.has(key)) throw new CompanyImportError("invalid_state");
+    sourceKeys.add(key);
+  }
   await requireMember(prisma, scope);
   for (const source of input.sources) {
     if (!source.connectionId) continue;
     const connection = await prisma.connection.findFirst({
-      where: { id: source.connectionId, spaceId: scope.spaceId, userId: scope.ownerUserId },
+      where: {
+        id: source.connectionId,
+        spaceId: scope.spaceId,
+        userId: scope.ownerUserId,
+        status: "connected",
+      },
       select: { id: true },
     });
     if (!connection) throw new CompanyImportError("not_found");
   }
   return withTransactionRetry(() =>
     prisma.$transaction(async (tx) => {
+      await lockCompanyScope(tx, scope);
       await requireMember(tx, scope);
       const run = await tx.companyImportRun.create({
         data: {
@@ -111,6 +181,9 @@ export async function startCompanyImportRun(prisma: PrismaClient, actor: Actor, 
   const scope = scopeOf(actor);
   await requireMember(prisma, scope);
   return prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    const locked = await lockRun(tx, scope, runId);
+    if (!locked) throw new CompanyImportError("not_found");
     const run = await tx.companyImportRun.findFirst({
       where: { ...scope, id: runId },
       select: { id: true, status: true },
@@ -144,7 +217,17 @@ export async function getCompanyImportProgress(
   if (!run) throw new CompanyImportError("not_found");
   const units = await prisma.companyImportUnit.findMany({
     where: { ...scope, runId },
-    select: { sourceId: true, status: true },
+    select: {
+      sourceId: true,
+      status: true,
+      itemsDiscovered: true,
+      itemsRead: true,
+      factsFound: true,
+      tokensReserved: true,
+      inputTokensUsed: true,
+      outputTokensUsed: true,
+      lastError: true,
+    },
   });
   const counts: Record<string, number> = {};
   for (const unit of units) counts[unit.status] = (counts[unit.status] ?? 0) + 1;
@@ -153,6 +236,32 @@ export async function getCompanyImportProgress(
     sourceKind: source.sourceKind as CompanyImportProgress["sources"][number]["sourceKind"],
     status: source.status,
     units: units.filter((unit) => unit.sourceId === source.id).length,
+    itemsDiscovered: units
+      .filter((unit) => unit.sourceId === source.id)
+      .reduce((n, u) => n + u.itemsDiscovered, 0),
+    itemsRead: units
+      .filter((unit) => unit.sourceId === source.id)
+      .reduce((n, u) => n + u.itemsRead, 0),
+    factsFound: units
+      .filter((unit) => unit.sourceId === source.id)
+      .reduce((n, u) => n + u.factsFound, 0),
+    reservedTokens: Number(
+      units
+        .filter((unit) => unit.sourceId === source.id)
+        .reduce((n, u) => n + u.tokensReserved, 0n),
+    ),
+    inputTokensUsed: Number(
+      units
+        .filter((unit) => unit.sourceId === source.id)
+        .reduce((n, u) => n + u.inputTokensUsed, 0n),
+    ),
+    outputTokensUsed: Number(
+      units
+        .filter((unit) => unit.sourceId === source.id)
+        .reduce((n, u) => n + u.outputTokensUsed, 0n),
+    ),
+    lastError:
+      units.find((unit) => unit.sourceId === source.id && unit.lastError)?.lastError ?? null,
   }));
   const spent = run.reservedTokens + run.inputTokensUsed + run.outputTokensUsed;
   return {
@@ -183,6 +292,9 @@ export async function updateCompanyImportRun(
   await requireMember(prisma, scope);
   return withTransactionRetry(() =>
     prisma.$transaction(async (tx) => {
+      await lockCompanyScope(tx, scope);
+      const locked = await lockRun(tx, scope, input.runId);
+      if (!locked) throw new CompanyImportError("not_found");
       const run = await tx.companyImportRun.findFirst({
         where: { ...scope, id: input.runId },
         select: { id: true, status: true, tokenCap: true },
@@ -196,7 +308,7 @@ export async function updateCompanyImportRun(
           data: { status: "paused" },
         });
       } else if (input.action === "resume") {
-        if (!["paused", "awaiting_consent", "budget_reached", "partial"].includes(run.status)) {
+        if (!["paused", "budget_reached", "partial"].includes(run.status)) {
           throw new CompanyImportError("invalid_state");
         }
         if (
@@ -225,7 +337,12 @@ export async function updateCompanyImportRun(
           data: { status: "running", completedAt: null },
         });
       } else {
-        await lockCompanyScope(tx, scope);
+        if (
+          input.action === "cancel" &&
+          ["cancelled", "discarded", "completed", "partial", "failed"].includes(run.status)
+        ) {
+          throw new CompanyImportError("invalid_state");
+        }
         await tx.companyImportRun.update({
           where: { ...scope, id: run.id },
           data: { status: input.action === "cancel" ? "cancelled" : "discarded", completedAt: now },
@@ -233,6 +350,10 @@ export async function updateCompanyImportRun(
         await tx.companyImportUnit.updateMany({
           where: { ...scope, runId: run.id, status: { not: "done" } },
           data: { status: "cancelled", claimToken: null, claimExpiresAt: null },
+        });
+        await tx.companyImportSource.updateMany({
+          where: { ...scope, runId: run.id },
+          data: { status: input.action === "cancel" ? "cancelled" : "discarded" },
         });
         if (input.action === "discard") {
           await tx.companyEvidence.deleteMany({
@@ -255,12 +376,8 @@ export async function claimCompanyImportUnit(
   await requireMember(prisma, scope);
   return withTransactionRetry(() =>
     prisma.$transaction(async (tx) => {
-      const runRows = await tx.$queryRaw<Array<{ id: string; status: string }>>`
-        SELECT "id", "status" FROM "company_import_runs"
-        WHERE "id" = ${input.runId} AND "spaceId" = ${scope.spaceId} AND "ownerUserId" = ${scope.ownerUserId}
-        FOR UPDATE
-      `;
-      const run = runRows[0];
+      await lockCompanyScope(tx, scope);
+      const run = await lockRun(tx, scope, input.runId);
       if (!run) throw new CompanyImportError("not_found");
       if (run.status !== "running") return null;
       const unit = await tx.companyImportUnit.findFirst({
@@ -268,6 +385,12 @@ export async function claimCompanyImportUnit(
         include: { source: true },
       });
       if (!unit) throw new CompanyImportError("not_found");
+      if (
+        unit.source.runId !== input.runId ||
+        unit.source.spaceId !== scope.spaceId ||
+        unit.source.ownerUserId !== scope.ownerUserId
+      )
+        throw new CompanyImportError("not_found");
       await tx.$queryRaw`
         SELECT "id" FROM "company_import_sources"
         WHERE "id" = ${unit.sourceId} AND "spaceId" = ${scope.spaceId} AND "ownerUserId" = ${scope.ownerUserId}
@@ -306,6 +429,7 @@ export async function claimCompanyImportUnit(
           lastError: "lease_expired",
         },
       });
+      if (expired.count > 0) await finalizeCompanyImportRun(tx, scope, input.runId);
       const active = await tx.companyImportUnit.count({
         where: {
           ...scope,
@@ -338,54 +462,8 @@ export async function claimCompanyImportUnit(
           claimExpiresAt,
         },
       });
+      await finalizeCompanyImportRun(tx, scope, input.runId);
       return { ...fresh, claimToken, claimExpiresAt, source: unit.source };
-    }),
-  );
-}
-
-export async function persistCompanyImportDiscovery(
-  prisma: PrismaClient,
-  actor: Actor,
-  input: {
-    runId: string;
-    sourceId: string;
-    units: { unitKey: string; cursor: unknown }[];
-    nextCursor: unknown | null;
-    done: boolean;
-  },
-) {
-  const scope = scopeOf(actor);
-  await requireMember(prisma, scope);
-  return withTransactionRetry(() =>
-    prisma.$transaction(async (tx) => {
-      const source = await tx.companyImportSource.findFirst({
-        where: { ...scope, id: input.sourceId, runId: input.runId },
-        include: { run: true },
-      });
-      if (!source) throw new CompanyImportError("not_found");
-      if (!["running", "paused"].includes(source.run.status))
-        throw new CompanyImportError("invalid_state");
-      for (const unit of input.units) {
-        await tx.companyImportUnit.createMany({
-          data: [
-            {
-              ...scope,
-              runId: input.runId,
-              sourceId: source.id,
-              unitKey: unit.unitKey,
-              ...(unit.cursor === null ? {} : { cursor: jsonInput(unit.cursor) }),
-            },
-          ],
-          skipDuplicates: true,
-        });
-      }
-      await tx.companyImportSource.update({
-        where: { ...scope, id: source.id },
-        data: {
-          cursor: input.nextCursor === null ? Prisma.DbNull : jsonInput(input.nextCursor),
-          status: input.done ? "reading" : "running",
-        },
-      });
     }),
   );
 }
@@ -418,21 +496,21 @@ export async function reserveCompanyImportCall(
   await requireMember(prisma, scope);
   return withTransactionRetry(() =>
     prisma.$transaction(async (tx) => {
-      const rows = await tx.$queryRaw<
-        Array<{
-          id: string;
-          status: string;
-          tokenCap: bigint;
-          reservedTokens: bigint;
-          inputTokensUsed: bigint;
-          outputTokensUsed: bigint;
-        }>
-      >`
-        SELECT "id", "status", "tokenCap", "reservedTokens", "inputTokensUsed", "outputTokensUsed"
-        FROM "company_import_runs" WHERE "id" = ${input.runId}
-        AND "spaceId" = ${scope.spaceId} AND "ownerUserId" = ${scope.ownerUserId} FOR UPDATE
-      `;
-      const run = rows[0];
+      await lockCompanyScope(tx, scope);
+      const locked = await lockRun(tx, scope, input.runId);
+      const run = locked
+        ? await tx.companyImportRun.findFirst({
+            where: { ...scope, id: input.runId },
+            select: {
+              id: true,
+              status: true,
+              tokenCap: true,
+              reservedTokens: true,
+              inputTokensUsed: true,
+              outputTokensUsed: true,
+            },
+          })
+        : null;
       if (!run) throw new CompanyImportError("not_found");
       if (!["running", "paused"].includes(run.status))
         throw new CompanyImportError("invalid_state");
@@ -447,13 +525,33 @@ export async function reserveCompanyImportCall(
           claimExpiresAt: { gt: new Date() },
         },
       });
-      if (!unit) throw new CompanyImportError("stale_claim");
+      const source = await tx.companyImportSource.findFirst({
+        where: { ...scope, id: input.sourceId, runId: input.runId },
+        select: { id: true },
+      });
+      if (!unit || !source) throw new CompanyImportError("stale_claim");
       const amount = BigInt(input.inputTokenBound) + BigInt(input.maxOutputTokens);
       const spent = run.reservedTokens + run.inputTokensUsed + run.outputTokensUsed;
       if (spent + amount > run.tokenCap) {
         await tx.companyImportRun.update({
           where: { ...scope, id: run.id },
           data: { status: "budget_reached" },
+        });
+        await tx.companyImportUnit.updateMany({
+          where: {
+            ...scope,
+            id: input.unitId,
+            runId: input.runId,
+            sourceId: input.sourceId,
+            status: "claimed",
+            claimToken: input.claimToken,
+          },
+          data: {
+            status: "waiting",
+            claimToken: null,
+            claimExpiresAt: null,
+            availableAt: new Date(),
+          },
         });
         return null;
       }
@@ -515,15 +613,20 @@ export async function settleCompanyImportCall(
   const scope = scopeOf(actor);
   const { inputTokens, outputTokens } = input.usage;
   if (
-    !Number.isSafeInteger(inputTokens) ||
     inputTokens === null ||
+    outputTokens === null ||
+    !Number.isSafeInteger(inputTokens) ||
+    inputTokens < 0 ||
     !Number.isSafeInteger(outputTokens) ||
-    outputTokens === null
+    outputTokens < 0
   )
     return false;
   await requireMember(prisma, scope);
   return withTransactionRetry(() =>
     prisma.$transaction(async (tx) => {
+      await lockCompanyScope(tx, scope);
+      const lockedRun = await lockRun(tx, scope, input.runId);
+      if (!lockedRun) throw new CompanyImportError("not_found");
       const call = await tx.companyImportCall.findFirst({
         where: {
           ...scope,
@@ -534,29 +637,25 @@ export async function settleCompanyImportCall(
         },
       });
       if (call?.status !== "reserved" || call.claimToken !== input.claimToken) return false;
-      const unit = await tx.companyImportUnit.findFirst({
-        where: {
-          ...scope,
-          id: input.unitId,
-          runId: input.runId,
-          sourceId: input.sourceId,
-          status: "claimed",
-          claimToken: input.claimToken,
-          claimExpiresAt: { gt: new Date() },
-        },
+      const claimed = await tx.companyImportCall.updateMany({
+        where: { ...scope, id: call.id, status: "reserved", claimToken: input.claimToken },
+        data: { status: "settling" },
       });
+      if (claimed.count !== 1) return false;
       const run = await tx.companyImportRun.findFirst({
-        where: { ...scope, id: input.runId, status: { in: ["running", "paused"] } },
+        where: { ...scope, id: input.runId },
       });
-      if (!unit || !run) return false;
-      if (
-        !Number.isSafeInteger(inputTokens + outputTokens) ||
-        BigInt(inputTokens) > call.reservedInput ||
-        BigInt(outputTokens) > call.reservedOutput
-      )
+      const source = await tx.companyImportSource.findFirst({
+        where: { ...scope, id: input.sourceId, runId: input.runId },
+      });
+      const unit = await tx.companyImportUnit.findFirst({
+        where: { ...scope, id: input.unitId, runId: input.runId, sourceId: input.sourceId },
+      });
+      if (!run || !source || !unit || !Number.isSafeInteger(inputTokens + outputTokens))
         return false;
       const amount = call.reservedInput + call.reservedOutput;
-      const actual = BigInt(inputTokens + outputTokens);
+      const overBound =
+        BigInt(inputTokens) > call.reservedInput || BigInt(outputTokens) > call.reservedOutput;
       await tx.companyImportCall.update({
         where: { ...scope, id: call.id },
         data: {
@@ -572,7 +671,7 @@ export async function settleCompanyImportCall(
       await tx.companyImportRun.update({
         where: { ...scope, id: run.id },
         data: {
-          reservedTokens: { decrement: amount - actual },
+          reservedTokens: { decrement: amount },
           inputTokensUsed: { increment: BigInt(inputTokens) },
           outputTokensUsed: { increment: BigInt(outputTokens) },
         },
@@ -580,7 +679,7 @@ export async function settleCompanyImportCall(
       await tx.companyImportSource.update({
         where: { ...scope, id: input.sourceId },
         data: {
-          tokensReserved: { decrement: amount - actual },
+          tokensReserved: { decrement: amount },
           inputTokensUsed: { increment: BigInt(inputTokens) },
           outputTokensUsed: { increment: BigInt(outputTokens) },
         },
@@ -588,7 +687,7 @@ export async function settleCompanyImportCall(
       await tx.companyImportUnit.update({
         where: { ...scope, id: input.unitId },
         data: {
-          tokensReserved: { decrement: amount - actual },
+          tokensReserved: { decrement: amount },
           inputTokensUsed: { increment: BigInt(inputTokens) },
           outputTokensUsed: { increment: BigInt(outputTokens) },
         },
@@ -596,23 +695,110 @@ export async function settleCompanyImportCall(
       await recordUsage(
         tx,
         {
+          ...input.usage,
           type: "usage",
+          callId: input.reservationId,
           provider: input.provider,
           model: input.model,
-          callId: input.callId,
           operationKind: "company_import" satisfies UsageOperationKind,
-          ...input.usage,
           inputTokens,
           outputTokens,
         },
         {
           spaceId: scope.spaceId,
           userId: scope.ownerUserId,
-          operationId: run.id,
+          operationId: `${run.id}:${source.id}:${unit.id}:${input.reservationId}`,
           operationKind: "company_import",
         },
       );
-      return true;
+      if (
+        overBound &&
+        ["running", "paused", "budget_reached", "awaiting_consent"].includes(run.status)
+      ) {
+        await tx.companyImportRun.update({
+          where: { ...scope, id: run.id },
+          data: { status: "budget_reached" },
+        });
+      }
+      return !overBound;
+    }),
+  );
+}
+
+export async function grantCompanyImportConsent(
+  prisma: PrismaClient,
+  actor: Actor,
+  input: {
+    runId: string;
+    sourceId: string;
+    recipientKey: string;
+    version: string;
+    requiredKeys: string[];
+  },
+) {
+  const scope = scopeOf(actor);
+  await requireMember(prisma, scope);
+  return withTransactionRetry(() =>
+    prisma.$transaction(async (tx) => {
+      await lockCompanyScope(tx, scope);
+      const lockedRun = await lockRun(tx, scope, input.runId);
+      const run = await tx.companyImportRun.findFirst({
+        where: { ...scope, id: input.runId },
+        select: { status: true },
+      });
+      const source = await tx.companyImportSource.findFirst({
+        where: { ...scope, id: input.sourceId, runId: input.runId },
+        select: { id: true },
+      });
+      if (!lockedRun || !run || !source) throw new CompanyImportError("not_found");
+      if (["cancelled", "discarded", "completed", "partial", "failed"].includes(run.status))
+        throw new CompanyImportError("invalid_state");
+      await tx.aiDataConsent.upsert({
+        where: {
+          userId_spaceId_recipientKey: {
+            userId: scope.ownerUserId,
+            spaceId: scope.spaceId,
+            recipientKey: input.recipientKey,
+          },
+        },
+        create: {
+          userId: scope.ownerUserId,
+          spaceId: scope.spaceId,
+          recipientKey: input.recipientKey,
+          version: input.version,
+        },
+        update: { version: input.version, grantedAt: new Date() },
+      });
+      const grant = await tx.companyImportRun.updateMany({
+        where: { ...scope, id: input.runId, status: run.status },
+        data: { disclosureVersion: input.version },
+      });
+      if (grant.count !== 1) throw new CompanyImportError("invalid_state");
+      let resumed = false;
+      if (run.status === "awaiting_consent") {
+        const grants = await tx.aiDataConsent.findMany({
+          where: {
+            userId: scope.ownerUserId,
+            spaceId: scope.spaceId,
+            recipientKey: { in: input.requiredKeys },
+            version: input.version,
+          },
+          select: { recipientKey: true },
+        });
+        resumed =
+          new Set(grants.map((grant) => grant.recipientKey)).size === input.requiredKeys.length;
+        if (resumed) {
+          await tx.companyImportRun.update({
+            where: { ...scope, id: input.runId },
+            data: { status: "running" },
+          });
+          await tx.companyImportSource.updateMany({
+            where: { ...scope, runId: input.runId },
+            data: { status: "running" },
+          });
+        }
+      }
+      return { allowed: true, resumed };
     }),
   );
 }
@@ -635,10 +821,31 @@ export async function completeCompanyImportUnit(
   },
 ) {
   const scope = scopeOf(actor);
+  assertBoundedJson(input.nextCursor);
+  if (input.nextSourceCursor !== undefined) assertBoundedJson(input.nextSourceCursor);
+  for (const discovered of input.discoveredUnits ?? []) {
+    if (
+      !discovered.unitKey ||
+      discovered.unitKey.length > 200 ||
+      discovered.unitKey.startsWith("discover:")
+    )
+      throw new CompanyImportError("invalid_state");
+    assertBoundedJson(discovered.cursor);
+  }
+  if (
+    !Number.isSafeInteger(input.itemsDiscovered) ||
+    input.itemsDiscovered < 0 ||
+    !Number.isSafeInteger(input.itemsRead) ||
+    input.itemsRead < 0
+  ) {
+    throw new CompanyImportError("invalid_state");
+  }
   await requireMember(prisma, scope);
   return withTransactionRetry(() =>
     prisma.$transaction(async (tx) => {
       await lockCompanyScope(tx, scope);
+      const locked = await lockRun(tx, scope, input.runId);
+      if (!locked) throw new CompanyImportError("not_found");
       await requireMember(tx, scope);
       const unit = await tx.companyImportUnit.findFirst({
         where: {
@@ -654,13 +861,22 @@ export async function completeCompanyImportUnit(
       const run = await tx.companyImportRun.findFirst({
         where: { ...scope, id: input.runId, status: { in: ["running", "paused"] } },
       });
-      if (!unit || !run) throw new CompanyImportError("stale_claim");
+      const source = await tx.companyImportSource.findFirst({
+        where: { ...scope, id: input.sourceId, runId: input.runId },
+        select: { id: true },
+      });
+      if (!unit || !run || !source) throw new CompanyImportError("stale_claim");
       const writer = companyWriter(tx, actor);
+      let persistedFacts = 0;
       for (const fact of input.facts) {
         const evidence = { ...fact.input.evidence, extractorRunId: run.id };
-        if (fact.kind === "entity") await writer.importEntity({ ...fact.input, evidence });
-        else if (fact.kind === "edge") await writer.importEdge({ ...fact.input, evidence });
-        else await writer.importEvent({ ...fact.input, evidence });
+        const result =
+          fact.kind === "entity"
+            ? await writer.importEntity({ ...fact.input, evidence })
+            : fact.kind === "edge"
+              ? await writer.importEdge({ ...fact.input, evidence })
+              : await writer.importEvent({ ...fact.input, evidence });
+        if (!("suppressed" in result) && !("deferred" in result)) persistedFacts++;
       }
       for (const discovered of input.discoveredUnits ?? []) {
         await tx.companyImportUnit.createMany({
@@ -687,7 +903,7 @@ export async function completeCompanyImportUnit(
           ...(input.nextCursor === null ? {} : { cursor: jsonInput(input.nextCursor) }),
           itemsDiscovered: { increment: input.itemsDiscovered },
           itemsRead: { increment: input.itemsRead },
-          factsFound: { increment: input.facts.length },
+          factsFound: { increment: persistedFacts },
         },
       });
       await tx.companyImportSource.update({
@@ -704,18 +920,7 @@ export async function completeCompanyImportUnit(
           ...(input.discoveredUnits ? { status: input.done ? "reading" : "running" } : {}),
         },
       });
-      const pending = await tx.companyImportUnit.count({
-        where: { ...scope, runId: input.runId, status: { in: ["waiting", "claimed"] } },
-      });
-      const failed = await tx.companyImportUnit.count({
-        where: { ...scope, runId: input.runId, status: "failed" },
-      });
-      if (pending === 0) {
-        await tx.companyImportRun.update({
-          where: { ...scope, id: input.runId },
-          data: { status: failed > 0 ? "partial" : "completed", completedAt: new Date() },
-        });
-      }
+      await finalizeCompanyImportRun(tx, scope, input.runId);
     }),
   );
 }
@@ -733,10 +938,13 @@ export async function failCompanyImportUnit(
   },
 ) {
   const scope = scopeOf(actor);
-  const errorCode = input.errorCode.slice(0, 80);
+  const errorCode = /^[a-z0-9_-]{1,80}$/.test(input.errorCode) ? input.errorCode : "worker_failed";
   await requireMember(prisma, scope);
   return withTransactionRetry(() =>
     prisma.$transaction(async (tx) => {
+      await lockCompanyScope(tx, scope);
+      const locked = await lockRun(tx, scope, input.runId);
+      if (!locked) throw new CompanyImportError("not_found");
       const unit = await tx.companyImportUnit.findFirst({
         where: {
           ...scope,
@@ -747,7 +955,11 @@ export async function failCompanyImportUnit(
           claimToken: input.claimToken,
         },
       });
-      if (!unit) return false;
+      const source = await tx.companyImportSource.findFirst({
+        where: { ...scope, id: input.sourceId, runId: input.runId },
+        select: { id: true },
+      });
+      if (!unit || !source) return false;
       const genericDelay = Math.min(60_000, 1_000 * 2 ** Math.max(0, unit.attempts - 1));
       const retryAfter =
         input.retryAfterMs && Number.isFinite(input.retryAfterMs)
@@ -772,6 +984,7 @@ export async function failCompanyImportUnit(
           lastError: errorCode,
         },
       });
+      await finalizeCompanyImportRun(tx, scope, input.runId);
       return true;
     }),
   );
@@ -785,6 +998,10 @@ export async function awaitCompanyImportConsent(
   const scope = scopeOf(actor);
   await requireMember(prisma, scope);
   return prisma.$transaction(async (tx) => {
+    await lockCompanyScope(tx, scope);
+    const run = await lockRun(tx, scope, input.runId);
+    if (!run) return false;
+    if (!["running", "paused"].includes(run.status)) return false;
     const unit = await tx.companyImportUnit.findFirst({
       where: {
         ...scope,
@@ -793,31 +1010,35 @@ export async function awaitCompanyImportConsent(
         sourceId: input.sourceId,
         status: "claimed",
         claimToken: input.claimToken,
+        claimExpiresAt: { gt: new Date() },
       },
       select: { id: true },
     });
-    if (!unit) return false;
+    const source = await tx.companyImportSource.findFirst({
+      where: { ...scope, id: input.sourceId, runId: input.runId },
+      select: { id: true },
+    });
+    if (!unit || !source) return false;
     await tx.companyImportRun.updateMany({
       where: { ...scope, id: input.runId, status: { in: ["running", "paused"] } },
       data: { status: "awaiting_consent" },
     });
-    await tx.companyImportSource.update({
-      where: { ...scope, id: input.sourceId },
+    await tx.companyImportSource.updateMany({
+      where: { ...scope, id: input.sourceId, runId: input.runId },
       data: { status: "awaiting_consent" },
     });
-    await tx.companyImportUnit.update({
-      where: { ...scope, id: input.unitId },
+    await tx.companyImportUnit.updateMany({
+      where: { ...scope, id: input.unitId, status: "claimed", claimToken: input.claimToken },
       data: { status: "waiting", claimToken: null, claimExpiresAt: null },
     });
     return true;
   });
 }
 
-export async function reconcileCompanyImportRunIds(prisma: PrismaClient, limit = 100) {
+export async function reconcileCompanyImportRunIds(prisma: PrismaClient) {
   const runs = await prisma.companyImportRun.findMany({
     where: { status: { in: ["running", "paused"] } },
     orderBy: { updatedAt: "asc" },
-    take: limit,
     select: { id: true, spaceId: true, ownerUserId: true },
   });
   return runs.map((run) => ({ runId: run.id, spaceId: run.spaceId, userId: run.ownerUserId }));

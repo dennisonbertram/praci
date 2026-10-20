@@ -764,19 +764,25 @@ async function createCandidate(
     importRunId?: string | null;
   },
 ): Promise<string> {
+  const importRun = data.importRunId
+    ? await db.companyImportRun.findFirst({
+        where: { ...scope, id: data.importRunId },
+        select: { id: true },
+      })
+    : null;
   const candidateData = {
     ...data,
-    importRunId: data.importRunId ?? null,
+    importRunId: importRun?.id ?? null,
     proposedFact: data.proposedFact as Prisma.InputJsonValue,
   };
   const existing = await db.companyCandidate.findFirst({
     where: { ...scope, kind: data.kind, reason: data.reason, sourceKey: data.sourceKey },
-    select: { id: true },
+    select: { id: true, importRunId: true },
   });
   if (existing) {
     await db.companyCandidate.update({
       where: { id: existing.id },
-      data: candidateData,
+      data: { ...candidateData, importRunId: existing.importRunId },
     });
     return existing.id;
   }

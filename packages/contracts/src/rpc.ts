@@ -33,6 +33,7 @@ import {
   CompanyImportConsentInputSchema,
   CompanyImportCreateInputSchema,
   CompanyImportEventSchema,
+  CompanyImportGrantConsentInputSchema,
   CompanyImportModelConsentStatusSchema,
   CompanyImportProgressSchema,
   CompanyImportRunIdInputSchema,
@@ -1479,7 +1480,7 @@ export const appContract = {
       .input(CompanyImportConsentInputSchema)
       .output(CompanyImportModelConsentStatusSchema),
     grantConsent: oc
-      .input(CompanyImportConsentInputSchema)
+      .input(CompanyImportGrantConsentInputSchema)
       .output(CompanyImportModelConsentStatusSchema),
     start: oc.input(CompanyImportRunIdInputSchema).output(CompanyImportProgressSchema),
     action: oc.input(CompanyImportActionInputSchema).output(CompanyImportProgressSchema),

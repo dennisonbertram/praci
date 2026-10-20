@@ -933,11 +933,15 @@ export interface CompanyImportModelCallResult<T> {
 }
 
 export interface CompanyImportWorkerContext {
+  actor: { spaceId: string; userId: string };
   signal: AbortSignal;
   executeModelCall<T>(input: {
     inputTokenBound: number;
     maxOutputTokens: number;
-    invoke: () => Promise<CompanyImportModelCallResult<T>>;
+    invoke: (
+      model: AgentRunModel,
+      signal: AbortSignal,
+    ) => Promise<CompanyImportModelCallResult<T>>;
   }): Promise<CompanyImportModelCallResult<T>>;
 }
 
