@@ -31,6 +31,14 @@ export const CompanyEntityKindSchema = z.enum([
 ]);
 export const CompanyStatusSchema = z.enum(["suggested", "confirmed", "rejected"]);
 export const CompanyVisibilitySchema = z.enum(["private", "team"]);
+export const CompanyIdentityTypeSchema = z.enum([
+  "email",
+  "slack",
+  "github",
+  "linear",
+  "domain",
+  "name",
+]);
 export const CompanyFactKindSchema = z.enum(["entity", "edge", "event"]);
 export const CompanyRelationSchema = z.enum([
   "works_at",
@@ -373,9 +381,37 @@ export const CompanyEventRecordSchema = z.strictObject({
   confirmedAt: z.iso.datetime().nullable(),
   evidence: z.array(CompanyEvidenceRecordSchema),
 });
+export const CompanyIdentityRecordSchema = z.strictObject({
+  id: identifier,
+  identityType: CompanyIdentityTypeSchema,
+  identityValue: identifier,
+});
+export const CompanyEntityRecordSchema = z.strictObject({
+  id: identifier,
+  kind: CompanyEntityKindSchema,
+  displayName: shortText,
+  normalizedName: shortText,
+  attrs: z.record(z.string(), z.unknown()),
+  confidence: CompanyConfidenceSchema,
+  status: CompanyStatusSchema,
+  visibility: CompanyVisibilitySchema,
+  lockedFields: z.array(identifier),
+  confirmedAt: z.iso.datetime().nullable(),
+  confirmedByUserId: identifier.nullable(),
+  identities: z.array(CompanyIdentityRecordSchema),
+  evidence: z.array(CompanyEvidenceRecordSchema),
+  mergedFrom: z.array(identifier),
+  edges: z.array(CompanyEdgeRecordSchema),
+  events: z.array(CompanyEventRecordSchema),
+  contactId: identifier.nullable(),
+  legalContractId: identifier.nullable(),
+  dataRoomItemId: identifier.nullable(),
+});
 export type CompanyEvidenceRecord = z.infer<typeof CompanyEvidenceRecordSchema>;
 export type CompanyEdgeRecord = z.infer<typeof CompanyEdgeRecordSchema>;
 export type CompanyEventRecord = z.infer<typeof CompanyEventRecordSchema>;
+export type CompanyIdentityRecord = z.infer<typeof CompanyIdentityRecordSchema>;
+export type CompanyEntityRecord = z.infer<typeof CompanyEntityRecordSchema>;
 
 /** Identity normalization is deterministic; a name alone is never a person identifier. */
 export function normalizeCompanyName(value: string): string {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CompanyEntityEditInputSchema,
   CompanyEntityImportInputSchema,
+  CompanyEntityRecordSchema,
   CompanyEvidenceInputSchema,
   CompanyPartialDateSchema,
 } from "./company.js";
@@ -24,6 +25,46 @@ const evidence = {
 };
 
 describe("company contracts", () => {
+  it("parses the shared merged entity output shape with closed enums", () => {
+    const record = {
+      id: "company-1",
+      kind: "person",
+      displayName: "Synthetic Person",
+      normalizedName: "synthetic person",
+      attrs: { aliases: ["Synthetic Alias"] },
+      confidence: 0.9,
+      status: "confirmed",
+      visibility: "team",
+      lockedFields: ["attrs.aliases"],
+      confirmedAt: "2026-01-02T03:04:05.000Z",
+      confirmedByUserId: "user-1",
+      identities: [
+        { id: "identity-1", identityType: "email", identityValue: "synthetic@example.test" },
+      ],
+      evidence: [],
+      mergedFrom: ["company-2"],
+      edges: [],
+      events: [],
+      contactId: null,
+      legalContractId: null,
+      dataRoomItemId: null,
+    };
+
+    expect(CompanyEntityRecordSchema.safeParse(record).success).toBe(true);
+    expect(CompanyEntityRecordSchema.safeParse({ ...record, kind: "person-like" }).success).toBe(
+      false,
+    );
+    expect(CompanyEntityRecordSchema.safeParse({ ...record, status: "archived" }).success).toBe(
+      false,
+    );
+    expect(
+      CompanyEntityRecordSchema.safeParse({
+        ...record,
+        identities: [{ id: "identity-1", identityType: "unknown", identityValue: "x" }],
+      }).success,
+    ).toBe(false);
+  });
+
   it("requires a strict discriminated fact shape and bounded evidence", () => {
     expect(CompanyEntityImportInputSchema.safeParse({ entity, evidence }).success).toBe(true);
     expect(

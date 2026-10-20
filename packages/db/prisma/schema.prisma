@@ -3383,6 +3383,7 @@ model CompanyEdge {
   status         String          @default("suggested")
   visibility     String          @default("private")
   lockedFields   String[]        @default([])
+  claimFingerprints String[]     @default([])
   confirmedByUserId String?
   confirmedAt    DateTime?
   createdAt      DateTime      @default(now())
@@ -3414,6 +3415,7 @@ model CompanyEvent {
   status           String             @default("suggested")
   visibility       String             @default("private")
   lockedFields     String[]           @default([])
+  claimFingerprints String[]          @default([])
   confirmedByUserId String?
   confirmedAt      DateTime?
   createdAt        DateTime           @default(now())

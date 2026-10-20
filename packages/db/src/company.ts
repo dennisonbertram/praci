@@ -9,6 +9,7 @@ import type {
   CompanyEventImportInput,
   CompanyPartialDate,
   CompanyEdgeRecord as ContractCompanyEdgeRecord,
+  CompanyEntityRecord as ContractCompanyEntityRecord,
   CompanyEventRecord as ContractCompanyEventRecord,
   CompanyEvidenceRecord as ContractCompanyEvidenceRecord,
 } from "@rakazo/contracts";
@@ -18,10 +19,14 @@ import {
   CompanyEdgeImportInputSchema,
   CompanyEntityEditInputSchema,
   CompanyEntityImportInputSchema,
+  CompanyEntityKindSchema,
   CompanyEventEditInputSchema,
   CompanyEventImportInputSchema,
+  CompanyIdentityTypeSchema,
   CompanyMergeInputSchema,
   CompanyRejectInputSchema,
+  CompanyStatusSchema,
+  CompanyVisibilitySchema,
   companyEntityIdentifiers,
   normalizeCompanyName,
 } from "@rakazo/contracts";
@@ -37,28 +42,7 @@ type RootDb = PrismaClient;
 export type CompanyEvidenceRecord = ContractCompanyEvidenceRecord;
 export type CompanyEdgeRecord = ContractCompanyEdgeRecord;
 export type CompanyEventRecord = ContractCompanyEventRecord;
-
-export type CompanyEntityRecord = {
-  id: string;
-  kind: string;
-  displayName: string;
-  normalizedName: string;
-  attrs: Record<string, unknown>;
-  confidence: number;
-  status: string;
-  visibility: string;
-  lockedFields: string[];
-  confirmedAt: string | null;
-  confirmedByUserId: string | null;
-  identities: Array<{ id: string; identityType: string; identityValue: string }>;
-  evidence: CompanyEvidenceRecord[];
-  mergedFrom: string[];
-  edges: CompanyEdgeRecord[];
-  events: CompanyEventRecord[];
-  contactId: string | null;
-  legalContractId: string | null;
-  dataRoomItemId: string | null;
-};
+export type CompanyEntityRecord = ContractCompanyEntityRecord;
 
 export type CompanyCandidateRecord = {
   id: string;
@@ -272,26 +256,60 @@ async function mapEntity(
   });
   const rootAttrs = row.attrs as Record<string, unknown>;
   const attrs: Record<string, unknown> = {};
-  for (const member of members.filter((member) => member.id !== row.id)) {
-    for (const [key, value] of Object.entries(member.attrs as Record<string, unknown>)) {
+  const childMembers = members.filter((member) => member.id !== row.id);
+  const attrKeys = new Set(
+    members.flatMap((member) => Object.keys(member.attrs as Record<string, unknown>)),
+  );
+  for (const key of attrKeys) {
+    const fieldPath = `attrs.${key}`;
+    const rootHasValue = Object.hasOwn(rootAttrs, key);
+    const rootValue = rootAttrs[key];
+    const lockedChild = childMembers.find((member) => {
+      const memberAttrs = member.attrs as Record<string, unknown>;
+      return member.lockedFields.includes(fieldPath) && Object.hasOwn(memberAttrs, key);
+    });
+    if (row.lockedFields.includes(fieldPath) && rootHasValue) {
+      attrs[key] = rootValue;
+    } else if (lockedChild) {
+      attrs[key] = (lockedChild.attrs as Record<string, unknown>)[key];
+    } else if (rootHasValue && Array.isArray(rootValue)) {
+      attrs[key] = [
+        ...new Set([
+          ...childMembers.flatMap((member) => {
+            const value = (member.attrs as Record<string, unknown>)[key];
+            return Array.isArray(value) ? value : [];
+          }),
+          ...rootValue,
+        ]),
+      ];
+    } else if (rootHasValue) {
+      attrs[key] = rootValue;
+    } else {
+      const firstChild = childMembers.find((member) =>
+        Object.hasOwn(member.attrs as Record<string, unknown>, key),
+      );
+      const value = firstChild && (firstChild.attrs as Record<string, unknown>)[key];
       if (Array.isArray(value)) {
         attrs[key] = [
-          ...new Set([...(Array.isArray(attrs[key]) ? (attrs[key] as unknown[]) : []), ...value]),
+          ...new Set(
+            childMembers.flatMap((member) => {
+              const memberValue = (member.attrs as Record<string, unknown>)[key];
+              return Array.isArray(memberValue) ? memberValue : [];
+            }),
+          ),
         ];
-      } else if (!(key in attrs)) {
+      } else if (firstChild) {
         attrs[key] = value;
       }
     }
   }
-  for (const [key, value] of Object.entries(rootAttrs)) {
-    if (row.lockedFields.includes(`attrs.${key}`) || !Array.isArray(value)) {
-      attrs[key] = value;
-    } else {
-      attrs[key] = [
-        ...new Set([...(Array.isArray(attrs[key]) ? (attrs[key] as unknown[]) : []), ...value]),
-      ];
-    }
-  }
+  const lockedChildName = childMembers.find((member) =>
+    member.lockedFields.includes("displayName"),
+  );
+  const displayName =
+    row.lockedFields.includes("displayName") || !lockedChildName
+      ? row.displayName
+      : lockedChildName.displayName;
   const rootLinks = {
     contactId: row.contactId,
     legalContractId: row.legalContractId,
@@ -385,17 +403,20 @@ async function mapEntity(
   );
   return {
     id: row.id,
-    kind: row.kind,
-    displayName: row.displayName,
-    normalizedName: row.normalizedName,
+    kind: CompanyEntityKindSchema.parse(row.kind),
+    displayName,
+    normalizedName: normalizeCompanyName(displayName),
     attrs,
     confidence: row.confidence,
-    status: row.status,
-    visibility: row.visibility,
-    lockedFields: row.lockedFields,
+    status: CompanyStatusSchema.parse(row.status),
+    visibility: CompanyVisibilitySchema.parse(row.visibility),
+    lockedFields: [...new Set(members.flatMap((member) => member.lockedFields))],
     confirmedAt: row.confirmedAt?.toISOString() ?? null,
     confirmedByUserId: row.confirmedByUserId,
-    identities: memberIdentities,
+    identities: memberIdentities.map((identity) => ({
+      ...identity,
+      identityType: CompanyIdentityTypeSchema.parse(identity.identityType),
+    })),
     evidence: (
       await Promise.all(memberIds.map((entityId) => evidenceFor(db, scope, "entity", entityId)))
     ).flat(),
@@ -434,6 +455,62 @@ function sourceKey(evidence: EvidenceLocator, claimFingerprint: string): string 
     evidence.dataRoomItemId ?? (evidence.sourceKind === "data_room" ? evidence.sourceItemId : ""),
     evidence.sourceItemId,
   ])}:claim:${claimFingerprint}`;
+}
+
+function claimFingerprintFromSourceKey(value: string): string | null {
+  return value.match(/:claim:([a-f0-9]{64})$/)?.[1] ?? null;
+}
+
+async function currentClaimFingerprints(
+  db: CompanyDb,
+  scope: Scope,
+  factKind: "edge" | "event",
+  factId: string,
+  existing: string[],
+  ...fingerprints: string[]
+): Promise<string[]> {
+  const evidence = await db.companyEvidence.findMany({
+    where: { ...scope, factKind, factId },
+    select: { sourceKey: true },
+  });
+  return [
+    ...new Set([
+      ...existing,
+      ...fingerprints,
+      ...evidence
+        .map((item) => claimFingerprintFromSourceKey(item.sourceKey))
+        .filter((item): item is string => item !== null),
+    ]),
+  ].sort();
+}
+
+async function findClaimReplayId(
+  db: CompanyDb,
+  scope: Scope,
+  factKind: "edge" | "event",
+  fingerprint: string,
+): Promise<string | null> {
+  const evidence = await db.companyEvidence.findMany({
+    where: {
+      ...scope,
+      factKind,
+      sourceKey: { endsWith: `:claim:${fingerprint}` },
+    },
+    select: { factId: true },
+  });
+  const rows =
+    factKind === "edge"
+      ? await db.companyEdge.findMany({
+          where: { ...scope, claimFingerprints: { has: fingerprint } },
+          select: { id: true },
+        })
+      : await db.companyEvent.findMany({
+          where: { ...scope, claimFingerprints: { has: fingerprint } },
+          select: { id: true },
+        });
+  const ids = new Set([...evidence.map((item) => item.factId), ...rows.map((item) => item.id)]);
+  if (ids.size > 1) throw new IsolationError(`Ambiguous ${factKind} claim replay`);
+  return ids.values().next().value ?? null;
 }
 
 async function findFactSuppression(
@@ -578,17 +655,9 @@ async function importEntity(
       ...scope,
       factKind: "entity",
       sourceKey: key,
-      contentHash: input.evidence.contentHash,
     },
     select: { factId: true },
   });
-  if (existingEvidence) {
-    const row = await db.companyEntity.findFirst({
-      where: { ...scope, id: existingEvidence.factId },
-      include: ENTITY_INCLUDE,
-    });
-    if (row && row.status !== "rejected") return mapEntity(db, scope, row);
-  }
 
   const matches = identifiers.length
     ? await db.companyIdentity.findMany({
@@ -614,7 +683,7 @@ async function importEntity(
     }),
   );
   const matchedGroups = [...new Set(groups)];
-  let entityId: string | undefined;
+  let entityId: string | undefined = existingEvidence?.factId;
   if (matchedGroups.length === 1) {
     entityId =
       identifiers
@@ -859,66 +928,27 @@ async function importEdge(
     `source:${key}`,
   ]);
   if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
-  const replay = await db.companyEvidence.findFirst({
-    where: { ...scope, factKind: "edge", sourceKey: key },
-    select: { factId: true },
-  });
-  if (replay) {
-    const replayRow = await db.companyEdge.findFirst({ where: { ...scope, id: replay.factId } });
-    if (replayRow && replayRow.status !== "rejected") {
-      const contradicts =
-        (replayRow.lockedFields.includes("relation") &&
-          replayRow.relation !== input.edge.relation) ||
-        (replayRow.lockedFields.includes("startsOn") &&
-          JSON.stringify(partialDate(replayRow.startsOn, replayRow.startsPrecision)) !==
-            JSON.stringify(input.edge.startsOn ?? null)) ||
-        (replayRow.lockedFields.includes("endsOn") &&
-          JSON.stringify(partialDate(replayRow.endsOn, replayRow.endsPrecision)) !==
-            JSON.stringify(input.edge.endsOn ?? null)) ||
-        (replayRow.lockedFields.includes("role") && replayRow.role !== (input.edge.role ?? null)) ||
-        (replayRow.lockedFields.includes("confidence") &&
-          replayRow.confidence !== input.edge.confidence);
-      const replayEvidence = await evidenceCreateData(
-        db,
-        scope,
-        "edge",
-        replayRow.id,
-        input.evidence,
-        fingerprint,
-        contradicts ? "contradicts" : input.evidence.stance,
-      );
-      await db.companyEvidence.createMany({
-        data: [replayEvidence],
-        skipDuplicates: true,
-      });
-      if (contradicts) {
-        await db.companyEvidence.updateMany({
-          where: {
-            ...scope,
-            factKind: "edge",
-            factId: replayRow.id,
-            sourceKey: replayEvidence.sourceKey,
-            contentHash: replayEvidence.contentHash,
-          },
-          data: { stance: "contradicts" },
-        });
-      }
-      return mapEdgeRecord(db, scope, replayRow);
-    }
-  }
-  const edge = await db.companyEdge.findFirst({
-    where: {
-      ...scope,
-      fromId: input.edge.fromId,
-      toId: input.edge.toId,
-      relation: input.edge.relation,
-      startsOn,
-      endsOn,
-      startsPrecision: datePrecision(input.edge.startsOn),
-      endsPrecision: datePrecision(input.edge.endsOn),
-      role: input.edge.role ?? null,
-    },
-  });
+  const replayId = await findClaimReplayId(db, scope, "edge", fingerprint);
+  const replay =
+    replayId === null
+      ? null
+      : await db.companyEdge.findFirst({ where: { ...scope, id: replayId } });
+  if (replay?.status === "rejected") throw new IsolationError("Rejected edges cannot be replayed");
+  const edge =
+    replay ??
+    (await db.companyEdge.findFirst({
+      where: {
+        ...scope,
+        fromId: input.edge.fromId,
+        toId: input.edge.toId,
+        relation: input.edge.relation,
+        startsOn,
+        endsOn,
+        startsPrecision: datePrecision(input.edge.startsOn),
+        endsPrecision: datePrecision(input.edge.endsOn),
+        role: input.edge.role ?? null,
+      },
+    }));
   const row =
     edge ??
     (await db.companyEdge.create({
@@ -933,15 +963,58 @@ async function importEdge(
         endsPrecision: datePrecision(input.edge.endsOn),
         role: input.edge.role ?? null,
         confidence: input.edge.confidence,
+        claimFingerprints: [fingerprint],
       },
     }));
+  const contradicts =
+    (row.lockedFields.includes("relation") && row.relation !== input.edge.relation) ||
+    (row.lockedFields.includes("startsOn") &&
+      JSON.stringify(partialDate(row.startsOn, row.startsPrecision)) !==
+        JSON.stringify(input.edge.startsOn ?? null)) ||
+    (row.lockedFields.includes("endsOn") &&
+      JSON.stringify(partialDate(row.endsOn, row.endsPrecision)) !==
+        JSON.stringify(input.edge.endsOn ?? null)) ||
+    (row.lockedFields.includes("role") && row.role !== (input.edge.role ?? null)) ||
+    (row.lockedFields.includes("confidence") && row.confidence !== input.edge.confidence);
+  const claimFingerprints = await currentClaimFingerprints(
+    db,
+    scope,
+    "edge",
+    row.id,
+    row.claimFingerprints,
+    edgeClaimFingerprint(row),
+    fingerprint,
+  );
+  const updated = await db.companyEdge.update({
+    where: { id: row.id },
+    data: { claimFingerprints },
+  });
+  const edgeEvidence = await evidenceCreateData(
+    db,
+    scope,
+    "edge",
+    row.id,
+    input.evidence,
+    fingerprint,
+    contradicts ? "contradicts" : input.evidence.stance,
+  );
   await db.companyEvidence.createMany({
-    data: await evidenceCreateData(db, scope, "edge", row.id, input.evidence, fingerprint).then(
-      (data) => [data],
-    ),
+    data: [edgeEvidence],
     skipDuplicates: true,
   });
-  return mapEdgeRecord(db, scope, row);
+  if (contradicts) {
+    await db.companyEvidence.updateMany({
+      where: {
+        ...scope,
+        factKind: "edge",
+        factId: row.id,
+        sourceKey: edgeEvidence.sourceKey,
+        contentHash: edgeEvidence.contentHash,
+      },
+      data: { stance: "contradicts" },
+    });
+  }
+  return mapEdgeRecord(db, scope, updated);
 }
 
 async function importEvent(
@@ -962,75 +1035,23 @@ async function importEvent(
     `source:${key}`,
   ]);
   if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
-  const replay = await db.companyEvidence.findFirst({
-    where: { ...scope, factKind: "event", sourceKey: key },
-    select: { factId: true },
-  });
-  if (replay) {
-    const replayRow = await db.companyEvent.findFirst({ where: { ...scope, id: replay.factId } });
-    if (replayRow && replayRow.status !== "rejected") {
-      const contradicts =
-        (replayRow.lockedFields.includes("stream") && replayRow.stream !== input.event.stream) ||
-        (replayRow.lockedFields.includes("kind") && replayRow.kind !== input.event.kind) ||
-        (replayRow.lockedFields.includes("title") && replayRow.title !== input.event.title) ||
-        (replayRow.lockedFields.includes("occursOn") &&
-          JSON.stringify(partialDate(replayRow.occursOn, replayRow.occursPrecision)) !==
-            JSON.stringify(input.event.occursOn ?? null)) ||
-        (replayRow.lockedFields.includes("endsOn") &&
-          JSON.stringify(partialDate(replayRow.endsOn, replayRow.endsPrecision)) !==
-            JSON.stringify(input.event.endsOn ?? null)) ||
-        (replayRow.lockedFields.includes("amountCents") &&
-          Number(replayRow.amountCents ?? 0) !== (input.event.amountCents ?? 0)) ||
-        (replayRow.lockedFields.includes("currency") &&
-          replayRow.currency !== (input.event.currency ?? null)) ||
-        (replayRow.lockedFields.includes("confidence") &&
-          replayRow.confidence !== input.event.confidence);
-      const replayEvidence = await evidenceCreateData(
-        db,
-        scope,
-        "event",
-        replayRow.id,
-        input.evidence,
-        fingerprint,
-        contradicts ? "contradicts" : input.evidence.stance,
-      );
-      await db.companyEvidence.createMany({
-        data: [replayEvidence],
-        skipDuplicates: true,
-      });
-      if (contradicts) {
-        await db.companyEvidence.updateMany({
-          where: {
-            ...scope,
-            factKind: "event",
-            factId: replayRow.id,
-            sourceKey: replayEvidence.sourceKey,
-            contentHash: replayEvidence.contentHash,
-          },
-          data: { stance: "contradicts" },
-        });
-      }
-      const links = await db.companyEventEntity.findMany({
-        where: { ...scope, eventId: replayRow.id },
-        select: { entityId: true },
-      });
-      return mapEventRecord(
-        db,
-        scope,
-        replayRow,
-        links.map((link) => link.entityId),
-      );
-    }
-  }
-  const event = await db.companyEvent.findFirst({
-    where: {
-      ...scope,
-      kind: input.event.kind,
-      normalizedTitle,
-      occursOn: dateValue(input.event.occursOn),
-      occursPrecision: input.event.occursOn?.precision ?? null,
-    },
-  });
+  const replayId = await findClaimReplayId(db, scope, "event", fingerprint);
+  const replay =
+    replayId === null
+      ? null
+      : await db.companyEvent.findFirst({ where: { ...scope, id: replayId } });
+  if (replay?.status === "rejected") throw new IsolationError("Rejected events cannot be replayed");
+  const event =
+    replay ??
+    (await db.companyEvent.findFirst({
+      where: {
+        ...scope,
+        kind: input.event.kind,
+        normalizedTitle,
+        occursOn: dateValue(input.event.occursOn),
+        occursPrecision: input.event.occursOn?.precision ?? null,
+      },
+    }));
   const row =
     event ??
     (await db.companyEvent.create({
@@ -1047,19 +1068,90 @@ async function importEvent(
         amountCents: input.event.amountCents ?? null,
         currency: input.event.currency ?? null,
         confidence: input.event.confidence,
+        claimFingerprints: [fingerprint],
       },
     }));
-  await db.companyEventEntity.createMany({
-    data: input.event.entityIds.map((entityId) => ({ ...scope, eventId: row.id, entityId })),
-    skipDuplicates: true,
+  const linksBefore = await db.companyEventEntity.findMany({
+    where: { ...scope, eventId: row.id },
+    select: { entityId: true },
   });
+  const existingEntityIds = linksBefore.map((link) => link.entityId);
+  const entityIdsLocked = row.lockedFields.includes("entityIds");
+  const incomingEntityIds = new Set(input.event.entityIds);
+  const existingEntityIdSet = new Set(existingEntityIds);
+  const contradictsEntityIds =
+    entityIdsLocked &&
+    (incomingEntityIds.size !== existingEntityIdSet.size ||
+      [...incomingEntityIds].some((entityId) => !existingEntityIdSet.has(entityId)));
+  const contradicts =
+    (row.lockedFields.includes("stream") && row.stream !== input.event.stream) ||
+    (row.lockedFields.includes("kind") && row.kind !== input.event.kind) ||
+    (row.lockedFields.includes("title") && row.title !== input.event.title) ||
+    (row.lockedFields.includes("occursOn") &&
+      JSON.stringify(partialDate(row.occursOn, row.occursPrecision)) !==
+        JSON.stringify(input.event.occursOn ?? null)) ||
+    (row.lockedFields.includes("endsOn") &&
+      JSON.stringify(partialDate(row.endsOn, row.endsPrecision)) !==
+        JSON.stringify(input.event.endsOn ?? null)) ||
+    (row.lockedFields.includes("amountCents") &&
+      Number(row.amountCents ?? 0) !== (input.event.amountCents ?? 0)) ||
+    (row.lockedFields.includes("currency") && row.currency !== (input.event.currency ?? null)) ||
+    (row.lockedFields.includes("confidence") && row.confidence !== input.event.confidence) ||
+    contradictsEntityIds;
+  const claimFingerprints = await currentClaimFingerprints(
+    db,
+    scope,
+    "event",
+    row.id,
+    row.claimFingerprints,
+    eventClaimFingerprint(row),
+    fingerprint,
+  );
+  const updated = await db.companyEvent.update({
+    where: { id: row.id },
+    data: { claimFingerprints },
+  });
+  if (!entityIdsLocked) {
+    await db.companyEventEntity.createMany({
+      data: input.event.entityIds.map((entityId) => ({ ...scope, eventId: row.id, entityId })),
+      skipDuplicates: true,
+    });
+  }
+  const eventEvidence = await evidenceCreateData(
+    db,
+    scope,
+    "event",
+    row.id,
+    input.evidence,
+    fingerprint,
+    contradicts ? "contradicts" : input.evidence.stance,
+  );
   await db.companyEvidence.createMany({
-    data: await evidenceCreateData(db, scope, "event", row.id, input.evidence, fingerprint).then(
-      (data) => [data],
-    ),
+    data: [eventEvidence],
     skipDuplicates: true,
   });
-  return mapEventRecord(db, scope, row, input.event.entityIds);
+  if (contradicts) {
+    await db.companyEvidence.updateMany({
+      where: {
+        ...scope,
+        factKind: "event",
+        factId: row.id,
+        sourceKey: eventEvidence.sourceKey,
+        contentHash: eventEvidence.contentHash,
+      },
+      data: { stance: "contradicts" },
+    });
+  }
+  const links = await db.companyEventEntity.findMany({
+    where: { ...scope, eventId: row.id },
+    select: { entityId: true },
+  });
+  return mapEventRecord(
+    db,
+    scope,
+    updated,
+    links.map((link) => link.entityId),
+  );
 }
 
 function touchedFields(input: CompanyEntityEditInput): Array<[string, unknown]> {
@@ -1127,6 +1219,7 @@ async function editEntity(
     where: { ...scope, id: input.entityId },
     include: ENTITY_INCLUDE,
   });
+  if (row.status === "rejected") throw new IsolationError("Rejected entities cannot be edited");
   if (row.kind !== input.kind) throw new IsolationError("Entity kind does not match edit");
   const updates = touchedFields(input);
   const attrs = { ...(row.attrs as Record<string, unknown>), ...(input.attrs ?? {}) };
@@ -1189,6 +1282,7 @@ async function confirmEntity(
     where: { ...scope, id: input.entityId },
     include: ENTITY_INCLUDE,
   });
+  if (row.status === "rejected") throw new IsolationError("Rejected entities cannot be confirmed");
   const confirmedAt = new Date();
   await manualEvidence(db, scope, "entity", row.id, "status", "confirmed", scope.ownerUserId);
   await db.companyEntity.update({
@@ -1290,6 +1384,25 @@ async function editEdge(
     }
   }
   const lockedFields = [...new Set([...row.lockedFields, ...updates.map(([field]) => field)])];
+  const correctedEdge = {
+    ...row,
+    relation: input.relation ?? row.relation,
+    startsOn: input.startsOn === undefined ? row.startsOn : dateValue(input.startsOn),
+    startsPrecision:
+      input.startsOn === undefined ? row.startsPrecision : datePrecision(input.startsOn),
+    endsOn: input.endsOn === undefined ? row.endsOn : dateValue(input.endsOn),
+    endsPrecision: input.endsOn === undefined ? row.endsPrecision : datePrecision(input.endsOn),
+    role: input.role === undefined ? row.role : (input.role ?? null),
+  };
+  const claimFingerprints = await currentClaimFingerprints(
+    db,
+    scope,
+    "edge",
+    row.id,
+    row.claimFingerprints,
+    edgeClaimFingerprint(row),
+    edgeClaimFingerprint(correctedEdge),
+  );
   await Promise.all(
     updates.map(([field, value]) =>
       manualEvidence(db, scope, "edge", row.id, field, value ?? null),
@@ -1297,7 +1410,7 @@ async function editEdge(
   );
   const updated = await db.companyEdge.update({
     where: { id: row.id },
-    data: { ...data, lockedFields },
+    data: { ...data, lockedFields, claimFingerprints },
   });
   return mapEdgeRecord(db, scope, updated);
 }
@@ -1320,10 +1433,30 @@ async function editEvent(
         [field]: dateValue(partial),
         [field === "occursOn" ? "occursPrecision" : "endsPrecision"]: datePrecision(partial),
       });
+    } else if (field === "title") {
+      Object.assign(data, { title: value, normalizedTitle: normalizeCompanyName(value as string) });
     } else {
       Object.assign(data, { [field]: value });
     }
   }
+  const correctedEvent = {
+    ...row,
+    kind: input.kind ?? row.kind,
+    normalizedTitle:
+      input.title === undefined ? row.normalizedTitle : normalizeCompanyName(input.title),
+    occursOn: input.occursOn === undefined ? row.occursOn : dateValue(input.occursOn),
+    occursPrecision:
+      input.occursOn === undefined ? row.occursPrecision : datePrecision(input.occursOn),
+  };
+  const claimFingerprints = await currentClaimFingerprints(
+    db,
+    scope,
+    "event",
+    row.id,
+    row.claimFingerprints,
+    eventClaimFingerprint(row),
+    eventClaimFingerprint(correctedEvent),
+  );
   const lockedPaths = [...updates.map(([field]) => field), ...(entityIds ? ["entityIds"] : [])];
   const lockedFields = [...new Set([...row.lockedFields, ...lockedPaths])];
   await Promise.all([
@@ -1341,7 +1474,7 @@ async function editEvent(
   }
   const updated = await db.companyEvent.update({
     where: { id: row.id },
-    data: { ...data, lockedFields },
+    data: { ...data, lockedFields, claimFingerprints },
   });
   const links = await db.companyEventEntity.findMany({
     where: { ...scope, eventId: row.id },
@@ -1443,9 +1576,19 @@ async function rejectFact(
     where: { ...scope, factKind, factId },
     select: { sourceKey: true },
   });
+  const savedClaimFingerprints = await currentClaimFingerprints(
+    db,
+    scope,
+    factKind,
+    factId,
+    current.claimFingerprints,
+    claimFingerprint,
+  );
   const aliases = [
-    `${factKind}:${claimFingerprint}`,
-    ...sourceEvidence.map((evidence) => `source:${evidence.sourceKey}`),
+    ...new Set([
+      ...savedClaimFingerprints.map((fingerprint) => `${factKind}:${fingerprint}`),
+      ...sourceEvidence.map((evidence) => `source:${evidence.sourceKey}`),
+    ]),
   ];
   const fingerprint = hash([factKind, ...aliases.sort()]);
   await db.companyRejection.upsert({
@@ -1592,6 +1735,36 @@ async function mergeEntities(
   }
   if (await db.companyMerge.findFirst({ where: { ...scope, sourceEntityId: survivor.id } })) {
     throw new IsolationError("Chained merges are not allowed");
+  }
+  const existingChildren = await db.companyMerge.findMany({
+    where: { ...scope, survivorEntityId: survivor.id },
+    select: { sourceEntityId: true },
+  });
+  const mergeGroup = await db.companyEntity.findMany({
+    where: {
+      ...scope,
+      id: {
+        in: [survivor.id, source.id, ...existingChildren.map((merge) => merge.sourceEntityId)],
+      },
+    },
+    select: { displayName: true, attrs: true, lockedFields: true },
+  });
+  const lockedValues = new Map<string, string | undefined>();
+  for (const member of mergeGroup) {
+    const attrs = member.attrs as Record<string, unknown>;
+    for (const fieldPath of member.lockedFields) {
+      const value =
+        fieldPath === "displayName"
+          ? member.displayName
+          : fieldPath.startsWith("attrs.")
+            ? attrs[fieldPath.slice("attrs.".length)]
+            : undefined;
+      const serialized = JSON.stringify(value);
+      if (lockedValues.has(fieldPath) && lockedValues.get(fieldPath) !== serialized) {
+        throw new IsolationError("Conflicting locked values cannot be merged");
+      }
+      lockedValues.set(fieldPath, serialized);
+    }
   }
   await db.companyMerge.create({
     data: { ...scope, sourceEntityId: source.id, survivorEntityId: survivor.id },

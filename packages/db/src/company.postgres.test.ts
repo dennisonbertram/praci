@@ -1,3 +1,4 @@
+import { CompanyEntityRecordSchema } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createNorthwindCompanyFixture } from "../../testkit/src/fixtures/company/corpus.js";
 import { northwindGroundTruth } from "../../testkit/src/fixtures/company/ground-truth.js";
@@ -211,6 +212,55 @@ describePostgres("company foundation (PostgreSQL)", () => {
     expect(await prisma.companyEntity.count({ where: { spaceId, ownerUserId: userId } })).toBe(2);
     expect(await company.evidence(entityId(first))).toHaveLength(2);
     expect((await company.detail(entityId(first)))?.attrs).toMatchObject({ timezone: "UTC" });
+  });
+
+  it("replays same-source name-only claims after content changes without merging source items", async () => {
+    const company = companyForActor(prisma, actor);
+    const input = {
+      entity: {
+        kind: "person" as const,
+        displayName: "Name Replay Person",
+        attrs: {},
+        confidence: 0.9,
+      },
+      evidence: {
+        ...evidence("name-replay-source", "name-replay-original-hash"),
+        quote: "Name Replay Person joined the team.",
+      },
+    };
+    const first = persisted(await company.importEntity(input));
+    const replay = persisted(
+      await company.importEntity({
+        ...input,
+        evidence: { ...input.evidence, contentHash: "name-replay-edited-hash" },
+      }),
+    );
+    expect(replay.id).toBe(first.id);
+    expect(replay.evidence.map((item) => item.contentHash)).toEqual(
+      expect.arrayContaining(["name-replay-original-hash", "name-replay-edited-hash"]),
+    );
+    const differentSource = persisted(
+      await company.importEntity({
+        ...input,
+        evidence: {
+          ...input.evidence,
+          sourceItemId: "name-replay-different-source",
+          contentHash: "name-replay-different-source-hash",
+        },
+      }),
+    );
+    expect(differentSource.id).not.toBe(first.id);
+    expect(
+      await prisma.companyEntity.count({
+        where: {
+          spaceId,
+          ownerUserId: userId,
+          kind: "person",
+          normalizedName: "name replay person",
+        },
+      }),
+    ).toBe(2);
+    expect(CompanyEntityRecordSchema.parse(first)).toMatchObject({ id: first.id, kind: "person" });
   });
 
   it("keeps same-document claims separate and namespaces identities by entity kind", async () => {
@@ -889,7 +939,7 @@ describePostgres("company foundation (PostgreSQL)", () => {
     expect((await company.detail(entityId(contactFact)))?.contactId).toBeNull();
   });
 
-  it("persists editable edge and event records and suppresses rejected replays", async () => {
+  it("persists editable facts, locks empty event links, and suppresses rejected replays", async () => {
     const company = companyForActor(prisma, actor);
     const from = await company.importEntity(
       person("Lifecycle source", "lifecycle-from", "lifecycle-from-hash"),
@@ -958,11 +1008,50 @@ describePostgres("company foundation (PostgreSQL)", () => {
       endsOn: { date: "2021-01-01", precision: "year" },
     });
     expect(await company.eventDetail(event.id)).toMatchObject({ id: event.id, entityIds: [] });
-    await company.editEvent({ eventId: event.id, title: "Owner corrected event" });
-    expect(persisted(await company.importEvent(eventInput))).toMatchObject({
+    await company.editEvent({
+      eventId: event.id,
+      title: "Owner corrected event",
+      entityIds: [],
+    });
+    const lockedLinkReplay = persisted(
+      await company.importEvent({
+        ...eventInput,
+        event: { ...eventInput.event, entityIds: [entityId(from)] },
+        evidence: evidence("lifecycle-event-linked-replay", "lifecycle-event-linked-hash"),
+      }),
+    );
+    expect(lockedLinkReplay).toMatchObject({
       id: event.id,
       title: "Owner corrected event",
+      entityIds: [],
     });
+    expect(lockedLinkReplay.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentHash: "lifecycle-event-linked-hash",
+          stance: "contradicts",
+        }),
+      ]),
+    );
+
+    const linkUnionInput = {
+      event: {
+        ...eventInput.event,
+        title: "Unlocked event link union",
+        entityIds: [entityId(from)],
+      },
+      evidence: evidence("lifecycle-link-union-first", "lifecycle-link-union-first-hash"),
+    };
+    const linkUnion = persisted(await company.importEvent(linkUnionInput));
+    const linkReplay = persisted(
+      await company.importEvent({
+        ...linkUnionInput,
+        event: { ...linkUnionInput.event, entityIds: [entityId(to)] },
+        evidence: evidence("lifecycle-link-union-second", "lifecycle-link-union-second-hash"),
+      }),
+    );
+    expect(linkReplay.id).toBe(linkUnion.id);
+    expect(linkReplay.entityIds).toEqual(expect.arrayContaining([entityId(from), entityId(to)]));
     await company.rejectEvent(event.id, "Incorrect event");
     expect(await company.eventDetail(event.id)).toBeNull();
     expect(await company.eventDetail(event.id, { includeRejected: true })).toMatchObject({
@@ -970,7 +1059,142 @@ describePostgres("company foundation (PostgreSQL)", () => {
       confirmedByUserId: null,
     });
     expect(await company.importEvent(eventInput)).toMatchObject({ suppressed: true });
-    expect(await company.countEvents()).toBe(baselineEvents);
+    expect(await company.countEvents()).toBe(baselineEvents + 1);
+  });
+
+  it("keeps edge and event claim aliases through edits, disconnects, and rejection", async () => {
+    const company = companyForActor(prisma, actor);
+    const from = await company.importEntity(
+      person("Alias replay source", "claim-alias-from", "claim-alias-from-hash"),
+    );
+    const to = await company.importEntity(
+      person("Alias replay target", "claim-alias-to", "claim-alias-to-hash"),
+    );
+    const edgeInput = {
+      edge: {
+        fromId: entityId(from),
+        toId: entityId(to),
+        relation: "works_at" as const,
+        startsOn: { date: "2022-01-01", precision: "year" as const },
+        endsOn: null,
+        role: "Engineer",
+        confidence: 0.8,
+      },
+      evidence: evidence("claim-alias-edge-original", "claim-alias-edge-original-hash"),
+    };
+    const edge = persisted(await company.importEdge(edgeInput));
+    await company.editEdge({ edgeId: edge.id, role: "Owner corrected" });
+    const edgeReplay = persisted(
+      await company.importEdge({
+        ...edgeInput,
+        evidence: evidence("claim-alias-edge-replay", "claim-alias-edge-replay-hash"),
+      }),
+    );
+    expect(edgeReplay).toMatchObject({ id: edge.id, role: "Owner corrected" });
+    expect(edgeReplay.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentHash: "claim-alias-edge-replay-hash",
+          stance: "contradicts",
+        }),
+      ]),
+    );
+    await company.disconnect("slack", "claim-alias-edge-original");
+    await company.disconnect("slack", "claim-alias-edge-replay");
+    const edgeAfterDisconnect = persisted(
+      await company.importEdge({
+        ...edgeInput,
+        evidence: evidence("claim-alias-edge-after-disconnect", "claim-alias-edge-disconnect-hash"),
+      }),
+    );
+    expect(edgeAfterDisconnect).toMatchObject({ id: edge.id, role: "Owner corrected" });
+    await company.rejectEdge(edge.id, "Incorrect edge");
+    await company.disconnect("slack", "claim-alias-edge-after-disconnect");
+    expect(
+      await company.importEdge({
+        ...edgeInput,
+        evidence: evidence("claim-alias-edge-after-rejection", "claim-alias-edge-rejected-hash"),
+      }),
+    ).toMatchObject({ suppressed: true });
+
+    const eventInput = {
+      event: {
+        stream: "people" as const,
+        kind: "hire" as const,
+        title: "Alias original event",
+        occursOn: { date: "2022-01-01", precision: "year" as const },
+        endsOn: null,
+        entityIds: [],
+        amountCents: null,
+        currency: null,
+        confidence: 0.8,
+      },
+      evidence: evidence("claim-alias-event-original", "claim-alias-event-original-hash"),
+    };
+    const event = persisted(await company.importEvent(eventInput));
+    await company.editEvent({ eventId: event.id, title: "Alias corrected event" });
+    const eventReplay = persisted(
+      await company.importEvent({
+        ...eventInput,
+        evidence: evidence("claim-alias-event-replay", "claim-alias-event-replay-hash"),
+      }),
+    );
+    expect(eventReplay).toMatchObject({ id: event.id, title: "Alias corrected event" });
+    expect(eventReplay.evidence).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          contentHash: "claim-alias-event-replay-hash",
+          stance: "contradicts",
+        }),
+      ]),
+    );
+    await company.disconnect("slack", "claim-alias-event-original");
+    await company.disconnect("slack", "claim-alias-event-replay");
+    const eventAfterDisconnect = persisted(
+      await company.importEvent({
+        ...eventInput,
+        evidence: evidence(
+          "claim-alias-event-after-disconnect",
+          "claim-alias-event-disconnect-hash",
+        ),
+      }),
+    );
+    expect(eventAfterDisconnect).toMatchObject({ id: event.id, title: "Alias corrected event" });
+    await company.rejectEvent(event.id, "Incorrect event");
+    await company.disconnect("slack", "claim-alias-event-after-disconnect");
+    expect(
+      await company.importEvent({
+        ...eventInput,
+        evidence: evidence("claim-alias-event-after-rejection", "claim-alias-event-rejected-hash"),
+      }),
+    ).toMatchObject({ suppressed: true });
+  });
+
+  it("rejects edits and confirmations for rejected entities without adding evidence", async () => {
+    const company = companyForActor(prisma, actor);
+    const saved = await company.importEntity(
+      person("Rejected entity guard", "rejected-entity-guard", "rejected-entity-guard-hash"),
+    );
+    await company.reject(entityId(saved), "Synthetic rejection");
+    const evidenceCount = await prisma.companyEvidence.count({
+      where: { spaceId, ownerUserId: userId, factKind: "entity", factId: entityId(saved) },
+    });
+    await expect(
+      company.edit({
+        entityId: entityId(saved),
+        kind: "person",
+        displayName: "Should not edit",
+      }),
+    ).rejects.toThrow(/rejected/i);
+    await expect(company.confirm(entityId(saved))).rejects.toThrow(/rejected/i);
+    expect(
+      await prisma.companyEvidence.count({
+        where: { spaceId, ownerUserId: userId, factKind: "entity", factId: entityId(saved) },
+      }),
+    ).toBe(evidenceCount);
+    expect((await company.detail(entityId(saved), { includeRejected: true }))?.status).toBe(
+      "rejected",
+    );
   });
 
   it("keeps owner corrections through disconnect and erases corrections and rejections", async () => {
@@ -1150,6 +1374,96 @@ describePostgres("company foundation (PostgreSQL)", () => {
         person("Same Name", "rejected-child-alias", "rejected-child-hash", "two@example.test"),
       ),
     ).toMatchObject({ suppressed: true });
+  });
+
+  it("preserves locked child values in merged views and rejects conflicting locks", async () => {
+    const company = companyForActor(prisma, actor);
+    const root = await company.importEntity({
+      entity: {
+        kind: "person",
+        displayName: "Unlocked merge root",
+        attrs: { aliases: ["Root alias"], timezone: "UTC" },
+        confidence: 0.9,
+      },
+      evidence: evidence("locked-child-root", "locked-child-root-hash"),
+    });
+    const child = await company.importEntity({
+      entity: {
+        kind: "person",
+        displayName: "Original child name",
+        attrs: { aliases: ["Child alias"], timezone: "Asia/Tokyo" },
+        confidence: 0.9,
+      },
+      evidence: evidence("locked-child-source", "locked-child-source-hash"),
+    });
+    await company.edit({
+      entityId: entityId(child),
+      kind: "person",
+      displayName: "Locked child name",
+      attrs: { aliases: [], timezone: "Europe/London" },
+    });
+    const merged = await company.merge(entityId(child), entityId(root));
+    expect(merged).toMatchObject({
+      displayName: "Locked child name",
+      normalizedName: "locked child name",
+      attrs: { aliases: [], timezone: "Europe/London" },
+      lockedFields: expect.arrayContaining(["displayName", "attrs.aliases", "attrs.timezone"]),
+      mergedFrom: [entityId(child)],
+    });
+    await company.split(entityId(child));
+    expect(await company.detail(entityId(child))).toMatchObject({
+      id: entityId(child),
+      displayName: "Locked child name",
+      normalizedName: "locked child name",
+      attrs: { aliases: [], timezone: "Europe/London" },
+    });
+    expect(await company.detail(entityId(root))).toMatchObject({
+      displayName: "Unlocked merge root",
+      normalizedName: "unlocked merge root",
+      attrs: { aliases: ["Root alias"], timezone: "UTC" },
+    });
+
+    const conflictingRoot = await company.importEntity({
+      entity: {
+        kind: "person",
+        displayName: "Conflicting lock root",
+        attrs: { timezone: "UTC" },
+        confidence: 0.9,
+      },
+      evidence: evidence("conflicting-lock-root", "conflicting-lock-root-hash"),
+    });
+    const conflictingChild = await company.importEntity({
+      entity: {
+        kind: "person",
+        displayName: "Conflicting lock child",
+        attrs: { timezone: "Asia/Tokyo" },
+        confidence: 0.9,
+      },
+      evidence: evidence("conflicting-lock-child", "conflicting-lock-child-hash"),
+    });
+    await company.edit({
+      entityId: entityId(conflictingRoot),
+      kind: "person",
+      attrs: { timezone: "UTC" },
+    });
+    await company.edit({
+      entityId: entityId(conflictingChild),
+      kind: "person",
+      attrs: { timezone: "Europe/London" },
+    });
+    await expect(
+      company.merge(entityId(conflictingChild), entityId(conflictingRoot)),
+    ).rejects.toThrow(/conflicting locked values/i);
+    expect(
+      await prisma.companyMerge.findFirst({
+        where: {
+          spaceId,
+          ownerUserId: userId,
+          sourceEntityId: entityId(conflictingChild),
+          survivorEntityId: entityId(conflictingRoot),
+        },
+      }),
+    ).toBeNull();
   });
 
   it("eraseMap removes all facts, evidence, candidates, corrections, rejections and merges", async () => {
