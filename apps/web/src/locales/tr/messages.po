@@ -383,6 +383,18 @@ msgstr ""
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr ""
 
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "{item} dropped on {target}."
+msgstr ""
+
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "{item} dropped."
+msgstr ""
+
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "{item} is over {target}."
+msgstr ""
+
 #: src/components/data-room/folders.ts
 msgid "{items, plural, one {# item} other {# items}}"
 msgstr ""
@@ -620,6 +632,7 @@ msgid "Actions for {0}"
 msgstr "{0} için işlemler"
 
 #: src/components/finance/ExchangeGroup.tsx
+#: src/components/sidebar-folders/FolderHeader.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Actions for {name}"
 msgstr ""
@@ -1313,6 +1326,14 @@ msgstr "Yetkilendir"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Authorize this server so bots can use its tools. A popup opens."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Auto-group"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Auto-grouped"
 msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
@@ -2071,6 +2092,10 @@ msgstr ""
 msgid "Collapse {0}"
 msgstr ""
 
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "Collapse {name}"
+msgstr ""
+
 #: src/components/SidebarPagesGroup.tsx
 msgid "Collapse {title}"
 msgstr ""
@@ -2529,13 +2554,13 @@ msgstr "Devam edilemedi"
 msgid "Could not create agent"
 msgstr ""
 
+#: src/pages/shell/dialogs.tsx
+msgid "Could not create folder"
+msgstr ""
+
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "Grup oluşturulamadı"
-
-#: src/pages/shell/dialogs.tsx
-msgid "Could not create section"
-msgstr "Bölüm oluşturulamadı"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not create space"
@@ -2816,8 +2841,8 @@ msgid "Could not rename"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
-msgid "Could not rename section"
-msgstr "Bölüm yeniden adlandırılamadı"
+msgid "Could not rename folder"
+msgstr ""
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not rename space"
@@ -3050,6 +3075,11 @@ msgstr ""
 msgid "Create"
 msgstr "Oluştur"
 
+#. placeholder {0}: bot.name
+#: src/pages/shell/dialogs.tsx
+msgid "Create a folder and move {0} into it."
+msgstr ""
+
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Create a key with only Query Funds"
 msgstr ""
@@ -3057,11 +3087,6 @@ msgstr ""
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Create a read-only key"
 msgstr ""
-
-#. placeholder {0}: bot.name
-#: src/pages/shell/dialogs.tsx
-msgid "Create a section and move {0} into it."
-msgstr "Bir bölüm oluştur ve {0} botunu içine taşı."
 
 #: src/pages/Auth.tsx
 msgid "Create account"
@@ -3276,6 +3301,10 @@ msgstr "Hesabı sil"
 
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Delete chart"
+msgstr ""
+
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "Delete folder"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
@@ -3803,6 +3832,10 @@ msgstr "Genişlet"
 #. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Expand {0}"
+msgstr ""
+
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "Expand {name}"
 msgstr ""
 
 #: src/components/SidebarPagesGroup.tsx
@@ -5243,6 +5276,10 @@ msgstr "{full} modelini aşağı taşı"
 msgid "Move {full} up"
 msgstr "{full} modelini yukarı taşı"
 
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "Move of {item} cancelled."
+msgstr ""
+
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Move or delete what is in this folder first."
 msgstr ""
@@ -5382,6 +5419,9 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/pages/BotContextMenu.tsx
+#: src/pages/Shell.tsx
+#: src/pages/shell/dialogs.tsx
 msgid "New folder"
 msgstr ""
 
@@ -5410,11 +5450,6 @@ msgstr "Yeni açık iş öğesi"
 #: src/pages/Auth.tsx
 msgid "New password"
 msgstr "Yeni parola"
-
-#: src/pages/BotContextMenu.tsx
-#: src/pages/shell/dialogs.tsx
-msgid "New section"
-msgstr "Yeni bölüm"
 
 #: src/pages/KnowledgeSection.tsx
 msgid "New skill"
@@ -6306,6 +6341,10 @@ msgstr ""
 msgid "Pick when this runs, for example every Monday morning."
 msgstr ""
 
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "Picked up {item}."
+msgstr ""
+
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
 msgstr "Sabitle"
@@ -6847,7 +6886,10 @@ msgstr ""
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/components/sidebar-folders/FolderHeader.tsx
+#: src/pages/BotContextMenu.tsx
 #: src/pages/finance/FinanceAccounts.tsx
+#: src/pages/shell/dialogs.tsx
 msgid "Rename"
 msgstr ""
 
@@ -6859,12 +6901,6 @@ msgstr ""
 #: src/components/finance/RenameAccountDialog.tsx
 msgid "Rename account"
 msgstr ""
-
-#: src/pages/BotContextMenu.tsx
-#: src/pages/Shell.tsx
-#: src/pages/shell/dialogs.tsx
-msgid "Rename section"
-msgstr "Bölümü yeniden adlandır"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -8432,6 +8468,10 @@ msgstr ""
 msgid "To do"
 msgstr ""
 
+#: src/components/sidebar-folders/SidebarDnd.tsx
+msgid "To pick up, press space. Use the arrow keys to move, space to drop, escape to cancel."
+msgstr ""
+
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
 msgstr "Kime:"
@@ -8611,6 +8651,7 @@ msgstr ""
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
+#: src/components/sidebar-folders/SidebarUndoNotice.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -8671,6 +8712,10 @@ msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
 msgid "Until {to}"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Untitled folder"
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx

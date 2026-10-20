@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 209 of 209
-- Web and shared components: 594
+- Web and shared component files with stories: 212 of 212
+- Web and shared components: 601
 - Mobile components: 128 in 89 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -216,6 +216,14 @@ Every rendered React component, grouped by area. A web or shared component file 
 | --- | --- | --- | --- |
 | LegalConsentPrompt | [apps/web/src/components/legal/ConsentPrompt.tsx](../../apps/web/src/components/legal/ConsentPrompt.tsx) | [ConsentPrompt.stories.tsx](../../apps/web/src/components/legal/ConsentPrompt.stories.tsx) | web |
 | LegalGraphView | [apps/web/src/components/legal/LegalGraph.tsx](../../apps/web/src/components/legal/LegalGraph.tsx) | [LegalGraph.stories.tsx](../../apps/web/src/components/legal/LegalGraph.stories.tsx) | web |
+
+## Web components/sidebar-folders
+
+| Component | File | Story file | Surface |
+| --- | --- | --- | --- |
+| FolderHeader, FolderNameInput | [apps/web/src/components/sidebar-folders/FolderHeader.tsx](../../apps/web/src/components/sidebar-folders/FolderHeader.tsx) | [FolderHeader.stories.tsx](../../apps/web/src/components/sidebar-folders/FolderHeader.stories.tsx), [SidebarDnd.stories.tsx](../../apps/web/src/components/sidebar-folders/SidebarDnd.stories.tsx) | web |
+| SidebarDnd, Overlay, SortableList, RootEnd | [apps/web/src/components/sidebar-folders/SidebarDnd.tsx](../../apps/web/src/components/sidebar-folders/SidebarDnd.tsx) | [SidebarDnd.stories.tsx](../../apps/web/src/components/sidebar-folders/SidebarDnd.stories.tsx) | web |
+| SidebarUndoNotice | [apps/web/src/components/sidebar-folders/SidebarUndoNotice.tsx](../../apps/web/src/components/sidebar-folders/SidebarUndoNotice.tsx) | [SidebarUndoNotice.stories.tsx](../../apps/web/src/components/sidebar-folders/SidebarUndoNotice.stories.tsx) | web |
 
 ## Web components/teach
 

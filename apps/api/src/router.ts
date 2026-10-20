@@ -209,8 +209,10 @@ import type {
   ThreadEvents,
 } from "@rakazo/db";
 import {
+  addSidebarFolder,
   addSidebarPage,
   appendEventInTransaction,
+  autoGroupSidebar,
   BotSectionNameConflictError,
   CannotDeleteDefaultSpaceError,
   CannotDeleteLastSpaceError,
@@ -254,6 +256,8 @@ import {
   lockOwnedGroup,
   markSeen,
   markShown,
+  moveSidebarFolder,
+  moveSidebarItem,
   NotificationValidationError,
   newestModelCredentialOrder,
   newestVoiceCredentialOrder,
@@ -262,11 +266,13 @@ import {
   parseComputerMode,
   pushSessionExpiresAt,
   releaseSpaceDeletionClaim,
+  removeSidebarFolder,
   removeSidebarPage,
   renameSpaceForMember,
   renewSpaceDeletionClaim,
   replaceSpaceBackupModels,
   restoreBotUnderComputerQuota,
+  restoreSidebar,
   SidebarPageError,
   SPACE_DELETION_CLAIM_TIMEOUT_MS,
   SpaceDeletionInProgressError,
@@ -277,6 +283,7 @@ import {
   savePushToken,
   selectSpaceModelPreference,
   selectSpaceVoicePreference,
+  setSidebarFolderCollapsed,
   toBoardDto,
   toTicketCommentDto,
   toTicketDto,
@@ -2533,6 +2540,40 @@ export function createRouter(deps: RouterDeps) {
           }
           throw error;
         }
+      }),
+      add: authed.botSections.add.handler(async ({ context, input }) => {
+        try {
+          return await addSidebarFolder(deps.prisma, context.actor, input.name);
+        } catch (error) {
+          if (error instanceof BotSectionNameConflictError) {
+            throw new ORPCError("CONFLICT", { message: error.message });
+          }
+          throw error;
+        }
+      }),
+      remove: authed.botSections.remove.handler(async ({ context, input }) => {
+        await removeSidebarFolder(deps.prisma, context.actor, input.sectionId);
+        return { ok: true as const };
+      }),
+      setCollapsed: authed.botSections.setCollapsed.handler(({ context, input }) =>
+        setSidebarFolderCollapsed(deps.prisma, context.actor, input.sectionId, input.collapsed),
+      ),
+    },
+    sidebar: {
+      move: authed.sidebar.move.handler(async ({ context, input }) => {
+        await moveSidebarItem(deps.prisma, context.actor, input);
+        return { ok: true as const };
+      }),
+      moveFolder: authed.sidebar.moveFolder.handler(async ({ context, input }) => {
+        await moveSidebarFolder(deps.prisma, context.actor, input.folderId, input.beforeFolderId);
+        return { ok: true as const };
+      }),
+      autoGroup: authed.sidebar.autoGroup.handler(({ context }) =>
+        autoGroupSidebar(deps.prisma, context.actor),
+      ),
+      restore: authed.sidebar.restore.handler(async ({ context, input }) => {
+        await restoreSidebar(deps.prisma, context.actor, input);
+        return { ok: true as const };
       }),
     },
     threads: {

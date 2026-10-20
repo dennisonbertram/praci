@@ -53,29 +53,72 @@ describe("sidebarGroupsForSpaces", () => {
     expect(group).toMatchObject({ title: "Personnel", spaceName: "Personal", relabeled: true });
   });
 
-  it("keeps the Personnel title when agents are pinned or sectioned", () => {
+  it("keeps the Personnel heading above pinned agents, folders and the rest", () => {
     const pinned = { ...chat("b1", "Chief"), pinned: true };
     const filed = { ...chat("b2", "Ops"), sectionId: "s1" };
     const loose = chat("b3", "Helper");
     const only = {
       ...space("space-1", "Personal", { canRename: true, bots: [pinned, filed, loose] }),
-      botSections: [{ id: "s1", name: "Ops team" }],
+      botSections: [
+        { id: "s1", name: "Ops team", collapsed: true },
+        { id: "s2", name: "Empty folder" },
+      ],
     };
     const groups = sidebarGroupsForSpaces([only], "", undefined, "Personnel");
 
-    expect(groups.map((g) => g.title)).toEqual([
-      "Personnel · Pinned",
-      "Personnel · Ops team",
-      "Personnel · Unassigned",
+    expect(groups.map((g) => [g.kind, g.title])).toEqual([
+      ["head", "Personnel"],
+      ["pinned", "Pinned"],
+      ["folder", "Ops team"],
+      ["folder", "Empty folder"],
+      ["root", null],
     ]);
-    expect(groups.every((g) => g.spaceName === "Personal" && g.relabeled)).toBe(true);
-    expect(groups.map((g) => g.canRenameSpace)).toEqual([true, false, false]);
+    expect(groups[0]).toMatchObject({
+      spaceName: "Personal",
+      relabeled: true,
+      canRenameSpace: true,
+    });
+    expect(groups.slice(1).every((g) => g.parentKey === groups[0]?.key)).toBe(true);
+    expect(groups.map((g) => g.bots.map((item) => item.id))).toEqual([
+      [],
+      ["b1"],
+      ["b2"],
+      [],
+      ["b3"],
+    ]);
+    expect(groups.map((g) => g.collapsed)).toEqual([false, false, true, false, false]);
   });
 
   it("heads a pinned-only single space with Personnel", () => {
     const only = space("space-1", "Personal", { bots: [{ ...chat("b1", "Chief"), pinned: true }] });
     const groups = sidebarGroupsForSpaces([only], "", undefined, "Personnel");
-    expect(groups.map((g) => g.title)).toEqual(["Personnel · Pinned"]);
+    expect(groups.map((g) => g.title)).toEqual(["Personnel", "Pinned", null]);
+  });
+
+  it("orders a folder's bots and groups by position, groups last until ordered", () => {
+    const first = { ...chat("g1", "Team"), position: 0 };
+    const second = { ...chat("b1", "Chief"), position: 3 };
+    const unordered = { ...chat("g2", "Other"), position: null };
+    const only = {
+      ...space("space-1", "Personal", { bots: [second] }),
+      groups: [unordered, first],
+    };
+    const [group] = sidebarGroupsForSpaces([only], "");
+    expect(group?.bots.map((item) => item.id)).toEqual(["g1", "b1", "g2"]);
+  });
+
+  it("treats a bot in a deleted folder as unfiled and hides empty folders while searching", () => {
+    const lost = { ...chat("b1", "Chief"), sectionId: "gone" };
+    const only = {
+      ...space("space-1", "Personal", { bots: [lost] }),
+      botSections: [{ id: "s1", name: "Ops" }],
+    };
+    expect(sidebarGroupsForSpaces([only], "").map((g) => g.kind)).toEqual([
+      "head",
+      "folder",
+      "root",
+    ]);
+    expect(sidebarGroupsForSpaces([only], "chief").map((g) => g.kind)).toEqual(["space"]);
   });
 
   it("still names each space once there is more than one", () => {

@@ -12,6 +12,7 @@ import { ensureComputerRecord, parseComputerMode } from "./computers.js";
 import { createThreadMessageInTransaction } from "./messages.js";
 import { isUniqueViolation } from "./prisma-errors.js";
 import { BotSectionNameConflictError, IsolationError } from "./scope.js";
+import { toBotSection } from "./sidebar-folders.js";
 import { lockSpaceForContentCreation } from "./spaces.js";
 import { activeRunSelection, latestBotRunSelection, previewFromBlocks } from "./thread-listing.js";
 import { withTransactionRetry } from "./transaction-retry.js";
@@ -53,6 +54,7 @@ function mapBot(
     notifyOnFinish: boolean;
     pinned: boolean;
     sectionId: string | null;
+    position?: number;
     archivedAt: Date | null;
     parentBotId: string | null;
     memoryScope: string | null;
@@ -89,6 +91,7 @@ function mapBot(
     notifyOnFinish: bot.notifyOnFinish,
     pinned: bot.pinned,
     sectionId: bot.sectionId,
+    position: bot.position,
     archivedAt: bot.archivedAt?.toISOString() ?? null,
     unread: bot.thread.unread,
     parentBotId: bot.parentBotId,
@@ -123,14 +126,7 @@ export function createRepos(prisma: PrismaClient) {
       where: { spaceId: { in: spaceIds }, userId: actor.userId },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     });
-    return sections.map((section) => ({
-      id: section.id,
-      spaceId: section.spaceId,
-      name: section.name,
-      position: section.position,
-      createdAt: section.createdAt.toISOString(),
-      updatedAt: section.updatedAt.toISOString(),
-    }));
+    return sections.map((section) => ({ ...toBotSection(section), spaceId: section.spaceId }));
   }
 
   async function listSpaceBotsForSpaces(actor: Actor, spaceIds: string[]): Promise<SpaceBot[]> {
@@ -150,6 +146,7 @@ export function createRepos(prisma: PrismaClient) {
         notifyOnFinish: true,
         pinned: true,
         sectionId: true,
+        position: true,
         updatedAt: true,
         parentBotId: true,
         thread: {
@@ -178,6 +175,7 @@ export function createRepos(prisma: PrismaClient) {
         notifyOnFinish: bot.notifyOnFinish,
         pinned: bot.pinned,
         sectionId: bot.sectionId,
+        position: bot.position,
         unread: bot.thread.unread,
         parentBotId: bot.parentBotId,
         preview: previewFromBlocks(bot.thread.messages[0]?.blocks),
@@ -252,13 +250,7 @@ export function createRepos(prisma: PrismaClient) {
             data: { sectionId: section.id },
           });
         }
-        return {
-          id: section.id,
-          name: section.name,
-          position: section.position,
-          createdAt: section.createdAt.toISOString(),
-          updatedAt: section.updatedAt.toISOString(),
-        } satisfies BotSection;
+        return toBotSection(section);
       });
     },
 
@@ -272,26 +264,14 @@ export function createRepos(prisma: PrismaClient) {
       });
       if (!existing) throw new IsolationError();
       if (existing.name === input.name) {
-        return {
-          id: existing.id,
-          name: existing.name,
-          position: existing.position,
-          createdAt: existing.createdAt.toISOString(),
-          updatedAt: existing.updatedAt.toISOString(),
-        } satisfies BotSection;
+        return toBotSection(existing);
       }
       try {
         const section = await prisma.botSection.update({
           where: { id: existing.id },
           data: { name: input.name },
         });
-        return {
-          id: section.id,
-          name: section.name,
-          position: section.position,
-          createdAt: section.createdAt.toISOString(),
-          updatedAt: section.updatedAt.toISOString(),
-        } satisfies BotSection;
+        return toBotSection(section);
       } catch (error) {
         if (isUniqueViolation(error)) throw new BotSectionNameConflictError();
         throw error;
