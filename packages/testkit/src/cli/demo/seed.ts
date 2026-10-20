@@ -156,13 +156,13 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   // Inbox: the same connect path the Integrations page uses, against the Gmail emulator.
   const gmail = await session.rpc<{ connectionId: string }>("connections/begin", {
     provider: "GMAIL",
-    displayName: "Founder mail (Mock)",
+    displayName: "Founder mail",
   });
   await session.rpc("connections/complete", { connectionId: gmail.connectionId });
   // A second account, so the account tabs and the From picker show.
   const sales = await session.rpc<{ connectionId: string }>("connections/begin", {
     provider: "GMAIL",
-    displayName: "Sales mail (Mock)",
+    displayName: "Sales mail",
   });
   await session.rpc("connections/complete", { connectionId: sales.connectionId });
   await session.rpc("inbox/agent");
@@ -232,7 +232,7 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
       data: {
         ...scope,
         slug: "carta",
-        name: "Carta (MOCK DEMO)",
+        name: "Carta",
         transport: "streamable_http",
         endpoint: CARTA_MCP_ENDPOINT,
         secretId: await fakeLogin(),
@@ -692,8 +692,8 @@ export async function seedDemo(options: DemoSeedOptions): Promise<string[]> {
   // Spaces whose Gmail is broken: the demo's emulator answers 401 (sign-in lapsed, so the Inbox
   // shows Reconnect) or 429 (rate limited) for each one's first account.
   for (const [name, label, what] of [
-    [DEMO_RECONNECT_SPACE, "Old mail (Mock)", "needs reconnecting"],
-    [DEMO_RATE_LIMIT_SPACE, "Busy mail (Mock)", "is rate-limited"],
+    [DEMO_RECONNECT_SPACE, "Old mail", "needs reconnecting"],
+    [DEMO_RATE_LIMIT_SPACE, "Busy mail", "is rate-limited"],
   ] as const) {
     const space = await session.rpc<{ id: string }>("spaces/create", { name });
     const begun = await session.rpc<{ connectionId: string }>(

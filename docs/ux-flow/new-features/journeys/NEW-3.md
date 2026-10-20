@@ -1,6 +1,6 @@
 # NEW-3: Create and control an agent for a connected app
 
-Stories: CA-1 (create), CA-2 (allow changes, approve), CA-3 (exclusive vs Used by). Mock demo stand-in: the Gmail "Sales mail (Mock)" account instead of Notion, because Notion is not seeded (docs/ux-paths/topics/new-connected-app-agents.md, "Walk preconditions").
+Stories: CA-1 (create), CA-2 (allow changes, approve), CA-3 (exclusive vs Used by). Mock demo stand-in: the Gmail "Sales mail" account instead of Notion, because Notion is not seeded (docs/ux-paths/topics/new-connected-app-agents.md, "Walk preconditions").
 
 Evidence: `docs/ux-walker/stories/STORY-CA-{1,2,3}/` (walk-report.md, findings.json, screenshots; all screenshots opened). Code: `apps/web/src/components/integrations/{AppDetail,McpDetail,IntegrationAgentSection}.tsx`, `apps/api/src/integration-agent.ts`, `apps/api/src/carta-agent.ts`, `docs/integration-agents/README.md`.
 
@@ -30,7 +30,7 @@ Verdict: **convoluted**. Step count is close to ideal (+1), but the same Agent c
 **Hesitations:**
 - "Create agent" appears beside Rename and Remove account with no hint what it makes, in every account row (CA-1 step-1).
 - Both accounts show Create agent at once; the user must choose which account first (CA-1 step-1).
-- The hint "Other agents ask the Sales mail (Mock) agent instead of using Sales mail (Mock) themselves" repeats the account name three times (CA-1 step-5, F-CA-1-5).
+- The hint "Other agents ask the Sales mail agent instead of using Sales mail themselves" repeats the account name three times (CA-1 step-5, F-CA-1-5).
 - "Denied" is green, same as "Allowed once" (CA-2 step-7, F-CA-2-3).
 - After a Deny, the agent proposed the earlier, already-sent email again (CA-2 step-7, F-CA-2-4). May be demo-model behaviour; the walker did not confirm it with a real model.
 
@@ -99,7 +99,7 @@ Also fix the leak seen in CA-1: the new agent should not be added to other accou
 1. The same section means different things by position. On the app page "Agent" is a sub-block inside an account row; on the MCP page it is a top-level section. A founder who learns one page cannot apply it to the other (STORY-CA-7 step-1-gmail vs step-2-carta).
 2. "Used by" and "Only this agent" both answer "who can use this app?", in different places, and they replace each other on app pages (F-CA-3-2; CA-1 step-1 vs step-4).
 3. "Create agent" gives no hint what it creates. The word "agent" is introduced by this button.
-4. The service name appears three times in one card (F-CA-1-5) and is the account display name ("Sales mail (Mock)"), not the app name, so a user may think it is a different service.
+4. The service name appears three times in one card (F-CA-1-5) and is the account display name ("Sales mail"), not the app name, so a user may think it is a different service.
 5. A blank first chat (F-CA-1-2) says nothing about being read-only or how to change that.
 6. "Denied" shown in green (F-CA-2-3).
 7. Not verified in the walk: turning changes off while an approval is pending; the read-only request path; asking a different agent about the app after Only this agent is on (CA-3 walk-report). Behaviour of those is not assessed here.

@@ -24,7 +24,7 @@
     "category": "consistency",
     "criterion": "Labels/copy",
     "score": "warn",
-    "description": "Service names differ: switch label uses the account name on Gmail ('Allow changes in Sales mail (Mock)') and 'Carta' (not 'Carta (MOCK DEMO)') on Carta; Only this agent default is off on Gmail and on for Carta.",
+    "description": "Service names differ: switch label uses the account name on Gmail ('Allow changes in Sales mail') and 'Carta' (not 'Carta (MOCK DEMO)') on Carta; Only this agent default is off on Gmail and on for Carta.",
     "expected": "Same naming rule; documented difference in defaults.",
     "actual": "As described.",
     "screenshot": "docs/ux-walker/stories/STORY-CA-7/screenshots/step-2-carta.png",

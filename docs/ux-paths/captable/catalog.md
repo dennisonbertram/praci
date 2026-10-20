@@ -42,7 +42,7 @@ The page was rebuilt on 2026-10-16/17 (commits 26af3c67, 942a011a, f336e9fa, 7a5
 
 ### Mock demo data (seed once for the whole catalog)
 
-Company / space name: **MOCK DEMO DATA — Northwind Robotics**. Signed-in founder: "Maya Chen" (`maya@northwind-robotics.test`), onboarding complete, a model set up unless a story says otherwise.
+Company / space name: **Northwind Robotics**. Signed-in founder: "Maya Chen" (`maya@northwind-robotics.test`), onboarding complete, a model set up unless a story says otherwise.
 
 | Seed set | Contents |
 |---|---|
@@ -52,8 +52,8 @@ Company / space name: **MOCK DEMO DATA — Northwind Robotics**. Signed-in found
 | `carta-connected` | Enabled MCP server with endpoint `https://mcp.app.carta.com/mcp`, OAuth status `connected`. Carta is matched by host, so the walk needs a Carta sandbox account or a stub reachable at that host. |
 | `carta-needs-auth` | Same server row, enabled, OAuth expired (status not `connected`). |
 | `snapshot-none` | `carta-connected` but nothing saved yet (agent has not read Carta). |
-| `snapshot-fixture` | Saved snapshot: "MOCK DEMO DATA — Northwind Robotics", as of 2026-09-30; fully diluted 10,000,000; amount raised $1,050,000; option pool available 900,000; latest 409A $0.42 (2026-06-30). Share classes: Common 70%, Preferred 10%, Options 15%, SAFEs 5% (display shape only). Holders: Maya Chen (Common, 4,000,000, 40%, maya@northwind-robotics.test), Arjun Patel (Common, 3,000,000, 30%, no email), four option grants totalling 600,000 (6%), Sequoia Mock Capital (Series Seed Preferred, 1,000,000, 10%, email priya@sequoia-mock.test), Lighthouse Mock Ventures (SAFE, $500,000, no shares, email tom@lighthouse-mock.test), Lena Fischer (SAFE, $50,000, email lena.fischer@mock.test). |
-| `carta-fixture` (Carta side) | Same company in Carta, plus a second context "MOCK DEMO DATA — Northwind Labs (inactive)" for `list_contexts`/`set_context`; one deliberate vesting issue (grant past cliff with no vesting event). |
+| `snapshot-fixture` | Saved snapshot: "Northwind Robotics", as of 2026-09-30; fully diluted 10,000,000; amount raised $1,050,000; option pool available 900,000; latest 409A $0.42 (2026-06-30). Share classes: Common 70%, Preferred 10%, Options 15%, SAFEs 5% (display shape only). Holders: Maya Chen (Common, 4,000,000, 40%, maya@northwind-robotics.test), Arjun Patel (Common, 3,000,000, 30%, no email), four option grants totalling 600,000 (6%), Sequoia Mock Capital (Series Seed Preferred, 1,000,000, 10%, email priya@sequoia-mock.test), Lighthouse Mock Ventures (SAFE, $500,000, no shares, email tom@lighthouse-mock.test), Lena Fischer (SAFE, $50,000, email lena.fischer@mock.test). |
+| `carta-fixture` (Carta side) | Same company in Carta, plus a second context "Northwind Labs (inactive)" for `list_contexts`/`set_context`; one deliberate vesting issue (grant past cliff with no vesting event). |
 | `agent-none` / `agent-exists` | No Carta agent bot, or one already created. |
 | `model-none` | No model set up. |
 | `gmail-connected` | 2 sent "Northwind investor update" emails (July, August 2026); 1 audit confirmation request from dortiz@kpmg-mock.test for Lighthouse Mock Ventures as of 2025-12-31 listing "SAFE $500,000"; 1 DocuSign email "Please sign: Audit confirmation – Lighthouse Mock Ventures" with no figures. |
@@ -180,7 +180,7 @@ STORY-CAP-001 (find Cap table) ── STORY-CAP-028 (other routes in)
 
 ##### Steps
 1. Right after Done, look at the page → card gone; four grey skeleton blocks where figures will be; "Reading Carta…" text; the Refresh icon spinning and disabled.
-2. Wait (typically tens of seconds to minutes) → the page polls every 3 s; figures, ownership bar and holdings fill in; "MOCK DEMO DATA — Northwind Robotics · Updated just now" appears under the heading. The Carta agent panel opens on the right with the agent's summary of what it saved (new investors added, mail threads found).
+2. Wait (typically tens of seconds to minutes) → the page polls every 3 s; figures, ownership bar and holdings fill in; "Northwind Robotics · Updated just now" appears under the heading. The Carta agent panel opens on the right with the agent's summary of what it saved (new investors added, mail threads found).
 3. **Hesitation:** between steps 1 and 2 nothing says how long it takes or that the right-hand panel is the agent working. If she leaves the page she sees nothing happening.
 
 ##### Edge Cases
@@ -580,7 +580,7 @@ STORY-CAP-001 (find Cap table) ── STORY-CAP-028 (other routes in)
 
 ##### Steps
 1. Open the page → the panel is collapsed by default on a phone (`Shell.tsx:499-511`); header shows eye, Refresh, "Add contact" and "Ask" (they may wrap or crowd the title). **Hesitation:** four controls in one row.
-2. Under the heading: "MOCK DEMO DATA — Northwind Robotics · Updated 2 hours ago"; the company name truncates before the time does.
+2. Under the heading: "Northwind Robotics · Updated 2 hours ago"; the company name truncates before the time does.
 3. Figure cards form two columns.
 4. The table has Name (with "Investor · Series Seed Preferred" lines), Email, and Ownership; Shares and Kind are hidden. A holder with no contact shows the name in plain text.
 5. Tap "Ask" → the agent panel opens; check whether it covers the page and can be closed with "Collapse Carta agent".

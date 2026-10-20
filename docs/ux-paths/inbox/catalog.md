@@ -48,7 +48,7 @@ Previous catalog: 2026-10-16, 24 stories (STORY-INB-001..024). This version keep
 The walk runs against a seeded mock demo account. Everything below is fake and must be labeled as such in the seed. Stories reference these items by their key (for example `M1`, `T2`).
 
 **Space and person**
-- Space / company name: `MOCK DEMO DATA — Northwind Robotics`.
+- Space / company name: `Northwind Robotics`.
 - Signed-in user: `Maya Okafor (MOCK)`, subscription active, onboarding complete, so `/app` loads the Shell.
 
 **Mail accounts** (Gmail connections, provider stubbed)
