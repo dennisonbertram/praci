@@ -42,6 +42,7 @@ function AccountRow({
   onChanged,
   onRemove,
   onReconnect,
+  appName,
   onCreateAgent,
   busy,
   children,
@@ -52,6 +53,8 @@ function AccountRow({
   onRemove?: (row: Connection) => void;
   /** Offered when the provider refuses this account's sign-in. */
   onReconnect?: (row: Connection) => void;
+  /** The app's name; an account labelled the same is not named a second time. */
+  appName?: string;
   onCreateAgent?: () => void;
   busy?: boolean;
   children?: ReactNode;
@@ -77,7 +80,9 @@ function AccountRow({
     <div className="flex flex-wrap items-center gap-3 border-t border-border px-3.5 py-2.5 first:border-t-0">
       <div className="min-w-40 flex-1">
         {draft === null ? (
-          <b className="break-all">{row.displayName}</b>
+          row.displayName === appName ? null : (
+            <b className="break-all">{row.displayName}</b>
+          )
         ) : (
           <Input
             autoFocus
@@ -166,6 +171,8 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
   const [removingRow, setRemovingRow] = useState<Connection | null>(null);
   /** The signed-out account a reconnect replaces once the new sign-in succeeds. */
   const [replacing, setReplacing] = useState<Connection | null>(null);
+  /** Set when the sign-in asks for permission to make Gmail filters, on top of the usual ones. */
+  const [permission, setPermission] = useState<"mail_rules" | undefined>();
   const [disconnecting, setDisconnecting] = useState(false);
   const [confirmingWrites, setConfirmingWrites] = useState<Connection | null>(null);
   const [busy, setBusy] = useState(false);
@@ -188,6 +195,27 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
       setAdding(true);
     }
   }, [data.loaded, connectedCount, item, next, navigate, search, location.key]);
+
+  // `?reconnect=<connection>&permission=mail_rules` opens the sign-in that replaces that connection,
+  // asking for permission to make Gmail filters. It waits for a click, like `?connect=1`.
+  const reconnectId = search.get("reconnect");
+  useEffect(() => {
+    if (
+      !reconnectId ||
+      search.get("permission") !== "mail_rules" ||
+      !data.loaded ||
+      !item ||
+      handledKey.current === location.key
+    )
+      return;
+    handledKey.current = location.key;
+    const row = connected.find((entry) => entry.id === reconnectId);
+    if (!row) return;
+    setReplacing(row);
+    setPermission("mail_rules");
+    setConfirmFirst(true);
+    setAdding(true);
+  }, [data.loaded, item, connected, reconnectId, search, location.key]);
 
   useEffect(() => {
     if (connectedCount === 0) {
@@ -301,16 +329,20 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
         confirmFirst={confirmFirst}
         accountName={replacing?.displayName}
         replacesConnectionId={replacing?.id}
+        permission={permission}
         onClose={() => {
           setAdding(false);
           setConfirmFirst(false);
           setReplacing(null);
+          setPermission(undefined);
         }}
         onConnected={
           replacing || next
             ? async () => {
-                // The new sign-in takes the old account's place, so its mail is not listed twice.
-                if (replacing) {
+                // The new sign-in takes the old signed-out account's place, so its mail is not listed
+                // twice. A working account being reconnected for the filter permission is replaced by
+                // the server when it is the same Google account; a different one is kept as it is.
+                if (replacing && !permission) {
                   await rpc.connections
                     .revoke({ connectionId: replacing.id })
                     .catch(() => undefined);
@@ -412,6 +444,7 @@ export function AppDetail({ data, activeBotId }: { data: IntegrationsData; activ
               <AccountRow
                 key={row.id}
                 row={row}
+                appName={name}
                 onChanged={() => void data.refresh()}
                 busy={busy}
                 onCreateAgent={

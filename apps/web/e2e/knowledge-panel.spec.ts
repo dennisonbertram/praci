@@ -101,7 +101,7 @@ test("memory and skills are readable and editable in the app", async ({ page }, 
     .getByRole("button", { name: /^Chief/ })
     .click();
   const settings = page.getByTestId("bot-settings");
-  await expect(settings.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+  await expect(settings.getByText("Advanced", { exact: true })).toBeVisible();
   await settings.getByText("Advanced", { exact: true }).click();
   const knowledge = settings.getByTestId("bot-knowledge");
   await expect(knowledge).toBeVisible();

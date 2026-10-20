@@ -246,10 +246,12 @@ describe("connections.complete with { connectionId } polling", () => {
 });
 
 function beginHarness(connectorId = "google") {
-  const begin = vi.fn(async (_request: { provider: string; redirectUrl: string }) => ({
-    authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth?state=fake",
-    state: STATE,
-  }));
+  const begin = vi.fn(
+    async (_request: { provider: string; redirectUrl: string; permission?: "mail_rules" }) => ({
+      authorizationUrl: "https://accounts.google.com/o/oauth2/v2/auth?state=fake",
+      state: STATE,
+    }),
+  );
   const resolve = vi.fn(async () => ({ begin }) as unknown as ManagedConnectorProvider);
   const rows: Row[] = [];
   const created = pendingGoogleRow({ providerRef: null, metadata: {}, connectorId });
@@ -322,6 +324,26 @@ describe("connections.begin for the native Google connector", () => {
     expect(h.rows[0]).toMatchObject({
       metadata: { state: STATE, redirectUrl: GOOGLE_DESKTOP_REDIRECT_URI },
     });
+  });
+
+  it("passes the filter permission on to the Google connector", async () => {
+    const h = beginHarness();
+    const response = await h.post({ connectorId: "google", permission: "mail_rules" });
+    expect(response.status).toBe(200);
+    expect(h.begin.mock.calls[0]![0].permission).toBe("mail_rules");
+  });
+
+  it("does not ask for the permission unless it was requested", async () => {
+    const h = beginHarness();
+    await h.post({ connectorId: "google" });
+    expect(h.begin.mock.calls[0]![0]).not.toHaveProperty("permission");
+  });
+
+  it("refuses the filter permission for other connectors", async () => {
+    const h = beginHarness("composio");
+    const response = await h.post({ connectorId: "composio", permission: "mail_rules" });
+    expect(response.status).toBe(400);
+    expect(h.begin).not.toHaveBeenCalled();
   });
 
   it("refuses the desktop redirect for other connectors", async () => {

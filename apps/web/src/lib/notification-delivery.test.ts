@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { deliverNotification, shouldToast } from "./notification-delivery";
+import { deliverNotification, failureShownInOpenChat, shouldToast } from "./notification-delivery";
 
 describe("shouldToast", () => {
   it.each([
@@ -9,6 +9,15 @@ describe("shouldToast", () => {
     [false, false, false],
   ])("visible=%s focused=%s -> %s", (visible, focused, expected) => {
     expect(shouldToast({ visible, focused })).toBe(expected);
+  });
+});
+
+describe("failureShownInOpenChat", () => {
+  it("is true only for a failure in the chat that is open", () => {
+    expect(failureShownInOpenChat({ botId: "b1", kind: "failed" }, "b1")).toBe(true);
+    expect(failureShownInOpenChat({ botId: "b2", kind: "failed" }, "b1")).toBe(false);
+    expect(failureShownInOpenChat({ botId: "b1", kind: "done" }, "b1")).toBe(false);
+    expect(failureShownInOpenChat({ botId: "b1" }, undefined)).toBe(false);
   });
 });
 

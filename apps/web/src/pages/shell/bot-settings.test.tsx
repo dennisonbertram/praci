@@ -153,8 +153,15 @@ async function renderSettings(onSave: (patch: SavePatch) => Promise<void>, curre
   await flush();
 }
 
+/** Leaving the Name field saves the profile; there is no Save button. */
+function leaveName() {
+  container
+    .querySelector('[id$="-name"]')
+    ?.dispatchEvent(new FocusEvent("focusout", { bubbles: true }));
+}
+
 describe("BotSettings save confirmation", () => {
-  it("says Saved after the Save button succeeds, and not after a failed save", async () => {
+  it("says Saved after a save succeeds, and not after a failed save", async () => {
     const onSave = vi
       .fn<(patch: SavePatch) => Promise<void>>()
       .mockRejectedValueOnce(new Error("nope"))
@@ -162,7 +169,7 @@ describe("BotSettings save confirmation", () => {
     await renderSettings(onSave);
     const save = () =>
       act(async () => {
-        [...container.querySelectorAll("button")].find((b) => b.textContent === "Save")?.click();
+        leaveName();
       });
     await save();
     await flush();
@@ -178,12 +185,8 @@ describe("BotSettings disabled tools", () => {
     const onSave = vi.fn<(patch: SavePatch) => Promise<void>>(async () => undefined);
     await renderSettings(onSave);
 
-    const save = [...container.querySelectorAll("button")].find(
-      (button) => button.textContent === "Save",
-    );
-    if (!save) throw new Error("Missing save button");
     await act(async () => {
-      save.click();
+      leaveName();
     });
     await flush();
 
@@ -430,12 +433,8 @@ describe("BotSettings disabled tools", () => {
     await flush();
     expect(container.textContent).not.toContain("Unknown tool");
 
-    const save = [...container.querySelectorAll("button")].find(
-      (button) => button.textContent === "Save",
-    );
-    if (!save) throw new Error("Missing save button");
     await act(async () => {
-      save.click();
+      leaveName();
     });
     await flush();
     expect(container.textContent).toContain("Network failed");
