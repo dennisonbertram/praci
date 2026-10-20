@@ -77,7 +77,7 @@ import {
   withLiveStreamingProgress,
 } from "@rakazo/core";
 import { financeCardSummary } from "@rakazo/core/message-quote";
-import { botAccentStyle } from "@rakazo/ui-tokens";
+import { botAccentHex, botAccentStyle } from "@rakazo/ui-tokens";
 import type { GroupAvatarMember } from "@rakazo/ui-web";
 import {
   AvatarStyleProvider,
@@ -1055,7 +1055,7 @@ export function ShellPage() {
                 ? findCartaAgent(bots, userId)
                 : routeBot.bot;
   /** The open bot's colour. A group or a missing bot has no `active`, so its thread stays monochrome. */
-  const threadAccent = active?.color;
+  const threadAccent = botAccentHex(active?.color);
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =

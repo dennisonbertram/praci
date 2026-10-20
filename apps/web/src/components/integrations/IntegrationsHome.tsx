@@ -47,7 +47,14 @@ import {
   useFinanceStatus,
 } from "./FinanceSection";
 import { IMessageSection } from "./IMessageSection";
-import { AgentStack, CardHead, IntegrationTile, SectionTitle, StatusBadge } from "./parts";
+import {
+  AgentStack,
+  CardHead,
+  IntegrationTile,
+  SectionTitle,
+  SourceBadge,
+  StatusBadge,
+} from "./parts";
 import { agentsFor, type IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
@@ -184,6 +191,7 @@ function AppCard({
       />
       <div className="mt-auto flex min-h-7 items-center gap-2">
         <StatusBadge status={app.status} />
+        <SourceBadge connectorId={app.connectorId} />
         {app.status === "connected" && app.provider.toUpperCase() === "GMAIL" ? (
           <OpenPageLink to="/app/inbox">
             <Trans>Open Inbox</Trans>
@@ -246,11 +254,13 @@ function SourceCard({
 }
 
 function AppTile({
+  connectorId = "",
   name,
   logo,
   description,
   onConnect,
 }: {
+  connectorId?: string;
   name: string;
   logo?: string | null;
   description?: string | null;
@@ -260,7 +270,8 @@ function AppTile({
   return (
     <IntegrationTile>
       <CardHead name={name} logo={logo} sub={description ?? undefined} />
-      <div className="mt-auto flex">
+      <div className="mt-auto flex items-center gap-2">
+        <SourceBadge connectorId={connectorId} />
         <Button
           size="sm"
           variant="outline"
@@ -577,6 +588,7 @@ export function IntegrationsHome({
                 {results.map((item) => (
                   <AppTile
                     key={`${item.connectorId}:${item.slug}`}
+                    connectorId={item.connectorId}
                     name={item.name}
                     logo={item.logo}
                     description={item.description}
@@ -647,6 +659,7 @@ export function IntegrationsHome({
                         {results.slice(0, visible).map((item) => (
                           <AppTile
                             key={`${item.connectorId}:${item.slug}`}
+                            connectorId={item.connectorId}
                             name={item.name}
                             logo={item.logo}
                             description={item.description}

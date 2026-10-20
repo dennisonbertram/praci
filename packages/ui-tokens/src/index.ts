@@ -251,6 +251,12 @@ export function accentForeground(hex: string): string {
   return onWhite >= onDark ? ACCENT_LIGHT_FOREGROUND : ACCENT_DARK_FOREGROUND;
 }
 
+/** The `#rrggbb` accent in a stored bot `color` ("#3B82F6" or "#3B82F6::shape_7"); null for images or garbage. */
+export function botAccentHex(raw: string | null | undefined): string | null {
+  const hex = raw?.split("::")[0];
+  return hex && /^#[0-9a-f]{6}$/i.test(hex) ? hex : null;
+}
+
 /** The `--bot-accent` pair a thread container sets so its descendants use the bot's colour. */
 export function botAccentStyle(hex: string): Record<`--${string}`, string> {
   return { "--bot-accent": hex, "--bot-accent-foreground": accentForeground(hex) };

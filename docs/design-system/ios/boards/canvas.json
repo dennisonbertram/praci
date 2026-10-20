@@ -1,0 +1,448 @@
+{
+  "v": 3,
+  "createdOnFiles": { "v": 1, "at": "2026-10-19T12:00:00Z" },
+  "title": "Rakazo on iPhone Duo · Liquid Glass",
+  "launch": { "view": "canvas" },
+  "pages": [
+    { "id": "mockups", "name": "Duo mockups" },
+    { "id": "ds", "name": "Design system" },
+    { "id": "screens", "name": "Pages & rules" }
+  ],
+  "boards": {
+    "Main.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Outer · Home (Personnel) · 466×678 pt",
+      "radius": 40,
+      "page": "mockups"
+    },
+    "Sheet.dc.html": {
+      "x": 546,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Outer · Inbox · 466×678 pt",
+      "radius": 40,
+      "page": "mockups"
+    },
+    "Split.dc.html": {
+      "x": 1092,
+      "y": 0,
+      "w": 890,
+      "h": 626,
+      "title": "Inner · open · ⅓ sidebar + ⅔ Inbox (primary) · 890×626 pt",
+      "radius": 36,
+      "page": "mockups"
+    },
+    "Inner.dc.html": {
+      "x": 1092,
+      "y": 746,
+      "w": 890,
+      "h": 626,
+      "title": "Inner · half-folded · Inbox ½ + Inbox agent ½ · 890×626 pt",
+      "radius": 36,
+      "page": "mockups"
+    },
+    "Desk.dc.html": {
+      "x": 2062,
+      "y": 0,
+      "w": 626,
+      "h": 890,
+      "title": "Inner · laptop on desk · Finance · 626×890 pt",
+      "radius": 36,
+      "page": "mockups"
+    },
+    "DS-01-Foundations.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 1440,
+      "h": 7680,
+      "title": "01 · Foundations",
+      "page": "ds"
+    },
+    "DS-02-Controls.dc.html": {
+      "x": 1520,
+      "y": 0,
+      "w": 1440,
+      "h": 8200,
+      "title": "02 · Controls",
+      "page": "ds"
+    },
+    "DS-03-Navigation.dc.html": {
+      "x": 3040,
+      "y": 0,
+      "w": 1440,
+      "h": 7440,
+      "title": "03 · Navigation & bars",
+      "page": "ds"
+    },
+    "DS-04-Overlays.dc.html": {
+      "x": 4560,
+      "y": 0,
+      "w": 1440,
+      "h": 11200,
+      "title": "04 · Sheets & overlays",
+      "page": "ds"
+    },
+    "DS-05-Lists.dc.html": {
+      "x": 6080,
+      "y": 0,
+      "w": 1440,
+      "h": 8000,
+      "title": "05 · Lists & rows",
+      "page": "ds"
+    },
+    "DS-06-Chat.dc.html": {
+      "x": 7600,
+      "y": 0,
+      "w": 1440,
+      "h": 7400,
+      "title": "06 · Chat",
+      "page": "ds"
+    },
+    "DS-07-Domain.dc.html": {
+      "x": 9120,
+      "y": 0,
+      "w": 1440,
+      "h": 6450,
+      "title": "07 · Avatars & domain",
+      "page": "ds"
+    },
+    "PG-A-Home.dc.html": {
+      "x": 0,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Home",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-InboxMessage.dc.html": {
+      "x": 546,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Inbox message",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-Thread.dc.html": {
+      "x": 1092,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Agent thread",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-GroupThread.dc.html": {
+      "x": 1638,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Group thread",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-AgentPage.dc.html": {
+      "x": 2184,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Agent page",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-AgentList.dc.html": {
+      "x": 2730,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Agent list",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-Computer.dc.html": {
+      "x": 3276,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Team Computer",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-Routine.dc.html": {
+      "x": 3822,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Routine",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-Artifacts.dc.html": {
+      "x": 4368,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Artifacts",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-Artifact.dc.html": {
+      "x": 4914,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Artifact",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-Image.dc.html": {
+      "x": 5460,
+      "y": 0,
+      "w": 466,
+      "h": 678,
+      "title": "Image",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-BotSettings.dc.html": {
+      "x": 0,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Bot settings",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-GroupSettings.dc.html": {
+      "x": 546,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Group settings",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-NewBot.dc.html": {
+      "x": 1092,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "New bot (sheet)",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-NewGroup.dc.html": {
+      "x": 1638,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "New group",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-NewSpace.dc.html": {
+      "x": 2184,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "New space (sheet)",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-SignIn.dc.html": {
+      "x": 2730,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Sign in",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-Server.dc.html": {
+      "x": 3276,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Server (sheet)",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-Settings.dc.html": {
+      "x": 3822,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Settings",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-Models.dc.html": {
+      "x": 4368,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Models",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-Voice.dc.html": {
+      "x": 4914,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Voice",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-Integrations.dc.html": {
+      "x": 5460,
+      "y": 1100,
+      "w": 960,
+      "h": 678,
+      "title": "Integrations + setup",
+      "page": "screens"
+    },
+    "PG-B-Finance.dc.html": {
+      "x": 6500,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Finance",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-Legal.dc.html": {
+      "x": 7046,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Legal",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-CapTable.dc.html": {
+      "x": 7592,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Cap table",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-B-DataRoom.dc.html": {
+      "x": 8138,
+      "y": 1100,
+      "w": 466,
+      "h": 678,
+      "title": "Data room",
+      "radius": 40,
+      "page": "screens"
+    },
+    "PG-A-Rules.dc.html": {
+      "x": 0,
+      "y": 2200,
+      "w": 1440,
+      "h": 3692,
+      "title": "Rules · core pages",
+      "page": "screens"
+    },
+    "PG-B-Rules.dc.html": {
+      "x": 1520,
+      "y": 2200,
+      "w": 1440,
+      "h": 3700,
+      "title": "Rules · secondary pages",
+      "page": "screens"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Sheet.dc.html",
+    "Split.dc.html",
+    "Inner.dc.html",
+    "Desk.dc.html",
+    "DS-01-Foundations.dc.html",
+    "DS-02-Controls.dc.html",
+    "DS-03-Navigation.dc.html",
+    "DS-04-Overlays.dc.html",
+    "DS-05-Lists.dc.html",
+    "DS-06-Chat.dc.html",
+    "DS-07-Domain.dc.html",
+    "PG-A-Home.dc.html",
+    "PG-A-InboxMessage.dc.html",
+    "PG-A-Thread.dc.html",
+    "PG-A-GroupThread.dc.html",
+    "PG-A-AgentPage.dc.html",
+    "PG-A-AgentList.dc.html",
+    "PG-A-Computer.dc.html",
+    "PG-A-Routine.dc.html",
+    "PG-A-Artifacts.dc.html",
+    "PG-A-Artifact.dc.html",
+    "PG-A-Image.dc.html",
+    "PG-B-BotSettings.dc.html",
+    "PG-B-GroupSettings.dc.html",
+    "PG-B-NewBot.dc.html",
+    "PG-B-NewGroup.dc.html",
+    "PG-B-NewSpace.dc.html",
+    "PG-B-SignIn.dc.html",
+    "PG-B-Server.dc.html",
+    "PG-B-Settings.dc.html",
+    "PG-B-Models.dc.html",
+    "PG-B-Voice.dc.html",
+    "PG-B-Integrations.dc.html",
+    "PG-B-Finance.dc.html",
+    "PG-B-Legal.dc.html",
+    "PG-B-CapTable.dc.html",
+    "PG-B-DataRoom.dc.html",
+    "PG-A-Rules.dc.html",
+    "PG-B-Rules.dc.html"
+  ],
+  "notes": {
+    "t1": {
+      "x": 0,
+      "y": -300,
+      "text": "Rakazo · iPhone Duo · Liquid Glass",
+      "kind": "title1",
+      "maxW": 2688,
+      "page": "mockups"
+    },
+    "t2": {
+      "x": 0,
+      "y": -300,
+      "text": "Rakazo iOS design system · Liquid Glass",
+      "kind": "title1",
+      "maxW": 10560,
+      "page": "ds"
+    },
+    "t3": {
+      "x": 0,
+      "y": -300,
+      "text": "Core pages · outer display",
+      "kind": "title1",
+      "maxW": 5926,
+      "page": "screens"
+    },
+    "t4": {
+      "x": 0,
+      "y": 800,
+      "text": "Secondary pages · outer display",
+      "kind": "title1",
+      "maxW": 8604,
+      "page": "screens"
+    },
+    "t5": {
+      "x": 0,
+      "y": 1900,
+      "text": "Page generation rules",
+      "kind": "title1",
+      "maxW": 2960,
+      "page": "screens"
+    }
+  },
+  "designSystems": []
+}

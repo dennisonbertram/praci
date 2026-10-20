@@ -1,0 +1,629 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DS-02 Controls</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#ECEBE6}a:hover{color:#ffffff}
+.glass{background:rgba(52,51,48,0.62);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,0.09);box-shadow:0 8px 24px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.08)}
+.glass-light{background:rgba(255,255,255,0.58);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);border:1px solid rgba(255,255,255,0.75);box-shadow:0 6px 20px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.9)}
+.gbtn{width:44px;height:44px;border:0;background:transparent;color:#ECEBE6;display:flex;align-items:center;justify-content:center;border-radius:22px}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.i16{width:16px;height:16px}.i14{width:14px;height:14px}.i24{width:24px;height:24px}
+@keyframes sp{to{transform:rotate(360deg)}}
+.spin{animation:sp 1s linear infinite}
+.sec{display:flex;gap:40px;padding:36px 0;border-top:1px solid #2E2D2A}
+.spec{width:400px;flex-shrink:0;font-size:13px;line-height:1.5;color:#9C9A93}
+.spec h2{font-size:20px;font-weight:600;color:#ECEBE6;margin:0 0 10px;letter-spacing:-0.01em}
+.spec p{margin:0 0 7px}
+.spec b{color:#ECEBE6;font-weight:500}
+.spec code{font-size:12px;color:#ECEBE6}
+.stage{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
+.sw{background:#1C1C1A;border:1px solid #2E2D2A;border-radius:20px;padding:24px;display:flex;flex-wrap:wrap;gap:26px 30px;align-items:flex-end;color:#ECEBE6}
+.bd{background-color:#1C1C1A;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,0.05) 0,rgba(255,255,255,0.05) 10px,transparent 10px,transparent 26px)}
+.lt{background:#FAFAF8;border-color:#E2E2DC;color:#1A1A1A}
+.lt.bd{background-image:repeating-linear-gradient(0deg,rgba(0,0,0,0.07) 0,rgba(0,0,0,0.07) 10px,transparent 10px,transparent 26px)}
+.sp{display:flex;flex-direction:column;gap:9px;align-items:flex-start}
+.cap{font-size:11px;line-height:1.3;color:#9C9A93}
+.lt .cap{color:#6C6C70}
+.tag{font-size:11px;font-weight:600;color:#9C9A93;letter-spacing:0.06em;text-transform:uppercase}
+.lt .tag{color:#6C6C70}
+.b{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:0;border-radius:999px;font-family:inherit;font-weight:500;color:#ECEBE6;background:transparent;white-space:nowrap;padding:0}
+.zs{height:36px;padding:0 14px;font-size:14px}
+.zr{height:44px;padding:0 20px;font-size:17px}
+.zl{height:52px;padding:0 26px;font-size:17px}
+.pro{background:rgba(241,240,235,0.92);color:#1C1C1A;box-shadow:0 6px 18px rgba(0,0,0,0.35)}
+.dpro{background:#F46262;color:#1C1C1A;box-shadow:0 6px 18px rgba(0,0,0,0.35)}
+.dg{color:#F46262}
+.qt{color:#9C9A93}
+.prg{background:rgba(88,87,82,0.85);transform:scale(0.96)}
+.prp{background:rgba(241,240,235,0.7);transform:scale(0.96)}
+.prl{background:rgba(255,255,255,0.1);transform:scale(0.96)}
+.dis{opacity:0.4}
+.foc{outline:2px solid #3B82F6;outline-offset:3px}
+.lt .b{color:#1A1A1A}
+.lt .pro{background:#1A1A1A;color:#F1F1EF}
+.lt .dpro{background:#DC2626;color:#FFFFFF}
+.lt .dg{color:#B91C1C}
+.lt .qt{color:#6C6C70}
+.lt .prg{background:rgba(255,255,255,0.9)}
+.lt .prp{background:#3A3A3A}
+.lt .prl{background:rgba(0,0,0,0.08)}
+.mx{display:grid;grid-template-columns:96px repeat(5,1fr);gap:16px 12px;align-items:center;width:100%}
+.rh{font-size:12px;color:#9C9A93}
+.ch{font-size:11px;font-weight:600;color:#9C9A93;letter-spacing:0.06em;text-transform:uppercase}
+.card{background:#252523;border-radius:12px;color:#ECEBE6}
+.lt .card{background:#FFFFFF;color:#1A1A1A}
+.row{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 16px;font-size:16px}
+.row+.row{border-top:1px solid #2E2D2A}
+.lt .row+.row{border-top-color:#F0F0ED}
+.sw-t{position:relative;width:51px;height:31px;border-radius:16px;border:0;padding:0;flex-shrink:0}
+.sw-k{position:absolute;top:2px;height:27px;width:27px;border-radius:14px;display:flex;align-items:center;justify-content:center}
+.off{background:#4A4944}.off .sw-k{left:2px;background:#ECEBE6;box-shadow:0 2px 4px rgba(0,0,0,0.3)}
+.on{background:#F1F0EB}.on .sw-k{left:22px;background:#1C1C1A}
+.gr{background:#4ECB71}.gr .sw-k{left:22px;background:#FFFFFF;box-shadow:0 2px 4px rgba(0,0,0,0.3)}
+.on.pk .sw-k,.gr.pk .sw-k{width:34px;left:15px}
+.off.pk .sw-k{width:34px}
+.lt .off{background:#C8C8C4}.lt .on{background:#1A1A1A}.lt .on .sw-k{background:#F1F1EF}.lt .off .sw-k{background:#FFFFFF}
+.seg{display:flex;padding:2px;border-radius:999px;background:#2A2927;height:32px;box-sizing:border-box}
+.seg button{border:0;background:transparent;border-radius:999px;padding:0 16px;font-family:inherit;font-size:13px;font-weight:500;color:#9C9A93;min-width:64px}
+.seg button.sel{background:rgba(241,240,235,0.18);box-shadow:inset 0 0 0 1px rgba(255,255,255,0.12);color:#ECEBE6;font-weight:600}
+.lt .seg{background:#E2E2DC}.lt .seg button{color:#6C6C70}.lt .seg button.sel{background:#FFFFFF;color:#1A1A1A;box-shadow:0 1px 3px rgba(0,0,0,0.15)}
+.pill{display:flex;padding:2px;border-radius:10px;background:#2A2927;box-sizing:border-box}
+.pill button{flex:1;border:0;background:transparent;border-radius:8px;padding:8px 16px;font-family:inherit;font-size:15px;color:#9C9A93}
+.pill button.sel{background:#33322F;color:#ECEBE6}
+.lt .pill{background:#EAEAE6}.lt .pill button{color:#6C6C70}.lt .pill button.sel{background:#FFFFFF;color:#1A1A1A}
+.chip{display:inline-flex;align-items:center;gap:4px;height:22px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:500;white-space:nowrap;border:1px solid transparent;box-sizing:border-box}
+.c-warn{background:rgba(233,196,106,0.16);color:#E9C46A}
+.c-sec{background:#282826;color:#ECEBE6}
+.c-junk{background:rgba(233,196,106,0.16);color:#E9C46A}
+.c-out{border-color:#4A4944;color:#9C9A93}
+.c-pri{background:#F1F0EB;color:#1C1C1A}
+.lt .c-warn{background:rgba(183,121,31,0.14);color:#8A5A12}
+.lt .c-sec{background:#EAEAE6;color:#1A1A1A}
+.lt .c-junk{background:rgba(183,121,31,0.14);color:#8A5A12}
+.lt .c-out{border-color:#C8C8C4;color:#6C6C70}
+.lt .c-pri{background:#1A1A1A;color:#F1F1EF}
+.cnt{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 6px;border-radius:10px;box-sizing:border-box;font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.fld{display:flex;flex-direction:column;gap:6px;width:300px}
+.fld label{font-size:13px;color:#9C9A93}
+.lt .fld label{color:#6C6C70}
+.fld input{height:44px;box-sizing:border-box;border-radius:12px;border:1px solid #4A4944;background:#252523;color:#ECEBE6;font-family:inherit;font-size:17px;padding:0 14px;outline:none}
+.lt .fld input{background:#FFFFFF;border-color:#C8C8C4;color:#1A1A1A}
+.fld input::placeholder{color:#9C9A93;opacity:1}
+.lt .fld input::placeholder{color:#6C6C70}
+.fld .help{font-size:12px;color:#9C9A93}
+.f-foc input{border-color:#3B82F6;box-shadow:0 0 0 3px rgba(59,130,246,0.35)}
+.f-err input{border-color:#F46262}
+.lt .f-err input{border-color:#DC2626}
+.f-dis{opacity:0.45}
+.srch{display:flex;align-items:center;gap:8px;height:44px;border-radius:22px;padding:0 6px 0 14px;box-sizing:border-box;width:300px;color:#9C9A93}
+.srch input{flex:1;min-width:0;border:0;background:transparent;outline:none;font-family:inherit;font-size:17px;color:#ECEBE6;padding:0;height:42px}
+.srch input::placeholder{color:#9C9A93;opacity:1}
+.lt .srch{color:#6C6C70}.lt .srch input{color:#1A1A1A}.lt .srch input::placeholder{color:#6C6C70}
+.srch.sf{box-shadow:0 0 0 2px #3B82F6,0 8px 24px rgba(0,0,0,0.35)}
+.clr{width:44px;height:44px;border:0;background:transparent;color:#9C9A93;display:flex;align-items:center;justify-content:center;border-radius:22px;flex-shrink:0;padding:0}
+.trk{position:relative;width:300px;height:44px}
+.trk .bar{position:absolute;left:0;right:0;top:19px;height:6px;border-radius:3px;background:#3A3935}
+.trk .fill{position:absolute;left:0;top:19px;height:6px;border-radius:3px;background:#F1F0EB}
+.trk .kn{position:absolute;top:8px;width:28px;height:28px;margin-left:-14px;border-radius:14px;background:#ECEBE6;box-shadow:0 2px 6px rgba(0,0,0,0.4)}
+.trk .kn.drag{top:5px;width:56px;height:34px;margin-left:-28px;border-radius:17px}
+.lt .trk .bar{background:#D6D6D1}.lt .trk .fill{background:#1A1A1A}.lt .trk .kn{background:#FFFFFF;box-shadow:0 2px 6px rgba(0,0,0,0.25),0 0 0 1px rgba(0,0,0,0.06)}
+.stp{display:inline-flex;align-items:center;height:36px;border-radius:999px;background:#2A2927;box-sizing:border-box;overflow:hidden}
+.stp button{width:48px;height:36px;border:0;background:transparent;color:#ECEBE6;display:flex;align-items:center;justify-content:center;padding:0}
+.stp .dv{width:1px;height:18px;background:#4A4944}
+.stp button.prs{background:rgba(255,255,255,0.12)}
+.stp button[disabled]{color:#6C6A64}
+.lt .stp{background:#E2E2DC}.lt .stp button{color:#1A1A1A}.lt .stp .dv{background:#C8C8C4}.lt .stp button[disabled]{color:#A8A8A4}.lt .stp button.prs{background:rgba(0,0,0,0.1)}
+.menu{width:236px;border-radius:20px;padding:6px;box-sizing:border-box;color:#ECEBE6}
+.mi{display:flex;align-items:center;gap:10px;height:44px;padding:0 12px 0 8px;border-radius:14px;font-size:17px;border:0;background:transparent;color:#ECEBE6;font-family:inherit;width:100%;text-align:left;box-sizing:border-box}
+.mi .ck{width:20px;display:flex;justify-content:center}
+.mi.hl{background:rgba(255,255,255,0.12)}
+.mi.dg{color:#F46262}
+.mh{font-size:13px;color:#9C9A93;padding:8px 14px 4px}
+.msep{height:1px;background:rgba(255,255,255,0.12);margin:4px 8px}
+.lt .menu{color:#1A1A1A}.lt .mi{color:#1A1A1A}.lt .mi.hl{background:rgba(0,0,0,0.07)}.lt .mi.dg{color:#B91C1C}.lt .msep{background:rgba(0,0,0,0.1)}.lt .mh{color:#6C6C70}
+.ck-c{width:24px;height:24px;border-radius:12px;border:1.5px solid #6C6A64;background:transparent;display:flex;align-items:center;justify-content:center;padding:0;box-sizing:border-box;color:#1C1C1A;flex-shrink:0}
+.ck-c.on1{background:#F1F0EB;border-color:#F1F0EB}
+.ck-c.pr1{background:rgba(255,255,255,0.14)}
+.ck-c.dis1{opacity:0.4}
+.lt .ck-c{border-color:#8E8E93;color:#F1F1EF}.lt .ck-c.on1{background:#1A1A1A;border-color:#1A1A1A}
+.eye-n{color:#9C9A93;font-size:13px}
+.eye-v{font-size:28px;font-weight:600;letter-spacing:-0.02em;font-variant-numeric:tabular-nums}
+</style>
+</helmet>
+<div style="width: 1440px; height: 8200px; background: #161614; color: #ECEBE6; font-family: Geist, system-ui, sans-serif; padding: 48px 48px 64px; box-sizing: border-box">
+
+<div style="padding-bottom: 28px">
+  <div style="font-size: 36px; font-weight: 600; letter-spacing: -0.02em">Controls</div>
+  <div style="font-size: 15px; color: #9C9A93; margin-top: 6px">Buttons, icon buttons, switch, segmented control, checkmarks, menu, slider, stepper, chips, fields and the hide-amounts toggle. Glass is the control layer; list rows and chips stay in the content layer. Dark first, light where it differs.</div>
+</div>
+
+<!-- ============ BUTTON ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Button</h2>
+    <p><b>Purpose.</b> Text and icon actions. Source component: <code>NativeActionButton</code> (SwiftUI <code>Button</code> in a <code>Host</code>).</p>
+    <p><b>Styles.</b> <code>glass</code> (secondary, regular glass capsule), <code>glassProminent</code> (one per view: ink fill #F1F0EB, ink label), <code>plain</code> (borderless, foreground), <code>quiet</code> (plain, mutedForeground, small), destructive (role destructive: red label on glass; <code>glassProminent</code> tinted #F46262 with ink label for confirm steps only).</p>
+    <p><b>Sizes.</b> small 36pt, regular 44pt, large 52pt. Capsule radius. Side padding 14 / 20 / 26. Label 14 / 17 / 17, weight 500. Small gets a 4pt hit slop to reach 44. Full-width large stretches (<code>fill</code>), min height 48.</p>
+    <p><b>Content.</b> Label, icon + label (icon 17pt, 7pt gap), icon only (use Icon button below). Icon-only needs an accessibility label.</p>
+    <p><b>States.</b> default, pressed (scale 0.96, brighter fill), focus (2pt #3B82F6 ring, 3pt offset), disabled (40% opacity), loading (circular spinner replaces the icon; label may change to a progress verb; control inactive).</p>
+    <p><b>SF Symbols.</b> <code>archivebox</code>, <code>paperplane</code>, <code>trash</code>, <code>square.and.pencil</code>, <code>chevron.right</code>.</p>
+    <p><b>Do.</b> Make the preferred choice prominent by style, not size. Keep prominent to one or two per view. <b>Don't.</b> Make a destructive action the primary role; stack a button on glass; draw glass inside a list row.</p>
+  </div>
+  <div class="stage">
+    <div class="sw bd" style="flex-direction: column; align-items: stretch; gap: 18px">
+      <div class="tag">Dark: style x state, regular 44pt</div>
+      <div class="mx">
+        <div></div><div class="ch">Default</div><div class="ch">Pressed</div><div class="ch">Focus</div><div class="ch">Disabled</div><div class="ch">Loading</div>
+
+        <div class="rh">Glass</div>
+        <div><button class="b zr glass" type="button">Snooze</button></div>
+        <div><button class="b zr glass prg" type="button">Snooze</button></div>
+        <div><button class="b zr glass foc" type="button">Snooze</button></div>
+        <div><button class="b zr glass dis" type="button" disabled>Snooze</button></div>
+        <div><button class="b zr glass" type="button" aria-busy="true" disabled><svg class="i spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg>Snoozing</button></div>
+
+        <div class="rh">Glass prominent</div>
+        <div><button class="b zr pro" type="button">Send reply</button></div>
+        <div><button class="b zr pro prp" type="button">Send reply</button></div>
+        <div><button class="b zr pro foc" type="button">Send reply</button></div>
+        <div><button class="b zr pro dis" type="button" disabled>Send reply</button></div>
+        <div><button class="b zr pro" type="button" aria-busy="true" disabled><svg class="i spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg>Sending</button></div>
+
+        <div class="rh">Plain</div>
+        <div><button class="b zr" type="button">Edit</button></div>
+        <div><button class="b zr prl" type="button">Edit</button></div>
+        <div><button class="b zr foc" type="button">Edit</button></div>
+        <div><button class="b zr dis" type="button" disabled>Edit</button></div>
+        <div><button class="b zr" type="button" aria-busy="true" disabled><svg class="i spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg>Saving</button></div>
+
+        <div class="rh">Quiet</div>
+        <div><button class="b zs qt" type="button">Not now</button></div>
+        <div><button class="b zs qt prl" type="button">Not now</button></div>
+        <div><button class="b zs qt foc" type="button">Not now</button></div>
+        <div><button class="b zs qt dis" type="button" disabled>Not now</button></div>
+        <div><button class="b zs qt" type="button" aria-busy="true" disabled><svg class="i i16 spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg>Hiding</button></div>
+
+        <div class="rh">Destructive</div>
+        <div><button class="b zr glass dg" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Delete</button></div>
+        <div><button class="b zr glass dg prg" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Delete</button></div>
+        <div><button class="b zr glass dg foc" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Delete</button></div>
+        <div><button class="b zr glass dg dis" type="button" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg>Delete</button></div>
+        <div><button class="b zr glass dg" type="button" aria-busy="true" disabled><svg class="i spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg>Deleting</button></div>
+
+        <div class="rh">Destructive prominent</div>
+        <div><button class="b zr dpro" type="button">Delete all</button></div>
+        <div><button class="b zr dpro prp" type="button" style="background:#C94E4E">Delete all</button></div>
+        <div><button class="b zr dpro foc" type="button">Delete all</button></div>
+        <div><button class="b zr dpro dis" type="button" disabled>Delete all</button></div>
+        <div><button class="b zr dpro" type="button" aria-busy="true" disabled><svg class="i spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg>Deleting</button></div>
+      </div>
+    </div>
+
+    <div class="sw bd">
+      <div class="sp"><div style="display:flex;gap:14px;align-items:center">
+        <button class="b zs glass" type="button">Small</button>
+        <button class="b zr glass" type="button">Regular</button>
+        <button class="b zl glass" type="button">Large</button></div><div class="cap">Sizes 36 / 44 / 52pt, same style</div></div>
+      <div class="sp"><div style="display:flex;gap:14px;align-items:center">
+        <button class="b zr glass" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/></svg>Archive</button>
+        <button class="b zr pro" type="button"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/></svg>Send</button>
+        <button class="b zr" type="button">Open<svg class="i i16" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div><div class="cap">With icon: leading (<code>archivebox</code>, <code>paperplane</code>), trailing <code>chevron.right</code></div></div>
+      <div class="sp" style="width:100%"><button class="b zl pro" type="button" style="width:100%">Approve and send</button><div class="cap">Full width, large (<code>fill</code>): the single prominent action in a sheet footer</div></div>
+      <div class="sp" style="width:100%"><div style="display:flex;gap:12px;width:100%"><button class="b zl glass" type="button" style="flex:1">Cancel</button><button class="b zl pro" type="button" style="flex:1">Approve</button></div><div class="cap">Paired: same size, differentiated by style (Apple: style, not size)</div></div>
+    </div>
+
+    <div class="sw bd lt" style="flex-direction: column; align-items: stretch; gap: 14px">
+      <div class="tag">Light</div>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center">
+        <button class="b zr glass-light" type="button">Snooze</button>
+        <button class="b zr glass-light prg" type="button">Snooze</button>
+        <button class="b zr pro" type="button">Send reply</button>
+        <button class="b zr pro prp" type="button">Send reply</button>
+        <button class="b zr" type="button">Edit</button>
+        <button class="b zr glass-light dg" type="button">Delete</button>
+        <button class="b zr dpro" type="button">Delete all</button>
+        <button class="b zr glass-light dis" type="button" disabled>Snooze</button>
+      </div>
+      <div class="cap">Light: prominent fill is ink #1A1A1A with #F1F1EF label; destructive prominent is #DC2626 with white label; destructive text on glass uses #B91C1C for 4.5:1.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ ICON BUTTON ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Icon button and groups</h2>
+    <p><b>Purpose.</b> Toolbar and overlay actions. Source component: <code>GlassIconButton</code> (<code>apps/mobile/components/glass-icon-button.tsx</code>): a circular <code>GlassSurface</code> wrapping a <code>Pressable</code>.</p>
+    <p><b>Single.</b> 40pt circle (default), 17pt symbol, 4pt hit slop (48pt target). Icon is foreground on glass; pressed drops to 60% opacity. <code>selected</code> fills with the primary token and inks the symbol. <code>tint</code> tints the glass.</p>
+    <p><b>Grouped capsule.</b> Related actions share one glass capsule, 44pt tall, items 44pt wide, no dividers, symbol 20pt. Pressed item gets a 12% white inner capsule (inset by the group padding, so radii stay concentric). No glass on glass: items inside a capsule are flat. Max three groups per bar: Back/Close alone at the leading end, actions, then More (<code>ellipsis</code>) last. On the Duo outer display the groups run as vertical capsules down the side strip.</p>
+    <p><b>States.</b> default, pressed, selected, disabled (40%), focus ring.</p>
+    <p><b>SF Symbols.</b> <code>chevron.left</code>, <code>xmark</code>, <code>square.and.pencil</code>, <code>archivebox</code>, <code>paperplane.fill</code>, <code>ellipsis</code>, <code>eye</code>.</p>
+    <p><b>Note.</b> Grouped capsules are not in the app yet; build them as native toolbar item groups. <b>Do</b> give each item a label for overflow. <b>Don't</b> put text and icons in the same group.</p>
+  </div>
+  <div class="stage">
+    <div class="sw bd">
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Back" style="width:40px;height:40px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><div class="cap">Default 40</div></div>
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Back" style="width:40px;height:40px;opacity:0.6"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><div class="cap">Pressed (60%)</div></div>
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Back" style="width:40px;height:40px;outline:2px solid #3B82F6;outline-offset:3px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><div class="cap">Focus</div></div>
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Pin" aria-pressed="true" style="width:40px;height:40px;background:rgba(241,240,235,0.92);color:#1C1C1A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><div class="cap">Selected (primary)</div></div>
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Back" disabled style="width:40px;height:40px;opacity:0.4"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><div class="cap">Disabled</div></div>
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Loading" aria-busy="true" disabled style="width:40px;height:40px"><svg class="i spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg></button><div class="cap">Loading</div></div>
+      <div class="sp"><div style="display:flex;gap:14px;align-items:flex-end">
+        <button class="gbtn glass" type="button" aria-label="Close" style="width:32px;height:32px"><svg class="i i16" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+        <button class="gbtn glass" type="button" aria-label="Compose" style="width:40px;height:40px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4zM13 7l4 4"/></svg></button>
+        <button class="gbtn glass" type="button" aria-label="Compose" style="width:48px;height:48px;background:rgba(241,240,235,0.92);color:#1C1C1A"><svg class="i i24" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4zM13 7l4 4"/></svg></button></div><div class="cap">32 (hit slop to 44) / 40 / 48 prominent</div></div>
+    </div>
+
+    <div class="sw bd" style="gap:34px">
+      <div class="sp"><div style="display:flex;gap:10px;align-items:center">
+        <div class="glass" style="border-radius:22px;height:44px;display:flex;padding:0"><button class="gbtn" type="button" aria-label="Back"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button></div>
+        <div style="width:110px"></div>
+        <div class="glass" style="border-radius:22px;height:44px;display:flex;padding:0"><button class="gbtn" type="button" aria-label="Compose"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4zM13 7l4 4"/></svg></button><button class="gbtn" type="button" aria-label="Archive"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/></svg></button><button class="gbtn" type="button" aria-label="More"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div>
+      </div><div class="cap">Toolbar: Back in its own capsule, action group of three, More last (2 groups)</div></div>
+      <div class="sp"><div class="glass" style="border-radius:22px;height:44px;display:flex;padding:0">
+        <button class="gbtn" type="button" aria-label="Compose" style="background:rgba(255,255,255,0.12)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4zM13 7l4 4"/></svg></button>
+        <button class="gbtn" type="button" aria-label="Archive"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/></svg></button>
+        <button class="gbtn" type="button" aria-label="More" style="opacity:0.4" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div><div class="cap">Item pressed (first) and disabled (last)</div></div>
+      <div class="sp"><div style="display:flex;gap:10px;align-items:center">
+        <div class="glass" style="border-radius:22px;height:44px;display:flex;padding:0"><button class="gbtn" type="button" aria-label="Archive"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/></svg></button><button class="gbtn" type="button" aria-label="Share"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3M8 7l4-4 4 4M5 11v9h14v-9"/></svg></button></div>
+        <button class="gbtn glass" type="button" aria-label="Send" style="width:44px;height:44px;background:rgba(241,240,235,0.92);color:#1C1C1A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4z"/></svg></button>
+      </div><div class="cap">Group plus one prominent circle (<code>paperplane</code>)</div></div>
+      <div class="sp"><div class="glass" style="border-radius:22px;width:44px;display:flex;flex-direction:column;padding:0">
+        <button class="gbtn" type="button" aria-label="Compose"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4zM13 7l4 4"/></svg></button>
+        <button class="gbtn" type="button" aria-label="Archive"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/></svg></button>
+        <button class="gbtn" type="button" aria-label="More"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div><div class="cap">Vertical (outer side strip)</div></div>
+    </div>
+
+    <div class="sw bd lt">
+      <div class="sp"><button class="gbtn glass-light" type="button" aria-label="Back" style="width:40px;height:40px;color:#1A1A1A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><div class="cap">Light default</div></div>
+      <div class="sp"><button class="gbtn glass-light" type="button" aria-label="Pin" style="width:40px;height:40px;background:#1A1A1A;color:#F1F1EF"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><div class="cap">Light selected</div></div>
+      <div class="sp"><div class="glass-light" style="border-radius:22px;height:44px;display:flex;padding:0"><button class="gbtn" type="button" aria-label="Compose" style="color:#1A1A1A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l11-11-4-4L4 16v4zM13 7l4 4"/></svg></button><button class="gbtn" type="button" aria-label="Archive" style="color:#1A1A1A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v4H3zM5 9v10h14V9M10 13h4"/></svg></button><button class="gbtn" type="button" aria-label="More" style="color:#1A1A1A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button></div><div class="cap">Light group</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SWITCH ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Switch</h2>
+    <p><b>Purpose.</b> Binary setting in a list row. Source component: <code>NativeSwitch</code> (SwiftUI <code>Toggle</code> with <code>toggleStyle("switch")</code>, labels hidden). The visible label lives in the row; the switch carries only the accessibility label and hint. Web counterparts: <code>packages/ui-web/src/components/ui/switch.tsx</code>, <code>toggle.tsx</code> (pressed toggle button).</p>
+    <p><b>Anatomy.</b> 51 x 31pt track, radius 16; 27pt knob, 2pt inset. While pressed the knob stretches to 34pt wide. Row min height 52pt, switch trailing, 16pt padding.</p>
+    <p><b>Color.</b> Monochrome tint: on track is ink #F1F0EB with an ink knob; off track #4A4944 with a light knob. <code>tintColor</code> can override; the iOS default green is shown as a fallback. Needs a native check: whether the SwiftUI knob can be recolored. If not, use the green fallback.</p>
+    <p><b>States.</b> off, on, pressed, focus, disabled (40%), busy (knob shows a spinner; control inactive while the save round-trips).</p>
+    <p><b>Do.</b> Apply the change immediately. <b>Don't</b> use a switch for an action; use a button.</p>
+  </div>
+  <div class="stage">
+    <div class="sw" style="align-items:flex-start">
+      <div class="card" style="width:420px">
+        <div class="row"><span style="flex:1">Off</span><button class="sw-t off" type="button" role="switch" aria-checked="false" aria-label="Off"><span class="sw-k"></span></button></div>
+        <div class="row"><span style="flex:1">On</span><button class="sw-t on" type="button" role="switch" aria-checked="true" aria-label="On"><span class="sw-k"></span></button></div>
+        <div class="row"><span style="flex:1">Pressed, off to on</span><button class="sw-t off pk" type="button" role="switch" aria-checked="false" aria-label="Pressed off"><span class="sw-k"></span></button></div>
+        <div class="row"><span style="flex:1">Pressed, on to off</span><button class="sw-t on pk" type="button" role="switch" aria-checked="true" aria-label="Pressed on"><span class="sw-k"></span></button></div>
+        <div class="row"><span style="flex:1">Focus</span><button class="sw-t on" type="button" role="switch" aria-checked="true" aria-label="Focus" style="outline:2px solid #3B82F6;outline-offset:3px"><span class="sw-k"></span></button></div>
+        <div class="row" style="opacity:0.4"><span style="flex:1">Disabled, off</span><button class="sw-t off" type="button" role="switch" aria-checked="false" aria-label="Disabled off" disabled><span class="sw-k"></span></button></div>
+        <div class="row" style="opacity:0.4"><span style="flex:1">Disabled, on</span><button class="sw-t on" type="button" role="switch" aria-checked="true" aria-label="Disabled on" disabled><span class="sw-k"></span></button></div>
+        <div class="row"><span style="flex:1">Busy</span><button class="sw-t on" type="button" role="switch" aria-checked="true" aria-busy="true" aria-label="Busy" disabled><span class="sw-k" style="left:22px"><svg class="i i16 spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg></span></button></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:20px">
+        <div class="sp"><div style="display:flex;gap:16px"><button class="sw-t gr" type="button" role="switch" aria-checked="true" aria-label="System default on"><span class="sw-k"></span></button><button class="sw-t off" type="button" role="switch" aria-checked="false" aria-label="System default off"><span class="sw-k"></span></button></div><div class="cap">System default tint #4ECB71 (fallback)</div></div>
+        <div class="sp" style="margin-top:8px"><div class="lt" style="background:#FAFAF8;border-radius:16px;padding:18px;display:flex;gap:16px"><button class="sw-t off" type="button" role="switch" aria-checked="false" aria-label="Light off"><span class="sw-k"></span></button><button class="sw-t on" type="button" role="switch" aria-checked="true" aria-label="Light on"><span class="sw-k"></span></button></div><div class="cap">Light: on #1A1A1A, off #C8C8C4</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SEGMENTED ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Segmented control and SegmentedPills</h2>
+    <p><b>Purpose.</b> Pick one of 2 to 4 short options in place (view mode, filter scope). Source components: <code>NativeSegmentedControl</code> (SwiftUI <code>Picker</code>, <code>pickerStyle("segmented")</code>, 32pt minimum height, full width) and <code>SegmentedPills</code> (fallback for Android and for an unmatched value, <code>apps/mobile/components/segmented-pills.tsx</code>).</p>
+    <p><b>Native anatomy.</b> Capsule track 32pt tall, 2pt padding, selected segment a lighter capsule, selected label weight 600. Segments share the width equally, label 13pt. Control is in the content flow, not floating, so the track is a flat fill (#2A2927), not glass.</p>
+    <p><b>Pills anatomy.</b> Track radius 10, padding 2, segment radius 8 (concentric), vertical padding 8, label 15pt. Selected fill: chatUser #33322F (dark), card (light). Track is accent.</p>
+    <p><b>States.</b> default, pressed segment, selected, disabled (50%), no selection (pills fallback, nothing highlighted), focus.</p>
+    <p><b>Do.</b> Keep labels to one word. <b>Don't</b> use more than four segments; use a menu picker.</p>
+  </div>
+  <div class="stage">
+    <div class="sw">
+      <div class="sp"><div class="seg" role="group" aria-label="Show"><button class="sel" type="button" aria-pressed="true">All</button><button type="button" aria-pressed="false">Unread</button></div><div class="cap">Native, 2 segments</div></div>
+      <div class="sp"><div class="seg" role="group" aria-label="Range"><button type="button" aria-pressed="false">Day</button><button class="sel" type="button" aria-pressed="true">Week</button><button type="button" aria-pressed="false">Month</button></div><div class="cap">Native, 3 segments, middle selected</div></div>
+      <div class="sp"><div class="seg" role="group" aria-label="Range pressed"><button type="button" aria-pressed="false" style="background:rgba(255,255,255,0.10)">Day</button><button class="sel" type="button" aria-pressed="true">Week</button><button type="button" aria-pressed="false">Month</button></div><div class="cap">Pressed (first segment)</div></div>
+      <div class="sp"><div class="seg" role="group" aria-label="Range disabled" style="opacity:0.5"><button type="button" disabled>Day</button><button class="sel" type="button" disabled aria-pressed="true">Week</button><button type="button" disabled>Month</button></div><div class="cap">Disabled</div></div>
+      <div class="sp"><div class="seg" role="group" aria-label="Range focus" style="outline:2px solid #3B82F6;outline-offset:3px"><button type="button" aria-pressed="false">Day</button><button class="sel" type="button" aria-pressed="true">Week</button><button type="button" aria-pressed="false">Month</button></div><div class="cap">Focus</div></div>
+      <div class="sp" style="width:100%"><div class="seg" role="group" aria-label="Scope" style="width:100%"><button class="sel" type="button" style="flex:1" aria-pressed="true">Inbox</button><button type="button" style="flex:1" aria-pressed="false">Sent</button><button type="button" style="flex:1" aria-pressed="false">Drafts</button><button type="button" style="flex:1" aria-pressed="false">All</button></div><div class="cap">Native, full width, 4 segments (maximum)</div></div>
+      <div class="sp" style="width:100%"><div class="pill" role="group" aria-label="Pills" style="width:100%"><button class="sel" type="button" aria-pressed="true">Daily</button><button type="button" aria-pressed="false">Weekly</button><button type="button" aria-pressed="false">Off</button></div><div class="cap">SegmentedPills, selected</div></div>
+      <div class="sp" style="width:100%"><div class="pill" role="group" aria-label="Pills empty" style="width:100%"><button type="button" aria-pressed="false">Daily</button><button type="button" aria-pressed="false">Weekly</button><button type="button" aria-pressed="false">Off</button></div><div class="cap">SegmentedPills, no selection (unmatched value)</div></div>
+      <div class="sp" style="width:100%"><div class="pill" role="group" aria-label="Pills disabled" style="width:100%;opacity:0.5"><button class="sel" type="button" disabled aria-pressed="true">Daily</button><button type="button" disabled>Weekly</button><button type="button" disabled>Off</button></div><div class="cap">SegmentedPills, disabled</div></div>
+    </div>
+    <div class="sw lt">
+      <div class="sp"><div class="seg" role="group" aria-label="Range light"><button type="button" aria-pressed="false">Day</button><button class="sel" type="button" aria-pressed="true">Week</button><button type="button" aria-pressed="false">Month</button></div><div class="cap">Light native</div></div>
+      <div class="sp"><div class="pill" role="group" aria-label="Pills light" style="width:280px"><button class="sel" type="button" aria-pressed="true">Daily</button><button type="button" aria-pressed="false">Weekly</button><button type="button" aria-pressed="false">Off</button></div><div class="cap">Light pills</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CHECKMARK / CHEVRON / CHECKBOX ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Checkmark, checkbox and chevron</h2>
+    <p><b>Purpose.</b> Trailing and leading row accessories. Source: <code>Checkmark</code> and <code>Chevron</code> in <code>apps/mobile/components/row-accessories.tsx</code>. Web checkbox: <code>packages/ui-web/src/components/ui/checkbox.tsx</code>.</p>
+    <p><b>Checkmark.</b> <code>checkmark</code>, 16pt, foreground, trailing on the selected row of a single-choice list. Unselected rows show nothing. Row is the 52pt tap target.</p>
+    <p><b>Chevron.</b> <code>chevron.right</code>, 14pt, tertiary label color (decorative, hidden from accessibility), trailing on rows that open a screen. Points down (<code>chevron.down</code>) while a section is expanded. Not shown on rows that run an action or toggle.</p>
+    <p><b>Checkbox (multi-select).</b> 24pt circle, 1.5pt border; checked fills primary with an ink checkmark; mixed shows a dash. Leading in selection mode (Auto-sort review, bulk archive). Row stays the 52pt target; announce as checkbox with checked state.</p>
+    <p><b>States.</b> default, pressed, checked, mixed, disabled, focus.</p>
+    <p><b>Content layer.</b> No glass. <b>Don't</b> combine a chevron and a checkmark in one row.</p>
+  </div>
+  <div class="stage">
+    <div class="sw" style="align-items:flex-start">
+      <div class="card" style="width:340px">
+        <div class="row" style="font-size:16px"><span style="flex:1">Newest first</span><svg class="i i16" viewBox="0 0 24 24" aria-hidden="true" style="color:#ECEBE6"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+        <div class="row"><span style="flex:1">Oldest first</span></div>
+        <div class="row"><span style="flex:1">Sender</span></div>
+        <div class="row" style="background:rgba(255,255,255,0.06)"><span style="flex:1">Pressed row</span></div>
+      </div>
+      <div class="card" style="width:340px">
+        <div class="row"><span style="flex:1">Connected apps</span><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true" style="color:#8E8C85"><path d="M9 5l7 7-7 7"/></svg></div>
+        <div class="row"><span style="flex:1">Advanced</span><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true" style="color:#8E8C85"><path d="M5 9l7 7 7-7"/></svg></div>
+        <div class="row"><span style="flex:1">Advanced (collapsed)</span><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true" style="color:#8E8C85"><path d="M9 5l7 7-7 7"/></svg></div>
+        <div class="row" style="opacity:0.4"><span style="flex:1">Disabled row</span><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true" style="color:#8E8C85"><path d="M9 5l7 7-7 7"/></svg></div>
+      </div>
+      <div class="card" style="width:340px">
+        <div class="row"><button class="ck-c" type="button" role="checkbox" aria-checked="false" aria-label="Unchecked"></button><span style="flex:1">Unchecked</span></div>
+        <div class="row"><button class="ck-c on1" type="button" role="checkbox" aria-checked="true" aria-label="Checked"><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span style="flex:1">Checked</span></div>
+        <div class="row"><button class="ck-c on1" type="button" role="checkbox" aria-checked="mixed" aria-label="Mixed"><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 12h12"/></svg></button><span style="flex:1">Mixed (some selected)</span></div>
+        <div class="row"><button class="ck-c pr1" type="button" role="checkbox" aria-checked="false" aria-label="Pressed"></button><span style="flex:1">Pressed</span></div>
+        <div class="row"><button class="ck-c" type="button" role="checkbox" aria-checked="false" aria-label="Focus" style="outline:2px solid #3B82F6;outline-offset:3px"></button><span style="flex:1">Focus</span></div>
+        <div class="row" style="opacity:0.4"><button class="ck-c dis1" type="button" role="checkbox" aria-checked="true" aria-label="Disabled" disabled style="background:#F1F0EB;border-color:#F1F0EB"><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span style="flex:1">Disabled, checked</span></div>
+      </div>
+    </div>
+    <div class="sw lt" style="align-items:flex-start">
+      <div class="card" style="width:340px"><div class="row"><span style="flex:1">Newest first</span><svg class="i i16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><div class="row"><span style="flex:1">Connected apps</span><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true" style="color:#8E8E93"><path d="M9 5l7 7-7 7"/></svg></div><div class="row"><button class="ck-c on1" type="button" role="checkbox" aria-checked="true" aria-label="Checked light"><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span style="flex:1">Checked</span></div><div class="row"><button class="ck-c" type="button" role="checkbox" aria-checked="false" aria-label="Unchecked light"></button><span style="flex:1">Unchecked</span></div></div>
+      <div class="cap" style="align-self:center">Light: chevron #8E8E93, checkbox ink fill</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MENU PICKER ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Menu picker</h2>
+    <p><b>Purpose.</b> Choose one value from 3 to 8 options without leaving the screen. Source components: <code>MenuPicker</code> and <code>MenuPickerMenu</code> (<code>apps/mobile/components/menu-picker.tsx</code>): a native <code>MenuView</code> from <code>@expo/ui</code> wrapping any trigger. The current choice carries the system checkmark (<code>state: on</code>).</p>
+    <p><b>Row trigger.</b> Min height 52pt, 16pt padding; label 16pt left, current value 16pt secondary right-aligned, <code>chevron.up.chevron.down</code> 13pt tertiary. Whole row is the target.</p>
+    <p><b>Button trigger.</b> Glass capsule, 44pt (36pt compact), value + <code>chevron.up.chevron.down</code>. Icon-only trigger: <code>ellipsis</code> in a glass circle (More).</p>
+    <p><b>Open menu.</b> System-drawn regular glass, radius about 20, 6pt inner padding, rows 44pt, 17pt text, leading checkmark column on the current choice, hairline separators between groups, destructive items last in red with a symbol. Optional small title (the <code>label</code> prop). The menu is native: draw only as a reference, do not rebuild it.</p>
+    <p><b>States.</b> closed, pressed trigger, open, disabled (40%), long value truncates in the row.</p>
+    <p><b>Unconfirmed.</b> Exact iOS 26 menu radius and row height; verify on device.</p>
+  </div>
+  <div class="stage">
+    <div class="sw" style="align-items:flex-start">
+      <div class="sp" style="width:360px">
+        <div class="card" style="width:360px">
+          <div class="row"><span>Auto-sort</span><span style="flex:1;text-align:right;color:#9C9A93">Daily</span><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true" style="color:#8E8C85;width:13px;height:13px"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></div>
+          <div class="row" style="background:rgba(255,255,255,0.06)"><span>Auto-sort (pressed)</span><span style="flex:1;text-align:right;color:#9C9A93">Daily</span><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true" style="color:#8E8C85;width:13px;height:13px"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></div>
+          <div class="row" style="opacity:0.4"><span>Auto-sort (disabled)</span><span style="flex:1;text-align:right;color:#9C9A93">Off</span><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true" style="color:#8E8C85;width:13px;height:13px"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></div>
+          <div class="row"><span style="white-space:nowrap">Reply tone</span><span style="flex:1;text-align:right;color:#9C9A93;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0">Warm and brief, no sign-off, match the sender</span><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true" style="color:#8E8C85;width:13px;height:13px"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></div>
+        </div>
+        <div class="cap">Row trigger: default, pressed, disabled, truncated value</div>
+      </div>
+      <div class="sp" style="gap:14px">
+        <div class="bd" style="display:flex;gap:12px;align-items:center;padding:18px;border-radius:16px">
+          <button class="b zr glass" type="button" aria-haspopup="menu">Daily<svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></button>
+          <button class="b zr glass prg" type="button" aria-haspopup="menu">Daily<svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></button>
+          <button class="b zs glass" type="button" aria-haspopup="menu">Daily<svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></button>
+          <button class="gbtn glass" type="button" aria-haspopup="menu" aria-label="More"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg></button>
+        </div>
+        <div class="cap">Button triggers: regular, pressed, small, More</div>
+      </div>
+      <div class="sp bd" style="padding:22px;border-radius:16px;gap:12px">
+        <button class="b zr glass" type="button" aria-haspopup="menu" aria-expanded="true" style="background:rgba(88,87,82,0.85)">Daily<svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></button>
+        <div class="glass menu" role="menu" aria-label="Auto-sort">
+          <div class="mh">Auto-sort</div>
+          <button class="mi" type="button" role="menuitemradio" aria-checked="false"><span class="ck"></span>Hourly</button>
+          <button class="mi hl" type="button" role="menuitemradio" aria-checked="true"><span class="ck"><svg class="i i16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Daily</button>
+          <button class="mi" type="button" role="menuitemradio" aria-checked="false"><span class="ck"></span>Weekly</button>
+          <button class="mi" type="button" role="menuitemradio" aria-checked="false"><span class="ck"></span>Off</button>
+          <div class="msep"></div>
+          <button class="mi dg" type="button" role="menuitem"><span class="ck"><svg class="i i16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></span>Reset rules</button>
+        </div>
+        <div class="cap">Open: glass menu, current choice checked, row highlighted while touched</div>
+      </div>
+    </div>
+    <div class="sw bd lt" style="align-items:flex-start">
+      <div class="sp" style="gap:12px">
+        <button class="b zr glass-light" type="button" aria-haspopup="menu" aria-expanded="true">Daily<svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"/></svg></button>
+        <div class="glass-light menu" role="menu" aria-label="Auto-sort light">
+          <div class="mh">Auto-sort</div>
+          <button class="mi" type="button" role="menuitemradio" aria-checked="false"><span class="ck"></span>Hourly</button>
+          <button class="mi" type="button" role="menuitemradio" aria-checked="true"><span class="ck"><svg class="i i16" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>Daily</button>
+          <div class="msep"></div>
+          <button class="mi dg" type="button" role="menuitem"><span class="ck"><svg class="i i16" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></span>Reset rules</button>
+        </div>
+        <div class="cap">Light open menu</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ SLIDER ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Slider</h2>
+    <p><b>Purpose.</b> Pick a value on a continuous or stepped range (confidence threshold, playback speed, voice volume). Native SwiftUI <code>Slider</code> through <code>@expo/ui</code>. No Rakazo slider component exists yet; add one beside <code>native-switch.ios.tsx</code>.</p>
+    <p><b>Anatomy.</b> Track 6pt tall, capsule ends; filled part ink #F1F0EB, remainder #3A3935. Resting knob: 28pt light circle with a soft shadow. Row height 44pt (full target). Optional min/max labels 13pt muted, current value 15pt tabular right of the label.</p>
+    <p><b>Dragging.</b> The knob grows into a 56 x 34pt glass lens that refracts the track under it. This is the one place glass sits in a control knob while a touch is held (transient control exception); it returns to the solid circle on release. The value readout stays visible above the thumb's reach, not under the finger.</p>
+    <p><b>States.</b> default, dragging, focus, disabled (40%), stepped (tick marks), empty (value at minimum: no fill).</p>
+    <p><b>Unconfirmed.</b> The exact iOS 26 thumb dimensions and lens material; this sheet's numbers are approximations.</p>
+  </div>
+  <div class="stage">
+    <div class="sw bd" style="align-items:flex-start;gap:20px 40px">
+      <div class="sp"><div class="trk"><div class="bar"></div><div class="fill" style="width:40%"></div><div class="kn" style="left:40%"></div></div><div class="cap">Default (40%)</div></div>
+      <div class="sp"><div class="trk"><div class="bar"></div><div class="fill" style="width:62%"></div><div class="kn drag glass" style="left:62%;background:rgba(236,235,230,0.22)"></div></div><div class="cap">Dragging: glass lens knob</div></div>
+      <div class="sp"><div class="trk"><div class="bar"></div><div class="fill" style="width:62%"></div><div class="kn" style="left:62%;outline:2px solid #3B82F6;outline-offset:3px"></div></div><div class="cap">Focus</div></div>
+      <div class="sp"><div class="trk" style="opacity:0.4"><div class="bar"></div><div class="fill" style="width:30%"></div><div class="kn" style="left:30%"></div></div><div class="cap">Disabled</div></div>
+      <div class="sp"><div class="trk"><div class="bar"></div><div class="kn" style="left:0%;margin-left:0"></div></div><div class="cap">Empty (minimum)</div></div>
+      <div class="sp"><div class="trk"><div class="bar"></div><div style="position:absolute;left:0;right:0;top:15px;display:flex;justify-content:space-between"><span style="width:2px;height:14px;background:#6C6A64"></span><span style="width:2px;height:14px;background:#6C6A64"></span><span style="width:2px;height:14px;background:#6C6A64"></span><span style="width:2px;height:14px;background:#6C6A64"></span><span style="width:2px;height:14px;background:#6C6A64"></span></div><div class="fill" style="width:50%"></div><div class="kn" style="left:50%"></div></div><div class="cap">Stepped, 5 stops</div></div>
+      <div class="sp" style="width:100%"><div style="width:100%;max-width:520px"><div style="display:flex;justify-content:space-between;font-size:16px;margin-bottom:2px"><span>Confidence threshold</span><span style="font-variant-numeric:tabular-nums;color:#9C9A93">[N]%</span></div><div class="trk" style="width:100%"><div class="bar"></div><div class="fill" style="width:70%"></div><div class="kn" style="left:70%"></div></div><div style="display:flex;justify-content:space-between;font-size:13px;color:#9C9A93"><span>Ask more</span><span>Ask less</span></div></div><div class="cap">In a row: label, value, min and max captions</div></div>
+    </div>
+    <div class="sw lt">
+      <div class="sp"><div class="trk"><div class="bar"></div><div class="fill" style="width:40%"></div><div class="kn" style="left:40%"></div></div><div class="cap">Light default</div></div>
+      <div class="sp"><div class="trk"><div class="bar"></div><div class="fill" style="width:62%"></div><div class="kn drag glass-light" style="left:62%"></div></div><div class="cap">Light dragging</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ STEPPER ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Stepper</h2>
+    <p><b>Purpose.</b> Nudge a small integer (retries, count, hours). Native SwiftUI <code>Stepper</code> through <code>@expo/ui</code>. No Rakazo component yet.</p>
+    <p><b>Anatomy.</b> Capsule 96 x 36pt (each half 48 x 36, hit slop to 44), flat fill #2A2927, 1pt divider 18pt tall, <code>minus</code> and <code>plus</code> symbols 18pt. Label and current value sit in the row to the left; the value uses tabular numbers. Stepper is a control in a content row, so it is not glass.</p>
+    <p><b>States.</b> default, pressed half (12% white), at minimum (minus disabled), at maximum (plus disabled), fully disabled (40%), focus. Press and hold repeats.</p>
+    <p><b>SF Symbols.</b> <code>minus</code>, <code>plus</code>.</p>
+    <p><b>Do.</b> Use it for ranges under about 10 steps. <b>Don't</b> use it to pick a date or an amount; use a field.</p>
+  </div>
+  <div class="stage">
+    <div class="sw" style="align-items:flex-start">
+      <div class="card" style="width:420px">
+        <div class="row"><span style="flex:1">Retries <span style="font-variant-numeric:tabular-nums;color:#9C9A93">3</span></span><span class="stp" role="group" aria-label="Retries"><button type="button" aria-label="Decrease"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span class="dv"></span><button type="button" aria-label="Increase"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+        <div class="row"><span style="flex:1">Pressed plus <span style="font-variant-numeric:tabular-nums;color:#9C9A93">4</span></span><span class="stp" role="group" aria-label="Pressed"><button type="button" aria-label="Decrease"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span class="dv"></span><button class="prs" type="button" aria-label="Increase"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+        <div class="row"><span style="flex:1">At minimum <span style="font-variant-numeric:tabular-nums;color:#9C9A93">0</span></span><span class="stp" role="group" aria-label="Minimum"><button type="button" aria-label="Decrease" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span class="dv"></span><button type="button" aria-label="Increase"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+        <div class="row"><span style="flex:1">At maximum <span style="font-variant-numeric:tabular-nums;color:#9C9A93">10</span></span><span class="stp" role="group" aria-label="Maximum"><button type="button" aria-label="Decrease"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span class="dv"></span><button type="button" aria-label="Increase" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+        <div class="row" style="opacity:0.4"><span style="flex:1">Disabled <span style="font-variant-numeric:tabular-nums;color:#9C9A93">3</span></span><span class="stp" role="group" aria-label="Disabled"><button type="button" aria-label="Decrease" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span class="dv"></span><button type="button" aria-label="Increase" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+        <div class="row"><span style="flex:1">Focus <span style="font-variant-numeric:tabular-nums;color:#9C9A93">3</span></span><span class="stp" role="group" aria-label="Focus" style="outline:2px solid #3B82F6;outline-offset:3px"><button type="button" aria-label="Decrease"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span class="dv"></span><button type="button" aria-label="Increase"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span></div>
+      </div>
+      <div class="sp lt" style="background:#FAFAF8;border-radius:16px;padding:20px;color:#1A1A1A"><span class="stp" role="group" aria-label="Light"><button type="button" aria-label="Decrease"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span class="dv"></span><button type="button" aria-label="Increase"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span><span class="stp" role="group" aria-label="Light minimum"><button type="button" aria-label="Decrease" disabled><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg></button><span class="dv"></span><button type="button" aria-label="Increase"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button></span><div class="cap" style="color:#6C6C70">Light: default, at minimum</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ BADGES ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Badge and label chips</h2>
+    <p><b>Purpose.</b> Passive status or category labels on rows and headers. Web source: <code>packages/ui-web/src/components/ui/badge.tsx</code> (<code>default</code>, <code>secondary</code>, <code>destructive</code>, <code>outline</code>, <code>ghost</code>; h20, rounded-full, 8pt padding, 12pt weight 500). Mobile has no chip component; reuse the same variants.</p>
+    <p><b>Mobile sizes.</b> Chip 22pt tall, 9pt side padding, 12pt label, optional 12pt leading symbol. Count badge: min 20pt wide, 20pt tall, 6pt padding, 12pt weight 600, tabular numbers. Unread dot: 8pt circle.</p>
+    <p><b>Mapping.</b> Needs attention = neutral secondary, matching web InboxRow. Newsletter = secondary. Spam and Junk = warning tint (the only label chips that carry status color). Archived = outline. Count = primary fill for unread, secondary for plain totals. Bot identity chips use the bot color as a 6pt dot, never as the fill.</p>
+    <p><b>Layer.</b> Content layer, flat fills, never glass. Not interactive; if a chip filters, wrap it in a button with a 44pt target and add a pressed state.</p>
+    <p><b>Contrast.</b> All pairs at least 4.5:1; light warning text is darkened to #8A5A12 and light destructive text to #B91C1C.</p>
+  </div>
+  <div class="stage">
+    <div class="sw" style="align-items:flex-start">
+      <div class="sp"><span class="chip c-sec"><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 17v.5"/><circle cx="12" cy="12" r="9"/></svg>Needs attention</span><div class="cap">Neutral, <code>exclamationmark.circle</code></div></div>
+      <div class="sp"><span class="chip c-sec">Newsletter</span><div class="cap">Secondary</div></div>
+      <div class="sp"><span class="chip c-junk">Junk</span><div class="cap">Destructive tint</div></div>
+      <div class="sp"><span class="chip c-out">Archived</span><div class="cap">Outline</div></div>
+      <div class="sp"><span class="chip c-pri">Draft</span><div class="cap">Default (ink)</div></div>
+      <div class="sp"><span class="chip c-sec"><span style="width:6px;height:6px;border-radius:3px;background:#3B82F6"></span>Inbox agent</span><div class="cap">Bot dot, secondary</div></div>
+      <div class="sp"><div style="display:flex;gap:10px;align-items:center"><span class="cnt c-pri">3</span><span class="cnt c-pri">128</span><span class="cnt c-sec">24</span><span style="width:8px;height:8px;border-radius:4px;background:#4F8FF7"></span></div><div class="cap">Count (unread, total), unread dot</div></div>
+    </div>
+    <div class="sw" style="align-items:flex-start">
+      <div class="card" style="width:520px">
+        <div class="row" style="flex-wrap:wrap;gap:8px 10px;padding-top:12px;padding-bottom:12px"><span style="width:100%;font-size:15px;font-weight:500">Weekly roundup from Example Weekly</span><span class="chip c-sec">Newsletter</span><span class="chip c-out">Archived</span><span style="flex:1"></span><span style="font-size:13px;color:#9C9A93;font-variant-numeric:tabular-nums">9:41</span></div>
+        <div class="row" style="flex-wrap:wrap;gap:8px 10px;padding-top:12px;padding-bottom:12px"><span style="width:100%;font-size:15px;font-weight:500">Contract question from Northwind</span><span class="chip c-sec">Needs attention</span><span style="flex:1"></span><span style="font-size:13px;color:#9C9A93;font-variant-numeric:tabular-nums">Yesterday</span></div>
+        <div class="row" style="padding-top:12px;padding-bottom:12px"><span style="flex:1;font-size:15px">Inbox</span><span class="cnt c-pri">12</span></div>
+      </div>
+      <div class="cap" style="align-self:center">In a row: chips sit under the subject, count trails the row</div>
+    </div>
+    <div class="sw lt" style="align-items:flex-start">
+      <div class="sp"><span class="chip c-sec"><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 17v.5"/><circle cx="12" cy="12" r="9"/></svg>Needs attention</span><div class="cap">Light</div></div>
+      <div class="sp"><span class="chip c-sec">Newsletter</span><div class="cap">Light</div></div>
+      <div class="sp"><span class="chip c-junk">Junk</span><div class="cap">Light</div></div>
+      <div class="sp"><span class="chip c-out">Archived</span><div class="cap">Light</div></div>
+      <div class="sp"><div style="display:flex;gap:10px"><span class="cnt c-pri">3</span><span class="cnt c-sec">24</span></div><div class="cap">Light counts</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TEXT FIELD / SEARCH ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Text field and search field</h2>
+    <p><b>Text field.</b> Single-line input in forms and sheets. Content layer: card fill #252523, 1pt input border #4A4944, radius 12 (base radius), 44pt tall, 14pt side padding, 17pt text (stops iOS zoom), label above 13pt muted, helper or error below 12pt. Always a real <code>&lt;label&gt;</code> plus input.</p>
+    <p><b>Search field.</b> Floating control, so it is glass: capsule 44pt tall, <code>magnifyingglass</code> 17pt muted at 14pt leading padding, 17pt text. While typing, a 44pt <code>xmark.circle.fill</code> clear button appears trailing and a plain "Cancel" button slides in beside the field. Searching replaces the magnifier with a spinner. Inside a page body a search row may instead use the flat card fill.</p>
+    <p><b>States.</b> empty (placeholder), focused (2pt #3B82F6 ring; caret not drawn here), filled, error (border #F46262, message with icon), disabled (45%), searching.</p>
+    <p><b>Do.</b> Put the error message in text, not color alone. <b>Don't</b> put a field on glass unless it is the search field.</p>
+  </div>
+  <div class="stage">
+    <div class="sw" style="align-items:flex-start">
+      <div class="fld"><label for="f1">Name</label><input id="f1" type="text" placeholder="Ana Ruiz"></div>
+      <div class="fld f-foc"><label for="f2">Name (focused)</label><input id="f2" type="text" value="Jordan" readonly></div>
+      <div class="fld"><label for="f3">Email</label><input id="f3" type="text" value="jordan@example.com" readonly></div>
+      <div class="fld f-err"><label for="f4">Email (error)</label><input id="f4" type="text" value="jordan@example" readonly aria-invalid="true" aria-describedby="f4e"><span id="f4e" class="help" style="color:#F46262;display:flex;gap:5px;align-items:center"><svg class="i i14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5M12 17v.5"/><circle cx="12" cy="12" r="9"/></svg>Enter a full address</span></div>
+      <div class="fld f-dis"><label for="f5">Workspace</label><input id="f5" type="text" value="Northwind" disabled></div>
+      <div class="fld"><label for="f6">Amount limit</label><input id="f6" type="text" inputmode="decimal" placeholder="[AMOUNT]" style="font-variant-numeric:tabular-nums"><span class="help">Optional helper text</span></div>
+    </div>
+    <div class="sw bd" style="align-items:flex-start">
+      <div class="sp"><div class="srch glass"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" aria-label="Search" placeholder="Search mail"></div><div class="cap">Empty</div></div>
+      <div class="sp"><div style="display:flex;align-items:center;gap:4px"><div class="srch glass sf" style="width:240px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" aria-label="Search focused" placeholder="Search mail"></div><button class="b zr" type="button" style="padding:0 10px">Cancel</button></div><div class="cap">Focused, Cancel beside</div></div>
+      <div class="sp"><div class="srch glass" style="color:#ECEBE6"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color:#9C9A93"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" aria-label="Search typed" value="Northwind" readonly><button class="clr" type="button" aria-label="Clear search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg></button></div><div class="cap">With text and clear (<code>xmark.circle.fill</code>)</div></div>
+      <div class="sp"><div class="srch glass"><svg class="i spin" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9"/></svg><input type="search" aria-label="Searching" value="Northwind" readonly style="color:#ECEBE6"></div><div class="cap">Searching</div></div>
+      <div class="sp"><div class="srch glass" style="opacity:0.45"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" aria-label="Search disabled" placeholder="Search mail" disabled></div><div class="cap">Disabled</div></div>
+      <div class="sp"><div class="srch glass"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" aria-label="Search no results" value="zzq" readonly style="color:#ECEBE6"><button class="clr" type="button" aria-label="Clear search"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg></button></div><div class="cap">No results: field unchanged, empty state below the list</div></div>
+    </div>
+    <div class="sw bd lt" style="align-items:flex-start">
+      <div class="fld"><label for="f7">Name</label><input id="f7" type="text" value="Ana Ruiz" readonly></div>
+      <div class="fld f-err"><label for="f8">Email (error)</label><input id="f8" type="text" value="ana@example" readonly aria-invalid="true" aria-describedby="f8e"><span id="f8e" class="help" style="color:#B91C1C">Enter a full address</span></div>
+      <div class="sp"><div class="srch glass-light"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input type="search" aria-label="Search light" placeholder="Search mail"></div><div class="cap">Light search</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ HIDE AMOUNTS ============ -->
+<div class="sec">
+  <div class="spec">
+    <h2>Hide-amounts eye toggle</h2>
+    <p><b>Purpose.</b> Masks money figures on Finance and Cap table screens for screen sharing and public places. Proposed on top of <code>GlassIconButton</code> with <code>selected</code>: no dedicated component exists yet. State is a per-device preference, applied to every figure on the screen.</p>
+    <p><b>Anatomy.</b> 40pt glass circle (48pt target with slop), 17pt symbol. Visible amounts: <code>eye</code>, unselected, label "Hide amounts". Hidden: <code>eye.slash</code>, selected (primary fill, ink symbol), label "Show amounts". Expose as a toggle button (<code>aria-pressed</code>).</p>
+    <p><b>Masked figures.</b> Replace each value with six bullets at the same font size, tabular alignment kept so rows do not jump; deltas and percentages mask too. Placeholders in this sheet use [AMOUNT].</p>
+    <p><b>Placement.</b> Trailing in the page toolbar group, before More. Not repeated per card.</p>
+    <p><b>States.</b> amounts visible, hidden, pressed (60%), disabled (no figures on screen), focus.</p>
+  </div>
+  <div class="stage">
+    <div class="sw bd">
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Hide amounts" aria-pressed="false" style="width:40px;height:40px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button><div class="cap">Visible: <code>eye</code></div></div>
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Show amounts" aria-pressed="true" style="width:40px;height:40px;background:rgba(241,240,235,0.92);color:#1C1C1A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg></button><div class="cap">Hidden: <code>eye.slash</code>, selected</div></div>
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Hide amounts" aria-pressed="false" style="width:40px;height:40px;opacity:0.6"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button><div class="cap">Pressed</div></div>
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Hide amounts" aria-pressed="false" style="width:40px;height:40px;outline:2px solid #3B82F6;outline-offset:3px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button><div class="cap">Focus</div></div>
+      <div class="sp"><button class="gbtn glass" type="button" aria-label="Hide amounts" aria-pressed="false" disabled style="width:40px;height:40px;opacity:0.4"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button><div class="cap">Disabled</div></div>
+    </div>
+    <div class="sw" style="align-items:flex-start;gap:30px">
+      <div class="sp">
+        <div style="width:360px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:flex-end;gap:10px"><button class="gbtn glass" type="button" aria-label="Hide amounts" aria-pressed="false" style="width:40px;height:40px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button></div>
+          <div class="card" style="padding:16px"><div class="eye-n">Operating account</div><div class="eye-v">[AMOUNT]</div><div class="eye-n" style="margin-top:4px">Runway [N] mo</div></div>
+        </div>
+        <div class="cap">Visible</div>
+      </div>
+      <div class="sp">
+        <div style="width:360px;display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;justify-content:flex-end;gap:10px"><button class="gbtn glass" type="button" aria-label="Show amounts" aria-pressed="true" style="width:40px;height:40px;background:rgba(241,240,235,0.92);color:#1C1C1A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg></button></div>
+          <div class="card" style="padding:16px"><div class="eye-n">Operating account</div><div class="eye-v" aria-label="Amount hidden">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</div><div class="eye-n" style="margin-top:4px">Runway &#8226;&#8226;&#8226; mo</div></div>
+        </div>
+        <div class="cap">Hidden: figures become bullets, same size</div>
+      </div>
+      <div class="sp lt" style="background:#FAFAF8;border-radius:16px;padding:18px;color:#1A1A1A">
+        <div style="display:flex;gap:12px;align-items:center"><button class="gbtn glass-light" type="button" aria-label="Hide amounts" aria-pressed="false" style="width:40px;height:40px;color:#1A1A1A"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg></button><button class="gbtn glass-light" type="button" aria-label="Show amounts" aria-pressed="true" style="width:40px;height:40px;background:#1A1A1A;color:#F1F1EF"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/></svg></button></div>
+        <div class="cap">Light: visible, hidden</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":8200}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

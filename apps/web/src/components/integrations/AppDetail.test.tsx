@@ -462,3 +462,22 @@ it("offers Remove account per row only when there is more than one account", asy
   await show(PAGE, data({ connections: [account("a"), account("b")] }));
   expect(labels().filter((label) => label === "Remove account")).toHaveLength(2);
 });
+
+it("labels the header of a Composio or Pipedream app with its provider, and a direct app with none", async () => {
+  await show(APP_PAGE, data({ connections: [appConnection()] }));
+  expect(container.querySelector("h1 + div")?.textContent).toContain("via Composio");
+  act(() => root.unmount());
+  container.remove();
+  await show(
+    "/app/integrations/app/pipedream/notion",
+    data({ connections: [appConnection({ connectorId: "pipedream" })] }),
+  );
+  expect(container.querySelector("h1 + div")?.textContent).toContain("via Pipedream");
+  act(() => root.unmount());
+  container.remove();
+  await show(
+    PAGE,
+    data({ connections: [appConnection({ connectorId: "google", provider: "gmail" })] }),
+  );
+  expect(container.textContent).not.toContain("via ");
+});
