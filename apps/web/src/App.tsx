@@ -216,6 +216,7 @@ function SessionApp() {
             <Route path="/app/legal" element={<ShellPage />} />
             <Route path="/app/data-room" element={<ShellPage />} />
             <Route path="/app/cap-table/*" element={<ShellPage />} />
+            <Route path="/app/contacts" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />

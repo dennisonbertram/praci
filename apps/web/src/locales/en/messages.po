@@ -735,7 +735,7 @@ msgstr "Add another account"
 msgid "Add API key"
 msgstr "Add API key"
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactDialog.tsx
 msgid "Add auditor"
 msgstr "Add auditor"
 
@@ -747,7 +747,9 @@ msgstr "Add connected model"
 msgid "Add connected models to use them as backups."
 msgstr "Add connected models to use them as backups."
 
+#: src/components/ContactDialog.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 msgid "Add contact"
 msgstr "Add contact"
 
@@ -768,7 +770,7 @@ msgid "Add email attachments to the Data room"
 msgstr "Add email attachments to the Data room"
 
 #. placeholder {0}: prefill.name
-#: src/pages/CapTable.tsx
+#: src/components/ContactDialog.tsx
 msgid "Add email for {0}"
 msgstr "Add email for {0}"
 
@@ -777,7 +779,7 @@ msgstr "Add email for {0}"
 msgid "Add files"
 msgstr "Add files"
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactDialog.tsx
 msgid "Add investor"
 msgstr "Add investor"
 
@@ -871,6 +873,10 @@ msgstr "Advanced: connect an outside memory service"
 #: src/pages/RoutineEditor.tsx
 msgid "Advanced..."
 msgstr "Advanced..."
+
+#: src/components/ContactDialog.tsx
+msgid "Advisor"
+msgstr "Advisor"
 
 #: src/pages/Finance.tsx
 msgid "after fees"
@@ -1378,7 +1384,7 @@ msgstr "Attachments can't be over {MAX_COMPOSE_ATTACHMENT_MB} MB."
 msgid "Attachments: {0}"
 msgstr "Attachments: {0}"
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactDialog.tsx
 msgid "Auditor"
 msgstr "Auditor"
 
@@ -1735,6 +1741,7 @@ msgstr "Can't reach the server."
 #: src/components/AskCard.tsx
 #: src/components/ComputerMaintenanceActions.tsx
 #: src/components/ComputerUpdateProgress.tsx
+#: src/components/ContactDialog.tsx
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/AddAccountDialog.tsx
@@ -1754,7 +1761,6 @@ msgstr "Can't reach the server."
 #: src/components/markdown-link-prompt.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/Artifacts.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -2534,7 +2540,12 @@ msgstr "Connecting…"
 msgid "Connection test failed."
 msgstr "Connection test failed."
 
-#: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
+#: src/pages/Shell.tsx
+msgid "Contacts"
+msgstr "Contacts"
+
+#: src/components/ContactDialog.tsx
 msgid "Contacts are your address book. They do not change Carta."
 msgstr "Contacts are your address book. They do not change Carta."
 
@@ -2834,6 +2845,7 @@ msgid "Could not load commands"
 msgstr "Could not load commands"
 
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 msgid "Could not load contacts"
 msgstr "Could not load contacts"
 
@@ -3373,6 +3385,10 @@ msgstr "Custom connections still work."
 msgid "Custom header"
 msgstr "Custom header"
 
+#: src/components/ContactDialog.tsx
+msgid "Customer"
+msgstr "Customer"
+
 #: src/pages/shell/dialogs.tsx
 msgid "Customer support"
 msgstr "Customer support"
@@ -3446,12 +3462,12 @@ msgstr "Default ({0})"
 msgid "Default ({0})"
 msgstr "Default ({0})"
 
+#: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/BotSkillsSection.tsx
@@ -3852,7 +3868,7 @@ msgstr "Earlier"
 msgid "Edit"
 msgstr "Edit"
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactDialog.tsx
 msgid "Edit contact"
 msgstr "Edit contact"
 
@@ -3864,9 +3880,11 @@ msgstr "Edit first"
 msgid "Edit wallet"
 msgstr "Edit wallet"
 
+#: src/components/ContactDialog.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 msgid "Email"
 msgstr "Email"
 
@@ -4780,7 +4798,7 @@ msgstr "Interval amount"
 msgid "Interval unit"
 msgstr "Interval unit"
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactDialog.tsx
 msgid "Investor"
 msgstr "Investor"
 
@@ -4856,7 +4874,9 @@ msgstr "key"
 msgid "Keyboard shortcuts"
 msgstr "Keyboard shortcuts"
 
+#: src/components/ContactDialog.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 msgid "Kind"
 msgstr "Kind"
 
@@ -4948,6 +4968,7 @@ msgstr "Learned"
 msgid "Leave"
 msgstr "Leave"
 
+#: src/components/ContactDialog.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
@@ -5609,6 +5630,7 @@ msgid "Mute"
 msgstr "Mute"
 
 #: src/components/cap-table/OwnershipDonut.tsx
+#: src/components/ContactDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -5618,6 +5640,7 @@ msgstr "Mute"
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
@@ -5872,6 +5895,10 @@ msgstr "No chat apps linked yet."
 msgid "No closing balance found to check against"
 msgstr "No closing balance found to check against"
 
+#: src/pages/Contacts.tsx
+msgid "No contacts yet"
+msgstr "No contacts yet"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "No credentials saved for this bot."
 msgstr "No credentials saved for this bot."
@@ -5920,6 +5947,7 @@ msgstr "No mail matches this filter"
 
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
 msgstr "No matches"
@@ -6186,7 +6214,7 @@ msgstr "Not tagged yet. Files are tagged once you let Praci read documents; you 
 msgid "Not waiting for approval"
 msgstr "Not waiting for approval"
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactDialog.tsx
 msgid "Notes"
 msgstr "Notes"
 
@@ -6287,8 +6315,8 @@ msgstr "Open"
 #. placeholder {0}: group.title
 #. placeholder {0}: ref.name
 #. placeholder {0}: sameEmail.name
+#: src/components/ContactDialog.tsx
 #: src/components/data-room/DataRoomRefChips.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0}"
 msgstr "Open {0}"
@@ -6479,7 +6507,8 @@ msgstr "Or paste an API key"
 msgid "Organic"
 msgstr "Organic"
 
-#: src/pages/CapTable.tsx
+#: src/components/ContactDialog.tsx
+#: src/pages/Contacts.tsx
 msgid "Organization"
 msgstr "Organization"
 
@@ -6492,6 +6521,7 @@ msgid "Original message unavailable"
 msgstr "Original message unavailable"
 
 #: src/components/cap-table/OwnershipDonut.tsx
+#: src/components/ContactDialog.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/pages/CapTable.tsx
@@ -6593,6 +6623,10 @@ msgstr "Part of this can't be shown."
 #: src/pages/legal/LegalContracts.tsx
 msgid "Parties"
 msgstr "Parties"
+
+#: src/components/ContactDialog.tsx
+msgid "Partner"
+msgstr "Partner"
 
 #: src/components/data-room/FilterBar.tsx
 msgid "Party"
@@ -7601,6 +7635,7 @@ msgid "Sandbox"
 msgstr "Sandbox"
 
 #: src/components/AskCard.tsx
+#: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
@@ -7609,7 +7644,6 @@ msgstr "Sandbox"
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/GroupPanel.tsx
 #: src/pages/KnowledgeSection.tsx
@@ -7621,7 +7655,7 @@ msgid "Save"
 msgstr "Save"
 
 #. placeholder {0}: prefill.name
-#: src/pages/CapTable.tsx
+#: src/components/ContactDialog.tsx
 msgid "Save {0} as a contact"
 msgstr "Save {0} as a contact"
 
@@ -7735,6 +7769,7 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/CapTable.tsx
+#: src/pages/Contacts.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
@@ -9561,6 +9596,7 @@ msgstr "Value"
 msgid "Values are encrypted and never shown again."
 msgstr "Values are encrypted and never shown again."
 
+#: src/components/ContactDialog.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Vendor"
