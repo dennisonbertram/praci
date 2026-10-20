@@ -2317,6 +2317,12 @@ model DataRoomItem {
   classifiedAt       DateTime?
   /// Held by the pipeline step that claimed the item; a step starts only when this is null or past.
   leaseUntil         DateTime?
+  /// Store key of the small WebP preview of a PDF or image. Null: none made (yet).
+  thumbnailKey       String?
+  /// Set when a thumbnail job was queued for the item, so one is queued at most once.
+  thumbnailTriedAt   DateTime?
+  /// The first ~400 characters of the extracted text, for the grid; the full text stays in `text`.
+  previewText        String?
   createdAt          DateTime          @default(now())
   updatedAt          DateTime          @updatedAt
   chunks             DataRoomChunk[]

@@ -40,6 +40,8 @@ const item = (id: string, name: string, over: Partial<DataRoomApiItem> = {}): Da
   error: null,
   facets,
   createdAt: "2026-01-02T00:00:00.000Z",
+  hasThumbnail: false,
+  previewText: null,
   ...over,
 });
 

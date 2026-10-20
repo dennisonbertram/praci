@@ -42,6 +42,17 @@ const searchChanged = () => new DataRoomConflictError("Search changed; start aga
 /** Items each search leg keeps before fusion, and the reciprocal rank fusion constant. */
 /** How long a claimed step may run before another may take the item over. */
 export const DATA_ROOM_LEASE_MS = 10 * 60_000;
+
+const PREVIEW_TEXT_CHARS = 400;
+/** The first lines of an item's text for a grid card; the migration's backfill cuts the same way. */
+export function dataRoomPreviewText(text: string): string | null {
+  // A cut through a surrogate pair would leave half a character.
+  const cut = text
+    .trim()
+    .slice(0, PREVIEW_TEXT_CHARS)
+    .replace(/[\ud800-\udbff]$/, "");
+  return cut || null;
+}
 const LEG_SQL = Prisma.raw("100");
 const RRF_SQL = Prisma.raw("60");
 const DEFAULT_LIMIT = 10;
@@ -815,6 +826,29 @@ export function createDataRoomRepos(prisma: PrismaClient) {
         : null;
     },
 
+    /**
+     * Marks the items that still have no thumbnail and were never tried, and returns their ids:
+     * the caller queues one thumbnail job for each, so no item is queued twice.
+     */
+    async claimThumbnails(actor: Actor, ids: string[]): Promise<string[]> {
+      if (!ids.length) return [];
+      const rows = await prisma.$queryRaw<{ id: string }[]>`
+        UPDATE data_room_items SET "thumbnailTriedAt" = now()
+        WHERE id = ANY(${ids}::text[]) AND "spaceId" = ${actor.spaceId} AND "userId" = ${actor.userId}
+          AND "storageKey" IS NOT NULL AND "thumbnailKey" IS NULL AND "thumbnailTriedAt" IS NULL
+        RETURNING id`;
+      return rows.map((row) => row.id);
+    },
+
+    /** Saves the thumbnail's store key. False when the item is gone or the actor's no longer. */
+    async setThumbnail(actor: Actor, id: string, thumbnailKey: string): Promise<boolean> {
+      const { count } = await prisma.dataRoomItem.updateMany({
+        where: { id, ...eligibleWhere(actor) },
+        data: { thumbnailKey },
+      });
+      return count === 1;
+    },
+
     /** Saves the extracted text and moves the item on to classification. */
     async finishExtraction(
       actor: Actor,
@@ -831,6 +865,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
             error: null,
             failures: 0,
             leaseUntil: null,
+            previewText: dataRoomPreviewText(text),
             revision: { increment: 1 },
           },
         });

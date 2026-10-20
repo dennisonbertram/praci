@@ -11,6 +11,7 @@ import {
   runDataRoomClassify,
   runDataRoomIndex,
   runDataRoomIngest,
+  runDataRoomThumbnail,
 } from "./data-room-jobs.js";
 import {
   FakeClassifier,
@@ -21,6 +22,12 @@ import {
   RecordingJobs,
 } from "./data-room-test-fakes.js";
 
+import { renderThumbnail } from "./thumbnail-render.js";
+
+const canvas = await import("@napi-rs/canvas").then(
+  () => true,
+  () => false,
+);
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
   process.env.VERIFY_DATABASE && databaseUrl ? describe.sequential : describe.skip;
@@ -562,5 +569,34 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     // Other tests' stranded leftovers aside, running the queued index job finishes the item.
     await runDataRoomIndex(deps(), { ...scope(), itemId: indexing });
     expect((await reload(indexing)).status).toBe("ready");
+  });
+
+  it("draws a thumbnail for a PDF, scoped to its owner, without touching its status", async () => {
+    reset();
+    const pdf = await addItem(makePdf("Thumbnail me"), {
+      name: "t.pdf",
+      mimeType: "application/pdf",
+    });
+    jobs.queue.length = 0;
+    const before = await reload(pdf.id);
+    const withThumbnails = { ...deps(), renderThumbnail };
+    const stranger = { ...scope(), userId: `other-${run}`, itemId: pdf.id };
+    await runDataRoomThumbnail(withThumbnails, stranger);
+    expect((await reload(pdf.id)).thumbnailKey).toBeNull();
+    await runDataRoomThumbnail(withThumbnails, { ...scope(), itemId: pdf.id });
+    const after = await reload(pdf.id);
+    if (!canvas) return expect(after.thumbnailKey).toBeNull();
+    expect(after.thumbnailKey).toBeTruthy();
+    expect(after.status).toBe(before.status);
+    expect(after.revision).toBe(before.revision);
+    const webp = await artifacts.get(after.thumbnailKey as string);
+    expect(new TextDecoder().decode(webp.slice(8, 12))).toBe("WEBP");
+  });
+
+  it("makes no thumbnail for a text file", async () => {
+    reset();
+    const text = await addItem("plain words");
+    await runDataRoomThumbnail({ ...deps(), renderThumbnail }, { ...scope(), itemId: text.id });
+    expect((await reload(text.id)).thumbnailKey).toBeNull();
   });
 });
