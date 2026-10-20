@@ -201,11 +201,6 @@ msgstr ""
 msgid "{0} handling"
 msgstr ""
 
-#. placeholder {0}: row?.displayName ?? item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} is ready."
-msgstr ""
-
 #. placeholder {0}: format(size / 1024)
 #: src/lib/format-bytes.ts
 msgid "{0} KB"
@@ -231,11 +226,6 @@ msgstr ""
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
 msgid "{0} non-USD not counted"
-msgstr ""
-
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} now appears under Connected."
 msgstr ""
 
 #. placeholder {0}: wallet.safeThreshold
@@ -1999,10 +1989,6 @@ msgid "Clearing…"
 msgstr "Limpeza"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Click Sign in with {service}. A {service} window opens for you to approve access."
-msgstr ""
-
-#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
 msgstr ""
@@ -3126,6 +3112,14 @@ msgstr "Criar Conta"
 msgid "Create agent"
 msgstr ""
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in {service}'s developer settings with this callback URL."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in the provider's developer settings with this callback URL."
+msgstr ""
+
 #: src/pages/Shell.tsx
 msgid "Create Data room agent"
 msgstr ""
@@ -3741,6 +3735,10 @@ msgstr ""
 
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
+msgstr ""
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Enter a Client ID to sign in."
 msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
@@ -4573,10 +4571,6 @@ msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
-msgstr ""
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "It now appears under Connected."
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx

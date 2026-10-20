@@ -188,3 +188,10 @@ it("does not promise a bot choice before sign-in", async () => {
   expect(text()).toContain("You'll sign in to Slack in a new window.");
   expect(text()).not.toContain("Then you choose");
 });
+
+it("shows only the title once connected, without repeating the result", async () => {
+  await connect(pendingRow("connected", { agentBotId: "bot_1" }));
+  expect(text()).toContain("Slack connected");
+  expect(text()).not.toContain("is ready");
+  expect(text()).not.toContain("now appears under Connected");
+});

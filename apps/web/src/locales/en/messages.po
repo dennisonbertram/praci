@@ -201,11 +201,6 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 msgid "{0} handling"
 msgstr "{0} handling"
 
-#. placeholder {0}: row?.displayName ?? item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} is ready."
-msgstr "{0} is ready."
-
 #. placeholder {0}: format(size / 1024)
 #: src/lib/format-bytes.ts
 msgid "{0} KB"
@@ -232,11 +227,6 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 #: src/pages/Finance.tsx
 msgid "{0} non-USD not counted"
 msgstr "{0} non-USD not counted"
-
-#. placeholder {0}: item.name
-#: src/components/integrations/ConnectAppDialog.tsx
-msgid "{0} now appears under Connected."
-msgstr "{0} now appears under Connected."
 
 #. placeholder {0}: wallet.safeThreshold
 #. placeholder {1}: wallet.safeOwners.length
@@ -1999,10 +1989,6 @@ msgid "Clearing…"
 msgstr "Clearing…"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
-msgid "Click Sign in with {service}. A {service} window opens for you to approve access."
-msgstr "Click Sign in with {service}. A {service} window opens for you to approve access."
-
-#: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
 msgstr "Client ID"
@@ -3126,6 +3112,14 @@ msgstr "Create account"
 msgid "Create agent"
 msgstr "Create agent"
 
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in {service}'s developer settings with this callback URL."
+msgstr "Create an app in {service}'s developer settings with this callback URL."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Create an app in the provider's developer settings with this callback URL."
+msgstr "Create an app in the provider's developer settings with this callback URL."
+
 #: src/pages/Shell.tsx
 msgid "Create Data room agent"
 msgstr "Create Data room agent"
@@ -3742,6 +3736,10 @@ msgstr "Ends {day}"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Engage when... Ignore..."
 msgstr "Engage when... Ignore..."
+
+#: src/components/integrations/CustomConnectionDialog.tsx
+msgid "Enter a Client ID to sign in."
+msgstr "Enter a Client ID to sign in."
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Enter a folder name without slashes"
@@ -4574,10 +4572,6 @@ msgstr "Isolated preview — no access to your account"
 #: src/components/data-room/ItemDialogs.tsx
 msgid "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
 msgstr "It holds {holds}. Move or delete what is in it first; only an empty folder can be deleted."
-
-#: src/components/integrations/CustomConnectionDialog.tsx
-msgid "It now appears under Connected."
-msgstr "It now appears under Connected."
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Italic"
