@@ -49,6 +49,11 @@ msgstr ""
 msgid ", {0} already imported"
 msgstr ""
 
+#. placeholder {0}: processing.failed
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
+msgstr ""
+
 #. placeholder {0}: counts.unreviewedDocuments
 #: src/pages/Legal.tsx
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
@@ -968,6 +973,10 @@ msgstr "Permitir {0} sem perguntar"
 
 #: src/components/AiDataSharing.tsx
 msgid "Allow {name}"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Allow {name}, {detail}"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -4066,7 +4075,6 @@ msgstr "falhou"
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
-#: src/components/data-room/ProcessingStrip.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/ActivityList.tsx
 msgid "Failed"
@@ -4685,8 +4693,8 @@ msgstr ""
 msgid "Inbox & email"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
-msgid "Inbox sorting and Data room files"
+#: src/components/data-room/ProcessingStrip.tsx
+msgid "Indexing"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -6727,10 +6735,6 @@ msgstr ""
 msgid "Praci doesn't tag new files."
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
-msgid "Praci finds what needs a reply, lists your to-dos and groups mail like bills and newsletters. Senders, recipients, subjects and short previews are sent to the AI service that runs your bots ({name})."
-msgstr ""
-
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
 msgstr ""
@@ -6895,6 +6899,7 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/format.ts
+#: src/components/data-room/ProcessingStrip.tsx
 msgid "Reading"
 msgstr ""
 
@@ -7884,6 +7889,10 @@ msgstr ""
 
 #: src/components/data-room/SendToAgent.tsx
 msgid "Send to agent"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Senders, recipients, subjects and short previews go to the AI service that runs your bots ({name})."
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -9786,10 +9795,6 @@ msgstr "Você tem o controle"
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "You'll sign in to {0} in a new window."
-msgstr ""
-
-#: src/components/AiDataSharing.tsx
-msgid "Your bots always answer through the AI service chosen in Models. A switch below also lets that service read your mail and documents, so Praci can sort your Inbox and read Data room files."
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx

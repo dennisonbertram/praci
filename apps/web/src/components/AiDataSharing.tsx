@@ -88,9 +88,8 @@ export function InboxConsentPrompt({
       onDismiss={onDismiss}
     >
       <Trans>
-        Praci finds what needs a reply, lists your to-dos and groups mail like bills and
-        newsletters. Senders, recipients, subjects and short previews are sent to the AI service
-        that runs your bots ({name}).
+        Senders, recipients, subjects and short previews go to the AI service that runs your bots (
+        {name}).
       </Trans>
     </ConsentCard>
   );
@@ -133,14 +132,6 @@ export function AiDataSharingSection() {
         <Trans>AI data sharing</Trans>
       </h3>
       <p className="mt-1 text-[13px] text-muted-foreground">{i18n._(AI_DATA_DISCLOSURES.model)}</p>
-      {/* Without this, an Off switch while bots still answer reads as a switch that does nothing. */}
-      <p className="mt-1 text-[13px] text-muted-foreground">
-        <Trans>
-          Your bots always answer through the AI service chosen in Models. A switch below also lets
-          that service read your mail and documents, so Praci can sort your Inbox and read Data room
-          files.
-        </Trans>
-      </p>
       {error ? (
         <p role="alert" className="mt-2 text-sm text-destructive">
           {error}
@@ -148,20 +139,20 @@ export function AiDataSharingSection() {
       ) : null}
       <ul className="mt-3 flex flex-col gap-3">
         {recipients.map((recipient) => {
-          const { name } = recipient;
+          const { name, detail } = recipient;
           return (
             <li key={recipient.key} className="flex items-center gap-3">
               <Switch
-                aria-label={t`Allow ${name}`}
+                aria-label={detail ? t`Allow ${name}, ${detail}` : t`Allow ${name}`}
                 checked={recipient.allowed}
                 disabled={pending}
                 onCheckedChange={(allowed) => set(recipient, allowed)}
               />
               <span className="flex min-w-0 flex-col">
                 <span className="text-[14px] text-foreground/75">{name}</span>
-                <span className="text-[12.5px] text-muted-foreground">
-                  <Trans>Inbox sorting and Data room files</Trans>
-                </span>
+                {detail ? (
+                  <span className="text-[12.5px] text-muted-foreground">{detail}</span>
+                ) : null}
               </span>
             </li>
           );
