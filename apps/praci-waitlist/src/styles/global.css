@@ -51,8 +51,19 @@ footer {
 a {
   color: inherit;
 }
+/* Vault Sans: a Mona Sans derivative, SIL OFL 1.1 (public/fonts/OFL.txt). */
+@font-face {
+  font-family: "Vault Sans";
+  src: url("/fonts/vault-sans-variable.woff2") format("woff2");
+  font-weight: 300 800;
+  font-display: swap;
+}
 .brand {
-  font-weight: 600;
+  font-family: "Vault Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 375;
+  letter-spacing: -0.022rem;
+  line-height: 1;
   text-decoration: none;
 }
 main {
