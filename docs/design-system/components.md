@@ -5,7 +5,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 - Web and shared component files with stories: 216 of 216
 - Web and shared components: 608
-- Mobile components: 133 in 91 files, mobile — native story pending
+- Mobile components: 134 in 92 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -393,6 +393,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | NativeSwitch | [apps/mobile/components/native-switch.ios.tsx](../../apps/mobile/components/native-switch.ios.tsx) | mobile — native story pending | mobile |
 | NativeSwitch | [apps/mobile/components/native-switch.tsx](../../apps/mobile/components/native-switch.tsx) | mobile — native story pending | mobile |
 | NativeSymbol | [apps/mobile/components/native-symbol.tsx](../../apps/mobile/components/native-symbol.tsx) | mobile — native story pending | mobile |
+| PdfPreview | [apps/mobile/components/pdf-preview.tsx](../../apps/mobile/components/pdf-preview.tsx) | mobile — native story pending | mobile |
 | PinsStrip | [apps/mobile/components/PinsStrip.tsx](../../apps/mobile/components/PinsStrip.tsx) | mobile — native story pending | mobile |
 | ReplyDismissButton | [apps/mobile/components/reply-dismiss-button.ios.tsx](../../apps/mobile/components/reply-dismiss-button.ios.tsx) | mobile — native story pending | mobile |
 | ReplyDismissButton | [apps/mobile/components/reply-dismiss-button.tsx](../../apps/mobile/components/reply-dismiss-button.tsx) | mobile — native story pending | mobile |
