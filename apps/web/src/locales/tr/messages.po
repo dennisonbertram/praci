@@ -4025,6 +4025,7 @@ msgstr ""
 msgid "Fullscreen"
 msgstr "Tam ekran"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Fully diluted shares"
 msgstr ""
@@ -5225,6 +5226,7 @@ msgstr ""
 msgid "Mute"
 msgstr "Sesi kapat"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/components/data-room/ItemDialogs.tsx
@@ -6052,6 +6054,7 @@ msgstr "Kuruluş API anahtarı"
 msgid "Original message unavailable"
 msgstr "Orijinal mesaj kullanılamıyor"
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
 #: src/pages/CapTable.tsx
@@ -6099,6 +6102,7 @@ msgstr ""
 msgid "Owner"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Ownership"
 msgstr ""
@@ -7482,6 +7486,7 @@ msgstr ""
 msgid "Shareholders"
 msgstr ""
 
+#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Shares"
 msgstr ""
