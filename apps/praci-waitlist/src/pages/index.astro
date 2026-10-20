@@ -7,34 +7,33 @@ const github = "https://github.com/dennisonbertram/praci";
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Praci</title>
+    <title>Praci — The Startup OS</title>
     <meta name="description" content="Open-source AI agents that run your inbox, cash, cap table and investor documents." />
   </head>
   <body>
     <header>
-      <a class="brand" href="/">Praci</a>
-      <a href={github}>GitHub</a>
+      <a class="brand" href="/">praci</a>
+      <a class="star" href={github}><svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .67.42l1.88 3.81 4.2.61a.75.75 0 0 1 .42 1.28l-3.04 2.96.72 4.19a.75.75 0 0 1-1.09.79L8 12.33l-3.76 1.98a.75.75 0 0 1-1.09-.79l.72-4.19L.83 6.37a.75.75 0 0 1 .42-1.28l4.2-.61L7.33.67A.75.75 0 0 1 8 .25Z"/></svg>Star on GitHub</a>
     </header>
     <main>
-      <h1>An AI team for the work that runs your company.</h1>
+      <h1>The Startup OS</h1>
       <p class="lead">
-        Praci is open-source agents that run your inbox, cash, cap table and investor documents.
-        Run it yourself, or use the hosted version.
+        An AI team for the work that runs your company. Built by founders, for founders.
+        Self-host or Cloud.
       </p>
       <ul>
         <li>Open source, with your own keys and models.</li>
         <li>Agents ask before they send, pay or change anything.</li>
-        <li>Self-host it, or let us run it for you.</li>
+        <li>Inbox, cash, cap table and investor documents in one place.</li>
       </ul>
+      <figure class="shot">
+        <img src="/app.webp" width="1440" height="900" alt="The Praci Finance page with cash, burn, runway and upcoming payments" />
+      </figure>
       <section id="hosted">
-        <h2>Get the hosted version</h2>
+        <h2>Get Praci Cloud</h2>
         <form id="join" novalidate>
           <label class="sr-only" for="email">Email address</label>
           <input id="email" name="email" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="254" placeholder="Email" required />
-          <label class="sr-only" for="name">Name (optional)</label>
-          <input id="name" name="name" type="text" autocomplete="name" maxlength="100" placeholder="Name (optional)" />
-          <label class="sr-only" for="company">Company (optional)</label>
-          <input id="company" name="company" type="text" autocomplete="organization" maxlength="100" placeholder="Company (optional)" />
           <div hidden><input name="contactNote" type="text" autocomplete="off" tabindex="-1" /></div>
           <button type="submit">Join the waitlist</button>
         </form>
@@ -42,7 +41,7 @@ const github = "https://github.com/dennisonbertram/praci";
       </section>
     </main>
     <footer>
-      <span>Praci</span>
+      <span>Praci is an opinionated fork of <a href="https://github.com/elie222/rakazo">Rakazo</a>.</span>
       <a href={github}>GitHub</a>
     </footer>
     <script>
@@ -63,8 +62,6 @@ const github = "https://github.com/dennisonbertram/praci";
             headers: { "content-type": "application/json" },
             body: JSON.stringify({
               email: email.value,
-              name: field("name"),
-              company: field("company"),
               contactNote: field("contactNote"),
             }),
           });

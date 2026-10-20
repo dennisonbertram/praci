@@ -16,6 +16,7 @@ test("onboarding preflight stays on the connection being tested", async ({ page 
   await expect(page.getByRole("heading", { name: "Connect a model" })).toBeVisible({
     timeout: 20_000,
   });
+  await page.getByText("Use an API key instead").click();
 
   const provider = page.getByRole("combobox", { name: "Provider" });
   await expect(provider).toContainText("OpenRouter");

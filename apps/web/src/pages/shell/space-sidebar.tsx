@@ -337,6 +337,10 @@ export type SpaceSidebarProps = {
   sidebarDragOverlay: (dragId: string) => ReactNode;
   sidebarGroups: SidebarGroup[];
   bootstrapMe: Me | null | undefined;
+  hiddenPages: string[];
+  addedPages: { key: string; label: string }[];
+  toggleHiddenPage: (key: string) => Promise<void>;
+  setAddedPages: Dispatch<SetStateAction<{ key: string; label: string }[]>>;
   collapsedRosterParents: ReadonlySet<string>;
   editingFolderId: string | null;
   toggleFolder: (sectionId: string, collapsed: boolean) => Promise<void>;
@@ -442,6 +446,10 @@ export function SpaceSidebar({
   sidebarDragOverlay,
   sidebarGroups,
   bootstrapMe,
+  hiddenPages,
+  addedPages,
+  toggleHiddenPage,
+  setAddedPages,
   collapsedRosterParents,
   editingFolderId,
   toggleFolder,
@@ -659,98 +667,126 @@ export function SpaceSidebar({
               collapsed={collapsedSidebarSections.has("pages")}
               rail={rail}
               onToggle={() => toggleSidebarSection("pages")}
+              pages={[
+                { key: "inbox", label: t`Inbox` },
+                { key: "finance", label: t`Finance` },
+                { key: "legal", label: t`Legal` },
+                { key: "cap-table", label: t`Cap table` },
+                { key: "data-room", label: t`Data room` },
+                { key: "artifacts", label: t`Artifacts` },
+                ...addedPages,
+              ]}
+              hidden={hiddenPages}
+              onToggleHidden={toggleHiddenPage}
             >
-              <SidebarPageLink
-                testId="sidebar-inbox"
-                current={inboxMode}
-                icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Inbox`}
+              {hiddenPages.includes("inbox") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-inbox"
+                  current={inboxMode}
+                  icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Inbox`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/inbox");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.inbox ?? 0,
+                    value: inboxUnread > 0 ? String(inboxUnread) : undefined,
+                    valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
+                    rail,
+                  })}
+                />
+              )}
+              {hiddenPages.includes("finance") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-finance"
+                  current={financeMode}
+                  icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Finance`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/finance");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.finance ?? 0,
+                    rail,
+                    value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
+                  })}
+                />
+              )}
+              {hiddenPages.includes("legal") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-legal"
+                  current={legalMode}
+                  icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Legal`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/legal");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.legal ?? 0,
+                    rail,
+                    value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+                  })}
+                />
+              )}
+              {hiddenPages.includes("cap-table") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-cap-table"
+                  current={capTableMode}
+                  icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Cap table`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/cap-table");
+                  }}
+                  {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
+                />
+              )}
+              {hiddenPages.includes("data-room") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-data-room"
+                  current={dataRoomMode}
+                  icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Data room`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/data-room");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen["data-room"] ?? 0,
+                    rail,
+                    value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                  })}
+                />
+              )}
+              {hiddenPages.includes("artifacts") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-artifacts"
+                  current={artifactsMode}
+                  // Not the Data room's folder icon: these are files bots made.
+                  icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Artifacts`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/artifacts");
+                  }}
+                  {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
+                />
+              )}
+              <SidebarPages
                 rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/inbox");
-                }}
-                {...glanceBadge({
-                  unseen: unseen.inbox ?? 0,
-                  value: inboxUnread > 0 ? String(inboxUnread) : undefined,
-                  valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
-                  rail,
-                })}
+                hidden={hiddenPages}
+                onListed={setAddedPages}
+                onOpen={() => setMobileSidebarOpen(false)}
               />
-              <SidebarPageLink
-                testId="sidebar-finance"
-                current={financeMode}
-                icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Finance`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/finance");
-                }}
-                {...glanceBadge({
-                  unseen: unseen.finance ?? 0,
-                  rail,
-                  value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
-                })}
-              />
-              <SidebarPageLink
-                testId="sidebar-legal"
-                current={legalMode}
-                icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Legal`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/legal");
-                }}
-                {...glanceBadge({
-                  unseen: unseen.legal ?? 0,
-                  rail,
-                  value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
-                })}
-              />
-              <SidebarPageLink
-                testId="sidebar-cap-table"
-                current={capTableMode}
-                icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Cap table`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/cap-table");
-                }}
-                {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
-              />
-              <SidebarPageLink
-                testId="sidebar-data-room"
-                current={dataRoomMode}
-                icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Data room`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/data-room");
-                }}
-                {...glanceBadge({
-                  unseen: unseen["data-room"] ?? 0,
-                  rail,
-                  value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
-                })}
-              />
-              <SidebarPageLink
-                testId="sidebar-artifacts"
-                current={artifactsMode}
-                // Not the Data room's folder icon: these are files bots made.
-                icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Artifacts`}
-                rail={rail}
-                onOpen={() => {
-                  setMobileSidebarOpen(false);
-                  navigate("/app/artifacts");
-                }}
-                {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
-              />
-              <SidebarPages rail={rail} onOpen={() => setMobileSidebarOpen(false)} />
             </SidebarPagesGroup>
           </div>
         )}

@@ -37,6 +37,8 @@ body {
 header,
 footer {
   display: flex;
+  align-items: center;
+  gap: 16px;
   justify-content: space-between;
   width: 100%;
   max-width: 880px;
@@ -51,8 +53,19 @@ footer {
 a {
   color: inherit;
 }
+/* Vault Sans: a Mona Sans derivative, SIL OFL 1.1 (public/fonts/OFL.txt). */
+@font-face {
+  font-family: "Vault Sans";
+  src: url("/fonts/vault-sans-variable.woff2") format("woff2");
+  font-weight: 300 800;
+  font-display: swap;
+}
 .brand {
-  font-weight: 600;
+  font-family: "Vault Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 375;
+  letter-spacing: -0.022rem;
+  line-height: 1;
   text-decoration: none;
 }
 main {
@@ -144,4 +157,30 @@ button:focus-visible {
   margin: 12px 0 0;
   min-height: 1.5em;
   color: var(--fg);
+}
+
+.shot {
+  margin: 48px 0 40px;
+  max-width: 1100px;
+}
+.shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+}
+
+.star {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+  text-decoration: none;
+}
+.star:hover {
+  border-color: var(--fg);
 }

@@ -132,7 +132,7 @@ Web hosts: apps/web/src/pages/Shell.tsx. Mobile hosts: apps/mobile/app/thread.ts
 | Computer Terminal app (shell, bot activity) | components/computer/TerminalApp.tsx; contracts/src/terminal.ts | none | MISSING | L | Needs terminal emulator in a webview or native; arguably desktop-leaning. |
 | Computer maintenance: update, recover, reset | components/ComputerMaintenanceActions.tsx | components/computer-maintenance-actions.tsx (`computer/reset`) | FULL | - | |
 | Computer update/recover progress and release | components/ComputerUpdateProgress.tsx | components/computer-update-progress.tsx, lib/computer-updates.ts | FULL | - | |
-| Host computer choice ("Where should bots run?", Docker check) | pages/HostComputerPrompt.tsx | none | N/A | - | Local host-machine control exists only with the desktop app. |
+| Host computer choice (per-bot "Runs on", Docker check) | components/RunsOnPicker.tsx | none | N/A | - | Local host-machine control exists only with the desktop app. |
 | Desktop auto-updates / software update | components/DesktopUpdates.tsx, SoftwareUpdateSection.tsx | lib/app-version.ts (version only) | N/A | - | Electron updater; mobile updates come from the store. |
 | Artifacts list: search, bot filter, load more, delete | pages/Artifacts.tsx; `rpc.artifacts.listSpace/remove` | app/artifacts.tsx (search, bot filter, paging, long-press delete) | FULL | - | |
 | Artifacts list: date filter, card/list view toggle | Artifacts.tsx ("Filter by date", "Card view", "List view") | none | PARTIAL | S | Cosmetic. |
@@ -279,7 +279,7 @@ Mobile settings live in `app/(settings)/*` plus `app/(settings)/account.tsx` (th
 | Desktop app update (restart to update) | components/DesktopUpdates.tsx, apps/desktop/src/auto-update.ts | none | N/A | - | Electron auto-update only. Mobile updates through the app stores. |
 | Local server settings page (desktop local stack) | pages/LocalSettings.tsx, apps/desktop/src/local-settings.ts | none | N/A | - | Desktop-hosted stack. |
 | Window chrome | pages/WindowChrome.tsx | none | N/A | - | Electron title bar. |
-| Host computer prompt (control local machine) | pages/HostComputerPrompt.tsx | none | N/A | - | Local machine control, desktop only. |
+| Runs on setting (control local machine) | components/RunsOnPicker.tsx | none | N/A | - | Local machine control, desktop only. |
 | Notifications: browser/OS notifications for agent events | lib/browser-notifications.ts (permission request, delivery); Shell.tsx lines ~968-1022 | account.tsx Notifications group (live status, agent messages, scheduled tasks, needs attention), lib/live-notifications.ts, lib/push.ts (`notifications/registerPush`) | PARTIAL | S | Mobile has richer per-category settings (Android promoted/live). Web has no per-category toggles. Direction is mobile ahead; no gap for mobile. Listed for completeness. |
 | Archived bots: list, restore, delete | Shell.tsx archived section (`rpc.bots.listArchived`) | app/(settings)/archived-bots.tsx, lib/bot-lifecycle.ts | FULL | - | |
 | Archived groups: list, restore | Shell.tsx (`rpc.groups.listArchived`) | none (`groups/listArchived` not found in apps/mobile) | MISSING | S | Archived screen lists bots only. |

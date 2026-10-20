@@ -30,6 +30,7 @@ import { ComputersUnavailableHint } from "../components/ComputersUnavailableHint
 import { DataExportSection } from "../components/DataExport";
 import { DesktopUpdateSection } from "../components/DesktopUpdates";
 import { NotificationSettingsSection } from "../components/NotificationSettings";
+import { DefaultRunsOnSection } from "../components/RunsOnPicker";
 import { SoftwareUpdateSection } from "../components/SoftwareUpdateSection";
 import { authClient } from "../lib/auth";
 import {
@@ -254,6 +255,8 @@ export function GeneralSettingsPanels({
           </p>
         ) : null}
       </section>
+
+      {isDeploymentOwner ? <DefaultRunsOnSection /> : null}
 
       {isDeploymentOwner ? (
         <section className="flex items-center justify-between gap-4 rounded-xl border border-border px-4 py-4">

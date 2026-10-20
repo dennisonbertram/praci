@@ -394,6 +394,7 @@ export const appContract = {
         z.object({
           avatarStyle: AvatarStyleSchema.optional(),
           timezone: z.string().min(1).max(64).optional(),
+          hiddenPages: z.array(z.string().min(1).max(64)).max(100).optional(),
         }),
       )
       .output(MeSchema),
@@ -486,6 +487,12 @@ export const appContract = {
         ]),
       ),
     finishOAuth: oc.input(z.object({ loginId: z.string() })).output(ModelCredentialSchema),
+    beginOpenRouterOAuth: oc
+      .input(z.object({ redirectUri: z.string().url() }))
+      .output(z.object({ authorizationUrl: z.string().url() })),
+    completeOpenRouterOAuth: oc
+      .input(z.object({ code: z.string().min(1).max(2_048), state: z.string().min(1).max(256) }))
+      .output(ModelCredentialSchema),
     cancelOAuth: oc
       .input(z.object({ loginId: z.string() }))
       .output(z.object({ ok: z.literal(true) })),

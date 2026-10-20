@@ -360,7 +360,7 @@ msgstr ""
 msgid "{folders, plural, one {# folder} other {# folders}}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "{from} handed off to {to}"
 msgstr ""
 
@@ -432,7 +432,7 @@ msgstr ""
 msgid "{name}, paid with {paidWith}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "{newCount, plural, one {# new message} other {# new messages}}"
 msgstr ""
 
@@ -516,7 +516,7 @@ msgstr ""
 msgid "{unpriced} unpriced"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} est en cours d'exécution"
 
@@ -1213,7 +1213,7 @@ msgstr ""
 msgid "Archive all"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "archived"
 msgstr "archivé"
 
@@ -1244,7 +1244,7 @@ msgstr ""
 msgid "Archived {n}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Archived. Chat, memory, and files kept."
 msgstr "Archivé. Conversation, mémoire et fichiers conservés."
 
@@ -1361,7 +1361,6 @@ msgid "Attached {path}"
 msgstr ""
 
 #: src/pages/shell/chat-context.tsx
-#: src/pages/shell/composer.tsx
 msgid "Attachment"
 msgstr "Pièce jointe"
 
@@ -1591,13 +1590,14 @@ msgstr "Démarrage du bureau en direct…"
 msgid "Booting up {0}’s computer"
 msgstr "Démarrage de l'ordinateur de {0}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "bot"
 msgstr "bot"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Bot"
 msgstr "Bot"
 
@@ -1625,7 +1625,7 @@ msgstr "Modèle du bot"
 msgid "Bots"
 msgstr "Bots"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Bots are working"
 msgstr "Les bots sont en cours d'exécution"
 
@@ -1640,6 +1640,10 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Bots lose access to this account."
+msgstr ""
+
+#: src/components/RunsOnPicker.tsx
+msgid "Bots run on"
 msgstr ""
 
 #: src/pages/Welcome.tsx
@@ -1947,7 +1951,6 @@ msgid "Chats"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Check again"
 msgstr ""
 
@@ -1991,7 +1994,6 @@ msgstr ""
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
-#: src/pages/HostComputerPrompt.tsx
 msgid "Checking…"
 msgstr "Vérification en cours…"
 
@@ -2284,8 +2286,8 @@ msgid "Compose"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "Ordinateur"
 
@@ -2356,6 +2358,7 @@ msgstr "Confirmez que l'URL est accessible depuis cette session du navigateur, p
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
@@ -2376,6 +2379,7 @@ msgstr "Connecter"
 msgid "Connect {0}"
 msgstr ""
 
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
@@ -2454,7 +2458,12 @@ msgstr ""
 msgid "Connect Treg"
 msgstr "Connecter Treg"
 
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Connect your apps"
+msgstr ""
+
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2526,6 +2535,7 @@ msgid "Context limit"
 msgstr "Limite de contexte"
 
 #: src/components/integrations/AgentStep.tsx
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/Onboarding.tsx
 msgid "Continue"
@@ -2571,7 +2581,7 @@ msgstr ""
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Copy"
 msgstr "Copier"
 
@@ -2993,6 +3003,7 @@ msgstr ""
 msgid "Could not run routine"
 msgstr "Impossible d'exécuter la routine"
 
+#: src/components/RunsOnPicker.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -3031,10 +3042,6 @@ msgstr "Impossible d'enregistrer la règle"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "Impossible d'enregistrer la compétence"
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Could not save that choice"
-msgstr "Impossible d'enregistrer ce choix"
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Could not save that speech model"
@@ -3489,7 +3496,7 @@ msgstr "Supprimer l'espace"
 msgid "Delete the folder {0}?"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "deleted"
 msgstr "supprimé"
 
@@ -3623,9 +3630,9 @@ msgstr "Déconnexion en cours…"
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Dismiss"
 msgstr "Fermer"
 
@@ -3660,17 +3667,9 @@ msgstr "Nom d'affichage"
 msgid "Dividends"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker"
-msgstr "Docker"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr ""
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Docker limits access to your computer for added security. Using {hostLabel} lets bots work with your local files and tools."
-msgstr "Docker limite l'accès à votre ordinateur pour une sécurité renforcée. Utiliser {hostLabel} permet aux bots de travailler avec vos fichiers et outils locaux."
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Docs & files"
@@ -4206,6 +4205,10 @@ msgstr ""
 #: src/pages/McpOAuthCallback.tsx
 msgid "Finishing MCP connection…"
 msgstr "Finalisation de la connexion MCP…"
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Finishing sign-in…"
+msgstr ""
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "First seen"
@@ -4791,7 +4794,7 @@ msgstr ""
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "Sa conversation, ses fichiers et ses routines seront définitivement supprimés. Les bots qu'il a créés restent dans votre liste."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Jump to latest"
 msgstr "Aller au plus récent"
 
@@ -4860,11 +4863,11 @@ msgstr ""
 msgid "Last month vs 3 mo ago"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Last run failed: {failedNote}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Last run failed."
 msgstr ""
 
@@ -5011,7 +5014,7 @@ msgstr "Écoute"
 msgid "Live data, enrichment and generation tools"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Load earlier messages"
 msgstr "Charger les messages précédents"
 
@@ -5077,17 +5080,13 @@ msgstr "Chargement des fournisseurs vocaux…"
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Loading…"
 msgstr "Chargement…"
 
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Local"
 msgstr "Local"
-
-#: src/pages/HostComputerPrompt.tsx
-msgid "Local access lets bots run commands without asking. Avoid it on shared or public servers."
-msgstr "L'accès local permet aux bots d'exécuter des commandes sans demander. Évitez-le sur les serveurs partagés ou publics."
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Local command"
@@ -5340,6 +5339,7 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/shell/chat-context.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Message"
@@ -5357,7 +5357,7 @@ msgstr "Zone de composition"
 msgid "Message event"
 msgstr "Événement de message"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Message from {peer}"
 msgstr "Message de {peer}"
 
@@ -5365,7 +5365,7 @@ msgstr "Message de {peer}"
 msgid "Message…"
 msgstr "Message…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Messaged {peer}"
 msgstr "A contacté {peer}"
 
@@ -5507,7 +5507,7 @@ msgstr ""
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "More"
 msgstr "Plus"
 
@@ -5680,7 +5680,7 @@ msgstr ""
 msgid "new"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
 
@@ -5903,6 +5903,10 @@ msgstr ""
 
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "No matching apps"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -6249,6 +6253,7 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Open"
 msgstr "Ouvrir"
 
@@ -6396,7 +6401,7 @@ msgstr "URL de serveur compatible OpenAI"
 msgid "Opened {path}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Opened its thread."
 msgstr "Fil ouvert."
 
@@ -6489,6 +6494,10 @@ msgstr ""
 msgid "Other model…"
 msgstr "Autre modèle…"
 
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Other ways to connect"
+msgstr ""
+
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -6526,6 +6535,7 @@ msgid "Page not found"
 msgstr ""
 
 #: src/components/SidebarPages.tsx
+#: src/components/SidebarPagesGroup.tsx
 msgid "Page options"
 msgstr ""
 
@@ -6666,7 +6676,6 @@ msgid "Phone"
 msgstr ""
 
 #: src/pages/shell/chat-context.tsx
-#: src/pages/shell/composer.tsx
 msgid "Photo"
 msgstr "Photo"
 
@@ -6851,15 +6860,15 @@ msgstr "En file d'attente"
 msgid "Quick status check from everyone, please"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Quote"
 msgstr "Citer"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "React"
 msgstr "Réagir"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Reactions"
 msgstr "Réactions"
 
@@ -7125,11 +7134,11 @@ msgstr "Libérer l'ordinateur interrompu ?"
 msgid "Relevance"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Remember"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Remembered"
 msgstr ""
 
@@ -7235,7 +7244,7 @@ msgstr ""
 msgid "Remove webhook"
 msgstr "Retirer le webhook"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Removed with chat, computer, and memory."
 msgstr "Retiré avec la conversation, l'ordinateur et la mémoire."
 
@@ -7321,7 +7330,7 @@ msgstr ""
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Reply"
 msgstr "Répondre"
 
@@ -7526,6 +7535,14 @@ msgstr "En cours · Arrêter"
 msgid "Running…"
 msgstr "Exécution en cours…"
 
+#: src/components/RunsOnPicker.tsx
+msgid "Runs commands without asking. Avoid on shared or public servers."
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Runs on"
+msgstr ""
+
 #: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr ""
@@ -7550,6 +7567,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Sales & CRM"
+msgstr ""
+
+#: src/components/RunsOnPicker.tsx
+msgid "Sandbox"
 msgstr ""
 
 #: src/components/AskCard.tsx
@@ -7666,11 +7687,11 @@ msgstr ""
 msgid "Scanning…"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Scheduled run failed: {failedNote}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Scheduled run failed."
 msgstr ""
 
@@ -7706,6 +7727,7 @@ msgstr ""
 msgid "Search and read files and folders"
 msgstr ""
 
+#: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -7953,6 +7975,14 @@ msgstr ""
 msgid "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
 msgstr ""
 
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Set up"
+msgstr ""
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Set up {name}"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Set up app catalog"
@@ -8118,6 +8148,15 @@ msgstr "Connectez-vous à votre compte existant pour associer SSO"
 msgid "Sign in with {service}"
 msgstr ""
 
+#: src/pages/Onboarding.tsx
+msgid "Sign in with ChatGPT"
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sign in with OpenRouter"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
 msgstr "Connectez-vous avec l'abonnement, ou testez la clé API à la place."
@@ -8148,6 +8187,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Sign-in was denied or failed."
+msgstr ""
+
+#: src/pages/Onboarding.tsx
+msgid "Signed in with {signedInLabel}"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -8192,6 +8235,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Skip"
 msgstr "Passer"
+
+#: src/components/integrations/ConnectAppsStep.tsx
+msgid "Skip for now"
+msgstr ""
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Skip inbox"
@@ -8307,7 +8354,7 @@ msgstr ""
 msgid "Spam {0}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Speak"
 msgstr "Parler"
 
@@ -8319,7 +8366,7 @@ msgstr "Parler + transcrire"
 msgid "Speak only"
 msgstr "Parler uniquement"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Speak this reply"
 msgstr "Lire cette réponse à voix haute"
 
@@ -8385,7 +8432,7 @@ msgid "Start recording"
 msgstr "Démarrer l'enregistrement"
 
 #: src/pages/ActivityList.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Starting"
 msgstr "Démarrage"
 
@@ -8431,17 +8478,18 @@ msgstr ""
 msgid "Steps"
 msgstr "Étapes"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
 msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Stop"
 msgstr "Arrêter"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Stop speaking"
 msgstr "Arrêter la lecture"
 
@@ -8465,7 +8513,7 @@ msgstr ""
 msgid "Sub-folders"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "subagent"
 msgstr "sous-agent"
 
@@ -8765,8 +8813,8 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/transcript.tsx
 #: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Réflexion"
@@ -8804,9 +8852,9 @@ msgstr "Cette action est irréversible."
 msgid "This chat is view-only"
 msgstr "Cette conversation est en lecture seule"
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this computer"
-msgstr "cet ordinateur"
+#: src/components/RunsOnPicker.tsx
+msgid "This computer"
+msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "This connection no longer exists."
@@ -8837,9 +8885,9 @@ msgstr ""
 msgid "This link is wrong or the page is no longer available."
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "this Mac"
-msgstr "ce Mac"
+#: src/components/RunsOnPicker.tsx
+msgid "This Mac"
+msgstr ""
 
 #: src/pages/Artifacts.tsx
 #: src/pages/finance/FinanceAccounts.tsx
@@ -9398,14 +9446,14 @@ msgstr "Utilisation"
 msgid "Use {0}"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Use {hostLabel}"
-msgstr "Utiliser {hostLabel}"
-
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Use a found model"
 msgstr "Utiliser un modèle trouvé"
+
+#: src/pages/Onboarding.tsx
+msgid "Use an API key instead"
+msgstr ""
 
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
@@ -9671,10 +9719,6 @@ msgstr ""
 msgid "Where it went"
 msgstr ""
 
-#: src/pages/HostComputerPrompt.tsx
-msgid "Where should bots run?"
-msgstr "Où les bots doivent-ils s'exécuter ?"
-
 #: src/components/PageAgentIntro.tsx
 msgid "Which bills are unpaid?"
 msgstr ""
@@ -9724,7 +9768,7 @@ msgstr ""
 msgid "Write"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Writing"
 msgstr ""
 
@@ -9764,6 +9808,7 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "You"
 msgstr "Vous"
 

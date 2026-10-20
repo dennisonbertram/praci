@@ -3,140 +3,54 @@
 Praci is an opinionated fork of [Rakazo](https://github.com/elie222/rakazo) by the Rakazo contributors, under Apache-2.0.
 
 [![GitHub stars](https://img.shields.io/github/stars/dennisonbertram/praci?labelColor=black&style=for-the-badge&color=2563EB)](https://github.com/dennisonbertram/praci/stargazers)
-[![Discord](https://img.shields.io/badge/Discord-Join%20the%20community-5865F2?labelColor=black&style=for-the-badge&logo=discord&logoColor=white)](https://discord.gg/RWwKa2Sn7h)
-[![Download on the App Store](https://img.shields.io/badge/App%20Store-Download%20for%20iPhone-black?labelColor=black&style=for-the-badge&logo=apple&logoColor=white)](https://github.com/elie222/rakazo/releases)
-[![Download the Android APK](https://img.shields.io/badge/Android-Download%20APK-black?labelColor=black&style=for-the-badge&logo=android&logoColor=white)](https://github.com/elie222/rakazo/releases)
 
-![Praci — AI teammates you actually own](./docs/readme-hero.png)
+Praci is an open source AI assistant built from persistent bots. Each bot has its own conversation,
+memory, routines, and a computer it can use for the browser, terminal, and files. You can run it on
+your own machine or server, bring your own model credentials, and connect your mail, finance, cap
+table, and documents. It runs as a web app, an Electron desktop app, and an Expo mobile app. Praci is
+in beta.
 
-Praci is an open source AI agent for persistent teammates, and a self-hosted AI assistant you
-can run on your own machine. It is available on the web, as an Electron desktop app, and on
-[iPhone](https://github.com/elie222/rakazo/releases) and [Android](https://github.com/elie222/rakazo/releases). Bring your own model
-and computer provider, or run the complete stack locally.
+![The Praci Finance page with cash, monthly burn, runway, a burn chart, a category breakdown, and upcoming payments](./docs/images/readme/finance.webp)
 
-It is an open source, self-hosted alternative to Grok Bot, Meta Muse, OpenAI Dots, Instinct,
-OpenClaw, Hermes Agent, and Hark Pro.
+Mock data.
 
-Praci is in beta. Learn more at [praci.ai](https://praci.ai).
+## Ways to run Praci
 
-## How Praci compares
-
-Once Praci is running, it is just chat, like Grok Bot: you set up a bot and manage it from that
-chat. Muse, Dots, Instinct, and Hark Pro are hosted assistants. OpenClaw
-and Hermes Agent are also open source agents you can run yourself. Their docs describe installers,
-config files, and a gateway. Hermes Desktop can reach a first chat without the CLI; a messaging
-gateway is a separate process.
-
-- [Grok Bot](https://praci.ai/grok-bot-alternative/)
-- [Muse](https://praci.ai/muse-alternative/)
-- [Dots](https://praci.ai/dots-alternative/)
-- [Instinct](https://praci.ai/instinct-alternative/), the personal assistant you text or call
-- [OpenClaw](https://praci.ai/openclaw-alternative/)
-- [Hermes Agent](https://praci.ai/hermes-alternative/), Nous Research's open source agent
-- [Hark Pro](https://praci.ai/hark-alternative/), the personal agent at hark.com
-- [All comparisons](https://praci.ai/alternatives/)
-- [Self-hosting guide](https://praci.ai/self-hosted-ai-agent/)
+- **Desktop app.** Choose **This computer** and the app starts the stack with Docker Compose, so
+  Docker Desktop, OrbStack, or Docker Engine must be installed. To build a copy that runs entirely
+  from this checkout, see
+  [Self-contained local build](./docs/desktop-release.md#self-contained-local-build).
+- **Self-hosting.** Run the published images or a source checkout on your own machine or a server.
+  See the [self-hosting guide](./docs/self-host.md).
+- **Hosted.** A hosted version is planned. Join the waitlist at
+  [praci.ai](https://praci.ai).
 
 ## Features
 
 - Persistent bots with their own conversations, memory, routines, and history
-- Voice mode: speak replies, dictate, and call a bot. Bring your own ElevenLabs, OpenAI, Cartesia, or Fish Audio key
-- Shared Team Computers and isolated Private computers
-- Browser, terminal, file, and graphical desktop access
+- Voice mode: speak replies, dictate, and call a bot, with your own ElevenLabs, OpenAI, Cartesia, or Fish Audio key
+- Shared Team Computers and isolated Private computers with browser, terminal, file, and graphical desktop access
 - Bots that can delegate to peer bots or short-lived subagents
 - Bring-your-own model credentials through Pi
 - App integrations through Composio or Pipedream Connect, plus user-installed Treg, remote MCP, and OpenAPI tool sources
 - Docker, E2B, Daytona, CreateOS, Box, and trusted local-computer support
 
-## Demo
+## Quick start for developers
 
-https://github.com/user-attachments/assets/dccdeddb-2134-4a56-8eed-b2e591736b1c
-
-## Stack
-
-- TypeScript
-- React 19, Vite, and Tailwind CSS
-- Electron and Expo
-- Hono and oRPC
-- PostgreSQL and Prisma
-- Better Auth
-- Graphile Worker
-- Pi
-- Docker, E2B, Daytona, CreateOS, and Box
-- Composio, Pipedream Connect, MCP, and OpenAPI integrations
-
-## Quick start (published images)
-
-You need Docker Engine, the Compose plugin, curl, and OpenSSL. No clone or Node install.
+You need Node.js 22.22.2 or newer in the 22.x line, Node.js 24.x, or Node.js 26+; pnpm 9; and Docker.
+Node.js 23.x and 25.x are not supported.
 
 ```bash
-mkdir -p rakazo && cd rakazo &&
-curl -fsSLO https://raw.githubusercontent.com/elie222/rakazo/main/infra/compose/install-images.sh &&
-bash install-images.sh
-```
-
-The installer downloads the Compose files, creates `.env` with random secrets, and starts Praci.
-It preserves an existing `.env` when rerun.
-
-Open [http://127.0.0.1:5173](http://127.0.0.1:5173), create an account, and connect a model.
-Local Docker computers are on by default. Optional remote providers: `e2b`, `daytona`, `createos`, or `box`
-with the matching API key.
-
-Default image tag is `edge` (main builds, `linux/amd64` + `linux/arm64`). Details and tags:
-[self-hosting guide](./docs/self-host.md#published-images-no-checkout).
-
-On restricted networks, override the installer download base (`RAKAZO_DOWNLOAD_BASE`), skip
-existing Compose files (`--local` / `RAKAZO_DOWNLOAD_SKIP_EXISTING`), or mirror the bootstrap
-script URL — see
-[Restricted networks / mirror downloads](./docs/self-host.md#restricted-networks--mirror-downloads).
-
-For an agent-assisted install, use [SETUP_PROMPT.md](./SETUP_PROMPT.md).
-
-## Run on a server
-
-Bots stay on when the backend runs on a server. Use the same installer on a VPS, then connect from
-the desktop app, the mobile app, or a browser.
-
-```bash
-bash install-images.sh --prepare-only
-# edit .env: SANDBOX_PROVIDER=box (or e2b / daytona / createos) with its API key, RAKAZO_HOST=your.domain
-bash install-images.sh
-```
-
-Put HTTPS in front of port 5173; [docs/self-host.md](./docs/self-host.md#public-single-vm-deployment)
-covers the Caddy setup and host hardening. In the desktop app choose **Existing instance** and enter
-the `https://` address.
-
-## Local development (source checkout)
-
-You need Node.js 22.22.2 or newer in the 22.x line, Node.js 24.x, or Node.js 26+;
-pnpm 9; and Docker. Node.js 23.x and 25.x are not supported.
-
-```bash
-git clone https://github.com/elie222/rakazo.git
-cd rakazo
+git clone https://github.com/dennisonbertram/praci.git
+cd praci
 cp .env.example .env
 ```
 
 Set `POSTGRES_PASSWORD` (for example `openssl rand -hex 16`), then put the same value in
-`DATABASE_URL`. Set `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, and `SCREEN_PROXY_SECRET` to
-independent long random values. Docker sandboxes also need a dedicated
-`SANDBOX_SUPERVISOR_TOKEN`. You can also set `OPENROUTER_API_KEY`, or connect a supported
-model provider during onboarding.
-
-For host-side development with Docker Desktop, set `SANDBOX_CONTROL_VIA_LOOPBACK=true`
-in `.env`. The supervisor discovers Docker Desktop's user socket automatically;
-`DOCKER_HOST` or `DOCKER_SOCKET` can override it for another Docker runtime.
-
-Managed app catalogs are optional. Set `COMPOSIO_API_KEY` for Composio, or the
-`PIPEDREAM_CLIENT_ID`, `PIPEDREAM_CLIENT_SECRET`, and `PIPEDREAM_PROJECT_ID` trio for Pipedream
-Connect. Users can add an HTTPS MCP server, Treg endpoint, or OpenAPI JSON document from
-**Integrations** without enabling either managed catalog. Connector credentials are encrypted on the
-server and are never returned by the API.
-
-Treg is usage-metered. Self-hosters supply their own Treg token; operators embedding Treg in a
-hosted product should review [Treg's integration terms](https://treg.to/integrate.md), which require
-a written agreement for hosted resale.
+`DATABASE_URL`. Set `BETTER_AUTH_SECRET`, `ENCRYPTION_KEY`, and `SCREEN_PROXY_SECRET` to independent
+long random values, and `SANDBOX_SUPERVISOR_TOKEN` for Docker sandboxes. For host-side development
+with Docker Desktop, set `SANDBOX_CONTROL_VIA_LOOPBACK=true`. You can set `OPENROUTER_API_KEY`, or
+connect a model provider during onboarding.
 
 ```bash
 docker compose --env-file .env \
@@ -150,126 +64,27 @@ pnpm sandbox:build
 pnpm dev
 ```
 
-`pnpm install` does not run the install script of `@openuidev/lang-core` (the parser behind UI
-artifacts), because the root `package.json` lists it under `pnpm.neverBuiltDependencies`. That script
-sends an install event to its vendor unless `OPENUI_TELEMETRY_DISABLED=1` or `DO_NOT_TRACK=1` is set.
-The Dockerfiles, CI workflows and `.env.example` set both variables as well; keep them set if you
-install with another package manager.
-
-Postgres stays network-internal in the default Compose file (same as published images). The
-`postgres-host` overlay publishes loopback `127.0.0.1:5433` for host-side `pnpm` and DB tools.
-If that port is occupied, change `POSTGRES_HOST_PORT` and the port in `DATABASE_URL` in `.env`.
-Without the overlay, open a shell with
-`docker compose --env-file .env -f infra/compose/docker-compose.yml exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'`.
-Use a URI-safe `POSTGRES_PASSWORD` (`openssl rand -hex 16`). An existing `pgdata` volume keeps the
-user, password, and database from first init, so keep those values in `.env`, or change them in
-place with `ALTER ROLE` / rename. Recreate the volume only after a backup (or when the data is
-disposable); `docker compose down -v` deletes all Postgres state.
-
 Open [http://127.0.0.1:5173](http://127.0.0.1:5173), create an account, connect a model, and create
-your first bot.
+your first bot. To run the Electron app against this stack, use
+`pnpm --filter @rakazo/desktop dev` and choose **Existing instance**.
 
-For deployment, provider selection, backups, and upgrades, see the
-[self-hosting guide](./docs/self-host.md).
+`pnpm demo:up` starts a separate stack with mock company data and prints its URL and login. Stop
+it with `pnpm demo:down`.
 
-To use CreateOS, set `SANDBOX_PROVIDER=createos` and `CREATEOS_SANDBOX_API_KEY`.
-Optional `CREATEOS_SANDBOX_BASE_URL`, `CREATEOS_SANDBOX_SHAPE`, and
-`CREATEOS_SANDBOX_ROOTFS` default to `https://api.sb.createos.sh`, `s-2vcpu-2gb`,
-and `desktop:1`.
-
-## Desktop and mobile
-
-The Electron and Expo apps are clients of the same Praci API used by the web app.
-
-With the development stack running, launch Electron with:
-
-```bash
-pnpm --filter @rakazo/desktop dev
-```
-
-On first run the desktop app asks whether to run Praci on this computer or connect to an existing
-server. **This computer** installs and starts the published images with Docker Compose (the same
-files as `infra/compose/install-images.sh`) under the app's data directory, so Docker Desktop,
-OrbStack, or Docker Engine must be installed; the app links to them when it is not. Installed
-builds pin the image tag to their own version; unpackaged builds pull `edge`. Developers running
-`pnpm dev` should pick **Existing instance** with `http://127.0.0.1:5173` instead. Public servers
-must use HTTPS; HTTP is accepted only for loopback and private LAN addresses (not link-local). The
-app verifies Praci's health endpoint before saving, and later launches go straight to that
-instance. The stack keeps running after the app quits; **Stop Local Stack** in the application
-menu turns it off.
-
-Use **Change Praci Server…** in the application menu to reconnect. Closing that window without
-saving returns to the previous instance. For development automation, set `RAKAZO_WEB_URL` to point
-the shell somewhere else without changing the saved instance, or `RAKAZO_FORCE_SETUP=1` to run
-setup again.
-
-Mobile build and release instructions live in [docs/mobile-release.md](./docs/mobile-release.md).
-
-## UI language
-
-The web (and Electron-hosted) UI supports English, Deutsch, 한국어, Türkçe, हिन्दी,
-Português (Brasil), 简体中文, Español, and Русский under **Settings → Language**. The Expo
-app ships English, 简体中文, Русский, and Deutsch catalogs; **Account → Language** offers
-English and 简体中文, and the other catalogs follow the device language or
-`EXPO_PUBLIC_DEFAULT_UI_LOCALE`. The marketing
-homepage (`apps/www`) is available in en/de/ko/zh via footer language links (`/`, `/de/`,
-`/ko/`, `/zh/`); other marketing pages stay English. The Russian marketing homepage and
-native Electron setup/menu remain separate follow-up work.
-
-## Development
-
-```text
-apps/       web, api, worker, desktop, mobile, and public website
-packages/   domain, contracts, persistence, adapters, UI, and test tooling
-infra/      local services and computer images
-docs/       architecture, operations, and release guides
-```
-
-Common checks:
-
-```bash
-pnpm lint
-pnpm check
-pnpm test
-pnpm test:integration
-pnpm test:e2e
-```
-
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for the development workflow and test matrix.
-
-### Mock demo stack
-
-`pnpm demo:up` starts an isolated stack (web 5373, API 3300, throwaway Postgres 5450 in Docker) on
-the e2e emulators, with one demo account filled with invented company data. Every record is labeled
-`MOCK`. The command prints the URL and the path of the gitignored login file,
-`.demo-credentials.local` (kept by `demo:down`, so the same login works after a restart). `pnpm demo:down` stops it and deletes its database. If a model key is in
-your environment or `~/develop/rakazo/.env`, agents use it; otherwise they use the scripted runtime.
-Set `DEMO_NO_MODEL=1` on `demo:up` to ignore any key and see the app as a space with no model set
-up. The seed also adds a second member, `mock-cofounder@demo.rakazo.test`, with the same password.
-
-To run several demo stacks side by side (for example one per branch worktree), set `DEMO_SLOT` to
-an integer from 0 to 9 (default 0) on both commands: `DEMO_SLOT=2 pnpm demo:up`. Slot N uses web
-5373+N, API 3300+N, Postgres 5450+N and the container `rakazo-demo-pg-N` (slot 0 keeps
-`rakazo-demo-pg`). Each slot's container carries a `rakazo.demo.slot` label, and `demo:down` only
-removes its own slot's container. Run each slot from its own worktree, since `.demo/` is per
-worktree.
+Common checks are `pnpm lint`, `pnpm check`, and `pnpm test`. The repository layout is `apps/` (web,
+api, worker, desktop, mobile, and the public website), `packages/` (domain, contracts, persistence,
+adapters, UI), `infra/`, and `docs/`. See [CONTRIBUTING.md](./CONTRIBUTING.md) for the workflow.
 
 ## Documentation
 
-- [Self-hosting](./docs/self-host.md)
-- [Self-host secrets](./docs/self-host-secrets.md)
-- [Data room setup, search and embeddings](./docs/data-room/README.md#setting-up-from-scratch)
+- [Self-hosting](./docs/self-host.md) and [secrets](./docs/self-host-secrets.md)
 - [Computer runtime and isolation](./docs/computer-runtime.md)
 - [Desktop releases](./docs/desktop-release.md)
 - [Mobile releases](./docs/mobile-release.md)
-- [Performance testing](./docs/performance.md)
+- [Data room setup, search and embeddings](./docs/data-room/README.md#setting-up-from-scratch)
 
-## Contributing
+## License and credit
 
-Contributions are welcome. Please read [CONTRIBUTING.md](./CONTRIBUTING.md) before opening a pull
-request. For security vulnerabilities, follow [SECURITY.md](./SECURITY.md) instead of filing a public
-issue.
-
-Praci is licensed under the [Apache License 2.0](./LICENSE).
-
-Questions and ideas are welcome in the [Praci Discord community](https://discord.gg/RWwKa2Sn7h).
+Praci is licensed under the [Apache License 2.0](./LICENSE). It is a fork of
+[Rakazo](https://github.com/elie222/rakazo); credit for the original work belongs to its contributors.
+For security vulnerabilities, follow [SECURITY.md](./SECURITY.md) instead of filing a public issue.

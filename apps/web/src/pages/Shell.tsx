@@ -125,6 +125,7 @@ import type { SendTarget } from "../components/data-room/SendToAgent";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
+import { canOfferHostComputer } from "../components/RunsOnPicker";
 import { OpeningSpace } from "../components/ShellSkeleton";
 import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
 import type { DropResult, SidebarLayout } from "../components/sidebar-folders/drop-target";
@@ -236,7 +237,6 @@ import { CapTablePage } from "./CapTable";
 import { DataRoomPage } from "./DataRoom";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
-import { HostComputerPrompt } from "./HostComputerPrompt";
 import { InboxPage } from "./Inbox";
 import { LegalPage } from "./Legal";
 import { NotFoundPage } from "./NotFound";
@@ -1861,6 +1861,25 @@ export function ShellPage() {
       await refreshBots(false, true).catch(() => undefined);
     }
   }, [folderUndo, refreshBots]);
+  const hiddenPages = bootstrapMe?.hiddenPages ?? [];
+  const [addedPages, setAddedPages] = useState<{ key: string; label: string }[]>([]);
+  const toggleHiddenPage = useCallback(
+    async (key: string) => {
+      const before = bootstrapMe;
+      if (!before) return;
+      const current = before.hiddenPages ?? [];
+      const hiddenPages = current.includes(key)
+        ? current.filter((hidden) => hidden !== key)
+        : [...current, key];
+      setBootstrapMe({ ...before, hiddenPages });
+      try {
+        await rpc.preferences.update({ hiddenPages });
+      } catch {
+        setBootstrapMe(before);
+      }
+    },
+    [bootstrapMe],
+  );
   const toggleSidebarSection = useCallback(
     (key: string) => {
       setCollapsedSidebarSections((previous) =>
@@ -3709,9 +3728,6 @@ export function ShellPage() {
           if (active) void refreshThread(active.id);
         }}
       />
-      {bootstrapMe !== undefined ? (
-        <HostComputerPrompt initialMe={bootstrapMe ?? undefined} onMeUpdated={setBootstrapMe} />
-      ) : null}
       {mobileSidebarOpen ? (
         <button
           type="button"
@@ -3762,6 +3778,10 @@ export function ShellPage() {
         searchPages={searchPages}
         searchDocuments={searchDocuments}
         searchArtifacts={searchArtifacts}
+        hiddenPages={hiddenPages}
+        addedPages={addedPages}
+        toggleHiddenPage={toggleHiddenPage}
+        setAddedPages={setAddedPages}
         openSearchResult={openSearchResult}
         jumpToSearchHit={jumpToSearchHit}
         openAppPage={openAppPage}
@@ -4403,6 +4423,11 @@ export function ShellPage() {
                 bot={active}
                 focusName={namingBotId === active.id}
                 memoryProviderConfigured={memoryProviderConfig != null}
+                hostComputer={
+                  canOfferHostComputer(bootstrapMe)
+                    ? { defaultHost: bootstrapMe?.computerHost ?? "docker" }
+                    : undefined
+                }
                 onSkillsChange={setAgentSkills}
                 skillsRefreshKey={skillsRefreshKey}
                 onSave={async ({ computerMode, ...patch }) => {

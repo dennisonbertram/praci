@@ -66,6 +66,7 @@ import {
 } from "../lib/model-connection-preflight";
 import { rpc } from "../lib/rpc";
 import { useModelOAuthSignIn } from "../lib/use-model-oauth-signin";
+import { useOpenRouterSignIn } from "../lib/use-openrouter-signin";
 import { errorText } from "../lib/user-error";
 import { ModelBackupsSettings } from "./ModelBackupsSettings";
 
@@ -152,6 +153,15 @@ export function ModelSettingsOverlay({
     onFinished: async (controller) => {
       await refresh();
       if (controller.signal.aborted) return;
+      setNotice(t`Connected and using ${selectedLabelRef.current ?? "this model"}.`);
+    },
+  });
+
+  const openRouterSignIn = useOpenRouterSignIn({
+    onClearError: () => setError(null),
+    onError: setError,
+    onConnected: async () => {
+      await refresh();
       setNotice(t`Connected and using ${selectedLabelRef.current ?? "this model"}.`);
     },
   });
@@ -987,6 +997,23 @@ export function ModelSettingsOverlay({
           {preflightTarget === "sign-in" ? (
             <ModelPreflightFeedback success={preflightSuccess} failure={preflightFailure} />
           ) : null}
+        </div>
+      ) : null}
+
+      {selected?.provider === "openrouter" ? (
+        <div className="mt-5 first:mt-0">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy || openRouterSignIn.pending}
+            onClick={() => {
+              setNotice(null);
+              void openRouterSignIn.start();
+            }}
+          >
+            <Trans>Sign in with OpenRouter</Trans>
+          </Button>
         </div>
       ) : null}
 

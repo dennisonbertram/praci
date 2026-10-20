@@ -450,6 +450,12 @@ import {
   seedBlankBotGreeting,
   startOnboarding,
 } from "./onboarding.js";
+import {
+  beginOpenRouterOAuth,
+  completeOpenRouterOAuth,
+  OPENROUTER_OAUTH_PROVIDER,
+  OpenRouterOAuthError,
+} from "./openrouter-oauth.js";
 import { rememberedMessageIds, rememberThreadMessage } from "./remember-message.js";
 import { listRoutineRuns } from "./routine-runs.js";
 import { listSpaceRuns } from "./runs.js";
@@ -1119,6 +1125,71 @@ export function createRouter(deps: RouterDeps) {
     stillAuthorized?: () => Promise<boolean>;
   }>();
   const repos = createRepos(deps.prisma);
+  /**
+   * Moves a bot to another computer (or onto the same one under a different provider) while it is
+   * idle: claims the bot, refuses during a run or screen control, parks a dedicated computer, then
+   * applies the change.
+   */
+  const relocateBotComputer = async <T>(
+    actor: Actor,
+    bot: Awaited<ReturnType<typeof repos.getBot>>,
+    apply: () => Promise<T>,
+  ): Promise<T> => {
+    if (!bot.computer) throw new IsolationError();
+    const claimed = await deps.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM computers WHERE id = ${bot.computerId} FOR UPDATE`;
+      return tx.bot.updateMany({
+        where: { id: bot.id, computerSwitching: false, computer: { maintenanceId: null } },
+        data: { computerSwitching: true },
+      });
+    });
+    if (claimed.count !== 1) throw new ORPCError("CONFLICT");
+    try {
+      const active = await deps.prisma.run.findFirst({
+        where: { botId: bot.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
+        select: { id: true },
+      });
+      if (active) {
+        throw new ORPCError("BAD_REQUEST", { message: "Stop the bot first" });
+      }
+      if (bot.computer.controlBotId === bot.id && hasActiveComputerControl(bot.computer)) {
+        throw new ORPCError("BAD_REQUEST", { message: "Release the computer first" });
+      }
+      if (bot.computer.scope === "dedicated" && bot.computer.providerRef) {
+        const ctx = computerContext(actor, bot.id, "computer.switch");
+        const ref = toComputerRef(bot.computer);
+        if (bot.computer.state === "running") {
+          await checkpointAndRecordComputerWorkspace(deps, bot.computer, ref, ctx);
+          await deps.sandbox.stop(ref, ctx);
+        }
+        await deps.prisma.computerExecutionLease.deleteMany({
+          where: { computerId: bot.computer.id, botId: bot.id },
+        });
+        await deps.prisma.computer.update({
+          where: { id: bot.computer.id },
+          data: {
+            state: "stopped",
+            controlHolder: "none",
+            controlLeaseId: null,
+            controlLeaseExpiresAt: null,
+            controlBotId: null,
+            controlRunId: null,
+            executionRunId: null,
+            executionBotId: null,
+            executionLeaseExpiresAt: null,
+          },
+        });
+      }
+      return await apply();
+    } catch (error) {
+      throw mapSpaceLifecycleError(error);
+    } finally {
+      await deps.prisma.bot.updateMany({
+        where: { id: bot.id },
+        data: { computerSwitching: false },
+      });
+    }
+  };
   const provisionForActor = (actor: Actor, connectionId: string) =>
     provisionConnectionAgent(
       { prisma: deps.prisma, repos, archiveBot: (botId) => archiveActorBot(actor, botId) },
@@ -1304,7 +1375,11 @@ export function createRouter(deps: RouterDeps) {
         }
         await deps.prisma.user.update({
           where: { id: context.actor.userId },
-          data: { avatarStyle: input.avatarStyle, timezone: input.timezone },
+          data: {
+            avatarStyle: input.avatarStyle,
+            timezone: input.timezone,
+            hiddenPages: input.hiddenPages && [...new Set(input.hiddenPages)],
+          },
         });
         return meDto(deps, context.actor);
       }),
@@ -1816,6 +1891,59 @@ export function createRouter(deps: RouterDeps) {
         }
         return result.value;
       }),
+      beginOpenRouterOAuth: authed.models.beginOpenRouterOAuth.handler(
+        async ({ context, input }) => {
+          try {
+            return await beginOpenRouterOAuth({
+              prisma: deps.prisma,
+              secrets: deps.secrets,
+              scope: { userId: context.actor.userId, spaceId: context.actor.spaceId },
+              webOrigin: deps.env.webOrigin,
+              redirectUri: input.redirectUri,
+            });
+          } catch (error) {
+            throw new ORPCError("BAD_REQUEST", {
+              message:
+                error instanceof OpenRouterOAuthError ? error.message : "Could not start sign-in",
+            });
+          }
+        },
+      ),
+      completeOpenRouterOAuth: authed.models.completeOpenRouterOAuth.handler(
+        async ({ context, input }) => {
+          let apiKey: string;
+          try {
+            apiKey = await completeOpenRouterOAuth({
+              prisma: deps.prisma,
+              secrets: deps.secrets,
+              scope: { userId: context.actor.userId, spaceId: context.actor.spaceId },
+              state: input.state,
+              code: input.code,
+              ...(deps.exchangeFetch ? { fetchImpl: deps.exchangeFetch } : {}),
+            });
+          } catch (error) {
+            throw new ORPCError("BAD_REQUEST", {
+              message:
+                error instanceof OpenRouterOAuthError ? error.message : "Could not finish sign-in",
+            });
+          }
+          // Stored exactly like a pasted key; the key never leaves the server.
+          return persistModelCredential(
+            deps,
+            context.actor,
+            {
+              provider: OPENROUTER_OAUTH_PROVIDER,
+              plaintext: buildModelConnectPlaintext({
+                provider: OPENROUTER_OAUTH_PROVIDER,
+                apiKey,
+              }),
+              label: "OpenRouter",
+              signal: context.signal,
+            },
+            codexCatalog,
+          );
+        },
+      ),
       cancelOAuth: authed.models.cancelOAuth.handler(async ({ context, input }) => {
         await deps.oauthLogins.cancel(input.loginId, context.actor);
         return { ok: true as const };
@@ -2229,6 +2357,23 @@ export function createRouter(deps: RouterDeps) {
           }
         }
         if (!existing.thread) throw new IsolationError();
+        if (input.runsOn !== undefined && input.runsOn !== (existing.runsOn ?? null)) {
+          assertRunsOnAllowed({
+            runsOn: input.runsOn,
+            sandboxProvider: deps.env.sandboxProvider,
+            isDeploymentOwner: context.actor.isDeploymentOwner,
+          });
+          const defaultHost = await deploymentComputerHost(deps);
+          const before = existing.runsOn ?? defaultHost;
+          const after = input.runsOn ?? defaultHost;
+          if (before !== after && existing.computer) {
+            // A team computer follows the default, so a bot that differs gets its own.
+            const toDedicated = after !== defaultHost && existing.computer.scope !== "dedicated";
+            await relocateBotComputer(context.actor, existing, async () => {
+              if (toDedicated) await repos.setBotComputer(context.actor, existing.id, "dedicated");
+            });
+          }
+        }
         await commitBotUpdate({
           prisma: deps.prisma,
           notify: (threadId, seq) => deps.events.notify(threadId, seq),
@@ -2259,6 +2404,7 @@ export function createRouter(deps: RouterDeps) {
             ...(input.disabledBuiltinTools !== undefined
               ? { disabledBuiltinTools: input.disabledBuiltinTools }
               : {}),
+            ...(input.runsOn !== undefined ? { runsOn: input.runsOn } : {}),
           },
         });
         const bots = await repos.listBots(context.actor);
@@ -2270,6 +2416,16 @@ export function createRouter(deps: RouterDeps) {
         const bot = await repos.getBot(context.actor, input.botId);
         if (!bot.computer) throw new IsolationError();
         const currentMode = bot.computer.scope === "dedicated" ? "dedicated" : "team";
+        if (input.mode === "team") {
+          // A team computer follows the deployment default, so a bot that runs elsewhere keeps its own.
+          const defaultHost = await deploymentComputerHost(deps);
+          if (bot.runsOn && bot.runsOn !== defaultHost) {
+            throw new ORPCError("BAD_REQUEST", {
+              message:
+                "This bot runs somewhere other than the default, so it keeps its own computer",
+            });
+          }
+        }
         if (currentMode === input.mode) {
           try {
             return await repos.setBotComputer(context.actor, bot.id, input.mode);
@@ -2277,59 +2433,9 @@ export function createRouter(deps: RouterDeps) {
             throw mapSpaceLifecycleError(error);
           }
         }
-        const claimed = await deps.prisma.$transaction(async (tx) => {
-          await tx.$queryRaw`SELECT id FROM computers WHERE id = ${bot.computerId} FOR UPDATE`;
-          return tx.bot.updateMany({
-            where: { id: bot.id, computerSwitching: false, computer: { maintenanceId: null } },
-            data: { computerSwitching: true },
-          });
-        });
-        if (claimed.count !== 1) throw new ORPCError("CONFLICT");
-        try {
-          const active = await deps.prisma.run.findFirst({
-            where: { botId: bot.id, status: { in: [...ACTIVE_RUN_STATUSES] } },
-            select: { id: true },
-          });
-          if (active) {
-            throw new ORPCError("BAD_REQUEST", { message: "Stop the bot first" });
-          }
-          if (bot.computer.controlBotId === bot.id && hasActiveComputerControl(bot.computer)) {
-            throw new ORPCError("BAD_REQUEST", { message: "Release the computer first" });
-          }
-          if (bot.computer.scope === "dedicated" && bot.computer.providerRef) {
-            const ctx = computerContext(context.actor, bot.id, "computer.switch");
-            const ref = toComputerRef(bot.computer);
-            if (bot.computer.state === "running") {
-              await checkpointAndRecordComputerWorkspace(deps, bot.computer, ref, ctx);
-              await deps.sandbox.stop(ref, ctx);
-            }
-            await deps.prisma.computerExecutionLease.deleteMany({
-              where: { computerId: bot.computer.id, botId: bot.id },
-            });
-            await deps.prisma.computer.update({
-              where: { id: bot.computer.id },
-              data: {
-                state: "stopped",
-                controlHolder: "none",
-                controlLeaseId: null,
-                controlLeaseExpiresAt: null,
-                controlBotId: null,
-                controlRunId: null,
-                executionRunId: null,
-                executionBotId: null,
-                executionLeaseExpiresAt: null,
-              },
-            });
-          }
-          return await repos.setBotComputer(context.actor, bot.id, input.mode);
-        } catch (error) {
-          throw mapSpaceLifecycleError(error);
-        } finally {
-          await deps.prisma.bot.updateMany({
-            where: { id: bot.id },
-            data: { computerSwitching: false },
-          });
-        }
+        return relocateBotComputer(context.actor, bot, () =>
+          repos.setBotComputer(context.actor, bot.id, input.mode),
+        );
       }),
       archive: authed.bots.archive.handler(async ({ context, input }) => {
         await archiveActorBot(context.actor, input.botId);
@@ -8081,6 +8187,7 @@ async function meDto(deps: RouterDeps, actor: Actor): Promise<Me> {
     sandboxProvider: deps.env.sandboxProvider,
     avatarStyle: user.avatarStyle === "robot" ? "robot" : "organic",
     timezone: user.timezone ?? null,
+    hiddenPages: user.hiddenPages ?? [],
     billingEnabled: Boolean(deps.billing) && !actor.isDeploymentOwner,
   };
 }
@@ -8398,6 +8505,31 @@ async function deploymentDto(prisma: PrismaClient, sandboxProvider: string) {
     canChooseHostComputer: sandboxProvider === "docker",
     sandboxProvider,
   };
+}
+
+/**
+ * Where a bot may run commands. Host commands run without asking, so they stay limited to the
+ * deployment owner on the Docker sandbox, as the deployment default is.
+ */
+export function assertRunsOnAllowed(input: {
+  runsOn: "docker" | "this-mac" | null;
+  sandboxProvider: string;
+  isDeploymentOwner: boolean;
+}) {
+  if (input.runsOn === null) return;
+  if (input.sandboxProvider !== "docker") {
+    throw new ORPCError("BAD_REQUEST", {
+      message: "Choosing where a bot runs needs the Docker sandbox.",
+    });
+  }
+  if (input.runsOn === "this-mac" && !input.isDeploymentOwner) throw new ORPCError("FORBIDDEN");
+}
+
+async function deploymentComputerHost(deps: RouterDeps): Promise<"docker" | "this-mac"> {
+  const settings = await deps.prisma.deploymentSettings.findUnique({ where: { id: "default" } });
+  return computerHostFor(settings?.computerHost, deps.env.sandboxProvider) === "this-mac"
+    ? "this-mac"
+    : "docker";
 }
 
 function computerHostFor(

@@ -40,6 +40,7 @@ model User {
   avatarStyle                 String                       @default("organic")
   /// IANA time zone reported by the owner's clients; null until one signs in.
   timezone                    String?
+  hiddenPages                 String[]                     @default([])
   sessions                    Session[]
   accounts                    Account[]
   cachedMailMessages          CachedMailMessage[]
@@ -466,6 +467,8 @@ model Bot {
   modelId                String?
   thinkingLevel          String?
   disabledBuiltinTools   String[]              @default([])
+  // Where this bot runs commands; null follows DeploymentSettings.computerHost.
+  runsOn                 String?
   webhookSecretId        String?
   teamChatAmbientEnabled Boolean               @default(false)
   teamChatRules          String                @default("")
@@ -2789,4 +2792,18 @@ model AccountExport {
   @@index([userId, createdAt])
   @@index([expiresAt])
   @@map("account_exports")
+}
+
+/// Pending "Sign in with OpenRouter" attempt: the state is the id, the PKCE verifier is encrypted.
+model ModelOAuthState {
+  id                 String   @id
+  userId             String
+  spaceId            String
+  provider           String
+  verifierCiphertext String
+  createdAt          DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([userId, spaceId, provider])
+  @@map("model_oauth_states")
 }

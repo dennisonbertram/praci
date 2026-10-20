@@ -1,22 +1,24 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { isMcpOauthPopup, MCP_OAUTH_CHANNEL } from "../lib/mcp-connect";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
-export function McpOAuthCallbackPage() {
+/** Shared callback page: MCP servers by default, `openrouter` for model sign-in. */
+export function McpOAuthCallbackPage({ provider }: { provider?: "openrouter" } = {}) {
   const { t } = useLingui();
   const navigate = useNavigate();
   const [params] = useSearchParams();
+  const pathState = useParams().state;
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const handledState = useRef<string | null>(null);
   const [isPopup] = useState(isMcpOauthPopup);
   useEffect(() => {
     const code = params.get("code");
-    const state = params.get("state");
+    const state = pathState ?? params.get("state");
     const fail = (message: string) => {
       const channel = new BroadcastChannel(MCP_OAUTH_CHANNEL);
       channel.postMessage({ type: "mcp-oauth-failed" });
@@ -29,8 +31,11 @@ export function McpOAuthCallbackPage() {
     }
     if (handledState.current === state) return;
     handledState.current = state;
-    void rpc.mcp.oauth
-      .complete({ sessionId: state, code, state })
+    const complete =
+      provider === "openrouter"
+        ? rpc.models.completeOpenRouterOAuth({ code, state })
+        : rpc.mcp.oauth.complete({ sessionId: state, code, state });
+    void complete
       .then(() => {
         const channel = new BroadcastChannel(MCP_OAUTH_CHANNEL);
         channel.postMessage({ type: "mcp-oauth-complete" });
@@ -43,7 +48,7 @@ export function McpOAuthCallbackPage() {
         navigate("/app?mcp_oauth=connected", { replace: true });
       })
       .catch((err: unknown) => fail(errorText(err, t`Could not complete OAuth`)));
-  }, [isPopup, navigate, params, t]);
+  }, [isPopup, navigate, params, pathState, provider, t]);
   const showReturn = Boolean(error) && !isPopup;
   return (
     <div className="grid min-h-screen place-items-center bg-background p-6 text-center">
@@ -53,8 +58,10 @@ export function McpOAuthCallbackPage() {
             <Trans>OAuth connection failed</Trans>
           ) : done ? (
             <Trans>Connected</Trans>
+          ) : provider === "openrouter" ? (
+            t`Finishing sign-in…`
           ) : (
-            <Trans>Finishing MCP connection…</Trans>
+            t`Finishing MCP connection…`
           )}
         </div>
         {error ? <p className="mt-2 max-w-md text-sm text-muted-foreground">{error}</p> : null}
