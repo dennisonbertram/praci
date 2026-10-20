@@ -1,0 +1,1 @@
+@keyframes bui-shimmer-text{0%{background-position:150%}to{background-position:-50%}}@keyframes bui-pixel-on{0%,to{opacity:.15}18%,42%{opacity:1}62%{opacity:.15}}@keyframes bui-pop-in{0%{opacity:0;transform:scale(.95)}to{opacity:1;transform:scale(1)}}@keyframes bui-fade-up{0%{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}

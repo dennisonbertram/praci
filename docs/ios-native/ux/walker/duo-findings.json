@@ -1,0 +1,653 @@
+[
+ {
+  "id": "F-duo-001",
+  "story_id": [
+   "STORY-100",
+   "STORY-102",
+   "STORY-104",
+   "STORY-106",
+   "STORY-107",
+   "STORY-108"
+  ],
+  "severity": "high",
+  "category": "happy-path",
+  "criterion": "Every step has a drawn screen",
+  "description": "Inner, half-folded and laptop layouts exist only as rule-card text for Agent thread, Computer, Artifacts, Image, Settings (nested list+detail inside a sheet) and the New bot/New space sheets on the inner display. Only Inbox (flat and half-folded) and Finance (laptop) are drawn.",
+  "expected": "Boards for: thread 2/3 beside the Personnel sidebar, Computer in half-fold and laptop pose, Artifacts and Image inner, Settings sheet with its own 1/3 + 2/3, 420 pt form sheet centered over the 2/3 pane and its half-fold position.",
+  "actual": "Steps 1 to 4 of STORY-100, steps 2, 13, 14 of STORY-102, step 5 and 6 of STORY-104, steps 1 to 2 of STORY-107 and the inner variation of STORY-108 have no board.",
+  "board": "Split.dc.html, Inner.dc.html, Desk.dc.html, PG-A-Rules.dc.html, PG-B-Rules.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Add mockups for thread flat, Computer laptop, Settings sheet inner, form sheet inner before phase 7 starts."
+ },
+ {
+  "id": "F-duo-002",
+  "story_id": [
+   "STORY-100",
+   "STORY-102",
+   "STORY-106"
+  ],
+  "severity": "high",
+  "category": "flow",
+  "criterion": "Posture change keeps the user's work",
+  "description": "No board or rule says whether a fold or unfold relaunches the app or changes the scene, or whether the draft, scroll position, selected row, open sheet, active stream or Computer session survive.",
+  "expected": "A stated rule: draft, scroll, selection and stream survive; sheet recenters; Computer session stays connected.",
+  "actual": "Undecided; Rules say only that the layout changes.",
+  "board": "PG-A-Rules.dc.html (recipe steps 9 and 10), DS-03-Navigation.dc.html (section 7)",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Add a short 'what survives a posture change' card to PG-A-Rules and confirm with the phase 7 owner."
+ },
+ {
+  "id": "F-duo-003",
+  "story_id": [
+   "STORY-099",
+   "STORY-105"
+  ],
+  "severity": "high",
+  "category": "consistency",
+  "criterion": "One source of truth per page",
+  "description": "The Inbox action set is defined five ways: Sheet and Rules (Search mail, Filter, Compose), Split and DS-03 section 1 (eye = Hide amounts, star = Important only, Filter, Compose, no Search), DS-03 reduced menu (Important only, Filter, Compose, Mark all as read), DS-04 More menu (Sort by, Show, Select messages) and DS-04 inner popover (Show in inbox checkboxes). Hide amounts is a Finance control and has no meaning on mail. In the reduced-height board the eye stays in the strip while 'Mark all as read' is in the menu.",
+  "expected": "One Inbox action list with one icon, label and menu content, reused on outer, inner and in the collapse menu.",
+  "actual": "Search mail is missing from Split and DS-03; eye is labeled 'Hide amounts' on an Inbox page; Filter menu content differs between DS-03 and DS-04.",
+  "board": "Split.dc.html, DS-03-Navigation.dc.html, DS-04-Overlays.dc.html, Sheet.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Pick the Sheet/Rules set, change the icons on Split and DS-03 to match, and make the DS-04 filter menu the single Filter content."
+ },
+ {
+  "id": "F-duo-004",
+  "story_id": [
+   "STORY-099",
+   "STORY-105"
+  ],
+  "severity": "medium",
+  "category": "layout",
+  "criterion": "README: max 3 icon-only buttons per group; at most three glass groups",
+  "description": "The Inbox action group on Split.dc.html and in DS-03 section 1 has four icon buttons (eye, star, filter, compose) in one capsule. PG-A-Rules recipe step 5 and the README allow at most three.",
+  "expected": "Three or fewer icons in the action group; extras move to More.",
+  "actual": "Four icons in one group.",
+  "board": "Split.dc.html, DS-03-Navigation.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Reduce to Search mail / Filter / Compose as on Sheet.dc.html."
+ },
+ {
+  "id": "F-duo-005",
+  "story_id": [
+   "STORY-098",
+   "STORY-099"
+  ],
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "Same action uses the same label",
+  "description": "The same Inbox draft is a card 'Send reply' with Deny / Allow on PG-A-Thread and a card 'Re: Pilot timeline' with Save / Send on Inner.dc.html. STORY-099 ends with 'Send' while the Rules name 'Allow' as the one prominent action.",
+  "expected": "One approval card with one title pattern and one pair of labels.",
+  "actual": "Two vocabularies for one approval.",
+  "board": "PG-A-Thread.dc.html, Inner.dc.html, DS-06-Chat.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Use the DS-06 approval card on both boards; decide if a mail draft card says Save / Send or Deny / Allow."
+ },
+ {
+  "id": "F-duo-006",
+  "story_id": [
+   "STORY-098"
+  ],
+  "severity": "medium",
+  "category": "flow",
+  "criterion": "Primary action reachable without hunting",
+  "description": "The thread strip has no prominent action and nothing points to a pending approval when the card has scrolled out of view.",
+  "expected": "A pending-approval cue that scrolls to the card (or pins it above the composer).",
+  "actual": "Card scrolls with messages; no jump control.",
+  "board": "PG-A-Thread.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Draw a pinned 'needs approval' chip above the composer."
+ },
+ {
+  "id": "F-duo-007",
+  "story_id": [
+   "STORY-098"
+  ],
+  "severity": "medium",
+  "category": "error-handling",
+  "criterion": "Success and error states are drawn",
+  "description": "The resolved card after Allow, the CONFLICT result when another device answered first, and a failed Allow are not drawn.",
+  "expected": "Resolved, conflict and failed states of the approval card.",
+  "actual": "Only the pending state exists.",
+  "board": "PG-A-Thread.dc.html, DS-06-Chat.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Add three card states to DS-06 and reference them from the thread rule."
+ },
+ {
+  "id": "F-duo-008",
+  "story_id": [
+   "STORY-098",
+   "STORY-106"
+  ],
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Every step has a drawn screen",
+  "description": "The Activity screen opened from the bell, 'See all', and the Activity rows (Approve, Working, Done) has no board; only the bell dot and the card on Home are drawn.",
+  "expected": "Activity list page with row states and empty state.",
+  "actual": "Destination not drawn.",
+  "board": "PG-A-Home.dc.html",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Add PG-A-Activity."
+ },
+ {
+  "id": "F-duo-009",
+  "story_id": [
+   "STORY-098"
+  ],
+  "severity": "low",
+  "category": "simplicity",
+  "criterion": "Nothing stated twice, states do not contradict",
+  "description": "PG-A-Thread shows 'Inbox agent is working' (blue dots) while the approval card says 'Needs approval'. An agent waiting for approval is not working.",
+  "expected": "Either the working indicator or the approval label, not both.",
+  "actual": "Both are visible together.",
+  "board": "PG-A-Thread.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Remove the working line while a card is pending."
+ },
+ {
+  "id": "F-duo-010",
+  "story_id": [
+   "STORY-099",
+   "STORY-100",
+   "STORY-107"
+  ],
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "One definition of the inner sidebar",
+  "description": "The inner sidebar is drawn four ways: Split (Search, six page rows, Personnel, Connect apps, no profile), DS-03 section 6 (same plus 'Alex Morgan' row), DS-04 fold diagram ('Rakazo' title, five plain rows) and PG-A-Rules text (Personnel for Home and threads, folders and sections for Inbox, bot filter for Artifacts).",
+  "expected": "One sidebar structure with stated changes per page.",
+  "actual": "Contents differ per board and per rule.",
+  "board": "Split.dc.html, DS-03-Navigation.dc.html, DS-04-Overlays.dc.html, PG-A-Rules.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Make DS-03 section 6 the reference and update Split and DS-04 to use it."
+ },
+ {
+  "id": "F-duo-011",
+  "story_id": [
+   "STORY-107"
+  ],
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Every step has a drawn screen",
+  "description": "The step 'tap the profile row at the sidebar bottom' has no target on the inner board: Split.dc.html ends with Connect apps. The profile row exists only in DS-03 section 6.",
+  "expected": "Profile row visible at the sidebar bottom on the inner Inbox board.",
+  "actual": "No profile or Settings entry on Split.",
+  "board": "Split.dc.html",
+  "phase_issue": "#421",
+  "quick_fix": false,
+  "suggested_fix": "Add the profile row from DS-03 to Split."
+ },
+ {
+  "id": "F-duo-012",
+  "story_id": [
+   "STORY-099",
+   "STORY-100"
+  ],
+  "severity": "medium",
+  "category": "flow",
+  "criterion": "Same features on every display",
+  "description": "In the half-folded board the Inbox half has no Search, Filter or Compose and no Back; the strip serves only the thread (Page, List). The Rules say Reply opens a composer under the message but no board shows a message in the half-fold.",
+  "expected": "Actions for the list half reachable in the half-fold.",
+  "actual": "List actions are missing.",
+  "board": "Inner.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Draw a second small group on the list half or state they move into More."
+ },
+ {
+  "id": "F-duo-013",
+  "story_id": [
+   "STORY-102"
+  ],
+  "severity": "high",
+  "category": "happy-path",
+  "criterion": "Every step has a drawn screen",
+  "description": "STORY-102's core steps are not drawn: the watching state with 'Take control' as the prominent action, and the handoff card with Skip / I'm done. The only prominent button is an unlabeled lock.open glyph (aria-label Release), so control state depends on a changing icon.",
+  "expected": "Watching state, handoff card, and an action whose icon or label differs clearly between Take control and Release.",
+  "actual": "Only 'You have control' is drawn.",
+  "board": "PG-A-Computer.dc.html",
+  "phase_issue": "#420",
+  "quick_fix": false,
+  "suggested_fix": "Add the watching and handoff states to the board."
+ },
+ {
+  "id": "F-duo-014",
+  "story_id": [
+   "STORY-102",
+   "STORY-103"
+  ],
+  "severity": "medium",
+  "category": "layout",
+  "criterion": "Controls stay usable in every pose",
+  "description": "In laptop pose the software keyboard would cover the bottom half where the key bar, Release and composer live. No board shows the layout with the keyboard open. On PG-A-Computer both the Keyboard button and the key bar are visible, so what 'Keyboard' toggles is unclear.",
+  "expected": "Drawn layout with keyboard open; one meaning for the Keyboard button.",
+  "actual": "Not drawn.",
+  "board": "Desk.dc.html, PG-A-Computer.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Add a keyboard-open variant to Desk and label the Keyboard toggle's effect."
+ },
+ {
+  "id": "F-duo-015",
+  "story_id": [
+   "STORY-103"
+  ],
+  "severity": "high",
+  "category": "consistency",
+  "criterion": "Every action in the outer strip exists on laptop with the same label",
+  "description": "Desk.dc.html drops Accounts, Upcoming, period tabs (30 days, 90 days, 12 months) and Refresh that PG-B-Finance has, and the Ask Finance agent prominent button is replaced by the composer. PG-B-Rules says tabs, accounts and Ask sit in the bottom half, which the board does not show.",
+  "expected": "Same features in laptop pose, with controls on the bottom half.",
+  "actual": "Accounts and Upcoming cannot be reached in this pose.",
+  "board": "Desk.dc.html, PG-B-Finance.dc.html, PG-B-Rules.dc.html",
+  "phase_issue": "#424",
+  "quick_fix": false,
+  "suggested_fix": "Redraw Desk with tabs and accounts in the bottom half or state them as scroll content above the fold."
+ },
+ {
+  "id": "F-duo-016",
+  "story_id": [
+   "STORY-103"
+  ],
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "Same data, same label",
+  "description": "The chart is 'Monthly spend / Last 6 months' (6 bars May to Oct) on Desk and 'Monthly burn' (12 bars, no month labels) on PG-B-Finance.",
+  "expected": "One chart name and period.",
+  "actual": "Two names and two ranges.",
+  "board": "Desk.dc.html, PG-B-Finance.dc.html",
+  "phase_issue": "#424",
+  "quick_fix": false,
+  "suggested_fix": "Use 'Monthly burn' and the same bar count on both."
+ },
+ {
+  "id": "F-duo-017",
+  "story_id": [
+   "STORY-108"
+  ],
+  "severity": "medium",
+  "category": "hierarchy",
+  "criterion": "One tinted prominent action per view",
+  "description": "PG-A-Rules says Share is the prominent action on the Artifact page, but PG-A-Artifact draws Share in an ordinary glass group and has no prominent button.",
+  "expected": "Share drawn as the ink prominent button, or the Rules say there is none.",
+  "actual": "Rule and board disagree.",
+  "board": "PG-A-Artifact.dc.html, PG-A-Rules.dc.html",
+  "phase_issue": "#420",
+  "quick_fix": false,
+  "suggested_fix": "Move Share to the prominent slot or change the rule."
+ },
+ {
+  "id": "F-duo-018",
+  "story_id": [
+   "STORY-108"
+  ],
+  "severity": "low",
+  "category": "simplicity",
+  "criterion": "Nothing stated twice",
+  "description": "The artifact name 'Runway summary' appears in the title capsule and again as the heading of the card directly below.",
+  "expected": "Show the name once.",
+  "actual": "Name shown twice within 40 pt.",
+  "board": "PG-A-Artifact.dc.html",
+  "phase_issue": "#420",
+  "quick_fix": false,
+  "suggested_fix": "Drop the card heading or the capsule."
+ },
+ {
+  "id": "F-duo-019",
+  "story_id": [
+   "STORY-104",
+   "STORY-107"
+  ],
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "Same action uses the same label and glyph",
+  "description": "Confirm and dismiss controls vary: strip uses X for Cancel and check for Create (NewBot, NewSpace), 'Create group', 'Save' (rule text); Settings uses an X labeled 'Done'; DS-03 section 9 shows text capsules 'Cancel' and 'Done' and says not to use Close for a control that discards edits.",
+  "expected": "One rule for sheet confirm and dismiss, with the same label and glyph on outer and inner.",
+  "actual": "Create vs Done vs check/X glyphs.",
+  "board": "PG-B-NewBot.dc.html, PG-B-Settings.dc.html, DS-03-Navigation.dc.html (section 9), PG-B-Rules.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Adopt the DS-03 section 9 rule and update the PG-B boards."
+ },
+ {
+  "id": "F-duo-020",
+  "story_id": [
+   "STORY-104"
+  ],
+  "severity": "medium",
+  "category": "simplicity",
+  "criterion": "Take Away test",
+  "description": "New bot asks for Name, Title and Description. Title ('Describe what this bot does') and Description ('What this bot is for') ask nearly the same thing.",
+  "expected": "Name first; one optional description or reveal the rest later.",
+  "actual": "Three fields, two overlapping.",
+  "board": "PG-B-NewBot.dc.html",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Merge Title and Description or defer both to bot settings."
+ },
+ {
+  "id": "F-duo-021",
+  "story_id": [
+   "STORY-104"
+  ],
+  "severity": "low",
+  "category": "layout",
+  "criterion": "Viewport usage",
+  "description": "The large-detent New bot sheet has three short fields and a large empty area below (about 360 pt).",
+  "expected": "Smaller detent or content that fills the sheet.",
+  "actual": "Mostly empty sheet.",
+  "board": "PG-B-NewBot.dc.html",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Use the medium detent like New space."
+ },
+ {
+  "id": "F-duo-022",
+  "story_id": [
+   "STORY-104"
+  ],
+  "severity": "medium",
+  "category": "flow",
+  "criterion": "Disabled and selected states are drawn",
+  "description": "Create is not drawn disabled while Name is empty (NewBot, NewSpace), and New group's Members rows have no selection marks and do not show the 2 to 6 limit.",
+  "expected": "Disabled Create; checkmarks on selected members; count or limit.",
+  "actual": "Confirm looks enabled; selection invisible.",
+  "board": "PG-B-NewBot.dc.html, PG-B-NewGroup.dc.html, PG-B-NewSpace.dc.html",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Draw a disabled confirm and checked rows."
+ },
+ {
+  "id": "F-duo-023",
+  "story_id": [
+   "STORY-104",
+   "STORY-106"
+  ],
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "Bot identity is the avatar shape and color",
+  "description": "PG-B-NewGroup draws Inbox agent as the orange wedge and Finance agent as an indigo squircle; DS-07 and Home use blue tablet for Inbox and orange wedge for Finance. The DS-04 toast shows Finance as a teal circle with the letter F.",
+  "expected": "Shapes and colors from DS-07 everywhere.",
+  "actual": "Three different looks for Finance agent.",
+  "board": "PG-B-NewGroup.dc.html, DS-04-Overlays.dc.html",
+  "phase_issue": "#415",
+  "quick_fix": true,
+  "suggested_fix": "Swap the avatar arguments in PG-B-NewGroup to tablet #3B82F6 for Inbox and wedge #F5A03C for Finance; use the wedge in the toast."
+ },
+ {
+  "id": "F-duo-024",
+  "story_id": [
+   "STORY-104"
+  ],
+  "severity": "low",
+  "category": "a11y",
+  "criterion": "Accessible names describe the control",
+  "description": "On PG-B-NewSpace the text field's aria-label is the example value 'Customer support' instead of 'Name'; on PG-B-NewBot the Title field's aria-label is 'Describe what this bot does'.",
+  "expected": "aria-label equals the visible label (Name, Title, Description).",
+  "actual": "Names are placeholder text.",
+  "board": "PG-B-NewSpace.dc.html, PG-B-NewBot.dc.html",
+  "phase_issue": "#415",
+  "quick_fix": true,
+  "suggested_fix": "Set aria-label to the visible label text."
+ },
+ {
+  "id": "F-duo-025",
+  "story_id": [
+   "STORY-104"
+  ],
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "Same action, same name and behavior",
+  "description": "Outer: prominent 'New' opens a menu (New bot, New group, New space). Inner: a '+' labeled 'Create' beside the search field. The menu is drawn on no board and the inner behavior is unstated.",
+  "expected": "One name and one drawn menu for both displays.",
+  "actual": "Different labels; menu not drawn.",
+  "board": "Main.dc.html, Split.dc.html, DS-03-Navigation.dc.html (section 6)",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Draw the New menu and use the same label on both."
+ },
+ {
+  "id": "F-duo-026",
+  "story_id": [
+   "STORY-098",
+   "STORY-104",
+   "STORY-105",
+   "STORY-107"
+  ],
+  "severity": "medium",
+  "category": "flow",
+  "criterion": "Native-first platform behavior",
+  "description": "DS-04 states that centering alerts, menus and popovers away from the fold is unconfirmed and would need custom placement code. Stories rely on it for the Clear conversation alert, CONFLICT alert, sheets on the inner display. The repository rule is native iOS controls wherever possible.",
+  "expected": "Confirm on device whether system alerts and sheets avoid the fold, and define the fallback.",
+  "actual": "Design intent only; unconfirmed.",
+  "board": "DS-04-Overlays.dc.html (Where overlays sit on the inner display)",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Test on the simulator or device and record the result in the board."
+ },
+ {
+  "id": "F-duo-027",
+  "story_id": [
+   "STORY-104"
+  ],
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "One spec value",
+  "description": "Sheet inset is 8 pt in DS-04 and 6 pt in PG-B-Rules; medium detent top is 'about 50%' in DS-04 while PG-B-NewSpace's sheet starts at about 44%.",
+  "expected": "One inset and one detent height.",
+  "actual": "Two values.",
+  "board": "DS-04-Overlays.dc.html, PG-B-Rules.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": true,
+  "suggested_fix": "Change PG-B-Rules shared rules to 8 pt or DS-04 to 6 pt."
+ },
+ {
+  "id": "F-duo-028",
+  "story_id": [
+   "STORY-102",
+   "STORY-105"
+  ],
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Every step has a drawn screen",
+  "description": "The agent actions menu (settings, open computer, clear, archive, delete) opened from More on a thread is not drawn; only the Inbox More menu and a Finance agent sheet exist.",
+  "expected": "More menu with the five items and a destructive row.",
+  "actual": "Not drawn.",
+  "board": "PG-A-Thread.dc.html, DS-04-Overlays.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Add the agent actions menu to PG-A-Thread or DS-04."
+ },
+ {
+  "id": "F-duo-029",
+  "story_id": [
+   "STORY-105"
+  ],
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Every step has a drawn screen",
+  "description": "Collapse order at reduced height is drawn only for Inbox. No board shows a thread, Computer or Finance at 466x420, or what happens when the prominent action itself collapses.",
+  "expected": "Collapse order per page; collapsed-prominent behavior.",
+  "actual": "Inbox only.",
+  "board": "DS-03-Navigation.dc.html (section 1)",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Add the three other pages to the reduced-height row."
+ },
+ {
+  "id": "F-duo-030",
+  "story_id": [
+   "STORY-100",
+   "STORY-105"
+  ],
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "One spec value",
+  "description": "Strip width is 60 pt (DS-03, PG-B) and 62 pt (PG-A-Rules step 5); the inner sidebar is 277 pt in the sidebar section and 297 pt in the split schematic.",
+  "expected": "One number for each.",
+  "actual": "Two numbers each.",
+  "board": "PG-A-Rules.dc.html, DS-03-Navigation.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": true,
+  "suggested_fix": "Change 62 pt to 60 pt in PG-A-Rules and label 297 as sidebar plus margins."
+ },
+ {
+  "id": "F-duo-031",
+  "story_id": [
+   "STORY-106"
+  ],
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "User always knows where they are",
+  "description": "After a push for another space the app switches space, but Home and the outer strip show no space name or switcher, so nothing tells the user which space they landed in. The foreground banner board (DS-04 toast) exists but does not show the space.",
+  "expected": "Space name visible on Home or in the banner for cross-space pushes.",
+  "actual": "No space indicator on any outer board.",
+  "board": "PG-A-Home.dc.html, DS-04-Overlays.dc.html",
+  "phase_issue": "#422",
+  "quick_fix": false,
+  "suggested_fix": "Show the space on Home and add a space line to the banner."
+ },
+ {
+  "id": "F-duo-032",
+  "story_id": [
+   "STORY-100",
+   "STORY-102",
+   "STORY-104",
+   "STORY-108"
+  ],
+  "severity": "low",
+  "category": "a11y",
+  "criterion": "Touch targets at least 44 pt",
+  "description": "Team/Private picker segments are 36 pt tall; inner sidebar page rows are 38 pt tall; the Create button is 30 pt wide; the Older/Newer version buttons are 36 pt wide.",
+  "expected": "44 pt minimum.",
+  "actual": "30 to 38 pt.",
+  "board": "PG-A-Computer.dc.html, Split.dc.html, PG-A-Artifact.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Raise to 44 pt or add a larger hit area in the build."
+ },
+ {
+  "id": "F-duo-033",
+  "story_id": [
+   "STORY-107"
+  ],
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "Same data, same label",
+  "description": "The signed-in user is 'Alex Morgan' (DS-03 sidebar), 'Sam Rivera' (PG-B-Settings) and 'AB' (Home avatar). The Home control is labeled 'Account' while its destination is titled 'Settings'.",
+  "expected": "One persona name and one name for the destination.",
+  "actual": "Three names and two titles.",
+  "board": "PG-B-Settings.dc.html, Main.dc.html, DS-03-Navigation.dc.html",
+  "phase_issue": "#421",
+  "quick_fix": true,
+  "suggested_fix": "Use one invented name and 'Settings' as the label."
+ },
+ {
+  "id": "F-duo-034",
+  "story_id": [
+   "STORY-104",
+   "STORY-105"
+  ],
+  "severity": "low",
+  "category": "visual",
+  "criterion": "No text overlap",
+  "description": "In DS-03 section 9 the States paragraph overruns into the 'Default' caption below it; in DS-04 the fold diagram's dashed annotation label overprints the 'Payment could not be scheduled' row text.",
+  "expected": "No overlapping text.",
+  "actual": "Text collides.",
+  "board": "DS-03-Navigation.dc.html, DS-04-Overlays.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": true,
+  "suggested_fix": "Add bottom margin to the States block and move the annotation label."
+ },
+ {
+  "id": "F-duo-035",
+  "story_id": [
+   "STORY-105"
+  ],
+  "severity": "low",
+  "category": "visual",
+  "criterion": "Spacing even, 8 pt group gap",
+  "description": "In the iPhone 393 pt sample of DS-03 section 2 the title capsule touches the trailing group (0 px gap; spec 8 pt).",
+  "expected": "8 pt between capsule and trailing group.",
+  "actual": "0 to 4 px.",
+  "board": "DS-03-Navigation.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": true,
+  "suggested_fix": "Reduce capsule max width or add an 8 pt gap."
+ },
+ {
+  "id": "F-duo-036",
+  "story_id": [
+   "STORY-100"
+  ],
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "Same control in the same place",
+  "description": "On the outer thread the More button sits at the bottom of the strip; on the inner half-folded thread it sits beside the composer, and the strip holds only Page and List.",
+  "expected": "More in one place on both displays.",
+  "actual": "Different placement.",
+  "board": "PG-A-Thread.dc.html, Inner.dc.html",
+  "phase_issue": "#419",
+  "quick_fix": false,
+  "suggested_fix": "Decide the location and redraw one board."
+ },
+ {
+  "id": "F-duo-037",
+  "story_id": [
+   "STORY-099"
+  ],
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "One list style",
+  "description": "Inbox rows are cards with fills in DS-03 section 1 but divided rows with no cards on Sheet.dc.html and in the PG-A-Rules Inbox card.",
+  "expected": "Divided rows.",
+  "actual": "Cards in DS-03.",
+  "board": "DS-03-Navigation.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Redraw the DS-03 sample with divided rows."
+ },
+ {
+  "id": "F-duo-038",
+  "story_id": [
+   "STORY-098",
+   "STORY-108"
+  ],
+  "severity": "low",
+  "category": "disclosure",
+  "criterion": "Primary destinations are findable",
+  "description": "Artifacts is reached from Home through the third of three unlabeled icons (bell, magnifier, stacked pages); the inner display names it in the sidebar.",
+  "expected": "A label or a more distinct glyph.",
+  "actual": "Icon only.",
+  "board": "PG-A-Home.dc.html, Main.dc.html",
+  "phase_issue": "#415",
+  "quick_fix": false,
+  "suggested_fix": "Consider an Artifacts row on Home or a text tooltip."
+ },
+ {
+  "id": "F-duo-039",
+  "story_id": [
+   "STORY-108"
+  ],
+  "severity": "suggestion",
+  "category": "layout",
+  "criterion": "Overflowing content has a visible cue",
+  "description": "The bot chip row on Artifacts is 456 pt wide in a 390 pt column; the last chip is cut off with no fade or scroll cue.",
+  "expected": "Edge fade or chip count limit.",
+  "actual": "Hard cut.",
+  "board": "PG-A-Artifacts.dc.html",
+  "phase_issue": "#420",
+  "quick_fix": false,
+  "suggested_fix": "Add an edge fade to the chip row."
+ }
+]

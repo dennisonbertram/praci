@@ -14,7 +14,9 @@
     "intl:compile": "lingui compile",
     "storybook": "storybook dev -p 6106",
     "storybook:smoke": "node .storybook/smoke.mjs storybook-static",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "build:demo": "vite build -c vite.demo.config.ts && mv ../praci-waitlist/public/demo/demo.html ../praci-waitlist/public/demo/index.html",
+    "record:demo": "node scripts/record-demo.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.3.1",
