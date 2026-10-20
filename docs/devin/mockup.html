@@ -37,7 +37,9 @@ body{background:var(--background);color:var(--foreground);font:14px/1.5 "Geist",
 button,input,textarea{font:inherit;color:inherit}
 button{cursor:pointer}
 a{color:inherit;text-decoration:none}
-:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+:focus-visible{outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 50%,transparent)}
+.ti:focus-visible{box-shadow:none}
+.ti:focus-visible::after{box-shadow:0 0 0 3px color-mix(in srgb,var(--ring) 50%,transparent);border-radius:12px}
 svg.i{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
 svg.i.s{width:11px;height:11px;vertical-align:-1px;margin-inline-start:3px}
 .tab{font-variant-numeric:tabular-nums}
@@ -68,7 +70,7 @@ aside.sb{width:316px;flex:none;background:var(--sidebar);border-right:1px solid 
 .lnk:hover{background:var(--sidebar-accent)}
 .lnk.cur{background:var(--sidebar-accent)}
 .lnk .tile{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:color-mix(in srgb,var(--foreground) 80%,transparent)}
-.lnk .dot{margin-inline-start:auto;width:8px;height:8px;border-radius:50%;background:var(--primary)}
+.lnk .gv{margin-inline-start:auto;font-size:11.5px;color:var(--muted-fg);font-variant-numeric:tabular-nums}
 .sbdiv{border-top:1px solid var(--sidebar-border);margin:6px 0 8px}
 .user{margin-top:auto;display:flex;align-items:center;gap:10px;padding:14px 20px;font-size:14px}
 .user span{font-size:11px;color:var(--muted-fg)}
@@ -76,7 +78,7 @@ aside.sb{width:316px;flex:none;background:var(--sidebar);border-right:1px solid 
 .topbar{display:none;height:56px;align-items:center;padding:0 12px;flex:none}
 .topbar .mb{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:color-mix(in srgb,var(--foreground) 75%,transparent);background:transparent;border:0}
 .topbar .mb:hover{background:var(--accent)}
-.bav{width:22px;height:22px;border-radius:7px;background:var(--bot);color:var(--bot-fg);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.bav{width:22px;height:22px;flex:none;display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.25))}
 .drawscrim{display:none}
 
 /* page */
@@ -86,7 +88,7 @@ main.pg{container:pg/inline-size;flex:1;min-height:0;overflow-y:auto;padding:20p
 .ph .meta{font-size:12px;color:var(--muted-fg)}
 .ph .acts{margin-inline-start:auto;min-height:40px;display:flex;align-items:center;gap:8px}
 .open .askbtn{display:none}
-.btn{height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:var(--background);display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;white-space:nowrap}
+.btn{height:32px;padding:0 10px;border-radius:12px;border:1px solid var(--border);background:var(--background);display:inline-flex;align-items:center;gap:6px;font-size:14px;font-weight:500;white-space:nowrap}
 .btn:hover{background:var(--muted)}
 .btn.p{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
 .btn.p:hover{opacity:.9;background:var(--primary)}
@@ -94,13 +96,15 @@ main.pg{container:pg/inline-size;flex:1;min-height:0;overflow-y:auto;padding:20p
 .btn[disabled]{opacity:.5;pointer-events:none}
 .ghost{background:transparent;border-color:transparent}
 .kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:16px}
-.kpi{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:12px 14px;height:88px}
+.kpi{border:1px solid var(--border);border-radius:16px;background:var(--card);padding:12px 14px;height:88px}
 .kpi .t{font-size:12px;font-weight:600;color:var(--muted-fg)}
 .kpi .v{margin-top:4px;font-size:22px;line-height:1.25;font-weight:600}
 .kpi.em{border-color:var(--warning)}
 .kpi.em .v{color:var(--warning)}
+.kpi.zero{border-color:var(--border)}
+.kpi.zero .v{color:var(--foreground)}
 .errn{margin:16px 0;min-height:88px;display:flex;align-items:center;gap:12px;font-size:14px;color:var(--destructive);flex-wrap:wrap}
-.sk{background:var(--accent);border-radius:6px;animation:pulse 2s ease-in-out infinite}
+.sk{background:var(--accent);border-radius:8px;animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.5}}
 .center{display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px 0;text-align:center}
 .center p{margin:0;max-width:24rem;font-size:14px;color:var(--muted-fg)}
@@ -134,16 +138,16 @@ li.row{position:relative;border-top:1px solid var(--border);padding:12px 0;font-
 li.gl{padding:16px 0 4px;font-size:12.5px;font-weight:500;color:color-mix(in srgb,var(--muted-fg) 80%,transparent)}
 li .top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 li .mt{margin-top:6px;font-size:12px;color:var(--muted-fg)}
-@container pg (max-width:639px){ table.wd{display:none} ul.nl{display:block} }
+@container pg (max-width:671px){ table.wd{display:none} ul.nl{display:block} }
 
 /* docked / overlay panel */
 aside.dock{display:none;width:384px;flex:none;border-left:1px solid var(--sidebar-border);background:var(--background);flex-direction:column;min-height:0}
 .open aside.dock{display:flex}
 .dh{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 16px;flex:none}
-.dh .who{display:flex;min-width:0;align-items:center;gap:8px;margin-inline:-6px;padding:4px 6px;border-radius:8px;font-size:14px;font-weight:500;background:transparent;border:0}
+.dh .who{display:flex;min-width:0;align-items:center;gap:8px;margin-inline:-6px;padding:4px 6px;border-radius:12px;font-size:14px;font-weight:500;background:transparent;border:0}
 .dh .who:hover{background:var(--accent)}
 .dh .who span.n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cl28{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;color:var(--foreground);background:transparent;border:0}
+.cl28{width:28px;height:28px;border-radius:10px;display:grid;place-items:center;color:var(--foreground);background:transparent;border:0}
 .cl28:hover{background:var(--muted)}
 .intro{display:flex;flex-direction:column;gap:12px;padding:8px 16px 16px;flex:none}
 .intro p{margin:0;font-size:14px;color:var(--muted-fg)}
@@ -195,27 +199,29 @@ aside.dock{display:none;width:384px;flex:none;border-left:1px solid var(--sideba
 /* dialog (real: bg-black/10 + blur-xs overlay, 384px, rounded-xl, ring, tinted footer) */
 .dscrim{position:absolute;inset:0;z-index:60;background:rgba(0,0,0,.1);backdrop-filter:blur(2px);display:grid;place-items:center;padding:16px}
 .dlgrow{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;padding:40px 16px;background:var(--background);border-block:1px solid var(--sidebar-border)}
-.dlg{width:min(384px,100%);position:relative;display:grid;gap:16px;border-radius:12px;background:var(--card);padding:16px;font-size:14px;box-shadow:0 0 0 1px color-mix(in srgb,var(--foreground) 10%,transparent)}
+.dlg{width:min(384px,100%);position:relative;display:grid;gap:16px;border-radius:16px;background:var(--card);padding:16px;font-size:14px;box-shadow:0 0 0 1px color-mix(in srgb,var(--foreground) 10%,transparent)}
 .dlg .hd{display:flex;flex-direction:column;gap:8px}
 .dlg .tl{display:flex;align-items:center;gap:12px}
-.dlg .logo{width:40px;height:40px;border-radius:8px;background:var(--muted);color:var(--muted-fg);display:grid;place-items:center;font-weight:500}
+.dlg .logo{width:40px;height:40px;border-radius:10px;background:var(--muted);color:var(--muted-fg);display:grid;place-items:center;font-weight:500}
 .dlg h3{margin:0;font-size:16px;line-height:1;font-weight:500}
 .dlg .ds{margin:0;color:var(--muted-fg)}
 .dlg form{display:contents}
 .dlg .f{display:flex;flex-direction:column;gap:4px}
-.dlg input{width:100%;height:32px;border:1px solid var(--input);border-radius:8px;background:transparent;padding:0 10px;font-size:14px}
+.dlg input{width:100%;height:32px;border:1px solid var(--input);border-radius:12px;background:transparent;padding:0 10px;font-size:14px}
 .dlg input::placeholder{color:var(--muted-fg)}
 .dlg .help{font-size:12px;color:var(--muted-fg);width:fit-content}
 .dlg .help:hover{color:var(--foreground);text-decoration:underline}
 .dlg .er{margin:0;font-size:14px;color:var(--destructive)}
-.dlg .x{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:transparent;border:0}
+.dlg .x{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:10px;display:grid;place-items:center;background:transparent;border:0}
 .dlg .x:hover{background:var(--muted)}
-.dlg .ft{margin:0 -16px -16px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);border-radius:0 0 12px 12px;background:color-mix(in srgb,var(--muted) 50%,transparent);padding:16px}
+.dlg .ft{margin:0 -16px -16px;display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border);border-radius:0 0 16px 16px;background:color-mix(in srgb,var(--muted) 50%,transparent);padding:16px}
 
 /* toast (real notification-toaster markup) */
-.tview{position:absolute;right:16px;bottom:88px;width:min(28rem,calc(100% - 2rem));z-index:50}
+.tview{isolation:isolate;position:absolute;right:16px;bottom:88px;width:min(28rem,calc(100% - 2rem));z-index:50}
 .toast{position:absolute;inset-inline:0;bottom:0;border:1px solid var(--border);border-radius:12px;background:var(--card);box-shadow:0 10px 15px -3px rgba(0,0,0,.15),0 4px 6px -4px rgba(0,0,0,.15)}
-.toast.behind{transform:translateY(-1rem) scale(.95);transform-origin:bottom;background:var(--muted);border-color:color-mix(in srgb,var(--foreground) 25%,transparent)}
+.toast.behind{transform-origin:bottom;background:var(--muted);border-color:color-mix(in srgb,var(--foreground) 25%,transparent);box-shadow:none}
+.toast.b1{transform:translateY(-1rem) scale(.95);z-index:-1}
+.toast.b2{transform:translateY(-2rem) scale(.9);z-index:-2}
 .toast .bt{display:flex;width:100%;align-items:flex-start;gap:12px;border:0;background:transparent;text-align:left;padding:16px 40px 16px 16px;border-radius:12px}
 .toast .bt:hover{background:color-mix(in srgb,var(--muted) 40%,transparent)}
 .toast .av{flex:none;width:32px;height:32px;border-radius:50%;background:var(--primary);color:var(--primary-fg);display:grid;place-items:center;font-size:12px}
@@ -228,7 +234,9 @@ aside.dock{display:none;width:384px;flex:none;border-left:1px solid var(--sideba
 .toast:hover .cl,.toast:focus-within .cl{opacity:1}
 .toast .cl:hover{background:var(--muted);color:var(--foreground)}
 .toast .plus{position:absolute;top:-36px;right:12px;border:1px solid var(--border);border-radius:999px;background:var(--card);padding:2px 8px;font-size:12px;color:var(--muted-fg)}
-.dimpg{opacity:1}
+.pr2{display:flex;flex-direction:column}
+.note{margin:0 0 12px;font-size:12px;color:var(--muted-fg)}
+.avring{position:relative;display:inline-flex}
 </style>
 </head>
 <body>
@@ -258,46 +266,54 @@ const P={
 };
 const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 16 16" aria-hidden="true">${P[n]}</svg>`;
 const X=ic('ext','s');
+const avatar=(sz=22,c='#9B5CF6')=>`<svg class="bav" style="width:${sz}px;height:${sz}px" viewBox="0 0 24 24" aria-hidden="true"><rect x="1" y="1" width="22" height="22" rx="7.5" transform="rotate(-4 12 12)" fill="${c}"/><path d="M8 9.8v2.2M15.4 9.6l-.3 2.2" stroke="#111" stroke-width="1.6" stroke-linecap="round"/></svg>`;
 
-function sidebar(cur,dot){
- const l=(i,t,c,d)=>`<a class="lnk${c?' cur':''}" href="#" onclick="return false"><span class="tile">${ic(i)}</span>${t}${d?'<span class="dot" aria-hidden="true"></span><span class="sr">new</span>':''}</a>`;
+function sidebar(cur,dot){ // dot = needs-you count shown as the glance value, or 0/false for none
+ const l=(i,t,c,d)=>`<a class="lnk${c?' cur':''}" href="#" onclick="return false"><span class="tile">${ic(i)}</span>${t}${d?`<span class="gv" aria-label="${d} need you">${d}</span>`:''}</a>`;
  return `<aside class="sb"><div class="sbh"><div class="pill">${ic('search')}Search</div><button class="ibtn" aria-label="History">${ic('clock')}</button><button class="ibtn hideb" aria-label="Hide sidebar">${ic('side')}</button><button class="ibtn" aria-label="New">${ic('plus')}</button><button class="ibtn closeb" aria-label="Close menu" data-drawer-close>${ic('x')}</button></div>
  <div class="grp">Pages<span class="sp"></span>${ic('chev')}${ic('more')}</div>
  <nav class="nav">${l('inbox','Inbox',cur==='inbox')}${l('fin','Finance')}${l('legal','Legal')}${l('cap','Cap table')}${l('room','Data room')}${l('dev','Devin',cur==='dev',dot)}${l('art','Artifacts')}</nav>
  <div class="sbdiv"></div><nav class="nav">${l('grid','Integrations')}</nav>
  <div class="user"><span>DU</span>Demo User</div></aside>`;
 }
-const header=(meta,ask=true)=>`<div class="ph"><h1>Devin</h1>${meta?`<span class="meta" title="Devin org">${meta.startsWith('acme')?'<span class="sr">Devin org </span>':''}${meta}</span>`:''}<div class="acts">${ask?`<button class="btn askbtn" data-ask>${ic('chat')}Ask</button>`:''}</div></div>`;
-const tiles=(n,w)=>`<div class="kpis"><div class="kpi em"><div class="t">Needs you</div><div class="v tab">${n}</div></div><div class="kpi"><div class="t">Working</div><div class="v tab">${w}</div></div></div>`;
-const SB={n:['w','Needs input'],w:['o','Working'],f:['s','Finished'],e:['e','Error'],s:['m','Suspended']};
-const bd=k=>`<span class="badge ${SB[k][0]}">${SB[k][1]}</span>`;
-const rowsFor=stale=>[
+const header=(meta,ask=true)=>`<div class="ph"><h1>Devin</h1>${meta?`<span class="meta">${meta}</span>`:''}<div class="acts">${ask?`<button class="btn askbtn" data-ask>${ic('chat')}Ask</button>`:''}</div></div>`;
+const tiles=(n,w)=>`<div class="kpis"><div class="kpi ${n>0?'em':'zero'}"><div class="t">Needs you</div><div class="v tab">${n}</div></div><div class="kpi"><div class="t">Working</div><div class="v tab">${w}</div></div></div>`;
+const SB={x:['o',''],n:['w','Needs input'],w:['o','Working'],f:['s','Finished'],e:['e','Error'],s:['m','Suspended']};
+const bd=(k,raw)=>`<span class="badge ${SB[k][0]}">${raw||SB[k][1]}</span>`;
+const rowsFor=(stale,v='')=>{
+ const base=[
  {g:'Needs you'},
- {t:'Add CSV export for invoices',k:'n',q:'Should the export keep the legacy CSV column order?',pr:null,src:'Slack',u:stale?'14m ago':'2m ago'},
- {t:'Upgrade Prisma to 6.x',k:'n',q:'Two migrations conflict. Should I squash them or keep both and run the older one first?',pr:['acme/api#212','open'],src:'Linear',u:'1h ago'},
- {t:'Migrate billing webhooks to the new queue',k:'e',pr:null,src:'Web',u:'Yesterday'},
+ {t:'Add CSV export for invoices',k:'n',q:'Should the export keep the legacy CSV column order?',pr:[],src:'Slack',u:stale?'14m ago':'2m ago'},
+ {t:'Upgrade Prisma to 6.x',k:'n',q:'Two migrations conflict. Should I squash them or keep both and run the older one first?',pr:[['acme/api#212','open']],src:'Linear',u:'1h ago'},
+ {t:'Migrate billing webhooks to the new queue',k:'e',q:'Tests failed on acme/api',pr:[],src:'Web',u:'Yesterday'},
  {g:'Working'},
- {t:'Remove unused feature flags',k:'w',pr:null,src:'Web',u:stale?'9m ago':'1m ago'},
- {t:'Add pagination to the audit log API',k:'w',pr:['acme/api#215','open'],src:'Linear',u:stale?'12m ago':'3m ago'},
+ {t:'Remove unused feature flags',k:'w',pr:[],src:'Web',u:stale?'9m ago':'1m ago'},
+ {t:'Add pagination to the audit log API',k:'w',pr:[['acme/api#215','open']],src:'Linear',u:stale?'12m ago':'3m ago'},
  {g:'Earlier'},
- {t:'Fix flaky invoice export test',k:'f',pr:['acme/web#418','merged'],src:'Slack',u:'2h ago'},
- {t:'Bump Expo SDK and move push notification setup to the new API',k:'f',pr:['acme/mobile#97','open'],src:'API',u:'Yesterday'},
- {t:'Rewrite onboarding copy',k:'s',pr:null,src:'Web',u:'2d ago'}];
-const prc=pr=>pr?`<span>${pr[0]}</span><span class="sub">${pr[1]}</span>`:'<span class="dim">—</span>';
-function table(stale){
+ {t:'Fix flaky invoice export test',k:'f',pr:[['acme/web#418','merged']],src:'Slack',u:'2h ago'},
+ {t:'Bump Expo SDK and move push notification setup to the new API',k:'f',pr:[['acme/mobile#97','open']],src:'API',u:'Yesterday'},
+ {t:'Rewrite onboarding copy',k:'s',pr:[],src:'Web',u:'2d ago'}];
+ if(v==='zero')return base.filter((r,i)=>i>3);
+ if(v==='unknown')return [{g:'Working'},{t:'Update API changelog',k:'x',raw:'pending_review',pr:[],src:'Linear',u:'20m ago'},{t:'Remove unused feature flags',k:'w',pr:[],src:'Web',u:'1m ago'},{g:'Earlier'},base[8]];
+ if(v==='twopr')return [{g:'Working'},{t:'Split the billing module into two services',k:'w',pr:[['acme/api#220','open'],['acme/web#431','open']],src:'Linear',u:'6m ago'},{t:'Remove unused feature flags',k:'w',pr:[],src:'Web',u:'1m ago'},{g:'Earlier'},base[8]];
+ if(v==='partial')return base.filter((r,i)=>i!==3);
+ return base;
+};
+const prc=pr=>pr.length?`<span class="pr2">${pr.map(x=>`<span>${x[0]} <span class="dim">${x[1]}</span></span>`).join('')}</span>`:'<span class="dim">—</span>';
+function table(stale,v){
  const cols=['36%','15%','21%','12%','16%'];
  let w=`<table class="wd"><colgroup>${cols.map(c=>`<col style="width:${c}">`).join('')}</colgroup><thead><tr><th>Session</th><th>Status</th><th>Pull request</th><th>Source</th><th>Updated</th></tr></thead><tbody>`;
  let n=`<ul class="nl" aria-label="Sessions">`;
- rowsFor(stale).forEach(r=>{
+ rowsFor(stale,v).forEach(r=>{
   if(r.g){w+=`<tr class="gl"><td colspan="5">${r.g}</td></tr>`;n+=`<li class="gl">${r.g}</li>`;return}
   const first=`<a class="ti" href="#" onclick="return false">${r.t.replace(/(\S+)$/,'<span class="nw">$1'+X+'</span>')}<span class="sr"> (opens in Devin)</span></a>${r.q?`<span class="q">${r.q}</span>`:''}`;
-  w+=`<tr class="row"><td>${first}</td><td>${bd(r.k)}</td><td>${prc(r.pr)}</td><td>${r.src}</td><td class="dim tab">${r.u}</td></tr>`;
-  n+=`<li class="row"><div class="top"><div style="min-width:0">${first}</div>${bd(r.k)}</div><div class="mt tab">${r.pr?r.pr[0]+' '+r.pr[1]+' · ':''}${r.u}</div></li>`;
+  w+=`<tr class="row"><td>${first}</td><td>${bd(r.k,r.raw)}</td><td>${prc(r.pr)}</td><td>${r.src}</td><td class="dim tab">${r.u}</td></tr>`;
+  n+=`<li class="row"><div class="top"><div style="min-width:0">${first}</div>${bd(r.k,r.raw)}</div><div class="mt tab">${r.pr.length?r.pr.map(x=>x[0]+' '+x[1]).join(', ')+' · ':''}${r.u}</div></li>`;
  });
  return w+'</tbody></table>'+n+'</ul>';
 }
 const skel=()=>`<div aria-busy="true"><div class="ph"><h1>Devin</h1><span class="sk" style="width:48px;height:16px"></span></div><div class="kpis"><div class="sk" style="height:88px;border-radius:12px"></div><div class="sk" style="height:88px;border-radius:12px"></div></div><div style="display:flex;flex-direction:column;gap:12px;margin-top:24px">${[0,1,2,3,4,5].map(()=>`<div class="sk" style="height:40px"></div>`).join('')}</div></div>`;
-const err=(m,b)=>`<div role="alert" class="errn"><span>${m}</span><button class="btn sm">${b}</button></div>`;
+const err=(m,b)=>`<div role="alert" class="errn"><span>${m}</span>${b?`<button class="btn sm">${b}</button>`:''}</div>`;
 const page=inner=>`<main class="pg">${inner}</main>`;
 const topbar=`<div class="topbar"><button class="mb" aria-label="Open navigation" data-drawer-open>${ic('menu').replace('class="i "','class="i" style="width:19px;height:19px"')}</button></div>`;
 
@@ -305,58 +321,63 @@ const tool=(l,run)=>`<div class="r${run?' run':''}">${ic(run?'clk':'check')}<spa
 const tools=(sum,rows,open)=>`<details class="tools"${open?' open':''}><summary>${ic('arr')}${sum}</summary><div class="body">${rows}</div></details>`;
 const ol=(t)=>`<a href="#" onclick="return false">${t}${X}</a>`;
 const composer=(k)=>`<div class="cmp"><div class="pillc"><button class="rb add" aria-label="Attach">${ic('plus')}</button><span class="ph2">Message Devin agent</span><span class="tr"><button class="rb mic" aria-label="Voice">${ic('mic')}</button>${k==='run'?`<button class="rb stop" aria-label="Stop">${ic('sq')}</button>`:`<button class="rb snd" aria-label="Send" disabled>${ic('up')}</button>`}</span></div></div>`;
-const dhead=(missing)=>`<div class="dh">${missing?'<span></span>':`<button class="who" title="Open full screen" aria-label="Open Devin agent full screen"><span class="bav">D</span><span class="n">Devin agent</span></button>`}<button class="cl28" aria-label="Collapse Devin agent" data-close>${ic('pclose')}</button></div>`;
+const dhead=(missing)=>`<div class="dh">${missing?'<span></span>':`<button class="who" title="Open full screen" aria-label="Open Devin agent full screen">${avatar(22)}<span class="n">Devin agent</span></button>`}<button class="cl28" aria-label="Collapse Devin agent" data-close>${ic('pclose')}</button></div>`;
 function dock(kind){
  let body='';
  if(kind==='missing') return `<aside class="dock">${dhead(true)}<div class="miss"><button class="btn p">Create Devin agent</button></div></aside>`;
  if(kind==='intro') body=`<div class="intro"><p>Answers questions about what Devin is working on.</p><div class="sg"><button class="btn">Anything merged today?</button><button class="btn">What did Devin do this week?</button></div></div><div style="flex:1"></div>`;
  else if(kind==='run') body=`<div class="thr"><div class="sep">Oct 20, 9:41 AM</div><div class="u">Anything merged today?</div>${tools('Working… · 1 tool',tool('Session search',1),true)}</div>`;
- else if(kind==='cant') body=`<div class="thr"><div class="sep">Oct 20, 9:41 AM</div><div class="u">What is Add CSV export waiting on?</div>${tools('Done · 2 tools · 4s',tool('Session search')+tool('Session get messages'),false)}<div class="a"><p>I can't read that question. ${ol('Open Add CSV export in Devin')}</p></div></div>`;
  else body=`<div class="thr"><div class="sep">Oct 20, 9:41 AM</div>
   <div class="u">Anything merged today?</div>${tools('Done · 1 tool · 2s',tool('Session search'),false)}
   <div class="a"><p>One pull request: ${ol('acme/web#418')}, the flaky invoice export test fix.</p></div>
-  <div class="u">What did Devin do on acme/api this week?</div>${tools('Done · 3 tools · 5s',tool('Session search')+tool('Session get messages ×2'),true)}
+  <div class="u">What did Devin do on acme/api this week?</div>${tools('Done · 2 tools · 5s',tool('Session search ×2'),true)}
   <div class="a"><p>Two sessions touched acme/api:</p><ul>
    <li><b>Add pagination to the audit log API</b> opened ${ol('acme/api#215')} and is still working. ${ol('Open Add pagination in Devin')}</li>
-   <li><b>Upgrade Prisma to 6.x</b> opened ${ol('acme/api#212')} and is waiting on a question about two conflicting migrations. ${ol('Open Upgrade Prisma in Devin')}</li></ul></div></div>`;
+   <li><b>Upgrade Prisma to 6.x</b> opened ${ol('acme/api#212')} and is waiting for an answer from you. ${ol('Open Upgrade Prisma in Devin')}</li></ul></div></div>`;
  return `<aside class="dock">${dhead()}${body}${composer(kind)}</aside>`;
 }
-function frame({w,h='900px',cur='dev',dot=true,body,open=false,dockKind='',id='',extra='',drawer=false}){
+function frame({w,h='900px',cur='dev',dot=3,body,open=false,dockKind='',id='',extra='',drawer=false}){
  const st=[w?`--w:${w}`:'',`--h:${h}`].filter(Boolean).join(';');
- return `<div class="wrapx"><div class="fw"${id?` id="${id}"`:''} style="${st}"><div class="shell${open?' open':''}${drawer?' drawer':''}">${sidebar(cur,dot)}<button class="drawscrim" aria-label="Close navigation" data-drawer-close></button><div class="col">${topbar}${body}</div>${dockKind?dock(dockKind):''}${extra}</div></div></div>`;
+ return `<div class="wrapx"><div class="fw"${id?` id="${id}"`:''} style="${st}"><div class="shell${open?' open':''}${drawer?' drawer':''}">${sidebar(cur,dot===true?3:dot)}<button class="drawscrim" aria-label="Close navigation" data-drawer-close></button><div class="col">${topbar}${body}</div>${dockKind?dock(dockKind):''}${extra}</div></div></div>`;
 }
 const cap=(t,s)=>`<div class="cap">${t}${s?`<span>${s}</span>`:''}</div>`;
-const populated=page(header('acme')+tiles(3,2)+table(false));
-const stale=`<main class="pg stale">${header('acme · Updated 4m ago')}${err('Devin rejected the key. Alerts are paused.','Reconnect')}${table(true)}</main>`;
+const populated=page(header('')+tiles(3,2)+table(false));
+const variant=(v,note,t)=>page(header('')+tiles(v==='zero'?0:t[0],t[1])+(note?`<p class="note">${note}</p>`:'')+table(false,v));
+const stale=(owner)=>`<main class="pg stale">${header('Updated 4m ago',false)}${err('Devin rejected the key. Alerts are paused.',owner?'Reconnect':'')}${table(true)}</main>`;
 const notConn=page(header('',false)+`<div class="center"><p>Connect Devin to see its sessions here.</p><button class="btn p">Connect Devin</button></div>`);
 const member=page(header('',false)+`<div class="center"><p>Ask a space owner to connect Devin.</p></div>`);
 const inbox=page(`<div class="ph"><h1>Inbox</h1></div>`+[['Quarterly invoice from Acme Hosting','Invoice attached for review'],['Re: onboarding checklist','Thanks, I will send the signed copy'],['Calendar: design review','Tomorrow, 10:00'],['Sample newsletter','Five things this week']].map(r=>`<div style="padding:12px 0;border-top:1px solid var(--border)"><div style="font-weight:500">${r[0]}</div><div class="dim" style="font-size:13px">${r[1]}</div></div>`).join(''));
 
 const dlg=(state)=>`<div class="dlg" role="dialog" aria-label="Connect Devin"><button class="x" aria-label="Close">${ic('x')}</button>
- <div class="hd"><div class="tl"><span class="logo">D</span><h3>Connect Devin</h3></div><p class="ds">Connects Devin for everyone in this space. Read-only.</p></div>
- <form onsubmit="return false"><div class="f"><input type="password" autocomplete="off" aria-label="API key" placeholder="API key" ${state==='empty'?'':'value="cog_demo_key_0000"'}><a class="help" href="#" onclick="return false">Where to find your key${X}</a>${state==='refused'?'<p class="er" role="alert">The key was refused</p>':''}</div>
- <div class="ft"><button type="button" class="btn">Cancel</button><button type="submit" class="btn p"${state==='empty'||state==='connecting'?' disabled':''}>Connect</button></div></form></div>`;
-const toast=(stack)=>`<div class="tview" role="status">${stack?`<div class="toast behind" aria-hidden="true" style="height:96px"></div>`:''}<div class="toast">${stack?'<span class="plus">+1</span>':''}<button class="bt"><span class="av" aria-hidden="true">D</span><span style="min-width:0;flex:1"><span class="tt"><b>Devin needs input</b><span>2m ago</span></span><span class="tb" style="display:block">Add CSV export for invoices: Should the export keep the legacy CSV column order?</span><span class="hint" style="display:block">Opens Devin</span></span></button><button class="cl" aria-label="Dismiss">${ic('x')}</button></div></div>`;
+ <div class="hd"><div class="tl"><span class="logo">D</span><h3>Connect Devin</h3></div><p class="ds">Connects Devin for everyone in this space. Read&#8209;only.</p></div>
+ <form onsubmit="return false"><div class="f"><input type="password" autocomplete="off" aria-label="Organization service-user key" placeholder="Organization service-user key" ${state==='empty'?'':'value="cog_demo_key_0000"'}><a class="help" href="#" onclick="return false">Where to find your key${X}</a>${state==='refused'?'<p class="er" role="alert">The key was refused.</p>':''}</div>
+ <div class="ft"><button type="button" class="btn">Cancel</button><button type="submit" class="btn p"${state==='empty'||state==='connecting'?' disabled':''}>${state==='connecting'?'Connecting…':'Connect'}</button></div></form></div>`;
+const toast=(stack,body)=>`<div class="tview" role="status">${stack?`<div class="toast behind b2" aria-hidden="true" style="height:122px"></div><div class="toast behind b1" aria-hidden="true" style="height:122px"></div>`:''}<div class="toast">${stack?'<span class="plus">+1</span>':''}<button class="bt"><span class="av" aria-hidden="true">D</span><span style="min-width:0;flex:1"><span class="tt"><b>Devin needs input</b><span>2m ago</span></span><span class="tb" style="display:block">${body||'Add CSV export for invoices: Should the export keep the legacy CSV column order?'}</span><span class="hint" style="display:block">Opens Devin</span></span></button><button class="cl" aria-label="Dismiss">${ic('x')}</button></div></div>`;
 
 document.getElementById('root').innerHTML=
  cap('Devin page, panel open after Ask','Docked at 1280px and wider, overlays below with Escape or an outside click to close; the sidebar becomes a drawer under 1024px; rows become a list at narrow page widths. Use the Width switcher; every frame follows it except the drawer frame.')+
  frame({id:'main',body:populated,open:true,dockKind:'main'})+
- cap('First visit, panel closed')+frame({h:'600px',body:populated})+
+ cap('First visit, panel closed','Ask opens the panel with the first-Ask intro.')+frame({h:'600px',body:populated,dockKind:'intro'})+
  cap('Panel: first Ask')+frame({h:'600px',body:populated,open:true,dockKind:'intro'})+
  cap('Panel: running turn')+frame({h:'600px',body:populated,open:true,dockKind:'run'})+
- cap('Panel: the agent cannot read the question')+frame({h:'600px',body:populated,open:true,dockKind:'cant'})+
- cap('Panel: agent missing')+frame({h:'420px',body:populated,open:true,dockKind:'missing'})+
+  cap('Panel: agent missing')+frame({h:'420px',body:populated,open:true,dockKind:'missing'})+
  cap('Navigation drawer (below 1024px)','Fixed at 390px.')+frame({w:'390px',h:'600px',body:populated,drawer:true})+
  cap('Loading')+frame({h:'620px',dot:false,body:page(skel())})+
- cap('Empty')+frame({h:'360px',dot:false,body:page(header('acme')+`<div class="center"><p>No Devin sessions yet.</p><a class="lk" href="#" onclick="return false">Open Devin${X}</a></div>`)})+
- cap('Load error')+frame({h:'300px',dot:false,body:page(header('acme',false)+err('Could not load Devin sessions.','Try again'))})+
- cap('Key rejected, stale data','Notice takes the place of the tiles; rows are muted; alerts are paused so the sidebar dot is hidden.')+frame({h:'760px',dot:false,body:stale})+
+ cap('Empty')+frame({h:'360px',dot:false,dockKind:'intro',body:page(header('')+`<div class="center"><p>No Devin sessions yet.</p><a class="lk" href="#" onclick="return false">Open Devin${X}</a></div>`)})+
+ cap('Load error')+frame({h:'300px',dot:false,body:page(header('',false)+err('Could not load Devin sessions.','Try again'))})+
+ cap('Key rejected, stale data, space owner','Notice takes the place of the tiles; rows are muted; alerts are paused so the sidebar shows no count.')+frame({h:'760px',dot:false,body:stale(true)})+
+ cap('Key rejected, stale data, member')+frame({h:'760px',dot:false,body:stale(false)})+
+ cap('Needs you 0, other sessions present')+frame({h:'560px',dot:false,dockKind:'intro',body:variant('zero','',[0,2])})+
+ cap('Unknown status','Devin\'s own status text in the neutral outline badge.')+frame({h:'460px',dot:0,dockKind:'intro',body:variant('unknown','',[0,2])})+
+ cap('Partial results')+frame({h:'760px',dot:2,dockKind:'intro',body:variant('partial','Some sessions could not be read.',[2,2])})+
+ cap('A session with two pull requests')+frame({h:'460px',dot:0,dockKind:'intro',body:variant('twopr','',[0,2])})+
  cap('Not connected, a member who may connect')+frame({h:'360px',dot:false,body:notConn})+
  cap('Not connected, a member who may not connect')+frame({h:'360px',dot:false,body:member})+
  cap('Connect dialog over the page','Connect closes the dialog and opens /app/devin.')+frame({h:'560px',dot:false,body:notConn,extra:`<div class="dscrim">${dlg('empty')}</div>`})+
  cap('Connect dialog: connecting and refused')+`<div class="dlgrow">${dlg('connecting')}${dlg('refused')}</div>`+
  cap('Needs-input notification toast, over another page','Clicking opens that session in Devin (external) and marks the notification seen.')+frame({h:'600px',cur:'inbox',body:inbox,extra:toast(false)})+
- cap('Two notifications stacked')+frame({h:'600px',cur:'inbox',body:inbox,extra:toast(true)});
+ cap('Several notifications stacked')+frame({h:'600px',cur:'inbox',body:inbox,extra:toast(true)})+
+ cap('Toast when the question cannot be read')+frame({h:'600px',cur:'inbox',body:inbox,extra:toast(false,'Add CSV export for invoices is waiting for your answer.')});
 
 /* controls */
 const root=document.documentElement,th=document.getElementById('th'),wd=document.getElementById('wd');
