@@ -75,6 +75,7 @@ export const BUILTIN_TOOL_NAMES = [
   "add_to_data_room",
   "read_spreadsheet",
   "create_spreadsheet",
+  "create_ui_artifact",
   "workspace_agents",
   "agent_context",
   "search_agent_history",

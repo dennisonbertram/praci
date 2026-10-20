@@ -10,6 +10,11 @@ concurrency:
   group: release-android-apk
   cancel-in-progress: false
 
+env:
+  # OpenUI's parser package would send an install event otherwise.
+  OPENUI_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
 jobs:
   release:
     name: Build and publish the Android APK

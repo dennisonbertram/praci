@@ -31,6 +31,7 @@
     "@rakazo/core": "workspace:*",
     "@rakazo/db": "workspace:*",
     "@rakazo/logging": "workspace:*",
+    "@rakazo/ui-artifact": "workspace:*",
     "aws4fetch": "1.0.20",
     "chat": "4.40.0",
     "chat-adapter-lark": "0.3.1",

@@ -1,4 +1,5 @@
 FROM node:22-bookworm@sha256:0557ac14e0d45d02ed563067b82856ca5e7aa3437fa28d98d4350ea9c3d9494a
+ENV OPENUI_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
 RUN corepack enable
 WORKDIR /app
 # Manifests land before the source tree so editing a source file does not re-run the
@@ -23,6 +24,7 @@ COPY --chmod=755 packages/db/package.json packages/db/
 COPY --chmod=755 packages/logging/package.json packages/logging/
 COPY --chmod=755 packages/memory/package.json packages/memory/
 COPY --chmod=755 packages/testkit/package.json packages/testkit/
+COPY --chmod=755 packages/ui-artifact/package.json packages/ui-artifact/
 COPY --chmod=755 packages/ui-tokens/package.json packages/ui-tokens/
 COPY --chmod=755 packages/ui-web/package.json packages/ui-web/
 COPY --chmod=755 infra/sandboxes/supervisor/package.json infra/sandboxes/supervisor/

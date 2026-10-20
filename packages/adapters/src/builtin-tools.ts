@@ -9,6 +9,7 @@ import {
   TICKET_PRIORITIES,
   TICKET_STATUSES,
 } from "@rakazo/contracts";
+import { uiArtifactInputSchema } from "@rakazo/ui-artifact";
 import { z } from "zod";
 import { allowPrivateHttpSecretOrigins } from "./bot-secrets.js";
 import { calendarToolDefinitions } from "./calendar-tools.js";
@@ -1400,6 +1401,14 @@ export const builtinAgentTools: ConnectorTool[] = [
       },
       required: ["sheets"],
     },
+  },
+  {
+    name: "create_ui_artifact",
+    description:
+      "Create a read-only dashboard, summary or table as a UI artifact and attach it to the chat. Give a title and blocks: heading, text, metric (label, value, delta), table (columns, rows), list, badge, divider, chart (line or bar from series), and card, stack or grid to group blocks (nested at most 3 deep). Text is plain; there are no links, images, buttons or scripts. Use it for dashboards, summaries and tables; use an HTML page only for free-form pages. Calling it again with the same title makes a new version. Invalid input returns errors to fix.",
+    inputSchema: (({ $schema: _schema, ...rest }) => rest)(
+      z.toJSONSchema(uiArtifactInputSchema, { io: "input" }),
+    ),
   },
   {
     name: "add_to_data_room",

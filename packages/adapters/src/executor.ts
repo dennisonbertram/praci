@@ -146,6 +146,7 @@ import {
   searchHistory,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { createUiArtifact } from "@rakazo/ui-artifact";
 import { parse as parseShellCommand } from "shell-quote";
 import {
   connectAgent,
@@ -480,6 +481,7 @@ import {
 } from "./ticket-tools.js";
 import { advanceToolCallLoopGuard, loopGuardStopText } from "./tool-loop.js";
 import { textContentArg } from "./tool-text.js";
+import { UI_ARTIFACT_GUIDANCE, uiArtifactFileName } from "./ui-artifact-tool.js";
 import {
   botMessageOutcomeFromMidTurn,
   clampUserProgressMessage,
@@ -5950,6 +5952,35 @@ export function createRunExecutor(deps: ExecutorDeps) {
               });
             }
           }
+          if (name === "create_ui_artifact") {
+            if (!deps.artifacts) return finish({ error: "artifact storage unavailable" });
+            const created = createUiArtifact(args);
+            if (!created.ok)
+              return finish({ error: "Invalid UI artifact", problems: created.errors });
+            try {
+              const attached = await attachWorkspaceFileToThread(
+                { prisma: deps.prisma, artifacts: deps.artifacts },
+                {
+                  spaceId: run.spaceId,
+                  userId: run.userId,
+                  botId: bot.id,
+                  groupId: thread.groupId ?? undefined,
+                  runId: run.id,
+                  filePath: uiArtifactFileName(created.title),
+                  bytes: new TextEncoder().encode(created.source),
+                  operationId: executionId,
+                  name: created.title,
+                  description: created.description,
+                },
+              );
+              await publishMessage(deps, run, "bot", [attached.block]);
+              return finish({ ok: true, artifactId: attached.artifactId, name: created.title });
+            } catch (error) {
+              return finish({
+                error: error instanceof Error ? error.message : "could not create the UI artifact",
+              });
+            }
+          }
           if (name === "shell") {
             const command = String(args.command ?? args.cmd ?? "");
             const refusal = protectedComputerLifecycleRefusal(command);
@@ -9422,6 +9453,7 @@ export function userTurnInstructions(parts: {
     parts.agentSkillsLine,
     parts.taughtSkillsLine,
     offeredBuiltinClause(parts.disabledBuiltinTools, "read_spreadsheet", SPREADSHEET_GUIDANCE),
+    offeredBuiltinClause(parts.disabledBuiltinTools, "create_ui_artifact", UI_ARTIFACT_GUIDANCE),
     offeredBuiltinClause(
       parts.disabledBuiltinTools,
       "show_image",
