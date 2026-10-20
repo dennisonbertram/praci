@@ -1,30 +1,30 @@
 # Topic: Integration agents on MCP servers (Mercury, Brex)
 
-Stories STORY-IA-1 to STORY-IA-8. Written from code and the plan only; nothing here was walked in a browser. "UNVERIFIED" marks behavior read from code or the plan that the walker must confirm.
+Stories STORY-APP-383 to STORY-APP-390. Written from code and the plan only; nothing here was walked in a browser. "UNVERIFIED" marks behavior read from code or the plan that the walker must confirm.
 
 Sources: `docs/integration-agents/README.md`, `apps/web/src/components/integrations/McpDetail.tsx`, `IntegrationAgentSection.tsx`, `apps/api/src/integration-agent.ts`, `packages/adapters/src/approval-ask.ts`, `apps/web/src/components/AskCard.tsx`, `packages/testkit/src/cli/demo/{seed,data}.ts`, `packages/adapters/src/finance-fake-tools.ts`.
 
 ## Demo preconditions (read first)
 
 - **Mercury and Brex are seeded** in the mock demo (`seed.ts:203-228`): two connected MCP servers named "Mercury" and "Brex" with a fake stored login, plus the Finance agent. Neither has an agent yet, so the Integrations page shows **Create agent** for each.
-- **Payment stories (IA-3, IA-4, IA-6 write part).** The demo's emulated Mercury serves `requestSendMoney` (`DEMO_FINANCE_TOOLS` in `data.ts`). It can also list recipients (`getRecipients`, one mock payee, "Acme (Mock)"), so a payment can name one. It records the call and returns a fake pending request (`fake-request-1`, status `pendingApproval`); no money moves. Brex has no write tool in the demo (its four demo tools are all reads), so there is no Brex write walk.
-- **Chat model.** The agent answers through the demo's configured model. A scripted or mock model must be told to call `requestSendMoney` for the payment stories. UNVERIFIED: whether the demo model does so on request. If it only chats, IA-3/IA-4 stop at the dialog.
+- **Payment stories (STORY-APP-385, STORY-APP-386, STORY-APP-388 write part).** The demo's emulated Mercury serves `requestSendMoney` (`DEMO_FINANCE_TOOLS` in `data.ts`). It can also list recipients (`getRecipients`, one mock payee, "Acme (Mock)"), so a payment can name one. It records the call and returns a fake pending request (`fake-request-1`, status `pendingApproval`); no money moves. Brex has no write tool in the demo (its four demo tools are all reads), so there is no Brex write walk.
+- **Chat model.** The agent answers through the demo's configured model. A scripted or mock model must be told to call `requestSendMoney` for the payment stories. UNVERIFIED: whether the demo model does so on request. If it only chats, STORY-APP-385/STORY-APP-386 stop at the dialog.
 - **Other agents.** Chief and the Finance agent (created on first use) exist. The Finance agent already has read-only access to Mercury and Brex.
-- **Reset note.** IA-5, IA-6 and IA-7 change shared server state (exclusive flag, archived agent). Re-seed between walks.
+- **Reset note.** STORY-APP-387, STORY-APP-388 and STORY-APP-389 change shared server state (exclusive flag, archived agent). Re-seed between walks.
 - **Not in scope.** Mobile has no controls for this (plan, "Mobile"). Connected apps (Notion) are a later task. Carta uses the same section but is covered by the Cap Table stories.
 
 Persona for every story: **Maya**, founder of the mock company (Northwind Robotics). She knows what Mercury is, does not know "MCP", "agent" mechanics, or "approval".
 
 ---
 
-## STORY-IA-1: Maya creates the Mercury agent
+## STORY-APP-383: Maya creates the Mercury agent
 **Type**: short
 **Topic**: Integration agents
 **Persona**: Maya, wants one assistant that "just handles the bank".
 **Goal**: A Mercury agent exists, its chat is open, and it is listed in the sidebar.
 **Preconditions**: Mock demo as seeded. Mercury connected, no agent. Signed in.
 **Ideal path**: 3 — Integrations → click the Mercury card → **Create agent**. The chat opens by itself.
-**Alternate paths**: (1) Chat with Chief and ask it to "make a Mercury agent" (no known tool for that; UNVERIFIED, likely not possible). (2) Skip the agent and tick Mercury under **Used by** for an existing bot (IA-8).
+**Alternate paths**: (1) Chat with Chief and ask it to "make a Mercury agent" (no known tool for that; UNVERIFIED, likely not possible). (2) Skip the agent and tick Mercury under **Used by** for an existing bot (STORY-APP-390).
 
 ### Steps
 1. Opens Integrations from the sidebar. → The grid lists Mercury and Brex tiles among others.
@@ -45,12 +45,12 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 
 ---
 
-## STORY-IA-2: Maya asks the Mercury agent a read question
+## STORY-APP-384: Maya asks the Mercury agent a read question
 **Type**: short
 **Topic**: Integration agents
 **Persona**: Maya, wants a number without opening Mercury.
 **Goal**: A correct answer from Mercury data, with no approval card.
-**Preconditions**: IA-1 done. Writes off.
+**Preconditions**: STORY-APP-383 done. Writes off.
 **Ideal path**: 2 — type the question, send.
 **Alternate paths**: Ask the Finance agent the same question; it answers from the Finance data synced from Mercury (a different source, so figures may differ in freshness).
 
@@ -69,14 +69,14 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 
 ---
 
-## STORY-IA-3: Maya turns on "Allow changes", asks for a payment, and denies it
+## STORY-APP-385: Maya turns on "Allow changes", asks for a payment, and denies it
 **Type**: medium
 **Topic**: Integration agents
 **Persona**: Maya, wants to pay a bill by chatting but is afraid of the agent moving money.
 **Goal**: See that a payment waits for her decision and that Deny stops it.
-**Preconditions**: IA-1 done. Writes off.
+**Preconditions**: STORY-APP-383 done. Writes off.
 **Ideal path**: 5 — Mercury page → turn on **Allow changes in Mercury** → **Allow changes** in the dialog → open chat → ask → **Deny**.
-**Alternate paths**: (1) Ask for the payment first with writes off; the agent says it cannot (IA-2 step 3), then she turns the switch on. (2) Turn on from the Agent section of the chat's bot page (none; only the integration page has the switch).
+**Alternate paths**: (1) Ask for the payment first with writes off; the agent says it cannot (STORY-APP-384 step 3), then she turns the switch on. (2) Turn on from the Agent section of the chat's bot page (none; only the integration page has the switch).
 
 ### Steps
 1. Opens Integrations → Mercury. → The Agent section shows **Allow changes in Mercury** off.
@@ -91,18 +91,18 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 - Switch on, then ask a read question: no card.
 
 ### Edge Cases
-- Turn changes off while the card is pending (IA-5): Allow once afterwards should fail, because dispatch rechecks `writesEnabled` (plan, "Enforcement" 1). UNVERIFIED in the web UI.
+- Turn changes off while the card is pending (STORY-APP-387): Allow once afterwards should fail, because dispatch rechecks `writesEnabled` (plan, "Enforcement" 1). UNVERIFIED in the web UI.
 - Saved approval rules or Auto Review for other bots must not auto-approve this call: mandatory approval skips them.
 - Ask for a payment with a missing amount: the agent should ask her, not guess a figure.
 
 ---
 
-## STORY-IA-4: Maya approves a payment
+## STORY-APP-386: Maya approves a payment
 **Type**: short
 **Topic**: Integration agents
 **Persona**: Maya, has decided the payment is right.
 **Goal**: The payment request is sent after her explicit approval and the result is clear.
-**Preconditions**: IA-3 steps 1-4 done, card pending (or repeat the request after a denial).
+**Preconditions**: STORY-APP-385 steps 1-4 done, card pending (or repeat the request after a denial).
 **Ideal path**: 1 — click **Allow once**.
 **Alternate paths**: Ask again after a denial; a new card appears each time (no "remember").
 
@@ -122,12 +122,12 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 
 ---
 
-## STORY-IA-5: Maya turns changes off again
+## STORY-APP-387: Maya turns changes off again
 **Type**: short
 **Topic**: Integration agents
 **Persona**: Maya, done paying bills, wants the agent read-only again.
 **Goal**: Writes stop at once; no dialog needed.
-**Preconditions**: IA-3 step 3 done (writes on).
+**Preconditions**: STORY-APP-385 step 3 done (writes on).
 **Ideal path**: 1 — click the switch.
 **Alternate paths**: Remove or reconnect the server (does not reset the switch; UNVERIFIED).
 
@@ -137,7 +137,7 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 3. Reloads the Mercury page. → The switch is still off (stored on the server row).
 
 ### Variations
-- Turn off while a card is pending (see IA-3 edge case).
+- Turn off while a card is pending (see STORY-APP-385 edge case).
 - Turn on, off, on again: each "on" asks for confirmation again.
 
 ### Edge Cases
@@ -146,12 +146,12 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 
 ---
 
-## STORY-IA-6: Maya makes Mercury "Only this agent", and Chief asks the agent
+## STORY-APP-388: Maya makes Mercury "Only this agent", and Chief asks the agent
 **Type**: long
 **Topic**: Integration agents
 **Persona**: Maya, wants only one agent to touch the bank, but still wants her other assistants to be useful.
 **Goal**: See that other agents lose direct Mercury access, can still get answers by messaging the Mercury agent, and that the Finance page still works.
-**Preconditions**: IA-1 done. Writes can be on or off (the story works with off). The Finance agent exists and has Mercury assigned (seeded). Chief is the first bot. The write part uses the demo's `requestSendMoney`.
+**Preconditions**: STORY-APP-383 done. Writes can be on or off (the story works with off). The Finance agent exists and has Mercury assigned (seeded). Chief is the first bot. The write part uses the demo's `requestSendMoney`.
 **Ideal path**: 3 — Mercury page → switch **Only this agent** → ask Chief a Mercury question.
 **Alternate paths**: (1) Leave it shared: other agents keep read-only Mercury access (no writes, even with changes on). (2) Untick Mercury under **Used by** for each bot by hand (one bot at a time; same result for reads but writes are still not offered to non-agents).
 
@@ -177,12 +177,12 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 
 ---
 
-## STORY-IA-7: Maya archives the Mercury agent, then creates it again
+## STORY-APP-389: Maya archives the Mercury agent, then creates it again
 **Type**: medium
 **Topic**: Integration agents
 **Persona**: Maya, cleans up her bot list, then changes her mind.
 **Goal**: Archiving releases Mercury (shared, read-only); Create agent afterwards makes the same agent.
-**Preconditions**: IA-1 done, ideally with writes on and Only this agent on (IA-3, IA-6) to see the reset.
+**Preconditions**: STORY-APP-383 done, ideally with writes on and Only this agent on (STORY-APP-385, STORY-APP-388) to see the reset.
 **Ideal path**: 3 — archive the agent from the sidebar, open the Mercury page, click **Create agent**.
 **Alternate paths**: (1) Delete the agent (from the archived list) rather than archive: the plan treats delete and archive the same (the link is cleared). (2) Remove Mercury entirely with **Remove Mercury**: the dialog says "Bots lose access to the tools of Mercury." and "Your data in Mercury is not deleted."; the agent bot is kept (it may hold history; plan TBD whether it is archived too).
 
@@ -206,14 +206,14 @@ Persona for every story: **Maya**, founder of the mock company (Northwind Roboti
 
 ---
 
-## STORY-IA-8: Maya shares Mercury with a bot by hand instead of creating an agent
+## STORY-APP-390: Maya shares Mercury with a bot by hand instead of creating an agent
 **Type**: short
 **Topic**: Integration agents
 **Persona**: Maya, doesn't want a new bot, just wants her Hiring helper to see transactions.
 **Goal**: Know the difference between "Used by" and an agent.
 **Preconditions**: Mock demo as seeded. Mercury has no agent.
 **Ideal path**: 2 — Mercury page → switch Mercury on under **Used by** for the helper.
-**Alternate paths**: Create the agent (IA-1) and keep it shared.
+**Alternate paths**: Create the agent (STORY-APP-383) and keep it shared.
 
 ### Steps
 1. Opens Integrations → Mercury, finds the helper under **Used by**, switches it on. → The switch toggles; the change saves (the page replaces the bot's whole list, keeping its other servers). Failure: "Could not update bot access".
