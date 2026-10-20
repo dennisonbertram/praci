@@ -130,7 +130,7 @@ export async function fetchSafeWebBytes(
       resolve,
       dispatcher,
       maxBytes,
-      userAgent: options.userAgent ?? "Praci/0.1 (+https://github.com/dennisonbertram/praci)",
+      userAgent: options.userAgent ?? "Praci/0.1 (+https://github.com/dennisonbertram/rakazo)",
       headers: options.headers,
       signal,
       redirectsRemaining: options.maxRedirects ?? MAX_REDIRECTS,

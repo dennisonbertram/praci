@@ -27,7 +27,7 @@ export const HI_MESSAGES: Record<string, string> = {
   "Chat Settings": "चैट सेटिंग्स",
   "Configure a plugin catalog on the server to connect apps.":
     "ऐप्स कनेक्ट करने के लिए सर्वर पर प्लगइन कैटलॉग कॉन्फ़िगर करें।",
-  "Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.":
+  "Paste the OpenAI-compatible address from your server. Praci adds /v1 if needed.":
     "अपने सर्वर से OpenAI-संगत पता पेस्ट करें। ज़रूरत होने पर Rakazo /v1 जोड़ देता है।",
   "Settings: General": "सेटिंग्स: सामान्य",
   "Settings: Usage": "सेटिंग्स: उपयोग",

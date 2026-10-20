@@ -89,7 +89,7 @@ describe("server update install kind", () => {
       if (href.endsWith("/state")) {
         return new Response(
           JSON.stringify({
-            image: "ghcr.io/dennisonbertram/praci/app",
+            image: "ghcr.io/elie222/rakazo/app",
             currentTag: "sha-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             previousTag: "sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             running: false,
@@ -97,7 +97,7 @@ describe("server update install kind", () => {
               present: true,
               commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               branch: "main",
-              remoteUrl: "https://github.com/dennisonbertram/praci",
+              remoteUrl: "https://github.com/elie222/rakazo",
               dirty: false,
               dirtyPaths: [],
             },
@@ -133,7 +133,7 @@ describe("server update install kind", () => {
       fromTag: "sha-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       toTag: "sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       strategy: "pull",
-      repoUrl: "https://github.com/dennisonbertram/praci",
+      repoUrl: "https://github.com/elie222/rakazo",
       branch: "main",
       restart: "not-required",
       restartAdvice: "Recreate failed; prior image restored, env pin not restored.",
@@ -148,7 +148,7 @@ describe("server update install kind", () => {
       if (href.endsWith("/state")) {
         return new Response(
           JSON.stringify({
-            image: "ghcr.io/dennisonbertram/praci/app",
+            image: "ghcr.io/elie222/rakazo/app",
             currentTag: "sha-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
             previousTag: "sha-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
             running: false,
@@ -157,7 +157,7 @@ describe("server update install kind", () => {
               present: true,
               commit: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
               branch: "main",
-              remoteUrl: "https://github.com/dennisonbertram/praci",
+              remoteUrl: "https://github.com/elie222/rakazo",
               dirty: false,
               dirtyPaths: [],
             },

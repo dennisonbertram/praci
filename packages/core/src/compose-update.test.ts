@@ -602,12 +602,12 @@ describe("sidecar boundary validation", () => {
   it("normalizes a request the API already validated", () => {
     expect(
       validateUpdateRequest({
-        repoUrl: "https://github.com/dennisonbertram/praci.git",
+        repoUrl: "https://github.com/elie222/rakazo.git",
         branch: " main ",
       }),
     ).toEqual({
       request: {
-        repoUrl: "https://github.com/dennisonbertram/praci.git",
+        repoUrl: "https://github.com/elie222/rakazo.git",
         branch: "main",
         official: true,
       },

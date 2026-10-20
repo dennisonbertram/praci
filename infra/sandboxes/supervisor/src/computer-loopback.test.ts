@@ -1874,7 +1874,7 @@ describe("computer network reclaim", () => {
 
       await reclaim();
       expect(mocks.docker.listNetworks).toHaveBeenCalledWith({
-        filters: { label: [`praci.aiputerOwner=${ownerLabel()}`] },
+        filters: { label: [`rakazo.computerOwner=${ownerLabel()}`] },
       });
       expect(mocks.docker.listContainers).toHaveBeenCalledWith({
         all: true,
@@ -1990,7 +1990,7 @@ describe("computer network reclaim", () => {
           expect.objectContaining({
             Name: botNet,
             Labels: {
-              "praci.aiputerOwner": computerNetworkOwnerFor(process.env.DATA_DIR!, undefined),
+              "rakazo.computerOwner": computerNetworkOwnerFor(process.env.DATA_DIR!, undefined),
               "rakazo.botId": "bot",
             },
             ...(egress === "restricted"

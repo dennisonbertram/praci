@@ -167,7 +167,7 @@ describe("graphical computer spec", () => {
       Name: computerNetworkNameFor("bot_1"),
       Driver: "bridge",
       CheckDuplicate: true,
-      Labels: { "praci.aiputerOwner": "owner", "rakazo.botId": "bot_1" },
+      Labels: { "rakazo.computerOwner": "owner", "rakazo.botId": "bot_1" },
     });
     expect(open).not.toHaveProperty("Options");
 
