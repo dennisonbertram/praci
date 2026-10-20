@@ -82,7 +82,7 @@ Facts about the mockup that apply to every story (observed, not guessed):
 - For a tracker-only project README says the card becomes a suggestion with "Open in <source>". The mockup always shows the native version, so that variant cannot be walked.
 
 ## BOT-CONVERSATION-APPROVALS-04: The bot cannot edit Linear; follow its due-date suggestion
-**Type**: medium  **Persona**: Sam, product manager who keeps the roadmap in Linear  **Goal**: Act on "Onboarding emails will slip a week" without Rakazo changing Linear on its own.
+**Type**: medium  **Persona**: Sam, product manager who keeps the roadmap in Linear  **Goal**: Act on "Onboarding emails will slip a week" without Praci changing Linear on its own.
 **Preconditions**: Default state. Linear connected.
 **README stories**: S19 (later, partly), S23, S18
 **Ideal path**: 3 steps. Read the suggestion, click "Open in Linear", change the date in Linear.
@@ -97,7 +97,7 @@ Facts about the mockup that apply to every story (observed, not guessed):
 ### Walk result
 1. CONFUSING: the panel card has no reason line, only the move, while the drawer version adds "Blocker is still in progress".
 2. OK: dates and suggestion are consistent with the card (Oct 27 to Nov 3).
-3. OK for a mockup (external link). Real design: the card does not say that the change is made in Linear and that Rakazo picks it up on the next sync. Sam may think the click already changed the date.
+3. OK for a mockup (external link). Real design: the card does not say that the change is made in Linear and that Praci picks it up on the next sync. Sam may think the click already changed the date.
 4. MISSING: dismissed card is not removed or greyed. Dismissing the bot card does not dismiss the drawer's duplicate Suggestion, and the other way round.
 
 ### Variations / Edge cases
@@ -137,7 +137,7 @@ Facts about the mockup that apply to every story (observed, not guessed):
 **Alternate paths**: Drawer does not offer an assignee control, so this card is the only route in the mockup.
 
 ### Steps
-1. Click the card "Partner outreach list" (PL-16, unassigned) → Drawer: "Native task · Product launch", "Saved in Rakazo", Assignee "Unassigned", and a "Suggestion" card: "Assign to Cy Novak / Lowest open load this week", "Accept", "Dismiss".
+1. Click the card "Partner outreach list" (PL-16, unassigned) → Drawer: "Native task · Product launch", "Saved in Praci", Assignee "Unassigned", and a "Suggestion" card: "Assign to Cy Novak / Lowest open load this week", "Accept", "Dismiss".
 2. Click "Accept" → Toast "Sent for approval".
 3. Noor thinks: "Approval by whom? I am the user." She looks at the Assignee row: still "Unassigned".
 4. Click "Dismiss" → Toast "Dismissed"; the Suggestion card stays.
@@ -156,7 +156,7 @@ Facts about the mockup that apply to every story (observed, not guessed):
 - Suggestions appear on any task with an open blocker, including Docs site, which looks unrelated to "assign".
 
 ## BOT-CONVERSATION-APPROVALS-07: Read-only tracker and a status-change card
-**Type**: medium  **Persona**: Owen, cautious CTO who connected GitHub read-only  **Goal**: Be sure Rakazo cannot change GitHub.
+**Type**: medium  **Persona**: Owen, cautious CTO who connected GitHub read-only  **Goal**: Be sure Praci cannot change GitHub.
 **Preconditions**: Mockup states: "Read-only" ticked.
 **README stories**: S24, S23
 **Ideal path**: 3 steps. Look for the read-only signal, open the bot, confirm no write is offered.
@@ -257,7 +257,7 @@ Ranked. "Mockup-only" means a shortcut that is fine in a mockup. "Ships" means a
 8. **Med, ships (stories 04, 06).** Duplicated suggestion in two places (panel card and drawer card) with independent Dismiss. Fix: one suggestion record; dismissing in either place clears both.
 9. **Med, mockup-only (stories 03, 09).** "Edit" does nothing and the composer is inert, so the bot features cannot be tried with real input. Fix for the mockup: a short toast ("Not in the mockup") or hide the button. The real product needs both.
 10. **Med, ships (story 06).** A task sent to Project bot ("working on it") still shows the suggestion "Assign to Cy Novak". Fix: hide the assignee suggestion when a bot is the assignee.
-11. **Low, ships (story 04).** "Open in Linear" does not say that the change is made in Linear and appears after the next sync. Fix: one line under the button or the confirmation toast "Opened in Linear. Rakazo updates on next sync."
+11. **Low, ships (story 04).** "Open in Linear" does not say that the change is made in Linear and appears after the next sync. Fix: one line under the button or the confirmation toast "Opened in Linear. Praci updates on next sync."
 12. **Low, ships (story 03).** Unticking a task that other rows depend on gives no warning, and "Accept selected" with nothing ticked is allowed. Fix: disable "Accept selected" at zero ticked and note dropped blockers.
 13. **Low, mockup-only (stories 01, 05, 09).** The thread opens at the oldest message, so the report needs about 1600 px of scrolling. A real thread opens at the latest message.
 14. **Low, mockup-only (story 02).** Status card stays for a disconnected GitHub source, and no change reaches the board. Fine for a mockup, but the board and card should agree in the real product.

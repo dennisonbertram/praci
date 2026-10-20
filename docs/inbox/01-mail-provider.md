@@ -9,7 +9,7 @@ account was connected:
 
 - through Composio (managed OAuth),
 - through Pipedream Connect (managed OAuth),
-- through Rakazo's own Google OAuth client (no third-party broker).
+- through Praci's own Google OAuth client (no third-party broker).
 
 All Gmail-specific code is written once. The three connection methods differ only in
 how one authenticated HTTP call (`GET`, and now `POST`, `PUT` and `DELETE` with a JSON
@@ -430,7 +430,7 @@ Calendar and Drive entries the same way it drops managed Gmail.
    `/mcp/oauth/callback`, `App.tsx:151`). The page calls
    `connections.complete({ state, code })` with the user's session. Because the call
    requires the signed-in owner of the pending row, someone else cannot attach their
-   Google account to this user's Rakazo account by sending a link (OAuth CSRF).
+   Google account to this user's Praci account by sending a link (OAuth CSRF).
 4. Router changes in `connections.complete` (`router.ts:4824`):
    - The input is extended, not replaced:
      `{ connectionId?: Id, state?: string, code?: string }`, refined so that exactly
@@ -500,7 +500,7 @@ Other `ManagedConnectorProvider` members:
     `nativeGoogle: nativeGoogleAvailable(desktopBridge())` (true in a browser, and in
     Electron only when the shell can open the system browser). Mobile passes `false`.
     `false` hides the Google entry and keeps the managed one.
-- **Desktop**: signs in with the system browser. The system browser has no Rakazo
+- **Desktop**: signs in with the system browser. The system browser has no Praci
   session, so the web callback in step 3 cannot finish the sign-in there. Instead:
   1. The connect screen calls `connections.begin({ redirect: "desktop" })`. The router
      passes `GOOGLE_DESKTOP_REDIRECT_URI` (`http://127.0.0.1:53925/integrations/google/callback`,
@@ -521,7 +521,7 @@ Other `ManagedConnectorProvider` members:
   both. Accounts connected in a web browser keep working on desktop.
 - **Mobile (PR 2d)**:
   - Mobile opens authorization URLs with `Linking.openURL`
-    (`apps/mobile/app/(settings)/integrations.tsx:387`). That browser has no Rakazo
+    (`apps/mobile/app/(settings)/integrations.tsx:387`). That browser has no Praci
     session, so the session-checked callback in step 3 cannot complete.
   - Mobile therefore hides `connectorId: "google"` catalog items in v1 (accepted).
     Mobile can still connect Gmail through Composio or Pipedream when one of them is
@@ -588,7 +588,7 @@ states the result in words.
   "capped"` and a resume cursor as the fallback, and the Postgres metadata
   cache means a repeated search does not re-fetch ids it has already hydrated. With managed
   OAuth, the Composio or Pipedream Google project also has a per-project limit that is
-  shared with their other customers. Rakazo cannot see that limit.
+  shared with their other customers. Praci cannot see that limit.
 - **Proxy overhead and limits are unknown.** Neither Composio nor Pipedream documents a
   per-user rate limit for proxy calls, and each call adds a network hop. Measure this
   in the manual smoke test: time 200 hydrated messages per adapter and record it in

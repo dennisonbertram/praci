@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="archTitle archDesc">
-  <title id="archTitle">Rakazo deployment</title>
+  <title id="archTitle">Praci deployment</title>
   <desc id="archDesc">Web, desktop, and mobile clients talk to an API. A worker and Postgres sit beside it. The computer defaults to Docker. Prompts go to the model provider you configure.</desc>
   <rect width="1200" height="720" fill="#fdfdfd"/>
-  <text x="48" y="64" fill="#242424" font-family="Geist, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="600">A Rakazo deployment</text>
+  <text x="48" y="64" fill="#242424" font-family="Geist, ui-sans-serif, system-ui, sans-serif" font-size="28" font-weight="600">A Praci deployment</text>
   <text x="48" y="98" fill="#6d6e70" font-family="Geist, ui-sans-serif, system-ui, sans-serif" font-size="16">Postgres, bot files, and the audit log stay on the machine you run.</text>
   <g font-family="Geist, ui-sans-serif, system-ui, sans-serif" font-size="16" fill="#242424">
     <rect x="48" y="150" width="210" height="72" rx="12" fill="#ffffff" stroke="#e6e6e6"/>

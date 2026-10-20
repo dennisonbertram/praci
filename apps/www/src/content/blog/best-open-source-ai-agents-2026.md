@@ -5,10 +5,10 @@ published: "2026-10-07"
 updated: "2026-10-07"
 author: "Elie Steinbock"
 category: "roundups"
-tldr: "There is no single best open source agent. Rakazo, OpenClaw, Hermes Agent, OpenHands, and Goose are projects you can run. LangGraph and CrewAI are libraries for building your own. Dify's license is a modified Apache-2.0 with extra conditions. Pick the shape, then read that project's license."
+tldr: "There is no single best open source agent. Praci, OpenClaw, Hermes Agent, OpenHands, and Goose are projects you can run. LangGraph and CrewAI are libraries for building your own. Dify's license is a modified Apache-2.0 with extra conditions. Pick the shape, then read that project's license."
 sources:
-  - label: "Rakazo source"
-    href: "https://github.com/elie222/rakazo"
+  - label: "Praci source"
+    href: "https://github.com/dennisonbertram/praci"
   - label: "OpenClaw"
     href: "https://docs.openclaw.ai/"
   - label: "Hermes Agent"
@@ -25,27 +25,27 @@ sources:
     href: "https://github.com/langgenius/dify/blob/main/LICENSE"
 related:
   - href: "/blog/openclaw-vs-hermes-vs-rakazo/"
-    title: "OpenClaw vs Hermes Agent vs Rakazo"
+    title: "OpenClaw vs Hermes Agent vs Praci"
     description: "Which of those three is simplest to run."
   - href: "/alternatives/"
     title: "Open source alternatives"
     description: "Comparisons with hosted assistants as well as open source ones."
   - href: "/self-hosted-ai-agent/"
     title: "Self-hosted AI agent"
-    description: "How to run Rakazo from published images."
+    description: "How to run Praci from published images."
   - href: "/openclaw-alternative/"
     title: "Open source OpenClaw alternative"
-    description: "Rakazo and OpenClaw in more detail."
+    description: "Praci and OpenClaw in more detail."
   - href: "/hermes-alternative/"
     title: "Open source Hermes alternative"
-    description: "Rakazo and Hermes Agent in more detail."
+    description: "Praci and Hermes Agent in more detail."
 faq:
   - question: "Is this a ranking?"
     answer: "No. The title names the question people ask. The body says there is not a single best agent. Nothing here is sorted by stars, downloads, or a benchmark."
   - question: "Which of these is a chat app?"
-    answer: "Rakazo is a web, desktop, and mobile chat app. OpenClaw is a gateway you message from other chat apps. Hermes Agent has a desktop app and a terminal UI. Goose has a desktop app, a CLI, and an API. OpenHands Agent Canvas is a developer control center. LangGraph and CrewAI are libraries."
+    answer: "Praci is a web, desktop, and mobile chat app. OpenClaw is a gateway you message from other chat apps. Hermes Agent has a desktop app and a terminal UI. Goose has a desktop app, a CLI, and an API. OpenHands Agent Canvas is a developer control center. LangGraph and CrewAI are libraries."
   - question: "Are they all Apache-2.0?"
-    answer: "No. Rakazo and Goose use Apache-2.0. OpenClaw, Hermes Agent, OpenHands, LangGraph, and CrewAI use MIT on the license files checked for this page. Dify uses a modified Apache-2.0 with extra conditions on multi-tenant service and on its logo and copyright in the frontend."
+    answer: "No. Praci and Goose use Apache-2.0. OpenClaw, Hermes Agent, OpenHands, LangGraph, and CrewAI use MIT on the license files checked for this page. Dify uses a modified Apache-2.0 with extra conditions on multi-tenant service and on its logo and copyright in the frontend."
   - question: "Do I still pay if the software is open source?"
     answer: "Usually yes, for the model provider and the machine. Some projects also sell optional hosting. Open source describes the license of the code you run, not a promise of a zero-cost model."
 comparison:
@@ -56,11 +56,11 @@ comparison:
     - "What you run"
     - "Built for"
   rows:
-    - topic: "Rakazo"
+    - topic: "Praci"
       cells:
         - "Apache-2.0"
         - "Docker images or source, then chat"
-        - "Persistent bots in the Rakazo apps"
+        - "Persistent bots in the Praci apps"
     - topic: "OpenClaw"
       cells:
         - "MIT"
@@ -99,17 +99,17 @@ The descriptions were checked against each project's public repository or docs o
 
 ## How this list is split
 
-The first group is software you install and then use: Rakazo, OpenClaw, Hermes Agent, OpenHands, and Goose. You can self-host them. They still call a model provider unless you point them at a local model.
+The first group is software you install and then use: Praci, OpenClaw, Hermes Agent, OpenHands, and Goose. You can self-host them. They still call a model provider unless you point them at a local model.
 
 The second group is libraries: LangGraph and CrewAI. You do not "log in" to them. You write a program that uses them, then you host that program.
 
 Dify is called out separately because people group it with agent platforms, and its license is not stock Apache-2.0. Skipping that and calling it Apache-2.0 would be wrong.
 
-Hosted products with no source you can run are outside this list. The [alternatives hub](/alternatives/) compares some of those with Rakazo.
+Hosted products with no source you can run are outside this list. The [alternatives hub](/alternatives/) compares some of those with Praci.
 
-## Rakazo
+## Praci
 
-Rakazo is an open source platform for persistent AI teammates, licensed Apache-2.0. You run published Docker images or a source checkout. The web app, the Electron desktop app, and the Expo mobile app are clients of the same API. Hosted Rakazo Cloud is not generally available.
+Praci is an open source platform for persistent AI teammates, licensed Apache-2.0. You run published Docker images or a source checkout. The web app, the Electron desktop app, and the Expo mobile app are clients of the same API. Hosted Praci Cloud is not generally available.
 
 A bot has conversations, memory, routines, and history. Routines are readable Markdown and can run on a schedule. Browser, terminal, files, and a graphical desktop are available. The default computer is local Docker. E2B, Daytona, CreateOS, and Box are optional remote computers. You bring model credentials: OpenAI, Anthropic, Google, OpenRouter, Vercel AI Gateway, an OpenAI-compatible endpoint, or a local server such as Ollama, LM Studio, llama.cpp, or MLX. Each bot can use a different model.
 
@@ -117,7 +117,7 @@ A bot can pause for approval at a boundary you set. Actions are recorded in an a
 
 The day-to-day surface is chat. A new bot interviews you, and you manage it from that chat. Optional connectors for Slack, WhatsApp, Telegram, iMessage via Sendblue, and Feishu/Lark are extras.
 
-Rakazo fits repeated operational work where you want the bot, the routine, and the approval in one app, and you are willing to run Docker. It is a poor fit if you want a library inside an existing service, or if you want the agent to live only inside Discord with no Rakazo app. The [self-host page](/self-hosted-ai-agent/) is the install. The [OpenClaw](/openclaw-alternative/) and [Hermes](/hermes-alternative/) pages are the closest shape comparisons.
+Praci fits repeated operational work where you want the bot, the routine, and the approval in one app, and you are willing to run Docker. It is a poor fit if you want a library inside an existing service, or if you want the agent to live only inside Discord with no Praci app. The [self-host page](/self-hosted-ai-agent/) is the install. The [OpenClaw](/openclaw-alternative/) and [Hermes](/hermes-alternative/) pages are the closest shape comparisons.
 
 ## OpenClaw
 
@@ -127,7 +127,7 @@ You install it with the project's script, go through onboarding, and run a Gatew
 
 The install docs read for this page say Node 26 is recommended, and that Node 24.16+ or Node 26.1+ are supported. The installer can provision Node. Sandboxing of tool execution is off by default. When enabled, documented backends include Docker, Podman, SSH, OpenShell, and Crabbox. The Gateway process stays on the host.
 
-OpenClaw fits when the assistant should show up in chat apps you already use, and you want one gateway on hardware you run. It is a different product from a teammate UI. The [three-way note](/blog/openclaw-vs-hermes-vs-rakazo/) compares that setup with Rakazo and Hermes without turning it into a race.
+OpenClaw fits when the assistant should show up in chat apps you already use, and you want one gateway on hardware you run. It is a different product from a teammate UI. The [three-way note](/blog/openclaw-vs-hermes-vs-rakazo/) compares that setup with Praci and Hermes without turning it into a race.
 
 ## Hermes Agent
 
@@ -176,13 +176,13 @@ Dify, from LangGenius, often appears in lists of open source agent platforms. It
 
 The file says you may not use the Dify source to operate a multi-tenant environment unless Dify authorizes that in writing. In that document, one tenant corresponds to one workspace. It also says you may not remove or modify the logo or copyright information in the Dify console or applications when you use the frontend. That restriction does not apply to uses that do not involve the frontend. The frontend is defined there as the `web/` directory, or the web image when you run Docker.
 
-That is a short caveat, not a full review of the license. Read the file if you are choosing Dify. Do not describe it as the same grant as Rakazo's or Goose's Apache-2.0.
+That is a short caveat, not a full review of the license. Read the file if you are choosing Dify. Do not describe it as the same grant as Praci's or Goose's Apache-2.0.
 
 ## How to choose
 
 Start from the job, not from a list position.
 
-If you want persistent bots, readable routines, approvals, and an audit log, and you will run the server, use Rakazo. The install is Docker, then chat.
+If you want persistent bots, readable routines, approvals, and an audit log, and you will run the server, use Praci. The install is Docker, then chat.
 
 If you want one assistant inside the chat apps you already have, use OpenClaw, and read the sandboxing page before you turn tools loose. The Gateway is the product.
 

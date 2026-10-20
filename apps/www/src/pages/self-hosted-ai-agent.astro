@@ -50,12 +50,12 @@ const structuredData = faqPageStructuredData(SELF_HOST_FAQS);
     <main id="main" class="privacy-copy guide">
       <h1>Self-hosted AI agent</h1>
       <p>
-        Rakazo is an open source AI agent for persistent teammates. Each bot can use a browser and a
+        Praci is an open source AI agent for persistent teammates. Each bot can use a browser and a
         shell, keep routines as Markdown, and pause for approval when work crosses a boundary you set.
         Self-hosting means that stack runs on a machine you control.
       </p>
       <p>
-        The software is <a href={`${GITHUB_URL}/blob/main/LICENSE`}>Apache-2.0</a>. Hosted Rakazo Cloud is not generally available. This page is the setup you need
+        The software is <a href={`${GITHUB_URL}/blob/main/LICENSE`}>Apache-2.0</a>. Hosted Praci Cloud is not generally available. This page is the setup you need
         to run it. The <a href={DOCS_URL}>full self-hosting guide</a> on GitHub covers backups, upgrades,
         secrets, restricted networks, and production Compose.
       </p>
@@ -95,10 +95,10 @@ const structuredData = faqPageStructuredData(SELF_HOST_FAQS);
       </ul>
 
       <h2 id="selfhost">Install with published images</h2>
-      <p>From an empty directory on the machine that should run Rakazo:</p>
+      <p>From an empty directory on the machine that should run Praci:</p>
       <pre><code>{PUBLISHED_IMAGES_INSTALL}</code></pre>
       <p>
-        The installer downloads the Compose file and <code>.env.images.example</code>, creates <code>.env</code> with random secrets, and starts Rakazo. It keeps an existing <code>.env</code> when you run it again. The default image tag is <code>edge</code> (builds
+        The installer downloads the Compose file and <code>.env.images.example</code>, creates <code>.env</code> with random secrets, and starts Praci. It keeps an existing <code>.env</code> when you run it again. The default image tag is <code>edge</code> (builds
         from the main branch, <code>linux/amd64</code> and <code>linux/arm64</code>).
       </p>
       <p>
@@ -109,8 +109,8 @@ const structuredData = faqPageStructuredData(SELF_HOST_FAQS);
         src="/graphics/chat/create-bot.png"
         width={1200}
         height={800}
-        alt="The new bot form in Rakazo, filled with a demo bot named Inbox."
-        caption="Creating a bot in the Rakazo app. The name, title, and description here are demo data."
+        alt="The new bot form in Praci, filled with a demo bot named Inbox."
+        caption="Creating a bot in the Praci app. The name, title, and description here are demo data."
       />
       <CaptionedImage
         src="/graphics/chat/model.png"
@@ -159,7 +159,7 @@ const structuredData = faqPageStructuredData(SELF_HOST_FAQS);
       </p>
 
       <h2>Install from source</h2>
-      <p>Use this path to develop Rakazo. The published images above are enough to run it.</p>
+      <p>Use this path to develop Praci. The published images above are enough to run it.</p>
       <pre><code>{SOURCE_CHECKOUT}</code></pre>
       <p>
         Set <code>POSTGRES_PASSWORD</code> to a URI-safe random value (for example <code>openssl rand -hex 16</code>) and put the same value in <code>DATABASE_URL</code>. Set <code>BETTER_AUTH_SECRET</code>, <code>ENCRYPTION_KEY</code>, and <code>SCREEN_PROXY_SECRET</code> to independent long random values. Docker sandboxes also need
@@ -201,12 +201,12 @@ const structuredData = faqPageStructuredData(SELF_HOST_FAQS);
 
       <h2>Related</h2>
       <ul>
-        <li><a href="/">Rakazo home</a></li>
+        <li><a href="/">Praci home</a></li>
         <li><a href={OPENCLAW_ALTERNATIVE_PATH}>OpenClaw comparison</a></li>
       </ul>
 
       <h2>Get started</h2>
-      <p>Self-host with the steps above, or leave an email for hosted Rakazo Cloud.</p>
+      <p>Self-host with the steps above, or leave an email for hosted Praci Cloud.</p>
       <div class="cta-actions">
         <button class="button button--primary" type="button" data-get-started-open>Get started</button>
         <Button href={GITHUB_URL} variant="secondary" external>View on GitHub</Button>

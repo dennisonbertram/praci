@@ -59,7 +59,7 @@
             "level": "group",
             "element": "Two stacked consents: 'Confirm payment request: send $1,200…' (Confirm/Cancel in 1440x900-mercury-write-confirm-ask.png) followed by 'Review before mcp__… Allow once/Deny' approval card",
             "problem": "The user confirms twice for one payment with different vocabularies ('Confirm payment request' → 'Allow once'), and the first card then shows only 'Answered: Confirm payment request'. It's unclear which step actually authorizes, whether Mercury has been asked, or why a second review exists — inviting double-taps, abandonment, or assuming funds already moved.",
-            "norm": "Single, unambiguous consent moment for consequential actions; if a platform (Mercury) adds a second approval, label the steps explicitly ('Step 1 of 2: Rakazo review — Mercury will still ask you to approve; no money moves yet').",
+            "norm": "Single, unambiguous consent moment for consequential actions; if a platform (Mercury) adds a second approval, label the steps explicitly ('Step 1 of 2: Praci review — Mercury will still ask you to approve; no money moves yet').",
             "severity": "P1",
             "screenshot": "1440x900-mercury-write-confirm-ask.png",
             "fix": "Collapse to one approval card, or explicitly number/label the two stages and carry the same payment summary ('$1,200 to Acme from Checking ••1111') through both; after step 1, show state 'Waiting for your Mercury approval — not paid yet'."
