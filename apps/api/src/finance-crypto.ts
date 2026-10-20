@@ -58,7 +58,7 @@ const toHolding = (row: Prisma.FinanceCryptoHoldingGetPayload<object>): CryptoHo
   syncedAt: row.syncedAt.toISOString(),
 });
 
-export async function loadWallets(deps: FinanceDeps, actor: Actor): Promise<FinanceWallet[]> {
+async function loadWallets(deps: FinanceDeps, actor: Actor): Promise<FinanceWallet[]> {
   const rows = await deps.prisma.financeWallet.findMany({
     where: actorScope(actor),
     orderBy: { createdAt: "asc" },

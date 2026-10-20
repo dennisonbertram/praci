@@ -27,7 +27,7 @@ const CARTA_SYNC_PROMPT =
  * when the server's writes are on. The list is written on every call, so an older or wider list is
  * corrected without removing assignments belonging to other bots.
  */
-export async function assignCartaServers(
+async function assignCartaServers(
   prisma: Pick<PrismaClient, "bot" | "mcpServer" | "botMcpServer" | "$transaction">,
   actor: Actor,
   botId: string | null,
@@ -95,7 +95,7 @@ export async function assignCartaServers(
 }
 
 /** Matches the user's live Carta agent, found by its spawn key. */
-export const cartaAgentWhere = (actor: Actor) => ({
+const cartaAgentWhere = (actor: Actor) => ({
   ...actorScope(actor),
   spawnKey: cartaAgentSpawnKey(actor.userId),
   archivedAt: null,

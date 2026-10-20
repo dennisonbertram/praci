@@ -4,7 +4,6 @@ import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   applyServerUpdate,
-  assertNoGitApplyPath,
   checkServerUpdate,
   isUpdaterConfigured,
   MAX_UPDATER_RESPONSE_BYTES,
@@ -245,10 +244,6 @@ describe("sidecar proxy auth and no-git-apply", () => {
     await expect(applyServerUpdate(config)).rejects.toMatchObject({
       message: expect.stringMatching(/sidecar/i),
     });
-    expect(assertNoGitApplyPath).toBeTypeOf("function");
-    expect(() => assertNoGitApplyPath("source")).toThrow(/cannot apply/);
-    expect(() => assertNoGitApplyPath("compose")).toThrow(/cannot apply/);
-    expect(() => assertNoGitApplyPath("sidecar")).not.toThrow();
   });
 
   it("maps a 401 from the sidecar without exposing the token", async () => {

@@ -19,7 +19,7 @@ const FINANCE_AGENT_INSTRUCTIONS =
  * on every call, so a wider list left by an older version is narrowed again. A bot a user also gave
  * other servers keeps those.
  */
-export async function assignFinanceServers(
+async function assignFinanceServers(
   prisma: Pick<PrismaClient, "mcpServer" | "botMcpServer">,
   actor: Actor,
   botId: string,
