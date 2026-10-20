@@ -14,7 +14,18 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { Archive, BellOff, Ellipsis, Mail, MailOpen, Star, TriangleAlert } from "lucide-react";
+import {
+  Archive,
+  BellOff,
+  Ellipsis,
+  Mail,
+  MailOpen,
+  ShieldAlert,
+  ShieldCheck,
+  Star,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatMailTime } from "../../lib/mail-time";
 
@@ -26,8 +37,13 @@ const LABEL_DOT = {
   junk: "border-2 border-warning",
 } as const;
 
+/** Spam and trash are for inbox mail; Not spam for mail the Spam pile shows. */
+export type MailMoveOp = "spam" | "notSpam" | "trash";
+
 /** The checkbox state a list passes to its rows. */
 export interface RowPicking {
+  /** Present when the list can report spam or move to trash. */
+  onMove?: (op: MailMoveOp, messageId: string) => void;
   /** The checked rows. */
   pickedIds?: ReadonlySet<string>;
   onPick?: (messageId: string, event: { shift: boolean }) => void;
@@ -41,6 +57,7 @@ export interface RowPicking {
 export const rowPicking = (id: string, picking: RowPicking) => ({
   showArchived: picking.showArchived,
   hideNewsletter: picking.hideNewsletter,
+  ...(picking.onMove ? { onMove: (op: MailMoveOp) => picking.onMove?.(op, id) } : {}),
   ...(picking.onPick
     ? {
         picked: picking.pickedIds?.has(id) ?? false,
@@ -112,6 +129,7 @@ export function InboxRow({
   picked = false,
   anyPicked = false,
   onPick,
+  onMove,
   showArchived = true,
   hideNewsletter = false,
 }: {
@@ -128,6 +146,8 @@ export function InboxRow({
   anyPicked?: boolean;
   /** Present when the list can check rows; `shift` extends the check over a range. */
   onPick?: (event: { shift: boolean }) => void;
+  /** Present when the row can be reported as spam or moved to trash; these live in the More menu only. */
+  onMove?: (op: MailMoveOp) => void;
   showArchived?: boolean;
   hideNewsletter?: boolean;
 }) {
@@ -171,6 +191,15 @@ export function InboxRow({
             run: () => onRead(row.id, row.unread),
           },
         ]
+      : []),
+    ...(onMove && row.inInbox && row.pile !== "spam"
+      ? [{ name: t`Spam`, Icon: ShieldAlert, run: () => onMove("spam"), menuOnly: true }]
+      : []),
+    ...(onMove && row.inInbox
+      ? [{ name: t`Trash`, Icon: Trash2, run: () => onMove("trash"), menuOnly: true }]
+      : []),
+    ...(onMove && row.pile === "spam"
+      ? [{ name: t`Not spam`, Icon: ShieldCheck, run: () => onMove("notSpam"), menuOnly: true }]
       : []),
   ];
   return (
@@ -262,28 +291,30 @@ export function InboxRow({
             <div
               className={`absolute end-22 top-1/2 flex -translate-y-1/2 items-center gap-0.5 bg-muted pointer-coarse:hidden @max-md:hidden ${selected ? "" : "opacity-0 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
             >
-              {actions.map(({ name, Icon, run }) => (
-                <Tooltip key={name}>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="ghost"
-                        size="icon-xs"
-                        aria-label={name}
-                        tabIndex={selected ? 0 : -1}
-                        className="text-muted-foreground"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          run();
-                        }}
-                      />
-                    }
-                  >
-                    <Icon aria-hidden="true" />
-                  </TooltipTrigger>
-                  <TooltipContent>{name}</TooltipContent>
-                </Tooltip>
-              ))}
+              {actions
+                .filter((action) => !("menuOnly" in action))
+                .map(({ name, Icon, run }) => (
+                  <Tooltip key={name}>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="ghost"
+                          size="icon-xs"
+                          aria-label={name}
+                          tabIndex={selected ? 0 : -1}
+                          className="text-muted-foreground"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            run();
+                          }}
+                        />
+                      }
+                    >
+                      <Icon aria-hidden="true" />
+                    </TooltipTrigger>
+                    <TooltipContent>{name}</TooltipContent>
+                  </Tooltip>
+                ))}
               {marks.map(({ mark, name, Icon }) => {
                 const pressed = row.feedback === mark;
                 return (

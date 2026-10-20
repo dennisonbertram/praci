@@ -1,4 +1,5 @@
-import type { InboxPile, InboxTodo, MailRow } from "@rakazo/contracts";
+import { MenuView } from "@expo/ui/community/menu";
+import type { InboxMoveInput, InboxPile, InboxTodo, MailRow } from "@rakazo/contracts";
 import type { SenderGroup } from "@rakazo/core";
 import {
   archivableIds,
@@ -36,10 +37,11 @@ import {
   ensureMailAgent,
   listMailInbox,
   listMailTodos,
+  moveMailMessages,
   refreshMailInbox,
   todoDueLabel,
 } from "../lib/mail-inbox";
-import { native, useThemedStyles } from "../lib/native";
+import { native, useResolvedAppearance, useThemedStyles } from "../lib/native";
 import { iosAtLeast } from "../lib/native-controls";
 import { setOpenSurface } from "../lib/open-surface";
 import { markSurfaceSeen } from "../lib/unseen-notifications";
@@ -202,6 +204,27 @@ export default function InboxScreen() {
       void load(tabRef.current, false);
     }
   };
+  // Spam, not spam and trash leave the list the same way an archive does.
+  const moveRows = async (op: InboxMoveInput["op"], rows: MailRow[]) => {
+    const ids = rows
+      .filter((row) => (op === "notSpam" ? row.pile === "spam" : row.inInbox))
+      .map((row) => row.id);
+    if (ids.length === 0) return;
+    const gone = new Set(ids);
+    setData((current) =>
+      current ? { ...current, rows: current.rows.filter((row) => !gone.has(row.id)) } : current,
+    );
+    try {
+      const result = await moveMailMessages(op, ids);
+      if (result.failed.length > 0)
+        Alert.alert(t("Could not move {count}", { count: result.failed.length }));
+      // The pile counts follow, and a failed thread comes back with the real list.
+      void load(tabRef.current, false);
+    } catch (cause) {
+      Alert.alert(errorText(cause, t("Could not move {count}", { count: ids.length })));
+      void load(tabRef.current, false);
+    }
+  };
   const confirmArchiveGroup = (group: SenderGroup<MailRow>) => {
     const count = archivableIds(group.rows, pileRef.current === "spam").length;
     if (count === 0) return;
@@ -259,6 +282,7 @@ export default function InboxScreen() {
     }
   }, [agent, router]);
 
+  const scheme = useResolvedAppearance();
   useLayoutEffect(() => {
     // An agent that searches mail has nothing to search until an account is connected.
     const show = accounts.length > 0;
@@ -274,24 +298,54 @@ export default function InboxScreen() {
                       icon: { type: "sfSymbol" as const, name: AGENT_SYMBOL },
                       onPress: () => void openAgent(),
                     },
+                    {
+                      type: "menu" as const,
+                      label: t("More"),
+                      accessibilityLabel: t("More"),
+                      icon: { type: "sfSymbol" as const, name: "ellipsis" },
+                      menu: {
+                        items: [
+                          {
+                            type: "action" as const,
+                            label: t("Cleanup"),
+                            onPress: () => router.push("/inbox-cleanup"),
+                          },
+                        ],
+                      },
+                    },
                   ]
                 : [],
           }
         : {
             headerRight: () =>
               show ? (
-                <Pressable
-                  accessibilityLabel={agentName}
-                  hitSlop={8}
-                  onPress={() => void openAgent()}
-                  style={styles.headerButton}
-                >
-                  <NativeSymbol ios={AGENT_SYMBOL} android="chatbubble-outline" size={19} />
-                </Pressable>
+                <View style={styles.headerButtons}>
+                  <Pressable
+                    accessibilityLabel={agentName}
+                    hitSlop={8}
+                    onPress={() => void openAgent()}
+                    style={styles.headerButton}
+                  >
+                    <NativeSymbol ios={AGENT_SYMBOL} android="chatbubble-outline" size={19} />
+                  </Pressable>
+                  <MenuView
+                    colorScheme={scheme}
+                    actions={[{ id: "cleanup", title: t("Cleanup"), image: "checklist" as const }]}
+                    onPressAction={() => router.push("/inbox-cleanup")}
+                  >
+                    <View
+                      accessibilityRole="button"
+                      accessibilityLabel={t("More")}
+                      style={styles.headerButton}
+                    >
+                      <NativeSymbol ios="ellipsis" android="ellipsis-horizontal" size={19} />
+                    </View>
+                  </MenuView>
+                </View>
               ) : null,
           },
     );
-  }, [accounts.length, agentName, navigation, openAgent, styles]);
+  }, [accounts.length, agentName, navigation, openAgent, router, scheme, styles, t]);
 
   const current = dataPile === pile;
   const rows = useMemo(() => (current ? (data?.rows ?? []) : []), [current, data]);
@@ -421,7 +475,15 @@ export default function InboxScreen() {
               />
             </MailRowMenu>
           ) : (
-            <MailRowMenu onArchive={() => void archiveRows([item.row])}>
+            <MailRowMenu
+              onArchive={() => void archiveRows([item.row])}
+              {...(item.row.pile === "spam"
+                ? { onNotSpam: () => void moveRows("notSpam", [item.row]) }
+                : item.row.inInbox
+                  ? { onSpam: () => void moveRows("spam", [item.row]) }
+                  : {})}
+              {...(item.row.inInbox ? { onTrash: () => void moveRows("trash", [item.row]) } : {})}
+            >
               <MailListRow
                 row={item.row}
                 indented={item.child}
@@ -668,5 +730,6 @@ function createStyles() {
     },
     dimmed: { opacity: 0.55 },
     headerButton: { padding: 8 },
+    headerButtons: { flexDirection: "row", alignItems: "center" },
   });
 }

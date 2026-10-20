@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rakazo Inbox Cleanup Mockup</title>
+<style>
+:root{
+  --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --destructive:#c4352b; --warning:#b7791f;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:24px 16px 96px}
+h1{font-size:18px;margin:0}
+.head{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.back{border:1px solid var(--border);background:var(--card);border-radius:8px;padding:3px 9px;color:var(--fg)}
+.bar{display:flex;flex-wrap:wrap;gap:6px;position:sticky;top:0;background:var(--background);padding:6px 0 10px}
+.btn{border:1px solid var(--border);background:var(--card);color:var(--fg);border-radius:8px;padding:5px 11px;font:inherit;font-weight:600}
+.btn.primary{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn[disabled]{opacity:.45}
+.list{border-top:1px solid var(--border)}
+.s{display:grid;grid-template-columns:20px 1fr auto;gap:10px;align-items:center;padding:9px 6px;border-bottom:1px solid var(--border)}
+.box{width:14px;height:14px;border:1.5px solid var(--muted-fg);border-radius:4px}
+.box.on{background:var(--primary);border-color:var(--primary)}
+.name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.name small{font-weight:400;color:var(--muted-fg);margin-left:6px}
+.meta{font-size:12px;color:var(--muted-fg);white-space:nowrap}
+.note{font-size:12px;color:var(--warning)}
+.stop{font-size:12px;color:var(--muted-fg)}
+h2{font-size:12px;color:var(--muted-fg);margin:22px 0 6px;font-weight:600}
+.h{display:flex;gap:10px;padding:6px 6px;border-bottom:1px solid var(--border);align-items:center}
+.h .when{margin-left:auto;color:var(--muted-fg);font-size:12px}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:var(--primary);color:var(--primary-fg);border-radius:10px;padding:5px 6px 5px 12px}
+.toast .btn{padding:2px 9px}
+.dialog{border:1px solid var(--border);background:var(--card);border-radius:12px;padding:14px;margin:18px 0;max-width:380px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+.cap{font-size:11px;color:var(--muted-fg);margin:22px 0 4px;text-transform:uppercase;letter-spacing:.04em}
+</style>
+</head>
+<body>
+<main>
+  <div class="head"><button class="back">&larr;</button><h1>Cleanup</h1></div>
+
+  <div class="bar">
+    <button class="btn primary">Archive 31</button>
+    <button class="btn">Unsubscribe 26</button>
+    <button class="btn">Skip inbox 31</button>
+    <button class="btn">&hellip;</button>
+  </div>
+
+  <div class="cap">Populated: bulk, rarely read senders are ticked</div>
+  <div class="list">
+    <div class="s"><span class="box on"></span><span class="name">Northwind Weekly<small>news@lists.example.test</small></span><span class="meta">24 &middot; 4% read &middot; Oct 18</span></div>
+    <div class="s"><span class="box on"></span><span class="name">Tailwind Deals<small>offers@shop.example.test</small></span><span class="meta">18 &middot; 0% read &middot; Oct 17</span></div>
+    <div class="s"><span class="box"></span><span class="name">Priya Shah<small>priya@example.test</small></span><span class="meta">12 &middot; 8% read &middot; Oct 14</span></div>
+    <div class="s"><span class="box"></span><span class="name">Orbit Bank<small>alerts@bank.example.test</small></span><span class="meta">9 &middot; 33% read &middot; Oct 12</span></div>
+    <div class="s"><span class="box"></span><span class="name">Quick Prize<small>win@promo.example.test</small></span><span class="meta"><span class="note">Looks like spam</span> &middot; 7 &middot; 0% read</span></div>
+    <div class="s"><span class="box"></span><span class="name">Harbor Digest<small>digest@harbor.example.test</small></span><span class="meta"><span class="stop">Skipping &middot; Stop</span> &middot; 6 &middot; 0% read</span></div>
+  </div>
+
+  <div class="cap">After applying: toast with Undo</div>
+  <div class="toast">Archived 31 <button class="btn">Undo</button></div>
+
+  <div style="height:56px"></div>
+
+  <div class="cap">Unsubscribe by email needs a click</div>
+  <div class="dialog">
+    <b>Send an unsubscribe email to unsub@lists.example.test?</b>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:12px"><button class="btn">Cancel</button><button class="btn primary">Send</button></div>
+  </div>
+
+  <h2>History</h2>
+  <div class="h"><span>Archived 31 conversations from 2 senders</span><span class="when">2 min ago</span><button class="btn">Undo</button></div>
+  <div class="h"><span>Skipped inbox: 3 conversations from news@lists.example.test</span><span class="when">Yesterday</span><button class="btn">Undo</button></div>
+  <div class="h"><span>Marked 2 as spam</span><span class="when">Oct 12</span><span class="stop">Undone</span></div>
+
+  <div class="cap">Empty, error</div>
+  <p style="color:var(--muted-fg)">Nothing to clean up</p>
+  <p style="color:var(--muted-fg)">Couldn't load senders <button class="btn">Try again</button></p>
+</main>
+</body>
+</html>
