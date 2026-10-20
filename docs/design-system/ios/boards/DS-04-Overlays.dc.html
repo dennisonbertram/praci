@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sheets and overlays</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#ECEBE6}a:hover{color:#ffffff}
+button{font-family:inherit;cursor:pointer}
+.glass{background:rgba(52,51,48,0.62);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,0.09);box-shadow:0 8px 24px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.08)}
+.glass-light{background:rgba(255,255,255,0.58);-webkit-backdrop-filter:blur(18px) saturate(180%);backdrop-filter:blur(18px) saturate(180%);border:1px solid rgba(255,255,255,0.75);box-shadow:0 6px 20px rgba(0,0,0,0.10),inset 0 1px 0 rgba(255,255,255,0.9)}
+.gbtn{width:44px;height:44px;border:0;background:transparent;color:#ECEBE6;display:flex;align-items:center;justify-content:center;border-radius:22px}
+.sec{display:flex;gap:28px;padding:32px 40px;border-top:1px solid #2E2D2A;align-items:flex-start}
+.spec{width:300px;flex-shrink:0;font-size:13px;line-height:1.5;color:#9C9A93}
+.spec h2{margin:0 0 10px;font-size:20px;font-weight:600;color:#ECEBE6;letter-spacing:-0.01em}
+.spec p{margin:0 0 8px}
+.spec b{color:#ECEBE6;font-weight:500}
+.spec .do{color:#4ECB71}.spec .dont{color:#F46262}
+.spx{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;flex:1;min-width:0}
+.fw{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.cap{font-size:12px;color:#9C9A93}
+.fr{position:relative;overflow:hidden;background:#1C1C1A;color:#ECEBE6;font-family:Geist,system-ui,sans-serif;outline:1px solid #2E2D2A;flex-shrink:0}
+.o{width:466px;height:678px}.i{width:890px;height:626px}
+.bg{position:absolute;left:72px;right:0;top:0;bottom:0;padding:14px 14px 0 6px}
+.bgt{font-size:28px;font-weight:600;letter-spacing:-0.02em;padding:4px 4px 10px}
+.rw{padding:10px 4px;border-bottom:1px solid rgba(236,235,230,0.1)}
+.rf{display:flex;justify-content:space-between;font-size:15px}
+.rt{font-size:13px;color:#9C9A93;font-variant-numeric:tabular-nums}
+.rs{font-size:14px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.strip{position:absolute;left:10px;top:14px;bottom:14px;width:52px;display:flex;flex-direction:column;align-items:center;gap:10px}
+.isl{width:34px;height:64px;border-radius:17px;background:#000;display:flex;justify-content:center;padding-top:10px;box-sizing:border-box}
+.cam{width:10px;height:10px;border-radius:5px;background:#1f1f1d}
+.tm{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.gp{border-radius:26px;padding:4px;margin-top:6px}
+.dm{position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(0,0,0,0.4)}
+.tk{position:absolute;left:0;right:0;top:0;bottom:0;background:rgba(8,8,7,0.72)}
+.shm{position:absolute;left:66px;right:8px;border-radius:34px;background:rgba(46,45,42,0.74);-webkit-backdrop-filter:blur(28px) saturate(160%);backdrop-filter:blur(28px) saturate(160%);border:1px solid rgba(255,255,255,0.09);box-shadow:0 -8px 40px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.08)}
+.shl{position:absolute;left:66px;right:8px;border-radius:34px;background:rgba(37,37,35,0.97);border:1px solid rgba(255,255,255,0.08);box-shadow:0 -8px 40px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.06)}
+.grab{width:36px;height:5px;border-radius:3px;background:rgba(236,235,230,0.35);margin:6px auto 0}
+.hd{display:flex;align-items:center;justify-content:space-between;padding:8px 14px 0;height:52px;box-sizing:border-box}
+.hd .t{font-size:17px;font-weight:600}
+.cb{height:44px;min-width:44px;padding:0 18px;border-radius:22px;border:0;color:#ECEBE6;font-size:17px;display:flex;align-items:center;justify-content:center}
+.cbp{background:rgba(241,240,235,0.92);color:#1C1C1A;font-weight:600}
+.lst{background:#2A2927;border-radius:20px;overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;min-height:50px;padding:0 16px;font-size:17px;border-bottom:1px solid rgba(236,235,230,0.08);box-sizing:border-box}
+.li:last-child{border-bottom:0}
+.li .tr{margin-left:auto;color:#9C9A93;display:flex;align-items:center}
+.al{position:absolute;width:270px;border-radius:26px;background:rgba(52,51,48,0.8);-webkit-backdrop-filter:blur(30px) saturate(160%);backdrop-filter:blur(30px) saturate(160%);border:1px solid rgba(255,255,255,0.09);box-shadow:0 16px 48px rgba(0,0,0,0.5),inset 0 1px 0 rgba(255,255,255,0.08);overflow:hidden;text-align:center}
+.al .b{padding:22px 20px 18px}
+.al .tt{font-size:17px;font-weight:600;line-height:1.3}
+.al .bd{font-size:13px;line-height:1.4;margin-top:4px;color:#ECEBE6}
+.al .bar{display:flex;border-top:1px solid rgba(255,255,255,0.12)}
+.al .bar button{flex:1;height:48px;border:0;background:transparent;font-size:17px;color:#ECEBE6}
+.al .bar button+button{border-left:1px solid rgba(255,255,255,0.12)}
+.mn{position:absolute;border-radius:22px;background:rgba(52,51,48,0.8);-webkit-backdrop-filter:blur(30px) saturate(160%);backdrop-filter:blur(30px) saturate(160%);border:1px solid rgba(255,255,255,0.09);box-shadow:0 16px 40px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.08);padding:6px 0}
+.mi{display:flex;align-items:center;gap:10px;height:44px;padding:0 16px;font-size:17px;color:#ECEBE6;border:0;background:transparent;width:100%;text-align:left;box-sizing:border-box}
+.mi .ic{margin-left:auto;display:flex;color:#ECEBE6}
+.mi.ck{padding-left:12px}
+.mi.dn{color:#F46262}.mi.dn .ic{color:#F46262}
+.mi.pr{background:rgba(255,255,255,0.1)}
+.mi.ds{opacity:0.4}
+.mh{font-size:13px;color:#9C9A93;padding:8px 16px 2px}
+.dv{height:8px;background:rgba(255,255,255,0.06);margin:4px 0}
+.ckw{width:20px;display:flex;justify-content:center;flex-shrink:0}
+.tile{width:36px;height:36px;border-radius:10px;background:#2A2927;border:1px solid #2E2D2A;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0;box-sizing:border-box}
+.av{width:36px;height:36px;border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;color:#1C1C1A;flex-shrink:0}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl td,.tbl th{text-align:left;padding:6px 10px 6px 0;border-bottom:1px solid #2E2D2A;vertical-align:top;font-weight:400;color:#9C9A93}
+.tbl th{color:#ECEBE6;font-weight:500}
+.sw{background:#1C1C1A;outline:1px solid #2E2D2A;position:relative;overflow:hidden;font-family:Geist,system-ui,sans-serif;color:#ECEBE6}
+.fold{position:absolute;left:435px;width:20px;top:0;bottom:0;border-left:1px dashed #6A6BF5;border-right:1px dashed #6A6BF5;background:rgba(106,107,245,0.1);pointer-events:none}
+.fold span{position:absolute;top:6px;left:0;right:0;text-align:center;font-size:10px;color:#9C9A93}
+.sb{position:absolute;left:0;top:0;bottom:0;width:290px;background:#222220;border-right:1px solid #2A2926;padding:16px 12px;box-sizing:border-box}
+.sbi{display:flex;align-items:center;gap:10px;height:40px;padding:0 10px;font-size:15px;border-radius:12px}
+.ib{position:absolute;left:290px;right:0;top:0;bottom:0;padding:0 18px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 11200px; background: #161614; color: #ECEBE6; font-family: Geist, system-ui, sans-serif">
+
+  <div style="padding: 40px 40px 28px">
+    <div style="font-size: 36px; font-weight: 600; letter-spacing: -0.02em">Sheets and overlays</div>
+    <div style="font-size: 15px; color: #9C9A93; margin-top: 6px">Sheet, alert, action sheet, context menu, menu, popover, toast, search overlay, organize and member pickers, select text, scrim. Outer display 466x678 (side strip at left), inner display 890x626 (fold x 435-455). Dark mode unless marked.</div>
+  </div>
+
+  <!-- 1. SHEET DETENTS -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Sheet: medium and large detent</h2>
+      <p><b>Purpose.</b> A short task or detail view over its parent. Modal; the parent is dimmed.</p>
+      <p><b>Anatomy.</b> Grabber 36x5pt, 6pt from top. Content cards sit inside with 14pt inset.</p>
+      <p><b>Size.</b> Inset 8pt from the device edge, radius 34pt (device corner 42 minus 8 inset, concentric). Medium detent top at about 50% height; large top at 12pt. Card radius 20pt (34 minus 14).</p>
+      <p><b>Layer.</b> Glass at medium (regular, 74% fill). Large detent is nearly opaque (97% fill) because it holds a lot of text. Rows are content: #2A2927, never glass.</p>
+      <p><b>States.</b> Drag grabber or scroll to expand; tap grabber cycles detents; swipe down dismisses.</p>
+      <p><b>SF Symbols.</b> chevron.right (row disclosure), pin, bell.</p>
+      <p><b>Replaces.</b> RN Modal with presentationStyle pageSheet in apps/mobile/components (select-text-sheet.tsx, bot-organize-modal.tsx).</p>
+      <p><span class="do">Do</span> keep one sheet at a time. <span class="dont">Don't</span> put glass rows inside a glass sheet.</p>
+      <p>Unconfirmed: on the Duo outer display I keep the sheet to the content area beside the side strip so the Island stays clear.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Agents</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div><div class="gp glass"><button class="gbtn" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button></div></div>
+        <div class="dm"></div>
+        <div class="shm" style="top: 340px; bottom: 8px">
+          <div class="grab"></div>
+          <div style="padding: 14px 14px 0">
+            <div style="font-size: 20px; font-weight: 600; padding: 0 4px 12px">Finance agent</div>
+            <div class="lst">
+              <div class="li"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z"></path></svg>Pin to top</div>
+              <div class="li"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"></path></svg>Notify when finished<span class="tr">On</span></div>
+              <div class="li"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"></circle><path d="M3 20a6 6 0 0 1 12 0M16 5a3 3 0 0 1 0 6M18 20a6 6 0 0 0-2-4.5"></path></svg>Members<span class="tr"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></span></div>
+            </div>
+          </div>
+        </div>
+      </div><div class="cap">Medium detent. Scrim: system dim 40% black.</div></div>
+
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Agents</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="dm"></div>
+        <div class="shl" style="top: 12px; bottom: 8px">
+          <div class="grab"></div>
+          <div style="padding: 14px 14px 0">
+            <div style="font-size: 20px; font-weight: 600; padding: 0 4px 12px">Finance agent</div>
+            <div class="lst">
+              <div class="li">Pin to top</div>
+              <div class="li">Notify when finished<span class="tr">On</span></div>
+              <div class="li">Members<span class="tr">3</span></div>
+              <div class="li">Section<span class="tr">Money</span></div>
+              <div class="li">Connected apps<span class="tr">2</span></div>
+              <div class="li">Memory</div>
+              <div class="li">Archive</div>
+            </div>
+            <div style="font-size: 13px; color: #9C9A93; padding: 14px 4px 6px">Recent chats</div>
+            <div class="lst">
+              <div class="li">Weekly reconciliation<span class="tr">Mon</span></div>
+              <div class="li">Vendor questions<span class="tr">Oct 14</span></div>
+              <div class="li">Receipt cleanup<span class="tr">Oct 9</span></div>
+            </div>
+          </div>
+        </div>
+      </div><div class="cap">Large detent. Opaque fill; grabber stays.</div></div>
+    </div>
+  </div>
+
+  <!-- 2. SHEET WITH HEADER -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Sheet with header</h2>
+      <p><b>Purpose.</b> A form or choice that is saved or abandoned: Cancel leading, title center, Done trailing.</p>
+      <p><b>Anatomy.</b> Header 52pt. Cancel and Done are glass capsules, 44pt tall, 18pt side padding, 17pt text. Title 17/600. Done is the one prominent (ink) control.</p>
+      <p><b>States.</b> Done disabled (40% opacity) until the form is valid. Second step swaps Cancel for Back. Never show Cancel, Back and Done together. A read-only sheet shows Done alone.</p>
+      <p><b>Layer.</b> Header buttons are glass floating over the sheet body; the body is content.</p>
+      <p><b>SF Symbols.</b> chevron.left (Back), checkmark (optional Done icon).</p>
+      <p><b>Replaces.</b> apps/mobile/components/sheet-header.tsx (cancelHeaderOptions and its Done counterpart, native bar-button items on iOS 26).</p>
+      <p><span class="dont">Don't</span> use the header as a page title with no way to dismiss.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Agents</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="dm"></div>
+        <div class="shl" style="top: 12px; bottom: 8px">
+          <div class="grab"></div>
+          <div class="hd"><button class="cb glass">Cancel</button><span class="t">New group</span><button class="cb cbp">Done</button></div>
+          <div style="padding: 14px 14px 0">
+            <label for="grp-name" style="display: block; font-size: 13px; color: #9C9A93; padding: 0 4px 6px">Name</label>
+            <input id="grp-name" type="text" value="Month-end close" style="width: 100%; box-sizing: border-box; height: 50px; border-radius: 16px; border: 1px solid #4A4944; background: #2A2927; color: #ECEBE6; font-family: inherit; font-size: 17px; padding: 0 16px">
+            <div style="font-size: 13px; color: #9C9A93; padding: 18px 4px 6px">Members</div>
+            <div class="lst">
+              <div class="li"><span class="av" style="background: #3EC5A8">F</span>Finance agent</div>
+              <div class="li"><span class="av" style="background: #F5A03C">L</span>Legal agent</div>
+            </div>
+          </div>
+        </div>
+      </div><div class="cap">Large sheet, Cancel / title / Done enabled.</div></div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px; width: 392px">
+        <div class="cap">Header states (sheet body width 392)</div>
+        <div style="background: #252523; border-radius: 28px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; height: 60px; box-sizing: border-box"><button class="cb glass">Cancel</button><span style="font-size: 17px; font-weight: 600">New group</span><button class="cb glass" style="opacity: 0.4" disabled="disabled">Done</button></div>
+        <div class="cap" style="margin-top: -8px">Invalid: Done disabled.</div>
+        <div style="background: #252523; border-radius: 28px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; height: 60px; box-sizing: border-box"><button class="cb glass" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button><span style="font-size: 17px; font-weight: 600">Members</span><button class="cb cbp">Done</button></div>
+        <div class="cap" style="margin-top: -8px">Step 2: Back replaces Cancel.</div>
+        <div style="background: #252523; border-radius: 28px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; height: 60px; box-sizing: border-box"><span style="width: 44px"></span><span style="font-size: 17px; font-weight: 600">Message text</span><button class="cb cbp">Done</button></div>
+        <div class="cap" style="margin-top: -8px">Read-only: Done alone (select text).</div>
+        <div style="background: #252523; border-radius: 28px; padding: 8px 14px; display: flex; justify-content: space-between; align-items: center; height: 60px; box-sizing: border-box"><button class="cb glass">Cancel</button><span style="font-size: 17px; font-weight: 600">New group</span><button class="cb cbp" aria-busy="true">Saving</button></div>
+        <div class="cap" style="margin-top: -8px">Saving: label changes, taps ignored.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ALERT -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Alert</h2>
+      <p><b>Purpose.</b> A decision that needs an answer now. Title question, one line of consequence, two buttons.</p>
+      <p><b>Anatomy.</b> 270pt wide, radius 26pt, regular glass (alerts carry text, so never clear). Body padding 22/20/18. Buttons 48pt tall, hairline dividers. Cancel always present; the safe choice is bold.</p>
+      <p><b>Confirm.</b> Action button is bold, ink color.</p>
+      <p><b>Destructive.</b> Destructive button uses the destructive token (#F46262) at regular weight; Cancel is bold. Never preselect the destructive choice.</p>
+      <p><b>Placement.</b> Centered in the content area on the outer display; moved to the trailing pane on the inner display (see fold section).</p>
+      <p><b>Scrim.</b> System dim, 40% black.</p>
+      <p><b>Replaces.</b> Native Alert.alert; web counterpart packages/ui-web alert-dialog.tsx.</p>
+      <p>Unconfirmed: exact corner radius and width of the iOS 26 alert; 26pt and 270pt are my estimate.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Agents</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="dm"></div>
+        <div class="al" role="alertdialog" aria-labelledby="al1t" style="left: 130px; top: 250px">
+          <div class="b"><div class="tt" id="al1t">Archive Finance agent?</div><div class="bd">Its chats stay readable. You can restore it from Archived.</div></div>
+          <div class="bar"><button>Cancel</button><button style="font-weight: 600">Archive</button></div>
+        </div>
+      </div><div class="cap">Confirm.</div></div>
+
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Agents</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="dm"></div>
+        <div class="al" role="alertdialog" aria-labelledby="al2t" style="left: 130px; top: 250px">
+          <div class="b"><div class="tt" id="al2t">Delete this message?</div><div class="bd">This removes it for everyone in the chat. It cannot be undone.</div></div>
+          <div class="bar"><button style="font-weight: 600">Cancel</button><button style="color: #F46262">Delete</button></div>
+        </div>
+      </div><div class="cap">Destructive.</div></div>
+    </div>
+  </div>
+
+  <!-- 4. ACTION SHEET INLINE -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Action sheet, inline</h2>
+      <p><b>Purpose.</b> Choose among actions for something the person just did, such as leaving a draft with unsaved changes.</p>
+      <p><b>Anatomy.</b> Glass panel, radius 22pt, 250pt wide, anchored 8pt above the control that opened it, left edges aligned. Optional 13pt muted title. Rows 44pt. Destructive row in #F46262. No Cancel row; tapping outside dismisses.</p>
+      <p><b>Scrim.</b> Light dim, 20% black, so the source control stays readable.</p>
+      <p><b>Layer.</b> Glass over content.</p>
+      <p><b>SF Symbols.</b> trash, square.and.arrow.down.</p>
+      <p><b>Replaces.</b> ActionSheetIOS on mobile; web dropdown-menu.tsx for the same job.</p>
+      <p>Unconfirmed: iOS 26 drops the Cancel row for action sheets with a source view. If your OS build still shows Cancel, add it as a separate capsule below the panel.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Reply to Ana</div>
+          <div style="font-size: 15px; line-height: 1.5; padding: 4px 4px"><span style="color: #9C9A93">Chief drafted:</span> Thursday works for the kickoff. I will send an updated invite today.</div></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div style="position: absolute; left: 72px; right: 14px; bottom: 14px; background: #252523; border-radius: 22px; padding: 14px; display: flex; gap: 10px; justify-content: space-between; align-items: center">
+          <button class="cb" style="background: #2A2927; border: 1px solid #2E2D2A; font-size: 15px; padding: 0 16px; background: rgba(255,255,255,0.12)">Discard</button>
+          <button class="cb cbp" style="font-size: 15px">Send</button>
+        </div>
+        <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.2)"></div>
+        <div class="mn" style="left: 86px; bottom: 82px; width: 250px">
+          <div class="mh" style="padding-bottom: 6px">This draft has changes</div>
+          <button class="mi dn">Discard draft<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></span></button>
+          <button class="mi">Save draft<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg></span></button>
+        </div>
+      </div><div class="cap">Opened from Discard. Panel grows upward from the control.</div></div>
+    </div>
+  </div>
+
+  <!-- 5. CONTEXT MENU -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Context menu on a message</h2>
+      <p><b>Purpose.</b> Long-press a message for actions on it.</p>
+      <p><b>Anatomy.</b> The pressed bubble lifts (scale 1.04, larger shadow) and stays in place; the rest of the screen blurs 14pt and dims 30%. Menu glass, radius 22pt, 250pt wide, 8pt below the bubble, aligned to the bubble edge nearest the screen edge. Rows 44pt, label leading, SF Symbol trailing. Destructive row last, after an 8pt divider.</p>
+      <p><b>Items.</b> Reply, Copy, Select text, Pin, Delete.</p>
+      <p><b>SF Symbols.</b> arrowshape.turn.up.left, doc.on.doc, character.cursor.ibeam, pin, trash.</p>
+      <p><b>States.</b> Default; pressed (white 10% row fill); destructive; disabled (40%).</p>
+      <p><b>Replaces.</b> apps/mobile/components/message-context-menu.tsx (MenuView, shouldOpenOnLongPress); the system draws it.</p>
+      <p><span class="do">Do</span> keep the bubble readable and unclipped. <span class="dont">Don't</span> add a custom lift preview; the system provides it.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Chief</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.3); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px)"></div>
+        <div style="position: absolute; left: 82px; top: 150px; width: 310px; background: #252523; border-radius: 20px; padding: 14px 16px; font-size: 16px; line-height: 1.45; transform: scale(1.04); transform-origin: left top; box-shadow: 0 18px 44px rgba(0,0,0,0.55)">Ana asked to move the kickoff to Thursday. I drafted a reply for your approval.</div>
+        <div class="mn" style="left: 82px; top: 290px; width: 250px">
+          <button class="mi">Reply<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"></path><path d="M4 9h10a6 6 0 0 1 6 6v3"></path></svg></span></button>
+          <button class="mi">Copy<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V6a2 2 0 0 1 2-2h9"></path></svg></span></button>
+          <button class="mi">Select text<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4h6M9 20h6M12 4v16"></path></svg></span></button>
+          <button class="mi">Pin<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z"></path></svg></span></button>
+          <div class="dv"></div>
+          <button class="mi dn">Delete<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg></span></button>
+        </div>
+      </div><div class="cap">Long-press on an agent message.</div></div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; width: 250px">
+        <div class="cap">Row states</div>
+        <div class="mn" style="position: relative; padding: 0"><button class="mi">Reply (default)</button></div>
+        <div class="mn" style="position: relative; padding: 0"><button class="mi pr">Copy (pressed)</button></div>
+        <div class="mn" style="position: relative; padding: 0"><button class="mi dn">Delete (destructive)</button></div>
+        <div class="mn" style="position: relative; padding: 0"><button class="mi ds" disabled="disabled">Pin (disabled)</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6. MENU FROM GLASS BUTTON -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Menu from a glass button</h2>
+      <p><b>Purpose.</b> The overflow (More) and sort/filter menus that hang off a toolbar button.</p>
+      <p><b>Anatomy.</b> Glass panel, radius 22pt, 260pt wide, 8pt gap from the source button. Opens toward the content: on the outer display the trigger is in the side strip, so the menu opens to the trailing side with its bottom edge aligned to the button. Sections separated by an 8pt divider and an optional 13pt muted header. Rows 44pt. A checkmark in a 20pt leading column marks the selected option; icon items keep the symbol trailing.</p>
+      <p><b>States.</b> Source button held in a pressed fill (white 12%); row pressed; selected; destructive; disabled.</p>
+      <p><b>SF Symbols.</b> ellipsis, checkmark, checkmark.circle.</p>
+      <p><b>Replaces.</b> Native menus (MenuView / Expo UI Menu); web dropdown-menu.tsx.</p>
+      <p><span class="do">Do</span> use a checkmark for single choice, one per section. <span class="dont">Don't</span> nest a menu inside a menu.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Inbox</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div>
+          <div class="gp glass"><button class="gbtn" aria-label="Back"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button></div>
+          <div style="flex: 1"></div>
+          <div class="gp glass" style="margin-top: 0"><button class="gbtn" aria-label="More" style="background: rgba(255,255,255,0.14)"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></button></div>
+        </div>
+        <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.2)"></div>
+        <div class="mn" style="left: 70px; bottom: 14px; width: 260px">
+          <div class="mh">Sort by</div>
+          <button class="mi ck"><span class="ckw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>Newest first</button>
+          <button class="mi ck"><span class="ckw"></span>Oldest first</button>
+          <button class="mi ck"><span class="ckw"></span>Unread first</button>
+          <div class="dv"></div>
+          <div class="mh">Show</div>
+          <button class="mi ck"><span class="ckw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>Needs reply</button>
+          <button class="mi ck"><span class="ckw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>Newsletters</button>
+          <div class="dv"></div>
+          <button class="mi ck"><span class="ckw"></span>Select messages<span class="ic"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l3 3 5-6"></path></svg></span></button>
+        </div>
+      </div><div class="cap">Opened from More at the bottom of the side strip.</div></div>
+
+      <div style="display: flex; flex-direction: column; gap: 10px; width: 260px">
+        <div class="cap">Row states</div>
+        <div class="mn" style="position: relative; padding: 0"><button class="mi ck"><span class="ckw"></span>Oldest first</button></div>
+        <div class="mn" style="position: relative; padding: 0"><button class="mi ck"><span class="ckw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>Newest first (selected)</button></div>
+        <div class="mn" style="position: relative; padding: 0"><button class="mi ck pr"><span class="ckw"></span>Unread first (pressed)</button></div>
+        <div class="mn" style="position: relative; padding: 0"><button class="mi ck ds" disabled="disabled"><span class="ckw"></span>Select messages (empty list)</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 7. POPOVER INNER -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Popover (inner display)</h2>
+      <p><b>Purpose.</b> A small, nonmodal control panel next to its trigger, such as inbox filters. Inner display only; on the outer display the same content is a medium-detent sheet.</p>
+      <p><b>Anatomy.</b> Regular glass, radius 22pt, 300pt wide, 12pt inner padding, opens 8pt below its source. No scrim; the parent stays live and tappable, tapping outside dismisses. Switch rows 44pt.</p>
+      <p><b>Placement.</b> Stays in the trailing pane. A trigger in the leading (sidebar) pane opens its popover to the right of the fold, not across it.</p>
+      <p><b>SF Symbols.</b> line.3.horizontal.decrease, magnifyingglass, square.and.pencil.</p>
+      <p><b>Replaces.</b> packages/ui-web popover.tsx and tooltip.tsx for the equivalent web surfaces.</p>
+      <p>Unconfirmed: whether iOS 26 popovers draw an arrow. I draw none.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr i">
+        <div class="sb"><div style="font-size: 20px; font-weight: 600; padding: 4px 10px 12px">Rakazo</div><div class="sbi" style="background: #2A2927">Inbox</div><div class="sbi">Chief</div><div class="sbi">Finance agent</div><div class="sbi">Legal agent</div><div class="sbi">Artifacts</div></div>
+        <div class="ib">
+          <div style="display: flex; justify-content: space-between; align-items: center; height: 64px"><span style="font-size: 28px; font-weight: 600; letter-spacing: -0.02em">Inbox</span>
+            <div style="display: flex; gap: 8px">
+              <div class="glass" style="border-radius: 26px; padding: 4px"><button class="gbtn" aria-label="Search mail"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg></button></div>
+              <div class="glass" style="border-radius: 26px; padding: 4px"><button class="gbtn" aria-label="Filter" style="background: rgba(255,255,255,0.14)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M3 6h18M7 12h10M10 18h4"></path></svg></button></div>
+              <div class="glass" style="border-radius: 26px; padding: 4px; background: rgba(241,240,235,0.92)"><button class="gbtn" aria-label="Compose" style="color: #1C1C1A"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.4 2.6a2 2 0 0 1 3 3L12 15l-4 1 1-4z"></path></svg></button></div>
+            </div>
+          </div>
+          <sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw" style="padding: 14px 4px"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for>
+        </div>
+        <div class="fold"><span>fold</span></div>
+        <div class="mn" style="left: 548px; top: 70px; width: 300px; padding: 12px">
+          <div style="font-size: 15px; font-weight: 600; padding: 0 4px 6px">Show in inbox</div>
+          <div style="display: flex; align-items: center; height: 44px; padding: 0 4px; font-size: 15px"><label for="pf1" style="flex: 1">Needs reply</label><input id="pf1" type="checkbox" checked="checked" style="width: 20px; height: 20px"></div>
+          <div style="display: flex; align-items: center; height: 44px; padding: 0 4px; font-size: 15px"><label for="pf2" style="flex: 1">Newsletters</label><input id="pf2" type="checkbox" checked="checked" style="width: 20px; height: 20px"></div>
+          <div style="display: flex; align-items: center; height: 44px; padding: 0 4px; font-size: 15px"><label for="pf3" style="flex: 1">Read mail</label><input id="pf3" type="checkbox" style="width: 20px; height: 20px"></div>
+        </div>
+      </div><div class="cap">Inner display, popover opens under Filter in the trailing pane; no scrim.</div></div>
+    </div>
+  </div>
+
+  <!-- 8. TOAST -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Toast and notification banner</h2>
+      <p><b>Purpose.</b> Tell the person something finished or failed without taking their place. Banners never block input outside themselves.</p>
+      <p><b>Anatomy.</b> Glass capsule, radius 26pt, 12pt padding, 12pt from the top of the content area. 36pt identity tile (bot color circle, or destructive-tint tile for errors), title 15/600, one body line 13pt muted, trailing action capsule 44pt tall when the error is recoverable.</p>
+      <p><b>Behavior.</b> One at a time, newest replaces older. Success banners dismiss on their own after about 5 seconds (proposal); error banners stay until swiped up or resolved. Tap opens the source chat. Announced as a polite live region; errors as assertive.</p>
+      <p><b>Scrim.</b> None.</p>
+      <p><b>SF Symbols.</b> exclamationmark.triangle, arrow.clockwise (Retry icon optional).</p>
+      <p><b>Replaces.</b> apps/web notification-toaster.tsx; mobile uses the system notification banner for background and an in-app banner in the foreground.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Inbox</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="glass" role="status" style="position: absolute; left: 72px; right: 10px; top: 12px; border-radius: 26px; padding: 12px 14px; display: flex; gap: 12px; align-items: center">
+          <span class="av" style="background: #3EC5A8">F</span>
+          <div style="flex: 1; min-width: 0"><div style="font-size: 15px; font-weight: 600">Finance agent finished</div><div style="font-size: 13px; color: #C9C7C0; margin-top: 2px">Reconciled 12 receipts. Tap to review.</div></div>
+          <span style="font-size: 12px; color: #9C9A93; align-self: flex-start; font-variant-numeric: tabular-nums">now</span>
+        </div>
+      </div><div class="cap">Agent finished. Tap opens the chat.</div></div>
+
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Chief</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="glass" role="alert" style="position: absolute; left: 72px; right: 10px; top: 12px; border-radius: 26px; padding: 12px 12px 12px 14px; display: flex; gap: 12px; align-items: center">
+          <span class="av" style="background: rgba(244,98,98,0.18); color: #F46262"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l10 18H2z"></path><path d="M12 10v5M12 18v.01"></path></svg></span>
+          <div style="flex: 1; min-width: 0"><div style="font-size: 15px; font-weight: 600">Message not sent</div><div style="font-size: 13px; color: #C9C7C0; margin-top: 2px">No connection. Your draft is kept.</div></div>
+          <button class="cb cbp" style="font-size: 15px; padding: 0 16px">Retry</button>
+        </div>
+      </div><div class="cap">Send failed, with Retry. Stays until resolved.</div></div>
+    </div>
+  </div>
+
+  <!-- 9. SEARCH OVERLAY -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Command and search overlay</h2>
+      <p><b>Purpose.</b> Global Search across agents, mail and artifacts from anywhere. Web equivalent is the command palette.</p>
+      <p><b>Anatomy.</b> Custom full-screen overlay, so it uses the overlay token (#080807 at 72%) over the blurred app. Search field is a glass capsule, 44pt, with a magnifyingglass and a text Cancel button. Results are content rows on the overlay (no glass, no cards): 36pt tile, title 15/500, secondary line 13pt muted, grouped under 13/600 muted headers Agents, Mail, Artifacts.</p>
+      <p><b>On the outer display</b> the field sits right of the side strip; the keyboard rises from the bottom and results scroll above it. <b>On the inner display</b> it is a 400pt panel in the trailing pane (below), never across the fold.</p>
+      <p><b>States.</b> Empty query (recent searches), typing, results, no results, loading (shimmer rows from apps/web/src/components/ai).</p>
+      <p><b>SF Symbols.</b> magnifyingglass, envelope, doc.text, person.crop.circle.</p>
+      <p><b>Replaces.</b> packages/ui-web command.tsx and dialog.tsx.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Inbox</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="tk" style="-webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px)"></div>
+        <div style="position: absolute; left: 72px; right: 10px; top: 14px; display: flex; gap: 6px; align-items: center">
+          <div class="glass" style="flex: 1; height: 44px; border-radius: 22px; display: flex; align-items: center; gap: 8px; padding: 0 14px; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9C9A93" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><label for="q1" style="position: absolute; width: 1px; height: 1px; overflow: hidden">Search</label><input id="q1" type="search" value="pilot" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #ECEBE6; font-family: inherit; font-size: 17px; outline: 0"></div>
+          <button class="cb" style="padding: 0 10px">Cancel</button>
+        </div>
+        <div style="position: absolute; left: 72px; right: 10px; top: 72px; bottom: 0; overflow: hidden">
+          <div style="font-size: 13px; font-weight: 600; color: #9C9A93; padding: 8px 4px 4px">Agents</div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 8px 4px; min-height: 52px; box-sizing: border-box"><span class="av" style="background: #6A6BF5">I</span><div style="min-width: 0"><div style="font-size: 15px; font-weight: 500">Inbox agent</div><div style="font-size: 13px; color: #9C9A93">2 chats mention pilot</div></div></div>
+          <div style="font-size: 13px; font-weight: 600; color: #9C9A93; padding: 14px 4px 4px">Mail</div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 8px 4px; min-height: 52px; box-sizing: border-box"><span class="tile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></span><div style="min-width: 0"><div style="font-size: 15px; font-weight: 500">Re: Pilot timeline</div><div style="font-size: 13px; color: #9C9A93">Ana Ruiz, 10:30 AM</div></div></div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 8px 4px; min-height: 52px; box-sizing: border-box"><span class="tile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 7l9 6 9-6"></path></svg></span><div style="min-width: 0"><div style="font-size: 15px; font-weight: 500">Pilot kickoff notes</div><div style="font-size: 13px; color: #9C9A93">Jordan Lee, Oct 18</div></div></div>
+          <div style="font-size: 13px; font-weight: 600; color: #9C9A93; padding: 14px 4px 4px">Artifacts</div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 8px 4px; min-height: 52px; box-sizing: border-box"><span class="tile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"></path><path d="M14 3v5h5"></path></svg></span><div style="min-width: 0"><div style="font-size: 15px; font-weight: 500">Pilot plan</div><div style="font-size: 13px; color: #9C9A93">Document, edited yesterday</div></div></div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 8px 4px; min-height: 52px; box-sizing: border-box"><span class="tile"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h7l5 5v13H7z"></path><path d="M14 3v5h5"></path></svg></span><div style="min-width: 0"><div style="font-size: 15px; font-weight: 500">Pilot budget</div><div style="font-size: 13px; color: #9C9A93">Sheet, edited Oct 14</div></div></div>
+        </div>
+      </div><div class="cap">Outer display, results. Overlay token scrim.</div></div>
+
+      <div style="display: flex; flex-direction: column; gap: 14px; width: 330px">
+        <div class="cap">Empty and error states</div>
+        <div class="sw" style="height: 150px; border-radius: 20px; padding: 14px; box-sizing: border-box"><div style="font-size: 13px; font-weight: 600; color: #9C9A93">Recent</div><div style="font-size: 15px; padding: 10px 0 0">Northwind</div><div style="font-size: 15px; padding: 10px 0 0">Month-end close</div></div>
+        <div class="sw" style="height: 110px; border-radius: 20px; padding: 14px; box-sizing: border-box; text-align: center"><div style="font-size: 15px; font-weight: 500; padding-top: 22px">No results for pilotx</div><div style="font-size: 13px; color: #9C9A93; padding-top: 4px">Try a sender, agent or file name.</div></div>
+        <div class="sw" style="height: 110px; border-radius: 20px; padding: 14px; box-sizing: border-box"><div style="height: 14px; width: 120px; border-radius: 7px; background: #2A2927"></div><div style="height: 36px; border-radius: 10px; background: #2A2927; margin-top: 12px"></div><div style="height: 36px; border-radius: 10px; background: #2A2927; margin-top: 8px; opacity: 0.6"></div></div>
+      </div>
+
+      <div class="fw"><div class="fr i">
+        <div class="sb"><div style="font-size: 20px; font-weight: 600; padding: 4px 10px 12px">Rakazo</div><div class="sbi" style="background: #2A2927">Inbox</div><div class="sbi">Chief</div><div class="sbi">Finance agent</div><div class="sbi">Legal agent</div><div class="sbi">Artifacts</div></div>
+        <div class="ib"><div style="height: 64px; font-size: 28px; font-weight: 600; display: flex; align-items: center">Inbox</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw" style="padding: 14px 4px"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="tk" style="-webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px)"></div>
+        <div class="fold"><span>fold</span></div>
+        <div style="position: absolute; left: 475px; width: 400px; top: 40px">
+          <div class="glass" style="height: 44px; border-radius: 22px; display: flex; align-items: center; gap: 8px; padding: 0 14px; box-sizing: border-box"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9C9A93" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg><label for="q2" style="position: absolute; width: 1px; height: 1px; overflow: hidden">Search</label><input id="q2" type="search" value="pilot" style="flex: 1; min-width: 0; background: transparent; border: 0; color: #ECEBE6; font-family: inherit; font-size: 17px; outline: 0"></div>
+          <div style="font-size: 13px; font-weight: 600; color: #9C9A93; padding: 18px 4px 4px">Mail</div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 8px 4px; min-height: 52px; box-sizing: border-box"><span class="tile">M</span><div><div style="font-size: 15px; font-weight: 500">Re: Pilot timeline</div><div style="font-size: 13px; color: #9C9A93">Ana Ruiz, 10:30 AM</div></div></div>
+          <div style="font-size: 13px; font-weight: 600; color: #9C9A93; padding: 14px 4px 4px">Artifacts</div>
+          <div style="display: flex; gap: 12px; align-items: center; padding: 8px 4px; min-height: 52px; box-sizing: border-box"><span class="tile">A</span><div><div style="font-size: 15px; font-weight: 500">Pilot plan</div><div style="font-size: 13px; color: #9C9A93">Document, edited yesterday</div></div></div>
+        </div>
+      </div><div class="cap">Inner display: 400pt panel in the trailing pane, clear of the fold.</div></div>
+    </div>
+  </div>
+
+  <!-- 10. ORGANIZE + MEMBER PICKER -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Bot organize modal and member picker</h2>
+      <p><b>Organize.</b> Per-agent actions in a medium-detent sheet. Agent name title; actions Pin, Silence notifications, then "Move to" section list with a checkmark on the current section (current row disabled), then New section and Rename section. Cancel is a full-width secondary capsule at the bottom. New and Rename swap the action rows for a name field with Create or Save.</p>
+      <p><b>Member picker.</b> Large sheet with header Cancel / New group / Create. Rows 56pt: 34pt bot avatar (identity color), name 16pt, switch trailing. When 6 members are chosen (the group maximum) unselected rows disable and a 13pt muted line says why.</p>
+      <p><b>Layer.</b> Sheet glass or opaque as in the detent rules; rows are content.</p>
+      <p><b>SF Symbols.</b> pin, pin.slash, bell, bell.slash, folder.badge.plus, pencil, checkmark.</p>
+      <p><b>Replaces.</b> apps/mobile/components/bot-organize-modal.tsx and bot-member-picker.tsx. Today organize is a custom overlay with its own scrim; this specs it as a native sheet.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Agents</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="dm"></div>
+        <div class="shm" style="top: 150px; bottom: 8px; background: rgba(46,45,42,0.9)">
+          <div class="grab"></div>
+          <div style="padding: 10px 14px 0">
+            <div style="display: flex; align-items: center; gap: 10px; padding: 0 4px 10px"><span class="av" style="background: #3EC5A8">F</span><span style="font-size: 20px; font-weight: 600">Finance agent</span></div>
+            <div class="lst">
+              <div class="li" style="min-height: 46px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M9 3h6l-1 6 3 3v2H7v-2l3-3z"></path></svg>Pin</div>
+              <div class="li" style="min-height: 46px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9M10.3 21a1.9 1.9 0 0 0 3.4 0"></path></svg>Silence notifications</div>
+            </div>
+            <div style="font-size: 13px; color: #9C9A93; padding: 12px 4px 6px">Move to</div>
+            <div class="lst">
+              <div class="li" style="min-height: 46px"><span class="ckw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>Money</div>
+              <div class="li" style="min-height: 46px"><span class="ckw"></span>Legal</div>
+              <div class="li" style="min-height: 46px"><span class="ckw"></span>Unassigned</div>
+            </div>
+            <div class="lst" style="margin-top: 12px">
+              <div class="li" style="min-height: 46px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM12 10v5M9.5 12.5h5"></path></svg>New section</div>
+            </div>
+            <button class="cb glass" style="width: 100%; margin-top: 12px; background: rgba(255,255,255,0.12)">Cancel</button>
+          </div>
+        </div>
+      </div><div class="cap">Organize, medium detent. Scrolls inside if more sections.</div></div>
+
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Agents</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="dm"></div>
+        <div class="shl" style="top: 12px; bottom: 8px">
+          <div class="grab"></div>
+          <div class="hd"><button class="cb glass">Cancel</button><span class="t">New group</span><button class="cb cbp">Create</button></div>
+          <div style="padding: 10px 14px 0">
+            <div style="font-size: 13px; color: #9C9A93; padding: 0 4px 6px">Choose agents <span style="font-variant-numeric: tabular-nums">3 of 6</span></div>
+            <div class="lst">
+              <sc-for list="{{members}}" as="m" hint-placeholder-count="5">
+                <div class="li" style="min-height: 56px; opacity: {{m.op}}"><sc-if value="{{m.bot}}" hint-placeholder-val="{{true}}"><svg width="34" height="34" viewBox="-15 -15 259 259" aria-hidden="true" style="flex-shrink: 0"><path d="{{m.shape}}" fill="{{m.color}}"></path><rect x="62" y="100" width="20" height="60" rx="10" fill="#1C1C1A"></rect><rect x="146" y="100" width="20" height="60" rx="10" fill="#1C1C1A"></rect></svg></sc-if><sc-if value="{{m.app}}" hint-placeholder-val="{{false}}"><span class="av" style="background: #2A2927; border: 1px solid #2E2D2A; color: #ECEBE6; width: 34px; height: 34px; border-radius: 10px; box-sizing: border-box">{{m.l}}</span></sc-if><span style="font-size: 16px">{{m.name}}</span><span class="tr"><span style="width: 51px; height: 31px; border-radius: 16px; background: {{m.track}}; position: relative; display: block"><span style="position: absolute; top: 2px; left: {{m.knob}}; width: 27px; height: 27px; border-radius: 14px; background: {{m.thumb}}; display: block"></span></span></span></div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div><div class="cap">Member picker. Bot colors are identity only.</div></div>
+    </div>
+  </div>
+
+  <!-- 11. SELECT TEXT -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Select-text sheet</h2>
+      <p><b>Purpose.</b> Lets people select part of a message, which a chat bubble cannot do directly. Opened by Select text in the context menu.</p>
+      <p><b>Anatomy.</b> Large detent sheet, opaque fill, grabber. Done only, trailing, prominent (read-only, nothing to cancel). Body is selectable text, 16/24 on the sheet, 20pt side padding, 40pt bottom padding, the whole message as one block so a selection spans paragraphs. System selection handles and edit menu (Copy, Share, Look Up).</p>
+      <p><b>States.</b> Default; active selection (selection tint #4F8FF7 at 30%); long message scrolls under the header.</p>
+      <p><b>Replaces.</b> apps/mobile/components/select-text-sheet.tsx (Modal pageSheet).</p>
+      <p><span class="do">Do</span> keep text in the content layer, no glass behind it.</p>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr o">
+        <div class="bg"><div class="bgt">Chief</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="strip"><div class="isl"><div class="cam"></div></div><div class="tm">9:41</div></div>
+        <div class="dm"></div>
+        <div class="shl" style="top: 12px; bottom: 8px">
+          <div class="grab"></div>
+          <div style="display: flex; justify-content: flex-end; padding: 8px 14px 0"><button class="cb cbp">Done</button></div>
+          <div style="padding: 14px 20px; font-size: 16px; line-height: 24px">
+            <p style="margin: 0 0 16px">Ana asked to move the kickoff to <span style="background: rgba(79,143,247,0.3); border-radius: 3px">Thursday. I drafted a reply</span> for your approval.</p>
+            <p style="margin: 0 0 16px">Two items are still open: the agenda and the invite list. I can fill both from the last thread if you confirm.</p>
+            <p style="margin: 0">Nothing has been sent.</p>
+          </div>
+        </div>
+      </div><div class="cap">Selection in progress (handles omitted).</div></div>
+    </div>
+  </div>
+
+  <!-- 12. SCRIM -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Scrim and overlay token</h2>
+      <p><b>Token.</b> overlay from packages/ui-tokens: dark rgba(8,8,7,0.72), light rgba(20,20,22,0.45). One value per mode; do not hardcode a dim.</p>
+      <p><b>Rule (proposal).</b> Native system presentations (sheet, alert, menu, action sheet) use the system dim, which I draw as 40% black, and are never re-dimmed by us. The overlay token is for surfaces we draw ourselves: search overlay, any custom full-screen modal. Toasts, popovers: no scrim.</p>
+      <p><b>Context menu</b> adds a 14pt blur on top of a 30% dim.</p>
+      <p><b>Clear glass</b> over media needs a 35% dark layer (Apple); not used by these overlays.</p>
+      <p>Unconfirmed: the exact dim iOS applies. 40% is my approximation.</p>
+    </div>
+    <div class="spx">
+      <div class="sw" style="width: 330px; height: 150px; border-radius: 20px">
+        <div style="padding: 16px; font-size: 15px">Content under scrim<div style="font-size: 13px; color: #9C9A93; margin-top: 4px">Re: Pilot timeline</div></div>
+        <div class="tk"></div>
+        <div style="position: absolute; left: 14px; bottom: 12px; font-size: 12px; color: #ECEBE6">overlay, dark, 72%</div>
+      </div>
+      <div class="sw" style="width: 330px; height: 150px; border-radius: 20px; background: #FAFAF8; color: #1A1A1A">
+        <div style="padding: 16px; font-size: 15px">Content under scrim<div style="font-size: 13px; color: #6C6C70; margin-top: 4px">Re: Pilot timeline</div></div>
+        <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: rgba(20,20,22,0.45)"></div>
+        <div style="position: absolute; left: 14px; bottom: 12px; font-size: 12px; color: #FAFAF8">overlay, light, 45%</div>
+      </div>
+      <div style="width: 330px">
+        <table class="tbl">
+          <tr><th>Surface</th><th>Dim</th></tr>
+          <tr><td>Sheet, alert</td><td>System 40%</td></tr>
+          <tr><td>Action sheet, menu</td><td>System 20%</td></tr>
+          <tr><td>Context menu</td><td>30% + blur 14</td></tr>
+          <tr><td>Search overlay</td><td>overlay token</td></tr>
+          <tr><td>Popover, toast</td><td>None</td></tr>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 13. FOLD PLACEMENT -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Where overlays sit on the inner display</h2>
+      <p><b>Rule.</b> Nothing interactive crosses the fold (x 435-455, active when half-folded). Alerts, menus, popovers and search panels are placed in the trailing pane (x 455-890) so the system never centers them on the hinge. The dashed outline shows where a default-centered alert would land.</p>
+      <p><b>Sheets.</b> A form sheet is capped to the trailing pane width (about 420pt); a large sheet is allowed to span both panes only when the device is flat, and its header and buttons stay in the trailing pane.</p>
+      <p><b>Menus from the leading pane</b> flip toward the trailing side and start right of the fold.</p>
+      <p><b>Toasts</b> align to the trailing pane top.</p>
+      <p>Unconfirmed: this is design intent for the Duo; I could not confirm that the platform reflows system alerts away from a fold on its own. Treat it as a requirement on our custom placement code.</p>
+      <table class="tbl" style="margin-top: 8px">
+        <tr><th>Overlay</th><th>Inner placement</th></tr>
+        <tr><td>Alert</td><td>Centered in trailing pane</td></tr>
+        <tr><td>Menu</td><td>Right of fold</td></tr>
+        <tr><td>Popover</td><td>Under source, trailing</td></tr>
+        <tr><td>Search</td><td>Trailing 400pt panel</td></tr>
+      </table>
+    </div>
+    <div class="spx">
+      <div class="fw"><div class="fr i">
+        <div class="sb"><div style="font-size: 20px; font-weight: 600; padding: 4px 10px 12px">Rakazo</div><div class="sbi">Inbox</div><div class="sbi">Chief</div><div class="sbi" style="background: #2A2927">Finance agent</div><div class="sbi">Legal agent</div><div class="sbi">Artifacts</div></div>
+        <div class="ib"><div style="height: 64px; font-size: 28px; font-weight: 600; display: flex; align-items: center">Finance agent</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw" style="padding: 14px 4px"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div class="dm"></div>
+        <div class="fold"><span>fold</span></div>
+        <div style="position: absolute; left: 305px; top: 228px; width: 270px; height: 170px; border: 1.5px dashed #9C9A93; border-radius: 26px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #9C9A93; text-align: center; padding: 0 20px">Default center crosses the fold</div>
+        <div class="al" role="alertdialog" aria-labelledby="al3t" style="left: 537px; top: 228px">
+          <div class="b"><div class="tt" id="al3t">Archive Finance agent?</div><div class="bd">Its chats stay readable. You can restore it from Archived.</div></div>
+          <div class="bar"><button>Cancel</button><button style="font-weight: 600">Archive</button></div>
+        </div>
+      </div><div class="cap">Alert moved to the trailing pane center (x 537-807).</div></div>
+
+      <div class="fw"><div class="fr i">
+        <div class="sb"><div style="font-size: 20px; font-weight: 600; padding: 4px 10px 12px">Rakazo</div><div class="sbi">Inbox</div><div class="sbi">Chief</div><div class="sbi">Finance agent</div><div class="sbi">Legal agent</div><div class="sbi">Artifacts</div>
+          <div style="position: absolute; left: 12px; right: 12px; bottom: 14px; display: flex; justify-content: flex-end"><div class="glass" style="border-radius: 26px; padding: 4px"><button class="gbtn" aria-label="More" style="background: rgba(255,255,255,0.14)"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></button></div></div>
+        </div>
+        <div class="ib"><div style="height: 64px; font-size: 28px; font-weight: 600; display: flex; align-items: center">Inbox</div><sc-for list="{{bg}}" as="r" hint-placeholder-count="5"><div class="rw" style="padding: 14px 4px"><div class="rf"><span style="font-weight: {{r.w}}">{{r.f}}</span><span class="rt">{{r.t}}</span></div><div class="rs">{{r.s}}</div></div></sc-for></div>
+        <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: rgba(0,0,0,0.2)"></div>
+        <div class="fold"><span>fold</span></div>
+        <div style="position: absolute; left: 276px; top: 426px; width: 180px; height: 170px; border: 1.5px dashed #9C9A93; border-radius: 22px; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #9C9A93; text-align: center; padding: 0 16px">Would open across the fold</div>
+        <div class="mn" style="left: 467px; bottom: 14px; width: 240px">
+          <button class="mi ck"><span class="ckw"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7"></path></svg></span>Newest first</button>
+          <button class="mi ck"><span class="ckw"></span>Oldest first</button>
+          <div class="dv"></div>
+          <button class="mi ck"><span class="ckw"></span>New section</button>
+        </div>
+      </div><div class="cap">Menu from a sidebar More button opens right of the fold (x 467).</div></div>
+    </div>
+  </div>
+
+  <!-- 14. LIGHT -->
+  <div class="sec">
+    <div class="spec">
+      <h2>Light mode</h2>
+      <p>Light differs enough to check: glass turns white 58% with a bright rim, text switches to #1A1A1A, destructive to #DC2626, and the prominent button to #1A1A1A with #F1F1EF text. Scrim is the light overlay token (45%). Other overlays follow the same geometry.</p>
+    </div>
+    <div class="spx">
+      <div class="sw" style="width: 340px; height: 260px; border-radius: 24px; background: #FAFAF8; color: #1A1A1A">
+        <div style="padding: 16px; font-size: 15px">Agents<div style="font-size: 13px; color: #6C6C70; margin-top: 4px">Finance agent</div></div>
+        <div style="position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: rgba(20,20,22,0.45)"></div>
+        <div class="glass-light" role="alertdialog" aria-labelledby="al4t" style="position: absolute; left: 35px; top: 60px; width: 270px; border-radius: 26px; text-align: center; overflow: hidden; color: #1A1A1A">
+          <div style="padding: 22px 20px 18px"><div id="al4t" style="font-size: 17px; font-weight: 600">Delete this message?</div><div style="font-size: 13px; margin-top: 4px">This cannot be undone.</div></div>
+          <div style="display: flex; border-top: 1px solid rgba(0,0,0,0.12)"><button style="flex: 1; height: 48px; border: 0; background: transparent; font-size: 17px; font-weight: 600; color: #1A1A1A">Cancel</button><button style="flex: 1; height: 48px; border: 0; border-left: 1px solid rgba(0,0,0,0.12); background: transparent; font-size: 17px; color: #DC2626">Delete</button></div>
+        </div>
+      </div>
+      <div class="sw" style="width: 340px; height: 260px; border-radius: 24px; background: #FAFAF8; color: #1A1A1A">
+        <div style="padding: 16px; font-size: 15px">Chief<div style="font-size: 13px; color: #6C6C70; margin-top: 4px">Ana asked to move the kickoff</div></div>
+        <div class="glass-light" style="position: absolute; left: 45px; top: 70px; width: 250px; border-radius: 22px; padding: 6px 0; color: #1A1A1A">
+          <div style="display: flex; align-items: center; height: 44px; padding: 0 16px; font-size: 17px">Reply</div>
+          <div style="display: flex; align-items: center; height: 44px; padding: 0 16px; font-size: 17px">Copy</div>
+          <div style="height: 8px; background: rgba(0,0,0,0.06); margin: 4px 0"></div>
+          <div style="display: flex; align-items: center; height: 44px; padding: 0 16px; font-size: 17px; color: #DC2626">Delete</div>
+        </div>
+      </div>
+      <div class="sw" style="width: 340px; height: 260px; border-radius: 24px; background: #FAFAF8; color: #1A1A1A">
+        <div class="glass-light" role="alert" style="position: absolute; left: 12px; right: 12px; top: 12px; border-radius: 26px; padding: 12px 12px 12px 14px; display: flex; gap: 12px; align-items: center; color: #1A1A1A">
+          <span class="av" style="background: rgba(220,38,38,0.12); color: #DC2626">!</span>
+          <div style="flex: 1"><div style="font-size: 15px; font-weight: 600">Message not sent</div><div style="font-size: 13px; color: #4A4A4F; margin-top: 2px">Your draft is kept.</div></div>
+          <button class="cb" style="background: #1A1A1A; color: #F1F1EF; font-weight: 600; font-size: 15px; padding: 0 16px">Retry</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":11200}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const row = (f, s, t, unread) => ({ f, s, t, w: unread ? 600 : 400 });
+    const SH = { hex: 'M217.73 153.04Q217.73 174 199.58 184.48L132.42 223.25Q114.27 233.73 96.12 223.25L28.96 184.48Q10.81 174 10.81 153.04L10.81 75.5Q10.81 54.54 28.96 44.06L96.12 5.29Q114.27 -5.19 132.42 5.29L199.58 44.06Q217.73 54.54 217.73 75.5Z', tablet: 'M74.27 40.27L154.27 40.27C195.14 40.27 228.27 73.4 228.27 114.27C228.27 155.14 195.14 188.27 154.27 188.27L74.27 188.27C33.4 188.27 0.27 155.14 0.27 114.27C0.27 73.4 33.4 40.27 74.27 40.27Z', wedge: 'M77.26 42.06Q114.27 -22.05 151.28 42.06L216.15 154.43Q253.17 218.53 179.14 218.53L49.4 218.53Q-24.62 218.53 12.39 154.43Z', teardrop: 'M125.97 7.2Q114.27 -7.28 102.57 7.2L43.49 80.31C13.46 117.46 17.28 171.51 52.23 204.08C87.17 236.65 141.37 236.65 176.32 204.08C211.26 171.51 215.08 117.46 185.05 80.31Z' };
+    const BOT = { 'Chief': ['hex', '#3EC5A8'], 'Inbox agent': ['tablet', '#3B82F6'], 'Finance agent': ['wedge', '#F5A03C'], 'Legal agent': ['teardrop', '#9B5CF6'] };
+    const mem = (name, on, dis) => ({
+      name, l: name[0], bot: !!BOT[name], app: !BOT[name],
+      shape: BOT[name] ? SH[BOT[name][0]] : '', color: BOT[name] ? BOT[name][1] : '',
+      track: on ? '#F1F0EB' : '#4A4944',
+      thumb: on ? '#1C1C1A' : '#ECEBE6',
+      knob: on ? '22px' : '2px',
+      op: dis ? 0.4 : 1
+    });
+    return {
+      bg: [
+        row('Ana Ruiz', 'Re: Pilot timeline', '10:30 AM', false),
+        row('Jordan Lee', 'Intro: design partner', '8:20 AM', false),
+        row('Northwind Support', 'Your ticket was updated', 'Oct 18', false),
+        row('Acme Payroll', 'Payment could not be scheduled', '3:25 PM', true),
+        row('Example Weekly', 'Five tools worth trying', '3:02 PM', true)
+      ],
+      members: [
+        mem('Chief', true, false),
+        mem('Finance agent', true, false),
+        mem('Legal agent', true, false),
+        mem('Inbox agent', false, false),
+        mem('Mercury agent', false, false),
+        mem('Carta agent', false, false)
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

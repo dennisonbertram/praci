@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#ECEBE6}a:hover{color:#ffffff}
+.glass{background:rgba(52,51,48,0.62);-webkit-backdrop-filter:blur(18px) saturate(160%);backdrop-filter:blur(18px) saturate(160%);border:1px solid rgba(255,255,255,0.09);box-shadow:0 8px 24px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.08)}
+.gbtn{width:44px;height:44px;border:0;background:transparent;color:#ECEBE6;display:flex;align-items:center;justify-content:center;border-radius:22px}
+input{font-family:inherit}
+</style>
+</helmet>
+<div style="width:466px;height:678px;position:relative;overflow:hidden;background:#1C1C1A;color:#ECEBE6;font-family:Geist,system-ui,sans-serif"><div style="position:absolute;left:72px;right:0;top:0;bottom:0;padding:44px 22px 16px 10px;display:flex;flex-direction:column;box-sizing:border-box;overflow:hidden">
+<div style="font-size:15px;font-weight:600;letter-spacing:0.02em;color:#9C9A93">Rakazo</div>
+<h1 style="margin:6px 0 18px;font-size:28px;font-weight:600;letter-spacing:-0.02em">Sign in to Rakazo</h1>
+<button style="width:100%;height:50px;border-radius:25px;border:0;background:#252523;color:#ECEBE6;font-family:inherit;font-size:16px;font-weight:500">Continue with Example SSO</button>
+<div style="font-size:13px;color:#9C9A93;text-align:center;padding:12px 0 2px">or</div>
+<div style="height:10px"></div><div style="background:#252523;border-radius:14px;overflow:hidden"><div style=""><div style="display:flex;align-items:center;min-height:44px;padding:0 14px"><input aria-label="Email" placeholder="Email" style="flex:1;min-width:0;border:0;background:transparent;color:#ECEBE6;font-size:16px;outline:none;padding:0"></div></div><div style="border-top:1px solid #2E2D2A"><div style="display:flex;align-items:center;min-height:44px;padding:0 14px"><input aria-label="Password" placeholder="Password" style="flex:1;min-width:0;border:0;background:transparent;color:#ECEBE6;font-size:16px;outline:none;padding:0"></div></div></div>
+<div role="alert" style="color:#F46262;font-size:14px;padding:10px 14px 0">Could not continue</div>
+<div style="height:14px"></div>
+<button style="width:100%;height:50px;border-radius:25px;border:0;background:#F1F0EB;color:#1C1C1A;font-family:inherit;font-size:16px;font-weight:500">Sign in</button>
+<div style="text-align:center;padding:14px 0 0"><a href="#" style="font-size:14px;color:#9C9A93;display:inline-block;padding:12px">Forgot password?</a></div>
+<div style="text-align:center;font-size:14px;color:#9C9A93">Don’t have an account? <a href="#" style="color:#ECEBE6;display:inline-block;padding:12px 4px">Sign up</a></div>
+<div style="margin-top:auto;text-align:center"><a href="#" style="font-size:13px;color:#9C9A93;display:inline-block;padding:14px">Use a custom server</a></div>
+</div><div style="position:absolute;left:10px;top:14px;bottom:14px;width:52px;display:flex;flex-direction:column;align-items:center;gap:10px;z-index:5"><div style="width:34px;height:64px;border-radius:17px;background:#000;display:flex;justify-content:center;padding-top:10px;box-sizing:border-box;flex-shrink:0" aria-hidden="true"><div style="width:10px;height:10px;border-radius:5px;background:#1f1f1d"></div></div><div style="font-size:12px;font-weight:600;font-variant-numeric:tabular-nums">9:41</div></div></div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":466,"height":678}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
