@@ -435,6 +435,7 @@ import {
   readServerUpdateStatus,
   UpdaterProxyError,
 } from "./server-update.js";
+import { spreadsheetPreview } from "./spreadsheet-preview.js";
 import { assertTeachingSendAllowed, createTaughtSkillsService } from "./taught-skills.js";
 import {
   isBackgroundRun,
@@ -7292,6 +7293,11 @@ export function createRouter(deps: RouterDeps) {
       remove: authed.artifacts.remove.handler(async ({ context, input }) => {
         return deleteArtifactFamily(deps, context.actor, { familyId: input.artifactId });
       }),
+    },
+    files: {
+      spreadsheetPreview: authed.files.spreadsheetPreview.handler(({ context, input }) =>
+        spreadsheetPreview(deps, context.actor, input),
+      ),
     },
     usage: {
       list: authed.usage.list.handler(async ({ context }) => {

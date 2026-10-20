@@ -2659,6 +2659,10 @@ msgstr "Не удалось загрузить интеграции"
 msgid "Could not load model settings"
 msgstr "Не удалось загрузить настройки модели."
 
+#: src/components/SheetPreview.tsx
+msgid "Could not load more rows."
+msgstr ""
+
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
 msgstr "Не удалось загрузить историю запусков"
@@ -2693,6 +2697,7 @@ msgid "Could not load this chat."
 msgstr "Не удалось загрузить этот чат."
 
 #: src/components/ArtifactFileCard.tsx
+#: src/components/SheetPreview.tsx
 msgid "Could not load this file."
 msgstr "Не удалось загрузить этот файл."
 
@@ -4705,6 +4710,7 @@ msgstr "Загрузить более ранние сообщения"
 
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/SheetPreview.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Inbox.tsx
@@ -6318,6 +6324,7 @@ msgstr ""
 msgid "Preview {0}"
 msgstr "Предварительный просмотр {0}"
 
+#: src/components/SheetPreview.tsx
 #: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr ""
@@ -7491,6 +7498,10 @@ msgstr ""
 msgid "Shares"
 msgstr ""
 
+#: src/components/SheetPreview.tsx
+msgid "Sheets"
+msgstr ""
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Shell"
 msgstr "Оболочка"
@@ -8298,6 +8309,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "This server needs an OAuth client ID."
+msgstr ""
+
+#: src/components/SheetPreview.tsx
+msgid "This sheet is empty."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
