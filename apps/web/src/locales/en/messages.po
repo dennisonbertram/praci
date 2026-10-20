@@ -1896,6 +1896,7 @@ msgstr "Chat with your agents over iMessage"
 msgid "Chat with your agents over iMessage from your Mac"
 msgstr "Chat with your agents over iMessage from your Mac"
 
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Chats"
 msgstr "Chats"
@@ -6476,12 +6477,9 @@ msgid "Person"
 msgstr "Person"
 
 #: src/pages/Inbox.tsx
+#: src/pages/Shell.tsx
 msgid "Personal"
 msgstr "Personal"
-
-#: src/pages/Shell.tsx
-msgid "Personnel"
-msgstr "Personnel"
 
 #: src/components/NotificationSettings.tsx
 msgid "Phone"
@@ -9459,7 +9457,7 @@ msgstr "Year"
 msgid "Yearly"
 msgstr "Yearly"
 
-#: src/pages/Shell.tsx
+#: src/lib/roster-time.ts
 #: src/pages/shell/chat-context.tsx
 msgid "Yesterday"
 msgstr "Yesterday"
