@@ -828,7 +828,7 @@ msgstr "Add your OpenRouter key above to start. The Legal agent then reads your 
 msgid "Added"
 msgstr "Added"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Adding a contact"
 msgstr "Adding a contact"
 
@@ -1292,6 +1292,14 @@ msgstr "Ask the server owner to configure this provider."
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
 msgstr "Ask the server owner to set up the app catalog."
+
+#: src/pages/shell/working-label.ts
+msgid "Asking {agentName}"
+msgstr "Asking {agentName}"
+
+#: src/pages/shell/working-label.ts
+msgid "Asking another agent"
+msgstr "Asking another agent"
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -1987,7 +1995,7 @@ msgstr "Choose the account to connect, then come back here."
 msgid "Choose when it runs"
 msgstr "Choose when it runs"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
 msgstr "Choosing your company in Carta"
 
@@ -4952,7 +4960,6 @@ msgstr "Loading voice providers…"
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/Shell.tsx
@@ -5251,6 +5258,10 @@ msgstr "Messaged {peer}"
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Messaging"
 msgstr "Messaging"
+
+#: src/pages/shell/working-label.ts
+msgid "Messaging you"
+msgstr "Messaging you"
 
 #: src/lib/call-session.ts
 msgid "Microphone failed"
@@ -6147,6 +6158,10 @@ msgstr "Open chat"
 msgid "Open computer settings"
 msgstr "Open computer settings"
 
+#: src/pages/shell/composer-error.tsx
+msgid "Open Data room"
+msgstr "Open Data room"
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr "Open deadlines"
@@ -6190,6 +6205,10 @@ msgstr "Open in Mercury"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
 msgstr "Open Inbox"
+
+#: src/pages/shell/composer-error.tsx
+msgid "Open Legal"
+msgstr "Open Legal"
 
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
@@ -6240,15 +6259,11 @@ msgstr "Opened {path}"
 msgid "Opened its thread."
 msgstr "Opened its thread."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Opening an email"
 msgstr "Opening an email"
 
-#: src/pages/Onboarding.tsx
-msgid "Opening chat…"
-msgstr "Opening chat…"
-
-#: src/App.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Opening your Space…"
 msgstr "Opening your Space…"
 
@@ -6716,7 +6731,7 @@ msgstr "Reading"
 msgid "Reading {0} again"
 msgstr "Reading {0} again"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr "Reading a connected app"
 
@@ -6724,7 +6739,7 @@ msgstr "Reading a connected app"
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading the cap table"
 msgstr "Reading the cap table"
 
@@ -6732,15 +6747,15 @@ msgstr "Reading the cap table"
 msgid "Reading this file. You can keep working while it finishes."
 msgstr "Reading this file. You can keep working while it finishes."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your cap table from Carta"
 msgstr "Reading your cap table from Carta"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your contacts"
 msgstr "Reading your contacts"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr "Reading your finances"
 
@@ -7414,7 +7429,7 @@ msgstr "Saved."
 msgid "Saved. Rotate to reveal."
 msgstr "Saved. Rotate to reveal."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Saving a contact"
 msgstr "Saving a contact"
 
@@ -7573,7 +7588,7 @@ msgstr "Search: {0}"
 msgid "Searching in {openFolderPath}"
 msgstr "Searching in {openFolderPath}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr "Searching your mail"
 
@@ -7845,7 +7860,7 @@ msgstr "Show transcript"
 msgid "Showing the {shown} most connected of {total} items."
 msgstr "Showing the {shown} most connected of {total} items."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Showing the emails it found"
 msgstr "Showing the emails it found"
 
@@ -8520,6 +8535,7 @@ msgstr "These saved settings can't be read. Remove it and add it again."
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Thinking"
 
@@ -9036,7 +9052,7 @@ msgstr "Updating {0}’s Computer"
 msgid "Updating Team Computer"
 msgstr "Updating Team Computer"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Updating the cap table"
 msgstr "Updating the cap table"
 
@@ -9433,7 +9449,7 @@ msgstr "Write"
 msgid "Writing"
 msgstr "Writing"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Writing a draft email"
 msgstr "Writing a draft email"
 

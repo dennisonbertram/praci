@@ -828,7 +828,7 @@ msgstr ""
 msgid "Added"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Adding a contact"
 msgstr ""
 
@@ -1291,6 +1291,14 @@ msgstr ""
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Ask the server owner to set up the app catalog."
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Asking {agentName}"
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Asking another agent"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
@@ -1987,7 +1995,7 @@ msgstr ""
 msgid "Choose when it runs"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Choosing your company in Carta"
 msgstr ""
 
@@ -4952,7 +4960,6 @@ msgstr "Stimmanbieter werden geladen…"
 #: src/pages/Inbox.tsx
 #: src/pages/IntegrationSetup.tsx
 #: src/pages/ModelBackupsSettings.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
 #: src/pages/Shell.tsx
@@ -5250,6 +5257,10 @@ msgstr "Nachricht an {peer} gesendet"
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Messaging"
+msgstr ""
+
+#: src/pages/shell/working-label.ts
+msgid "Messaging you"
 msgstr ""
 
 #: src/lib/call-session.ts
@@ -6147,6 +6158,10 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
+#: src/pages/shell/composer-error.tsx
+msgid "Open Data room"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr ""
@@ -6189,6 +6204,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
+msgstr ""
+
+#: src/pages/shell/composer-error.tsx
+msgid "Open Legal"
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
@@ -6240,15 +6259,11 @@ msgstr "{path} geöffnet"
 msgid "Opened its thread."
 msgstr "Thread geöffnet."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Opening an email"
 msgstr ""
 
-#: src/pages/Onboarding.tsx
-msgid "Opening chat…"
-msgstr "Chat wird geöffnet…"
-
-#: src/App.tsx
+#: src/components/ShellSkeleton.tsx
 msgid "Opening your Space…"
 msgstr "Dein Arbeitsbereich wird geöffnet…"
 
@@ -6716,7 +6731,7 @@ msgstr ""
 msgid "Reading {0} again"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading a connected app"
 msgstr ""
 
@@ -6724,7 +6739,7 @@ msgstr ""
 msgid "Reading Carta…"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading the cap table"
 msgstr ""
 
@@ -6732,15 +6747,15 @@ msgstr ""
 msgid "Reading this file. You can keep working while it finishes."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your cap table from Carta"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your contacts"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Reading your finances"
 msgstr ""
 
@@ -7414,7 +7429,7 @@ msgstr "Gespeichert."
 msgid "Saved. Rotate to reveal."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Saving a contact"
 msgstr ""
 
@@ -7573,7 +7588,7 @@ msgstr ""
 msgid "Searching in {openFolderPath}"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr ""
 
@@ -7845,7 +7860,7 @@ msgstr "Transkript anzeigen"
 msgid "Showing the {shown} most connected of {total} items."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Showing the emails it found"
 msgstr ""
 
@@ -8520,6 +8535,7 @@ msgstr ""
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Denkmodus"
 
@@ -9036,7 +9052,7 @@ msgstr ""
 msgid "Updating Team Computer"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Updating the cap table"
 msgstr ""
 
@@ -9433,7 +9449,7 @@ msgstr ""
 msgid "Writing"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/working-label.ts
 msgid "Writing a draft email"
 msgstr ""
 

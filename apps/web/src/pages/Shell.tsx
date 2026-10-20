@@ -1,6 +1,7 @@
 import { i18n } from "@lingui/core";
 import { plural, t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
+import type { ChatMarkdownProps } from "@rakazo/chat-ui/web";
 import { ChatMarkdown, LinkifiedText } from "@rakazo/chat-ui/web";
 import type {
   AgentSkillCatalogEntry,
@@ -158,6 +159,7 @@ import type {
   RefObject,
 } from "react";
 import {
+  createContext,
   Fragment,
   lazy,
   memo,
@@ -210,6 +212,7 @@ import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { MailApprovalCard } from "../components/MailApprovalCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
+import { OpeningSpace } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import { SidebarPagesGroup } from "../components/SidebarPagesGroup";
@@ -425,6 +428,7 @@ import {
 } from "./shell/message-cards";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
+import { toolActionLabel } from "./shell/working-label";
 import { WindowChrome } from "./WindowChrome";
 
 const ArtifactsPage = lazy(() =>
@@ -1084,6 +1088,11 @@ export function ShellPage() {
   computerOpenRef.current = computerOpen;
   computerBotIdRef.current = computerBotId ?? active?.id;
   const activeGroup = groups.find((group) => group.id === groupId);
+  const opening = chatIsOpening({
+    hasChat: Boolean(active || activeGroup),
+    botsLoaded: initialBotsLoaded,
+    routeWaiting: routeBot.waiting,
+  });
   const forwardedName = forwarded
     ? (groups.find((group) => group.id === forwarded.groupId)?.name ?? t`the group`)
     : "";
@@ -3754,6 +3763,7 @@ export function ShellPage() {
                 // "" is a rejected key: open the provider the failed run used.
                 openSettings("models", provider || (activeSnapshot?.run?.modelProvider ?? ""))
               }
+              onNavigate={navigate}
               sending={sending}
               fileInputRef={fileInputRef}
               onAttachmentPick={onAttachmentPick}
@@ -5046,7 +5056,7 @@ export function ShellPage() {
                   >
                     {inGroup
                       ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                      : (active?.name ?? t`Select a bot`)}
+                      : (active?.name ?? (opening ? "" : t`Select a bot`))}
                   </span>
                 </span>
               </button>
@@ -5202,7 +5212,9 @@ export function ShellPage() {
                 : undefined
             }
           />
-        ) : !active && !activeGroup && initialBotsLoaded && !routeBot.waiting ? (
+        ) : opening ? (
+          <OpeningSpace />
+        ) : !active && !activeGroup ? (
           <div className="grid flex-1 place-items-center">
             <Button onClick={() => void createBot()}>
               <Plus size={16} aria-hidden="true" />
@@ -6351,9 +6363,29 @@ export function ShellPage() {
 
   return (
     <AvatarStyleProvider value={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}>
-      {missingPath === pathname ? <NotFoundPage /> : shell}
+      <AppNavigateContext.Provider value={navigate}>
+        {missingPath === pathname ? <NotFoundPage /> : shell}
+      </AppNavigateContext.Provider>
     </AvatarStyleProvider>
   );
+}
+
+/** Opens an in-app path through the router; unset outside the page, where links load normally. */
+const AppNavigateContext = createContext<((href: string) => void) | undefined>(undefined);
+
+/** Chat markdown whose /app/ links navigate in place instead of reloading the page. */
+function ThreadMarkdown(props: ChatMarkdownProps) {
+  const onNavigate = useContext(AppNavigateContext);
+  return <ChatMarkdown {...props} onNavigate={onNavigate} />;
+}
+
+/** Whether the pane is still waiting for its chat: the bot list loads, or the route's bot is not in it yet. */
+export function chatIsOpening(input: {
+  hasChat: boolean;
+  botsLoaded: boolean;
+  routeWaiting: boolean;
+}): boolean {
+  return !input.hasChat && (!input.botsLoaded || input.routeWaiting);
 }
 
 /** A thin line in the bot's accent (neutral without one) marking where unread messages start. */
@@ -6522,38 +6554,6 @@ export const Transcript = memo(function Transcript({
                 ? t`${workingBotName} is working`
                 : t`Bots are working`;
   const waitingLabel = (service: string) => t`Still waiting on ${service}`;
-  function toolActionLabel(action: ToolAction | undefined): string | undefined {
-    switch (action) {
-      case "contact-add":
-        return t`Adding a contact`;
-      case "contact-save":
-        return t`Saving a contact`;
-      case "contacts-read":
-        return t`Reading your contacts`;
-      case "cap-table-read":
-        return t`Reading the cap table`;
-      case "cap-table-update":
-        return t`Updating the cap table`;
-      case "carta-cap-table":
-        return t`Reading your cap table from Carta`;
-      case "carta-company":
-        return t`Choosing your company in Carta`;
-      case "connected-app":
-        return t`Reading a connected app`;
-      case "mail-search":
-        return t`Searching your mail`;
-      case "mail-open":
-        return t`Opening an email`;
-      case "mail-draft":
-        return t`Writing a draft email`;
-      case "mail-show":
-        return t`Showing the emails it found`;
-      case "finance":
-        return t`Reading your finances`;
-      default:
-        return undefined;
-    }
-  }
   const [quoteDraft, setQuoteDraft] = useState<{
     message: ThreadMessage;
     text: string;
@@ -6865,9 +6865,16 @@ export const Transcript = memo(function Transcript({
 
   return (
     <div className="@container relative flex min-h-0 flex-1">
+      {/* Announces the working phase once per change; the elapsed timer stays out of it. */}
+      <div role="status" aria-live="polite" className="sr-only">
+        {running ? workingLabel : ""}
+      </div>
       <div
         ref={scrollRef}
         data-testid="transcript"
+        role="log"
+        aria-live="polite"
+        aria-relevant="additions"
         onPointerDown={(event) => {
           lastScrollTop.current = event.currentTarget.scrollTop;
           autoScrolling.current = false;
@@ -7301,6 +7308,7 @@ export const Composer = memo(function Composer({
   onRunErrorPresented,
   onDismissError,
   onOpenModelSettings,
+  onNavigate,
   sending,
   fileInputRef,
   onAttachmentPick,
@@ -7335,6 +7343,7 @@ export const Composer = memo(function Composer({
   onDismissError: () => void;
   /** Opens the Models settings a model-setup run error points to. */
   onOpenModelSettings?: (provider?: string) => void;
+  onNavigate?: (path: string) => void;
   sending: boolean;
   fileInputRef: RefObject<HTMLInputElement | null>;
   onAttachmentPick: (files: FileList | null) => boolean;
@@ -7857,6 +7866,7 @@ export const Composer = memo(function Composer({
           ref={runErrorRef}
           message={(sendError ?? runError) as string}
           onOpenModelSettings={!sendError ? onOpenModelSettings : undefined}
+          onNavigate={!sendError ? onNavigate : undefined}
           onDismiss={() => {
             onDismissError();
             window.requestAnimationFrame(() => textareaRef.current?.focus());
@@ -8857,7 +8867,9 @@ const MessageView = memo(function MessageView({
                     key={i}
                     data-quote-message-id={block.kind === "text" ? quoteMessageId : undefined}
                   >
-                    <ChatMarkdown streaming={block.kind === "progress"}>{block.text}</ChatMarkdown>
+                    <ThreadMarkdown streaming={block.kind === "progress"}>
+                      {block.text}
+                    </ThreadMarkdown>
                   </div>
                 );
               }
@@ -8962,7 +8974,7 @@ const MessageView = memo(function MessageView({
                 className="max-w-full rounded-[20px] bg-muted px-[18px] py-3 text-[15.5px] leading-[1.5] text-foreground/90"
                 dir="auto"
               >
-                <ChatMarkdown streaming>{block.text}</ChatMarkdown>
+                <ThreadMarkdown streaming>{block.text}</ThreadMarkdown>
               </div>
             </div>
           );
@@ -8997,9 +9009,9 @@ const MessageView = memo(function MessageView({
               <div className="mt-2 text-[13.5px] text-muted-foreground">{block.task}</div>
               {block.progress || block.result ? (
                 <div className="mt-2.5 text-[14.5px] leading-[1.5] text-foreground/75">
-                  <ChatMarkdown streaming={running}>
+                  <ThreadMarkdown streaming={running}>
                     {block.result || block.progress || ""}
-                  </ChatMarkdown>
+                  </ThreadMarkdown>
                 </div>
               ) : null}
             </div>
@@ -9121,7 +9133,7 @@ const MessageView = memo(function MessageView({
                 dir="auto"
               >
                 <div data-quote-message-id={quoteMessageId}>
-                  <ChatMarkdown>{block.text}</ChatMarkdown>
+                  <ThreadMarkdown>{block.text}</ThreadMarkdown>
                 </div>
                 {voiceReady ? (
                   <button
@@ -9241,7 +9253,7 @@ const MessageView = memo(function MessageView({
                 </span>
               </div>
               <div className="my-2.5 text-[14.5px] leading-[1.5] text-foreground/75">
-                <ChatMarkdown>{block.text}</ChatMarkdown>
+                <ThreadMarkdown>{block.text}</ThreadMarkdown>
               </div>
               <Button
                 type="button"
