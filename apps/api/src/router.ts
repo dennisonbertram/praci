@@ -450,6 +450,12 @@ import {
   seedBlankBotGreeting,
   startOnboarding,
 } from "./onboarding.js";
+import {
+  beginOpenRouterOAuth,
+  completeOpenRouterOAuth,
+  OPENROUTER_OAUTH_PROVIDER,
+  OpenRouterOAuthError,
+} from "./openrouter-oauth.js";
 import { rememberedMessageIds, rememberThreadMessage } from "./remember-message.js";
 import { listRoutineRuns } from "./routine-runs.js";
 import { listSpaceRuns } from "./runs.js";
@@ -1816,6 +1822,59 @@ export function createRouter(deps: RouterDeps) {
         }
         return result.value;
       }),
+      beginOpenRouterOAuth: authed.models.beginOpenRouterOAuth.handler(
+        async ({ context, input }) => {
+          try {
+            return await beginOpenRouterOAuth({
+              prisma: deps.prisma,
+              secrets: deps.secrets,
+              scope: { userId: context.actor.userId, spaceId: context.actor.spaceId },
+              webOrigin: deps.env.webOrigin,
+              redirectUri: input.redirectUri,
+            });
+          } catch (error) {
+            throw new ORPCError("BAD_REQUEST", {
+              message:
+                error instanceof OpenRouterOAuthError ? error.message : "Could not start sign-in",
+            });
+          }
+        },
+      ),
+      completeOpenRouterOAuth: authed.models.completeOpenRouterOAuth.handler(
+        async ({ context, input }) => {
+          let apiKey: string;
+          try {
+            apiKey = await completeOpenRouterOAuth({
+              prisma: deps.prisma,
+              secrets: deps.secrets,
+              scope: { userId: context.actor.userId, spaceId: context.actor.spaceId },
+              state: input.state,
+              code: input.code,
+              ...(deps.exchangeFetch ? { fetchImpl: deps.exchangeFetch } : {}),
+            });
+          } catch (error) {
+            throw new ORPCError("BAD_REQUEST", {
+              message:
+                error instanceof OpenRouterOAuthError ? error.message : "Could not finish sign-in",
+            });
+          }
+          // Stored exactly like a pasted key; the key never leaves the server.
+          return persistModelCredential(
+            deps,
+            context.actor,
+            {
+              provider: OPENROUTER_OAUTH_PROVIDER,
+              plaintext: buildModelConnectPlaintext({
+                provider: OPENROUTER_OAUTH_PROVIDER,
+                apiKey,
+              }),
+              label: "OpenRouter",
+              signal: context.signal,
+            },
+            codexCatalog,
+          );
+        },
+      ),
       cancelOAuth: authed.models.cancelOAuth.handler(async ({ context, input }) => {
         await deps.oauthLogins.cancel(input.loginId, context.actor);
         return { ok: true as const };

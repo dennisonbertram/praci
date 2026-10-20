@@ -28,6 +28,7 @@ test("onboarding requires a model when the deployment has none", async ({ page }
   await expect(page.getByRole("heading", { name: "Connect a model" })).toBeVisible({
     timeout: 20_000,
   });
+  await page.getByText("Use an API key instead").click();
 
   await expect(page.getByRole("button", { name: "Skip for now" })).toBeHidden();
   const continueButton = page.getByRole("button", { name: "Continue", exact: true });

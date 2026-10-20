@@ -360,7 +360,7 @@ msgstr "{first} answers by default. Type @ and a name to ask one bot, or ask eve
 msgid "{folders, plural, one {# folder} other {# folders}}"
 msgstr "{folders, plural, one {# folder} other {# folders}}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "{from} handed off to {to}"
 msgstr "{from} handed off to {to}"
 
@@ -432,7 +432,7 @@ msgstr "{name} isn't available on this server."
 msgid "{name}, paid with {paidWith}"
 msgstr "{name}, paid with {paidWith}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "{newCount, plural, one {# new message} other {# new messages}}"
 msgstr "{newCount, plural, one {# new message} other {# new messages}}"
 
@@ -516,7 +516,7 @@ msgstr "{tokens, plural, one {# token of AI text} other {# tokens of AI text}}"
 msgid "{unpriced} unpriced"
 msgstr "{unpriced} unpriced"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} is working"
 
@@ -1213,7 +1213,7 @@ msgstr "Archive {0}"
 msgid "Archive all"
 msgstr "Archive all"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "archived"
 msgstr "archived"
 
@@ -1244,7 +1244,7 @@ msgstr "Archived {count}"
 msgid "Archived {n}"
 msgstr "Archived {n}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Archived. Chat, memory, and files kept."
 msgstr "Archived. Chat, memory, and files kept."
 
@@ -1361,7 +1361,6 @@ msgid "Attached {path}"
 msgstr "Attached {path}"
 
 #: src/pages/shell/chat-context.tsx
-#: src/pages/shell/composer.tsx
 msgid "Attachment"
 msgstr "Attachment"
 
@@ -1591,13 +1590,14 @@ msgstr "Booting live desktop…"
 msgid "Booting up {0}’s computer"
 msgstr "Booting up {0}’s computer"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "bot"
 msgstr "bot"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Bot"
 msgstr "Bot"
 
@@ -1625,7 +1625,7 @@ msgstr "Bot's model"
 msgid "Bots"
 msgstr "Bots"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Bots are working"
 msgstr "Bots are working"
 
@@ -2284,8 +2284,8 @@ msgid "Compose"
 msgstr "Compose"
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "Computer"
 
@@ -2571,7 +2571,7 @@ msgstr "Copied"
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Copy"
 msgstr "Copy"
 
@@ -3489,7 +3489,7 @@ msgstr "Delete space"
 msgid "Delete the folder {0}?"
 msgstr "Delete the folder {0}?"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "deleted"
 msgstr "deleted"
 
@@ -3623,9 +3623,9 @@ msgstr "Disconnecting…"
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Dismiss"
 msgstr "Dismiss"
 
@@ -4206,6 +4206,10 @@ msgstr "Finished"
 #: src/pages/McpOAuthCallback.tsx
 msgid "Finishing MCP connection…"
 msgstr "Finishing MCP connection…"
+
+#: src/pages/McpOAuthCallback.tsx
+msgid "Finishing sign-in…"
+msgstr "Finishing sign-in…"
 
 #: src/pages/finance/FinanceSpend.tsx
 msgid "First seen"
@@ -4791,7 +4795,7 @@ msgstr "Items"
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Jump to latest"
 msgstr "Jump to latest"
 
@@ -4860,11 +4864,11 @@ msgstr "Last charge"
 msgid "Last month vs 3 mo ago"
 msgstr "Last month vs 3 mo ago"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Last run failed: {failedNote}"
 msgstr "Last run failed: {failedNote}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Last run failed."
 msgstr "Last run failed."
 
@@ -5011,7 +5015,7 @@ msgstr "Listening"
 msgid "Live data, enrichment and generation tools"
 msgstr "Live data, enrichment and generation tools"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Load earlier messages"
 msgstr "Load earlier messages"
 
@@ -5077,7 +5081,7 @@ msgstr "Loading voice providers…"
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineRunHistory.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Loading…"
 msgstr "Loading…"
 
@@ -5340,6 +5344,7 @@ msgstr "Merge"
 
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/shell/chat-context.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Message"
@@ -5357,7 +5362,7 @@ msgstr "Message composer"
 msgid "Message event"
 msgstr "Message event"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Message from {peer}"
 msgstr "Message from {peer}"
 
@@ -5365,7 +5370,7 @@ msgstr "Message from {peer}"
 msgid "Message…"
 msgstr "Message…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Messaged {peer}"
 msgstr "Messaged {peer}"
 
@@ -5507,7 +5512,7 @@ msgstr "Monthly spend · {0} – {1}"
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "More"
 msgstr "More"
 
@@ -5680,7 +5685,7 @@ msgstr "Never changes your account"
 msgid "new"
 msgstr "new"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr "New"
 
@@ -6249,6 +6254,7 @@ msgstr "Only if the server does not use sign-in"
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Open"
 msgstr "Open"
 
@@ -6396,7 +6402,7 @@ msgstr "OpenAI-compatible server URL"
 msgid "Opened {path}"
 msgstr "Opened {path}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Opened its thread."
 msgstr "Opened its thread."
 
@@ -6666,7 +6672,6 @@ msgid "Phone"
 msgstr "Phone"
 
 #: src/pages/shell/chat-context.tsx
-#: src/pages/shell/composer.tsx
 msgid "Photo"
 msgstr "Photo"
 
@@ -6851,15 +6856,15 @@ msgstr "Queued"
 msgid "Quick status check from everyone, please"
 msgstr "Quick status check from everyone, please"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Quote"
 msgstr "Quote"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "React"
 msgstr "React"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Reactions"
 msgstr "Reactions"
 
@@ -7125,11 +7130,11 @@ msgstr "Release interrupted computer?"
 msgid "Relevance"
 msgstr "Relevance"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Remember"
 msgstr "Remember"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Remembered"
 msgstr "Remembered"
 
@@ -7235,7 +7240,7 @@ msgstr "Remove the {0} – {1} statement?"
 msgid "Remove webhook"
 msgstr "Remove webhook"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Removed with chat, computer, and memory."
 msgstr "Removed with chat, computer, and memory."
 
@@ -7321,7 +7326,7 @@ msgstr "Replace value"
 #: src/components/ComposeEmail.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Reply"
 msgstr "Reply"
 
@@ -7666,11 +7671,11 @@ msgstr "Scan now"
 msgid "Scanning…"
 msgstr "Scanning…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Scheduled run failed: {failedNote}"
 msgstr "Scheduled run failed: {failedNote}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Scheduled run failed."
 msgstr "Scheduled run failed."
 
@@ -8118,6 +8123,15 @@ msgstr "Sign in to your existing account to link SSO"
 msgid "Sign in with {service}"
 msgstr "Sign in with {service}"
 
+#: src/pages/Onboarding.tsx
+msgid "Sign in with ChatGPT"
+msgstr "Sign in with ChatGPT"
+
+#: src/pages/ModelSettingsOverlay.tsx
+#: src/pages/Onboarding.tsx
+msgid "Sign in with OpenRouter"
+msgstr "Sign in with OpenRouter"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Sign in with the subscription, or test the API key instead."
 msgstr "Sign in with the subscription, or test the API key instead."
@@ -8149,6 +8163,10 @@ msgstr "Sign-in was cancelled or did not finish. Try again."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Sign-in was denied or failed."
 msgstr "Sign-in was denied or failed."
+
+#: src/pages/Onboarding.tsx
+msgid "Signed in with {signedInLabel}"
+msgstr "Signed in with {signedInLabel}"
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Signed out. Reconnect to keep reading this account's mail."
@@ -8307,7 +8325,7 @@ msgstr "Spam"
 msgid "Spam {0}"
 msgstr "Spam {0}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Speak"
 msgstr "Speak"
 
@@ -8319,7 +8337,7 @@ msgstr "Speak + transcribe"
 msgid "Speak only"
 msgstr "Speak only"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Speak this reply"
 msgstr "Speak this reply"
 
@@ -8385,7 +8403,7 @@ msgid "Start recording"
 msgstr "Start recording"
 
 #: src/pages/ActivityList.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Starting"
 msgstr "Starting"
 
@@ -8431,17 +8449,18 @@ msgstr "Step 2 of 3"
 msgid "Steps"
 msgstr "Steps"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
 msgstr "Still waiting on {service}"
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/composer.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Stop"
 msgstr "Stop"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Stop speaking"
 msgstr "Stop speaking"
 
@@ -8465,7 +8484,7 @@ msgstr "Streamable HTTP"
 msgid "Sub-folders"
 msgstr "Sub-folders"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "subagent"
 msgstr "subagent"
 
@@ -8765,8 +8784,8 @@ msgstr "These saved settings can't be read. Remove it and add it again."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
-#: src/pages/Shell.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/transcript.tsx
 #: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Thinking"
@@ -9407,6 +9426,10 @@ msgstr "Use {hostLabel}"
 msgid "Use a found model"
 msgstr "Use a found model"
 
+#: src/pages/Onboarding.tsx
+msgid "Use an API key instead"
+msgstr "Use an API key instead"
+
 #: src/lib/model-connection-preflight.ts
 msgid "Use Connect to verify the key."
 msgstr "Use Connect to verify the key."
@@ -9724,7 +9747,7 @@ msgstr "Workload and key people, from your connected tools"
 msgid "Write"
 msgstr "Write"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "Writing"
 msgstr "Writing"
 
@@ -9764,6 +9787,7 @@ msgstr "Yield"
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/transcript.tsx
 msgid "You"
 msgstr "You"
 

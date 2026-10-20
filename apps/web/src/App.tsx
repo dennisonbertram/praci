@@ -157,6 +157,16 @@ function SessionApp() {
             element={user ? <McpOAuthCallbackPage /> : <Navigate to="/sign-in" replace />}
           />
           <Route
+            path="/models/openrouter/callback"
+            element={
+              user ? (
+                <McpOAuthCallbackPage provider="openrouter" />
+              ) : (
+                <Navigate to="/sign-in" replace />
+              )
+            }
+          />
+          <Route
             path="/integrations/google/callback"
             element={user ? <GoogleOAuthCallbackPage /> : <Navigate to="/sign-in" replace />}
           />
