@@ -66,6 +66,33 @@ export function isTooManyDatabaseConnections(error: unknown): boolean {
   return false;
 }
 
+const INTERRUPTION_CODES = new Set(["P1001", "P1008", "P1017", "P2024", "57P01", "ECONNRESET"]);
+const INTERRUPTION_MESSAGES = [
+  "Engine is not yet connected",
+  "Response from the Engine was empty",
+  "Client has already been disconnected",
+  "Transaction already closed",
+  "Transaction API error",
+  "Cannot use a pool after calling end",
+  "Connection terminated",
+  "terminating connection due to administrator command",
+];
+
+/** True for connectivity and shutdown failures: the work did not fail, the database went away. */
+export function isDatabaseInterruption(error: unknown): boolean {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    const code = "code" in current ? current.code : undefined;
+    if (typeof code === "string" && INTERRUPTION_CODES.has(code)) return true;
+    const message = current instanceof Error ? current.message : "";
+    if (INTERRUPTION_MESSAGES.some((text) => message.includes(text))) return true;
+    current = current instanceof Error ? current.cause : undefined;
+  }
+  return false;
+}
+
 export async function retryOnTooManyConnections<T>(
   operation: () => Promise<T>,
   options: {
