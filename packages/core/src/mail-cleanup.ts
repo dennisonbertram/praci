@@ -22,10 +22,10 @@ export interface CleanupCandidate {
   skipInbox: boolean;
 }
 
-/** Bulk, rarely read, never written to, not marked important, not spam-like, not already skipped. */
+/** Newsletter or non-updates bulk (receipts and alerts are updates), rarely read, never written to, not marked important, not spam-like, not already skipped. */
 export function isCleanupPreselected(sender: CleanupCandidate): boolean {
   const bulk =
-    sender.bulk || sender.newestPile === "updates" || sender.newestPile === "newsletters";
+    sender.newestPile === "newsletters" || (sender.bulk && sender.newestPile !== "updates");
   return (
     bulk &&
     sender.messageCount >= CLEANUP_MIN_MESSAGES &&

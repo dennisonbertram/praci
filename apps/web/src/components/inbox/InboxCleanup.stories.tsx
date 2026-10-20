@@ -195,3 +195,56 @@ export const TwoAccounts: Story = {
       },
     }),
 };
+
+const waiting = (connectionId: string, address: string, name: string) =>
+  sender(address, name, { connectionId, skipInbox: true, preselected: false, rule: "pending" });
+
+/** Skipped senders wait for permission to make Gmail filters. One link starts the sign-in. */
+export const AlsoInGmail: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.cleanup.list": {
+        accounts: [
+          {
+            connectionId: "conn_demo",
+            label: "demo@example.test",
+            senderRules: "needs_permission",
+          },
+        ],
+        senders: [
+          waiting("conn_demo", "digest@harbor.example.test", "Harbor Digest"),
+          ...senders.slice(0, 2),
+        ],
+        syncedAt: minutesAgo(3),
+      },
+    }),
+  args: { onAllowMailRules: () => undefined },
+};
+
+/** Two accounts: the link names the account it is for, and only accounts that need it get one. */
+export const AlsoInGmailTwoAccounts: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.cleanup.list": {
+        accounts: [
+          {
+            connectionId: "conn_demo",
+            label: "demo@example.test",
+            senderRules: "needs_permission",
+          },
+          { connectionId: "conn_work", label: "work@example.test", senderRules: "ready" },
+        ],
+        senders: [
+          waiting("conn_demo", "digest@harbor.example.test", "Harbor Digest"),
+          sender("alerts@ci.example.test", "Build Alerts", {
+            connectionId: "conn_work",
+            skipInbox: true,
+            preselected: false,
+            rule: "active",
+          }),
+        ],
+        syncedAt: minutesAgo(3),
+      },
+    }),
+  args: { onAllowMailRules: () => undefined },
+};

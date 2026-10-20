@@ -232,14 +232,27 @@ export function appKey(item: Pick<ConnectionCatalogItem, "connectorId" | "slug">
 
 /**
  * An app's detail page. `connect` opens its connect dialog on arrival; `next` (a path under /app) is
- * where the person lands once connected.
+ * where the person lands once connected. `reconnect` opens the dialog to sign the connection in again.
  */
 export function appPath(
   item: Pick<ConnectionCatalogItem, "connectorId" | "slug">,
-  { connect, next }: { connect?: boolean; next?: string } = {},
+  {
+    connect,
+    next,
+    reconnect,
+  }: {
+    connect?: boolean;
+    next?: string;
+    /** A connection to sign in again with permission to make Gmail filters, replacing it. */
+    reconnect?: string;
+  } = {},
 ): string {
   const query = new URLSearchParams();
   if (connect) query.set("connect", "1");
+  if (reconnect) {
+    query.set("reconnect", reconnect);
+    query.set("permission", "mail_rules");
+  }
   if (next) query.set("next", next);
   const suffix = query.toString() ? `?${query}` : "";
   return `/app/integrations/app/${encodeURIComponent(item.connectorId)}/${encodeURIComponent(item.slug)}${suffix}`;

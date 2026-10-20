@@ -573,6 +573,37 @@ it("shows the figures, syncs once, and lets the period chips change the spend nu
   );
 });
 
+it("keeps the period in the URL, also when the breakdown mode changes", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  await show("/app/finance?period=quarter");
+  await flush();
+  const selected = () => container.querySelector('[role="tab"][aria-selected="true"]')?.textContent;
+  expect(selected()).toBe("Quarter");
+  await act(async () => button("Vendor")?.click());
+  expect(selected()).toBe("Quarter");
+  const week = [...container.querySelectorAll('[role="tab"]')].find(
+    (n) => n.textContent === "Week",
+  );
+  await act(async () => (week as HTMLElement).click());
+  expect(selected()).toBe("Week");
+  expect(container.querySelector('a[href="/app/finance/spend?period=week"]')).not.toBeNull();
+});
+
+it("leaves out the comparison when nothing was spent in the previous range", async () => {
+  const base = connectedOverview();
+  rpcMock.overview.mockResolvedValue({
+    ...base,
+    spendTotals: {
+      ...base.spendTotals,
+      week: { ...base.spendTotals.week, previousCents: 0, changePct: null },
+    },
+  });
+  await show("/app/finance?period=week");
+  await flush();
+  expect(container.textContent).toContain("Spent Oct");
+  expect(container.textContent).not.toMatch(/ vs /);
+});
+
 it("switches the breakdown between category and vendor", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   await show("/app/finance");
@@ -597,6 +628,17 @@ it("puts the paid-with text on the subscription row and links the row to its ven
   const link = row?.querySelector("a");
   expect(link?.getAttribute("href")).toBe("/app/finance/vendor/acme-hosting");
   expect(link?.getAttribute("aria-label")).toBe("Acme Hosting, paid with Brex ••0001");
+});
+
+it("labels the subscription figures by what they measure", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  await show("/app/finance");
+  await flush();
+  const heads = [...container.querySelectorAll("thead th")].map((th) => th.textContent);
+  expect(heads).toContain("Per month");
+  expect(heads).toContain("Change, 3 months");
+  expect(heads).not.toContain("Typical month");
+  expect(container.querySelector('th[title*="vendor page"]')?.textContent).toBe("Per month");
 });
 
 it("offers Ask only while the panel is closed", async () => {

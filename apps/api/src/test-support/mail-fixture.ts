@@ -90,18 +90,27 @@ export async function createMailFixture(label: string, databaseUrl: string) {
   };
   const deps = { prisma, mail, jobs };
 
-  const connect = async (who: Actor, ref: string, status = "connected") =>
+  /** `scope`: the OAuth scopes the connection records, as a native Google connection does. */
+  const connect = async (
+    who: Actor,
+    ref: string,
+    status = "connected",
+    options: { connectorId?: string; scope?: string } = {},
+  ) =>
     (
       await prisma.connection.create({
         data: {
           spaceId: who.spaceId,
           userId: who.userId,
-          connectorId: "emulator",
+          connectorId: options.connectorId ?? "emulator",
           provider: "gmail",
           displayName: `Mailbox ${ref}`,
           status,
           providerRef: ref,
-          metadata: { mailAddress: `${ref}@example.test` },
+          metadata: {
+            mailAddress: `${ref}@example.test`,
+            ...(options.scope === undefined ? {} : { scope: options.scope }),
+          },
         },
       })
     ).id;

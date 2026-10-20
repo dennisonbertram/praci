@@ -33,6 +33,7 @@ import {
 } from "react-native";
 import type { ChatMarkdownProps } from "./markdown";
 import {
+  HideAmountsContext,
   inlineMarkdownImageSrc,
   LinkFaviconsContext,
   LinkFaviconsPausedContext,
@@ -48,8 +49,8 @@ import {
   sanitizeMarkdownUrl,
   useLinkFavicon,
 } from "./markdown";
-
 import { useMarkdownLinkAppOrigin, useMarkdownLinkCopy } from "./markdown-link-prompt";
+import { maskCurrencyText } from "./mask-currency";
 
 function keepMarkdownLinkToken(_url: string) {
   return true;
@@ -954,11 +955,12 @@ type LinkifiedTextProps = {
 };
 
 export const LinkifiedText = memo(function LinkifiedText({
-  children,
+  children: raw,
   color,
   linkColor,
   palette,
 }: LinkifiedTextProps) {
+  const children = useContext(HideAmountsContext) ? maskCurrencyText(raw) : raw;
   const openLink = useNativeLinkConfirm();
   const labelStyle: TextStyle = {
     color,
@@ -1015,11 +1017,12 @@ export const LinkifiedText = memo(function LinkifiedText({
 });
 
 export const ChatMarkdown = memo(function ChatMarkdown({
-  children,
+  children: raw,
   streaming = false,
   palette = darkTokens,
   colorScheme = "dark",
 }: ChatMarkdownProps & { palette?: ColorTokens; colorScheme?: ResolvedAppearance }) {
+  const children = useContext(HideAmountsContext) ? maskCurrencyText(raw) : raw;
   const openLink = useNativeLinkConfirm();
   const styles = useMemo(() => markdownStyles(palette), [palette]);
   const sharedProps = {
@@ -1097,6 +1100,6 @@ const layout = StyleSheet.create({
 });
 
 export type { ChatMarkdownProps, LinkFavicons } from "./markdown";
-export { LinkFaviconsContext, RemoteImagesContext } from "./markdown";
+export { HideAmountsContext, LinkFaviconsContext, RemoteImagesContext } from "./markdown";
 
 export { MarkdownLinkPromptProvider } from "./markdown-link-prompt";

@@ -1,6 +1,6 @@
 import { Trans } from "@lingui/react/macro";
 import { Button } from "@rakazo/ui-web";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
 const SHOWN_MS = 8000;
@@ -15,10 +15,13 @@ export function SidebarUndoNotice({
   onUndo: () => void;
   onDismiss: () => void;
 }) {
+  // The parent passes a new onDismiss every render; the timer must not restart with it.
+  const dismiss = useRef(onDismiss);
+  dismiss.current = onDismiss;
   useEffect(() => {
-    const timer = window.setTimeout(onDismiss, SHOWN_MS);
+    const timer = window.setTimeout(() => dismiss.current(), SHOWN_MS);
     return () => window.clearTimeout(timer);
-  }, [onDismiss]);
+  }, [message]);
   return createPortal(
     <div
       role="status"

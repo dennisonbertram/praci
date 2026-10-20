@@ -46,6 +46,7 @@ import {
 } from "../../lib/appearance";
 import { replaceWithSignIn } from "../../lib/auth-routing";
 import { promptAccountDeletion } from "../../lib/delete-account-prompt";
+import { setHideAmounts, useHideAmounts } from "../../lib/hide-amounts";
 import { setUiLocale, useI18n } from "../../lib/i18n";
 import type { LiveNotificationSettings } from "../../lib/live-notifications";
 import {
@@ -126,6 +127,7 @@ export default function Account() {
     getCachedRemoteImagesEnabled,
     () => false,
   );
+  const hideAmounts = useHideAmounts();
   const loadRemoteImagesLabel = t("Load web images automatically");
   const [advancedOpen, setAdvancedOpen] = useState(false);
   const stackOptions = useStackedSettings();
@@ -582,6 +584,11 @@ export default function Account() {
         </SettingsGroup>
 
         <SettingsGroup>
+          <SettingsSwitch
+            label={t("Hide amounts")}
+            value={hideAmounts}
+            onChange={(hidden) => void setHideAmounts(hidden)}
+          />
           <SettingsRow
             accessibilityRole="button"
             accessibilityLabel={t("Advanced")}

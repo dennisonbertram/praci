@@ -53,6 +53,16 @@ describe("sidebarGroupsForSpaces", () => {
     expect(group).toMatchObject({ title: "Personnel", spaceName: "Personal", relabeled: true });
   });
 
+  it("does not relabel a lone space whose name already matches the label", () => {
+    const [group] = sidebarGroupsForSpaces(
+      [space("space-1", "Personal")],
+      "",
+      undefined,
+      "Personal",
+    );
+    expect(group).toMatchObject({ title: "Personal", spaceName: "Personal", relabeled: false });
+  });
+
   it("keeps the Personnel heading above pinned agents, folders and the rest", () => {
     const pinned = { ...chat("b1", "Chief"), pinned: true };
     const filed = { ...chat("b2", "Ops"), sectionId: "s1" };

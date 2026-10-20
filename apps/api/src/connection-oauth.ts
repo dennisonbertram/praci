@@ -24,6 +24,8 @@ export async function completeNativeOAuth(options: {
   lock: (tx: Prisma.TransactionClient, connectorId: string, provider: string) => Promise<void>;
   /** Gives a newly connected private account its agent; a no-op when it has one or is not private. */
   provision?: (connectionId: string) => Promise<void>;
+  /** Runs once the connection is saved, for work that must not delay or fail the connect. */
+  afterConnect?: (connectionId: string) => void;
 }) {
   const { prisma, actor, connectorId, state } = options;
   const owner = { spaceId: actor.spaceId, userId: actor.userId };
@@ -50,7 +52,7 @@ export async function completeNativeOAuth(options: {
   } catch (error) {
     throw new ORPCError("BAD_REQUEST", { message: connectionFailureMessage(error) });
   }
-  const { connectionRef, secretId } = completed;
+  const { connectionRef, secretId, scope } = completed;
   if (!secretId)
     throw new ORPCError("BAD_REQUEST", { message: "Connection did not return a credential" });
 
@@ -94,6 +96,14 @@ export async function completeNativeOAuth(options: {
           // own rows, if it synced already, are rebuilt from its mail on the next sync.
           await tx.mailSenderStat.deleteMany({ where: { connectionId: current.id } });
           await tx.mailSenderStat.updateMany({ where: { connectionId: taken.id }, data: next });
+          // Skip decisions and the action log cascade-delete with the old row, so they move too. A
+          // decision keeps its Gmail filter id: it is the same Google account.
+          await tx.mailSenderDecision.deleteMany({ where: { connectionId: current.id } });
+          await tx.mailSenderDecision.updateMany({
+            where: { connectionId: taken.id },
+            data: next,
+          });
+          await tx.mailActionLog.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.inboxTodo.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
           // A Calendar or Drive agent is keyed by its connection, so it follows the new id; the
@@ -125,7 +135,8 @@ export async function completeNativeOAuth(options: {
             status: "connected",
             providerRef: connectionRef,
             secretId,
-            metadata: {},
+            // The granted scopes tell the mail provider whether it may manage Gmail filters.
+            metadata: scope ? { scope } : {},
             ...carried,
           },
         });
@@ -143,6 +154,11 @@ export async function completeNativeOAuth(options: {
   // A replacement of a private connection that had no agent gets one too; the provisioner does
   // nothing for a row that is not private or already has one.
   await options.provision?.(row.id).catch(() => undefined);
+  try {
+    options.afterConnect?.(row.id);
+  } catch {
+    // Best effort.
+  }
   const final =
     (await prisma.connection.findFirst({ where: { id: row.id, ...owner } }).catch(() => null)) ??
     row;

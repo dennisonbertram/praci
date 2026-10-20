@@ -87,3 +87,16 @@ it("saves the file instead when the new tab is refused", async () => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
+
+it("downloads a file the browser cannot show, and never opens a tab for it", async () => {
+  const open = vi.spyOn(window, "open");
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(new Blob(["<script>"]))));
+  URL.createObjectURL = vi.fn(() => "blob:x");
+  URL.revokeObjectURL = vi.fn();
+  const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => undefined);
+  await openDataRoomItem({ id: "i1", mimeType: "text/html", name: "page.html" });
+  expect(open).not.toHaveBeenCalled();
+  expect(click).toHaveBeenCalled();
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
