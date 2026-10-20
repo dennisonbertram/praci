@@ -36,6 +36,7 @@ function fixture() {
   for (const script of [
     "scripts/backup.sh",
     "scripts/restore.sh",
+    "scripts/s3-objects.mjs",
     "infra/compose/backup-prod.sh",
   ]) {
     let source = readFileSync(path.join(repoRoot, script), "utf8");
@@ -56,7 +57,14 @@ const fs = require("node:fs");
 const args = process.argv.slice(2);
 fs.appendFileSync(process.env.COMMAND_LOG, JSON.stringify(args) + "\\n");
 if (args[0] === "inspect") {
-  console.log(process.env.FAKE_APPDATA);
+  const format = args.at(-1);
+  if (format.includes(".Config.Env")) console.log(process.env.FAKE_API_ENV || "PATH=/usr/bin");
+  else if (format.includes(".Image")) console.log("sha256:example-image");
+  else console.log(process.env.FAKE_APPDATA);
+} else if (args[0] === "run") {
+  if (process.env.FAIL_OBJECTS === "1") process.exit(4);
+  const out = args[args.indexOf("-v", args.indexOf("-v") + 1) + 1].split(":/out")[0];
+  fs.writeFileSync(out + "/objects.manifest.json", '{"count":0,"bytes":0,"objects":[]}');
 } else if (args[0] !== "compose") {
   process.exit(90);
 } else if (args.includes("pg_dump")) {
@@ -155,10 +163,13 @@ describe("development backup failures", () => {
     const f = fixture();
     if (!hasEnv) rmSync(path.join(f.checkout, ".env"));
     write(path.join(f.checkout, "data/home.txt"), "example home");
-    expect(f.run("scripts/backup.sh", ["example"]).status).toBe(0);
+    const result = f.run("scripts/backup.sh", ["example"]);
+    expect(result.status, result.stderr).toBe(0);
     const output = path.join(f.checkout, "backups/example");
     expect(readFileSync(path.join(output, "rakazo.sql"), "utf8")).toContain("CREATE TABLE");
     expect(contents(path.join(output, "homes.tgz"))).toContain("data/home.txt");
+    expect(result.stdout).toContain("No object storage configured");
+    expect(existsSync(path.join(output, "objects.manifest.json"))).toBe(false);
     expect(f.commands()[0].includes("--env-file")).toBe(hasEnv);
     if (hasEnv) expect(f.commands()[0]).toContain(path.join(f.checkout, ".env"));
   });
@@ -295,9 +306,38 @@ describe("production backup deployment and archive behavior", () => {
     expect(result.stdout).toContain("Verified Praci backup");
     const snapshot = result.stdout.trim().split("written to ")[1];
     expect(contents(path.join(snapshot, "appdata.tgz"))).toContain("home.txt");
+    expect(existsSync(path.join(snapshot, "objects.manifest.json"))).toBe(false);
+    expect(f.commands().some((args) => args[0] === "run")).toBe(false);
     expect(existsSync(path.join(snapshot, "SHA256SUMS"))).toBe(true);
     expect(f.commands().some((args) => args[0] === "inspect")).toBe(true);
     expect(f.commands().some((args) => args.includes("tar"))).toBe(false);
+  });
+
+  it("exports objects through the api image network, keeping secrets out of the command line", () => {
+    const f = fixture();
+    const secret = "fake-secret-value-123";
+    const result = f.run("infra/compose/backup-prod.sh", [], {
+      FAKE_API_ENV: `RAKAZO_S3_ENDPOINT=http://seaweedfs:8333\nRAKAZO_S3_SECRET_ACCESS_KEY=${secret}`,
+    });
+    expect(result.status, result.stderr).toBe(0);
+    const snapshot = result.stdout.trim().split("written to ")[1];
+    expect(existsSync(path.join(snapshot, "objects.manifest.json"))).toBe(true);
+    expect(readFileSync(path.join(snapshot, "SHA256SUMS"), "utf8")).toContain(
+      "objects.manifest.json",
+    );
+    const run = f.commands().find((args) => args[0] === "run");
+    expect(run).toContain("container:example-api-container");
+    expect(JSON.stringify(f.commands())).not.toContain(secret);
+  });
+
+  it("fails the production backup when the object export fails", () => {
+    const f = fixture();
+    const result = f.run("infra/compose/backup-prod.sh", [], {
+      FAKE_API_ENV: "RAKAZO_S3_ENDPOINT=http://seaweedfs:8333",
+      FAIL_OBJECTS: "1",
+    });
+    expect(result.status).toBe(4);
+    expect(result.stdout).not.toContain("Verified Praci backup");
   });
 
   it.each([{ FAIL_TAR: "2" }, { FAIL_DUMP: "1" }, { FAIL_VERIFY: "1" }])(

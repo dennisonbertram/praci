@@ -48,13 +48,31 @@ if [[ "${rc}" -gt 1 ]]; then
   exit "${rc}"
 fi
 
+# Object storage. Run the Node script in a throwaway copy of the api image that shares the api
+# container's network (so the bundled store's service name resolves) and gets the api's own
+# RAKAZO_S3_* settings through a process-substitution env file, so no secret reaches argv, disk, or
+# the snapshot. With no RAKAZO_S3_* set on the api, there is nothing to export.
+s3_env="$(docker inspect "${api}" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep '^RAKAZO_S3_' || true)"
+if [[ -n "${s3_env}" ]]; then
+  image="$(docker inspect "${api}" --format '{{.Image}}')"
+  docker run --rm --network "container:${api}" --user "$(id -u):$(id -g)" \
+    --cap-drop ALL --security-opt no-new-privileges --read-only \
+    --entrypoint node \
+    -v "${PROJECT_DIR}/scripts/s3-objects.mjs:/s3-objects.mjs:ro" \
+    -v "${SNAPSHOT_DIR}:/out" \
+    --env-file <(printf '%s\n' "${s3_env}") \
+    "${image}" /s3-objects.mjs backup /out
+  [[ -s "${SNAPSHOT_DIR}/objects.manifest.json" ]] || { echo "object backup produced no manifest" >&2; exit 1; }
+fi
+
 "${compose[@]}" exec -T postgres pg_restore --list \
   < "${SNAPSHOT_DIR}/rakazo.dump" >/dev/null
 tar -tzf "${SNAPSHOT_DIR}/appdata.tgz" >/dev/null
 
 sha256sum "${SNAPSHOT_DIR}/rakazo.dump" "${SNAPSHOT_DIR}/appdata.tgz" \
+  $([[ -f "${SNAPSHOT_DIR}/objects.manifest.json" ]] && echo "${SNAPSHOT_DIR}/objects.manifest.json") \
   > "${SNAPSHOT_DIR}/SHA256SUMS"
-chmod 600 "${SNAPSHOT_DIR}"/*
+find "${SNAPSHOT_DIR}" -maxdepth 1 -type f -exec chmod 600 {} +
 
 # Keep seven daily snapshots. BACKUP_ROOT is intentionally fixed above so this
 # cleanup can never expand to an environment-controlled or broad path.
