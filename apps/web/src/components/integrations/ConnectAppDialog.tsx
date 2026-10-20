@@ -108,7 +108,7 @@ export function ConnectAppDialog({
       return false;
     }
     try {
-      // The provider's page must not reach back into Rakazo.
+      // The provider's page must not reach back into Praci.
       opened.opener = null;
     } catch {
       // Cross-origin handles may refuse; the named window still works.
@@ -143,7 +143,7 @@ export function ConnectAppDialog({
         if (done?.status === "connected") return succeed(done);
       }
       // Google refuses embedded browsers, so desktop signs in with the system browser. That browser
-      // has no Rakazo session: the shell catches the code on loopback and this window finishes it.
+      // has no Praci session: the shell catches the code on loopback and this window finishes it.
       const viaSystemBrowser = item.connectorId === "google" && Boolean(desktopBridge());
       const begun = await rpc.connections.begin({
         connectorId: item.connectorId,

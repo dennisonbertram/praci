@@ -105,7 +105,7 @@ async function renderAt(path: string): Promise<string> {
 it.each(["/pricing", "/app/inbox/x"])("shows Page not found at %s", async (path) => {
   const text = await renderAt(path);
   expect(text).toContain("Page not found");
-  expect(text).toContain("Go to Rakazo");
+  expect(text).toContain("Go to Praci");
 });
 
 it("returns a signed-out visitor to the page they asked for", async () => {

@@ -171,7 +171,7 @@ type InboxPageProps = {
   onConnectMail: () => void;
   /** Opens Gmail's page, where a lapsed account can be removed and connected again. */
   onReconnectMail?: () => void;
-  /** Starts the sign-in that lets Rakazo make Gmail filters for one account. */
+  /** Starts the sign-in that lets Praci make Gmail filters for one account. */
   onAllowMailRules?: (connectionId: string) => void;
   /** The space's name, when the user has more than one, so they know whose mail this is. */
   spaceName?: string;
