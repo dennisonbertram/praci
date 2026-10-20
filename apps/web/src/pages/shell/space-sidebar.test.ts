@@ -54,7 +54,12 @@ describe("sidebarGroupsForSpaces", () => {
   });
 
   it("does not relabel a lone space whose name already matches the label", () => {
-    const [group] = sidebarGroupsForSpaces([space("space-1", "Personal")], "", undefined, "Personal");
+    const [group] = sidebarGroupsForSpaces(
+      [space("space-1", "Personal")],
+      "",
+      undefined,
+      "Personal",
+    );
     expect(group).toMatchObject({ title: "Personal", spaceName: "Personal", relabeled: false });
   });
 
