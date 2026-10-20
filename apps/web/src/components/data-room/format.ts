@@ -39,6 +39,14 @@ export const isSettled = (status: string) => status === "ready" || status === "i
 export const statusLabel = (status: string) =>
   status === "failed" ? t`Failed` : isSettled(status) ? "" : t`Reading`;
 
+/** The step a working item is in, for the hint on its row. */
+export const stageLabel = (status: string) =>
+  status === "classifying"
+    ? t`Tagging`
+    : status === "indexing"
+      ? t`Indexing for search`
+      : t`Reading text`;
+
 /** A file size with a space before the unit: "722 bytes", "12.3 kB", "4.1 MB". */
 export function sizeText(bytes: number) {
   const [unit, divisor] =

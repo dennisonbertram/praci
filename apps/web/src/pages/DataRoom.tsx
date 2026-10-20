@@ -26,6 +26,7 @@ import type { ItemAction } from "../components/data-room/ItemMenu";
 import type { RowInteraction } from "../components/data-room/ItemRows";
 import { GridView, ListView, SubfolderList } from "../components/data-room/ItemRows";
 import { Preview } from "../components/data-room/Preview";
+import { ProcessingStrip } from "../components/data-room/ProcessingStrip";
 import type { SendTarget } from "../components/data-room/SendToAgent";
 import {
   setOpenDataRoomFolder,
@@ -38,6 +39,7 @@ import {
 import { useDataRoomImports } from "../components/data-room/use-data-room-imports";
 import type { Filters, Sort } from "../components/data-room/use-data-room-list";
 import { useDataRoomList } from "../components/data-room/use-data-room-list";
+import { useDataRoomProcessing } from "../components/data-room/use-data-room-processing";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
@@ -158,6 +160,7 @@ export function DataRoomPage({
   const sort = searching ? searchSort : listSort;
   const list = useDataRoomList({ query, filters, sort });
   const importActivity = useDataRoomImports();
+  const processing = useDataRoomProcessing();
   const openImported = useCallback(
     (id: string) =>
       setParams((prev) => {
@@ -561,6 +564,13 @@ export function DataRoomPage({
                 onOpenItem={openImported}
                 onDismiss={importActivity.dismiss}
               />
+              {processing.processing && (processing.active || processing.finished) ? (
+                <ProcessingStrip
+                  processing={processing.processing}
+                  total={processing.total}
+                  finished={!processing.active}
+                />
+              ) : null}
               {searching && openFolderPath ? (
                 // A search inside a folder says so, with a way to look everywhere.
                 <div className="flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
