@@ -161,9 +161,11 @@ export async function inboxCleanupList(
     prisma.mailSyncState.findMany({ where: { connectionId: { in: ids } } }),
   ]);
   // A sender the user skips stays listed after its mail is archived, so the decision can be undone.
-  const skipped = decisions
-    .filter((d) => d.skipInboxAt)
-    .map((d) => ({ connectionId: d.connectionId, address: d.senderAddress }));
+  // The same goes for a sender with a learned pile, so it can be forgotten.
+  const skipped = [
+    ...decisions.filter((d) => d.skipInboxAt),
+    ...stats.filter((s) => s.learnedPile !== null),
+  ].map((row) => ({ connectionId: row.connectionId, address: row.senderAddress }));
   const facts = await senderFacts(prisma, actor, ids, undefined, true, skipped);
   const key = (connectionId: string, address: string) => `${connectionId}:${address}`;
   const statOf = new Map(stats.map((s) => [key(s.connectionId, s.senderAddress), s]));
@@ -201,6 +203,7 @@ export async function inboxCleanupList(
         skipInbox,
         unsubscribeStatus: parseStatus(decision?.unsubscribeStatus),
         ...(skipInbox && rule.success ? { rule: rule.data } : {}),
+        learnedPile: parsePile(stat.learnedPile),
       },
     ];
   });
@@ -213,6 +216,10 @@ export async function inboxCleanupList(
 }
 
 const STATUSES = ["done", "opened", "sent", "unknown", "failed", "refused"] as const;
+const parsePile = (value: string | null) => {
+  const pile = InboxPileSchema.safeParse(value);
+  return pile.success && pile.data !== "spam" ? pile.data : null;
+};
 const parseStatus = (value: string | null | undefined) =>
   STATUSES.find((status) => status === value) ?? null;
 
@@ -319,9 +326,10 @@ export async function inboxCleanupArchive(
 }
 
 /**
- * Forgets the sender's skip and unsubscribe decision. Mail already archived stays archived. The
- * Gmail filter Rakazo made for the sender is deleted first, and if that fails the decision stays so
- * the user can try again.
+ * Forgets the sender's skip and unsubscribe decision, or with `learned` only the learned pile (and
+ * then only mail received later counts toward learning it again). Mail already archived stays
+ * archived. The Gmail filter Rakazo made for the sender is deleted first, and if that fails the
+ * decision stays so the user can try again.
  */
 export async function inboxCleanupForget(
   deps: ModifyDeps,
@@ -335,6 +343,13 @@ export async function inboxCleanupForget(
     connectionId: input.connectionId,
     senderAddress: input.address.trim().toLowerCase(),
   };
+  if (input.learned) {
+    await deps.prisma.mailSenderStat.updateMany({
+      where,
+      data: { learnedPile: null, learnedCount: 0, learnedAt: null, learnedForgottenAt: new Date() },
+    });
+    return { ok: true };
+  }
   const withRule = await deps.prisma.mailSenderDecision.findMany({
     where: { ...where, ruleId: { not: null } },
   });
