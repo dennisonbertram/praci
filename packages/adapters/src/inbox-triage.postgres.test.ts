@@ -366,6 +366,66 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
     expect(stored.dueOn?.toISOString().slice(0, 10)).toBe("2026-10-20");
   });
 
+  it("sets pile from the model only when the free rules left it undecided", async () => {
+    const user = await addUser();
+    const undecided = await mail(user, "Lunch?", { minutesAgo: 3 });
+    const decided = await mail(user, "Fall sale", { minutesAgo: 2 });
+    await prisma.cachedMailMessage.update({
+      where: { id: decided.id },
+      data: { rulePile: "newsletters", ruleReasons: ["promotions"], pile: "newsletters" },
+    });
+    const rt = fakeRuntime(answerAll(() => ({ category: "personal", todo: null })));
+
+    await run(user, rt.runtime);
+
+    const rows = Object.fromEntries((await messagesOf(user)).map((m) => [m.id, m]));
+    // The model called both personal, but the rule decision wins where there was one.
+    expect(rows[undecided.id]).toMatchObject({
+      category: "personal",
+      rulePile: null,
+      pile: "important",
+    });
+    expect(rows[decided.id]).toMatchObject({
+      category: "personal",
+      rulePile: "newsletters",
+      pile: "newsletters",
+    });
+  });
+
+  it("moves a rule-decided message to spam when the model calls it a scam", async () => {
+    const user = await addUser();
+    const row = await mail(user, "Fall sale", { minutesAgo: 2 });
+    await prisma.cachedMailMessage.update({
+      where: { id: row.id },
+      data: { rulePile: "newsletters", ruleReasons: ["promotions"], pile: "newsletters" },
+    });
+    const rt = fakeRuntime(answerAll(() => ({ category: "scam", todo: null })));
+
+    await run(user, rt.runtime);
+
+    expect((await messagesOf(user)).find((m) => m.id === row.id)).toMatchObject({
+      category: "scam",
+      rulePile: "newsletters",
+      pile: "spam",
+    });
+  });
+
+  it("makes no to-do from a message Gmail put in spam", async () => {
+    const user = await addUser();
+    const row = await mail(user, "Act now", { minutesAgo: 2 });
+    const rt = fakeRuntime(answerAll(() => ({ category: "action", todo: "Act now" })));
+    await run(user, rt.runtime);
+    expect(await todosOf(user)).toHaveLength(1);
+
+    await prisma.cachedMailMessage.update({
+      where: { id: row.id },
+      data: { isSpam: true, inInbox: false },
+    });
+    await run(user, rt.runtime);
+
+    expect(await todosOf(user)).toHaveLength(0);
+  });
+
   it("stamps a message the model left out so it is not paid for again", async () => {
     const user = await addUser();
     const kept = await mail(user, "Answered", { minutesAgo: 1 });

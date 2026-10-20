@@ -8,6 +8,7 @@ import type {
   MailAccount,
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { MAIL_SIGNALS_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
@@ -59,7 +60,11 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
   let answerLateUrl: string | undefined;
   /** Requests whose URL contains this text wait for the signal to abort, then throw. */
   let throwLate: { url: string; error: () => unknown } | undefined;
-  const listCalls = () => gmail.requests.filter((r) => /\/messages\?/.test(r.url)).length;
+  /** Window lists; the prior-contact searches (`in:sent to:...`) are counted by their own tests. */
+  const listCalls = () =>
+    gmail.requests.filter(
+      (r) => /\/messages\?/.test(r.url) && !/[ +]to:/.test(decodeURIComponent(r.url)),
+    ).length;
   const getCalls = () => gmail.requests.filter((r) => /\/messages\/[^?]/.test(r.url)).length;
 
   const connector = {
@@ -365,7 +370,7 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       expect(Object.keys(await byId(account.id)).sort()).toEqual(["filed", "fresh", "keep"]);
     });
 
-    it("removes a message that moved to trash or spam and keeps sent mail it sees", async () => {
+    it("keeps a message moved to spam with isSpam and no inInbox, and still deletes trash", async () => {
       seed("inc-trash", [message("t", 1, ["INBOX"]), message("s", 2, ["INBOX"])]);
       const account = await connect("inc-trash");
       await sync(account);
@@ -380,8 +385,12 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       expect(await sync(account)).toBe("synced");
 
       const rowsNow = await byId(account.id);
-      expect(Object.keys(rowsNow)).toEqual(["out"]);
-      expect(rowsNow.out).toMatchObject({ inInbox: false, fromSelf: true });
+      expect(Object.keys(rowsNow).sort()).toEqual(["out", "s"]);
+      expect(rowsNow.s).toMatchObject({ isSpam: true, inInbox: false });
+      expect(rowsNow.s?.signals).toMatchObject({ categories: { spam: true } });
+      expect(rowsNow.out).toMatchObject({ inInbox: false, fromSelf: true, isSpam: false });
+      // A spam row gets its pile from the safety rule, even though it is not in the inbox.
+      expect(rowsNow.s).toMatchObject({ rulePile: "spam", pile: "spam" });
     });
 
     it("lists the window again when Gmail no longer has history that old, and stores a new cursor", async () => {
@@ -894,6 +903,8 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
       unread: false,
       inInbox: true,
       seenAt: new Date(),
+      // Already fetched with headers, so the signal backfill leaves it alone.
+      signalsVersion: MAIL_SIGNALS_VERSION,
     });
     await prisma.cachedMailMessage.createMany({
       // Newer than the oldest listed message but absent from the list: it left the inbox.
@@ -1070,6 +1081,244 @@ describePostgres("mail cache sync (PostgreSQL + Gmail emulator)", () => {
     expect(
       await prisma.mailSyncState.findUnique({ where: { connectionId: account.id } }),
     ).toBeNull();
+  });
+
+  describe("signals, backfill, sender stats and piles", () => {
+    const newsletter = (id: string, days: number, extra: Partial<EmulatedMessage> = {}) =>
+      message(id, days, ["INBOX", "CATEGORY_PROMOTIONS"], {
+        from: "Weekly <weekly@news.example.test>",
+        subject: "Five things",
+        headers: [
+          { name: "List-Unsubscribe", value: "<https://news.example.test/u/abc>" },
+          { name: "List-Id", value: "Weekly <weekly.news.example.test>" },
+          {
+            name: "Authentication-Results",
+            value: "mx.google.com; dkim=pass header.i=@news.example.test; spf=pass; dmarc=pass",
+          },
+        ],
+        ...extra,
+      });
+    const byId = async (connectionId: string) =>
+      Object.fromEntries((await rows(connectionId)).map((r) => [r.providerMessageId, r]));
+    const makeStale = (connectionId: string) =>
+      prisma.$executeRaw`UPDATE mail_messages SET "signalsVersion" = 0, signals = NULL WHERE "connectionId" = ${connectionId}`;
+    const versions = async (connectionId: string) =>
+      (await rows(connectionId)).filter((r) => r.signalsVersion === MAIL_SIGNALS_VERSION);
+    /** Points the stored cursor at Gmail's latest change, so the next sync sees no changes. */
+    const catchUpCursor = async (account: MailAccount) => {
+      const cursor = await mail.getCursor(account, ctx());
+      await prisma.mailSyncState.update({
+        where: { connectionId: account.id },
+        data: { changeCursor: cursor },
+      });
+    };
+
+    it("stores signals, signalsVersion and isSpam for listed messages", async () => {
+      seed("sig", [newsletter("n1", 1), message("plain", 2, ["INBOX"])]);
+      const account = await connect("sig");
+
+      expect(await sync(account)).toBe("synced");
+
+      const stored = await byId(account.id);
+      expect(stored.n1).toMatchObject({
+        signalsVersion: MAIL_SIGNALS_VERSION,
+        isSpam: false,
+        signals: {
+          listUnsubscribe: ["https://news.example.test/u/abc"],
+          listId: "Weekly <weekly.news.example.test>",
+          auth: { dkim: "pass", spf: "pass", dmarc: "pass" },
+          categories: { promotions: true, spam: false },
+        },
+      });
+      expect(stored.plain?.signalsVersion).toBe(MAIL_SIGNALS_VERSION);
+    });
+
+    it("maintains sender stats and resolves prior contact from the lookup and from sent mail", async () => {
+      seed("stats", [
+        message("a1", 1, ["INBOX", "UNREAD"], { from: "Ann <ann@example.test>" }),
+        message("a2", 2, ["INBOX"], { from: "Ann <ann@example.test>" }),
+        message("b1", 3, ["INBOX"], { from: "Bob <bob@example.test>" }),
+        message("sent", 4, ["SENT"], { from: "me@example.test", to: "bob@example.test" }),
+      ]);
+      const account = await connect("stats");
+
+      expect(await sync(account)).toBe("synced");
+
+      const stats = await prisma.mailSenderStat.findMany({
+        where: { connectionId: account.id },
+        orderBy: { senderAddress: "asc" },
+      });
+      expect(
+        stats.map((s) => [s.senderAddress, s.messageCount, s.readCount, s.priorContact]),
+      ).toEqual([
+        ["ann@example.test", 2, 1, false],
+        ["bob@example.test", 1, 1, true],
+      ]);
+      expect(stats.every((s) => s.spaceId === spaceId && s.userId === userId)).toBe(true);
+      // The lookup ran for both senders, and its result for Bob agrees with his sent mail.
+      expect(stats[0]?.priorContactCheckedAt).not.toBeNull();
+    });
+
+    it("fetches rows with an older signalsVersion again, 50 per sync and by id, until none are left", async () => {
+      const many = Array.from({ length: 120 }, (_, i) =>
+        message(`m${String(i).padStart(3, "0")}`, 0.5 + i * 0.05, ["INBOX"]),
+      );
+      seed("backfill", many);
+      const account = await connect("backfill");
+      await sync(account);
+      await makeStale(account.id);
+      expect(await versions(account.id)).toHaveLength(0);
+
+      await expireThrottle(account.id);
+      const gets = getCalls();
+      const lists = listCalls();
+      expect(await sync(account)).toBe("synced");
+
+      const fixed = await versions(account.id);
+      expect(fixed).toHaveLength(50);
+      expect(getCalls() - gets).toBe(50);
+      expect(listCalls()).toBe(lists);
+      // The newest rows come first.
+      expect(fixed.map((r) => r.providerMessageId).sort()).toEqual(
+        many.slice(0, 50).map((m) => m.id),
+      );
+      expect(fixed.every((r) => r.signals !== null)).toBe(true);
+
+      await expireThrottle(account.id);
+      await sync(account);
+      expect(await versions(account.id)).toHaveLength(100);
+      await expireThrottle(account.id);
+      await sync(account);
+      expect(await versions(account.id)).toHaveLength(120);
+
+      await expireThrottle(account.id);
+      const settled = getCalls();
+      await sync(account);
+      expect(getCalls()).toBe(settled);
+    });
+
+    it("drops a stale row whose message was trashed in the meantime", async () => {
+      seed("backfill-trash", [message("keep", 1, ["INBOX"]), message("trashed", 2, ["INBOX"])]);
+      const account = await connect("backfill-trash");
+      await sync(account);
+      await makeStale(account.id);
+      gmail.handle(
+        "backfill-trash",
+        "https://gmail.googleapis.com/gmail/v1/users/me/messages/trashed/modify",
+        "POST",
+        { addLabelIds: ["TRASH"], removeLabelIds: ["INBOX"] },
+      );
+      await catchUpCursor(account);
+      await expireThrottle(account.id);
+
+      expect(await sync(account)).toBe("synced");
+
+      const stored = await byId(account.id);
+      expect(Object.keys(stored)).toEqual(["keep"]);
+      expect(stored.keep?.signalsVersion).toBe(MAIL_SIGNALS_VERSION);
+    });
+
+    it("leaves stale rows as they are and the outcome unchanged when a rate limit hits the backfill", async () => {
+      seed("backfill-limit", [message("a", 1, ["INBOX"]), message("b", 2, ["INBOX"])]);
+      const account = await connect("backfill-limit");
+      await sync(account);
+      await makeStale(account.id);
+      gmail.failNext(429, { times: 1000, urlIncludes: "/messages/" });
+      await expireThrottle(account.id);
+
+      expect(await sync(account)).toBe("synced");
+
+      expect(await versions(account.id)).toHaveLength(0);
+      expect((await state(account.id)).lastErrorAt).toBeNull();
+      gmail.clearFailures();
+      await expireThrottle(account.id);
+      await sync(account);
+      expect(await versions(account.id)).toHaveLength(2);
+    });
+
+    it("writes the rule pile with no model configured, and recomputes it after a sender mark changes", async () => {
+      seed("piles", [
+        newsletter("news", 1),
+        message("friend", 2, ["INBOX"], { from: "Pal <pal@example.test>", subject: "Weekend?" }),
+        message("sent", 3, ["SENT"], { from: "me@example.test", to: "pal@example.test" }),
+        message("other", 4, ["INBOX"], { from: "Kim <kim@example.test>", subject: "Hello" }),
+      ]);
+      const account = await connect("piles");
+
+      expect(await sync(account)).toBe("synced");
+
+      const first = await byId(account.id);
+      expect(first.news).toMatchObject({
+        rulePile: "newsletters",
+        pile: "newsletters",
+        ruleReasons: ["promotions", "list_unsubscribe", "list_id"],
+      });
+      expect(first.friend).toMatchObject({ rulePile: "important", ruleReasons: ["prior_contact"] });
+      // Nothing for the rules to go on: the model decides later.
+      expect(first.other).toMatchObject({ rulePile: null, pile: null });
+
+      await prisma.inboxSenderFeedback.create({
+        data: { spaceId, userId, senderAddress: "weekly@news.example.test", mark: "important" },
+      });
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+
+      expect((await byId(account.id)).news).toMatchObject({
+        rulePile: "important",
+        ruleReasons: ["marked_important"],
+      });
+      await prisma.inboxSenderFeedback.deleteMany({ where: { spaceId, userId } });
+    });
+
+    it("leaves a bulk sender with unknown prior contact to the model, and decides it once the lookup works", async () => {
+      seed("unknown-prior", [newsletter("news", 1)]);
+      const account = await connect("unknown-prior");
+      gmail.failNext(429, { times: 1000, urlIncludes: "to%3A%22" });
+
+      expect(await sync(account)).toBe("synced");
+
+      expect((await byId(account.id)).news).toMatchObject({
+        rulePile: null,
+        ruleReasons: ["prior_contact_unknown"],
+      });
+      const unchecked = await prisma.mailSenderStat.findFirstOrThrow({
+        where: { connectionId: account.id },
+      });
+      expect(unchecked).toMatchObject({ priorContact: null, priorContactCheckedAt: null });
+
+      gmail.clearFailures();
+      await expireThrottle(account.id);
+      expect(await sync(account)).toBe("synced");
+
+      expect((await byId(account.id)).news).toMatchObject({
+        rulePile: "newsletters",
+        pile: "newsletters",
+      });
+    });
+
+    it("does not add searched sent mail to the cache", async () => {
+      seed("lookup-cache", [newsletter("news", 1)]);
+      const account = await connect("lookup-cache");
+      await sync(account);
+      expect(Object.keys(await byId(account.id))).toEqual(["news"]);
+    });
+
+    it("deleteMailConnectionData removes that connection's sender stats only", async () => {
+      seed("del-stats-a", [newsletter("a", 1)]);
+      const a = await connect("del-stats-a");
+      const b = await connect("del-stats-b");
+      await sync(a);
+      await prisma.mailSenderStat.create({
+        data: { spaceId, userId, connectionId: b.id, senderAddress: "keep@example.test" },
+      });
+
+      await prisma.$transaction((tx) =>
+        deleteMailConnectionData(tx, { spaceId, userId, connectionId: a.id }),
+      );
+
+      expect(await prisma.mailSenderStat.count({ where: { connectionId: a.id } })).toBe(0);
+      expect(await prisma.mailSenderStat.count({ where: { connectionId: b.id } })).toBe(1);
+    });
   });
 
   describe("metadata cache in listMessages", () => {

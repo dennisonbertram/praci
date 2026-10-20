@@ -90,6 +90,10 @@ export async function completeNativeOAuth(options: {
           // could invalidate the new token of the same grant.
           const next = { connectionId: current.id };
           await tx.cachedMailMessage.updateMany({ where: { connectionId: taken.id }, data: next });
+          // Sender stats (and the prior-contact answers in them) follow too. The new connection's
+          // own rows, if it synced already, are rebuilt from its mail on the next sync.
+          await tx.mailSenderStat.deleteMany({ where: { connectionId: current.id } });
+          await tx.mailSenderStat.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.inboxTodo.updateMany({ where: { connectionId: taken.id }, data: next });
           await tx.composeSend.updateMany({ where: { connectionId: taken.id }, data: next });
           // A Calendar or Drive agent is keyed by its connection, so it follows the new id; the

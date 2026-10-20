@@ -575,6 +575,7 @@ export async function inboxGet(
       userId: actor.userId,
       connectionId: row.connectionId,
       threadId: row.threadId,
+      isSpam: false,
       id: { not: row.id },
     },
     orderBy: [{ receivedAt: "asc" }, { id: "asc" }],

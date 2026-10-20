@@ -40,6 +40,7 @@ model User {
   sessions                    Session[]
   accounts                    Account[]
   cachedMailMessages          CachedMailMessage[]
+  mailSenderStats             MailSenderStat[]
   inboxTodos                  InboxTodo[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
@@ -240,6 +241,7 @@ model Space {
   mailSearches                MailSearch[]
   connections                 Connection[]
   cachedMailMessages          CachedMailMessage[]
+  mailSenderStats             MailSenderStat[]
   inboxTodos                  InboxTodo[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
@@ -949,6 +951,7 @@ model Connection {
   createdAt          DateTime              @default(now())
   updatedAt          DateTime              @updatedAt
   cachedMailMessages CachedMailMessage[]
+  mailSenderStats    MailSenderStat[]
   inboxTodos         InboxTodo[]
   mailSyncState      MailSyncState?
   dataRoomSyncState  DataRoomSyncState?
@@ -1804,11 +1807,51 @@ model CachedMailMessage {
   alreadyHandled    Boolean     @default(false)
   /// Last time a sync or a search wrote this row.
   seenAt            DateTime
+  /// MailSignals (List-Unsubscribe, auth results, Gmail category flags); null until fetched.
+  signals           Json?
+  /// MAIL_SIGNALS_VERSION that produced `signals`; an older value makes sync fetch the row again.
+  signalsVersion    Int         @default(0)
+  /// Gmail put the message in spam. Such a row is never in the inbox.
+  isSpam            Boolean     @default(false)
+  /// The pile the free rules chose; null means they left it to the model.
+  rulePile          String?
+  /// Short codes for why the rules decided or passed.
+  ruleReasons       String[]    @default([])
+  /// "important" | "updates" | "newsletters" | "spam": rulePile, else the model's category mapped to a pile.
+  pile              String?
   inboxTodos        InboxTodo[]
 
   @@unique([connectionId, providerMessageId])
   @@index([spaceId, userId, inInbox, receivedAt])
   @@map("mail_messages")
+}
+
+/// One sender as seen by one mail account, over the synced window.
+model MailSenderStat {
+  id                    String     @id @default(cuid())
+  spaceId               String
+  space                 Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId                String
+  user                  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId          String
+  connection            Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Lowercased From address.
+  senderAddress         String
+  /// Window messages from the sender: not sent by the user, not spam.
+  messageCount          Int        @default(0)
+  readCount             Int        @default(0)
+  lastReceivedAt        DateTime?
+  /// First entry of the newest message's listUnsubscribe, and whether that message was one-click.
+  unsubscribeTarget     String?
+  oneClick              Boolean    @default(false)
+  /// The newest message had List-Unsubscribe, List-Id or bulk precedence.
+  bulk                  Boolean    @default(false)
+  /// true: the user sent mail to this address. false: searched, none found. null: not checked.
+  priorContact          Boolean?
+  priorContactCheckedAt DateTime?
+
+  @@unique([connectionId, senderAddress])
+  @@map("mail_sender_stats")
 }
 
 /// A private to-do created by triage from one cached message. Scoped to one user in one space,

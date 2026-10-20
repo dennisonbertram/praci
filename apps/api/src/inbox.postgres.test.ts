@@ -102,6 +102,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       unread: boolean;
       inInbox: boolean;
       fromSelf: boolean;
+      isSpam: boolean;
       fromName: string | null;
       needsReply: boolean | null;
       priority: string | null;
@@ -128,6 +129,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         unread: extra.unread ?? false,
         inInbox: extra.inInbox ?? true,
         fromSelf: extra.fromSelf ?? false,
+        isSpam: extra.isSpam ?? false,
         needsReply: extra.needsReply ?? null,
         priority: extra.priority ?? null,
         category: extra.category ?? null,
@@ -280,6 +282,33 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       ]);
       expect(out.syncedAt).toBeNull();
       expect(out.failedAccounts).toEqual([]);
+    });
+
+    it("keeps spam rows out of the list, the unread count and the thread siblings", async () => {
+      await wipe();
+      seedMailboxes();
+      const open = await cache(a, connA, "a-1", { threadId: "t", receivedAt: daysAgo(1) });
+      // Gmail removes INBOX when it adds SPAM; the thread sibling is the row that could still leak.
+      await cache(a, connA, "spam-1", {
+        threadId: "t",
+        receivedAt: daysAgo(2),
+        unread: true,
+        inInbox: false,
+        isSpam: true,
+      });
+      await cache(a, connA, "spam-2", {
+        threadId: "spam-thread",
+        unread: true,
+        inInbox: false,
+        isSpam: true,
+      });
+
+      expect((await inboxList(deps, a, {})).rows.map((row) => row.subject)).toEqual([
+        "Subject a-1",
+      ]);
+      expect(await inboxUnreadCount(deps, a)).toEqual({ count: 0 });
+      const opened = await inboxGet(deps, a, { messageId: open.id });
+      expect([...opened.thread, ...opened.later]).toEqual([]);
     });
 
     it("keeps the same thread id on two accounts as separate rows", async () => {
