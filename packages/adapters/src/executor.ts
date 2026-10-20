@@ -5811,6 +5811,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         );
 
         try {
+          let modelRetrying = false;
           const runtimeEvents = deps.runtime.run(
             {
               botId: bot.id,
@@ -5904,6 +5905,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
                     );
                   }
                 : undefined,
+              onModelRetry: (reason) => {
+                modelRetrying = true;
+                void phases.write({ kind: "retrying", name: reason });
+              },
               onModelChange: async (provider, modelId) => {
                 if (!fallbackModelKeys.has(JSON.stringify([provider, modelId]))) {
                   throw new Error("Backup model is not selected");
@@ -6011,7 +6016,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               firstRuntimeEvent = false;
               void phases.write({ kind: "thinking" });
             }
-            if (event.type === "text" || event.type === "tool") void phases.progressed();
+            if (event.type === "text" || event.type === "tool") {
+              void phases.progressed();
+              if (modelRetrying) {
+                modelRetrying = false;
+                void phases.write({ kind: "thinking" });
+              }
+            }
             if (approvalPausePending) return;
             if (!leaseValid) return;
             const now = Date.now();

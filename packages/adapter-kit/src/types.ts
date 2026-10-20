@@ -514,6 +514,8 @@ export interface AgentRunRequest {
   resolveFallbackModel?: (provider: string, modelId: string) => Promise<AgentRunModel>;
   /** Persist the selected backup against the active run lease before requesting it. */
   onModelChange?: (provider: string, modelId: string) => Promise<void>;
+  /** The model request failed transiently and will be retried; `reason` is owner-facing. */
+  onModelRetry?: (reason: string) => void;
   /** Resolve an explicitly requested helper model within the active user and space scope. */
   resolveModel?: (provider: string, modelId: string) => Promise<AgentRunModel>;
   resumeFromCheckpoint?: string;

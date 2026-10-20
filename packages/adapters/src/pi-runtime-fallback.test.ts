@@ -210,6 +210,7 @@ beforeEach(() => {
   providerState.agentOptions = undefined;
   providerState.agent = undefined;
   vi.restoreAllMocks();
+  vi.spyOn(Math, "random").mockReturnValue(0);
   providerState.delay.mockReset().mockResolvedValue(undefined);
 });
 
@@ -262,6 +263,8 @@ describe("Pi runtime transient model retries", () => {
     "invalid api key; terminated",
     "context_length_exceeded; 503 overloaded",
     "bad request; terminated",
+    "HTTP 400 Connection error.",
+    "401 Connection error.",
   ])("does not retry or switch on %s", async (error) => {
     providerState.stream.mockImplementation(() =>
       stream(primary, message(primary, [], "error", error)),
@@ -282,6 +285,57 @@ describe("Pi runtime transient model retries", () => {
     await expect(run(request())).rejects.toThrow("terminated");
     expect(providerState.stream).toHaveBeenCalledTimes(4);
     expect(providerState.delay.mock.calls.map(([delay]) => delay)).toEqual([2_000, 8_000, 20_000]);
+  });
+
+  it("reports the retry reason and completes after two dropped connections", async () => {
+    providerState.stream
+      .mockImplementationOnce(() =>
+        stream(primary, message(primary, [], "error", "Connection error.")),
+      )
+      .mockImplementationOnce(() => stream(primary, message(primary, [], "error", "fetch failed")))
+      .mockImplementation(() =>
+        stream(primary, message(primary, [{ type: "text", text: "Recovered." }], "stop")),
+      );
+    const input = request();
+    input.onModelRetry = vi.fn();
+    const events = await run(input);
+    expect(events.at(-1)).toEqual({ type: "done", text: "Recovered." });
+    expect(input.onModelRetry).toHaveBeenCalledTimes(2);
+    expect(input.onModelRetry).toHaveBeenCalledWith("the model connection dropped");
+  });
+
+  it("fails with a clear message after four dropped connections", async () => {
+    providerState.stream.mockImplementation(() =>
+      stream(primary, message(primary, [], "error", "Connection error.")),
+    );
+    await expect(run(request())).rejects.toThrow("Couldn't reach primary. Try again.");
+    expect(providerState.stream).toHaveBeenCalledTimes(4);
+  });
+
+  it("waits for Retry-After instead of the default backoff", async () => {
+    vi.useFakeTimers();
+    const { abortableDelay } = await vi.importActual<typeof Core>("@rakazo/core");
+    providerState.delay.mockImplementation(abortableDelay);
+    providerState.stream
+      .mockImplementationOnce(() =>
+        stream(primary, message(primary, [], "error", "429 rate limit; Retry-After: 5")),
+      )
+      .mockImplementation(() =>
+        stream(primary, message(primary, [{ type: "text", text: "ok" }], "stop")),
+      );
+    const outcome = run(request());
+    await vi.advanceTimersByTimeAsync(4_999);
+    expect(providerState.stream).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect((await outcome).at(-1)).toEqual({ type: "done", text: "ok" });
+  });
+
+  it("does not retry when the server asks for a wait beyond the limit", async () => {
+    providerState.stream.mockImplementation(() =>
+      stream(primary, message(primary, [], "error", "429 rate limit; Retry-After: 3301")),
+    );
+    await expect(run(request())).rejects.toThrow("429 rate limit");
+    expect(providerState.stream).toHaveBeenCalledOnce();
   });
 
   it("does not back off after a provider timeout, which already spent its request budget", async () => {
@@ -1581,6 +1635,8 @@ describe("provider availability classification", () => {
     ],
     ["quota exhaustion", { status: 402, message: "provider quota exhausted" }, true],
     ["plain status", new Error("503 provider unavailable"), true],
+    ["SDK connection error", new Error("Connection error."), true],
+    ["undici fetch failure", new Error("fetch failed ECONNRESET"), true],
     ["HTTP server status", new Error("HTTP 500"), true],
     ["context overflow", new Error("context_length_exceeded; retry after 60s"), false],
     ["transient server failure", { status: 503, message: "service unavailable" }, true],
