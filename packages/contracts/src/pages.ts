@@ -1,5 +1,5 @@
 import * as z from "zod";
-import { MAX_CHART_DATA_ROWS } from "./events.js";
+import { ChartDataSchema, ChartSpecSchema, refineChartRows } from "./chart.js";
 import { Id } from "./ids.js";
 
 /**
@@ -14,9 +14,14 @@ export const PAGE_CHART_FENCE = "chart";
 export const PageChartSchema = z.object({
   name: z.string().min(1).max(200),
   /** Declarative Observable Plot spec; validated with the same PlotSpec rules as render_plot. */
-  spec: z.record(z.string(), z.any()),
-  data: z.array(z.any()).max(MAX_CHART_DATA_ROWS),
+  spec: ChartSpecSchema,
+  data: ChartDataSchema,
 });
+/**
+ * PageChartSchema plus the combined row limit (rows embedded in the spec count too). Use it
+ * when a page is written; reads keep the lenient schema so stored pages over the limit still load.
+ */
+export const PageChartInputSchema = PageChartSchema.superRefine(refineChartRows);
 export type PageChart = z.infer<typeof PageChartSchema>;
 
 export const PageAuthor = z.enum(["bot", "user"]);
