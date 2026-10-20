@@ -3416,6 +3416,7 @@ model CompanyEvent {
   visibility       String             @default("private")
   lockedFields     String[]           @default([])
   claimFingerprints String[]          @default([])
+  sourceClaimKeys  String[]           @default([])
   subjectKey       String
   confirmedByUserId String?
   confirmedAt      DateTime?

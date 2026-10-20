@@ -61,6 +61,7 @@ export type CompanyCandidateRecord = {
 };
 
 export type CompanySuppressedResult = { suppressed: true; record: null; rejectionId: string };
+export type CompanyDeferredResult = { deferred: true; record: null; candidateId: string };
 export type CompanyWriteResult = CompanyEntityRecord | CompanySuppressedResult;
 
 const ENTITY_INCLUDE = {
@@ -590,14 +591,77 @@ function sourceKey(evidence: EvidenceLocator, claimFingerprint: string): string 
   return `${sourceLocatorKey(evidence)}:claim:${claimFingerprint}`;
 }
 
+function sourceLocatorFromKey(value: string): string | null {
+  const separator = value.lastIndexOf(":claim:");
+  return separator < 0 ? null : value.slice(0, separator);
+}
+
 function claimFingerprintFromSourceKey(value: string): string | null {
   return value.match(/:claim:([a-f0-9]{64})$/)?.[1] ?? null;
+}
+
+async function eventSourceReplayIds(
+  db: CompanyDb,
+  scope: Scope,
+  sourceKeys: string[],
+): Promise<string[]> {
+  if (sourceKeys.length === 0) return [];
+  const [events, evidence] = await Promise.all([
+    db.companyEvent.findMany({
+      where: { ...scope, sourceClaimKeys: { hasSome: sourceKeys } },
+      select: { id: true },
+    }),
+    db.companyEvidence.findMany({
+      where: { ...scope, factKind: "event", sourceKey: { in: sourceKeys } },
+      select: { factId: true },
+    }),
+  ]);
+  const evidenceIds = [...new Set(evidence.map((item) => item.factId))];
+  const legacyEvents = evidenceIds.length
+    ? await db.companyEvent.findMany({
+        where: { ...scope, id: { in: evidenceIds } },
+        select: { id: true },
+      })
+    : [];
+  return [
+    ...new Set([...events.map((event) => event.id), ...legacyEvents.map((event) => event.id)]),
+  ];
+}
+
+async function eventSourceClaimKeys(
+  db: CompanyDb,
+  scope: Scope,
+  eventId: string,
+  existing: string[],
+): Promise<string[]> {
+  const evidence = await db.companyEvidence.findMany({
+    where: {
+      ...scope,
+      factKind: "event",
+      factId: eventId,
+      NOT: { sourceKind: "manual" },
+    },
+    select: { sourceKey: true },
+  });
+  return [...new Set([...existing, ...evidence.map((item) => item.sourceKey)])];
+}
+
+async function eventGlobalReplayIds(
+  db: CompanyDb,
+  scope: Scope,
+  fingerprint: string,
+): Promise<string[]> {
+  const events = await db.companyEvent.findMany({
+    where: { ...scope, claimFingerprints: { has: fingerprint } },
+    select: { id: true },
+  });
+  return events.map((event) => event.id);
 }
 
 async function currentClaimFingerprints(
   db: CompanyDb,
   scope: Scope,
-  factKind: "edge" | "event",
+  factKind: "edge",
   factId: string,
   existing: string[],
   ...fingerprints: string[]
@@ -620,7 +684,7 @@ async function currentClaimFingerprints(
 async function findClaimReplayId(
   db: CompanyDb,
   scope: Scope,
-  factKind: "edge" | "event",
+  factKind: "edge",
   fingerprint: string,
 ): Promise<string | null> {
   const evidence = await db.companyEvidence.findMany({
@@ -709,7 +773,16 @@ function entityAliases(input: CompanyEntityImportInput["entity"], sourceKey: str
     strong.length > 0 || input.kind === "person"
       ? strong
       : [`${input.kind}:name:${normalizeCompanyName(input.displayName)}`];
-  return [...aliases, `source:${sourceKey}`];
+  const personSourceName =
+    input.kind === "person"
+      ? [
+          `person-source-name:${hash([
+            sourceLocatorFromKey(sourceKey) ?? sourceKey,
+            normalizeCompanyName(input.displayName),
+          ])}`,
+        ]
+      : [];
+  return [...aliases, ...personSourceName, `source:${sourceKey}`];
 }
 
 async function linkedDataRoomItemId(
@@ -878,12 +951,7 @@ async function importEntity(
     const domainlessMatch = domainlessMatches[0];
     if (incomingDomain && matchingDomains.length === 1 && matchingDomain) {
       entityId = matchingDomain.id;
-    } else if (
-      !incomingDomain &&
-      sameName.length === 1 &&
-      domainlessMatches.length === 1 &&
-      domainlessMatch
-    ) {
+    } else if (!incomingDomain && domainlessMatches.length === 1 && domainlessMatch) {
       entityId = domainlessMatch.id;
     } else if (sameName.length > 0) {
       await createCandidate(db, scope, {
@@ -1241,7 +1309,7 @@ async function importEvent(
   db: CompanyDb,
   scope: Scope,
   raw: CompanyEventImportInput,
-): Promise<CompanyEventRecord | CompanySuppressedResult> {
+): Promise<CompanyEventRecord | CompanySuppressedResult | CompanyDeferredResult> {
   const input = CompanyEventImportInputSchema.parse(raw);
   const normalizedTitle = normalizeCompanyName(input.event.title);
   const canonicalEntityIds = await canonicalEventEntityIds(db, scope, input.event.entityIds);
@@ -1249,6 +1317,10 @@ async function importEvent(
     canonicalEntityIds.length > 0
       ? entitySubjectKey(canonicalEntityIds)
       : sourceLocatorKey(input.evidence);
+  const rawSubjectKey =
+    input.event.entityIds.length > 0
+      ? entitySubjectKey([...new Set(input.event.entityIds)].sort())
+      : subjectKey;
   const fingerprint = eventClaimFingerprint({
     kind: input.event.kind,
     normalizedTitle,
@@ -1256,57 +1328,110 @@ async function importEvent(
     occursPrecision: datePrecision(input.event.occursOn),
     subjectKey,
   });
+  const rawFingerprint = eventClaimFingerprint({
+    kind: input.event.kind,
+    normalizedTitle,
+    occursOn: dateValue(input.event.occursOn),
+    occursPrecision: datePrecision(input.event.occursOn),
+    subjectKey: rawSubjectKey,
+  });
   const key = sourceKey(input.evidence, fingerprint);
+  const rawKey = sourceKey(input.evidence, rawFingerprint);
+  const sourceKeys = [...new Set([key, rawKey])];
   const rejection = await findFactSuppression(db, scope, "event", [
     `event:${fingerprint}`,
-    `source:${key}`,
+    ...sourceKeys.map((sourceKey) => `source:${sourceKey}`),
   ]);
   if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
-  const replayId = await findClaimReplayId(db, scope, "event", fingerprint);
-  const candidates = await db.companyEvent.findMany({
-    where: {
-      ...scope,
-      kind: input.event.kind,
-      normalizedTitle,
-      occursOn: dateValue(input.event.occursOn),
-      occursPrecision: datePrecision(input.event.occursOn),
-    },
-  });
-  const matchingCandidates: typeof candidates = [];
-  for (const candidate of candidates) {
-    const savedSubjectKey = await canonicalEventSubjectKey(db, scope, candidate.subjectKey);
-    let matchesSubject = savedSubjectKey === subjectKey;
-    if (!matchesSubject && subjectKey.startsWith("entities:")) {
-      const links = await db.companyEventEntity.findMany({
-        where: { ...scope, eventId: candidate.id },
-        select: { entityId: true },
-      });
-      const linkedSubjectKey = entitySubjectKey(
-        await canonicalStoredEventEntityIds(
-          db,
-          scope,
-          links.map((link) => link.entityId),
-        ),
-      );
-      matchesSubject = linkedSubjectKey === subjectKey;
+  const exactSourceReplayIds = await eventSourceReplayIds(db, scope, sourceKeys);
+  if (exactSourceReplayIds.length > 1) {
+    throw new IsolationError("Ambiguous event source replay");
+  }
+  let event =
+    exactSourceReplayIds.length === 1
+      ? await db.companyEvent.findFirst({
+          where: { ...scope, id: exactSourceReplayIds[0] },
+        })
+      : null;
+  if (!event) {
+    const candidates = await db.companyEvent.findMany({
+      where: {
+        ...scope,
+        kind: input.event.kind,
+        normalizedTitle,
+        occursOn: dateValue(input.event.occursOn),
+        occursPrecision: datePrecision(input.event.occursOn),
+      },
+    });
+    const matchingCandidates: typeof candidates = [];
+    for (const candidate of candidates) {
+      const savedSubjectKey = await canonicalEventSubjectKey(db, scope, candidate.subjectKey);
+      let matchesSubject = savedSubjectKey === subjectKey;
+      if (!matchesSubject && subjectKey.startsWith("entities:")) {
+        const links = await db.companyEventEntity.findMany({
+          where: { ...scope, eventId: candidate.id },
+          select: { entityId: true },
+        });
+        const linkedSubjectKey = entitySubjectKey(
+          await canonicalStoredEventEntityIds(
+            db,
+            scope,
+            links.map((link) => link.entityId),
+          ),
+        );
+        matchesSubject = linkedSubjectKey === subjectKey;
+      }
+      if (matchesSubject) matchingCandidates.push(candidate);
     }
-    if (matchesSubject) matchingCandidates.push(candidate);
+    const matchingIds = [
+      ...new Set([
+        ...(await eventGlobalReplayIds(db, scope, fingerprint)),
+        ...matchingCandidates.map((candidate) => candidate.id),
+      ]),
+    ];
+    if (matchingIds.length > 1) {
+      const existingCandidate = await db.companyCandidate.findFirst({
+        where: {
+          ...scope,
+          kind: "event",
+          reason: "ambiguous_event_subjects",
+          sourceKey: { in: sourceKeys },
+          contentHash: input.evidence.contentHash,
+        },
+        select: { id: true },
+      });
+      const candidate =
+        existingCandidate ??
+        (await db.companyCandidate.create({
+          data: {
+            ...scope,
+            kind: "event",
+            reason: "ambiguous_event_subjects",
+            entityIds: canonicalEntityIds,
+            proposedFact: {
+              event: input.event,
+              matchingEventIds: matchingIds.sort(),
+            } as Prisma.InputJsonValue,
+            sourceKind: input.evidence.sourceKind,
+            connectionId: input.evidence.connectionId ?? null,
+            mcpServerId: input.evidence.mcpServerId ?? null,
+            dataRoomItemId: await linkedDataRoomItemId(db, scope, input.evidence),
+            sourceItemId: input.evidence.sourceItemId,
+            sourceKey: key,
+            quote: input.evidence.quote,
+            contentHash: input.evidence.contentHash,
+          },
+          select: { id: true },
+        }));
+      return { deferred: true, record: null, candidateId: candidate.id };
+    }
+    const eventId = matchingIds[0];
+    event =
+      eventId === undefined
+        ? null
+        : (matchingCandidates.find((candidate) => candidate.id === eventId) ??
+          (await db.companyEvent.findFirst({ where: { ...scope, id: eventId } })));
   }
-  const matchingIds = [
-    ...new Set([
-      ...(replayId ? [replayId] : []),
-      ...matchingCandidates.map((candidate) => candidate.id),
-    ]),
-  ];
-  if (matchingIds.length > 1) {
-    throw new IsolationError("Ambiguous event subject replay");
-  }
-  const eventId = matchingIds[0];
-  const event =
-    eventId === undefined
-      ? null
-      : (matchingCandidates.find((candidate) => candidate.id === eventId) ??
-        (await db.companyEvent.findFirst({ where: { ...scope, id: eventId } })));
   if (event?.status === "rejected") throw new IsolationError("Rejected events cannot be replayed");
   const row =
     event ??
@@ -1326,6 +1451,7 @@ async function importEvent(
         currency: input.event.currency ?? null,
         confidence: input.event.confidence,
         claimFingerprints: [fingerprint],
+        sourceClaimKeys: [key],
       },
     }));
   const linksBefore = await db.companyEventEntity.findMany({
@@ -1358,17 +1484,21 @@ async function importEvent(
     (amountCurrencyLocked && amountCurrencyChanged) ||
     (row.lockedFields.includes("confidence") && row.confidence !== input.event.confidence) ||
     contradictsEntityIds;
-  const claimFingerprints = await currentClaimFingerprints(
-    db,
-    scope,
-    "event",
-    row.id,
-    row.claimFingerprints,
-    eventClaimFingerprint(row),
-    fingerprint,
-  );
+  const currentSubjectKey = await eventSubjectKeyForFingerprint(db, scope, row);
+  const currentFingerprint = eventClaimFingerprint({ ...row, subjectKey: currentSubjectKey });
+  const claimFingerprints = [
+    ...new Set([
+      ...row.claimFingerprints,
+      currentFingerprint,
+      ...(currentSubjectKey === subjectKey ? [fingerprint] : []),
+    ]),
+  ];
+  const sourceClaimKeys = [
+    ...new Set([...(await eventSourceClaimKeys(db, scope, row.id, row.sourceClaimKeys)), key]),
+  ];
   const updateData: Prisma.CompanyEventUpdateInput = {
     claimFingerprints,
+    sourceClaimKeys,
     subjectKey: entityIdsLocked && !entityIdsMatch ? row.subjectKey : subjectKey,
   };
   if (!row.lockedFields.includes("stream")) updateData.stream = input.event.stream;
@@ -1552,6 +1682,29 @@ async function editEntity(
   for (const identityType of touchedIdentityTypes.keys()) {
     changedIdentityTypes.add(identityType);
   }
+  const nextChangedIdentities = nextIdentityParts
+    .filter(([, identityType]) => changedIdentityTypes.has(identityType))
+    .map(([, identityType, identityValue]) => ({ identityType, identityValue }));
+  if (nextChangedIdentities.length > 0) {
+    const collisions = await db.companyIdentity.findMany({
+      where: {
+        ...scope,
+        entityKind: row.kind,
+        entityId: { not: row.id },
+        OR: nextChangedIdentities.map(({ identityType, identityValue }) => ({
+          identityType,
+          identityValue,
+        })),
+      },
+      select: { identityType: true, identityValue: true },
+    });
+    if (collisions.length > 0) {
+      const collision = collisions[0]!;
+      throw new IsolationError(
+        `Cannot assign ${collision.identityType} identity; it already belongs to another entity`,
+      );
+    }
+  }
   const lockedFields = [...new Set([...row.lockedFields, ...updates.map(([path]) => path)])];
   const evidenceIds = await Promise.all(
     updates.map(([path, value]) => manualEvidence(db, scope, "entity", row.id, path, value)),
@@ -1592,7 +1745,6 @@ async function editEntity(
           identityType,
           identityValue,
         })),
-        skipDuplicates: true,
       });
     }
   }
@@ -1668,11 +1820,22 @@ async function rejectEntity(
       factId: { in: [...groupIds] },
       NOT: { sourceKind: "manual" },
     },
-    select: { sourceKey: true },
+    select: { factId: true, sourceKey: true },
   });
+  const memberById = new Map(groupRows.map((member) => [member.id, member]));
   const strongAliases = identities
     .filter((identity) => identity.identityType !== "name")
     .map((identity) => `${row.kind}:${identity.identityType}:${identity.identityValue}`);
+  const personSourceNameAliases =
+    row.kind === "person"
+      ? sourceEvidence.flatMap((evidence) => {
+          const member = memberById.get(evidence.factId);
+          const locator = sourceLocatorFromKey(evidence.sourceKey);
+          return member && locator
+            ? [`person-source-name:${hash([locator, member.normalizedName])}`]
+            : [];
+        })
+      : [];
   const nameAliases =
     row.kind === "person"
       ? []
@@ -1680,6 +1843,7 @@ async function rejectEntity(
   const aliases = [
     ...strongAliases,
     ...sourceEvidence.map((evidence) => `source:${evidence.sourceKey}`),
+    ...personSourceNameAliases,
     ...(strongAliases.length > 0 ? [] : nameAliases),
   ];
   const uniqueAliases = [...new Set(aliases)].sort();
@@ -1804,15 +1968,38 @@ async function editEvent(
     occursPrecision:
       input.occursOn === undefined ? row.occursPrecision : datePrecision(input.occursOn),
   };
-  const claimFingerprints = await currentClaimFingerprints(
-    db,
-    scope,
-    "event",
-    row.id,
-    row.claimFingerprints,
-    eventClaimFingerprint(row),
-    eventClaimFingerprint(correctedEvent),
-  );
+  const previousSubjectKey = await eventSubjectKeyForFingerprint(db, scope, row);
+  const subjectChanged = Boolean(entityIds?.length) && correctedSubjectKey !== previousSubjectKey;
+  const sourceClaimKeys = await eventSourceClaimKeys(db, scope, row.id, row.sourceClaimKeys);
+  const previousFingerprints = [
+    ...new Set([
+      ...row.claimFingerprints,
+      eventClaimFingerprint({ ...row, subjectKey: previousSubjectKey }),
+    ]),
+  ];
+  if (subjectChanged) {
+    const sourceLocators = [
+      ...new Set(
+        sourceClaimKeys
+          .map(sourceLocatorFromKey)
+          .filter((value): value is string => value !== null),
+      ),
+    ];
+    sourceClaimKeys.push(
+      ...sourceLocators.flatMap((sourceLocator) =>
+        previousFingerprints.map((fingerprint) => `${sourceLocator}:claim:${fingerprint}`),
+      ),
+    );
+  }
+  const claimFingerprints = subjectChanged
+    ? [eventClaimFingerprint(correctedEvent)]
+    : [
+        ...new Set([
+          ...row.claimFingerprints,
+          eventClaimFingerprint({ ...row, subjectKey: previousSubjectKey }),
+          eventClaimFingerprint(correctedEvent),
+        ]),
+      ];
   const lockedPaths = [...updates.map(([field]) => field), ...(entityIds ? ["entityIds"] : [])];
   const lockedFields = [...new Set([...row.lockedFields, ...lockedPaths])];
   await Promise.all([
@@ -1830,7 +2017,13 @@ async function editEvent(
   }
   const updated = await db.companyEvent.update({
     where: { id: row.id },
-    data: { ...data, lockedFields, claimFingerprints, subjectKey: correctedSubjectKey },
+    data: {
+      ...data,
+      lockedFields,
+      claimFingerprints,
+      sourceClaimKeys: [...new Set(sourceClaimKeys)],
+      subjectKey: correctedSubjectKey,
+    },
   });
   const links = await db.companyEventEntity.findMany({
     where: { ...scope, eventId: row.id },
@@ -1937,22 +2130,37 @@ async function rejectFact(
             current as Prisma.CompanyEventGetPayload<object>,
           ),
         });
-  const sourceEvidence = await db.companyEvidence.findMany({
-    where: { ...scope, factKind, factId },
-    select: { sourceKey: true },
-  });
-  const savedClaimFingerprints = await currentClaimFingerprints(
-    db,
-    scope,
-    factKind,
-    factId,
-    current.claimFingerprints,
-    claimFingerprint,
-  );
+  const sourceAliases =
+    factKind === "event"
+      ? (current as Prisma.CompanyEventGetPayload<object>).sourceClaimKeys.map(
+          (sourceKey) => `source:${sourceKey}`,
+        )
+      : (
+          await db.companyEvidence.findMany({
+            where: { ...scope, factKind, factId },
+            select: { sourceKey: true },
+          })
+        ).map((evidence) => `source:${evidence.sourceKey}`);
+  const savedClaimFingerprints =
+    factKind === "edge"
+      ? await currentClaimFingerprints(
+          db,
+          scope,
+          "edge",
+          factId,
+          current.claimFingerprints,
+          claimFingerprint,
+        )
+      : [
+          ...new Set([
+            ...(current as Prisma.CompanyEventGetPayload<object>).claimFingerprints,
+            claimFingerprint,
+          ]),
+        ];
   const aliases = [
     ...new Set([
       ...savedClaimFingerprints.map((fingerprint) => `${factKind}:${fingerprint}`),
-      ...sourceEvidence.map((evidence) => `source:${evidence.sourceKey}`),
+      ...sourceAliases,
     ]),
   ];
   const fingerprint = hash([factKind, ...aliases.sort()]);

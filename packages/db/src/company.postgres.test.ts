@@ -4,7 +4,11 @@ import { createNorthwindCompanyFixture } from "../../testkit/src/fixtures/compan
 import { northwindGroundTruth } from "../../testkit/src/fixtures/company/ground-truth.js";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
-import type { CompanySuppressedResult, CompanyWriteResult } from "./company.js";
+import type {
+  CompanyDeferredResult,
+  CompanySuppressedResult,
+  CompanyWriteResult,
+} from "./company.js";
 import { companyForActor } from "./company.js";
 import { IsolationError } from "./scope.js";
 
@@ -64,9 +68,13 @@ describePostgres("company foundation (PostgreSQL)", () => {
     if ("suppressed" in result) throw new Error("Expected a company entity");
     return result.id;
   };
-  const persisted = <T extends object>(result: T): Exclude<T, CompanySuppressedResult> => {
-    if ("suppressed" in result) throw new Error("Expected a persisted fact");
-    return result as Exclude<T, CompanySuppressedResult>;
+  const persisted = <T extends object>(
+    result: T,
+  ): Exclude<T, CompanySuppressedResult | CompanyDeferredResult> => {
+    if ("suppressed" in result || "deferred" in result) {
+      throw new Error("Expected a persisted fact");
+    }
+    return result as Exclude<T, CompanySuppressedResult | CompanyDeferredResult>;
   };
   const candidate = (
     sourceKind: string,
@@ -319,6 +327,44 @@ describePostgres("company foundation (PostgreSQL)", () => {
       }),
     );
     expect(nameOnlyReplay.id).toBe(nameOnlyFirst.id);
+
+    const mixedName = `Mixed domain organisation ${suffix}`;
+    const domainBearing = persisted(
+      await company.importEntity({
+        entity: {
+          kind: "organisation",
+          displayName: mixedName,
+          attrs: { domain: `mixed-${suffix}.example.test` },
+          confidence: 0.9,
+        },
+        evidence: evidence("mixed-domain-bearing", "mixed-domain-bearing-hash"),
+      }),
+    );
+    const domainless = persisted(
+      await company.importEntity({
+        entity: {
+          kind: "organisation",
+          displayName: mixedName,
+          attrs: {},
+          confidence: 0.9,
+        },
+        evidence: evidence("mixed-domainless-first", "mixed-domainless-first-hash"),
+      }),
+    );
+    expect(domainless.id).not.toBe(domainBearing.id);
+    expect(
+      persisted(
+        await company.importEntity({
+          entity: {
+            kind: "organisation",
+            displayName: mixedName,
+            attrs: {},
+            confidence: 0.9,
+          },
+          evidence: evidence("mixed-domainless-second", "mixed-domainless-second-hash"),
+        }),
+      ).id,
+    ).toBe(domainless.id);
   });
 
   it("reconciles edited identity rows and preserves locked identities on replay", async () => {
@@ -378,6 +424,61 @@ describePostgres("company foundation (PostgreSQL)", () => {
       }),
     );
     expect(newEmailImport.id).toBe(original.id);
+
+    const collisionEmail = `identity-collision-${suffix}@example.test`;
+    const collisionTarget = persisted(
+      await company.importEntity(
+        person(
+          "Identity collision target",
+          "identity-collision-target",
+          "identity-collision-target-hash",
+          collisionEmail,
+        ),
+      ),
+    );
+    const evidenceCount = await prisma.companyEvidence.count({
+      where: { spaceId, ownerUserId: userId, factKind: "entity", factId: original.id },
+    });
+    await expect(
+      company.edit({
+        entityId: original.id,
+        kind: "person",
+        attrs: { workEmails: [collisionEmail] },
+      }),
+    ).rejects.toThrow(/email identity.*already belongs/i);
+    expect((await company.detail(original.id))?.attrs).toMatchObject({ workEmails: [newEmail] });
+    expect(
+      await prisma.companyIdentity.findMany({
+        where: { spaceId, ownerUserId: userId, entityId: original.id, identityType: "email" },
+        select: { identityValue: true },
+      }),
+    ).toEqual([{ identityValue: newEmail }]);
+    expect(
+      await prisma.companyEvidence.count({
+        where: { spaceId, ownerUserId: userId, factKind: "entity", factId: original.id },
+      }),
+    ).toBe(evidenceCount);
+    expect(
+      persisted(
+        await company.importEntity({
+          ...originalInput,
+          entity: { ...originalInput.entity, attrs: { workEmails: [newEmail] } },
+          evidence: evidence("identity-edit-still-resolves", "identity-edit-still-resolves-hash"),
+        }),
+      ).id,
+    ).toBe(original.id);
+    expect(
+      persisted(
+        await company.importEntity(
+          person(
+            "Identity collision target",
+            "identity-collision-target-replay",
+            "identity-collision-target-replay-hash",
+            collisionEmail,
+          ),
+        ),
+      ).id,
+    ).toBe(collisionTarget.id);
   });
 
   it("scopes name-only person rejection aliases to their source", async () => {
@@ -403,10 +504,30 @@ describePostgres("company foundation (PostgreSQL)", () => {
         ...rejectedInput,
         evidence: {
           ...rejectedInput.evidence,
+          quote: "A changed quotation for the same person.",
           contentHash: "rejected-name-after-disconnect-hash",
         },
       }),
     ).toMatchObject({ suppressed: true });
+    const differentNameSameDocument = persisted(
+      await company.importEntity({
+        ...rejectedInput,
+        entity: { ...rejectedInput.entity, displayName: `Different name ${suffix}` },
+        evidence: {
+          ...rejectedInput.evidence,
+          quote: "A different person in the same document.",
+          contentHash: "rejected-name-different-name-hash",
+        },
+      }),
+    );
+    expect(differentNameSameDocument.id).not.toBe(rejected.id);
+    const sameNameDifferentDocument = persisted(
+      await company.importEntity({
+        ...rejectedInput,
+        evidence: evidence("rejected-name-other-document", "rejected-name-other-document-hash"),
+      }),
+    );
+    expect(sameNameDifferentDocument.id).not.toBe(rejected.id);
   });
 
   it("keeps same-document claims separate and namespaces identities by entity kind", async () => {
@@ -1558,7 +1679,10 @@ describePostgres("company foundation (PostgreSQL)", () => {
     const oldSubjectReplay = persisted(
       await company.importEvent({
         ...changedSubjectEventInput,
-        evidence: evidence("owner-changed-subject-replay", "owner-changed-subject-replay-hash"),
+        evidence: {
+          ...changedSubjectEventInput.evidence,
+          contentHash: "owner-changed-subject-replay-hash",
+        },
       }),
     );
     expect(oldSubjectReplay).toMatchObject({
@@ -1578,6 +1702,54 @@ describePostgres("company foundation (PostgreSQL)", () => {
     ).toMatchObject({
       subjectKey: `entities:${JSON.stringify([entityId(secondPerson)])}`,
     });
+    const independentOldSubject = persisted(
+      await company.importEvent({
+        ...changedSubjectEventInput,
+        evidence: evidence(
+          "owner-changed-subject-independent-a",
+          "owner-changed-subject-independent-a-hash",
+        ),
+      }),
+    );
+    expect(independentOldSubject.id).not.toBe(changedSubjectEvent.id);
+    await company.disconnect("slack", "owner-changed-subject-source");
+    const replayAfterDisconnect = persisted(
+      await company.importEvent({
+        ...changedSubjectEventInput,
+        evidence: {
+          ...changedSubjectEventInput.evidence,
+          contentHash: "owner-changed-subject-after-disconnect-hash",
+        },
+      }),
+    );
+    expect(replayAfterDisconnect).toMatchObject({
+      id: changedSubjectEvent.id,
+      entityIds: [entityId(secondPerson)],
+    });
+    await company.rejectEvent(changedSubjectEvent.id, "Corrected subject B");
+    expect(
+      await company.importEvent({
+        ...changedSubjectEventInput,
+        evidence: {
+          ...changedSubjectEventInput.evidence,
+          contentHash: "owner-changed-subject-after-rejection-hash",
+        },
+      }),
+    ).toMatchObject({ suppressed: true });
+    expect(
+      await company.importEvent({
+        ...changedSubjectEventInput,
+        event: { ...changedSubjectEventInput.event, entityIds: [entityId(secondPerson)] },
+        evidence: evidence("owner-changed-subject-fresh-b", "owner-changed-subject-fresh-b-hash"),
+      }),
+    ).toMatchObject({ suppressed: true });
+    const newIndependentOldSubject = persisted(
+      await company.importEvent({
+        ...changedSubjectEventInput,
+        evidence: evidence("owner-changed-subject-fresh-a", "owner-changed-subject-fresh-a-hash"),
+      }),
+    );
+    expect(newIndependentOldSubject.id).not.toBe(changedSubjectEvent.id);
 
     const unknownInput = {
       event: {
@@ -1635,6 +1807,15 @@ describePostgres("company foundation (PostgreSQL)", () => {
       evidence: evidence("unknown-subject-fresh-known-a", "unknown-subject-fresh-known-a-hash"),
     });
     expect(rejectedKnownSubject).toMatchObject({ suppressed: true });
+    expect(
+      await company.importEvent({
+        ...unknownInput,
+        evidence: {
+          ...unknownInput.evidence,
+          contentHash: "unknown-subject-original-source-after-rejection",
+        },
+      }),
+    ).toMatchObject({ suppressed: true });
     const distinctKnownSubject = persisted(
       await company.importEvent({
         event: {
@@ -1692,6 +1873,85 @@ describePostgres("company foundation (PostgreSQL)", () => {
         { entityId: entityId(mergeRoot) },
       ]),
     );
+
+    const secondMergeChild = await company.importEntity(
+      person(
+        `Second subject merge child ${suffix}`,
+        "subject-merge-child-second",
+        "subject-merge-child-second-hash",
+        `subject-merge-child-second-${suffix}@example.test`,
+      ),
+    );
+    const secondChildEventInput = {
+      event: {
+        ...childEventInput.event,
+        entityIds: [entityId(secondMergeChild)],
+      },
+      evidence: evidence(
+        "canonical-subject-child-second-source",
+        "canonical-subject-child-second-hash",
+      ),
+    };
+    const secondChildEvent = persisted(await company.importEvent(secondChildEventInput));
+    expect(secondChildEvent.id).not.toBe(childEvent.id);
+    await company.merge(entityId(secondMergeChild), entityId(mergeRoot));
+    const ambiguousMergeInput = {
+      ...secondChildEventInput,
+      event: { ...secondChildEventInput.event, entityIds: [entityId(mergeRoot)] },
+      evidence: evidence("canonical-subject-new-source", "canonical-subject-new-hash"),
+    };
+    const eventsBeforeDeferral = await prisma.companyEvent.count({
+      where: { spaceId, ownerUserId: userId },
+    });
+    const eventEvidenceBeforeDeferral = await prisma.companyEvidence.count({
+      where: { spaceId, ownerUserId: userId, factKind: "event" },
+    });
+    const deferred = await company.importEvent(ambiguousMergeInput);
+    if (!("deferred" in deferred)) throw new Error("Expected an ambiguous event candidate");
+    expect(deferred).toMatchObject({
+      deferred: true,
+      record: null,
+      candidateId: expect.any(String),
+    });
+    expect(await prisma.companyEvent.count({ where: { spaceId, ownerUserId: userId } })).toBe(
+      eventsBeforeDeferral,
+    );
+    expect(
+      await prisma.companyEvidence.count({
+        where: { spaceId, ownerUserId: userId, factKind: "event" },
+      }),
+    ).toBe(eventEvidenceBeforeDeferral);
+    const deferredCandidate = await company.candidates();
+    expect(deferredCandidate).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: deferred.candidateId,
+          kind: "event",
+          reason: "ambiguous_event_subjects",
+          entityIds: [entityId(mergeRoot)],
+          proposedFact: expect.objectContaining({
+            event: ambiguousMergeInput.event,
+            matchingEventIds: expect.arrayContaining([childEvent.id, secondChildEvent.id]),
+          }),
+        }),
+      ]),
+    );
+    expect(await company.importEvent(ambiguousMergeInput)).toEqual(deferred);
+    expect(
+      (await company.candidates()).filter(
+        (candidate) => candidate.reason === "ambiguous_event_subjects",
+      ),
+    ).toHaveLength(1);
+    const originalChildReplay = persisted(
+      await company.importEvent({
+        ...childEventInput,
+        evidence: {
+          ...childEventInput.evidence,
+          contentHash: "canonical-subject-child-replay-hash",
+        },
+      }),
+    );
+    expect(originalChildReplay.id).toBe(childEvent.id);
 
     const historicalSubjectEventInput = {
       event: {
