@@ -9,7 +9,7 @@ import { connectMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
-type Choice = "direct" | "composio" | "pipedream" | "google" | "executor";
+export type SetupChoice = "direct" | "composio" | "pipedream" | "google" | "executor";
 
 export function IntegrationSetup({
   onDone,
@@ -18,6 +18,9 @@ export function IntegrationSetup({
   initialState,
   botId,
   onServerConnected,
+  embedded = false,
+  initialChoice,
+  onSaved,
 }: {
   onDone?: () => void;
   serverSetup?: boolean;
@@ -26,11 +29,18 @@ export function IntegrationSetup({
   initialState?: IntegrationSetupState | null;
   botId?: string;
   onServerConnected?: (id: string) => void;
+  /** Inside another step: no heading, no search, and the owner of the step supplies Continue and Skip. */
+  embedded?: boolean;
+  initialChoice?: SetupChoice;
+  /** A provider's credentials were saved. */
+  onSaved?: () => void;
 }) {
   const { t } = useLingui();
   const fieldId = useId();
   const [state, setState] = useState<IntegrationSetupState | null>(initialState ?? null);
-  const [selectedChoice, setChoice] = useState<Choice>(managedOnly ? "composio" : "direct");
+  const [selectedChoice, setChoice] = useState<SetupChoice>(
+    initialChoice ?? (managedOnly ? "composio" : "direct"),
+  );
   const choice = serverSetup ? selectedChoice : "direct";
   const [apiKey, setApiKey] = useState("");
   const [clientId, setClientId] = useState("");
@@ -43,7 +53,7 @@ export function IntegrationSetup({
   const [error, setError] = useState<string | null>(null);
   const [connected, setConnected] = useState<string[]>([]);
   // Each provider is named, then described by what it does for the people on this server.
-  const choices: { id: Choice; label: string; detail: string }[] = [
+  const choices: { id: SetupChoice; label: string; detail: string }[] = [
     {
       id: "direct",
       label: t`Apps with their own server`,
@@ -130,6 +140,7 @@ export function IntegrationSetup({
       );
       setApiKey("");
       setState(await rpc.integrationSetup.get());
+      onSaved?.();
       onDone?.();
     });
   }
@@ -161,16 +172,18 @@ export function IntegrationSetup({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-lg font-semibold text-foreground">
-          {serverSetup ? t`Server integrations` : t`Add MCP server`}
-        </h1>
-        {serverSetup ? (
-          <p className="mt-1 text-sm text-muted-foreground">
-            <Trans>Choose how apps connect for everyone on this server.</Trans>
-          </p>
-        ) : null}
-      </div>
+      {embedded ? null : (
+        <div>
+          <h1 className="text-lg font-semibold text-foreground">
+            {serverSetup ? t`Server integrations` : t`Add MCP server`}
+          </h1>
+          {serverSetup ? (
+            <p className="mt-1 text-sm text-muted-foreground">
+              <Trans>Choose how apps connect for everyone on this server.</Trans>
+            </p>
+          ) : null}
+        </div>
+      )}
       {serverSetup ? (
         <fieldset
           aria-label={t`Integration options`}
@@ -307,7 +320,23 @@ export function IntegrationSetup({
           ) : null}
         </>
       ) : null}
-      {choice === "direct" ? (
+      {choice === "direct" && embedded ? (
+        <div className="space-y-3">
+          <Input
+            aria-label={t`Server URL`}
+            value={endpoint}
+            onChange={(event) => setEndpoint(event.target.value)}
+            placeholder="https://example.com/mcp"
+          />
+          <Button
+            disabled={busy || !endpoint.trim() || connected.includes(endpoint.trim())}
+            onClick={() => void connect(deriveMcpName(endpoint.trim()), endpoint.trim())}
+          >
+            {connected.includes(endpoint.trim()) ? t`Connected` : t`Connect`}
+          </Button>
+        </div>
+      ) : null}
+      {choice === "direct" && !embedded ? (
         <>
           <form
             className="flex gap-2"

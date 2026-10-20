@@ -1,5 +1,9 @@
+import type { Page } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, signup } from "./helpers";
+
+const openOtherWays = (page: Page) =>
+  page.getByText("Other ways to connect", { exact: true }).click();
 
 test("setup exposes all integration choices and saves only the selected provider", async ({
   page,
@@ -25,7 +29,13 @@ test("setup exposes all integration choices and saves only the selected provider
     return route.fulfill({ json: { json: { ok: true } } });
   });
   await signup(page, `integration-setup-${Date.now()}@rakazo.test`, "password12", "Setup Test");
-  await expect(page.getByRole("heading", { name: "Server integrations" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Connect your apps" })).toBeVisible();
+  // Popular apps come first; the ways to connect them stay folded away.
+  await expect(page.getByRole("button", { name: "Set up Slack", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Popular apps through Composio", exact: true }),
+  ).toBeHidden();
+  await openOtherWays(page);
   for (const name of [
     "Apps with their own server",
     "Popular apps through Composio",
@@ -44,10 +54,11 @@ test("setup exposes all integration choices and saves only the selected provider
   await page.getByRole("button", { name: "Popular apps through Composio", exact: true }).click();
   await page.getByLabel("API key", { exact: true }).fill("fake-composio-key");
   await captureScreenshot(page, testInfo, "integration-setup-composio");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect
     .poll(() => saved)
     .toEqual([{ json: { provider: "composio", apiKey: "fake-composio-key" } }]);
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Create your first bot" })).toHaveCount(0);
   await expect(page.getByRole("combobox", { name: "Message Chief" })).toBeVisible({
     timeout: 20_000,
@@ -100,10 +111,10 @@ test("direct MCP connects a catalog result without asking for a URL and assigns 
     return route.fulfill({ json: { json: { status: "already_connected" } } });
   });
   await signup(page, `direct-mcp-setup-${Date.now()}@rakazo.test`, "password12", "Direct MCP");
-  await page.getByRole("textbox", { name: "Search apps", exact: true }).fill("Notion");
-  await page.getByRole("button", { name: "Search", exact: true }).click();
-  await expect(page.getByText("Notion", { exact: true })).toBeVisible();
-  await expect(page.getByRole("textbox", { name: "Server URL" })).toBeHidden();
+  await openOtherWays(page);
+  await page
+    .getByRole("textbox", { name: "Server URL" })
+    .fill("https://mcp.notion.example.test/mcp");
   await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect(page.getByRole("button", { name: "Connected", exact: true })).toBeVisible();
   await captureScreenshot(page, testInfo, "integration-setup-direct-connected");
@@ -145,7 +156,7 @@ test("Executor reconnect saves a replacement token before authorization", async 
     }),
   );
   await signup(page, `executor-reconnect-${Date.now()}@rakazo.test`, "password12", "Executor Test");
-  await expect(page.getByRole("heading", { name: "Server integrations" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Connect your apps" })).toBeVisible();
   const server = await page.evaluate(async () => {
     const response = await fetch("/rpc/mcp/servers/create", {
       method: "POST",
@@ -185,6 +196,7 @@ test("Executor reconnect saves a replacement token before authorization", async 
     expect(saved).toBe(true);
     return route.fulfill({ json: { json: { status: "already_connected" } } });
   });
+  await openOtherWays(page);
   await page.getByRole("button", { name: "Your own tool server", exact: true }).click();
   await page
     .getByRole("textbox", { name: "Server URL", exact: true })
@@ -211,7 +223,7 @@ test("remote members skip server setup and keep direct MCP connections", async (
     }),
   );
   await signup(page, `remote-member-${Date.now()}@rakazo.test`, "password12", "Remote Member");
-  await expect(page.getByRole("heading", { name: "Server integrations" })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Connect your apps" })).toBeHidden();
   await expect(page.getByRole("heading", { name: "Create your first bot" })).toHaveCount(0);
   await captureScreenshot(page, testInfo, "remote-member-onboarding");
   await completeOnboarding(page);
@@ -253,7 +265,7 @@ test("configured server owners manage providers from settings", async ({ page },
     }),
   );
   await signup(page, `configured-owner-${Date.now()}@rakazo.test`, "password12", "Server Owner");
-  await expect(page.getByRole("heading", { name: "Server integrations" })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Connect your apps" })).toBeHidden();
   await completeOnboarding(page);
   await page.getByTestId("user-menu-trigger").click();
   await page.getByRole("button", { name: "Settings", exact: true }).click();
@@ -292,6 +304,7 @@ test("owners can choose Google and see the redirect URI to register", async ({
     return route.fulfill({ json: { json: { ok: true } } });
   });
   await signup(page, `google-setup-${Date.now()}@rakazo.test`, "password12", "Google Setup");
+  await openOtherWays(page);
   await page.getByRole("button", { name: "Google apps", exact: true }).click();
   await expect(page.getByLabel("Redirect URI", { exact: true })).toHaveValue(
     "https://example.test/integrations/google/callback",
@@ -299,7 +312,7 @@ test("owners can choose Google and see the redirect URI to register", async ({
   await page.getByLabel("Client ID", { exact: true }).fill("fake-client-id.apps.example.test");
   await page.getByLabel("Client secret", { exact: true }).fill("fake-client-secret");
   await captureScreenshot(page, testInfo, "integration-setup-google");
-  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page.getByRole("button", { name: "Connect", exact: true }).click();
   await expect
     .poll(() => saved)
     .toEqual([
@@ -342,9 +355,7 @@ test("the Google callback page shows the failure and a way back when Google deni
   await expect(page.getByRole("button", { name: "Return to Praci" })).toBeVisible();
 });
 
-test("Executor setup has Connect as its only action, without Continue or Skip", async ({
-  page,
-}) => {
+test("Executor setup keeps Skip for now beside its Connect button", async ({ page }) => {
   await page.route("**/rpc/integrationSetup/get", (route) =>
     route.fulfill({
       json: {
@@ -358,9 +369,9 @@ test("Executor setup has Connect as its only action, without Continue or Skip", 
     }),
   );
   await signup(page, `executor-setup-${Date.now()}@rakazo.test`, "password12", "Executor Setup");
-  await expect(page.getByRole("button", { name: "Continue", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Skip for now", exact: true })).toBeVisible();
+  await openOtherWays(page);
   await page.getByRole("button", { name: "Your own tool server", exact: true }).click();
   await expect(page.getByRole("button", { name: "Connect", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "Continue", exact: true })).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Skip", exact: true })).toHaveCount(0);
 });

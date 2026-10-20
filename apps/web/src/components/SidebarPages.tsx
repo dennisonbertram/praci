@@ -23,7 +23,12 @@ export function SidebarPages({
   templates = SIDEBAR_PAGE_TEMPLATES,
   onOpen,
   rail = false,
+  hidden = [],
+  onListed,
 }: {
+  hidden?: readonly string[];
+  /** Reports the added pages, so the group's menu can offer them too. */
+  onListed?: (pages: { key: string; label: string }[]) => void;
   templates?: readonly SidebarPageTemplate[];
   onOpen?: () => void;
   rail?: boolean;
@@ -88,6 +93,13 @@ export function SidebarPages({
     const template = templates.find((candidate) => candidate.key === key);
     return template?.available && template.platforms.includes(surface) ? template : [];
   });
+  const listed = rows.map((template) => ({
+    key: template.key,
+    label: t(sidebarPageCopy(template.key).label),
+  }));
+  const listedKey = listed.map((page) => `${page.key}:${page.label}`).join("|");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: listedKey stands for listed.
+  useEffect(() => onListed?.(listed), [listedKey, onListed]);
   const isCurrent = (template: SidebarPageTemplate) =>
     matchPath({ path: template.route, end: false }, pathname) != null;
   const addable = templates.filter((template) => state?.addable.includes(template.key));
@@ -95,7 +107,7 @@ export function SidebarPages({
   return (
     <>
       {rows.map((template) =>
-        collapsed && !isCurrent(template) ? null : (
+        hidden.includes(template.key) || (collapsed && !isCurrent(template)) ? null : (
           <div key={template.key} className="group relative">
             <SidebarPageLink
               testId={`sidebar-page-${template.key}`}

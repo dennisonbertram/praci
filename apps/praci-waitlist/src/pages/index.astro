@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import { logos } from "../logos";
 const github = "https://github.com/dennisonbertram/praci";
 ---
 
@@ -8,23 +9,28 @@ const github = "https://github.com/dennisonbertram/praci";
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Praci — The Startup OS</title>
-    <meta name="description" content="Open-source AI agents that run your inbox, cash, cap table and investor documents." />
+    <meta name="description" content="The Startup OS: an AI team for the work that runs your company. Open source, self-hosted or in our cloud." />
   </head>
   <body>
     <header>
       <a class="brand" href="/">praci</a>
-      <a class="star" href={github}><svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .67.42l1.88 3.81 4.2.61a.75.75 0 0 1 .42 1.28l-3.04 2.96.72 4.19a.75.75 0 0 1-1.09.79L8 12.33l-3.76 1.98a.75.75 0 0 1-1.09-.79l.72-4.19L.83 6.37a.75.75 0 0 1 .42-1.28l4.2-.61L7.33.67A.75.75 0 0 1 8 .25Z"/></svg>Star on GitHub</a>
+      <nav aria-label="Site">
+        <a href="/docs">Docs</a>
+        <a href="/blog">Blog</a>
+        <a class="star" href={github}><svg aria-hidden="true" viewBox="0 0 16 16" width="14" height="14"><path fill="currentColor" d="M8 .25a.75.75 0 0 1 .67.42l1.88 3.81 4.2.61a.75.75 0 0 1 .42 1.28l-3.04 2.96.72 4.19a.75.75 0 0 1-1.09.79L8 12.33l-3.76 1.98a.75.75 0 0 1-1.09-.79l.72-4.19L.83 6.37a.75.75 0 0 1 .42-1.28l4.2-.61L7.33.67A.75.75 0 0 1 8 .25Z"/></svg>Star on GitHub</a>
+      </nav>
     </header>
     <main>
       <h1>The Startup OS</h1>
       <p class="lead">
         An AI team for the work that runs your company. Built by founders, for founders.
-        Self-host or Cloud.
+        Self-hosted or in our cloud.
       </p>
+      <p class="thesis">Raise money. Pitch clients.<br />Build software. Grow revenue.<br /><span>All in one place.</span></p>
       <ul>
         <li>Open source, with your own keys and models.</li>
-        <li>Agents ask before they send, pay or change anything.</li>
-        <li>Inbox, cash, cap table and investor documents in one place.</li>
+        <li>Built to do the work alongside you. Agents draft, you approve.</li>
+        <li>Finance, cap table, investors, team and operations, side by side.</li>
       </ul>
       <figure class="shot">
         <iframe id="demo" src="/demo/" title="Praci, running on invented data" width="1440" height="900" loading="lazy" tabindex="-1"></iframe>
@@ -38,6 +44,20 @@ const github = "https://github.com/dennisonbertram/praci";
           <button type="submit">Join the waitlist</button>
         </form>
         <p id="status" aria-live="polite"></p>
+      </section>
+      <section class="works" aria-labelledby="works-with">
+        <h2 id="works-with">Works with</h2>
+        <ul>
+          {logos.map((logo) => (
+            <li>
+              {logo.path ? (
+                <svg role="img" aria-label={logo.name} viewBox="0 0 24 24" height="24" fill="currentColor"><path d={logo.path} /></svg>
+              ) : (
+                <span class="wordmark">{logo.name}</span>
+              )}
+            </li>
+          ))}
+        </ul>
       </section>
     </main>
     <footer>

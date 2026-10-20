@@ -36,7 +36,7 @@ test("onboarding skips model connect when a default model is already available",
   );
 
   await expect(page.getByRole("heading", { name: "Connect a model" })).toBeHidden();
-  await expect(page.getByRole("heading", { name: "Server integrations" })).toBeHidden();
+  await expect(page.getByRole("heading", { name: "Connect your apps" })).toBeHidden();
   await expect(page.getByRole("heading", { name: "Create your first bot" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Skip for now" })).toBeHidden();
   await expect(page.getByRole("textbox", { name: "Name" })).toHaveCount(0);
