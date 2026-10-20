@@ -494,6 +494,35 @@ describePostgres("company foundation (PostgreSQL)", () => {
         ),
       ).id,
     ).toBe(collisionTarget.id);
+
+    await company.reject(original.id, "Identity edit rejection");
+    const rejectedOriginalReplay = {
+      ...originalInput,
+      evidence: {
+        ...originalInput.evidence,
+        contentHash: "identity-edit-rejected-replay-hash",
+      },
+    };
+    expect(await company.importEntity(rejectedOriginalReplay)).toMatchObject({
+      suppressed: true,
+      record: null,
+      rejectionId: expect.any(String),
+    });
+
+    await company.disconnect("slack", "identity-edit-source");
+    expect(
+      await company.importEntity({
+        ...rejectedOriginalReplay,
+        evidence: {
+          ...rejectedOriginalReplay.evidence,
+          contentHash: "identity-edit-rejected-after-disconnect-hash",
+        },
+      }),
+    ).toMatchObject({
+      suppressed: true,
+      record: null,
+      rejectionId: expect.any(String),
+    });
   });
 
   it("scopes name-only person rejection aliases to their source", async () => {

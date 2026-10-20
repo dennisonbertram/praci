@@ -795,7 +795,7 @@ function strongEntityAliases(input: CompanyEntityImportInput["entity"]): string[
 function entityAliases(input: CompanyEntityImportInput["entity"], sourceKey: string): string[] {
   const strong = strongEntityAliases(input);
   if (input.kind === "person") {
-    return strong.length > 0 ? strong : [`source:${sourceKey}`];
+    return [...strong, `source:${sourceKey}`];
   }
   const aliases =
     strong.length > 0 ? strong : [`${input.kind}:name:${normalizeCompanyName(input.displayName)}`];
@@ -891,9 +891,7 @@ async function importEntity(
       (entity) => entity.id === evidence.factId && entity.status !== "rejected",
     ),
   );
-  const rejection = activeEvidence
-    ? null
-    : await findSuppression(db, scope, input.entity.kind, aliases);
+  const rejection = await findSuppression(db, scope, input.entity.kind, aliases);
   if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
 
   if (input.entity.kind === "person" && strongIdentifiers.length === 0 && !activeEvidence) {
