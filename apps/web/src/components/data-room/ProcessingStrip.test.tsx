@@ -45,15 +45,46 @@ it("shows the count and progress, and expands to the per-step counts", () => {
   act(() => toggle.click());
   expect(toggle.getAttribute("aria-expanded")).toBe("true");
   const text = container.textContent ?? "";
-  for (const part of [
-    "Reading text412",
-    "Indexing for search300",
-    "Tagging125",
-    "Sample agreement.pdf",
-  ])
+  for (const part of ["Reading text412", "Indexing for search300", "Tagging125"])
     expect(text).toContain(part);
   act(() => toggle.click());
   expect(container.textContent).not.toContain("Reading text");
+});
+
+it("names the file being worked on and keeps failed files out of the Processing header", () => {
+  act(() =>
+    root.render(
+      <ProcessingStrip
+        processing={{
+          reading: 1,
+          indexing: 0,
+          tagging: 0,
+          failed: 1,
+          current: "Board minutes.pdf",
+        }}
+        total={2}
+      />,
+    ),
+  );
+  const text = container.textContent ?? "";
+  expect(text).toContain("Processing 1 file");
+  expect(text).toContain("Reading Board minutes.pdf");
+  expect(text).toContain("1 couldn't be read");
+  act(() => (container.querySelector("button") as HTMLButtonElement).click());
+  expect(container.querySelector("ul")?.textContent).toBe("Reading text1");
+});
+
+it("claims no processing when only failed files remain", () => {
+  act(() =>
+    root.render(
+      <ProcessingStrip
+        processing={{ reading: 0, indexing: 0, tagging: 0, failed: 1, current: null }}
+        total={2}
+      />,
+    ),
+  );
+  expect(container.textContent).toBe("1 couldn't be read");
+  expect(container.querySelector('[role="progressbar"]')).toBeNull();
 });
 
 it("leaves out steps with nothing left, and says when all files are processed", () => {

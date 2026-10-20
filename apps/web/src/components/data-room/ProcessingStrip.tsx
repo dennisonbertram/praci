@@ -41,8 +41,26 @@ export function ProcessingStrip({
     { label: t`Reading text`, count: processing.reading },
     { label: t`Indexing for search`, count: processing.indexing },
     { label: t`Tagging`, count: processing.tagging },
-    { label: t`Failed`, count: processing.failed },
   ].filter((step) => step.count > 0);
+  // The step the current file is in: the earliest one that still has files.
+  const doing = processing.reading
+    ? t`Reading`
+    : processing.indexing
+      ? t`Indexing`
+      : processing.tagging
+        ? t`Tagging`
+        : null;
+  const failed =
+    processing.failed > 0 ? (
+      <p>{plural(processing.failed, { one: "# couldn't be read", other: "# couldn't be read" })}</p>
+    ) : null;
+  if (remaining === 0 && !importing) {
+    return failed ? (
+      <div role="status" className={row}>
+        {failed}
+      </div>
+    ) : null;
+  }
   return (
     <div role="status" className={cn(row, "relative pb-2")}>
       <div className="flex items-center gap-x-2">
@@ -50,24 +68,33 @@ export function ProcessingStrip({
           <>
             <Spinner aria-hidden="true" className="size-3.5" />
             <span>{t`Importing ${importing.done} of ${importing.total}`}</span>
-            <span aria-hidden="true">·</span>
+            {remaining > 0 ? <span aria-hidden="true">·</span> : null}
           </>
         ) : null}
-        <Shimmer>
-          {plural(remaining, { one: "Processing # file", other: "Processing # files" })}
-        </Shimmer>
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          className="ms-auto"
-          aria-label={t`Details`}
-          aria-expanded={open}
-          onClick={() => setOpen(!open)}
-        >
-          <ChevronDown aria-hidden="true" className={cn(open && "rotate-180")} />
-        </Button>
+        {remaining > 0 ? (
+          <Shimmer>
+            {plural(remaining, { one: "Processing # file", other: "Processing # files" })}
+          </Shimmer>
+        ) : null}
+        {remaining > 0 && processing.current && doing ? (
+          <span className="min-w-0 truncate">
+            {doing} {maskCurrencyWhenHidden(processing.current)}
+          </span>
+        ) : null}
+        {remaining > 0 ? (
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            className="ms-auto"
+            aria-label={t`Details`}
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+          >
+            <ChevronDown aria-hidden="true" className={cn(open && "rotate-180")} />
+          </Button>
+        ) : null}
       </div>
-      {open ? (
+      {open && remaining > 0 ? (
         <ul className="mt-1 flex flex-col gap-0.5">
           {steps.map((step) => (
             <li key={step.label} className="flex justify-between tabular-nums">
@@ -75,21 +102,21 @@ export function ProcessingStrip({
               <span>{step.count}</span>
             </li>
           ))}
-          {processing.current ? (
-            <li className="truncate">{maskCurrencyWhenHidden(processing.current)}</li>
-          ) : null}
         </ul>
       ) : null}
-      <div
-        role="progressbar"
-        aria-label={t`Processing`}
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={percent}
-        className="absolute inset-x-0 bottom-0 h-0.5 bg-border"
-      >
-        <div className="h-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
-      </div>
+      {failed}
+      {remaining > 0 ? (
+        <div
+          role="progressbar"
+          aria-label={t`Processing`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={percent}
+          className="absolute inset-x-0 bottom-0 h-0.5 bg-border"
+        >
+          <div className="h-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
+        </div>
+      ) : null}
     </div>
   );
 }
