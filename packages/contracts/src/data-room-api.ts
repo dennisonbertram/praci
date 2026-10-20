@@ -78,6 +78,41 @@ export const DataRoomApiFacetValuesSchema = z.object({
 });
 export type DataRoomApiFacetValues = z.infer<typeof DataRoomApiFacetValuesSchema>;
 
+const StatCount = z.object({ value: z.string(), count: z.number().int() });
+/** Totals and groups over the documents the filters match (see `dataRoom.stats`). */
+export const DataRoomApiStatsSchema = z.object({
+  documents: z.number().int(),
+  bytes: z.number(),
+  /** Extra copies: documents beyond one per distinct file content. */
+  duplicates: z.number().int(),
+  status: z.object({
+    ready: z.number().int(),
+    processing: z.number().int(),
+    failed: z.number().int(),
+    /** Stored and listed, but too large to read for search. */
+    notSearchable: z.number().int(),
+  }),
+  types: z.array(StatCount),
+  sources: z.array(StatCount),
+  /** Oldest first, empty periods included; `key` is "YYYY-MM", or "YYYY" for the year unit. */
+  dates: z.object({
+    unit: z.enum(["month", "year"]),
+    buckets: z.array(z.object({ key: z.string(), count: z.number().int() })),
+  }),
+  parties: z.array(StatCount),
+  largest: z.array(z.object({ id: Id, name: z.string(), size: z.number() })),
+  /** Sums per type and currency, largest first. */
+  amounts: z.array(
+    z.object({
+      docType: z.string().nullable(),
+      currency: z.string(),
+      cents: z.number(),
+      count: z.number().int(),
+    }),
+  ),
+});
+export type DataRoomApiStats = z.infer<typeof DataRoomApiStatsSchema>;
+
 export const DataRoomApiSortSchema = z.object({
   /** "date" is the document date; items without one sort last in both directions. */
   field: z.enum(["date", "name", "type", "createdAt"]),

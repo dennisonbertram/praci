@@ -328,6 +328,8 @@ export function createDataRoomService(deps: DataRoomDeps) {
     },
     facetValues: (actor: Actor, filters: Parameters<typeof toFilters>[0]) =>
       repo.facetValues(actor, toFilters(filters)),
+    stats: (actor: Actor, filters: Parameters<typeof toFilters>[0]) =>
+      repo.stats(actor, toFilters(filters)),
     createFolder: (actor: Actor, input: { name: string; parentId?: string | null }) =>
       dataRoomCall(async () => folderDto(await repo.createFolder(actor, input))),
     renameFolder: (actor: Actor, input: { id: string; name: string }) =>

@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 227 of 227
-- Web and shared components: 630
+- Web and shared component files with stories: 228 of 228
+- Web and shared components: 635
 - Mobile components: 136 in 93 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -153,6 +153,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | DataRoomConsentPrompt | [apps/web/src/components/data-room/ConsentPrompt.tsx](../../apps/web/src/components/data-room/ConsentPrompt.tsx) | [ConsentPrompt.stories.tsx](../../apps/web/src/components/data-room/ConsentPrompt.stories.tsx) | web |
 | DataRoomImportMenu | [apps/web/src/components/data-room/DataRoomImportMenu.tsx](../../apps/web/src/components/data-room/DataRoomImportMenu.tsx) | [DataRoomImportMenu.stories.tsx](../../apps/web/src/components/data-room/DataRoomImportMenu.stories.tsx) | web |
 | DataRoomRefChips | [apps/web/src/components/data-room/DataRoomRefChips.tsx](../../apps/web/src/components/data-room/DataRoomRefChips.tsx) | [DataRoomRefChips.stories.tsx](../../apps/web/src/components/data-room/DataRoomRefChips.stories.tsx) | web |
+| Section, Card, BarRows, OverTime, DataRoomStats | [apps/web/src/components/data-room/DataRoomStats.tsx](../../apps/web/src/components/data-room/DataRoomStats.tsx) | [DataRoomStats.stories.tsx](../../apps/web/src/components/data-room/DataRoomStats.stories.tsx) | web |
 | DriveRow | [apps/web/src/components/data-room/DriveRow.tsx](../../apps/web/src/components/data-room/DriveRow.tsx) | [DriveRow.stories.tsx](../../apps/web/src/components/data-room/DriveRow.stories.tsx) | web |
 | DataRoomDropZone | [apps/web/src/components/data-room/DropZone.tsx](../../apps/web/src/components/data-room/DropZone.tsx) | [DropZone.stories.tsx](../../apps/web/src/components/data-room/DropZone.stories.tsx) | web |
 | ToolbarTip, Chip, DateFilter, FilterBar | [apps/web/src/components/data-room/FilterBar.tsx](../../apps/web/src/components/data-room/FilterBar.tsx) | [FilterBar.stories.tsx](../../apps/web/src/components/data-room/FilterBar.stories.tsx) | web |

@@ -34,6 +34,8 @@ const rpcMock = vi.hoisted(() => ({
   itemDelete: vi.fn(),
   itemRetry: vi.fn(),
   facetValues: vi.fn(),
+  stats: vi.fn(),
+  processing: vi.fn(),
   imports: vi.fn(),
 }));
 vi.mock("../lib/rpc", () => ({
@@ -49,6 +51,8 @@ vi.mock("../lib/rpc", () => ({
       itemDelete: rpcMock.itemDelete,
       itemRetry: rpcMock.itemRetry,
       facetValues: rpcMock.facetValues,
+      stats: rpcMock.stats,
+      processing: rpcMock.processing,
       imports: rpcMock.imports,
     },
     legal: { itemLinks: async () => ({ contractTitle: null, deadlines: 0 }) },
@@ -96,6 +100,13 @@ beforeEach(() => {
   rpcMock.connections.mockResolvedValue([]);
   rpcMock.folders.mockResolvedValue([]);
   rpcMock.imports.mockResolvedValue([]);
+  rpcMock.processing.mockResolvedValue({
+    reading: 0,
+    tagging: 0,
+    indexing: 0,
+    failed: 0,
+    current: null,
+  });
   rpcMock.facetValues.mockResolvedValue({ types: [], parties: [], sources: [], hasDates: false });
   rpcMock.list.mockResolvedValue({ items: [item("b.txt"), item("a.txt")], nextCursor: null });
   rpcMock.search.mockResolvedValue({ results: [], nextCursor: null });
@@ -1128,4 +1139,39 @@ it("shows Ask only when the page can open the agent, and clicking it asks for th
     );
   });
   expect(container.querySelector('button[aria-label="Ask Data room agent"]')).toBeNull();
+});
+
+it("shows stats for the open filters, and a click on a type filters the list", async () => {
+  rpcMock.stats.mockResolvedValue({
+    documents: 2,
+    bytes: 20,
+    duplicates: 0,
+    status: { ready: 2, processing: 0, failed: 0, notSearchable: 0 },
+    types: [{ value: "legal", count: 2 }],
+    sources: [{ value: "upload", count: 2 }],
+    dates: { unit: "month", buckets: [] },
+    parties: [],
+    largest: [],
+    amounts: [],
+  });
+  rpcMock.folders.mockResolvedValue([
+    { id: "f1", name: "Deals", parentId: null, createdAt: "2026-10-01T00:00:00.000Z" },
+  ]);
+  await renderPage("/?folder=f1");
+  const stats = container.querySelector<HTMLButtonElement>('button[aria-label="Stats"]');
+  await act(async () => {
+    stats?.click();
+  });
+  expect(rpcMock.stats).toHaveBeenLastCalledWith({ folderId: "f1" });
+  expect(container.querySelector('[data-testid="data-room-stats"]')).not.toBeNull();
+  const legal = Array.from(container.querySelectorAll("button")).find((b) =>
+    b.textContent?.includes("Legal document"),
+  );
+  await act(async () => {
+    legal?.click();
+  });
+  expect(container.querySelector('[data-testid="data-room-stats"]')).toBeNull();
+  expect(rpcMock.list).toHaveBeenLastCalledWith(
+    expect.objectContaining({ folderId: "f1", docType: "legal" }),
+  );
 });
