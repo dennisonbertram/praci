@@ -1,9 +1,5 @@
-import {
-  type ComputerCommand,
-  ComputerCommandSchema,
-  foldComputerCommands,
-  type ProductEvent,
-} from "@rakazo/contracts";
+import type { ComputerCommand, ProductEvent } from "@rakazo/contracts";
+import { ComputerCommandSchema, foldComputerCommands } from "@rakazo/contracts";
 import { formatBytes } from "./format-bytes";
 
 type Listener = (botId: string, command: ComputerCommand) => void;

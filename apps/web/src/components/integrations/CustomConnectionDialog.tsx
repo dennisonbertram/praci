@@ -29,7 +29,8 @@ import { watchWindowClosed } from "../../lib/sign-in-window";
 import { errorText } from "../../lib/user-error";
 import { AgentStep } from "./AgentStep";
 import { AppLogo } from "./AppLogo";
-import { type SignInState, SignInStep } from "./SignInStep";
+import type { SignInState } from "./SignInStep";
+import { SignInStep } from "./SignInStep";
 import type { IntegrationsData } from "./useIntegrations";
 
 type SourceKind = "treg" | "executor" | "api" | "graphql";

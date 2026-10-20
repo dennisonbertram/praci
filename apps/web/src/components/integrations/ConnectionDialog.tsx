@@ -8,7 +8,8 @@ import {
   DialogTitle,
   Input,
 } from "@rakazo/ui-web";
-import { type FormEvent, type ReactNode, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { useState } from "react";
 import { errorText } from "../../lib/user-error";
 import { AppLogo } from "./AppLogo";
 

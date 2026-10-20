@@ -5,10 +5,11 @@ import { encodeTerminalInput, encodeTerminalResize } from "@rakazo/contracts";
 import { Button, cn, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
-import { type RefObject, useEffect, useRef, useState } from "react";
+import type { RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ComputerActionLabels } from "../../lib/computer-workspace";
 import {
   applyComputerCommandHistory,
-  type ComputerActionLabels,
   capComputerCommands,
   formatComputerCommandFeed,
   mergeComputerCommand,

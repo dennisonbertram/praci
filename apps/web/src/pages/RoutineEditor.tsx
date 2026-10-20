@@ -1,9 +1,8 @@
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { ModelCatalogEntry, ModelCredential, Routine } from "@rakazo/contracts";
+import type { CronFreq, CronPreset } from "@rakazo/core";
 import {
-  type CronFreq,
-  type CronPreset,
   cronFromPreset,
   defaultCronPreset,
   formatCron,

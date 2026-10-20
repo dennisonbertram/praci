@@ -17,7 +17,8 @@ import { useEffect, useRef, useState } from "react";
 import { fullDay } from "../../lib/finance-format";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-import { StatementGroup, type StatementRow, statementAccountKey } from "./StatementReviewCard";
+import type { StatementRow } from "./StatementReviewCard";
+import { StatementGroup, statementAccountKey } from "./StatementReviewCard";
 
 type Item = {
   key: number;

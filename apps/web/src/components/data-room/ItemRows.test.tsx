@@ -18,7 +18,8 @@ vi.mock("../../lib/data-room", async (original) => ({
 }));
 
 import { resetHideAmountsMemory, setHideAmounts } from "../../lib/hide-amounts-preference";
-import { GridView, ListView, type RowInteraction, SubfolderList } from "./ItemRows";
+import type { RowInteraction } from "./ItemRows";
+import { GridView, ListView, SubfolderList } from "./ItemRows";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

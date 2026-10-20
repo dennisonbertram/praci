@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { closeRestored, holdDiscard, holdSend, undoSend } from "../lib/outbox";
-import { type ComposeRestore, NEW_MESSAGE } from "./ComposeEmail";
+import type { ComposeRestore } from "./ComposeEmail";
+import { NEW_MESSAGE } from "./ComposeEmail";
 import { MailOutbox } from "./MailOutbox";
 
 const restore: ComposeRestore = {

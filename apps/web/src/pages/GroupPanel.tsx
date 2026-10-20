@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { type Bot, GROUP_MEMBER_MAX, GROUP_MEMBER_MIN, type Group } from "@rakazo/contracts";
+import type { Bot, Group } from "@rakazo/contracts";
+import { GROUP_MEMBER_MAX, GROUP_MEMBER_MIN } from "@rakazo/contracts";
 import { BotAvatar, Button, Input } from "@rakazo/ui-web";
 import { Check, X } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";

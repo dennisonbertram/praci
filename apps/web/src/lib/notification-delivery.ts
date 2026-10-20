@@ -1,5 +1,6 @@
 import type { NotificationDto } from "@rakazo/contracts";
-import { enqueueNotificationToast, type NotificationToastInput } from "@rakazo/ui-web";
+import type { NotificationToastInput } from "@rakazo/ui-web";
+import { enqueueNotificationToast } from "@rakazo/ui-web";
 import { requestBrowserNotificationPermission } from "./browser-notifications";
 import { maskCurrencyWhenHidden } from "./hide-amounts-preference";
 

@@ -72,7 +72,8 @@ vi.mock("@rakazo/ui-web", () => {
 });
 
 import { closeRestored, getOutbox, UNDO_SEND_MS, undoSend } from "../lib/outbox";
-import { ComposeEmail, type ComposeSeed } from "./ComposeEmail";
+import type { ComposeSeed } from "./ComposeEmail";
+import { ComposeEmail } from "./ComposeEmail";
 import { forgetClosed, recallClosed } from "./compose/draft-memory";
 
 const body = "\n\nOn Mon, Sam wrote:\n> quoted line\n> second line";

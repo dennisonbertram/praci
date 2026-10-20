@@ -2,11 +2,12 @@ import { useLingui } from "@lingui/react/macro";
 import { ATTACHMENT_MAX_BYTES } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
 import { ArrowLeft, Download, File, Folder, Upload } from "lucide-react";
-import { type DragEvent, useCallback, useEffect, useRef, useState } from "react";
+import type { DragEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../../lib/artifact-open";
+import type { ComputerFileEntry } from "../../lib/computer-workspace";
 import {
   basename,
-  type ComputerFileEntry,
   parentPath,
   sortEntries,
   subscribeComputerCommands,

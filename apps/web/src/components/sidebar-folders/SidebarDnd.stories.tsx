@@ -1,7 +1,8 @@
 import { planSidebarMove, sidebarSections } from "@rakazo/core";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useCallback, useMemo, useState } from "react";
-import { type DropResult, itemDragId, ROOT_CONTAINER, type SidebarLayout } from "./drop-target";
+import type { DropResult, SidebarLayout } from "./drop-target";
+import { itemDragId, ROOT_CONTAINER } from "./drop-target";
 import { FolderHeader } from "./FolderHeader";
 import { RootEnd, SidebarDnd, SortableList, SortableRow } from "./SidebarDnd";
 

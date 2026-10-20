@@ -3,11 +3,11 @@ import { Trans } from "@lingui/react/macro";
 import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import type { FinanceSpace } from "../components/finance/ui";
 import {
   AskAgentButton,
   ErrorNotice,
   FinanceChromeProvider,
-  type FinanceSpace,
   Kpi,
   SpaceName,
   useFinanceQuery,

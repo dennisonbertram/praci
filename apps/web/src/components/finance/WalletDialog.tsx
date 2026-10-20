@@ -14,7 +14,8 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@rakazo/ui-web";
-import { type FormEvent, useId, useState } from "react";
+import type { FormEvent } from "react";
+import { useId, useState } from "react";
 import { shortAddress } from "../../lib/crypto-format";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";

@@ -12,7 +12,8 @@ import {
 } from "@rakazo/ui-web";
 import { FolderInput, MoreHorizontal, Pencil, RotateCw, Trash2 } from "lucide-react";
 import type { ElementType } from "react";
-import { type SendTarget, SendToAgentMenu } from "./SendToAgent";
+import type { SendTarget } from "./SendToAgent";
+import { SendToAgentMenu } from "./SendToAgent";
 
 export type ItemAction = "move" | "rename" | "delete" | "retry";
 

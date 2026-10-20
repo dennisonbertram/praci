@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
-import { createServer as createHttpServer, type Server } from "node:http";
+import type { Server } from "node:http";
+import { createServer as createHttpServer } from "node:http";
 import type { AddressInfo, Server as NetServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, test } from "@playwright/test";
 import { openScreenCapability } from "@rakazo/core/node/screen-capability";
-import { createServer, type Plugin, preview, type ViteDevServer } from "vite";
+import type { Plugin, ViteDevServer } from "vite";
+import { createServer, preview } from "vite";
 import { addScreenProxyCapability } from "../../api/src/screen-proxy";
 
 const scope = {

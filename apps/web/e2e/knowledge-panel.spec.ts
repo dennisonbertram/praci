@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
-import { expect, type Locator, test } from "@playwright/test";
+import type { Locator } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import type { MemoryDocument } from "@rakazo/contracts";
 import {
   activeBotId,

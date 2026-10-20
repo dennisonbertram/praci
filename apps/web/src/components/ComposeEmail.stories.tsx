@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { withPageBehind } from "../stories/decorators";
-import { ComposeEmail, type ComposeRestore, NEW_MESSAGE } from "./ComposeEmail";
+import type { ComposeRestore } from "./ComposeEmail";
+import { ComposeEmail, NEW_MESSAGE } from "./ComposeEmail";
 
 const accounts = [
   { connectionId: "conn_1", label: "me@example.test" },

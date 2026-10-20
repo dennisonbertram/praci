@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
-import { type AskBlock, AskCard } from "./AskCard";
+import type { AskBlock } from "./AskCard";
+import { AskCard } from "./AskCard";
 
 const ask = (overrides: Partial<AskBlock> = {}): AskBlock => ({
   kind: "ask",

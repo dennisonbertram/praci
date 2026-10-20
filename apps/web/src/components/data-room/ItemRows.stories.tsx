@@ -2,7 +2,8 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { items } from "../../stories/fixtures/data-room";
-import { GridView, ListView, type RowInteraction, SubfolderList } from "./ItemRows";
+import type { RowInteraction } from "./ItemRows";
+import { GridView, ListView, SubfolderList } from "./ItemRows";
 
 const o: RowInteraction = {
   shownId: "itm_ready",

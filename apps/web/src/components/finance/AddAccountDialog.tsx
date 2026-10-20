@@ -15,7 +15,8 @@ import {
   DialogTitle,
 } from "@rakazo/ui-web";
 import { FileText, Wallet } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { connectFinanceProvider } from "../../lib/finance-connect";
 import { EXCHANGES, FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";

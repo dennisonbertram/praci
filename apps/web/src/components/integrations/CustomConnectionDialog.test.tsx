@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { CARTA_MCP_ENDPOINT, DEVIN_MCP_ENDPOINT, type McpServer } from "@rakazo/contracts";
+import type { McpServer } from "@rakazo/contracts";
+import { CARTA_MCP_ENDPOINT, DEVIN_MCP_ENDPOINT } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";

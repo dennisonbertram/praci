@@ -1,9 +1,7 @@
+import type { Announcements, CollisionDetection, DragEndEvent } from "@dnd-kit/core";
 import {
-  type Announcements,
-  type CollisionDetection,
   closestCenter,
   DndContext,
-  type DragEndEvent,
   DragOverlay,
   KeyboardSensor,
   MouseSensor,
@@ -23,13 +21,8 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { useLingui } from "@lingui/react/macro";
 import type { CSSProperties, ReactNode } from "react";
-import {
-  type DropResult,
-  folderDragId,
-  ROOT_END_ID,
-  resolveDrop,
-  type SidebarLayout,
-} from "./drop-target";
+import type { DropResult, SidebarLayout } from "./drop-target";
+import { folderDragId, ROOT_END_ID, resolveDrop } from "./drop-target";
 
 /**
  * Drag and drop for the Personnel list. Rows and folder headers are the handles: a drag starts after

@@ -3,7 +3,8 @@ import type { Bot } from "@rakazo/contracts";
 import { Badge, BotAvatar, cn, Switch } from "@rakazo/ui-web";
 import type { ComponentProps, ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { providerLabel, type StatusKind } from "../../lib/integrations";
+import type { StatusKind } from "../../lib/integrations";
+import { providerLabel } from "../../lib/integrations";
 import { AppLogo } from "./AppLogo";
 
 export function IntegrationTile({ className, ...props }: ComponentProps<"div">) {

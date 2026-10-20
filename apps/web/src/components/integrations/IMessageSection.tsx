@@ -1,10 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import {
-  isPrivateServerUrl,
-  type MessagingField,
-  type MessagingSetupSave,
-  type MessagingSetupState,
-} from "@rakazo/contracts";
+import type { MessagingField, MessagingSetupSave, MessagingSetupState } from "@rakazo/contracts";
+import { isPrivateServerUrl } from "@rakazo/contracts";
 import {
   Button,
   Dialog,
@@ -14,7 +10,8 @@ import {
   DialogTitle,
   Input,
 } from "@rakazo/ui-web";
-import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { useCopyText } from "../../lib/copy-text";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
