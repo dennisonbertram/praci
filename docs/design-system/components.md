@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 220 of 220
-- Web and shared components: 614
-- Mobile components: 134 in 92 files, mobile — native story pending
+- Web and shared component files with stories: 221 of 221
+- Web and shared components: 615
+- Mobile components: 134 in 91 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -187,6 +187,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | CleanupHistory | [apps/web/src/components/inbox/CleanupHistory.tsx](../../apps/web/src/components/inbox/CleanupHistory.tsx) | [CleanupHistory.stories.tsx](../../apps/web/src/components/inbox/CleanupHistory.stories.tsx) | web |
 | CleanupSenderRow | [apps/web/src/components/inbox/CleanupSenderRow.tsx](../../apps/web/src/components/inbox/CleanupSenderRow.tsx) | [CleanupSenderRow.stories.tsx](../../apps/web/src/components/inbox/CleanupSenderRow.stories.tsx) | web |
 | InboxCleanup, OpenLink | [apps/web/src/components/inbox/InboxCleanup.tsx](../../apps/web/src/components/inbox/InboxCleanup.tsx) | [InboxCleanup.stories.tsx](../../apps/web/src/components/inbox/InboxCleanup.stories.tsx) | web |
+| InboxDigest | [apps/web/src/components/inbox/InboxDigest.tsx](../../apps/web/src/components/inbox/InboxDigest.tsx) | [InboxDigest.stories.tsx](../../apps/web/src/components/inbox/InboxDigest.stories.tsx) | web |
 | InboxMessageDialog, InboxMessage, AttachmentIcon, InboxAttachments, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
 | InboxPileTabs | [apps/web/src/components/inbox/InboxPileTabs.tsx](../../apps/web/src/components/inbox/InboxPileTabs.tsx) | [InboxPileTabs.stories.tsx](../../apps/web/src/components/inbox/InboxPileTabs.stories.tsx) | web |
 | InboxGroup, InboxRow | [apps/web/src/components/inbox/InboxRow.tsx](../../apps/web/src/components/inbox/InboxRow.tsx) | [InboxRow.stories.tsx](../../apps/web/src/components/inbox/InboxRow.stories.tsx) | web |
@@ -412,9 +413,8 @@ Every rendered React component, grouped by area. A web or shared component file 
 | HeaderTextButton | [apps/mobile/components/sheet-header.tsx](../../apps/mobile/components/sheet-header.tsx) | mobile — native story pending | mobile |
 | ThreadComposer, MentionOptionIcon, MentionChipIcon | [apps/mobile/components/thread-composer.tsx](../../apps/mobile/components/thread-composer.tsx) | mobile — native story pending | mobile |
 | TimeSeparator | [apps/mobile/components/time-separator.tsx](../../apps/mobile/components/time-separator.tsx) | mobile — native story pending | mobile |
-| ToolCallLabel | [apps/mobile/components/tool-call-label.tsx](../../apps/mobile/components/tool-call-label.tsx) | mobile — native story pending | mobile |
 | UiArtifactPreview, BlockView, ChartView | [apps/mobile/components/ui-artifact-preview.tsx](../../apps/mobile/components/ui-artifact-preview.tsx) | mobile — native story pending | mobile |
 | UnreadDivider | [apps/mobile/components/unread-divider.tsx](../../apps/mobile/components/unread-divider.tsx) | mobile — native story pending | mobile |
 | VoicePlayerBar, VoiceControlButton | [apps/mobile/components/voice-player-bar.tsx](../../apps/mobile/components/voice-player-bar.tsx) | mobile — native story pending | mobile |
 | VoiceChatCard | [apps/mobile/components/VoiceChatCard.tsx](../../apps/mobile/components/VoiceChatCard.tsx) | mobile — native story pending | mobile |
-| Dot, WorkingIndicator | [apps/mobile/components/WorkingIndicator.tsx](../../apps/mobile/components/WorkingIndicator.tsx) | mobile — native story pending | mobile |
+| Dot, WorkingIndicator, WorkingStatusText | [apps/mobile/components/WorkingIndicator.tsx](../../apps/mobile/components/WorkingIndicator.tsx) | mobile — native story pending | mobile |
