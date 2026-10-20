@@ -4,11 +4,11 @@
  * must stay at zero: spam or scam in a pile the user could clear in bulk, and personal, work,
  * security or billing mail in updates or newsletters.
  *
- * Not covered: the plan's "spoofed sender that matches a learned decision". Learned sender decisions
- * are stage 5 of the classifier and arrive in phase 6.
+ * Learned sender decisions (stage 5) are covered with the `learned` field: a spoofed sender that
+ * matches a learned decision must not use it.
  */
 import type { InboxPile } from "@rakazo/contracts";
-import { classifyPile } from "@rakazo/core";
+import { classifyPile, type LearnedPile } from "@rakazo/core";
 import { describe, expect, it } from "vitest";
 import { parseMailSignals } from "./mail-signals.js";
 
@@ -38,6 +38,8 @@ interface Case {
   prior?: boolean | null;
   /** The row was cached before headers were fetched. */
   noSignals?: boolean;
+  /** The pile learned for this sender from earlier model verdicts. */
+  learned?: LearnedPile;
 }
 
 const pass = (domain: string): [string, string] => [
@@ -357,6 +359,95 @@ const cases: Case[] = [
     headers: [fail()],
     mark: "important",
   },
+  // Newsletters that Gmail files under Updates, and receipts that carry list headers
+  {
+    name: "Gmail-updates research newsletter with list headers",
+    kind: "newsletter",
+    expected: "newsletters",
+    from: "Research Weekly <digest@research.example.test>",
+    subject: "This week in papers",
+    headers: [
+      pass("research.example.test"),
+      ...unsubscribe("research.example.test"),
+      ["List-Id", "Research <research.research.example.test>"],
+    ],
+    labels: ["CATEGORY_UPDATES"],
+  },
+  {
+    name: "shop receipt with list headers and the updates label",
+    kind: "receipt",
+    expected: "updates",
+    from: "Shop <orders@shop.example.test>",
+    subject: "Your receipt from Shop",
+    headers: [pass("shop.example.test"), ...unsubscribe("shop.example.test")],
+    labels: ["CATEGORY_UPDATES"],
+  },
+  {
+    name: "auto-submitted with unsubscribe",
+    kind: "notification",
+    expected: "updates",
+    from: "App <app@service.example.test>",
+    subject: "Your export is ready",
+    headers: [
+      pass("service.example.test"),
+      ["Auto-Submitted", "auto-generated"],
+      ...unsubscribe("service.example.test"),
+    ],
+  },
+  {
+    name: '"Order now" promo with list headers',
+    kind: "marketing",
+    expected: "newsletters",
+    from: "Deals <deals@store.example.test>",
+    subject: "Order now and save 20%",
+    headers: [pass("store.example.test"), ...unsubscribe("store.example.test")],
+    labels: ["CATEGORY_UPDATES"],
+  },
+  {
+    // Documents the known trade-off: a List-Id means a mailing list, so it is read as one.
+    name: "notifications@ sender with a List-Id",
+    kind: "notification",
+    expected: "newsletters",
+    from: "Tracker <notifications@tracker.example.test>",
+    subject: "New comment on issue 12",
+    headers: [pass("tracker.example.test"), ["List-Id", "Project <project.tracker.example.test>"]],
+  },
+  // Learned sender decisions
+  {
+    name: "learned newsletter sender with quiet headers and passing auth",
+    kind: "newsletter",
+    expected: "newsletters",
+    from: "Notes <hello@notes.example.test>",
+    subject: "Field notes for October",
+    headers: [pass("notes.example.test")],
+    learned: "newsletters",
+  },
+  {
+    name: "spoofed sender matching a learned newsletter, failed auth, no brand, no list headers",
+    kind: "scam",
+    expected: null,
+    from: "Notes <hello@notes.example.test>",
+    subject: "Field notes for October",
+    headers: [fail()],
+    learned: "newsletters",
+  },
+  {
+    name: "learned sender with a sign-in alert subject",
+    kind: "security",
+    expected: null,
+    from: "Notes <hello@notes.example.test>",
+    subject: "New sign-in to your account",
+    headers: [pass("notes.example.test")],
+    learned: "newsletters",
+  },
+  {
+    name: "learned sender, authentication results missing",
+    kind: "newsletter",
+    expected: null,
+    from: "Notes <hello@notes.example.test>",
+    subject: "Field notes for October",
+    learned: "newsletters",
+  },
 ];
 
 function run(testCase: Case) {
@@ -374,11 +465,12 @@ function run(testCase: Case) {
     senderMark: testCase.mark ?? null,
     priorContact: testCase.prior === undefined ? false : testCase.prior,
     skipInbox: false,
+    learnedPile: testCase.learned ?? null,
   });
 }
 
 describe("pile rules over synthetic messages", () => {
-  it("has about thirty cases", () => {
+  it("has at least thirty cases", () => {
     expect(cases.length).toBeGreaterThanOrEqual(30);
   });
 
