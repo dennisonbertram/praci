@@ -14,6 +14,20 @@ const approvalActions = [
   { id: "deny", label: "Deny" },
 ];
 
+const consentAsk = (overrides: Partial<AskBlock> = {}): AskBlock =>
+  ask({
+    text: "Allow your mail to be sent to OpenRouter (example/model-1, forwarded to its provider)?",
+    detail:
+      "Messages, chat history, bot instructions, memories, attachments, screenshots and connected-app content are sent to run your bots, including routines. This stays on until you turn it off in Account settings.",
+    approvalEffectId: "effect_demo",
+    consent: { version: "2026-09-14" },
+    actions: [
+      { id: "allow", label: "Allow" },
+      { id: "deny", label: "Not now" },
+    ],
+    ...overrides,
+  });
+
 const meta = {
   title: "Chat/AskCard",
   component: AskCard,
@@ -190,4 +204,14 @@ export const EditingAnswer: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByRole("button", { name: /edit first/i }));
   },
+};
+
+export const ConsentRequest: Story = { args: { block: consentAsk() } };
+
+export const ConsentAllowed: Story = {
+  args: { block: consentAsk({ status: "answered", answer: "allow" }) },
+};
+
+export const ConsentDeclined: Story = {
+  args: { block: consentAsk({ status: "answered", answer: "deny" }) },
 };

@@ -260,6 +260,33 @@ export async function assertMailModifyConformance(
     provider.modifyThread(a, "t-modify", { addLabelIds: ["no-such-label"] }, context),
     kind("invalid"),
   );
+  // Spam and trash are label changes on the whole conversation, and each can be undone.
+  for (const mid of ["junk-1", "junk-2"])
+    emulator.gmail.addMessage(a.accountRef, {
+      id: mid,
+      threadId: "t-junk",
+      date: "2026-10-01T10:00:00Z",
+      labels: ["INBOX"],
+      from: "Junk Sender <junk@example.test>",
+      to: "alice@example.test",
+      subject: `Junk ${mid}`,
+    });
+  for (const label of ["SPAM", "TRASH"]) {
+    await provider.modifyThread(
+      a,
+      "t-junk",
+      { addLabelIds: [label], removeLabelIds: ["INBOX"] },
+      context,
+    );
+    for (const mid of ["junk-1", "junk-2"]) assert.deepEqual(await labelsOf(mid), [label]);
+    await provider.modifyThread(
+      a,
+      "t-junk",
+      { addLabelIds: ["INBOX"], removeLabelIds: [label] },
+      context,
+    );
+    for (const mid of ["junk-1", "junk-2"]) assert.deepEqual(await labelsOf(mid), ["INBOX"]);
+  }
   emulator.gmail.failNext(403, { reason: "insufficientPermissions", urlIncludes: "/modify" });
   await assert.rejects(
     provider.modifyMessage(a, id, { addLabelIds: ["STARRED"] }, context),
