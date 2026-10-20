@@ -2,6 +2,11 @@ import { LinkifiedText } from "@rakazo/chat-ui/web";
 import { splitDataRoomReferences } from "@rakazo/core";
 import { DataRoomRefChips } from "./data-room/DataRoomRefChips";
 
+/** Readable line length for prose bubbles from 768px up; tables and code blocks keep the full width. */
+export function bubbleMeasure(text: string): string {
+  return /^\s*\|.*\|\s*$|^\s*```/m.test(text) ? "" : "md:max-w-[40rem]";
+}
+
 /**
  * A sent message: literal text, where only explicit URLs and email addresses are links, so a sent
  * address is tappable without formatting bold or headings. Data room files the server appended
@@ -18,7 +23,9 @@ export function UserTextBubble({
   return (
     <div className="flex flex-col items-end gap-2">
       {body ? (
-        <div className="flex w-fit max-w-full justify-end [@media(hover:none)]:w-full">
+        <div
+          className={`flex w-fit max-w-full justify-end [@media(hover:none)]:w-full ${bubbleMeasure(body)}`}
+        >
           <div
             data-testid="message-user-bubble"
             data-quote-message-id={quoteMessageId}
