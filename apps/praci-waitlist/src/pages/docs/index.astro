@@ -1,0 +1,37 @@
+---
+import { getCollection } from "astro:content";
+import DocsLayout from "../../layouts/DocsLayout.astro";
+
+const pages = (await getCollection("docs")).sort((a, b) => a.data.order - b.data.order);
+const groups = ["Start", "Your company", "Agents and apps", "Run it"] as const;
+---
+
+<DocsLayout
+  title="Docs"
+  description="How Praci works, written for founders: the pages, the agents, and how to run it yourself."
+  nav
+>
+  <h1>Praci docs</h1>
+  <p class="lede">
+    How Praci works, in plain language. New here? Start with <a href="/docs/getting-started">Getting started</a>.
+  </p>
+  {
+    groups.map((group) => (
+      <>
+        <h2>{group}</h2>
+        <ul class="cards">
+          {pages
+            .filter((page) => page.data.group === group)
+            .map((page) => (
+              <li>
+                <a href={`/docs/${page.id}`}>
+                  <strong>{page.data.title}</strong>
+                  <span>{page.data.description}</span>
+                </a>
+              </li>
+            ))}
+        </ul>
+      </>
+    ))
+  }
+</DocsLayout>
