@@ -63,6 +63,33 @@ const HEADLINE_OPTIONS = `StartSel=${HIGHLIGHT_START}, StopSel=${HIGHLIGHT_STOP}
 const stripMarkers = (text: string) =>
   text.replaceAll(HIGHLIGHT_START, "").replaceAll(HIGHLIGHT_STOP, "");
 
+/** Month counts as dated buckets with the empty months filled in; yearly when over three years. */
+function bucketDates(months: { key: string; count: number }[]) {
+  const first = months[0];
+  const last = months.at(-1);
+  if (!first || !last) return { unit: "month" as const, buckets: [] };
+  const index = (key: string) => Number(key.slice(0, 4)) * 12 + Number(key.slice(5, 7)) - 1;
+  const span = index(last.key) - index(first.key) + 1;
+  const counts = new Map<string, number>();
+  const unit = span > 36 ? ("year" as const) : ("month" as const);
+  for (const { key, count } of months) {
+    const bucket = unit === "year" ? key.slice(0, 4) : key;
+    counts.set(bucket, (counts.get(bucket) ?? 0) + count);
+  }
+  const buckets: { key: string; count: number }[] = [];
+  if (unit === "year") {
+    for (let y = Number(first.key.slice(0, 4)); y <= Number(last.key.slice(0, 4)); y++) {
+      buckets.push({ key: String(y), count: counts.get(String(y)) ?? 0 });
+    }
+  } else {
+    for (let n = index(first.key); n <= index(last.key); n++) {
+      const key = `${Math.floor(n / 12)}-${String((n % 12) + 1).padStart(2, "0")}`;
+      buckets.push({ key, count: counts.get(key) ?? 0 });
+    }
+  }
+  return { unit, buckets };
+}
+
 export interface DataRoomSearchResult {
   item: DataRoomItemRecord;
   ordinal: number;
@@ -361,6 +388,81 @@ export function createDataRoomRepos(prisma: PrismaClient) {
                  WHERE ${dates} AND i."docDate" IS NOT NULL) AS "hasDates"
       `;
       return row ?? { types: [], parties: [], sources: [], hasDates: false };
+    },
+
+    /**
+     * What the caller's items add up to under the same filters as the list: grouped counts in a few
+     * small queries, whatever the number of items. Dates are per month, or per year when they span
+     * more than three years. Amounts are summed per type and currency.
+     */
+    async stats(actor: Actor, filters: DataRoomFilters = {}) {
+      const where = eligibleSql(actor, filters);
+      const top = (limit: number) => Prisma.raw(String(limit));
+      const [[totals], types, sources, months, parties, largest, amounts] = await Promise.all([
+        prisma.$queryRaw<
+          {
+            documents: number;
+            bytes: number;
+            duplicates: number;
+            failed: number;
+            processing: number;
+            notSearchable: number;
+          }[]
+        >`
+          SELECT count(*)::int AS documents,
+            COALESCE(sum(i."size"), 0)::float8 AS bytes,
+            (count(*) - count(DISTINCT i."sha256"))::int AS duplicates,
+            (count(*) FILTER (WHERE i."status" = 'failed'))::int AS failed,
+            (count(*) FILTER (WHERE i."status" IN ('pending', 'extracting', 'classifying', 'indexing')))::int
+              AS processing,
+            (count(*) FILTER (WHERE i."status" = 'ready' AND i."notIndexed"))::int AS "notSearchable"
+          FROM data_room_items i WHERE ${where}`,
+        prisma.$queryRaw<{ value: string; count: number }[]>`
+          SELECT i."docType" AS value, count(*)::int AS count FROM data_room_items i
+          WHERE ${where} AND i."docType" IS NOT NULL
+          GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT ${top(8)}`,
+        prisma.$queryRaw<{ value: string; count: number }[]>`
+          SELECT i."source" AS value, count(*)::int AS count FROM data_room_items i
+          WHERE ${where} GROUP BY 1 ORDER BY 2 DESC, 1`,
+        prisma.$queryRaw<{ key: string; count: number }[]>`
+          SELECT to_char(date_trunc('month', i."docDate"), 'YYYY-MM') AS key, count(*)::int AS count
+          FROM data_room_items i WHERE ${where} AND i."docDate" IS NOT NULL
+          GROUP BY 1 ORDER BY 1`,
+        prisma.$queryRaw<{ value: string; count: number }[]>`
+          SELECT p AS value, count(*)::int AS count FROM data_room_items i, unnest(i."parties") AS p
+          WHERE ${where} GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT ${top(8)}`,
+        prisma.$queryRaw<{ id: string; name: string; size: number }[]>`
+          SELECT i."id", i."name", i."size"::float8 AS size FROM data_room_items i
+          WHERE ${where} ORDER BY i."size" DESC, i."id" LIMIT ${top(5)}`,
+        prisma.$queryRaw<
+          { docType: string | null; currency: string; cents: number; count: number }[]
+        >`
+          SELECT i."docType", COALESCE(i."currency", 'USD') AS currency,
+            sum(i."amountCents")::float8 AS cents, count(*)::int AS count
+          FROM data_room_items i WHERE ${where} AND i."amountCents" IS NOT NULL
+          GROUP BY 1, 2 ORDER BY 3 DESC LIMIT ${top(5)}`,
+      ]);
+      const documents = totals?.documents ?? 0;
+      const failed = totals?.failed ?? 0;
+      const processing = totals?.processing ?? 0;
+      const notSearchable = totals?.notSearchable ?? 0;
+      return {
+        documents,
+        bytes: totals?.bytes ?? 0,
+        duplicates: totals?.duplicates ?? 0,
+        status: {
+          ready: documents - failed - processing - notSearchable,
+          processing,
+          failed,
+          notSearchable,
+        },
+        types,
+        sources,
+        dates: bucketDates(months),
+        parties,
+        largest,
+        amounts,
+      };
     },
 
     async createFolder(

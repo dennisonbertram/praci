@@ -54,6 +54,11 @@ msgstr ", {0} already imported"
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 msgstr "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 
+#. placeholder {0}: stats.duplicates
+#: src/components/data-room/DataRoomStats.tsx
+msgid "{0, plural, one {# duplicate} other {# duplicates}}"
+msgstr "{0, plural, one {# duplicate} other {# duplicates}}"
+
 #. placeholder {0}: message.thread.length
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "{0, plural, one {# earlier message} other {# earlier messages}}"
@@ -918,6 +923,8 @@ msgstr "All files processed"
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
+#: src/components/data-room/PathBar.tsx
+#: src/pages/DataRoom.tsx
 msgid "All items"
 msgstr "All items"
 
@@ -1072,6 +1079,10 @@ msgstr "Amount"
 #: src/pages/CapTable.tsx
 msgid "Amount raised"
 msgstr "Amount raised"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Amounts"
+msgstr "Amounts"
 
 #: src/components/HideAmountsToggle.tsx
 msgid "Amounts are hidden: money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
@@ -2051,6 +2062,7 @@ msgstr "Clear filter"
 msgid "Clear filter {label}"
 msgstr "Clear filter {label}"
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/DataRoom.tsx
@@ -3652,10 +3664,15 @@ msgstr "Docs & files"
 msgid "Document date"
 msgstr "Document date"
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr "Documents"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Documents over time"
+msgstr "Documents over time"
 
 #: src/components/finance/CountCryptoButton.tsx
 msgid "Don't count crypto"
@@ -4033,6 +4050,7 @@ msgstr "Extra high"
 msgid "failed"
 msgstr "failed"
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/format.ts
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/ProcessingStrip.tsx
@@ -4425,6 +4443,10 @@ msgstr "Hear a sample"
 msgid "Hi, this is how I'll sound when I read replies out loud."
 msgstr "Hi, this is how I'll sound when I read replies out loud."
 
+#: src/components/data-room/PathBar.tsx
+msgid "Hidden folders"
+msgstr "Hidden folders"
+
 #: src/components/data-room/Preview.tsx
 #: src/components/inbox/MailAttachments.tsx
 msgid "Hidden while amounts are hidden"
@@ -4793,6 +4815,10 @@ msgstr "Label (optional)"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Language"
 msgstr "Language"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Largest files"
+msgstr "Largest files"
 
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -5918,6 +5944,7 @@ msgstr "No remote MCP servers found"
 msgid "No response from the server. Check the address."
 msgstr "No response from the server. Check the address."
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/shell/command-palette.tsx
@@ -6065,6 +6092,10 @@ msgstr "Not scanned yet"
 #: src/pages/Legal.tsx
 msgid "Not scanned yet. Daily scan paused."
 msgstr "Not scanned yet. Daily scan paused."
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Not searchable"
+msgstr "Not searchable"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Not sent"
@@ -6559,6 +6590,10 @@ msgstr "Paste your API key"
 msgid "Paste your API key, then test again."
 msgstr "Paste your API key, then test again."
 
+#: src/components/data-room/PathBar.tsx
+msgid "Path"
+msgstr "Path"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Paused"
 msgstr "Paused"
@@ -6828,6 +6863,7 @@ msgstr "Read replies aloud"
 msgid "Read-only API key"
 msgstr "Read-only API key"
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/format.ts
 msgid "Reading"
 msgstr "Reading"
@@ -6878,6 +6914,7 @@ msgstr "Reading your finances"
 msgid "Reading…"
 msgstr "Reading…"
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Ready"
 msgstr "Ready"
@@ -7296,6 +7333,10 @@ msgstr "Reset your password"
 msgid "Resetting…"
 msgstr "Resetting…"
 
+#: src/components/data-room/ResizableFolders.tsx
+msgid "Resize folders"
+msgstr "Resize folders"
+
 #: src/components/data-room/Preview.tsx
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
@@ -7331,6 +7372,7 @@ msgstr "Restoring your workspace"
 
 #: src/components/AccountAccess.tsx
 #: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/DataRoomStats.tsx
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
@@ -7698,6 +7740,10 @@ msgstr "Search the directory"
 #: src/pages/ActivityList.tsx
 msgid "Search: {0}"
 msgstr "Search: {0}"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Searchable"
+msgstr "Searchable"
 
 #: src/pages/DataRoom.tsx
 msgid "Searching in {openFolderPath}"
@@ -8072,6 +8118,7 @@ msgstr "Since {from}"
 msgid "Site"
 msgstr "Site"
 
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/Preview.tsx
 #: src/pages/Artifacts.tsx
 msgid "Size"
@@ -8179,6 +8226,10 @@ msgstr "Sorting your mail…"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Source"
 msgstr "Source"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Sources"
+msgstr "Sources"
 
 #: src/pages/ModelBackupsSettings.tsx
 msgid "Space changed. Reopen Models to load its backup list."
@@ -8304,6 +8355,11 @@ msgstr "Starting…"
 msgid "Statement files"
 msgstr "Statement files"
 
+#: src/pages/DataRoom.tsx
+msgid "Stats"
+msgstr "Stats"
+
+#: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/ItemRows.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
@@ -8903,6 +8959,10 @@ msgstr "Tools · {0}"
 msgid "Tools from an Executor server you run"
 msgstr "Tools from an Executor server you run"
 
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Top parties"
+msgstr "Top parties"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Total balance"
 msgstr "Total balance"
@@ -9025,6 +9085,10 @@ msgstr "Type without recording"
 #: src/components/AskCard.tsx
 msgid "Type your answer"
 msgstr "Type your answer"
+
+#: src/components/data-room/DataRoomStats.tsx
+msgid "Types"
+msgstr "Types"
 
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx

@@ -23,6 +23,7 @@ export {
 export { PIXEL_ICONS, type PixelSprite } from "./components/pixel/sprites.js";
 export * from "./components/ui/alert-dialog.js";
 export * from "./components/ui/badge.js";
+export * from "./components/ui/breadcrumb.js";
 export * from "./components/ui/button.js";
 export * from "./components/ui/card.js";
 export * from "./components/ui/checkbox.js";
