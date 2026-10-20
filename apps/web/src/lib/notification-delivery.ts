@@ -17,6 +17,14 @@ export function attentionFromDto(n: NotificationDto): AttentionNotification {
   };
 }
 
+/** A run failure for the chat on screen: the composer error already shows it, so no toast repeats it. */
+export function failureShownInOpenChat(
+  n: Pick<NotificationDto, "botId" | "kind">,
+  openBotId: string | undefined,
+): boolean {
+  return n.kind === "failed" && Boolean(openBotId) && n.botId === openBotId;
+}
+
 /** An `attention` notification; `info` only puts a dot on the sidebar and never reaches here. */
 export type AttentionNotification = NotificationToastInput;
 

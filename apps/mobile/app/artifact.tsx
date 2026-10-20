@@ -1,6 +1,5 @@
 import { ChatMarkdown } from "@rakazo/chat-ui/native";
 import type { ArtifactVersion } from "@rakazo/contracts";
-import { isAttachmentImageMimeType, UI_ARTIFACT_MIME_TYPE } from "@rakazo/contracts";
 import type { File } from "expo-file-system";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import type { ReactNode } from "react";
@@ -9,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,17 +16,19 @@ import {
   View,
 } from "react-native";
 import { NativeSymbol } from "../components/native-symbol";
+import { PdfPreview } from "../components/pdf-preview";
 import { SandboxedHtmlPreview } from "../components/sandboxed-html-preview";
 import { SheetArtifactPreview } from "../components/sheet-artifact-preview";
 import { UiArtifactPreview } from "../components/ui-artifact-preview";
 import { formatActivityRelativeTime } from "../lib/activity";
 import { mobileTokens } from "../lib/appearance";
 import { shareLocalFile, writeArtifactCacheFile } from "../lib/artifact-open";
+import type { PreviewContent } from "../lib/artifact-preview";
+import { computePreview } from "../lib/artifact-preview";
 import type { MobileArtifactWithContent } from "../lib/artifacts";
 import {
   artifactThreadTarget,
   getArtifactById,
-  isSpreadsheetArtifact,
   listArtifactVersions,
   removeArtifact,
 } from "../lib/artifacts";
@@ -37,32 +39,10 @@ import { native, useResolvedAppearance, useThemedStyles } from "../lib/native";
 import { iosAtLeast } from "../lib/native-controls";
 import { errorText } from "../lib/user-error";
 
-type PreviewContent =
-  | { kind: "html"; html: string }
-  | { kind: "markdown"; text: string }
-  | { kind: "image"; uri: string }
-  | { kind: "sheet"; artifactId: string }
-  | { kind: "ui"; source: string }
-  | { kind: "unsupported" };
-
 type ContentState =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "ready"; artifact: MobileArtifactWithContent; file: File; preview: PreviewContent };
-
-async function computePreview(
-  artifact: Pick<MobileArtifactWithContent, "id" | "name" | "mimeType">,
-  file: File,
-): Promise<PreviewContent> {
-  const { mimeType } = artifact;
-  if (isSpreadsheetArtifact(artifact.name, mimeType))
-    return { kind: "sheet", artifactId: artifact.id };
-  if (mimeType === UI_ARTIFACT_MIME_TYPE) return { kind: "ui", source: await file.text() };
-  if (mimeType === "text/html") return { kind: "html", html: await file.text() };
-  if (mimeType === "text/markdown") return { kind: "markdown", text: await file.text() };
-  if (isAttachmentImageMimeType(mimeType)) return { kind: "image", uri: file.uri };
-  return { kind: "unsupported" };
-}
 
 export default function ArtifactDetailScreen() {
   const { artifactId } = useLocalSearchParams<{ artifactId: string }>();
@@ -275,6 +255,7 @@ export default function ArtifactDetailScreen() {
             scrollHeader={scrolling ? versionPicker : undefined}
             imageLabel={content.artifact.name}
             onOpenImage={openImage}
+            onOpenFile={() => void share()}
           />
         )}
       </View>
@@ -287,11 +268,13 @@ function ArtifactPreview({
   scrollHeader,
   imageLabel,
   onOpenImage,
+  onOpenFile,
 }: {
   preview: PreviewContent;
   scrollHeader?: ReactNode;
   imageLabel: string;
   onOpenImage: (() => void) | null;
+  onOpenFile: () => void;
 }) {
   const styles = useThemedStyles(createStyles);
   const tokens = mobileTokens();
@@ -341,6 +324,23 @@ function ArtifactPreview({
       >
         <Image source={{ uri: preview.uri }} style={styles.image} resizeMode="contain" />
       </Pressable>
+    );
+  }
+  if (preview.kind === "pdf") {
+    // Android's WebView cannot render PDFs, so hand the file to the system share sheet / viewer.
+    if (Platform.OS === "android") {
+      return (
+        <View style={styles.centered}>
+          <Pressable accessibilityRole="button" onPress={onOpenFile} style={styles.pill}>
+            <Text style={styles.pillText}>{t("Share")}</Text>
+          </Pressable>
+        </View>
+      );
+    }
+    return (
+      <View style={styles.previewCard}>
+        <PdfPreview uri={preview.uri} />
+      </View>
     );
   }
   return (

@@ -1,5 +1,11 @@
 import { ORPCError } from "@orpc/server";
-import { isMailConnection, logMailAction, MAIL_CACHE_WINDOW_DAYS } from "@rakazo/adapters";
+import {
+  ensureSenderRule,
+  isMailConnection,
+  logMailAction,
+  MAIL_CACHE_WINDOW_DAYS,
+  removeSenderRules,
+} from "@rakazo/adapters";
 import type {
   Actor,
   CleanupArchiveInput,
@@ -10,7 +16,12 @@ import type {
   InboxPile,
   MailSignals,
 } from "@rakazo/contracts";
-import { InboxPileSchema, MAX_CLEANUP_SENDERS, MailSignalsSchema } from "@rakazo/contracts";
+import {
+  InboxPileSchema,
+  MAX_CLEANUP_SENDERS,
+  MailSignalsSchema,
+  SenderRuleStatusSchema,
+} from "@rakazo/contracts";
 import {
   isCleanupPreselected,
   planUnsubscribe,
@@ -20,7 +31,7 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import type { InboxDeps } from "./inbox.js";
-import { connectedMailConnections, mailAccountsOf, notFound } from "./inbox.js";
+import { connectedMailConnections, mailAccountsOf, mailContext, notFound } from "./inbox.js";
 import { inboxCleanupMove, type ModifyDeps } from "./inbox-modify.js";
 
 /** Conversations one cleanup call changes. */
@@ -150,9 +161,11 @@ export async function inboxCleanupList(
     prisma.mailSyncState.findMany({ where: { connectionId: { in: ids } } }),
   ]);
   // A sender the user skips stays listed after its mail is archived, so the decision can be undone.
-  const skipped = decisions
-    .filter((d) => d.skipInboxAt)
-    .map((d) => ({ connectionId: d.connectionId, address: d.senderAddress }));
+  // The same goes for a sender with a learned pile, so it can be forgotten.
+  const skipped = [
+    ...decisions.filter((d) => d.skipInboxAt),
+    ...stats.filter((s) => s.learnedPile !== null),
+  ].map((row) => ({ connectionId: row.connectionId, address: row.senderAddress }));
   const facts = await senderFacts(prisma, actor, ids, undefined, true, skipped);
   const key = (connectionId: string, address: string) => `${connectionId}:${address}`;
   const statOf = new Map(stats.map((s) => [key(s.connectionId, s.senderAddress), s]));
@@ -164,6 +177,7 @@ export async function inboxCleanupList(
     if (!stat) return [];
     const decision = decisionOf.get(key(fact.connectionId, fact.address));
     const skipInbox = Boolean(decision?.skipInboxAt);
+    const rule = SenderRuleStatusSchema.safeParse(decision?.ruleStatus);
     const plan = planUnsubscribe(fact.signals, fact.spamLike);
     return [
       {
@@ -188,6 +202,8 @@ export async function inboxCleanupList(
         unsubscribe: plan.method,
         skipInbox,
         unsubscribeStatus: parseStatus(decision?.unsubscribeStatus),
+        ...(skipInbox && rule.success ? { rule: rule.data } : {}),
+        learnedPile: parsePile(stat.learnedPile),
       },
     ];
   });
@@ -200,6 +216,10 @@ export async function inboxCleanupList(
 }
 
 const STATUSES = ["done", "opened", "sent", "unknown", "failed", "refused"] as const;
+const parsePile = (value: string | null) => {
+  const pile = InboxPileSchema.safeParse(value);
+  return pile.success && pile.data !== "spam" ? pile.data : null;
+};
 const parseStatus = (value: string | null | undefined) =>
   STATUSES.find((status) => status === value) ?? null;
 
@@ -246,6 +266,24 @@ export async function inboxCleanupArchive(
       });
   }
 
+  // The Gmail filter is made on the first call only, so the later pages do not repeat provider calls.
+  // A failure is kept on the decision and shown on the sender; pressing Skip inbox again retries it.
+  if (input.kind === "skip_inbox" && input.batchId === undefined) {
+    const context = mailContext(actor, "inbox.cleanup.rule", signal);
+    const accounts = await deps.mail.listAccounts(
+      { spaceId: actor.spaceId, userId: actor.userId },
+      context,
+    );
+    const account = accounts.find((a) => a.id === input.connectionId);
+    if (account)
+      await ensureSenderRule(
+        { prisma, mail: deps.mail, writesDisabled: deps.mailWritesDisabled },
+        account,
+        context,
+        address,
+      );
+  }
+
   // One representative message per conversation. Archive and skip leave spam-like mail alone.
   const op = input.kind === "spam" ? "spam" : "archive";
   const waitingWhere = Prisma.sql`
@@ -287,19 +325,52 @@ export async function inboxCleanupArchive(
   };
 }
 
-/** Forgets the sender's skip and unsubscribe decision. Nothing changes in Gmail. */
+/**
+ * Forgets the sender's skip and unsubscribe decision, or with `learned` only the learned pile (and
+ * then only mail received later counts toward learning it again). Mail already archived stays
+ * archived. The Gmail filter Rakazo made for the sender is deleted first, and if that fails the
+ * decision stays so the user can try again.
+ */
 export async function inboxCleanupForget(
-  deps: InboxDeps,
+  deps: ModifyDeps,
   actor: Actor,
   input: CleanupForgetInput,
+  signal?: AbortSignal,
 ): Promise<{ ok: true }> {
-  await deps.prisma.mailSenderDecision.deleteMany({
-    where: {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      connectionId: input.connectionId,
-      senderAddress: input.address.trim().toLowerCase(),
-    },
+  const where = {
+    spaceId: actor.spaceId,
+    userId: actor.userId,
+    connectionId: input.connectionId,
+    senderAddress: input.address.trim().toLowerCase(),
+  };
+  if (input.learned) {
+    await deps.prisma.mailSenderStat.updateMany({
+      where,
+      data: { learnedPile: null, learnedCount: 0, learnedAt: null, learnedForgottenAt: new Date() },
+    });
+    return { ok: true };
+  }
+  const withRule = await deps.prisma.mailSenderDecision.findMany({
+    where: { ...where, ruleId: { not: null } },
   });
+  if (withRule.length > 0) {
+    if (deps.mailWritesDisabled)
+      throw new ORPCError("BAD_REQUEST", { message: "Changing mail is turned off." });
+    const context = mailContext(actor, "inbox.cleanup.forget", signal);
+    const accounts = await deps.mail.listAccounts(
+      { spaceId: actor.spaceId, userId: actor.userId },
+      context,
+    );
+    const account = accounts.find((a) => a.id === input.connectionId);
+    const { failed } = await removeSenderRules(
+      { prisma: deps.prisma, mail: deps.mail },
+      account,
+      context,
+      withRule,
+    );
+    if (failed > 0)
+      throw new ORPCError("BAD_GATEWAY", { message: "Couldn't remove the Gmail filter" });
+  }
+  await deps.prisma.mailSenderDecision.deleteMany({ where });
   return { ok: true };
 }
