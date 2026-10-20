@@ -11,7 +11,13 @@ function Demo() {
       body: "Three new items.",
     });
   }, []);
-  return <AppToaster />;
+  // The toast renders in a portal, so the page needs content of its own to show.
+  return (
+    <div className="p-4 text-sm">
+      Page content
+      <AppToaster />
+    </div>
+  );
 }
 
 const meta = { title: "App/AppToaster", component: AppToaster } satisfies Meta<typeof AppToaster>;

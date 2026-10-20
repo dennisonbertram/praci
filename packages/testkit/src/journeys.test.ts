@@ -1609,8 +1609,11 @@ describeJourneys("required product journeys", () => {
       mimeType: "text/plain",
       contentBase64: Buffer.from("fake artifact content").toString("base64"),
     });
-    const home = path.join(dataDir, "homes", gone.id);
-    expect(existsSync(home)).toBe(true);
+    // Homes are saved snapshots, not a directory under the data dir, so read the file through the
+    // Computer to see whether the home is still there.
+    const homeFile = () =>
+      raw(app, ada, "computer/readFile", { botId: gone.id, path: "notes/result.txt" });
+    expect((await homeFile()).status).toBeLessThan(400);
     // Spend that really happened. The scripted runtime emits no usage event, so the row is
     // written directly, the same way this file creates runs and tasks elsewhere.
     const goneBotRow = await prisma.bot.findUniqueOrThrow({
@@ -1639,9 +1642,10 @@ describeJourneys("required product journeys", () => {
       gone.id,
     );
     expect(await prisma.artifact.findUnique({ where: { id: goneArtifact.id } })).not.toBeNull();
-    expect(existsSync(home)).toBe(true);
 
     await rpc(app, ada, "bots/restore", { botId: gone.id });
+    // Archiving keeps the home: the file is still there once the bot is restored.
+    expect((await homeFile()).status).toBeLessThan(400);
     expect((await rpc<Bot[]>(app, ada, "bots/list")).map((bot) => bot.id)).toContain(gone.id);
 
     await rpc(app, ada, "bots/remove", { botId: gone.id, deleteMemories: false });
@@ -1665,7 +1669,7 @@ describeJourneys("required product journeys", () => {
       memoriesPreserved: true,
     });
     expect(await prisma.artifact.findUnique({ where: { id: goneArtifact.id } })).toBeNull();
-    expect(existsSync(home)).toBe(false);
+    expect((await homeFile()).status).toBeGreaterThanOrEqual(400);
     // Deleting a bot must not erase what it cost, nor which bot cost it. botId has no foreign
     // key, so it outlives the bot and stays joinable against bot_deletions for the name.
     expect(

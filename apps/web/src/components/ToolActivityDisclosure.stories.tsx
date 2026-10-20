@@ -38,7 +38,7 @@ export const Done: Story = {};
 export const DoneOpen: Story = {
   play: async ({ canvasElement }) => {
     await userEvent.click(within(canvasElement).getByText(/Done/));
-    await expect(within(canvasElement).getByText("Write summary.md")).toBeTruthy();
+    await expect(within(canvasElement).getByText("Mail search")).toBeTruthy();
   },
 };
 

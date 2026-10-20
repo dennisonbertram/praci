@@ -51,5 +51,12 @@ export const WithItems: Story = {
 
 /** An empty or missing folder renders nothing. */
 export const Empty: Story = {
+  decorators: [
+    (Story) => (
+      <div className="min-h-8">
+        <Story />
+      </div>
+    ),
+  ],
   beforeEach: () => mockRpc({ "dataRoom.folders": [] }),
 };

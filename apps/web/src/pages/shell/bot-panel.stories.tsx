@@ -17,6 +17,7 @@ const setup = () => {
     "botSecrets.list": [],
     "memory.list": [],
     "agentSkills.list": [],
+    "agentSkills.forBot": [],
   });
 };
 

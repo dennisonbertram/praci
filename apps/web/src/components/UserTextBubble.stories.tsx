@@ -1,5 +1,4 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { MemoryRouter } from "react-router-dom";
 import { UserTextBubble } from "./UserTextBubble";
 
 const meta = {
@@ -7,11 +6,9 @@ const meta = {
   component: UserTextBubble,
   decorators: [
     (Story) => (
-      <MemoryRouter>
-        <div className="w-96">
-          <Story />
-        </div>
-      </MemoryRouter>
+      <div className="w-96">
+        <Story />
+      </div>
     ),
   ],
 } satisfies Meta<typeof UserTextBubble>;

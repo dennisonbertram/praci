@@ -7,6 +7,14 @@ const meta = {
   title: "Data room/DrivePicker",
   component: DrivePicker,
   args: { folderId: null, onClose: () => undefined, onDone: () => undefined },
+  // The picker is a dialog in a portal, so the story root needs a frame of its own.
+  decorators: [
+    (Story) => (
+      <div className="min-h-8">
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof DrivePicker>;
 
 export default meta;
