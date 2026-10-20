@@ -14,6 +14,7 @@ import {
   assertMailChangesConformance,
   assertMailConformance,
   assertMailModifyConformance,
+  assertMailSignalsConformance,
   assertMailWriteConformance,
 } from "./testing/mail-conformance.js";
 
@@ -100,6 +101,7 @@ describe("ComposioConnector.proxy", () => {
     await assertMailWriteConformance(provider, { gmail: emulator.gmail, accounts });
     await assertMailModifyConformance(provider, { gmail: emulator.gmail, accounts });
     await assertMailChangesConformance(provider, { gmail: emulator.gmail, accounts });
+    await assertMailSignalsConformance(provider, { gmail: emulator.gmail, accounts });
   });
 
   it("passes the method and JSON body of a write to proxyExecute", async () => {
@@ -162,6 +164,13 @@ describe("ComposioConnector.proxy", () => {
       "Cc",
       "Subject",
       "Date",
+      "List-Unsubscribe",
+      "List-Unsubscribe-Post",
+      "List-Id",
+      "Precedence",
+      "Auto-Submitted",
+      "Authentication-Results",
+      "DKIM-Signature",
     ]);
     expect(hydrate).not.toHaveProperty("parameters");
   });

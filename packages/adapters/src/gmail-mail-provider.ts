@@ -20,6 +20,7 @@ import {
   type MailSent,
   type ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { MAIL_SIGNALS_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { JSDOM } from "jsdom";
 import { asRecord } from "./connector-http.js";
@@ -32,6 +33,7 @@ import {
   isGoogleRateLimited,
 } from "./google-api-request.js";
 import { buildRawMessage } from "./mail-compose.js";
+import { parseMailSignals } from "./mail-signals.js";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 const MAX_PAGE_SIZE = 500;
@@ -43,7 +45,20 @@ const INLINE_TYPES = new Set(["image/png", "image/jpeg", "image/gif", "image/web
 const MAX_INLINE_IMAGES = 10;
 const MAX_INLINE_IMAGE_BYTES = 1_048_576;
 const MAX_INLINE_TOTAL_BYTES = 4_194_304;
-const METADATA_QUERY = ["From", "To", "Cc", "Subject", "Date"]
+const METADATA_QUERY = [
+  "From",
+  "To",
+  "Cc",
+  "Subject",
+  "Date",
+  "List-Unsubscribe",
+  "List-Unsubscribe-Post",
+  "List-Id",
+  "Precedence",
+  "Auto-Submitted",
+  "Authentication-Results",
+  "DKIM-Signature",
+]
   .map((name) => `metadataHeaders=${name}`)
   .join("&");
 const HISTORY_TYPES = ["messageAdded", "messageDeleted", "labelAdded", "labelRemoved"];
@@ -253,6 +268,7 @@ export class GmailMailProvider implements MailProvider {
             ...(row.inInbox ? ["INBOX"] : []),
             ...(row.fromSelf ? ["SENT"] : []),
             ...(row.unread ? ["UNREAD"] : []),
+            ...(row.isSpam ? ["SPAM"] : []),
           ],
         });
       }
@@ -286,6 +302,14 @@ export class GmailMailProvider implements MailProvider {
           unread: m.unread,
           inInbox: false,
           seenAt,
+          // A spam hit must not be recorded as normal mail; rows without signals stay version 0.
+          ...(m.signals
+            ? {
+                signals: m.signals,
+                signalsVersion: MAIL_SIGNALS_VERSION,
+                isSpam: m.signals.categories.spam,
+              }
+            : {}),
         })),
       });
     } catch {
@@ -809,10 +833,15 @@ function parseSummary(data: unknown): MailMessageSummary | undefined {
     return undefined;
   const rawHeaders = asRecord(message.payload)?.headers;
   const headers = new Map<string, string>();
+  // A header can repeat (DKIM-Signature often does); the signals read every copy.
+  const allHeaders = new Map<string, string[]>();
   for (const entry of Array.isArray(rawHeaders) ? rawHeaders : []) {
     const header = asRecord(entry);
-    if (typeof header?.name === "string" && typeof header.value === "string")
-      headers.set(header.name.toLowerCase(), header.value);
+    if (typeof header?.name === "string" && typeof header.value === "string") {
+      const name = header.name.toLowerCase();
+      headers.set(name, header.value);
+      allHeaders.set(name, [...(allHeaders.get(name) ?? []), header.value]);
+    }
   }
   const labelIds = (Array.isArray(message.labelIds) ? message.labelIds : []).filter(
     (label: unknown): label is string => typeof label === "string",
@@ -828,6 +857,7 @@ function parseSummary(data: unknown): MailMessageSummary | undefined {
     snippet: decodeEntities(typeof message.snippet === "string" ? message.snippet : ""),
     unread: labelIds.includes("UNREAD"),
     labelIds,
+    signals: parseMailSignals(allHeaders, labelIds),
   };
 }
 
