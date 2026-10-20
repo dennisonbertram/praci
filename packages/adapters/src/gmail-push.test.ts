@@ -4,6 +4,7 @@ import {
   createGmailPushVerifier,
   createGoogleKeyResolver,
   gmailPushConfigFromEnv,
+  parseGmailPushNotification,
 } from "./gmail-push.js";
 
 const AUDIENCE = "https://rakazo.example.test/api/v1/mail/push";
@@ -192,5 +193,25 @@ describe("Gmail push configuration", () => {
     expect(
       gmailPushConfigFromEnv({ ...env, GMAIL_PUSH_AUDIENCE: "custom-audience" }, origin)?.audience,
     ).toBe("custom-audience");
+  });
+});
+
+describe("parseGmailPushNotification", () => {
+  const body = (data: unknown) =>
+    JSON.stringify({ message: { data: Buffer.from(JSON.stringify(data)).toString("base64") } });
+
+  it("returns the mailbox address and ignores other fields", () => {
+    expect(
+      parseGmailPushNotification(body({ emailAddress: "me@example.test", historyId: 7 })),
+    ).toBe("me@example.test");
+  });
+
+  it("returns undefined for anything unreadable", () => {
+    expect(parseGmailPushNotification("not json")).toBeUndefined();
+    expect(parseGmailPushNotification(body("garbage"))).toBeUndefined();
+    expect(parseGmailPushNotification(body({ emailAddress: 5 }))).toBeUndefined();
+    expect(
+      parseGmailPushNotification(JSON.stringify({ message: { data: "!!!" } })),
+    ).toBeUndefined();
   });
 });

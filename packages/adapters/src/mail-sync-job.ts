@@ -120,8 +120,9 @@ function plannedDelay(mode: MailSyncRequestMode, state: RequestState): number | 
     if (state.claimed) return Math.max(state.backoffMs, CHAIN_DELAY_MS);
     return Math.max(state.backoffMs, state.throttleMs);
   }
-  // A running sync has detached from the job key, so a second job is queued behind its claim.
-  return state.backoffMs;
+  // A running sync has detached from the job key, so a second job is queued behind its claim. The
+  // running job also sees the request flag and syncs once more when it finishes.
+  return state.claimed ? Math.max(state.backoffMs, CHAIN_DELAY_MS) : state.backoffMs;
 }
 
 export interface MailSyncStatus {
@@ -208,7 +209,7 @@ export async function runMailSyncJob(
   const { spaceId, userId, connectionId } = payload;
   const [clock] = await prisma.$queryRaw<Array<{ startedAt: Date }>>`
     SELECT ${DB_NOW} AS "startedAt"`;
-  const startedAt = clock?.startedAt as Date;
+  let startedAt = clock?.startedAt as Date;
   // A request made while this job runs is newer than startedAt, so it stays set.
   const clearRequest = () =>
     prisma.$executeRaw`
@@ -227,7 +228,23 @@ export async function runMailSyncJob(
     return;
   }
 
-  const outcome = await syncMailbox(deps, account, context);
+  let outcome = await syncMailbox(deps, account, context);
+  // A sync requested while this one ran (a send, or mail that arrived mid-sync) was skipped by the
+  // claim, and this sync may have read the mailbox before it. Run once more, without the throttle.
+  const [late] = await prisma.$queryRaw<Array<{ late: boolean }>>`
+    SELECT EXISTS (
+      SELECT 1 FROM mail_sync_states s JOIN connections c ON c.id = s."connectionId"
+      WHERE s."connectionId" = ${connectionId} AND c."spaceId" = ${spaceId}
+        AND c."userId" = ${userId} AND s."syncRequestedAt" > ${startedAt}) AS "late"`;
+  if (outcome === "synced" && late?.late && !signal.aborted) {
+    await prisma.$executeRaw`
+      UPDATE mail_sync_states SET "lastSyncedAt" = NULL WHERE "connectionId" = ${connectionId}`;
+    await clearRequest();
+    const [again] = await prisma.$queryRaw<Array<{ startedAt: Date }>>`
+      SELECT ${DB_NOW} AS "startedAt"`;
+    startedAt = again?.startedAt as Date;
+    outcome = await syncMailbox(deps, account, context);
+  }
   await clearRequest();
 
   await deps.afterSync?.(account, context).catch((error: unknown) => {

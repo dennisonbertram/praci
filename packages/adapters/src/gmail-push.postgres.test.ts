@@ -291,6 +291,23 @@ describePostgres("Gmail push watches (PostgreSQL + Gmail emulator)", () => {
       expect((await state(account.id))?.watchAddress).not.toBeNull();
     });
 
+    it("keeps the Gmail watch running while another connection watches the same mailbox", async () => {
+      seed(["stop-shared"]);
+      const mine = await connect(0, "stop-shared", { address: "shared-stop@example.test" });
+      const theirs = await connect(1, "stop-shared", { address: "shared-stop@example.test" });
+      await ensureMailWatch({ prisma, mail }, push, mine, contextFor(owners[0] as never));
+      await ensureMailWatch({ prisma, mail }, push, theirs, contextFor(owners[1] as never));
+
+      await stopMailWatch({ prisma, mail }, owners[0] as never, mine.id);
+
+      expect(gmail.watchOf("stop-shared")).toBeDefined();
+      expect((await state(mine.id))?.watchAddress).toBeNull();
+      expect((await state(theirs.id))?.watchAddress).not.toBeNull();
+
+      await stopMailWatch({ prisma, mail }, owners[1] as never, theirs.id);
+      expect(gmail.watchOf("stop-shared")).toBeUndefined();
+    });
+
     it("does not touch another user's connection", async () => {
       seed(["stop-c"]);
       const account = await connect(1, "stop-c");

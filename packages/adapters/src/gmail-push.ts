@@ -1,4 +1,4 @@
-import { createPublicKey, type KeyObject, verify } from "node:crypto";
+import { createPublicKey, type JsonWebKey, type KeyObject, verify } from "node:crypto";
 import type { AdapterContext, JobPublisher, MailAccount, MailProvider } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
@@ -88,10 +88,7 @@ export function createGoogleKeyResolver(
       for (const jwk of Array.isArray(body?.keys) ? body.keys : []) {
         const entry = jwk as { kid?: unknown; kty?: unknown };
         if (typeof entry.kid !== "string" || entry.kty !== "RSA") continue;
-        next.set(
-          entry.kid,
-          createPublicKey({ key: jwk as import("node:crypto").JsonWebKey, format: "jwk" }),
-        );
+        next.set(entry.kid, createPublicKey({ key: jwk as JsonWebKey, format: "jwk" }));
       }
       keys = next;
       fetchedAt = now();
@@ -102,6 +99,23 @@ export function createGoogleKeyResolver(
     }
     return keys.get(kid);
   };
+}
+
+/**
+ * Reads the mailbox address from a Pub/Sub push body (`message.data` is base64 JSON with
+ * `emailAddress`). Every other field, the history id included, is ignored. Undefined when unreadable.
+ */
+export function parseGmailPushNotification(raw: string): string | undefined {
+  try {
+    const data = (JSON.parse(raw) as { message?: { data?: unknown } })?.message?.data;
+    if (typeof data !== "string") return undefined;
+    const address = (
+      JSON.parse(Buffer.from(data, "base64").toString("utf8")) as { emailAddress?: unknown }
+    )?.emailAddress;
+    return typeof address === "string" && address ? address : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 const decodeJson = (part: string): Record<string, unknown> | undefined => {
@@ -235,6 +249,15 @@ export async function stopMailWatch(
       select: { watchAddress: true },
     });
     if (!state?.watchAddress) return;
+    // users.stop ends the watch for the whole mailbox, so leave it running while another connection watches this address.
+    const others = await deps.prisma.mailSyncState.count({
+      where: {
+        watchAddress: state.watchAddress,
+        watchExpiresAt: { gt: new Date() },
+        connectionId: { not: connectionId },
+        connection: { status: "connected" },
+      },
+    });
     const signal = AbortSignal.timeout(STOP_TIMEOUT_MS);
     const context: AdapterContext = {
       operationId: `mail.watch.stop:${connectionId}`,
@@ -243,10 +266,12 @@ export async function stopMailWatch(
       userId,
       signal,
     };
-    const account = (await deps.mail.listAccounts({ spaceId, userId }, context)).find(
-      (a) => a.id === connectionId,
-    );
-    if (account) await deps.mail.stopWatch(account, context);
+    if (others === 0) {
+      const account = (await deps.mail.listAccounts({ spaceId, userId }, context)).find(
+        (a) => a.id === connectionId,
+      );
+      if (account) await deps.mail.stopWatch(account, context);
+    }
     await deps.prisma.mailSyncState.updateMany({
       where: { connectionId, connection: { spaceId, userId } },
       data: { watchAddress: null, watchExpiresAt: null, watchHistoryId: null },

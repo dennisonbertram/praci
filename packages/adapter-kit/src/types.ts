@@ -1084,7 +1084,6 @@ export interface MailMessage extends MailMessageSummary {
   attachments: MailAttachmentInfo[];
 }
 
-/** Mail that changed since a cursor. */
 /** A provider-side subscription that tells Rakazo when a mailbox changes. */
 export interface MailWatch {
   /** Provider change cursor when the watch started. Informational: sync keeps its own cursor. */
@@ -1093,6 +1092,7 @@ export interface MailWatch {
   expiresAt: string;
 }
 
+/** Mail that changed since a cursor. */
 export interface MailChanges {
   /** Pass to the next `listChanges`. */
   cursor: string;

@@ -346,7 +346,11 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
       expect(enqueued.map((j) => j.name)).toEqual(["inbox.triage"]);
     });
 
-    it("keeps a request made while the job ran", async () => {
+    it("syncs once more when a request arrives while the job runs, so a sent message is not left for the next poll", async () => {
+      seed("run-solo2", [message("a", 1)]);
+      await run(await connect("run-solo2"));
+      const single = gmail.requests.length;
+
       seed("run-race", [message("a", 1)]);
       const account = await connect("run-race");
       await request(account.id, "refresh");
@@ -357,11 +361,12 @@ describePostgres("mail.sync job (PostgreSQL + Gmail emulator)", () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
       expect((await state(account.id)).syncStartedAt).not.toBeNull();
       await new Promise((resolve) => setTimeout(resolve, 20));
-      await request(account.id, "wake");
+      await request(account.id, "now");
       release();
       await running;
 
-      expect((await state(account.id)).syncRequestedAt).not.toBeNull();
+      expect((await state(account.id)).syncRequestedAt).toBeNull();
+      expect(gmail.requests.length).toBeGreaterThan(single);
     });
 
     it("calls Gmail once when two runs start together", async () => {
