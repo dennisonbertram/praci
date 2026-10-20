@@ -239,17 +239,17 @@ export function NewBotSectionDialog({
             setSaving(true);
             setError(null);
             void onConfirm(trimmed).catch((err: unknown) => {
-              setError(errorText(err, t`Could not create section`));
+              setError(errorText(err, t`Could not create folder`));
               setSaving(false);
             });
           }}
         >
           <DialogHeader>
             <DialogTitle>
-              <Trans>New section</Trans>
+              <Trans>New folder</Trans>
             </DialogTitle>
             <DialogDescription>
-              <Trans>Create a section and move {bot.name} into it.</Trans>
+              <Trans>Create a folder and move {bot.name} into it.</Trans>
             </DialogDescription>
           </DialogHeader>
           <label htmlFor={nameId} className="block text-[13.5px] text-foreground/75">
@@ -305,14 +305,14 @@ export function RenameBotSectionDialog({
             setSaving(true);
             setError(null);
             void onConfirm(trimmed).catch((err: unknown) => {
-              setError(errorText(err, t`Could not rename section`));
+              setError(errorText(err, t`Could not rename folder`));
               setSaving(false);
             });
           }}
         >
           <DialogHeader>
             <DialogTitle>
-              <Trans>Rename section</Trans>
+              <Trans>Rename</Trans>
             </DialogTitle>
           </DialogHeader>
           <label htmlFor={nameId} className="block text-[13.5px] text-foreground/75">

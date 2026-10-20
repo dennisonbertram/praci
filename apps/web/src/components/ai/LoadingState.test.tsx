@@ -14,7 +14,7 @@ afterEach(() => {
   setHideAmounts(false);
 });
 
-function mount(detail: string) {
+function mount(detail: string, detailSince?: number, waiting = "Still waiting on Gmail") {
   const container = document.createElement("div");
   const root = createRoot(container);
   const show = (next: string) =>
@@ -23,7 +23,8 @@ function mount(detail: string) {
         <LoadingState
           label="Searching your mail"
           detail={next}
-          waitingLabel="Still waiting on Gmail"
+          waitingLabel={waiting}
+          detailSince={detailSince}
           startedAt={Date.now()}
         />,
       ),
@@ -67,4 +68,19 @@ it("masks amounts in the step while amounts are hidden", () => {
   const view = mount('Reading "Invoice for $12,400" from billing@example.test');
   expect(view.text()).not.toContain("12,400");
   expect(view.text()).toContain("billing@example.test");
+});
+
+it("counts the quiet time of a run phase from when the phase began", () => {
+  const view = mount("Starting the computer", Date.now(), "Still waiting on the computer");
+  expect(view.text()).toBe("Starting the computer");
+  view.advance(16_000);
+  expect(view.text()).toBe("Starting the computer · 16s");
+  view.advance(30_000);
+  expect(view.text()).toBe("Starting the computer · 46s · Still waiting on the computer");
+});
+
+it("counts from detailSince in the past, as after a reload", () => {
+  const view = mount("Starting the computer", Date.now() - 50_000, "Still waiting on the computer");
+  view.advance(1_000);
+  expect(view.text()).toBe("Starting the computer · 51s · Still waiting on the computer");
 });

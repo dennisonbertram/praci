@@ -1,14 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { groupBotsForSidebar, nestRosterByParent, reorderBotTo } from "./bot-sections.js";
+import {
+  nestRosterByParent,
+  planSidebarMove,
+  reorderBotTo,
+  sidebarContainer,
+  sidebarSections,
+} from "./bot-sections.js";
 
 const sections = [
   { id: "work", name: "Work" },
   { id: "home", name: "Home" },
 ];
 
-describe("groupBotsForSidebar", () => {
-  it("keeps pinned bots in one top-level group without duplicating them", () => {
-    const groups = groupBotsForSidebar(
+describe("sidebarSections", () => {
+  it("lists pinned items, then each folder in order, then the unfiled rest", () => {
+    const { pinned, folders, root } = sidebarSections(
       [
         { id: "pinned", pinned: true, sectionId: "home" },
         { id: "work", pinned: false, sectionId: "work" },
@@ -17,32 +23,20 @@ describe("groupBotsForSidebar", () => {
       ],
       sections,
     );
-
-    expect(groups.map((group) => [group.title, group.bots.map((bot) => bot.id)])).toEqual([
-      ["Pinned", ["pinned"]],
-      ["Work", ["work"]],
-      ["Home", ["home"]],
-      ["Unassigned", ["loose"]],
+    expect(pinned.map((bot) => bot.id)).toEqual(["pinned"]);
+    expect(folders.map(({ section, items }) => [section.id, items.map((bot) => bot.id)])).toEqual([
+      ["work", ["work"]],
+      ["home", ["home"]],
     ]);
+    expect(root.map((bot) => bot.id)).toEqual(["loose"]);
   });
 
-  it("treats bots pointing at an unavailable section as unassigned", () => {
-    const groups = groupBotsForSidebar(
+  it("treats items pointing at an unavailable folder as unfiled", () => {
+    const { root } = sidebarSections(
       [{ id: "orphan", pinned: false, sectionId: "missing" }],
       sections,
     );
-    expect(groups).toEqual([
-      {
-        key: "unassigned",
-        title: "Unassigned",
-        bots: [{ id: "orphan", pinned: false, sectionId: "missing" }],
-      },
-    ]);
-  });
-
-  it("does not add a heading before sections or pins exist", () => {
-    const groups = groupBotsForSidebar([{ id: "first", pinned: false, sectionId: null }], []);
-    expect(groups[0]?.title).toBeNull();
+    expect(root.map((bot) => bot.id)).toEqual(["orphan"]);
   });
 });
 
@@ -117,5 +111,55 @@ describe("nestRosterByParent", () => {
       { id: "b", parentBotId: "a" },
     ]);
     expect(rows.map((row) => row.item.id).sort()).toEqual(["a", "b"]);
+  });
+});
+
+describe("planSidebarMove", () => {
+  const item = (
+    kind: "bot" | "group",
+    id: string,
+    sectionId: string | null,
+    position: number | null,
+    pinned = false,
+  ) => ({ kind, id, sectionId, position, pinned });
+  const items = [
+    item("bot", "a", null, 0),
+    item("bot", "b", null, 0),
+    item("bot", "p", null, 0, true),
+    item("group", "g", null, null),
+    item("bot", "in", "f", 0),
+  ];
+
+  it("keeps bots first, then groups, until something is ordered by hand", () => {
+    expect(sidebarContainer(items, null).map((i) => i.id)).toEqual(["a", "b", "g"]);
+  });
+
+  it("moves before an anchor and numbers the whole destination", () => {
+    const plan = planSidebarMove(items, {
+      item: { kind: "group", id: "g" },
+      folderId: null,
+      beforeItem: { kind: "bot", id: "a" },
+    });
+    expect(plan?.map((p) => [p.item.id, p.position])).toEqual([
+      ["g", 0],
+      ["a", 1],
+      ["b", 2],
+    ]);
+  });
+
+  it("appends to another folder and rejects unknown items or anchors", () => {
+    const plan = planSidebarMove(items, { item: { kind: "bot", id: "a" }, folderId: "f" });
+    expect(plan?.map((p) => [p.item.id, p.sectionId, p.position])).toEqual([
+      ["in", "f", 0],
+      ["a", "f", 1],
+    ]);
+    expect(planSidebarMove(items, { item: { kind: "bot", id: "zz" }, folderId: null })).toBeNull();
+    expect(
+      planSidebarMove(items, {
+        item: { kind: "bot", id: "a" },
+        folderId: "f",
+        beforeItem: { kind: "bot", id: "b" },
+      }),
+    ).toBeNull();
   });
 });

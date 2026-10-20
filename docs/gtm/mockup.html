@@ -1,0 +1,421 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rakazo GTM Mockup</title>
+<style>
+:root{
+  --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
+  --bot:#e8743b; --ink2:#8a8a8a;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323; --ink2:#7a7a7a;
+  }
+}
+:root[data-theme="dark"]{
+  --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+  --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+  --sidebar:#141414; --sidebar-accent:#232323; --ink2:#7a7a7a;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif;overflow-x:hidden}
+button{font:inherit;color:inherit}
+a{color:inherit}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+svg.i.s{width:13px;height:13px}
+.sub{font-size:11px;color:var(--muted-fg)}
+.mute{color:var(--muted-fg)}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:11px}
+.sp{flex:1}
+.hide{display:none!important}
+
+/* mockup chrome (outside product) */
+.mock{display:flex;gap:14px;flex-wrap:wrap;align-items:center;justify-content:center;padding:10px 16px;border-bottom:1px dashed var(--fg);background:var(--card);position:sticky;top:0;z-index:50}
+.mock b{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted-fg);margin-right:6px}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;padding:2px;background:var(--card)}
+.seg button{border:0;background:transparent;padding:3px 12px;border-radius:6px;cursor:pointer;color:var(--muted-fg)}
+.seg button[aria-pressed="true"]{background:var(--primary);color:var(--primary-fg)}
+.seg button:focus-visible,.btn:focus-visible,.ib:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.stage{padding:20px 16px 40px;overflow-x:auto}
+
+/* shared product bits */
+.btn{padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{background:var(--muted)}
+.btn.p{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.btn.p:hover{opacity:.88}
+.btn.sm{padding:3px 9px;font-size:12px}
+.btn.d{color:var(--destructive)}
+.btn[aria-disabled="true"]{opacity:.4;cursor:not-allowed}
+.ib{border:0;background:transparent;color:var(--muted-fg);cursor:pointer;padding:4px 5px;border-radius:6px;display:grid;place-items:center}
+.ib:hover{background:var(--muted)}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none;background:var(--bot)}
+.tag{font-size:10px;color:var(--muted-fg);border:1px solid var(--border);border-radius:999px;padding:0 7px;white-space:nowrap}
+.badge{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--muted-fg);background:var(--card);white-space:nowrap}
+.sd{width:6px;height:6px;border-radius:50%;background:var(--success);flex:none}
+.sd.w{background:var(--warning)}.sd.m{background:var(--ink2)}.sd.e{background:var(--destructive)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+.sec{font-size:11px;margin:18px 0 6px;color:var(--muted-fg);font-weight:600;text-transform:uppercase;letter-spacing:.04em;display:flex;align-items:center;gap:8px}
+.sec .n{font-weight:400}
+.acts{display:flex;gap:6px;flex-wrap:wrap}
+.quote{background:var(--muted);border-radius:8px;padding:8px 10px;white-space:pre-wrap;overflow-wrap:anywhere}
+.proof{display:inline-flex;align-items:center;gap:4px;color:var(--muted-fg);text-decoration:underline;text-underline-offset:2px;overflow-wrap:anywhere}
+
+/* desktop frame */
+.frame{border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--background)}
+.frame.desk{display:grid;grid-template-columns:200px minmax(0,1fr) 340px;height:800px;max-width:1320px;min-width:980px;margin:0 auto}
+aside.left{background:var(--sidebar);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.search{margin:4px 4px 10px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--muted-fg);background:var(--card)}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.row .count{margin-left:auto;font-size:11px;color:var(--muted-fg)}
+.icon{width:22px;height:22px;display:grid;place-items:center;flex:none}
+.label{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+main{overflow:auto;padding:20px 28px 40px;min-width:0}
+h1{font-size:18px;margin:0}
+.head{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.goal{display:flex;align-items:center;gap:8px;margin-bottom:14px;color:var(--muted-fg)}
+.goal b{color:var(--fg);font-weight:600}
+
+/* stats block */
+.stats{padding:0;overflow:hidden}
+.byline{display:flex;align-items:center;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);font-size:11px;color:var(--muted-fg)}
+.byline .btn{border:0;background:transparent;padding:0 2px;color:var(--fg);text-decoration:underline;text-underline-offset:2px;font-size:11px}
+.sbody{padding:12px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.5fr);gap:16px}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;grid-column:1/-1}
+.tile{border:1px solid var(--border);border-radius:10px;padding:8px 10px;background:var(--background)}
+.tile .n{font-size:22px;font-weight:650;letter-spacing:-.01em;font-variant-numeric:tabular-nums;line-height:1.2}
+.tile .d{font-size:11px;color:var(--success)}
+.chart{width:100%;height:120px;display:block;color:var(--muted-fg)}
+.chart .g{stroke:var(--border);stroke-width:1}
+.chart .b{fill:var(--ink2)}
+.chart .b.last{fill:var(--fg)}
+.chart text{fill:var(--muted-fg);font-size:11px;font-family:inherit}
+.chart text.v{fill:var(--fg);font-weight:600;font-size:11px}
+.note{grid-column:1/-1;display:flex;gap:8px;align-items:center;color:var(--fg)}
+.note .sub{margin-left:auto;white-space:nowrap}
+.chartwrap{grid-column:1/-1}
+
+/* plan rows */
+.list{border:1px solid var(--border);border-radius:12px;background:var(--card);overflow:hidden}
+.item{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--border)}
+.item:first-child{border-top:0}
+.item .t{display:flex;flex-direction:column;min-width:0}
+.item .t span:first-child{overflow-wrap:anywhere}
+.dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--ink2);display:grid;place-items:center;color:var(--primary-fg)}
+.dot.done{background:var(--success);border-color:var(--success)}
+.dot.run{border-color:var(--fg);border-top-color:transparent}
+.dot svg{width:9px;height:9px;stroke-width:2.4}
+.need{border:1px solid var(--warning);border-radius:12px;background:color-mix(in srgb,var(--warning) 6%,var(--card));padding:12px;display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
+.need .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:70px minmax(0,1fr);gap:4px 10px;margin:0}
+.kv dt{color:var(--muted-fg)}.kv dd{margin:0;overflow-wrap:anywhere}
+.connect{display:flex;align-items:center;gap:10px;margin-top:12px}
+.xmark{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;background:var(--primary);color:var(--primary-fg);font-weight:700;flex:none}
+.chan{width:100%;border-collapse:collapse}
+.chan td{padding:7px 12px;border-top:1px solid var(--border);vertical-align:middle}
+.chan tr:first-child td{border-top:0}
+.chan td:last-child{text-align:right}
+.empty{padding:14px 12px;color:var(--muted-fg)}
+
+/* right panel */
+aside.right{border-left:1px solid var(--border);background:var(--card);display:flex;flex-direction:column;min-height:0;min-width:0}
+.rhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600}
+.thread{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.me{align-self:flex-end;background:var(--primary);color:var(--primary-fg);padding:8px 12px;border-radius:14px 14px 4px 14px;max-width:85%}
+.bm{display:flex;flex-direction:column;gap:8px;max-width:100%}
+.pc{border:1px solid var(--border);border-radius:10px;padding:10px;display:flex;flex-direction:column;gap:6px}
+.pc div{display:flex;justify-content:space-between;gap:8px}
+.composer{margin:12px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--muted-fg);display:flex;align-items:center;gap:8px}
+
+/* phone */
+.frame.phone{width:390px;height:800px;margin:0 auto;border-radius:44px;border-width:6px;border-color:var(--fg);position:relative;display:flex;flex-direction:column;background:var(--sidebar)}
+.sbar{display:flex;justify-content:space-between;padding:12px 26px 4px;font-weight:600;font-size:12px}
+.pscroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 16px 96px}
+.large{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:6px 0 2px}
+.pgoal{color:var(--muted-fg);margin-bottom:10px}
+.tilerow{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;margin:0 -16px;padding:0 16px 4px;scroll-padding-inline:16px}
+.tilerow::after{content:"";flex:none;width:1px}
+.tilerow .tile{flex:none;width:128px;scroll-snap-align:start;background:var(--card)}
+.tilerow .tile.chart-t{width:240px}
+.phone .stats{background:transparent;border:0}
+.pgroup{background:var(--card);border-radius:12px;overflow:hidden}
+.prow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;padding:10px 12px;border-top:1px solid var(--border)}
+.prow:first-child{border-top:0}
+.prow .t{display:flex;flex-direction:column;min-width:0}
+.prow .t span:first-child{overflow-wrap:anywhere}
+.prow .acts{flex-direction:column;align-items:stretch}
+.prow.wide{grid-template-columns:1fr}
+.prow.wide .acts{flex-direction:row}
+.phone .sec{margin:16px 12px 6px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--border);border-radius:20px 20px 0 0;padding:8px 16px 22px;box-shadow:0 -6px 20px rgba(0,0,0,.08)}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--border);margin:0 auto 8px}
+.sheet .ask{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:12px;padding:9px 12px;color:var(--muted-fg)}
+@media (max-width:430px){
+  .frame.phone{width:100%;border-radius:32px}
+}
+
+.post{border:1px solid var(--border);border-radius:12px;padding:10px;background:var(--card);display:flex;gap:10px}
+.pav{width:34px;height:34px;border-radius:50%;background:var(--muted);border:1px solid var(--border);display:grid;place-items:center;font-weight:700;flex:none}
+.post .pb{min-width:0;display:flex;flex-direction:column;gap:6px;flex:1}
+.post .nm{display:flex;gap:6px;align-items:baseline;flex-wrap:wrap}
+.ptxt{white-space:pre-wrap;overflow-wrap:anywhere}
+.lcard{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.lcard .im{height:56px;background:var(--muted);display:grid;place-items:center;color:var(--muted-fg)}
+.lcard .tx{padding:6px 10px;display:flex;flex-direction:column}
+.cnt{font-size:11px;color:var(--muted-fg);font-variant-numeric:tabular-nums}
+.cnt.over{color:var(--destructive)}
+.meta{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.fold{display:flex;align-items:center;gap:8px;color:var(--muted-fg);font-size:11px;margin:6px 0}
+.fold::before,.fold::after{content:"";flex:1;border-top:1px dashed var(--ink2)}
+.checks{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.checks .bad{color:var(--destructive)}
+.checks .ok{color:var(--success)}
+.calwrap{overflow-x:auto;margin-top:6px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(104px,1fr));gap:6px;min-width:740px}
+.cday{background:var(--card);border:1px solid var(--border);border-radius:10px;min-height:250px;padding:6px;display:flex;flex-direction:column;gap:6px}
+.cday.today{border-color:var(--fg)}
+.cday h4{margin:0 0 2px;font-size:11px;color:var(--muted-fg);font-weight:600}
+.cday.today h4{color:var(--fg)}
+.chipc{border:1px solid var(--border);border-radius:8px;padding:4px 6px;background:var(--background);font-size:11px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.chipc.needs{border-color:var(--warning)}
+.chipc.past{opacity:.55}
+.chipc .r{display:flex;gap:4px;align-items:center}
+.chipc .ttl{overflow-wrap:anywhere}
+.cl{width:16px;height:16px;border-radius:4px;background:var(--primary);color:var(--primary-fg);display:grid;place-items:center;font-size:9px;font-weight:700;flex:none}
+.wn{color:var(--warning);display:inline-flex;align-items:center;gap:4px;font-size:11px}
+.tabs{margin-bottom:12px}
+.phone .need{margin:0 0 8px}
+.phone .chan3{display:none}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--primary);color:var(--primary-fg);padding:6px 14px;border-radius:999px;z-index:60;font-size:12px}
+</style>
+</head>
+<body>
+<div class="mock" role="toolbar" aria-label="Mockup controls">
+  <span><b>Mockup</b></span>
+  <span><b>Variant</b><span class="seg" id="s-var"></span></span>
+  <span><b>Device</b><span class="seg" id="s-dev"></span></span>
+  <span><b>Theme</b><span class="seg" id="s-th"></span></span>
+  <span><b>Zernio (C)</b><span class="seg" id="s-zc"></span></span>
+</div>
+<div class="stage"><div id="root"></div></div>
+<div id="toast" class="hide" role="status"></div>
+
+<script>
+const IC={
+ inbox:'<path d="M2.5 4.5h11v8h-11zM2.5 4.5l5.5 4 5.5-4"/>',
+ fin:'<path d="M2 13.5h12M4 11V7.5M8 11V3.5M12 11V6"/>',
+ room:'<path d="M2.5 5.5h11v7.5h-11zM5.5 5.5V3.5h5v2"/>',
+ legal:'<path d="M8 2.5v11M4 13.5h8M3 5.5h10M3 5.5l-1.5 4h3zM13 5.5l-1.5 4h3z"/>',
+ cap:'<circle cx="8" cy="8" r="5.5"/><path d="M8 2.5V8l4 3"/>',
+ gtm:'<path d="M2.5 13.5l4-4 2.5 2 4.5-6M10 5.5h3.5V9"/>',
+ check:'<path d="M3.5 8.5l3 3 6-6.5"/>',
+ ext:'<path d="M9 3h4v4M13 3L7.5 8.5M11 9.5v3h-8v-8h3"/>',
+ send:'<path d="M3 8h10M9 4l4 4-4 4"/>',
+ chat:'<path d="M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z"/>',
+ more:'<path d="M3.5 8h.1M8 8h.1M12.5 8h.1"/>',
+ link:'<path d="M7 9a2.5 2.5 0 0 0 3.5 0l2-2a2.5 2.5 0 0 0-3.5-3.5l-.7.7M9 7a2.5 2.5 0 0 0-3.5 0l-2 2A2.5 2.5 0 0 0 7 12.5l.7-.7"/>'
+};
+const ic=(n,c='')=>`<svg class="i ${c}" viewBox="0 0 16 16" aria-hidden="true">${IC[n]}</svg>`;
+const $=s=>document.querySelector(s);
+const S={v:'A',dev:'desk',th:'auto',
+ needs:['x','dir'],cneeds:['xch','x','li','mail','dir'],gone:[],conn:{},tab:'plan',addr:false,zc:'on',failed:true,
+ prog:[
+  {t:'Research AI-workspace directories',c:'research',ch:'directory',m:'Found 14, ranked by fit',at:'Wed 16:00'},
+  {t:'Draft Product Hunt launch copy',c:'draft',ch:'producthunt',m:'Draft only'}],
+ drafts:[
+  {id:'li',t:'LinkedIn post: why we built Rakazo',ch:'linkedin',txt:'Most founders run five tools to answer one question. We built one workspace for inbox, finance and legal. Looking for 50 design partners.'},
+  {id:'hn',t:'Show HN: one workspace for founders',ch:'hn',txt:'Show HN: Rakazo, an agent workspace for inbox, finance and legal.'}],
+ done:[
+  {t:'List on example-directory.test',c:'create_account',ch:'directory',u:'https://example-directory.test/listing/123'},
+  {t:'Post launch thread on X',c:'public_post',ch:'x',u:'https://example-social.test/status/1001'},
+  {t:'Create account on sample-hub.test',c:'create_account',ch:'directory',u:'https://sample-hub.test/u/rakazo-demo'}]};
+const XTXT='Looking for 50 design partners for Rakazo: one workspace for inbox, finance and legal, run by agents.\n\nFree for early teams. Reply or DM for access.';
+const CHAN=[['X','Zernio','Approve every post','Connected',''],['LinkedIn','Zernio','Approve every post','Connected',''],
+ ['Threads','Zernio','','Not connected','e','Connect'],['Bluesky','Zernio','','Not connected','e','Connect'],
+ ['Directories','Browser','2 of 3 approvals before auto · 1 of 5 today','Learning','w'],['Email','Inbox (Gmail)','Approve every email','Connected',''],
+ ['Reddit','Draft only','','None queued','m'],['Hacker News','Draft only','','1 draft','m'],['Product Hunt','Draft only','','1 in progress','m']];
+
+const NK=()=>S.v==='C'?'cneeds':'needs';const NL=()=>S[NK()];
+const btn=(l,a,cls='',id='',extra='')=>`<button class="btn sm ${cls}" data-act="${a}" data-id="${id}" ${extra}>${l}</button>`;
+const tags=(c,ch)=>S.v==='B'||!c?'':`<span class="tag">${c} · ${ch}</span>`;
+const proof=u=>`<a class="proof" href="${u}" onclick="return false">${ic('ext','s')}${u}</a>`;
+const xOff=()=>S.v==='A'&&!S.xc;
+const approveX=()=>btn('Approve','approve','p','x',xOff()?'aria-disabled="true" title="Connect X first"':'');
+
+function chart(){
+  const d=[12,24,31,46,38,61],mx=70,H=120,top=16,base=H-18,ch=base-top;
+  let s=`<svg class="chart" width="100%" height="${H}" role="img" aria-label="Referral visits per week: 12, 24, 31, 46, 38, 61">`;
+  [0,35,70].forEach(v=>{const y=base-(v/mx)*ch;s+=`<line class="g" x1="26" x2="100%" y1="${y}" y2="${y}"/><text x="20" y="${y+4}" text-anchor="end">${v}</text>`});
+  d.forEach((v,i)=>{const bh=(v/mx)*ch,cx=`calc(${26+ (i+.5)*0}px + ${((i+.5)/6*100).toFixed(2)}% - ${((i+.5)/6*26).toFixed(2)}px)`;
+    const x=`${(8+i*15.2).toFixed(1)}%`;
+    s+=`<rect class="b ${i==5?'last':''}" x="${(14+i*14.4).toFixed(1)}%" y="${base-bh}" width="10%" height="${bh}" rx="3"/><text x="${(19+i*14.4).toFixed(1)}%" y="${H-4}" text-anchor="middle">W${i+1}</text>`;
+    if(i==5)s+=`<text class="v" x="${(19+i*14.4).toFixed(1)}%" y="${base-bh-4}" text-anchor="middle">${v}</text>`});
+  return s+'</svg>';
+}
+const tile=(l,n,d)=>`<div class="tile"><div class="sub">${l}</div><div class="n">${n}</div><div class="d">${d}</div></div>`;
+const TILES=[['Signups listed','14','+3 this week'],['Posts live','6','+1 this week'],['Referral visits','212','+61 this week']];
+const byline=`<div class="byline">${`<span class="av" style="width:16px;height:16px;font-size:9px" aria-hidden="true">G</span>`}Written by GTM agent · <button class="btn" data-act="edit" aria-label="Edit stats page">Edit</button></div>`;
+const note=`<div class="note"><span>Directory listings drive most referral visits.</span><span class="sub">Updated 2h ago by GTM agent</span></div>`;
+function stats(phone){
+  if(phone)return `<div class="stats">${byline.replace('border-bottom','x')}
+   <div class="tilerow" tabindex="0" aria-label="Stats">${TILES.map(t=>tile(...t)).join('')}<div class="tile chart-t"><div class="sub">Referral visits by week</div>${chart()}</div></div>
+   <div class="note" style="padding:8px 2px 0;flex-wrap:wrap"><span>Directory listings drive most referral visits.</span><span class="sub" style="margin-left:0">Updated 2h ago by GTM agent</span></div></div>`;
+  return `<div class="card stats">${byline}<div class="sbody"><div class="tiles">${TILES.map(t=>tile(...t)).join('')}</div><div class="chartwrap">${chart()}</div>${note}</div></div>`;
+}
+function connectX(){return S.v!=='A'||S.xc?'':`<div class="card connect"><span class="xmark" aria-hidden="true">X</span><div><b>Connect X</b><div class="sub">Needed to post approved text</div></div><span class="sp"></span><button class="btn p" data-act="connect">Connect X</button></div>`}
+const chSt=c=>{const off=c[1]==='Zernio'&&(S.zc==='off'||c[3]==='Not connected');return `<span class="badge"><span class="sd ${off?'e':c[4]}"></span>${off?'Not connected':c[3]}</span>`};
+const zOff=()=>S.v==='C'&&S.zc==='off';
+const connectZ=()=>!zOff()?'':`<div class="card connect"><span class="xmark" aria-hidden="true">Z</span><div><b>Connect Zernio</b><div class="sub">Needed to post approved text</div></div><span class="sp"></span><button class="btn p" data-act="zconnect">Connect Zernio</button></div>`;
+const pConnectZ=()=>!zOff()?'':`<div class="pgroup" style="margin-top:12px"><div class="prow"><div class="t"><b>Connect Zernio</b><span class="sub">Needed to post approved text</span></div><button class="btn p sm" data-act="zconnect">Connect Zernio</button></div></div>`;
+function channels(){return S.v!=='C'?'':`<div class="sec">Channels</div><div class="list" style="overflow-x:auto"><table class="chan"><thead><tr><td class="sub">Channel</td><td class="sub">Destination</td><td class="sub">Rule</td><td class="sub">Status</td></tr></thead><tbody>${CHAN.map(c=>`<tr><td><b>${c[0]}</b></td><td>${c[1]}</td><td class="mute">${c[2]}</td><td>${chSt(c)}</td></tr>`).join('')}</tbody></table></div>`}
+
+/* items */
+const needX=()=>`<div class="need" data-k="x"><div class="top"><b>Post to X</b>${tags('public_post','x')}<span class="sp"></span><span class="sub">Exact text</span></div><div class="quote">${XTXT}</div><div class="acts">${approveX()}${btn('Edit','edit')}${btn('Discard','discard','d','x')}</div></div>`;
+const needDir=()=>`<div class="need" data-k="dir"><div class="top"><b>Sign up to a directory</b>${tags('create_account','directory')}<span class="sp"></span></div><dl class="kv"><dt class="mute">Site</dt><dd>example-directory.test</dd><dt class="mute">Account</dt><dd>founder@example.com</dd><dt class="mute">Terms</dt><dd>Terms of service, privacy policy</dd></dl><div class="acts">${btn('Approve','approve','p','dir')}${btn('Discard','discard','d','dir')}</div></div>`;
+const dot=k=>`<span class="dot ${k}">${k==='done'?ic('check'):''}</span>`;
+const atTag=p=>S.v==='C'&&p.at?`<span class="tag">Scheduled ${p.at}</span>`:'';
+const PROG=()=>S.v==='C'&&S.failed?[{t:'Post to X: changelog',m:'Posting may have failed',fail:1},...S.prog]:S.prog;
+const failB=()=>btn('Re-approve','reapprove','');
+const progRow=p=>p.fail?`<div class="item">${dot('run')}<div class="t"><span>${p.t}</span><span class="sub" style="color:var(--destructive)">${p.m}</span></div>${failB()}</div>`:`<div class="item">${dot('run')}<div class="t"><span>${p.t}</span><span class="sub">${p.m}</span></div>${atTag(p)||tags(p.c,p.ch)}</div>`;
+const doneRow=p=>`<div class="item">${dot('done')}<div class="t"><span>${p.t}</span>${proof(p.u)}</div>${tags(p.c,p.ch)}</div>`;
+const draftRow=d=>`<div class="item" style="align-items:start">${dot('')}<div class="t"><span>${d.t}</span><span class="sub">${d.txt}</span></div><div class="acts" style="justify-content:flex-end">${btn('Copy','copy','',d.id)}${btn('Mark posted','posted','',d.id)}</div></div>`;
+const sec=(l,n)=>`<div class="sec">${l}<span class="n">${n}</span></div>`;
+function plan(){
+  let h='';
+  if(NL().length)h+=sec('Needs you',NL().length)+NL().map(k=>S.v==='C'?needC(k):k==='x'?needX():needDir()).join('');
+  h+=sec('In progress',PROG().length)+`<div class="list">${PROG().map(progRow).join('')||'<div class="empty">Nothing running</div>'}</div>`;
+  h+=sec('Drafts for you',S.drafts.length)+`<div class="list">${S.drafts.map(draftRow).join('')||'<div class="empty">No drafts</div>'}</div>`;
+  h+=sec('Done',S.done.length)+`<div class="list">${S.done.map(doneRow).join('')}</div>`;
+  return h;
+}
+/* phone plan */
+const pNeed=k=>k==='x'
+ ?`<div class="prow wide"><div class="t"><b>Post to X</b><span class="quote" style="margin:6px 0">${XTXT}</span></div><div class="acts">${approveX()}${btn('Edit','edit')}${btn('Discard','discard','d','x')}</div></div>`
+ :`<div class="prow"><div class="t"><b>Sign up to example-directory.test</b><span class="sub">founder@example.com</span><span class="sub">Terms of service, privacy policy</span></div><div class="acts">${btn('Approve','approve','p','dir')}${btn('Discard','discard','d','dir')}</div></div>`;
+function pPlan(){
+  let h='';
+  if(NL().length)h+=sec('Needs you',NL().length)+(S.v==='C'?NL().map(needC).join(''):`<div class="pgroup">${NL().map(pNeed).join('')}</div>`);
+  h+=sec('In progress',PROG().length)+`<div class="pgroup">${PROG().map(p=>p.fail?`<div class="prow"><div class="t"><span>${p.t}</span><span class="sub" style="color:var(--destructive)">${p.m}</span></div>${failB()}</div>`:`<div class="prow"><div class="t"><span>${p.t}</span><span class="sub">${p.m}</span></div>${atTag(p)||(S.v==='B'||!p.ch?'':`<span class="tag">${p.ch}</span>`)}</div>`).join('')}</div>`;
+  h+=sec('Drafts for you',S.drafts.length)+`<div class="pgroup">${S.drafts.map(d=>`<div class="prow wide"><div class="t"><span>${d.t}</span><span class="sub">${d.txt}</span></div><div class="acts">${btn('Copy','copy','',d.id)}${btn('Mark posted','posted','',d.id)}</div></div>`).join('')}</div>`;
+  h+=sec('Done',S.done.length)+`<div class="pgroup">${S.done.map(p=>`<div class="prow"><div class="t"><span>${p.t}</span>${proof(p.u)}</div>${S.v==='B'?'':`<span class="tag">${p.ch}</span>`}</div>`).join('')}</div>`;
+  return h;
+}
+function pChannels(){return S.v!=='C'?'':`<div class="sec">Channels</div><div class="pgroup">${CHAN.map(c=>`<div class="prow"><div class="t"><b>${c[0]}</b><span class="sub">${c[1]}${c[2]?' · '+c[2]:''}</span></div>${chSt(c)}</div>`).join('')}</div>`}
+const pConnect=()=>S.v!=='A'||S.xc?'':`<div class="pgroup" style="margin-top:12px"><div class="prow"><div class="t"><b>Connect X</b><span class="sub">Needed to post approved text</span></div><button class="btn p sm" data-act="connect">Connect</button></div></div>`;
+
+/* variant C: previews and calendar */
+const XT='Looking for 50 design partners for Rakazo: one workspace for inbox, finance and legal, run by agents. Free for early teams, and we onboard each one by hand. Reply or DM for access.';
+const XT2='Update: we now onboard each design partner by hand within a day. Looking for 50 early teams. Reply or DM for access.';
+const xCount=t=>t.length+1+23; // links count as 23
+const LIT='Most founders run five tools to answer one question: who owes us a reply, what did we spend, what did we sign. We built one workspace where agents handle inbox, finance and legal. We are looking for 50 design partners. Comment or message me.';
+const av2=l=>`<span class="pav" aria-hidden="true">${l}</span>`;
+const sched=(t)=>`<span class="badge">${t} · Zernio</span>`;
+const acts=(id,dis0,extra='')=>{const dis=dis0||(id!=='mail'&&id!=='dir'&&zOff());return `<div class="acts">${btn('Approve','approve','p',id,dis?'aria-disabled="true"':'')}${extra}${btn('Edit','edit')}${btn('Discard','discard','d',id)}</div>`};
+function needC(k){
+  if(k==='dir')return needDir();
+  if(k==='x'||k==='xch'){const ch=k==='xch',t=ch?XT2:XT,n=xCount(t);
+    return `<div class="need" data-k="${k}"><div class="top"><b>Post to X</b>${ch?'<span class="tag">Changed</span>':''}<span class="sp"></span>${sched(ch?'Thu 11:00':'Thu 10:00')}</div>
+    <div class="post">${av2('R')}<div class="pb"><div class="nm"><b>Rakazo</b><span class="sub">@rakazo_demo</span></div><div class="ptxt">${t}</div>
+    ${ch?'':`<div class="lcard"><div class="im">${ic('link')}</div><div class="tx"><span class="sub">example-rakazo.test</span><span>Rakazo: early access</span></div></div>`}</div></div>
+    <div class="meta"><span class="cnt ${n>280?'over':''}" aria-label="${n} of 280 characters, link counts as 23">${n} / 280</span><span class="sub">Link counts as 23</span></div>${ch?`<div class="acts">${btn('Re-approve','approve','p',k,zOff()?'aria-disabled="true"':'')}${btn('Edit','edit')}${btn('Discard','discard','d',k)}</div>`:acts('x',false)}</div>`}
+  if(k==='li'){
+    return `<div class="need" data-k="li"><div class="top"><b>Post to LinkedIn</b><span class="sp"></span>${sched('Thu 14:00')}</div>
+    <div class="post">${av2('R')}<div class="pb"><div class="nm"><b>Rakazo</b><span class="sub">Company page</span></div>
+    <div class="ptxt">${LIT}</div></div></div>
+    <div class="meta"><span class="cnt" aria-label="${LIT.length} of 3,000 characters">${LIT.length} / 3,000</span></div>${acts('li',false)}</div>`}
+  const ok=S.addr;
+  return `<div class="need" data-k="mail"><div class="top"><b>Email via Inbox</b><span class="sp"></span></div>
+    <dl class="kv"><dt class="mute">From</dt><dd>founder@example.com via Gmail</dd><dt class="mute">To</dt><dd>a@example-prospect.test</dd><dt class="mute">Subject</dt><dd>Design partner program</dd></dl>
+    <div class="quote">Hi Alex, we are looking for 50 design partners for Rakazo. Free for early teams. Open to a 15 minute call this week?</div>
+    <div class="checks"><span class="ok">Unsubscribe line ✓</span><span class="mute">·</span><span class="${ok?'ok':'bad'}">Postal address ${ok?'✓':'✗'}</span>${ok?'':btn('Add address','addr')}</div>${acts('mail',!ok)}</div>`;
+}
+const DAYS=['Mon 19','Tue 20','Wed 21','Thu 22','Fri 23','Sat 24','Sun 25'],TODAY=2;
+const CAL=[
+ {id:'x',d:3,t:'10:00',l:'X',n:'Design-partner post'},{id:'li',d:3,t:'14:00',l:'in',n:'Why we built Rakazo'},
+{id:'dir',d:2,t:'15:00',l:'D',n:'Directory signup'},
+ {id:'r',d:2,t:'16:00',l:'R',n:'Research directories'},
+ {z:1,d:3,t:'16:30',l:'X',n:'Changelog post'},{z:1,d:4,t:'12:00',l:'in',n:'Customer story'},{z:1,d:1,t:'09:00',l:'X',n:'Build update',past:1}];
+function calItems(){return CAL.filter(c=>!S.gone.includes(c.id)).map(c=>{
+  const needs=c.id&&NL().includes(c.id);
+  const z=c.z||(!needs&&(c.id==='x'||c.id==='li'));
+  return {...c,needs,z}}).sort((a,b)=>a.d-b.d||a.t.localeCompare(b.t))}
+const chip=c=>`<div class="chipc ${c.needs?'needs':''} ${c.past?'past':''}"><div class="r"><span class="cl" aria-hidden="true">${c.l}</span><span class="mono">${c.t}</span></div><span class="ttl">${c.n}</span>${c.z?'<span class="tag" style="align-self:flex-start">Zernio</span>':''}${c.needs?'<span class="wn"><span class="sd w"></span>Needs you</span>':''}</div>`;
+function calendar(){const it=calItems();
+  return `<div class="calwrap"><div class="cal">${DAYS.map((d,i)=>`<div class="cday ${i===TODAY?'today':''}"><h4>${d}${i===TODAY?' · Today':''}</h4>${it.filter(c=>c.d===i).map(chip).join('')}</div>`).join('')}</div></div>`}
+function agenda(){const it=calItems();
+  return DAYS.map((d,i)=>{const l=it.filter(c=>c.d===i);return l.length?`<div class="sec">${d}${i===TODAY?' · Today':''}</div><div class="pgroup">${l.map(c=>`<div class="prow"><div class="t"><span style="display:flex;gap:6px;align-items:center"><span class="cl" aria-hidden="true">${c.l}</span>${c.n}</span><span class="sub">${c.t}</span>${c.needs?'<span class="wn"><span class="sd w"></span>Needs you</span>':''}</div>${c.z?'<span class="tag">Zernio</span>':''}</div>`).join('')}</div>`:''}).join('')}
+const tabs=()=>S.v!=='C'?'':`<span class="seg tabs" role="group" aria-label="View"><button data-k="tab" data-v="plan" aria-pressed="${S.tab==='plan'}">Plan</button><button data-k="tab" data-v="cal" aria-pressed="${S.tab==='cal'}">Calendar</button></span>`;
+
+/* chat */
+function chat(){return `<div class="thread">
+ <div class="me">First 50 design-partner signups</div>
+ <div class="bm"><div>Plan is ready: 8 items across directories, X, LinkedIn and Hacker News. I work one item an hour and only mark one done with a live URL.</div>
+  <div class="pc"><div><span>Done</span><b>3</b></div><div><span>In progress</span><b>2</b></div><div><span>Drafts for you</span><b>2</b></div><div><span>Need approval</span><b>${S.v==='C'?5:2}</b></div></div>
+  <div>${S.v==='C'?'Five items need you: a changed X post, an X post, a LinkedIn post, an email and a directory signup. Each preview is exactly what goes out.':'Two items need you: an X post and a directory signup. Both are on the page.'}</div></div>
+ <div class="me">Approve the directory. I will edit the X text.</div>
+ <div class="bm"><div>Noted. Next item runs in 38 min.</div></div></div>
+ <div class="composer"><span class="sp">Message GTM agent</span><button class="ib" aria-label="Send">${ic('send')}</button></div>`}
+
+/* shells */
+const NAV=[['inbox','Inbox','12'],['fin','Finance'],['room','Data room'],['legal','Legal'],['cap','Cap table'],['gtm','GTM']];
+function desk(){
+  const n=NL().length;
+  return `<div class="frame desk">
+  <aside class="left" aria-label="Navigation"><div class="search">Search</div>
+   ${NAV.map(r=>`<div class="row ${r[1]==='GTM'?'active':''}"><span class="icon">${ic(r[0])}</span>${r[1]}${r[2]?`<span class="count">${r[2]}</span>`:''}</div>`).join('')}
+   <div class="label">Bots</div><div class="row"><span class="av">G</span>GTM agent</div></aside>
+  <main><div class="head"><h1>GTM</h1><span class="badge"><span class="sd ${n?'w':''}"></span>${n?n+' need you':'Up to date'}</span><span class="sp"></span><span class="sub">Next wakeup in 38 min</span></div>
+   <div class="goal">Goal <b>First 50 design-partner signups</b><button class="ib" data-act="edit" aria-label="Edit goal">${ic('more')}</button></div>
+   ${tabs()}${S.v==='C'&&S.tab==='cal'?calendar():stats(false)+connectX()+connectZ()+channels()+plan()}</main>
+  <aside class="right" aria-label="GTM agent chat"><div class="rhead"><span class="av">G</span>GTM agent<span class="sp"></span><button class="ib" aria-label="Chat options">${ic('more')}</button></div>${chat()}</aside></div>`;
+}
+function phone(){
+  const n=NL().length;
+  return `<div class="frame phone"><div class="sbar"><span>9:41</span><span aria-hidden="true">5G ▮▮▮</span></div>
+   <div class="pscroll"><div class="large">GTM</div><div class="pgoal">First 50 design-partner signups${n?` · <span style="color:var(--warning)">${n} need you</span>`:''}</div>
+   ${tabs()}${S.v==='C'&&S.tab==='cal'?agenda():stats(true)+pConnect()+pConnectZ()+pChannels()+pPlan()}</div>
+   <div class="sheet"><div class="grab"></div><div class="ask"><span class="av" style="width:20px;height:20px;font-size:10px">G</span><span class="sp">Ask GTM agent</span>${ic('chat')}</div></div></div>`;
+}
+function render(){
+  document.documentElement.dataset.theme=S.th==='auto'?'':S.th;
+  if(S.th==='auto')document.documentElement.removeAttribute('data-theme');
+  $('#root').innerHTML=S.dev==='desk'?desk():phone();
+  seg('#s-var',[['A','A Plan + Connect X'],['B','B Plan only'],['C','C Plan + channels']],'v');
+  seg('#s-dev',[['desk','Desktop'],['phone','Phone']],'dev');
+  seg('#s-zc',[['on','Connected'],['off','Not connected']],'zc');
+  seg('#s-th',[['auto','Auto'],['light','Light'],['dark','Dark']],'th');
+}
+function seg(sel,opts,k){$(sel).innerHTML=opts.map(o=>`<button data-k="${k}" data-v="${o[0]}" aria-pressed="${S[k]===o[0]}">${o[1]}</button>`).join('')}
+let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.classList.remove('hide');clearTimeout(tt);tt=setTimeout(()=>e.classList.add('hide'),1800)};
+document.addEventListener('click',e=>{
+  const s=e.target.closest('[data-k][data-v]');
+  if(s){S[s.dataset.k]=s.dataset.v;render();return}
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act,id=b.dataset.id;
+  if(b.getAttribute('aria-disabled')==='true'){toast(id==='mail'?'Add postal address first':S.v==='C'?'Connect Zernio first':'Connect X first');return}
+  if(a==='approve'){S[NK()]=NL().filter(k=>k!==id);
+    const vz=` · <a class="proof" href="#" onclick="return false">View in Zernio</a>`;
+    S.prog.unshift(S.v==='C'?({x:{t:'Post to X',m:'Queued in Zernio · Thu 10:00'+vz},li:{t:'Post to LinkedIn',m:'Queued in Zernio · Thu 14:00'+vz},xch:{t:'Post to X',m:'Queued in Zernio · Thu 11:00'+vz},mail:{t:'Email to a@example-prospect.test',m:'Sent from Gmail'},dir:{t:'Sign up to example-directory.test',m:'Approved · opens next wakeup',c:'create_account',ch:'directory'}}[id]):
+     id==='x'?{t:'Post approved text to X',c:'public_post',ch:'x',m:'Approved · posting next wakeup'}:{t:'Sign up to example-directory.test',c:'create_account',ch:'directory',m:'Approved · opens next wakeup'});
+    render();toast('Approved')}
+  else if(a==='discard'){S[NK()]=NL().filter(k=>k!==id);if(S.v==='C')S.gone.push(id);render();toast('Discarded')}
+  else if(a==='addr'){S.addr=true;render();toast('Address added')}
+  else if(a==='cconnect'){S.conn[id]=1;render();toast(id+' connected')}
+  else if(a==='copy'){b.textContent='Copied'}
+  else if(a==='posted'){const d=S.drafts.find(x=>x.id===id);S.drafts=S.drafts.filter(x=>x.id!==id);S.prog.push({t:d.t,c:'public_post',ch:d.ch,m:'Posted · waiting for live URL'});render();toast('Marked posted')}
+  else if(a==='zconnect'){S.zc='on';render();toast('Zernio connected')}
+  else if(a==='reapprove'){S.failed=false;S.prog.unshift({t:'Post to X',m:'Queued in Zernio · Thu 10:00'});render();toast('Re-approved')}
+  else if(a==='connect'){S.xc=1;render();toast('X connected')}
+  else if(a==='edit'){toast('Edit opens the text')}
+});
+render();
+</script>
+</body>
+</html>

@@ -93,6 +93,7 @@ describe("spaceInboxItems", () => {
           id: "section-1",
           name: "Research",
           position: 0,
+          collapsed: false,
           createdAt: "2026-01-01T00:00:00.000Z",
           updatedAt: "2026-01-01T00:00:00.000Z",
         },
@@ -103,6 +104,62 @@ describe("spaceInboxItems", () => {
     expect(headings.filter((item) => item.space)).toEqual([
       { type: "heading", key: work.id, title: work.name, space: work },
     ]);
+  });
+
+  it("lists folders in the web sidebar's order, with bots and groups ordered together", () => {
+    const stamp = "2026-01-01T00:00:00.000Z";
+    const group = {
+      id: "group-1",
+      name: "Planning",
+      preview: "",
+      pinned: false,
+      sectionId: "folder-b",
+      position: 0,
+      archivedAt: null,
+      unread: false,
+      updatedAt: stamp,
+      members: [],
+    };
+    const work = space({
+      isDefault: true,
+      bots: [
+        { ...bot, id: "loose", position: 0 },
+        { ...bot, id: "b2", sectionId: "folder-b", position: 1 },
+        { ...bot, id: "a1", sectionId: "folder-a", position: 0 },
+      ],
+      groups: [group],
+      botSections: [
+        {
+          id: "folder-b",
+          name: "Beta",
+          position: 0,
+          collapsed: false,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+        {
+          id: "folder-a",
+          name: "Alpha",
+          position: 1,
+          collapsed: true,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+        {
+          id: "folder-empty",
+          name: "Empty",
+          position: 2,
+          collapsed: false,
+          createdAt: stamp,
+          updatedAt: stamp,
+        },
+      ],
+    });
+    const rows = spaceInboxItems([work]).map((item) =>
+      item.type === "heading" ? item.title : item.type === "bot" ? item.bot.id : item.group.id,
+    );
+    // Beta holds the group first (position 0) and then bot b2; empty folders have no heading.
+    expect(rows).toEqual(["Beta", "group-1", "b2", "Alpha", "a1", "Unassigned", "loose"]);
   });
 
   it("keeps populated default-space chrome minimal and retains group rows", () => {

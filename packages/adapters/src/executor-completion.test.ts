@@ -1,4 +1,5 @@
 import { cartaAgentSpawnKey, integrationAgentSpawnKey } from "@rakazo/contracts";
+import { Prisma } from "@rakazo/db";
 import { describe, expect, it } from "vitest";
 import {
   classifyRunFailure,
@@ -541,6 +542,28 @@ describe("classifyRunFailure", () => {
       new Error("Engine is not yet connected."),
       new Error("Cannot use a pool after calling end on the pool"),
       new Error(prismaText, { cause: Object.assign(new Error("c"), { code: "P1001" }) }),
+    ]) {
+      expect(classifyRunFailure(error, [])).toEqual({ interrupted: true });
+    }
+  });
+
+  it("fails, not requeues, a network error from a model or MCP server", () => {
+    // fetch() collapses a reset socket to "fetch failed" with the errno on the cause.
+    const reset = new TypeError("fetch failed", {
+      cause: Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET", syscall: "read" }),
+    });
+    for (const error of [reset, new Error("MCP Connection terminated by the server")]) {
+      expect(classifyRunFailure(error, [])).toMatchObject({ interrupted: false });
+    }
+  });
+
+  it("still treats node-postgres disconnects as interrupted", () => {
+    for (const error of [
+      new Error("Connection terminated unexpectedly"),
+      new Prisma.PrismaClientKnownRequestError("the database system is shutting down", {
+        code: "P2039",
+        clientVersion: "7.10.0",
+      }),
     ]) {
       expect(classifyRunFailure(error, [])).toEqual({ interrupted: true });
     }

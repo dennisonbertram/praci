@@ -61,6 +61,7 @@ vi.mock("@rakazo/ui-web", () => ({
 }));
 vi.mock("./avatar-studio-popover", () => ({ AvatarStudioPopover: () => null }));
 vi.mock("./bot-credentials", () => ({ BotCredentialsSection: () => null }));
+vi.mock("./BotSkillsSection", () => ({ BotSkillsSection: () => null }));
 vi.mock("../ScratchpadSection", () => ({ ScratchpadSection: () => null }));
 vi.mock("../KnowledgeSection", () => ({ KnowledgeSection: () => null }));
 
@@ -102,6 +103,7 @@ function bot(description = "Billing"): Bot {
     disabledBuiltinTools: [],
     webhookConfigured: false,
     spawnKey: null,
+    runPhase: null,
   };
 }
 

@@ -20,6 +20,7 @@ type GroupRecord = {
   name: string;
   pinned: boolean;
   sectionId: string | null;
+  position: number | null;
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -40,7 +41,7 @@ type GroupRecord = {
 
 type SpaceGroupRecord = Pick<
   GroupRecord,
-  "id" | "spaceId" | "name" | "pinned" | "sectionId" | "updatedAt" | "members"
+  "id" | "spaceId" | "name" | "pinned" | "sectionId" | "position" | "updatedAt" | "members"
 > & {
   thread: {
     unread: boolean;
@@ -66,6 +67,7 @@ function mapGroup(group: GroupRecord): Group {
     name: group.name,
     pinned: group.pinned,
     sectionId: group.sectionId,
+    position: group.position,
     archivedAt: group.archivedAt?.toISOString() ?? null,
     members: mapGroupMembers(group.members),
     threadId: group.thread.id,
@@ -84,6 +86,7 @@ function mapSpaceGroup(group: SpaceGroupRecord): SpaceGroup {
     name: group.name,
     pinned: group.pinned,
     sectionId: group.sectionId,
+    position: group.position,
     members: mapGroupMembers(group.members),
     preview: previewFromBlocks(group.thread.messages[0]?.blocks),
     unread: group.thread.unread,
@@ -274,6 +277,7 @@ export function createGroupRepos(prisma: PrismaClient) {
         name: true,
         pinned: true,
         sectionId: true,
+        position: true,
         updatedAt: true,
         thread: {
           select: {

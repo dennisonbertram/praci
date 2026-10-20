@@ -248,6 +248,8 @@ export const TR_MESSAGES: Record<string, string> = {
   Name: "Ad",
   "Name this bot": "Bota ad ver",
   "Read replies aloud": "Yanıtları sesli oku",
+  Skills: "Beceriler",
+  "Use {name}": "{name} kullan",
   Save: "Kaydet",
   "Saving…": "Kaydediliyor…",
   "Space default": "Alan varsayılanı",

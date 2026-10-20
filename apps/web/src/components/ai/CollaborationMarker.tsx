@@ -38,12 +38,14 @@ export function ActiveBotGlyph({
   label,
   startedAt,
   detail,
+  detailSince,
   waitingLabel,
 }: {
   bots: GroupAvatarMember[];
   label: string;
   startedAt?: number;
   detail?: string;
+  detailSince?: number;
   waitingLabel?: string;
 }) {
   return (
@@ -53,6 +55,7 @@ export function ActiveBotGlyph({
         label={label}
         startedAt={startedAt}
         detail={detail}
+        detailSince={detailSince}
         waitingLabel={waitingLabel}
       />
     </div>

@@ -38,6 +38,7 @@ import { thinkingLevelLabel } from "../../lib/model-catalog";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 import { AvatarStudioPopover } from "./avatar-studio-popover";
+import { BotSkillsSection } from "./BotSkillsSection";
 import { BotCredentialsSection } from "./bot-credentials";
 
 const ScratchpadSection = lazy(() =>
@@ -90,6 +91,7 @@ export function BotSettings({
   bot,
   memoryProviderConfigured,
   onSkillsChange,
+  skillsRefreshKey,
   onSave,
   onExport,
   onClear,
@@ -99,6 +101,8 @@ export function BotSettings({
   /** A bot just created as "New bot": focus and select its name so it gets named first. */
   focusName?: boolean;
   onSkillsChange: (skills: AgentSkillCatalogEntry[]) => void;
+  /** Changes when the agent may have created a skill, so the list reloads. */
+  skillsRefreshKey?: number;
   memoryProviderConfigured: boolean;
   onSave: (patch: {
     name?: string;
@@ -439,6 +443,11 @@ export function BotSettings({
           }}
         />
       </div>
+      <BotSkillsSection
+        botId={bot.id}
+        refreshKey={skillsRefreshKey}
+        onSkillsChange={onSkillsChange}
+      />
       <details
         data-testid="bot-settings-advanced"
         className="group mt-5"
@@ -463,7 +472,7 @@ export function BotSettings({
         {advancedOpened ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
-              <KnowledgeSection botId={bot.id} onSkillsChange={onSkillsChange} />
+              <KnowledgeSection botId={bot.id} />
             </Suspense>
           </ErrorBoundary>
         ) : null}

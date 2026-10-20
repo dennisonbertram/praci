@@ -25,8 +25,8 @@ test("pinned bots and sidebar sections persist", async ({ page }, testInfo) => {
   const moveMenu = page.getByRole("menu", { name: "Move to", exact: true });
   await expect(moveMenu).toBeVisible();
   await captureScreenshot(page, testInfo, "move-to-section-menu");
-  await moveMenu.getByText("New section").click();
-  const dialog = page.getByRole("dialog", { name: "New section" });
+  await moveMenu.getByText("New folder").click();
+  const dialog = page.getByRole("dialog", { name: "New folder" });
   await dialog.getByLabel("Name").fill("Projects");
   await dialog.getByRole("button", { name: "Create" }).click();
 
@@ -43,9 +43,9 @@ test("pinned bots and sidebar sections persist", async ({ page }, testInfo) => {
   await page.getByRole("menuitem", { name: "Move to", exact: true }).hover();
   await page
     .getByRole("menu", { name: "Move to", exact: true })
-    .getByRole("menuitem", { name: "Rename section", exact: true })
+    .getByRole("menuitem", { name: "Rename", exact: true })
     .click();
-  const renameDialog = page.getByRole("dialog", { name: "Rename section" });
+  const renameDialog = page.getByRole("dialog", { name: "Rename" });
   await renameDialog.getByLabel("Name").fill("Delivery");
   await captureScreenshot(page, testInfo, "rename-bot-section");
   await renameDialog.getByRole("button", { name: "Save" }).click();
@@ -58,7 +58,7 @@ test("pinned bots and sidebar sections persist", async ({ page }, testInfo) => {
     .getByRole("menu", { name: "Move to", exact: true })
     .getByRole("menuitem", { name: "Unassigned", exact: true })
     .click();
-  await expect(sidebar.locator('[data-sidebar-group="unassigned"]')).toContainText("Chief");
+  await expect(sidebar.locator('[data-sidebar-group="root"]')).toContainText("Chief");
 });
 
 test("bots can be reordered by drag or keyboard and keep that order", async ({ page }) => {
@@ -121,13 +121,23 @@ test("bots can be reordered by drag or keyboard and keep that order", async ({ p
   await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await staleListReady;
 
-  const reorderSaved = page.waitForResponse(
-    (response) => response.url().includes("/rpc/bots/reorder") && response.ok(),
+  // dnd-kit starts a drag after a few pixels of movement, so move in steps.
+  const dragRow = async (from: string, to: string) => {
+    const source = await sidebar.locator(`[data-roster-bot-id="${from}"]`).boundingBox();
+    const target = await sidebar.locator(`[data-roster-bot-id="${to}"]`).boundingBox();
+    expect(source && target).toBeTruthy();
+    await page.mouse.move(source!.x + source!.width / 2, source!.y + source!.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(target!.x + target!.width / 2, target!.y + target!.height / 2, {
+      steps: 12,
+    });
+    await page.mouse.up();
+  };
+  const moveSaved = page.waitForResponse(
+    (response) => response.url().includes("/rpc/sidebar/move") && response.ok(),
   );
-  await sidebar
-    .locator(`[data-roster-bot-id="${beta.id}"]`)
-    .dragTo(sidebar.locator(`[data-roster-bot-id="${chiefId}"]`));
-  await reorderSaved;
+  await dragRow(beta.id, chiefId);
+  await moveSaved;
   releaseStaleList();
   await staleListDelivered;
   await expect.poll(order).toEqual([beta.id, chiefId, alpha.id]);
@@ -141,39 +151,14 @@ test("bots can be reordered by drag or keyboard and keep that order", async ({ p
   await page.reload();
   await expect.poll(order).toEqual([chiefId, beta.id, alpha.id]);
 
-  let releaseRejectedReorder!: () => void;
-  let markRejectedReorderStarted!: () => void;
-  const rejectedReorderStarted = new Promise<void>((resolve) => {
-    markRejectedReorderStarted = resolve;
-  });
-  const rejectReorder = new Promise<void>((resolve) => {
-    releaseRejectedReorder = resolve;
-  });
+  // A move the server refuses is undone on screen.
   await page.route(
-    "**/rpc/bots/reorder",
-    async (route) => {
-      markRejectedReorderStarted();
-      await rejectReorder;
-      await route.fulfill({ status: 500, contentType: "application/json", body: "{}" });
-    },
+    "**/rpc/sidebar/move",
+    (route) => route.fulfill({ status: 500, contentType: "application/json", body: "{}" }),
     { times: 1 },
   );
-  await sidebar
-    .locator(`[data-roster-bot-id="${alpha.id}"]`)
-    .dragTo(sidebar.locator(`[data-roster-bot-id="${chiefId}"]`));
-  await rejectedReorderStarted;
-
-  const queuedReorderSaved = page.waitForResponse(
-    (response) => response.url().includes("/rpc/bots/reorder") && response.ok(),
-  );
-  await sidebar
-    .locator(`[data-roster-bot-id="${beta.id}"]`)
-    .dragTo(sidebar.locator(`[data-roster-bot-id="${alpha.id}"]`));
-  releaseRejectedReorder();
-  await queuedReorderSaved;
-  await expect.poll(order).toEqual([beta.id, alpha.id, chiefId]);
-  await page.reload();
-  await expect.poll(order).toEqual([beta.id, alpha.id, chiefId]);
+  await dragRow(alpha.id, chiefId);
+  await expect.poll(order).toEqual([chiefId, beta.id, alpha.id]);
 });
 
 test("chat composer controls are vertically centered", async ({ page }, testInfo) => {
@@ -307,9 +292,9 @@ test("group chats share every context-menu action", async ({ page }, testInfo) =
   await page.getByRole("menuitem", { name: "Move to", exact: true }).hover();
   await page
     .getByRole("menu", { name: "Move to", exact: true })
-    .getByRole("menuitem", { name: "New section", exact: true })
+    .getByRole("menuitem", { name: "New folder", exact: true })
     .click();
-  const sectionDialog = page.getByRole("dialog", { name: "New section" });
+  const sectionDialog = page.getByRole("dialog", { name: "New folder" });
   await sectionDialog.getByLabel("Name").fill("Teams");
   await sectionDialog.getByRole("button", { name: "Create" }).click();
   await expect(sidebar.locator('[data-sidebar-group^="section:"]')).toContainText("Group menu");

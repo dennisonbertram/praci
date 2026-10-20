@@ -1,8 +1,11 @@
+import pg from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createDb,
   createPool,
+  isDatabaseInterruption,
   isTooManyDatabaseConnections,
+  Prisma,
   parsePositiveInteger,
   retryOnTooManyConnections,
 } from "./client.js";
@@ -111,5 +114,52 @@ describe("createPool", () => {
     expect(pool.listenerCount("error")).toBeGreaterThan(0);
     expect(pool.listenerCount("connect")).toBeGreaterThan(0);
     expect(() => pool.emit("error", new Error("idle client lost"))).not.toThrow();
+  });
+});
+
+describe("isDatabaseInterruption", () => {
+  const known = (code: string, message: string) =>
+    new Prisma.PrismaClientKnownRequestError(message, { code, clientVersion: "7.10.0" });
+
+  it("counts the errors Prisma 7 raised while Postgres restarted", () => {
+    for (const error of [
+      known("P2039", "the database system is shutting down"),
+      known(
+        "P2010",
+        "Raw query failed. Code: `57P03`. Message: `the database system is starting up`",
+      ),
+      known("P2010", "Raw query failed. Message: `Server has closed the connection.`"),
+      known("P2010", "Can't reach database server at `127.0.0.1:5432`"),
+    ]) {
+      expect(isDatabaseInterruption(error)).toBe(true);
+    }
+  });
+
+  it("counts a pg server error and a Prisma error that wraps one", () => {
+    const shutdown = new pg.DatabaseError(
+      "terminating connection due to administrator command",
+      0,
+      "error",
+    );
+    shutdown.code = "57P01";
+    shutdown.severity = "FATAL";
+    expect(isDatabaseInterruption(shutdown)).toBe(true);
+    const startup = new pg.DatabaseError("the database system is starting up", 0, "error");
+    startup.code = "57P03";
+    startup.severity = "FATAL";
+    expect(isDatabaseInterruption(new Error("query failed", { cause: startup }))).toBe(true);
+  });
+
+  it("ignores the same words from outside the database stack", () => {
+    for (const error of [
+      new Error("MCP server: Server has closed the connection"),
+      new Error("Can't reach database server"),
+      new TypeError("fetch failed", {
+        cause: Object.assign(new Error("read ECONNRESET"), { code: "ECONNRESET" }),
+      }),
+      known("P2002", "Unique constraint failed on the fields: (`id`)"),
+    ]) {
+      expect(isDatabaseInterruption(error)).toBe(false);
+    }
   });
 });

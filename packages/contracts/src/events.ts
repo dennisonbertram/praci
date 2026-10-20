@@ -20,6 +20,8 @@ export const ProductEventType = z.enum([
   "thread.call.ended",
   "run.started",
   "run.checkpointed",
+  /** payload: RunPhase */
+  "run.phase",
   "run.waiting_input",
   "run.completed",
   "run.failed",

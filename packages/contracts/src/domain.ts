@@ -49,6 +49,27 @@ export const AgentSecretInputSchema = z.object({
 });
 export type AgentSecretInput = z.infer<typeof AgentSecretInputSchema>;
 
+/**
+ * What a live run is waiting on before its tools and text take over. `name` is the service
+ * (connecting), the model (model_wait) or the reason (retrying). `since` and `count` belong to a
+ * requeue streak: when it began and how many requeues it has had.
+ */
+export const RunPhaseSchema = z.object({
+  kind: z.enum([
+    "computer_wait",
+    "computer_start",
+    "connecting",
+    "model_wait",
+    "thinking",
+    "retrying",
+  ]),
+  name: z.string().optional(),
+  at: z.string(),
+  since: z.string().optional(),
+  count: z.number().int().positive().optional(),
+});
+export type RunPhase = z.infer<typeof RunPhaseSchema>;
+
 export const BotSchema = z.object({
   id: Id,
   spaceId: Id,
@@ -60,6 +81,8 @@ export const BotSchema = z.object({
   notifyOnFinish: z.boolean(),
   pinned: z.boolean(),
   sectionId: Id.nullable(),
+  /** Order within its folder; bots and groups share one scale. Null: not ordered by hand yet. */
+  position: z.number().int().nullable().optional(),
   archivedAt: z.string().nullable(),
   unread: z.boolean(),
   parentBotId: Id.nullable(),
@@ -67,6 +90,8 @@ export const BotSchema = z.object({
   threadId: Id,
   preview: z.string(),
   status: z.string(),
+  /** The active run's phase, for the sidebar's status line. */
+  runPhase: RunPhaseSchema.nullable().default(null),
   runErrorId: Id.nullable().default(null),
   computerMode: ComputerModeSchema,
   updatedAt: z.string(),
@@ -120,6 +145,7 @@ export const GroupSchema = z.object({
   name: z.string(),
   pinned: z.boolean(),
   sectionId: Id.nullable(),
+  position: z.number().int().nullable().optional(),
   archivedAt: z.string().nullable(),
   members: z.array(GroupMemberSchema),
   threadId: Id,
@@ -160,6 +186,7 @@ export const BotSectionSchema = z.object({
   id: Id,
   name: z.string(),
   position: z.number().int().nonnegative(),
+  collapsed: z.boolean().default(false),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -179,10 +206,12 @@ export const SpaceBotSchema = BotSchema.pick({
   notifyOnFinish: true,
   pinned: true,
   sectionId: true,
+  position: true,
   unread: true,
   parentBotId: true,
   preview: true,
   status: true,
+  runPhase: true,
   runErrorId: true,
   updatedAt: true,
 });
@@ -194,6 +223,7 @@ export const SpaceGroupSchema = GroupSchema.pick({
   name: true,
   pinned: true,
   sectionId: true,
+  position: true,
   members: true,
   preview: true,
   unread: true,
@@ -571,6 +601,10 @@ export const AgentSkillCatalogEntrySchema = AgentSkillSchema.pick({
   readOnly: true,
 });
 export type AgentSkillCatalogEntry = z.infer<typeof AgentSkillCatalogEntrySchema>;
+
+/** A catalog entry with this bot's switch. A skill with no stored setting is on. */
+export const BotAgentSkillSchema = AgentSkillCatalogEntrySchema.extend({ enabled: z.boolean() });
+export type BotAgentSkill = z.infer<typeof BotAgentSkillSchema>;
 
 export const CreateAgentSkillInput = z
   .object({
@@ -1019,6 +1053,7 @@ export const RunSchema = z.object({
   modelProvider: z.string().nullable(),
   modelId: z.string().nullable(),
   error: z.string().nullable(),
+  phase: RunPhaseSchema.nullable().optional(),
   startedAt: z.string().nullable(),
   completedAt: z.string().nullable(),
   createdAt: z.string(),

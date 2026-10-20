@@ -504,6 +504,8 @@ export const ZH_MESSAGES: Record<string, string> = {
   "Space created": "空间已创建",
   "Space default": "空间默认",
   "Read replies aloud": "朗读回复",
+  Skills: "技能",
+  "Use {name}": "使用 {name}",
   "Speak + transcribe": "朗读并转写",
   "Speak message": "朗读消息",
   Play: "播放",

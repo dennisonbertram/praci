@@ -1,4 +1,4 @@
-import type { ComputerMode, ThinkingLevel } from "@rakazo/contracts";
+import type { BotAgentSkill, ComputerMode, ThinkingLevel } from "@rakazo/contracts";
 import {
   BOT_COLORS,
   BOT_DESCRIPTION_MAX_LENGTH,
@@ -67,6 +67,7 @@ export default function BotSettingsScreen() {
   const voiceChoice = useRef(0);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [skills, setSkills] = useState<BotAgentSkill[]>([]);
 
   useEffect(() => {
     if (!botId) return;
@@ -88,6 +89,24 @@ export default function BotSettingsScreen() {
       })
       .catch((err) => setError(errorText(err, t("Could not load bot"))));
   }, [botId]);
+
+  useEffect(() => {
+    if (!botId) return;
+    void rpc<BotAgentSkill[]>("agentSkills/forBot", { botId })
+      .then((list) => setSkills(Array.isArray(list) ? list : []))
+      .catch(() => setSkills([]));
+  }, [botId]);
+
+  async function setSkillEnabled(skill: BotAgentSkill, enabled: boolean) {
+    const mark = (value: boolean) =>
+      setSkills((list) => list.map((s) => (s.id === skill.id ? { ...s, enabled: value } : s)));
+    mark(enabled);
+    try {
+      await rpc("agentSkills/setEnabled", { botId, skillKey: skill.id, enabled });
+    } catch {
+      mark(!enabled);
+    }
+  }
 
   useEffect(() => {
     void Promise.all([
@@ -491,6 +510,23 @@ export default function BotSettingsScreen() {
           ) : (
             voiceRow
           )
+        ) : null}
+        {skills.length ? (
+          <View style={{ marginTop: 20 }}>
+            <Text style={{ color: tokens.mutedForeground, fontSize: 14 }}>{t("Skills")}</Text>
+            {skills.map((skill) => (
+              <View key={skill.id} style={styles.row}>
+                <Text numberOfLines={1} style={[styles.rowLabel, { color: tokens.foreground }]}>
+                  {skill.name}
+                </Text>
+                <NativeSwitch
+                  accessibilityLabel={t("Use {name}", { name: skill.name })}
+                  onValueChange={(enabled) => void setSkillEnabled(skill, enabled)}
+                  value={skill.enabled}
+                />
+              </View>
+            ))}
+          </View>
         ) : null}
         <Pressable
           accessibilityRole="button"

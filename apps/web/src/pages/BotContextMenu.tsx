@@ -117,12 +117,12 @@ export function BotContextMenu({
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onCreateSection}>
               <FolderPlus />
-              {t`New section`}
+              {t`New folder`}
             </DropdownMenuItem>
             {bot.sectionId && onRenameSection ? (
               <DropdownMenuItem onClick={() => onRenameSection(bot.sectionId!)}>
                 <Pencil />
-                {t`Rename section`}
+                {t`Rename`}
               </DropdownMenuItem>
             ) : null}
           </DropdownMenuSubContent>

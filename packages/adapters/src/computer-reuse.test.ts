@@ -160,7 +160,9 @@ describe("running Docker computer reuse", () => {
       try {
         await expect(
           provisionComputer(f.deps, "computer", { ...context, signal: abort.signal }),
-        ).rejects.toThrow(change === "cancel" ? "cancelled" : new ComputerBusyError());
+        ).rejects.toThrow(
+          change === "cancel" ? "cancelled" : new ComputerBusyError("changed while reconnecting"),
+        );
         if (change !== "cancel") {
           expect(f.updateMany).toHaveBeenCalledWith(
             expect.objectContaining({
@@ -191,6 +193,14 @@ describe("running Docker computer reuse", () => {
       });
       const computer = f.deps.prisma.computer as unknown as Record<string, unknown>;
       computer.findFirst = vi.fn(async () => ({ ...f.row }));
+      // The home store writes its columns with one raw UPDATE (values in order).
+      (f.deps.prisma as unknown as Record<string, unknown>).$executeRaw = vi.fn(
+        async (_sql: TemplateStringsArray, ...values: (string | null)[]) => {
+          const [homeRevision, homeSnapshotId, homePreviousSnapshotId] = values;
+          Object.assign(f.row, { homeRevision, homeSnapshotId, homePreviousSnapshotId });
+          return 1;
+        },
+      );
       const home = new ObjectAgentHomeStore(
         f.deps.prisma as never,
         new LocalArtifactStore(f.deps.dataDir),

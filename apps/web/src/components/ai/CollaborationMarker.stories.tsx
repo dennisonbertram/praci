@@ -41,3 +41,16 @@ export const WithActiveBots: Story = {
     />
   ),
 };
+
+export const WithRunPhase: Story = {
+  render: () => (
+    <ActiveBotGlyph
+      label="Starting"
+      detail="Connecting to Devin"
+      detailSince={Date.now() - 20_000}
+      waitingLabel="Still waiting on Devin"
+      startedAt={Date.now() - 20_000}
+      bots={[{ botId: "bot_scout", name: "Scout", color: "#7c6cf0" }]}
+    />
+  ),
+};

@@ -37,6 +37,7 @@ export function makeBot(overrides: Partial<Bot> = {}): Bot {
     disabledBuiltinTools: [],
     webhookConfigured: false,
     spawnKey: null,
+    runPhase: null,
     ...overrides,
   };
 }
@@ -107,8 +108,22 @@ export const teamBots: Bot[] = [
 ];
 
 export const mockSections: BotSection[] = [
-  { id: "sec_one", name: "Work", position: 0, createdAt: STAMP, updatedAt: STAMP },
-  { id: "sec_two", name: "Home", position: 1, createdAt: STAMP, updatedAt: STAMP },
+  {
+    id: "sec_one",
+    name: "Work",
+    position: 0,
+    collapsed: false,
+    createdAt: STAMP,
+    updatedAt: STAMP,
+  },
+  {
+    id: "sec_two",
+    name: "Home",
+    position: 1,
+    collapsed: false,
+    createdAt: STAMP,
+    updatedAt: STAMP,
+  },
 ];
 
 export const mockPins: BotPins = {

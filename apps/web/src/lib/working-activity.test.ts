@@ -1,7 +1,11 @@
 import type { ThreadMessage } from "@rakazo/contracts";
 import { reduceLiveMessageBlocks } from "@rakazo/core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { workingActivity } from "./working-activity";
+
+vi.mock("@lingui/core/macro", () => ({
+  t: (strings: TemplateStringsArray, ...values: unknown[]) => String.raw(strings, ...values),
+}));
 
 const run = { id: "run-1", botId: "bot-1", status: "running" as const };
 const botMessage = (blocks: ThreadMessage["blocks"]): ThreadMessage => ({
@@ -129,5 +133,38 @@ describe("workingActivity", () => {
         ]),
       ]),
     ).not.toHaveProperty("detail");
+  });
+
+  describe("run phase", () => {
+    const at = "2026-10-11T00:00:00.000Z";
+    const queued = { ...run, status: "queued" as const };
+
+    it("shows what a queued run waits on instead of Starting", () => {
+      const phase = { kind: "computer_wait" as const, at };
+      expect(workingActivity({ ...queued, phase }, [])).toEqual({ kind: "phase", phase });
+      expect(workingActivity(queued, [])).toEqual({ kind: "starting" });
+    });
+
+    it("shows the phase until the run has a live message", () => {
+      const phase = { kind: "model_wait" as const, name: "GPT-6 Luna", at };
+      expect(workingActivity({ ...run, phase }, [])).toEqual({ kind: "phase", phase });
+    });
+
+    it("lets live tool activity win over the phase", () => {
+      const phase = { kind: "connecting" as const, name: "Devin", at };
+      const messages = [
+        botMessage([{ kind: "progress", text: "", pendingToolNames: ["get_balance"] }]),
+      ];
+      expect(workingActivity({ ...run, phase }, messages)).toEqual({
+        kind: "tool",
+        label: "Get balance",
+      });
+    });
+
+    it("keeps Thinking for a thinking phase", () => {
+      const phase = { kind: "thinking" as const, at };
+      expect(workingActivity({ ...run, phase }, [])).toEqual({ kind: "thinking" });
+      expect(workingActivity({ ...queued, phase }, [])).toEqual({ kind: "starting" });
+    });
   });
 });

@@ -69,6 +69,7 @@ import {
   ArtifactWithContentSchema,
   AvatarStyleSchema,
   BillingStatusSchema,
+  BotAgentSkillSchema,
   BotMcpServerSchema,
   BotSchema,
   BotSectionSchema,
@@ -242,6 +243,11 @@ import {
 import { MessageReactionSchema } from "./reactions.js";
 import { RoutineHistorySchema, RoutineRunCursorSchema, RunsListOutputSchema } from "./runs.js";
 import { SearchQueryOutputSchema } from "./search.js";
+import {
+  MoveSidebarFolderInput,
+  MoveSidebarItemInput,
+  SidebarSnapshotSchema,
+} from "./sidebar-folders.js";
 import { SidebarPageInputSchema, SidebarPagesStateSchema } from "./sidebar-pages.js";
 
 const botId = z.object({ botId: Id });
@@ -499,6 +505,19 @@ export const appContract = {
     update: oc
       .input(z.object({ sectionId: Id, name: z.string().trim().min(1).max(60) }))
       .output(BotSectionSchema),
+    /** An empty folder; `create` also files a bot or group into the new one. */
+    add: oc.input(z.object({ name: z.string().trim().min(1).max(60) })).output(BotSectionSchema),
+    /** Items in the folder move to the root; nothing else is deleted. */
+    remove: oc.input(z.object({ sectionId: Id })).output(z.object({ ok: z.literal(true) })),
+    setCollapsed: oc
+      .input(z.object({ sectionId: Id, collapsed: z.boolean() }))
+      .output(BotSectionSchema),
+  },
+  sidebar: {
+    move: oc.input(MoveSidebarItemInput).output(z.object({ ok: z.literal(true) })),
+    moveFolder: oc.input(MoveSidebarFolderInput).output(z.object({ ok: z.literal(true) })),
+    autoGroup: oc.output(SidebarSnapshotSchema),
+    restore: oc.input(SidebarSnapshotSchema).output(z.object({ ok: z.literal(true) })),
   },
   threads: {
     head: oc.input(threadTarget).output(
@@ -835,6 +854,15 @@ export const appContract = {
     create: oc.input(CreateAgentSkillInput).output(AgentSkillSchema),
     update: oc.input(UpdateAgentSkillInput).output(AgentSkillSchema),
     remove: oc.input(z.object({ skillId: Id })).output(z.object({ ok: z.literal(true) })),
+    /** The catalog with this bot's on/off switch per skill. */
+    forBot: oc.input(botId).output(z.array(BotAgentSkillSchema)),
+    setEnabled: oc
+      .input(z.object({ botId: Id, skillKey: z.string().min(1).max(200), enabled: z.boolean() }))
+      .output(z.object({ ok: z.literal(true) })),
+    /** Fetch a public GitHub or raw SKILL.md and store it as a user skill. */
+    importFromUrl: oc
+      .input(z.object({ url: z.string().trim().url().max(2048) }))
+      .output(AgentSkillSchema),
   },
   capabilities: {
     list: oc.output(z.array(CapabilityInstallSchema)),
