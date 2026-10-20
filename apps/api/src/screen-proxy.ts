@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import { hasActiveComputerControl } from "@rakazo/adapters";
 import type { ScreenCapabilityScope } from "@rakazo/core/node/screen-capability";
 import {
@@ -9,6 +8,7 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import type { Hono } from "hono";
 import { requestBodyLimit } from "./request-body-limit.js";
+import { safeEqual } from "./safe-equal.js";
 
 export function addScreenProxyCapability(
   url: string,
@@ -27,9 +27,7 @@ export function addScreenProxyCapability(
 export function mountScreenTarget(app: Hono, prisma: PrismaClient, secret: string) {
   app.post(SCREEN_TARGET_ENDPOINT, requestBodyLimit(16 * 1024), async (c) => {
     c.header("cache-control", "no-store");
-    const supplied = Buffer.from(c.req.header("authorization") ?? "");
-    const expected = Buffer.from(`Bearer ${secret}`);
-    if (!secret || supplied.length !== expected.length || !timingSafeEqual(supplied, expected))
+    if (!secret || !safeEqual(c.req.header("authorization") ?? "", `Bearer ${secret}`))
       return c.body(null, 403);
     const body = await c.req.json().catch(() => null);
     if (typeof body?.path !== "string") return c.body(null, 403);

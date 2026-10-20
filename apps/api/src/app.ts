@@ -813,22 +813,15 @@ export async function createApp(
     if (matched) return c.newResponse(response.body, response);
     await next();
   });
+  const loggedActor = async (request: Request) => {
+    const actor = await sessionActor(request);
+    if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
+    return actor;
+  };
   mountEmailImageProxy(app, { secret: env.authSecret }, async (request) => sessionActor(request));
-  mountInboxAttachment(app, { prisma, mail }, async (request) => {
-    const actor = await sessionActor(request);
-    if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
-    return actor;
-  });
-  mountDataRoomRoutes(app, { prisma, artifacts, jobs }, async (request) => {
-    const actor = await sessionActor(request);
-    if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
-    return actor;
-  });
-  mountVoiceHttpRoutes(app, { prisma, secrets }, async (c) => {
-    const actor = await sessionActor(c.req.raw);
-    if (actor) enrichLogContext({ "user.id": actor.userId, "space.id": actor.spaceId });
-    return actor;
-  });
+  mountInboxAttachment(app, { prisma, mail }, loggedActor);
+  mountDataRoomRoutes(app, { prisma, artifacts, jobs }, loggedActor);
+  mountVoiceHttpRoutes(app, { prisma, secrets }, (c) => loggedActor(c.req.raw));
   mountWebhookHttpRoutes(app, { prisma, secrets, events, jobs });
   // Gmail push is off unless the deployment sets a Pub/Sub topic and service account.
   if (gmailPush) {

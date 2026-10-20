@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import type { RPCHandler } from "@orpc/server/fetch";
 import type { Actor } from "@rakazo/contracts";
 import {
@@ -8,6 +7,7 @@ import {
 } from "@rakazo/contracts";
 import { type PrismaClient, requireMembership } from "@rakazo/db";
 import type { Hono } from "hono";
+import { safeEqual } from "./safe-equal.js";
 
 export function validLocalSettingsToken(
   expected: string | undefined,
@@ -18,7 +18,7 @@ export function validLocalSettingsToken(
       supplied &&
       /^[a-f0-9]{64}$/.test(expected) &&
       /^[a-f0-9]{64}$/.test(supplied) &&
-      timingSafeEqual(Buffer.from(expected), Buffer.from(supplied)),
+      safeEqual(expected, supplied),
   );
 }
 
