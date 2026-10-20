@@ -67,14 +67,48 @@ export async function deleteContact(prisma: Db, actor: Scope, id: string): Promi
   if (count === 0) throw new IsolationError("Contact not found");
 }
 
-/** Creates a new contact. Throws ContactEmailTakenError when the email already belongs to one. */
-export const addContact = (prisma: Db, actor: Scope, input: Omit<ContactSaveInput, "id">) =>
-  prisma.contact
-    .create({ data: { ...ownerOf(actor), ...input } })
-    .then(toContact)
-    .catch((error: unknown) => {
-      throw isUniqueViolation(error) ? new ContactEmailTakenError() : error;
-    });
+/**
+ * Saves a contact without ever changing an existing one: a contact with the same email
+ * (case-insensitive) or, without an email, the same name and organization (case-insensitive)
+ * is returned as is. Safe for unattended callers.
+ */
+export async function addContactIfNew(
+  prisma: Db,
+  actor: Scope,
+  input: Omit<ContactSaveInput, "id">,
+): Promise<{ contact: Contact; created: boolean }> {
+  const scope = ownerOf(actor);
+  const insensitive = (value: string) => ({ equals: value, mode: "insensitive" as const });
+  const organization = input.organization?.trim() || null;
+  const existing = await prisma.contact.findFirst({
+    where: {
+      ...scope,
+      ...(input.email
+        ? { email: insensitive(input.email) }
+        : {
+            name: insensitive(input.name),
+            organization: organization ? insensitive(organization) : null,
+          }),
+    },
+    orderBy: { id: "asc" },
+  });
+  if (existing) return { contact: toContact(existing), created: false };
+  try {
+    return {
+      contact: toContact(await prisma.contact.create({ data: { ...scope, ...input } })),
+      created: true,
+    };
+  } catch (error) {
+    // A concurrent run saved the same email first.
+    if (isUniqueViolation(error) && input.email) {
+      const row = await prisma.contact.findFirst({
+        where: { ...scope, email: insensitive(input.email) },
+      });
+      if (row) return { contact: toContact(row), created: false };
+    }
+    throw error;
+  }
+}
 
 /** Creates or updates a contact. Throws ContactEmailTakenError when another contact has the email. */
 export const saveContact = (prisma: Db, actor: Scope, input: ContactSaveInput) =>

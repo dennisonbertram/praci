@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
 import {
-  addContact,
+  addContactIfNew,
   ContactEmailTakenError,
   deleteContact,
   listContacts,
@@ -56,22 +56,48 @@ describePostgres("contacts (PostgreSQL)", () => {
     await close();
   });
 
-  it("addContact creates, then refuses an email the user already has", async () => {
-    const first = await addContact(prisma, mine, {
+  it("addContactIfNew creates once and never changes an existing contact", async () => {
+    const first = await addContactIfNew(prisma, mine, {
       name: "Add One",
       email: "add-one@example.test",
+      kind: "vendor",
     });
-    expect(first.name).toBe("Add One");
-    await expect(
-      addContact(prisma, mine, { name: "Dup", email: "add-one@example.test" }),
-    ).rejects.toBeInstanceOf(ContactEmailTakenError);
-    const other = await addContact(prisma, sameSpace, {
+    expect(first.created).toBe(true);
+    const again = await addContactIfNew(prisma, mine, {
+      name: "Renamed",
+      email: "ADD-ONE@example.test",
+      kind: "other",
+      notes: "new note",
+    });
+    expect(again.created).toBe(false);
+    expect(again.contact).toEqual(first.contact);
+    const byName = await addContactIfNew(prisma, mine, {
+      name: "No Email",
+      organization: "Acme Corp",
+    });
+    const sameName = await addContactIfNew(prisma, mine, {
+      name: "no email",
+      organization: "ACME CORP",
+    });
+    const otherOrg = await addContactIfNew(prisma, mine, {
+      name: "No Email",
+      organization: "Other Co",
+    });
+    expect(sameName.created).toBe(false);
+    expect(sameName.contact.id).toBe(byName.contact.id);
+    expect(otherOrg.created).toBe(true);
+    const other = await addContactIfNew(prisma, sameSpace, {
       name: "Mine",
       email: "add-one@example.test",
     });
-    expect(other.email).toBe("add-one@example.test");
-    await deleteContact(prisma, mine, first.id);
-    await deleteContact(prisma, sameSpace, other.id);
+    expect(other.created).toBe(true);
+    for (const [owner, id] of [
+      [mine, first.contact.id],
+      [mine, byName.contact.id],
+      [mine, otherOrg.contact.id],
+      [sameSpace, other.contact.id],
+    ] as const)
+      await deleteContact(prisma, owner, id);
   });
 
   it("refuses to create a contact whose email another contact has, and leaves it unchanged", async () => {

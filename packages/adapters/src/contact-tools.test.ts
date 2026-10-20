@@ -1,6 +1,16 @@
-import { cartaAgentSpawnKey, financeAgentSpawnKey } from "@rakazo/contracts";
+import {
+  cartaAgentSpawnKey,
+  DATA_ROOM_AGENT_BUILTIN_TOOLS,
+  financeAgentSpawnKey,
+  LEGAL_AGENT_BUILTIN_TOOLS,
+} from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { CONTACT_TOOL_NAMES, contactToolFromTool, contactToolsAllowed } from "./contact-tools.js";
+import {
+  CONTACT_TOOL_NAMES,
+  capTableToolsAllowed,
+  contactToolFromTool,
+  contactToolsAllowed,
+} from "./contact-tools.js";
 import { selectBuiltinToolsForRun } from "./executor.js";
 
 describe("contact tools", () => {
@@ -14,18 +24,32 @@ describe("contact tools", () => {
     messagingChannelRun: false,
   };
 
-  it("are for the Carta agent's owner-initiated runs only", () => {
-    expect(contactToolsAllowed(base)).toBe(true);
-    expect(contactToolsAllowed({ ...base, trigger: "routine" })).toBe(true);
-    expect(contactToolsAllowed({ ...base, botSpawnKey: null })).toBe(false);
-    expect(contactToolsAllowed({ ...base, botSpawnKey: financeAgentSpawnKey("u") })).toBe(false);
-    expect(contactToolsAllowed({ ...base, trigger: "bot_message" })).toBe(false);
-    expect(contactToolsAllowed({ ...base, groupId: "g" })).toBe(false);
-    expect(contactToolsAllowed({ ...base, runUserId: "other" })).toBe(false);
+  it("contact tools are for any agent's owner-initiated runs", () => {
+    const { botSpawnKey: _key, ...run } = base;
+    expect(contactToolsAllowed(run)).toBe(true);
+    expect(contactToolsAllowed({ ...run, trigger: "routine" })).toBe(true);
+    expect(contactToolsAllowed({ ...run, trigger: "bot_message" })).toBe(false);
+    expect(contactToolsAllowed({ ...run, trigger: "webhook" })).toBe(false);
+    expect(contactToolsAllowed({ ...run, groupId: "g" })).toBe(false);
+    expect(contactToolsAllowed({ ...run, messagingChannelRun: true })).toBe(false);
+    expect(contactToolsAllowed({ ...run, runUserId: "other" })).toBe(false);
+  });
+
+  it("cap table tools stay with the Carta agent's owner-initiated runs", () => {
+    expect(capTableToolsAllowed(base)).toBe(true);
+    expect(capTableToolsAllowed({ ...base, botSpawnKey: null })).toBe(false);
+    expect(capTableToolsAllowed({ ...base, botSpawnKey: financeAgentSpawnKey("u") })).toBe(false);
+    expect(capTableToolsAllowed({ ...base, trigger: "bot_message" })).toBe(false);
+  });
+
+  it("the Legal and Data room agents are offered contacts_list and contacts_add", () => {
+    for (const tools of [LEGAL_AGENT_BUILTIN_TOOLS, DATA_ROOM_AGENT_BUILTIN_TOOLS]) {
+      expect(tools).toEqual(expect.arrayContaining(["contacts_list", "contacts_add"]));
+    }
   });
 
   it("are offered only when enabled", () => {
-    const offered = (contactsEnabled: boolean) =>
+    const offered = (flags: { contactsEnabled?: boolean; capTableEnabled?: boolean }) =>
       selectBuiltinToolsForRun({
         graphicalToolsAllowed: false,
         pageBrowserAllowed: false,
@@ -33,43 +57,59 @@ describe("contact tools", () => {
         trigger: "message",
         semanticMemoryEnabled: false,
         messagingChannelRun: false,
-        contactsEnabled,
+        ...flags,
       })
         .map((tool) => tool.name)
         .filter((name) => CONTACT_TOOL_NAMES.has(name))
         .sort();
-    expect(offered(false)).toEqual([]);
-    expect(offered(true)).toEqual([
-      "cap_table_read",
-      "cap_table_update",
+    expect(offered({})).toEqual([]);
+    expect(offered({ contactsEnabled: true })).toEqual([
       "contacts_add",
       "contacts_list",
       "contacts_save",
     ]);
+    expect(offered({ capTableEnabled: true })).toEqual(["cap_table_read", "cap_table_update"]);
+    expect(offered({ contactsEnabled: true, capTableEnabled: true })).toHaveLength(5);
   });
 
   const scope = { spaceId: "s1", userId: "u" };
-  it("contacts_add creates a contact and refuses an email that is already a contact", async () => {
-    const create = vi
-      .fn()
-      .mockResolvedValueOnce({
-        id: "c1",
-        name: "Ada Fund",
-        email: "ada@example.test",
-        organization: null,
-        kind: "investor",
-        notes: null,
-        createdAt: new Date(0),
-        updatedAt: new Date(0),
-      })
-      .mockRejectedValueOnce(Object.assign(new Error("dup"), { code: "P2002" }));
-    const prisma = { contact: { create } } as never;
+  it("contacts_add creates a new contact and returns an existing one without writing", async () => {
+    const row = {
+      id: "c1",
+      name: "Ada Fund",
+      email: "ada@example.test",
+      organization: null,
+      kind: "investor",
+      notes: null,
+      createdAt: new Date(0),
+      updatedAt: new Date(0),
+    };
+    const findFirst = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce(row);
+    const create = vi.fn(async () => row);
+    const update = vi.fn();
+    const updateMany = vi.fn();
+    const prisma = { contact: { findFirst, create, update, updateMany } } as never;
     const args = { name: "Ada Fund", email: "ada@example.test" };
     const added = await contactToolFromTool("contacts_add", { prisma, scope }, args);
     expect(added).toEqual({ contact: expect.objectContaining({ id: "c1" }) });
     expect(create).toHaveBeenCalledWith({ data: expect.objectContaining({ ...scope, ...args }) });
-    const again = await contactToolFromTool("contacts_add", { prisma, scope }, args);
-    expect(again).toEqual({ error: expect.stringContaining("already has this email") });
+    const again = await contactToolFromTool(
+      "contacts_add",
+      { prisma, scope },
+      {
+        ...args,
+        name: "Changed",
+        notes: "x",
+      },
+    );
+    expect(again).toEqual({
+      contact: expect.objectContaining({ id: "c1", name: "Ada Fund" }),
+      alreadySaved: true,
+      note: expect.any(String),
+    });
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(update).not.toHaveBeenCalled();
+    expect(updateMany).not.toHaveBeenCalled();
   });
 
   it("cap_table_read returns the run owner's saved cap table, or null before the first save", async () => {
