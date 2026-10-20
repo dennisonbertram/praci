@@ -50,9 +50,12 @@ export function InboxCleanup({
   connectionId,
   onBack,
   onRefreshed,
+  onAllowMailRules,
 }: {
   connectionId?: string;
   onBack: () => void;
+  /** Starts the reconnect that grants permission to make Gmail filters for this account. */
+  onAllowMailRules?: (connectionId: string) => void;
   /** Called after mail changed, so the sidebar can refresh its unread count. */
   onRefreshed: () => void;
 }) {
@@ -111,6 +114,12 @@ export function InboxCleanup({
   const counts = useMemo(() => cleanupChoiceCounts(senders, selected), [senders, selected]);
   const accountLabels = new Map((list?.accounts ?? []).map((a) => [a.connectionId, a.label]));
   const manyAccounts = (list?.accounts.length ?? 0) > 1;
+  // Accounts that skip senders only here because Gmail has not given permission for filters yet.
+  const needPermission = (list?.accounts ?? []).filter(
+    (account) =>
+      account.senderRules === "needs_permission" &&
+      senders.some((s) => s.connectionId === account.connectionId && s.rule === "pending"),
+  );
 
   const toastFor = (kind: CleanupKind, result: CleanupRunResult, attempted: number) => {
     const senderCount = attempted - result.failed.length - result.confirm.length;
@@ -184,9 +193,13 @@ export function InboxCleanup({
     }
   };
 
-  const stop = async (connection: string, address: string) => {
+  const stop = async (connection: string, address: string, learned = false) => {
     try {
-      await rpc.inbox.cleanup.forget({ connectionId: connection, address });
+      await rpc.inbox.cleanup.forget({
+        connectionId: connection,
+        address,
+        ...(learned && { learned }),
+      });
     } catch (cause) {
       setError(errorText(cause));
     }
@@ -255,6 +268,24 @@ export function InboxCleanup({
           ) : (
             <>
               <CleanupActionBar counts={counts} busy={busy} onApply={apply} />
+              {onAllowMailRules && needPermission.length > 0 ? (
+                <div className="flex flex-wrap gap-x-4 py-1 text-xs text-muted-foreground">
+                  {needPermission.map((account) => (
+                    <span key={account.connectionId} className="flex items-center gap-1">
+                      {manyAccounts ? <span dir="auto">{account.label}</span> : null}
+                      <Button
+                        variant="link"
+                        size="xs"
+                        className="h-auto p-0 text-xs"
+                        onClick={() => onAllowMailRules(account.connectionId)}
+                        disabled={busy}
+                      >
+                        <Trans>Also in Gmail</Trans>
+                      </Button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <div className="border-t border-foreground/10">
                 {senders.map((sender) => {
                   const key = senderKey(sender.connectionId, sender.address);
@@ -268,6 +299,7 @@ export function InboxCleanup({
                         manyAccounts ? accountLabels.get(sender.connectionId) : undefined
                       }
                       onStop={() => void stop(sender.connectionId, sender.address)}
+                      onForgetLearned={() => void stop(sender.connectionId, sender.address, true)}
                       disabled={busy}
                     />
                   );

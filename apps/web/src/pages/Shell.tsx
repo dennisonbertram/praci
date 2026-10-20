@@ -17,6 +17,7 @@ import type {
   ProductEvent,
   Routine,
   SearchHit,
+  SidebarSnapshot,
   Space,
   SpaceMemoryConfig,
   TaughtSkill,
@@ -35,7 +36,6 @@ import {
   MESSAGE_REACTIONS,
   NOTIFICATION_KINDS,
   RunPhaseSchema,
-  type SidebarSnapshot,
 } from "@rakazo/contracts";
 import type { ComposerMention, SlashActionId } from "@rakazo/core";
 import {
@@ -188,11 +188,8 @@ import { AgentPanelIntro } from "../components/AgentPanelIntro";
 import { ArtifactFileCard } from "../components/ArtifactFileCard";
 import { AskCard } from "../components/AskCard";
 import { ActiveBotGlyph, CollaborationMarker } from "../components/ai/CollaborationMarker";
-import {
-  type BotToolControls,
-  BotToolControlsContext,
-  type ComposerDraft,
-} from "../components/BotToolControls";
+import type { BotToolControls, ComposerDraft } from "../components/BotToolControls";
+import { BotToolControlsContext } from "../components/BotToolControls";
 import { CloudAgentCard } from "../components/CloudAgentCard";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { ComputerMaintenanceActions } from "../components/ComputerMaintenanceActions";
@@ -220,12 +217,8 @@ import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
 import { SidebarPages } from "../components/SidebarPages";
 import { SidebarPagesGroup } from "../components/SidebarPagesGroup";
 import { MAIN_CONTENT_ID, SkipToContent } from "../components/SkipToContent";
-import {
-  type DropResult,
-  itemDragId,
-  ROOT_CONTAINER,
-  type SidebarLayout,
-} from "../components/sidebar-folders/drop-target";
+import type { DropResult, SidebarLayout } from "../components/sidebar-folders/drop-target";
+import { itemDragId, ROOT_CONTAINER } from "../components/sidebar-folders/drop-target";
 import { FolderHeader } from "../components/sidebar-folders/FolderHeader";
 import {
   RootEnd,
@@ -294,6 +287,7 @@ import { desktopBridge } from "../lib/desktop";
 import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
+import { appPath } from "../lib/integrations";
 import { findLegalAgent } from "../lib/legal-agent";
 import { localTimezone } from "../lib/local-timezone";
 import { copyableMessageText } from "../lib/message-text";
@@ -321,11 +315,14 @@ import {
   rosterHasUndismissedRunError,
   rosterWorkStatusLabel,
 } from "../lib/roster-status";
-import { type MissingBotSeen, resolveRouteBot } from "../lib/route-bot";
+import { formatRosterTime } from "../lib/roster-time";
+import type { MissingBotSeen } from "../lib/route-bot";
+import { resolveRouteBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
 import { runPhaseLine, runPhaseWaitingOn } from "../lib/run-phase";
-import { type DataRoomRef, planSendToAgent, sendTargets } from "../lib/send-to-agent";
+import type { DataRoomRef } from "../lib/send-to-agent";
+import { planSendToAgent, sendTargets } from "../lib/send-to-agent";
 import { sharedInflight } from "../lib/shared-inflight";
 import {
   PANEL_DOCKED_QUERY,
@@ -373,11 +370,12 @@ import {
   transcriptUserJustSent,
 } from "../lib/transcript-scroll";
 import { speaker } from "../lib/tts";
-import { type RememberControls, useRememberedMessages } from "../lib/use-remembered-messages";
+import type { RememberControls } from "../lib/use-remembered-messages";
+import { useRememberedMessages } from "../lib/use-remembered-messages";
 import { useAttended, useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
-import type { WorkingActivity } from "../lib/working-activity";
-import { type ToolAction, workingActivity } from "../lib/working-activity";
+import type { ToolAction, WorkingActivity } from "../lib/working-activity";
+import { workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CapTablePage } from "./CapTable";
@@ -399,8 +397,10 @@ import {
   routineNeedsOneShotArm,
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
-import { type SearchLink, SpaceSearchResults } from "./SpaceSearch";
-import { BotPagePanel, type PageRemoteUpdate } from "./shell/bot-page-panel";
+import type { SearchLink } from "./SpaceSearch";
+import { SpaceSearchResults } from "./SpaceSearch";
+import type { PageRemoteUpdate } from "./shell/bot-page-panel";
+import { BotPagePanel } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
 import { PinsList, PinsStrip, useBotPins } from "./shell/bot-pins";
@@ -803,6 +803,7 @@ export function ShellPage() {
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const sidebarDocked = useSidebarDocked();
   const sidebarRef = useRef<HTMLElement>(null);
+  const sidebarScrollRef = useRef<HTMLDivElement>(null);
   const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
   useDrawerFocus(mobileSidebarOpen, closeMobileSidebar, sidebarRef);
   const mobileSidebarSwipeRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -814,6 +815,10 @@ export function ShellPage() {
   const [botsSidebarCollapsed, setBotsSidebarCollapsed] = useState(false);
   // Collapsed on a docked sidebar is the icon rail; below the dock width the drawer is unchanged.
   const rail = sidebarRail(botsSidebarCollapsed, sidebarDocked);
+  // The rail starts at the top, not where the expanded list was scrolled to.
+  useEffect(() => {
+    if (rail) sidebarScrollRef.current?.scrollTo({ top: 0 });
+  }, [rail]);
   const focusSearchOnExpand = useRef(false);
   useEffect(() => {
     if (botsSidebarCollapsed || !focusSearchOnExpand.current) return;
@@ -1777,7 +1782,7 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId, t`Personnel`);
+    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId, t`Personal`);
   }, [bootstrapMe, botSections, bots, groups, spaces, query, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
@@ -1807,7 +1812,7 @@ export function ShellPage() {
       if (kind === "folder") return botSections.find((section) => section.id === id)?.name ?? "";
       if (kind === "bot") return bots.find((bot) => bot.id === id)?.name ?? "";
       if (kind === "group") return groups.find((group) => group.id === id)?.name ?? "";
-      return dragId === "root-end" ? t`Personnel` : "";
+      return dragId === "root-end" ? t`Personal` : "";
     },
     [bots, groups, botSections, t],
   );
@@ -4027,7 +4032,10 @@ export function ShellPage() {
             )
           }
         />
-        <div className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5">
+        <div
+          ref={sidebarScrollRef}
+          className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
+        >
           {/* While searching, matching pages are listed with the results instead. */}
           {showSpaceSearch && !rail ? null : (
             // Inside the scroll area, so on a short screen the chats are never squeezed out.
@@ -4206,7 +4214,7 @@ export function ShellPage() {
                     group.canRenameSpace ||
                     group.canDeleteSpace ||
                     (activeSpace && Boolean(group.title) && ["head", "space"].includes(group.kind));
-                  // "Personnel" replaces the lone space's name, so the name stays in the label.
+                  // "Personal" replaces the lone space's name, so the name stays in the label.
                   const sidebarHeader = {
                     name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
                   };
@@ -4341,6 +4349,14 @@ export function ShellPage() {
                           ) : null}
                         </div>
                       ) : null}
+                      {!rail &&
+                      group.kind === "root" &&
+                      group.parentKey &&
+                      group.bots.length > 0 ? (
+                        <div className="mt-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground/80">
+                          <Trans>Chats</Trans>
+                        </div>
+                      ) : null}
                       {rail || !collapsed ? (
                         <SortableList
                           ids={nestedRows.map(({ item }) =>
@@ -4403,7 +4419,9 @@ export function ShellPage() {
                                   <div
                                     ref={row.setNodeRef}
                                     data-drops-before={row.dropsBefore ? "" : undefined}
-                                    className="group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring"
+                                    className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
+                                      !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
+                                    }`}
                                     style={{ ...row.style, opacity: row.isDragging ? 0.4 : 1 }}
                                   >
                                     {hasChildren && !rail ? (
@@ -5180,6 +5198,14 @@ export function ShellPage() {
             onRefreshed={refreshInboxUnread}
             onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
             onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
+            onAllowMailRules={(connectionId) =>
+              navigate(
+                appPath(
+                  { connectorId: "google", slug: "gmail" },
+                  { reconnect: connectionId, next: "/app/inbox?cleanup=1" },
+                ),
+              )
+            }
             spaceName={
               spaces.length > 1
                 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
@@ -8428,37 +8454,6 @@ function previewMessageText(message: ThreadMessage): string {
   const attachment = replyAttachment(message.blocks);
   if (attachment) return attachment.kind === "image" ? t`Photo` : attachment.name || t`Attachment`;
   return t`Message`;
-}
-
-function formatRosterTime(isoDate?: string | null): string {
-  if (!isoDate) return "";
-  try {
-    const d = new Date(isoDate);
-    if (Number.isNaN(d.getTime())) return "";
-    const locale = i18n.locale || "en";
-    const now = new Date();
-    const isToday =
-      d.getDate() === now.getDate() &&
-      d.getMonth() === now.getMonth() &&
-      d.getFullYear() === now.getFullYear();
-    if (isToday) {
-      return d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit" });
-    }
-    const yesterday = new Date(now);
-    yesterday.setDate(now.getDate() - 1);
-    const isYesterday =
-      d.getDate() === yesterday.getDate() &&
-      d.getMonth() === yesterday.getMonth() &&
-      d.getFullYear() === yesterday.getFullYear();
-    if (isYesterday) return t`Yesterday`;
-    const diffDays = Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24));
-    if (diffDays < 7) {
-      return d.toLocaleDateString(locale, { weekday: "short" });
-    }
-    return d.toLocaleDateString(locale, { month: "short", day: "numeric" });
-  } catch {
-    return "";
-  }
 }
 
 function MessageHoverActions({

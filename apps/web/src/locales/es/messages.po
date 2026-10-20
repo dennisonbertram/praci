@@ -29,6 +29,7 @@ msgstr ""
 msgid " (new)"
 msgstr ""
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
@@ -1036,6 +1037,10 @@ msgstr ""
 msgid "Already tidy."
 msgstr ""
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Also in Gmail"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 msgid "Always act"
 msgstr ""
@@ -1177,6 +1182,10 @@ msgstr "Archivar"
 #. placeholder {0}: counts.archive
 #: src/components/inbox/CleanupActionBar.tsx
 msgid "Archive {0}"
+msgstr ""
+
+#: src/components/inbox/InboxDigest.tsx
+msgid "Archive all"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1895,6 +1904,7 @@ msgstr ""
 msgid "Chat with your agents over iMessage from your Mac"
 msgstr ""
 
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Chats"
 msgstr ""
@@ -3079,6 +3089,10 @@ msgstr ""
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Couldn't add Gmail filter"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Couldn't archive {count}"
 msgstr ""
@@ -3473,6 +3487,10 @@ msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Didn't open?"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Digest"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -4120,6 +4138,10 @@ msgstr ""
 msgid "Folders"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Forget"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Forgot password?"
 msgstr "¿Olvidaste la contraseña?"
@@ -4223,6 +4245,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Gmail didn't respond. Try again."
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Gmail filter limit reached"
 msgstr ""
 
 #: src/lib/inbox-sync-error.ts
@@ -4507,6 +4533,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
@@ -4772,6 +4799,10 @@ msgstr ""
 
 #: src/components/computer/TerminalApp.tsx
 msgid "Launched {app}"
+msgstr ""
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Learned"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -5598,6 +5629,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
@@ -5722,6 +5754,7 @@ msgstr ""
 msgid "No longer active"
 msgstr "Ya no está activo"
 
+#: src/components/inbox/InboxDigest.tsx
 #: src/pages/Inbox.tsx
 msgid "No mail"
 msgstr ""
@@ -6072,6 +6105,7 @@ msgid "Only if the server does not use sign-in"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
+#: src/components/inbox/InboxDigest.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/markdown-link-prompt.tsx
@@ -6458,11 +6492,8 @@ msgid "Person"
 msgstr ""
 
 #: src/pages/Inbox.tsx
-msgid "Personal"
-msgstr ""
-
 #: src/pages/Shell.tsx
-msgid "Personnel"
+msgid "Personal"
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
@@ -9005,6 +9036,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
@@ -9208,10 +9240,6 @@ msgstr ""
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
 msgstr "Espera un momento y vuelve a probar."
-
-#: src/lib/run-phase.ts
-msgid "Waiting for {name}"
-msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
@@ -9445,7 +9473,7 @@ msgstr ""
 msgid "Yearly"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/lib/roster-time.ts
 #: src/pages/shell/chat-context.tsx
 msgid "Yesterday"
 msgstr "Ayer"

@@ -106,7 +106,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     const heading = (index: number) => ({
       ...shared,
       title: spaceLabel as string | null,
-      relabeled: !showSpaceNames && soleSpaceTitle !== undefined,
+      relabeled: !showSpaceNames && soleSpaceTitle !== undefined && soleSpaceTitle !== space.name,
       showLock: showSpaceNames,
       current: showSpaceNames && space.id === currentSpaceId,
       ...spaceHeaderMenu(space, index === 0),

@@ -4,6 +4,8 @@ import { isToolActivityBlock } from "@rakazo/core";
 import { MAX_QUOTABLE_SOURCE_LENGTH, visibleTextFromMarkdown } from "@rakazo/core/message-quote";
 
 export function isCenteredAgentEvent(blocks: readonly MessageBlock[]): boolean {
+  // A system note is the whole message; beside other blocks it stays in the bubble.
+  if (blocks.length > 0 && blocks.every((block) => block.kind === "meta")) return true;
   return blocks.some(
     (block) =>
       block.kind === "handoff" ||
