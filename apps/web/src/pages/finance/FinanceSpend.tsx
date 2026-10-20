@@ -42,7 +42,8 @@ import {
   shortDay,
   txnDay,
 } from "../../lib/finance-format";
-import { type CategoryWindow, financePath, type SpendRange } from "../../lib/finance-route";
+import type { CategoryWindow, SpendRange } from "../../lib/finance-route";
+import { financePath } from "../../lib/finance-route";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { FINANCE_PROVIDERS } from "../../lib/integrations";
 import { rpc } from "../../lib/rpc";

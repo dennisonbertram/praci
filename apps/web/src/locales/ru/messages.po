@@ -557,10 +557,6 @@ msgstr ""
 msgid "3-mo avg, after revenue"
 msgstr ""
 
-#: src/pages/Finance.tsx
-msgid "3-mo change"
-msgstr ""
-
 #: src/pages/shell/message-cards.tsx
 msgid "A bit of everything"
 msgstr ""
@@ -1846,6 +1842,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Change password"
 msgstr "Изменить пароль"
+
+#: src/pages/Finance.tsx
+msgid "Change, 3 months"
+msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "Changes your account"
@@ -5358,7 +5358,6 @@ msgstr ""
 msgid "Month to date"
 msgstr ""
 
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/RoutineSchedule.tsx
 msgid "Monthly"
@@ -6481,6 +6480,10 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Per month"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -9167,6 +9170,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Использует собственные учётные данные {hostCredentialSource} этого сервера для доступа к {selectedProviderName}."
+
+#: src/pages/Finance.tsx
+msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx

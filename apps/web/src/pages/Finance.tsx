@@ -7,6 +7,7 @@ import type {
   SpendPeriod,
   UpcomingItem,
 } from "@rakazo/contracts";
+import { SpendPeriodSchema } from "@rakazo/contracts";
 import {
   Button,
   Popover,
@@ -31,9 +32,12 @@ import { cn } from "@rakazo/ui-web/lib/utils";
 import { ChevronRight, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
-import { AddAccountDialog, type CryptoChoice } from "../components/finance/AddAccountDialog";
-import { type BarGranularity, BurnLines } from "../components/finance/charts";
+import type { CryptoChoice } from "../components/finance/AddAccountDialog";
+import { AddAccountDialog } from "../components/finance/AddAccountDialog";
+import type { BarGranularity } from "../components/finance/charts";
+import { BurnLines } from "../components/finance/charts";
 import { StatementReminderBanner } from "../components/finance/StatementReminderBanner";
+import type { FinanceChrome } from "../components/finance/ui";
 import {
   AskAgentButton,
   BackHere,
@@ -43,7 +47,6 @@ import {
   CompanyAndEye,
   cashSubtitle,
   ErrorNotice,
-  type FinanceChrome,
   FinanceChromeProvider,
   HereLink,
   Kpi,
@@ -340,12 +343,24 @@ function Overview({
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
   }, [hash]);
-  const [period, setPeriod] = useState<SpendPeriod>("month");
-  // The Breakdown mode lives in the URL, so Back (in the app or the browser) reopens it as left.
+  // The period and the Breakdown mode live in the URL, so Back, reload and the browser history
+  // reopen the dashboard as left.
   const [params, setParams] = useSearchParams();
+  const parsedPeriod = SpendPeriodSchema.safeParse(params.get("period"));
+  const period: SpendPeriod = parsedPeriod.success ? parsedPeriod.data : "month";
   const by = params.get("by") === "vendor" ? "vendor" : "category";
-  const setBy = (mode: "category" | "vendor") =>
-    setParams(mode === "vendor" ? { by: mode } : {}, { replace: true });
+  const setQuery = (next: { period?: SpendPeriod; by?: "category" | "vendor" }) => {
+    const merged = { period, by, ...next };
+    setParams(
+      {
+        ...(merged.period === "month" ? {} : { period: merged.period }),
+        ...(merged.by === "vendor" ? { by: "vendor" } : {}),
+      },
+      { replace: true },
+    );
+  };
+  const setPeriod = (next: SpendPeriod) => setQuery({ period: next });
+  const setBy = (mode: "category" | "vendor") => setQuery({ by: mode });
 
   const [allBreakdown, setAllBreakdown] = useState(false);
   const [allUpcoming, setAllUpcoming] = useState(false);
@@ -375,7 +390,7 @@ function Overview({
   // The same figure on both sides says nothing, and nothing spent so far (a statement account has
   // no lines for this period yet) is not a 100% drop, so the comparison is left out.
   const sameAsBefore = (p: { currentCents: number; previousCents: number | null }) =>
-    p.previousCents === null || p.previousCents === p.currentCents || p.currentCents === 0;
+    !p.previousCents || p.previousCents === p.currentCents || p.currentCents === 0;
   const range = (r: { start: string; end: string }) => dayRange(r.start, lastDayOf(r.end));
   const spentRange = range(totals);
   // A quarter or year that has just begun covers the same days as the month; say it is partial.
@@ -896,11 +911,14 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
           <TableHead>
             <Trans>Vendor</Trans>
           </TableHead>
-          <TableHead className="text-end">
-            <Trans>Monthly</Trans>
+          <TableHead
+            className="text-end"
+            title={t`Usual charge scaled to a month. A vendor page shows the average of actual spend.`}
+          >
+            <Trans>Per month</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
-            <Trans>3-mo change</Trans>
+            <Trans>Change, 3 months</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
             <Trans>Last charge</Trans>
