@@ -1144,10 +1144,6 @@ msgstr "Approve"
 msgid "Approve this server to let your bot use its tools."
 msgstr "Approve this server to let your bot use its tools."
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "Apps"
-msgstr "Apps"
-
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Apps with their own server"
 msgstr "Apps with their own server"
@@ -3167,6 +3163,10 @@ msgstr "Created"
 #: src/pages/DataRoom.tsx
 msgid "Created {0}"
 msgstr "Created {0}"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Creating agent"
+msgstr "Creating agent"
 
 #: src/pages/GroupPanel.tsx
 #: src/pages/shell/dialogs.tsx
