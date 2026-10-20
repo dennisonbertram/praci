@@ -1,5 +1,5 @@
 import type { Actor, Bot, MessageBlock } from "@rakazo/contracts";
-import { mailThreadAgentSpawnKey } from "@rakazo/contracts";
+import { inboxAgentSpawnKey, mailThreadAgentSpawnKey } from "@rakazo/contracts";
 import { stripQuotedReply } from "@rakazo/core";
 import type { createRepos } from "@rakazo/db";
 import type { InboxDeps } from "./inbox.js";
@@ -96,8 +96,22 @@ export async function inboxAskAgent(
     messages.push(...loaded);
   }
 
+  // Mail consent is per model. The Inbox card grants the model the Inbox agent runs on, so the
+  // thread agent uses that same override; without one, both follow the user's default model.
+  const inbox = await deps.prisma.bot.findFirst({
+    where: {
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      spawnKey: inboxAgentSpawnKey(actor.userId),
+      archivedAt: null,
+    },
+    select: { modelProvider: true, modelId: true },
+  });
+
   return deps.repos.createBot(actor, {
     spawnKey,
+    modelProvider: inbox?.modelProvider ?? null,
+    modelId: inbox?.modelId ?? null,
     name: mailThreadAgentName(row.subject),
     title: "",
     description: "Handles one email thread.",

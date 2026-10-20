@@ -6,7 +6,6 @@ import type { ComposerMention, SlashActionId } from "@rakazo/core";
 import {
   mentionChipKey,
   newClientId,
-  plainTextFromMarkdown,
   rankMentionOptions,
   replyAttachment,
   resolveMentionPickerKey,
@@ -14,7 +13,6 @@ import {
   serializeComposerPrompt,
   truncateSlashDescription,
 } from "@rakazo/core";
-import { financeCardSummary } from "@rakazo/core/message-quote";
 import { Button } from "@rakazo/ui-web";
 import { ArrowUp, Box, Mic, Paperclip, Plus, Settings, Square, X } from "lucide-react";
 import type { ClipboardEvent, DragEvent, RefObject } from "react";
@@ -34,7 +32,7 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-p
 import { isFileDrag, isFilePaste } from "../../lib/pending-attachments";
 import type { DataRoomRef } from "../../lib/send-to-agent";
 import { slashSkillOptions as pickSlashSkills, slashSkillLabel } from "../../lib/slash-skills";
-import { ComposerReplyPreview } from "./chat-context";
+import { ComposerReplyPreview, previewMessageText } from "./chat-context";
 import { ComposerError } from "./composer-error";
 import { MentionIcon } from "./mention-icon";
 
@@ -1196,24 +1194,4 @@ function slashActionLabel(id: SlashActionId) {
     case "settings-usage":
       return t`See usage`;
   }
-}
-
-export function previewMessageText(message: ThreadMessage): string {
-  const text = message.blocks
-    .map((block) => {
-      if (block.kind === "channel_message") return block.text;
-      if (block.kind === "finance") return financeCardSummary(block.card);
-      if (block.kind === "text") {
-        // Bot text is Markdown; user text is already plain.
-        return message.role === "bot" ? plainTextFromMarkdown(block.text) : block.text;
-      }
-      return "";
-    })
-    .filter(Boolean)
-    .join(" ")
-    .trim();
-  if (text) return maskCurrencyWhenHidden(text);
-  const attachment = replyAttachment(message.blocks);
-  if (attachment) return attachment.kind === "image" ? t`Photo` : attachment.name || t`Attachment`;
-  return t`Message`;
 }

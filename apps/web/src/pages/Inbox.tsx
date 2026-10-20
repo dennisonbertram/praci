@@ -12,6 +12,7 @@ import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
 import { archivableIds, bulkInChunks, digestRows, groupBySender, groupInbox } from "@rakazo/core";
 import {
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuGroup,
@@ -266,6 +267,7 @@ function InboxListPage({
   const sortEnding = useRef(false);
   // "Not now" on the sorting prompt hides it for this visit only.
   const [consentDismissed, setConsentDismissed] = useState(false);
+  const [justAllowed, setJustAllowed] = useState(false);
 
   // A message sent from any composer: reload, since the send synced the account.
   useEffect(() => {
@@ -1313,6 +1315,7 @@ function InboxListPage({
               <InboxConsentPrompt
                 recipient={shown.triageBlocked.recipient}
                 onAllowed={() => {
+                  setJustAllowed(true);
                   setAttempt((n) => n + 1);
                   setReload((n) => n + 1);
                 }}
@@ -1330,7 +1333,14 @@ function InboxListPage({
               </Button>
             </div>
           ) : sorting ? (
-            <p role="status" className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+            // After Allow it takes the consent card's place at its height, so the list does not jump.
+            <p
+              role="status"
+              className={cn(
+                "mb-4 flex items-center gap-2 text-sm text-muted-foreground",
+                justAllowed && "mb-5 min-h-28 items-start",
+              )}
+            >
               <Spinner aria-hidden="true" />
               <Trans>Sorting your mail…</Trans>
             </p>

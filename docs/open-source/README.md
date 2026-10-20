@@ -118,6 +118,12 @@ Smaller changes for an existing install:
 
 ### 5. Publish
 
+`dennisonbertram/praci` is public and holds the full history of `main`. It only receives `main` from
+`scripts/publish-praci.sh`, which fetches both repositories, runs gitleaks over the new commits and
+a local-path grep, then pushes `origin/main` to `praci/main` and the tags without forcing. Reviewed
+fixture hits are listed in `.gitleaksignore`; add a fingerprint there only after confirming the hit
+is not a real secret. GitHub Actions is disabled on the praci repository.
+
 1. Create the public `praci` repository under the owner chosen in step 2.
 2. Add it as a remote and push `main` and the release tags. The updater refuses a repository with
    no release tags (`infra/updater/src/index.ts`).

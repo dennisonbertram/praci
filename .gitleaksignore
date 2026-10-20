@@ -1,0 +1,25 @@
+# Reviewed fixtures and false positives (see docs/open-source/README.md)
+ab91f26c50f0335da9686700d23e83ebc2bd5d98:packages/adapters/src/account-export.postgres.test.ts:generic-api-key:24
+56b3fe49cc3c6cea90053f353903d444effb1766:infra/compose/docker-compose.prod.yml:curl-auth-user:75
+56b3fe49cc3c6cea90053f353903d444effb1766:infra/compose/docker-compose.yml:curl-auth-user:103
+56b3fe49cc3c6cea90053f353903d444effb1766:infra/compose/docker-compose.images.yml:curl-auth-user:144
+4b6c219e72f6c6dac50dc33d7836119d2c90b4b0:packages/testkit/src/cli/demo/data.test.ts:generic-api-key:285
+be75adb8528878679288182176cc76ac14f22a63:apps/api/src/finance-exchange.postgres.test.ts:generic-api-key:102
+05076e4f3e33b723408de3c249ce1ded4d4ee678:packages/adapters/src/finance-tools.test.ts:generic-api-key:456
+e599ba6a6dce88616aac6cb6d80bb159e61d6904:apps/web/src/lib/model-connection-preflight.test.ts:generic-api-key:149
+e599ba6a6dce88616aac6cb6d80bb159e61d6904:apps/web/src/lib/model-connection-preflight.test.ts:generic-api-key:157
+e599ba6a6dce88616aac6cb6d80bb159e61d6904:apps/web/src/lib/model-connection-preflight.test.ts:generic-api-key:165
+e599ba6a6dce88616aac6cb6d80bb159e61d6904:apps/web/src/lib/model-connection-preflight.test.ts:generic-api-key:182
+e599ba6a6dce88616aac6cb6d80bb159e61d6904:packages/adapters/src/pi-models.test.ts:generic-api-key:121
+e599ba6a6dce88616aac6cb6d80bb159e61d6904:packages/adapters/src/pi-models.test.ts:generic-api-key:148
+3411482c4443669b9d1ec3c5ddf16fa58034ccf1:apps/api/src/router.test.ts:generic-api-key:1359
+7be0b38fde1314621fc4dfbc7523259db9f13b60:packages/adapters/src/model-selection.test.ts:generic-api-key:168
+7be0b38fde1314621fc4dfbc7523259db9f13b60:apps/api/src/router.test.ts:generic-api-key:1197
+7be0b38fde1314621fc4dfbc7523259db9f13b60:apps/api/src/router.test.ts:generic-api-key:1285
+7be0b38fde1314621fc4dfbc7523259db9f13b60:apps/api/src/router.test.ts:generic-api-key:1603
+a810efbe976d903cdad813c7af64971c198fd614:packages/testkit/src/cli/evals.ts:generic-api-key:107
+a810efbe976d903cdad813c7af64971c198fd614:packages/testkit/src/evals/evals.test.ts:generic-api-key:258
+8d1617a96cf5411650a677f61bccb95f1e34ba1d:infra/compose/.env.images.example:generic-api-key:10
+c5641e6638ea50ee23658f670d47d7c4209a3dc7:packages/adapters/src/pi-runtime.test.ts:curl-auth-header:38
+4bdbcb053fe44285befc44e564e717239f7eeedb:.env.example:generic-api-key:3
+4bdbcb053fe44285befc44e564e717239f7eeedb:.env.example:generic-api-key:9

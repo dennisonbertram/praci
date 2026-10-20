@@ -37,9 +37,16 @@ describe("timezoneToReport", () => {
 
   it("reports a changed browser zone once, then leaves a chosen zone alone", () => {
     const stored = { ...me, timezone: "America/New_York" };
+    markTimezoneReported("u1", "America/New_York");
     expect(timezoneToReport(stored, "Europe/Paris")).toBe("Europe/Paris");
     markTimezoneReported("u1", "Europe/Paris");
     // The user picked another zone in settings; the browser has not moved.
     expect(timezoneToReport({ ...stored, timezone: "Asia/Tokyo" }, "Europe/Paris")).toBeNull();
+  });
+
+  it("never overwrites a stored zone from a browser that has not reported before", () => {
+    expect(timezoneToReport({ ...me, timezone: "Asia/Tokyo" }, "Europe/Paris")).toBeNull();
+    markTimezoneReported("other-user", "Europe/Paris");
+    expect(timezoneToReport({ ...me, timezone: "Asia/Tokyo" }, "Europe/Paris")).toBeNull();
   });
 });

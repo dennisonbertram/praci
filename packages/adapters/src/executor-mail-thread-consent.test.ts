@@ -63,6 +63,7 @@ async function runChat(consented: boolean) {
     yield { type: "done" as const, text: "Done" };
   });
   const prisma = {
+    user: { findUnique: vi.fn(async () => ({ timezone: null })) },
     // Messages are written in a transaction; none is set up here, so a write fails like before.
     $transaction: vi.fn(async () => {
       throw new Error("no message writes in this test");
