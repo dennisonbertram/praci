@@ -1,4 +1,16 @@
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@lingui/core/macro", () => ({
+  msg: (parts: TemplateStringsArray) => parts[0] ?? "",
+  plural: (value: number, forms: { one: string; other: string }) =>
+    value === 1 ? forms.one : forms.other,
+}));
+vi.mock("@lingui/react/macro", () => ({
+  Trans: ({ children }: { children: ReactNode }) => children,
+  useLingui: () => ({ t: (parts: TemplateStringsArray) => parts[0] ?? "" }),
+}));
+
 import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./space-sidebar";
 
 function chat(id: string, name: string) {
