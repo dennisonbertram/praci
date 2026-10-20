@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { type AdapterContext, type MailProvider, MailProviderError } from "@rakazo/adapter-kit";
 import type { MailEmulator } from "../gmail-api-emulator.js";
+import { GMAIL_SETTINGS_BASIC } from "../google-connector.js";
 import { parseRawMime } from "../mime-parse.js";
 
 /**
@@ -260,6 +261,33 @@ export async function assertMailModifyConformance(
     provider.modifyThread(a, "t-modify", { addLabelIds: ["no-such-label"] }, context),
     kind("invalid"),
   );
+  // Spam and trash are label changes on the whole conversation, and each can be undone.
+  for (const mid of ["junk-1", "junk-2"])
+    emulator.gmail.addMessage(a.accountRef, {
+      id: mid,
+      threadId: "t-junk",
+      date: "2026-10-01T10:00:00Z",
+      labels: ["INBOX"],
+      from: "Junk Sender <junk@example.test>",
+      to: "alice@example.test",
+      subject: `Junk ${mid}`,
+    });
+  for (const label of ["SPAM", "TRASH"]) {
+    await provider.modifyThread(
+      a,
+      "t-junk",
+      { addLabelIds: [label], removeLabelIds: ["INBOX"] },
+      context,
+    );
+    for (const mid of ["junk-1", "junk-2"]) assert.deepEqual(await labelsOf(mid), [label]);
+    await provider.modifyThread(
+      a,
+      "t-junk",
+      { addLabelIds: ["INBOX"], removeLabelIds: [label] },
+      context,
+    );
+    for (const mid of ["junk-1", "junk-2"]) assert.deepEqual(await labelsOf(mid), ["INBOX"]);
+  }
   emulator.gmail.failNext(403, { reason: "insufficientPermissions", urlIncludes: "/modify" });
   await assert.rejects(
     provider.modifyMessage(a, id, { addLabelIds: ["STARRED"] }, context),
@@ -435,4 +463,78 @@ export async function assertMailSignalsConformance(
   );
   assert.equal(never.messages.length, 0);
   assert.ok(!never.unhydratedIds?.length);
+}
+
+/**
+ * Optional sender-rule behavior (Gmail filters). A provider without the methods passes. Routes that
+ * cannot hold a rule answer null and send nothing. A native route without the permission answers
+ * `auth`, then creates one rule, reuses it, deletes it, refuses unsafe addresses and a full quota,
+ * and leaves the other account alone. Uses `emulator.gmail.grantScope`, so run it on the emulator.
+ */
+export async function assertMailSenderRuleConformance(
+  provider: MailProvider,
+  emulator: Pick<MailEmulator, "gmail" | "accounts">,
+): Promise<void> {
+  if (!provider.createSenderRule || !provider.deleteSenderRule) return;
+  const [first] = emulator.accounts;
+  assert.ok(first, "conformance needs an account");
+  const context: AdapterContext = {
+    operationId: "mail-rule-conformance",
+    traceId: "mail-rule-conformance",
+    spaceId: first.spaceId,
+    userId: first.userId,
+    signal: new AbortController().signal,
+  };
+  const [a, b] = await provider.listAccounts(
+    { spaceId: first.spaceId, userId: first.userId },
+    context,
+  );
+  assert.ok(a && b, "conformance needs two accounts");
+  const rule = { from: "News@Lists.Example.test", skipInbox: true } as const;
+  const gmail = emulator.gmail;
+
+  if (a.senderRules === "unsupported") {
+    const before = gmail.requests.length;
+    assert.equal(await provider.createSenderRule(a, rule, context), null);
+    await provider.deleteSenderRule(a, "filter-1", context);
+    assert.equal(gmail.requests.length, before, "an unsupported route sends nothing");
+    return;
+  }
+
+  assert.equal(a.senderRules, "needs_permission");
+  await assert.rejects(
+    provider.createSenderRule(a, rule, context),
+    (error) => error instanceof MailProviderError && error.kind === "auth",
+  );
+  assert.equal(gmail.filtersOf(a.accountRef).length, 0);
+
+  gmail.grantScope(a.accountRef, GMAIL_SETTINGS_BASIC);
+  const made = await provider.createSenderRule(a, rule, context);
+  assert.ok(made?.ruleId && made.created);
+  const [filter] = gmail.filtersOf(a.accountRef);
+  assert.equal(gmail.filtersOf(a.accountRef).length, 1);
+  assert.equal(filter?.criteria.from, "news@lists.example.test");
+  assert.ok(filter?.action.removeLabelIds?.includes("INBOX"));
+  const again = await provider.createSenderRule(a, rule, context);
+  assert.deepEqual(again, { ruleId: made.ruleId, created: false });
+  assert.equal(gmail.filtersOf(a.accountRef).length, 1, "no duplicate filter");
+
+  for (const from of ["x@b.example.test OR y@c.example.test", "-x@b.example.test", ""])
+    await assert.rejects(
+      provider.createSenderRule(a, { from, skipInbox: true }, context),
+      (error) => error instanceof MailProviderError && error.kind === "invalid",
+      from,
+    );
+  assert.equal(gmail.filtersOf(a.accountRef).length, 1);
+
+  await provider.deleteSenderRule(a, made.ruleId, context);
+  assert.equal(gmail.filtersOf(a.accountRef).length, 0);
+  await provider.deleteSenderRule(a, made.ruleId, context);
+
+  gmail.fillFilters(a.accountRef, 1000);
+  await assert.rejects(
+    provider.createSenderRule(a, rule, context),
+    (error) => error instanceof MailProviderError && error.kind === "limit",
+  );
+  assert.equal(gmail.filtersOf(b.accountRef).length, 0, "account B is untouched");
 }

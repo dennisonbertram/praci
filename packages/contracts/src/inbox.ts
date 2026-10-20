@@ -13,7 +13,14 @@ export const MailAccountSchema = z.object({
   label: z.string(),
   /** The mailbox address, once Gmail has reported it; optional for older servers. */
   address: z.string().optional(),
+  /**
+   * Whether the mailbox can keep skipped senders out of the inbox itself (a Gmail filter): "ready",
+   * "needs_permission" (reconnect with one more permission) or "unsupported". Optional for older servers.
+   */
+  senderRules: z.enum(["ready", "needs_permission", "unsupported"]).optional(),
 });
+
+export type MailAccountSummary = z.infer<typeof MailAccountSchema>;
 
 export const InboxPrioritySchema = z.enum(["critical", "important", "normal", "low"]);
 export type InboxPriority = z.infer<typeof InboxPrioritySchema>;
@@ -235,6 +242,137 @@ export const InboxBulkResultSchema = z.object({
   ),
 });
 
+/** Most senders the cleanup list returns. */
+export const MAX_CLEANUP_SENDERS = 100;
+
+/** What Unsubscribe would do for a sender; `refused` is spam-like mail, `none` has no unsubscribe target. */
+export const CleanupUnsubscribeSchema = z.enum(["one_click", "link", "mailto", "refused", "none"]);
+export const UnsubscribeStatusSchema = z.enum([
+  "done",
+  "opened",
+  "sent",
+  "unknown",
+  "failed",
+  "refused",
+]);
+
+/** Where a skipped sender's Gmail filter stands: made, waiting for permission, over the cap, or failed. */
+export const SenderRuleStatusSchema = z.enum(["active", "pending", "full", "failed"]);
+export type SenderRuleStatus = z.infer<typeof SenderRuleStatusSchema>;
+
+/** One sender on one mail account, over the 90-day cache window. */
+export const CleanupSenderSchema = z.object({
+  connectionId: Id,
+  /** Lowercased From address. */
+  address: z.string(),
+  name: z.string(),
+  messageCount: z.number().int().nonnegative(),
+  readCount: z.number().int().nonnegative(),
+  lastReceivedAt: z.string().nullable(),
+  /** Conversations in the Inbox from this sender: what an archive touches. */
+  inboxThreads: z.number().int().nonnegative(),
+  preselected: z.boolean(),
+  /** Some window mail is spam, scam or suspicious, or failed authentication. Never skipped or unsubscribed. */
+  spamLike: z.boolean(),
+  unsubscribe: CleanupUnsubscribeSchema,
+  /** Future mail from this sender is archived during sync. */
+  skipInbox: z.boolean(),
+  unsubscribeStatus: UnsubscribeStatusSchema.nullable(),
+  /** The Gmail filter for a skipped sender; omitted when there is none. */
+  rule: SenderRuleStatusSchema.optional(),
+});
+
+export const CleanupListInputSchema = InboxScopeInputSchema;
+export const CleanupListOutputSchema = z.object({
+  accounts: z.array(MailAccountSchema),
+  senders: z.array(CleanupSenderSchema),
+  syncedAt: z.string().nullable(),
+});
+
+export const CleanupKindSchema = z.enum(["archive", "skip_inbox", "unsubscribe", "spam"]);
+
+/** One page of a sender cleanup: at most 50 conversations. Call again with the returned batchId while `remaining` is above 0. */
+export const CleanupArchiveInputSchema = z.object({
+  batchId: Id.optional(),
+  kind: CleanupKindSchema,
+  connectionId: Id,
+  address: z.string().min(3).max(320),
+});
+export const CleanupArchiveOutputSchema = z.object({
+  batchId: Id,
+  done: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  remaining: z.number().int().nonnegative(),
+});
+
+export const CleanupForgetInputSchema = z.object({
+  connectionId: Id,
+  address: z.string().min(3).max(320),
+});
+
+export const UnsubscribeInputSchema = z.object({
+  connectionId: Id,
+  address: z.string().min(3).max(320),
+  /** The user confirmed sending the unsubscribe email. */
+  confirmMailto: z.boolean().optional(),
+});
+/**
+ * `done`: one-click POST accepted. `opened`: open `openUrl` in a new tab. `sent`/`unknown`: the
+ * unsubscribe email went out / may have. `needs_confirmation`: ask before emailing `mailTo`.
+ * `refused`: spam-like mail. `disabled`: mail writes are off. `unavailable`: no unsubscribe target.
+ * `failed`: the attempt failed; `openUrl`, when present, is the sender's link.
+ */
+export const UnsubscribeOutputSchema = z.object({
+  status: z.enum([
+    "done",
+    "opened",
+    "sent",
+    "unknown",
+    "failed",
+    "refused",
+    "needs_confirmation",
+    "disabled",
+    "unavailable",
+  ]),
+  method: z.enum(["one_click", "link", "mailto"]).nullable(),
+  openUrl: z.string().optional(),
+  mailTo: z.string().optional(),
+});
+
+export const InboxMoveInputSchema = z.object({
+  op: z.enum(["spam", "notSpam", "trash"]),
+  messageIds: z.array(Id).min(1).max(MAX_BULK_ARCHIVE),
+});
+export const InboxMoveOutputSchema = InboxBulkResultSchema.extend({ batchId: Id });
+
+export const MailActionKindSchema = z.enum([
+  "archive",
+  "skip_inbox",
+  "unsubscribe",
+  "spam",
+  "not_spam",
+  "trash",
+]);
+export const MailActionSchema = z.object({
+  batchId: Id,
+  kind: MailActionKindSchema,
+  source: z.enum(["user", "auto"]),
+  /** What led to it: a sender cleanup, a hand-picked selection, or a sender's skip-inbox decision. */
+  reason: z.enum(["cleanup", "selection", "skip_inbox"]),
+  createdAt: z.string(),
+  undone: z.boolean(),
+  threadCount: z.number().int().nonnegative(),
+  /** The first few sender addresses. */
+  senders: z.array(z.string()).max(5),
+  senderCount: z.number().int().nonnegative(),
+});
+export const MailActionsListOutputSchema = z.object({ actions: z.array(MailActionSchema) });
+export const MailActionUndoInputSchema = z.object({ batchId: Id });
+export const MailActionUndoOutputSchema = z.object({
+  restored: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+});
+
 export const InboxTodoSchema = z.object({
   id: Id,
   connectionId: Id,
@@ -421,3 +559,20 @@ export type InboxThreadMessage = z.infer<typeof InboxThreadMessageSchema>;
 export type InboxTodo = z.infer<typeof InboxTodoSchema>;
 export type MailRow = z.infer<typeof MailRowSchema>;
 export type InboxListOutput = z.infer<typeof InboxListOutputSchema>;
+export type CleanupSender = z.infer<typeof CleanupSenderSchema>;
+export type CleanupKind = z.infer<typeof CleanupKindSchema>;
+export type CleanupListOutput = z.infer<typeof CleanupListOutputSchema>;
+export type CleanupArchiveInput = z.infer<typeof CleanupArchiveInputSchema>;
+export type CleanupArchiveOutput = z.infer<typeof CleanupArchiveOutputSchema>;
+export type CleanupForgetInput = z.infer<typeof CleanupForgetInputSchema>;
+export type CleanupUnsubscribe = z.infer<typeof CleanupUnsubscribeSchema>;
+export type UnsubscribeInput = z.infer<typeof UnsubscribeInputSchema>;
+export type UnsubscribeOutput = z.infer<typeof UnsubscribeOutputSchema>;
+export type UnsubscribeStatus = z.infer<typeof UnsubscribeStatusSchema>;
+export type InboxMoveInput = z.infer<typeof InboxMoveInputSchema>;
+export type InboxMoveOutput = z.infer<typeof InboxMoveOutputSchema>;
+export type MailAction = z.infer<typeof MailActionSchema>;
+export type MailActionKind = z.infer<typeof MailActionKindSchema>;
+export type MailActionsListOutput = z.infer<typeof MailActionsListOutputSchema>;
+export type MailActionUndoInput = z.infer<typeof MailActionUndoInputSchema>;
+export type MailActionUndoOutput = z.infer<typeof MailActionUndoOutputSchema>;

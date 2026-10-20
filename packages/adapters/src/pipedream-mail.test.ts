@@ -7,6 +7,7 @@ import {
   assertMailChangesConformance,
   assertMailConformance,
   assertMailModifyConformance,
+  assertMailSenderRuleConformance,
   assertMailSignalsConformance,
   assertMailWriteConformance,
 } from "./testing/mail-conformance.js";
@@ -129,6 +130,7 @@ describe("PipedreamConnector.proxy", () => {
     await assertMailWriteConformance(provider, { gmail: fake.mail.gmail, accounts });
     await assertMailModifyConformance(provider, { gmail: fake.mail.gmail, accounts });
     await assertMailChangesConformance(provider, { gmail: fake.mail.gmail, accounts });
+    await assertMailSenderRuleConformance(provider, { gmail: fake.mail.gmail, accounts });
     await assertMailSignalsConformance(provider, { gmail: fake.mail.gmail, accounts });
     expect(fake.proxied.length).toBeGreaterThan(0);
   });
