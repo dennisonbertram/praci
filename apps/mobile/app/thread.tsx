@@ -40,6 +40,7 @@ import {
   resolvePersonaColorDef,
   selectableMessageText,
   selectedAskActionLabel,
+  splitDataRoomReferences,
   threadWindowMessages,
   timeSeparatorIds,
   userVisibleMessages,
@@ -2917,7 +2918,9 @@ function previewMessageText(message: MobileMessage): string {
       }
       if (block.kind === "text" && block.text) {
         // Bot text is Markdown; user text is already plain.
-        return [message.role === "bot" ? plainTextFromMarkdown(block.text) : block.text];
+        if (message.role === "bot") return [plainTextFromMarkdown(block.text)];
+        const { body, refs } = splitDataRoomReferences(block.text);
+        return [body || refs.map((ref) => ref.name).join(", ")];
       }
       return [];
     })

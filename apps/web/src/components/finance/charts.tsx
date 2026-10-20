@@ -288,8 +288,43 @@ function barLabels(series: CashPoint[], granularity: BarGranularity): string[] {
   );
 }
 
-/** Out, revenue and financing for each bucket; each bucket opens its detail. */
-export function BurnBars({
+/** Cubic segments through `pts` that never overshoot a point, so a line never dips below zero. */
+function monotoneSegments(pts: [number, number][]): string[] {
+  const n = pts.length;
+  const dx = pts.slice(1).map((p, i) => p[0] - (pts[i] as [number, number])[0]);
+  const m = pts.slice(1).map((p, i) => (p[1] - (pts[i] as [number, number])[1]) / (dx[i] || 1));
+  const t = pts.map((_, i) => {
+    if (i === 0) return m[0] ?? 0;
+    if (i === n - 1) return m[n - 2] ?? 0;
+    const [a, b] = [m[i - 1] as number, m[i] as number];
+    return a * b <= 0 ? 0 : (a + b) / 2;
+  });
+  // Flatten a tangent that would overshoot its neighbouring slope.
+  for (let i = 0; i < n - 1; i++) {
+    const slope = m[i] as number;
+    if (slope === 0) {
+      t[i] = 0;
+      t[i + 1] = 0;
+      continue;
+    }
+    const k = Math.hypot((t[i] as number) / slope, (t[i + 1] as number) / slope);
+    if (k > 3) {
+      t[i] = (3 * slope * (t[i] as number)) / (k * slope);
+      t[i + 1] = (3 * slope * (t[i + 1] as number)) / (k * slope);
+    }
+  }
+  return pts.slice(1).map((p, i) => {
+    const [x0, y0] = pts[i] as [number, number];
+    const w = (dx[i] as number) / 3;
+    return `C${(x0 + w).toFixed(1)},${(y0 + w * (t[i] as number)).toFixed(1)} ${(p[0] - w).toFixed(1)},${(p[1] - w * (t[i + 1] as number)).toFixed(1)} ${p[0].toFixed(1)},${p[1].toFixed(1)}`;
+  });
+}
+
+/**
+ * Out, revenue and financing for each bucket as lines (Out has a gradient under it); each bucket
+ * opens its detail. A bucket still running ends Out's line with a dashed segment and a hollow dot.
+ */
+export function BurnLines({
   series,
   granularity = "month",
   height = 230,
@@ -303,15 +338,16 @@ export function BurnBars({
   label: string;
 }) {
   useHideAmounts();
-  const hatch = useId();
+  const gradient = useId();
+  const [active, setActive] = useState<number | null>(null);
   return (
     <Chart height={height} label={label}>
       {(width) => {
         const left = 40;
-        const right = 4;
+        const right = 8;
         const bottom = 24;
         // The scale follows spend and revenue; a raise many times larger would flatten every other
-        // bar, so a financing bar taller than the scale is cut at the top and labelled instead.
+        // point, so a financing point above the scale is cut at the top and labelled instead.
         const max = Math.max(...series.flatMap((m) => [m.outCents, m.revenueCents]), 0);
         const scale = niceScale(
           max > 0 ? max : Math.max(...series.map((m) => m.financingCents), 0),
@@ -319,25 +355,75 @@ export function BurnBars({
         const clipped = series.some((m) => m.financingCents > scale.top);
         const top = clipped ? 22 : 10;
         const slot = (width - left - right) / Math.max(series.length, 1);
-        const bw = Math.min(17, slot * 0.28);
-        // Skip labels that would collide, counting back from the newest bar.
+        // Skip labels that would collide, counting back from the newest point.
         const labelEvery = Math.max(1, Math.ceil(36 / slot));
         const names = barLabels(series, granularity);
-        const y = (v: number) => top + (height - top - bottom) * (1 - v / scale.top);
-        const bar = (v: number) => Math.max(height - bottom - y(v), 0);
+        const base = height - bottom;
+        const y = (v: number) => top + (base - top) * (1 - v / scale.top);
+        const cx = (i: number) => left + slot * (i + 0.5);
+        const line = (pick: (m: CashPoint) => number) =>
+          series.map((m, i): [number, number] => [cx(i), y(Math.min(pick(m), scale.top))]);
+        const out = line((m) => m.outCents);
+        const outSegs = monotoneSegments(out);
+        const last = series.length - 1;
+        const partial = series[last]?.partial === true && last > 0;
+        const solidSegs = partial ? outSegs.slice(0, -1) : outSegs;
+        const start = (p: [number, number] | undefined) =>
+          `M${p?.[0].toFixed(1)},${p?.[1].toFixed(1)}`;
+        const hasRevenue = series.some((m) => m.revenueCents > 0);
+        const hasFinancing = series.some((m) => m.financingCents > 0);
+        const rev = line((m) => m.revenueCents);
+        const fin = line((m) => m.financingCents);
+        const area = (pts: [number, number][], segs: string[]) =>
+          `${start(pts[0])}${segs.join("")}L${pts.at(-1)?.[0].toFixed(1)},${base}L${pts[0]?.[0].toFixed(1)},${base}Z`;
+        const shown = active === null ? null : series[active];
+        const rows = shown
+          ? [
+              { key: "out", name: <Trans>Out</Trans>, cents: shown.outCents },
+              ...(shown.revenueCents > 0
+                ? [{ key: "rev", name: <Trans>Revenue</Trans>, cents: shown.revenueCents }]
+                : []),
+              ...(shown.financingCents > 0
+                ? [{ key: "fin", name: <Trans>Financing</Trans>, cents: shown.financingCents }]
+                : []),
+            ]
+          : [];
+        const tipW = 140;
+        const tipH = 12 + 16 * (rows.length + 1);
+        const tipX =
+          active !== null && cx(active) + 10 + tipW > width - right
+            ? Math.max(cx(active) - 10 - tipW, 0)
+            : active === null
+              ? 0
+              : cx(active) + 10;
         return (
           <>
             <defs>
-              <pattern
-                id={hatch}
-                width={5}
-                height={5}
-                patternUnits="userSpaceOnUse"
-                patternTransform="rotate(45)"
+              {/* stop-color follows the text colour of the gradient, so the fill uses semantic tokens */}
+              <linearGradient
+                id={`${gradient}-out`}
+                gradientUnits="userSpaceOnUse"
+                x1={0}
+                x2={0}
+                y1={top}
+                y2={base}
+                className="text-foreground"
               >
-                <rect width={5} height={5} className="fill-card" />
-                <line x1={0} y1={0} x2={0} y2={5} className="stroke-foreground" strokeWidth={2} />
-              </pattern>
+                <stop offset="0" stopColor="currentColor" stopOpacity={0.25} />
+                <stop offset="1" stopColor="currentColor" stopOpacity={0} />
+              </linearGradient>
+              <linearGradient
+                id={`${gradient}-rev`}
+                gradientUnits="userSpaceOnUse"
+                x1={0}
+                x2={0}
+                y1={top}
+                y2={base}
+                className="text-muted-foreground"
+              >
+                <stop offset="0" stopColor="currentColor" stopOpacity={0.12} />
+                <stop offset="1" stopColor="currentColor" stopOpacity={0} />
+              </linearGradient>
             </defs>
             <Grid
               width={width}
@@ -348,12 +434,104 @@ export function BurnBars({
               bottom={bottom}
               scale={scale}
             />
+            {series.length > 1 ? (
+              <>
+                {hasRevenue ? (
+                  <>
+                    <path
+                      data-testid="burn-revenue-area"
+                      d={area(rev, monotoneSegments(rev))}
+                      fill={`url(#${gradient}-rev)`}
+                    />
+                    <path
+                      d={`${start(rev[0])}${monotoneSegments(rev).join("")}`}
+                      fill="none"
+                      className="stroke-muted-foreground"
+                      strokeWidth={1.5}
+                      strokeLinecap="round"
+                    />
+                  </>
+                ) : null}
+                <path
+                  data-testid="burn-out-area"
+                  d={area(out, outSegs)}
+                  fill={`url(#${gradient}-out)`}
+                />
+                <path
+                  data-testid="burn-out-line"
+                  d={`${start(out[0])}${solidSegs.join("")}`}
+                  fill="none"
+                  className="stroke-foreground"
+                  strokeWidth={1.75}
+                  strokeLinecap="round"
+                />
+                {partial ? (
+                  <path
+                    data-testid="burn-out-partial"
+                    d={`${start(out[last - 1])}${outSegs.at(-1)}`}
+                    fill="none"
+                    className="stroke-foreground"
+                    strokeWidth={1.75}
+                    strokeDasharray="4 4"
+                    strokeLinecap="round"
+                  />
+                ) : null}
+                {hasFinancing ? (
+                  <path
+                    data-testid="burn-financing-line"
+                    d={`${start(fin[0])}${monotoneSegments(fin).join("")}`}
+                    fill="none"
+                    className="stroke-foreground"
+                    strokeWidth={1.25}
+                    strokeDasharray="1 4"
+                    strokeLinecap="round"
+                  />
+                ) : null}
+              </>
+            ) : null}
+            {series.map((m, i) =>
+              m.financingCents > 0 ? (
+                <circle
+                  key={m.start}
+                  cx={cx(i)}
+                  cy={y(Math.min(m.financingCents, scale.top))}
+                  r={2.5}
+                  className="fill-card stroke-foreground"
+                  strokeWidth={1.25}
+                />
+              ) : null,
+            )}
+            {out.map(([px, py], i) =>
+              i === last && series[i]?.partial ? (
+                <circle
+                  key="partial"
+                  data-testid="burn-out-end"
+                  cx={px}
+                  cy={py}
+                  r={3}
+                  className="fill-card stroke-foreground"
+                  strokeWidth={1.5}
+                />
+              ) : series.length === 1 || i === active ? (
+                <circle key={series[i]?.start} cx={px} cy={py} r={3} className="fill-foreground" />
+              ) : null,
+            )}
+            {active !== null ? (
+              <line
+                data-testid="burn-crosshair"
+                x1={cx(active)}
+                x2={cx(active)}
+                y1={top}
+                y2={base}
+                className="stroke-muted-foreground"
+                strokeWidth={1}
+                strokeDasharray="3 3"
+              />
+            ) : null}
             {series.map((m, i) => {
-              const c = left + slot * (i + 0.5);
-              const two = m.revenueCents > 0 || m.financingCents > 0;
-              const outX = two ? c - bw - 1 : c - bw / 2;
               const name = names[i] ?? "";
               const showLabel = (series.length - 1 - i) % labelEvery === 0;
+              const open = () => onOpen(m);
               return (
                 // biome-ignore lint/a11y/useSemanticElements: an SVG group cannot be an <a> that the router can drive
                 <g
@@ -361,65 +539,24 @@ export function BurnBars({
                   role="link"
                   tabIndex={0}
                   aria-label={`${granularity === "month" ? name : dayMonth(m.start)}: ${money(m.outCents)}`}
-                  className="group cursor-pointer outline-none"
-                  onClick={() => onOpen(m)}
-                  onKeyDown={keyActivate(() => onOpen(m))}
+                  className="cursor-pointer outline-none"
+                  onClick={open}
+                  onKeyDown={keyActivate(open)}
+                  onMouseEnter={() => setActive(i)}
+                  onMouseLeave={() => setActive(null)}
+                  onFocus={() => setActive(i)}
+                  onBlur={() => setActive(null)}
                 >
                   <rect
                     x={left + slot * i}
                     y={top}
                     width={slot}
-                    height={height - top - bottom}
-                    className="fill-transparent group-hover:fill-muted group-focus-visible:fill-muted"
+                    height={base - top}
+                    className="fill-transparent"
                   />
-                  <rect
-                    x={outX}
-                    y={y(m.outCents)}
-                    width={bw}
-                    height={bar(m.outCents)}
-                    rx={2}
-                    // A period still running is a lighter bar (its label has a *), not a dashed
-                    // outline that reads as an empty box.
-                    data-partial={m.partial ? "" : undefined}
-                    className={m.partial ? "fill-foreground/45" : "fill-foreground"}
-                  />
-                  {m.revenueCents > 0 ? (
-                    <rect
-                      x={c + 1}
-                      y={y(m.revenueCents)}
-                      width={bw}
-                      height={bar(m.revenueCents)}
-                      rx={2}
-                      className="fill-muted-foreground"
-                    />
-                  ) : null}
-                  {m.financingCents > 0 ? (
-                    <rect
-                      x={c + 1}
-                      y={y(Math.min(m.financingCents, scale.top))}
-                      width={bw}
-                      height={bar(Math.min(m.financingCents, scale.top))}
-                      rx={2}
-                      fill={`url(#${hatch})`}
-                      className="stroke-foreground"
-                      strokeWidth={1}
-                    />
-                  ) : null}
-                  {m.financingCents > scale.top ? (
-                    <text
-                      data-testid="financing-clipped"
-                      x={c + 1 + bw / 2}
-                      y={top - 6}
-                      textAnchor="middle"
-                      className="fill-foreground"
-                      fontSize={10}
-                    >
-                      {`↑ ${money(m.financingCents)}`}
-                    </text>
-                  ) : null}
                   {showLabel ? (
                     <text
-                      x={c}
+                      x={cx(i)}
                       y={height - 8}
                       textAnchor="middle"
                       className="fill-muted-foreground"
@@ -433,6 +570,63 @@ export function BurnBars({
                 </g>
               );
             })}
+            {series.map((m, i) =>
+              m.financingCents > scale.top ? (
+                <text
+                  key={m.start}
+                  data-testid="financing-clipped"
+                  x={cx(i)}
+                  y={top - 6}
+                  textAnchor="middle"
+                  className="fill-foreground"
+                  fontSize={10}
+                >
+                  {`↑ ${money(m.financingCents)}`}
+                </text>
+              ) : null,
+            )}
+            {shown && active !== null ? (
+              <g data-testid="burn-tooltip" pointerEvents="none">
+                <rect
+                  x={tipX}
+                  y={top}
+                  width={tipW}
+                  height={tipH}
+                  rx={6}
+                  className="fill-popover stroke-border"
+                />
+                <text
+                  x={tipX + 10}
+                  y={top + 18}
+                  fontSize={11}
+                  className="fill-foreground"
+                  fontWeight={600}
+                >
+                  {granularity === "month" ? (names[active] ?? "") : dayMonth(shown.start)}
+                </text>
+                {rows.map((r, j) => (
+                  <g key={r.key}>
+                    <text
+                      x={tipX + 10}
+                      y={top + 34 + 16 * j}
+                      fontSize={11}
+                      className="fill-muted-foreground"
+                    >
+                      {r.name}
+                    </text>
+                    <text
+                      x={tipX + tipW - 10}
+                      y={top + 34 + 16 * j}
+                      fontSize={11}
+                      textAnchor="end"
+                      className="fill-foreground"
+                    >
+                      {money(r.cents)}
+                    </text>
+                  </g>
+                ))}
+              </g>
+            ) : null}
           </>
         );
       }}

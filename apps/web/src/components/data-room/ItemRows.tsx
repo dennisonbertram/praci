@@ -4,6 +4,9 @@ import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
 import {
   Badge,
   Button,
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuTrigger,
   cn,
   Spinner,
   Table,
@@ -15,11 +18,20 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { FileImage, FileSpreadsheet, FileText, Folder } from "lucide-react";
-import { type KeyboardEvent, type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  cloneElement,
+  type KeyboardEvent,
+  type ReactElement,
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { dataRoomThumbnailUrl, splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { dateText, isSettled, statusLabel, typeLabel } from "./format";
 import { type ItemAction, ItemMenu } from "./ItemMenu";
+import { type SendTarget, SendToAgentMenu } from "./SendToAgent";
 import type { Row, SortField } from "./use-data-room-list";
 
 /** What the list tells the page about pointer, keyboard and menu use. */
@@ -33,7 +45,38 @@ export type RowInteraction = {
   folderPath: (id: string | null) => string;
   /** The folder the page shows; rows elsewhere (All items) name their folder. */
   openFolderId?: string;
+  /** The agents a file can be sent to, most recent first; without them there is no such menu. */
+  agents?: SendTarget[];
+  onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
 };
+
+/** A file's row or tile, with "Send to agent" on a right-click (or a long press on touch). */
+function FileContext({
+  item,
+  o,
+  render,
+  children,
+}: {
+  item: DataRoomApiItem;
+  o: RowInteraction;
+  render: ReactElement<{ children?: ReactNode }>;
+  children: ReactNode;
+}) {
+  if (!o.agents?.length || !o.onSendToAgent) return cloneElement(render, undefined, children);
+  return (
+    <ContextMenu>
+      <ContextMenuTrigger render={render}>{children}</ContextMenuTrigger>
+      {/* React events bubble out of the portal into the row, which would pin it. */}
+      <ContextMenuContent onClick={(event) => event.stopPropagation()}>
+        <SendToAgentMenu
+          menu="context"
+          agents={o.agents}
+          onPick={(agent) => o.onSendToAgent?.(item, agent)}
+        />
+      </ContextMenuContent>
+    </ContextMenu>
+  );
+}
 
 /** True while an arrow key moves the focus, so only that focus (not a click or Tab) selects. */
 let arrowMove = false;
@@ -90,9 +133,9 @@ function Marker({ item }: { item: DataRoomApiItem }) {
 }
 
 const SHEET = /^text\/(csv|tab-separated-values)$|spreadsheet|ms-excel/;
-const isSheet = ({ mimeType, name }: DataRoomApiItem) =>
+const isSheet = ({ mimeType, name }: Pick<DataRoomApiItem, "mimeType" | "name">) =>
   SHEET.test(mimeType) || /\.(csv|tsv|xlsx?)$/i.test(name);
-const fileIcon = (item: DataRoomApiItem) =>
+export const fileIcon = (item: Pick<DataRoomApiItem, "mimeType" | "name">) =>
   item.mimeType.startsWith("image/") ? FileImage : isSheet(item) ? FileSpreadsheet : FileText;
 
 const DASH = "—";
@@ -192,14 +235,20 @@ function ItemRow({
   const shown = o.shownId === item.id;
   return (
     <>
-      <TableRow
-        aria-current={shown}
-        {...rowProps(item, o)}
-        className={cn(
-          "group/row cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-          // Clearly stronger than the hover tint, so the chosen row stays obvious.
-          shown && "bg-sidebar-accent hover:bg-sidebar-accent",
-        )}
+      <FileContext
+        item={item}
+        o={o}
+        render={
+          <TableRow
+            aria-current={shown}
+            {...rowProps(item, o)}
+            className={cn(
+              "group/row cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+              // Clearly stronger than the hover tint, so the chosen row stays obvious.
+              shown && "bg-sidebar-accent hover:bg-sidebar-accent",
+            )}
+          />
+        }
       >
         <TableCell data-testid="data-room-name">
           <div className="flex min-w-0 items-center gap-2">
@@ -276,10 +325,12 @@ function ItemRow({
             item={item}
             onAction={o.onAction}
             canRetry={item.status === "failed"}
+            agents={o.agents}
+            onSendToAgent={o.onSendToAgent}
             className={ROW_ACTIONS}
           />
         </TableCell>
-      </TableRow>
+      </FileContext>
       {snippets.length ? (
         // Under the name (past its icon), across the whole row.
         <TableRow
@@ -515,20 +566,28 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
   return (
     <ul aria-label={t`Items`} data-rows className={TILE_GRID}>
       {rows.map(({ item }) => (
-        <li
+        <FileContext
           key={item.id}
-          {...rowProps(item, o)}
-          aria-current={o.shownId === item.id}
-          className={cn(
-            TILE,
-            o.shownId === item.id && "border-primary bg-sidebar-accent ring-1 ring-primary",
-          )}
+          item={item}
+          o={o}
+          render={
+            <li
+              {...rowProps(item, o)}
+              aria-current={o.shownId === item.id}
+              className={cn(
+                TILE,
+                o.shownId === item.id && "border-primary bg-sidebar-accent ring-1 ring-primary",
+              )}
+            />
+          }
         >
           <TilePreview item={item} />
           <ItemMenu
             item={item}
             onAction={o.onAction}
             canRetry={item.status === "failed"}
+            agents={o.agents}
+            onSendToAgent={o.onSendToAgent}
             className="absolute top-3 right-3 bg-card/80"
           />
           {/* Three lines kept for every name, so tiles are one height and long names still differ. */}
@@ -552,7 +611,7 @@ export function GridView({ rows, o }: { rows: Row[]; o: RowInteraction }) {
               </>
             )}
           </span>
-        </li>
+        </FileContext>
       ))}
     </ul>
   );

@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { userEvent, within } from "storybook/test";
 import { setHideAmounts } from "../../lib/hide-amounts-preference";
 import { items } from "../../stories/fixtures/data-room";
 import { GridView, ListView, type RowInteraction, SubfolderList } from "./ItemRows";
@@ -9,7 +10,23 @@ const o: RowInteraction = {
   onToggle: () => undefined,
   onAction: () => undefined,
   folderPath: (id) => (id ? "Contracts / Sample vendor" : ""),
+  agents: [
+    { id: "bot_ada", name: "Ada", color: "#6366f1" },
+    { id: "bot_ben", name: "Ben", color: "#10b981" },
+    { id: "bot_cy", name: "Cy", color: "#f59e0b" },
+  ],
+  onSendToAgent: () => undefined,
 };
+
+/** Right-clicks the first file and opens the Send to agent submenu. */
+async function openSendToAgent(canvasElement: HTMLElement) {
+  const row = canvasElement.querySelector("[data-row]");
+  row?.dispatchEvent(
+    new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: 160, clientY: 60 }),
+  );
+  const menu = within(document.body);
+  await userEvent.click(await menu.findByRole("menuitem", { name: "Send to agent" }));
+}
 const rows = items.map((item) => ({ item, snippets: [] as string[] }));
 const hits = rows.slice(0, 2).map((row) => ({
   ...row,
@@ -290,4 +307,13 @@ export const GridWithPreviewsNarrow: Story = {
     return serveThumbnails();
   },
   render: () => <GridView rows={previewRows} o={o} />,
+};
+/** Right-click a row: the menu offers Send to agent, with the user's agents, recent first. */
+export const ListContextMenu: Story = {
+  render: () => <ListView rows={rows} o={o} />,
+  play: ({ canvasElement }) => openSendToAgent(canvasElement),
+};
+export const GridContextMenu: Story = {
+  render: () => <GridView rows={rows} o={o} />,
+  play: ({ canvasElement }) => openSendToAgent(canvasElement),
 };

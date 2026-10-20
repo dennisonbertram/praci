@@ -142,7 +142,7 @@ export function uploadToDataRoom(
 }
 
 /** The stored bytes (or, for "thumbnail", the small preview), fetched with the session and space header. */
-async function fetchDataRoomBlob(item: Pick<DataRoomApiItem, "id">, part = "content") {
+export async function fetchDataRoomBlob(item: Pick<DataRoomApiItem, "id">, part = "content") {
   const response = await fetch(`/api/data-room/items/${encodeURIComponent(item.id)}/${part}`, {
     headers: withSpaceHeaders(),
     credentials: "include",

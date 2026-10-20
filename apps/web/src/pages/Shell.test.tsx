@@ -157,6 +157,26 @@ describe("Composer", () => {
     expect(onDismissAttachmentNotice).toHaveBeenCalledTimes(1);
   });
 
+  it("shows a chip for a Data room file sent to the agent, lets Send run with no text, and removes it", () => {
+    const onSend = vi.fn(async () => true);
+    const onRemoveDataRoomItem = vi.fn();
+    const ref = {
+      id: "itm_1",
+      name: "Sample agreement.pdf",
+      mimeType: "application/pdf",
+      threadKey: "bot-1",
+    };
+    renderComposer(onSend, { dataRoomItems: [ref], onRemoveDataRoomItem });
+    const chip = container?.querySelector('[data-testid="data-room-chip"]');
+    expect(chip?.textContent).toContain("Sample agreement.pdf");
+    // Not sent until the person presses Send.
+    expect(onSend).not.toHaveBeenCalled();
+    const send = container?.querySelector<HTMLButtonElement>('button[aria-label="Send"]');
+    expect(send?.disabled).toBe(false);
+    act(() => chip?.querySelector("button")?.click());
+    expect(onRemoveDataRoomItem).toHaveBeenCalledWith(ref);
+  });
+
   describe("mention highlight when targets reload", () => {
     const researcher: ComposerMention = { kind: "bot", id: "bot-3", name: "Researcher" };
     const writer: ComposerMention = { kind: "bot", id: "bot-4", name: "Research Writer" };

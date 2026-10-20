@@ -102,6 +102,11 @@ msgstr "{0, plural, one {Its # transaction will be removed from Finance.} other 
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr "{0, plural, one {Last full month} other {Last # full months}}"
 
+#. placeholder {0}: files.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {Reviewing # file} other {Reviewing # files}}"
+msgstr "{0, plural, one {Reviewing # file} other {Reviewing # files}}"
+
 #. placeholder {0}: filteredRecent.length
 #: src/pages/ActivityList.tsx
 msgid "{0, plural, one {Show # finished run} other {Show # finished runs}}"
@@ -512,6 +517,7 @@ msgid "* So far"
 msgstr "* So far"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
 msgstr "+{more} more"
@@ -1005,6 +1011,7 @@ msgstr "Always allowed"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
@@ -1158,7 +1165,7 @@ msgstr "Artifact"
 msgid "Artifacts"
 msgstr "Artifacts"
 
-#: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Ascending"
 msgstr "Ascending"
 
@@ -1918,6 +1925,7 @@ msgstr "Clear filter"
 msgid "Clear filter {label}"
 msgstr "Clear filter {label}"
 
+#: src/pages/CapTable.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
 msgstr "Clear filters"
@@ -1926,7 +1934,7 @@ msgstr "Clear filters"
 msgid "Clear formatting"
 msgstr "Clear formatting"
 
-#: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr "Clear search"
@@ -3293,7 +3301,7 @@ msgstr "Deny"
 msgid "Deployment default"
 msgstr "Deployment default"
 
-#: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Descending"
 msgstr "Descending"
 
@@ -3857,6 +3865,7 @@ msgid "Filter"
 msgstr "Filter"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Filter by {label}"
 msgstr "Filter by {label}"
 
@@ -5457,6 +5466,10 @@ msgstr "No bot uses {0} yet. Choose bots on its page."
 msgid "No bots match"
 msgstr "No bots match"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "No change"
+msgstr "No change"
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
 msgstr "No chat apps linked yet."
@@ -5510,6 +5523,7 @@ msgstr "No mail connected"
 msgid "No mail matches this filter"
 msgstr "No mail matches this filter"
 
+#: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
 msgstr "No matches"
@@ -5851,7 +5865,9 @@ msgid "Open"
 msgstr "Open"
 
 #. placeholder {0}: group.title
+#. placeholder {0}: ref.name
 #. placeholder {0}: sameEmail.name
+#: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0}"
@@ -6709,6 +6725,7 @@ msgid "Remove attachments?"
 msgstr "Remove attachments?"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Remove filter {label}"
 msgstr "Remove filter {label}"
 
@@ -7177,6 +7194,7 @@ msgstr "Scroll sideways to see the whole graph."
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
@@ -7288,6 +7306,7 @@ msgstr "Searching your mail"
 msgid "Searching…"
 msgstr "Searching…"
 
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 msgid "Security"
 msgstr "Security"
@@ -7357,6 +7376,10 @@ msgstr "Send reset link"
 #: src/components/MailApprovalCard.tsx
 msgid "Send saved draft"
 msgstr "Send saved draft"
+
+#: src/components/data-room/SendToAgent.tsx
+msgid "Send to agent"
+msgstr "Send to agent"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
@@ -7646,6 +7669,7 @@ msgstr "Skip or deploy key"
 msgid "Skip to content"
 msgstr "Skip to content"
 
+#. placeholder {0}: failed.join(", ")
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"
@@ -7685,10 +7709,9 @@ msgstr "Software update"
 msgid "Something went wrong. Try again."
 msgstr "Something went wrong. Try again."
 
-#. placeholder {0}: labels[field]
-#: src/components/data-room/FilterBar.tsx
-msgid "Sort: {0}"
-msgstr "Sort: {0}"
+#: src/components/ListControls.tsx
+msgid "Sort: {fieldLabel}"
+msgstr "Sort: {fieldLabel}"
 
 #: src/pages/Inbox.tsx
 msgid "Sorting is taking longer than usual. Your mail is below."

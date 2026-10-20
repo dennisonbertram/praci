@@ -102,6 +102,11 @@ msgstr ""
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
 msgstr ""
 
+#. placeholder {0}: files.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {Reviewing # file} other {Reviewing # files}}"
+msgstr ""
+
 #. placeholder {0}: filteredRecent.length
 #: src/pages/ActivityList.tsx
 msgid "{0, plural, one {Show # finished run} other {Show # finished runs}}"
@@ -512,6 +517,7 @@ msgid "* So far"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
 msgstr ""
@@ -1005,6 +1011,7 @@ msgstr "Sempre permitido"
 
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Amount"
@@ -1158,7 +1165,7 @@ msgstr ""
 msgid "Artifacts"
 msgstr ""
 
-#: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Ascending"
 msgstr ""
 
@@ -1918,6 +1925,7 @@ msgstr ""
 msgid "Clear filter {label}"
 msgstr ""
 
+#: src/pages/CapTable.tsx
 #: src/pages/DataRoom.tsx
 msgid "Clear filters"
 msgstr ""
@@ -1926,7 +1934,7 @@ msgstr ""
 msgid "Clear formatting"
 msgstr ""
 
-#: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr ""
@@ -3293,7 +3301,7 @@ msgstr "Negar"
 msgid "Deployment default"
 msgstr "Padrão de implantação"
 
-#: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Descending"
 msgstr ""
 
@@ -3857,6 +3865,7 @@ msgid "Filter"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Filter by {label}"
 msgstr ""
 
@@ -5457,6 +5466,10 @@ msgstr ""
 msgid "No bots match"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "No change"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No chat apps linked yet."
 msgstr ""
@@ -5510,6 +5523,7 @@ msgstr ""
 msgid "No mail matches this filter"
 msgstr ""
 
+#: src/pages/CapTable.tsx
 #: src/pages/KnowledgeSection.tsx
 msgid "No matches"
 msgstr ""
@@ -5851,7 +5865,9 @@ msgid "Open"
 msgstr "Abrir"
 
 #. placeholder {0}: group.title
+#. placeholder {0}: ref.name
 #. placeholder {0}: sameEmail.name
+#: src/components/data-room/DataRoomRefChips.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Shell.tsx
 msgid "Open {0}"
@@ -6709,6 +6725,7 @@ msgid "Remove attachments?"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/ListControls.tsx
 msgid "Remove filter {label}"
 msgstr ""
 
@@ -7177,6 +7194,7 @@ msgstr ""
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/CapTable.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-picker.tsx
@@ -7288,6 +7306,7 @@ msgstr ""
 msgid "Searching…"
 msgstr "Pesquisando…"
 
+#: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 msgid "Security"
 msgstr ""
@@ -7356,6 +7375,10 @@ msgstr "Enviar link de redefinição"
 
 #: src/components/MailApprovalCard.tsx
 msgid "Send saved draft"
+msgstr ""
+
+#: src/components/data-room/SendToAgent.tsx
+msgid "Send to agent"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -7646,6 +7669,7 @@ msgstr "Ignorar ou implantar chave"
 msgid "Skip to content"
 msgstr ""
 
+#. placeholder {0}: failed.join(", ")
 #. placeholder {0}: skipped.join(", ")
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"
@@ -7685,9 +7709,8 @@ msgstr ""
 msgid "Something went wrong. Try again."
 msgstr "Algo deu errado. Tente novamente."
 
-#. placeholder {0}: labels[field]
-#: src/components/data-room/FilterBar.tsx
-msgid "Sort: {0}"
+#: src/components/ListControls.tsx
+msgid "Sort: {fieldLabel}"
 msgstr ""
 
 #: src/pages/Inbox.tsx

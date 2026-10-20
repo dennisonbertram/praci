@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { MemoryRouter, useLocation } from "react-router-dom";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const text = vi.hoisted(
   () =>
@@ -916,5 +916,162 @@ it("files an import into Finance / Cap Table, creating the folder when it is mis
     fileIds: ["g1"],
     driveFolderIds: [],
     folderId: "cap",
+  });
+});
+
+describe("search, filter and sort", () => {
+  const holder = (
+    name: string,
+    security: string,
+    shares: number | null,
+    percent: number | null,
+    amountUsd: number | null,
+    extra: { email?: string | null; organization?: string | null } = {},
+  ) => ({
+    name,
+    email: extra.email ?? null,
+    organization: extra.organization ?? null,
+    security,
+    shares,
+    amountUsd,
+    percent,
+  });
+  // Numbers chosen so a text sort gets them wrong: "9" sorts after "10" as text.
+  const sortable = {
+    ...snapshot,
+    optionPoolAvailable: null,
+    holders: [
+      holder("Nine", "Common", 900, 9, null, { email: "nine@zeta.test", organization: "Acme Co" }),
+      holder("Ten", "Common", 1_000_000, 10, null),
+      holder("Two", "Series Seed Preferred", 20_000, 2, null, { organization: "Birch Fund" }),
+      holder("Safe Nine", "SAFE", null, null, 9_000),
+      holder("Safe Hundred", "SAFE", null, null, 100_000),
+    ],
+  };
+  const rowNames = () =>
+    [...container.querySelectorAll("tbody tr")].map(
+      (tr) => tr.querySelector("td")?.firstElementChild?.textContent ?? "",
+    );
+  const search = () => document.querySelector<HTMLInputElement>("input[name=cap-table-search]");
+  const type = async (value: string) => {
+    const input = search() as HTMLInputElement;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  };
+  let search$ = "";
+  function Spy() {
+    search$ = useLocation().search;
+    return null;
+  }
+  const showAt = async (url: string) => {
+    rpcMock.list.mockResolvedValue([]);
+    rpcMock.capTable.mockResolvedValue({ snapshot: sortable, syncing: false });
+    await act(async () =>
+      root.render(
+        <MemoryRouter key={url} initialEntries={[url]}>
+          <Spy />
+          <CapTablePage />
+        </MemoryRouter>,
+      ),
+    );
+    await flush();
+  };
+
+  it("sorts by ownership, largest first, until another sort is chosen", async () => {
+    await showAt("/app/cap-table");
+    expect(rowNames().slice(0, 3)).toEqual(["Ten", "Nine", "Two"]);
+  });
+
+  it.each([
+    ["percent", "desc", ["Ten", "Nine", "Two", "Safe Nine", "Safe Hundred"]],
+    ["percent", "asc", ["Two", "Nine", "Ten", "Safe Nine", "Safe Hundred"]],
+    ["shares", "desc", ["Ten", "Two", "Nine", "Safe Nine", "Safe Hundred"]],
+    ["shares", "asc", ["Nine", "Two", "Ten", "Safe Nine", "Safe Hundred"]],
+    ["amountUsd", "desc", ["Safe Hundred", "Safe Nine", "Nine", "Ten", "Two"]],
+    ["amountUsd", "asc", ["Safe Nine", "Safe Hundred", "Nine", "Ten", "Two"]],
+    ["name", "asc", ["Nine", "Safe Hundred", "Safe Nine", "Ten", "Two"]],
+    ["name", "desc", ["Two", "Ten", "Safe Nine", "Safe Hundred", "Nine"]],
+  ])("sorts by %s %s as numbers, with missing values last", async (field, dir, expected) => {
+    await showAt(`/app/cap-table?sort=${field}&dir=${dir}`);
+    expect(rowNames()).toEqual(expected);
+  });
+
+  it("sorts by kind", async () => {
+    await showAt("/app/cap-table?sort=kind&dir=asc");
+    // Investors (the SAFEs and the preferred holder) before Shareholders.
+    expect(rowNames().slice(0, 3).sort()).toEqual(["Safe Hundred", "Safe Nine", "Two"]);
+    await showAt("/app/cap-table?sort=kind&dir=desc");
+    expect(rowNames().slice(0, 2).sort()).toEqual(["Nine", "Ten"]);
+  });
+
+  it("searches name, company and email", async () => {
+    await showAt("/app/cap-table");
+    await type("two");
+    expect(rowNames()).toEqual(["Two"]);
+    await type("ACME");
+    expect(rowNames()).toEqual(["Nine"]);
+    await type("zeta.test");
+    expect(rowNames()).toEqual(["Nine"]);
+    await type("birch");
+    expect(rowNames()).toEqual(["Two"]);
+  });
+
+  it("filters by security, and shows the filter only with a choice", async () => {
+    await showAt("/app/cap-table?security=SAFE");
+    expect(rowNames().sort()).toEqual(["Safe Hundred", "Safe Nine"]);
+    expect(button("Security: SAFE")).toBeDefined();
+    // A security the rows do not have is ignored.
+    await showAt("/app/cap-table?security=Missing");
+    expect(rowNames()).toHaveLength(5);
+    // One security means nothing to filter.
+    rpcMock.capTable.mockResolvedValue({
+      snapshot: { ...sortable, holders: sortable.holders.slice(0, 2) },
+      syncing: false,
+    });
+    await act(async () =>
+      root.render(
+        <MemoryRouter key="one-security" initialEntries={["/app/cap-table"]}>
+          <CapTablePage />
+        </MemoryRouter>,
+      ),
+    );
+    await flush();
+    expect(container.textContent).not.toContain("Security");
+  });
+
+  it("keeps search in the URL and clears it from the empty state", async () => {
+    await showAt("/app/cap-table");
+    await type("nobody");
+    expect(search$).toContain("q=nobody");
+    expect(container.textContent).toContain("No matches");
+    await click(button("Clear filters"));
+    expect(search$).not.toContain("q=");
+    expect(rowNames()).toHaveLength(5);
+  });
+
+  it("restores search and sort from a link", async () => {
+    await showAt("/app/cap-table?q=Ten&sort=name&dir=desc");
+    expect(search()?.value).toBe("Ten");
+    expect(rowNames()).toEqual(["Ten"]);
+    expect(button("Sort: Name")).toBeDefined();
+  });
+
+  it("flips direction and writes the sort to the URL", async () => {
+    await showAt("/app/cap-table");
+    await click(document.querySelector<HTMLElement>("button[aria-label=Descending]") ?? undefined);
+    expect(search$).toContain("dir=asc");
+    expect(search$).toContain("sort=percent");
+    expect(rowNames().slice(0, 3)).toEqual(["Two", "Nine", "Ten"]);
+  });
+
+  it("sorts by amount while amounts are hidden, without showing them", async () => {
+    setHideAmounts(true);
+    await showAt("/app/cap-table?sort=amountUsd&dir=desc");
+    expect(rowNames().slice(0, 2)).toEqual(["Safe Hundred", "Safe Nine"]);
+    const text = container.textContent ?? "";
+    expect(text).not.toContain("100,000");
+    expect(text).not.toContain("9,000");
   });
 });
