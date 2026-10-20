@@ -1499,7 +1499,6 @@ async function importEvent(
   const updateData: Prisma.CompanyEventUpdateInput = {
     claimFingerprints,
     sourceClaimKeys,
-    subjectKey: entityIdsLocked && !entityIdsMatch ? row.subjectKey : subjectKey,
   };
   if (!row.lockedFields.includes("stream")) updateData.stream = input.event.stream;
   if (!row.lockedFields.includes("kind")) updateData.kind = input.event.kind;

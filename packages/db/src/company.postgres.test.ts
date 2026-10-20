@@ -1952,6 +1952,51 @@ describePostgres("company foundation (PostgreSQL)", () => {
       }),
     );
     expect(originalChildReplay.id).toBe(childEvent.id);
+    const originalSecondChildReplay = persisted(
+      await company.importEvent({
+        ...secondChildEventInput,
+        evidence: {
+          ...secondChildEventInput.evidence,
+          contentHash: "canonical-subject-child-second-replay-hash",
+        },
+      }),
+    );
+    expect(originalSecondChildReplay.id).toBe(secondChildEvent.id);
+    expect(originalSecondChildReplay.id).not.toBe(originalChildReplay.id);
+    const repeatedOriginalChildReplay = persisted(
+      await company.importEvent({
+        ...childEventInput,
+        evidence: {
+          ...childEventInput.evidence,
+          contentHash: "canonical-subject-child-replay-repeat-hash",
+        },
+      }),
+    );
+    const repeatedOriginalSecondChildReplay = persisted(
+      await company.importEvent({
+        ...secondChildEventInput,
+        evidence: {
+          ...secondChildEventInput.evidence,
+          contentHash: "canonical-subject-child-second-replay-repeat-hash",
+        },
+      }),
+    );
+    expect(repeatedOriginalChildReplay.id).toBe(childEvent.id);
+    expect(repeatedOriginalSecondChildReplay.id).toBe(secondChildEvent.id);
+    expect(
+      await prisma.companyEvent.findMany({
+        where: { spaceId, ownerUserId: userId, id: { in: [childEvent.id, secondChildEvent.id] } },
+        select: { id: true, subjectKey: true },
+      }),
+    ).toEqual(
+      expect.arrayContaining([
+        { id: childEvent.id, subjectKey: `entities:${JSON.stringify([entityId(mergeChild)])}` },
+        {
+          id: secondChildEvent.id,
+          subjectKey: `entities:${JSON.stringify([entityId(secondMergeChild)])}`,
+        },
+      ]),
+    );
 
     const historicalSubjectEventInput = {
       event: {
