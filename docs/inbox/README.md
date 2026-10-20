@@ -21,6 +21,7 @@ Approved design: [approved-mockup.html](approved-mockup.html).
 | [05-triage-todos.md](05-triage-todos.md) | Background triage and to-dos |
 | [06-agent-panel.md](06-agent-panel.md) | Inbox agent panel in `ShellPage` |
 | [07-mobile.md](07-mobile.md) | Expo Inbox screens |
+| [10-email-experience.md](10-email-experience.md) | Proposal: piles, sender cleanup, unsubscribe, Gmail filters |
 
 ## Decisions
 
