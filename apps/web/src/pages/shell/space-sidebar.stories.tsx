@@ -1,4 +1,5 @@
 import type { Group } from "@rakazo/contracts";
+import { Button } from "@rakazo/ui-web";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -87,7 +88,7 @@ function SidebarFixture({ mode }: { mode: Mode }) {
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [fileDropBotId, setFileDropBotId] = useState<string | null>(null);
   const [, setFocusComposerBotId] = useState<string | null>(null);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(true);
   const [, setNewSpaceOpen] = useState(false);
   const [, setPickerInfoTopic] = useState<"group" | "space" | null>(null);
   const [, setSpaceMenu] = useState<{
@@ -220,7 +221,12 @@ function SidebarFixture({ mode }: { mode: Mode }) {
   };
 
   return (
-    <div className="relative h-dvh w-[360px] bg-background">
+    <div className="relative h-dvh w-full bg-background">
+      {!mobileSidebarOpen ? (
+        <Button className="m-2 lg:hidden" onClick={() => setMobileSidebarOpen(true)}>
+          Open navigation
+        </Button>
+      ) : null}
       <SpaceSidebar {...props} />
     </div>
   );
