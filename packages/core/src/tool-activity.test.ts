@@ -1,7 +1,7 @@
 import type { MessageBlock } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
 import { appendToolCallSegment, attachToolNotes } from "./events.js";
-import { isToolActivityBlock, reportedToolStep } from "./tool-activity.js";
+import { isToolActivityBlock, reportedToolStep, workingActivity } from "./tool-activity.js";
 
 describe("tool activity", () => {
   it.each<MessageBlock>([
@@ -85,5 +85,34 @@ describe("tool notes", () => {
     });
     expect(reportedToolStep([block("web_search")])).toBeNull();
     expect(reportedToolStep([{ kind: "text", text: "Hi" }])).toBeNull();
+  });
+});
+
+describe("workingActivity", () => {
+  const run = { id: "run-1", botId: "bot-1", status: "running" as const };
+  const bot = (blocks: MessageBlock[]) => ({
+    id: "m-1",
+    threadId: "t-1",
+    seq: 1,
+    role: "bot" as const,
+    botId: "bot-1",
+    runId: "run-1",
+    blocks,
+    createdAt: "2026-10-11T00:00:00.000Z",
+  });
+
+  it("classifies by run status, phase and newest bot blocks", () => {
+    const at = "2026-10-11T00:00:00.000Z";
+    expect(workingActivity({ ...run, status: "queued" }, [])).toEqual({ kind: "starting" });
+    expect(
+      workingActivity({ ...run, status: "queued", phase: { kind: "computer_wait", at } }, []),
+    ).toEqual({ kind: "phase", phase: { kind: "computer_wait", at } });
+    expect(workingActivity(run, [])).toEqual({ kind: "thinking" });
+    expect(workingActivity(run, [bot([{ kind: "text", text: "Hi" }])])).toEqual({
+      kind: "writing",
+    });
+    expect(
+      workingActivity(run, [bot([{ kind: "steps", steps: [{ label: "Mail search", count: 1 }] }])]),
+    ).toEqual({ kind: "tool", label: "Mail search", action: "mail-search" });
   });
 });

@@ -8,6 +8,8 @@ import type {
 } from "@rakazo/contracts";
 import {
   activeThreadRuns,
+  dismissedThreadRunError as coreDismissedThreadRunError,
+  threadRunError as coreThreadRunError,
   isActive,
   mergeThreadHistory,
   prependThreadHistoryPage,
@@ -73,22 +75,15 @@ export function threadRunError(
   snapshot: ThreadSnapshot | null,
   dismissedRunIds?: ReadonlySet<string>,
 ): string | null {
-  const run = snapshot?.run;
-  if (run?.status !== "failed" || dismissedRunIds?.has(run.id)) return null;
-  return run.error ? runErrorText(run.error) : null;
+  return coreThreadRunError(snapshot, runErrorText, dismissedRunIds);
 }
 
-/**
- * The error of a failed last run the user dismissed. The transcript keeps it as a short note, so
- * the question that failed does not look unanswered for no reason.
- */
+/** The error of a failed last run the user dismissed; the transcript keeps it as a short note. */
 export function dismissedThreadRunError(
   snapshot: ThreadSnapshot | null,
   dismissedRunIds: ReadonlySet<string>,
 ): string | null {
-  const run = snapshot?.run;
-  if (run?.status !== "failed" || !dismissedRunIds.has(run.id)) return null;
-  return run.error ? runErrorText(run.error) : "";
+  return coreDismissedThreadRunError(snapshot, runErrorText, dismissedRunIds);
 }
 
 export function clearActiveThreadRuns(snapshot: ThreadSnapshot): ThreadSnapshot {

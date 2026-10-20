@@ -77,6 +77,8 @@ export function createBackgroundJobHandlers(deps: {
   notificationChannels?: NotificationChannel[];
   /** Mail provider the `mail.sync` job syncs through: every process that runs jobs must pass it, or queued syncs fail. */
   mail?: MailProvider;
+  /** MAIL_WRITES_DISABLED: the `mail.sync` job then archives nothing for skip-inbox senders. */
+  mailWritesDisabled?: boolean;
   /** Gmail push settings; absent means polling only, and the watch renewal job does nothing. */
   gmailPush?: GmailPushConfig;
 }): BackgroundJobHandlers {
@@ -168,6 +170,7 @@ export function createBackgroundJobHandlers(deps: {
           prisma: deps.prisma,
           mail,
           jobs: deps.jobs,
+          mailWritesDisabled: deps.mailWritesDisabled,
           ...(deps.gmailPush
             ? {
                 afterSync: (account, context) =>

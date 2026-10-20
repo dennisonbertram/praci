@@ -23,7 +23,7 @@ These areas are at parity:
 
 Most of the gaps fall in five places:
 
-1. **Finance** has no mobile screen at all. A finance card in chat renders as nothing, so the message disappears (`blockText` in `apps/mobile/lib/api.ts` returns an empty string).
+1. **Finance** has no mobile screen at all. A finance card in chat shows only as plain text (`financeCardText` in `apps/mobile/lib/api.ts`).
 2. **Email is read-only.** Mobile Inbox reads mail (`inbox/list`, `inbox/get`, `inbox/refresh`, `inbox/agent`) and can complete to-dos, but has no message actions. You cannot archive, mark read or unread, search, filter, open attachments, compose, reply or forward. You also cannot review an email an agent drafted.
 3. **Routines** can be viewed but not listed, created, edited, scheduled, test-run or reviewed in run history.
 4. **Safety settings are desktop-only.** These cover approval rules and Auto Review, and approving or revoking agent and channel connections in messaging. A user can answer an approval on the phone but cannot see or revoke an "always allow" rule there.
@@ -33,7 +33,7 @@ Most of the gaps fall in five places:
    - disabled tools
    - knowledge documents and skill management
    - scratchpad
-   - the skill draft card
+   - the skill draft card (text fallback only)
 
 ## Desktop-only by design (no work planned)
 
@@ -58,7 +58,7 @@ Each phase can ship on its own. Within a phase, items touch separate screens and
 
 This is the cheapest phase and matters most for trust, because it stops mobile from hiding content.
 
-- Give finance and skill draft blocks a text fallback, as email and chart blocks already have. Without one, a message made only of those blocks is blank.
+- Finance and skill draft blocks now have a text fallback in `blockText`, as email and chart blocks do. Native cards are planned in Phases 5 and 7.
 - Add the six missing mobile locales: es, fr, hi, ko, pt-BR and tr. Mobile has de, ru and zh; web has all ten.
 
 ### Phase 2: safety controls (S)
@@ -120,7 +120,7 @@ This is the cheapest phase and matters most for trust, because it stops mobile f
 
 ### Not yet built anywhere
 
-The Data room (epic #61) is still in open PRs. Its mobile work is already tracked as #59 and should follow the same rule: ship on both surfaces, or say why not.
+The Legal page, Cap table page and Data room (epic #61) are merged on web with no mobile screen. Mobile Data room work is tracked as #59. Hide amounts, spreadsheet sheet paging, PDF preview, chart blocks in chat, mail approval editing and the remembered-message indicator are also web-only. All of them are rows at the end of [inventory.md](inventory.md) and follow the same rule: ship on both surfaces, or say why not.
 
 ## Decisions needed
 
