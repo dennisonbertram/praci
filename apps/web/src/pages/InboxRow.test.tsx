@@ -193,12 +193,11 @@ it("shows no row actions when the page offers none", async () => {
   expect(container.querySelector('button[aria-label="Archive"]')).toBeNull();
 });
 
-it("shows the reason a Needs reply row needs a reply as a tooltip, only there", async () => {
+it("shows the summary after the subject, with no tooltip, also on a Needs reply row", async () => {
   const reason = "Asks for dates by Friday";
   const there = await render(mail({ reason }), { hideAttention: true });
-  expect(there.querySelector("button")?.getAttribute("title")).toBe(reason);
-  const elsewhere = await render(mail({ reason }));
-  expect(elsewhere.querySelector("button")?.hasAttribute("title")).toBe(false);
+  expect(there.querySelector("button")?.hasAttribute("title")).toBe(false);
+  expect(there.querySelector("button")?.textContent).toContain(reason);
 });
 
 it("shows the year only for mail from another year", async () => {

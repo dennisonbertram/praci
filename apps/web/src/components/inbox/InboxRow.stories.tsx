@@ -199,3 +199,46 @@ export const Group: StoryObj = {
 export const GroupWithoutTitle: StoryObj = {
   render: () => <InboxGroup rows={rows.slice(0, 2)} onOpen={noop} onMark={undefined} />,
 };
+
+/** The model's one-line summary shows after the subject in place of the preview. */
+export const WithSummary: Story = {
+  args: {
+    row: row("summary", {
+      from: "Demo Store",
+      subject: "Your sample order shipped",
+      reason: "Sample order 1042 shipped, arrives Thursday",
+      category: "receipt",
+    }),
+  },
+};
+
+/** The checkbox takes the place of the unread dot once the row is checked. */
+export const Picked: Story = {
+  args: { row: rows[0] as MailRow, picked: true, anyPicked: true, onPick: noop },
+};
+
+/** Once any row is checked, every row shows its checkbox. */
+export const AnyPicked: StoryObj = {
+  render: () => (
+    <div>
+      <InboxRow
+        row={rows[0] as MailRow}
+        onOpen={noop}
+        onMark={undefined}
+        picked
+        anyPicked
+        onPick={noop}
+      />
+      <InboxRow row={base} onOpen={noop} onMark={undefined} anyPicked onPick={noop} />
+    </div>
+  ),
+};
+
+/** Gmail's spam is not in the inbox, so the Spam pile leaves the Archived badge off. */
+export const SpamNoArchivedBadge: Story = {
+  args: {
+    row: row("spam_gmail", { from: "Junk Sample", subject: "Limited offer", inInbox: false }),
+    showArchived: false,
+    onPick: noop,
+  },
+};

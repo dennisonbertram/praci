@@ -1,8 +1,14 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { InboxListOutput, InboxMark, InboxTodo, MailRow } from "@rakazo/contracts";
+import type {
+  InboxListOutput,
+  InboxMark,
+  InboxPileCounts,
+  InboxTodo,
+  MailRow,
+} from "@rakazo/contracts";
 import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
-import { groupInbox } from "@rakazo/core";
+import { archivableIds, groupBySender, groupInbox } from "@rakazo/core";
 import {
   Button,
   DropdownMenu,
@@ -23,12 +29,11 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-  Toggle,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@rakazo/ui-web";
-import { ListFilter, Mail, MailWarning, Search, SquarePen, X } from "lucide-react";
+import { Archive, ListFilter, Mail, MailWarning, Search, SquarePen, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { InboxConsentPrompt } from "../components/AiDataSharing";
@@ -36,7 +41,13 @@ import { AskBotButton } from "../components/AskBotButton";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
 import { HideAmountsButton } from "../components/HideAmountsToggle";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
+import { InboxPileTabs } from "../components/inbox/InboxPileTabs";
 import { InboxGroup } from "../components/inbox/InboxRow";
+import {
+  InboxSenderGroup,
+  isSenderGroupId,
+  senderGroupId,
+} from "../components/inbox/InboxSenderGroup";
 import { InboxShortcuts } from "../components/inbox/InboxShortcuts";
 import { TodoCard } from "../components/inbox/TodoCard";
 import { PageEmptyState } from "../components/PageEmptyState";
@@ -59,6 +70,7 @@ const ALL = "all";
 /** While a refresh reports its sync still running, ask again this often, at most this many times. */
 const SYNC_POLL_MS = 2_000;
 const SYNC_POLL_MAX = 60;
+const couldNotArchive = (count: number) => t`Couldn't archive ${count}`;
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
 const TRIAGE_MAX_POLLS = 12;
@@ -77,6 +89,7 @@ let rememberedTab: string | undefined;
 type Status =
   | { kind: "marked"; messageId: string; mark: InboxMark; sender: string }
   | { kind: "archived"; messageId: string; subject: string }
+  | { kind: "archivedMany"; messageIds: string[] }
   | { kind: "moved"; messageId: string; subject: string };
 
 type InboxFilter = (typeof InboxFilterSchema.options)[number];
@@ -130,7 +143,7 @@ export function InboxPage({
   const navigate = useNavigate();
   const openId = params.get("mail");
   const listState = readInboxListState(params);
-  const { filter, query, view, category } = listState;
+  const { filter, query, pile, category } = listState;
   const filtered = Boolean(filter || query);
   const [draft, setDraft] = useState(query);
   // Kept while the app is open, so leaving the Inbox and coming back keeps the chosen account.
@@ -140,7 +153,7 @@ export function InboxPage({
   }, [tab]);
   const [data, setData] = useState<InboxListOutput | null>(null);
   // Which request `data` answers, so a changed tab, filter or search shows loading, not old rows.
-  const listKey = JSON.stringify([tab, filter, query, view, category]);
+  const listKey = JSON.stringify([tab, filter, query, pile, category]);
   const [dataKey, setDataKey] = useState("");
   // Lists already fetched this session, shown at once while their key is refetched.
   const cache = useRef(new Map<string, InboxListOutput>());
@@ -163,7 +176,14 @@ export function InboxPage({
   const announceTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [todosByTab, setTodosByTab] = useState<Record<string, InboxTodo[]>>({});
   const [todoRefresh, setTodoRefresh] = useState(0);
+  // The focused row or group header (a `senderGroupId`); `picked` holds the checked rows.
   const [selectedId, setSelectedId] = useState<string | undefined>();
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set());
+  const lastPicked = useRef<string | undefined>(undefined);
+  // Sender groups opened in the Updates and Newsletters piles, by group key.
+  const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
+  // The last pile counts the server sent; a filtered list carries none, so the Spam count stays.
+  const [pileCounts, setPileCounts] = useState<InboxPileCounts | undefined>();
   const [help, setHelp] = useState(false);
   const searchRef = useRef<HTMLFormElement>(null);
   const [synced, setSynced] = useState(false);
@@ -239,6 +259,7 @@ export function InboxPage({
         if (!live()) return;
         listApplied.current = request;
         cache.current.set(key, next);
+        if (next.pileCounts) setPileCounts(next.pileCounts);
         setData(next);
         setDataKey(key);
         endRetry();
@@ -260,7 +281,14 @@ export function InboxPage({
         else setError(errorText(cause));
         endRetry();
       });
-  }, [tab, filter, query, view, category, reload, paused]);
+  }, [tab, filter, query, pile, category, reload, paused]);
+
+  // Checks and open groups belong to one list.
+  useEffect(() => {
+    setPicked(new Set());
+    setExpanded(new Set());
+    lastPicked.current = undefined;
+  }, [listKey]);
 
   useEffect(() => setDraft(query), [query]);
 
@@ -386,9 +414,12 @@ export function InboxPage({
     // The to-dos reload when triage finishes; sorting ends when they arrive, so the page changes once.
     else if (!shown?.triagePending && !sortEnding.current) setSorting(false);
   }, [firstSort, shown?.triagePending]);
-  const narrowed = triage && (view === "important" || Boolean(category));
+  const narrowed = triage && Boolean(category);
   // A search or narrowed list is one date-ordered list under a result count, not Needs reply / Today / Earlier.
   const resultsView = filtered || narrowed;
+  // Updates and Newsletters list one group per sender; Spam is a flat list; Important is dated.
+  const grouped = pile === "updates" || pile === "newsletters";
+  const senderGroups = useMemo(() => (grouped ? groupBySender(rows) : []), [grouped, rows]);
   const groups = useMemo(
     () =>
       groupInbox(
@@ -408,10 +439,22 @@ export function InboxPage({
       ),
     [rows, resultsView, sorting],
   );
-  const ids = useMemo(
-    () => [...groups.needsReply, ...groups.today, ...groups.earlier].map((row) => row.id),
-    [groups],
-  );
+  // Display order. A group header takes its own id; a sender with one message shows as that message.
+  const ids = useMemo(() => {
+    if (grouped)
+      return senderGroups.flatMap((group) =>
+        group.count === 1
+          ? [group.newest.id]
+          : [
+              senderGroupId(group.key),
+              ...(expanded.has(group.key) ? group.rows.map((row) => row.id) : []),
+            ],
+      );
+    if (pile === "spam") return rows.map((row) => row.id);
+    return [...groups.needsReply, ...groups.today, ...groups.earlier].map((row) => row.id);
+  }, [grouped, senderGroups, expanded, pile, rows, groups]);
+  // The messages the open message's arrows and the prefetch can reach.
+  const messageIds = useMemo(() => ids.filter((id) => !isSenderGroupId(id)), [ids]);
   const accounts = data?.accounts ?? [];
   const failed = error || (shown ? syncErrorText(shown, retried && !retrying) : "");
   const limited =
@@ -436,11 +479,7 @@ export function InboxPage({
   const setParam = (name: Parameters<typeof setInboxListParam>[1], value: string) =>
     setParams(setInboxListParam(params, name, value));
   const showTodos =
-    triage &&
-    !sorting &&
-    !filtered &&
-    !narrowed &&
-    shown?.triageBlocked?.reason !== "needs_consent";
+    triage && !sorting && pile === "important" && shown?.triageBlocked?.reason !== "needs_consent";
   const loading =
     !shown ||
     (!filtered && shown.rows.length === 0 && !synced) ||
@@ -453,7 +492,7 @@ export function InboxPage({
     });
     setData((list) => list && patch(list, Boolean(query)));
     setMore((m) => ({ ...m, rows: change(m.rows, Boolean(query)) }));
-    // The key is [tab, filter, query, view, category].
+    // The key is [tab, filter, query, pile, category].
     for (const [key, list] of cache.current)
       cache.current.set(key, patch(list, Boolean(JSON.parse(key)[2])));
   };
@@ -518,6 +557,109 @@ export function InboxPage({
       .then(onRefreshed)
       .catch((cause) => setError(errorText(cause)))
       .then(() => setReload((n) => n + 1));
+  };
+  const spamView = pile === "spam";
+  // Checked rows that are still listed, so a reload never leaves a count for rows that are gone.
+  const pickedRows = useMemo(() => rows.filter((row) => picked.has(row.id)), [rows, picked]);
+  const pickedCount = pickedRows.length;
+  const pickedSet = useMemo(() => new Set(pickedRows.map((row) => row.id)), [pickedRows]);
+  const groupRows = (id: string) =>
+    senderGroups.find((group) => senderGroupId(group.key) === id)?.rows ?? [];
+  // Checks or unchecks rows together; unchecking applies only when every one of them is checked.
+  const togglePicked = (messageIds: string[]) =>
+    setPicked((current) => {
+      const next = new Set(current);
+      const all = messageIds.every((id) => next.has(id));
+      for (const id of messageIds) {
+        if (all) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
+  // Shift extends from the last checked row over the rows in view; a group header is not in the range.
+  // ponytail: the range covers the visible message rows only; a closed group's rows join it only through its own checkbox.
+  const pick = (messageId: string, { shift }: { shift: boolean }) => {
+    const anchor = lastPicked.current;
+    const from = shift && anchor ? messageIds.indexOf(anchor) : -1;
+    const to = messageIds.indexOf(messageId);
+    lastPicked.current = messageId;
+    if (from < 0 || to < 0) return togglePicked([messageId]);
+    const range = messageIds.slice(Math.min(from, to), Math.max(from, to) + 1);
+    setPicked((current) => new Set([...current, ...range]));
+  };
+  const toggleId = (id: string) => {
+    if (isSenderGroupId(id)) togglePicked(groupRows(id).map((row) => row.id));
+    else pick(id, { shift: false });
+  };
+  // One call archives the whole selection or group; Undo puts back what it archived.
+  const archiveMany = (candidates: MailRow[]) => {
+    const messageIds = archivableIds(candidates, spamView);
+    if (messageIds.length === 0) return;
+    const gone = new Set(messageIds);
+    setPicked(new Set());
+    // The selection moves on to the nearest row or group that stays.
+    const stays = (id: string) =>
+      isSenderGroupId(id) ? !groupRows(id).every((row) => gone.has(row.id)) : !gone.has(id);
+    if (selectedId && !stays(selectedId)) {
+      const index = ids.indexOf(selectedId);
+      setSelectedId(
+        ids.slice(index + 1).find(stays) ?? ids.slice(0, Math.max(index, 0)).reverse().find(stays),
+      );
+    }
+    patchRows((list, searched) =>
+      searched
+        ? list.map((row) => (gone.has(row.id) ? { ...row, inInbox: false } : row))
+        : list.filter((row) => !gone.has(row.id)),
+    );
+    setStatus({ kind: "archivedMany", messageIds });
+    setError("");
+    // A pending Move to Inbox finishes first, so the archive is not overtaken by it.
+    const call = Promise.all(messageIds.map((id) => archiving.current.get(id))).then(() =>
+      rpc.inbox.archiveMany({ messageIds, ...(spamView ? { allowSpam: true } : {}) }),
+    );
+    // Each id resolves to whether it was archived, so Undo never overtakes the call or restores a failure.
+    for (const id of messageIds)
+      archiving.current.set(
+        id,
+        call.then(
+          (result) => result.done.includes(id),
+          () => false,
+        ),
+      );
+    call
+      .then((result) => {
+        onRefreshed();
+        if (result.failed.length) setError(couldNotArchive(result.failed.length));
+        // A failed id comes back with the real list; the Spam count follows the archive.
+        if (result.failed.length || spamView) setReload((n) => n + 1);
+      })
+      .catch((cause) => {
+        setError(errorText(cause));
+        setReload((n) => n + 1);
+      });
+  };
+  const unarchiveMany = async (messageIds: string[]) => {
+    setStatus(null);
+    const saved = await Promise.all(messageIds.map((id) => archiving.current.get(id)));
+    for (const id of messageIds) archiving.current.delete(id);
+    // An id whose archive failed is already back with the reloaded list.
+    const restore = messageIds.filter((_, index) => saved[index] !== false);
+    if (restore.length === 0) return;
+    setError("");
+    rpc.inbox
+      .unarchiveMany({ messageIds: restore })
+      // A thread Gmail could not put back stays archived, and the reloaded list shows that.
+      .then(onRefreshed)
+      .catch((cause) => setError(errorText(cause)))
+      .then(() => setReload((n) => n + 1));
+  };
+  // The checked rows when there are any, else the focused row or group.
+  const archiveFocused = (id: string | undefined) => {
+    if (pickedRows.length > 0) return archiveMany(pickedRows);
+    if (!id) return;
+    if (isSenderGroupId(id)) return archiveMany(groupRows(id));
+    const target = rows.find((row) => row.id === id);
+    if (target?.inInbox) archive(id);
   };
   // The row changes at once; a failed save puts it back.
   const mark = (messageId: string, value: InboxMark | null) => {
@@ -594,11 +736,20 @@ export function InboxPage({
     }, 800);
     return () => clearTimeout(timer);
   }, [openId, openRowId, openUnread]);
-  const openIndex = openId ? ids.indexOf(openId) : -1;
+  const openIndex = openId ? messageIds.indexOf(openId) : -1;
+  const toggleGroup = (id: string) => {
+    const key = id.slice(senderGroupId("").length);
+    setSelectedId(id);
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (!next.delete(key)) next.add(key);
+      return next;
+    });
+  };
   const focusSearch = () => searchRef.current?.querySelector("input")?.focus();
   const clearFilters = () => {
     const next = new URLSearchParams(params);
-    for (const name of ["q", "filter", "category", "view", "mail"]) next.delete(name);
+    for (const name of ["q", "filter", "category", "pile", "mail"]) next.delete(name);
     setParams(next);
   };
 
@@ -607,14 +758,28 @@ export function InboxPage({
     selectedId,
     enabled: !paused && !openId && !composing && !help,
     select: setSelectedId,
-    open: openMessage,
+    // Enter on a group header opens or closes the group.
+    open: (id) => (isSenderGroupId(id) ? toggleGroup(id) : openMessage(id)),
     focusSearch,
     compose: accounts.length > 0 ? () => setComposing(true) : undefined,
-    archive: (id) => {
-      if (rows.find((row) => row.id === id)?.inInbox) archive(id);
-    },
+    toggle: toggleId,
+    hasPicked: pickedRows.length > 0,
+    archive: archiveFocused,
     help: () => setHelp(true),
   });
+  // Escape unchecks the rows when no dialog or field is using the key.
+  useEffect(() => {
+    if (picked.size === 0 || openId || composing || help) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || event.defaultPrevented) return;
+      const target = event.target instanceof Element ? event.target : null;
+      if (target?.closest("input,textarea,select,[contenteditable]")) return;
+      if (document.querySelector('[role="dialog"],[role="alertdialog"]')) return;
+      setPicked(new Set());
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [picked.size, openId, composing, help]);
   // "?" also works with a message open, where the list's keys are off.
   useEffect(() => {
     if (paused || !openId || composing || help) return;
@@ -633,11 +798,11 @@ export function InboxPage({
   }, [paused, openId, composing, help]);
   // Warm the cache so the first messages and the selected one open instantly.
   useEffect(() => {
-    for (const id of ids.slice(0, 3)) prefetchInboxMessage(id);
-  }, [ids]);
+    for (const id of messageIds.slice(0, 3)) prefetchInboxMessage(id);
+  }, [messageIds]);
   // Debounced so holding j or k does not fetch every row passed over.
   useEffect(() => {
-    if (!selectedId) return;
+    if (!selectedId || isSenderGroupId(selectedId)) return;
     const timer = setTimeout(() => prefetchInboxMessage(selectedId), PREFETCH_DELAY_MS);
     return () => clearTimeout(timer);
   }, [selectedId]);
@@ -681,9 +846,12 @@ export function InboxPage({
     </Button>
   );
 
+  const count = status?.kind === "archivedMany" ? status.messageIds.length : 0;
   const toast = status ? (
     <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-lg bg-primary py-1 ps-3 pe-1 text-sm text-primary-foreground shadow-lg">
-      {status.kind === "archived" ? (
+      {status.kind === "archivedMany" ? (
+        <Trans>Archived {count}</Trans>
+      ) : status.kind === "archived" ? (
         <span className="min-w-0 truncate" dir="auto">
           {status.subject ? (
             <Trans>Archived "{maskCurrencyWhenHidden(status.subject)}"</Trans>
@@ -704,11 +872,13 @@ export function InboxPage({
         variant="secondary"
         size="sm"
         onClick={() =>
-          status.kind === "archived"
-            ? unarchive(status.messageId)
-            : status.kind === "moved"
-              ? archive(status.messageId)
-              : mark(status.messageId, null)
+          status.kind === "archivedMany"
+            ? unarchiveMany(status.messageIds)
+            : status.kind === "archived"
+              ? unarchive(status.messageId)
+              : status.kind === "moved"
+                ? archive(status.messageId)
+                : mark(status.messageId, null)
         }
       >
         <Trans>Undo</Trans>
@@ -786,17 +956,6 @@ export function InboxPage({
         actions={
           <>
             <HideAmountsButton />
-            {triage ? (
-              <Toggle
-                variant="outline"
-                size="sm"
-                className="pointer-coarse:h-10 aria-pressed:bg-primary aria-pressed:text-primary-foreground aria-pressed:hover:bg-primary/90"
-                pressed={view === "important"}
-                onPressedChange={(pressed) => setParam("view", pressed ? "important" : "")}
-              >
-                <Trans>Important</Trans>
-              </Toggle>
-            ) : null}
             <DropdownMenu>
               <DropdownMenuTrigger
                 data-testid="inbox-filter"
@@ -891,6 +1050,13 @@ export function InboxPage({
           </>
         }
       />
+      {accounts.length > 0 ? (
+        <InboxPileTabs
+          value={pile}
+          counts={pileCounts}
+          onChange={(next) => setParam("pile", next === "important" ? "" : next)}
+        />
+      ) : null}
       {accounts.length > 1 ? (
         <Tabs
           className="-mt-2 mb-4"
@@ -974,7 +1140,7 @@ export function InboxPage({
                   <Trans>Clear</Trans>
                 </Button>
               </>
-            ) : filter || category || view === "important" ? (
+            ) : filter || category ? (
               <>
                 <p>
                   <Trans>No mail matches this filter</Trans>
@@ -992,7 +1158,7 @@ export function InboxPage({
         )
       ) : shown ? (
         <>
-          {filtered || narrowed ? null : shown.triageBlocked?.reason === "needs_consent" ? (
+          {pile !== "important" ? null : shown.triageBlocked?.reason === "needs_consent" ? (
             // Allowing syncs again, which is what queues triage now that it may run.
             consentDismissed ? null : (
               <InboxConsentPrompt
@@ -1043,49 +1209,111 @@ export function InboxPage({
               </Button>
             </div>
           ) : null}
-          <InboxGroup
-            title={<Trans>Needs reply</Trans>}
-            hideAttention
-            rows={groups.needsReply}
-            onOpen={openMessage}
-            onMark={triage ? mark : undefined}
-            onArchive={archive}
-            onRead={setRead}
-            selectedId={selectedId}
-          />
-          {resultsView ? (
+          {pickedRows.length > 0 ? (
+            <div className="sticky top-0 z-20 mb-3 flex items-center gap-2 rounded-lg bg-muted py-1 ps-3 pe-1 text-sm">
+              <span className="tabular-nums">{t`${pickedCount} selected`}</span>
+              <Button size="sm" onClick={() => archiveMany(pickedRows)}>
+                <Archive aria-hidden="true" />
+                <Trans>Archive</Trans>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
+                <Trans>Clear</Trans>
+              </Button>
+            </div>
+          ) : null}
+          {grouped ? (
+            <section className="mb-5">
+              <div className="border-t border-foreground/10">
+                {senderGroups.map((group) => (
+                  <InboxSenderGroup
+                    key={group.key}
+                    group={group}
+                    expanded={expanded.has(group.key)}
+                    onToggle={() => toggleGroup(senderGroupId(group.key))}
+                    onOpen={openMessage}
+                    onMark={triage ? mark : undefined}
+                    onArchive={archive}
+                    onRead={setRead}
+                    onArchiveGroup={() => archiveMany(group.rows)}
+                    onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
+                    selectedId={selectedId}
+                    pickedIds={pickedSet}
+                    onPick={pick}
+                    hideNewsletter={pile === "newsletters"}
+                  />
+                ))}
+              </div>
+            </section>
+          ) : spamView ? (
             <InboxGroup
-              rows={[...groups.today, ...groups.earlier]}
-              hideAttention={view === "important"}
+              rows={rows}
               onOpen={openMessage}
               onMark={triage ? mark : undefined}
               onArchive={archive}
               onRead={setRead}
               selectedId={selectedId}
+              pickedIds={pickedSet}
+              onPick={pick}
+              showArchived={false}
             />
           ) : (
             <>
               <InboxGroup
-                // Today's mail that needs a reply is above, so this group says it holds the rest.
-                title={
-                  groups.needsReply.length ? <Trans>Other mail today</Trans> : <Trans>Today</Trans>
-                }
-                rows={groups.today}
+                title={<Trans>Needs reply</Trans>}
+                hideAttention
+                rows={groups.needsReply}
                 onOpen={openMessage}
                 onMark={triage ? mark : undefined}
                 onArchive={archive}
                 onRead={setRead}
                 selectedId={selectedId}
+                pickedIds={pickedSet}
+                onPick={pick}
               />
-              <InboxGroup
-                title={<Trans>Earlier</Trans>}
-                rows={groups.earlier}
-                onOpen={openMessage}
-                onMark={triage ? mark : undefined}
-                onArchive={archive}
-                onRead={setRead}
-                selectedId={selectedId}
-              />
+              {resultsView ? (
+                <InboxGroup
+                  rows={[...groups.today, ...groups.earlier]}
+                  onOpen={openMessage}
+                  onMark={triage ? mark : undefined}
+                  onArchive={archive}
+                  onRead={setRead}
+                  selectedId={selectedId}
+                  pickedIds={pickedSet}
+                  onPick={pick}
+                />
+              ) : (
+                <>
+                  <InboxGroup
+                    // Today's mail that needs a reply is above, so this group says it holds the rest.
+                    title={
+                      groups.needsReply.length ? (
+                        <Trans>Other mail today</Trans>
+                      ) : (
+                        <Trans>Today</Trans>
+                      )
+                    }
+                    rows={groups.today}
+                    onOpen={openMessage}
+                    onMark={triage ? mark : undefined}
+                    onArchive={archive}
+                    onRead={setRead}
+                    selectedId={selectedId}
+                    pickedIds={pickedSet}
+                    onPick={pick}
+                  />
+                  <InboxGroup
+                    title={<Trans>Earlier</Trans>}
+                    rows={groups.earlier}
+                    onOpen={openMessage}
+                    onMark={triage ? mark : undefined}
+                    onArchive={archive}
+                    onRead={setRead}
+                    selectedId={selectedId}
+                    pickedIds={pickedSet}
+                    onPick={pick}
+                  />
+                </>
+              )}
             </>
           )}
           {filtered && fresh && more.token ? (
@@ -1098,7 +1326,7 @@ export function InboxPage({
             <p className="pb-2 text-center text-xs text-muted-foreground">
               <Trans>No more results</Trans>
             </p>
-          ) : !resultsView && rows.length > 0 ? (
+          ) : pile === "important" && rows.length > 0 ? (
             <div className="grid place-items-center pb-2">
               <Button
                 variant="ghost"
@@ -1116,8 +1344,8 @@ export function InboxPage({
         messageId={openId}
         subject={openRow?.subject}
         onClose={closeMessage}
-        previousId={openIndex > 0 ? ids[openIndex - 1] : undefined}
-        nextId={openIndex >= 0 ? ids[openIndex + 1] : undefined}
+        previousId={openIndex > 0 ? messageIds[openIndex - 1] : undefined}
+        nextId={openIndex >= 0 ? messageIds[openIndex + 1] : undefined}
         onNavigate={goToMessage}
         unread={openRow?.unread}
         inInbox={openRow?.inInbox}
