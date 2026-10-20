@@ -3798,6 +3798,8 @@ const MessageBubble = memo(function MessageBubble({
                 artifactId={attachment.artifactId}
                 name={attachment.name ?? t("Image")}
                 mimeType={attachment.mimeType ?? "image/png"}
+                alt={attachment.alt}
+                caption={attachment.caption}
                 labelColor={
                   message.role === "user" ? tokens.secondaryForeground : tokens.foreground
                 }

@@ -3,10 +3,11 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { withVisibleRoot } from "../../stories/decorators";
-import { grayPngBase64, grayPngUrl } from "../../stories/fixtures";
+import { grayPngUrl, samplePngBase64 } from "../../stories/fixtures";
 import {
   AppConnectCard,
   ArtifactImage,
+  ArtifactImageGrid,
   ChartBlockView,
   ChartCanvas,
   ChoiceCard,
@@ -244,7 +245,7 @@ export const ChartBlockExpanded: Story = {
 
 export const ArtifactImageLoaded: Story = {
   beforeEach: () =>
-    mockRpc({ "artifacts.get": { contentBase64: grayPngBase64, mimeType: "image/png" } }),
+    mockRpc({ "artifacts.get": { contentBase64: samplePngBase64, mimeType: "image/png" } }),
   render: () => (
     <ArtifactImage target={{ botId: "bot_ada" }} artifactId="art_1" name="Sample picture" />
   ),
@@ -252,7 +253,7 @@ export const ArtifactImageLoaded: Story = {
 
 export const ArtifactImagePreview: Story = {
   beforeEach: () =>
-    mockRpc({ "artifacts.get": { contentBase64: grayPngBase64, mimeType: "image/png" } }),
+    mockRpc({ "artifacts.get": { contentBase64: samplePngBase64, mimeType: "image/png" } }),
   render: () => (
     <ArtifactImage target={{ botId: "bot_ada" }} artifactId="art_2" name="Sample picture" />
   ),
@@ -262,10 +263,49 @@ export const ArtifactImagePreview: Story = {
   },
 };
 
-/** Until the image arrives, or when it cannot be fetched, the name stands in for it. */
+/** Until the image arrives, a skeleton stands in for it. */
 export const ArtifactImagePending: Story = {
   beforeEach: () => mockRpc({ "artifacts.get": () => new Promise(() => undefined) }),
   render: () => (
     <ArtifactImage target={{ botId: "bot_ada" }} artifactId="art_3" name="Sample picture" />
+  ),
+};
+
+export const ArtifactImageCaptioned: Story = {
+  beforeEach: () =>
+    mockRpc({ "artifacts.get": { contentBase64: samplePngBase64, mimeType: "image/png" } }),
+  render: () => (
+    <ArtifactImage
+      target={{ botId: "bot_ada" }}
+      artifactId="art_4"
+      name="Sample picture"
+      alt="A plain gray square"
+      caption="Sample caption"
+    />
+  ),
+};
+
+/** Several images from one show_image call. */
+export const ArtifactImageGroup: Story = {
+  beforeEach: () =>
+    mockRpc({ "artifacts.get": { contentBase64: samplePngBase64, mimeType: "image/png" } }),
+  render: () => (
+    <ArtifactImageGrid
+      target={{ botId: "bot_ada" }}
+      images={["a", "b", "c"].map((id) => ({
+        kind: "image" as const,
+        artifactId: `art_${id}`,
+        mimeType: "image/png",
+        name: `sample-${id}.png`,
+        caption: id === "a" ? "Sample caption" : undefined,
+      }))}
+    />
+  ),
+};
+
+export const ArtifactImageFailed: Story = {
+  beforeEach: () => mockRpc({ "artifacts.get": () => Promise.reject(new Error("gone")) }),
+  render: () => (
+    <ArtifactImage target={{ botId: "bot_ada" }} artifactId="art_5" name="sample-missing.png" />
   ),
 };
