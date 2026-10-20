@@ -1,0 +1,147 @@
+:root {
+  --bg: #fafaf8;
+  --fg: #1a1a1a;
+  --muted: #5f5f5b;
+  --border: #d6d5d0;
+  --gutter: 16px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1a;
+    --fg: #ecebe6;
+    --muted: #a3a29c;
+    --border: #3a3a37;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--fg);
+  font:
+    16px / 1.6 system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+}
+header,
+footer {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 24px var(--gutter);
+}
+footer {
+  margin-top: auto;
+  color: var(--muted);
+  font-size: 14px;
+}
+a {
+  color: inherit;
+}
+.brand {
+  font-weight: 600;
+  text-decoration: none;
+}
+main {
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 72px var(--gutter) 96px;
+}
+h1 {
+  max-width: 16ch;
+  margin: 0 0 24px;
+  font-size: clamp(36px, 7vw, 64px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+}
+h2 {
+  margin: 0 0 16px;
+  font-size: 20px;
+}
+.lead {
+  max-width: 52ch;
+  font-size: 18px;
+}
+p {
+  margin: 0 0 24px;
+  color: var(--muted);
+}
+ul {
+  margin: 0 0 56px;
+  padding: 0;
+  list-style: none;
+  max-width: 52ch;
+}
+li {
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+li:last-child {
+  border-bottom: 1px solid var(--border);
+}
+section {
+  max-width: 420px;
+}
+form {
+  flex-direction: column;
+}
+form {
+  display: flex;
+  gap: 8px;
+}
+input,
+button {
+  font: inherit;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--fg);
+}
+input {
+  min-width: 0;
+}
+button {
+  background: var(--fg);
+  color: var(--bg);
+  border-color: var(--fg);
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+[hidden] {
+  display: none;
+}
+#status {
+  margin: 12px 0 0;
+  min-height: 1.5em;
+  color: var(--fg);
+}

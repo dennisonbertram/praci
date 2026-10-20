@@ -49,3 +49,4 @@ playwright-report-www
 
 .demo
 .demo-credentials.local
+.env*
