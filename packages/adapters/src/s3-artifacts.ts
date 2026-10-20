@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
-import { createWriteStream } from "node:fs";
-import { open, readFile, rm, writeFile } from "node:fs/promises";
+import { createReadStream, createWriteStream } from "node:fs";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { AdapterContext, ArtifactPut, ArtifactStore } from "@rakazo/adapter-kit";
@@ -124,6 +124,26 @@ export class LocalFallbackArtifactStore implements ArtifactStore {
       : readFile(file.path).then((bytes) => this.primary.put({ ...file, bytes }, context));
   }
 
+  putStream(
+    body: AsyncIterable<Uint8Array>,
+    file: { name: string; mimeType: string },
+    context: AdapterContext,
+  ) {
+    return this.primary.putStream(body, file, context);
+  }
+
+  async getStream(id: string, context: AdapterContext, range?: { start: number; end: number }) {
+    try {
+      return await this.primary.getStream(id, context, range);
+    } catch (error) {
+      if (!(error instanceof ArtifactNotFoundError)) throw error;
+      return this.legacy.getStream(id, context, range).catch((legacyError: unknown) => {
+        if ((legacyError as NodeJS.ErrnoException)?.code === "ENOENT") throw error;
+        throw legacyError;
+      });
+    }
+  }
+
   async get(id: string, context: AdapterContext) {
     try {
       return await this.primary.get(id, context);
@@ -211,11 +231,13 @@ export class S3ArtifactStore implements ArtifactStore {
     context: AdapterContext,
     body?: Uint8Array,
     query?: string,
+    headers?: Record<string, string>,
   ) {
     try {
       return await this.client.fetch(`${this.url(key)}${query ? `?${query}` : ""}`, {
         method,
         body: body as BodyInit | undefined,
+        headers,
         signal: context.signal,
       });
     } catch (error) {
@@ -238,64 +260,113 @@ export class S3ArtifactStore implements ArtifactStore {
     return { id, hash: createHash("sha256").update(artifact.bytes).digest("hex") };
   }
 
-  /** Single PUT up to one part; larger files use multipart so memory stays at one part. */
-  async putFile(file: { path: string; name: string; mimeType: string }, context: AdapterContext) {
+  /**
+   * Single PUT up to one part; larger streams use multipart, so memory stays at one part plus one
+   * chunk. The first part is held until a second one exists, which keeps small objects in one PUT.
+   * ponytail: 10,000 parts of 8 MiB cap an object near 78 GiB; raise the part size stepwise if
+   * larger objects are ever needed.
+   */
+  async putStream(
+    body: AsyncIterable<Uint8Array>,
+    _file: { name: string; mimeType: string },
+    context: AdapterContext,
+  ) {
     const id = randomUUID();
     const key = this.key(id, context);
     const hash = createHash("sha256");
-    const handle = await open(file.path, "r");
-    try {
-      const size = (await handle.stat()).size;
-      const read = async (position: number) => {
-        const length = Math.min(PART_BYTES, size - position);
-        const buffer = new Uint8Array(length);
-        const { bytesRead } = await handle.read(buffer, 0, length, position);
-        if (bytesRead !== length) throw new Error("file changed while uploading");
-        hash.update(buffer);
-        return buffer;
-      };
-      if (size <= PART_BYTES) {
-        const response = await this.send("PUT", key, context, await read(0));
-        if (!response.ok) await this.fail("put", response);
-        return { id, hash: hash.digest("hex") };
+    let size = 0;
+    let held: Uint8Array[] = [];
+    let heldBytes = 0;
+    let upload: { query: string; etags: string[] } | null = null;
+
+    const sendPart = async () => {
+      if (!upload) {
+        const started = await this.send("POST", key, context, undefined, "uploads");
+        if (!started.ok) await this.fail("put", started);
+        const uploadId = /<UploadId>([^<]+)<\/UploadId>/.exec(await started.text())?.[1];
+        if (!uploadId) throw new Error("S3 put failed: no upload id");
+        upload = { query: `uploadId=${encodeURIComponent(uploadId)}`, etags: [] };
       }
-      const started = await this.send("POST", key, context, undefined, "uploads");
-      if (!started.ok) await this.fail("put", started);
-      const uploadId = /<UploadId>([^<]+)<\/UploadId>/.exec(await started.text())?.[1];
-      if (!uploadId) throw new Error("S3 put failed: no upload id");
-      const query = `uploadId=${encodeURIComponent(uploadId)}`;
-      try {
-        const etags: string[] = [];
-        for (let position = 0; position < size; position += PART_BYTES) {
-          const number = etags.length + 1;
-          const part = await this.send(
-            "PUT",
-            key,
-            context,
-            await read(position),
-            `partNumber=${number}&${query}`,
-          );
-          if (!part.ok) await this.fail("put", part);
-          const etag = part.headers.get("etag");
-          if (!etag) throw new Error("S3 put failed: no part etag");
-          etags.push(etag);
+      const current: { query: string; etags: string[] } = upload;
+      const number = current.etags.length + 1;
+      if (number > 10_000) throw new Error("S3 put failed: object is too large");
+      const part = await this.send(
+        "PUT",
+        key,
+        context,
+        Buffer.concat(held),
+        `partNumber=${number}&${current.query}`,
+      );
+      if (!part.ok) await this.fail("put", part);
+      const etag = part.headers.get("etag");
+      if (!etag) throw new Error("S3 put failed: no part etag");
+      current.etags.push(etag);
+      held = [];
+      heldBytes = 0;
+    };
+
+    try {
+      for await (const chunk of body) {
+        context.signal?.throwIfAborted();
+        hash.update(chunk);
+        size += chunk.byteLength;
+        for (let rest = chunk; rest.byteLength > 0; ) {
+          if (heldBytes === PART_BYTES) await sendPart();
+          const piece = rest.subarray(0, PART_BYTES - heldBytes);
+          held.push(piece);
+          heldBytes += piece.byteLength;
+          rest = rest.subarray(piece.byteLength);
         }
-        const body = `<CompleteMultipartUpload>${etags
+      }
+      context.signal?.throwIfAborted();
+      if (!upload) {
+        const response = await this.send("PUT", key, context, Buffer.concat(held));
+        if (!response.ok) await this.fail("put", response);
+      } else {
+        await sendPart();
+        const { query, etags } = upload as { query: string; etags: string[] };
+        const xml = `<CompleteMultipartUpload>${etags
           .map(
             (etag, index) =>
               `<Part><PartNumber>${index + 1}</PartNumber><ETag>${etag}</ETag></Part>`,
           )
           .join("")}</CompleteMultipartUpload>`;
-        const done = await this.send("POST", key, context, new TextEncoder().encode(body), query);
+        const done = await this.send("POST", key, context, new TextEncoder().encode(xml), query);
         if (!done.ok || /<Error>/.test(await done.clone().text())) await this.fail("put", done);
-      } catch (error) {
-        await this.send("DELETE", key, context, undefined, query).catch(() => undefined);
-        throw error;
       }
-      return { id, hash: hash.digest("hex") };
-    } finally {
-      await handle.close();
+    } catch (error) {
+      if (upload) {
+        // The run's own signal may be the reason for failing; cleanup must not depend on it.
+        const cleanup = { ...context, signal: AbortSignal.timeout(30_000) };
+        const { query } = upload as { query: string };
+        await this.send("DELETE", key, cleanup, undefined, query).catch(() => undefined);
+      }
+      throw error;
     }
+    return { id, hash: hash.digest("hex"), size };
+  }
+
+  putFile(file: { path: string; name: string; mimeType: string }, context: AdapterContext) {
+    return this.putStream(createReadStream(file.path), file, context);
+  }
+
+  async getStream(id: string, context: AdapterContext, range?: { start: number; end: number }) {
+    if (range && range.end <= range.start) {
+      return new ReadableStream<Uint8Array>({ start: (controller) => controller.close() });
+    }
+    const response = await this.send(
+      "GET",
+      this.key(id, context),
+      context,
+      undefined,
+      undefined,
+      range ? { range: `bytes=${range.start}-${range.end - 1}` } : undefined,
+    );
+    if (response.status === 404) throw new ArtifactNotFoundError(id);
+    if (!response.ok || !response.body || (range && response.status !== 206)) {
+      await this.fail("get", response);
+    }
+    return response.body as ReadableStream<Uint8Array>;
   }
 
   async getFile(id: string, destination: string, context: AdapterContext) {

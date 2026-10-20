@@ -71,7 +71,6 @@ import type {
   MessagingSendResult,
   NotificationEndpointRef,
   NotificationEnvelope,
-  NotificationMessage,
   NotificationSendResult,
   PageBrowserCommand,
   PageBrowserResult,
@@ -498,6 +497,24 @@ export interface ArtifactStore {
   ): Promise<{ id: string; hash: string }>;
   /** Writes an object to a new local file without holding it whole in memory. */
   getFile?(id: string, destination: string, context: AdapterContext): Promise<void>;
+  /**
+   * Stores a stream without holding it whole in memory; hashes and counts bytes as they pass.
+   * On a source error or an aborted `context.signal`, no object is left behind.
+   */
+  putStream(
+    body: AsyncIterable<Uint8Array>,
+    file: { name: string; mimeType: string },
+    context: AdapterContext,
+  ): Promise<{ id: string; hash: string; size: number }>;
+  /**
+   * The object's bytes, or bytes [start, end) when `range` is given. Rejects before returning
+   * when the object is missing.
+   */
+  getStream(
+    id: string,
+    context: AdapterContext,
+    range?: { start: number; end: number },
+  ): Promise<ReadableStream<Uint8Array>>;
 }
 
 export interface SecretStore {

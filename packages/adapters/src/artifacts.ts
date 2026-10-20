@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { constants, createReadStream, createWriteStream } from "node:fs";
 import { mkdir, open, rm } from "node:fs/promises";
 import path from "node:path";
+import { Readable } from "node:stream";
 import { pipeline } from "node:stream/promises";
 import type { AdapterContext, ArtifactPut, ArtifactStore } from "@rakazo/adapter-kit";
 
@@ -37,28 +38,53 @@ export class LocalArtifactStore implements ArtifactStore {
     return { id, hash: createHash("sha256").update(artifact.bytes).digest("hex") };
   }
 
-  async putFile(file: { path: string }, context: AdapterContext) {
+  async putStream(
+    body: AsyncIterable<Uint8Array>,
+    _file: { name: string; mimeType: string },
+    context: AdapterContext,
+  ) {
     const id = randomUUID();
     const dir = path.join(this.root, "artifacts", context.spaceId);
     await mkdir(dir, { recursive: true });
     const hash = createHash("sha256");
+    let size = 0;
     const target = path.join(dir, id);
     try {
       await pipeline(
-        createReadStream(file.path),
+        body,
         async function* (source) {
           for await (const chunk of source) {
             hash.update(chunk);
+            size += chunk.byteLength;
             yield chunk;
           }
         },
         createWriteStream(target, { flags: "wx", mode: 0o600 }),
+        { signal: context.signal },
       );
     } catch (error) {
       await rm(target, { force: true });
       throw error;
     }
-    return { id, hash: hash.digest("hex") };
+    return { id, hash: hash.digest("hex"), size };
+  }
+
+  putFile(file: { path: string; name: string; mimeType: string }, context: AdapterContext) {
+    return this.putStream(createReadStream(file.path), file, context);
+  }
+
+  async getStream(id: string, context: AdapterContext, range?: { start: number; end: number }) {
+    const handle = await open(
+      path.join(this.root, "artifacts", context.spaceId, id),
+      constants.O_RDONLY | O_NOFOLLOW,
+    );
+    if (range && range.end <= range.start) {
+      await handle.close();
+      return new ReadableStream<Uint8Array>({ start: (controller) => controller.close() });
+    }
+    return Readable.toWeb(
+      handle.createReadStream(range ? { start: range.start, end: range.end - 1 } : {}),
+    ) as unknown as ReadableStream<Uint8Array>;
   }
 
   async getFile(id: string, destination: string, context: AdapterContext) {
