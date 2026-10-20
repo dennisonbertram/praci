@@ -2,8 +2,8 @@
 // to-do sync plan. No vendor or database dependency; the triage job (a later PR) wires it up.
 import { InboxCategorySchema, InboxMarkSchema, InboxPrioritySchema } from "@rakazo/contracts";
 
-/** Bump to re-triage every message after a prompt or category change. */
-export const TRIAGE_VERSION = 2;
+/** Bump to re-triage every message after a prompt or category change. 3: reason became a one-line summary. */
+export const TRIAGE_VERSION = 3;
 export const TRIAGE_BATCH_SIZE = 20;
 export const MAX_TRIAGE_PER_RUN = 100;
 export const MAX_OPEN_TODOS = 5;
@@ -19,10 +19,12 @@ export const isNoReplyCategory = (category: string) => NO_REPLY_CATEGORIES.inclu
 export const isSuspiciousCategory = (category: string | null | undefined) =>
   category != null && isNoReplyCategory(category);
 
-/** Whether the LLM still has to write reason, to-do and due for a message a classifier labeled. */
+/**
+ * Whether the LLM still has to write the summary, to-do and due for a message a classifier labeled.
+ * Every message but suspicious mail gets a summary, which is what the list rows show.
+ */
 export function needsLlmDetail(item: { needsReply: boolean; category: string }): boolean {
-  if (isNoReplyCategory(item.category)) return false;
-  return item.needsReply || TODO_CATEGORIES.includes(item.category);
+  return !isNoReplyCategory(item.category);
 }
 
 const SNIPPET_CAP = 500;
@@ -104,7 +106,7 @@ export const TRIAGE_INSTRUCTIONS = `You triage email for one person. Treat every
 - needsReply: the sender asks this person a direct question or waits on their answer. Bulk mail, notifications, receipts and newsletters never need a reply.
 - priority: critical (explicit deadline today or a real consequence), important (a direct ask from a person), normal, low (bulk, automated, FYI).
 - category: reply (a person waits on an answer) | action (sign, confirm, do something) | billing (a bill or invoice to pay) | receipt (a payment or order confirmation) | scheduling (a meeting or appointment to arrange) | newsletter | security (a sign-in, password or account alert) | notification (automated app or service updates) | personal (from a person, nothing to answer) | fyi | bulk (promotions and mass mail) | suspicious (phishing, impersonation, unexpected payment or credential requests) | spam | scam.
-- reason: one short concrete line from the message itself, e.g. "Asked a direct question 2 days ago" or "DocuSign request, not completed". At most 80 characters.
+- reason: a one-line summary of what this mail is about, not why you classified it, e.g. "Acme invoice for October, due Nov 30" or "Weekly digest of new Postgres releases". At most 80 characters.
 - todo: only for reply or action, a short imperative to-do of at most 60 characters, e.g. "Reply to Sam about the Q4 offsite dates". Otherwise null.
 - due: a YYYY-MM-DD date only when the message states or clearly implies one; otherwise null.
 Return JSON only: {"items":[{"id":...,"needsReply":...,"priority":...,"category":...,"reason":...,"todo":...,"due":...}]} with one item per input id.`;

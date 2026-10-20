@@ -305,7 +305,7 @@ async function toInput(
 
 /**
  * Classifier first, when the user allowed one. A message it labeled confidently keeps that label;
- * the LLM then only writes reason, to-do and due, and only for mail that needs a reply or action.
+ * the LLM then only writes the one-line summary (reason), to-do and due, and skips suspicious mail.
  * A message the classifier skipped or failed on, or a classifier that threw, goes to the LLM whole.
  */
 async function triageBatch(
@@ -376,8 +376,11 @@ async function triageBatch(
   return messages.flatMap((m): TriageItem[] => {
     const text = written.get(m.id);
     // The classifier's label wins; the model's answer only adds the written parts.
-    const base = labeled.get(m.id) ?? text;
+    const label = labeled.get(m.id);
+    const base = label ?? text;
     if (!base) return [];
+    // The model now reads every labeled message for its summary; its to-do only counts where the label calls for one.
+    const todoable = !label || label.needsReply || TODO_CATEGORIES.includes(label.category);
     return [
       {
         id: m.id,
@@ -385,8 +388,8 @@ async function triageBatch(
         priority: base.priority,
         category: base.category,
         reason: text?.reason ?? "",
-        todo: text?.todo ?? null,
-        due: text?.due ?? null,
+        todo: todoable ? (text?.todo ?? null) : null,
+        due: todoable ? (text?.due ?? null) : null,
       },
     ];
   });
