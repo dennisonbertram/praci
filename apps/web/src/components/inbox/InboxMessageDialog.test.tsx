@@ -526,3 +526,56 @@ it("does not mark a message someone else sent", async () => {
   await flush();
   expect(sentMarks()).toHaveLength(0);
 });
+
+const preview = {
+  from: "Sample Sender <sender@example.test>",
+  receivedAt: "2026-10-10T09:00:00.000Z",
+  snippet: "Invented preview line",
+};
+
+it("shows the row's subject and preview with a body skeleton while loading, then the content", async () => {
+  let resolve: (value: ReturnType<typeof message>) => void = () => {};
+  get.mockReturnValueOnce(new Promise((r) => (resolve = r)));
+  act(() =>
+    root.render(
+      <InboxMessageDialog
+        messageId="l1"
+        subject="Row subject"
+        preview={preview}
+        onClose={() => {}}
+      />,
+    ),
+  );
+  await flush();
+  expect(document.body.textContent).toContain("Row subject");
+  expect(document.body.textContent).toContain("Sample Sender");
+  expect(document.body.textContent).toContain("Invented preview line");
+  expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+  await act(async () => resolve(message("l1")));
+  await flush();
+  expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  expect(document.body.textContent).toContain("body");
+});
+
+it("shows Try again, not the skeleton, after a failed load", async () => {
+  get.mockRejectedValueOnce(new Error("offline"));
+  act(() => root.render(<InboxMessageDialog messageId="l2" onClose={() => {}} />));
+  await flush();
+  expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+  expect(document.body.textContent).toContain("Try again");
+});
+
+it("shows the loading state, not the previous message, after switching", async () => {
+  get.mockResolvedValueOnce(message("s1"));
+  get.mockReturnValueOnce(new Promise(() => {}));
+  act(() => root.render(<InboxMessageDialog messageId="s1" onClose={() => {}} />));
+  await flush();
+  expect(document.body.textContent).toContain("Subject s1");
+  act(() =>
+    root.render(<InboxMessageDialog messageId="s2" subject="Next row" onClose={() => {}} />),
+  );
+  await flush();
+  expect(document.body.textContent).not.toContain("Subject s1");
+  expect(document.body.textContent).toContain("Next row");
+  expect(document.querySelector('[aria-busy="true"]')).not.toBeNull();
+});

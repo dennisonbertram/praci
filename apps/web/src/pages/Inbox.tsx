@@ -1523,6 +1523,11 @@ function InboxListPage({
       <InboxMessageDialog
         messageId={openId}
         subject={openRow?.subject}
+        preview={
+          openRow
+            ? { from: openRow.from, receivedAt: openRow.receivedAt, snippet: openRow.snippet }
+            : undefined
+        }
         onClose={closeMessage}
         previousId={openIndex > 0 ? messageIds[openIndex - 1] : undefined}
         nextId={openIndex >= 0 ? messageIds[openIndex + 1] : undefined}

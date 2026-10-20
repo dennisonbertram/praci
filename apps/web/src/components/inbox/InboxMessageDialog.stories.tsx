@@ -226,7 +226,14 @@ export const FromAgentCard: Story = {
 };
 
 export const Loading: Story = {
-  args: { messageId: "msg_loading" },
+  args: {
+    messageId: "msg_loading",
+    preview: {
+      from: "Sample Sender <sender@example.test>",
+      receivedAt: "2026-03-04T15:30:00.000Z",
+      snippet: "Here are the planning notes for next quarter.",
+    },
+  },
   beforeEach: () => mockRpc({ "inbox.get": () => new Promise(() => undefined) }),
 };
 
