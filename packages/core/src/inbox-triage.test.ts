@@ -374,13 +374,21 @@ describe("to-dos for mail a classifier says needs a reply", () => {
 });
 
 describe("needsLlmDetail", () => {
-  it("is true only for a message that needs a reply or an action", () => {
-    expect(needsLlmDetail({ needsReply: true, category: "personal" })).toBe(true);
-    expect(needsLlmDetail({ needsReply: false, category: "action" })).toBe(true);
-    expect(needsLlmDetail({ needsReply: false, category: "billing" })).toBe(true);
-    expect(needsLlmDetail({ needsReply: false, category: "scheduling" })).toBe(true);
-    for (const category of ["fyi", "bulk", "newsletter", "receipt", "notification", "security"]) {
-      expect(needsLlmDetail({ needsReply: false, category })).toBe(false);
+  it("is true for every category except suspicious, spam and scam, so each message gets a summary", () => {
+    for (const category of [
+      "reply",
+      "action",
+      "billing",
+      "scheduling",
+      "personal",
+      "fyi",
+      "bulk",
+      "newsletter",
+      "receipt",
+      "notification",
+      "security",
+    ]) {
+      expect(needsLlmDetail({ needsReply: false, category })).toBe(true);
     }
   });
 
@@ -388,6 +396,21 @@ describe("needsLlmDetail", () => {
     for (const category of ["suspicious", "spam", "scam"]) {
       expect(needsLlmDetail({ needsReply: true, category })).toBe(false);
     }
+  });
+});
+
+describe("summaries", () => {
+  it("re-summarizes cached mail once by bumping the triage version", () => {
+    expect(TRIAGE_VERSION).toBeGreaterThanOrEqual(3);
+  });
+
+  it("asks the model for a one-line summary of the mail, not a justification", () => {
+    expect(TRIAGE_INSTRUCTIONS).toContain("summary of what this mail is about");
+  });
+
+  it("keeps a long summary within the reason cap", () => {
+    const [parsed] = parseTriageResponse(wrap([item("m1", { reason: "x".repeat(300) })]), ["m1"]);
+    expect(parsed?.reason).toHaveLength(120);
   });
 });
 

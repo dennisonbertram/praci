@@ -775,4 +775,11 @@ export const TR_MESSAGES: Record<string, string> = {
   "Could not save this list.": "Bu liste kaydedilemedi.",
   "Call Elio": "Elio'yu ara",
   "Could not start the call": "Arama başlatılamadı",
+  Important: "Önemli",
+  Updates: "Güncellemeler",
+  Newsletters: "Bültenler",
+  "Spam {count}": "Spam {count}",
+  "Archive {count} conversations from {sender}?":
+    "{sender} göndericisinin {count} görüşmesi arşivlensin mi?",
+  "Could not archive {count}": "{count} görüşme arşivlenemedi",
 };

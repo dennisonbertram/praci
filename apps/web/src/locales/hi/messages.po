@@ -30,6 +30,7 @@ msgid " (new)"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (अपठित)"
@@ -425,6 +426,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "{pickedCount} selected"
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -1136,8 +1141,10 @@ msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 msgid "Archive"
 msgstr "आर्काइव करें"
 
@@ -1157,6 +1164,10 @@ msgstr "आर्काइव किया गया"
 #: src/components/EmailCards.tsx
 #: src/pages/Inbox.tsx
 msgid "Archived \"{0}\""
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Archived {count}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2988,6 +2999,10 @@ msgstr ""
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Couldn't archive {count}"
+msgstr ""
+
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
 msgstr ""
@@ -4388,6 +4403,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
@@ -5439,6 +5455,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
 msgstr ""
@@ -7387,6 +7404,12 @@ msgstr ""
 msgid "See who owns your company"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Select"
+msgstr ""
+
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
@@ -7822,6 +7845,7 @@ msgstr "स्पेस डिफ़ॉल्ट"
 msgid "Spaces"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Spam"
 msgstr ""
@@ -8728,6 +8752,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"

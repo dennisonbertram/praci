@@ -189,6 +189,8 @@ import {
   ComposePrefillInputSchema,
   ComposePrefillOutputSchema,
   ComposeResultSchema,
+  InboxBulkInputSchema,
+  InboxBulkResultSchema,
   InboxFeedbackInputSchema,
   InboxFeedbackOutputSchema,
   InboxListInputSchema,
@@ -1291,6 +1293,8 @@ export const appContract = {
     markRead: oc.input(InboxMarkReadInputSchema).output(z.object({ ok: z.literal(true) })),
     archive: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
     unarchive: oc.input(z.object({ messageId: Id })).output(z.object({ ok: z.literal(true) })),
+    archiveMany: oc.input(InboxBulkInputSchema).output(InboxBulkResultSchema),
+    unarchiveMany: oc.input(InboxBulkInputSchema).output(InboxBulkResultSchema),
     compose: {
       prefill: oc.input(ComposePrefillInputSchema).output(ComposePrefillOutputSchema),
       draftSave: oc.input(ComposeFieldsSchema).output(ComposeResultSchema),

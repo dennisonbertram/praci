@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import { act, useEffect } from "react";
 import type { Root } from "react-dom/client";
 import { createRoot } from "react-dom/client";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import InboxScreen from "../app/inbox";
 
 const state = vi.hoisted(() => ({
@@ -30,7 +30,8 @@ vi.mock("./native", () => ({
 }));
 vi.mock("./i18n", () => {
   // The real t is one module-level function; a fresh one per render would retrigger focus effects.
-  const t = (text: string) => text;
+  const t = (text: string, values?: Record<string, string | number>) =>
+    text.replace(/\{(\w+)\}/g, (token, key: string) => String(values?.[key] ?? token));
   return { t, useI18n: () => ({ t }), dateLocaleForUi: () => "en-US" };
 });
 vi.mock("../components/native-symbol", () => ({ NativeSymbol: () => null }));
@@ -43,18 +44,31 @@ vi.mock("../components/native-action-button", () => ({
 }));
 vi.mock("../components/native-segmented-control", () => ({
   NativeSegmentedControl: ({
+    accessibilityLabel,
     options,
     onChange,
   }: {
+    accessibilityLabel: string;
     options: { value: string; label: string }[];
     onChange: (value: string) => void;
   }) => (
-    <div data-testid="segments">
+    <div data-testid={accessibilityLabel === "Inbox" ? "piles" : "segments"}>
       {options.map((option) => (
         <button key={option.value} type="button" onClick={() => onChange(option.value)}>
           {option.label}
         </button>
       ))}
+    </div>
+  ),
+}));
+// The system menu is native; this stand-in renders its Archive action as a button beside the row.
+vi.mock("../components/mail-row-menu", () => ({
+  MailRowMenu: ({ onArchive, children }: { onArchive: () => void; children: ReactNode }) => (
+    <div>
+      {children}
+      <button type="button" data-menu="archive" onClick={onArchive}>
+        Archive
+      </button>
     </div>
   ),
 }));
@@ -149,6 +163,7 @@ const mailRow = (id: string, extra: Record<string, unknown> = {}) => ({
   snippet: `Snippet ${id}`,
   receivedAt: daysAgo(0),
   unread: false,
+  inInbox: true,
   needsReply: null,
   priority: null,
   reason: null,
@@ -184,16 +199,19 @@ let container: HTMLDivElement;
 let listReply: () => unknown;
 let todosReply: () => unknown;
 let setDoneReply: () => Promise<unknown>;
+let archiveReply: (body: { messageIds: string[] }) => unknown;
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
   listReply = () => inboxList();
   todosReply = () => ({ enabled: true, todos: [] });
   setDoneReply = () => Promise.resolve({});
+  archiveReply = (body) => ({ done: body.messageIds, failed: [] });
   state.push.mockReset();
   state.setOptions.mockReset();
   state.alert.mockReset();
-  state.rpc.mockReset().mockImplementation(async (proc: string) => {
+  state.rpc.mockReset().mockImplementation(async (proc: string, body?: unknown) => {
     if (proc === "inbox/list") return listReply();
+    if (proc === "inbox/archiveMany") return archiveReply(body as { messageIds: string[] });
     if (proc === "inbox/refresh") return { ok: true };
     if (proc === "inbox/todos/list") return todosReply();
     if (proc === "inbox/todos/setDone") return setDoneReply();
@@ -245,7 +263,7 @@ it("hides the account picker for one account and shows it for two", async () => 
   await act(async () => root.render(<InboxScreen key="two" />));
   expect(container.querySelector('[data-testid="segments"]')?.textContent).toBe("AllWorkHome");
   await act(async () => button("Home")?.click());
-  expect(state.rpc).toHaveBeenCalledWith("inbox/list", { connectionId: "c2" });
+  expect(state.rpc).toHaveBeenCalledWith("inbox/list", { connectionId: "c2", pile: "important" });
 });
 
 it("uses a menu instead of segments for more than three accounts", async () => {
@@ -425,8 +443,8 @@ it("falls back to All when the chosen account can no longer be loaded", async ()
   await render();
   await act(async () => button("Home")?.click());
   const lists = state.rpc.mock.calls.filter(([proc]) => proc === "inbox/list");
-  expect(lists.at(-2)?.[1]).toEqual({ connectionId: "c2" });
-  expect(lists.at(-1)?.[1]).toEqual({});
+  expect(lists.at(-2)?.[1]).toEqual({ connectionId: "c2", pile: "important" });
+  expect(lists.at(-1)?.[1]).toEqual({ pile: "important" });
   expect(container.textContent).toContain("Subject all");
 });
 
@@ -496,4 +514,202 @@ it("shows one triage label per row, and none on an untriaged row", async () => {
   expect(rowText("r5")).toContain("Junk");
   expect(rowText("r6")).not.toMatch(/Needs attention|Newsletter|Spam|Junk/);
   expect(rowText("r7")).not.toMatch(/Needs attention|Newsletter|Spam|Junk/);
+});
+
+describe("piles", () => {
+  const sender = (id: string, address = `${id}@shop.example`) => ({
+    from: `Shop ${id}`,
+    fromAddress: address,
+  });
+  const piles = () => container.querySelector('[data-testid="piles"]');
+  const pileList = (pile: string | undefined, rows: ReturnType<typeof mailRow>[]) =>
+    inboxList({ rows, pileCounts: { important: 1, updates: 4, newsletters: 0, spam: 0 }, pile });
+  const updates = [
+    mailRow("a1", {
+      ...sender("a", "shop@example.test"),
+      pile: "updates",
+      reason: "Order shipped",
+      receivedAt: daysAgo(0.1),
+    }),
+    mailRow("a2", {
+      ...sender("a", "shop@example.test"),
+      pile: "updates",
+      receivedAt: daysAgo(0.2),
+    }),
+    mailRow("a3", {
+      ...sender("a", "shop@example.test"),
+      pile: "updates",
+      receivedAt: daysAgo(0.3),
+    }),
+    mailRow("b1", { ...sender("b"), pile: "updates", receivedAt: daysAgo(0.4) }),
+  ];
+  const alertButtons = () =>
+    (state.alert.mock.calls.at(-1)?.[2] ?? []) as { text: string; onPress?: () => void }[];
+
+  it("asks for the Important pile first and offers the three piles", async () => {
+    await render();
+    expect(state.rpc).toHaveBeenCalledWith("inbox/list", { pile: "important" });
+    expect(piles()?.textContent).toBe("ImportantUpdatesNewsletters");
+  });
+
+  it("offers Spam behind its count, only when there is spam", async () => {
+    listReply = () =>
+      inboxList({ pileCounts: { important: 0, updates: 0, newsletters: 0, spam: 3 } });
+    await render();
+    expect(piles()?.textContent).toBe("ImportantUpdatesNewslettersSpam 3");
+  });
+
+  it("shows no pile picker before an account is connected", async () => {
+    listReply = () => inboxList({ accounts: [], agent: null });
+    await render();
+    expect(piles()).toBeNull();
+  });
+
+  it("switches to Updates, asks for that pile, and groups the rows by sender", async () => {
+    listReply = () => pileList("important", [mailRow("r1")]);
+    await render();
+    listReply = () => pileList("updates", updates);
+    await act(async () => button("Updates")?.click());
+    expect(state.rpc).toHaveBeenCalledWith("inbox/list", { pile: "updates" });
+    const text = container.textContent ?? "";
+    // One header for the three-message sender, and the single-message sender as a plain row.
+    expect(text).toContain("Shop a");
+    expect(text).toContain("3");
+    expect(text).toContain("Order shipped");
+    expect(text).toContain("Shop b");
+    expect(text).not.toContain("Subject a2");
+    expect(text).not.toContain("Needs reply");
+  });
+
+  it("does not show the previous pile's rows while the next pile loads", async () => {
+    listReply = () => pileList("important", [mailRow("r1")]);
+    await render();
+    expect(container.textContent).toContain("Subject r1");
+    state.rpc.mockImplementation(async (proc: string) => {
+      if (proc === "inbox/list") return new Promise(() => {});
+      return { enabled: true, todos: [] };
+    });
+    await act(async () => button("Newsletters")?.click());
+    expect(container.textContent).not.toContain("Subject r1");
+  });
+
+  it("opens a group on tap to list its messages, and closes it on a second tap", async () => {
+    listReply = () => pileList("important", [mailRow("r1")]);
+    await render();
+    listReply = () => pileList("updates", updates);
+    await act(async () => button("Updates")?.click());
+    const header = () =>
+      [...container.querySelectorAll("button")].find((item) =>
+        item.textContent?.includes("Shop a"),
+      );
+    expect(header()?.getAttribute("aria-expanded") ?? "").not.toBe("true");
+    await act(async () => header()?.click());
+    expect(container.textContent).toContain("Subject a2");
+    expect(container.textContent).toContain("Subject a3");
+    await act(async () => header()?.click());
+    expect(container.textContent).not.toContain("Subject a2");
+  });
+
+  it("asks before archiving a group, then archives all of its threads in one call", async () => {
+    listReply = () => pileList("important", [mailRow("r1")]);
+    await render();
+    listReply = () => pileList("updates", updates);
+    await act(async () => button("Updates")?.click());
+    const menu = container.querySelectorAll<HTMLElement>('button[data-menu="archive"]')[0];
+    await act(async () => menu?.click());
+    expect(state.alert).toHaveBeenCalledTimes(1);
+    expect(state.alert.mock.calls[0]?.[0]).toBe("Archive 3 conversations from Shop a?");
+    expect(procs()).not.toContain("inbox/archiveMany");
+    expect(alertButtons().map((b) => b.text)).toEqual(["Cancel", "Archive"]);
+    await act(async () => alertButtons()[1]?.onPress?.());
+    expect(state.rpc).toHaveBeenCalledWith("inbox/archiveMany", {
+      messageIds: ["a1", "a2", "a3"],
+    });
+    expect(container.textContent).not.toContain("Shop a");
+    expect(container.textContent).toContain("Shop b");
+  });
+
+  it("archives one message from its menu at once", async () => {
+    listReply = () => pileList("important", [mailRow("r1"), mailRow("r2")]);
+    await render();
+    await act(async () =>
+      container.querySelectorAll<HTMLElement>('button[data-menu="archive"]')[0]?.click(),
+    );
+    expect(state.alert).not.toHaveBeenCalled();
+    expect(state.rpc).toHaveBeenCalledWith("inbox/archiveMany", { messageIds: ["r1"] });
+    expect(container.textContent).not.toContain("Subject r1");
+    expect(container.textContent).toContain("Subject r2");
+  });
+
+  it("brings failed threads back with the real list and says how many failed", async () => {
+    listReply = () => pileList("important", [mailRow("r1"), mailRow("r2")]);
+    archiveReply = () => ({ done: ["r1"], failed: [{ messageId: "r2", reason: "unavailable" }] });
+    await render();
+    const lists = procs().filter((proc) => proc === "inbox/list").length;
+    await act(async () =>
+      container.querySelectorAll<HTMLElement>('button[data-menu="archive"]')[1]?.click(),
+    );
+    expect(state.alert).toHaveBeenCalledWith("Could not archive 1");
+    expect(procs().filter((proc) => proc === "inbox/list").length).toBeGreaterThan(lists);
+    expect(container.textContent).toContain("Subject r2");
+  });
+
+  it("shows the error and reloads when the archive call fails", async () => {
+    listReply = () => pileList("important", [mailRow("r1")]);
+    archiveReply = () => {
+      throw new Error("Offline");
+    };
+    await render();
+    await act(async () =>
+      container.querySelectorAll<HTMLElement>('button[data-menu="archive"]')[0]?.click(),
+    );
+    expect(state.alert).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain("Subject r1");
+  });
+
+  it("archives spam only from the Spam pile, where it passes allowSpam", async () => {
+    const spam = [
+      mailRow("s1", { pile: "spam", ...sender("s") }),
+      mailRow("s2", { pile: "spam", inInbox: false, ...sender("t") }),
+    ];
+    listReply = () =>
+      inboxList({ rows: spam, pileCounts: { important: 0, updates: 0, newsletters: 0, spam: 2 } });
+    await render();
+    await act(async () => button("Spam 2")?.click());
+    expect(state.rpc).toHaveBeenCalledWith("inbox/list", { pile: "spam" });
+    // A Spam row that left the inbox cannot be archived; the other can.
+    const menus = container.querySelectorAll<HTMLElement>('button[data-menu="archive"]');
+    await act(async () => menus[1]?.click());
+    expect(procs()).not.toContain("inbox/archiveMany");
+    await act(async () => menus[0]?.click());
+    expect(state.rpc).toHaveBeenCalledWith("inbox/archiveMany", {
+      messageIds: ["s1"],
+      allowSpam: true,
+    });
+  });
+
+  it("never sends a spam-pile row from another pile", async () => {
+    listReply = () => pileList("important", [mailRow("p1", { pile: "spam" })]);
+    await render();
+    await act(async () =>
+      container.querySelectorAll<HTMLElement>('button[data-menu="archive"]')[0]?.click(),
+    );
+    expect(procs()).not.toContain("inbox/archiveMany");
+  });
+
+  it("shows the summary under the subject in place of the snippet", async () => {
+    listReply = () => pileList("important", [mailRow("r1", { reason: "Invoice due Friday" })]);
+    await render();
+    expect(container.textContent).toContain("Invoice due Friday");
+    expect(container.textContent).not.toContain("Snippet r1");
+  });
+
+  it("fetches to-dos only in the Important pile", async () => {
+    await render();
+    expect(procs()).toContain("inbox/todos/list");
+    state.rpc.mockClear();
+    listReply = () => pileList("updates", updates);
+    await act(async () => button("Updates")?.click());
+    expect(procs()).not.toContain("inbox/todos/list");
+  });
 });

@@ -199,3 +199,219 @@ export const RateLimitedNoMail: Story = {
       },
     }),
 };
+
+const pileCounts = { important: 5, updates: 6, newsletters: 4, spam: 0 };
+const pileRow = (
+  id: string,
+  from: string,
+  address: string,
+  subject: string,
+  reason: string,
+  pile: "updates" | "newsletters" | "spam",
+  extra: Partial<MailRow> = {},
+): MailRow =>
+  row(id, from, subject, {
+    fromAddress: address,
+    reason,
+    pile,
+    receivedAt: ago(0, Number(id.replace(/\D/g, "")) * 4),
+    ...extra,
+  });
+
+const updateRows: MailRow[] = [
+  pileRow(
+    "u1",
+    "Demo Store",
+    "orders@store.example",
+    "Order 1042 shipped",
+    "Arrives Thursday",
+    "updates",
+    {
+      unread: true,
+      category: "receipt",
+    },
+  ),
+  pileRow(
+    "u2",
+    "Demo Store",
+    "orders@store.example",
+    "Order 1041 delivered",
+    "Left at the front desk",
+    "updates",
+    { category: "receipt" },
+  ),
+  pileRow(
+    "u3",
+    "Demo Store",
+    "orders@store.example",
+    "Receipt for order 1040",
+    "Total paid, no action needed",
+    "updates",
+    { category: "receipt" },
+  ),
+  pileRow(
+    "u4",
+    "Sample Calendar",
+    "calendar@example.com",
+    "Invitation: design review",
+    "Design review on Friday at 10:00",
+    "updates",
+    { category: "scheduling" },
+  ),
+  pileRow(
+    "u5",
+    "Example Bank",
+    "alerts@bank.example",
+    "New sign-in to your account",
+    "Sign-in from a new laptop",
+    "updates",
+    { category: "security" },
+  ),
+  pileRow(
+    "u6",
+    "Example Bank",
+    "alerts@bank.example",
+    "Statement is ready",
+    "October statement is available",
+    "updates",
+    { category: "notification" },
+  ),
+];
+
+const newsletterRows: MailRow[] = [
+  pileRow(
+    "n1",
+    "Example Weekly",
+    "digest@weekly.example",
+    "Issue 214",
+    "Weekly digest of new Postgres releases",
+    "newsletters",
+    { unread: true, category: "newsletter" },
+  ),
+  pileRow(
+    "n2",
+    "Example Weekly",
+    "digest@weekly.example",
+    "Issue 213",
+    "Why indexes get bloated",
+    "newsletters",
+    { category: "newsletter" },
+  ),
+  pileRow(
+    "n3",
+    "Demo Outfitters",
+    "sale@outfit.example",
+    "Fall sale: 30% off",
+    "Sample promotion for fall coats",
+    "newsletters",
+    { category: "bulk" },
+  ),
+  pileRow(
+    "n4",
+    "Test Digest",
+    "hello@digest.example",
+    "Five links worth your time",
+    "Five links on sample tooling",
+    "newsletters",
+    { category: "newsletter" },
+  ),
+];
+
+const spamRows: MailRow[] = [
+  pileRow(
+    "x1",
+    "Prize Desk",
+    "win@prizes.example",
+    "You won a sample prize",
+    "Asks for a card number",
+    "spam",
+    { inInbox: false, category: "spam" },
+  ),
+  pileRow(
+    "x2",
+    "Unknown Sender",
+    "help@lookalike.example",
+    "Verify your account now",
+    "Looks like a sign-in phishing attempt",
+    "spam",
+    { category: "suspicious" },
+  ),
+];
+
+const byPile = (input: unknown): InboxListOutput => {
+  const pile = (input as { pile?: string } | undefined)?.pile;
+  const withCounts = {
+    ...list,
+    enabled: true,
+    triageBlocked: null,
+    pileCounts: { ...pileCounts, spam: spamRows.length },
+  };
+  if (pile === "updates") return { ...withCounts, rows: updateRows };
+  if (pile === "newsletters") return { ...withCounts, rows: newsletterRows };
+  if (pile === "spam") return { ...withCounts, rows: spamRows };
+  return { ...withCounts, rows };
+};
+
+/** Archiving answers with every id done, so the stories can be tried by hand. */
+const bulkMocks = {
+  "inbox.archiveMany": (input: unknown) => ({
+    done: (input as { messageIds: string[] }).messageIds,
+    failed: [],
+  }),
+  "inbox.unarchiveMany": (input: unknown) => ({
+    done: (input as { messageIds: string[] }).messageIds,
+    failed: [],
+  }),
+};
+
+/** Updates: one row per sender with the count and the newest summary; the sender with one message is a plain row. */
+export const UpdatesGrouped: Story = {
+  parameters: { initialEntries: ["/?pile=updates"] },
+  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+};
+
+export const NewslettersGrouped: Story = {
+  parameters: { initialEntries: ["/?pile=newsletters"] },
+  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+};
+
+/** Spam is a flat list behind a count; Gmail's own spam is not in the inbox, so it has no Archived badge. */
+export const SpamView: Story = {
+  parameters: { initialEntries: ["/?pile=spam"] },
+  beforeEach: () => mockRpc({ "inbox.list": byPile, ...bulkMocks }),
+};
+
+/** No model or consent: the piles still sort mail with the free rules, and rows show the preview. */
+export const PilesWithoutTriage: Story = {
+  parameters: { initialEntries: ["/?pile=updates"] },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": (input: unknown) => ({
+        ...byPile(input),
+        enabled: false,
+        triageBlocked: { reason: "no_model" },
+        rows: byPile(input).rows.map((r) => ({ ...r, reason: null, category: null })),
+      }),
+    }),
+};
+
+export const PileEmpty: Story = {
+  parameters: { initialEntries: ["/?pile=newsletters"] },
+  beforeEach: () =>
+    mockRpc({ "inbox.list": () => ({ ...byPile({ pile: "important" }), rows: [] }) }),
+};
+
+export const PileLoading: Story = {
+  parameters: { initialEntries: ["/?pile=updates"] },
+  beforeEach: () => mockRpc({ "inbox.list": () => new Promise(() => undefined) }),
+};
+
+export const PileLoadError: Story = {
+  parameters: { initialEntries: ["/?pile=updates"] },
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": () => {
+        throw new Error("Could not load mail");
+      },
+    }),
+};

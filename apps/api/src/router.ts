@@ -383,7 +383,13 @@ import {
   inboxComposePrefill,
   inboxComposeSend,
 } from "./inbox-compose.js";
-import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
+import {
+  inboxArchive,
+  inboxArchiveMany,
+  inboxMarkRead,
+  inboxUnarchive,
+  inboxUnarchiveMany,
+} from "./inbox-modify.js";
 import {
   connectionAgentSpawnKeys,
   ensureConnectedAppAgent,
@@ -7245,6 +7251,22 @@ export function createRouter(deps: RouterDeps) {
       ),
       unarchive: authed.inbox.unarchive.handler(({ context, input }) =>
         inboxUnarchive(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
+      archiveMany: authed.inbox.archiveMany.handler(({ context, input }) =>
+        inboxArchiveMany(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
+      unarchiveMany: authed.inbox.unarchiveMany.handler(({ context, input }) =>
+        inboxUnarchiveMany(
           { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
           context.actor,
           input,

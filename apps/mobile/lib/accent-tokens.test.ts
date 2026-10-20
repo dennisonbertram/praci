@@ -9,6 +9,10 @@ describe("accentTokens", () => {
     expect(t.primary).toBe(botColors[4]);
     expect(t.secondaryForeground).toMatch(/^#(fff|111)/);
   });
+  it("ignores the avatar shape suffix and non-colour values", () => {
+    expect(accentTokens(darkTokens, "#3B82F6::shape_7").primary).toBe("#3B82F6");
+    expect(accentTokens(darkTokens, "data:image/png;base64,AAAA")).toBe(darkTokens);
+  });
   it("leaves the thread monochrome with no bot colour", () => {
     expect(accentTokens(darkTokens, null)).toBe(darkTokens);
   });

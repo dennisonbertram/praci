@@ -828,4 +828,10 @@ export const RU_MESSAGES: Record<string, string> = {
   "Could not save this list.": "Не удалось сохранить список.",
   "Call Elio": "Позвонить Elio",
   "Could not start the call": "Не удалось начать звонок",
+  Important: "Важные",
+  Updates: "Обновления",
+  Newsletters: "Рассылки",
+  "Spam {count}": "Спам {count}",
+  "Archive {count} conversations from {sender}?": "Архивировать {count} бесед от {sender}?",
+  "Could not archive {count}": "Не удалось архивировать: {count}",
 };

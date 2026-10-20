@@ -768,4 +768,10 @@ export const HI_MESSAGES: Record<string, string> = {
   "Could not save this list.": "यह सूची सहेजी नहीं जा सकी।",
   "Call Elio": "Elio को कॉल करें",
   "Could not start the call": "कॉल शुरू नहीं हो सकी",
+  Important: "महत्वपूर्ण",
+  Updates: "अपडेट",
+  Newsletters: "न्यूज़लेटर",
+  "Spam {count}": "स्पैम {count}",
+  "Archive {count} conversations from {sender}?": "{sender} की {count} बातचीत आर्काइव करें?",
+  "Could not archive {count}": "{count} बातचीत आर्काइव नहीं हो सकीं",
 };

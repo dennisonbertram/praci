@@ -782,4 +782,10 @@ export const ES_MESSAGES: Record<string, string> = {
   "Could not save this list.": "No se pudo guardar esta lista.",
   "Call Elio": "Llamar a Elio",
   "Could not start the call": "No se pudo iniciar la llamada",
+  Important: "Importante",
+  Updates: "Novedades",
+  Newsletters: "Boletines",
+  "Spam {count}": "Spam {count}",
+  "Archive {count} conversations from {sender}?": "¿Archivar {count} conversaciones de {sender}?",
+  "Could not archive {count}": "No se pudieron archivar {count} conversaciones",
 };

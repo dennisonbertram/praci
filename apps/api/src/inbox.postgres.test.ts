@@ -31,7 +31,13 @@ import {
   inboxTodosList,
   inboxUnreadCount,
 } from "./inbox.js";
-import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
+import {
+  inboxArchive,
+  inboxArchiveMany,
+  inboxMarkRead,
+  inboxUnarchive,
+  inboxUnarchiveMany,
+} from "./inbox-modify.js";
 import { createRouter, type RouterDeps } from "./router.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -130,6 +136,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       inInbox: boolean;
       fromSelf: boolean;
       isSpam: boolean;
+      pile: string | null;
       fromName: string | null;
       needsReply: boolean | null;
       priority: string | null;
@@ -157,6 +164,7 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         inInbox: extra.inInbox ?? true,
         fromSelf: extra.fromSelf ?? false,
         isSpam: extra.isSpam ?? false,
+        pile: extra.pile ?? null,
         needsReply: extra.needsReply ?? null,
         priority: extra.priority ?? null,
         category: extra.category ?? null,
@@ -420,6 +428,187 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       await expect(inboxList(deps, a, { connectionId: target() })).rejects.toMatchObject({
         code: "NOT_FOUND",
       });
+    });
+  });
+
+  describe("piles", () => {
+    const subjects = (out: { rows: Array<{ subject: string }> }) =>
+      out.rows.map((r) => r.subject.replace("Subject ", "")).sort();
+    const seedPiles = async () => {
+      await wipe();
+      await cache(a, connA, "imp", { pile: "important", receivedAt: daysAgo(1) });
+      await cache(a, connA, "undecided", { pile: null, receivedAt: daysAgo(2) });
+      await cache(a, connA, "upd", {
+        pile: "updates",
+        fromAddress: "Billing@Shop.Example.Test",
+        receivedAt: daysAgo(3),
+      });
+      await cache(a, connA, "news", { pile: "newsletters", receivedAt: daysAgo(4) });
+      await cache(a, connA, "spam-inbox", { pile: "spam", receivedAt: daysAgo(5) });
+      await cache(a, connA, "spam-gmail", {
+        isSpam: true,
+        inInbox: false,
+        receivedAt: daysAgo(6),
+      });
+      await cache(a, connA, "archived", { pile: "updates", inInbox: false });
+    };
+
+    it("important pile returns pile important and pile null rows and nothing from other piles", async () => {
+      await seedPiles();
+
+      const out = await inboxList(deps, a, { pile: "important" });
+
+      expect(subjects(out)).toEqual(["imp", "undecided"]);
+      expect(out.rows.find((r) => r.subject === "Subject imp")?.pile).toBe("important");
+      expect(out.rows.find((r) => r.subject === "Subject undecided")?.pile).toBeNull();
+    });
+
+    it("updates and newsletters piles return only their rows with lowercased fromAddress and pile on each row", async () => {
+      await seedPiles();
+
+      const updates = await inboxList(deps, a, { pile: "updates" });
+      const newsletters = await inboxList(deps, a, { pile: "newsletters" });
+
+      expect(subjects(updates)).toEqual(["upd"]);
+      expect(updates.rows[0]).toMatchObject({
+        fromAddress: "billing@shop.example.test",
+        pile: "updates",
+      });
+      expect(subjects(newsletters)).toEqual(["news"]);
+      expect(newsletters.rows[0]?.pile).toBe("newsletters");
+    });
+
+    it("spam pile returns isSpam rows that are not in the inbox and inbox rows with pile spam, and spam rows never appear in the other piles", async () => {
+      await seedPiles();
+
+      const spam = await inboxList(deps, a, { pile: "spam" });
+
+      expect(subjects(spam)).toEqual(["spam-gmail", "spam-inbox"]);
+      expect(spam.rows.every((r) => r.pile === "spam")).toBe(true);
+      expect(spam.rows.find((r) => r.subject === "Subject spam-gmail")?.inInbox).toBe(false);
+      for (const pile of ["important", "updates", "newsletters"] as const) {
+        expect(
+          subjects(await inboxList(deps, a, { pile })).filter((x) => x.startsWith("spam")),
+        ).toEqual([]);
+      }
+      // The default list is unchanged by piles: it still shows every inbox row except Gmail spam.
+      expect(subjects(await inboxList(deps, a, {}))).toEqual([
+        "imp",
+        "news",
+        "spam-inbox",
+        "undecided",
+        "upd",
+      ]);
+    });
+
+    it("pile views are filtered and carry no triage fields while triage is off", async () => {
+      await seedPiles();
+      await cache(a, connA, "triaged-upd", {
+        pile: "updates",
+        category: "receipt",
+        priority: "low",
+        reason: "Receipt from a shop",
+        needsReply: false,
+        triagedAt: new Date(),
+        triageVersion: TRIAGE_VERSION,
+      });
+
+      const out = await inboxList(deps, a, { pile: "updates" });
+
+      expect(out.enabled).toBe(false);
+      expect(subjects(out)).toEqual(["triaged-upd", "upd"]);
+      expect(out.rows.every((r) => r.category === null && r.reason === null)).toBe(true);
+      expect(out.rows.every((r) => r.needsReply === null && r.priority === null)).toBe(true);
+    });
+
+    it("pileCounts counts threads, not messages, per pile and respects the account tab", async () => {
+      await seedPiles();
+      // A second message of the same thread, and a second account.
+      await cache(a, connA, "upd-2", { pile: "updates", threadId: "upd", receivedAt: daysAgo(2) });
+      const second = await connect(a, "box-a2");
+      await cache(a, second, "other-news", { pile: "newsletters" });
+      await cache(a, connA, "too-old", { pile: "updates", receivedAt: daysAgo(30) });
+
+      const all = await inboxList(deps, a, {});
+      const tab = await inboxList(deps, a, { connectionId: second });
+
+      expect(all.pileCounts).toEqual({ important: 2, updates: 1, newsletters: 2, spam: 2 });
+      expect(tab.pileCounts).toEqual({ important: 0, updates: 0, newsletters: 1, spam: 0 });
+      // The count matches what each pile lists.
+      for (const pile of ["important", "updates", "newsletters", "spam"] as const) {
+        expect((await inboxList(deps, a, { pile })).rows).toHaveLength(
+          all.pileCounts?.[pile] ?? -1,
+        );
+      }
+      await prisma.connection.delete({ where: { id: second } });
+    });
+
+    it("leaves pileCounts off when no account is connected and on filtered lists", async () => {
+      expect((await inboxList(deps, actor(userA, spaceB), {})).pileCounts).toBeUndefined();
+    });
+
+    it("rejects pile with view, category, filter or query before asking Gmail", async () => {
+      await seedPiles();
+      const before = gmail?.requests.length ?? 0;
+      for (const input of [
+        { pile: "updates" as const, view: "important" as const },
+        { pile: "updates" as const, category: "billing" as const },
+        { pile: "updates" as const, filter: "unread" as const },
+        { pile: "updates" as const, query: "from:ann" },
+      ]) {
+        await expect(inboxList(deps, a, input)).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      }
+      expect(gmail?.requests.length ?? 0).toBe(before);
+    });
+
+    it("the updates pile returns all 250 threads of one noisy sender (cap 500) while other views keep the 200 cap", async () => {
+      await wipe();
+      for (let start = 0; start < 250; start += 50) {
+        await Promise.all(
+          Array.from({ length: 50 }, (_, i) =>
+            cache(a, connA, `noisy-${start + i}`, {
+              pile: "updates",
+              fromAddress: "noisy@shop.example.test",
+              receivedAt: new Date(Date.now() - (start + i + 1) * 60_000),
+            }),
+          ),
+        );
+      }
+
+      const updates = await inboxList(deps, a, { pile: "updates" });
+      const all = await inboxList(deps, a, {});
+
+      expect(updates.rows).toHaveLength(250);
+      expect(new Set(updates.rows.map((r) => r.fromAddress))).toEqual(
+        new Set(["noisy@shop.example.test"]),
+      );
+      expect(all.rows).toHaveLength(200);
+      expect(all.pileCounts?.updates).toBe(250);
+    });
+
+    it("pile list and counts never include another user's, another space's or a revoked account's mail", async () => {
+      await wipe();
+      await cache(a, connA, "mine", { pile: "updates" });
+      await cache(a, revokedA, "revoked", { pile: "updates" });
+      await cache(b, connB, "theirs", { pile: "updates" });
+      await cache(c, connC, "other-space", { pile: "updates" });
+      await cache(b, connB, "theirs-spam", { isSpam: true, inInbox: false });
+
+      const updates = await inboxList(deps, a, { pile: "updates" });
+      const spam = await inboxList(deps, a, { pile: "spam" });
+
+      expect(subjects(updates)).toEqual(["mine"]);
+      expect(spam.rows).toEqual([]);
+      expect(updates.pileCounts).toEqual({ important: 0, updates: 1, newsletters: 0, spam: 0 });
+      await expect(
+        inboxList(deps, a, { pile: "updates", connectionId: connB }),
+      ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    });
+
+    it("omitting pile keeps the previous list unchanged", async () => {
+      await seedPiles();
+      const out = await inboxList(deps, a, {});
+      expect(subjects(out)).toEqual(["imp", "news", "spam-inbox", "undecided", "upd"]);
     });
   });
 
@@ -1466,6 +1655,21 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         }
       });
 
+      it("shows the one-line summary on pile rows once triage is enabled", async () => {
+        await setup();
+        await cache(a, connA, "summarized", {
+          pile: "updates",
+          category: "receipt",
+          reason: "Receipt from a shop",
+          ...triaged,
+        });
+
+        const out = await inboxList(on(), a, { pile: "updates" });
+
+        expect(out.enabled).toBe(true);
+        expect(out.rows.map((r) => r.reason)).toEqual(["Receipt from a shop"]);
+      });
+
       it("rejects a view or category combined with a Gmail filter or search, before asking Gmail", async () => {
         await setup();
         const before = gmail?.requests.length ?? 0;
@@ -1822,6 +2026,215 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         { providerMessageId: "a-1", unread: false, inInbox: false },
         { providerMessageId: "a-2", unread: false, inInbox: false },
       ]);
+    });
+  });
+
+  describe("bulk archive", () => {
+    const labelsOf = (ref: string, messageId: string) =>
+      gmail.handle(ref, `https://gmail.googleapis.com/gmail/v1/users/me/messages/${messageId}`)
+        .data as { labelIds: string[] };
+    const inboxOf = (ref: string, messageId: string) =>
+      labelsOf(ref, messageId).labelIds.includes("INBOX");
+    const msg = (id: string) => ({
+      id,
+      threadId: id,
+      date: daysAgo(1).toISOString(),
+      labels: ["INBOX"],
+      from: "Ann Sender <ann@example.test>",
+      to: "me@example.test",
+      subject: `Subject ${id}`,
+    });
+    const setup = async () => {
+      await wipe();
+      gmail = new GmailApiEmulator({
+        mailboxes: {
+          "box-a": {
+            address: "box-a@example.test",
+            messages: ["m1", "m2", "m3", "spam-1", "spam-2"].map(msg),
+          },
+          "box-a2": { address: "box-a2@example.test", messages: ["x1", "x2"].map(msg) },
+          "box-b": { address: "box-b@example.test", messages: [msg("b1")] },
+          "box-c": { address: "box-c@example.test", messages: [msg("c1")] },
+          "box-revoked": { address: "box-revoked@example.test", messages: [msg("r1")] },
+        },
+      });
+      const mine = await Promise.all(["m1", "m2", "m3"].map((m) => cache(a, connA, m)));
+      return { mine };
+    };
+    const stateOf = async (userId: string) =>
+      Object.fromEntries(
+        (
+          await prisma.cachedMailMessage.findMany({
+            where: { userId },
+            select: { providerMessageId: true, inInbox: true },
+          })
+        ).map((m) => [m.providerMessageId, m.inInbox]),
+      );
+
+    it("archiveMany archives many threads in Gmail and the cache and returns all ids in done", async () => {
+      const { mine } = await setup();
+
+      const out = await inboxArchiveMany(deps, a, { messageIds: mine.map((m) => m.id) });
+
+      expect(out.failed).toEqual([]);
+      expect([...out.done].sort()).toEqual(mine.map((m) => m.id).sort());
+      expect(["m1", "m2", "m3"].map((m) => inboxOf("box-a", m))).toEqual([false, false, false]);
+      expect(await stateOf(userA)).toEqual({ m1: false, m2: false, m3: false });
+      expect((await inboxList(deps, a, {})).rows).toEqual([]);
+    });
+
+    it("de-duplicates ids and handles every id of a larger selection", async () => {
+      await setup();
+      const rows = await Promise.all(
+        Array.from({ length: 12 }, async (_, i) => {
+          gmail.addMessage("box-a", msg(`bulk-${i}`));
+          return cache(a, connA, `bulk-${i}`);
+        }),
+      );
+
+      const out = await inboxArchiveMany(deps, a, {
+        messageIds: [...rows.map((r) => r.id), rows[0]?.id as string],
+      });
+
+      expect(out.done).toHaveLength(12);
+      expect(out.failed).toEqual([]);
+    });
+
+    it("reports ids of another user, another space, a revoked account or unknown ids as not_found and still archives the caller's own", async () => {
+      const { mine } = await setup();
+      const theirs = await cache(b, connB, "b1");
+      const otherSpace = await cache(c, connC, "c1");
+      const revoked = await cache(a, revokedA, "r1");
+
+      const out = await inboxArchiveMany(deps, a, {
+        messageIds: [mine[0]?.id as string, theirs.id, otherSpace.id, revoked.id, "no-such-id"],
+      });
+
+      expect(out.done).toEqual([mine[0]?.id]);
+      expect(out.failed.map((f) => f.reason)).toEqual([
+        "not_found",
+        "not_found",
+        "not_found",
+        "not_found",
+      ]);
+      expect(out.failed.map((f) => f.messageId).sort()).toEqual(
+        [theirs.id, otherSpace.id, revoked.id, "no-such-id"].sort(),
+      );
+      expect(inboxOf("box-b", "b1")).toBe(true);
+      expect(inboxOf("box-c", "c1")).toBe(true);
+      expect(await stateOf(userB)).toEqual({ b1: true });
+      expect(await stateOf(userC)).toEqual({ c1: true });
+    });
+
+    it("reports an account without permission as reconnect for its ids and archives the others", async () => {
+      const { mine } = await setup();
+      const second = await connect(a, "box-a2");
+      const x1 = await cache(a, second, "x1");
+      gmail.failNext(403, { reason: "insufficientPermissions", urlIncludes: "/threads/x1/modify" });
+
+      const out = await inboxArchiveMany(deps, a, { messageIds: [x1.id, mine[0]?.id as string] });
+
+      expect(out.done).toEqual([mine[0]?.id]);
+      expect(out.failed).toEqual([{ messageId: x1.id, reason: "reconnect" }]);
+      expect((await stateOf(userA)).x1).toBe(true);
+      expect(
+        (await prisma.mailSyncState.findUniqueOrThrow({ where: { connectionId: second } }))
+          .needsReconnect,
+      ).toBe(true);
+      await prisma.mailSyncState.deleteMany({ where: { connectionId: second } });
+      await prisma.connection.delete({ where: { id: second } });
+    });
+
+    it("reports a Gmail failure as unavailable for that id only", async () => {
+      const { mine } = await setup();
+      gmail.failNext(500, { times: 20, urlIncludes: "/threads/m2/modify" });
+
+      const out = await inboxArchiveMany(deps, a, { messageIds: mine.map((m) => m.id) });
+
+      gmail.clearFailures();
+      expect(out.failed).toEqual([{ messageId: mine[1]?.id, reason: "unavailable" }]);
+      expect(out.done.sort()).toEqual([mine[0]?.id, mine[2]?.id].sort());
+      expect((await stateOf(userA)).m2).toBe(true);
+    });
+
+    it("does nothing and throws BAD_REQUEST while mail writes are turned off", async () => {
+      const { mine } = await setup();
+
+      await expect(
+        inboxArchiveMany({ ...deps, mailWritesDisabled: true }, a, {
+          messageIds: mine.map((m) => m.id),
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+      await expect(
+        inboxUnarchiveMany({ ...deps, mailWritesDisabled: true }, a, {
+          messageIds: mine.map((m) => m.id),
+        }),
+      ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+
+      expect(inboxOf("box-a", "m1")).toBe(true);
+      expect(await stateOf(userA)).toEqual({ m1: true, m2: true, m3: true });
+    });
+
+    it("skips spam-pile and Gmail-spam rows with reason spam unless allowSpam is true", async () => {
+      const { mine } = await setup();
+      const piled = await cache(a, connA, "spam-1", { pile: "spam" });
+      const gmailSpam = await cache(a, connA, "spam-2", { isSpam: true, inInbox: false });
+
+      const refused = await inboxArchiveMany(deps, a, {
+        messageIds: [mine[0]?.id as string, piled.id, gmailSpam.id],
+      });
+
+      expect(refused.done).toEqual([mine[0]?.id]);
+      expect(refused.failed.map((f) => f.reason)).toEqual(["spam", "spam"]);
+      expect(inboxOf("box-a", "spam-1")).toBe(true);
+      expect((await stateOf(userA))["spam-1"]).toBe(true);
+
+      const allowed = await inboxArchiveMany(deps, a, { messageIds: [piled.id], allowSpam: true });
+
+      expect(allowed).toEqual({ done: [piled.id], failed: [] });
+      expect(inboxOf("box-a", "spam-1")).toBe(false);
+      expect((await stateOf(userA))["spam-1"]).toBe(false);
+    });
+
+    it("unarchiveMany puts the threads back in the inbox", async () => {
+      const { mine } = await setup();
+      const messageIds = mine.map((m) => m.id);
+      await inboxArchiveMany(deps, a, { messageIds });
+
+      const out = await inboxUnarchiveMany(deps, a, { messageIds });
+
+      expect(out.failed).toEqual([]);
+      expect(out.done).toHaveLength(3);
+      expect(await stateOf(userA)).toEqual({ m1: true, m2: true, m3: true });
+      expect(["m1", "m2", "m3"].every((m) => inboxOf("box-a", m))).toBe(true);
+    });
+
+    it("serves archiveMany and unarchiveMany through the router for the signed-in user only; rejects 0 and 51 ids", async () => {
+      const { mine } = await setup();
+      const theirs = await cache(b, connB, "b1");
+      const client = createRouterClient(
+        createRouter({ ...deps, env: { mailWritesDisabled: false } } as unknown as RouterDeps),
+        { context: { actor: a } as never },
+      );
+
+      const archived = await client.inbox.archiveMany({
+        messageIds: [mine[0]?.id as string, theirs.id],
+      });
+      expect(archived).toEqual({
+        done: [mine[0]?.id],
+        failed: [{ messageId: theirs.id, reason: "not_found" }],
+      });
+      expect(await client.inbox.unarchiveMany({ messageIds: [mine[0]?.id as string] })).toEqual({
+        done: [mine[0]?.id],
+        failed: [],
+      });
+      expect(inboxOf("box-b", "b1")).toBe(true);
+      await expect(client.inbox.archiveMany({ messageIds: [] })).rejects.toThrow();
+      await expect(
+        client.inbox.archiveMany({
+          messageIds: Array.from({ length: 51 }, (_, i) => `id-${i}`),
+        }),
+      ).rejects.toThrow();
     });
   });
 

@@ -803,4 +803,10 @@ export const ZH_MESSAGES: Record<string, string> = {
   "Could not save this list.": "无法保存此列表。",
   "Call Elio": "呼叫 Elio",
   "Could not start the call": "无法发起通话",
+  Important: "重要",
+  Updates: "更新",
+  Newsletters: "订阅邮件",
+  "Spam {count}": "垃圾邮件 {count}",
+  "Archive {count} conversations from {sender}?": "要归档来自 {sender} 的 {count} 个会话吗？",
+  "Could not archive {count}": "无法归档 {count} 个会话",
 };

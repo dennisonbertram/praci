@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 210 of 210
-- Web and shared components: 595
-- Mobile components: 128 in 89 files, mobile — native story pending
+- Web and shared component files with stories: 212 of 212
+- Web and shared components: 597
+- Mobile components: 130 in 90 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -183,7 +183,9 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | InboxMessageDialog, InboxMessage, AttachmentIcon, InboxAttachments, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
+| InboxPileTabs | [apps/web/src/components/inbox/InboxPileTabs.tsx](../../apps/web/src/components/inbox/InboxPileTabs.tsx) | [InboxPileTabs.stories.tsx](../../apps/web/src/components/inbox/InboxPileTabs.stories.tsx) | web |
 | InboxGroup, InboxRow | [apps/web/src/components/inbox/InboxRow.tsx](../../apps/web/src/components/inbox/InboxRow.tsx) | [InboxRow.stories.tsx](../../apps/web/src/components/inbox/InboxRow.stories.tsx) | web |
+| InboxSenderGroup | [apps/web/src/components/inbox/InboxSenderGroup.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.tsx) | [InboxSenderGroup.stories.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.stories.tsx) | web |
 | InboxShortcuts | [apps/web/src/components/inbox/InboxShortcuts.tsx](../../apps/web/src/components/inbox/InboxShortcuts.tsx) | [InboxShortcuts.stories.tsx](../../apps/web/src/components/inbox/InboxShortcuts.stories.tsx) | web |
 | TodoCard | [apps/web/src/components/inbox/TodoCard.tsx](../../apps/web/src/components/inbox/TodoCard.tsx) | [TodoCard.stories.tsx](../../apps/web/src/components/inbox/TodoCard.stories.tsx) | web |
 
@@ -325,7 +327,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | GroupSettingsScreen | [apps/mobile/app/group-settings.tsx](../../apps/mobile/app/group-settings.tsx) | mobile — native story pending | mobile |
 | ImageScreen | [apps/mobile/app/image.tsx](../../apps/mobile/app/image.tsx) | mobile — native story pending | mobile |
 | InboxMessageScreen | [apps/mobile/app/inbox-message.tsx](../../apps/mobile/app/inbox-message.tsx) | mobile — native story pending | mobile |
-| InboxScreen, TodoCard, MailListRow | [apps/mobile/app/inbox.tsx](../../apps/mobile/app/inbox.tsx) | mobile — native story pending | mobile |
+| InboxScreen, TodoCard, MailGroupRow, MailListRow | [apps/mobile/app/inbox.tsx](../../apps/mobile/app/inbox.tsx) | mobile — native story pending | mobile |
 | HomeSession, Home, ActivitySection, ActivityRow, MailInboxRow, HeaderButton | [apps/mobile/app/index.tsx](../../apps/mobile/app/index.tsx) | mobile — native story pending | mobile |
 | NewGroup | [apps/mobile/app/new-group.tsx](../../apps/mobile/app/new-group.tsx) | mobile — native story pending | mobile |
 | NewSpace | [apps/mobile/app/new-space.tsx](../../apps/mobile/app/new-space.tsx) | mobile — native story pending | mobile |
@@ -369,6 +371,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | SearchRow | [apps/mobile/components/inbox-render-item.tsx](../../apps/mobile/components/inbox-render-item.tsx) | mobile — native story pending | mobile |
 | BotRow, GroupRow | [apps/mobile/components/inbox-rows.tsx](../../apps/mobile/components/inbox-rows.tsx) | mobile — native story pending | mobile |
 | InlineImageAttachment | [apps/mobile/components/inline-image-attachment.tsx](../../apps/mobile/components/inline-image-attachment.tsx) | mobile — native story pending | mobile |
+| MailRowMenu | [apps/mobile/components/mail-row-menu.tsx](../../apps/mobile/components/mail-row-menu.tsx) | mobile — native story pending | mobile |
 | MarkdownArtifactPreview | [apps/mobile/components/markdown-artifact-preview.tsx](../../apps/mobile/components/markdown-artifact-preview.tsx) | mobile — native story pending | mobile |
 | McpApprovalCard | [apps/mobile/components/McpApprovalCard.tsx](../../apps/mobile/components/McpApprovalCard.tsx) | mobile — native story pending | mobile |
 | MenuPickerMenu, MenuPicker | [apps/mobile/components/menu-picker.tsx](../../apps/mobile/components/menu-picker.tsx) | mobile — native story pending | mobile |
