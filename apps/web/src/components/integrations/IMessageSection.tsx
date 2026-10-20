@@ -235,7 +235,7 @@ function SetupDialog({
           ) : null}
           {saved || (provider.configured && !provider.active) ? (
             <p role="status" className="text-sm text-warning">
-              <Trans>Restart the Rakazo server to start using iMessage.</Trans>
+              <Trans>Restart the Praci server to start using iMessage.</Trans>
             </p>
           ) : null}
           {error ? (

@@ -6,7 +6,7 @@ Source: `docs/ux-paths/dataroom/catalog.md`.
 Generated: 2026-10-17
 Repository: `the repository root` (branch `docs/ux-pass`, code read at HEAD `559a76ad`). PR #109 stories were read from `origin/feat/legal` at commit `f2b8fc1e` ("Legal: regenerate translation catalogs after the e2e fixes").
 Total Stories: 44 (short 26, medium 17, long 1)
-Persona for every story: Maya, a naive first-time founder of Northwind Robotics ("Northwind Robotics") who has never seen Rakazo, does not know its vocabulary ("Data room", "folder", "filing", "agent", "approval", "space"), and wants to keep the company's documents in order and find them again.
+Persona for every story: Maya, a naive first-time founder of Northwind Robotics ("Northwind Robotics") who has never seen Praci, does not know its vocabulary ("Data room", "folder", "filing", "agent", "approval", "space"), and wants to keep the company's documents in order and find them again.
 
 ### Changes since the 2026-10-16 catalog
 
@@ -20,7 +20,7 @@ The Data room changed a lot on main since the last catalog (`git log -- apps/web
   - 006 uploads now go into the open folder (it was a gap: uploads always went to the root).
   - 007 status words are now just "Reading" or blank; "Pending" and "Filing" no longer exist (`format.ts:16-17`).
   - 008 a failed file now has "Couldn't read this file", its reason, and a Delete button in the preview.
-  - 009 the consent prompt now exists on the page ("Let Rakazo read your documents", Allow). It used to be a dead end.
+  - 009 the consent prompt now exists on the page ("Let Praci read your documents", Allow). It used to be a dead end.
   - 010 filing now follows the Allow button; the row shows the folder path under the name.
   - 011 the open folder lives in the URL; Back works; a parent folder shows its sub-folders as rows but not their files.
   - 012 view and sort are remembered in the browser (they were not); the Date and Type sort options hide until some item has a value.
@@ -51,7 +51,7 @@ Main (`559a76ad`):
 - Filter bar (`FilterBar.tsx`): search box (placeholder "Search names and text", aria "Search documents", debounced 300 ms, server-side, Escape clears), then "Type", "Party", "Document date", "Source" and "Sort: …" plus an ascending/descending arrow. Type, Party and Source are pick lists built from the rows on screen (Source always offers Upload, Google Drive, Gmail, Chat, Finance). A filter appears only when there is something to pick (Type, Party, Document date), or is already set.
 - Status: while a background job works the row shows a spinner and the word "Reading"; failed shows "Failed" in red with the reason as a hover tooltip. Ready rows show nothing. The list re-reads working items every 3 s (`use-data-room-list.ts:34`).
 - Preview (`Preview.tsx`): "Preview" header with "…" and a close X; name; image (for png/jpg/gif/webp up to 10 MB; hidden when Hide amounts is on); summary or "Reading" or "Couldn't read this file" + reason; Type, Date, Parties, Amount, Tags, Folder, Source, Size; failed files lead with a red "Delete"; every file has "Download".
-- Consent card (`ConsentPrompt.tsx`): "Let Rakazo read your documents" + Allow, or, with no model, a grey note telling the founder to set up a model in Settings. After Allow, items that were waiting go through reading and filing again (`apps/api/src/data-room.ts:245-290`).
+- Consent card (`ConsentPrompt.tsx`): "Let Praci read your documents" + Allow, or, with no model, a grey note telling the founder to set up a model in Settings. After Allow, items that were waiting go through reading and filing again (`apps/api/src/data-room.ts:245-290`).
 - Settings: "Embedding model" in the model settings overlay enables semantic search.
 
 Requires PR #109 (origin/feat/legal, commit `f2b8fc1e`):
@@ -356,7 +356,7 @@ STORY-DRM-001 (Find the Data room, empty)
 **Alternate paths**: Settings "AI data sharing" switches look relevant but are separate; the Data room has its own card.
 
 ##### Steps
-1. Open Data room → Above the search box a card headed "Let Rakazo read your documents": "To tag new files and sort them into folders for you, their text (and images) is sent to <model provider names>. Until then you can search by name and text and move files into folders yourself." Button "Allow". **Hesitation:** "sent to" a company name; she wonders whether the documents are shared or kept. No "Not now" button.
+1. Open Data room → Above the search box a card headed "Let Praci read your documents": "To tag new files and sort them into folders for you, their text (and images) is sent to <model provider names>. Until then you can search by name and text and move files into folders yourself." Button "Allow". **Hesitation:** "sent to" a company name; she wonders whether the documents are shared or kept. No "Not now" button.
 2. Click "Allow" → The card disappears and the list reloads (`ConsentPrompt.tsx:41-45`).
 3. Watch the rows → Items the server had skipped go back through reading (`apps/api/src/data-room.ts:276-290`); the spinner and "Reading" return, then Type, Date and Parties fill in.
 4. Open the folder tree → New folders the classifier created appear (STORY-DRM-010).
@@ -565,7 +565,7 @@ STORY-DRM-001 (Find the Data room, empty)
 4. Toasts stack at the lower right: ten progress bars and one red "Over the 50 MB limit" for the video.
 5. Toasts turn to "Uploaded" and disappear after 10 s → She believes everything is filed in folders. **Misread risk.**
 6. The list shows ten rows, each with a spinner and "Reading", then plain rows with no Type or Date (no consent, so nothing was classified).
-7. Above the list a card "Let Rakazo read your documents" with an Allow button explains the documents will be sent to a model provider. **Hesitation:** privacy of incorporation documents.
+7. Above the list a card "Let Praci read your documents" with an Allow button explains the documents will be sent to a model provider. **Hesitation:** privacy of incorporation documents.
 8. She clicks Allow → The card disappears; rows go back to "Reading".
 9. After a minute, Type, Date and Parties fill in. In the tree, folders such as `Legal`, `Investors`, `Finance / Invoices` and `HR` appear that she did not create.
 10. She clicks a row → The preview shows a summary, Tags, and the Folder.

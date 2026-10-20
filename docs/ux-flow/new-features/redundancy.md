@@ -61,7 +61,7 @@ Evidence: the "Redundancy candidates" list in `docs/ux-paths/catalog.md`, `docs/
 
 **O3. Finance agent and Mercury/Brex agents. Overlap in data, distinct in source.** Both answer balances; the Finance agent uses synced data and can be staler (catalog). Not walked for disagreement. No change recommended until a user sees two numbers; if they can, label the source in the answer.
 
-**O4. Mercury agent plus Mercury's own approval (IA-4).** The Rakazo card and Mercury's pendingApproval request are two gates by design (IA-4 text). Keep, but the agent's reply should say Mercury still needs approval (UNVERIFIED that it does).
+**O4. Mercury agent plus Mercury's own approval (IA-4).** The Praci card and Mercury's pendingApproval request are two gates by design (IA-4 text). Keep, but the agent's reply should say Mercury still needs approval (UNVERIFIED that it does).
 
 ## Hierarchy & IA
 

@@ -150,7 +150,7 @@ it("labels every field and the webhook URL, and shows Done after a save", async 
   await act(async () => {
     document.querySelector<HTMLFormElement>("form")!.requestSubmit();
   });
-  expect(document.body.textContent).toContain("Restart the Rakazo server");
+  expect(document.body.textContent).toContain("Restart the Praci server");
   expect(button("Done")).toBeDefined();
   expect([...document.querySelectorAll("button")].some((b) => b.textContent === "Cancel")).toBe(
     false,

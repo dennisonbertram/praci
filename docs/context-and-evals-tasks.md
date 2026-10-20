@@ -231,7 +231,7 @@ Summaries are capped at 20,000 characters and new transcripts at 40,000 characte
 Compaction currently uses counts and character caps rather than a model context budget.
 
 Before the partial work, the Pi runtime exposed cache read and write usage,
-reasoning usage, total tokens, and estimated cost. Rakazo forwarded and persisted
+reasoning usage, total tokens, and estimated cost. Praci forwarded and persisted
 only input and output counts. The eval runner measured tokens, tool calls, and
 latency but always reported cost as null. General text and tool-result compaction
 within a running agent loop was not implemented; screenshot context had separate

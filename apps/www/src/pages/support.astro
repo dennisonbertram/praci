@@ -9,21 +9,21 @@ const stars = await fetchGithubStars();
 const starsLabel = stars === null ? "Star" : formatStarCount(stars);
 ---
 
-<BaseLayout title="Support · Rakazo" description="Get help with the Rakazo app and self-hosted Rakazo.">
+<BaseLayout title="Support · Praci" description="Get help with the Praci app and self-hosted Praci.">
   <div class="container">
     <Header starsLabel={starsLabel} />
     <main id="main" class="privacy-copy">
-      <h1>Rakazo support</h1>
+      <h1>Praci support</h1>
       <p>
-        For help with the Rakazo mobile app or a hosted Rakazo account, email{" "}
-        <a href="mailto:hello@rakazo.com">hello@rakazo.com</a>. Include the email address on your
+        For help with the Praci mobile app or a hosted Praci account, open an issue on{" "}
+        <a href="https://github.com/dennisonbertram/praci/issues">GitHub</a>. Include the email address on your
         account, what you expected to happen, and any error message you saw. Do not send passwords, API keys,
         access tokens, or other secrets.
       </p>
-      <h2>Self-hosted Rakazo</h2>
+      <h2>Self-hosted Praci</h2>
       <p>
         Start with the <a href={SELF_HOST_GUIDE_PATH}>self-hosting guide</a>. For reproducible bugs or feature requests,
-        open an issue in the <a href={`${GITHUB_URL}/issues`}>Rakazo GitHub repository</a>.
+        open an issue in the <a href={`${GITHUB_URL}/issues`}>Praci GitHub repository</a>.
       </p>
       <h2>Account deletion</h2>
       <p>

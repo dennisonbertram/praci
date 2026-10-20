@@ -5,7 +5,7 @@ Refs: `apps/web/src/pages/Inbox.tsx` (I), `apps/web/src/lib/inbox-sync-error.ts`
 ## STORY-001: First visit with no Gmail connected, Connect mail round trip
 **Type**: medium
 **Topic**: empty-error-sync-states
-**Persona**: Priya Raman, new hire at a 12-person design studio, just joined her team's Rakazo space and clicked "Inbox" in the sidebar for the first time
+**Persona**: Priya Raman, new hire at a 12-person design studio, just joined her team's Praci space and clicked "Inbox" in the sidebar for the first time
 **Goal**: Get her Gmail showing in the Inbox
 **Preconditions**: Signed in, no mail account connected, Gmail plugin not yet set up.
 **Ideal path**: 3 — Inbox button, "Connect mail", finish Gmail OAuth in the overlay, then close it.
@@ -66,7 +66,7 @@ Refs: `apps/web/src/pages/Inbox.tsx` (I), `apps/web/src/lib/inbox-sync-error.ts`
 ## STORY-004: "Gmail needs to be reconnected." and the missing Reconnect action
 **Type**: long
 **Topic**: empty-error-sync-states
-**Persona**: Tomasz Kowalski, founder whose Google password change revoked Rakazo's token last week
+**Persona**: Tomasz Kowalski, founder whose Google password change revoked Praci's token last week
 **Goal**: Restore mail access
 **Preconditions**: Gmail account connected earlier; Google refuses the refresh token, so `MailSyncState.needsReconnect` is true and `lastErrorAt` set; cached rows (14-day window) still present.
 **Ideal path**: 4 — read banner, open Integrations (no direct link), reconnect Gmail, return and reload.
@@ -85,7 +85,7 @@ Refs: `apps/web/src/pages/Inbox.tsx` (I), `apps/web/src/lib/inbox-sync-error.ts`
 - If `failedAccounts` is non-empty but `reconnectAccounts` is empty the copy flips to "Couldn't reach Gmail." (`inbox-sync-error.ts:9-11`), so a mixed failure shows the reconnect message if any account needs it.
 - Search/filter views re-use the same banner (`failed` is computed for any `shown`).
 
-## STORY-005: "Let Rakazo sort your mail" consent card
+## STORY-005: "Let Praci sort your mail" consent card
 **Type**: medium
 **Topic**: empty-error-sync-states
 **Persona**: Elena Vasquez, privacy-conscious lawyer who just got a model configured for her workspace
@@ -94,7 +94,7 @@ Refs: `apps/web/src/pages/Inbox.tsx` (I), `apps/web/src/lib/inbox-sync-error.ts`
 **Ideal path**: 1 — click Allow on the card.
 **Alternate paths**: Revoke or grant per-model via the "AI data sharing" switches in settings (`AiDataSharingSection`, A:57); ignore the card and use the Inbox untriaged.
 ### Steps
-1. Open Inbox → above the list a region card: "Let Rakazo sort your mail" / "Senders, recipients, subjects and short previews are sent to {model name}." with an "Allow" button (A:36-52). It replaces the To-do card position (I:624-632) and shows only on the unfiltered, unsearched view.
+1. Open Inbox → above the list a region card: "Let Praci sort your mail" / "Senders, recipients, subjects and short previews are sent to {model name}." with an "Allow" button (A:36-52). It replaces the To-do card position (I:624-632) and shows only on the unfiltered, unsearched view.
 2. Elena thinks "Sent to whom, and does the body go?" The copy lists senders, recipients, subjects and previews but has no link to the settings or privacy page → she decides on that text alone.
 3. Click "Allow" → button disables (`pending`), `allowRecipient(key)` runs, then `onAllowed` bumps `attempt` (re-sync, which queues triage) and `reload` (I:626-631).
 4. List reloads; after sync the card is gone and the To-do card, labels and "Important"/category controls appear once triage finishes (STORY-006).

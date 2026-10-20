@@ -1,6 +1,6 @@
-# Rakazo design system
+# Praci design system
 
-This is the master reference for Rakazo's UI on web, Electron and mobile. It describes what exists in the repository today. The full list of components and their stories is in [components.md](components.md), which `pnpm design-system` regenerates.
+This is the master reference for Praci's UI on web, Electron and mobile. It describes what exists in the repository today. The full list of components and their stories is in [components.md](components.md), which `pnpm design-system` regenerates.
 
 ## Principles
 
