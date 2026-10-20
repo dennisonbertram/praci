@@ -223,8 +223,9 @@ function EmailPicker({
         picks: [...picks.values()],
         folderId,
       });
+      // The import activity strip reports what was imported; only "already there" has no strip.
       onDone(
-        imported > 0 || (duplicates > 0 && failed === 0) ? importedText(imported, duplicates) : "",
+        imported === 0 && duplicates > 0 && failed === 0 ? importedText(imported, duplicates) : "",
         imported > 0 || duplicates > 0,
       );
       dataRoomImportStarted();

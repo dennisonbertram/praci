@@ -661,6 +661,8 @@ export function DataRoomPage({
                 folderPath={folderPath(shown.folderId)}
                 onAction={interaction.onAction}
                 onClose={closePreview}
+                agents={agents}
+                onSendToAgent={onSendToAgent}
               />
             ) : null}
           </div>
@@ -675,6 +677,8 @@ export function DataRoomPage({
               folderPath={folderPath(shown.folderId)}
               onAction={interaction.onAction}
               onClose={closePreview}
+              agents={agents}
+              onSendToAgent={onSendToAgent}
             />
           </DialogContent>
         </Dialog>
