@@ -142,7 +142,6 @@ import {
 import type { Auth } from "@rakazo/auth";
 import type {
   Actor,
-  BoardEvent,
   Bot,
   BotSecretMetadata,
   ComputerReleaseReason,
@@ -151,8 +150,6 @@ import type {
   McpServer,
   Me,
   NotificationDto,
-  NotificationSignal,
-  ProductEvent,
   Routine,
   SpaceNavigation,
 } from "@rakazo/contracts";
@@ -454,6 +451,7 @@ import {
   UpdaterProxyError,
 } from "./server-update.js";
 import { spreadsheetPreview } from "./spreadsheet-preview.js";
+import { HEARTBEAT, withHeartbeat } from "./stream.js";
 import { assertTeachingSendAllowed, createTaughtSkillsService } from "./taught-skills.js";
 import {
   isBackgroundRun,
@@ -1183,6 +1181,27 @@ export function createRouter(deps: RouterDeps) {
     deps.refreshExpiredModelCredential ??
     ((scope: { userId: string; spaceId: string }, secretId: string, provider: string) =>
       kickModelCredentialRefresh(deps.prisma, deps.secrets, scope, secretId, provider));
+  const liveCatalogFor = async (actor: Actor) => {
+    const auth = await modelCredentialAuthKindsForSpace(deps.prisma, deps.secrets, actor);
+    const available = listAvailablePiCatalog(auth.byProvider, auth.byModel);
+    const live = await codexLiveCatalogsForSpace(
+      deps.prisma,
+      deps.secrets,
+      actor,
+      auth,
+      codexCatalog,
+      {
+        // An expired bearer yields no catalog this round; kick the runtime's
+        // locked refresh so the next read can see the account's real list.
+        onExpiredToken: (secretId) =>
+          refreshExpiredCredential(actor, secretId, CHATGPT_OAUTH_PROVIDER),
+      },
+    );
+    return {
+      auth,
+      catalog: live.size > 0 ? applyCodexLiveCatalog(available, auth, live) : available,
+    };
+  };
   const groupRepos = createGroupRepos(deps.prisma);
   const taughtSkills = createTaughtSkillsService({
     prisma: deps.prisma,
@@ -1551,26 +1570,7 @@ export function createRouter(deps: RouterDeps) {
         dataRoom.setEmbeddingModel(context.actor, input),
       ),
       list: authed.models.list.handler(async ({ context }) => {
-        const auth = await modelCredentialAuthKindsForSpace(
-          deps.prisma,
-          deps.secrets,
-          context.actor,
-        );
-        const available = listAvailablePiCatalog(auth.byProvider, auth.byModel);
-        const live = await codexLiveCatalogsForSpace(
-          deps.prisma,
-          deps.secrets,
-          context.actor,
-          auth,
-          codexCatalog,
-          {
-            // An expired bearer yields no catalog this round; kick the runtime's
-            // locked refresh so the next read can see the account's real list.
-            onExpiredToken: (secretId) =>
-              refreshExpiredCredential(context.actor, secretId, CHATGPT_OAUTH_PROVIDER),
-          },
-        );
-        const catalog = live.size > 0 ? applyCodexLiveCatalog(available, auth, live) : available;
+        const { catalog } = await liveCatalogFor(context.actor);
         // The scripted fixture only exists to drive the scripted runtime; a real
         // runtime cannot execute it, so it stays out of the user-facing catalog.
         return deps.env.agentRuntime === "scripted" ? [...catalog, scriptedCatalogEntry] : catalog;
@@ -1625,24 +1625,7 @@ export function createRouter(deps: RouterDeps) {
       ),
       setBackups: authed.models.setBackups.handler(async ({ context, input }) => {
         if (input.length > 0) {
-          const auth = await modelCredentialAuthKindsForSpace(
-            deps.prisma,
-            deps.secrets,
-            context.actor,
-          );
-          const available = listAvailablePiCatalog(auth.byProvider, auth.byModel);
-          const live = await codexLiveCatalogsForSpace(
-            deps.prisma,
-            deps.secrets,
-            context.actor,
-            auth,
-            codexCatalog,
-            {
-              onExpiredToken: (secretId) =>
-                refreshExpiredCredential(context.actor, secretId, CHATGPT_OAUTH_PROVIDER),
-            },
-          );
-          const catalog = live.size > 0 ? applyCodexLiveCatalog(available, auth, live) : available;
+          const { catalog } = await liveCatalogFor(context.actor);
           for (const choice of input) {
             const credential = await findModelCredential(
               deps.prisma,
@@ -2616,56 +2599,34 @@ export function createRouter(deps: RouterDeps) {
         const follow = deps.events.follow(target.threadId, input.cursor, context.signal);
         // A half-open stream looks identical to an idle one, so punctuate silence:
         // the client treats any frame as liveness and reconnects once they stop.
-        let pending: Promise<IteratorResult<ProductEvent>> | undefined;
-        // Auth ran once when the stream opened. Re-check before delivering more, so a signed-out
-        // or revoked session stops within SESSION_RECHECK_MS, or at the next heartbeat when idle.
-        let authorizedAt = Date.now();
-        const assertStillAuthorized = async () => {
-          if (!context.stillAuthorized || Date.now() - authorizedAt < SESSION_RECHECK_MS) return;
-          if (!(await context.stillAuthorized())) throw new ORPCError("UNAUTHORIZED");
-          authorizedAt = Date.now();
-        };
-        try {
-          while (!context.signal?.aborted) {
-            pending ??= follow.next();
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            const next = await Promise.race([
-              pending,
-              new Promise<"silent">((resolve) => {
-                timer = setTimeout(() => resolve("silent"), HEARTBEAT_MS);
-              }),
-            ]).finally(() => clearTimeout(timer));
-            if (next === "silent") {
-              await assertStillAuthorized();
-              // Keep `pending` so the in-flight read stays the next event in order.
-              yield {
-                id: "heartbeat",
-                spaceId: context.actor.spaceId,
-                threadId: target.threadId,
-                // A bot thread's id is not the bot. Groups have no single bot, so the thread id stands in.
-                botId: target.kind === "bot" ? target.botId : target.threadId,
-                seq: 0,
-                type: "heartbeat",
-                createdAt: new Date().toISOString(),
-                payload: {},
-              };
-              continue;
-            }
-            pending = undefined;
-            if (next.done) return;
-            const event = next.value;
-            // Filtered peer events also restart the heartbeat, so check before skipping them.
-            await assertStillAuthorized();
-            if (await isPeerRun(deps.prisma, event.runId, peerRunCache)) {
-              if (!shouldForwardPeerThreadEvent(event)) continue;
-            } else if (await isBackgroundRun(deps.prisma, event.runId, backgroundRunCache)) {
-              if (!shouldForwardBackgroundThreadEvent(event)) continue;
-            }
-            yield event;
+        // Auth ran once when the stream opened. withHeartbeat re-checks before delivering more, so a
+        // signed-out or revoked session stops within SESSION_RECHECK_MS, or at the next heartbeat when idle.
+        for await (const event of withHeartbeat(follow, {
+          signal: context.signal,
+          stillAuthorized: context.stillAuthorized,
+          heartbeatMs: HEARTBEAT_MS,
+          recheckMs: SESSION_RECHECK_MS,
+        })) {
+          if (event === HEARTBEAT) {
+            yield {
+              id: "heartbeat",
+              spaceId: context.actor.spaceId,
+              threadId: target.threadId,
+              // A bot thread's id is not the bot. Groups have no single bot, so the thread id stands in.
+              botId: target.kind === "bot" ? target.botId : target.threadId,
+              seq: 0,
+              type: "heartbeat",
+              createdAt: new Date().toISOString(),
+              payload: {},
+            };
+            continue;
           }
-        } finally {
-          // Not awaited: closing can queue behind a read that the abort has not landed on yet.
-          void follow.return(undefined).catch(() => {});
+          if (await isPeerRun(deps.prisma, event.runId, peerRunCache)) {
+            if (!shouldForwardPeerThreadEvent(event)) continue;
+          } else if (await isBackgroundRun(deps.prisma, event.runId, backgroundRunCache)) {
+            if (!shouldForwardBackgroundThreadEvent(event)) continue;
+          }
+          yield event;
         }
       }),
       send: authed.threads.send.handler(async ({ context, input }) => {
@@ -4295,34 +4256,13 @@ export function createRouter(deps: RouterDeps) {
         const follow = deps.boardEvents.follow(spaceId, context.signal);
         // Board signals are transient, so a heartbeat stands in for liveness and
         // gives the client a periodic catch-up reload if a push was missed.
-        let pending: Promise<IteratorResult<BoardEvent>> | undefined;
-        let authorizedAt = Date.now();
-        const assertStillAuthorized = async () => {
-          if (!context.stillAuthorized || Date.now() - authorizedAt < SESSION_RECHECK_MS) return;
-          if (!(await context.stillAuthorized())) throw new ORPCError("UNAUTHORIZED");
-          authorizedAt = Date.now();
-        };
-        try {
-          while (!context.signal?.aborted) {
-            pending ??= follow.next();
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            const next = await Promise.race([
-              pending,
-              new Promise<"silent">((resolve) => {
-                timer = setTimeout(() => resolve("silent"), HEARTBEAT_MS);
-              }),
-            ]).finally(() => clearTimeout(timer));
-            await assertStillAuthorized();
-            if (next === "silent") {
-              yield { spaceId, createdAt: new Date().toISOString() };
-              continue;
-            }
-            pending = undefined;
-            if (next.done) return;
-            yield next.value;
-          }
-        } finally {
-          void follow.return(undefined).catch(() => {});
+        for await (const event of withHeartbeat(follow, {
+          signal: context.signal,
+          stillAuthorized: context.stillAuthorized,
+          heartbeatMs: HEARTBEAT_MS,
+          recheckMs: SESSION_RECHECK_MS,
+        })) {
+          yield event === HEARTBEAT ? { spaceId, createdAt: new Date().toISOString() } : event;
         }
       }),
     },
@@ -7638,32 +7578,15 @@ export function createRouter(deps: RouterDeps) {
       }),
       subscribe: authed.notifications.subscribe.handler(async function* ({ context }) {
         const follow = deps.notificationEvents.follow(context.actor, context.signal);
-        let pending: Promise<IteratorResult<NotificationSignal>> | undefined;
-        let authorizedAt = Date.now();
-        try {
-          while (!context.signal?.aborted) {
-            pending ??= follow.next();
-            let timer: ReturnType<typeof setTimeout> | undefined;
-            const next = await Promise.race([
-              pending,
-              new Promise<"silent">((resolve) => {
-                timer = setTimeout(() => resolve("silent"), HEARTBEAT_MS);
-              }),
-            ]).finally(() => clearTimeout(timer));
-            if (context.stillAuthorized && Date.now() - authorizedAt >= SESSION_RECHECK_MS) {
-              if (!(await context.stillAuthorized())) throw new ORPCError("UNAUTHORIZED");
-              authorizedAt = Date.now();
-            }
-            if (next === "silent") {
-              yield { id: NOTIFICATION_HEARTBEAT_ID, surface: "", importance: "info" as const };
-              continue;
-            }
-            pending = undefined;
-            if (next.done) return;
-            yield next.value;
-          }
-        } finally {
-          void follow.return(undefined).catch(() => {});
+        for await (const event of withHeartbeat(follow, {
+          signal: context.signal,
+          stillAuthorized: context.stillAuthorized,
+          heartbeatMs: HEARTBEAT_MS,
+          recheckMs: SESSION_RECHECK_MS,
+        })) {
+          yield event === HEARTBEAT
+            ? { id: NOTIFICATION_HEARTBEAT_ID, surface: "", importance: "info" as const }
+            : event;
         }
       }),
     },
