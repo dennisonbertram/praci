@@ -1,34 +1,54 @@
+import { formatSheetCell, isNumericSheetCell } from "@rakazo/core";
 import { useEffect, useState } from "react";
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { getSpreadsheetPreview } from "../lib/artifacts";
 import { useI18n } from "../lib/i18n";
 import { native, useThemedStyles } from "../lib/native";
 import { errorText } from "../lib/user-error";
+import { NativeSegmentedControl } from "./native-segmented-control";
 
 type Cell = string | number | boolean | null;
+type Ready = {
+  status: "ready";
+  sheets: string[];
+  sheet: string;
+  header: Cell[];
+  rows: Cell[][];
+  truncated: boolean;
+  note?: string;
+};
 type State =
   | { status: "loading" }
   | { status: "error"; message: string }
   | { status: "unsupported" }
-  | { status: "ready"; header: Cell[]; rows: Cell[][] };
+  | Ready;
 
-const show = (cell: Cell) => (cell === null ? "" : String(cell));
-
-/** A read-only table of the first sheet (up to 200 rows). The server reads the file. */
+/** A read-only table of one sheet. The server reads the file; more rows load on request. */
 export function SheetArtifactPreview({ artifactId }: { artifactId: string }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const styles = useThemedStyles(createStyles);
+  const [sheet, setSheet] = useState<string | undefined>(undefined);
   const [state, setState] = useState<State>({ status: "loading" });
+  const [more, setMore] = useState<"idle" | "loading" | "error">("idle");
 
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading" });
-    void getSpreadsheetPreview(artifactId)
+    setMore("idle");
+    void getSpreadsheetPreview(artifactId, { sheet })
       .then((page) => {
         if (cancelled) return;
         setState(
           page.status === "ready"
-            ? { status: "ready", header: page.header, rows: page.rows.map((row) => row.cells) }
+            ? {
+                status: "ready",
+                sheets: page.sheets.map((entry) => entry.name),
+                sheet: page.sheet,
+                header: page.header,
+                rows: page.rows.map((row) => row.cells),
+                truncated: page.truncated,
+                note: page.note,
+              }
             : { status: "unsupported" },
         );
       })
@@ -43,7 +63,25 @@ export function SheetArtifactPreview({ artifactId }: { artifactId: string }) {
     return () => {
       cancelled = true;
     };
-  }, [artifactId, t]);
+  }, [artifactId, sheet, t]);
+
+  const loadMore = () => {
+    if (state.status !== "ready") return;
+    const current = state;
+    setMore("loading");
+    getSpreadsheetPreview(artifactId, { sheet: current.sheet, offset: current.rows.length })
+      .then((next) => {
+        if (next.status !== "ready") throw new Error("unsupported");
+        // A page with no rows ends the sheet (a wide sheet can be cut short with nothing left).
+        setState({
+          ...current,
+          rows: [...current.rows, ...next.rows.map((row) => row.cells)],
+          truncated: next.truncated && next.rows.length > 0,
+        });
+        setMore("idle");
+      })
+      .catch(() => setMore("error"));
+  };
 
   if (state.status === "loading") {
     return (
@@ -61,34 +99,73 @@ export function SheetArtifactPreview({ artifactId }: { artifactId: string }) {
       </View>
     );
   }
+  const empty = state.header.length === 0 && state.rows.length === 0;
   const table = [state.header, ...state.rows];
   return (
-    <ScrollView horizontal>
-      <ScrollView>
-        {table.map((cells, index) => (
-          <View key={index} style={styles.row}>
-            {cells.map((cell, column) => (
-              <Text
-                key={column}
-                numberOfLines={1}
-                style={[
-                  styles.cell,
-                  index === 0 && styles.head,
-                  typeof cell === "number" && styles.number,
-                ]}
-              >
-                {show(cell)}
-              </Text>
+    <View style={styles.fill}>
+      {state.sheets.length > 1 ? (
+        <View style={styles.sheets}>
+          <NativeSegmentedControl
+            accessibilityLabel={t("Sheets")}
+            value={state.sheet}
+            onChange={setSheet}
+            options={state.sheets.map((name) => ({ value: name, label: name }))}
+          />
+        </View>
+      ) : null}
+      {state.note ? <Text style={styles.note}>{state.note}</Text> : null}
+      {empty ? (
+        <View style={styles.centered}>
+          <Text style={styles.message}>{t("This sheet is empty.")}</Text>
+        </View>
+      ) : (
+        <ScrollView horizontal style={styles.fill}>
+          <ScrollView>
+            {table.map((cells, index) => (
+              <View key={index} style={styles.row}>
+                {cells.map((cell, column) => (
+                  <Text
+                    key={column}
+                    numberOfLines={1}
+                    style={[
+                      styles.cell,
+                      index === 0 && styles.head,
+                      isNumericSheetCell(cell) && styles.number,
+                    ]}
+                  >
+                    {formatSheetCell(cell, locale)}
+                  </Text>
+                ))}
+              </View>
             ))}
-          </View>
-        ))}
-      </ScrollView>
-    </ScrollView>
+            {state.truncated ? (
+              <View style={styles.footer}>
+                {more === "loading" ? (
+                  <ActivityIndicator color={native.secondaryLabel} />
+                ) : (
+                  <Pressable accessibilityRole="button" onPress={loadMore}>
+                    <Text style={styles.action}>{t("Load more")}</Text>
+                  </Pressable>
+                )}
+                {more === "error" ? (
+                  <Text style={styles.message}>{t("Could not load more rows.")}</Text>
+                ) : null}
+              </View>
+            ) : null}
+          </ScrollView>
+        </ScrollView>
+      )}
+    </View>
   );
 }
 
 function createStyles() {
   return StyleSheet.create({
+    fill: { flex: 1 },
+    sheets: { paddingHorizontal: 12, paddingVertical: 8 },
+    note: { color: native.secondaryLabel, fontSize: 12, paddingHorizontal: 12, paddingBottom: 8 },
+    footer: { alignItems: "center", gap: 8, padding: 12 },
+    action: { color: native.label, fontSize: 15, fontWeight: "600" },
     centered: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
     message: { color: native.secondaryLabel, fontSize: 14, textAlign: "center" },
     row: {
