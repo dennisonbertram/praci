@@ -444,6 +444,10 @@ msgstr "{pct} yield"
 msgid "{pickedCount} selected"
 msgstr "{pickedCount} selected"
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "{readPercent}% read"
+msgstr "{readPercent}% read"
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "{remaining} left · bot is watching, not acting"
@@ -463,6 +467,10 @@ msgstr "{scope} · {unpriced} unpriced"
 #: src/pages/BillingSettingsPanel.tsx
 msgid "{seats, plural, one {# seat} other {# seats}}"
 msgstr "{seats, plural, one {# seat} other {# seats}}"
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "{senderCount, plural, one {Skipping inbox for # sender} other {Skipping inbox for # senders}}"
+msgstr "{senderCount, plural, one {Skipping inbox for # sender} other {Skipping inbox for # senders}}"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "{serverName} connected"
@@ -926,6 +934,7 @@ msgid "All time"
 msgstr "All time"
 
 #: src/components/AiDataSharing.tsx
+#: src/components/AskCard.tsx
 #: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr "Allow"
@@ -994,6 +1003,10 @@ msgstr "Allow purchase actions without asking"
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Allow writing"
 msgstr "Allow writing"
+
+#: src/components/AskCard.tsx
+msgid "Allowed"
+msgstr "Allowed"
 
 #: src/components/AskCard.tsx
 msgid "Allowed once"
@@ -1165,6 +1178,11 @@ msgstr "Apps with their own server"
 msgid "Archive"
 msgstr "Archive"
 
+#. placeholder {0}: counts.archive
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Archive {0}"
+msgstr "Archive {0}"
+
 #: src/pages/Shell.tsx
 msgid "archived"
 msgstr "archived"
@@ -1183,9 +1201,18 @@ msgstr "Archived"
 msgid "Archived \"{0}\""
 msgstr "Archived \"{0}\""
 
+#. placeholder {0}: result.done
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Archived {0}"
+msgstr "Archived {0}"
+
 #: src/pages/Inbox.tsx
 msgid "Archived {count}"
 msgstr "Archived {count}"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Archived {n}"
+msgstr "Archived {n}"
 
 #: src/pages/Shell.tsx
 msgid "Archived. Chat, memory, and files kept."
@@ -1377,6 +1404,10 @@ msgstr "Automated senders"
 msgid "Automated senders will appear after they post here."
 msgstr "Automated senders will appear after they post here."
 
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Automatic"
+msgstr "Automatic"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Available after the routine is saved"
 msgstr "Available after the routine is saved"
@@ -1396,6 +1427,7 @@ msgstr "Avatars"
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/Board.tsx
 #: src/pages/IntegrationSetup.tsx
@@ -1659,6 +1691,7 @@ msgstr "Can't reach the server."
 #: src/components/finance/RenameAccountDialog.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/finance/WalletDialog.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
@@ -1951,6 +1984,12 @@ msgstr "Choose when it runs"
 #: src/pages/Shell.tsx
 msgid "Choosing your company in Carta"
 msgstr "Choosing your company in Carta"
+
+#: src/components/inbox/CleanupHistory.tsx
+#: src/components/inbox/InboxCleanup.tsx
+#: src/pages/Inbox.tsx
+msgid "Cleanup"
+msgstr "Cleanup"
 
 #: src/pages/Inbox.tsx
 #: src/pages/shell/dialogs.tsx
@@ -3057,6 +3096,10 @@ msgstr "Couldn't load mail"
 msgid "Couldn't load messaging settings"
 msgstr "Couldn't load messaging settings"
 
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Couldn't load senders"
+msgstr "Couldn't load senders"
+
 #: src/lib/inbox-sync-error.ts
 msgid "Couldn't reach Gmail."
 msgstr "Couldn't reach Gmail."
@@ -3072,6 +3115,14 @@ msgstr "Couldn't save the draft"
 #: src/pages/shell/bot-pins.tsx
 msgid "Couldn't save. Try again."
 msgstr "Couldn't save. Try again."
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Couldn't unsubscribe from {name}"
+msgstr "Couldn't unsubscribe from {name}"
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Couldn't update {name}"
+msgstr "Couldn't update {name}"
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Couldn't update avatars"
@@ -4320,6 +4371,10 @@ msgstr "High"
 msgid "High"
 msgstr "High"
 
+#: src/components/inbox/CleanupHistory.tsx
+msgid "History"
+msgstr "History"
+
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Holdings"
 msgstr "Holdings"
@@ -4898,6 +4953,10 @@ msgstr "Local Server Settings"
 msgid "Log out"
 msgstr "Log out"
 
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Looks like spam"
+msgstr "Looks like spam"
+
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5001,10 +5060,30 @@ msgstr "Mark read"
 msgid "Mark unread"
 msgstr "Mark unread"
 
+#. placeholder {0}: status.count
+#: src/pages/Inbox.tsx
+msgid "Marked {0} as not spam"
+msgstr "Marked {0} as not spam"
+
+#. placeholder {0}: result.done
+#. placeholder {0}: status.count
+#: src/components/inbox/InboxCleanup.tsx
+#: src/pages/Inbox.tsx
+msgid "Marked {0} as spam"
+msgstr "Marked {0} as spam"
+
 #. placeholder {0}: maskCurrencyWhenHidden(undo.deadline.title)
 #: src/pages/legal/LegalDeadlines.tsx
 msgid "Marked {0} done."
 msgstr "Marked {0} done."
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Marked {n} as not spam"
+msgstr "Marked {n} as not spam"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Marked {n} as spam"
+msgstr "Marked {n} as spam"
 
 #: src/pages/Inbox.tsx
 msgid "Marked read"
@@ -5269,6 +5348,7 @@ msgstr "Monthly spend"
 msgid "Monthly spend · {0} – {1}"
 msgstr "Monthly spend · {0} – {1}"
 
+#: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -5330,6 +5410,15 @@ msgstr "Move to Inbox"
 #: src/pages/Inbox.tsx
 msgid "Moved \"{0}\" to Inbox"
 msgstr "Moved \"{0}\" to Inbox"
+
+#. placeholder {0}: status.count
+#: src/pages/Inbox.tsx
+msgid "Moved {0} to trash"
+msgstr "Moved {0} to trash"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Moved {n} to trash"
+msgstr "Moved {n} to trash"
 
 #: src/components/call/CallCard.tsx
 msgid "Mute"
@@ -5842,6 +5931,7 @@ msgid "Not in runway"
 msgstr "Not in runway"
 
 #: src/components/AiDataSharing.tsx
+#: src/components/AskCard.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Not now"
 msgstr "Not now"
@@ -5865,6 +5955,11 @@ msgstr "Not sent"
 #: src/components/ComposeEmail.tsx
 msgid "Not sent. {text}"
 msgstr "Not sent. {text}"
+
+#: src/components/inbox/InboxRow.tsx
+#: src/pages/Inbox.tsx
+msgid "Not spam"
+msgstr "Not spam"
 
 #: src/components/data-room/ItemRows.tsx
 msgid "Not tagged"
@@ -5905,6 +6000,10 @@ msgstr "Nothing needs you right now."
 #: src/pages/KnowledgeSection.tsx
 msgid "Nothing remembered yet"
 msgstr "Nothing remembered yet"
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Nothing to clean up"
+msgstr "Nothing to clean up"
 
 #: src/components/NotificationSettings.tsx
 #: src/pages/Inbox.tsx
@@ -6057,6 +6156,10 @@ msgstr "Open in Mercury"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
 msgstr "Open Inbox"
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Open link"
+msgstr "Open link"
 
 #: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
@@ -7467,8 +7570,10 @@ msgstr "Select"
 
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
+#. placeholder {0}: sender.name
 #: src/components/data-room/DriveRow.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/inbox/CleanupSenderRow.tsx
 msgid "Select {0}"
 msgstr "Select {0}"
 
@@ -7489,6 +7594,7 @@ msgid "Self-custody"
 msgstr "Self-custody"
 
 #: src/components/ComposeEmail.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/Shell.tsx
@@ -7502,6 +7608,11 @@ msgstr "Send <0>{linkCode}</0> to the line from your chat app within 10 minutes.
 #: src/pages/Auth.tsx
 msgid "Send again"
 msgstr "Send again"
+
+#. placeholder {0}: confirming[0]?.mailTo ?? ""
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Send an unsubscribe email to {0}?"
+msgstr "Send an unsubscribe email to {0}?"
 
 #: src/components/AskCard.tsx
 msgid "Send answer"
@@ -7819,6 +7930,15 @@ msgstr "Skills and actions"
 msgid "Skip"
 msgstr "Skip"
 
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Skip inbox"
+msgstr "Skip inbox"
+
+#. placeholder {0}: counts.skip_inbox
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Skip inbox {0}"
+msgstr "Skip inbox {0}"
+
 #: src/lib/localized-provider-hint.ts
 msgid "Skip or deploy key"
 msgstr "Skip or deploy key"
@@ -7832,6 +7952,14 @@ msgstr "Skip to content"
 #: src/pages/Shell.tsx
 msgid "Skipped {0}"
 msgstr "Skipped {0}"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Skipped inbox for {n}"
+msgstr "Skipped inbox for {n}"
+
+#: src/components/inbox/CleanupSenderRow.tsx
+msgid "Skipping"
+msgstr "Skipping"
 
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
@@ -7903,8 +8031,14 @@ msgstr "Spaces"
 
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/pages/Inbox.tsx
 msgid "Spam"
 msgstr "Spam"
+
+#. placeholder {0}: counts.spam
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Spam {0}"
+msgstr "Spam {0}"
 
 #: src/pages/Shell.tsx
 msgid "Speak"
@@ -8029,6 +8163,7 @@ msgstr "Steps"
 msgid "Still waiting on {service}"
 msgstr "Still waiting on {service}"
 
+#: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
 msgid "Stop"
 msgstr "Stop"
@@ -8601,6 +8736,11 @@ msgstr "Transfer · not spend"
 msgid "Transport"
 msgstr "Transport"
 
+#: src/components/inbox/InboxRow.tsx
+#: src/pages/Inbox.tsx
+msgid "Trash"
+msgstr "Trash"
+
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Treasury yield"
@@ -8627,6 +8767,7 @@ msgstr "Try {name} again"
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/finance/ui.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8710,6 +8851,8 @@ msgstr "Undid {restored}, skipped {skipped}"
 
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
+#: src/components/inbox/CleanupHistory.tsx
+#: src/components/inbox/InboxCleanup.tsx
 #: src/components/MailOutbox.tsx
 #: src/components/sidebar-folders/SidebarUndoNotice.tsx
 #: src/pages/CapTable.tsx
@@ -8752,6 +8895,19 @@ msgstr "Unpin"
 #: src/pages/Inbox.tsx
 msgid "Unread"
 msgstr "Unread"
+
+#. placeholder {0}: counts.unsubscribe
+#: src/components/inbox/CleanupActionBar.tsx
+msgid "Unsubscribe {0}"
+msgstr "Unsubscribe {0}"
+
+#: src/components/inbox/CleanupHistory.tsx
+msgid "Unsubscribed and archived {n}"
+msgstr "Unsubscribed and archived {n}"
+
+#: src/components/inbox/InboxCleanup.tsx
+msgid "Unsubscribed from {senderCount}"
+msgstr "Unsubscribed from {senderCount}"
 
 #: src/components/data-room/DropZone.tsx
 msgid "Unsupported file name"
@@ -9037,10 +9193,6 @@ msgstr "vs {previousRange}"
 #: src/lib/model-connection-preflight.ts
 msgid "Wait a moment and test again."
 msgstr "Wait a moment and test again."
-
-#: src/lib/run-phase.ts
-msgid "Waiting for {name}"
-msgstr "Waiting for {name}"
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx

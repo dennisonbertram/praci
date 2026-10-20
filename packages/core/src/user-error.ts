@@ -1,3 +1,5 @@
+import type { ThreadSnapshot } from "@rakazo/contracts";
+
 /** Copy each client supplies in its own language. */
 export type UserErrorCopy = { fallback: string; offline: string };
 
@@ -138,4 +140,32 @@ export function authErrorMessage(body: unknown, copy: AuthErrorCopy): string {
     return copy.fallback;
   }
   return message && !isTechnicalErrorMessage(message) ? message : copy.fallback;
+}
+
+/** A provider's raw "401" for a run. */
+export const KEY_REJECTED_PATTERN = /^401\b|"code":\s*401\b/;
+
+/** Reason the newest run stopped, until the reader dismisses that run's failure. */
+export function threadRunError(
+  snapshot: ThreadSnapshot | null,
+  describe: (error: string) => string,
+  dismissedRunIds?: ReadonlySet<string>,
+): string | null {
+  const run = snapshot?.run;
+  if (run?.status !== "failed" || dismissedRunIds?.has(run.id)) return null;
+  return run.error ? describe(run.error) : null;
+}
+
+/**
+ * The error of a failed last run the user dismissed. The transcript keeps it as a short note, so
+ * the question that failed does not look unanswered for no reason.
+ */
+export function dismissedThreadRunError(
+  snapshot: ThreadSnapshot | null,
+  describe: (error: string) => string,
+  dismissedRunIds: ReadonlySet<string>,
+): string | null {
+  const run = snapshot?.run;
+  if (run?.status !== "failed" || !dismissedRunIds.has(run.id)) return null;
+  return run.error ? describe(run.error) : "";
 }
