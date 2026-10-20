@@ -26,6 +26,7 @@ const SYSTEM_LABELS = [
   "CATEGORY_SOCIAL",
   "CATEGORY_PROMOTIONS",
   "CATEGORY_UPDATES",
+  "CATEGORY_FORUMS",
 ];
 const LABELS = [
   ...SYSTEM_LABELS.map((id) => ({ id, name: id, type: "system" })),
@@ -50,6 +51,8 @@ export interface EmulatedMessage {
   /** In-Reply-To and References headers, as written in the message. */
   inReplyTo?: string;
   references?: string;
+  /** Extra headers appended as written (List-Unsubscribe, Authentication-Results, ...); a name may repeat. */
+  headers?: Array<{ name: string; value: string }>;
   /** Raw snippet; may contain HTML entities as Gmail returns them. */
   snippet?: string;
   text?: string;
@@ -596,7 +599,7 @@ function get(mailbox: Mailbox, id: string, params: URLSearchParams): ConnectorPr
 
 // Query subset: after:, before:, newer_than:, older_than:, from:, to:, subject:,
 // in:inbox|sent|anywhere, label:inbox|sent, is:unread|starred|important,
-// has:attachment, category:primary|social|promotions|updates, bare words, OR, parentheses.
+// has:attachment, category:primary|social|promotions|updates|forums, bare words, OR, parentheses.
 // Anything else is a 400, so a test cannot pass because a filter was silently ignored.
 
 function parseQuery(query: string, now: number): Matcher {
@@ -687,7 +690,7 @@ function parseTerm(token: string, now: number): Matcher {
       const category = value.toLowerCase();
       if (category === "primary")
         return (m) => m.labelIds.includes("INBOX") && !m.labelIds.some(isCategoryLabel);
-      if (!["social", "promotions", "updates"].includes(category))
+      if (!["social", "promotions", "updates", "forums"].includes(category))
         throw new QueryError(`Unsupported category: value ${value}`);
       return (m) => m.labelIds.includes(`CATEGORY_${category.toUpperCase()}`);
     }
@@ -779,6 +782,7 @@ function store(source: EmulatedMessage): Stored {
     { name: "Message-ID", value: source.messageId ?? `<${source.id}@mail.example.test>` },
     ...(source.inReplyTo ? [{ name: "In-Reply-To", value: source.inReplyTo }] : []),
     ...(source.references ? [{ name: "References", value: source.references }] : []),
+    ...(source.headers ?? []),
   ];
   return {
     id: source.id,

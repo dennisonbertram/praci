@@ -259,7 +259,7 @@ describe("GmailApiEmulator", () => {
     const gmail = new GmailApiEmulator({ now: NOW });
     expect(list(gmail, "acct-a", { q: "has:drive" }).status).toBe(400);
     expect(list(gmail, "acct-a", { q: "is:snoozed" }).status).toBe(400);
-    expect(list(gmail, "acct-a", { q: "category:forums" }).status).toBe(400);
+    expect(list(gmail, "acct-a", { q: "category:purchases" }).status).toBe(400);
     expect(list(gmail, "acct-a", { q: "in:trash" }).status).toBe(400);
     expect(list(gmail, "acct-a", { q: "after:yesterday" }).status).toBe(400);
     expect(list(gmail, "acct-a", { maxResults: "501" }).status).toBe(400);

@@ -3,8 +3,11 @@ import type {
   ConnectionCatalogItem,
   InboxCategory,
   InboxPriority,
+  MailSignals,
   SandboxKind,
 } from "@rakazo/contracts";
+
+export type { MailSignals } from "@rakazo/contracts";
 
 export interface AdapterContext {
   operationId: string;
@@ -996,6 +999,8 @@ export interface MailMessageSummary {
   snippet: string;
   unread: boolean;
   labelIds: string[];
+  /** Classifier facts. Absent on cache hits and from providers that cannot supply them. */
+  signals?: MailSignals;
 }
 
 /** A Gmail label. `id` is what `MailMessageSummary.labelIds` and `modifyMessage` use. */

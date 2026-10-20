@@ -37,6 +37,42 @@ export const InboxCategorySchema = z.enum([
 ]);
 export type InboxCategory = z.infer<typeof InboxCategorySchema>;
 
+/** Bump when the headers requested or the parsing changes; sync then fetches older rows again. */
+export const MAIL_SIGNALS_VERSION = 1;
+
+/** null = absent, none, neutral or temperror. */
+const AuthResult = z.enum(["pass", "fail"]).nullable();
+
+/** Provider-neutral facts about one message that the free classifier rules read. */
+export const MailSignalsSchema = z.object({
+  /** https URLs first, then mailto, as written in List-Unsubscribe; http dropped; at most 3, each at most 2000 characters. */
+  listUnsubscribe: z.array(z.string().max(2000)).max(3),
+  /** List-Unsubscribe-Post carries List-Unsubscribe=One-Click (RFC 8058). */
+  oneClick: z.boolean(),
+  listId: z.string().max(200).nullable(),
+  /** Precedence: bulk, list or junk. */
+  bulk: z.boolean(),
+  /** Auto-Submitted is present and not "no". */
+  autoSubmitted: z.boolean(),
+  /** From the topmost Authentication-Results of the receiving server. fail covers fail, softfail and permerror. */
+  auth: z.object({ dkim: AuthResult, spf: AuthResult, dmarc: AuthResult }),
+  /** A passing DKIM signature lists both list-unsubscribe and list-unsubscribe-post in h=. */
+  dkimCoversUnsubscribe: z.boolean(),
+  categories: z.object({
+    spam: z.boolean(),
+    promotions: z.boolean(),
+    social: z.boolean(),
+    updates: z.boolean(),
+    forums: z.boolean(),
+    important: z.boolean(),
+  }),
+});
+export type MailSignals = z.infer<typeof MailSignalsSchema>;
+
+/** The piles the free rules and the model sort mail into. */
+export const InboxPileSchema = z.enum(["important", "updates", "newsletters", "spam"]);
+export type InboxPile = z.infer<typeof InboxPileSchema>;
+
 /** A user's mark on a sender: "important" mail ranks up, "noise" mail is left out of Needs reply and to-dos. */
 export const InboxMarkSchema = z.enum(["important", "noise"]);
 export type InboxMark = z.infer<typeof InboxMarkSchema>;

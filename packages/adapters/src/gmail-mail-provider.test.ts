@@ -243,6 +243,13 @@ describe("listMessages", () => {
       "Cc",
       "Subject",
       "Date",
+      "List-Unsubscribe",
+      "List-Unsubscribe-Post",
+      "List-Id",
+      "Precedence",
+      "Auto-Submitted",
+      "Authentication-Results",
+      "DKIM-Signature",
     ]);
   });
 

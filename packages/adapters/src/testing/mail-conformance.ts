@@ -328,3 +328,97 @@ export async function assertMailChangesConformance(
     (error) => error instanceof MailProviderError && error.kind === "auth",
   );
 }
+
+/**
+ * Classifier signals every MailProvider must show: List-Unsubscribe and friends, authentication
+ * results, repeated DKIM-Signature headers, Gmail category flags and the sent-mail lookup that
+ * proves prior contact. Run it last: it adds mail to the emulator.
+ */
+export async function assertMailSignalsConformance(
+  provider: MailProvider,
+  emulator: Pick<MailEmulator, "gmail" | "accounts">,
+): Promise<void> {
+  const [a] = emulator.accounts;
+  assert.ok(a, "conformance needs an account");
+  const context: AdapterContext = {
+    operationId: "mail-signals-conformance",
+    traceId: "mail-signals-conformance",
+    spaceId: a.spaceId,
+    userId: a.userId,
+    signal: new AbortController().signal,
+  };
+  const arrive = (message: Parameters<typeof emulator.gmail.addMessage>[1]) =>
+    emulator.gmail.addMessage(a.accountRef, message);
+  const base = { date: "2026-10-01T10:00:00Z", to: "alice@example.test" };
+
+  arrive({
+    ...base,
+    id: "sig-news",
+    labels: ["INBOX", "CATEGORY_PROMOTIONS"],
+    from: "Deals <deals@shop.example.test>",
+    subject: "Sale",
+    headers: [
+      {
+        name: "List-Unsubscribe",
+        value: "<https://shop.example.test/u/1>, <mailto:u@shop.example.test>",
+      },
+      { name: "List-Unsubscribe-Post", value: "List-Unsubscribe=One-Click" },
+      { name: "List-Id", value: "Deals <deals.shop.example.test>" },
+      { name: "Precedence", value: "bulk" },
+      {
+        name: "Authentication-Results",
+        value: "mx.google.com; dkim=pass header.i=@shop.example.test; spf=pass; dmarc=pass",
+      },
+      { name: "DKIM-Signature", value: "v=1; d=other.example.test; h=from; b=1" },
+      {
+        name: "DKIM-Signature",
+        value: "v=1; d=shop.example.test; h=from:list-unsubscribe:list-unsubscribe-post; b=2",
+      },
+    ],
+  });
+  arrive({
+    ...base,
+    id: "sig-spam",
+    labels: ["SPAM"],
+    from: "Prize <win@prize.example.test>",
+    subject: "You won",
+  });
+
+  const page = await provider.listMessages(
+    a,
+    { query: "", pageSize: 500, ids: ["sig-news", "sig-spam"], useCache: false },
+    context,
+  );
+  const news = page.messages.find((m) => m.id === "sig-news")?.signals;
+  assert.ok(news, "signals are returned");
+  assert.deepEqual(news.listUnsubscribe, [
+    "https://shop.example.test/u/1",
+    "mailto:u@shop.example.test",
+  ]);
+  assert.equal(news.oneClick, true);
+  assert.equal(news.listId, "Deals <deals.shop.example.test>");
+  assert.equal(news.bulk, true);
+  assert.deepEqual(news.auth, { dkim: "pass", spf: "pass", dmarc: "pass" });
+  assert.equal(news.dkimCoversUnsubscribe, true, "both DKIM-Signature headers are read");
+  assert.equal(news.categories.promotions, true);
+  assert.equal(news.categories.spam, false);
+  const junk = page.messages.find((m) => m.id === "sig-spam")?.signals;
+  assert.equal(junk?.categories.spam, true);
+  assert.deepEqual(junk?.listUnsubscribe, []);
+
+  // The prior-contact lookup: one result is enough, and an address never written to has none.
+  const written = await provider.listMessages(
+    a,
+    { query: 'in:sent to:"priya@example.test"', pageSize: 1, useCache: false },
+    context,
+  );
+  assert.equal(written.messages.length, 1);
+  assert.ok(written.messages[0]?.labelIds.includes("SENT"));
+  const never = await provider.listMessages(
+    a,
+    { query: 'in:sent to:"nobody@example.test"', pageSize: 1, useCache: false },
+    context,
+  );
+  assert.equal(never.messages.length, 0);
+  assert.ok(!never.unhydratedIds?.length);
+}
