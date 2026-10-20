@@ -790,6 +790,9 @@ export const TR_MESSAGES: Record<string, string> = {
   "Archive {count} conversations from {sender}?":
     "{sender} göndericisinin {count} görüşmesi arşivlensin mi?",
   "Could not archive {count}": "{count} görüşme arşivlenemedi",
+  "Could not load skills": "Beceriler yüklenemedi",
+  "Could not update skills": "Beceriler güncellenemedi",
+  "Custom image": "Özel görsel",
   "Waiting for the computer": "Bilgisayar bekleniyor",
   "Starting the computer": "Bilgisayar başlatılıyor",
   "Connecting to {name}": "{name} bağlantısı kuruluyor",

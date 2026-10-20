@@ -840,6 +840,9 @@ export const DE_MESSAGES: Record<string, string> = {
   "Archive {count} conversations from {sender}?":
     "{count} Unterhaltungen von {sender} archivieren?",
   "Could not archive {count}": "{count} Unterhaltungen konnten nicht archiviert werden",
+  "Could not load skills": "Skills konnten nicht geladen werden",
+  "Could not update skills": "Skills konnten nicht aktualisiert werden",
+  "Custom image": "Eigenes Bild",
   "Waiting for the computer": "Warten auf den Computer",
   "Starting the computer": "Computer wird gestartet",
   "Connecting to {name}": "Verbindung zu {name}",
