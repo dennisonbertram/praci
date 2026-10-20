@@ -340,10 +340,11 @@ describe("a 300 MB home", () => {
     const prisma = {
       computer: {
         findFirst: async () => ({ ...row }),
-        updateMany: async ({ data }: { data: Partial<typeof row> }) => {
-          Object.assign(row, data);
-          return { count: 1 };
-        },
+      },
+      $executeRaw: async (_sql: TemplateStringsArray, ...values: (string | null)[]) => {
+        const [homeRevision, homeSnapshotId, homePreviousSnapshotId] = values;
+        Object.assign(row, { homeRevision, homeSnapshotId, homePreviousSnapshotId });
+        return 1;
       },
     };
     const ctx = {
