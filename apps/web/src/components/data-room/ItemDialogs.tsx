@@ -22,11 +22,13 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@rakazo/ui-web";
-import { type FormEvent, useEffect, useId, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
-import { type FolderNode, folderContents } from "./folders";
+import type { FolderNode } from "./folders";
+import { folderContents } from "./folders";
 import type { ItemAction } from "./ItemMenu";
 
 /** The Move select's value for "put it in a new folder", which no folder id can equal. */

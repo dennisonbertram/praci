@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  folderDragId,
-  itemDragId,
-  ROOT_END_ID,
-  resolveDrop,
-  type SidebarLayout,
-} from "./drop-target";
+import type { SidebarLayout } from "./drop-target";
+import { folderDragId, itemDragId, ROOT_END_ID, resolveDrop } from "./drop-target";
 
 const bot = (id: string) => ({ kind: "bot" as const, id });
 const group = (id: string) => ({ kind: "group" as const, id });

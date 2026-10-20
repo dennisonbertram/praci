@@ -33,15 +33,13 @@ import {
   TooltipTrigger,
 } from "@rakazo/ui-web";
 import { ChevronDown, ChevronRight } from "lucide-react";
-import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
-import { Link, type LinkProps, useLocation, useNavigate } from "react-router-dom";
+import type { ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
+import type { LinkProps } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { listAmount, money, shortDay, txnDay } from "../../lib/finance-format";
-import {
-  groupByVendor,
-  readGroupedPref,
-  type VendorGroup,
-  writeGroupedPref,
-} from "../../lib/finance-group";
+import type { VendorGroup } from "../../lib/finance-group";
+import { groupByVendor, readGroupedPref, writeGroupedPref } from "../../lib/finance-group";
 import { financePath } from "../../lib/finance-route";
 import {
   getHideAmounts,

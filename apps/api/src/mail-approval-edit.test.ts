@@ -1,7 +1,8 @@
 import { ORPCError } from "@orpc/server";
 import type { Actor, ComposeFields } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { answerEditedMailApproval, type MailApprovalEditDeps } from "./mail-approval-edit.js";
+import type { MailApprovalEditDeps } from "./mail-approval-edit.js";
+import { answerEditedMailApproval } from "./mail-approval-edit.js";
 
 const actor = { spaceId: "space-1", userId: "user-1" } as Actor;
 const target = { threadId: "thread-1" };

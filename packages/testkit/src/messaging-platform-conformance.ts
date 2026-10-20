@@ -1,5 +1,6 @@
 import type { AdapterContext, MessagingInboundMessage } from "@rakazo/adapter-kit";
-import { ChatSdkMessagingSurface, type MessagingPlatform } from "@rakazo/adapters";
+import type { MessagingPlatform } from "@rakazo/adapters";
+import { ChatSdkMessagingSurface } from "@rakazo/adapters";
 import { afterEach, describe, expect, it } from "vitest";
 
 /**

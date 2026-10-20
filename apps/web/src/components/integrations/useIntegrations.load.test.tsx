@@ -23,7 +23,8 @@ const rpcMock = vi.hoisted(() => ({
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: rpcMock }));
 
-import { type IntegrationsData, useIntegrations } from "./useIntegrations";
+import type { IntegrationsData } from "./useIntegrations";
+import { useIntegrations } from "./useIntegrations";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

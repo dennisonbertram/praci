@@ -328,8 +328,8 @@ import {
 } from "./connection-oauth.js";
 import { createDataRoomService } from "./data-room.js";
 import { ensureDataRoomAgent } from "./data-room-agent.js";
+import type { FinanceCryptoDeps } from "./finance.js";
 import {
-  type FinanceCryptoDeps,
   financeAccountDetail,
   financeAccounts,
   financeAgent,

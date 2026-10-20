@@ -1,15 +1,17 @@
 import { ORPCError } from "@orpc/server";
-import { BUILTIN_AGENT_SKILLS, fetchSafeWebText, type ResolveHostname } from "@rakazo/adapters";
+import type { ResolveHostname } from "@rakazo/adapters";
+import { BUILTIN_AGENT_SKILLS, fetchSafeWebText } from "@rakazo/adapters";
 import type { Actor, AgentSkill, AgentSkillSource, BotAgentSkill } from "@rakazo/contracts";
+import type { SkillSource } from "@rakazo/core";
 import {
   buildSkillMd,
   findSkillByName,
   isSkillReadOnly,
   mergeBuiltinSkills,
   parseSkillMd,
-  type SkillSource,
 } from "@rakazo/core";
-import { IsolationError, isUniqueViolation, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { IsolationError, isUniqueViolation } from "@rakazo/db";
 
 type AgentSkillRow = {
   id: string;

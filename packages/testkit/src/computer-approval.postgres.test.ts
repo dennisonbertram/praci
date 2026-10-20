@@ -6,7 +6,8 @@ import { ComposioEmulator, FakeSandboxProvider } from "@rakazo/adapters";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { discardBotIntroRun } from "./discard-bot-intro.js";
 import { sessionCookieHeader } from "./index.js";
-import { type ModelEmulatorStep, startModelEmulator } from "./model-emulator.js";
+import type { ModelEmulatorStep } from "./model-emulator.js";
+import { startModelEmulator } from "./model-emulator.js";
 
 type App = { request: (input: string, init?: RequestInit) => Promise<Response> };
 const databaseAvailable = process.env.VERIFY_DATABASE === "1" && Boolean(process.env.DATABASE_URL);

@@ -10,7 +10,8 @@ import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
+import type { EmulatedMessage } from "./gmail-api-emulator.js";
+import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
 import {
   mailSyncStatus,

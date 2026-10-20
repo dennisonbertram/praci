@@ -4,7 +4,8 @@ import { parseRawMime } from "@rakazo/adapters";
 import type { MailSignals } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { inboxUnsubscribe } from "./inbox-unsubscribe.js";
-import { bulkSignals, createMailFixture, type MailFixture } from "./test-support/mail-fixture.js";
+import type { MailFixture } from "./test-support/mail-fixture.js";
+import { bulkSignals, createMailFixture } from "./test-support/mail-fixture.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =

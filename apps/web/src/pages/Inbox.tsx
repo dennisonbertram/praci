@@ -58,7 +58,8 @@ import { InboxCleanup } from "../components/inbox/InboxCleanup";
 import { InboxDigest } from "../components/inbox/InboxDigest";
 import { InboxMessageDialog } from "../components/inbox/InboxMessageDialog";
 import { InboxPileTabs } from "../components/inbox/InboxPileTabs";
-import { InboxGroup, type MailMoveOp } from "../components/inbox/InboxRow";
+import type { MailMoveOp } from "../components/inbox/InboxRow";
+import { InboxGroup } from "../components/inbox/InboxRow";
 import {
   InboxSenderGroup,
   isSenderGroupId,

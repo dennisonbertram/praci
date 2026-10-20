@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useState } from "react";
 import { userEvent, within } from "storybook/test";
-import { AvatarStudioPopover, type AvatarStudioPopoverProps } from "./avatar-studio-popover";
+import type { AvatarStudioPopoverProps } from "./avatar-studio-popover";
+import { AvatarStudioPopover } from "./avatar-studio-popover";
 
 function Controlled(props: AvatarStudioPopoverProps) {
   const [value, setValue] = useState(props.value);

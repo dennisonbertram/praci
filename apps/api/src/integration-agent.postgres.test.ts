@@ -31,9 +31,11 @@ import {
   mercuryRow,
 } from "../../../packages/adapters/src/finance-fake-tools.js";
 import { integrationAgentDenial } from "../../../packages/adapters/src/mcp-connector.js";
-import { type FinanceDeps, financeReceiptUrl } from "./finance.js";
+import type { FinanceDeps } from "./finance.js";
+import { financeReceiptUrl } from "./finance.js";
 import { ensureIntegrationAgent } from "./integration-agent.js";
-import { createRouter, type RouterDeps } from "./router.js";
+import type { RouterDeps } from "./router.js";
+import { createRouter } from "./router.js";
 import { listSpaceRuns } from "./runs.js";
 
 vi.mock("../../../packages/adapters/src/computer-lifecycle.js", async (importOriginal) => ({

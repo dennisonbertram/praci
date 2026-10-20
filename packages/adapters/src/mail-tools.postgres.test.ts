@@ -1,23 +1,22 @@
 import { randomUUID } from "node:crypto";
-import {
-  type AdapterContext,
-  type JobPublisher,
-  type MailAccount,
-  type MailProvider,
-  MailProviderError,
-  type ManagedConnectorProvider,
+import type {
+  AdapterContext,
+  JobPublisher,
+  MailAccount,
+  MailProvider,
+  ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
-import { grepRows, type MailResultRow } from "@rakazo/core";
-import { createDb, type PrismaClient } from "@rakazo/db";
+import { MailProviderError } from "@rakazo/adapter-kit";
+import type { MailResultRow } from "@rakazo/core";
+import { grepRows } from "@rakazo/core";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
-import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
+import type { EmulatedMessage } from "./gmail-api-emulator.js";
+import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
-import {
-  deleteMailSearches,
-  expireMailSearch,
-  type MailToolDeps,
-  mailToolFromTool,
-} from "./mail-tools.js";
+import type { MailToolDeps } from "./mail-tools.js";
+import { deleteMailSearches, expireMailSearch, mailToolFromTool } from "./mail-tools.js";
 
 const describePostgres =
   process.env.VERIFY_DATABASE && process.env.DATABASE_URL ? describe.sequential : describe.skip;

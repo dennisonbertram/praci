@@ -11,9 +11,9 @@ import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
+import type { GmailPushConfig } from "./gmail-push.js";
 import {
   ensureMailWatch,
-  type GmailPushConfig,
   runMailWatchRenewal,
   stopMailWatch,
   wakeMailConnections,

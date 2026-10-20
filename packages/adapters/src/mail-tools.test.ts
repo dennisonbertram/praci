@@ -7,12 +7,13 @@ import type {
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
-import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
+import type { EmulatedMessage } from "./gmail-api-emulator.js";
+import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { createMailProvider } from "./gmail-mail-provider.js";
+import type { MailToolDeps } from "./mail-tools.js";
 import {
   describeMailQuery,
   MAIL_TOOL_NAMES,
-  type MailToolDeps,
   mailToolFromTool,
   mailToolsAllowed,
   selectMailTools,

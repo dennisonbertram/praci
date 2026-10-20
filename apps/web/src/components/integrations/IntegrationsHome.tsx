@@ -1,11 +1,11 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import {
-  type CapabilityInstall,
-  type Connection,
-  type ConnectionCatalogItem,
-  isCryptoEndpoint,
-  type McpServer,
+import type {
+  CapabilityInstall,
+  Connection,
+  ConnectionCatalogItem,
+  McpServer,
 } from "@rakazo/contracts";
+import { isCryptoEndpoint } from "@rakazo/contracts";
 import { CONNECTION_CATALOG_PAGE_SIZE } from "@rakazo/core";
 import {
   AlertDialog,
@@ -21,13 +21,13 @@ import {
   Skeleton,
 } from "@rakazo/ui-web";
 import { Search } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import type { CategoryFilter, ConnectedApp } from "../../lib/integrations";
 import {
   appPath,
   CATEGORY_IDS,
-  type CategoryFilter,
-  type ConnectedApp,
   FINANCE_PROVIDERS,
   FIRST_PARTY_MCP,
   filterCatalog,
@@ -57,7 +57,8 @@ import {
   SourceBadge,
   StatusBadge,
 } from "./parts";
-import { agentsFor, type IntegrationsData } from "./useIntegrations";
+import type { IntegrationsData } from "./useIntegrations";
+import { agentsFor } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
 function hostOf(value: string | null) {

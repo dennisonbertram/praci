@@ -3,7 +3,8 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { RunActivityRow, RunStatus } from "@rakazo/contracts";
 import { isAgedStuckWork } from "@rakazo/core";
 import { Button, Input, Label, NativeSelect, NativeSelectOption } from "@rakazo/ui-web";
-import { type ReactNode, useEffect, useId, useMemo, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ActivityListFilters } from "../lib/activity-list-filters";
 import {
   activityFiltersActive,

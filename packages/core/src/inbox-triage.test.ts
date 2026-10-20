@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
+import type { ExistingTodo, TodoCandidateMessage } from "./inbox-triage.js";
 import {
   applySenderMark,
   buildTriagePrompt,
   deriveAlreadyHandled,
-  type ExistingTodo,
   MAX_OPEN_TODOS,
   needsLlmDetail,
   parseTriageResponse,
   planTodoSync,
   selectTodoCandidates,
-  type TodoCandidateMessage,
   TRIAGE_INSTRUCTIONS,
   TRIAGE_VERSION,
 } from "./inbox-triage.js";

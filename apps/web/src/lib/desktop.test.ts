@@ -2,13 +2,12 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import type { RakazoDesktop, RakazoDesktopOAuthCallback } from "./desktop.js";
 import {
   desktopOAuthCode,
   nativeGoogleAvailable,
   oauthStateOf,
   onDesktopOAuthCallback,
-  type RakazoDesktop,
-  type RakazoDesktopOAuthCallback,
   signInWithSystemBrowser,
   windowChromeKind,
 } from "./desktop.js";

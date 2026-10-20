@@ -1,10 +1,6 @@
 import { randomBytes } from "node:crypto";
-import {
-  type MailAddress,
-  type MailDraftAttachment,
-  type MailMessage,
-  MailProviderError,
-} from "@rakazo/adapter-kit";
+import type { MailAddress, MailDraftAttachment, MailMessage } from "@rakazo/adapter-kit";
+import { MailProviderError } from "@rakazo/adapter-kit";
 
 export interface ComposedMail {
   to: MailAddress[];

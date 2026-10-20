@@ -1,8 +1,10 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
-import { fetchSafeWebBytes, type SafeWebFetchOptions } from "@rakazo/adapters";
+import { createHmac } from "node:crypto";
+import type { SafeWebFetchOptions } from "@rakazo/adapters";
+import { fetchSafeWebBytes } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
 import { getLogger } from "@rakazo/logging";
 import type { Hono } from "hono";
+import { safeEqual } from "./safe-equal.js";
 
 export const IMAGE_PROXY_PATH = "/api/inbox/image";
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -45,9 +47,7 @@ function validToken(
   scope: Scope,
   exp: number,
 ): boolean {
-  const a = Buffer.from(sign(secret, url, scope, exp));
-  const b = Buffer.from(token);
-  return a.length === b.length && timingSafeEqual(a, b);
+  return safeEqual(sign(secret, url, scope, exp), token);
 }
 
 const IMG_TAG = /<img\b[^>]*>/gi;

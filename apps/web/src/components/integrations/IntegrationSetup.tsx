@@ -1,9 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import {
-  GOOGLE_DESKTOP_REDIRECT_URI,
-  type IntegrationCatalogResult,
-  type IntegrationSetupState,
-} from "@rakazo/contracts";
+import type { IntegrationCatalogResult, IntegrationSetupState } from "@rakazo/contracts";
+import { GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
 import { deriveMcpName, newClientId } from "@rakazo/core";
 import { Button, Input } from "@rakazo/ui-web";
 import { Check } from "lucide-react";

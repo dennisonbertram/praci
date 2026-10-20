@@ -1,6 +1,7 @@
 import type { MailUnsubscriber } from "@rakazo/adapter-kit";
 import { MailProviderError } from "@rakazo/adapter-kit";
-import { postSafeWebForm, type SafeWebFetchOptions } from "./web-ssrf.js";
+import type { SafeWebFetchOptions } from "./web-ssrf.js";
+import { postSafeWebForm } from "./web-ssrf.js";
 
 /** The fixed body RFC 8058 requires for a one-click unsubscribe. */
 const ONE_CLICK_BODY = "List-Unsubscribe=One-Click";

@@ -1,9 +1,8 @@
+import type { BotMessageIntent, MessageBlock } from "@rakazo/contracts";
 import {
   BOT_DESCRIPTION_MAX_LENGTH,
-  type BotMessageIntent,
   isCartaAgentSpawnKey,
   isIntegrationAgentSpawnKey,
-  type MessageBlock,
 } from "@rakazo/contracts";
 
 export const BOT_MESSAGE_MAX_LENGTH = 8_000;

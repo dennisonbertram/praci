@@ -1,6 +1,7 @@
 import type { MouseEvent, ReactNode } from "react";
 import { createContext, memo, useCallback, useContext, useRef, useState } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import type { Components } from "react-markdown";
+import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { HastNode } from "./table-utils";
 import "./markdown.web.css";

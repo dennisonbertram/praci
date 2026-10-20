@@ -12,11 +12,11 @@ import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { applyPileRules } from "./mail-piles.js";
+import type { PriorContactResult } from "./mail-sender-stats.js";
 import {
   checkPriorContact,
   MAX_PRIOR_CONTACT_CHECKS,
   markPriorContactFromSent,
-  type PriorContactResult,
   pickPriorContactCandidates,
   refreshSenderStats,
   storePriorContact,

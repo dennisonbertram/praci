@@ -1,7 +1,8 @@
 import type { AvatarStyle, Me } from "@rakazo/contracts";
 import { DEFAULT_AVATAR_STYLE } from "@rakazo/contracts";
 import { usePathname } from "expo-router";
-import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { rpc } from "../lib/api";
 import { createAvatarStyleClient, getCachedAvatarStyle } from "../lib/avatar-style";

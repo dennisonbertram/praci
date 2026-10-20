@@ -1,12 +1,6 @@
 import { InboxPileSchema, MailSignalsSchema } from "@rakazo/contracts";
-import {
-  classifyPile,
-  type LearnedPile,
-  type LearnVote,
-  learnSenderPile,
-  resolvePile,
-  senderMarkMap,
-} from "@rakazo/core";
+import type { LearnedPile, LearnVote } from "@rakazo/core";
+import { classifyPile, learnSenderPile, resolvePile, senderMarkMap } from "@rakazo/core";
 import type { Prisma } from "@rakazo/db";
 import type { SenderScope } from "./mail-sender-stats.js";
 

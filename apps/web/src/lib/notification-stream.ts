@@ -1,8 +1,5 @@
-import {
-  NOTIFICATION_HEARTBEAT_ID,
-  type NotificationDto,
-  type NotificationSignal,
-} from "@rakazo/contracts";
+import type { NotificationDto, NotificationSignal } from "@rakazo/contracts";
+import { NOTIFICATION_HEARTBEAT_ID } from "@rakazo/contracts";
 
 export type NotificationStreamDeps = {
   subscribe: (signal: AbortSignal) => Promise<AsyncIterable<NotificationSignal>>;

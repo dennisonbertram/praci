@@ -5,7 +5,8 @@ import type {
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
 import { describe, expect, it, vi } from "vitest";
-import { type EmulatedMessage, GmailApiEmulator } from "./gmail-api-emulator.js";
+import type { EmulatedMessage } from "./gmail-api-emulator.js";
+import { GmailApiEmulator } from "./gmail-api-emulator.js";
 import { GmailMailProvider } from "./gmail-mail-provider.js";
 
 const account: MailAccount = {

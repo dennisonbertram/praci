@@ -1,6 +1,7 @@
 import { i18n } from "@lingui/core";
 import { applyUiDirection } from "./apply-ui-direction";
-import { persistUiLocale, resolveUiLocale, type UiLocale } from "./ui-locale";
+import type { UiLocale } from "./ui-locale";
+import { persistUiLocale, resolveUiLocale } from "./ui-locale";
 
 export { i18n };
 

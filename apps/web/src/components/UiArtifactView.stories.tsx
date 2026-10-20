@@ -1,4 +1,5 @@
-import { createUiArtifact, type UiArtifactInput } from "@rakazo/ui-artifact";
+import type { UiArtifactInput } from "@rakazo/ui-artifact";
+import { createUiArtifact } from "@rakazo/ui-artifact";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { setHideAmounts } from "../lib/hide-amounts-preference";
 import { UiArtifactView } from "./UiArtifactView";

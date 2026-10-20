@@ -14,7 +14,8 @@ import {
   PopoverTrigger,
 } from "@rakazo/ui-web";
 import { ChevronDown, Folder, FolderPlus, WandSparkles, X } from "lucide-react";
-import { type FormEvent, type ReactElement, useState } from "react";
+import type { FormEvent, ReactElement } from "react";
+import { useState } from "react";
 import { PickFilter, SearchField, SortControl, Tip } from "../ListControls";
 import { PAGE_GUTTER_X } from "../PageHeader";
 import type { FolderNode } from "./folders";

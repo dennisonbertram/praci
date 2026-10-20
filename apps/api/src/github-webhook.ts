@@ -1,14 +1,14 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHmac } from "node:crypto";
 import { SecretStoreUnavailableError } from "@rakazo/adapter-kit";
 import type { Hono } from "hono";
 import { readBoundedBody } from "./http-body.js";
+import { safeEqual } from "./safe-equal.js";
+import type { WebhookDeps, WebhookSecretCache } from "./webhook-inbound.js";
 import {
   deliverWebhookEvent,
   loadWebhookTarget,
   parseWebhookPayload,
   WEBHOOK_MAX_BODY_BYTES,
-  type WebhookDeps,
-  type WebhookSecretCache,
 } from "./webhook-inbound.js";
 
 export function hasValidGithubSignature(
@@ -18,7 +18,7 @@ export function hasValidGithubSignature(
 ): boolean {
   if (!signature || !/^sha256=[0-9a-f]{64}$/.test(signature)) return false;
   const expected = `sha256=${createHmac("sha256", secret).update(raw).digest("hex")}`;
-  return timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
+  return safeEqual(signature, expected);
 }
 
 const GITHUB_EVENT_NAMES = new Set([

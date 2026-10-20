@@ -4,7 +4,8 @@ import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { Badge, Button, DialogTitle } from "@rakazo/ui-web";
 import { Download, ExternalLink, FileText, RotateCw, Trash2, X } from "lucide-react";
-import { type KeyboardEvent, type PointerEvent, type ReactNode, useEffect, useState } from "react";
+import type { KeyboardEvent, PointerEvent, ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   canOpenInBrowser,
@@ -25,7 +26,8 @@ import { errorText } from "../../lib/user-error";
 import { SheetPreview } from "../SheetPreview";
 import { sourceLabel } from "./FilterBar";
 import { dateText, isSettled, sizeText, typeLabel } from "./format";
-import { type ItemAction, ItemMenu } from "./ItemMenu";
+import type { ItemAction } from "./ItemMenu";
+import { ItemMenu } from "./ItemMenu";
 import type { SendTarget } from "./SendToAgent";
 
 function amountText(item: DataRoomApiItem) {

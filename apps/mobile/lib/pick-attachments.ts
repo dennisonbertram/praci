@@ -3,11 +3,8 @@ import { inferAttachmentMimeType } from "@rakazo/core";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
-import {
-  filterPickedAttachments,
-  type PickedAttachment,
-  type PickSkip,
-} from "./pick-attachments-filter.js";
+import type { PickedAttachment, PickSkip } from "./pick-attachments-filter.js";
+import { filterPickedAttachments } from "./pick-attachments-filter.js";
 
 export type { PickedAttachment, PickSkip } from "./pick-attachments-filter.js";
 

@@ -28,10 +28,10 @@ import {
   demoMailboxes,
   demoNewMail,
 } from "./demo/data.js";
+import type { ContainerInfo } from "./demo/safety.js";
 import {
   assertDemoContainer,
   assertStateSlot,
-  type ContainerInfo,
   childEnv,
   DEMO_LABEL,
   demoModelEnv,

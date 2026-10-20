@@ -1,8 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  type BrowserNotificationApi,
-  requestBrowserNotificationPermission,
-} from "./browser-notifications.js";
+import type { BrowserNotificationApi } from "./browser-notifications.js";
+import { requestBrowserNotificationPermission } from "./browser-notifications.js";
 
 describe("browser notification permission", () => {
   it("allows a later send gesture to retry a dismissed permission prompt", async () => {

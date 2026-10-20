@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Alert, Pressable, Text, View, type ViewProps } from "react-native";
+import type { ViewProps } from "react-native";
+import { Alert, Pressable, Text, View } from "react-native";
 import { mobileTokens } from "../lib/appearance";
 import { useI18n } from "../lib/i18n";
 import { native } from "../lib/native";

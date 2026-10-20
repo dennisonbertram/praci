@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { inboxActionsList, inboxActionsUndo } from "./inbox-actions.js";
 import { inboxCleanupArchive } from "./inbox-cleanup.js";
 import { inboxMoveMany } from "./inbox-modify.js";
-import { createMailFixture, type MailFixture } from "./test-support/mail-fixture.js";
+import type { MailFixture } from "./test-support/mail-fixture.js";
+import { createMailFixture } from "./test-support/mail-fixture.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =

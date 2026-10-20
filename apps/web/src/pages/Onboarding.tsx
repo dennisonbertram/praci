@@ -1,10 +1,10 @@
 import { Plural, Trans, useLingui } from "@lingui/react/macro";
+import type { IntegrationSetupState, ThinkingLevel } from "@rakazo/contracts";
 import {
   CLOUDFLARE_AI_GATEWAY_PROVIDER_ID,
   cloudflareGatewayRouting,
   DEFAULT_MODEL_CONTEXT_WINDOW,
   DEFAULT_MODEL_MAX_TOKENS,
-  type IntegrationSetupState,
   MAX_MODEL_CONTEXT_WINDOW,
   MAX_MODEL_MAX_TOKENS,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -13,7 +13,6 @@ import {
   parseModelContextWindow,
   parseModelMaxImagesPerPrompt,
   parseModelMaxTokens,
-  type ThinkingLevel,
 } from "@rakazo/contracts";
 import {
   COMPATIBLE_THINKING_LEVELS,

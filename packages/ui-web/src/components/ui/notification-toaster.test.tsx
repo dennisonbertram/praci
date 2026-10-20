@@ -4,11 +4,8 @@ import { Toast } from "@base-ui/react/toast";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
-import {
-  enqueueNotificationToast,
-  type NotificationToastData,
-  NotificationToaster,
-} from "./notification-toaster.js";
+import type { NotificationToastData } from "./notification-toaster.js";
+import { enqueueNotificationToast, NotificationToaster } from "./notification-toaster.js";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

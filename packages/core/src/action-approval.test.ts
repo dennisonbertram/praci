@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
+import type { ActionApprovalRule } from "./action-approval.js";
 import {
-  type ActionApprovalRule,
   applyJudgeDecision,
   connectorKindFromToolName,
   connectorToolRequiresApproval,

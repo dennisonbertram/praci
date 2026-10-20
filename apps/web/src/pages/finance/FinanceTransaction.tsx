@@ -6,8 +6,8 @@ import { Button } from "@rakazo/ui-web";
 import { ExternalLink, FileText } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
+import type { Crumb } from "../../components/finance/ui";
 import {
-  type Crumb,
   categoryLabel,
   DetailPage,
   Kv,

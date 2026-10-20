@@ -22,7 +22,8 @@ vi.mock("../../lib/rpc", () => ({
   withSpaceHeaders: () => new Headers(),
 }));
 
-import { AutoSortDialog, type AutoSortFile } from "./AutoSortDialog";
+import type { AutoSortFile } from "./AutoSortDialog";
+import { AutoSortDialog } from "./AutoSortDialog";
 import { getUploadToasts, setUploadScope, showSortedToast } from "./upload-toasts";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;

@@ -5,7 +5,8 @@ import type {
   TeamChatSendResult,
 } from "@rakazo/adapter-kit";
 import { runContinueJob } from "@rakazo/adapter-kit";
-import { AutomatedSenderPoliciesSchema, type MessageBlock } from "@rakazo/contracts";
+import type { MessageBlock } from "@rakazo/contracts";
+import { AutomatedSenderPoliciesSchema } from "@rakazo/contracts";
 import { BOT_MESSAGE_MAX_HOPS } from "@rakazo/core";
 import type { PrismaClient, ThreadEvents } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";

@@ -1,7 +1,9 @@
 import { createRouterClient } from "@orpc/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { createRouter, type RouterDeps } from "./router.js";
-import { createMailFixture, type MailFixture } from "./test-support/mail-fixture.js";
+import type { RouterDeps } from "./router.js";
+import { createRouter } from "./router.js";
+import type { MailFixture } from "./test-support/mail-fixture.js";
+import { createMailFixture } from "./test-support/mail-fixture.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =

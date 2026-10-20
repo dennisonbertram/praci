@@ -2,12 +2,8 @@ import type { MailProvider } from "@rakazo/adapter-kit";
 import type { MailSignals } from "@rakazo/contracts";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { inboxCleanupArchive, inboxCleanupForget, inboxCleanupList } from "./inbox-cleanup.js";
-import {
-  bulkSignals,
-  createMailFixture,
-  daysAgo,
-  type MailFixture,
-} from "./test-support/mail-fixture.js";
+import type { MailFixture } from "./test-support/mail-fixture.js";
+import { bulkSignals, createMailFixture, daysAgo } from "./test-support/mail-fixture.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =

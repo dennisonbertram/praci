@@ -7,7 +7,8 @@ import {
   writeFile as writeFileCb,
 } from "node:fs";
 import { promisify } from "node:util";
-import koffi, { type LibraryHandle } from "koffi";
+import type { LibraryHandle } from "koffi";
+import koffi from "koffi";
 
 type KoffiFunction = ReturnType<LibraryHandle["func"]>;
 

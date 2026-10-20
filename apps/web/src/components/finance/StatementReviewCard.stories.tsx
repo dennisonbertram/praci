@@ -1,6 +1,7 @@
 import type { FinanceStatement } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { StatementGroup, type StatementRow } from "./StatementReviewCard";
+import type { StatementRow } from "./StatementReviewCard";
+import { StatementGroup } from "./StatementReviewCard";
 
 const base: FinanceStatement = {
   id: "stmt_1",

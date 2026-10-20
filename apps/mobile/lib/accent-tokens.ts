@@ -1,4 +1,5 @@
-import { accentForeground, botAccentHex, type ColorTokens } from "@rakazo/ui-tokens";
+import type { ColorTokens } from "@rakazo/ui-tokens";
+import { accentForeground, botAccentHex } from "@rakazo/ui-tokens";
 
 /** Tokens where the user's bubble fill and the primary button take the bot colour. */
 export function accentTokens(tokens: ColorTokens, raw: string | null): ColorTokens {

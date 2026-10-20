@@ -1,10 +1,12 @@
 import { execFile } from "node:child_process";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { createServer, type Server } from "node:http";
+import type { Server } from "node:http";
+import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { promisify } from "node:util";
-import { type ElectronApplication, _electron as electron, expect, test } from "@playwright/test";
+import type { ElectronApplication } from "@playwright/test";
+import { _electron as electron, expect, test } from "@playwright/test";
 
 const APP_MARKER = "Existing Rakazo instance ready";
 const execFileAsync = promisify(execFile);

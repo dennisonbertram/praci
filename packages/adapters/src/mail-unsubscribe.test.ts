@@ -1,4 +1,5 @@
-import { type AdapterContext, MailProviderError } from "@rakazo/adapter-kit";
+import type { AdapterContext } from "@rakazo/adapter-kit";
+import { MailProviderError } from "@rakazo/adapter-kit";
 import { describe, expect, it } from "vitest";
 import { createMailUnsubscriber } from "./mail-unsubscribe.js";
 

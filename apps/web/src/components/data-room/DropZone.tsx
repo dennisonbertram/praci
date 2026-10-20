@@ -5,13 +5,13 @@ import { Upload, X } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { dataRoomItemPath, dragHasFiles } from "../../lib/data-room";
+import type { UploadFailure } from "./upload-toasts";
 import {
   dismissUploadToast,
   getUploadToasts,
   holdUploadToasts,
   setUploadScope,
   subscribeUploadToasts,
-  type UploadFailure,
   uploadFilesToDataRoom,
 } from "./upload-toasts";
 

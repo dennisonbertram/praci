@@ -1,35 +1,34 @@
-import {
-  type AdapterContext,
-  type ConnectorProxyRequest,
-  type ConnectorProxyResponse,
-  MAIL_REQUEST_ABORTED,
-  type MailAccount,
-  type MailAddress,
-  type MailAttachment,
-  type MailChanges,
-  type MailDraftInput,
-  type MailDraftRef,
-  type MailLabel,
-  type MailLabelChange,
-  type MailListRequest,
-  type MailMessage,
-  type MailMessagePage,
-  type MailMessageSummary,
-  type MailProvider,
-  MailProviderError,
-  type MailSent,
-  type MailWatch,
-  type ManagedConnectorProvider,
+import type {
+  AdapterContext,
+  ConnectorProxyRequest,
+  ConnectorProxyResponse,
+  MailAccount,
+  MailAddress,
+  MailAttachment,
+  MailChanges,
+  MailDraftInput,
+  MailDraftRef,
+  MailLabel,
+  MailLabelChange,
+  MailListRequest,
+  MailMessage,
+  MailMessagePage,
+  MailMessageSummary,
+  MailProvider,
+  MailSent,
+  MailWatch,
+  ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
+import { MAIL_REQUEST_ABORTED, MailProviderError } from "@rakazo/adapter-kit";
 import { MAIL_SIGNALS_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { JSDOM } from "jsdom";
 import { asRecord } from "./connector-http.js";
+import type { GoogleApiSleep } from "./google-api-request.js";
 import {
   GOOGLE_API_CONCURRENCY,
   GoogleApiClient,
   GoogleApiError,
-  type GoogleApiSleep,
   isGoogleAuthFailure,
   isGoogleRateLimited,
 } from "./google-api-request.js";

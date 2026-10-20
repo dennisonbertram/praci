@@ -2,7 +2,8 @@ import { Label } from "@rakazo/ui-web/components/ui/label";
 import { Separator } from "@rakazo/ui-web/components/ui/separator";
 
 import { cn } from "@rakazo/ui-web/lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
+import type { VariantProps } from "class-variance-authority";
+import { cva } from "class-variance-authority";
 import { useMemo } from "react";
 
 function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {

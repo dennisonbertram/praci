@@ -1,6 +1,7 @@
 import { createRouterClient } from "@orpc/server";
 import type { Actor } from "@rakazo/contracts";
-import { createDb, type PrismaClient } from "@rakazo/db";
+import type { PrismaClient } from "@rakazo/db";
+import { createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";

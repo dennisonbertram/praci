@@ -1,15 +1,8 @@
 import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { CleanupKind, CleanupListOutput, MailAction } from "@rakazo/contracts";
-import {
-  type CleanupApi,
-  type CleanupFailure,
-  type CleanupRunResult,
-  cleanupChoiceCounts,
-  cleanupTargets,
-  runCleanup,
-  senderKey,
-} from "@rakazo/core";
+import type { CleanupApi, CleanupFailure, CleanupRunResult } from "@rakazo/core";
+import { cleanupChoiceCounts, cleanupTargets, runCleanup, senderKey } from "@rakazo/core";
 import {
   AlertDialog,
   AlertDialogAction,

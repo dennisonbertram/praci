@@ -1,4 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { completeOnboarding, openUserSettings, signup } from "./helpers";
 
 // VIS-01: the sidebar docks from 1024px and the right panel from 1280px. Below that they overlay,

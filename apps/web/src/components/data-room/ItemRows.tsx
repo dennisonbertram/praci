@@ -18,18 +18,13 @@ import {
   TableRow,
 } from "@rakazo/ui-web";
 import { FileImage, FileSpreadsheet, FileText, Folder } from "lucide-react";
-import {
-  type KeyboardEvent,
-  type ReactElement,
-  type ReactNode,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import type { KeyboardEvent, ReactElement, ReactNode } from "react";
+import { useEffect, useRef, useState } from "react";
 import { dataRoomThumbnailUrl, splitSnippet } from "../../lib/data-room";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { dateText, isSettled, statusLabel, typeLabel } from "./format";
-import { type ItemAction, ItemMenu, ItemMenuItems } from "./ItemMenu";
+import type { ItemAction } from "./ItemMenu";
+import { ItemMenu, ItemMenuItems } from "./ItemMenu";
 import type { SendTarget } from "./SendToAgent";
 import type { Row, SortField } from "./use-data-room-list";
 

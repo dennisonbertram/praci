@@ -1,11 +1,11 @@
 import { describe, expect, it, vi } from "vitest";
+import type { SenderGroupRow } from "./inbox-sender-groups.js";
 import {
   archivableIds,
   bulkInChunks,
   digestRows,
   groupBySender,
   rowSummary,
-  type SenderGroupRow,
 } from "./inbox-sender-groups.js";
 
 const row = (id: string, extra: Partial<SenderGroupRow> = {}): SenderGroupRow => ({

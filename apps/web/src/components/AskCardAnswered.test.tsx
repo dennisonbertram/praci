@@ -12,7 +12,8 @@ vi.mock("@lingui/react/macro", () => ({
 vi.mock("@lingui/core/macro", () => ({ t: String.raw }));
 vi.mock("@rakazo/chat-ui/web", () => ({ ChatMarkdown: () => null }));
 
-import { type AskBlock, AskCard } from "./AskCard";
+import type { AskBlock } from "./AskCard";
+import { AskCard } from "./AskCard";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

@@ -1,6 +1,7 @@
 import type { CashPoint, FinanceOverview, SpendTotals } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { type ReactNode, useEffect } from "react";
+import type { ReactNode } from "react";
+import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { userEvent, within } from "storybook/test";
 import { mockRpc } from "../lib/__mocks__/rpc";

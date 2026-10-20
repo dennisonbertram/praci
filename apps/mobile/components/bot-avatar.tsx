@@ -24,7 +24,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import Svg, { G, Path } from "react-native-svg";
-import { type AvatarFaceGeometry, robotFaceLayout } from "../lib/avatar-face";
+import type { AvatarFaceGeometry } from "../lib/avatar-face";
+import { robotFaceLayout } from "../lib/avatar-face";
 import { workingAvatarDuration, workingAvatarFrame } from "../lib/avatar-motion";
 import { mobileBotAvatarPresentation } from "../lib/bot-avatar";
 import { useI18n } from "../lib/i18n";

@@ -1,4 +1,5 @@
-import { createSign, generateKeyPairSync, type KeyObject } from "node:crypto";
+import type { KeyObject } from "node:crypto";
+import { createSign, generateKeyPairSync } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
 import {
   createGmailPushVerifier,

@@ -6,10 +6,8 @@ import {
   PhotonEmulator,
   SendBlueEmulator,
 } from "@rakazo/adapters";
-import {
-  describeMessagingPlatformConformance,
-  type MessagingPlatformHarness,
-} from "./messaging-platform-conformance.js";
+import type { MessagingPlatformHarness } from "./messaging-platform-conformance.js";
+import { describeMessagingPlatformConformance } from "./messaging-platform-conformance.js";
 
 describeMessagingPlatformConformance("sendblue", (): MessagingPlatformHarness => {
   const emulator = new SendBlueEmulator();

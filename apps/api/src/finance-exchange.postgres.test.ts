@@ -4,7 +4,8 @@ import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type FinanceDeps, financeOverview, financeRunway } from "./finance.js";
+import type { FinanceDeps } from "./finance.js";
+import { financeOverview, financeRunway } from "./finance.js";
 import {
   financeExchangeConnect,
   financeExchangeRemove,

@@ -1,6 +1,7 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import type { ManagedConnectorProvider } from "@rakazo/adapter-kit";
-import { type Actor, GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
+import type { Actor } from "@rakazo/contracts";
+import { GOOGLE_DESKTOP_REDIRECT_URI } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "./router.js";

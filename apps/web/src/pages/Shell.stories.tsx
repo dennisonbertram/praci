@@ -1,6 +1,7 @@
 import { BOT_COLORS } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { createRef, type ReactNode, useEffect } from "react";
+import type { ReactNode } from "react";
+import { createRef, useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { makeBot, mockBots, mockSections } from "../stories/fixtures";

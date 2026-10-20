@@ -6,7 +6,8 @@ import { Button, Checkbox, Tooltip, TooltipContent, TooltipTrigger } from "@raka
 import { Archive, ChevronRight } from "lucide-react";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { formatMailTime } from "../../lib/mail-time";
-import { InboxRow, type RowPicking, rowPicking } from "./InboxRow";
+import type { RowPicking } from "./InboxRow";
+import { InboxRow, rowPicking } from "./InboxRow";
 
 /** The id the keyboard and the focus use for a group header; message ids never start with it. */
 export const SENDER_GROUP_PREFIX = "group:";

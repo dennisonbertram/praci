@@ -1,4 +1,5 @@
-import { expect, type Page, test } from "@playwright/test";
+import type { Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { captureScreenshot, completeOnboarding, finishConnectDialog, rpc, signup } from "./helpers";
 
 const api = () => process.env.API_URL ?? "http://127.0.0.1:3110";

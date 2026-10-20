@@ -1,6 +1,7 @@
 import type { NotificationDto, NotificationSignal } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
-import { followNotifications, type NotificationStreamDeps } from "./notification-stream";
+import type { NotificationStreamDeps } from "./notification-stream";
+import { followNotifications } from "./notification-stream";
 
 const T = "2030-01-01T00:00:01.000Z";
 const dto = (id: string, over: Partial<NotificationDto> = {}): NotificationDto => ({

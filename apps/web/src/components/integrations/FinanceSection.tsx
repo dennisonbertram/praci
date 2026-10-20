@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from "@rakazo/ui-web";
 import { MoreHorizontal } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { connectFinanceProvider } from "../../lib/finance-connect";
 import { financePath } from "../../lib/finance-route";

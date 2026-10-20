@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { ConnectionAccessRow } from "./connection-access.js";
 import {
   appStatus,
   botMayUseConnection,
-  type ConnectionAccessRow,
   deniedConnectionIds,
   effectiveAccessByConnection,
 } from "./connection-access.js";

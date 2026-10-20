@@ -1,4 +1,5 @@
-import { createContext, type ReactNode, useContext } from "react";
+import type { ReactNode } from "react";
+import { createContext, useContext } from "react";
 
 export type AvatarStyle = "robot" | "organic";
 

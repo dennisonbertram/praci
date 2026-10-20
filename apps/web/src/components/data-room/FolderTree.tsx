@@ -3,10 +3,12 @@ import { Trans } from "@lingui/react/macro";
 import type { DataRoomApiFolder } from "@rakazo/contracts";
 import { Button, cn } from "@rakazo/ui-web";
 import { Folder, FolderPlus, WandSparkles } from "lucide-react";
-import { type KeyboardEvent, useState } from "react";
+import type { KeyboardEvent } from "react";
+import { useState } from "react";
 import { PAGE_GUTTER_START } from "../PageHeader";
 import type { FolderNode } from "./folders";
-import { type ItemAction, ItemMenu } from "./ItemMenu";
+import type { ItemAction } from "./ItemMenu";
+import { ItemMenu } from "./ItemMenu";
 
 /**
  * The folder list. It is one Tab stop: arrow keys move between entries, Enter or Space opens one.

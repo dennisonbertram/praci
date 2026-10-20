@@ -6,11 +6,8 @@ import type {
   ManagedConnectorProvider,
 } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
-import {
-  createMailProvider,
-  GMAIL_FILTER_LIMIT,
-  type GmailMailProviderDeps,
-} from "./gmail-mail-provider.js";
+import type { GmailMailProviderDeps } from "./gmail-mail-provider.js";
+import { createMailProvider, GMAIL_FILTER_LIMIT } from "./gmail-mail-provider.js";
 import { GMAIL_SETTINGS_BASIC } from "./google-connector.js";
 import { parseRawMime } from "./mime-parse.js";
 

@@ -8,12 +8,8 @@ import { PT_BR_MESSAGES } from "./locales/pt-BR";
 import { RU_MESSAGES } from "./locales/ru";
 import { TR_MESSAGES } from "./locales/tr";
 import { ZH_MESSAGES } from "./locales/zh";
-import {
-  htmlLangForLocale,
-  resolveUiLocale,
-  UI_LOCALE_STORAGE_KEY,
-  type UiLocale,
-} from "./ui-locale";
+import type { UiLocale } from "./ui-locale";
+import { htmlLangForLocale, resolveUiLocale, UI_LOCALE_STORAGE_KEY } from "./ui-locale";
 
 const catalogs: Partial<Record<UiLocale, Record<string, string>>> = {
   "zh-CN": ZH_MESSAGES,

@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
+import type { RecreateLastRun } from "./updater-recreate.js";
 import {
   confirmUpdaterRecreate,
   isLikelyUpdaterRecreateDisconnect,
-  type RecreateLastRun,
   recreateWaitTimeoutError,
 } from "./updater-recreate.js";
 

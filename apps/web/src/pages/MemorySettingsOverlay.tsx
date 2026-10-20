@@ -18,10 +18,10 @@ import { useEffect, useId, useState } from "react";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 import { SpaceMemorySection } from "./KnowledgeSection";
+import type { MemoryProviderConnectionDraft } from "./memory-providers/registry";
 import {
   defaultMemoryProviderSettings,
   MEMORY_PROVIDER_SETTINGS,
-  type MemoryProviderConnectionDraft,
   memoryProviderSettings,
 } from "./memory-providers/registry";
 
