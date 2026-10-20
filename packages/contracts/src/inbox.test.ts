@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  CleanupArchiveInputSchema,
   InboxFeedbackInputSchema,
   InboxFilterSchema,
   InboxListInputSchema,
   InboxListOutputSchema,
+  InboxMoveInputSchema,
   inboxAgentSpawnKey,
   isInboxAgentSpawnKey,
+  UnsubscribeOutputSchema,
 } from "./inbox.js";
 
 describe("inbox contracts", () => {
@@ -167,5 +170,42 @@ describe("inbox contracts", () => {
       false,
     );
     expect(InboxFeedbackInputSchema.safeParse({ messageId: "m1" }).success).toBe(false);
+  });
+});
+
+describe("cleanup contracts", () => {
+  it("takes one of four choices for one sender, with an optional batch to continue", () => {
+    const base = { connectionId: "c1", address: "news@lists.example.test" };
+    for (const kind of ["archive", "skip_inbox", "unsubscribe", "spam"])
+      expect(CleanupArchiveInputSchema.parse({ ...base, kind })).toMatchObject({ kind });
+    expect(CleanupArchiveInputSchema.safeParse({ ...base, kind: "trash" }).success).toBe(false);
+    expect(
+      CleanupArchiveInputSchema.parse({ ...base, kind: "archive", batchId: "b1" }).batchId,
+    ).toBe("b1");
+  });
+
+  it("moves 1 to 50 messages to spam, not spam or trash", () => {
+    const ids = (n: number) => Array.from({ length: n }, (_, i) => `m${i}`);
+    expect(InboxMoveInputSchema.safeParse({ op: "spam", messageIds: ids(50) }).success).toBe(true);
+    expect(InboxMoveInputSchema.safeParse({ op: "trash", messageIds: ids(51) }).success).toBe(
+      false,
+    );
+    expect(InboxMoveInputSchema.safeParse({ op: "notSpam", messageIds: [] }).success).toBe(false);
+    expect(InboxMoveInputSchema.safeParse({ op: "delete", messageIds: ids(1) }).success).toBe(
+      false,
+    );
+  });
+
+  it("answers an unsubscribe with a status, a method and where to go", () => {
+    expect(
+      UnsubscribeOutputSchema.parse({
+        status: "opened",
+        method: "link",
+        openUrl: "https://x.example.test/u",
+      }),
+    ).toMatchObject({ status: "opened" });
+    expect(UnsubscribeOutputSchema.safeParse({ status: "sent-ish", method: null }).success).toBe(
+      false,
+    );
   });
 });
