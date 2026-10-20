@@ -95,7 +95,7 @@ test("bot creation, editing, and deletion persist", async ({ page }, testInfo) =
   await expect(teamComputer).toBeHidden();
   await expect(modelSelect).toBeHidden();
   await expect(openWork).toBeHidden();
-  await expect(settings.getByRole("button", { name: "Save", exact: true })).toBeVisible();
+  await expect(settings.getByText("Advanced", { exact: true })).toBeVisible();
   await expect(settings.getByRole("button", { name: "Recover computer" })).toHaveCount(0);
   await expect(settings.getByRole("button", { name: "Reset computer" })).toHaveCount(0);
   await expect(settings.getByRole("button", { name: "Update computer" })).toHaveCount(0);

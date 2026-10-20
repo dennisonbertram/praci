@@ -551,6 +551,10 @@ msgstr ""
 msgid "A sign-in tab opened at <0>{0}</0>. Enter this code there — this window keeps waiting:"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "A skill with that name already exists"
+msgstr ""
+
 #: src/components/finance/WalletDialog.tsx
 msgid "A smart contract that holds funds."
 msgstr ""
@@ -3747,10 +3751,6 @@ msgstr ""
 #: src/components/AskCard.tsx
 msgid "Edit first"
 msgstr "수정 후 보내기"
-
-#: src/pages/BotContextMenu.tsx
-msgid "Edit profile"
-msgstr ""
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Edit wallet"
@@ -7366,7 +7366,6 @@ msgstr ""
 #: src/pages/KnowledgeSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
-#: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
@@ -7750,6 +7749,7 @@ msgid "Set up app catalog"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
+#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8923,8 +8923,9 @@ msgstr ""
 msgid "Unknown source: {unknownSource}"
 msgstr ""
 
+#. placeholder {0}: unknown.join(", ")
 #: src/pages/shell/bot-panel.tsx
-msgid "Unknown tool"
+msgid "Unknown tool: {0}"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx

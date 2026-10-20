@@ -50,6 +50,8 @@ const KnowledgeSection = lazy(() =>
 );
 
 const fieldLabelClass = "mt-4 block text-[14px] text-muted-foreground";
+// Advanced sections share the heading style of Notifications, Skills, Memory and Credentials.
+const advancedLabelClass = "mt-4 block text-[13.5px] font-medium text-foreground";
 
 function ComputerModePicker({
   value,
@@ -64,7 +66,7 @@ function ComputerModePicker({
 }) {
   return (
     <div className="mt-4">
-      <div className="text-[14px] text-muted-foreground">
+      <div className="text-[13.5px] font-medium text-foreground">
         <Trans>Computer</Trans>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2">
@@ -165,11 +167,25 @@ export function BotSettings({
   const [catalog, setCatalog] = useState<ModelCatalogEntry[]>([]);
   const [me, setMe] = useState<Me | null>(null);
   const [modelMetaReady, setModelMetaReady] = useState(false);
-  const [saving, setSaving] = useState(false);
-  // Set after the Save button's save succeeds; any later save clears it.
+  // True for about two seconds after a save succeeds.
   const [saved, setSaved] = useState(false);
-  const confirmSaveRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
+  const [toolError, setToolError] = useState<string | null>(null);
+  // Bumped by Advanced choices that save as soon as they change.
+  const [saveTick, setSaveTick] = useState(0);
+  useEffect(() => {
+    if (!saved) return;
+    const timer = setTimeout(() => setSaved(false), 2000);
+    return () => clearTimeout(timer);
+  }, [saved]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs only when a choice changes, and enqueueSave reads the latest values through a ref
+  useEffect(() => {
+    if (saveTick > 0) void enqueueSave();
+  }, [saveTick]);
+  const saveOnChange = (apply: () => void) => {
+    apply();
+    setSaveTick((tick) => tick + 1);
+  };
   const saveQueueRef = useRef(Promise.resolve());
   const executeSaveRef = useRef<
     (patchOverrides?: {
@@ -255,7 +271,6 @@ export function BotSettings({
     setDescription(nextDescription);
 
     try {
-      setSaving(true);
       setError(null);
       const patch = {
         name: nextName || bot.name,
@@ -314,31 +329,34 @@ export function BotSettings({
         break;
       }
       savedDescriptionRef.current = nextDescription;
-      if (confirmSaveRef.current) setSaved(true);
+      setSaved(true);
     } catch (err) {
       setError(errorText(err, t`Could not save`));
     } finally {
-      confirmSaveRef.current = false;
       pendingSavesRef.current -= 1;
       if (pendingSavesRef.current === 0) {
         setDisabledBuiltinTools([...persistedDisabledToolsRef.current]);
       }
-      setSaving(pendingSavesRef.current > 0);
     }
   }
   executeSaveRef.current = executeSave;
 
-  function disableBuiltinTool(raw: string) {
-    const name = raw.trim();
-    if (!name) return;
-    if (!isBuiltinToolName(name)) {
-      setError(t`Unknown tool`);
+  function disableBuiltinTools(raw: string) {
+    const names = raw
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+    if (!names.length) return;
+    const unknown = names.filter((entry) => !isBuiltinToolName(entry));
+    if (unknown.length) {
+      setToolError(t`Unknown tool: ${unknown.join(", ")}`);
       return;
     }
     setToolNameDraft("");
-    setError(null);
-    if (disabledBuiltinTools.includes(name)) return;
-    const next = [...disabledBuiltinTools, name];
+    setToolError(null);
+    const added = names.filter((entry) => !disabledBuiltinTools.includes(entry));
+    if (!added.length) return;
+    const next = [...disabledBuiltinTools, ...new Set(added)];
     setDisabledBuiltinTools(next);
     void enqueueSave({ disabledBuiltinTools: next });
   }
@@ -371,7 +389,10 @@ export function BotSettings({
 
   return (
     <div data-testid="bot-settings">
-      <div className="flex justify-center py-4">
+      <div className="flex h-6 justify-end" aria-live="polite">
+        {saved ? <SuccessPop label={t`Saved`} /> : null}
+      </div>
+      <div className="flex justify-center pb-4">
         <AvatarStudioPopover
           value={color}
           identity={bot.id}
@@ -452,7 +473,9 @@ export function BotSettings({
         data-testid="bot-settings-advanced"
         className="group mt-5"
         onToggle={(event) => {
-          if (event.currentTarget.open) setAdvancedOpened(true);
+          if (!event.currentTarget.open) return;
+          setAdvancedOpened(true);
+          event.currentTarget.scrollIntoView?.({ block: "start", behavior: "smooth" });
         }}
       >
         <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[14px] text-muted-foreground">
@@ -463,7 +486,10 @@ export function BotSettings({
             ›
           </span>
         </summary>
-        <ComputerModePicker value={computerMode} onChange={setComputerMode} />
+        <ComputerModePicker
+          value={computerMode}
+          onChange={(value) => saveOnChange(() => setComputerMode(value))}
+        />
         <ErrorBoundary fallback={<SectionLoadFailed />}>
           <Suspense fallback={null}>
             <ScratchpadSection botId={bot.id} />
@@ -476,15 +502,17 @@ export function BotSettings({
             </Suspense>
           </ErrorBoundary>
         ) : null}
-        <label htmlFor={`${ids}-model`} className={fieldLabelClass}>
+        <label htmlFor={`${ids}-model`} className={advancedLabelClass}>
           <Trans>Model</Trans>
           <NativeSelect
             id={`${ids}-model`}
             className="mt-2 w-full"
             value={selectedModelKey}
             onChange={(event) => {
-              setModelKey(event.target.value);
-              setThinkingLevel("");
+              saveOnChange(() => {
+                setModelKey(event.target.value);
+                setThinkingLevel("");
+              });
             }}
           >
             <NativeSelectOption value="">
@@ -507,13 +535,13 @@ export function BotSettings({
           </NativeSelect>
         </label>
         {thinkingOptions.length ? (
-          <label htmlFor={`${ids}-thinking`} className={fieldLabelClass}>
+          <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>
             <Trans>Thinking</Trans>
             <NativeSelect
               id={`${ids}-thinking`}
               className="mt-2 w-full"
               value={thinkingLevel}
-              onChange={(event) => setThinkingLevel(event.target.value)}
+              onChange={(event) => saveOnChange(() => setThinkingLevel(event.target.value))}
             >
               <NativeSelectOption value="">
                 {t`Default (${thinkingLevelLabel(defaultThinkingLevel)})`}
@@ -527,7 +555,7 @@ export function BotSettings({
           </label>
         ) : null}
         {memoryProviderConfigured ? (
-          <div className="mt-4 text-[14px] text-muted-foreground">
+          <div className="mt-4 text-[13.5px] font-medium text-foreground">
             <Trans>Memory scope</Trans>
             <div className="mt-2 flex gap-2">
               {(
@@ -543,7 +571,7 @@ export function BotSettings({
                   size="sm"
                   pressed={memoryScope === option.value}
                   onPressedChange={(pressed) => {
-                    if (pressed) setMemoryScope(option.value);
+                    if (pressed) saveOnChange(() => setMemoryScope(option.value));
                   }}
                   className="flex-1 aria-pressed:border-foreground/40 aria-pressed:text-foreground"
                 >
@@ -560,18 +588,18 @@ export function BotSettings({
           <Switch
             id={`${ids}-auto-speak`}
             checked={autoSpeak}
-            onCheckedChange={(checked) => setAutoSpeak(checked)}
+            onCheckedChange={(checked) => saveOnChange(() => setAutoSpeak(checked))}
           />
           <Trans>Read replies aloud</Trans>
         </label>
         {voices.length ? (
-          <label htmlFor={`${ids}-voice`} className={fieldLabelClass}>
+          <label htmlFor={`${ids}-voice`} className={advancedLabelClass}>
             <Trans>Voice</Trans>
             <NativeSelect
               id={`${ids}-voice`}
               className="mt-2 w-full"
               value={voiceId}
-              onChange={(event) => setVoiceId(event.target.value)}
+              onChange={(event) => saveOnChange(() => setVoiceId(event.target.value))}
             >
               <NativeSelectOption value="">{t`Account default`}</NativeSelectOption>
               {voices.map((voice) => (
@@ -582,7 +610,7 @@ export function BotSettings({
             </NativeSelect>
           </label>
         ) : null}
-        <label htmlFor={`${ids}-disabled-tools`} className={fieldLabelClass}>
+        <label htmlFor={`${ids}-disabled-tools`} className={advancedLabelClass}>
           <Trans>Disabled tools</Trans>
           <Input
             id={`${ids}-disabled-tools`}
@@ -593,20 +621,20 @@ export function BotSettings({
             autoCorrect="off"
             onChange={(event) => {
               setToolNameDraft(event.target.value);
-              // This message is about the name being typed. Leave other save errors alone.
-              setError((current) => (current === t`Unknown tool` ? null : current));
+              setToolError(null);
             }}
             onKeyDown={(event) => {
               if (event.key !== "Enter") return;
               event.preventDefault();
-              disableBuiltinTool(event.currentTarget.value);
+              disableBuiltinTools(event.currentTarget.value);
             }}
             onBlur={(event) => {
-              if (event.currentTarget.value.trim()) disableBuiltinTool(event.currentTarget.value);
+              if (event.currentTarget.value.trim()) disableBuiltinTools(event.currentTarget.value);
             }}
             className="mt-1.5 font-mono"
           />
         </label>
+        {toolError ? <p className="mt-1.5 text-[13px] text-destructive">{toolError}</p> : null}
         {disabledBuiltinTools.map((toolName) => (
           <label
             key={toolName}
@@ -630,26 +658,6 @@ export function BotSettings({
       </details>
       {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
       <div className="mt-5 flex flex-col items-start gap-3">
-        <div className="flex items-center gap-3">
-          {/* Not disabled while saving: leaving the name field starts a save on mousedown, which
-              would otherwise swallow this click. Saves are queued, so a second one is safe. */}
-          <Button
-            aria-busy={saving}
-            onClick={() => {
-              confirmSaveRef.current = true;
-              void enqueueSave({
-                name,
-                title,
-                description,
-                color,
-                notifyOnFinish,
-              });
-            }}
-          >
-            <Trans>Save</Trans>
-          </Button>
-          {saved ? <SuccessPop label={t`Saved`} /> : null}
-        </div>
         <Button variant="ghost" size="sm" className="-ms-2.5" onClick={() => void onExport()}>
           <Trans>Export</Trans>
         </Button>
