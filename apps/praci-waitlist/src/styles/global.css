@@ -171,12 +171,24 @@ button:focus-visible {
   margin: 48px 0 40px;
   max-width: 1100px;
 }
-.shot img {
-  display: block;
-  width: 100%;
-  height: auto;
+.shot {
+  --scale: 0.589;
+  position: relative;
+  aspect-ratio: 1440 / 900;
+  overflow: hidden;
   border-radius: 12px;
   border: 1px solid color-mix(in oklab, currentColor 14%, transparent);
+  background: url("/app.webp") center / cover;
+}
+.shot iframe {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1440px;
+  height: 900px;
+  border: 0;
+  transform-origin: 0 0;
+  transform: scale(var(--scale));
 }
 
 .star {
