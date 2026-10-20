@@ -911,11 +911,14 @@ function SubscriptionsTable({ subs }: { subs: FinanceOverview["subscriptions"] }
           <TableHead>
             <Trans>Vendor</Trans>
           </TableHead>
-          <TableHead className="text-end">
-            <Trans>Typical month</Trans>
+          <TableHead
+            className="text-end"
+            title={t`Usual charge scaled to a month. A vendor page shows the average of actual spend.`}
+          >
+            <Trans>Per month</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
-            <Trans>Last 3 months</Trans>
+            <Trans>Change, 3 months</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
             <Trans>Last charge</Trans>

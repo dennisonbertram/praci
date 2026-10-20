@@ -1793,6 +1793,10 @@ msgstr "Change"
 msgid "Change password"
 msgstr "Change password"
 
+#: src/pages/Finance.tsx
+msgid "Change, 3 months"
+msgstr "Change, 3 months"
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Changes your account"
 msgstr "Changes your account"
@@ -4640,10 +4644,6 @@ msgid "Language"
 msgstr "Language"
 
 #: src/pages/Finance.tsx
-msgid "Last 3 months"
-msgstr "Last 3 months"
-
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last 90 days"
 msgstr "Last 90 days"
@@ -6329,6 +6329,10 @@ msgstr "pending"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
 msgstr "Pending"
+
+#: src/pages/Finance.tsx
+msgid "Per month"
+msgstr "Per month"
 
 #: src/components/finance/ui.tsx
 msgid "Period"
@@ -8679,10 +8683,6 @@ msgstr "Type without recording"
 msgid "Type your answer"
 msgstr "Type your answer"
 
-#: src/pages/Finance.tsx
-msgid "Typical month"
-msgstr "Typical month"
-
 #: src/pages/CapTable.tsx
 msgid "Unallocated pool"
 msgstr "Unallocated pool"
@@ -8966,6 +8966,10 @@ msgstr "Uses Carta figures and asks before sending."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
+
+#: src/pages/Finance.tsx
+msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgstr "Usual charge scaled to a month. A vendor page shows the average of actual spend."
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx

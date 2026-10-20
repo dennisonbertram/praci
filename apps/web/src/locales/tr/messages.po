@@ -1793,6 +1793,10 @@ msgstr ""
 msgid "Change password"
 msgstr "Parolayı değiştir"
 
+#: src/pages/Finance.tsx
+msgid "Change, 3 months"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 msgid "Changes your account"
 msgstr ""
@@ -4640,10 +4644,6 @@ msgid "Language"
 msgstr "Dil"
 
 #: src/pages/Finance.tsx
-msgid "Last 3 months"
-msgstr ""
-
-#: src/pages/Finance.tsx
 #: src/pages/finance/FinanceSpend.tsx
 msgid "Last 90 days"
 msgstr ""
@@ -6328,6 +6328,10 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Pending"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Per month"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -8679,10 +8683,6 @@ msgstr ""
 msgid "Type your answer"
 msgstr "Yanıtını yaz"
 
-#: src/pages/Finance.tsx
-msgid "Typical month"
-msgstr ""
-
 #: src/pages/CapTable.tsx
 msgid "Unallocated pool"
 msgstr ""
@@ -8966,6 +8966,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "{selectedProviderName} erişimi için bu sunucunun kendi {hostCredentialSource} kimlik bilgilerini kullanır."
+
+#: src/pages/Finance.tsx
+msgid "Usual charge scaled to a month. A vendor page shows the average of actual spend."
+msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx
 #: src/pages/finance/FinanceCrypto.tsx

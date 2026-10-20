@@ -630,6 +630,17 @@ it("puts the paid-with text on the subscription row and links the row to its ven
   expect(link?.getAttribute("aria-label")).toBe("Acme Hosting, paid with Brex ••0001");
 });
 
+it("labels the subscription figures by what they measure", async () => {
+  rpcMock.overview.mockResolvedValue(connectedOverview());
+  await show("/app/finance");
+  await flush();
+  const heads = [...container.querySelectorAll("thead th")].map((th) => th.textContent);
+  expect(heads).toContain("Per month");
+  expect(heads).toContain("Change, 3 months");
+  expect(heads).not.toContain("Typical month");
+  expect(container.querySelector('th[title*="vendor page"]')?.textContent).toBe("Per month");
+});
+
 it("offers Ask only while the panel is closed", async () => {
   rpcMock.overview.mockResolvedValue(connectedOverview());
   const ask = vi.fn();
