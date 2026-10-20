@@ -574,17 +574,92 @@ describePostgres("company foundation (PostgreSQL)", () => {
     );
     expect(otherSource.id).not.toBe(rejected.id);
 
+    const editedNameOnlyInput = person(
+      `Edited rejected name ${suffix}`,
+      "rejected-name-edited-source",
+      "rejected-name-edited-original-hash",
+    );
+    const editedNameOnly = persisted(await company.importEntity(editedNameOnlyInput));
+    await company.edit({
+      entityId: editedNameOnly.id,
+      kind: "person",
+      attrs: { workEmails: [`edited-rejected-${suffix}@example.test`] },
+    });
+    await company.reject(editedNameOnly.id, "Edited name-only rejection");
+    const editedNameOnlyChangedInput = {
+      ...editedNameOnlyInput,
+      evidence: {
+        ...evidence("rejected-name-edited-source", "rejected-name-edited-changed-hash"),
+        quote: "A changed quotation after the identity edit.",
+      },
+    };
+    const editedNameOnlyDeferred = await company.importEntity(editedNameOnlyChangedInput);
+    if (!("deferred" in editedNameOnlyDeferred)) {
+      throw new Error("Expected an edited name-only rejection candidate");
+    }
+    await company.disconnect("slack", "rejected-name-edited-source");
+    const editedNameOnlyAfterDisconnect = await company.importEntity({
+      ...editedNameOnlyChangedInput,
+      evidence: {
+        ...editedNameOnlyChangedInput.evidence,
+        contentHash: "rejected-name-edited-after-disconnect-hash",
+      },
+    });
+    if (!("deferred" in editedNameOnlyAfterDisconnect)) {
+      throw new Error("Expected an edited name-only candidate after disconnect");
+    }
+
+    const rejectedQuoteOneInput = {
+      ...rejectedInput,
+      evidence: {
+        ...evidence("rejected-name-source", "rejected-name-quote-one-hash"),
+        quote: "A first changed quotation for the same person.",
+      },
+    };
+    const rejectedQuoteTwoInput = {
+      ...rejectedInput,
+      evidence: {
+        ...evidence("rejected-name-source", "rejected-name-quote-two-hash"),
+        quote: "A second changed quotation for the same person.",
+      },
+    };
+    const rejectedQuoteOne = await company.importEntity(rejectedQuoteOneInput);
+    const rejectedQuoteTwo = await company.importEntity(rejectedQuoteTwoInput);
+    if (!("deferred" in rejectedQuoteOne) || !("deferred" in rejectedQuoteTwo)) {
+      throw new Error("Expected distinct name-only rejection candidates");
+    }
+    expect(rejectedQuoteOne.candidateId).not.toBe(rejectedQuoteTwo.candidateId);
+    const rejectedQuoteOneRetry = await company.importEntity({
+      ...rejectedQuoteOneInput,
+      evidence: {
+        ...rejectedQuoteOneInput.evidence,
+        contentHash: "rejected-name-quote-one-retry-hash",
+      },
+    });
+    const rejectedQuoteTwoRetry = await company.importEntity({
+      ...rejectedQuoteTwoInput,
+      evidence: {
+        ...rejectedQuoteTwoInput.evidence,
+        contentHash: "rejected-name-quote-two-retry-hash",
+      },
+    });
+    if (!("deferred" in rejectedQuoteOneRetry) || !("deferred" in rejectedQuoteTwoRetry)) {
+      throw new Error("Expected name-only rejection candidates on retry");
+    }
+    expect(rejectedQuoteOneRetry.candidateId).toBe(rejectedQuoteOne.candidateId);
+    expect(rejectedQuoteTwoRetry.candidateId).toBe(rejectedQuoteTwo.candidateId);
+
     await company.disconnect("slack", "rejected-name-source");
-    expect(
-      await company.importEntity({
-        ...rejectedInput,
-        evidence: {
-          ...rejectedInput.evidence,
-          quote: "A changed quotation for the same person.",
-          contentHash: "rejected-name-after-disconnect-hash",
-        },
-      }),
-    ).toMatchObject({ deferred: true, record: null, candidateId: expect.any(String) });
+    const rejectedQuoteOneAfterDisconnect = await company.importEntity({
+      ...rejectedQuoteOneInput,
+      evidence: {
+        ...rejectedQuoteOneInput.evidence,
+        contentHash: "rejected-name-quote-one-after-disconnect-hash",
+      },
+    });
+    if (!("deferred" in rejectedQuoteOneAfterDisconnect)) {
+      throw new Error("Expected a name-only rejection candidate after disconnect");
+    }
     const differentNameSameDocument = persisted(
       await company.importEntity({
         ...rejectedInput,
@@ -1920,6 +1995,14 @@ describePostgres("company foundation (PostgreSQL)", () => {
         `subject-merge-child-${suffix}@example.test`,
       ),
     );
+    const thirdMergeChild = await company.importEntity(
+      person(
+        `Third subject merge child ${suffix}`,
+        "subject-merge-child-third",
+        "subject-merge-child-third-hash",
+        `subject-merge-child-third-${suffix}@example.test`,
+      ),
+    );
     const childEventInput = {
       event: {
         ...sharedEventInput.event,
@@ -1968,6 +2051,7 @@ describePostgres("company foundation (PostgreSQL)", () => {
     const secondChildEvent = persisted(await company.importEvent(secondChildEventInput));
     expect(secondChildEvent.id).not.toBe(childEvent.id);
     await company.merge(entityId(secondMergeChild), entityId(mergeRoot));
+    await company.merge(entityId(thirdMergeChild), entityId(mergeRoot));
     const ambiguousMergeInput = {
       ...secondChildEventInput,
       event: { ...secondChildEventInput.event, entityIds: [entityId(mergeRoot)] },
@@ -2033,6 +2117,38 @@ describePostgres("company foundation (PostgreSQL)", () => {
       quote: "The company source has refreshed this event extraction.",
       contentHash: "canonical-subject-new-refreshed-hash",
       proposedFact: expect.objectContaining({ event: ambiguousMergeInput.event }),
+    });
+    const previouslyUnassertedThirdChildInput = {
+      ...childEventInput,
+      event: { ...childEventInput.event, entityIds: [entityId(thirdMergeChild)] },
+      evidence: evidence("canonical-subject-child-source", "canonical-subject-child-third-hash"),
+    };
+    const eventCountBeforeThirdChild = await prisma.companyEvent.count({
+      where: { spaceId, ownerUserId: userId },
+    });
+    const deferredThirdChild = await company.importEvent(previouslyUnassertedThirdChildInput);
+    expect(deferredThirdChild).toMatchObject({
+      deferred: true,
+      record: null,
+      candidateId: expect.any(String),
+    });
+    if (!("deferred" in deferredThirdChild)) {
+      throw new Error("Expected a previously unasserted child candidate");
+    }
+    expect(await prisma.companyEvent.count({ where: { spaceId, ownerUserId: userId } })).toBe(
+      eventCountBeforeThirdChild,
+    );
+    expect(
+      (await company.candidates()).find(
+        (candidate) => candidate.id === deferredThirdChild.candidateId,
+      ),
+    ).toMatchObject({
+      kind: "event",
+      reason: "ambiguous_event_subjects",
+      proposedFact: expect.objectContaining({
+        event: previouslyUnassertedThirdChildInput.event,
+        matchingEventIds: expect.arrayContaining([childEvent.id, secondChildEvent.id]),
+      }),
     });
     const originalChildReplay = persisted(
       await company.importEvent({

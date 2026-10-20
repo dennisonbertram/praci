@@ -919,7 +919,7 @@ async function importEntity(
         mcpServerId: input.evidence.mcpServerId ?? null,
         dataRoomItemId: await linkedDataRoomItemId(db, scope, input.evidence),
         sourceItemId: input.evidence.sourceItemId,
-        sourceKey: sourceNameAlias,
+        sourceKey: key,
         quote: input.evidence.quote,
         contentHash: input.evidence.contentHash,
       });
@@ -1405,13 +1405,7 @@ async function importEvent(
     `source:${assertedSourceKey}`,
   ]);
   if (rejection) return { suppressed: true, record: null, rejectionId: rejection.id };
-  const rawSourceReplayIds = await eventSourceReplayIds(db, scope, [rawKey]);
-  const canonicalSourceReplayIds =
-    rawSourceReplayIds.length === 0 && rawKey !== key
-      ? await eventSourceReplayIds(db, scope, [key])
-      : [];
-  const exactSourceReplayIds =
-    rawSourceReplayIds.length > 0 ? rawSourceReplayIds : canonicalSourceReplayIds;
+  const exactSourceReplayIds = await eventSourceReplayIds(db, scope, [rawKey]);
   let event =
     exactSourceReplayIds.length === 1
       ? await db.companyEvent.findFirst({
@@ -1875,11 +1869,6 @@ async function rejectEntity(
     select: { factId: true, sourceKey: true },
   });
   const memberById = new Map(groupRows.map((member) => [member.id, member]));
-  const membersWithStrongIdentity = new Set(
-    identities
-      .filter((identity) => identity.identityType !== "name")
-      .map((identity) => identity.entityId),
-  );
   const strongAliases = identities
     .filter((identity) => identity.identityType !== "name")
     .map((identity) => `${row.kind}:${identity.identityType}:${identity.identityValue}`);
@@ -1888,7 +1877,7 @@ async function rejectEntity(
       ? sourceEvidence.flatMap((evidence) => {
           const member = memberById.get(evidence.factId);
           const locator = sourceLocatorFromKey(evidence.sourceKey);
-          return member && locator && !membersWithStrongIdentity.has(member.id)
+          return member && locator
             ? [`person-source-name:${hash([locator, member.normalizedName])}`]
             : [];
         })
