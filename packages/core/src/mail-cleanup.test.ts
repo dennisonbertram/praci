@@ -34,13 +34,14 @@ describe("isCleanupPreselected", () => {
     ["an important mark", { mark: "important" as const }],
     ["spam-like mail", { spamLike: true }],
     ["a sender already skipping the inbox", { skipInbox: true }],
+    ["an updates-pile sender, even with bulk signals", { newestPile: "updates" as const }],
     ["a sender that is not bulk", { bulk: false, newestPile: "important" as const }],
   ])("does not preselect %s", (_name, patch) => {
     expect(pick(patch)).toBe(false);
   });
 
-  it("is bulk through the newest pile when the stat is not", () => {
-    expect(pick({ bulk: false, newestPile: "updates" })).toBe(true);
+  it("is bulk through the newsletters pile when the stat is not", () => {
+    expect(pick({ bulk: false, newestPile: "updates" })).toBe(false);
     expect(pick({ bulk: false, newestPile: "newsletters" })).toBe(true);
     expect(pick({ bulk: false, newestPile: null })).toBe(false);
   });

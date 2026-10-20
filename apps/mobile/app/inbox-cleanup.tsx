@@ -52,6 +52,11 @@ export default function InboxCleanupScreen() {
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
   const scheme = useResolvedAppearance();
+  const pileNames = {
+    important: t("Important"),
+    updates: t("Updates"),
+    newsletters: t("Newsletters"),
+  };
   const [list, setList] = useState<CleanupListOutput | null>(null);
   const [history, setHistory] = useState<MailAction[]>([]);
   const [error, setError] = useState("");
@@ -153,9 +158,9 @@ export default function InboxCleanupScreen() {
     ]);
   };
 
-  const stop = async (sender: CleanupSender) => {
+  const stop = async (sender: CleanupSender, learned = false) => {
     try {
-      await forgetCleanupSender(sender.connectionId, sender.address);
+      await forgetCleanupSender(sender.connectionId, sender.address, learned);
     } catch (cause) {
       Alert.alert(errorText(cause));
     }
@@ -371,6 +376,25 @@ export default function InboxCleanupScreen() {
                       onPress={() => void stop(sender)}
                     >
                       <Text style={styles.link}>{t("Stop")}</Text>
+                    </Pressable>
+                    {sender.rule === "full" ? (
+                      <Text style={styles.meta}>{t("Gmail filter limit reached")}</Text>
+                    ) : sender.rule === "failed" ? (
+                      <Text style={styles.meta}>{t("Couldn't add Gmail filter")}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
+                {sender.learnedPile ? (
+                  <View style={styles.skipping}>
+                    <Text style={styles.meta}>
+                      {t("Learned")} {pileNames[sender.learnedPile as keyof typeof pileNames]}
+                    </Text>
+                    <Pressable
+                      accessibilityRole="button"
+                      hitSlop={8}
+                      onPress={() => void stop(sender, true)}
+                    >
+                      <Text style={styles.link}>{t("Forget")}</Text>
                     </Pressable>
                   </View>
                 ) : null}

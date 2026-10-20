@@ -2,7 +2,7 @@ import { Trans, useLingui } from "@lingui/react/macro";
 import type { LinkFavicons } from "@rakazo/chat-ui/web";
 import { HideAmountsContext, LinkFaviconsContext, RemoteImagesContext } from "@rakazo/chat-ui/web";
 import { LOCAL_SETTINGS_PAGE } from "@rakazo/contracts";
-import { Button, Skeleton } from "@rakazo/ui-web";
+import { Button } from "@rakazo/ui-web";
 import {
   lazy,
   Suspense,
@@ -17,6 +17,7 @@ import { LoadingState } from "./components/ai/primitives";
 import { DataRoomDropZone } from "./components/data-room/DropZone";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MailOutbox } from "./components/MailOutbox";
+import { ShellSkeleton } from "./components/ShellSkeleton";
 import { SubscriptionGate } from "./components/SubscriptionGate";
 import { authClient } from "./lib/auth";
 import { getTicketBoardEnabled, subscribeTicketBoardEnabled } from "./lib/bootstrap";
@@ -195,7 +196,6 @@ function SessionApp() {
             <Route path="/app/legal" element={<ShellPage />} />
             <Route path="/app/data-room" element={<ShellPage />} />
             <Route path="/app/cap-table/*" element={<ShellPage />} />
-            <Route path="/app/data-room" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
           <Route path="*" element={<NotFoundPage />} />
@@ -294,36 +294,5 @@ function GateFallback() {
     <ShellSkeleton />
   ) : (
     <div className="h-full bg-background" />
-  );
-}
-
-function ShellSkeleton() {
-  return (
-    <div
-      className="flex h-full overflow-hidden bg-background"
-      data-rakazo-app-state="session-pending"
-    >
-      <aside className="hidden w-[316px] shrink-0 border-e border-sidebar-border bg-sidebar px-3.5 pt-16 md:block">
-        <Skeleton className="h-10 rounded-xl" />
-        <div className="mt-5 space-y-2 px-1">
-          {[0, 1, 2, 3].map((row) => (
-            <div key={row} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
-              <Skeleton className="size-9 rounded-full" />
-              <div className="flex-1 space-y-2">
-                <Skeleton className="h-3 w-2/5" />
-                <Skeleton className="h-2.5 w-4/5" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </aside>
-      <main className="flex flex-1 flex-col">
-        <div className="h-[74px] border-b border-sidebar-border" />
-        <div className="flex flex-1 items-center justify-center text-[14px] text-muted-foreground">
-          <Trans>Opening your Space…</Trans>
-        </div>
-        <div className="mx-6 mb-6 h-[54px] rounded-full border border-border bg-background" />
-      </main>
-    </div>
   );
 }

@@ -15,7 +15,8 @@ import {
   parseBotAvatar,
 } from "@rakazo/ui-web";
 import { Check, Pencil, Upload, X } from "lucide-react";
-import { type ClipboardEvent, type DragEvent, useRef, useState } from "react";
+import type { ClipboardEvent, DragEvent } from "react";
+import { useRef, useState } from "react";
 
 export interface AvatarStudioPopoverProps {
   value: string;

@@ -43,7 +43,13 @@ vi.mock("expo-speech", () => ({ stop: mocks.stop, speak: mocks.speak }));
 vi.mock("./api", () => ({
   rpc: async (procedure: string) => {
     if (procedure === "bots/get")
-      return { id: "bot-fixture", name: "Fixture", title: "", computerMode: "team" };
+      return {
+        id: "bot-fixture",
+        name: "Fixture",
+        title: "",
+        color: "#8B5CF6",
+        computerMode: "team",
+      };
     if (procedure === "me") return {};
     return [];
   },

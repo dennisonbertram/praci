@@ -29,3 +29,9 @@ describe("isSpreadsheetArtifact", () => {
     expect(isSpreadsheetArtifact("a.pdf", "application/pdf")).toBe(false);
   });
 });
+
+describe("isSpreadsheetArtifact (shared rule)", () => {
+  it("previews a CSV served with MIME parameters under any name", () => {
+    expect(isSpreadsheetArtifact("export.dat", "text/csv; charset=utf-8")).toBe(true);
+  });
+});

@@ -16,3 +16,10 @@ export function mobileBotAvatarPresentation(color: string): MobileBotAvatarPrese
     eyeColor: resolvePersonaColorDef("preview", parsed.color).eyeColor,
   };
 }
+
+/** The stored avatar value after picking a colour: a shape is kept, an uploaded image is not overwritten. */
+export function recolorBotAvatar(current: string, color: string): string {
+  const parsed = parseBotAvatarValue(current);
+  if (parsed.kind === "image") return current;
+  return parsed.kind === "shape" ? `${color}::shape_${parsed.shapeIndex}` : color;
+}
