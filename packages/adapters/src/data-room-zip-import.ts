@@ -51,8 +51,14 @@ export async function runDataRoomZipUnpack(
     deps.artifacts
       .remove(payload.storageKey, dataRoomBlobContext(actor, "data-room.zip-unpack"))
       .catch((error: unknown) => getLogger().error("data room zip removal failed", error));
+  const setStage = (data: { stage: string; currentName?: string | null }) =>
+    deps.prisma.dataRoomImport
+      .update({ where: { id: payload.importId }, data })
+      .catch((error: unknown) => getLogger().error("data room import stage failed", error));
+  await setStage({ stage: "opening", currentName: null });
   /** Nothing will be filed, so every file the zip counted for is failed. */
   const abandon = async () => {
+    await setStage({ stage: "done", currentName: null });
     await recordImportSkips(deps.prisma, payload.importId, { rejected: payload.entries });
     await removeZip();
   };
@@ -77,8 +83,15 @@ export async function runDataRoomZipUnpack(
   let rejected = Math.max(0, payload.entries - entries.length);
   // Items filed or matched in this run, to tell a repeat inside the zip from a retried entry.
   const seen = new Set<string>();
-  for (const entry of entries) {
+  await setStage({ stage: "adding", currentName: null });
+  let lastWrite = Date.now();
+  for (const [index, entry] of entries.entries()) {
     signal.throwIfAborted();
+    // Throttled: every 5th entry or after half a second, and the last one.
+    if (index % 5 === 0 || index === entries.length - 1 || Date.now() - lastWrite > 500) {
+      lastWrite = Date.now();
+      await setStage({ stage: "adding", currentName: entry.name });
+    }
     try {
       const fullPath = [...entry.folders, entry.name].join("/");
       const result = await storeAndFile(actor, {
@@ -115,6 +128,7 @@ export async function runDataRoomZipUnpack(
       rejected += 1;
     }
   }
+  await setStage({ stage: "done", currentName: null });
   await recordImportSkips(deps.prisma, payload.importId, { duplicates, rejected });
   await removeZip();
 }

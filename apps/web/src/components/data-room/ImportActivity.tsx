@@ -3,6 +3,7 @@ import type { DataRoomApiImport } from "@rakazo/contracts";
 import { Button, Spinner } from "@rakazo/ui-web";
 import { X } from "lucide-react";
 import { failedText, importedText } from "./format";
+import { isNarratedImport } from "./upload-toasts";
 
 const sum = (entries: DataRoomApiImport[], key: "total" | "done" | "failed") =>
   entries.reduce((n, entry) => n + entry[key], 0);
@@ -20,6 +21,8 @@ export function ImportActivity({
   onOpenItem: (id: string) => void;
   onDismiss: (ids: string[]) => void;
 }) {
+  // A zip upload is narrated on its own upload card.
+  imports = imports.filter((entry) => !isNarratedImport(entry.id));
   if (imports.length === 0) return null;
   const running = imports.filter((entry) => !entry.finished);
   const row = "flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs";

@@ -2577,6 +2577,10 @@ model DataRoomImport {
   createdAt  DateTime       @default(now())
   finishedAt DateTime?
   notifiedAt DateTime?
+  /// A zip import's step for the upload card: "opening", "adding", "reading" or "done".
+  stage       String?
+  /// The zip entry being added, while stage is "adding".
+  currentName String?
   items      DataRoomItem[]
 
   @@index([spaceId, userId, createdAt])

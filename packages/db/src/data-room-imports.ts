@@ -135,6 +135,7 @@ export async function listDataRoomImports(prisma: PrismaClient, actor: Owner, no
       // "indexing" only brings search up to date: the file is already readable and filed.
       const done = items("ready") + items("indexing") + row.duplicates;
       const failed = items("failed") + row.rejected;
+      const added = counts.reduce((n, c) => n + c._count._all, 0) + row.duplicates + row.rejected;
       return {
         id: row.id,
         source: row.source,
@@ -143,6 +144,10 @@ export async function listDataRoomImports(prisma: PrismaClient, actor: Owner, no
         failed,
         inProgress: Math.max(0, row.total - done - failed),
         finished: row.finishedAt !== null,
+        // Entries filed, skipped or failed so far; the files are read after the last is added.
+        added,
+        stage: row.stage as "opening" | "adding" | "reading" | "done" | null,
+        currentName: row.currentName,
         latest,
       };
     }),

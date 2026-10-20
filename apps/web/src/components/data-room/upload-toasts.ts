@@ -1,4 +1,5 @@
 import { t } from "@lingui/core/macro";
+import type { DataRoomApiImport } from "@rakazo/contracts";
 import {
   DATA_ROOM_CHANGED,
   DataRoomUploadError,
@@ -30,6 +31,10 @@ export type UploadToast = {
   name: string;
   state:
     | { kind: "uploading"; fraction: number }
+    /** After the upload: a zip being unpacked; `progress` is its import row, null until read. */
+    | { kind: "importing"; progress: DataRoomApiImport | null }
+    /** A zip was filed: `count` files, 0 when all of them were in the Data room already. */
+    | { kind: "imported"; count: number }
     /**
      * `existing` is set when an identical file was already there and nothing new was stored: its
      * name when it differs from the upload's, and the folder path it is in, if any.
@@ -50,6 +55,7 @@ const FAILED_TOAST_MS = 15_000;
 /** Short: it only confirms, and it sits over the lower right of the page. */
 const DELETED_TOAST_MS = 5_000;
 const HELD_RECHECK_MS = 2_000;
+const FOLLOW_MS = 1_000;
 let nextId = 1;
 let toasts: UploadToast[] = [];
 const listeners = new Set<() => void>();
@@ -108,6 +114,40 @@ export const getUploadToasts = () => {
   return toasts;
 };
 
+/** Zip imports a card narrates; the import activity row leaves them out. */
+const narrated = new Set<string>();
+export const isNarratedImport = (importId: string) => narrated.has(importId);
+
+/** Follows a zip's import row until it is unpacked and read, or fails. */
+async function followImport(id: number, importId: string, current: () => boolean) {
+  narrated.add(importId);
+  while (current()) {
+    await new Promise((resolve) => setTimeout(resolve, FOLLOW_MS));
+    const row = await rpc.dataRoom
+      .imports()
+      .then((all) => all.find((entry) => entry.id === importId) ?? null)
+      .catch(() => undefined);
+    if (!current()) return;
+    if (row === undefined) continue;
+    // Gone from the list: it finished with nothing new.
+    if (row === null || (row.finished && row.done === 0 && row.failed === 0)) {
+      update(id, { kind: "imported", count: 0 });
+      return dismissLater(id, DONE_TOAST_MS);
+    }
+    if (row.finished) {
+      // Nothing was filed and entries failed: the zip itself could not be read.
+      if (row.done === 0) {
+        update(id, { kind: "error", reason: "zip-invalid" });
+        return dismissLater(id, FAILED_TOAST_MS);
+      }
+      update(id, { kind: "imported", count: row.done });
+      window.dispatchEvent(new Event(DATA_ROOM_CHANGED));
+      return dismissLater(id, DONE_TOAST_MS);
+    }
+    update(id, { kind: "importing", progress: row });
+  }
+}
+
 async function uploadOne(file: File, folderId: string | undefined) {
   const id = nextId++;
   const mine = epoch;
@@ -129,12 +169,12 @@ async function uploadOne(file: File, folderId: string | undefined) {
     const uploaded = await uploadToDataRoom(file, folderId, (fraction) => {
       if (current()) update(id, { kind: "uploading", fraction });
     });
-    // A zip is unpacked in the background: the import row shows its progress from here.
+    // A zip is unpacked in the background: this card follows its import row from here.
     if (!("item" in uploaded)) {
       if (!current()) return;
-      dismissUploadToast(id);
+      update(id, { kind: "importing", progress: null });
       dataRoomImportStarted();
-      return;
+      return await followImport(id, uploaded.importId, current);
     }
     const { item, duplicate } = uploaded;
     // Where the file already is: without it "Already there" leaves the user to go looking.
@@ -219,4 +259,11 @@ export function showSortedToast(count: number, batchId: string) {
   toasts = [...toasts, { id, name: "", state: { kind: "sorted", count, undo } }];
   notify();
   dismissLater(id, DONE_TOAST_MS);
+}
+
+/** Shows a toast in any state and keeps it; for Storybook, which has no upload to run. */
+export function showToastForStory(name: string, state: UploadToast["state"]) {
+  sync();
+  toasts = [...toasts, { id: nextId++, name, state }];
+  notify();
 }

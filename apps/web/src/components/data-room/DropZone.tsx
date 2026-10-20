@@ -1,10 +1,12 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
+import type { DataRoomApiImport } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
 import { Upload, X } from "lucide-react";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
-import { dataRoomItemPath, dragHasFiles } from "../../lib/data-room";
+import { DATA_ROOM_PATH, dataRoomItemPath, dragHasFiles } from "../../lib/data-room";
+import { Shimmer } from "../ai/primitives";
 import type { UploadFailure } from "./upload-toasts";
 import {
   dismissUploadToast,
@@ -29,6 +31,17 @@ const failureText = (reason: UploadFailure) =>
             : reason === "zip-invalid"
               ? t`This zip can't be read`
               : t`Upload failed`;
+
+/** The one line under an upload card's name while a zip is opened, filed and read. */
+export const importingText = (name: string, progress: DataRoomApiImport | null) => {
+  if (!progress || progress.stage === "opening") return t`Opening ${name}`;
+  const { total, added, currentName, done } = progress;
+  if (progress.stage === "adding")
+    return added === 0 && !currentName
+      ? t`Found ${total} files`
+      : t`Adding ${added} of ${total} · ${currentName ?? ""}`;
+  return t`Reading ${done} of ${total}`;
+};
 
 const duplicateText = ({ name, folder }: { name?: string; folder?: string }) =>
   folder
@@ -172,6 +185,36 @@ export function DataRoomDropZone({ userId }: { userId: string | null }) {
                     className="h-full bg-primary"
                     style={{ width: `${Math.round(state.fraction * 100)}%` }}
                   />
+                </div>
+              ) : state.kind === "importing" ? (
+                <>
+                  <div
+                    role="progressbar"
+                    aria-label={name}
+                    className="mt-2 h-1 overflow-hidden rounded-full bg-muted"
+                  >
+                    <div className="h-full w-full animate-pulse bg-primary" />
+                  </div>
+                  <p className="mt-1 truncate text-xs text-muted-foreground">
+                    <Shimmer>{importingText(name, state.progress)}</Shimmer>
+                  </p>
+                </>
+              ) : state.kind === "imported" ? (
+                <div className="mt-1 flex items-center justify-between gap-2 text-xs">
+                  {state.count > 0 ? (
+                    <span className="text-success">
+                      {plural(state.count, { one: "Added # file", other: "Added # files" })}
+                    </span>
+                  ) : (
+                    <span className="text-muted-foreground">{duplicateText({})}</span>
+                  )}
+                  <Link
+                    to={DATA_ROOM_PATH}
+                    className="font-medium underline-offset-2 hover:underline"
+                    onClick={() => dismissUploadToast(id)}
+                  >
+                    <Trans>View</Trans>
+                  </Link>
                 </div>
               ) : state.kind === "uploaded" ? (
                 <div className="mt-1 flex items-center justify-between gap-2 text-xs">

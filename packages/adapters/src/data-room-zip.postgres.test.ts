@@ -4,7 +4,7 @@ import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb } from "@rakazo/db";
 import { zipSync } from "fflate";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { createFileDataRoomItem } from "./data-room-files.js";
 import { MemoryArtifacts, RecordingJobs } from "./data-room-test-fakes.js";
 import { runDataRoomZipUnpack } from "./data-room-zip-import.js";
@@ -331,6 +331,47 @@ describePostgres("Data room zip unpacking (PostgreSQL)", () => {
       "once-b.txt",
     ]);
     expect(artifacts.blobs.has(job.payload.storageKey)).toBe(false);
+  });
+
+  it("narrates the import in stages, and a retry ends in the same state", async () => {
+    const zip = zipSync({ "n-a.txt": text("a1"), "n-b.txt": text("b2"), "n-c.txt": text("c3") });
+    const queued = (await files.fileItem(owner, zipInput("narrate.zip", zip))) as {
+      importId: string;
+    };
+    const [job] = queuedUnpacks() as [UnpackJob];
+    const writes: { stage?: string; currentName?: string | null }[] = [];
+    const update = prisma.dataRoomImport.update.bind(prisma.dataRoomImport);
+    const spy = vi.spyOn(prisma.dataRoomImport, "update").mockImplementation(((args: {
+      data: { stage?: string; currentName?: string | null };
+    }) => {
+      writes.push(args.data);
+      return update(args as never);
+    }) as never);
+    await unpack(job);
+    spy.mockRestore();
+    const stages = writes.map((w) => w.stage).filter(Boolean);
+    expect(stages[0]).toBe("opening");
+    expect(stages.at(-1)).toBe("done");
+    expect(stages).toContain("adding");
+    const names = writes.map((w) => w.currentName).filter(Boolean);
+    expect(names[0]).toBe("n-a.txt");
+    expect(names.at(-1)).toBe("n-c.txt");
+    const row = () => prisma.dataRoomImport.findUnique({ where: { id: queued.importId } });
+    expect(await row()).toMatchObject({
+      stage: "done",
+      currentName: null,
+      total: 3,
+      duplicates: 0,
+    });
+    // Running the same job again changes no count.
+    artifacts.blobs.set(job.payload.storageKey, zip);
+    await unpack(job);
+    expect(await row()).toMatchObject({
+      stage: "done",
+      currentName: null,
+      total: 3,
+      duplicates: 0,
+    });
   });
 
   it("counts a repeat inside one zip as a duplicate, also across a retry", async () => {

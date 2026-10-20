@@ -89,6 +89,11 @@ msgstr ""
 msgid "{0, plural, one {#+ result} other {#+ results}}"
 msgstr ""
 
+#. placeholder {0}: state.count
+#: src/components/data-room/DropZone.tsx
+msgid "{0, plural, one {Added # file} other {Added # files}}"
+msgstr ""
+
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "{0, plural, one {Import # file} other {Import # files}}"
@@ -815,6 +820,11 @@ msgstr ""
 #: src/components/inbox/MailAttachments.tsx
 #: src/pages/Artifacts.tsx
 msgid "Added"
+msgstr ""
+
+#. placeholder {0}: currentName ?? ""
+#: src/components/data-room/DropZone.tsx
+msgid "Adding {added} of {total} · {0}"
 msgstr ""
 
 #: src/pages/shell/working-label.ts
@@ -4188,6 +4198,10 @@ msgstr ""
 msgid "Forward"
 msgstr ""
 
+#: src/components/data-room/DropZone.tsx
+msgid "Found {total} files"
+msgstr ""
+
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Free"
 msgstr "Gratuit"
@@ -6304,6 +6318,10 @@ msgstr ""
 msgid "Opened its thread."
 msgstr "Fil ouvert."
 
+#: src/components/data-room/DropZone.tsx
+msgid "Opening {name}"
+msgstr ""
+
 #: src/pages/shell/working-label.ts
 msgid "Opening an email"
 msgstr ""
@@ -6795,6 +6813,10 @@ msgstr ""
 #. placeholder {0}: updated.name
 #: src/pages/DataRoom.tsx
 msgid "Reading {0} again"
+msgstr ""
+
+#: src/components/data-room/DropZone.tsx
+msgid "Reading {done} of {total}"
 msgstr ""
 
 #: src/pages/shell/working-label.ts
