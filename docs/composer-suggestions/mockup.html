@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Composer suggestions mockup</title>
+<style>
+/* Colours copied from packages/ui-tokens (tokens.css). Invented data only. */
+[data-theme="dark"]{--background:#1c1c1a;--foreground:#ecebe6;--card:#252523;--primary:#f1f0eb;--primary-foreground:#1c1c1a;--secondary:#282826;--chat-user:#33322f;--muted:#252523;--muted-foreground:#9c9a93;--accent:#2a2927;--border:#2e2d2a;--input:#4a4944;--ring:#3b82f6;--success:#4ecb71;--warning:#e9c46a}
+[data-theme="light"]{--background:#fafaf8;--foreground:#1a1a1a;--card:#ffffff;--primary:#1a1a1a;--primary-foreground:#f1f1ef;--secondary:#f0f0ed;--chat-user:#e2e2dc;--muted:#f0f0ed;--muted-foreground:#6c6c70;--accent:#eaeae6;--border:#e4e4e0;--input:#c8c8c4;--ring:#6c6c70;--success:#228b3b;--warning:#b7791f}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#111;color:#ddd}
+header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:16px;border-bottom:1px solid #2a2a2a}
+header h1{font-size:14px;font-weight:600;margin:0 12px 0 0;color:#eee}
+header button{font:inherit;color:#ddd;background:#1c1c1c;border:1px solid #333;border-radius:999px;padding:6px 12px;cursor:pointer}
+header button[aria-pressed="true"]{background:#eee;color:#111;border-color:#eee}
+main{display:grid;grid-template-columns:1fr 1fr}
+@media (max-width:760px){main{grid-template-columns:1fr}}
+.panel{background:var(--background);color:var(--foreground);padding:24px 16px;min-height:520px;display:flex;flex-direction:column;justify-content:flex-end;gap:12px}
+.label{font-size:11px;color:var(--muted-foreground);text-transform:uppercase;letter-spacing:.06em;margin-bottom:auto}
+.msg{align-self:flex-end;max-width:85%;background:var(--chat-user);padding:8px 12px;border-radius:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;max-width:420px}
+.card h3{margin:0 0 4px;font-size:13px}
+.card dl{margin:0 0 10px;display:grid;grid-template-columns:auto 1fr;gap:2px 12px;color:var(--muted-foreground)}
+.card dd{margin:0;color:var(--foreground)}
+.card .row{display:flex;gap:8px}
+.btn{font:inherit;border-radius:8px;padding:6px 12px;border:1px solid var(--border);background:transparent;color:var(--foreground)}
+.btn.p{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.composer{background:var(--card);border:1px solid var(--input);border-radius:16px;padding:10px 12px}
+.chiprow{min-height:30px;display:flex;align-items:center;margin-bottom:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:12px;color:var(--foreground);background:var(--accent);border:1px solid var(--border);border-radius:999px;padding:3px 6px 3px 10px}
+.chip kbd{font:inherit;font-size:10px;color:var(--muted-foreground);border:1px solid var(--border);border-radius:4px;padding:0 4px}
+.chip .x{color:var(--muted-foreground);padding:0 4px}
+.field{min-height:22px}
+.ph{color:var(--muted-foreground)}
+.caret{display:inline-block;width:1px;height:14px;background:var(--foreground);vertical-align:-2px;margin-left:1px}
+.bar{display:flex;justify-content:space-between;align-items:center;margin-top:8px;color:var(--muted-foreground)}
+.send{width:28px;height:28px;border-radius:50%;background:var(--primary);color:var(--primary-foreground);display:grid;place-items:center;font-size:14px}
+.send.off{background:var(--secondary);color:var(--muted-foreground)}
+.note{font-size:12px;color:var(--muted-foreground)}
+[data-s]{display:none}
+[data-show~="1"] [data-s~="1"],[data-show~="2"] [data-s~="2"],[data-show~="3"] [data-s~="3"],[data-show~="4"] [data-s~="4"],[data-show~="5"] [data-s~="5"]{display:revert}
+[data-show~="1"] [data-s~="1"].flex,[data-show~="2"] [data-s~="2"].flex,[data-show~="3"] [data-s~="3"].flex,[data-show~="4"] [data-s~="4"].flex,[data-show~="5"] [data-s~="5"].flex{display:flex}
+</style>
+</head>
+<body>
+<header>
+  <h1>Composer suggestions</h1>
+  <button data-go="1">1 Empty</button>
+  <button data-go="2">2 No suggestion</button>
+  <button data-go="3">3 Event</button>
+  <button data-go="4">4 Finance agent</button>
+  <button data-go="5">5 Accepted</button>
+</header>
+<main id="m"></main>
+
+<template id="t">
+<section class="panel">
+  <div class="label"></div>
+  <div class="msg" data-s="5">dinner Friday 7pm with Sam</div>
+  <div class="card" data-s="5">
+    <h3>Create calendar event?</h3>
+    <dl><dt>Title</dt><dd>Dinner with Sam</dd><dt>When</dt><dd>Fri 7:00 PM</dd></dl>
+    <div class="row"><span class="btn p">Approve</span><span class="btn">Deny</span></div>
+  </div>
+  <div class="composer">
+    <div class="chiprow flex" data-s="3 4">
+      <span class="chip" data-s="3"><span>Create event · Fri 7:00 PM</span><kbd>Tab</kbd><span class="x" aria-label="Dismiss suggestion">×</span></span>
+      <span class="chip" data-s="4"><span>Ask Finance agent</span><kbd>Tab</kbd><span class="x" aria-label="Dismiss suggestion">×</span></span>
+    </div>
+    <div class="field">
+      <span class="ph" data-s="1 5">Message</span>
+      <span data-s="2">can you look at this<span class="caret"></span></span>
+      <span data-s="3">dinner Friday 7pm with Sam<span class="caret"></span></span>
+      <span data-s="4">did Acme's invoice go out?<span class="caret"></span></span>
+    </div>
+    <div class="bar"><span>+</span><span class="send off" data-s="1 5">↑</span><span class="send" data-s="2 3 4">↑</span></div>
+  </div>
+  <div class="note" data-s="1">Empty: no chip, no hint text.</div>
+  <div class="note" data-s="2">Too short or no signal: stays quiet.</div>
+  <div class="note" data-s="3">Tab accepts, Esc dismisses, Enter sends as plain chat.</div>
+  <div class="note" data-s="4">Shown only if a Finance agent exists.</div>
+  <div class="note" data-s="5">The backend ran the normal tool; the usual approval card pauses it.</div>
+</section>
+</template>
+
+<script>
+var m=document.getElementById("m"),t=document.getElementById("t");
+["dark","light"].forEach(function(th){
+  var n=t.content.cloneNode(true),s=n.querySelector(".panel");
+  s.setAttribute("data-theme",th);s.setAttribute("data-show","1");
+  n.querySelector(".label").textContent=th;m.appendChild(n);
+});
+function go(k){
+  document.querySelectorAll(".panel").forEach(function(p){p.setAttribute("data-show",k)});
+  document.querySelectorAll("header button").forEach(function(b){b.setAttribute("aria-pressed",String(b.dataset.go===k))});
+}
+document.querySelectorAll("header button").forEach(function(b){b.onclick=function(){go(b.dataset.go)}});
+go((location.hash||"#3").slice(1));
+</script>
+</body>
+</html>
