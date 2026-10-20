@@ -1558,6 +1558,28 @@ model MessagingOutbound {
   @@map("messaging_outbound")
 }
 
+/// Durable claim on one inbound provider message ("messaging:<provider>:<id>"): the first
+/// handler to insert the key wins, replays and second replicas find it and do nothing.
+model MessagingInboundClaim {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@map("messaging_inbound_claims")
+}
+
+/// Catch-up poll position for providers whose webhooks are not retried (BlueBubbles).
+/// `leaseUntil` lets one replica poll per interval.
+model MessagingPollCursor {
+  provider   String    @id
+  cursorMs   BigInt?
+  leaseUntil DateTime?
+  updatedAt  DateTime  @updatedAt
+
+  @@map("messaging_poll_cursors")
+}
+
 model AgentConnection {
   id             String   @id @default(cuid())
   requesterBotId String

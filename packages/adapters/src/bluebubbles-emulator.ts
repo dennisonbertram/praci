@@ -1,5 +1,6 @@
 import {
   BlueBubblesAdapter,
+  type BlueBubblesAdapterConfig,
   type BlueBubblesRawMessage,
   bluebubblesTransport,
 } from "./bluebubbles-adapter.js";
@@ -26,12 +27,14 @@ export interface BlueBubblesEmulatorMessage {
 export class BlueBubblesEmulator {
   readonly serverUrl = "http://bluebubbles.test:1234";
   readonly password = "emulated-server-password";
-  readonly webhookToken = "emulated-webhook-token";
+  readonly webhookToken = "emulated-webhook-token-0123456789abcdef";
   readonly line = "+15550009999";
   readonly sent: { chatGuid: string; text: string; tempGuid: string; guid: string }[] = [];
   readonly messages = new Map<string, BlueBubblesRawMessage>();
   /** Every request path the adapter made, in order. */
   readonly requests: string[] = [];
+  /** Body of each POST /message/query, for cursor assertions. */
+  readonly queries: { after?: number; limit?: number }[] = [];
   private counter = 0;
   private failures: { remaining: number; status: number } = { remaining: 0, status: 500 };
   private textSends = 0;
@@ -75,6 +78,7 @@ export class BlueBubblesEmulator {
     }
     if (path === "/message/query" && method === "POST") {
       const body = JSON.parse(String(init?.body)) as { after?: number; limit?: number };
+      this.queries.push(body);
       const rows = [...this.messages.values()]
         .filter((m) => (m.dateCreated ?? 0) >= (body.after ?? 0))
         .sort((a, b) => (a.dateCreated ?? 0) - (b.dateCreated ?? 0))
@@ -147,7 +151,7 @@ export class BlueBubblesEmulator {
 /** The production bluebubbles platform with only the HTTP boundary swapped. */
 export function createEmulatedBlueBubblesPlatform(
   emulator: BlueBubblesEmulator,
-  options: { pollIntervalMs?: number; now?: () => number } = {},
+  options: Partial<BlueBubblesAdapterConfig> = {},
 ): MessagingPlatform {
   const adapter = new BlueBubblesAdapter({
     serverUrl: emulator.serverUrl,
@@ -155,8 +159,8 @@ export function createEmulatedBlueBubblesPlatform(
     webhookToken: emulator.webhookToken,
     fetch: emulator.fetch,
     resolveHostname: async () => [{ address: "192.168.1.20", family: 4 }],
-    pollIntervalMs: options.pollIntervalMs ?? 0,
-    ...(options.now ? { now: options.now } : {}),
+    pollIntervalMs: 0,
+    ...options,
   });
   return {
     provider: "bluebubbles",

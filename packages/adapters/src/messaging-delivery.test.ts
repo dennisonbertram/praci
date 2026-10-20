@@ -190,7 +190,7 @@ describe("deliverMessagingOutbound", () => {
     await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
 
     expect(deps.sendToThread).toHaveBeenCalledWith(
-      { threadId: "sendblue:dm-1", body: "Hello from your bot", idempotencyKey: "msg:m-1" },
+      { threadId: "sendblue:dm-1", body: "Hello from your bot", idempotencyKey: "out-1" },
       context,
     );
     expect(deps.rows).toEqual([
@@ -230,12 +230,12 @@ describe("deliverMessagingOutbound", () => {
     });
     expect(deps.sendToThread).toHaveBeenNthCalledWith(
       1,
-      { threadId: "sendblue:opened:+15551234567", body: "first", idempotencyKey: "msg:m-1" },
+      { threadId: "sendblue:opened:+15551234567", body: "first", idempotencyKey: "out-1" },
       context,
     );
     expect(deps.sendToThread).toHaveBeenNthCalledWith(
       2,
-      { threadId: "sendblue:opened:+15551234567", body: "second", idempotencyKey: "msg:m-2" },
+      { threadId: "sendblue:opened:+15551234567", body: "second", idempotencyKey: "out-2" },
       context,
     );
   });
@@ -264,7 +264,7 @@ describe("deliverMessagingOutbound", () => {
     const deps = createDeps({ run: { ...messagingRun, trigger: "bot_message" } });
     await deliverMessagingOutbound(deps, { runId: "run-1" }, context);
     expect(deps.sendToThread).toHaveBeenCalledWith(
-      { threadId: "sendblue:dm-1", body: "Hello from your bot", idempotencyKey: "msg:m-1" },
+      { threadId: "sendblue:dm-1", body: "Hello from your bot", idempotencyKey: "out-1" },
       context,
     );
   });
@@ -357,10 +357,28 @@ describe("deliverMessagingOutbound", () => {
     await deliverMessagingOutbound(deps, {}, context);
 
     expect(deps.sendToThread).toHaveBeenCalledWith(
-      { threadId: "sendblue:dm-1", body: "pending earlier", idempotencyKey: "invite:ch-1:mi-1" },
+      { threadId: "sendblue:dm-1", body: "pending earlier", idempotencyKey: "out-9" },
       context,
     );
     expect(deps.rows[0]).toEqual(expect.objectContaining({ status: "sent" }));
+  });
+
+  it("sends each outbox row under its own id even when rows share a business key", async () => {
+    const row = (id: string) => ({
+      id,
+      idempotencyKey: "invite:ch-1:mi-1",
+      kind: "dm",
+      identityId: "mi-1",
+      body: "wants to join",
+      status: "pending",
+      providerHandle: null,
+    });
+    const deps = createDeps({ run: null, outboundRows: [row("out-a"), row("out-b")] });
+    await deliverMessagingOutbound(deps, {}, context);
+    const keys = (
+      deps.sendToThread.mock.calls as unknown as Array<[{ idempotencyKey?: string }]>
+    ).map(([request]) => request.idempotencyKey);
+    expect(keys).toEqual(["out-a", "out-b"]);
   });
 
   it("claims a row before sending so concurrent drains cannot double-send", async () => {

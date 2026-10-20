@@ -405,7 +405,7 @@ async function drain(deps: MessagingDeliveryDeps, context: AdapterContext): Prom
         continue;
       }
       const sent = await deps.messaging.sendToThread(
-        { threadId, body: row.body, idempotencyKey: row.idempotencyKey },
+        { threadId, body: row.body, idempotencyKey: row.id },
         context,
       );
       await deps.prisma.messagingOutbound.updateMany({

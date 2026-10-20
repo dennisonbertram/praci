@@ -11,9 +11,12 @@ import type {
   ThreadEvents,
 } from "@rakazo/db";
 import {
+  claimInboundMessage,
   createThreadMessage,
+  messagingInboundKey,
   normalizeMessagingLinkCode,
   redeemMessagingLinkCode,
+  releaseInboundMessage,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import {
@@ -67,11 +70,23 @@ type IdentityRow = {
  */
 export function createMessagingInboundHandler(deps: MessagingInboundDeps) {
   return async (event: MessagingInboundMessage): Promise<void> => {
-    if (!event.isDirect) {
-      await handleChannelEvent(deps, event);
-      return;
+    // Claim the provider message durably before any side effect. Replays (a
+    // poll, a restart, another replica, a vendor retry after we answered) would
+    // otherwise re-run the counter reset, owner commands (YES answers the
+    // NEWEST pending item, which may be a different one by now) and link-code
+    // redemption. A failed attempt gives the claim back so the retry runs.
+    const key = messagingInboundKey(event.provider, event.handle);
+    if (!(await claimInboundMessage(deps.prisma, key))) return;
+    try {
+      if (!event.isDirect) {
+        await handleChannelEvent(deps, event);
+        return;
+      }
+      await handleDirectEvent(deps, event);
+    } catch (error) {
+      await releaseInboundMessage(deps.prisma, key).catch(() => undefined);
+      throw error;
     }
-    await handleDirectEvent(deps, event);
   };
 }
 

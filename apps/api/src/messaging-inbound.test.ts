@@ -90,7 +90,24 @@ function createDeps(
       return { count: before - linkCodes.length };
     }),
   };
+  const claimedKeys = new Set<string>();
   const prisma = {
+    // Insert-if-absent on the unique key, like Postgres createMany skipDuplicates.
+    messagingInboundClaim: {
+      createMany: vi.fn(async ({ data }: { data: Array<{ key: string }> }) => {
+        let count = 0;
+        for (const item of data) {
+          if (claimedKeys.has(item.key)) continue;
+          claimedKeys.add(item.key);
+          count += 1;
+        }
+        return { count };
+      }),
+      deleteMany: vi.fn(async ({ where }: { where: { key?: string } }) => {
+        const had = where.key ? claimedKeys.delete(where.key) : false;
+        return { count: had ? 1 : 0 };
+      }),
+    },
     messagingIdentity: {
       findUnique: vi.fn(
         async ({
@@ -1159,12 +1176,12 @@ describe("createMessagingInboundHandler approval-cycle notifications", () => {
 
     // The owner approves, then leaves again.
     member.status = "approved";
-    await handle({ ...dmEvent, content: "LEAVE" });
+    await handle({ ...dmEvent, content: "LEAVE", handle: "handle-leave" });
     expect(member.status).toBe("left");
 
-    // Second return: the stale invite row from the first cycle must not
-    // suppress the new prompt.
-    await handle(groupEvent);
+    // Second return (a new message): the stale invite row from the first
+    // cycle must not suppress the new prompt.
+    await handle({ ...groupEvent, handle: "handle-2" });
     expect(member.status).toBe("invited");
     expect(deps.prisma.messagingOutbound.deleteMany).toHaveBeenCalledWith({
       where: { idempotencyKey: "invite:ch-1:mi-1" },
@@ -1191,7 +1208,7 @@ describe("createMessagingInboundHandler approval-cycle notifications", () => {
     // Rejoin and leave again: the second confirmation must not be swallowed
     // by the first cycle's idempotency key.
     member.status = "approved";
-    await handle({ ...dmEvent, content: "LEAVE" });
+    await handle({ ...dmEvent, content: "LEAVE", handle: "handle-leave-2" });
     expect(deps.prisma.messagingOutbound.deleteMany).toHaveBeenCalledWith({
       where: { idempotencyKey: "command:leave:cm-1" },
     });
@@ -1476,5 +1493,98 @@ describe("teamChatSenderCanWakeMessageRoutines", () => {
         senderIsBot: true,
       }),
     ).resolves.toBe(false);
+  });
+});
+
+describe("createMessagingInboundHandler durable replay claim", () => {
+  const liveCode = {
+    id: "code-1",
+    code: "ABCD2345",
+    userId: "user-web",
+    spaceId: "ws-web",
+    botId: "bot-web",
+    expiresAt: new Date(Date.now() + 60_000),
+  };
+
+  it("does nothing for a message it already handled", async () => {
+    const deps = createDeps();
+    const handle = createMessagingInboundHandler(deps);
+    await handle(dmEvent);
+    await handle(dmEvent);
+    expect(deps.sendUserMessage).toHaveBeenCalledTimes(1);
+    expect(deps.prisma.messagingIdentity.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("claims before any side effect, so a replay cannot reset the outbound counter", async () => {
+    const deps = createDeps();
+    const handle = createMessagingInboundHandler(deps);
+    await handle({ ...dmEvent, content: "" });
+    expect(deps.prisma.messagingIdentity.update).toHaveBeenCalledTimes(1);
+    await handle({ ...dmEvent, content: "" });
+    expect(deps.prisma.messagingIdentity.update).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not let a replayed YES approve a newer pending connection", async () => {
+    const deps = createDeps();
+    const pending = (id: string, updatedAt: string) => ({
+      id,
+      requesterBotId: `bot-${id}`,
+      targetBotId: "bot-1",
+      status: "pending",
+      updatedAt: new Date(updatedAt),
+    });
+    let newest = pending("ac-1", "2026-08-28T00:00:00.000Z");
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    deps.prisma.agentConnection = {
+      findFirst: vi.fn(async () => newest),
+      update: vi.fn(async () => ({})),
+      updateMany,
+    };
+    const handle = createMessagingInboundHandler(deps);
+    const yes = { ...dmEvent, content: "YES", handle: "yes-1" };
+    await handle(yes);
+    expect(updateMany).toHaveBeenCalledTimes(1);
+    expect(updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: { id: "ac-1", status: "pending" } }),
+    );
+    newest = pending("ac-2", "2026-08-29T00:00:00.000Z");
+    await handle(yes);
+    expect(updateMany).toHaveBeenCalledTimes(1);
+    // A fresh YES (new message id) still answers the newer request.
+    await handle({ ...yes, handle: "yes-2" });
+    expect(updateMany).toHaveBeenLastCalledWith(
+      expect.objectContaining({ where: { id: "ac-2", status: "pending" } }),
+    );
+  });
+
+  it("treats a replayed link-code message as a no-op", async () => {
+    const deps = createDeps({ identity: null, linkCode: { ...liveCode } });
+    (deps as unknown as { openSignup: boolean }).openSignup = false;
+    const handle = createMessagingInboundHandler(deps);
+    const linkMessage = { ...dmEvent, content: "abcd-2345", handle: "link-1" };
+    await handle(linkMessage);
+    await handle(linkMessage);
+    expect(deps.createdIdentities).toHaveLength(1);
+    expect(deps.outboundRows).toHaveLength(1);
+    expect(deps.prisma.messagingLinkCode.findUnique).toHaveBeenCalledTimes(1);
+  });
+
+  it("releases the claim when processing fails, so the retry is processed", async () => {
+    const deps = createDeps();
+    deps.sendUserMessage.mockRejectedValueOnce(new Error("db down"));
+    const handle = createMessagingInboundHandler(deps);
+    await expect(handle(dmEvent)).rejects.toThrow("db down");
+    await handle(dmEvent);
+    expect(deps.sendUserMessage).toHaveBeenCalledTimes(2);
+  });
+
+  it("claims group events once per message too", async () => {
+    const deps = createDeps();
+    const handle = createMessagingInboundHandler(deps);
+    await handle(groupEvent);
+    const upserts = (deps.prisma.messagingChannel.upsert as ReturnType<typeof vi.fn>).mock.calls
+      .length;
+    await handle(groupEvent);
+    expect(deps.prisma.messagingChannel.upsert).toHaveBeenCalledTimes(upserts);
   });
 });
