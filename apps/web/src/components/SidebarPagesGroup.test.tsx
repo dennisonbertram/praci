@@ -38,22 +38,41 @@ const link = (
   />
 );
 
-function Harness({ rail = false, start = false }: { rail?: boolean; start?: boolean }) {
+const PAGES = [
+  { key: "inbox", label: "Inbox" },
+  { key: "finance", label: "Finance" },
+];
+
+function Harness({
+  rail = false,
+  start = false,
+  initialHidden = [],
+}: {
+  rail?: boolean;
+  start?: boolean;
+  initialHidden?: string[];
+}) {
   const [collapsed, setCollapsed] = useState(start);
+  const [hidden, setHidden] = useState(initialHidden);
   return (
     <SidebarPagesGroup
       title="Pages"
       collapsed={collapsed}
       rail={rail}
       onToggle={() => setCollapsed(!collapsed)}
+      pages={PAGES}
+      hidden={hidden}
+      onToggleHidden={(key) =>
+        setHidden((now) => (now.includes(key) ? now.filter((k) => k !== key) : [...now, key]))
+      }
     >
-      {link("inbox", { notified: true, rail })}
-      {link("finance", { rail })}
+      {hidden.includes("inbox") ? null : link("inbox", { notified: true, rail })}
+      {hidden.includes("finance") ? null : link("finance", { rail })}
     </SidebarPagesGroup>
   );
 }
 
-const mount = (props: { rail?: boolean; start?: boolean } = {}) =>
+const mount = (props: { rail?: boolean; start?: boolean; initialHidden?: string[] } = {}) =>
   act(() => createRoot(container).render(<Harness {...props} />));
 const ids = () =>
   [...container.querySelectorAll("[data-testid]")].map((n) => n.getAttribute("data-testid"));
@@ -82,4 +101,41 @@ it("ignores the collapsed state in the rail and shows no header", () => {
   mount({ rail: true, start: true });
   expect(toggle()).toBeNull();
   expect(ids()).toEqual(expect.arrayContaining(["inbox", "finance"]));
+});
+
+const options = () => container.querySelector<HTMLElement>("[aria-label='Page options']");
+const click = async (el: Element | null | undefined) => {
+  await act(async () => {
+    el?.dispatchEvent(new MouseEvent("pointerdown", { bubbles: true }));
+    el?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    el?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    (el as HTMLElement | null | undefined)?.click();
+  });
+};
+const checkbox = (label: string) =>
+  [...document.body.querySelectorAll<HTMLElement>("[role=menuitemcheckbox]")].find((el) =>
+    el.textContent?.includes(label),
+  );
+
+it("lists every page in the menu and hides one when unchecked", async () => {
+  mount();
+  await click(options());
+  expect(checkbox("Inbox")?.getAttribute("aria-checked")).toBe("true");
+  await click(checkbox("Finance"));
+  expect(ids()).not.toContain("finance");
+  expect(ids()).toContain("inbox");
+});
+
+it("keeps the header and menu when every page is hidden, so it can be undone", async () => {
+  mount({ initialHidden: ["inbox", "finance"] });
+  expect(ids()).toEqual(["sidebar-pages-toggle"]);
+  await click(options());
+  expect(checkbox("Inbox")?.getAttribute("aria-checked")).toBe("false");
+  await click(checkbox("Inbox"));
+  expect(ids()).toContain("inbox");
+});
+
+it("has no menu in the rail", () => {
+  mount({ rail: true });
+  expect(options()).toBeNull();
 });
