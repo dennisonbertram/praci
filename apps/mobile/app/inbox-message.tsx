@@ -14,12 +14,13 @@ import {
 import { NativeSymbol } from "../components/native-symbol";
 import { SandboxedHtmlPreview } from "../components/sandboxed-html-preview";
 import { dateLocaleForUi, useI18n } from "../lib/i18n";
-import { ensureMailAgent, getMailMessage } from "../lib/mail-inbox";
+import { askMailThreadAgent, ensureMailAgent, getMailMessage } from "../lib/mail-inbox";
 import { native, useMobileTokens, useThemedStyles } from "../lib/native";
 import { iosAtLeast } from "../lib/native-controls";
 import { errorText } from "../lib/user-error";
 
 const AGENT_SYMBOL = "bubble.left";
+const ASK_SYMBOL = "sparkles";
 
 export default function InboxMessageScreen() {
   const { messageId } = useLocalSearchParams<{ messageId: string }>();
@@ -44,22 +45,26 @@ export default function InboxMessageScreen() {
     };
   }, [messageId, t]);
 
-  const openAgent = useCallback(async () => {
-    if (openingAgentRef.current) return;
-    openingAgentRef.current = true;
-    try {
-      // Returns the same bot every time, creating it only if it does not exist yet.
-      const bot = await ensureMailAgent();
-      router.push({ pathname: "/thread", params: { botId: bot.id, name: bot.name } });
-    } catch (cause) {
-      Alert.alert(errorText(cause));
-    } finally {
-      openingAgentRef.current = false;
-    }
-  }, [router]);
+  const openAgent = useCallback(
+    async (thread = false) => {
+      if (openingAgentRef.current) return;
+      openingAgentRef.current = true;
+      try {
+        // Each returns the same bot every time, creating it only if it does not exist yet.
+        const bot = await (thread ? askMailThreadAgent(messageId) : ensureMailAgent());
+        router.push({ pathname: "/thread", params: { botId: bot.id, name: bot.name } });
+      } catch (cause) {
+        Alert.alert(errorText(cause));
+      } finally {
+        openingAgentRef.current = false;
+      }
+    },
+    [router, messageId],
+  );
 
   useLayoutEffect(() => {
     const label = t("Inbox agent");
+    const askLabel = t("Ask agent");
     navigation.setOptions({
       title: message?.subject ?? "",
       ...(iosAtLeast(26)
@@ -71,18 +76,34 @@ export default function InboxMessageScreen() {
                 icon: { type: "sfSymbol" as const, name: AGENT_SYMBOL },
                 onPress: () => void openAgent(),
               },
+              {
+                type: "button" as const,
+                accessibilityLabel: askLabel,
+                icon: { type: "sfSymbol" as const, name: ASK_SYMBOL },
+                onPress: () => void openAgent(true),
+              },
             ],
           }
         : {
             headerRight: () => (
-              <Pressable
-                accessibilityLabel={label}
-                hitSlop={8}
-                onPress={() => void openAgent()}
-                style={styles.headerButton}
-              >
-                <NativeSymbol ios={AGENT_SYMBOL} android="chatbubble-outline" size={19} />
-              </Pressable>
+              <View style={styles.headerButtons}>
+                <Pressable
+                  accessibilityLabel={askLabel}
+                  hitSlop={8}
+                  onPress={() => void openAgent(true)}
+                  style={styles.headerButton}
+                >
+                  <NativeSymbol ios={ASK_SYMBOL} android="sparkles-outline" size={19} />
+                </Pressable>
+                <Pressable
+                  accessibilityLabel={label}
+                  hitSlop={8}
+                  onPress={() => void openAgent()}
+                  style={styles.headerButton}
+                >
+                  <NativeSymbol ios={AGENT_SYMBOL} android="chatbubble-outline" size={19} />
+                </Pressable>
+              </View>
             ),
           }),
     });
@@ -189,6 +210,7 @@ function createStyles() {
     text: { padding: 16 },
     body: { color: native.label, fontSize: 15, lineHeight: 21 },
     headerButton: { padding: 8 },
+    headerButtons: { flexDirection: "row" },
     chips: { flexGrow: 0, flexShrink: 0 },
     chipsRow: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
     chip: {

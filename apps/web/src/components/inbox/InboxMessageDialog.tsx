@@ -13,6 +13,7 @@ import {
 } from "@rakazo/ui-web";
 import {
   Archive,
+  Bot,
   Check,
   ChevronDown,
   ChevronUp,
@@ -52,6 +53,7 @@ export function InboxMessageDialog({
   onArchive,
   onMoveToInbox,
   onRead,
+  onAskAgent,
   notice,
   onClose,
 }: {
@@ -73,6 +75,8 @@ export function InboxMessageDialog({
   /** Offered while the message is archived, such as a search result. */
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  /** Adds Ask agent: opens the chat made for this conversation. A rejection shows in the dialog. */
+  onAskAgent?: () => Promise<unknown>;
   /** A brief message with its own action, shown here because the page behind the dialog is inert. */
   notice?: React.ReactNode;
   onClose: () => void;
@@ -113,6 +117,7 @@ export function InboxMessageDialog({
             onArchive={onArchive}
             onMoveToInbox={onMoveToInbox}
             onRead={onRead}
+            onAskAgent={onAskAgent}
             notice={notice}
             composing={composing}
             setComposing={setComposing}
@@ -136,6 +141,7 @@ function InboxMessage({
   onArchive,
   onMoveToInbox,
   onRead,
+  onAskAgent,
   notice,
   composing,
   setComposing,
@@ -150,6 +156,7 @@ function InboxMessage({
   onArchive?: () => void;
   onMoveToInbox?: () => void;
   onRead?: (read: boolean) => void;
+  onAskAgent?: () => Promise<unknown>;
   notice?: React.ReactNode;
   composing: ComposeMode | null;
   setComposing: (mode: ComposeMode | null) => void;
@@ -163,6 +170,8 @@ function InboxMessage({
   // A stale link: the email was deleted or moved, so trying again cannot help.
   const [gone, setGone] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  const [asking, setAsking] = useState(false);
+  const [askError, setAskError] = useState("");
   const seed = useMemo(
     () => (composing ? ({ kind: composing, messageId } as const) : null),
     [composing, messageId],
@@ -332,9 +341,35 @@ function InboxMessage({
               {shownUnread ? <Trans>Mark read</Trans> : <Trans>Mark unread</Trans>}
             </Button>
           ) : null}
+          {onAskAgent ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={asking}
+              onClick={() => {
+                setAsking(true);
+                setAskError("");
+                onAskAgent().then(
+                  () => setAsking(false),
+                  (cause) => {
+                    setAsking(false);
+                    setAskError(errorText(cause));
+                  },
+                );
+              }}
+            >
+              <Bot aria-hidden="true" />
+              <Trans>Ask agent</Trans>
+            </Button>
+          ) : null}
           {/* In the toolbar, so it neither covers the email nor moves the dialog. */}
           {notice ? <div className="ms-auto flex min-w-0 max-w-full">{notice}</div> : null}
         </div>
+      ) : null}
+      {askError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {askError}
+        </p>
       ) : null}
       {message && !composing && draft ? (
         <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">

@@ -1,6 +1,7 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type {
+  Bot,
   InboxListOutput,
   InboxMark,
   InboxPileCounts,
@@ -178,6 +179,8 @@ type InboxPageProps = {
   onRefreshed: () => void;
   /** Set while the Inbox agent panel is collapsed; shows the button that reopens it. */
   onShowAgent?: () => void;
+  /** Opens the chat of the agent made for one conversation, after it exists. */
+  onOpenAgent?: (bot: Bot) => void | Promise<void>;
   /** True while the Integrations overlay is open; the page reloads when it closes. */
   paused: boolean;
 };
@@ -187,6 +190,7 @@ function InboxListPage({
   onReconnectMail,
   onRefreshed,
   onShowAgent,
+  onOpenAgent,
   paused,
   spaceName,
 }: InboxPageProps) {
@@ -1525,6 +1529,11 @@ function InboxListPage({
         onNavigate={goToMessage}
         unread={openRow?.unread}
         inInbox={openRow?.inInbox}
+        onAskAgent={
+          onOpenAgent && openId
+            ? async () => onOpenAgent(await rpc.inbox.askAgent({ messageId: openId }))
+            : undefined
+        }
         onArchive={
           openRow?.inInbox
             ? () => {

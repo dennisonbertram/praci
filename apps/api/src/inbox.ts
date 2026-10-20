@@ -170,7 +170,7 @@ async function triageEnabled(deps: InboxDeps, actor: Actor): Promise<boolean> {
   return (await triageReadiness(deps, actor)) !== null;
 }
 
-function formatAddress(address: MailAddress | null | undefined): string {
+export function formatAddress(address: MailAddress | null | undefined): string {
   if (!address) return "";
   return address.name ? `${address.name} <${address.address}>` : address.address;
 }
@@ -601,7 +601,7 @@ export async function inboxRefresh(
 }
 
 /** The caller's cached message and the connected account it came from, or NOT_FOUND. */
-async function ownMessage(
+export async function ownMessage(
   deps: InboxDeps,
   actor: Actor,
   messageId: string,

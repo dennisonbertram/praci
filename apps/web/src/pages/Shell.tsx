@@ -210,6 +210,7 @@ import { FinanceCardGroup } from "../components/FinanceCards";
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { MailApprovalCard } from "../components/MailApprovalCard";
+import { MailThreadCard } from "../components/MailThreadCard";
 import { MessageHoverMetadata } from "../components/MessageHoverMetadata";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { OpeningSpace } from "../components/ShellSkeleton";
@@ -5196,6 +5197,11 @@ export function ShellPage() {
                 : undefined
             }
             onRefreshed={refreshInboxUnread}
+            onOpenAgent={async (bot) => {
+              await refreshBots();
+              setFocusComposerBotId(bot.id);
+              openBot(bot.id);
+            }}
             onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
             onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
             onAllowMailRules={(connectionId) =>
@@ -9211,6 +9217,13 @@ const MessageView = memo(function MessageView({
           return (
             <div key={i} className="flex justify-start">
               <EmailCards block={block} />
+            </div>
+          );
+        }
+        if (block.kind === "mail_thread") {
+          return (
+            <div key={i} className="flex justify-start">
+              <MailThreadCard block={block} />
             </div>
           );
         }

@@ -1100,6 +1100,9 @@ export function blockText(message: MobileMessage) {
         return `${block.status === "archived" ? "Archived" : block.status === "deleted" ? "Deleted" : "Bot"} ${block.name ?? ""}`;
       }
       if (block.kind === "emails") return emailCardsText(block.emails);
+      if (block.kind === "mail_thread") {
+        return `Email thread · ${block.messages.length} ${block.messages.length === 1 ? "message" : "messages"}`;
+      }
       if (block.kind === "finance") return financeCardText(block.card);
       if (block.kind === "skill_draft") {
         const steps = block.playbook.steps.map((step, i) => `${i + 1}. ${step}`);

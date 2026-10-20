@@ -293,6 +293,10 @@ msgstr "{commandVariable}은(는) 예약되어 있어 명령 변수로 사용할
 msgid "{count, plural, one {# bank account} other {# bank accounts}}"
 msgstr ""
 
+#: src/components/MailThreadCard.tsx
+msgid "{count, plural, one {# message} other {# messages}}"
+msgstr ""
+
 #: src/components/finance/ui.tsx
 msgid "{count, plural, one {# transaction} other {# transactions}}"
 msgstr ""
@@ -1228,6 +1232,10 @@ msgstr ""
 
 #: src/components/FinanceCards.tsx
 msgid "Ask about this"
+msgstr ""
+
+#: src/components/inbox/InboxMessageDialog.tsx
+msgid "Ask agent"
 msgstr ""
 
 #. placeholder {0}: rule.matchValue
@@ -3783,6 +3791,10 @@ msgstr "이 이메일은 가입이 허용되지 않습니다"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 msgid "Email not found"
+msgstr ""
+
+#: src/components/MailThreadCard.tsx
+msgid "Email thread"
 msgstr ""
 
 #: src/lib/user-error.ts
