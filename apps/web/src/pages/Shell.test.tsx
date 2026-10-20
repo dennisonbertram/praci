@@ -21,7 +21,7 @@ vi.mock("@lingui/react/macro", () => {
 });
 
 import { setHideAmounts } from "../lib/hide-amounts-preference";
-import { Composer, Transcript } from "./Shell";
+import { Composer, chatIsOpening, Transcript } from "./Shell";
 
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
@@ -1069,5 +1069,17 @@ describe("Transcript unread divider and new-message pill", () => {
       });
       expect(onRead).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe("chatIsOpening", () => {
+  const open = { hasChat: false, botsLoaded: false, routeWaiting: false };
+  it("is true while the bot list loads or the route bot is not in it yet", () => {
+    expect(chatIsOpening(open)).toBe(true);
+    expect(chatIsOpening({ ...open, botsLoaded: true, routeWaiting: true })).toBe(true);
+  });
+  it("is false once a chat is open or the list loaded with nothing to wait for", () => {
+    expect(chatIsOpening({ ...open, hasChat: true })).toBe(false);
+    expect(chatIsOpening({ ...open, botsLoaded: true })).toBe(false);
   });
 });

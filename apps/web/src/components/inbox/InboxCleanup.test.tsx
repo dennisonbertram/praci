@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { CleanupSender } from "@rakazo/contracts";
+import type { CleanupSender, MailAccountSummary } from "@rakazo/contracts";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
@@ -56,8 +56,8 @@ const sender = (address: string, patch: Partial<CleanupSender> = {}): CleanupSen
   unsubscribeStatus: null,
   ...patch,
 });
-const accounts = [{ connectionId: "c1", label: "Me" }];
-const output = (senders: CleanupSender[], more = accounts) => ({
+const accounts: MailAccountSummary[] = [{ connectionId: "c1", label: "Me" }];
+const output = (senders: CleanupSender[], more: MailAccountSummary[] = accounts) => ({
   accounts: more,
   senders,
   syncedAt: null,
@@ -66,13 +66,21 @@ const output = (senders: CleanupSender[], more = accounts) => ({
 const cleanups: Array<() => Promise<void>> = [];
 const onBack = vi.fn();
 const onRefreshed = vi.fn();
+const onAllowMailRules = vi.fn();
 async function render() {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
   await act(async () =>
-    root.render(<InboxCleanup connectionId="c1" onBack={onBack} onRefreshed={onRefreshed} />),
+    root.render(
+      <InboxCleanup
+        connectionId="c1"
+        onBack={onBack}
+        onRefreshed={onRefreshed}
+        onAllowMailRules={onAllowMailRules}
+      />,
+    ),
   );
   cleanups.push(async () => {
     await act(async () => root.unmount());
@@ -289,6 +297,20 @@ describe("InboxCleanup", () => {
     });
   });
 
+  it("forgets only the learned pile on Forget and reloads the list", async () => {
+    const learned = sender("news@lists.example.test", { learnedPile: "newsletters" });
+    rpcMock.list.mockResolvedValueOnce(output([learned])).mockResolvedValue(output([news]));
+    await render();
+    expect(document.body.textContent).toContain("Learned");
+    await click(button("Forget"));
+    expect(rpcMock.forget).toHaveBeenCalledWith({
+      connectionId: "c1",
+      address: "news@lists.example.test",
+      learned: true,
+    });
+    expect(document.body.textContent).not.toContain("Learned");
+  });
+
   it("marks the ticked senders as spam from the More menu", async () => {
     rpcMock.list.mockResolvedValue(output([news]));
     await render();
@@ -337,5 +359,72 @@ describe("InboxCleanup", () => {
     await render();
     await click(document.querySelector('button[aria-label="Back"]'));
     expect(onBack).toHaveBeenCalled();
+  });
+
+  describe("Also in Gmail", () => {
+    const pending = (connectionId = "c1") =>
+      sender(`p-${connectionId}@lists.example.test`, {
+        connectionId,
+        skipInbox: true,
+        rule: "pending",
+      });
+    const needs = (connectionId = "c1", label = "Me") => ({
+      connectionId,
+      label,
+      senderRules: "needs_permission" as const,
+    });
+    const links = () =>
+      [...document.querySelectorAll("button")].filter((b) => b.textContent === "Also in Gmail");
+
+    it("starts the sign-in for the account that is waiting for permission", async () => {
+      rpcMock.list.mockResolvedValue(output([news, pending()], [needs()]));
+      await render();
+      expect(links()).toHaveLength(1);
+      await click(links()[0]);
+      expect(onAllowMailRules).toHaveBeenCalledWith("c1");
+    });
+
+    it("shows one per waiting account, named, and none for the others", async () => {
+      rpcMock.list.mockResolvedValue(
+        output(
+          [pending("c1"), pending("c2"), pending("c3")],
+          [
+            needs("c1", "Me"),
+            needs("c2", "Work"),
+            { connectionId: "c3", label: "Ready", senderRules: "ready" },
+          ],
+        ),
+      );
+      await render();
+      expect(links()).toHaveLength(2);
+      expect(document.body.textContent).toContain("Work");
+      await click(links()[1]);
+      expect(onAllowMailRules).toHaveBeenCalledWith("c2");
+    });
+
+    it.each([
+      ["no sender waiting", [news], [needs()]],
+      [
+        "an account that can already make filters",
+        [pending()],
+        [{ connectionId: "c1", label: "Me", senderRules: "ready" as const }],
+      ],
+      [
+        "a route that cannot",
+        [pending()],
+        [{ connectionId: "c1", label: "Me", senderRules: "unsupported" as const }],
+      ],
+      ["an older server", [pending()], [{ connectionId: "c1", label: "Me" }]],
+    ])("is hidden with %s", async (_name, senders, more) => {
+      rpcMock.list.mockResolvedValue(output(senders, more));
+      await render();
+      expect(links()).toHaveLength(0);
+    });
+
+    it("is not shown while the list loads or when it fails", async () => {
+      rpcMock.list.mockReturnValueOnce(new Promise(() => {}));
+      await render();
+      expect(links()).toHaveLength(0);
+    });
   });
 });
