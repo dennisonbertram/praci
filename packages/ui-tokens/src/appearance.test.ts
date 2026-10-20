@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   accentForeground,
+  botAccentHex,
   botAccentStyle,
   botColors,
   type ColorTokens,
@@ -282,5 +283,18 @@ describe("bot accent", () => {
       "--bot-accent": "#3B82F6",
       "--bot-accent-foreground": accentForeground("#3B82F6"),
     });
+  });
+});
+
+describe("botAccentHex", () => {
+  it("returns the colour before the avatar shape suffix", () => {
+    expect(botAccentHex("#3B82F6::shape_7")).toBe("#3B82F6");
+    expect(botAccentHex("#3B82F6")).toBe("#3B82F6");
+  });
+  it("returns null for images, names and empty values", () => {
+    expect(botAccentHex("data:image/png;base64,AAAA")).toBeNull();
+    expect(botAccentHex("blue")).toBeNull();
+    expect(botAccentHex("")).toBeNull();
+    expect(botAccentHex(null)).toBeNull();
   });
 });
