@@ -143,6 +143,20 @@ describe("classifyPile safety", () => {
     ).toEqual({ pile: "spam", reasons: ["auth_failed_brand"] });
   });
 
+  it("leaves failed authentication that claims a brand to the model once the sender is marked important", () => {
+    expect(
+      classifyPile(
+        input({
+          fromName: "PayPal Support",
+          fromAddress: "help@paypa1-secure.example.test",
+          subject: "Confirm your account",
+          signals: failed,
+          senderMark: "important",
+        }),
+      ),
+    ).toEqual({ pile: null, reasons: ["auth_failed"] });
+  });
+
   it("does not call a real brand domain spam when the brand matches the sender domain", () => {
     expect(
       classifyPile(

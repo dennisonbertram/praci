@@ -20,8 +20,9 @@ export interface SkipInboxDeps {
  * Archives new inbox mail from senders the user chose to skip. It runs after a sync, outside the
  * sync's write transaction, because it calls the provider. Only mail received after the decision is
  * touched, and never mail that is spam or spam-like, failed authentication, from a sender marked
- * important, or already handled (`skipAppliedAt`), so an undo is not archived again. Each run is
- * one `auto` entry in the action log. Returns how many conversations it archived.
+ * important, or already handled (`skipAppliedAt`), so an undo is not archived again. Only the skipped
+ * sender's own messages leave the inbox: a reply from someone else in the same conversation stays.
+ * Each run is one `auto` entry in the action log. Returns how many conversations it archived.
  */
 export async function applySkipInbox(
   deps: SkipInboxDeps,
@@ -31,9 +32,11 @@ export async function applySkipInbox(
   if (deps.writesDisabled) return 0;
   const { prisma } = deps;
   const { spaceId, userId } = context;
-  const rows = await prisma.$queryRaw<Array<{ id: string; threadId: string; sender: string }>>(
+  const rows = await prisma.$queryRaw<
+    Array<{ id: string; providerMessageId: string; threadId: string; sender: string }>
+  >(
     Prisma.sql`
-      SELECT m.id, m."threadId", lower(m."fromAddress") AS sender
+      SELECT m.id, m."providerMessageId", m."threadId", lower(m."fromAddress") AS sender
       FROM mail_messages m
       JOIN mail_sender_decisions d
         ON d."connectionId" = m."connectionId" AND d."senderAddress" = lower(m."fromAddress")
@@ -55,19 +58,22 @@ export async function applySkipInbox(
   );
   if (rows.length === 0) return 0;
 
-  const idsByThread = new Map<string, string[]>();
-  for (const row of rows)
-    idsByThread.set(row.threadId, [...(idsByThread.get(row.threadId) ?? []), row.id]);
-  const queue = [...idsByThread.keys()];
-  const archived: string[] = [];
+  const queue = [...rows];
+  const archived = new Set<string>();
+  const archivedIds = new Set<string>();
   let stopped = false;
   const scope = { spaceId, userId, connectionId: account.id };
 
   const worker = async () => {
-    for (let threadId = queue.shift(); threadId !== undefined; threadId = queue.shift()) {
+    for (let row = queue.shift(); row !== undefined; row = queue.shift()) {
       if (stopped || context.signal.aborted) return;
       try {
-        await deps.mail.modifyThread(account, threadId, { removeLabelIds: ["INBOX"] }, context);
+        await deps.mail.modifyMessage(
+          account,
+          row.providerMessageId,
+          { removeLabelIds: ["INBOX"] },
+          context,
+        );
       } catch (error) {
         // Gone from Gmail already: nothing to archive, and the next sync prunes the row.
         if (!(error instanceof MailProviderError && error.kind === "not_found")) {
@@ -83,33 +89,27 @@ export async function applySkipInbox(
         }
       }
       await prisma.cachedMailMessage.updateMany({
-        where: { ...scope, threadId, inInbox: true },
-        data: { inInbox: false },
+        where: { ...scope, id: row.id },
+        data: { inInbox: false, skipAppliedAt: new Date() },
       });
-      await prisma.cachedMailMessage.updateMany({
-        where: { ...scope, id: { in: idsByThread.get(threadId) ?? [] } },
-        data: { skipAppliedAt: new Date() },
-      });
-      archived.push(threadId);
+      archived.add(row.threadId);
+      archivedIds.add(row.id);
     }
   };
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker));
+  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, rows.length) }, worker));
 
-  if (archived.length > 0) {
-    const archivedSet = new Set(archived);
-    const senders = [
-      ...new Set(rows.filter((r) => archivedSet.has(r.threadId)).map((r) => r.sender)),
-    ];
+  if (archived.size > 0) {
+    const senders = [...new Set(rows.filter((r) => archivedIds.has(r.id)).map((r) => r.sender))];
     await logMailAction(prisma, scope, {
       batchId: crypto.randomUUID(),
       kind: "skip_inbox",
       source: "auto",
       reason: "skip_inbox",
       senders,
-      threadIds: archived,
+      threadIds: [...archived],
     });
   }
-  return archived.length;
+  return archived.size;
 }
 
 async function flagReconnect(prisma: PrismaClient, connectionId: string): Promise<void> {

@@ -23,7 +23,7 @@ interface Change {
   /** The label change sent to the provider for each message. */
   label: MailLabelChange;
   /** What the cache row says afterwards. */
-  cache: { unread?: boolean; inInbox?: boolean; isSpam?: boolean };
+  cache: { unread?: boolean; inInbox?: boolean; isSpam?: boolean; pile?: null };
   /** Messages of the thread that still need the change; the rest are skipped. */
   pending: Prisma.CachedMailMessageWhereInput;
   /** Change the whole thread, not just the message the row stands for. */
@@ -300,8 +300,9 @@ const MOVES: Record<InboxMoveInput["op"], Omit<Change, "thread"> & { kind: MailA
     kind: "not_spam",
     operation: "inbox.notSpam",
     label: { addLabelIds: ["INBOX"], removeLabelIds: ["SPAM"] },
-    cache: { inInbox: true, isSpam: false },
-    pending: { isSpam: true },
+    // The pile is cleared too, so the row leaves the Spam pile at once; the next sync recomputes it.
+    cache: { inInbox: true, isSpam: false, pile: null },
+    pending: { OR: [{ isSpam: true }, { pile: "spam" }] },
   },
   // Sync drops the row once Gmail reports it in the trash.
   trash: {
@@ -354,6 +355,24 @@ export async function inboxMoveMany(
     signal,
   );
   const batchId = crypto.randomUUID();
+  if (input.op === "notSpam") {
+    // Mail the rules (not Gmail) called spam would be put back by the next sync, so the user's
+    // decision is kept as an "important" mark on the sender, which the pile rules respect.
+    const senders = new Set<string>();
+    for (const id of result.done) {
+      const row = rows.get(id) as BulkRow;
+      if (!row.isSpam) senders.add(row.fromAddress.trim().toLowerCase());
+    }
+    for (const senderAddress of senders) {
+      if (!senderAddress) continue;
+      const key = { spaceId: actor.spaceId, userId: actor.userId, senderAddress };
+      await deps.prisma.inboxSenderFeedback.upsert({
+        where: { spaceId_userId_senderAddress: key },
+        create: { ...key, mark: "important" },
+        update: { mark: "important" },
+      });
+    }
+  }
   const byConnection = new Map<string, BulkRow[]>();
   for (const id of result.done) {
     const row = rows.get(id) as BulkRow;

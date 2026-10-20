@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { inboxList } from "./inbox.js";
 import { inboxMoveMany } from "./inbox-modify.js";
 import { createMailFixture, type MailFixture } from "./test-support/mail-fixture.js";
 
@@ -71,6 +72,32 @@ describePostgres("spam and trash (PostgreSQL + Gmail emulator)", () => {
     expect(
       (await f.prisma.mailActionLog.findFirstOrThrow({ where: { batchId: out.batchId } })).kind,
     ).toBe("not_spam");
+  });
+
+  it("not spam takes Gmail-spam mail and rule-classified inbox mail out of the Spam pile", async () => {
+    const r = await setup();
+    const ruled = await f.cache(f.a, f.connA, "ruled", {
+      from: "help@paypa1-secure.example.test",
+      pile: "spam",
+    });
+    const out = await inboxMoveMany(f.deps, f.a, {
+      op: "notSpam",
+      messageIds: [r.junk.id, ruled.id],
+    });
+
+    expect(out.failed).toEqual([]);
+    expect(await row("junk")).toMatchObject({ inInbox: true, isSpam: false, pile: null });
+    const subjects = async (pile: "spam" | "important") =>
+      (await inboxList(f.deps, f.a, { pile })).rows.map((x) => x.subject);
+    expect(await subjects("spam")).toEqual([]);
+    expect(await subjects("important")).toContain("Subject junk");
+    // Only the rule-classified sender is remembered, so the next sync does not re-assign spam.
+    expect(
+      await f.prisma.inboxSenderFeedback.findMany({
+        where: { userId: f.a.userId },
+        select: { senderAddress: true, mark: true },
+      }),
+    ).toEqual([{ senderAddress: "help@paypa1-secure.example.test", mark: "important" }]);
   });
 
   it("trash sets TRASH and takes the thread out of the inbox", async () => {

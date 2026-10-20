@@ -120,6 +120,7 @@ describePostgres("skip inbox (PostgreSQL + Gmail emulator)", () => {
       signals: MailSignals;
       skipAppliedAt: Date | null;
       inInbox: boolean;
+      threadId: string;
     }> = {},
   ) {
     return prisma.cachedMailMessage.create({
@@ -128,7 +129,7 @@ describePostgres("skip inbox (PostgreSQL + Gmail emulator)", () => {
         userId: account.userId,
         connectionId: account.id,
         providerMessageId: id,
-        threadId: id,
+        threadId: extra.threadId ?? id,
         fromAddress: extra.from ?? SENDER,
         subject: `Subject ${id}`,
         snippet: "",
@@ -230,6 +231,46 @@ describePostgres("skip inbox (PostgreSQL + Gmail emulator)", () => {
     expect([...(log?.threadIds ?? [])].sort()).toEqual(["n1", "n2"]);
     const rows = await prisma.cachedMailMessage.findMany({ where: { connectionId: account.id } });
     expect(rows.every((r) => r.skipAppliedAt !== null)).toBe(true);
+  });
+
+  it("archives only the skipped sender's message and leaves another sender's reply in the thread", async () => {
+    const account = await connect("skip-t");
+    gmail = new GmailApiEmulator({
+      mailboxes: {
+        "skip-t": {
+          address: "skip-t@example.test",
+          messages: [
+            {
+              id: "n1",
+              threadId: "t1",
+              date: daysAgo(1).toISOString(),
+              labels: ["INBOX"],
+              from: `News <${SENDER}>`,
+              to: "me@example.test",
+              subject: "Subject n1",
+            },
+            {
+              id: "r1",
+              threadId: "t1",
+              date: daysAgo(0.4).toISOString(),
+              labels: ["INBOX"],
+              from: "Colleague <colleague@example.test>",
+              to: "me@example.test",
+              subject: "Re: Subject n1",
+            },
+          ],
+        },
+      },
+    });
+    await cache(account, "n1", { threadId: "t1" });
+    await cache(account, "r1", { threadId: "t1", from: "colleague@example.test" });
+    await skip(account);
+
+    expect(await run(account)).toBe(1);
+
+    expect(await inInbox(account)).toEqual({ n1: false, r1: true });
+    expect(labelsOf("skip-t", "n1")).not.toContain("INBOX");
+    expect(labelsOf("skip-t", "r1")).toContain("INBOX");
   });
 
   it("leaves mail that arrived before the decision and other senders alone", async () => {

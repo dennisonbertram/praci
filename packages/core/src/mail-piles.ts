@@ -96,7 +96,8 @@ export function classifyPile(input: PileInput): PileDecision {
   // 1. Safety.
   if (signals?.categories.spam) return { pile: "spam", reasons: ["gmail_spam"] };
   const authFailed = signals ? Object.values(signals.auth).some(failed) : false;
-  if (authFailed && claimsBrandItIsNot(input))
+  // A sender the user marked important (for instance by choosing Not spam) is left to the model instead.
+  if (authFailed && senderMark !== "important" && claimsBrandItIsNot(input))
     return { pile: "spam", reasons: ["auth_failed_brand"] };
 
   // 2. The user's own mark. A noise mark does not decide; it only stops prior contact from meaning important.
