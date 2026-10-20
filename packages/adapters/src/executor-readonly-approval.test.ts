@@ -16,7 +16,7 @@ import type { ActionApprovalRule } from "@rakazo/core";
 import { approvalEffectKey, toolEffectIdempotencyKey } from "@rakazo/core/node/approval-effect-key";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as AiConsentModule from "./ai-consent.js";
-import { isApprovalPausedResult } from "./approval-effect.js";
+import { DENIED_ACTION_MESSAGE, isApprovalPausedResult } from "./approval-effect.js";
 import { BlueBubblesEmulator, createEmulatedBlueBubblesPlatform } from "./bluebubbles-emulator.js";
 import { MAX_SHARED_MEMORY_CHARS } from "./builtin-tools.js";
 import { ChatSdkMessagingSurface } from "./chat-sdk-surface.js";
@@ -268,6 +268,7 @@ function fixture({
     ),
   };
   const prisma = {
+    user: { findUnique: vi.fn(async () => ({ timezone: null })) },
     run: {
       findUnique: vi.fn(async () => run),
       findUniqueOrThrow: vi.fn(async () => run),
@@ -683,10 +684,36 @@ describe("connector read-only metadata and approval enforcement", () => {
       await f.run();
       expect(f.execute).not.toHaveBeenCalled();
       expect(f.results.at(-1)).toEqual({
-        error:
-          "The user denied this action. Do not retry or rephrase it; tell the user and ask what they want instead.",
+        error: DENIED_ACTION_MESSAGE,
       });
       expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    });
+
+    it("refuses a reworded retry after a denial in the same run, with no new card", async () => {
+      const f = fixture({
+        catalog,
+        rules: [{ effect: "require_approval", matchKind: "tool", matchValue: "demo_get_item" }],
+      });
+      await f.run();
+      f.effects[0]!.status = "denied";
+      f.setCalls([{ args: { id: "  ITEM-1 " }, executionId: "call-2" }]);
+      await f.run();
+      expect(f.execute).not.toHaveBeenCalled();
+      expect(f.results.at(-1)).toEqual({ error: DENIED_ACTION_MESSAGE });
+      expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    });
+
+    it("allows a new card when the user asks again in a new run", async () => {
+      const f = fixture({
+        catalog,
+        rules: [{ effect: "require_approval", matchKind: "tool", matchValue: "demo_get_item" }],
+      });
+      await f.run();
+      f.effects[0]!.status = "denied";
+      f.effects[0]!.runId = "run-0";
+      f.setCalls([{ args: { id: "item-1 " }, executionId: "call-2" }]);
+      await f.run();
+      expect(f.pauseRunForInput).toHaveBeenCalledTimes(2);
     });
 
     it("consumes the saved approval after the user chooses always allow", async () => {

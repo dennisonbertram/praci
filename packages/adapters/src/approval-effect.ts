@@ -361,6 +361,37 @@ export type ExternalEffectStore = {
   };
 };
 
+export const DENIED_ACTION_MESSAGE =
+  "The user denied this action. Do not retry it, rephrase it, or try a near-identical variant in this run; any repeat is refused automatically. Tell the user it was not done and ask what they want instead. Try again only if the user asks again in a new message.";
+
+function normalizeRequest(value: unknown): unknown {
+  if (typeof value === "string") return value.trim().replace(/\s+/g, " ").toLowerCase();
+  if (Array.isArray(value)) return value.map(normalizeRequest);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .sort(([a], [b]) => (a < b ? -1 : 1))
+        .map(([key, item]) => [key, normalizeRequest(item)]),
+    );
+  }
+  return value;
+}
+
+/**
+ * Whether a new approval request repeats one the user already denied in this run. Creating a
+ * repeating schedule is the same request however the model rewords its name, timing or prompt;
+ * updating one is the same when it targets the same schedule. Any other tool repeats when its
+ * arguments match after trimming, lowercasing and sorting keys.
+ */
+export function repeatsDeniedRequest(kind: string, denied: unknown, next: unknown): boolean {
+  if (kind === "schedule_create") return true;
+  if (kind === "schedule_update") {
+    const id = (value: unknown) => String((value as { id?: unknown } | null)?.id ?? "").trim();
+    return id(denied) === id(next);
+  }
+  return JSON.stringify(normalizeRequest(denied)) === JSON.stringify(normalizeRequest(next));
+}
+
 export function resolveDuplicateEffectGate(
   effect: { status: string; result?: unknown },
   toolName: string,
@@ -380,8 +411,7 @@ export function resolveDuplicateEffectGate(
     return {
       action: "return",
       result: {
-        error:
-          "The user denied this action. Do not retry or rephrase it; tell the user and ask what they want instead.",
+        error: DENIED_ACTION_MESSAGE,
       },
     };
   }
