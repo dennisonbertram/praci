@@ -9,6 +9,7 @@ import { mailSyncJob } from "@rakazo/adapter-kit";
 import type { PrismaClient } from "@rakazo/db";
 import { Prisma } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
+import { applySkipInbox } from "./mail-skip-inbox.js";
 import { syncMailbox } from "./mail-sync.js";
 
 type Scope = { spaceId: string; userId: string };
@@ -193,6 +194,8 @@ export interface MailSyncJobDeps {
   jobs: JobPublisher;
   /** Runs after each sync, for example to renew a push watch. Failures are logged, never thrown. */
   afterSync?: (account: MailAccount, context: AdapterContext) => Promise<void>;
+  /** MAIL_WRITES_DISABLED: no mail is changed in the provider, so skip-inbox senders are not archived. */
+  mailWritesDisabled?: boolean;
 }
 
 /**
@@ -246,6 +249,19 @@ export async function runMailSyncJob(
     outcome = await syncMailbox(deps, account, context);
   }
   await clearRequest();
+
+  if (outcome === "synced") {
+    await applySkipInbox(
+      { prisma, mail: deps.mail, writesDisabled: deps.mailWritesDisabled },
+      account,
+      context,
+    ).catch((error: unknown) => {
+      getLogger().warn("skip inbox failed", {
+        connectionId,
+        reason: error instanceof Error ? error.name : "error",
+      });
+    });
+  }
 
   await deps.afterSync?.(account, context).catch((error: unknown) => {
     getLogger().warn("mail sync follow-up failed", {

@@ -1,4 +1,4 @@
-import type { RunStatus } from "@rakazo/contracts";
+import type { RunPhase, RunStatus } from "@rakazo/contracts";
 
 export const ACTIVE_RUN_STATUSES = [
   "queued",
@@ -51,6 +51,22 @@ export function assertTransition(from: RunStatus, to: RunStatus): void {
 
 export function isActive(status: RunStatus): boolean {
   return (ACTIVE_RUN_STATUSES as readonly RunStatus[]).includes(status);
+}
+
+/** A run the bot is executing or about to execute. Runs waiting on the user are not working. */
+export function isRunWorking(status: string | null | undefined): boolean {
+  return status === "queued" || status === "leased" || status === "running";
+}
+
+/** Whether a run phase names something the run waits on, so a client can show a line for it. */
+export function hasRunPhaseLine(phase: RunPhase): boolean {
+  return (
+    phase.kind === "computer_wait" ||
+    phase.kind === "computer_start" ||
+    phase.kind === "connecting" ||
+    phase.kind === "model_wait" ||
+    phase.kind === "retrying"
+  );
 }
 
 export function isTerminal(status: RunStatus): boolean {
