@@ -1,0 +1,92 @@
+// @vitest-environment jsdom
+
+import type { Contact } from "@rakazo/contracts";
+import type { ReactNode } from "react";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+
+const text = vi.hoisted(
+  () =>
+    (parts: TemplateStringsArray, ...values: unknown[]) =>
+      parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
+);
+vi.mock("@lingui/core/macro", () => ({ t: text }));
+vi.mock("@lingui/react/macro", () => ({
+  useLingui: () => ({ t: text, i18n: { locale: "en" } }),
+  Trans: ({ children }: { children: ReactNode }) => children,
+}));
+
+const rpcMock = vi.hoisted(() => ({ list: vi.fn(), save: vi.fn(), remove: vi.fn() }));
+vi.mock("../lib/rpc", () => ({
+  rpc: { contacts: { list: rpcMock.list, save: rpcMock.save, delete: rpcMock.remove } },
+}));
+
+import { ContactsPage } from "./Contacts";
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+const contact = (id: string, name: string, kind: Contact["kind"]): Contact => ({
+  id,
+  name,
+  email: `${name.toLowerCase()}@example.test`,
+  organization: "Acme Corp",
+  kind,
+  notes: null,
+  createdAt: "2026-10-15T00:00:00.000Z",
+  updatedAt: "2026-10-15T00:00:00.000Z",
+});
+
+let container: HTMLDivElement;
+let root: ReturnType<typeof createRoot>;
+const flush = () => act(async () => {});
+const show = async () => {
+  await act(async () => root.render(<ContactsPage />));
+  await flush();
+};
+
+beforeEach(() => {
+  container = document.createElement("div");
+  document.body.append(container);
+  root = createRoot(container);
+});
+afterEach(() => {
+  act(() => root.unmount());
+  container.remove();
+  vi.resetAllMocks();
+});
+
+it("lists contacts, searches them and filters by kind", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "customer"), contact("c2", "Bo", "vendor")]);
+  await show();
+  expect(container.textContent).toContain("Ada");
+  expect(container.textContent).toContain("Bo");
+  expect(container.textContent).toContain("Customer");
+
+  const search = container.querySelector('input[type="search"]') as HTMLInputElement;
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(search, "bo@");
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(container.textContent).not.toContain("Ada");
+  expect(container.textContent).toContain("Bo");
+
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(search, "zzz");
+    search.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  expect(container.textContent).toContain("No matches");
+});
+
+it("shows a single line when there are no contacts", async () => {
+  rpcMock.list.mockResolvedValueOnce([]);
+  await show();
+  expect(container.textContent).toContain("No contacts yet");
+  expect(container.querySelector("table")).toBeNull();
+});
+
+it("shows an alert when contacts cannot be loaded", async () => {
+  rpcMock.list.mockRejectedValue(new Error("boom"));
+  await show();
+  expect(container.querySelector("[role=alert]")).not.toBeNull();
+});

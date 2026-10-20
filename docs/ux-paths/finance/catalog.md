@@ -1,15 +1,16 @@
 ## Area: Finance (STORY-FIN-nnn)
 
-Source: `docs/ux-paths/finance/catalog.md`.
 
-
-Generated: 2026-10-17
+Generated: 2026-10-17, refreshed 2026-10-20
 Code read at: `559a76ad` (`the repository root`, branch `docs/ux-pass`), read-only.
 Scope: `/app/finance/*` (dashboard and detail pages), the Add account dialog, statement upload,
 crypto wallets and exchanges, finance tiles on `/app/integrations?category=finance`, the Finance
 agent side panel, finance cards in chat, agent pins and checklists, and the **Hide amounts**
 switch (Finance, Cap table, chat, search, notifications).
 Total stories: 36 (short 19, medium 12, long 5)
+
+### Refresh 2026-10-20 (features merged since 2026-10-17)
+- Finance changed in small ways: the burn chart is now lines with a gradient under spend, cards are tiled in a collapsible group with 'Ask about this', and Mercury, Brex, Blockscout, Alchemy and exchanges connect from the Integrations 'Finance' section. No Finance story was rewritten in this refresh (see Gaps); re-walk STORY-FIN-001 to 010 for labels.
 
 ### Changes since the 2026-10-16 catalog
 
@@ -1222,3 +1223,6 @@ cash on purpose.
 11. **Dashboard "Add Brex" leaves Finance** for Integrations; there is no way back except the sidebar.
 12. **No disconnect, no cancel, no recategorize**: the Finance area is read-only apart from
     statements, wallets, the runway scope and renaming a statement account.
+
+
+---

@@ -15,7 +15,7 @@ Key facts from the code (used below):
 
 ---
 
-## STORY-NA-1: First visit, nothing featured connected
+## STORY-APP-377: First visit, nothing featured connected
 **Type**: short
 **Topic**: Connect apps pill
 **Persona**: Dana, a founder of a four-person logistics startup who has just created her company space and has not connected anything.
@@ -33,11 +33,11 @@ Key facts from the code (used below):
 - Dark mode: logos from Simple Icons are requested as black and inverted, so they should stay visible on the pill.
 ### Edge Cases
 - No internet for the logo CDN: each logo tile falls back to the app's first letter (G, G, G for the three Google apps, which cannot be told apart).
-- Slow connection: the plain "Integrations" row shows first; Dana may click it before the pill appears (see STORY-NA-5).
+- Slow connection: the plain "Integrations" row shows first; Dana may click it before the pill appears (see STORY-APP-381).
 
 ---
 
-## STORY-NA-2: Click the pill to reach Integrations
+## STORY-APP-378: Click the pill to reach Integrations
 **Type**: short
 **Topic**: Connect apps pill
 **Persona**: Marcus, an operations lead who wants his bot to read Slack.
@@ -51,14 +51,14 @@ Key facts from the code (used below):
 3. Scroll the "Popular" grid → Slack shows with a "Connect" button (its accessible name is "Connect Slack"). Featured apps are listed first.
 ### Variations
 - Click the pill from a different page (Inbox, Finance, Data room): same result; the previous page is left without a warning.
-- Use browser Back from Integrations → the previous page returns; the pill reappears after the reload described in STORY-NA-4.
+- Use browser Back from Integrations → the previous page returns; the pill reappears after the reload described in STORY-APP-380.
 ### Edge Cases
 - Double click: the second click lands on the plain row and navigates to the same URL again; nothing visible changes.
 - The three logos on the pill (Calendar, Drive, Slack) are not a selection: clicking a single logo does not open that app's setup. Marcus must find Slack again on the page. UNVERIFIED how obvious this is.
 
 ---
 
-## STORY-NA-3: The plain "Integrations" row on its own page
+## STORY-APP-379: The plain "Integrations" row on its own page
 **Type**: short
 **Topic**: Connect apps pill
 **Persona**: Priya, a product manager who has connected all five featured apps and now opens Integrations to check them.
@@ -79,7 +79,7 @@ Key facts from the code (used below):
 
 ---
 
-## STORY-NA-4: The pill updates after connecting an app
+## STORY-APP-380: The pill updates after connecting an app
 **Type**: medium
 **Topic**: Connect apps pill
 **Persona**: Hana, the founder of a design studio, connecting Slack and then checking the sidebar.
@@ -104,7 +104,7 @@ Key facts from the code (used below):
 
 ---
 
-## STORY-NA-5: Slow catalog and failed request fall back to the plain row
+## STORY-APP-381: Slow catalog and failed request fall back to the plain row
 **Type**: medium
 **Topic**: Connect apps pill
 **Persona**: Tomas, a founder on hotel Wi-Fi who opens the app and clicks as soon as the sidebar appears.
@@ -127,7 +127,7 @@ Key facts from the code (used below):
 
 ---
 
-## STORY-NA-6: One logo per app, including the Slack alias
+## STORY-APP-382: One logo per app, including the Slack alias
 **Type**: short
 **Topic**: Connect apps pill
 **Persona**: Leo, a chief of staff who sees the pill and expects three different apps.

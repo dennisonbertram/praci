@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 237 of 237
-- Web and shared components: 650
+- Web and shared component files with stories: 239 of 239
+- Web and shared components: 651
 - Mobile components: 137 in 94 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -78,6 +78,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ComputersUnavailableHint, UnavailableCopy | [apps/web/src/components/ComputersUnavailableHint.tsx](../../apps/web/src/components/ComputersUnavailableHint.tsx) | [ComputersUnavailableHint.stories.tsx](../../apps/web/src/components/ComputersUnavailableHint.stories.tsx) | web |
 | ComputerUpdateProgress | [apps/web/src/components/ComputerUpdateProgress.tsx](../../apps/web/src/components/ComputerUpdateProgress.tsx) | [ComputerUpdateProgress.stories.tsx](../../apps/web/src/components/ComputerUpdateProgress.stories.tsx) | web |
 | ConnectAppsButton | [apps/web/src/components/ConnectAppsButton.tsx](../../apps/web/src/components/ConnectAppsButton.tsx) | [ConnectAppsButton.stories.tsx](../../apps/web/src/components/ConnectAppsButton.stories.tsx) | web |
+| ContactDialog | [apps/web/src/components/ContactDialog.tsx](../../apps/web/src/components/ContactDialog.tsx) | [ContactDialog.stories.tsx](../../apps/web/src/components/ContactDialog.stories.tsx) | web |
 | DataExportSection | [apps/web/src/components/DataExport.tsx](../../apps/web/src/components/DataExport.tsx) | [DataExport.stories.tsx](../../apps/web/src/components/DataExport.stories.tsx) | web |
 | DesktopUpdatesProvider, DesktopUpdateSection | [apps/web/src/components/DesktopUpdates.tsx](../../apps/web/src/components/DesktopUpdates.tsx) | [DesktopUpdates.stories.tsx](../../apps/web/src/components/DesktopUpdates.stories.tsx) | web |
 | EmailCards | [apps/web/src/components/EmailCards.tsx](../../apps/web/src/components/EmailCards.tsx) | [EmailCards.stories.tsx](../../apps/web/src/components/EmailCards.stories.tsx) | web |
@@ -273,7 +274,8 @@ Every rendered React component, grouped by area. A web or shared component file 
 | BillingSettingsPanel | [apps/web/src/pages/BillingSettingsPanel.tsx](../../apps/web/src/pages/BillingSettingsPanel.tsx) | [BillingSettingsPanel.stories.tsx](../../apps/web/src/pages/BillingSettingsPanel.stories.tsx) | web |
 | BoardPage, TicketDialog | [apps/web/src/pages/Board.tsx](../../apps/web/src/pages/Board.tsx) | [Board.stories.tsx](../../apps/web/src/pages/Board.stories.tsx) | web |
 | BotContextMenu | [apps/web/src/pages/BotContextMenu.tsx](../../apps/web/src/pages/BotContextMenu.tsx) | [BotContextMenu.stories.tsx](../../apps/web/src/pages/BotContextMenu.stories.tsx) | web |
-| Figure, Summary, ConnectCartaDialog, ContactDialog, CapTablePage | [apps/web/src/pages/CapTable.tsx](../../apps/web/src/pages/CapTable.tsx) | [CapTable.stories.tsx](../../apps/web/src/pages/CapTable.stories.tsx) | web |
+| Figure, Summary, ConnectCartaDialog, CapTablePage | [apps/web/src/pages/CapTable.tsx](../../apps/web/src/pages/CapTable.tsx) | [CapTable.stories.tsx](../../apps/web/src/pages/CapTable.stories.tsx) | web |
+| ContactsPage | [apps/web/src/pages/Contacts.tsx](../../apps/web/src/pages/Contacts.tsx) | [Contacts.stories.tsx](../../apps/web/src/pages/Contacts.stories.tsx) | web |
 | FileInputButton, DataRoomPage | [apps/web/src/pages/DataRoom.tsx](../../apps/web/src/pages/DataRoom.tsx) | [DataRoom.stories.tsx](../../apps/web/src/pages/DataRoom.stories.tsx) | web |
 | ExternalConversationSettings | [apps/web/src/pages/ExternalConversationSettings.tsx](../../apps/web/src/pages/ExternalConversationSettings.tsx) | [ExternalConversationSettings.stories.tsx](../../apps/web/src/pages/ExternalConversationSettings.stories.tsx) | web |
 | FinancePage, Dashboard, EmptyState, DashboardSkeleton, SourceChip, Overview, ShowAll, HoverRow, UpcomingRow, SubscriptionsTable | [apps/web/src/pages/Finance.tsx](../../apps/web/src/pages/Finance.tsx) | [Finance.stories.tsx](../../apps/web/src/pages/Finance.stories.tsx) | web |

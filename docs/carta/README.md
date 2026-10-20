@@ -119,10 +119,16 @@ reachable through it. PR 1 records this in this file.
    (monthly or quarterly) is offered the same way. Both use the existing `Routine`
    table and `@Skill` mentions.
 9. **One new table: contacts.** Each user keeps a contact list (`Contact`: name, email,
-   organization, kind investor/auditor/other, notes), scoped to space and user and
-   deleted with the user. The Cap Table page lists it and the Carta agent reads it
-   with `contacts_list` and saves to it with `contacts_save`, which asks first. The
-   investor update takes its recipients from it. Open audit requests still live in
+   organization, kind investor/auditor/customer/vendor/partner/advisor/legal/other,
+   notes), scoped to space and user and deleted with the user. The Contacts page
+   (`/app/contacts`) and the Cap Table page list it. The tools `contacts_list`,
+   `contacts_add` and `contacts_save` are offered to every agent on an owner-started
+   run (not only Carta), so any agent can record the people and companies the
+   business works with. `contacts_add` needs no approval and never changes a row: a
+   contact with the same email, or the same name and organization when there is no
+   email, is returned as "already saved". `contacts_save` edits and still asks first.
+   The Cap Table tools stay with the Carta agent. The investor update takes its
+   recipients from the list. Open audit requests still live in
    Gmail threads; an audit tracker is a v2 decision.
 
 10. **Automatic Cap Table.** When a Carta server finishes OAuth, and on

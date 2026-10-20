@@ -74,6 +74,7 @@ import {
 } from "@rakazo/ui-web";
 import {
   ArrowLeft,
+  BookUser,
   ChartColumn,
   ChevronDown,
   CircleAlert,
@@ -276,6 +277,7 @@ import { workingActivity } from "../lib/working-activity";
 import { ActivityList } from "./ActivityList";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CapTablePage } from "./CapTable";
+import { ContactsPage } from "./Contacts";
 import { DataRoomPage } from "./DataRoom";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
@@ -916,6 +918,7 @@ export function ShellPage() {
   // The route exists only while bootstrap enables the board (see App).
   const boardMode = useMatch("/app/board") != null;
   const capTableMode = useMatch("/app/cap-table/*") != null;
+  const contactsMode = useMatch("/app/contacts") != null;
   // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
   // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
   const pageMode =
@@ -926,6 +929,7 @@ export function ShellPage() {
     integrationsMode ||
     dataRoomMode ||
     artifactsMode ||
+    contactsMode ||
     boardMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
@@ -944,7 +948,7 @@ export function ShellPage() {
     applied: botsListApplied.current,
   });
   const active =
-    inGroup || integrationsMode || artifactsMode || boardMode
+    inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
@@ -1954,6 +1958,7 @@ export function ShellPage() {
         keywords: t`equity, ownership, shares, options, Carta`,
         icon: <PieChart {...icon} />,
       },
+      { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
@@ -3957,6 +3962,7 @@ export function ShellPage() {
                   { key: "finance", label: t`Finance` },
                   { key: "legal", label: t`Legal` },
                   { key: "cap-table", label: t`Cap table` },
+                  { key: "contacts", label: t`Contacts` },
                   { key: "data-room", label: t`Data room` },
                   { key: "artifacts", label: t`Artifacts` },
                   ...addedPages,
@@ -4031,6 +4037,19 @@ export function ShellPage() {
                       navigate("/app/cap-table");
                     }}
                     {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
+                  />
+                )}
+                {hiddenPages.includes("contacts") ? null : (
+                  <SidebarPageLink
+                    testId="sidebar-contacts"
+                    current={contactsMode}
+                    icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
+                    label={t`Contacts`}
+                    rail={rail}
+                    onOpen={() => {
+                      setMobileSidebarOpen(false);
+                      navigate("/app/contacts");
+                    }}
                   />
                 )}
                 {hiddenPages.includes("data-room") ? null : (
@@ -5097,6 +5116,8 @@ export function ShellPage() {
                 : undefined
             }
           />
+        ) : contactsMode ? (
+          <ContactsPage />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
