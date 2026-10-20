@@ -39,6 +39,8 @@ import {
 } from "@rakazo/adapter-kit";
 import type { ComputerCommand, MessageBlock, RunPhase, RunStatus } from "@rakazo/contracts";
 import {
+  AI_CONSENT_EFFECT_KIND,
+  AI_DISCLOSURE_VERSION,
   ATTACHMENT_MAX_BYTES,
   BOT_DESCRIPTION_MAX_LENGTH,
   BOT_NAME_MAX_LENGTH,
@@ -158,8 +160,10 @@ import {
   formatAgentEnvironmentInstruction,
   redactShellStreams,
 } from "./agent-environment.js";
+import { aiRecipient } from "./ai-consent.js";
 import {
   buildApprovalAskBlock,
+  buildConsentAskBlock,
   cartaMailSendIsComplete,
   describeApprovalAction,
   isCartaMailSend,
@@ -4334,14 +4338,46 @@ export function createRunExecutor(deps: ExecutorDeps) {
         });
         // Any agent reads mail only with the AI data sharing consent the Inbox sorting needs,
         // so turning that off stops both. Read on every mail tool call, so revoking it mid-run applies.
-        const inboxMailConsentMissing = () => {
+        const inboxMailConsentBlock = async (): Promise<{
+          recipient?: { key: string; name: string; detail?: string };
+        } | null> => {
+          // In a chat the mail goes to the model running this chat, so that recipient is the one that
+          // needs consent. Background runs keep the Inbox's own check.
+          if (run.trigger === "user") {
+            try {
+              const recipient = aiRecipient({
+                provider: runModelProvider,
+                modelId: runModelId,
+                baseUrl: resolved.baseUrl,
+                use: "model",
+              });
+              // No external recipient (the scripted runtime): nothing leaves.
+              if (!recipient) return null;
+              const granted = await deps.prisma.aiDataConsent.findFirst({
+                where: {
+                  userId: bot.userId,
+                  spaceId: run.spaceId,
+                  recipientKey: recipient.key,
+                  version: AI_DISCLOSURE_VERSION,
+                },
+                select: { userId: true },
+              });
+              return granted ? null : { recipient };
+            } catch {
+              // Unknown is treated as not allowed.
+              return {};
+            }
+          }
           return triageStatus(
             { prisma: deps.prisma, resolveModel },
             { userId: bot.userId, spaceId: run.spaceId },
           ).then(
-            (status) => status.blocked?.reason === "needs_consent",
+            (status): { recipient?: { key: string; name: string; detail?: string } } | null =>
+              status.blocked?.reason === "needs_consent"
+                ? { recipient: status.blocked.recipient }
+                : null,
             // Unknown is treated as not allowed: mail content never leaves on a failed check.
-            () => true,
+            (): { recipient?: { key: string; name: string; detail?: string } } => ({}),
           );
         };
         // Connected Google Drive accounts of the bot owner, looked up once per run.
@@ -4674,7 +4710,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           ? TASK_CATALOG_GUIDANCE
           : undefined;
         const approvedEffects = await deps.prisma.externalEffect.findMany({
-          where: { runId, status: "approved" },
+          // A consent request is settled by its card; there is no tool call to replay.
+          where: { runId, status: "approved", kind: { not: AI_CONSENT_EFFECT_KIND } },
           orderBy: APPROVED_EFFECT_REPLAY_ORDER,
           select: { kind: true, request: true },
         });
@@ -4758,6 +4795,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         let unchangedVisualStreak: UnchangedVisualStreak = { count: 0 };
         let terminalCheckpointComplete = false;
         let approvalPausePending = false;
+        /** The one consent card of this run attempt, shared by parallel mail calls. */
+        let consentAsk: Promise<unknown> | undefined;
         let handedOff = false;
         let progressRedactor = createStreamingRedactor(runSecrets);
         const scripted = deps.runtime.describe().capabilities.scripted;
@@ -5436,7 +5475,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return inferred ? accountName(inferred) : undefined;
           };
 
-          const requestApproval = async () => {
+          const pauseForAsk = async (block: MessageBlock, notifyBody: string) => {
             if (!(await renew())) {
               // Another worker owns the run now; exit without leaving a local pause card.
               return pauseForApproval();
@@ -5450,16 +5489,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               attemptId: attempt.id,
               leaseOwner: workerId,
               leaseFence: fence,
-              blocks: [
-                buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
-                  reviewReason,
-                  fullMail: isCartaMailSend(bot.spawnKey, name),
-                  integrationWriteTool,
-                  serviceName: callRoute?.serverName,
-                  mailAccount: await approvalMailAccount(),
-                  imessage: imessageCard,
-                }),
-              ],
+              blocks: [block],
             });
             // pauseRunForInput returning false after a successful renew means the run row no
             // longer matches this worker. Exiting via pauseForApproval() would leave the run
@@ -5470,14 +5500,71 @@ export function createRunExecutor(deps: ExecutorDeps) {
             await notifyRun(deps, run, {
               kind: "help",
               title: `${bot.name} needs approval`,
-              body: redactSecrets(
-                `Review before ${describeApprovalAction(name, args, callRoute?.serverName)}`,
-                runSecrets,
-              ),
+              body: notifyBody,
               botId: bot.id,
               threadId: thread.id,
             });
             return pauseForApproval();
+          };
+
+          const requestApproval = async () =>
+            pauseForAsk(
+              buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
+                reviewReason,
+                fullMail: isCartaMailSend(bot.spawnKey, name),
+                integrationWriteTool,
+                serviceName: callRoute?.serverName,
+                mailAccount: await approvalMailAccount(),
+                imessage: imessageCard,
+              }),
+              redactSecrets(
+                `Review before ${describeApprovalAction(name, args, callRoute?.serverName)}`,
+                runSecrets,
+              ),
+            );
+
+          /**
+           * A mail read refused for missing consent, in a chat with its owner: ask on a card that
+           * pauses the run. The recipient comes from the server's own check, never the model. The
+           * owner's click records the consent; a decline is remembered so the call is not asked twice.
+           */
+          const askMailConsent = (recipient: { key: string; name: string; detail?: string }) =>
+            // Parallel mail calls share one card: the later ones wait on the first and pause with it.
+            (consentAsk ??= askMailConsentOnce(recipient));
+          const askMailConsentOnce = async (recipient: {
+            key: string;
+            name: string;
+            detail?: string;
+          }) => {
+            const request = { recipientKey: recipient.key, version: AI_DISCLOSURE_VERSION };
+            const record = () =>
+              recordEffect(
+                deps,
+                run,
+                AI_CONSENT_EFFECT_KIND,
+                approvalEffectKey(runId, AI_CONSENT_EFFECT_KIND, request),
+                request,
+                undefined,
+                consumedEffectIds,
+              );
+            // A concurrent writer may have created the effect between our read and insert; read it again.
+            const recorded = await record().catch((error: unknown) => {
+              if ((error as { code?: unknown } | null)?.code === "P2002") return record();
+              throw error;
+            });
+            if (recorded.duplicate) {
+              if (recorded.effect.status === "denied") return { error: MAIL_CONSENT_DECLINED };
+              if (recorded.effect.status !== "intended") return undefined;
+              const current = await deps.prisma.run.findUnique({
+                where: { id: runId },
+                select: { status: true },
+              });
+              if (current?.status === "waiting_input") return pauseForApproval();
+            }
+            return pauseForAsk(
+              buildConsentAskBlock(recorded.effect.id, recipient),
+              "Allow access to your mail",
+            );
           };
 
           if (applied && !applied.duplicate && name === "mail_send") {
@@ -6267,7 +6354,18 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (MAIL_TOOL_NAMES.has(name) && deps.mail && mailEnabled) {
-            if (await inboxMailConsentMissing()) {
+            const consentBlock = await inboxMailConsentBlock();
+            if (consentBlock) {
+              // Only a read, in a chat the owner started: nothing is claimed, and they can click.
+              if (
+                consentBlock.recipient &&
+                !claimedEffect &&
+                run.trigger === "user" &&
+                READ_ONLY_AGENT_TOOLS.has(name)
+              ) {
+                const asked = await askMailConsent(consentBlock.recipient);
+                if (asked) return asked;
+              }
               const refused = { error: MAIL_CONSENT_OFF };
               if (!claimedEffect) return refused;
               // An approved send or draft was already claimed: settle it so it is not left executing.
@@ -10009,6 +10107,10 @@ function redactBlocks(blocks: MessageBlock[], secrets: string[]): MessageBlock[]
     return block;
   });
 }
+
+/** What the agent is told when the owner declined the consent card in this chat. */
+export const MAIL_CONSENT_DECLINED =
+  "The user chose not to allow AI data sharing for mail, so mail cannot be read. Tell them you can't read their mail, and don't send them to another page.";
 
 /** What the Inbox agent is told when AI data sharing for mail is off. */
 export const MAIL_CONSENT_OFF =

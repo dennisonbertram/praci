@@ -373,6 +373,7 @@ function run(testCase: Case) {
     signals: testCase.noSignals ? null : parseMailSignals(headers, testCase.labels ?? []),
     senderMark: testCase.mark ?? null,
     priorContact: testCase.prior === undefined ? false : testCase.prior,
+    skipInbox: false,
   });
 }
 

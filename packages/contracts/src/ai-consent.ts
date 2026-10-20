@@ -38,3 +38,5 @@ export const AiConsentStatusSchema = z.object({
 });
 export type AiConsentStatus = z.infer<typeof AiConsentStatusSchema>;
 export const AI_CONSENT_REQUIRED = "Review AI data sharing in Account settings before continuing.";
+/** The ExternalEffect kind of an inline AI data sharing request; its request holds the recipient key. */
+export const AI_CONSENT_EFFECT_KIND = "ai_consent";
