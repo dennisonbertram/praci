@@ -4,7 +4,7 @@ Source: `docs/ux-paths/inbox/catalog.md`.
 
 
 Generated: 2026-10-17
-Code read: `/Users/dennison/develop/rakazo-ux` at `559a76ad` (branch `docs/ux-pass`, merged with current `origin/main`). PR #109 (`origin/feat/legal`) was read with `git show` for the Data room import only; it is not part of this commit.
+Code read: `the repository root` at `559a76ad` (branch `docs/ux-pass`, merged with current `origin/main`). PR #109 (`origin/feat/legal`) was read with `git show` for the Data room import only; it is not part of this commit.
 Total Stories: 40 (short 23, medium 13, long 4)
 Previous catalog: 2026-10-16, 24 stories (STORY-INB-001..024). This version keeps every id, rewrites the steps to match the code as it is now, and adds STORY-INB-025..040.
 
@@ -48,7 +48,7 @@ Previous catalog: 2026-10-16, 24 stories (STORY-INB-001..024). This version keep
 The walk runs against a seeded mock demo account. Everything below is fake and must be labeled as such in the seed. Stories reference these items by their key (for example `M1`, `T2`).
 
 **Space and person**
-- Space / company name: `MOCK DEMO DATA — Northwind Robotics`.
+- Space / company name: `Northwind Robotics`.
 - Signed-in user: `Maya Okafor (MOCK)`, subscription active, onboarding complete, so `/app` loads the Shell.
 
 **Mail accounts** (Gmail connections, provider stubbed)

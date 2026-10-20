@@ -264,7 +264,7 @@
           },
           {
             "level": "group",
-            "element": "Left sidebar lower workspace sections ('MOCK DEMO DATA — RECONNECT NEEDED', 'EMPTY SPACE')",
+            "element": "Left sidebar lower workspace sections ('RECONNECT NEEDED', 'EMPTY SPACE')",
             "problem": "In the 768x1024 view, the collapsed workspace headers at the bottom of the sidebar stack tightly and the third header is vertically clipped mid-text by the 'Connect apps' footer bar without a scroll fade or proper padding.",
             "norm": "Scroll container clipping & Visual boundaries",
             "severity": "P2",
@@ -291,8 +291,8 @@
           },
           {
             "level": "group",
-            "element": "Left sidebar top bar and workspace section header ('MOCK DEMO DATA — NORTHWIND ROBOTICS')",
-            "problem": "The top-left header of the sidebar is empty on the left side (missing product branding or workspace identity), while the section header below ('• 🔒 MOCK DEMO DATA — NORTHWIND ROBOTICS ⌄ •••') crowds a status dot, a lock icon, two-line wrapping uppercase text, a chevron, and an overflow menu into a single cramped row.",
+            "element": "Left sidebar top bar and workspace section header ('NORTHWIND ROBOTICS')",
+            "problem": "The top-left header of the sidebar is empty on the left side (missing product branding or workspace identity), while the section header below ('• 🔒 NORTHWIND ROBOTICS ⌄ •••') crowds a status dot, a lock icon, two-line wrapping uppercase text, a chevron, and an overflow menu into a single cramped row.",
             "norm": "Navigation hierarchy & Header density",
             "severity": "P3",
             "screenshot": "1440x900-mercury-approval-pending.png",

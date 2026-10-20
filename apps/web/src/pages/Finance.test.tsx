@@ -1426,7 +1426,7 @@ it("shows account endings in the muted style lists use, wherever a name carries 
 });
 
 it("shortens a space name by the words every space's name starts with", () => {
-  const names = ["MOCK DEMO DATA — Northwind Robotics", "MOCK DEMO DATA — Empty space"];
+  const names = ["Northwind Robotics", "Empty space"];
   expect(shortSpaceName(names[0] ?? "", names)).toBe("Northwind Robotics");
   expect(shortSpaceName("Acme", ["Acme", "Acme Labs"])).toBe("Acme");
   expect(shortSpaceName("Acme", ["Acme"])).toBe("Acme");

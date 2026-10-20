@@ -8,7 +8,7 @@
     "score": "warn",
     "description": "New Sales mail agent was also switched on in the Founder mail account's Used by list, and Only this agent is off, so Sales mail stays readable by all 8 other bots.",
     "expected": "A dedicated agent for one account has access only to that account; the exclusive default matches Carta's (on).",
-    "actual": "Used by (Founder mail) shows 'Sales mail (Mock) agent' on; Only this agent is off for the Sales row.",
+    "actual": "Used by (Founder mail) shows 'Sales mail agent' on; Only this agent is off for the Sales row.",
     "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/step-4.png",
     "suggested_fix": "Do not add the new agent to other accounts' access; consider defaulting Only this agent on, as Carta does.",
     "files_likely_involved": [
@@ -25,7 +25,7 @@
     "score": "warn",
     "description": "Create agent lands on a blank chat: no greeting, no hint that the agent is read-only, no link back to the app page.",
     "expected": "A first message or pointer (as the Carta agent chat has) that says what the agent can do.",
-    "actual": "Empty thread titled 'Sales mail (Mock) agent' with only the composer.",
+    "actual": "Empty thread titled 'Sales mail agent' with only the composer.",
     "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/step-3.png",
     "suggested_fix": "Show a short intro or suggested prompts for connected-app agents.",
     "files_likely_involved": [
@@ -71,9 +71,9 @@
     "category": "simplicity",
     "criterion": "Information stated once",
     "score": "warn",
-    "description": "The hint copy repeats the account name three times: 'Allow changes in Sales mail (Mock)', 'Other agents ask the Sales mail (Mock) agent instead of using Sales mail (Mock) themselves.'",
+    "description": "The hint copy repeats the account name three times: 'Allow changes in Sales mail', 'Other agents ask the Sales mail agent instead of using Sales mail themselves.'",
     "expected": "Shorter wording, e.g. 'Other agents ask this agent instead.'",
-    "actual": "Account name x3 plus agent name inside one card under a row already titled Sales mail (Mock).",
+    "actual": "Account name x3 plus agent name inside one card under a row already titled Sales mail.",
     "screenshot": "docs/ux-walker/stories/STORY-CA-1/screenshots/step-5.png",
     "suggested_fix": "Use 'this account' / 'this agent' inside the account row.",
     "files_likely_involved": [
