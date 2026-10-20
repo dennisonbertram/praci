@@ -130,10 +130,19 @@ it("does not store Browser when permission is refused", async () => {
   expect(api.updatePreferences).not.toHaveBeenCalled();
 });
 
-it("shows Blocked and disables Browser when the browser denied notifications", async () => {
+it("says where it is blocked and disables Browser when the browser denied notifications", async () => {
   setPermission("denied");
   api.preferences.mockResolvedValue(prefs());
   await render();
-  expect(container.textContent).toContain("Blocked");
+  expect(container.textContent).toContain("Blocked in browser settings");
+  expect((row("Browser") as HTMLButtonElement).disabled).toBe(true);
+});
+
+it("says Not supported here when the Notification API is missing", async () => {
+  vi.stubGlobal("Notification", undefined);
+  api.preferences.mockResolvedValue(prefs());
+  await render();
+  expect(container.textContent).toContain("Not supported here");
+  expect(container.textContent).not.toContain("Blocked");
   expect((row("Browser") as HTMLButtonElement).disabled).toBe(true);
 });

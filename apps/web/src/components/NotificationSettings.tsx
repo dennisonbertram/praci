@@ -74,7 +74,11 @@ export function NotificationSettingsSection() {
           </span>
           {browserBlocked ? (
             <span className="text-[13px] text-muted-foreground">
-              <Trans>Blocked</Trans>
+              {permission === undefined ? (
+                <Trans>Not supported here</Trans>
+              ) : (
+                <Trans>Blocked in browser settings</Trans>
+              )}
             </span>
           ) : null}
         </li>

@@ -49,3 +49,19 @@ export const WithPhone: Story = {
         prefs({ hasPhone: true, ...(input as object) }),
     }),
 };
+
+/** The browser refused notifications, so the switch is off and says where to change it. */
+export const BlockedInBrowser: Story = {
+  render,
+  beforeEach: () => {
+    const original = Object.getOwnPropertyDescriptor(window, "Notification");
+    Object.defineProperty(window, "Notification", {
+      configurable: true,
+      value: { permission: "denied", requestPermission: async () => "denied" },
+    });
+    mockRpc({ "notifications.preferences": prefs({}) });
+    return () => {
+      if (original) Object.defineProperty(window, "Notification", original);
+    };
+  },
+};

@@ -1561,10 +1561,13 @@ msgstr "Billing"
 msgid "Bills"
 msgstr "Bills"
 
-#: src/components/NotificationSettings.tsx
 #: src/lib/ticket-status.ts
 msgid "Blocked"
 msgstr "Blocked"
+
+#: src/components/NotificationSettings.tsx
+msgid "Blocked in browser settings"
+msgstr "Blocked in browser settings"
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bold"
@@ -6122,6 +6125,10 @@ msgstr "Not sent. {text}"
 msgid "Not spam"
 msgstr "Not spam"
 
+#: src/components/NotificationSettings.tsx
+msgid "Not supported here"
+msgstr "Not supported here"
+
 #: src/components/data-room/ItemRows.tsx
 msgid "Not tagged"
 msgstr "Not tagged"
@@ -7321,6 +7328,10 @@ msgstr "Reply cancelled"
 #: src/pages/Shell.tsx
 msgid "Replying to {0}"
 msgstr "Replying to {0}"
+
+#: src/components/DataExport.tsx
+msgid "Request export"
+msgstr "Request export"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Research & writing"

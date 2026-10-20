@@ -65,21 +65,25 @@ it("offers the button, then shows progress after it is pressed", async () => {
   latest.mockResolvedValue(null);
   request.mockResolvedValue(job({ status: "running", progress: 0 }));
   await mount();
-  expect(host.textContent).toBe("Export my data");
+  expect(host.querySelector("h3")?.textContent).toBe("Export my data");
+  expect(host.querySelector("button")?.textContent).toBe("Request export");
   await act(async () => host.querySelector("button")?.click());
   expect(request).toHaveBeenCalledOnce();
-  expect(host.textContent).toBe("Preparing… 0%");
+  expect(host.querySelector("h3")?.textContent).toBe("Export my data");
+  expect(host.textContent).toBe("Export my dataPreparing… 0%");
   expect(host.querySelector("button")).toBeNull();
 });
 
 it("polls while preparing and shows the download and expiry when ready", async () => {
   latest.mockResolvedValueOnce(job({ status: "running", progress: 40 }));
   await mount();
-  expect(host.textContent).toBe("Preparing… 40%");
+  expect(host.textContent).toBe("Export my dataPreparing… 40%");
   latest.mockResolvedValue(job({}));
   await act(async () => vi.advanceTimersByTimeAsync(2100));
   const link = host.querySelector("a");
   expect(link?.getAttribute("href")).toBe("/api/account/exports/exp%201/download");
+  expect(host.querySelector("h3")?.textContent).toBe("Export my data");
+  expect(host.querySelectorAll("button, a")).toHaveLength(1);
   expect(host.textContent).toContain("Download");
   expect(host.textContent).toContain("Ready until 2030-01-08");
   const calls = latest.mock.calls.length;
@@ -91,7 +95,7 @@ it("shows the button again after a failed export and reports a request error", a
   latest.mockResolvedValue(job({ status: "failed", progress: 30 }));
   request.mockRejectedValue(new Error("boom"));
   await mount();
-  expect(host.textContent).toBe("Export my data");
+  expect(host.querySelector("button")?.textContent).toBe("Request export");
   await act(async () => host.querySelector("button")?.click());
   expect(host.querySelector("[role=alert]")).not.toBeNull();
 });

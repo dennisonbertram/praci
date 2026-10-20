@@ -54,38 +54,39 @@ export function DataExportSection() {
       setPending(false);
     }
   };
-  const requestButton = (variant: "outline" | "ghost") => (
-    <Button variant={variant} disabled={pending} onClick={() => void request()}>
-      <Trans>Export my data</Trans>
-    </Button>
-  );
 
   return (
     <section
-      className="flex flex-wrap items-center gap-3 rounded-xl border border-border px-4 py-4"
+      className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 rounded-xl border border-border px-4 py-4"
       data-testid="data-export"
     >
-      {running && job ? (
-        <span role="status" className="text-[14px] text-foreground/75">
-          <Trans>Preparing… {job.progress}%</Trans>
-        </span>
-      ) : job?.status === "ready" ? (
-        <>
-          <Button
-            aria-label={t`Download`}
-            render={
-              <a href={`/api/account/exports/${encodeURIComponent(job.id)}/download`} download />
-            }
-          >
-            <Trans>Download</Trans>
-          </Button>
-          <span className="text-[13px] text-muted-foreground">
+      <div className="flex flex-col gap-0.5">
+        <h3 className="text-[15px] font-medium text-foreground">
+          <Trans>Export my data</Trans>
+        </h3>
+        {running && job ? (
+          <p role="status" className="text-[13px] text-muted-foreground">
+            <Trans>Preparing… {job.progress}%</Trans>
+          </p>
+        ) : job?.status === "ready" ? (
+          <p className="text-[13px] text-muted-foreground">
             <Trans>Ready until {i18n.date(new Date(job.expiresAt), { dateStyle: "medium" })}</Trans>
-          </span>
-          {requestButton("ghost")}
-        </>
+          </p>
+        ) : null}
+      </div>
+      {running ? null : job?.status === "ready" ? (
+        <Button
+          aria-label={t`Download`}
+          render={
+            <a href={`/api/account/exports/${encodeURIComponent(job.id)}/download`} download />
+          }
+        >
+          <Trans>Download</Trans>
+        </Button>
       ) : (
-        requestButton("outline")
+        <Button variant="outline" disabled={pending} onClick={() => void request()}>
+          <Trans>Request export</Trans>
+        </Button>
       )}
       {error ? (
         <p role="alert" className="w-full text-sm text-destructive">
