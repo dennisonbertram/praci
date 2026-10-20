@@ -95,6 +95,7 @@ function useRows(items: InboxItem[], day: number, seen?: unknown[]) {
     chooseInboxSpace: noop,
     collapsedRosterParents: collapsed,
     confirmDeleteSpace: noop,
+    renameSpace: noop,
     day,
     meSpaceId: "space-1",
     openBot: noop,
