@@ -100,6 +100,7 @@ import {
   isMessagingChannelRun,
   isOneShotRoutineCrons,
   isTerminal,
+  mailOutcomeSummary,
   mailThreadPromptText,
   messagingChannelId,
   messagingChannelPrivacyBlock,
@@ -4269,6 +4270,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
             ).finally(tracked.keep);
             if (approvedByCard && applied && (name === "mail_send" || name === "mail_draft")) {
               await recordApprovedMailOutcome(deps, run, applied.effect.id, name, result);
+              flushPendingTools();
+              messageSegments = attachToolNotes(messageSegments, name, {
+                lines: [],
+                summary: mailOutcomeSummary(name, approvedMailOutcome(name, result).outcome),
+              });
             }
             return finish(result);
           }

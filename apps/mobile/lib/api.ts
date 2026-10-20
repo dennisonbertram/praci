@@ -1117,7 +1117,7 @@ export function blockText(message: MobileMessage) {
         return (block.steps ?? [])
           .map(
             (step) =>
-              `${toolPhrase(step.label, "done") || step.label}${step.count > 1 ? ` ×${step.count}` : ""}`,
+              `${step.summary || toolPhrase(step.label, "done") || step.label}${step.count > 1 ? ` ×${step.count}` : ""}`,
           )
           .join(" · ");
       }

@@ -314,7 +314,7 @@ export function attachToolNotes(
   const label = humanizeToolName(toolName);
   const index = segments.findLastIndex((block) => block.kind === "steps");
   const block = segments[index];
-  if (block?.kind !== "steps" || notes.lines.length === 0) return [...segments];
+  if (block?.kind !== "steps" || (notes.lines.length === 0 && !notes.summary)) return [...segments];
   const at = block.steps.findLastIndex((step) => step.label === label);
   const step = block.steps[at];
   if (!step) return [...segments];
@@ -399,6 +399,22 @@ const TOOL_VERBS: Record<string, readonly [string, string]> = {
   upload: ["uploading", "uploaded"],
 };
 
+const MAIL_WRITE_PENDING: Record<string, string> = {
+  "mail send": "Email to send",
+  "mail draft": "Draft to save",
+};
+
+/** The step line for an approved mail_send or mail_draft once it ended; never "Sent" before then. */
+export function mailOutcomeSummary(
+  tool: "mail_send" | "mail_draft",
+  outcome: "sent" | "saved" | "unknown" | "failed",
+): string {
+  if (outcome === "sent") return "Sent email";
+  if (outcome === "saved") return "Draft saved";
+  if (outcome === "unknown") return "Unknown";
+  return tool === "mail_send" ? "Couldn't send" : "Draft not saved";
+}
+
 const TOOL_NAME_MAX_CHARS = 60;
 
 /** The plain lowercase words of any tool id: no `mcp__server__` prefix, no case or separator style. */
@@ -451,7 +467,14 @@ export function toolStepLabel(label: string): string {
  * transactions" after. `service` drops the agent's own service name ("Brex") from the words.
  */
 export function toolPhrase(name: string, tense: "activity" | "done", service?: string): string {
-  const [first, ...rest] = toolWords(name, service);
+  const words = toolWords(name, service);
+  // A finished step only means the call was made. An approved send or save replaces this with
+  // `mailOutcomeSummary`; until then the mail has not gone out, so the step must not say it did.
+  if (tense === "done") {
+    const pending = MAIL_WRITE_PENDING[words.join(" ")];
+    if (pending) return pending;
+  }
+  const [first, ...rest] = words;
   if (!first) return "";
   const verb = TOOL_VERBS[first]?.[tense === "activity" ? 0 : 1] ?? first;
   return capitalized([verb, ...rest].join(" "));
