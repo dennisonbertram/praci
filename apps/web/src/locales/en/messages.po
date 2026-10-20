@@ -6201,6 +6201,10 @@ msgstr "Paid with"
 msgid "Park"
 msgstr "Park"
 
+#: src/components/UiArtifactView.tsx
+msgid "Part of this can't be shown."
+msgstr "Part of this can't be shown."
+
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/pages/legal/LegalContracts.tsx

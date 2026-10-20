@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 211 of 211
-- Web and shared components: 597
-- Mobile components: 130 in 90 files, mobile — native story pending
+- Web and shared component files with stories: 212 of 212
+- Web and shared components: 601
+- Mobile components: 133 in 91 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -103,6 +103,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | SoftwareUpdatePanel, SoftwareUpdateSection, CheckSummary | [apps/web/src/components/SoftwareUpdateSection.tsx](../../apps/web/src/components/SoftwareUpdateSection.tsx) | [SoftwareUpdateSection.stories.tsx](../../apps/web/src/components/SoftwareUpdateSection.stories.tsx) | web |
 | SubscriptionGate | [apps/web/src/components/SubscriptionGate.tsx](../../apps/web/src/components/SubscriptionGate.tsx) | [SubscriptionGate.stories.tsx](../../apps/web/src/components/SubscriptionGate.stories.tsx) | web |
 | ToolSteps, ToolActivityDisclosure, StandaloneToolActivity, ToolOnlyNarration | [apps/web/src/components/ToolActivityDisclosure.tsx](../../apps/web/src/components/ToolActivityDisclosure.tsx) | [ToolActivityDisclosure.stories.tsx](../../apps/web/src/components/ToolActivityDisclosure.stories.tsx) | web |
+| UiArtifactView, Unsupported, BlockView, ChartView | [apps/web/src/components/UiArtifactView.tsx](../../apps/web/src/components/UiArtifactView.tsx) | [UiArtifactView.stories.tsx](../../apps/web/src/components/UiArtifactView.stories.tsx) | web |
 | UserTextBubble | [apps/web/src/components/UserTextBubble.tsx](../../apps/web/src/components/UserTextBubble.tsx) | [UserTextBubble.stories.tsx](../../apps/web/src/components/UserTextBubble.stories.tsx) | web |
 
 ## Web components/ai
@@ -398,6 +399,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ThreadComposer, MentionOptionIcon, MentionChipIcon | [apps/mobile/components/thread-composer.tsx](../../apps/mobile/components/thread-composer.tsx) | mobile — native story pending | mobile |
 | TimeSeparator | [apps/mobile/components/time-separator.tsx](../../apps/mobile/components/time-separator.tsx) | mobile — native story pending | mobile |
 | ToolCallLabel | [apps/mobile/components/tool-call-label.tsx](../../apps/mobile/components/tool-call-label.tsx) | mobile — native story pending | mobile |
+| UiArtifactPreview, BlockView, ChartView | [apps/mobile/components/ui-artifact-preview.tsx](../../apps/mobile/components/ui-artifact-preview.tsx) | mobile — native story pending | mobile |
 | UnreadDivider | [apps/mobile/components/unread-divider.tsx](../../apps/mobile/components/unread-divider.tsx) | mobile — native story pending | mobile |
 | VoicePlayerBar, VoiceControlButton | [apps/mobile/components/voice-player-bar.tsx](../../apps/mobile/components/voice-player-bar.tsx) | mobile — native story pending | mobile |
 | VoiceChatCard | [apps/mobile/components/VoiceChatCard.tsx](../../apps/mobile/components/VoiceChatCard.tsx) | mobile — native story pending | mobile |

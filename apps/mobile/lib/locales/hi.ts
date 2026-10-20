@@ -196,6 +196,7 @@ export const HI_MESSAGES: Record<string, string> = {
   "No artifacts yet": "अभी कोई आर्टिफ़ैक्ट नहीं",
   "No matching artifacts": "कोई मेल खाता आर्टिफ़ैक्ट नहीं",
   "No preview for this file type.": "इस फ़ाइल प्रकार का प्रीव्यू उपलब्ध नहीं है।",
+  "Part of this can't be shown.": "इसका कुछ हिस्सा नहीं दिखाया जा सकता।",
   "Search artifacts…": "आर्टिफ़ैक्ट खोजें…",
   Share: "शेयर करें",
   'Delete "{name}"?': '"{name}" हटाएँ?',

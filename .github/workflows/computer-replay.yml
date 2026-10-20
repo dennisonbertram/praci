@@ -21,6 +21,11 @@ concurrency:
   group: computer-runtime-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # OpenUI's parser package would send an install event otherwise.
+  OPENUI_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
 jobs:
   replay:
     name: Docker computer replay

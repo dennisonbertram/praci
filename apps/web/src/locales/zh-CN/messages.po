@@ -6201,6 +6201,10 @@ msgstr ""
 msgid "Park"
 msgstr "搁置"
 
+#: src/components/UiArtifactView.tsx
+msgid "Part of this can't be shown."
+msgstr ""
+
 #: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/pages/legal/LegalContracts.tsx

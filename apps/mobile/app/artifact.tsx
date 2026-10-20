@@ -1,6 +1,6 @@
 import { ChatMarkdown } from "@rakazo/chat-ui/native";
 import type { ArtifactVersion } from "@rakazo/contracts";
-import { isAttachmentImageMimeType } from "@rakazo/contracts";
+import { isAttachmentImageMimeType, UI_ARTIFACT_MIME_TYPE } from "@rakazo/contracts";
 import type { File } from "expo-file-system";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
 import type { ReactNode } from "react";
@@ -18,6 +18,7 @@ import {
 import { NativeSymbol } from "../components/native-symbol";
 import { SandboxedHtmlPreview } from "../components/sandboxed-html-preview";
 import { SheetArtifactPreview } from "../components/sheet-artifact-preview";
+import { UiArtifactPreview } from "../components/ui-artifact-preview";
 import { formatActivityRelativeTime } from "../lib/activity";
 import { mobileTokens } from "../lib/appearance";
 import { shareLocalFile, writeArtifactCacheFile } from "../lib/artifact-open";
@@ -41,6 +42,7 @@ type PreviewContent =
   | { kind: "markdown"; text: string }
   | { kind: "image"; uri: string }
   | { kind: "sheet"; artifactId: string }
+  | { kind: "ui"; source: string }
   | { kind: "unsupported" };
 
 type ContentState =
@@ -55,6 +57,7 @@ async function computePreview(
   const { mimeType } = artifact;
   if (isSpreadsheetArtifact(artifact.name, mimeType))
     return { kind: "sheet", artifactId: artifact.id };
+  if (mimeType === UI_ARTIFACT_MIME_TYPE) return { kind: "ui", source: await file.text() };
   if (mimeType === "text/html") return { kind: "html", html: await file.text() };
   if (mimeType === "text/markdown") return { kind: "markdown", text: await file.text() };
   if (isAttachmentImageMimeType(mimeType)) return { kind: "image", uri: file.uri };
@@ -311,6 +314,13 @@ function ArtifactPreview({
           {preview.text}
         </ChatMarkdown>
       </ScrollView>
+    );
+  }
+  if (preview.kind === "ui") {
+    return (
+      <View style={styles.previewCard}>
+        <UiArtifactPreview source={preview.source} />
+      </View>
     );
   }
   if (preview.kind === "sheet") {

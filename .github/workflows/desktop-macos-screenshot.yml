@@ -22,6 +22,11 @@ concurrency:
   group: desktop-macos-screenshot-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  # OpenUI's parser package would send an install event otherwise.
+  OPENUI_TELEMETRY_DISABLED: "1"
+  DO_NOT_TRACK: "1"
+
 jobs:
   screenshot:
     name: macOS setup screenshot

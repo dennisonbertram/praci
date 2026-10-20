@@ -1,5 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { ChatMarkdown } from "@rakazo/chat-ui/web";
+import { UI_ARTIFACT_MIME_TYPE } from "@rakazo/contracts";
 import { Button, Dialog, DialogClose, DialogContent, DialogTitle } from "@rakazo/ui-web";
 import { Code2, Download, FileText, X } from "lucide-react";
 import type { RefObject } from "react";
@@ -10,6 +11,7 @@ import { formatBytes } from "../lib/format-bytes";
 import { errorText } from "../lib/user-error";
 import { PdfViewer } from "./PdfViewer";
 import { SandboxedHtmlViewer } from "./SandboxedHtmlViewer";
+import { UiArtifactView } from "./UiArtifactView";
 
 type ArtifactFileCardProps = {
   target: ArtifactTarget;
@@ -19,8 +21,13 @@ type ArtifactFileCardProps = {
   size: number;
 };
 
-const PREVIEWABLE_MIME_TYPES = new Set(["text/markdown", "text/html", "application/pdf"]);
-const TEXT_MIME_TYPES = new Set(["text/markdown", "text/html"]);
+const PREVIEWABLE_MIME_TYPES = new Set([
+  "text/markdown",
+  "text/html",
+  "application/pdf",
+  UI_ARTIFACT_MIME_TYPE,
+]);
+const TEXT_MIME_TYPES = new Set(["text/markdown", "text/html", UI_ARTIFACT_MIME_TYPE]);
 
 export function ArtifactFileCard(props: ArtifactFileCardProps) {
   const { t } = useLingui();
@@ -207,6 +214,8 @@ function FilePreview({
           </div>
         ) : mimeType === "text/html" && state.text !== undefined ? (
           <SandboxedHtmlViewer html={state.text} title={name} />
+        ) : mimeType === UI_ARTIFACT_MIME_TYPE && state.text !== undefined ? (
+          <UiArtifactView source={state.text} />
         ) : mimeType === "application/pdf" ? (
           <PdfViewer bytes={state.bytes} title={name} />
         ) : state.text !== undefined ? (

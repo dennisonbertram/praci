@@ -722,6 +722,7 @@ export const ZH_MESSAGES: Record<string, string> = {
     "这将删除此制品的全部 {count} 个版本，且无法撤销。",
   Versions: "版本",
   "No preview for this file type.": "此文件类型无法预览。",
+  "Part of this can't be shown.": "部分内容无法显示。",
 
   "Your phone's built-in voice — free, no account needed": "手机自带的语音 — 免费，无需账户",
   "Speaks with your phone's own text-to-speech instead of a connected provider.":

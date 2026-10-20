@@ -744,6 +744,7 @@ export const RU_MESSAGES: Record<string, string> = {
     "Будут удалены все версии этого артефакта ({count}). Это действие нельзя отменить.",
   Versions: "Версии",
   "No preview for this file type.": "Для этого типа файла нет предпросмотра.",
+  "Part of this can't be shown.": "Часть содержимого нельзя показать.",
 
   "Your phone's built-in voice — free, no account needed":
     "Встроенный голос телефона — бесплатно, без аккаунта",

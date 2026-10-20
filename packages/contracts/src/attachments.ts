@@ -12,6 +12,9 @@ export const ATTACHMENT_IMAGE_MIME_TYPES = [
   "image/gif",
 ] as const;
 
+/** A declarative UI artifact (cards, tables, charts) stored as OpenUI Lang text. */
+export const UI_ARTIFACT_MIME_TYPE = "application/vnd.rakazo.ui+openui";
+
 export const ATTACHMENT_FILE_MIME_TYPES = [
   "application/pdf",
   "text/plain",
@@ -23,6 +26,7 @@ export const ATTACHMENT_FILE_MIME_TYPES = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-excel.sheet.macroEnabled.12",
   "text/tab-separated-values",
+  UI_ARTIFACT_MIME_TYPE,
 ] as const;
 
 export const ATTACHMENT_ALLOWED_MIME_TYPES = [

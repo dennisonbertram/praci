@@ -1,4 +1,5 @@
 FROM node:22-bookworm
+ENV OPENUI_TELEMETRY_DISABLED=1 DO_NOT_TRACK=1
 
 RUN corepack enable
 WORKDIR /app
