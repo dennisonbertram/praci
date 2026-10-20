@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 234 of 234
-- Web and shared components: 646
+- Web and shared component files with stories: 235 of 235
+- Web and shared components: 648
 - Mobile components: 137 in 94 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -218,6 +218,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | AppLogo | [apps/web/src/components/integrations/AppLogo.tsx](../../apps/web/src/components/integrations/AppLogo.tsx) | [AppLogo.stories.tsx](../../apps/web/src/components/integrations/AppLogo.stories.tsx) | web |
 | BlockscoutConnectDialog | [apps/web/src/components/integrations/BlockscoutConnectDialog.tsx](../../apps/web/src/components/integrations/BlockscoutConnectDialog.tsx) | [BlockscoutConnectDialog.stories.tsx](../../apps/web/src/components/integrations/BlockscoutConnectDialog.stories.tsx) | web |
 | ConnectAppDialog | [apps/web/src/components/integrations/ConnectAppDialog.tsx](../../apps/web/src/components/integrations/ConnectAppDialog.tsx) | [ConnectAppDialog.stories.tsx](../../apps/web/src/components/integrations/ConnectAppDialog.stories.tsx) | web |
+| ConnectAppsStep, OnboardingConnectApps | [apps/web/src/components/integrations/ConnectAppsStep.tsx](../../apps/web/src/components/integrations/ConnectAppsStep.tsx) | [ConnectAppsStep.stories.tsx](../../apps/web/src/components/integrations/ConnectAppsStep.stories.tsx) | web |
 | ConnectionDialog | [apps/web/src/components/integrations/ConnectionDialog.tsx](../../apps/web/src/components/integrations/ConnectionDialog.tsx) | [ConnectionDialog.stories.tsx](../../apps/web/src/components/integrations/ConnectionDialog.stories.tsx) | web |
 | CustomConnectionDialog | [apps/web/src/components/integrations/CustomConnectionDialog.tsx](../../apps/web/src/components/integrations/CustomConnectionDialog.tsx) | [CustomConnectionDialog.stories.tsx](../../apps/web/src/components/integrations/CustomConnectionDialog.stories.tsx) | web |
 | ExchangeConnectDialog | [apps/web/src/components/integrations/ExchangeConnectDialog.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.tsx) | [ExchangeConnectDialog.stories.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.stories.tsx) | web |
