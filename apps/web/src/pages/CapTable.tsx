@@ -36,6 +36,12 @@ import type { FormEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
+import type { ContactPrefill as Prefill } from "../components/ContactDialog";
+import {
+  ContactDialog,
+  contactAddLabels,
+  contactKindNames as kindNames,
+} from "../components/ContactDialog";
 import { OwnershipDonut } from "../components/cap-table/OwnershipDonut";
 import { DataRoomImportMenu } from "../components/data-room/DataRoomImportMenu";
 import { FolderDocuments } from "../components/data-room/FolderDocuments";
@@ -53,18 +59,14 @@ import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
-type Filter = "all" | RowKind;
+/** The tabs: the Carta kinds and the contact kinds this page adds a button for. */
+type CapKind = "investor" | "auditor" | "other";
+type Filter = "all" | "shareholder" | "options" | CapKind;
 /** The Data room folder the cap table's documents are filed into. */
 const CAP_TABLE_FOLDER = ["Finance", "Cap Table"];
 
 type Snapshot = NonNullable<CapTableState["snapshot"]>;
 type Holder = Snapshot["holders"][number];
-type Prefill = {
-  name: string;
-  email: string | null;
-  organization: string | null;
-  kind?: ContactKind;
-};
 /** Shareholders and Options come from Carta; Investors mixes both; Auditors and Other are contacts. */
 const FILTERS = [
   "all",
@@ -75,7 +77,7 @@ const FILTERS = [
   "other",
 ] as const satisfies readonly Filter[];
 const CARTA_FILTERS: readonly Filter[] = ["shareholder", "options"];
-const isContactKind = (filter: Filter): filter is ContactKind =>
+const isContactKind = (filter: Filter): filter is CapKind =>
   filter === "investor" || filter === "auditor" || filter === "other";
 const parseFilter = (value: string | null): Filter =>
   FILTERS.find((filter) => filter === value) ?? "all";
@@ -222,22 +224,11 @@ function Summary({ snapshot }: { snapshot: Snapshot | null }) {
   );
 }
 
-const kindNames = (): Record<ContactKind, string> => ({
-  investor: t`Investor`,
-  auditor: t`Auditor`,
-  other: t`Other`,
-});
 const rowKindNames = (): Record<RowKind, string> => ({
   ...kindNames(),
   shareholder: t`Shareholder`,
   options: t`Options`,
 });
-const addKindLabels = (): Record<ContactKind, string> => ({
-  investor: t`Add investor`,
-  auditor: t`Add auditor`,
-  other: t`Add contact`,
-});
-
 /** The Carta sign-in, opened from Cap Table so the founder stays on this page. */
 function ConnectCartaDialog({
   onClose,
@@ -262,197 +253,6 @@ function ConnectCartaDialog({
       service={carta.name}
       onClose={onClose}
     />
-  );
-}
-
-/** Name, email, organization and notes of one contact; `contact` null adds a new one. */
-export function ContactDialog({
-  contact,
-  prefill,
-  contacts = [],
-  onClose,
-  onSaved,
-  onDeleted,
-  onOpenContact,
-}: {
-  contact: Contact | null;
-  prefill?: Prefill;
-  /** The user's other contacts, to offer the one that already has the email typed. */
-  contacts?: readonly Contact[];
-  onClose: () => void;
-  onSaved: (saved: Contact) => void;
-  onDeleted?: (contact: Contact) => void;
-  onOpenContact?: (contact: Contact) => void;
-}) {
-  const [name, setName] = useState(contact?.name ?? prefill?.name ?? "");
-  const [email, setEmail] = useState(contact?.email ?? prefill?.email ?? "");
-  const [organization, setOrganization] = useState(
-    contact?.organization ?? prefill?.organization ?? "",
-  );
-  const [kind, setKind] = useState<ContactKind>(contact?.kind ?? prefill?.kind ?? "investor");
-  const [notes, setNotes] = useState(contact?.notes ?? "");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  const names = kindNames();
-
-  const typedEmail = email.trim().toLowerCase();
-  const sameEmail = typedEmail
-    ? contacts.find(
-        (other) => other.id !== contact?.id && other.email?.toLowerCase() === typedEmail,
-      )
-    : undefined;
-
-  async function run<T>(action: () => Promise<T>, done: (result: T) => void) {
-    setBusy(true);
-    setError("");
-    try {
-      done(await action());
-      onClose();
-    } catch (cause) {
-      setError(errorText(cause));
-      setBusy(false);
-    }
-  }
-
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    void run(
-      () =>
-        rpc.contacts.save({
-          ...(contact ? { id: contact.id } : {}),
-          name,
-          email: email.trim() || null,
-          organization: organization.trim() || null,
-          kind,
-          notes: notes.trim() || null,
-        }),
-      onSaved,
-    );
-  }
-
-  return (
-    <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {contact ? (
-              <Trans>Edit contact</Trans>
-            ) : prefill?.name && prefill.email ? (
-              <Trans>Save {prefill.name} as a contact</Trans>
-            ) : prefill?.name ? (
-              <Trans>Add email for {prefill.name}</Trans>
-            ) : prefill?.kind ? (
-              addKindLabels()[prefill.kind]
-            ) : (
-              <Trans>Add contact</Trans>
-            )}
-          </DialogTitle>
-        </DialogHeader>
-        <form onSubmit={submit} className="flex flex-col gap-3">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="contact-name">
-              <Trans>Name</Trans>
-            </Label>
-            <Input
-              id="contact-name"
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="contact-email">
-              <Trans>Email</Trans>
-            </Label>
-            <Input
-              id="contact-email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="contact-organization">
-              <Trans>Organization</Trans>
-            </Label>
-            <Input
-              id="contact-organization"
-              value={organization}
-              onChange={(e) => setOrganization(e.target.value)}
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="contact-kind">
-              <Trans>Kind</Trans>
-            </Label>
-            <NativeSelect
-              id="contact-kind"
-              value={kind}
-              onChange={(e) => setKind(e.target.value as ContactKind)}
-            >
-              {(Object.keys(names) as ContactKind[]).map((value) => (
-                <NativeSelectOption key={value} value={value}>
-                  {names[value]}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="contact-notes">
-              <Trans>Notes</Trans>
-            </Label>
-            <Textarea
-              id="contact-notes"
-              aria-describedby="contact-notes-hint"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-            />
-            <p id="contact-notes-hint" className="text-xs text-muted-foreground">
-              <Trans>Contacts are your address book. They do not change Carta.</Trans>
-            </p>
-          </div>
-          {error ? (
-            <div role="alert" className="flex flex-wrap items-center gap-2 text-sm">
-              <span className="text-destructive">{error}</span>
-              {sameEmail && onOpenContact ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onOpenContact(sameEmail)}
-                >
-                  <Trans>Open {sameEmail.name}</Trans>
-                </Button>
-              ) : null}
-            </div>
-          ) : null}
-          <DialogFooter>
-            {contact ? (
-              <Button
-                type="button"
-                variant="destructive"
-                className="me-auto"
-                disabled={busy}
-                onClick={() =>
-                  void run(
-                    () => rpc.contacts.delete({ id: contact.id }),
-                    () => onDeleted?.(contact),
-                  )
-                }
-              >
-                <Trans>Delete</Trans>
-              </Button>
-            ) : null}
-            <Button type="button" variant="outline" disabled={busy} onClick={onClose}>
-              <Trans>Cancel</Trans>
-            </Button>
-            <Button type="submit" disabled={busy || !name.trim()}>
-              <Trans>Save</Trans>
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 
@@ -700,7 +500,7 @@ export function CapTablePage({
     auditor: t`No auditors yet`,
     other: t`No other contacts yet`,
   };
-  const addKindLabel = addKindLabels();
+  const addKindLabel = contactAddLabels();
   const addContact = () =>
     setEditing(
       isContactKind(filter) ? { name: "", email: null, organization: null, kind: filter } : "new",
