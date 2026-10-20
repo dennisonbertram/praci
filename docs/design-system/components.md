@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 209 of 209
-- Web and shared components: 595
-- Mobile components: 128 in 89 files, mobile — native story pending
+- Web and shared component files with stories: 212 of 212
+- Web and shared components: 597
+- Mobile components: 130 in 90 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -183,7 +183,9 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | InboxMessageDialog, InboxMessage, AttachmentIcon, InboxAttachments, SentMark, ThreadMessages, ThreadMessage | [apps/web/src/components/inbox/InboxMessageDialog.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.tsx) | [InboxMessageDialog.stories.tsx](../../apps/web/src/components/inbox/InboxMessageDialog.stories.tsx) | web |
+| InboxPileTabs | [apps/web/src/components/inbox/InboxPileTabs.tsx](../../apps/web/src/components/inbox/InboxPileTabs.tsx) | [InboxPileTabs.stories.tsx](../../apps/web/src/components/inbox/InboxPileTabs.stories.tsx) | web |
 | InboxGroup, InboxRow | [apps/web/src/components/inbox/InboxRow.tsx](../../apps/web/src/components/inbox/InboxRow.tsx) | [InboxRow.stories.tsx](../../apps/web/src/components/inbox/InboxRow.stories.tsx) | web |
+| InboxSenderGroup | [apps/web/src/components/inbox/InboxSenderGroup.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.tsx) | [InboxSenderGroup.stories.tsx](../../apps/web/src/components/inbox/InboxSenderGroup.stories.tsx) | web |
 | InboxShortcuts | [apps/web/src/components/inbox/InboxShortcuts.tsx](../../apps/web/src/components/inbox/InboxShortcuts.tsx) | [InboxShortcuts.stories.tsx](../../apps/web/src/components/inbox/InboxShortcuts.stories.tsx) | web |
 | TodoCard | [apps/web/src/components/inbox/TodoCard.tsx](../../apps/web/src/components/inbox/TodoCard.tsx) | [TodoCard.stories.tsx](../../apps/web/src/components/inbox/TodoCard.stories.tsx) | web |
 
@@ -253,7 +255,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | InboxPage | [apps/web/src/pages/Inbox.tsx](../../apps/web/src/pages/Inbox.tsx) | [Inbox.stories.tsx](../../apps/web/src/pages/Inbox.stories.tsx) | web |
 | IntegrationsPage | [apps/web/src/pages/Integrations.tsx](../../apps/web/src/pages/Integrations.tsx) | [Integrations.stories.tsx](../../apps/web/src/pages/Integrations.stories.tsx) | web |
 | IntegrationSetupPage | [apps/web/src/pages/IntegrationSetup.tsx](../../apps/web/src/pages/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/pages/IntegrationSetup.stories.tsx) | web |
-| KnowledgeSection, SpaceMemorySection, MemoryDocumentList, SkillSourceBadge, AgentSkills | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
+| KnowledgeSection, SpaceMemorySection, MemoryDocumentList | [apps/web/src/pages/KnowledgeSection.tsx](../../apps/web/src/pages/KnowledgeSection.tsx) | [KnowledgeSection.stories.tsx](../../apps/web/src/pages/KnowledgeSection.stories.tsx) | web |
 | LegalPage, Legal, ModelBlockerNotice, GraphTab, LegalSkeleton | [apps/web/src/pages/Legal.tsx](../../apps/web/src/pages/Legal.tsx) | [Legal.stories.tsx](../../apps/web/src/pages/Legal.stories.tsx) | web |
 | Title, Status, LegalContracts | [apps/web/src/pages/legal/LegalContracts.tsx](../../apps/web/src/pages/legal/LegalContracts.tsx) | [LegalContracts.stories.tsx](../../apps/web/src/pages/legal/LegalContracts.stories.tsx) | web |
 | LegalDeadlines | [apps/web/src/pages/legal/LegalDeadlines.tsx](../../apps/web/src/pages/legal/LegalDeadlines.tsx) | [LegalDeadlines.stories.tsx](../../apps/web/src/pages/legal/LegalDeadlines.stories.tsx) | web |
@@ -282,6 +284,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | ComputerModePicker, BotSettings | [apps/web/src/pages/shell/bot-panel.tsx](../../apps/web/src/pages/shell/bot-panel.tsx) | [bot-panel.stories.tsx](../../apps/web/src/pages/shell/bot-panel.stories.tsx) | web |
 | BotCreatePicker | [apps/web/src/pages/shell/bot-picker.tsx](../../apps/web/src/pages/shell/bot-picker.tsx) | [bot-picker.stories.tsx](../../apps/web/src/pages/shell/bot-picker.stories.tsx) | web |
 | PinsStrip, ItemRow, PinsList | [apps/web/src/pages/shell/bot-pins.tsx](../../apps/web/src/pages/shell/bot-pins.tsx) | [bot-pins.stories.tsx](../../apps/web/src/pages/shell/bot-pins.stories.tsx) | web |
+| SkillSourceBadge, BotSkillsSection | [apps/web/src/pages/shell/BotSkillsSection.tsx](../../apps/web/src/pages/shell/BotSkillsSection.tsx) | [BotSkillsSection.stories.tsx](../../apps/web/src/pages/shell/BotSkillsSection.stories.tsx) | web |
 | ReplyThumbnail, TimeSeparator, ComposerReplyPreview, ReplyLine | [apps/web/src/pages/shell/chat-context.tsx](../../apps/web/src/pages/shell/chat-context.tsx) | [chat-context.stories.tsx](../../apps/web/src/pages/shell/chat-context.stories.tsx) | web |
 | CommandPalette | [apps/web/src/pages/shell/command-palette.tsx](../../apps/web/src/pages/shell/command-palette.tsx) | [command-palette.stories.tsx](../../apps/web/src/pages/shell/command-palette.stories.tsx) | web |
 | ComposerError | [apps/web/src/pages/shell/composer-error.tsx](../../apps/web/src/pages/shell/composer-error.tsx) | [composer-error.stories.tsx](../../apps/web/src/pages/shell/composer-error.stories.tsx) | web |
@@ -324,7 +327,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | GroupSettingsScreen | [apps/mobile/app/group-settings.tsx](../../apps/mobile/app/group-settings.tsx) | mobile — native story pending | mobile |
 | ImageScreen | [apps/mobile/app/image.tsx](../../apps/mobile/app/image.tsx) | mobile — native story pending | mobile |
 | InboxMessageScreen | [apps/mobile/app/inbox-message.tsx](../../apps/mobile/app/inbox-message.tsx) | mobile — native story pending | mobile |
-| InboxScreen, TodoCard, MailListRow | [apps/mobile/app/inbox.tsx](../../apps/mobile/app/inbox.tsx) | mobile — native story pending | mobile |
+| InboxScreen, TodoCard, MailGroupRow, MailListRow | [apps/mobile/app/inbox.tsx](../../apps/mobile/app/inbox.tsx) | mobile — native story pending | mobile |
 | HomeSession, Home, ActivitySection, ActivityRow, MailInboxRow, HeaderButton | [apps/mobile/app/index.tsx](../../apps/mobile/app/index.tsx) | mobile — native story pending | mobile |
 | NewGroup | [apps/mobile/app/new-group.tsx](../../apps/mobile/app/new-group.tsx) | mobile — native story pending | mobile |
 | NewSpace | [apps/mobile/app/new-space.tsx](../../apps/mobile/app/new-space.tsx) | mobile — native story pending | mobile |
@@ -368,6 +371,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | SearchRow | [apps/mobile/components/inbox-render-item.tsx](../../apps/mobile/components/inbox-render-item.tsx) | mobile — native story pending | mobile |
 | BotRow, GroupRow | [apps/mobile/components/inbox-rows.tsx](../../apps/mobile/components/inbox-rows.tsx) | mobile — native story pending | mobile |
 | InlineImageAttachment | [apps/mobile/components/inline-image-attachment.tsx](../../apps/mobile/components/inline-image-attachment.tsx) | mobile — native story pending | mobile |
+| MailRowMenu | [apps/mobile/components/mail-row-menu.tsx](../../apps/mobile/components/mail-row-menu.tsx) | mobile — native story pending | mobile |
 | MarkdownArtifactPreview | [apps/mobile/components/markdown-artifact-preview.tsx](../../apps/mobile/components/markdown-artifact-preview.tsx) | mobile — native story pending | mobile |
 | McpApprovalCard | [apps/mobile/components/McpApprovalCard.tsx](../../apps/mobile/components/McpApprovalCard.tsx) | mobile — native story pending | mobile |
 | MenuPickerMenu, MenuPicker | [apps/mobile/components/menu-picker.tsx](../../apps/mobile/components/menu-picker.tsx) | mobile — native story pending | mobile |

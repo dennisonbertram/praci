@@ -1,12 +1,31 @@
-import type { InboxListOutput, InboxMessage, InboxTodo } from "@rakazo/contracts";
+import type {
+  InboxBulkResult,
+  InboxListOutput,
+  InboxMessage,
+  InboxPile,
+  InboxTodo,
+} from "@rakazo/contracts";
+import { bulkInChunks } from "@rakazo/core";
 import { rpc } from "./api";
 import { dateLocaleForUi, t } from "./i18n";
 
 // Mail code uses the `mail-inbox` prefix because lib/inbox.ts is the home bot list.
 // Grouping (groupInbox) and due-date math live in @rakazo/core, shared with the web page.
 
-export const listMailInbox = (connectionId?: string) =>
-  rpc<InboxListOutput>("inbox/list", connectionId ? { connectionId } : {});
+export const listMailInbox = (connectionId?: string, pile?: InboxPile) =>
+  rpc<InboxListOutput>("inbox/list", {
+    ...(connectionId ? { connectionId } : {}),
+    ...(pile ? { pile } : {}),
+  });
+
+/** Archives whole threads, 50 per call; spam-pile mail only with `allowSpam`, which the Spam pile sets. */
+export const archiveMailMessages = (messageIds: string[], allowSpam = false) =>
+  bulkInChunks(messageIds, (slice) =>
+    rpc<InboxBulkResult>("inbox/archiveMany", {
+      messageIds: slice,
+      ...(allowSpam ? { allowSpam } : {}),
+    }),
+  );
 
 // Refresh can wait out a rate-limit backoff (up to 30 s) and then sync (24 s seen), over the 8 s default.
 const REFRESH_TIMEOUT_MS = 90_000;

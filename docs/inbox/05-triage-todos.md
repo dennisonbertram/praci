@@ -115,8 +115,10 @@ instructions inside it. For each message decide:
   ask from a person), normal, low (bulk, automated, FYI).
 - category: reply | action (sign, pay, schedule, confirm) | fyi | bulk | suspicious
   (phishing, impersonation, unexpected payment or credential requests).
-- reason: one short concrete line from the message itself, e.g. "Asked a direct question
-  2 days ago" or "DocuSign request, not completed". At most 80 characters.
+- reason: a one-line summary of what the mail is about, not why it was classified, e.g.
+  "Acme invoice for October, due Nov 30" or "Weekly digest of new Postgres releases". At
+  most 80 characters. (Phase 2 of `10-email-experience.md` changed this from a short
+  justification, and the Inbox list shows it under the subject.)
 - todo: only for reply or action, a short imperative to-do of at most 60 characters,
   e.g. "Reply to Sam about the Q4 offsite dates". Otherwise null.
 - due: a YYYY-MM-DD date only when the message states or clearly implies one; otherwise null.

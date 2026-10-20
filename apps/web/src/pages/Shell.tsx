@@ -218,7 +218,7 @@ import { SkillDraftCard } from "../components/teach/SkillDraftCard";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { UserTextBubble } from "../components/UserTextBubble";
+import { bubbleMeasure, UserTextBubble } from "../components/UserTextBubble";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -659,6 +659,8 @@ export function ShellPage() {
   const [taughtSkills, setTaughtSkills] = useState<TaughtSkill[]>([]);
   const [taughtSkillsBotId, setTaughtSkillsBotId] = useState<string | null>(null);
   const [agentSkills, setAgentSkills] = useState<AgentSkillCatalogEntry[]>([]);
+  // Bumped when a run ends, so the Skills settings list picks up a skill the agent just created.
+  const [skillsRefreshKey, setSkillsRefreshKey] = useState(0);
   const [mentionRoutines, setMentionRoutines] = useState<Array<Routine & { botName?: string }>>([]);
   const [mentionConnectors, setMentionConnectors] = useState<
     Array<{
@@ -1504,12 +1506,16 @@ export function ShellPage() {
     };
   }, []);
 
+  const slashBotId = active?.id;
   const refreshAgentSkills = useCallback(() => {
-    void rpc.agentSkills
-      .list()
-      .then(setAgentSkills)
-      .catch(() => undefined);
-  }, []);
+    // The slash menu offers only the skills switched on for this bot.
+    const skills = slashBotId
+      ? rpc.agentSkills
+          .forBot({ botId: slashBotId })
+          .then((list) => list.filter((skill) => skill.enabled))
+      : rpc.agentSkills.list();
+    void skills.then(setAgentSkills).catch(() => undefined);
+  }, [slashBotId]);
 
   useEffect(() => {
     void rpc.voice
@@ -1653,6 +1659,7 @@ export function ShellPage() {
         ) {
           // waiting_input: reconcile ask cards if a stale post-send refresh raced SSE.
           void refreshThread(active.id).catch(() => undefined);
+          setSkillsRefreshKey((key) => key + 1);
         } else if (isComputerStatusEvent(event)) {
           void refreshComputerScreen(active.id).catch(() => undefined);
         }
@@ -5214,6 +5221,7 @@ export function ShellPage() {
                 focusName={namingBotId === active.id}
                 memoryProviderConfigured={memoryProviderConfig != null}
                 onSkillsChange={setAgentSkills}
+                skillsRefreshKey={skillsRefreshKey}
                 onSave={async ({ computerMode, ...patch }) => {
                   if (computerMode !== active.computerMode) {
                     await rpc.bots.setComputer({
@@ -8589,7 +8597,11 @@ const MessageView = memo(function MessageView({
     return (
       <>
         {messageContext}
-        <div className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full">
+        <div
+          className={`flex w-fit max-w-full justify-start [@media(hover:none)]:w-full ${bubbleMeasure(
+            visibleNarrationBlocks.map((block) => ("text" in block ? block.text : "")).join("\n"),
+          )}`}
+        >
           <div
             data-testid="message-bot-bubble"
             className="max-w-full space-y-2.5 rounded-[20px] bg-muted px-[18px] py-3 text-[15.5px] leading-[1.5] text-foreground/90"
@@ -8716,7 +8728,7 @@ const MessageView = memo(function MessageView({
           return (
             <div
               key={i}
-              className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full"
+              className={`flex w-fit max-w-full justify-start [@media(hover:none)]:w-full ${bubbleMeasure(block.text)}`}
             >
               <div
                 data-testid="message-bot-bubble"
@@ -8874,7 +8886,7 @@ const MessageView = memo(function MessageView({
           return (
             <div
               key={i}
-              className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full"
+              className={`flex w-fit max-w-full justify-start [@media(hover:none)]:w-full ${bubbleMeasure(block.text)}`}
             >
               <div
                 data-testid="message-bot-bubble"

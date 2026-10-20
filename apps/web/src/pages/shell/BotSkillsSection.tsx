@@ -1,0 +1,383 @@
+import { Trans, useLingui } from "@lingui/react/macro";
+import type { AgentSkill, AgentSkillCatalogEntry, BotAgentSkill } from "@rakazo/contracts";
+import {
+  Badge,
+  Button,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  Input,
+  Skeleton,
+  Switch,
+  Textarea,
+} from "@rakazo/ui-web";
+import { useEffect, useRef, useState } from "react";
+import { rpc } from "../../lib/rpc";
+
+export function SkillSourceBadge({ source }: { source: AgentSkillCatalogEntry["source"] }) {
+  if (source !== "builtin" && source !== "plugin") return null;
+  return (
+    <Badge
+      variant="secondary"
+      className="rounded-full px-1.5 py-0 text-[11px] font-normal text-muted-foreground"
+    >
+      {source === "builtin" ? <Trans>Built-in</Trans> : <Trans>Plugin</Trans>}
+    </Badge>
+  );
+}
+
+const NEW_SKILL_TEMPLATE = `---
+name: my-skill
+description: What this skill does and when the agent should use it.
+---
+
+Steps the agent should follow.
+`;
+
+const fieldClass = "mt-2 w-full font-mono text-[13px] leading-relaxed";
+
+/**
+ * Settings → Skills: every skill this bot can use, with a switch per skill, plus the actions that
+ * add one (write, upload a SKILL.md, or fetch one from a link). `refreshKey` reloads the list when
+ * the agent creates a skill in chat.
+ */
+export function BotSkillsSection({
+  botId,
+  refreshKey = 0,
+  onSkillsChange,
+}: {
+  botId: string;
+  refreshKey?: number;
+  onSkillsChange: (skills: AgentSkillCatalogEntry[]) => void;
+}) {
+  const { t } = useLingui();
+  const [loading, setLoading] = useState(true);
+  const [skills, setSkills] = useState<BotAgentSkill[]>([]);
+  const [open, setOpen] = useState<AgentSkill | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [urlOpen, setUrlOpen] = useState(false);
+  const [url, setUrl] = useState("");
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const generation = useRef(0);
+  const selection = useRef(0);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const onChange = useRef(onSkillsChange);
+  onChange.current = onSkillsChange;
+
+  async function refresh() {
+    const current = ++generation.current;
+    const list = await rpc.agentSkills.forBot({ botId });
+    if (current !== generation.current) return;
+    setSkills(list);
+    onChange.current(list.filter((skill) => skill.enabled));
+  }
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey reloads the list on demand
+  useEffect(() => {
+    const current = ++generation.current;
+    void rpc.agentSkills
+      .forBot({ botId })
+      .then((list) => {
+        if (current !== generation.current) return;
+        setSkills(list);
+        setLoading(false);
+        setError(null);
+        onChange.current(list.filter((skill) => skill.enabled));
+      })
+      .catch(() => {
+        if (current !== generation.current) return;
+        setLoading(false);
+        setError(t`Could not load`);
+      });
+    return () => {
+      generation.current += 1;
+      selection.current += 1;
+    };
+  }, [botId, refreshKey, t]);
+
+  function closeEditor() {
+    selection.current += 1;
+    setOpen(null);
+    setCreating(false);
+    setUrlOpen(false);
+    setConfirmingDelete(false);
+  }
+
+  async function reload() {
+    try {
+      await refresh();
+    } catch {
+      setError(t`Could not load`);
+    }
+  }
+
+  async function toggle(skill: BotAgentSkill, enabled: boolean) {
+    setError(null);
+    const set = (value: boolean) =>
+      setSkills((list) => list.map((s) => (s.id === skill.id ? { ...s, enabled: value } : s)));
+    set(enabled);
+    try {
+      await rpc.agentSkills.setEnabled({ botId, skillKey: skill.id, enabled });
+      onChange.current(
+        skills.map((s) => (s.id === skill.id ? { ...s, enabled } : s)).filter((s) => s.enabled),
+      );
+    } catch {
+      set(!enabled);
+      setError(t`Could not save skill`);
+    }
+  }
+
+  async function openSkill(entry: BotAgentSkill) {
+    if (busy) return;
+    const current = ++selection.current;
+    setCreating(false);
+    setUrlOpen(false);
+    setConfirmingDelete(false);
+    setError(null);
+    try {
+      const skill = await rpc.agentSkills.get({ skillId: entry.id });
+      // A slower response must not clobber a newer selection or a fresh draft.
+      if (current !== selection.current) return;
+      setOpen(skill);
+      setDraft(skill.content);
+    } catch {
+      if (current !== selection.current) return;
+      setError(t`Could not load skill`);
+    }
+  }
+
+  /** Runs one write, then closes the editor and reloads the list. */
+  async function write(action: () => Promise<unknown>, failure = t`Could not save skill`) {
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await action();
+      closeEditor();
+      await reload();
+    } catch {
+      setError(failure);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const save = () =>
+    draft.trim()
+      ? write(() =>
+          creating
+            ? rpc.agentSkills.create({ content: draft })
+            : open
+              ? rpc.agentSkills.update({ skillId: open.id, content: draft })
+              : Promise.resolve(),
+        )
+      : undefined;
+
+  const importUrl = () =>
+    url.trim()
+      ? write(async () => {
+          await rpc.agentSkills.importFromUrl({ url });
+          setUrl("");
+        })
+      : undefined;
+
+  async function upload(file: File | undefined) {
+    if (!file) return;
+    await write(async () => rpc.agentSkills.create({ content: await file.text() }));
+  }
+
+  async function remove(skill: AgentSkill) {
+    if (busy) return;
+    if (!confirmingDelete) {
+      setConfirmingDelete(true);
+      return;
+    }
+    await write(() => rpc.agentSkills.remove({ skillId: skill.id }), t`Could not delete skill`);
+  }
+
+  const editorOpen = creating || open;
+  return (
+    <section className="mt-6" data-testid="bot-skills">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-[13.5px] font-medium text-foreground">
+          <Trans>Skills</Trans>
+        </h3>
+        {!editorOpen ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              disabled={busy}
+              render={
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className="px-2.5 text-[13px] text-muted-foreground hover:text-foreground"
+                />
+              }
+            >
+              <Trans>Add skill</Trans>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-auto min-w-44">
+              <DropdownMenuItem
+                onClick={() => {
+                  closeEditor();
+                  setCreating(true);
+                  setDraft(NEW_SKILL_TEMPLATE);
+                  setError(null);
+                }}
+              >
+                <Trans>New skill</Trans>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => fileInput.current?.click()}>
+                <Trans>Upload SKILL.md</Trans>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  closeEditor();
+                  setUrlOpen(true);
+                  setError(null);
+                }}
+              >
+                <Trans>From URL</Trans>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
+      </div>
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".md,text/markdown"
+        hidden
+        data-testid="bot-skills-upload"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          void upload(file);
+        }}
+      />
+      {error ? <div className="px-2.5 py-1 text-[13px] text-destructive">{error}</div> : null}
+      {urlOpen ? (
+        <div className="mt-2 flex items-center gap-2">
+          <Input
+            aria-label={t`From URL`}
+            value={url}
+            disabled={busy}
+            placeholder="https://"
+            onChange={(event) => setUrl(event.target.value)}
+          />
+          <Button
+            variant="ghost"
+            type="button"
+            disabled={busy || !url.trim()}
+            onClick={() => void importUrl()}
+            className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+          >
+            <Trans>Save</Trans>
+          </Button>
+          <Button
+            variant="ghost"
+            type="button"
+            disabled={busy}
+            onClick={closeEditor}
+            className="rounded-lg px-3 py-1.5 text-[13px] text-muted-foreground"
+          >
+            <Trans>Cancel</Trans>
+          </Button>
+        </div>
+      ) : null}
+      {loading ? <Skeleton className="mt-2 h-10 w-full" /> : null}
+      {!editorOpen && !urlOpen
+        ? skills.map((entry) => (
+            <div key={entry.id} className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                type="button"
+                disabled={busy}
+                onClick={() => void openSkill(entry)}
+                className="h-auto min-w-0 flex-1 justify-start whitespace-normal px-2.5 py-2.5 text-start block"
+              >
+                <span className="flex w-full items-center gap-2">
+                  <span className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
+                    {entry.name}
+                  </span>
+                  <SkillSourceBadge source={entry.source} />
+                </span>
+                <span
+                  className="mt-0.5 block truncate text-[12.5px] text-muted-foreground"
+                  dir="auto"
+                >
+                  {entry.description}
+                </span>
+              </Button>
+              <Switch
+                checked={entry.enabled}
+                aria-label={t`Use ${entry.name}`}
+                onCheckedChange={(checked) => void toggle(entry, checked)}
+              />
+            </div>
+          ))
+        : null}
+      {editorOpen ? (
+        <div className="px-2.5 pb-2">
+          {open ? (
+            <div className="flex items-center gap-2 pb-1">
+              <div className="min-w-0 truncate text-[14px] text-foreground" dir="auto">
+                {open.name}
+              </div>
+              <SkillSourceBadge source={open.source} />
+            </div>
+          ) : null}
+          <Textarea
+            aria-label="SKILL.md"
+            disabled={busy}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            rows={Math.min(20, Math.max(8, draft.split("\n").length + 1))}
+            readOnly={Boolean(open?.readOnly)}
+            className={fieldClass}
+            dir="auto"
+          />
+          <div className="mt-2 flex items-center gap-2">
+            {!open?.readOnly ? (
+              <Button
+                variant="ghost"
+                type="button"
+                disabled={busy || !draft.trim() || (!creating && draft === open?.content)}
+                onClick={() => void save()}
+                className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground disabled:opacity-50"
+              >
+                <Trans>Save</Trans>
+              </Button>
+            ) : null}
+            <Button
+              variant="ghost"
+              type="button"
+              disabled={busy}
+              onClick={closeEditor}
+              className="rounded-lg px-3 py-1.5 text-[13px] text-muted-foreground"
+            >
+              {open?.readOnly ? <Trans>Close</Trans> : <Trans>Cancel</Trans>}
+            </Button>
+            {open && !open.readOnly ? (
+              <Button
+                variant="ghost"
+                type="button"
+                disabled={busy}
+                onClick={() => void remove(open)}
+                className={`ms-auto rounded-lg px-3 py-1.5 text-[13px] ${
+                  confirmingDelete ? "bg-destructive/10 text-destructive" : "text-destructive"
+                }`}
+              >
+                {confirmingDelete ? <Trans>Confirm delete</Trans> : <Trans>Delete</Trans>}
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </section>
+  );
+}

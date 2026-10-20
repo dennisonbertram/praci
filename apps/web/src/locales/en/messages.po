@@ -30,6 +30,7 @@ msgid " (new)"
 msgstr " (new)"
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (unread)"
@@ -427,6 +428,10 @@ msgstr "{newCount, plural, one {# new message} other {# new messages}}"
 msgid "{pct} yield"
 msgstr "{pct} yield"
 
+#: src/pages/Inbox.tsx
+msgid "{pickedCount} selected"
+msgstr "{pickedCount} selected"
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "{remaining} left · bot is watching, not acting"
@@ -767,6 +772,10 @@ msgstr "Add page"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
 msgstr "Add server URL"
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Add skill"
+msgstr "Add skill"
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
@@ -1132,8 +1141,10 @@ msgstr "Apps with their own server"
 
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 msgid "Archive"
 msgstr "Archive"
 
@@ -1154,6 +1165,10 @@ msgstr "Archived"
 #: src/pages/Inbox.tsx
 msgid "Archived \"{0}\""
 msgstr "Archived \"{0}\""
+
+#: src/pages/Inbox.tsx
+msgid "Archived {count}"
+msgstr "Archived {count}"
 
 #: src/pages/Shell.tsx
 msgid "Archived. Chat, memory, and files kept."
@@ -1563,7 +1578,7 @@ msgstr "Brex does not share it"
 msgid "Browser"
 msgstr "Browser"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Built-in"
 
@@ -1636,6 +1651,7 @@ msgstr "Can't reach the server."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Cancel"
 msgstr "Cancel"
@@ -1983,11 +1999,11 @@ msgstr "Client secret (optional)"
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Close"
@@ -2208,7 +2224,7 @@ msgstr "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_T
 msgid "Configured by deployment"
 msgstr "Configured by deployment"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirm delete"
 
@@ -2585,7 +2601,7 @@ msgstr "Could not delete group"
 msgid "Could not delete routine"
 msgstr "Could not delete routine"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not delete skill"
 msgstr "Could not delete skill"
 
@@ -2641,6 +2657,7 @@ msgstr "Could not list files"
 
 #: src/components/ErrorBoundary.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load"
 msgstr "Could not load"
 
@@ -2706,7 +2723,7 @@ msgstr "Could not load sign-in options"
 msgid "Could not load sign-in options."
 msgstr "Could not load sign-in options."
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load skill"
 msgstr "Could not load skill"
 
@@ -2886,7 +2903,7 @@ msgstr "Could not save routine"
 msgid "Could not save rule"
 msgstr "Could not save rule"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "Could not save skill"
 
@@ -2989,6 +3006,10 @@ msgstr "Could not upload file"
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
+
+#: src/pages/Inbox.tsx
+msgid "Couldn't archive {count}"
+msgstr "Couldn't archive {count}"
 
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
@@ -3250,9 +3271,9 @@ msgstr "Default ({0})"
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
 msgstr "Delete"
@@ -4057,6 +4078,10 @@ msgstr "From Google Drive"
 msgid "From the latest 409A valuation"
 msgstr "From the latest 409A valuation"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "From URL"
+msgstr "From URL"
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "Fullscreen"
@@ -4386,6 +4411,7 @@ msgstr "Import from email"
 msgid "Import from Google Drive"
 msgstr "Import from Google Drive"
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr "Important"
@@ -4575,10 +4601,6 @@ msgstr "Keyboard shortcuts"
 #: src/pages/CapTable.tsx
 msgid "Kind"
 msgstr "Kind"
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Knowledge"
-msgstr "Knowledge"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
@@ -5424,7 +5446,7 @@ msgstr "New password"
 msgid "New section"
 msgstr "New section"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "New skill"
 msgstr "New skill"
 
@@ -5441,6 +5463,7 @@ msgstr "New ticket"
 msgid "Newsletter"
 msgstr "Newsletter"
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
 msgstr "Newsletters"
@@ -5679,10 +5702,6 @@ msgstr "No rush"
 #: src/pages/CapTable.tsx
 msgid "No shareholders in Carta"
 msgstr "No shareholders in Carta"
-
-#: src/pages/KnowledgeSection.tsx
-msgid "No skills yet"
-msgstr "No skills yet"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -6322,7 +6341,7 @@ msgstr "Pin"
 msgid "Playing…"
 msgstr "Playing…"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Plugin"
 
@@ -7158,6 +7177,7 @@ msgstr "Sales & CRM"
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
 msgstr "Save"
@@ -7400,6 +7420,12 @@ msgstr "See usage"
 msgid "See who owns your company"
 msgstr "See who owns your company"
 
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Select"
+msgstr "Select"
+
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
@@ -7556,10 +7582,6 @@ msgstr "Shared by all bots"
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Shared chat with 2-6 bots. They all reply in the same thread."
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared skills"
-msgstr "Shared skills"
 
 #: src/pages/CapTable.tsx
 msgid "Shareholder"
@@ -7743,6 +7765,7 @@ msgid "Skill {0}"
 msgstr "Skill {0}"
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Skills"
 msgstr "Skills"
 
@@ -7838,6 +7861,7 @@ msgstr "Space default"
 msgid "Spaces"
 msgstr "Spaces"
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Spam"
 msgstr "Spam"
@@ -8760,6 +8784,7 @@ msgstr "Updated {0}"
 msgid "Updated {updated}"
 msgstr "Updated {updated}"
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
@@ -8803,6 +8828,10 @@ msgstr "Upload a PDF, CSV, OFX or QFX file"
 msgid "Upload failed"
 msgstr "Upload failed"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload SKILL.md"
+msgstr "Upload SKILL.md"
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
 msgstr "Upload statement"
@@ -8831,6 +8860,11 @@ msgstr "URL"
 #: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "Usage"
+
+#. placeholder {0}: entry.name
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Use {0}"
+msgstr "Use {0}"
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Use {hostLabel}"

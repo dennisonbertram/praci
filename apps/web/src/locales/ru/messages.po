@@ -30,6 +30,7 @@ msgid " (new)"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (непрочитано)"
@@ -427,6 +428,10 @@ msgstr ""
 msgid "{pct} yield"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "{pickedCount} selected"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "Осталось: {remaining} · бот наблюдает, но не действует"
@@ -767,6 +772,10 @@ msgstr ""
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
 msgstr "Добавьте URL сервера"
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Add skill"
+msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
 msgid "Add to routine"
@@ -1132,8 +1141,10 @@ msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 msgid "Archive"
 msgstr "Архивировать"
 
@@ -1153,6 +1164,10 @@ msgstr "В архиве"
 #: src/components/EmailCards.tsx
 #: src/pages/Inbox.tsx
 msgid "Archived \"{0}\""
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Archived {count}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1563,7 +1578,7 @@ msgstr ""
 msgid "Browser"
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Встроенный"
 
@@ -1636,6 +1651,7 @@ msgstr "Не удаётся связаться с сервером."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Cancel"
 msgstr "Отмена"
@@ -1983,11 +1999,11 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Закрыть"
@@ -2208,7 +2224,7 @@ msgstr "Компьютеры выключены. Установите SANDBOX_PR
 msgid "Configured by deployment"
 msgstr "Настраивается путем развертывания"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Подтвердить удаление"
 
@@ -2585,7 +2601,7 @@ msgstr "Не удалось удалить группу"
 msgid "Could not delete routine"
 msgstr "Не удалось удалить задачу"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not delete skill"
 msgstr "Не удалось удалить навык"
 
@@ -2641,6 +2657,7 @@ msgstr ""
 
 #: src/components/ErrorBoundary.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load"
 msgstr "Не удалось загрузить"
 
@@ -2706,7 +2723,7 @@ msgstr "Не удалось загрузить способы входа"
 msgid "Could not load sign-in options."
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load skill"
 msgstr "Не удалось загрузить навык"
 
@@ -2886,7 +2903,7 @@ msgstr "Не удалось сохранить задачу"
 msgid "Could not save rule"
 msgstr "Не удалось сохранить правило."
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "Не удалось сохранить навык"
 
@@ -2988,6 +3005,10 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Couldn't archive {count}"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -3250,9 +3271,9 @@ msgstr "По умолчанию ({0})"
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
 msgstr "Удалить"
@@ -4057,6 +4078,10 @@ msgstr ""
 msgid "From the latest 409A valuation"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "From URL"
+msgstr ""
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "Полноэкранный"
@@ -4386,6 +4411,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
@@ -4575,10 +4601,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "Kind"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Knowledge"
-msgstr "Знание"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
@@ -5424,7 +5446,7 @@ msgstr "Новый пароль"
 msgid "New section"
 msgstr "Новый раздел"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "New skill"
 msgstr "Новый навык"
 
@@ -5441,6 +5463,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
 msgstr ""
@@ -5679,10 +5702,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "No shareholders in Carta"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "No skills yet"
-msgstr "Навыков пока нет"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -6322,7 +6341,7 @@ msgstr "Закрепить"
 msgid "Playing…"
 msgstr "Воспроизведение…"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Плагин"
 
@@ -7158,6 +7177,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
 msgstr "Сохранить"
@@ -7400,6 +7420,12 @@ msgstr ""
 msgid "See who owns your company"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Select"
+msgstr ""
+
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
@@ -7556,10 +7582,6 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr "Общий чат с 2-6 ботами. Все отвечают в одной ветке."
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared skills"
-msgstr "Общие навыки"
 
 #: src/pages/CapTable.tsx
 msgid "Shareholder"
@@ -7743,6 +7765,7 @@ msgid "Skill {0}"
 msgstr "Навык {0}"
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Skills"
 msgstr ""
 
@@ -7838,6 +7861,7 @@ msgstr "Пространство по умолчанию"
 msgid "Spaces"
 msgstr "Пространства"
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Spam"
 msgstr ""
@@ -8760,6 +8784,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
@@ -8803,6 +8828,10 @@ msgstr ""
 msgid "Upload failed"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload SKILL.md"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
 msgstr ""
@@ -8831,6 +8860,11 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "Использование"
+
+#. placeholder {0}: entry.name
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Use {0}"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Use {hostLabel}"

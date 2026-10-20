@@ -11,7 +11,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { UserTextBubble } from "./UserTextBubble";
+import { bubbleMeasure, UserTextBubble } from "./UserTextBubble";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -50,4 +50,10 @@ it("shows only chips when the person wrote nothing", () => {
   expect(container.querySelector('[data-testid="message-user-bubble"]')).toBeNull();
   expect(container.querySelectorAll('[data-testid="data-room-ref-chip"]')).toHaveLength(1);
   act(() => root.unmount());
+});
+
+it("caps prose bubbles from 768px up but not tables or code blocks", () => {
+  expect(bubbleMeasure("A short reply")).toBe("md:max-w-[40rem]");
+  expect(bubbleMeasure("| a | b |\n|---|---|\n| 1 | 2 |")).toBe("");
+  expect(bubbleMeasure("```ts\nconst a = 1;\n```")).toBe("");
 });

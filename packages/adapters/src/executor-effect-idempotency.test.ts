@@ -198,6 +198,7 @@ function fixture(
     agentSecret: { findMany: vi.fn(async () => []) },
     botSecret: { findMany: vi.fn(async () => []) },
     agentSkill: { findMany: vi.fn(async () => []) },
+    botSkillSetting: { findMany: vi.fn(async () => []) },
     scratchpadItem: {
       findMany: vi.fn(async () => scratchpadRows),
       create: vi.fn(

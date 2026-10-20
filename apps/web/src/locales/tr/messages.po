@@ -30,6 +30,7 @@ msgid " (new)"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (okunmadı)"
@@ -427,6 +428,10 @@ msgstr ""
 msgid "{pct} yield"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "{pickedCount} selected"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "{remaining} kaldı · bot yalnızca izliyor"
@@ -766,6 +771,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Add skill"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -1132,8 +1141,10 @@ msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 msgid "Archive"
 msgstr "Arşivle"
 
@@ -1153,6 +1164,10 @@ msgstr "Arşivlendi"
 #: src/components/EmailCards.tsx
 #: src/pages/Inbox.tsx
 msgid "Archived \"{0}\""
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Archived {count}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1563,7 +1578,7 @@ msgstr ""
 msgid "Browser"
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Yerleşik"
 
@@ -1636,6 +1651,7 @@ msgstr "Sunucuya ulaşılamıyor."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Cancel"
 msgstr "İptal"
@@ -1983,11 +1999,11 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Kapat"
@@ -2208,7 +2224,7 @@ msgstr "Bilgisayarlar kapalı. SANDBOX_PROVIDER=docker ve SANDBOX_SUPERVISOR_TOK
 msgid "Configured by deployment"
 msgstr "Dağıtım tarafından yapılandırıldı"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Silmeyi onayla"
 
@@ -2585,7 +2601,7 @@ msgstr ""
 msgid "Could not delete routine"
 msgstr "Rutin silinemedi"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not delete skill"
 msgstr "Beceri silinemedi"
 
@@ -2641,6 +2657,7 @@ msgstr ""
 
 #: src/components/ErrorBoundary.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load"
 msgstr "Yüklenemedi"
 
@@ -2706,7 +2723,7 @@ msgstr "Giriş seçenekleri yüklenemedi"
 msgid "Could not load sign-in options."
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load skill"
 msgstr "Beceri yüklenemedi"
 
@@ -2886,7 +2903,7 @@ msgstr "Rutin kaydedilemedi"
 msgid "Could not save rule"
 msgstr "Kural kaydedilemedi"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "Beceri kaydedilemedi"
 
@@ -2988,6 +3005,10 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Couldn't archive {count}"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -3250,9 +3271,9 @@ msgstr "Varsayılan ({0})"
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
 msgstr "Sil"
@@ -4057,6 +4078,10 @@ msgstr ""
 msgid "From the latest 409A valuation"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "From URL"
+msgstr ""
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "Tam ekran"
@@ -4386,6 +4411,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
@@ -4575,10 +4601,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "Kind"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Knowledge"
-msgstr "Bilgi"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
@@ -5424,7 +5446,7 @@ msgstr "Yeni parola"
 msgid "New section"
 msgstr "Yeni bölüm"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "New skill"
 msgstr "Yeni beceri"
 
@@ -5441,6 +5463,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
 msgstr ""
@@ -5679,10 +5702,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "No shareholders in Carta"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "No skills yet"
-msgstr "Henüz beceri yok"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -6322,7 +6341,7 @@ msgstr "Sabitle"
 msgid "Playing…"
 msgstr "Çalınıyor…"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Eklenti"
 
@@ -7158,6 +7177,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
 msgstr "Kaydet"
@@ -7400,6 +7420,12 @@ msgstr ""
 msgid "See who owns your company"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Select"
+msgstr ""
+
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
@@ -7556,10 +7582,6 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared skills"
-msgstr "Paylaşılan beceriler"
 
 #: src/pages/CapTable.tsx
 msgid "Shareholder"
@@ -7743,6 +7765,7 @@ msgid "Skill {0}"
 msgstr "Beceri: {0}"
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Skills"
 msgstr ""
 
@@ -7838,6 +7861,7 @@ msgstr "Alan varsayılanı"
 msgid "Spaces"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Spam"
 msgstr ""
@@ -8760,6 +8784,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
@@ -8803,6 +8828,10 @@ msgstr ""
 msgid "Upload failed"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload SKILL.md"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
 msgstr ""
@@ -8831,6 +8860,11 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "Kullanım"
+
+#. placeholder {0}: entry.name
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Use {0}"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Use {hostLabel}"

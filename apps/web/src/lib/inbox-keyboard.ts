@@ -9,8 +9,12 @@ interface InboxKeyboard {
   open: (id: string) => void;
   focusSearch: () => void;
   compose: (() => void) | undefined;
-  /** Archives the selected row. */
-  archive: ((id: string) => void) | undefined;
+  /** Toggles the checkbox of the selected row, or of a whole group when the id is a group's. */
+  toggle: (id: string) => void;
+  /** Some rows are checked. */
+  hasPicked: boolean;
+  /** Archives the checked rows when there are any, else the selected one. */
+  archive: ((id: string | undefined) => void) | undefined;
   help: () => void;
 }
 
@@ -31,7 +35,7 @@ export function allowStep(event: KeyboardEvent): boolean {
   return true;
 }
 
-/** List shortcuts for the Inbox: j/k and arrows move, Enter or o opens, / searches, c composes, e archives, ? lists them. */
+/** List shortcuts for the Inbox: j/k and arrows move, Enter or o opens, / searches, c composes, x checks a row, e archives, ? lists them. */
 export function useInboxKeyboard(options: InboxKeyboard) {
   const latest = useRef(options);
   latest.current = options;
@@ -45,6 +49,8 @@ export function useInboxKeyboard(options: InboxKeyboard) {
         open,
         focusSearch,
         compose,
+        toggle,
+        hasPicked,
         archive,
         help,
       } = latest.current;
@@ -84,7 +90,10 @@ export function useInboxKeyboard(options: InboxKeyboard) {
       } else if (key === "c" && compose) {
         event.preventDefault();
         compose();
-      } else if (key === "e" && archive && selectedId) {
+      } else if (key === "x" && selectedId) {
+        event.preventDefault();
+        toggle(selectedId);
+      } else if (key === "e" && archive && (selectedId || hasPicked)) {
         event.preventDefault();
         archive(selectedId);
       } else if (key === "?") {

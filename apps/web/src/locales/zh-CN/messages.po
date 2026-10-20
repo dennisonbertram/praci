@@ -30,6 +30,7 @@ msgid " (new)"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr "（未读）"
@@ -427,6 +428,10 @@ msgstr ""
 msgid "{pct} yield"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "{pickedCount} selected"
+msgstr ""
+
 #: src/components/teach/TeachRecordingChrome.tsx
 msgid "{remaining} left · bot is watching, not acting"
 msgstr "剩余 {remaining} · Bot 只看不操作"
@@ -766,6 +771,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Add skill"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -1132,8 +1141,10 @@ msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 msgid "Archive"
 msgstr "归档"
 
@@ -1153,6 +1164,10 @@ msgstr "已归档"
 #: src/components/EmailCards.tsx
 #: src/pages/Inbox.tsx
 msgid "Archived \"{0}\""
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Archived {count}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1563,7 +1578,7 @@ msgstr ""
 msgid "Browser"
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "内置"
 
@@ -1636,6 +1651,7 @@ msgstr "无法连接服务器。"
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Cancel"
 msgstr "取消"
@@ -1983,11 +1999,11 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "关闭"
@@ -2208,7 +2224,7 @@ msgstr "电脑未开启。请设置 SANDBOX_PROVIDER=docker 并提供 SANDBOX_SU
 msgid "Configured by deployment"
 msgstr "由部署配置"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "确认删除"
 
@@ -2585,7 +2601,7 @@ msgstr "无法删除群组"
 msgid "Could not delete routine"
 msgstr "无法删除例行任务"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not delete skill"
 msgstr "无法删除技能"
 
@@ -2641,6 +2657,7 @@ msgstr ""
 
 #: src/components/ErrorBoundary.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load"
 msgstr "无法加载"
 
@@ -2706,7 +2723,7 @@ msgstr "无法加载登录选项"
 msgid "Could not load sign-in options."
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load skill"
 msgstr "无法加载技能"
 
@@ -2886,7 +2903,7 @@ msgstr "无法保存例行任务"
 msgid "Could not save rule"
 msgstr "无法保存规则"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "无法保存技能"
 
@@ -2988,6 +3005,10 @@ msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Couldn't archive {count}"
 msgstr ""
 
 #: src/components/data-room/Preview.tsx
@@ -3250,9 +3271,9 @@ msgstr "默认（{0}）"
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
 msgstr "删除"
@@ -4057,6 +4078,10 @@ msgstr ""
 msgid "From the latest 409A valuation"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "From URL"
+msgstr ""
+
 #: src/pages/WindowChrome.tsx
 msgid "Fullscreen"
 msgstr "全屏"
@@ -4386,6 +4411,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
@@ -4575,10 +4601,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "Kind"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Knowledge"
-msgstr "知识"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
@@ -5424,7 +5446,7 @@ msgstr "新密码"
 msgid "New section"
 msgstr "新建分组"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "New skill"
 msgstr "新建技能"
 
@@ -5441,6 +5463,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
 msgstr ""
@@ -5679,10 +5702,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "No shareholders in Carta"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "No skills yet"
-msgstr "暂无技能"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -6322,7 +6341,7 @@ msgstr "置顶"
 msgid "Playing…"
 msgstr "播放中…"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "插件"
 
@@ -7158,6 +7177,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
 msgstr "保存"
@@ -7400,6 +7420,12 @@ msgstr ""
 msgid "See who owns your company"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Select"
+msgstr ""
+
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
@@ -7556,10 +7582,6 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared skills"
-msgstr "共享技能"
 
 #: src/pages/CapTable.tsx
 msgid "Shareholder"
@@ -7743,6 +7765,7 @@ msgid "Skill {0}"
 msgstr "技能 {0}"
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Skills"
 msgstr ""
 
@@ -7838,6 +7861,7 @@ msgstr "工作区默认"
 msgid "Spaces"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Spam"
 msgstr ""
@@ -8760,6 +8784,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
@@ -8803,6 +8828,10 @@ msgstr ""
 msgid "Upload failed"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload SKILL.md"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
 msgstr ""
@@ -8831,6 +8860,11 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "用量"
+
+#. placeholder {0}: entry.name
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Use {0}"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Use {hostLabel}"

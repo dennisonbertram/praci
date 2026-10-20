@@ -329,7 +329,7 @@ it("puts a sub-folder's menu in the same column as a file's at every list width"
   );
   const rowsOf = (label: string) =>
     container.querySelector(`tbody[aria-label="${label}"] tr`) as HTMLTableRowElement;
-  // jsdom has no container queries: read each cell's `hidden @min-[Npx]/list:table-cell` class.
+  // jsdom has no container queries: read the width from each cell's hidden, container-query table-cell class.
   const visible = (cell: Element, width: number) => {
     const min = /@min-\[(\d+)px\]\/list:table-cell/.exec(cell.className)?.[1];
     return !cell.classList.contains("hidden") || (min !== undefined && width >= Number(min));

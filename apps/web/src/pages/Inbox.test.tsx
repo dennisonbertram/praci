@@ -28,6 +28,8 @@ const rpcMock = vi.hoisted(() => ({
   feedback: vi.fn(),
   archive: vi.fn(),
   unarchive: vi.fn(),
+  archiveMany: vi.fn(),
+  unarchiveMany: vi.fn(),
   markRead: vi.fn(),
   todos: vi.fn(),
 }));
@@ -39,6 +41,8 @@ vi.mock("../lib/rpc", () => ({
       feedback: rpcMock.feedback,
       archive: rpcMock.archive,
       unarchive: rpcMock.unarchive,
+      archiveMany: rpcMock.archiveMany,
+      unarchiveMany: rpcMock.unarchiveMany,
       markRead: rpcMock.markRead,
       todos: { list: rpcMock.todos, setDone: vi.fn() },
     },
@@ -234,6 +238,14 @@ beforeEach(() => {
   rpcMock.feedback.mockResolvedValue({});
   rpcMock.archive.mockResolvedValue({ ok: true });
   rpcMock.unarchive.mockResolvedValue({ ok: true });
+  rpcMock.archiveMany.mockImplementation(async ({ messageIds }: { messageIds: string[] }) => ({
+    done: messageIds,
+    failed: [],
+  }));
+  rpcMock.unarchiveMany.mockImplementation(async ({ messageIds }: { messageIds: string[] }) => ({
+    done: messageIds,
+    failed: [],
+  }));
   rpcMock.markRead.mockResolvedValue({ ok: true });
   rpcMock.list.mockResolvedValue(list([row("a"), row("b"), row("c")]));
 });
@@ -312,7 +324,7 @@ it("offers a way out of an empty search and an empty filter", async () => {
   await click(byText(c, "Clear"));
   expect(location.search).toBe("");
   await cleanups.pop()?.();
-  c = await render(["/app/inbox?view=important"]);
+  c = await render(["/app/inbox?category=billing"]);
   expect(c.textContent).toContain("No mail matches this filter");
   await click(byText(c, "Clear"));
   expect(location.search).toBe("");
@@ -944,4 +956,188 @@ it("polls refresh while it reports syncing and reloads the list once when it sto
   expect(rpcMock.list.mock.calls.length).toBe(lists + 1);
   await dwell(10_000);
   expect(rpcMock.refresh).toHaveBeenCalledTimes(3);
+});
+
+describe("piles", () => {
+  const counts = { important: 3, updates: 2, newsletters: 1, spam: 0 };
+  const tab = (c: HTMLElement, name: string) =>
+    [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find((el) =>
+      el.textContent?.startsWith(name),
+    );
+
+  it("opens the Important pile and asks for it", async () => {
+    const c = await render();
+    expect(rpcMock.list).toHaveBeenCalledWith({ pile: "important" });
+    expect(tab(c, "Important")?.getAttribute("aria-selected")).toBe("true");
+    expect(c.textContent).toContain("Search older mail");
+  });
+
+  it("switches pile from the tabs, keeps the account tab, and returns to Important", async () => {
+    const c = await render();
+    await click(tab(c, "Updates"));
+    expect(location.search).toBe("?pile=updates");
+    expect(rpcMock.list).toHaveBeenLastCalledWith({ pile: "updates" });
+    expect(c.textContent).not.toContain("Search older mail");
+    await click(tab(c, "Important"));
+    expect(location.search).toBe("");
+  });
+
+  it("shows no pile tab as selected while a filter is open, and a pile click leaves the filter", async () => {
+    const c = await render(["/app/inbox?filter=unread"]);
+    expect(tab(c, "Important")?.getAttribute("aria-selected")).toBe("false");
+    expect(rpcMock.list).toHaveBeenCalledWith({ filter: "unread" });
+    await click(tab(c, "Newsletters"));
+    expect(location.search).toBe("?pile=newsletters");
+  });
+
+  it("shows a Spam tab with its count only when there is spam, and keeps it after a filtered list", async () => {
+    rpcMock.list.mockResolvedValue(list([row("a")], { pileCounts: counts }));
+    const c = await render();
+    expect(tab(c, "Spam")).toBeUndefined();
+    rpcMock.list.mockResolvedValue(list([row("a")], { pileCounts: { ...counts, spam: 4 } }));
+    await act(async () => window.dispatchEvent(new Event("rakazo:mail-sent")));
+    expect(tab(c, "Spam")?.textContent).toBe("Spam4");
+    // A filtered list carries no counts; the tab stays.
+    rpcMock.list.mockResolvedValue(list([row("a")]));
+    await act(async () => go("/app/inbox?filter=unread"));
+    expect(tab(c, "Spam")?.textContent).toBe("Spam4");
+    await click(tab(c, "Spam"));
+    expect(rpcMock.list).toHaveBeenLastCalledWith({ pile: "spam" });
+  });
+
+  it("says No mail for an empty pile", async () => {
+    rpcMock.list.mockResolvedValue(list([]));
+    const c = await render(["/app/inbox?pile=updates"]);
+    expect(c.textContent).toContain("No mail");
+    expect(c.textContent).not.toContain("matches this filter");
+  });
+
+  it("leaves the old view parameter alone and opens Important", async () => {
+    await render(["/app/inbox?view=important"]);
+    expect(rpcMock.list).toHaveBeenCalledWith({ pile: "important" });
+  });
+});
+
+describe("selecting rows", () => {
+  const pickTwo = async (c: HTMLElement) => {
+    await press("j");
+    await press("x");
+    await press("j");
+    await press("x");
+    return c;
+  };
+  const toast = (c: HTMLElement) => c.querySelector('[role="status"]') as HTMLElement;
+
+  it("x checks the focused row, shows the count, and Escape clears the selection", async () => {
+    const c = await render();
+    await press("j");
+    await press("x");
+    expect(c.textContent).toContain("1 selected");
+    await press("x");
+    expect(c.textContent).not.toContain("selected");
+    await press("x");
+    await press("Escape");
+    expect(c.textContent).not.toContain("selected");
+  });
+
+  it("e archives all checked rows in one call, shows Archived 2, and keeps the others", async () => {
+    const c = await pickTwo(await render());
+    expect(c.textContent).toContain("2 selected");
+    await press("e");
+    expect(rpcMock.archiveMany).toHaveBeenCalledTimes(1);
+    expect(rpcMock.archiveMany).toHaveBeenCalledWith({ messageIds: ["a", "b"] });
+    expect(rpcMock.archive).not.toHaveBeenCalled();
+    expect(c.querySelector('[data-row-id="a"]')).toBeNull();
+    expect(c.querySelector('[data-row-id="b"]')).toBeNull();
+    expect(c.querySelector('[data-row-id="c"]')).not.toBeNull();
+    expect(toast(c).textContent).toContain("Archived 2");
+    expect(c.textContent).not.toContain("selected");
+  });
+
+  it("the selection bar archives the checked rows", async () => {
+    const c = await pickTwo(await render());
+    await click(byText(c, "Archive"));
+    expect(rpcMock.archiveMany).toHaveBeenCalledWith({ messageIds: ["a", "b"] });
+  });
+
+  it("the selection bar clears the checks without archiving", async () => {
+    const c = await pickTwo(await render());
+    await click(byText(c, "Clear"));
+    expect(c.textContent).not.toContain("selected");
+    expect(rpcMock.archiveMany).not.toHaveBeenCalled();
+  });
+
+  it("one Undo puts the whole selection back, after the archive has finished", async () => {
+    let finish: (value: unknown) => void = () => {};
+    rpcMock.archiveMany.mockReturnValue(new Promise((r) => (finish = r)));
+    const c = await pickTwo(await render());
+    await press("e");
+    await click(byText(toast(c), "Undo"));
+    expect(rpcMock.unarchiveMany).not.toHaveBeenCalled();
+    await act(async () => finish({ done: ["a", "b"], failed: [] }));
+    expect(rpcMock.unarchiveMany).toHaveBeenCalledTimes(1);
+    expect(rpcMock.unarchiveMany).toHaveBeenCalledWith({ messageIds: ["a", "b"] });
+  });
+
+  it("undoes only the threads that were archived, and reloads the list for a partial failure", async () => {
+    rpcMock.archiveMany.mockResolvedValue({
+      done: ["a"],
+      failed: [{ messageId: "b", reason: "unavailable" }],
+    });
+    const c = await pickTwo(await render());
+    const lists = rpcMock.list.mock.calls.length;
+    await press("e");
+    expect(c.querySelector('[role="alert"]')?.textContent).toContain("Couldn't archive 1");
+    expect(rpcMock.list.mock.calls.length).toBeGreaterThan(lists);
+    await click(byText(toast(c), "Undo"));
+    expect(rpcMock.unarchiveMany).toHaveBeenCalledWith({ messageIds: ["a"] });
+  });
+
+  it("skips Undo when the whole archive failed, and shows the error", async () => {
+    rpcMock.archiveMany.mockRejectedValue(new Error("nope"));
+    const c = await pickTwo(await render());
+    await press("e");
+    expect(c.querySelector('[role="alert"]')).not.toBeNull();
+    await click(byText(toast(c), "Undo"));
+    expect(rpcMock.unarchiveMany).not.toHaveBeenCalled();
+  });
+
+  it("clears the selection when the pile changes", async () => {
+    const c = await pickTwo(await render());
+    expect(c.textContent).toContain("2 selected");
+    await act(async () => go("/app/inbox?pile=updates"));
+    expect(c.textContent).not.toContain("selected");
+  });
+
+  it("e still archives the focused row when nothing is checked", async () => {
+    await render();
+    await press("j");
+    await press("e");
+    expect(rpcMock.archive).toHaveBeenCalledWith({ messageId: "a" });
+    expect(rpcMock.archiveMany).not.toHaveBeenCalled();
+  });
+
+  it("archives from the Spam pile with allowSpam, and never sends spam-pile mail from other piles", async () => {
+    rpcMock.list.mockResolvedValue(
+      list([row("s1", { pile: "spam" }), row("s2", { pile: "spam", inInbox: false }), row("n")], {
+        pileCounts: { important: 0, updates: 0, newsletters: 0, spam: 3 },
+      }),
+    );
+    const c = await render(["/app/inbox?pile=spam"]);
+    await pickTwo(c);
+    await press("j");
+    await press("x");
+    await press("e");
+    // The archived Gmail-spam row (not in the inbox) is left out.
+    expect(rpcMock.archiveMany).toHaveBeenCalledWith({
+      messageIds: ["s1", "n"],
+      allowSpam: true,
+    });
+    await cleanups.pop()?.();
+    rpcMock.archiveMany.mockClear();
+    const d = await render(["/app/inbox?pile=updates"]);
+    await pickTwo(d);
+    await press("e");
+    expect(rpcMock.archiveMany).toHaveBeenCalledWith({ messageIds: ["n"] });
+  });
 });

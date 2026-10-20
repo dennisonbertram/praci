@@ -43,6 +43,7 @@ export * from "./group-mentions.js";
 export * from "./http-response.js";
 export * from "./inbox-groups.js";
 export * from "./inbox-label.js";
+export * from "./inbox-sender-groups.js";
 export * from "./inbox-triage.js";
 export * from "./mail-piles.js";
 export * from "./mail-results.js";

@@ -1,27 +1,31 @@
-import type { InboxListInput } from "@rakazo/contracts";
-import { InboxFilterSchema, InboxViewCategorySchema } from "@rakazo/contracts";
+import type { InboxListInput, InboxPile } from "@rakazo/contracts";
+import { InboxFilterSchema, InboxPileSchema, InboxViewCategorySchema } from "@rakazo/contracts";
 
-export type InboxListParam = "filter" | "q" | "view" | "category";
+export type InboxListParam = "filter" | "q" | "pile" | "category";
 
 export const MAX_QUERY = 500;
 
 export interface InboxListState {
   filter: InboxListInput["filter"];
   query: string;
-  view: "all" | "important";
+  /** Undefined while a filter, search or category is set. */
+  pile: InboxPile | undefined;
   category: InboxListInput["category"];
 }
 
-/** Gmail filters and search read live from Gmail; a view and category narrow the cached list. A filter or search wins. */
+/** Gmail filters and search read live from Gmail; a category narrows the cached list; a pile is the default. The first of those that is set wins. */
 export function readInboxListState(params: URLSearchParams): InboxListState {
   const filter = InboxFilterSchema.safeParse(params.get("filter")).data;
   const query = (params.get("q") ?? "").trim().slice(0, MAX_QUERY);
-  if (filter || query) return { filter, query, view: "all", category: undefined };
+  if (filter || query) return { filter, query, pile: undefined, category: undefined };
+  const category = InboxViewCategorySchema.safeParse(params.get("category")).data;
   return {
     filter,
     query,
-    view: params.get("view") === "important" ? "important" : "all",
-    category: InboxViewCategorySchema.safeParse(params.get("category")).data,
+    pile: category
+      ? undefined
+      : (InboxPileSchema.safeParse(params.get("pile")).data ?? "important"),
+    category,
   };
 }
 
@@ -34,13 +38,13 @@ export function inboxListInput(
     ...(tab ? { connectionId: tab } : {}),
     ...(state.filter ? { filter: state.filter } : {}),
     ...(state.query ? { query: state.query } : {}),
-    ...(state.view === "important" ? { view: "important" as const } : {}),
+    ...(state.pile ? { pile: state.pile } : {}),
     ...(state.category ? { category: state.category } : {}),
     ...(pageToken ? { pageToken } : {}),
   };
 }
 
-/** A new filter or search replaces the view and category, and the other way round. Closes the open message. */
+/** A new filter or search replaces the pile and category, a pile replaces them all, and a category replaces the rest. Closes the open message. */
 export function setInboxListParam(
   params: URLSearchParams,
   name: InboxListParam,
@@ -49,10 +53,10 @@ export function setInboxListParam(
   const next = new URLSearchParams(params);
   const replaced =
     name === "filter" || name === "q"
-      ? (["view", "category"] as const)
-      : name === "view"
-        ? (["filter", "q", ...(value ? (["category"] as const) : [])] as const)
-        : (["filter", "q", ...(value ? (["view"] as const) : [])] as const);
+      ? (["pile", "category"] as const)
+      : name === "pile"
+        ? (["filter", "q", "category"] as const)
+        : (["filter", "q", ...(value ? (["pile"] as const) : [])] as const);
   for (const key of replaced) next.delete(key);
   if (value) next.set(name, value);
   else next.delete(name);
