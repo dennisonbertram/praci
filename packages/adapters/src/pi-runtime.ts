@@ -2335,6 +2335,27 @@ function errorFacts(value: unknown) {
   return { text: text.join(" ").toLowerCase(), statuses };
 }
 
+const CONNECTION_FAILURE =
+  /connection error|apiconnection|fetch failed|econnreset|econnrefused|etimedout|enotfound|eai_again|socket hang up|network error|connection (?:reset|refused|closed)/;
+
+/** A dropped or refused model connection: no HTTP response came back at all. */
+function isConnectionFailure(error: unknown): boolean {
+  const { text, statuses } = errorFacts(error);
+  return statuses.size === 0 && CONNECTION_FAILURE.test(text);
+}
+
+const MAX_RETRY_AFTER_MS = 60_000;
+
+/** Server-requested wait in ms, from "Retry-After: 3" / "retry after 1500ms" in the error. */
+function retryAfterMs(error: unknown): number | undefined {
+  const match = /retry[- ]after(-ms)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(ms)?/.exec(
+    errorFacts(error).text,
+  );
+  if (!match) return undefined;
+  const value = Number(match[2]);
+  return match[1] || match[3] ? value : value * 1000;
+}
+
 function isProviderTimeout(error: unknown): boolean {
   return /timed? out|timeout/.test(errorFacts(error).text);
 }
@@ -2372,6 +2393,7 @@ export function isRetryableProviderUnavailable(error: unknown): boolean {
   )
     return true;
   if ([...statuses].some((status) => status >= 400 && status < 600)) return false;
+  if (CONNECTION_FAILURE.test(text)) return true;
   return /rate.?limit|too many requests|quota|overload|capacity|temporarily unavailable|service unavailable|retry[- ](?:after|delay)|server error|upstream error|gateway timeout|timed? out|timeout|connection reset|connection refused|network error|max retries exceeded|\bterminated\b/.test(
     text,
   );
@@ -2598,11 +2620,22 @@ function fallbackAwareModelStream(
                 break;
               }
               firstRetryableError ??= event;
-              const delay = isProviderTimeout(event.error)
+              const backoff = isProviderTimeout(event.error)
                 ? undefined
                 : MODEL_PROVIDER_RETRY_DELAYS_MS[retries];
+              const requested = retryAfterMs(event.error);
+              // A server asking for a longer wait than we allow is not worth retrying.
+              const delay =
+                backoff === undefined || (requested ?? 0) > MAX_RETRY_AFTER_MS
+                  ? undefined
+                  : (requested ?? backoff + Math.floor(Math.random() * (backoff / 4)));
               if (delay !== undefined) {
                 retries += 1;
+                state.request.onModelRetry?.(
+                  isConnectionFailure(event.error)
+                    ? "the model connection dropped"
+                    : "the model is busy",
+                );
                 await abortableDelay(delay, signal);
                 if (failIfAborted(target)) return;
                 buffered = [];
@@ -2610,6 +2643,15 @@ function fallbackAwareModelStream(
                 break;
               }
               terminalEvent = firstRetryableError;
+              if (isConnectionFailure(terminalEvent.error)) {
+                terminalEvent = {
+                  ...terminalEvent,
+                  error: {
+                    ...terminalEvent.error,
+                    errorMessage: `Couldn't reach ${target.model.id.split("/").at(-1)}. Try again.`,
+                  },
+                };
+              }
             }
             for (const pending of buffered) output.push(pending);
             buffered = [];
