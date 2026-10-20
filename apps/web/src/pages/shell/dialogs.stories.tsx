@@ -65,6 +65,7 @@ const bot: Bot = {
   disabledBuiltinTools: [],
   webhookConfigured: false,
   spawnKey: null,
+  runPhase: null,
 };
 const longName = "A bot with a very long display name that should wrap instead of overflowing";
 

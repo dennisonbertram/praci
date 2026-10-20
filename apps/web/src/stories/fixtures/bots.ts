@@ -37,6 +37,7 @@ export function makeBot(overrides: Partial<Bot> = {}): Bot {
     disabledBuiltinTools: [],
     webhookConfigured: false,
     spawnKey: null,
+    runPhase: null,
     ...overrides,
   };
 }

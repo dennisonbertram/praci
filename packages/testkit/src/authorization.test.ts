@@ -183,6 +183,12 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ["agentSkills/create", { name: "Unauthenticated", description: "Nope", body: "Steps" }],
       ["agentSkills/update", { skillId: "missing-skill", description: "Nope" }],
       ["agentSkills/remove", { skillId: "missing-skill" }],
+      ["agentSkills/forBot", { botId: "missing-bot" }],
+      [
+        "agentSkills/setEnabled",
+        { botId: "missing-bot", skillKey: "missing-skill", enabled: false },
+      ],
+      ["agentSkills/importFromUrl", { url: "https://example.com/SKILL.md" }],
       ["capabilities/list"],
       ["capabilities/install", capabilityInput("Unauthenticated")],
       ["capabilities/remove", { id: "missing-capability" }],
@@ -436,6 +442,11 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ["agentSkills/get", { skillId: ownerAgentSkill.id }],
       ["agentSkills/update", { skillId: ownerAgentSkill.id, description: "Stolen" }],
       ["agentSkills/remove", { skillId: ownerAgentSkill.id }],
+      ["agentSkills/forBot", { botId: ownerBot.id }],
+      [
+        "agentSkills/setEnabled",
+        { botId: ownerBot.id, skillKey: ownerAgentSkill.id, enabled: false },
+      ],
       ["memory/update", { documentId: ownerMemory.id, content: "stolen" }],
       ["connections/complete", { connectionId: ownerConnection.connectionId }],
     ] satisfies Array<[string, unknown]>;

@@ -33,6 +33,7 @@ import {
   LEGAL_AGENT_MODEL,
   MESSAGE_REACTIONS,
   NOTIFICATION_KINDS,
+  RunPhaseSchema,
   type SidebarSnapshot,
 } from "@rakazo/contracts";
 import type { ComposerMention, SlashActionId } from "@rakazo/core";
@@ -79,7 +80,7 @@ import {
   withLiveStreamingProgress,
 } from "@rakazo/core";
 import { financeCardSummary } from "@rakazo/core/message-quote";
-import { botAccentStyle } from "@rakazo/ui-tokens";
+import { botAccentHex, botAccentStyle } from "@rakazo/ui-tokens";
 import type { GroupAvatarMember } from "@rakazo/ui-web";
 import {
   AvatarStyleProvider,
@@ -242,7 +243,7 @@ import { SkillDraftCard } from "../components/teach/SkillDraftCard";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { UserTextBubble } from "../components/UserTextBubble";
+import { bubbleMeasure, UserTextBubble } from "../components/UserTextBubble";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -320,6 +321,7 @@ import {
 import { type MissingBotSeen, resolveRouteBot } from "../lib/route-bot";
 import { clearSpaceSelection, rpc, selectedSpaceId, selectSpace } from "../lib/rpc";
 import { readSeenRunErrorIds, rememberSeenRunErrorId } from "../lib/run-error-storage";
+import { runPhaseLine, runPhaseWaitingOn } from "../lib/run-phase";
 import { type DataRoomRef, planSendToAgent, sendTargets } from "../lib/send-to-agent";
 import { sharedInflight } from "../lib/shared-inflight";
 import {
@@ -469,6 +471,8 @@ const COMPOSER_COLLAPSE_SLACK_PX = 16;
 const wideScreen = () => window.matchMedia(PANEL_DOCKED_QUERY).matches;
 /** How long "Sent to <group> · Open" stays under the composer after an @group message. */
 const FORWARDED_NOTICE_MS = 8000;
+
+const maskOptional = (text: string | null) => (text ? maskCurrencyWhenHidden(text) : null);
 
 function threadSnapshotSignal(parent: AbortSignal): AbortSignal {
   return AbortSignal.any([parent, AbortSignal.timeout(THREAD_SNAPSHOT_TIMEOUT_MS)]);
@@ -681,6 +685,8 @@ export function ShellPage() {
   const [taughtSkills, setTaughtSkills] = useState<TaughtSkill[]>([]);
   const [taughtSkillsBotId, setTaughtSkillsBotId] = useState<string | null>(null);
   const [agentSkills, setAgentSkills] = useState<AgentSkillCatalogEntry[]>([]);
+  // Bumped when a run ends, so the Skills settings list picks up a skill the agent just created.
+  const [skillsRefreshKey, setSkillsRefreshKey] = useState(0);
   const [mentionRoutines, setMentionRoutines] = useState<Array<Routine & { botName?: string }>>([]);
   const [mentionConnectors, setMentionConnectors] = useState<
     Array<{
@@ -1065,7 +1071,7 @@ export function ShellPage() {
                 ? findCartaAgent(bots, userId)
                 : routeBot.bot;
   /** The open bot's colour. A group or a missing bot has no `active`, so its thread stays monochrome. */
-  const threadAccent = active?.color;
+  const threadAccent = botAccentHex(active?.color);
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
   const inboxAgentHidden = inboxAgentCollapsed || (!active && !showEmptyInboxAgent);
   const computerBot =
@@ -1512,12 +1518,16 @@ export function ShellPage() {
     };
   }, []);
 
+  const slashBotId = active?.id;
   const refreshAgentSkills = useCallback(() => {
-    void rpc.agentSkills
-      .list()
-      .then(setAgentSkills)
-      .catch(() => undefined);
-  }, []);
+    // The slash menu offers only the skills switched on for this bot.
+    const skills = slashBotId
+      ? rpc.agentSkills
+          .forBot({ botId: slashBotId })
+          .then((list) => list.filter((skill) => skill.enabled))
+      : rpc.agentSkills.list();
+    void skills.then(setAgentSkills).catch(() => undefined);
+  }, [slashBotId]);
 
   useEffect(() => {
     void rpc.voice
@@ -1627,6 +1637,15 @@ export function ShellPage() {
           pinnedAroundRef.current = null;
           historyEpoch.current += 1;
         }
+        if (event.type === "run.phase") {
+          // A phase changes often; patch the sidebar row instead of reloading the whole list.
+          const runPhase = RunPhaseSchema.safeParse(event.payload).data;
+          if (runPhase) {
+            setBots((current) =>
+              current.map((bot) => (bot.id === event.botId ? { ...bot, runPhase } : bot)),
+            );
+          }
+        }
         if (event.type === "bot.archived") {
           void refreshBots(true).catch(() => undefined);
         } else if (
@@ -1652,6 +1671,7 @@ export function ShellPage() {
         ) {
           // waiting_input: reconcile ask cards if a stale post-send refresh raced SSE.
           void refreshThread(active.id).catch(() => undefined);
+          setSkillsRefreshKey((key) => key + 1);
         } else if (isComputerStatusEvent(event)) {
           void refreshComputerScreen(active.id).catch(() => undefined);
         }
@@ -4330,7 +4350,11 @@ export function ShellPage() {
                                 activeGroup?.id === item.chat.id);
                             const compact = botsSidebarDensity === "compact";
                             const workStatusLabel =
-                              item.kind === "bot" ? rosterWorkStatusLabel(item.chat.status) : null;
+                              item.kind === "bot"
+                                ? maskOptional(
+                                    rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
+                                  )
+                                : null;
                             const rowError =
                               item.kind === "bot" &&
                               (rosterHasUndismissedRunError(
@@ -4342,7 +4366,12 @@ export function ShellPage() {
                               compact && item.kind === "bot"
                                 ? rowError
                                   ? t`Error`
-                                  : compactRosterStatusLabel(item.chat.status)
+                                  : maskOptional(
+                                      compactRosterStatusLabel(
+                                        item.chat.status,
+                                        item.chat.runPhase,
+                                      ),
+                                    )
                                 : null;
                             const rosterLine = compact
                               ? compactStatusLabel
@@ -5434,6 +5463,7 @@ export function ShellPage() {
                 focusName={namingBotId === active.id}
                 memoryProviderConfigured={memoryProviderConfig != null}
                 onSkillsChange={setAgentSkills}
+                skillsRefreshKey={skillsRefreshKey}
                 onSave={async ({ computerMode, ...patch }) => {
                   if (computerMode !== active.computerMode) {
                     await rpc.bots.setComputer({
@@ -6451,16 +6481,20 @@ export const Transcript = memo(function Transcript({
   const workingLabel =
     activity?.kind === "starting"
       ? t`Starting`
-      : activity?.kind === "thinking"
-        ? t`Thinking`
-        : activity?.kind === "writing"
-          ? t`Writing`
-          : activity?.kind === "tool"
-            ? (toolActionLabel(activity.action) ??
-              (toolPhrase(activity.label, "activity") || activity.label))
-            : workingBotName
-              ? t`${workingBotName} is working`
-              : t`Bots are working`;
+      : activity?.kind === "phase"
+        ? activity.phase.kind === "model_wait"
+          ? t`Thinking`
+          : t`Starting`
+        : activity?.kind === "thinking"
+          ? t`Thinking`
+          : activity?.kind === "writing"
+            ? t`Writing`
+            : activity?.kind === "tool"
+              ? (toolActionLabel(activity.action) ??
+                (toolPhrase(activity.label, "activity") || activity.label))
+              : workingBotName
+                ? t`${workingBotName} is working`
+                : t`Bots are working`;
   const waitingLabel = (service: string) => t`Still waiting on ${service}`;
   function toolActionLabel(action: ToolAction | undefined): string | undefined {
     switch (action) {
@@ -7064,11 +7098,20 @@ export const Transcript = memo(function Transcript({
             bots={workingBots}
             label={workingLabel}
             startedAt={workingStartedAt}
-            detail={activity?.kind === "tool" ? activity.detail : undefined}
+            detail={
+              activity?.kind === "tool"
+                ? activity.detail
+                : activity?.kind === "phase"
+                  ? maskCurrencyWhenHidden(runPhaseLine(activity.phase) ?? "")
+                  : undefined
+            }
+            detailSince={activity?.kind === "phase" ? Date.parse(activity.phase.at) : undefined}
             waitingLabel={
               activity?.kind === "tool" && activity.service
                 ? waitingLabel(activity.service)
-                : undefined
+                : activity?.kind === "phase" && runPhaseWaitingOn(activity.phase)
+                  ? waitingLabel(runPhaseWaitingOn(activity.phase) ?? "")
+                  : undefined
             }
           />
         ) : null}
@@ -8786,7 +8829,11 @@ const MessageView = memo(function MessageView({
     return (
       <>
         {messageContext}
-        <div className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full">
+        <div
+          className={`flex w-fit max-w-full justify-start [@media(hover:none)]:w-full ${bubbleMeasure(
+            visibleNarrationBlocks.map((block) => ("text" in block ? block.text : "")).join("\n"),
+          )}`}
+        >
           <div
             data-testid="message-bot-bubble"
             className="max-w-full space-y-2.5 rounded-[20px] bg-muted px-[18px] py-3 text-[15.5px] leading-[1.5] text-foreground/90"
@@ -8913,7 +8960,7 @@ const MessageView = memo(function MessageView({
           return (
             <div
               key={i}
-              className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full"
+              className={`flex w-fit max-w-full justify-start [@media(hover:none)]:w-full ${bubbleMeasure(block.text)}`}
             >
               <div
                 data-testid="message-bot-bubble"
@@ -9071,7 +9118,7 @@ const MessageView = memo(function MessageView({
           return (
             <div
               key={i}
-              className="flex w-fit max-w-full justify-start [@media(hover:none)]:w-full"
+              className={`flex w-fit max-w-full justify-start [@media(hover:none)]:w-full ${bubbleMeasure(block.text)}`}
             >
               <div
                 data-testid="message-bot-bubble"

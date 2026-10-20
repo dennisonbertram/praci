@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rakazo Inbox Piles Mockup</title>
+<style>
+:root{
+  --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
+  --bot:#e8743b;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+.app{display:grid;grid-template-columns:240px 1fr 380px;height:100vh;min-height:640px}
+aside.left{background:var(--sidebar);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.search{margin:4px 4px 10px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--muted-fg);background:var(--card)}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:default}
+.row.active{background:var(--sidebar-accent);font-weight:600}
+.row .count{margin-left:auto;font-size:11px;color:var(--muted-fg)}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff;flex:none}
+.label{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.icon{width:22px;height:22px;display:grid;place-items:center;flex:none}
+main{overflow:auto;padding:20px 28px}
+h1{font-size:18px;margin:0}
+.head{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+.tabs{display:flex;gap:4px;margin-left:auto}
+.tab{padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted-fg);font-size:12px}
+.tab.on{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.todo{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:20px}
+.todo h2,.group h2{font-size:12px;margin:0 0 8px;color:var(--muted-fg);font-weight:600}
+.t{display:flex;gap:10px;align-items:flex-start;padding:6px 0;border-top:1px solid var(--border)}
+.t:first-of-type{border-top:0}
+.box{width:14px;height:14px;border:1.5px solid var(--muted-fg);border-radius:4px;margin-top:2px;flex:none}
+.t small{color:var(--muted-fg);display:block}
+.due{margin-left:auto;font-size:11px;white-space:nowrap}
+.due.warn{color:var(--warning)} .due.crit{color:var(--destructive)}
+.group{margin-bottom:18px}
+.mail{display:grid;grid-template-columns:8px 160px 1fr auto;gap:12px;align-items:baseline;padding:9px 10px;border-radius:8px}
+.mail:hover{background:var(--muted)}
+.mail.sel{background:var(--muted)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--primary);align-self:center}
+.dot.read{background:transparent}
+.from{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subj{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.subj span{color:var(--muted-fg)}
+.when{font-size:11px;color:var(--muted-fg)}
+aside.right{border-left:1px solid var(--border);background:var(--card);display:flex;flex-direction:column}
+.rhead{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);font-weight:600}
+.collapse{margin-left:auto;border:0;background:transparent;color:var(--muted-fg);font-size:14px;cursor:pointer;padding:2px 6px;border-radius:6px}
+.collapse:hover{background:var(--muted)}
+.thread{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+.me{align-self:flex-end;background:var(--primary);color:var(--primary-fg);padding:8px 12px;border-radius:14px 14px 4px 14px;max-width:85%}
+.bot{max-width:95%}
+.tool{border:1px solid var(--border);border-radius:10px;padding:8px 10px;font-size:12px;color:var(--muted-fg);background:var(--background)}
+.tool b{color:var(--fg);font-weight:600}
+.tool code{font:11px ui-monospace,Menlo,monospace;color:var(--fg)}
+.cite{display:block;border:1px solid var(--border);border-radius:8px;padding:6px 8px;margin-top:6px;font-size:12px}
+.cite small{color:var(--muted-fg)}
+.composer{margin:12px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--muted-fg)}
+.note{position:fixed;bottom:10px;left:50%;transform:translateX(-50%);font-size:11px;color:var(--muted-fg);background:var(--card);border:1px solid var(--border);padding:4px 10px;border-radius:999px}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;height:auto}
+  aside.left,aside.right{display:none}
+  main{padding:16px}
+  .mail{grid-template-columns:8px 1fr auto}
+  .mail .subj{grid-column:2/4}
+}
+
+.piles{display:flex;gap:4px;margin:-6px 0 16px}
+.pile{padding:5px 12px;border-radius:999px;color:var(--muted-fg);font-size:12px;font-weight:600;background:var(--muted)}
+.pile.on{background:var(--card);color:var(--fg);box-shadow:0 0 0 1px var(--border)}
+.pile small{margin-left:6px;font-weight:400}
+.bar{position:sticky;top:0;display:flex;align-items:center;gap:8px;padding:5px 6px 5px 12px;margin-bottom:12px;border-radius:10px;background:var(--muted)}
+.bar b{font-weight:600}
+.btn{padding:4px 10px;border-radius:8px;border:1px solid var(--border);background:var(--card);font-size:12px}
+.btn.primary{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.g{display:grid;grid-template-columns:20px 170px 1fr auto;gap:12px;align-items:baseline;padding:9px 10px;border-bottom:1px solid var(--border)}
+.g.child{margin-left:18px;border-left:1px solid var(--border)}
+.g:hover{background:var(--muted)}
+.chk{width:14px;height:14px;border:1.5px solid var(--muted-fg);border-radius:4px;align-self:center;display:grid;place-items:center;font-size:10px;line-height:1}
+.chk.on{background:var(--primary);border-color:var(--primary);color:var(--primary-fg)}
+.count{font-weight:400;color:var(--muted-fg);margin-left:6px}
+.toast{position:fixed;bottom:36px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;background:var(--primary);color:var(--primary-fg);padding:5px 6px 5px 14px;border-radius:10px;font-size:13px}
+.toast span.btn{background:var(--muted);color:var(--fg)}
+</style>
+</head>
+<body>
+<div class="app" style="grid-template-columns:1fr">
+<main>
+  <div class="head">
+    <h1>Inbox</h1>
+    <div class="tabs" role="tablist" aria-label="Account"><span class="tab on">All</span><span class="tab">work@…</span><span class="tab">personal@…</span></div>
+  </div>
+  <div class="piles" role="tablist" aria-label="Pile">
+    <span class="pile">Important</span><span class="pile on">Updates</span><span class="pile">Newsletters</span><span class="pile">Spam<small>12</small></span>
+  </div>
+
+  <div class="bar"><span><b>3</b> selected</span><span class="btn primary">Archive</span><span class="btn" style="border:0;background:transparent">Clear</span></div>
+
+  <section aria-label="Updates, grouped by sender">
+    <div class="g"><span class="chk on">✓</span><span class="from"><span class="dot" style="display:inline-block;margin-right:6px"></span>Demo Store<span class="count">3 ›</span></span><span class="subj">Order 1042 shipped <span>— Sample order 1042 shipped, arrives Thursday</span></span><span class="when">9:12</span></div>
+    <div class="g"><span class="chk"></span><span class="from">Example Bank<span class="count">2 ›</span></span><span class="subj">New sign-in to your account <span>— Sign-in from a new laptop</span></span><span class="when">Mon</span></div>
+    <div class="g"><span class="chk"></span><span class="from">Sample Calendar</span><span class="subj">Invitation: design review <span>— Design review on Friday at 10:00</span></span><span class="when">Sun</span></div>
+
+    <div class="g"><span class="chk on">✓</span><span class="from"><span class="dot" style="display:inline-block;margin-right:6px"></span>Placeholder Telecom<span class="count">3 ⌄</span></span><span class="subj">Your October bill is ready <span>— Bill of a sample amount, due Nov 30</span></span><span class="when">Oct 12</span></div>
+    <div class="g child"><span class="chk on">✓</span><span class="from">Placeholder Telecom</span><span class="subj">Your October bill is ready <span>— Bill of a sample amount, due Nov 30</span></span><span class="when">Oct 12</span></div>
+    <div class="g child"><span class="chk on">✓</span><span class="from">Placeholder Telecom</span><span class="subj">Usage alert <span>— You used 80% of the sample data plan</span></span><span class="when">Oct 5</span></div>
+  </section>
+</main>
+</div>
+<div class="toast" role="status">Archived 3 <span class="btn">Undo</span></div>
+<div class="note">Phase 2 mockup · sample data · Updates pile, grouped by sender</div>
+</body>
+</html>

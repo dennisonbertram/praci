@@ -390,7 +390,13 @@ import {
   inboxComposePrefill,
   inboxComposeSend,
 } from "./inbox-compose.js";
-import { inboxArchive, inboxMarkRead, inboxUnarchive } from "./inbox-modify.js";
+import {
+  inboxArchive,
+  inboxArchiveMany,
+  inboxMarkRead,
+  inboxUnarchive,
+  inboxUnarchiveMany,
+} from "./inbox-modify.js";
 import {
   connectionAgentSpawnKeys,
   ensureConnectedAppAgent,
@@ -1186,7 +1192,9 @@ export function createRouter(deps: RouterDeps) {
     home: deps.home,
     dataDir: deps.dataDir,
   });
-  const agentSkills = createAgentSkillsService(deps.prisma);
+  const agentSkills = createAgentSkillsService(deps.prisma, {
+    resolveHostname: deps.remoteConnectors?.resolveHostname,
+  });
   const dataRoom = createDataRoomService({
     prisma: deps.prisma,
     artifacts: deps.artifacts,
@@ -4451,6 +4459,15 @@ export function createRouter(deps: RouterDeps) {
       remove: authed.agentSkills.remove.handler(async ({ context, input }) =>
         agentSkills.remove(context.actor, input.skillId),
       ),
+      forBot: authed.agentSkills.forBot.handler(async ({ context, input }) =>
+        agentSkills.forBot(context.actor, input.botId),
+      ),
+      setEnabled: authed.agentSkills.setEnabled.handler(async ({ context, input }) =>
+        agentSkills.setEnabled(context.actor, input),
+      ),
+      importFromUrl: authed.agentSkills.importFromUrl.handler(async ({ context, input }) =>
+        agentSkills.importFromUrl(context.actor, input),
+      ),
     },
     capabilities: {
       list: authed.capabilities.list.handler(async ({ context }) => {
@@ -7281,6 +7298,22 @@ export function createRouter(deps: RouterDeps) {
           context.signal,
         ),
       ),
+      archiveMany: authed.inbox.archiveMany.handler(({ context, input }) =>
+        inboxArchiveMany(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
+      unarchiveMany: authed.inbox.unarchiveMany.handler(({ context, input }) =>
+        inboxUnarchiveMany(
+          { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+          context.actor,
+          input,
+          context.signal,
+        ),
+      ),
       compose: {
         prefill: authed.inbox.compose.prefill.handler(({ context, input }) =>
           inboxComposePrefill(deps, context.actor, input, context.signal),
@@ -7877,6 +7910,7 @@ async function spaceNavigationDto(
           unread: bot.unread,
           preview: bot.preview,
           status: bot.status,
+          runPhase: bot.runPhase,
           runErrorId: bot.runErrorId,
           updatedAt: bot.updatedAt,
         })),

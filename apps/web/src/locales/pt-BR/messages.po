@@ -30,6 +30,7 @@ msgid " (new)"
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/pages/Shell.tsx
 msgid " (unread)"
 msgstr " (não lido)"
@@ -383,18 +384,6 @@ msgstr ""
 msgid "{inboxUnread, plural, one {# unread} other {# unread}}"
 msgstr ""
 
-#: src/components/sidebar-folders/SidebarDnd.tsx
-msgid "{item} dropped on {target}."
-msgstr ""
-
-#: src/components/sidebar-folders/SidebarDnd.tsx
-msgid "{item} dropped."
-msgstr ""
-
-#: src/components/sidebar-folders/SidebarDnd.tsx
-msgid "{item} is over {target}."
-msgstr ""
-
 #: src/components/data-room/folders.ts
 msgid "{items, plural, one {# item} other {# items}}"
 msgstr ""
@@ -437,6 +426,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "{pct} yield"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "{pickedCount} selected"
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -632,7 +625,6 @@ msgid "Actions for {0}"
 msgstr "Ações para {0}"
 
 #: src/components/finance/ExchangeGroup.tsx
-#: src/components/sidebar-folders/FolderHeader.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Actions for {name}"
 msgstr ""
@@ -779,6 +771,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add server URL"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Add skill"
 msgstr ""
 
 #: src/components/teach/SkillDraftCard.tsx
@@ -1145,8 +1141,10 @@ msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/pages/BotContextMenu.tsx
+#: src/pages/Inbox.tsx
 msgid "Archive"
 msgstr "Arquivar"
 
@@ -1166,6 +1164,10 @@ msgstr "Arquivado"
 #: src/components/EmailCards.tsx
 #: src/pages/Inbox.tsx
 msgid "Archived \"{0}\""
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Archived {count}"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1326,14 +1328,6 @@ msgstr "Autorizar"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Authorize this server so bots can use its tools. A popup opens."
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Auto-group"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Auto-grouped"
 msgstr ""
 
 #: src/pages/legal/LegalContracts.tsx
@@ -1584,7 +1578,7 @@ msgstr ""
 msgid "Browser"
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "Integrado"
 
@@ -1657,6 +1651,7 @@ msgstr "Não é possível acessar o servidor."
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/shell/bot-credentials.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Cancel"
 msgstr "Cancelar"
@@ -2004,11 +1999,11 @@ msgstr ""
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/integrations/SignInStep.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/PeerMessagesOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/WindowChrome.tsx
 msgid "Close"
 msgstr "Fechar"
@@ -2090,10 +2085,6 @@ msgstr ""
 #. placeholder {0}: sidebarHeader.name
 #: src/pages/Shell.tsx
 msgid "Collapse {0}"
-msgstr ""
-
-#: src/components/sidebar-folders/FolderHeader.tsx
-msgid "Collapse {name}"
 msgstr ""
 
 #: src/components/SidebarPagesGroup.tsx
@@ -2233,7 +2224,7 @@ msgstr "Computadores estão desligados. Defina SANDBOX_PROVIDER=docker com SANDB
 msgid "Configured by deployment"
 msgstr "Configurado por implantação"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
 msgstr "Confirmar exclusão"
 
@@ -2384,6 +2375,14 @@ msgstr "Conectado e usando {0}."
 #: src/pages/shell/message-cards.tsx
 msgid "Connected. Its tools are available from your next message."
 msgstr "Conectado. Suas ferramentas estão disponíveis na sua próxima mensagem."
+
+#: src/lib/run-phase.ts
+msgid "Connecting to {name}"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Connecting to tools"
+msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
@@ -2554,13 +2553,13 @@ msgstr "Não foi possível continuar"
 msgid "Could not create agent"
 msgstr ""
 
-#: src/pages/shell/dialogs.tsx
-msgid "Could not create folder"
-msgstr ""
-
 #: src/pages/GroupPanel.tsx
 msgid "Could not create group"
 msgstr "Não foi possível criar o grupo"
+
+#: src/pages/shell/dialogs.tsx
+msgid "Could not create section"
+msgstr "Não foi possível criar a seção"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not create space"
@@ -2602,7 +2601,7 @@ msgstr ""
 msgid "Could not delete routine"
 msgstr "Não foi possível excluir a rotina"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not delete skill"
 msgstr "Não foi possível excluir a habilidade"
 
@@ -2658,6 +2657,7 @@ msgstr ""
 
 #: src/components/ErrorBoundary.tsx
 #: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load"
 msgstr "Não foi possível carregar"
 
@@ -2723,7 +2723,7 @@ msgstr "Não foi possível carregar as opções de login"
 msgid "Could not load sign-in options."
 msgstr ""
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not load skill"
 msgstr "Não foi possível carregar a habilidade"
 
@@ -2841,8 +2841,8 @@ msgid "Could not rename"
 msgstr ""
 
 #: src/pages/shell/dialogs.tsx
-msgid "Could not rename folder"
-msgstr ""
+msgid "Could not rename section"
+msgstr "Não foi possível renomear a seção"
 
 #: src/pages/shell/dialogs.tsx
 msgid "Could not rename space"
@@ -2903,7 +2903,7 @@ msgstr "Não foi possível salvar a rotina"
 msgid "Could not save rule"
 msgstr "Não foi possível salvar"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Could not save skill"
 msgstr "Não foi possível salvar a habilidade"
 
@@ -3007,6 +3007,10 @@ msgstr ""
 msgid "Could not verify computer setup ({failureMessage}). Fix the connection, then check again."
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Couldn't archive {count}"
+msgstr ""
+
 #: src/components/data-room/Preview.tsx
 msgid "Couldn't classify"
 msgstr ""
@@ -3075,11 +3079,6 @@ msgstr ""
 msgid "Create"
 msgstr "Criar"
 
-#. placeholder {0}: bot.name
-#: src/pages/shell/dialogs.tsx
-msgid "Create a folder and move {0} into it."
-msgstr ""
-
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Create a key with only Query Funds"
 msgstr ""
@@ -3087,6 +3086,11 @@ msgstr ""
 #: src/components/integrations/ExchangeConnectDialog.tsx
 msgid "Create a read-only key"
 msgstr ""
+
+#. placeholder {0}: bot.name
+#: src/pages/shell/dialogs.tsx
+msgid "Create a section and move {0} into it."
+msgstr "Crie uma seção e mova {0} para ela."
 
 #: src/pages/Auth.tsx
 msgid "Create account"
@@ -3267,9 +3271,9 @@ msgstr "Padrão ({0})"
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/CapTable.tsx
-#: src/pages/KnowledgeSection.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Delete"
 msgstr "Excluir"
@@ -3301,10 +3305,6 @@ msgstr "Excluir conta"
 
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Delete chart"
-msgstr ""
-
-#: src/components/sidebar-folders/FolderHeader.tsx
-msgid "Delete folder"
 msgstr ""
 
 #: src/pages/GroupPanel.tsx
@@ -3834,10 +3834,6 @@ msgstr "Expandir"
 msgid "Expand {0}"
 msgstr ""
 
-#: src/components/sidebar-folders/FolderHeader.tsx
-msgid "Expand {name}"
-msgstr ""
-
 #: src/components/SidebarPagesGroup.tsx
 msgid "Expand {title}"
 msgstr ""
@@ -4080,6 +4076,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "From the latest 409A valuation"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "From URL"
 msgstr ""
 
 #: src/pages/WindowChrome.tsx
@@ -4411,6 +4411,7 @@ msgstr ""
 msgid "Import from Google Drive"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Important"
 msgstr ""
@@ -4600,10 +4601,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "Kind"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Knowledge"
-msgstr "Conhecimento"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "Label (optional)"
@@ -5276,10 +5273,6 @@ msgstr "Mover {full} para baixo"
 msgid "Move {full} up"
 msgstr "Mover {full} para cima"
 
-#: src/components/sidebar-folders/SidebarDnd.tsx
-msgid "Move of {item} cancelled."
-msgstr ""
-
 #: src/components/data-room/ItemDialogs.tsx
 msgid "Move or delete what is in this folder first."
 msgstr ""
@@ -5419,9 +5412,6 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 #: src/components/data-room/ItemDialogs.tsx
-#: src/pages/BotContextMenu.tsx
-#: src/pages/Shell.tsx
-#: src/pages/shell/dialogs.tsx
 msgid "New folder"
 msgstr ""
 
@@ -5451,7 +5441,12 @@ msgstr "Novo item de trabalho aberto"
 msgid "New password"
 msgstr "Nova senha"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/BotContextMenu.tsx
+#: src/pages/shell/dialogs.tsx
+msgid "New section"
+msgstr "Nova seção"
+
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "New skill"
 msgstr "Nova habilidade"
 
@@ -5468,6 +5463,7 @@ msgstr ""
 msgid "Newsletter"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 msgid "Newsletters"
 msgstr ""
@@ -5706,10 +5702,6 @@ msgstr ""
 #: src/pages/CapTable.tsx
 msgid "No shareholders in Carta"
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "No skills yet"
-msgstr "Ainda não há habilidades"
 
 #: src/pages/Finance.tsx
 msgid "No spend in this period"
@@ -6341,10 +6333,6 @@ msgstr ""
 msgid "Pick when this runs, for example every Monday morning."
 msgstr ""
 
-#: src/components/sidebar-folders/SidebarDnd.tsx
-msgid "Picked up {item}."
-msgstr ""
-
 #: src/pages/BotContextMenu.tsx
 msgid "Pin"
 msgstr "Fixar"
@@ -6353,7 +6341,7 @@ msgstr "Fixar"
 msgid "Playing…"
 msgstr "Reproduzindo"
 
-#: src/pages/KnowledgeSection.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Plugin"
 msgstr "Plugin"
 
@@ -6886,10 +6874,7 @@ msgstr ""
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
-#: src/components/sidebar-folders/FolderHeader.tsx
-#: src/pages/BotContextMenu.tsx
 #: src/pages/finance/FinanceAccounts.tsx
-#: src/pages/shell/dialogs.tsx
 msgid "Rename"
 msgstr ""
 
@@ -6901,6 +6886,12 @@ msgstr ""
 #: src/components/finance/RenameAccountDialog.tsx
 msgid "Rename account"
 msgstr ""
+
+#: src/pages/BotContextMenu.tsx
+#: src/pages/Shell.tsx
+#: src/pages/shell/dialogs.tsx
+msgid "Rename section"
+msgstr "Renomear seção"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/dialogs.tsx
@@ -7050,6 +7041,14 @@ msgstr "Nova tentativa agora"
 msgid "Retry screen"
 msgstr ""
 
+#: src/lib/run-phase.ts
+msgid "Retrying"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Retrying: {name}"
+msgstr ""
+
 #: src/pages/GoogleOAuthCallback.tsx
 #: src/pages/McpOAuthCallback.tsx
 msgid "Return to Rakazo"
@@ -7178,6 +7177,7 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Save"
 msgstr "Salvar"
@@ -7420,6 +7420,12 @@ msgstr ""
 msgid "See who owns your company"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+#: src/components/inbox/InboxSenderGroup.tsx
+#: src/components/inbox/InboxShortcuts.tsx
+msgid "Select"
+msgstr ""
+
 #. placeholder {0}: file.name
 #. placeholder {0}: row.subject
 #: src/components/data-room/DriveRow.tsx
@@ -7576,10 +7582,6 @@ msgstr ""
 #: src/pages/shell/dialogs.tsx
 msgid "Shared chat with 2-6 bots. They all reply in the same thread."
 msgstr ""
-
-#: src/pages/KnowledgeSection.tsx
-msgid "Shared skills"
-msgstr "Habilidades compartilhadas"
 
 #: src/pages/CapTable.tsx
 msgid "Shareholder"
@@ -7763,6 +7765,7 @@ msgid "Skill {0}"
 msgstr "Habilidade {0}"
 
 #: src/pages/Shell.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 msgid "Skills"
 msgstr ""
 
@@ -7858,6 +7861,7 @@ msgstr "Padrão do espaço"
 msgid "Spaces"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/components/inbox/InboxRow.tsx
 msgid "Spam"
 msgstr ""
@@ -7943,6 +7947,10 @@ msgstr "Começar a gravar"
 #: src/pages/Shell.tsx
 msgid "Starting"
 msgstr "Iniciando"
+
+#: src/lib/run-phase.ts
+msgid "Starting the computer"
+msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
 #: src/lib/roster-status.ts
@@ -8227,6 +8235,10 @@ msgstr ""
 msgid "The Carta agent will be able to change your Carta data. It asks before each change."
 msgstr ""
 
+#: src/lib/run-phase.ts
+msgid "the computer"
+msgstr ""
+
 #: src/lib/model-connection-preflight.ts
 msgid "The connection timed out."
 msgstr "O tempo da conexão se esgotou."
@@ -8254,6 +8266,10 @@ msgstr ""
 
 #: src/components/legal/ConsentPrompt.tsx
 msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "the model"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -8468,10 +8484,6 @@ msgstr ""
 msgid "To do"
 msgstr ""
 
-#: src/components/sidebar-folders/SidebarDnd.tsx
-msgid "To pick up, press space. Use the arrow keys to move, space to drop, escape to cancel."
-msgstr ""
-
 #: src/pages/shell/bot-picker.tsx
 msgid "To:"
 msgstr "Para:"
@@ -8487,6 +8499,10 @@ msgstr "Hoje"
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "tools"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -8651,7 +8667,6 @@ msgstr ""
 #: src/components/data-room/DropZone.tsx
 #: src/components/EmailCards.tsx
 #: src/components/MailOutbox.tsx
-#: src/components/sidebar-folders/SidebarUndoNotice.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/legal/LegalDeadlines.tsx
@@ -8714,10 +8729,6 @@ msgstr ""
 msgid "Until {to}"
 msgstr ""
 
-#: src/pages/Shell.tsx
-msgid "Untitled folder"
-msgstr ""
-
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Up to date"
@@ -8773,6 +8784,7 @@ msgstr ""
 msgid "Updated {updated}"
 msgstr ""
 
+#: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
 #: src/pages/SettingsOverlay.tsx
 msgid "Updates"
@@ -8816,6 +8828,10 @@ msgstr ""
 msgid "Upload failed"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Upload SKILL.md"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 msgid "Upload statement"
 msgstr ""
@@ -8844,6 +8860,11 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "Uso"
+
+#. placeholder {0}: entry.name
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Use {0}"
+msgstr ""
 
 #: src/pages/HostComputerPrompt.tsx
 msgid "Use {hostLabel}"
@@ -8930,6 +8951,10 @@ msgstr "Verificando…"
 msgid "Version"
 msgstr ""
 
+#: src/components/integrations/parts.tsx
+msgid "via {provider}"
+msgstr ""
+
 #: src/components/integrations/McpDetail.tsx
 msgid "via MCP · {host}"
 msgstr ""
@@ -8963,6 +8988,10 @@ msgstr ""
 msgid "Wait a moment and test again."
 msgstr "Aguarde um momento e teste novamente."
 
+#: src/lib/run-phase.ts
+msgid "Waiting for {name}"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
@@ -8970,6 +8999,14 @@ msgstr ""
 
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Waiting for the API to come back…"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Waiting for the computer"
+msgstr ""
+
+#: src/lib/run-phase.ts
+msgid "Waiting for the model"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx

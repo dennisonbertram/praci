@@ -15,6 +15,7 @@ import {
   botCanReadDataRoom,
   GROUP_MEMBER_MIN,
   MessageBlock as MessageBlockSchema,
+  RunPhaseSchema,
 } from "@rakazo/contracts";
 import {
   ACTIVE_RUN_STATUSES,
@@ -582,6 +583,7 @@ function mapRun(run: {
   modelProvider: string | null;
   modelId: string | null;
   error: string | null;
+  phase?: unknown;
   startedAt: Date | null;
   completedAt: Date | null;
   createdAt: Date;
@@ -601,6 +603,7 @@ function mapRun(run: {
       run.status === "failed"
         ? runFailureError({ type: "run.failed", payload: { error: run.error } })
         : run.error,
+    phase: RunPhaseSchema.safeParse(run.phase).data ?? null,
     startedAt: run.startedAt?.toISOString() ?? null,
     completedAt: run.completedAt?.toISOString() ?? null,
     createdAt: run.createdAt.toISOString(),

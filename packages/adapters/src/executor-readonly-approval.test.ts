@@ -330,6 +330,7 @@ function fixture({
     agentSecret: { findMany: vi.fn(async () => []) },
     botSecret: { findMany: vi.fn(async () => []) },
     agentSkill: { findMany: vi.fn(async () => []) },
+    botSkillSetting: { findMany: vi.fn(async () => []) },
     scratchpadItem: { findMany: vi.fn(async () => []) },
     actionApprovalRule: { findMany: vi.fn(async () => rules) },
     actionAutoReviewPreference: { findUnique: vi.fn(async () => ({ enabled: autoReview })) },

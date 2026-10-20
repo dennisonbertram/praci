@@ -105,6 +105,7 @@ export const MailRowSchema = z.object({
   /** Null until triaged, and while triage is not enabled. Already-answered threads are false. */
   needsReply: z.boolean().nullable(),
   priority: InboxPrioritySchema.nullable(),
+  /** One-line summary of what the mail is about; null until triaged, and while triage is not enabled. */
   reason: z.string().nullable(),
   /** Null until triaged, and while triage is not enabled. */
   category: InboxCategorySchema.nullable(),
@@ -112,6 +113,10 @@ export const MailRowSchema = z.object({
   feedback: InboxMarkSchema.nullable(),
   /** Sent by the user, such as their reply in a search result; optional for older servers. */
   fromSelf: z.boolean().optional(),
+  /** Lowercased sender address, the key rows group by; optional for older servers. */
+  fromAddress: z.string().optional(),
+  /** The pile the row belongs to (Gmail spam rows are "spam"); null while undecided. Optional for older servers. */
+  pile: InboxPileSchema.nullable().optional(),
 });
 
 /** Which account a request covers; omitted means every connected mail account. */
@@ -152,12 +157,15 @@ export const InboxFilterSchema = z.enum([
  * of the previous response.
  * `view` and `category` narrow the cached list by triage results and cannot be combined with a
  * `filter` or `query`. Both are ignored while triage is not enabled.
+ * `pile` lists one pile from the free rules and the model's category. It works while triage is not
+ * enabled, and cannot be combined with `view`, `category`, `filter` or `query`.
  */
 export const InboxListInputSchema = InboxScopeInputSchema.extend({
   filter: InboxFilterSchema.optional(),
   query: z.string().max(500).optional(),
   view: InboxViewSchema.optional(),
   category: InboxViewCategorySchema.optional(),
+  pile: InboxPileSchema.optional(),
   pageToken: z.string().max(4096).optional(),
 });
 
@@ -171,6 +179,14 @@ export const TriageBlockedSchema = z.discriminatedUnion("reason", [
   }),
 ]);
 export type TriageBlocked = z.infer<typeof TriageBlockedSchema>;
+
+/** Threads per pile in the 14-day window. */
+export const InboxPileCountsSchema = z.object({
+  important: z.number().int().nonnegative(),
+  updates: z.number().int().nonnegative(),
+  newsletters: z.number().int().nonnegative(),
+  spam: z.number().int().nonnegative(),
+});
 
 export const InboxListOutputSchema = z.object({
   /** Empty means no mail account is connected. */
@@ -195,6 +211,28 @@ export const InboxListOutputSchema = z.object({
   triagePending: z.boolean(),
   /** Only on filtered or searched lists: present while Gmail has more results. */
   nextPageToken: z.string().optional(),
+  /** Not on filtered or searched lists or while no account is connected; optional for older servers. */
+  pileCounts: InboxPileCountsSchema.optional(),
+});
+
+/** Most threads one bulk archive or unarchive call takes. */
+export const MAX_BULK_ARCHIVE = 50;
+
+export const InboxBulkInputSchema = z.object({
+  messageIds: z.array(Id).min(1).max(MAX_BULK_ARCHIVE),
+  /** Archive takes spam-pile mail only when the user is in the Spam view. Unarchive ignores it. */
+  allowSpam: z.boolean().optional(),
+});
+
+/** `reconnect`: the account lacks permission to change mail. `unavailable`: Gmail failed. */
+export const InboxBulkResultSchema = z.object({
+  done: z.array(Id),
+  failed: z.array(
+    z.object({
+      messageId: Id,
+      reason: z.enum(["not_found", "spam", "reconnect", "unavailable"]),
+    }),
+  ),
 });
 
 export const InboxTodoSchema = z.object({
@@ -203,7 +241,7 @@ export const InboxTodoSchema = z.object({
   /** Null once the message left the 14-day cache. */
   messageId: Id.nullable(),
   text: z.string(),
-  /** The message's one-line reason. */
+  /** The message's one-line summary. */
   detail: z.string().nullable(),
   /** Sender of the message, if it is still cached. */
   from: z.string().nullable(),
@@ -374,6 +412,9 @@ export type ComposePrefillOutput = z.infer<typeof ComposePrefillOutputSchema>;
 export type ComposeResult = z.infer<typeof ComposeResultSchema>;
 export type InboxMarkReadInput = z.infer<typeof InboxMarkReadInputSchema>;
 export type InboxFeedbackInput = z.infer<typeof InboxFeedbackInputSchema>;
+export type InboxBulkInput = z.infer<typeof InboxBulkInputSchema>;
+export type InboxBulkResult = z.infer<typeof InboxBulkResultSchema>;
+export type InboxPileCounts = z.infer<typeof InboxPileCountsSchema>;
 export type InboxListInput = z.infer<typeof InboxListInputSchema>;
 export type InboxMessage = z.infer<typeof InboxMessageSchema>;
 export type InboxThreadMessage = z.infer<typeof InboxThreadMessageSchema>;

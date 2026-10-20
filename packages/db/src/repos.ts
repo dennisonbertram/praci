@@ -14,7 +14,12 @@ import { isUniqueViolation } from "./prisma-errors.js";
 import { BotSectionNameConflictError, IsolationError } from "./scope.js";
 import { toBotSection } from "./sidebar-folders.js";
 import { lockSpaceForContentCreation } from "./spaces.js";
-import { activeRunSelection, latestBotRunSelection, previewFromBlocks } from "./thread-listing.js";
+import {
+  activeRunSelection,
+  latestBotRunSelection,
+  previewFromBlocks,
+  storedRunPhase,
+} from "./thread-listing.js";
 import { withTransactionRetry } from "./transaction-retry.js";
 
 /** Newest messages loaded for sidebar preview; enough to skip a short peer-run tail. */
@@ -76,6 +81,7 @@ function mapBot(
   preview = "",
   status = "idle",
   runErrorId: string | null = null,
+  runPhase: unknown = null,
 ): Bot {
   if (!bot.thread) {
     throw new IsolationError("Bot is missing its thread");
@@ -99,6 +105,7 @@ function mapBot(
     threadId: bot.thread.id,
     preview,
     status,
+    runPhase: storedRunPhase(runPhase),
     runErrorId,
     computerMode: bot.computer ? parseComputerMode(bot.computer.scope) : "team",
     createdAt: bot.createdAt.toISOString(),
@@ -180,6 +187,7 @@ export function createRepos(prisma: PrismaClient) {
         parentBotId: bot.parentBotId,
         preview: previewFromBlocks(bot.thread.messages[0]?.blocks),
         status: bot.runs[0]?.status ?? "idle",
+        runPhase: storedRunPhase(bot.runs[0]?.phase),
         runErrorId: rosterRunErrorId(bot.thread.runs[0], bot.runs[0]),
         updatedAt: bot.updatedAt.toISOString(),
       };
@@ -371,6 +379,7 @@ export function createRepos(prisma: PrismaClient) {
             preview,
             bot.runs[0]?.status ?? "idle",
             rosterRunErrorId(bot.thread?.runs[0], bot.runs[0]),
+            bot.runs[0]?.phase,
           );
         }),
       );

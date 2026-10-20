@@ -1,9 +1,11 @@
-import type { Run, ThreadMessage } from "@rakazo/contracts";
+import type { Run, RunPhase, ThreadMessage } from "@rakazo/contracts";
 import { humanizeToolName, reportedToolStep } from "@rakazo/core";
+import { runPhaseLine } from "./run-phase";
 
 export type WorkingActivity =
   | { kind: "starting" }
   | { kind: "thinking" }
+  | { kind: "phase"; phase: RunPhase }
   | { kind: "writing" }
   | {
       kind: "tool";
@@ -70,13 +72,20 @@ function toolActivity(
 
 /** What a live run is doing now, read from its status and the newest bot message. */
 export function workingActivity(
-  run: Pick<Run, "id" | "botId" | "status">,
+  run: Pick<Run, "id" | "botId" | "status" | "phase">,
   messages: readonly ThreadMessage[],
 ): WorkingActivity {
-  if (run.status === "queued" || run.status === "leased") return { kind: "starting" };
+  // Before this run has live output, say what it waits on when the backend reported a phase.
+  const early: WorkingActivity =
+    run.phase && runPhaseLine(run.phase)
+      ? { kind: "phase", phase: run.phase }
+      : { kind: "thinking" };
+  if (run.status === "queued" || run.status === "leased") {
+    return early.kind === "phase" ? early : { kind: "starting" };
+  }
   const last = messages.at(-1);
-  if (last?.role !== "bot" || last.botId !== run.botId) return { kind: "thinking" };
-  if (last.runId && last.runId !== run.id) return { kind: "thinking" };
+  if (last?.role !== "bot" || last.botId !== run.botId) return early;
+  if (last.runId && last.runId !== run.id) return early;
   const tail = last.blocks.at(-1);
   const pending = tail?.kind === "progress" ? tail.pendingToolNames?.at(-1) : undefined;
   if (pending)

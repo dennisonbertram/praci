@@ -951,22 +951,31 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
       return user;
     };
 
-    it("skips the LLM for mail the classifier labeled as not needing a reply or action", async () => {
+    it("asks the model for the summary of a newsletter the classifier labeled and stores it as reason", async () => {
       const user = await withTypesafeConsent();
       const row = await mail(user, "Your weekly digest");
       const classifier = scriptedClassifier(() => ({ category: "newsletter" }));
-      const rt = fakeRuntime(answerAll());
+      const rt = fakeRuntime(
+        answerAll(() => ({
+          // The classifier is authoritative for the label; the model only adds the summary.
+          category: "action",
+          needsReply: true,
+          reason: "Weekly digest of new Postgres releases",
+          todo: "Read it",
+        })),
+      );
 
       await run(user, rt.runtime, { classifier: classifier.provider });
 
-      expect(rt.requests).toHaveLength(0);
+      expect(rt.prompts().map(idsIn)).toEqual([[row.id]]);
       expect(
         await prisma.cachedMailMessage.findUniqueOrThrow({ where: { id: row.id } }),
       ).toMatchObject({
         category: "newsletter",
+        pile: "newsletters",
         priority: "low",
         needsReply: false,
-        reason: null,
+        reason: "Weekly digest of new Postgres releases",
         todoText: null,
         dueOn: null,
         triageVersion: TRIAGE_VERSION,
@@ -974,7 +983,7 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
       expect(await todosOf(user)).toEqual([]);
     });
 
-    it("sends only needs-reply and low-confidence mail to the LLM, which writes reason, to-do and due", async () => {
+    it("sends every labeled and unlabeled message to the LLM, which writes the summary, and the to-do and due where the label calls for them", async () => {
       const user = await withTypesafeConsent();
       const ask = await mail(user, "Lunch?", { minutesAgo: 1 });
       const bulk = await mail(user, "Sale", { minutesAgo: 2 });
@@ -1001,7 +1010,7 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
       await run(user, rt.runtime, { classifier: classifier.provider });
 
       expect(classifier.sentIds().sort()).toEqual([ask.id, bulk.id, unsure.id].sort());
-      expect(rt.prompts().map(idsIn)).toEqual([[ask.id, unsure.id]]);
+      expect(rt.prompts().map(idsIn)).toEqual([[ask.id, bulk.id, unsure.id]]);
       const rows = Object.fromEntries((await messagesOf(user)).map((m) => [m.id, m]));
       expect(rows[ask.id]).toMatchObject({
         category: "personal",
@@ -1011,7 +1020,12 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
         todoText: "Do Lunch?",
       });
       expect(rows[ask.id]?.dueOn?.toISOString().slice(0, 10)).toBe("2026-10-20");
-      expect(rows[bulk.id]).toMatchObject({ category: "bulk", reason: null, todoText: null });
+      expect(rows[bulk.id]).toMatchObject({
+        category: "bulk",
+        reason: "LLM says Sale",
+        todoText: null,
+        dueOn: null,
+      });
       expect(rows[unsure.id]).toMatchObject({
         category: "action",
         priority: "low",
@@ -1085,7 +1099,9 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
 
       await run(user, fakeRuntime(answerAll()).runtime, { classifier: classifier.provider });
 
-      const usage = await prisma.usageRecord.findMany({ where: { spaceId, userId: user.userId } });
+      const usage = await prisma.usageRecord.findMany({
+        where: { spaceId, userId: user.userId, provider: "typesafe" },
+      });
       expect(usage).toHaveLength(1);
       expect(usage[0]).toMatchObject({
         provider: "typesafe",
@@ -1168,7 +1184,7 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
       expect(
         await prisma.cachedMailMessage.findUniqueOrThrow({ where: { id: row.id } }),
       ).toMatchObject({ category: "receipt" });
-      expect(rt.requests).toHaveLength(0);
+      expect(rt.prompts().map(idsIn)).toEqual([[row.id]]);
     });
 
     it("gives the classifier at most one batch of 20 per call", async () => {
@@ -1192,7 +1208,7 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
       expect((await messagesOf(user)).every((m) => m.triagedAt === null)).toBe(true);
     });
 
-    it("sends only the failed message to the LLM when the vendor errors on part of a batch", async () => {
+    it("keeps the vendor's label for the message it classified and sends the failed one to the LLM whole", async () => {
       const user = await withTypesafeConsent();
       const ok = await mail(user, "Fine", { minutesAgo: 1 });
       const failed = await mail(user, "Vendor 500", { minutesAgo: 2 });
@@ -1231,9 +1247,9 @@ describePostgres("inbox triage job (PostgreSQL)", () => {
 
       await run(user, rt.runtime, { classifier });
 
-      expect(rt.prompts().map(idsIn)).toEqual([[failed.id]]);
+      expect(rt.prompts().map(idsIn)).toEqual([[ok.id, failed.id]]);
       const rows = Object.fromEntries((await messagesOf(user)).map((m) => [m.id, m]));
-      expect(rows[ok.id]).toMatchObject({ category: "receipt", reason: null });
+      expect(rows[ok.id]).toMatchObject({ category: "receipt", reason: "Needs a look" });
       expect(rows[failed.id]).toMatchObject({ category: "action", reason: "Needs a look" });
     });
 

@@ -407,6 +407,7 @@ describe("createRepos.listSpaceBotsForSpaces", () => {
         parentBotId: null,
         preview: "Waiting for a reply",
         status: "running",
+        runPhase: null,
         runErrorId: "run-failed",
         updatedAt: "2026-08-20T00:00:00.000Z",
       },

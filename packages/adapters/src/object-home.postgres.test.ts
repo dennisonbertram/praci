@@ -1,9 +1,13 @@
 import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { JobPublisher } from "@rakazo/adapter-kit";
+import type { ThreadEvents } from "@rakazo/db";
 import { createDb, type PrismaClient } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { LocalArtifactStore } from "./artifacts.js";
+import { provisionComputer } from "./computer-lifecycle.js";
+import { FakeSandboxProvider } from "./fake-sandbox.js";
 import { AgentHomeConflictError, ObjectAgentHomeStore } from "./object-home.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -159,6 +163,31 @@ describePostgres("object-storage agent homes (PostgreSQL)", () => {
       (await readdir(live)).sort(),
     );
     expect(await readdir(live)).toHaveLength(12);
+  });
+
+  it("keeps the boot claim while a legacy home migrates during provisioning", async () => {
+    // Regression: the migration's snapshot swap bumped the Computer's updatedAt, which is the
+    // boot claim's fence. Activation then missed, the row stayed "booting", and every run on
+    // the computer was requeued as busy until the claim went stale five minutes later.
+    const dataDir = await tmp();
+    const key = `${homeKey}-boot`;
+    await mkdir(path.join(dataDir, "homes", key), { recursive: true });
+    await writeFile(path.join(dataDir, "homes", key, "old.txt"), "legacy");
+    const computer = await prisma.computer.create({
+      data: { spaceId, userId, scopeKey: `boot:${suffix}`, homeKey: key, kind: "docker" },
+    });
+    const sandbox = Object.assign(new FakeSandboxProvider(), {
+      provisionKind: async () => "docker" as const,
+    });
+    const home = new ObjectAgentHomeStore(prisma, new LocalArtifactStore(await tmp()), dataDir);
+    await provisionComputer(
+      { prisma, sandbox, home, jobs: {} as JobPublisher, events: {} as ThreadEvents, dataDir },
+      computer.id,
+      ctx(),
+    );
+    const row = await prisma.computer.findUniqueOrThrow({ where: { id: computer.id } });
+    expect(row.homeSnapshotId).toBeTruthy();
+    expect(row.state).toBe("running");
   });
 
   it("does not expose a home to another space", async () => {

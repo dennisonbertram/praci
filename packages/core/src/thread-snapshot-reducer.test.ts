@@ -29,6 +29,25 @@ function snapshot(overrides: Partial<ThreadSnapshot> = {}): ThreadSnapshot {
 }
 
 describe("reduceThreadSnapshot", () => {
+  it("puts a run.phase on the run it names and ignores other runs", () => {
+    const started = reduceThreadSnapshot(
+      snapshot(),
+      event({ type: "run.started", runId: "run-1", payload: { trigger: "user" } }),
+    );
+    const phase = { kind: "connecting", name: "Devin", at };
+    const next = reduceThreadSnapshot(
+      started,
+      event({ type: "run.phase", runId: "run-1", seq: 6, payload: phase }),
+    );
+    expect(next?.run?.phase).toEqual(phase);
+    expect(next?.activeRuns?.[0]?.phase).toEqual(phase);
+    const other = reduceThreadSnapshot(
+      next,
+      event({ type: "run.phase", runId: "run-2", seq: 7, payload: { kind: "thinking", at } }),
+    );
+    expect(other).toMatchObject({ cursor: 7, run: { phase } });
+  });
+
   it("ignores a late background-run start but advances the cursor", () => {
     const next = reduceThreadSnapshot(
       snapshot(),

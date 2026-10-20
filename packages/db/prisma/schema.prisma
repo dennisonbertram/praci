@@ -269,6 +269,7 @@ model Space {
   secrets                     Secret[]
   chatGroups                  ChatGroup[]
   botSecrets                  BotSecret[]
+  botSkillSettings            BotSkillSetting[]
   externalConversations       ExternalConversation[]
   agentSecrets                AgentSecret[]
   board                       Board?
@@ -478,6 +479,7 @@ model Bot {
   connectionAccess       BotConnectionAccess[]
   groupMembers           ChatGroupMember[]
   botSecrets             BotSecret[]
+  skillSettings          BotSkillSetting[]
   assignedTickets        Ticket[]              @relation("TicketAssigneeBot")
   createdTickets         Ticket[]              @relation("TicketCreatorBot")
   ticketComments         TicketComment[]       @relation("TicketCommentAuthorBot")
@@ -679,6 +681,9 @@ model Run {
   leaseFence           Int               @default(0)
   leaseExpiresAt       DateTime?
   checkpoint           String?
+  // What the run is waiting on before its first tool call (RunPhase in contracts). Requeues
+  // also keep their streak here, which the executor's circuit breaker reads.
+  phase                Json?
   clientNonce          String?
   sourceMessageId      String?
   sourceMessage        Message?          @relation("RunSourceMessage", fields: [sourceMessageId], references: [id], onDelete: SetNull)
@@ -901,6 +906,23 @@ model AgentSkill {
   @@index([spaceId, userId])
   // Case-insensitive unique index agent_skills_spaceId_userId_name_lower_key is created in SQL.
   @@map("agent_skills")
+}
+
+/// Per-bot switch for one skill. No row means on. skillKey is an AgentSkill id or `builtin:<name>`.
+model BotSkillSetting {
+  id        String   @id @default(cuid())
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  botId     String
+  bot       Bot      @relation(fields: [botId], references: [id], onDelete: Cascade)
+  skillKey  String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([botId, skillKey])
+  @@index([spaceId])
+  @@map("bot_skill_settings")
 }
 
 /// A saved mail_search result, readable by mail_grep until `expiresAt`. Scoped to one bot of one user.
