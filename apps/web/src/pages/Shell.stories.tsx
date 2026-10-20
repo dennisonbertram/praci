@@ -1,11 +1,11 @@
 import { BOT_COLORS } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import type { ReactNode } from "react";
-import { createRef, useEffect } from "react";
+import { useEffect } from "react";
 import { Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import { mockRpc } from "../lib/__mocks__/rpc";
 import { makeBot, mockBots, mockSections } from "../stories/fixtures";
-import { Composer, ShellPage } from "./Shell";
+import { ShellPage } from "./Shell";
 
 /** The preview already provides a router at "/", so move it to the route instead of nesting one. */
 function At({ path, children }: { path: string; children: ReactNode }) {
@@ -332,47 +332,4 @@ export const ConversationUnreadPill: Story = {
       messages: Array.from({ length: 16 }, (_, i) => longReply(i + 1)),
     } as typeof snapshot,
   ),
-};
-
-const fileInputRef = createRef<HTMLInputElement>();
-const composerProps = {
-  artifactTarget: { botId: "bot_ada" },
-  activeName: "Ada",
-  running: false,
-  pendingAttachments: [],
-  attachmentNotice: null,
-  sendError: null,
-  runError: null,
-  runErrorId: null,
-  onRunErrorPresented: () => undefined,
-  onDismissError: () => undefined,
-  sending: false,
-  fileInputRef,
-  onAttachmentPick: () => true,
-  onRemoveAttachment: () => undefined,
-  onSend: async () => true,
-  onStop: async () => undefined,
-};
-const composer = (over: Partial<Parameters<typeof Composer>[0]> = {}) => (
-  <div className="w-[640px] max-w-full p-4">
-    <Composer {...composerProps} {...over} />
-  </div>
-);
-
-export const ComposerDefault: Story = { render: () => composer(), beforeEach: loaded };
-export const ComposerVoiceAgent: Story = {
-  render: () => composer({ onVoice: () => undefined }),
-  beforeEach: loaded,
-};
-export const ComposerRunning: Story = {
-  render: () => composer({ running: true }),
-  beforeEach: loaded,
-};
-export const ComposerDisabled: Story = {
-  render: () => composer({ disabled: true }),
-  beforeEach: loaded,
-};
-export const ComposerSendError: Story = {
-  render: () => composer({ sendError: "The message could not be sent." }),
-  beforeEach: loaded,
 };

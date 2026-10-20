@@ -170,8 +170,13 @@ export function createFileDataRoomItem(
   const storeAndFile = async (actor: Actor, input: FileDataRoomInput) =>
     fileStored(actor, input, await store(actor, input));
 
-  /** The folder at `path` under `rootId`, made when it is missing. */
-  const folderAt = async (actor: Actor, rootId: string | null, path: string[]) => {
+  /** The folder at `path` under `rootId`, made when it is missing; made ones are added to `made`. */
+  const folderAt = async (
+    actor: Actor,
+    rootId: string | null,
+    path: string[],
+    made: string[] = [],
+  ) => {
     let parentId = rootId;
     for (const raw of path) {
       const name = dataRoomSafeName(raw, "folder");
@@ -179,7 +184,11 @@ export function createFileDataRoomItem(
         where: { spaceId: actor.spaceId, userId: actor.userId, parentId, name },
         select: { id: true },
       });
-      parentId = existing?.id ?? (await repo.createFolder(actor, { name, parentId })).id;
+      if (existing) parentId = existing.id;
+      else {
+        parentId = (await repo.createFolder(actor, { name, parentId })).id;
+        made.push(parentId);
+      }
     }
     return parentId;
   };

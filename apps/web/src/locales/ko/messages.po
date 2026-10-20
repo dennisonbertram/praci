@@ -524,7 +524,7 @@ msgid "{yieldAmount} last month"
 msgstr ""
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "@{0}"
 msgstr "@{0}"
 
@@ -627,7 +627,7 @@ msgstr ""
 msgid "Action confirmations"
 msgstr "작업 실행 전 확인"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Actions"
 msgstr ""
 
@@ -1339,7 +1339,7 @@ msgstr "{timeSelect}에"
 msgid "At least 8 characters."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "파일 첨부"
 
@@ -1351,8 +1351,8 @@ msgstr ""
 msgid "Attached {path}"
 msgstr ""
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attachment"
 msgstr "첨부 파일"
 
@@ -1703,7 +1703,7 @@ msgstr ""
 msgid "Cadence"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Call Elio"
 msgstr ""
 
@@ -1917,7 +1917,7 @@ msgstr "채팅 앱"
 msgid "Chat apps, group channels, and agent connections."
 msgstr "채팅 앱, 그룹 채널 및 Agent 연결을 관리합니다."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr ""
 
@@ -3612,6 +3612,7 @@ msgstr "연결 해제 중…"
 #: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr "닫기"
@@ -5310,7 +5311,7 @@ msgstr "기억"
 msgid "Memory scope"
 msgstr "기억 사용 범위"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Mentions"
 msgstr "멘션"
 
@@ -5328,16 +5329,16 @@ msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "메시지"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message {activeName}"
 msgstr "{activeName}에게 메시지 보내기"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr "메시지 작성기"
 
@@ -5349,7 +5350,7 @@ msgstr ""
 msgid "Message from {peer}"
 msgstr "{peer}의 메시지"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message…"
 msgstr "메시지를 입력하세요"
 
@@ -5632,7 +5633,7 @@ msgstr ""
 msgid "Needs reply"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Needs sign-in"
 msgstr ""
 
@@ -5889,7 +5890,7 @@ msgstr ""
 msgid "No matches in chats, pages, documents or artifacts."
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
 
@@ -6355,7 +6356,7 @@ msgstr ""
 msgid "Open server integrations"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Open Settings"
 msgstr ""
 
@@ -6649,8 +6650,8 @@ msgstr ""
 msgid "Phone"
 msgstr ""
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Photo"
 msgstr "사진"
 
@@ -7142,7 +7143,7 @@ msgstr "삭제"
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove {0}"
 msgstr "{0} 삭제"
 
@@ -7195,7 +7196,7 @@ msgid "Remove link"
 msgstr ""
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove mention {0}"
 msgstr "{0} 멘션 삭제"
 
@@ -7208,7 +7209,7 @@ msgid "Remove schedule"
 msgstr "일정 제거"
 
 #. placeholder {0}: slashSkillLabel(selectedSkill).title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove skill {0}"
 msgstr "작업 기술 {0} 삭제"
 
@@ -7318,12 +7319,12 @@ msgstr "답장"
 msgid "Reply all"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
 msgstr ""
 
 #. placeholder {0}: replyNameRef.current
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
 msgstr ""
 
@@ -7509,7 +7510,7 @@ msgstr "실행 중 · 중지"
 msgid "Running…"
 msgstr "실행 중…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr ""
 
@@ -7790,7 +7791,7 @@ msgstr "검색 중…"
 msgid "Security"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "See usage"
 msgstr ""
 
@@ -7833,7 +7834,7 @@ msgstr ""
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr "보내기"
 
@@ -8153,16 +8154,16 @@ msgid "Size"
 msgstr ""
 
 #. placeholder {0}: label.title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skill {0}"
 msgstr "작업 기술 {0}"
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills"
 msgstr ""
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills and actions"
 msgstr ""
 
@@ -8416,6 +8417,7 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Stop"
 msgstr "중지"
 

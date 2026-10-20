@@ -524,7 +524,7 @@ msgid "{yieldAmount} last month"
 msgstr "{yieldAmount} last month"
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "@{0}"
 msgstr "@{0}"
 
@@ -627,7 +627,7 @@ msgstr "Accounts"
 msgid "Action confirmations"
 msgstr "Action confirmations"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Actions"
 msgstr "Actions"
 
@@ -1339,7 +1339,7 @@ msgstr "at {timeSelect}"
 msgid "At least 8 characters."
 msgstr "At least 8 characters."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attach file"
 msgstr "Attach file"
 
@@ -1351,8 +1351,8 @@ msgstr "Attach files"
 msgid "Attached {path}"
 msgstr "Attached {path}"
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Attachment"
 msgstr "Attachment"
 
@@ -1703,7 +1703,7 @@ msgstr "By vendor"
 msgid "Cadence"
 msgstr "Cadence"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Call Elio"
 msgstr "Call Elio"
 
@@ -1917,7 +1917,7 @@ msgstr "Chat apps"
 msgid "Chat apps, group channels, and agent connections."
 msgstr "Chat apps, group channels, and agent connections."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Chat settings"
 msgstr "Chat settings"
 
@@ -3612,6 +3612,7 @@ msgstr "Disconnecting…"
 #: src/pages/CapTable.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Dismiss"
 msgstr "Dismiss"
@@ -5310,7 +5311,7 @@ msgstr "Memory"
 msgid "Memory scope"
 msgstr "Memory scope"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Mentions"
 msgstr "Mentions"
 
@@ -5328,16 +5329,16 @@ msgstr "Merge"
 
 #: src/components/compose/RichTextEditor.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "Message"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message {activeName}"
 msgstr "Message {activeName}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message composer"
 msgstr "Message composer"
 
@@ -5349,7 +5350,7 @@ msgstr "Message event"
 msgid "Message from {peer}"
 msgstr "Message from {peer}"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Message…"
 msgstr "Message…"
 
@@ -5632,7 +5633,7 @@ msgstr "Needs reconnect"
 msgid "Needs reply"
 msgstr "Needs reply"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Needs sign-in"
 msgstr "Needs sign-in"
 
@@ -5889,7 +5890,7 @@ msgstr "No matches"
 msgid "No matches in chats, pages, documents or artifacts."
 msgstr "No matches in chats, pages, documents or artifacts."
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr "No matches. Press Escape to send as typed."
 
@@ -6355,7 +6356,7 @@ msgstr "Open receipt"
 msgid "Open server integrations"
 msgstr "Open server integrations"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Open Settings"
 msgstr "Open Settings"
 
@@ -6649,8 +6650,8 @@ msgstr "Personal"
 msgid "Phone"
 msgstr "Phone"
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/chat-context.tsx
+#: src/pages/shell/composer.tsx
 msgid "Photo"
 msgstr "Photo"
 
@@ -7142,7 +7143,7 @@ msgstr "Remove"
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove {0}"
 msgstr "Remove {0}"
 
@@ -7195,7 +7196,7 @@ msgid "Remove link"
 msgstr "Remove link"
 
 #. placeholder {0}: mention.name
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove mention {0}"
 msgstr "Remove mention {0}"
 
@@ -7208,7 +7209,7 @@ msgid "Remove schedule"
 msgstr "Remove schedule"
 
 #. placeholder {0}: slashSkillLabel(selectedSkill).title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Remove skill {0}"
 msgstr "Remove skill {0}"
 
@@ -7318,12 +7319,12 @@ msgstr "Reply"
 msgid "Reply all"
 msgstr "Reply all"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Reply cancelled"
 msgstr "Reply cancelled"
 
 #. placeholder {0}: replyNameRef.current
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
 msgstr "Replying to {0}"
 
@@ -7509,7 +7510,7 @@ msgstr "Running · Stop"
 msgid "Running…"
 msgstr "Running…"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Runs on send"
 msgstr "Runs on send"
 
@@ -7790,7 +7791,7 @@ msgstr "Searching…"
 msgid "Security"
 msgstr "Security"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "See usage"
 msgstr "See usage"
 
@@ -7833,7 +7834,7 @@ msgstr "Self-custody"
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Send"
 msgstr "Send"
 
@@ -8153,16 +8154,16 @@ msgid "Size"
 msgstr "Size"
 
 #. placeholder {0}: label.title
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skill {0}"
 msgstr "Skill {0}"
 
-#: src/pages/Shell.tsx
 #: src/pages/shell/BotSkillsSection.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills"
 msgstr "Skills"
 
-#: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Skills and actions"
 msgstr "Skills and actions"
 
@@ -8416,6 +8417,7 @@ msgstr "Still waiting on {service}"
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/pages/Shell.tsx
+#: src/pages/shell/composer.tsx
 msgid "Stop"
 msgstr "Stop"
 

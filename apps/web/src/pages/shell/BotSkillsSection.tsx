@@ -17,6 +17,7 @@ import {
   Switch,
   Textarea,
 } from "@rakazo/ui-web";
+import { ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
@@ -65,6 +66,11 @@ function isNewSkillReady(draft: string) {
     /^name:\s*\S/m.test(text) &&
     /^description:\s*\S/m.test(text)
   );
+}
+
+/** Display only: the instructions without the leading `---` front matter block. */
+function skillBody(content: string) {
+  return content.replace(/^---\r?\n[\s\S]*?\r?\n---[ \t]*(?:\r?\n|$)/, "").trim();
 }
 
 const fieldClass = "mt-2 w-full font-mono text-[13px] leading-relaxed";
@@ -342,12 +348,17 @@ export function BotSkillsSection({
       {loading ? <Skeleton className="mt-2 h-10 w-full" /> : null}
       {!editorOpen && !urlOpen && drafts.length > 0 ? (
         <div className="mt-2" data-testid="bot-skills-drafts">
-          <h4 className="px-2.5 text-[12.5px] text-muted-foreground">
+          <h4 className="flex items-center gap-1.5 px-2.5 text-[12.5px] text-muted-foreground">
             <Trans>Drafts</Trans>
+            <span>{drafts.length}</span>
           </h4>
           {drafts.map((draft) => (
-            <details key={draft.id} className="px-2.5 py-2">
-              <summary className="flex cursor-pointer items-center gap-2 text-[14px] text-foreground">
+            <details key={draft.id} open className="group px-2.5 py-2">
+              <summary className="flex cursor-pointer list-none items-center gap-2 text-[14px] text-foreground">
+                <ChevronRight
+                  aria-hidden
+                  className="size-3.5 shrink-0 text-muted-foreground transition-transform group-open:rotate-90 rtl:-scale-x-100"
+                />
                 <span className="min-w-0 truncate" dir="auto">
                   {draft.name}
                 </span>
@@ -367,15 +378,14 @@ export function BotSkillsSection({
                 className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap rounded-lg bg-muted p-2 font-mono text-[12.5px]"
                 dir="auto"
               >
-                {draft.content}
+                {skillBody(draft.content)}
               </pre>
               <div className="mt-2 flex items-center gap-2">
                 <Button
-                  variant="ghost"
                   type="button"
                   disabled={busy}
                   onClick={() => void decide(draft, true)}
-                  className="rounded-lg bg-muted px-3 py-1.5 text-[13px] text-foreground"
+                  className="px-3 py-1.5 text-[13px]"
                 >
                   <Trans>Approve</Trans>
                 </Button>

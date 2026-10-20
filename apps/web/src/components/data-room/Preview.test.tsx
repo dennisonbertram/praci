@@ -226,7 +226,7 @@ it("frames a PDF with the browser viewer, and hides it while amounts are hidden"
   const pdf = { ...receipt, name: "nda.pdf", mimeType: "application/pdf" };
   await show(pdf);
   expect(imageUrl).toHaveBeenCalledWith({ id: "r1", mimeType: "application/pdf" });
-  expect(container.querySelector("iframe")?.getAttribute("src")).toBe("blob:receipt");
+  expect(container.querySelector("iframe")?.getAttribute("src")).toBe("blob:receipt#toolbar=0");
   await act(async () => setHideAmounts(true));
   expect(container.querySelector("iframe")).toBeNull();
 });
