@@ -294,6 +294,23 @@ Billing stays off, with no paywall, unless `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_
 `STRIPE_PRICE_ID` are all set (see `.env.example`). Setting only some of them stops the API at
 startup.
 
+### Optional: Gmail push
+
+Mail syncs by polling. A deployment that has Google Cloud can also get a push when Gmail
+changes, which starts the sync at once. It works for Google accounts connected directly, not
+through Composio or Pipedream, and polling continues either way.
+
+1. Create a Pub/Sub topic and grant `gmail-api-push@system.gserviceaccount.com` the Pub/Sub
+   Publisher role on it.
+2. Create a push subscription on the topic that delivers to `https://<host>/api/v1/mail/push`
+   with authentication on, using a service account of your own and the audience below.
+3. Set `GMAIL_PUSH_TOPIC` (`projects/<project>/topics/<topic>`) and
+   `GMAIL_PUSH_SERVICE_ACCOUNT` (that service account's email) on the API and the worker. The
+   audience defaults to `<WEB_ORIGIN>/api/v1/mail/push`; set `GMAIL_PUSH_AUDIENCE` if the
+   subscription uses another one.
+
+Push stays off unless both settings are present. Watches last seven days and are renewed daily.
+
 ### Logging
 
 Backend services write structured logs to stdout. `LOG_LEVEL` is `debug`, `info`, `warn`, `error`,

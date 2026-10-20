@@ -203,7 +203,9 @@ stories.
    connections, archives existing mail, records the filter for undo. Mobile: the same
    action, no new screen.
 5. **Background sync and push.** Worker-owned sync for all three callers, wider cache,
-   optional Pub/Sub. Mobile: none.
+   optional Pub/Sub. Mobile: none. Landed: the `mail.sync` job, a 90-day cache filled
+   100 messages per query per run, and Gmail push when `GMAIL_PUSH_TOPIC` and
+   `GMAIL_PUSH_SERVICE_ACCOUNT` are set.
 6. **Newsletter digest and learned sender decisions.** Digest reading view; promote
    repeated model decisions to sender decisions. Mobile: digest view.
 
