@@ -18,6 +18,7 @@ import {
   Alert,
   AppState,
   FlatList,
+  Platform,
   Pressable,
   RefreshControl,
   Text,
@@ -64,6 +65,7 @@ import {
   canDeleteInboxSpace,
   inboxNeedsCreateHint,
   removeInboxSpace,
+  renameInboxSpace,
   retryInboxSpaceFallback,
   selectInboxSpace,
   spaceInboxItems,
@@ -494,6 +496,34 @@ function Home() {
     [deleteInboxSpace, t],
   );
 
+  const renameSpace = useCallback(
+    (space: InboxSpace) => {
+      if (spaceActionRef.current.busy || spaceActionRef.current.recoveryId) return;
+      if (Platform.OS !== "ios") {
+        router.push({ pathname: "/new-space", params: { spaceId: space.id, name: space.name } });
+        return;
+      }
+      Alert.prompt(
+        t("Rename space"),
+        undefined,
+        [
+          { text: t("Cancel"), style: "cancel" },
+          {
+            text: t("Rename"),
+            onPress: (value?: string) => {
+              renameInboxSpace(space.id, value ?? "", refreshBots).catch((err) =>
+                Alert.alert(t("Could not rename space"), errorText(err, t("Try again."))),
+              );
+            },
+          },
+        ],
+        "plain-text",
+        space.name,
+      );
+    },
+    [refreshBots, router, t],
+  );
+
   const createQuickBot = useCallback(async () => {
     if (creatingBotRef.current || spaceActionRef.current.busy || spaceActionRef.current.recoveryId)
       return;
@@ -648,6 +678,7 @@ function Home() {
     chooseInboxSpace,
     collapsedRosterParents,
     confirmDeleteSpace,
+    renameSpace,
     day,
     meSpaceId: me?.spaceId,
     openBot,
