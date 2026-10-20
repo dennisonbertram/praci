@@ -9,6 +9,8 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
 }));
 vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
@@ -119,4 +121,50 @@ it("says which folder a duplicate is already in, and confirms a delete", () => {
   expect(text).toContain("notes.txtAlready in your Data roomView");
   // The outcome first, then the name.
   expect(text).toContain("Deletedold.txt");
+});
+
+const row = {
+  id: "imp1",
+  source: "upload",
+  total: 12,
+  done: 0,
+  failed: 0,
+  inProgress: 12,
+  finished: false,
+  added: 0,
+  stage: "opening" as const,
+  currentName: null,
+  latest: [],
+};
+
+it("narrates a zip after the upload reaches 100 percent, then offers View", () => {
+  const show = (state: UploadToast["state"]) => {
+    toasts.length = 0;
+    toasts.push({ id: 1, name: "q3.zip", state });
+    act(() =>
+      root.render(
+        <MemoryRouter>
+          <DataRoomDropZone userId="u1" />
+        </MemoryRouter>,
+      ),
+    );
+    return container.textContent ?? "";
+  };
+  expect(show({ kind: "uploading", fraction: 1 })).toContain("100%");
+  expect(show({ kind: "importing", progress: null })).toContain("Opening q3.zip");
+  expect(show({ kind: "importing", progress: { ...row, stage: "adding" } })).toContain(
+    "Found 12 files",
+  );
+  expect(
+    show({
+      kind: "importing",
+      progress: { ...row, stage: "adding", added: 5, currentName: "lease.pdf" },
+    }),
+  ).toContain("Adding 5 of 12 · lease.pdf");
+  expect(
+    show({ kind: "importing", progress: { ...row, stage: "done", added: 12, done: 7 } }),
+  ).toContain("Reading 7 of 12");
+  const done = show({ kind: "imported", count: 12 });
+  expect(done).toContain("Added 12 files");
+  expect(done).toContain("View");
 });

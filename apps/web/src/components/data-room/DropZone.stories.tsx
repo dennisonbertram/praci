@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { useEffect } from "react";
 import { DataRoomDropZone } from "./DropZone";
-import { showDeletedToast, showSortedToast } from "./upload-toasts";
+import { showDeletedToast, showSortedToast, showToastForStory } from "./upload-toasts";
 
 const meta = {
   title: "DataRoom/DropZone",
@@ -41,6 +41,48 @@ export const Sorted: StoryObj = {
     <div className="p-4 text-sm">
       <DataRoomDropZone userId="usr_sample" />
       <SortedToast />
+    </div>
+  ),
+};
+
+const row = {
+  id: "imp_sample",
+  source: "upload",
+  total: 12,
+  done: 0,
+  failed: 0,
+  inProgress: 12,
+  finished: false,
+  added: 0,
+  stage: "opening" as "opening" | "adding" | "reading" | "done" | null,
+  currentName: null as string | null,
+  latest: [],
+};
+function ImportToasts() {
+  useEffect(() => {
+    showToastForStory("Q3 contracts.zip", { kind: "importing", progress: null });
+    showToastForStory("Q3 contracts.zip", {
+      kind: "importing",
+      progress: { ...row, stage: "adding" },
+    });
+    showToastForStory("Q3 contracts.zip", {
+      kind: "importing",
+      progress: { ...row, stage: "adding", added: 5, currentName: "lease-2026.pdf" },
+    });
+    showToastForStory("Q3 contracts.zip", {
+      kind: "importing",
+      progress: { ...row, stage: "done", added: 12, done: 7 },
+    });
+    showToastForStory("Q3 contracts.zip", { kind: "imported", count: 12 });
+  }, []);
+  return null;
+}
+/** A zip after its upload: opened, found, added entry by entry, read, then added. */
+export const ZipStages: StoryObj = {
+  render: () => (
+    <div className="p-4 text-sm">
+      <DataRoomDropZone userId="usr_sample" />
+      <ImportToasts />
     </div>
   ),
 };

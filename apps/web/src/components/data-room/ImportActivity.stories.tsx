@@ -10,6 +10,9 @@ const base: DataRoomApiImport = {
   failed: 0,
   inProgress: 2,
   finished: false,
+  added: 0,
+  stage: null,
+  currentName: null,
   latest: [],
 };
 const latest = [

@@ -226,6 +226,12 @@ export const DataRoomApiImportSchema = z.object({
   failed: z.number().int(),
   inProgress: z.number().int(),
   finished: z.boolean(),
+  /** Zip entries handled so far, including skipped and failed ones. */
+  added: z.number().int(),
+  /** A zip import's step; null for other imports. "done" means unpacked, not yet read. */
+  stage: z.enum(["opening", "adding", "reading", "done"]).nullable(),
+  /** The zip entry being added. */
+  currentName: z.string().nullable(),
   /** The newest files it filed, up to three. */
   latest: z.array(z.object({ id: z.string(), name: z.string() })),
 });
