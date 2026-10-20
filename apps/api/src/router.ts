@@ -5499,6 +5499,9 @@ export function createRouter(deps: RouterDeps) {
         if (input.redirect === "desktop" && input.connectorId !== "google") {
           throw new ORPCError("BAD_REQUEST", { message: "Desktop sign-in is only for Google" });
         }
+        if (input.permission && input.connectorId !== "google") {
+          throw new ORPCError("BAD_REQUEST", { message: "This permission is only for Google" });
+        }
         const redirectUrl =
           input.redirect === "desktop" ? GOOGLE_DESKTOP_REDIRECT_URI : `${deps.env.webOrigin}/app`;
         const connector =
@@ -5565,7 +5568,11 @@ export function createRouter(deps: RouterDeps) {
         });
         try {
           const auth = await connector.begin(
-            { provider: input.provider, redirectUrl },
+            {
+              provider: input.provider,
+              redirectUrl,
+              ...(input.permission ? { permission: input.permission } : {}),
+            },
             connectionContext(context.actor, "connections.begin", context.signal),
           );
           // Re-take the provider lock and only advance still-pending rows so a
@@ -7350,7 +7357,12 @@ export function createRouter(deps: RouterDeps) {
           ),
         ),
         forget: authed.inbox.cleanup.forget.handler(({ context, input }) =>
-          inboxCleanupForget(deps, context.actor, input),
+          inboxCleanupForget(
+            { ...deps, mailWritesDisabled: deps.env.mailWritesDisabled },
+            context.actor,
+            input,
+            context.signal,
+          ),
         ),
       },
       actions: {

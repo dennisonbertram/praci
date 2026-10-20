@@ -233,6 +233,25 @@ export class GmailApiEmulator {
     this.mailbox(accountRef).scopes.add(scope);
   }
 
+  /** Takes a scope away again, as the user revoking the app's access would. */
+  revokeScope(accountRef: string, scope: string): void {
+    this.mailbox(accountRef).scopes.delete(scope);
+  }
+
+  /** Adds an empty mailbox under a new account reference. */
+  addMailbox(accountRef: string, address = `${accountRef}@example.test`): void {
+    this.mailboxes.set(accountRef, {
+      address,
+      messages: [],
+      drafts: new Map(),
+      historyId: HISTORY_START,
+      historyFloor: HISTORY_START,
+      history: [],
+      scopes: new Set(DEFAULT_SCOPES),
+      filters: [],
+    });
+  }
+
   /** The scopes the account's token holds. */
   scopesOf(accountRef: string): string[] {
     return [...this.mailbox(accountRef).scopes];

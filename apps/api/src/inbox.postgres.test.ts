@@ -315,7 +315,12 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       });
       expect(out.rows[1]?.from).toBe("ann@example.test");
       expect(out.accounts).toEqual([
-        { connectionId: connA, label: "Mailbox box-a", address: "box-a@example.test" },
+        {
+          connectionId: connA,
+          label: "Mailbox box-a",
+          address: "box-a@example.test",
+          senderRules: "unsupported",
+        },
       ]);
       expect(out.syncedAt).toBeNull();
       expect(out.failedAccounts).toEqual([]);
@@ -653,7 +658,12 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       expect(unread.nextPageToken).toBeUndefined();
       expect(unread.failedAccounts).toEqual([]);
       expect(unread.accounts).toEqual([
-        { connectionId: connA, label: "Mailbox box-a", address: "box-a@example.test" },
+        {
+          connectionId: connA,
+          label: "Mailbox box-a",
+          address: "box-a@example.test",
+          senderRules: "unsupported",
+        },
       ]);
       expect(requestedBoxes()).toEqual(["box-a"]);
 

@@ -13,6 +13,7 @@ import {
   isMailConnection,
   mailSyncStatus,
   requestMailSync,
+  senderRulesState,
   triageReadiness,
   triageStatus,
   waitForMailSync,
@@ -27,6 +28,7 @@ import type {
   InboxPileCounts,
   InboxRefreshOutput,
   InboxTodo,
+  MailAccountSummary,
   MailRow,
 } from "@rakazo/contracts";
 import {
@@ -97,14 +99,16 @@ export async function connectedMailConnections(prisma: PrismaClient, actor: Acto
 
 /** The account tabs for these connections: label and, once Gmail reported it, the address. */
 export function mailAccountsOf(
-  connections: Array<{ id: string; displayName: string; metadata: unknown }>,
-): Array<{ connectionId: string; label: string; address?: string }> {
+  connections: Array<{ id: string; displayName: string; connectorId: string; metadata: unknown }>,
+): MailAccountSummary[] {
   return connections.map((c) => {
-    const address = (c.metadata as { mailAddress?: unknown } | null)?.mailAddress;
+    const metadata = (c.metadata ?? {}) as Record<string, unknown>;
+    const address = metadata.mailAddress;
     return {
       connectionId: c.id,
       label: c.displayName,
       ...(typeof address === "string" && address ? { address } : {}),
+      senderRules: senderRulesState(c.connectorId, metadata),
     };
   });
 }

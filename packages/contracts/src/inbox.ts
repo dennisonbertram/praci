@@ -20,6 +20,8 @@ export const MailAccountSchema = z.object({
   senderRules: z.enum(["ready", "needs_permission", "unsupported"]).optional(),
 });
 
+export type MailAccountSummary = z.infer<typeof MailAccountSchema>;
+
 export const InboxPrioritySchema = z.enum(["critical", "important", "normal", "low"]);
 export type InboxPriority = z.infer<typeof InboxPrioritySchema>;
 
