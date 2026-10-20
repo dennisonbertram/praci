@@ -48,6 +48,7 @@ import {
   DataRoomApiProcessingSchema,
   DataRoomApiSearchInputSchema,
   DataRoomApiSearchOutputSchema,
+  DataRoomApiStatsSchema,
   DataRoomConsentGrantInputSchema,
   DataRoomConsentStatusSchema,
 } from "./data-room-api.js";
@@ -1378,6 +1379,8 @@ export const appContract = {
     /** Omit folderId for every folder; null for items outside any folder. */
     /** Each facet's values given the other filters, so no pick combines into nothing. */
     facetValues: oc.input(DataRoomApiFiltersSchema).output(DataRoomApiFacetValuesSchema),
+    /** Counts and sizes of the documents the filters match, grouped for the Stats view. */
+    stats: oc.input(DataRoomApiFiltersSchema).output(DataRoomApiStatsSchema),
     folderCreate: oc
       .input(z.object({ name: DataRoomApiName, parentId: Id.nullable().optional() }))
       .output(DataRoomApiFolderSchema),

@@ -1,13 +1,19 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { DataRoomApiFacetValues, DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
+import type {
+  DataRoomApiFacetValues,
+  DataRoomApiFolder,
+  DataRoomApiItem,
+  DataRoomApiStats,
+} from "@rakazo/contracts";
 import { Button, Dialog, DialogContent, Skeleton, Toggle } from "@rakazo/ui-web";
-import { LayoutGrid, List, Plus, Upload } from "lucide-react";
+import { ChartColumn, LayoutGrid, List, Plus, Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { AskBotButton } from "../components/AskBotButton";
 import { AutoSortDialog } from "../components/data-room/AutoSortDialog";
 import { DataRoomConsentPrompt } from "../components/data-room/ConsentPrompt";
+import { DataRoomStats } from "../components/data-room/DataRoomStats";
 import {
   FilterBar,
   facetOptions,
@@ -238,6 +244,22 @@ export function DataRoomPage({
       live = false;
     };
   }, [facetFilters, facetsVersion]);
+  // Stats are a third way to see the same folder and filters, read only while they are shown.
+  const [showStats, setShowStats] = useState(false);
+  const [stats, setStats] = useState<{ key: string; value?: DataRoomApiStats; error?: string }>();
+  useEffect(() => {
+    if (!showStats) return;
+    let live = true;
+    const key = facetFilters;
+    rpc.dataRoom
+      .stats(JSON.parse(facetFilters))
+      .then((value) => live && setStats({ key, value }))
+      .catch((cause) => live && setStats({ key, error: errorText(cause) }));
+    return () => {
+      live = false;
+    };
+    // facetsVersion changes to ask for a fresh read.
+  }, [showStats, facetFilters, facetsVersion]);
   const listReload = list.reload;
   const reload = useCallback(() => {
     listReload();
@@ -471,8 +493,11 @@ export function DataRoomPage({
                     <Tip label={t`List view`}>
                       <Toggle
                         size="sm"
-                        pressed={view === "list"}
-                        onPressedChange={() => setView("list")}
+                        pressed={!showStats && view === "list"}
+                        onPressedChange={() => {
+                          setView("list");
+                          setShowStats(false);
+                        }}
                         aria-label={t`List view`}
                       >
                         <List aria-hidden="true" />
@@ -481,11 +506,24 @@ export function DataRoomPage({
                     <Tip label={t`Grid view`}>
                       <Toggle
                         size="sm"
-                        pressed={view === "grid"}
-                        onPressedChange={() => setView("grid")}
+                        pressed={!showStats && view === "grid"}
+                        onPressedChange={() => {
+                          setView("grid");
+                          setShowStats(false);
+                        }}
                         aria-label={t`Grid view`}
                       >
                         <LayoutGrid aria-hidden="true" />
+                      </Toggle>
+                    </Tip>
+                    <Tip label={t`Stats`}>
+                      <Toggle
+                        size="sm"
+                        pressed={showStats}
+                        onPressedChange={setShowStats}
+                        aria-label={t`Stats`}
+                      >
+                        <ChartColumn aria-hidden="true" />
                       </Toggle>
                     </Tip>
                   </fieldset>
@@ -555,108 +593,132 @@ export function DataRoomPage({
                 onAutoSort={() => setAutoSorting(true)}
               />
             </div>
-            <div
-              data-testid="data-room-list"
-              className="@container/list rk-scroll min-w-0 flex-1 overflow-y-auto"
-            >
-              <ImportActivity
-                imports={importActivity.imports}
-                onOpenItem={openImported}
-                onDismiss={importActivity.dismiss}
-              />
-              {processing.processing && (processing.active || processing.finished) ? (
-                <ProcessingStrip
-                  processing={processing.processing}
-                  total={processing.total}
-                  finished={!processing.active}
+            {showStats ? (
+              <div
+                data-testid="data-room-stats"
+                className="rk-scroll min-w-0 flex-1 overflow-y-auto"
+              >
+                <DataRoomStats
+                  stats={stats?.key === facetFilters ? (stats.value ?? null) : null}
+                  error={stats?.key === facetFilters ? stats.error : undefined}
+                  onRetry={() => setFacetsVersion((n) => n + 1)}
+                  scope={openFolderPath || t`All items`}
+                  filtered={filtered}
+                  onClearFilters={clearFilters}
+                  onPick={(pick) => {
+                    setFilters({ ...filters, ...pick });
+                    setShowStats(false);
+                  }}
+                  onOpenItem={(id) => {
+                    openImported(id);
+                    setShowStats(false);
+                  }}
                 />
-              ) : null}
-              {searching && openFolderPath ? (
-                // A search inside a folder says so, with a way to look everywhere.
-                <div className="flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
-                  <span className="min-w-0 truncate">
-                    <Trans>Searching in {openFolderPath}</Trans>
-                  </span>
-                  <Button
-                    variant="link"
-                    size="xs"
-                    className="h-auto p-0"
-                    onClick={() => setFilters({ ...filters, folderId: undefined })}
-                  >
-                    <Trans>Search all items</Trans>
-                  </Button>
-                </div>
-              ) : null}
-              {list.error ? (
-                <div className="flex items-center gap-3 p-4 text-sm text-destructive">
-                  {list.error}
-                  <Button variant="outline" size="sm" onClick={list.reload}>
-                    <Trans>Retry</Trans>
-                  </Button>
-                </div>
-              ) : null}
-              {list.loading && rows.length === 0 ? (
-                <div className="flex flex-col gap-2 p-3">
-                  {[0, 1, 2, 3].map((n) => (
-                    <Skeleton key={n} className="h-8 w-full" />
-                  ))}
-                </div>
-              ) : rows.length === 0 && !list.error && !subfolders.length ? (
-                <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
-                  {/* An open folder with nothing in it is empty, not a search that found nothing. */}
-                  {!searching && !filtered ? (
-                    <>
-                      <p>
-                        <Trans>This folder is empty. Drop files here or add them.</Trans>
-                      </p>
-                      <FileInputButton variant="outline" size="sm">
-                        <Plus aria-hidden="true" />
-                        <Trans>Add files</Trans>
-                      </FileInputButton>
-                    </>
-                  ) : (
-                    <p>
-                      <Trans>No results</Trans>
-                    </p>
-                  )}
-                  {searching ? (
-                    <p className="text-xs">
-                      <Trans>Search looks for these words in names and text.</Trans>
-                    </p>
-                  ) : null}
-                  {filtered ? (
-                    <Button variant="outline" size="sm" onClick={clearFilters}>
-                      <Trans>Clear filters</Trans>
+              </div>
+            ) : (
+              <div
+                data-testid="data-room-list"
+                className="@container/list rk-scroll min-w-0 flex-1 overflow-y-auto"
+              >
+                <ImportActivity
+                  imports={importActivity.imports}
+                  onOpenItem={openImported}
+                  onDismiss={importActivity.dismiss}
+                />
+                {processing.processing && (processing.active || processing.finished) ? (
+                  <ProcessingStrip
+                    processing={processing.processing}
+                    total={processing.total}
+                    finished={!processing.active}
+                  />
+                ) : null}
+                {searching && openFolderPath ? (
+                  // A search inside a folder says so, with a way to look everywhere.
+                  <div className="flex flex-wrap items-center gap-x-2 border-b border-border px-3 py-1.5 text-xs text-muted-foreground">
+                    <span className="min-w-0 truncate">
+                      <Trans>Searching in {openFolderPath}</Trans>
+                    </span>
+                    <Button
+                      variant="link"
+                      size="xs"
+                      className="h-auto p-0"
+                      onClick={() => setFilters({ ...filters, folderId: undefined })}
+                    >
+                      <Trans>Search all items</Trans>
                     </Button>
-                  ) : null}
-                </div>
-              ) : view === "grid" && !searching ? (
-                <>
-                  {subfolderList()}
-                  <GridView rows={rows} o={interaction} />
-                </>
-              ) : (
-                <ListView
-                  rows={rows}
-                  o={interaction}
-                  lead={subfolderList}
-                  sortField={sort?.field}
-                />
-              )}
-              {list.nextCursor ? (
-                <div className="grid place-items-center p-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={list.loadingMore || list.loading}
-                    onClick={() => void list.loadMore()}
-                  >
-                    <Trans>Load more</Trans>
-                  </Button>
-                </div>
-              ) : null}
-            </div>
-            {shown && !narrow ? (
+                  </div>
+                ) : null}
+                {list.error ? (
+                  <div className="flex items-center gap-3 p-4 text-sm text-destructive">
+                    {list.error}
+                    <Button variant="outline" size="sm" onClick={list.reload}>
+                      <Trans>Retry</Trans>
+                    </Button>
+                  </div>
+                ) : null}
+                {list.loading && rows.length === 0 ? (
+                  <div className="flex flex-col gap-2 p-3">
+                    {[0, 1, 2, 3].map((n) => (
+                      <Skeleton key={n} className="h-8 w-full" />
+                    ))}
+                  </div>
+                ) : rows.length === 0 && !list.error && !subfolders.length ? (
+                  <div className="flex flex-col items-center gap-3 p-6 text-center text-sm text-muted-foreground">
+                    {/* An open folder with nothing in it is empty, not a search that found nothing. */}
+                    {!searching && !filtered ? (
+                      <>
+                        <p>
+                          <Trans>This folder is empty. Drop files here or add them.</Trans>
+                        </p>
+                        <FileInputButton variant="outline" size="sm">
+                          <Plus aria-hidden="true" />
+                          <Trans>Add files</Trans>
+                        </FileInputButton>
+                      </>
+                    ) : (
+                      <p>
+                        <Trans>No results</Trans>
+                      </p>
+                    )}
+                    {searching ? (
+                      <p className="text-xs">
+                        <Trans>Search looks for these words in names and text.</Trans>
+                      </p>
+                    ) : null}
+                    {filtered ? (
+                      <Button variant="outline" size="sm" onClick={clearFilters}>
+                        <Trans>Clear filters</Trans>
+                      </Button>
+                    ) : null}
+                  </div>
+                ) : view === "grid" && !searching ? (
+                  <>
+                    {subfolderList()}
+                    <GridView rows={rows} o={interaction} />
+                  </>
+                ) : (
+                  <ListView
+                    rows={rows}
+                    o={interaction}
+                    lead={subfolderList}
+                    sortField={sort?.field}
+                  />
+                )}
+                {list.nextCursor ? (
+                  <div className="grid place-items-center p-3">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={list.loadingMore || list.loading}
+                      onClick={() => void list.loadMore()}
+                    >
+                      <Trans>Load more</Trans>
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+            )}
+            {shown && !narrow && !showStats ? (
               <Preview
                 item={shown}
                 folderPath={folderPath(shown.folderId)}
