@@ -73,6 +73,7 @@ const item = (name: string): DataRoomApiItem => ({
   sourceUrl: null,
   status: "ready",
   error: null,
+  notIndexed: false,
   facets: {
     docType: "Memo",
     docDate: null,

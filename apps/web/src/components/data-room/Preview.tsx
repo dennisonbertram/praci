@@ -231,7 +231,9 @@ export function Preview({
       ) : facets.summary ? (
         <p className="text-sm">{maskCurrencyWhenHidden(facets.summary)}</p>
       ) : null}
-      {isSettled(item.status) && item.error ? (
+      {isSettled(item.status) && item.notIndexed ? (
+        <p className="text-xs text-muted-foreground">{t`Too large to search inside`}</p>
+      ) : isSettled(item.status) && item.error ? (
         <p className="text-xs text-muted-foreground">{t`Couldn't classify`}</p>
       ) : isSettled(item.status) && !facets.docType ? (
         <p className="text-xs text-muted-foreground">

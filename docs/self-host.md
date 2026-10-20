@@ -497,6 +497,15 @@ Plain `http` endpoints are accepted only for localhost, private network addresse
 Without any `RAKAZO_S3_*` variable (for example `pnpm dev` outside Compose), artifacts and home snapshots
 fall back to local disk under `DATA_DIR`, which is only safe for a single process.
 
+Data room uploads have no size limit; large files are written to the store in 8 MiB multipart parts.
+Two settings outside Rakazo matter for them:
+
+- Add an `AbortIncompleteMultipartUpload` lifecycle rule (for example after one day) to the bucket.
+  Rakazo cancels an upload it abandons, but a crash can leave parts behind, and S3 bills for them.
+- A reverse proxy that limits request bodies also limits uploads. Cloudflare's proxy refuses bodies over
+  about 100 MB on the Free and Pro plans, so serve the API from a DNS-only record or through a tunnel
+  that allows large bodies. The bundled Caddy configuration sets no body limit.
+
 ### Agent homes
 
 Each Computer's persistent workspace (its home) is saved as one gzip tar snapshot in the object store.

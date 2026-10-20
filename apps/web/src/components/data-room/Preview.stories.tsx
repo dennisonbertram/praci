@@ -108,3 +108,17 @@ export const FullScreen: Story = {
     canvasElement.querySelector<HTMLButtonElement>('button[aria-label="Full screen"]')?.click();
   },
 };
+
+/** Stored and downloadable, but too large to read for search. */
+export const TooLargeToSearch: Story = {
+  args: {
+    item: {
+      ...readyItem,
+      name: "Sample board deck.pdf",
+      mimeType: "application/pdf",
+      size: 400 * 1024 * 1024,
+      notIndexed: true,
+      facets: { ...readyItem.facets, docType: null, docDate: null, parties: [], summary: null },
+    },
+  },
+};

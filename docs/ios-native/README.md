@@ -84,7 +84,7 @@ All approvals are message blocks answered through RPC; the run waits in `waiting
 | Finance | `finance.*` | Money in integer cents; transactions carry a currency and non-USD ones are left out of totals. Mercury and Brex connect through MCP OAuth. Hide amounts is client-only; mask chat finance cards too |
 | Legal | `legal.*` | Runs only with the user's own OpenRouter key; show `modelBlocker` |
 | Cap table | `carta.*` | `snapshot: null` until Carta is connected |
-| Data room | `dataRoom.*`, `POST /api/data-room/upload?name=…&folderId=…`, `GET …/content`, `GET …/thumbnail` | Upload raw bytes up to 50 MB (201 when new, 200 with `duplicate` when the same file exists); items process asynchronously; search highlights use U+0001/U+0002 as plain-text markers; no share links |
+| Data room | `dataRoom.*`, `POST /api/data-room/upload?name=…&folderId=…`, `GET …/content`, `GET …/thumbnail` | Upload raw bytes with no size limit; stream the body (201 when new, 200 with `duplicate` when the same file exists, 202 with `importId` for a zip, which is unpacked in the background); items process asynchronously; search highlights use U+0001/U+0002 as plain-text markers; no share links |
 | Artifacts | `artifacts.*` | Preview by MIME type: sandboxed HTML, markdown, PDF, images; others download or share |
 | Integrations, MCP | `connections.*`, `mcp.*`, `integrationSetup.*`, `capabilities.*` | Connect: open `authorizationUrl` in Safari, then poll `connections.complete` every 2 s. MCP OAuth is web-only. Never offer `stdio` MCP on iOS |
 | Routines | `routines.*`, `runs.list` | New routines start inactive and need a trigger |

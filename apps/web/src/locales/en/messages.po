@@ -6395,10 +6395,6 @@ msgstr "Other model…"
 msgid "Out"
 msgstr "Out"
 
-#: src/components/data-room/DropZone.tsx
-msgid "Over the 50 MB limit"
-msgstr "Over the 50 MB limit"
-
 #: src/pages/Legal.tsx
 msgid "Overdue"
 msgstr "Overdue"
@@ -8826,6 +8822,10 @@ msgstr "Token"
 #: src/components/inbox/MailAttachments.tsx
 msgid "Too large to preview"
 msgstr "Too large to preview"
+
+#: src/components/data-room/Preview.tsx
+msgid "Too large to search inside"
+msgstr "Too large to search inside"
 
 #: src/lib/run-phase.ts
 msgid "tools"

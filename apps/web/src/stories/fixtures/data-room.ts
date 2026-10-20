@@ -38,6 +38,7 @@ const item = (id: string, name: string, over: Partial<DataRoomApiItem> = {}): Da
   sourceUrl: null,
   status: "ready",
   error: null,
+  notIndexed: false,
   facets,
   createdAt: "2026-01-02T00:00:00.000Z",
   hasThumbnail: false,

@@ -1,4 +1,4 @@
-import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
+import type { DataRoomApiFolder, DataRoomApiItem, DataRoomApiUploadResponse } from "@rakazo/contracts";
 import { DataRoomApiUploadResponseSchema } from "@rakazo/contracts";
 import { rpc, withSpaceHeaders } from "./rpc";
 
@@ -109,7 +109,7 @@ export function uploadToDataRoom(
   file: File,
   folderId: string | undefined,
   onProgress: (fraction: number) => void,
-): Promise<{ item: DataRoomApiItem; duplicate: boolean }> {
+): Promise<DataRoomApiUploadResponse> {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
     const query = new URLSearchParams({ name: file.name, ...(folderId ? { folderId } : {}) });
@@ -124,7 +124,6 @@ export function uploadToDataRoom(
     };
     request.onerror = () => reject(new DataRoomUploadError("failed"));
     request.onload = () => {
-      if (request.status === 413) return reject(new DataRoomUploadError("too-large"));
       if (request.status === 400) {
         // A zip that could not be unpacked says why; any other 400 is a bad file name.
         try {
