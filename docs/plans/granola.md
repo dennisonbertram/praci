@@ -65,11 +65,15 @@ Polling, not webhooks, in this epic: a webhook receiver needs a signature scheme
 
 One additive migration, `packages/db/prisma/migrations/`:
 
-- `Meeting`: `id`, `spaceId`, `userId` (both required, cascade), `connectionId` (the Granola API `Connection`), `provider` (`granola`), `externalId`, `title`, `startedAt`, `endedAt`, `attendees` (Json: name, email), `organizerEmail`, `sourceUrl`, `folders` (text[]), `summary`, `privateNotes`, `transcript` (text, nullable; speaker-prefixed lines), `transcriptIndexed` (bool), `digest` (Json, nullable), `digestStatus`, `sourceUpdatedAt`, `deletedAt`, `createdAt`, `updatedAt`, a generated `tsv` over title, summary and transcript (the Data room chunk pattern in `schema.prisma`, no vectors). Unique `(spaceId, userId, provider, externalId)`; index `(spaceId, userId, startedAt)`. Every query filters on `spaceId` and `userId`.
+- `Meeting`: `id`, `spaceId`, `userId` (both required, cascade), `connectionId` (nullable, `onDelete: SetNull`; the source's `Connection`), `provider` (`granola` now, `wisprflow` expected next; a second provider is planned), `externalId`, `title`, `startedAt`, `endedAt`, `attendees` (Json: name, email), `organizerEmail`, `sourceUrl`, `folders` (text[]), `summary`, `privateNotes`, `transcript` (text, nullable; speaker-prefixed lines), `transcriptIndexed` (bool), `digest` (Json, nullable), `digestStatus`, `sourceUpdatedAt`, `deletedAt`, `createdAt`, `updatedAt`, a generated `tsv` over title, summary and transcript (the Data room chunk pattern in `schema.prisma`, no vectors). Unique `(spaceId, userId, provider, externalId)`; index `(spaceId, userId, startedAt)`. Every query filters on `spaceId` and `userId`.
 - `MeetingSyncState`: one row per connection (like `DataRoomSyncState`): `cursor`/`syncedThrough`, `claimedAt`, `claimToken`, `lastSyncedAt`, `error` (short reason, never a vendor payload).
 - `InboxTodo.meetingId` (nullable), added in S5. The to-do already has `connectionId`, which here is the Granola connection; `messageId` stays null (the unique index allows many nulls).
 
-The key lives in the secret store (`SecretStore` in `packages/adapter-kit/src/interfaces.ts`) and is referenced by `Connection.secretId`, `connectorId: "granola-api"`. It is never returned by an RPC or put in a prompt. Disconnecting deletes the secret, the sync state and the user's `Meeting` rows for that connection (the user is told once, in the confirmation).
+The key lives in the secret store (`SecretStore` in `packages/adapter-kit/src/interfaces.ts`) and is referenced by `Connection.secretId`, `connectorId: "granola-api"`. It is never returned by an RPC or put in a prompt. Disconnecting deletes the secret and stops the sync; the `Connection` row is kept with status `disconnected`, and every stored `Meeting` and the Inbox to-dos made from it stay (see Retention).
+
+Retention (decided by the maintainer): synced meetings and transcripts are kept permanently as part of the company's record. There is no delete-on-disconnect and no expiry. `Meeting.connectionId` is nullable with `onDelete: SetNull`, so removing a connection row can never remove meetings. Visibility is unchanged: a meeting is private to the user who connected it, scoped to space and user. Whether meetings should later be shareable to the whole space as company logs is an open question; nothing here designs it. Account deletion and the existing account export/erasure rules still apply to a user's rows.
+
+Second provider (decided): `Meeting` and `MeetingSource` are the single shared store for meeting-like content. Wispr Flow's epic (#452, child #450) adds a second source with `provider: "wisprflow"` after S1 (#437), using the same table, tools and digest. `provider` is part of the unique key and is never assumed to be `granola` outside the Granola adapter.
 
 ### The interface
 
@@ -111,7 +115,7 @@ A commitment whose owner matches the user becomes an `InboxTodo` with `text` (th
 
 - Every row, query and job payload carries `spaceId` and `userId`; the sync job loads the connection by id and checks both against the job's actor before it reads the secret.
 - Meeting content never crosses owners. It is not in the Data room, not in space-wide search, not in `renderBotDirectory` text, and not in notifications (push/email bodies carry the to-do text only if the existing notification rules already show to-do text; otherwise only "N follow-ups").
-- Transcripts may include other people who did not consent to AI processing. Only the user's own connection is read; `deleted_at` rows are honored; disconnect deletes the data. Granola's own data-use terms are unconfirmed (see Open questions).
+- Transcripts may include other people who did not consent to AI processing. Only the user's own connection is read; `deleted_at` rows are honored (a note deleted in Granola is hidden, not erased); disconnect stops the sync and keeps the stored data. Granola's own data-use terms are unconfirmed (see Open questions).
 - Logs never contain note text or the key; the error column holds short reasons only.
 
 ## Slices
@@ -176,8 +180,8 @@ Docs only. Owns `docs/plans/granola.md`. Verify: no local paths or private data.
 
 - Prerequisites: S2, S3.
 - Owns: `packages/contracts/src/rpc.ts` and `apps/api/src/router.ts` (`meetings.connect`, `meetings.status`, `meetings.disconnect`, `meetings.refresh`; the key goes straight to the secret store); `apps/web/src/components/integrations/` (a `GranolaMeetingsCard` plus `.stories.tsx` and tests; shown on the Granola tile's detail); `apps/web/src/lib/integrations.ts` only if the tile needs a pointer; `apps/mobile/app/(settings)/integrations.tsx` (native field and status row); locale files; `docs/design-system` regenerated.
-- Behaviour: pasting a valid key (checked by one list call) stores it, queues a sync and shows status; an invalid key shows the error line and stores nothing; disconnect deletes the secret, sync state and meetings after one confirm; status is per user; the key is never returned.
-- Tests first: router tests for each RPC with cross-user denial and key never in output; component tests for connect, error, synced and disconnect; Storybook smoke; mobile render test if the repo has the harness, else stated in the PR.
+- Behaviour: pasting a valid key (checked by one list call) stores it, queues a sync and shows status; an invalid key shows the error line and stores nothing; disconnect deletes the secret and stops the sync, keeps the connection row as `disconnected`, and keeps all stored meetings and to-dos (no data deletion, no confirm about data); status is per user; the key is never returned.
+- Tests first: router tests for each RPC with cross-user denial and key never in output; component tests for connect, error, synced and disconnect; a Postgres test that disconnect leaves every `Meeting` and `InboxTodo` row in place; Storybook smoke; mobile render test if the repo has the harness, else stated in the PR.
 - Regression: "the API key is never returned by any RPC".
 - Shared files: `router.ts`/`rpc.ts` with all RPC work; `integrations.tsx` on mobile with the integrations screen owners.
 - Manual walk (in the PR): run the demo stack with the emulator, paste the emulator key, see meetings sync, ask the Granola agent a question, see a to-do appear; report what was not tried with a real account.
@@ -220,12 +224,17 @@ Docs only. Owns `docs/plans/granola.md`. Verify: no local paths or private data.
 - AI-data consent covers digesting meeting text the same way it covers mail.
 - Reusing the Granola tile's detail page for the card avoids a new settings screen.
 
-## Open questions for the maintainer
 
-- Does your Granola plan include API keys (Business or Enterprise)? Without it only the existing MCP path works, with transcripts only on paid plans.
-- On Enterprise, the "Meeting transcripts" setting blocks AI tools from transcripts; does your workspace set it? S3 stores transcripts only when the API returns them and says "no transcript" otherwise.
-- Granola's terms for sending API data to an LLM: unconfirmed. Do you want a one-line consent note on the card, or is the existing AI data sharing setting enough?
-- Should follow-ups from meetings go to the Inbox to-do list (this plan), or wait for Projects?
+## Decisions from the maintainer
+
+- **Tier (resolved).** Build the Business or Enterprise API sync as planned. The MCP tile stays for free and Pro users.
+- **Retention (resolved).** Keep synced meetings and transcripts permanently as part of the company's record. Disconnecting stops the sync and keeps stored data. No expiry.
+- **Follow-ups (resolved).** Meeting commitments become Inbox to-dos now (S5), not after Projects.
+- **Shared store (resolved).** `Meeting` and `MeetingSource` (S1, #437) are the single store for meeting-like content. The Wispr Flow epic (#452) adds a second source, `provider: "wisprflow"`, in #450 after S1.
+
+## Open questions
+
+- Should meetings eventually be shareable to the whole space as company logs? Not designed here; meetings stay private to the connecting user.
+- Granola's terms for sending API data to an LLM are unconfirmed. Add a one-line consent note on the card, or is the existing AI data sharing setting enough?
+- On Enterprise, the "Meeting transcripts" setting blocks AI tools from transcripts. Is it set in the maintainer's workspace? S3 stores a transcript only when the API returns one and records "no transcript" otherwise.
 - Webhooks: worth a later slice once Granola documents event names and signatures? Polling delay is at most 5 minutes.
-- Retention: keep meetings until disconnect (this plan), or expire transcripts after N days?
-- Shared with the Wispr Flow plan: see the handoff note. If Wispr exposes meetings, should `Meeting` and `MeetingSource` be shared (this plan's names are provider-neutral for that reason)?
