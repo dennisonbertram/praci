@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   dataRoomStepJob,
+  dataRoomZipUnpackJob,
   dispatchBackgroundJob,
   financeSyncJob,
   HISTORY_COMPACT_MAX_ATTEMPTS,
@@ -43,6 +44,7 @@ function handlers(): BackgroundJobHandlers {
     "dataroom.drive.file": vi.fn(async () => undefined),
     "dataroom.box.import": vi.fn(async () => undefined),
     "dataroom.box.file": vi.fn(async () => undefined),
+    "dataroom.zip.unpack": vi.fn(async () => undefined),
   };
 }
 
@@ -94,6 +96,38 @@ describe("background job contracts", () => {
     expect(inboxTriageJob("user-2", "space-1").replaceKey).not.toBe(
       inboxTriageJob("user-1", "space-1").replaceKey,
     );
+  });
+
+  it("validates dataroom.zip.unpack and queues one unpack per stored zip", async () => {
+    const payload = {
+      spaceId: "space-1",
+      userId: "user-1",
+      storageKey: "blob-1",
+      size: 123,
+      entries: 2,
+      importId: "import-1",
+      name: "bundle.zip",
+      source: "upload" as const,
+      folderId: null,
+    };
+    const target = handlers();
+    await dispatchBackgroundJob(target, "dataroom.zip.unpack", payload);
+    expect(target["dataroom.zip.unpack"]).toHaveBeenCalledWith(payload);
+    expect(dataRoomZipUnpackJob(payload)).toEqual({
+      name: "dataroom.zip.unpack",
+      payload,
+      replaceKey: "dataroom.zip.unpack:space-1:blob-1",
+      maxAttempts: 3,
+    });
+    for (const broken of [
+      { ...payload, storageKey: "" },
+      { ...payload, importId: "" },
+      { ...payload, entries: 0 },
+      { ...payload, source: "finance" },
+      { ...payload, folderId: undefined },
+    ]) {
+      expect(() => parseBackgroundJob("dataroom.zip.unpack", broken)).toThrow();
+    }
   });
 
   it("mail.sync payload needs spaceId, userId and connectionId", () => {

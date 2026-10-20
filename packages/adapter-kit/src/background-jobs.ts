@@ -51,6 +51,20 @@ const payloadSchemas = {
   "dataroom.classify": dataRoomStepPayload,
   "dataroom.index": dataRoomStepPayload,
   "dataroom.thumbnail": dataRoomStepPayload,
+  "dataroom.zip.unpack": z.object({
+    spaceId: z.string().min(1),
+    userId: z.string().min(1),
+    storageKey: z.string().min(1),
+    size: z.number().int().nonnegative(),
+    entries: z.number().int().positive(),
+    importId: z.string().min(1),
+    name: z.string().min(1),
+    source: z.enum(["upload", "gmail", "drive", "box", "chat"]),
+    folderId: z.string().min(1).nullable(),
+    sourceConnectionId: z.string().min(1).optional(),
+    externalId: z.string().min(1).optional(),
+    sourceUrl: z.string().min(1).optional(),
+  }),
   "dataroom.drive.import": z.object({
     spaceId: z.string().min(1),
     userId: z.string().min(1),
@@ -346,6 +360,18 @@ export function dataRoomStepJob(
     name,
     payload: { spaceId: scope.spaceId, userId: scope.userId, itemId },
     replaceKey: `${name}:${itemId}`,
+    maxAttempts: DATA_ROOM_JOB_ATTEMPTS,
+  };
+}
+
+/** One unpack per stored zip: queueing it again replaces the first. */
+export function dataRoomZipUnpackJob(
+  payload: BackgroundJobPayloads["dataroom.zip.unpack"],
+): BackgroundJob {
+  return {
+    name: "dataroom.zip.unpack",
+    payload,
+    replaceKey: `dataroom.zip.unpack:${payload.spaceId}:${payload.storageKey}`,
     maxAttempts: DATA_ROOM_JOB_ATTEMPTS,
   };
 }

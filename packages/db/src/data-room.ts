@@ -856,6 +856,8 @@ export function createDataRoomRepos(prisma: PrismaClient) {
       revision: number,
       text: string,
       extractKey: string | null = null,
+      /** `notIndexed` marks a stored file too large to read; a later extraction clears it. */
+      options: { notIndexed?: boolean } = {},
     ) {
       return prisma.$transaction(async (tx) => {
         const { count } = await tx.dataRoomItem.updateMany({
@@ -863,6 +865,7 @@ export function createDataRoomRepos(prisma: PrismaClient) {
           data: {
             status: "classifying",
             error: null,
+            notIndexed: options.notIndexed ?? false,
             failures: 0,
             leaseUntil: null,
             previewText: dataRoomPreviewText(text),

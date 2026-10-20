@@ -70,17 +70,17 @@ function setup(files: EmulatedDriveFile[]) {
   return deps;
 }
 const plan = (deps: DriveFilesDeps, folderIds: string[]) =>
-  planDriveFolders(deps, context, { connectionId: "conn-a", folderIds, maxBytes: 1000 });
+  planDriveFolders(deps, context, { connectionId: "conn-a", folderIds });
 
 describe("planDriveFolders", () => {
-  it("lists every subfolder, keeps empty folders and skips what cannot be imported", async () => {
+  it("lists every subfolder, keeps empty folders, plans large files and skips what cannot be imported", async () => {
     const deps = setup([
       folder("top", "Deals"),
       folder("sub", "2026", "top"),
       folder("empty", "Empty", "sub"),
       pdf("a", "a.pdf", "top"),
       pdf("b", "b.pdf", "sub"),
-      pdf("huge", "huge.pdf", "sub", { size: "5000" }),
+      pdf("huge", "huge.pdf", "sub", { size: "50000000000" }),
       {
         id: "form",
         name: "Survey",
@@ -110,9 +110,10 @@ describe("planDriveFolders", () => {
       ["a", 0],
       ["b", 1],
       ["doc", 0],
+      ["huge", 1],
     ]);
-    // The oversized file, the Form and the shortcut.
-    expect(result.skipped).toBe(3);
+    // The Form and the shortcut; size never skips a file.
+    expect(result.skipped).toBe(2);
   });
 
   it("never nests deeper than the limit: a 10-level chain keeps the rest in the name", async () => {
@@ -215,7 +216,6 @@ describe("planDriveFolders", () => {
         connectionId: "conn-a",
         folderIds: ["top"],
         directFileIds,
-        maxBytes: 1000,
       });
     await expect(run(["extra"])).rejects.toMatchObject({ code: "too_many" });
     // A direct pick that is also in the folder is one file.
@@ -234,7 +234,6 @@ describe("planDriveFolders", () => {
       connectionId: "conn-a",
       folderIds: ["top"],
       directFileIds: ["in", "out"],
-      maxBytes: 1000,
     });
     expect(result.files).toEqual([
       { id: "in", folder: 1 },
@@ -253,7 +252,6 @@ describe("planDriveFolders", () => {
     const error = await planDriveFolders(deps, context, {
       connectionId: "conn-a",
       folderIds: ["top"],
-      maxBytes: 1000,
       maxScanned: 60,
     }).catch((e) => e);
     expect(error).toMatchObject({

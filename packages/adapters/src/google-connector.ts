@@ -350,6 +350,12 @@ export class GoogleConnector implements ManagedConnectorProvider {
   ): Promise<ConnectorProxyResponse> {
     const token = await this.accessToken(row, context, forceRefresh);
     const raw = typeof request.body === "string" && Boolean(request.contentType);
+    // A streamed body can take hours; the time limit covers only the wait for the response headers.
+    const streaming = request.responseType === "stream";
+    const headerLimit = new AbortController();
+    const headerTimer = streaming
+      ? setTimeout(() => headerLimit.abort(), REQUEST_TIMEOUT_MS)
+      : undefined;
     const response = await (this.config.fetch ?? fetch)(request.url, {
       method: request.method,
       headers: {
@@ -363,9 +369,13 @@ export class GoogleConnector implements ManagedConnectorProvider {
         ? {}
         : { body: raw ? (request.body as string) : JSON.stringify(request.body) }),
       redirect: "error",
-      signal: combineSignals(context.signal, AbortSignal.timeout(REQUEST_TIMEOUT_MS)),
-    });
+      signal: combineSignals(
+        context.signal,
+        streaming ? headerLimit.signal : AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      ),
+    }).finally(() => clearTimeout(headerTimer));
     if (request.responseType === "bytes") return this.bytesResponse(response, request.maxBytes);
+    if (streaming) return this.streamResponse(response);
     const body = await readBoundedText(response, MAX_RESPONSE_BYTES);
     if (body.truncated) return { status: 502, data: {} };
     const retryAfter = Number(response.headers.get("retry-after"));
@@ -378,6 +388,23 @@ export class GoogleConnector implements ManagedConnectorProvider {
           ? body.text
           : parseJson(body.text),
       ...(Number.isFinite(retryAfter) && retryAfter > 0 ? { retryAfterMs: retryAfter * 1000 } : {}),
+    };
+  }
+
+  /** A success body is handed back unread; an error body is small JSON, as for bytes. */
+  private async streamResponse(response: Response): Promise<ConnectorProxyResponse> {
+    const retryAfter = Number(response.headers.get("retry-after"));
+    const retry =
+      Number.isFinite(retryAfter) && retryAfter > 0 ? { retryAfterMs: retryAfter * 1000 } : {};
+    if (!response.ok) {
+      const body = await readBoundedText(response, MAX_AUTH_RESPONSE_BYTES);
+      return { status: response.status, data: parseJson(body.text), ...retry };
+    }
+    return {
+      status: response.status,
+      data: response.body ?? new ReadableStream<Uint8Array>({ start: (c) => c.close() }),
+      contentType: response.headers.get("content-type") ?? "application/octet-stream",
+      ...retry,
     };
   }
 

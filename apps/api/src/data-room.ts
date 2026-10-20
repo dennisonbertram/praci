@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { ORPCError } from "@orpc/server";
 import type {
   AdapterContext,
@@ -19,7 +18,6 @@ import {
   autoFileEmailEnabled,
   autoSortFolderPaths,
   BoxFileError,
-  boxExternalId,
   buildAutoSortPlan,
   createFileDataRoomItem as createFileItem,
   DATA_ROOM_MIME,
@@ -28,8 +26,6 @@ import {
   dataRoomFileFields,
   dataRoomQueryVector,
   dataRoomVisionKey,
-  downloadBoxFile,
-  downloadDriveFile,
   hasThumbnailType,
   listBoxAccounts,
   listBoxFiles,
@@ -37,6 +33,7 @@ import {
   listDriveFiles,
   planBoxFolders,
   planDriveFolders,
+  streamChunks,
   ZipRefusal,
 } from "@rakazo/adapters";
 import type {
@@ -50,7 +47,6 @@ import type {
 import {
   DATA_ROOM_DISCLOSURE,
   DATA_ROOM_DISCLOSURE_VERSION,
-  DATA_ROOM_UPLOAD_MAX_BYTES,
   DataRoomApiName,
 } from "@rakazo/contracts";
 import type {
@@ -99,8 +95,6 @@ export interface DataRoomDeps {
   connectors?: DriveFilesDeps["connectors"];
   /** Needed only to import from Box: reads the sign-in of the user's Box connection. */
   box?: Omit<BoxFilesDeps, "prisma">;
-  /** Injectable so tests can use a small cap. */
-  maxUploadBytes?: number;
   /** How long the blob cleanup waits, so a failed row delete can be seen first. Tests shorten it. */
   blobDeleteDelayMs?: number;
 }
@@ -117,12 +111,13 @@ const itemDto = (item: DataRoomItemRecord): DataRoomApiItem => ({
   id: item.id,
   name: item.name,
   mimeType: item.mimeType,
-  size: item.size,
+  size: Number(item.size),
   folderId: item.folderId,
   source: item.source,
   sourceUrl: item.sourceUrl,
   status: item.status,
   error: item.error,
+  notIndexed: item.notIndexed,
   facets: {
     docType: item.docType,
     docDate: item.docDate?.toISOString() ?? null,
@@ -263,6 +258,15 @@ export function createFileDataRoomItem(
       dataRoomCall(() => files.fileItem(...args)),
   };
 }
+
+/** A plan with no folders: each picked file goes to the import target. */
+const directPlan = (fileIds: string[]) => ({
+  folders: [],
+  files: [...new Set(fileIds)].map((id) => ({ id, folder: null })),
+  skipped: 0,
+});
+
+const noContent = async function* (): AsyncGenerator<Uint8Array> {};
 
 const REINDEX_BATCH = 200;
 
@@ -632,10 +636,8 @@ export function createDataRoomService(deps: DataRoomDeps) {
           );
           const { created } = await fileItem(actor, {
             source: "gmail",
-            ...dataRoomFileFields(
-              { name: file.filename, mimeType: file.mimeType, bytes: file.bytes },
-              "attachment",
-            ),
+            ...dataRoomFileFields({ name: file.filename, mimeType: file.mimeType }, "attachment"),
+            content: { bytes: file.bytes },
             folderId,
             importId: tracked.id,
             sourceConnectionId,
@@ -685,73 +687,21 @@ export function createDataRoomService(deps: DataRoomDeps) {
       }
       return withDrive(deps, actor, async (drive, sourceConnectionId) => {
         const context = dataRoomBlobContext(actor, "data-room.drive", signal);
-        let imported = 0;
-        let duplicates = 0;
-        let failed = 0;
         // Listing is read-only, so an over-limit selection is refused before anything is written.
-        // Direct picks join the plan, so a mixed import writes only the one queued job.
+        // Files stream into storage in the background, one queued job each, never inside this
+        // request. Direct picks join the plan, so a mixed import writes only the one queued job.
         const plan = input.driveFolderIds?.length
           ? await planDriveFolders(drive, context, {
               connectionId: sourceConnectionId,
               folderIds: input.driveFolderIds,
               directFileIds: input.fileIds,
-              maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
             })
-          : undefined;
-        const direct = plan ? [] : [...new Set(input.fileIds)];
+          : directPlan(input.fileIds);
         const tracked = await createDataRoomImport(deps.prisma, actor, {
           source: "drive",
-          total: plan ? plan.files.length + plan.skipped : direct.length,
-          rejected: plan?.skipped ?? 0,
+          total: plan.files.length + plan.skipped,
+          rejected: plan.skipped,
         });
-        let handled = 0;
-        try {
-          for (const externalId of direct) {
-            if (await known(actor, externalId, sourceConnectionId)) {
-              duplicates += 1;
-              handled += 1;
-              continue;
-            }
-            // One bad file does not stop the rest; an account or rate problem would fail them all.
-            const file = await downloadDriveFile(drive, context, externalId, {
-              connectionId: sourceConnectionId,
-              maxBytes: deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES,
-            }).catch((error: unknown) => {
-              if (
-                error instanceof DriveFileError &&
-                ["not_found", "unsupported", "too_large", "failed"].includes(error.code)
-              )
-                return null;
-              throw error;
-            });
-            handled += 1;
-            if (!file) {
-              failed += 1;
-              continue;
-            }
-            const modified = new Date(file.modifiedTime);
-            const { created } = await fileItem(actor, {
-              source: "drive",
-              ...dataRoomFileFields(file, "file"),
-              folderId,
-              importId: tracked.id,
-              sourceConnectionId,
-              externalId,
-              ...(file.webViewLink ? { sourceUrl: file.webViewLink } : {}),
-              ...(Number.isNaN(modified.getTime()) ? {} : { sourceUpdatedAt: modified }),
-            });
-            if (created) imported += 1;
-            else duplicates += 1;
-          }
-        } catch (error) {
-          // The files after the one that broke the request are not coming.
-          await recordImportSkips(deps.prisma, tracked.id, { rejected: direct.length - handled });
-          throw error;
-        }
-        if (!plan) {
-          await recordImportSkips(deps.prisma, tracked.id, { duplicates, rejected: failed });
-          return { imported, duplicates, failed, importId: tracked.id, total: direct.length };
-        }
         // One queued job holds the whole plan: it either exists, or nothing was written.
         if (plan.folders.length > 0 || plan.files.length > 0)
           await deps.jobs
@@ -771,9 +721,9 @@ export function createDataRoomService(deps: DataRoomDeps) {
               throw error;
             });
         return {
-          imported,
-          duplicates,
-          failed: failed + plan.skipped,
+          imported: 0,
+          duplicates: 0,
+          failed: plan.skipped,
           importId: tracked.id,
           total: plan.files.length + plan.skipped,
           queued: plan.files.length,
@@ -820,72 +770,19 @@ export function createDataRoomService(deps: DataRoomDeps) {
           userId: actor.userId,
           signal: signal ?? new AbortController().signal,
         };
-        const maxBytes = deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES;
-        let imported = 0;
-        let duplicates = 0;
-        let failed = 0;
         // Listing is read-only, so an over-limit selection is refused before anything is written.
         const plan = input.boxFolderIds?.length
           ? await planBoxFolders(box, scope, {
               connectionId: sourceConnectionId,
               folderIds: input.boxFolderIds,
               directFileIds: input.fileIds,
-              maxBytes,
             })
-          : undefined;
-        const direct = plan ? [] : [...new Set(input.fileIds)];
+          : directPlan(input.fileIds);
         const tracked = await createDataRoomImport(deps.prisma, actor, {
           source: "box",
-          total: plan ? plan.files.length + plan.skipped : direct.length,
-          rejected: plan?.skipped ?? 0,
+          total: plan.files.length + plan.skipped,
+          rejected: plan.skipped,
         });
-        let handled = 0;
-        try {
-          for (const externalId of direct) {
-            if (await known(actor, boxExternalId(externalId))) {
-              duplicates += 1;
-              handled += 1;
-              continue;
-            }
-            // One bad file does not stop the rest; an account or rate problem would fail them all.
-            const file = await downloadBoxFile(box, scope, externalId, {
-              connectionId: sourceConnectionId,
-              maxBytes,
-            }).catch((error: unknown) => {
-              if (
-                error instanceof BoxFileError &&
-                ["not_found", "unsupported", "too_large", "failed"].includes(error.code)
-              )
-                return null;
-              throw error;
-            });
-            handled += 1;
-            if (!file) {
-              failed += 1;
-              continue;
-            }
-            const modified = new Date(file.modifiedTime);
-            const { created } = await fileItem(actor, {
-              source: "box",
-              ...dataRoomFileFields(file, "file"),
-              folderId,
-              importId: tracked.id,
-              externalId: boxExternalId(externalId),
-              sourceUrl: file.webViewLink,
-              ...(Number.isNaN(modified.getTime()) ? {} : { sourceUpdatedAt: modified }),
-            });
-            if (created) imported += 1;
-            else duplicates += 1;
-          }
-        } catch (error) {
-          // The files after the one that broke the request are not coming.
-          await recordImportSkips(deps.prisma, tracked.id, { rejected: direct.length - handled });
-          throw error;
-        }
-        if (!plan) {
-          await recordImportSkips(deps.prisma, tracked.id, { duplicates, rejected: failed });
-          return { imported, duplicates, failed, importId: tracked.id, total: direct.length };
-        }
         // One queued job holds the whole plan: it either exists, or nothing was written.
         if (plan.folders.length > 0 || plan.files.length > 0)
           await deps.jobs
@@ -905,9 +802,9 @@ export function createDataRoomService(deps: DataRoomDeps) {
               throw error;
             });
         return {
-          imported,
-          duplicates,
-          failed: failed + plan.skipped,
+          imported: 0,
+          duplicates: 0,
+          failed: plan.skipped,
           importId: tracked.id,
           total: plan.files.length + plan.skipped,
           queued: plan.files.length,
@@ -942,40 +839,6 @@ export function createDataRoomService(deps: DataRoomDeps) {
   };
 }
 
-/**
- * Reads the body into one buffer, hashing as it goes, and gives up (cancelling the body) the moment
- * it holds more than `max` bytes. Never holds more than `max` bytes plus one chunk.
- */
-async function readCapped(request: Request, max: number) {
-  const declared = request.headers.get("content-length");
-  if (declared !== null && !request.headers.has("transfer-encoding") && Number(declared) > max) {
-    cancelBody(request.body);
-    return null;
-  }
-  const hash = createHash("sha256");
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  if (request.body) {
-    const reader = request.body.getReader();
-    try {
-      for (;;) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        size += value.byteLength;
-        if (size > max) {
-          cancelBody(reader);
-          return null;
-        }
-        hash.update(value);
-        chunks.push(value);
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
-  return { bytes: Buffer.concat(chunks), sha256: hash.digest("hex") };
-}
-
 /** Session-authenticated raw routes: streamed upload and forced-download of the stored bytes. */
 export function mountDataRoomRoutes(
   app: Hono,
@@ -983,14 +846,13 @@ export function mountDataRoomRoutes(
   authenticate: (request: Request) => Promise<Actor | null>,
 ) {
   const repo = createDataRoomRepos(deps.prisma);
-  const max = deps.maxUploadBytes ?? DATA_ROOM_UPLOAD_MAX_BYTES;
 
-  const { fileItem, requeueStuck } = createFileDataRoomItem(deps, repo);
+  const { fileItem } = createFileDataRoomItem(deps, repo);
 
   app.post("/api/data-room/upload", async (c) => {
     const actor = await authenticate(c.req.raw);
     if (!actor) return c.json({ error: "Unauthorized" }, 401);
-    const reject = (message: string, status: 400 | 404 | 413) => {
+    const reject = (message: string, status: 400 | 404) => {
       cancelBody(c.req.raw.body);
       return c.json({ error: message }, status);
     };
@@ -1010,42 +872,36 @@ export function mountDataRoomRoutes(
     const mimeType = (c.req.header("content-type") ?? "").split(";")[0]?.trim().toLowerCase();
     const type = mimeType && DATA_ROOM_MIME.test(mimeType) ? mimeType : "application/octet-stream";
 
-    const body = await readCapped(c.req.raw, max);
-    if (!body) return c.json({ error: "File is too large." }, 413);
-
-    const respond = (item: DataRoomItemRecord, duplicate: boolean) =>
-      c.json(
-        { item: itemDto(item), duplicate } satisfies DataRoomApiUploadResponse,
-        duplicate ? 200 : 201,
-      );
-
-    const existing = await deps.prisma.dataRoomItem.findFirst({
-      where: {
-        spaceId: actor.spaceId,
-        userId: actor.userId,
-        source: "upload",
-        sha256: body.sha256,
-      },
-    });
-    if (existing) {
-      await requeueStuck(actor, existing);
-      return respond(existing, true);
-    }
-
+    // The body goes straight to storage, hashed as it passes; nothing holds the whole file, and
+    // there is no size limit. A client that disconnects aborts the write and the partial object is
+    // removed.
+    const body = c.req.raw.body;
     try {
-      const { item, created } = await fileItem(actor, {
+      const filed = await fileItem(actor, {
         source: "upload",
-        sha256: body.sha256,
         name: name.data,
         mimeType: type,
-        bytes: body.bytes,
+        content: { stream: body ? streamChunks(body) : noContent() },
+        signal: c.req.raw.signal,
         folderId,
       });
-      return respond(item, !created);
+      // A zip is unpacked in the background; its progress is the import row.
+      if (!filed.item) {
+        return c.json({ importId: filed.importId } satisfies DataRoomApiUploadResponse, 202);
+      }
+      return c.json(
+        {
+          item: itemDto(filed.item),
+          duplicate: !filed.created,
+        } satisfies DataRoomApiUploadResponse,
+        filed.created ? 201 : 200,
+      );
     } catch (error) {
       // A zip that cannot be unpacked is the caller's file, not a server fault.
       if (error instanceof ZipRefusal)
         return c.json({ error: error.message, code: error.code }, 400);
+      // The client went away mid-upload; the partial object is already gone.
+      if (c.req.raw.signal.aborted) return new Response(null, { status: 499 });
       throw error;
     }
   });
@@ -1058,15 +914,15 @@ export function mountDataRoomRoutes(
       throw error;
     });
     if (!item?.storageKey) return c.json({ error: "Not found" }, 404);
-    const bytes = await deps.artifacts.get(
+    const stream = await deps.artifacts.getStream(
       item.storageKey,
-      dataRoomBlobContext(actor, "data-room.download"),
+      dataRoomBlobContext(actor, "data-room.download", c.req.raw.signal),
     );
     // Documents are untrusted: always a download, never active content on the API origin.
-    return new Response(new Uint8Array(bytes), {
+    return new Response(stream, {
       headers: {
         "content-type": downloadType(item.mimeType),
-        "content-length": String(bytes.byteLength),
+        "content-length": String(item.size),
         "content-disposition": contentDisposition(item.name),
         "x-content-type-options": "nosniff",
         "content-security-policy": "sandbox; default-src 'none'",

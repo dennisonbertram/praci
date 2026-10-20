@@ -229,3 +229,26 @@ export class DriveApiEmulator {
     return { status: 200, data: this.meta(file) };
   }
 }
+
+/**
+ * What the native Google connector returns for `responseType: "stream"`: a media or export body
+ * comes back unread, as a stream of 64 KiB chunks. Errors stay JSON, as they do there.
+ */
+export function emulatedDriveStream(
+  response: ConnectorProxyResponse,
+  responseType?: string,
+): ConnectorProxyResponse {
+  if (responseType !== "stream" || !(response.data instanceof Uint8Array)) return response;
+  const bytes = response.data;
+  let at = 0;
+  return {
+    ...response,
+    data: new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (at >= bytes.length) return controller.close();
+        controller.enqueue(bytes.subarray(at, at + 64 * 1024));
+        at += 64 * 1024;
+      },
+    }),
+  };
+}

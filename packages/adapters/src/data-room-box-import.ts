@@ -1,15 +1,14 @@
 import type { ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
 import { dataRoomBoxFileJob } from "@rakazo/adapter-kit";
-import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, IsolationError, recordImportSkips } from "@rakazo/db";
 import type { BoxFilesDeps } from "./box-files.js";
 import {
   BoxFileError,
-  downloadBoxFile,
   getBoxItem,
   listBoxAccounts,
   listBoxFiles,
+  streamBoxFile,
 } from "./box-files.js";
 import type { DrivePlan, Scope } from "./data-room-drive-import.js";
 import {
@@ -19,6 +18,7 @@ import {
   runFolderImport,
 } from "./data-room-drive-import.js";
 import { createFileDataRoomItem, dataRoomFileFields } from "./data-room-files.js";
+import { streamChunks } from "./stream-chunks.js";
 
 /** Walks the picked Box folders and their subfolders, read-only; see `planFolders` for the limits and shape. */
 export function planBoxFolders(
@@ -28,7 +28,6 @@ export function planBoxFolders(
     connectionId: string;
     folderIds: string[];
     directFileIds?: string[];
-    maxBytes: number;
     maxScanned?: number;
   },
 ): Promise<DrivePlan> {
@@ -54,7 +53,7 @@ export function planBoxFolders(
             id: child.id,
             name: child.name,
             isFolder: child.isFolder,
-            importable: child.size === undefined || child.size <= input.maxBytes,
+            importable: true,
           })),
           ...(page.nextPageToken ? { nextPageToken: page.nextPageToken } : {}),
         };
@@ -94,8 +93,8 @@ export interface BoxFileImportDeps {
 
 /**
  * Imports one Box file of a folder import, as the job's own user. Safe to run twice: a file already
- * filed from this Box account is left alone. Files that can never import (gone, a folder, too
- * large) end the job quietly; anything else throws so the queue retries.
+ * filed from this Box account is left alone. Files that can never import (gone, a folder)
+ * end the job quietly; anything else throws so the queue retries.
  */
 export async function runBoxFileImport(
   deps: BoxFileImportDeps,
@@ -115,11 +114,11 @@ export async function runBoxFileImport(
     if (existing.importId !== importId) await skip({ duplicates: 1 });
     return;
   }
-  const file = await downloadBoxFile(
+  const file = await streamBoxFile(
     { prisma: deps.prisma, ...deps.box },
     { spaceId: actor.spaceId, userId: actor.userId, signal },
     payload.externalId,
-    { connectionId: payload.connectionId, maxBytes: DATA_ROOM_UPLOAD_MAX_BYTES },
+    { connectionId: payload.connectionId },
   ).catch((error: unknown) => {
     if (
       error instanceof BoxFileError &&
@@ -134,6 +133,8 @@ export async function runBoxFileImport(
     const { created } = await fileItem(actor, {
       source: "box",
       ...dataRoomFileFields(file, "file"),
+      content: { stream: streamChunks(file.stream) },
+      signal,
       folderId: payload.folderId,
       ...(importId ? { importId } : {}),
       externalId: boxExternalId(payload.externalId),

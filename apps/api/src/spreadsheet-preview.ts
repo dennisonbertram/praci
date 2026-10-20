@@ -1,5 +1,10 @@
 import type { ArtifactStore } from "@rakazo/adapter-kit";
-import { dataRoomBlobContext, readSpreadsheet, spreadsheetKind } from "@rakazo/adapters";
+import {
+  DATA_ROOM_READ_MAX_BYTES,
+  dataRoomBlobContext,
+  readSpreadsheet,
+  spreadsheetKind,
+} from "@rakazo/adapters";
 import type { Actor, SpreadsheetPreview, SpreadsheetPreviewInput } from "@rakazo/contracts";
 import { SpreadsheetPreviewInputSchema } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
@@ -64,6 +69,10 @@ export async function spreadsheetPreview(
       status: "unsupported",
       message: "Legacy .xls files can't be previewed. Save the file as .xlsx or .csv.",
     };
+  }
+  // The file is parsed whole; a larger one is stored and downloadable, but not previewed.
+  if ("size" in file && Number(file.size) > DATA_ROOM_READ_MAX_BYTES) {
+    return { status: "unsupported", message: "This file is too large to preview." };
   }
   const result = readSpreadsheet(await read(), kind, file.name, {
     sheet: input.sheet,

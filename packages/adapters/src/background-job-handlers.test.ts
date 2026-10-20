@@ -330,6 +330,42 @@ describe("dataroom.blob.delete", () => {
   });
 });
 
+describe("zip unpack wiring", () => {
+  it("the unpack job fails clearly without an artifact store, and runs with one", async () => {
+    const base = {
+      executor: {} as unknown as ReturnType<typeof createRunExecutor>,
+      prisma: {} as unknown as PrismaClient,
+      sandbox: {} as unknown as SandboxProvider,
+      home: {} as unknown as AgentHomeStore,
+      jobs: {} as unknown as JobPublisher,
+      events: {} as unknown as ThreadEvents,
+      workerId: "worker-1",
+      runtime: {} as unknown as AgentRuntime,
+      secretStore: {} as unknown as EncryptedSecretStore,
+      memoryProviders: { resolve: vi.fn(async () => null) },
+    };
+    const payload = {
+      spaceId: "s",
+      userId: "u",
+      storageKey: "k",
+      size: 1,
+      entries: 1,
+      importId: "i",
+      name: "a.zip",
+      source: "upload" as const,
+      folderId: null,
+    };
+    await expect(createBackgroundJobHandlers(base)["dataroom.zip.unpack"](payload)).rejects.toThrow(
+      "Zip import is not configured",
+    );
+    // Every process that runs jobs passes the store: a missing one would fail queued unpacks.
+    for (const entry of ["../../../apps/api/src/app.ts", "../../../apps/worker/src/index.ts"]) {
+      const source = readFileSync(new URL(entry, import.meta.url), "utf8");
+      expect(source, entry).toMatch(/createBackgroundJobHandlers\([\s\S]*?artifacts/);
+    }
+  });
+});
+
 describe("Box import wiring", () => {
   it("the Box file job needs the Box token reader, and the worker and API both pass it", async () => {
     const base = {

@@ -64,7 +64,7 @@ async function loadFile(
     });
   if (!item) return { error: "File not found" };
   if (!item.storageKey) return { error: "This item has no file." };
-  if (item.size > MAX_INPUT_BYTES) return { error: "The file is too large to read." };
+  if (Number(item.size) > MAX_INPUT_BYTES) return { error: "The file is too large to read." };
   return {
     bytes: await deps.artifacts.get(item.storageKey, dataRoomBlobContext(actor, "agent")),
     name: item.name,

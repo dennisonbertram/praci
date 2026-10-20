@@ -27,13 +27,19 @@ import type { DataRoomAi } from "./data-room-models.js";
 import { dataRoomVisionKey } from "./data-room-models.js";
 import { LlmDataRoomClassifier } from "./llm-data-room-classifier.js";
 import { modelAcceptsImageInput } from "./model-vision.js";
-import { extractOfficeText, OFFICE_TYPES } from "./office-text.js";
+import { extractOfficeText, MAX_INPUT_BYTES, OFFICE_TYPES } from "./office-text.js";
 import { extractPdfText, pdfPageCount } from "./statements/pdf-text.js";
+import { streamChunks } from "./stream-chunks.js";
 
 /** Stored text per item; longer documents are cut. */
 export const DATA_ROOM_TEXT_MAX_CHARS = 1_000_000;
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024;
 const TEXT_MAX_BYTES = 5 * 1024 * 1024;
+/**
+ * The largest stored file read whole for text, a thumbnail or a preview. Larger files are still
+ * stored, listed and downloadable; they are only not read (marked `notIndexed`).
+ */
+export const DATA_ROOM_READ_MAX_BYTES = MAX_INPUT_BYTES;
 const PDF_SCAN_MAX_PAGES = 20;
 const PDF_SCAN_MIN_CHARS_PER_PAGE = 20;
 const PDF_SCAN_MAX_BYTES = 40 * 1024 * 1024;
@@ -372,37 +378,73 @@ export async function extractItemText(
   return text.slice(0, DATA_ROOM_TEXT_MAX_CHARS);
 }
 
+/** The first `max` bytes of a stored file, read with one ranged request. */
+async function readHead(
+  artifacts: ArtifactStore,
+  key: string,
+  size: number,
+  max: number,
+  ctx: AdapterContext,
+) {
+  const end = Math.min(max, size);
+  if (end <= 0) return new Uint8Array();
+  const parts: Uint8Array[] = [];
+  for await (const chunk of streamChunks(await artifacts.getStream(key, ctx, { start: 0, end }))) {
+    parts.push(chunk);
+  }
+  return Buffer.concat(parts);
+}
+
 export async function runDataRoomIngest(deps: DataRoomJobDeps, payload: Payload): Promise<void> {
   const repo = createDataRoomRepos(deps.prisma);
   await runStep(deps, "ingest", payload, async (item, revision) => {
     const ctx = context(payload, "ingest");
     let text = "";
     let extractKey = "local";
+    let notIndexed = false;
     if (item.storageKey) {
-      const bytes = await deps.artifacts.get(item.storageKey, ctx);
       const type = effectiveType(item.mimeType, item.name);
-      // Only images and PDFs (which may be scans) need the model, so only they need the lookup.
-      const usesVision = IMAGE_TYPES.has(type) || type === "application/pdf";
-      const ai = usesVision
-        ? await deps.resolveAi(payload)
-        : ({ model: null, allowed: false } as DataRoomAi);
-      // Vision types remember what the read depended on, so an empty result is retried only when
-      // it changes; other types are read the same way every time.
-      extractKey = usesVision ? dataRoomVisionKey(ai) : "local";
-      text = await extractItemText(deps, ai, item, bytes, ctx);
-      // The vision call can take a while: if consent was revoked meanwhile, discard the output.
-      if (text && IMAGE_TYPES.has(type) && !(await deps.resolveAi(payload)).allowed) text = "";
+      const size = Number(item.size);
+      // Only the file types that have a reader are fetched. Text is read from its head, whatever
+      // its size; the others whole, up to the bound. A larger file is stored and listed, but not read.
+      let bytes: Uint8Array | null = null;
+      if (TEXT_TYPES.has(type)) {
+        bytes = await readHead(deps.artifacts, item.storageKey, size, TEXT_MAX_BYTES, ctx);
+      } else if (type === "application/pdf" || type in OFFICE_TYPES || IMAGE_TYPES.has(type)) {
+        if (size > DATA_ROOM_READ_MAX_BYTES) notIndexed = true;
+        else bytes = await deps.artifacts.get(item.storageKey, ctx);
+      }
+      if (bytes) {
+        // Only images and PDFs (which may be scans) need the model, so only they need the lookup.
+        const usesVision = IMAGE_TYPES.has(type) || type === "application/pdf";
+        const ai = usesVision
+          ? await deps.resolveAi(payload)
+          : ({ model: null, allowed: false } as DataRoomAi);
+        // Vision types remember what the read depended on, so an empty result is retried only when
+        // it changes; other types are read the same way every time.
+        extractKey = usesVision ? dataRoomVisionKey(ai) : "local";
+        text = await extractItemText(deps, ai, item, bytes, ctx);
+        // The vision call can take a while: if consent was revoked meanwhile, discard the output.
+        if (text && IMAGE_TYPES.has(type) && !(await deps.resolveAi(payload)).allowed) text = "";
+      }
     }
-    return repo.finishExtraction(actorOf(payload), item.id, revision, text, extractKey);
+    return repo.finishExtraction(actorOf(payload), item.id, revision, text, extractKey, {
+      notIndexed,
+    });
   });
 }
 
 // --- Thumbnails ---------------------------------------------------------------------------------
 
 /** True for the files a thumbnail can be drawn from: PDFs and raster images. */
-export function hasThumbnailType(item: Pick<DataRoomItemRecord, "mimeType" | "name">): boolean {
+export function hasThumbnailType(
+  item: Pick<DataRoomItemRecord, "mimeType" | "name" | "size">,
+): boolean {
   const type = effectiveType(item.mimeType, item.name);
-  return type === "application/pdf" || IMAGE_TYPES.has(type);
+  return (
+    (type === "application/pdf" || IMAGE_TYPES.has(type)) &&
+    Number(item.size) <= DATA_ROOM_READ_MAX_BYTES
+  );
 }
 
 /**

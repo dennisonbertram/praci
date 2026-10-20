@@ -720,6 +720,27 @@ export interface BackgroundJobPayloads {
   /** Makes the small preview image of one PDF or image; outside the pipeline, queued when a list first shows the item. */
   "dataroom.thumbnail": { spaceId: string; userId: string; itemId: string };
   /**
+   * Unpacks an uploaded zip that sits in the artifact store: files each entry as its own item
+   * (streamed back to the store), then removes the zip. Safe to run again after a partial failure.
+   */
+  "dataroom.zip.unpack": {
+    spaceId: string;
+    userId: string;
+    /** The stored zip, and its size. */
+    storageKey: string;
+    size: number;
+    /** The files the zip held when it was accepted; the import's total counts them. */
+    entries: number;
+    /** The import that reports progress. */
+    importId: string;
+    name: string;
+    source: "upload" | "gmail" | "drive" | "box" | "chat";
+    folderId: string | null;
+    sourceConnectionId?: string;
+    externalId?: string;
+    sourceUrl?: string;
+  };
+  /**
    * A planned Drive folder import: creates the Data room folders, then queues one
    * `dataroom.drive.file` job per file. Safe to run again after a partial failure.
    */
@@ -1218,9 +1239,11 @@ export interface ConnectorProxyRequest {
   /**
    * "text" returns the response body as the exact string, unparsed (empty stays ""). "bytes" returns a
    * `Uint8Array` and needs `maxBytes`; only the native Google connector supports it, and a body over
-   * `maxBytes` answers 413. Default: JSON when the response is JSON.
+   * `maxBytes` answers 413. "stream" returns the body unread as a `ReadableStream<Uint8Array>` with
+   * no size cap, and the time limit covers only the wait for the headers; only the native Google
+   * connector supports it. Default: JSON when the response is JSON.
    */
-  responseType?: "text" | "bytes";
+  responseType?: "text" | "bytes" | "stream";
   /** Cap for `responseType: "bytes"`. */
   maxBytes?: number;
 }
@@ -1246,7 +1269,7 @@ export interface ConnectorProxyResponse {
   status: number;
   data: unknown;
   retryAfterMs?: number;
-  /** The upstream Content-Type, set for `responseType: "bytes"`. */
+  /** The upstream Content-Type, set for `responseType: "bytes"` and `"stream"`. */
   contentType?: string;
 }
 

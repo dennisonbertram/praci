@@ -1,22 +1,29 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import type { ArtifactStore, JobPublisher } from "@rakazo/adapter-kit";
 import {
   DATA_ROOM_EMBEDDING_DIMENSIONS,
   dataRoomBlobDeleteJob,
   dataRoomStepJob,
+  dataRoomZipUnpackJob,
 } from "@rakazo/adapter-kit";
 import type { Actor } from "@rakazo/contracts";
-import { DATA_ROOM_UPLOAD_MAX_BYTES } from "@rakazo/contracts";
-import { inferAttachmentMimeType } from "@rakazo/core";
 import type { createDataRoomRepos, DataRoomItemRecord, PrismaClient } from "@rakazo/db";
-import { createDataRoomImport, recordImportSkips } from "@rakazo/db";
+import { createDataRoomImport } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { DataRoomAi } from "./data-room-models.js";
-import { isZipFile, listZip, readZipEntry, ZipRefusal } from "./zip-unpack.js";
+import { isZipFile, listZip, storeZipSource, ZipRefusal } from "./zip-unpack.js";
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: names must not hold control characters.
 const PATH_OR_CONTROL = /[/\\\u0000-\u001f\u007f]/g;
 export const DATA_ROOM_MIME = /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/i;
+
+/**
+ * How long one streamed download or zip unpack may run. Below the queue's 4 h limit, after which
+ * a locked job counts as abandoned and is run again.
+ */
+export const DATA_ROOM_STREAM_TIMEOUT_MS = 3 * 60 * 60 * 1000;
+/** A stored zip no job picked up is removed after this long. */
+const ZIP_BACKSTOP_MS = 24 * 60 * 60 * 1000;
 
 export interface FileDataRoomDeps {
   prisma: Pick<PrismaClient, "dataRoomItem" | "dataRoomFolder" | "dataRoomImport">;
@@ -25,8 +32,10 @@ export interface FileDataRoomDeps {
 }
 
 export interface FileDataRoomInput {
-  bytes: Uint8Array;
-  sha256: string;
+  /** A stream is written to storage as it arrives; bytes are for small files already in memory. */
+  content: { bytes: Uint8Array } | { stream: AsyncIterable<Uint8Array> };
+  /** Aborts a streamed write (a client that went away); the partial object is removed. */
+  signal?: AbortSignal;
   name: string;
   mimeType: string;
   folderId: string | null;
@@ -37,6 +46,11 @@ export interface FileDataRoomInput {
   sourceUrl?: string;
   sourceUpdatedAt?: Date;
 }
+
+/** A filed item, or (`item: null`) a zip stored for unpacking in the background. */
+export type FiledDataRoomItem =
+  | { item: DataRoomItemRecord; created: boolean }
+  | { item: null; created: true; importId: string };
 
 export function dataRoomBlobContext(actor: Actor, operation: string, signal?: AbortSignal) {
   const operationId = `${operation}:${randomUUID()}`;
@@ -53,24 +67,20 @@ export function dataRoomBlobContext(actor: Actor, operation: string, signal?: Ab
 export const dataRoomSafeName = (name: string, fallback: string) =>
   name.replace(PATH_OR_CONTROL, "_").trim().slice(0, 255) || fallback;
 
-/** The name, type and hash every import files: a safe name and a well-formed MIME type. */
-export function dataRoomFileFields(
-  file: { name: string; mimeType: string; bytes: Uint8Array },
-  fallbackName: string,
-) {
+/** The name and type every import files: a safe name and a well-formed MIME type. */
+export function dataRoomFileFields(file: { name: string; mimeType: string }, fallbackName: string) {
   const mimeType = file.mimeType.toLowerCase();
   return {
-    bytes: file.bytes,
-    sha256: createHash("sha256").update(file.bytes).digest("hex"),
     name: dataRoomSafeName(file.name, fallbackName),
     mimeType: DATA_ROOM_MIME.test(mimeType) ? mimeType : "application/octet-stream",
   };
 }
 
 /**
- * Stores the bytes, files the item and queues ingest. A repeat (same upload bytes, or the same
+ * Stores the content, files the item and queues ingest. A repeat (same upload bytes, or the same
  * external id) returns the existing item with created=false and drops the blob this call stored.
- * Errors are the repository's own; the API maps them to its error type.
+ * A zip is stored and queued for unpacking instead. Errors are the repository's own; the API maps
+ * them to its error type.
  */
 export function createFileDataRoomItem(
   deps: FileDataRoomDeps,
@@ -98,24 +108,54 @@ export function createFileDataRoomItem(
     return item;
   };
 
-  const fileOne = async (actor: Actor, input: FileDataRoomInput) => {
-    const { bytes, ...fields } = input;
-    const stored = await deps.artifacts.put(
-      { name: input.name, mimeType: input.mimeType, bytes },
-      dataRoomBlobContext(
-        actor,
-        input.source === "upload" ? "data-room.upload" : "data-room.import",
-      ),
+  /** Removes a blob nothing references; if the store is down, a queued job removes it later. */
+  const dropBlob = async (actor: Actor, key: string) => {
+    try {
+      await deps.artifacts.remove(key, dataRoomBlobContext(actor, "data-room.cleanup"));
+    } catch {
+      await deps.jobs
+        .enqueue(dataRoomBlobDeleteJob(actor.spaceId, key))
+        .catch((error: unknown) =>
+          getLogger().error("data room blob cleanup enqueue failed", error),
+        );
+    }
+  };
+
+  /** Writes the content to the store; the store is the only source of the hash and size. */
+  const store = async (actor: Actor, input: FileDataRoomInput) => {
+    const context = dataRoomBlobContext(
+      actor,
+      input.source === "upload" ? "data-room.upload" : "data-room.import",
+      input.signal,
     );
+    const file = { name: input.name, mimeType: input.mimeType };
+    if ("stream" in input.content)
+      return deps.artifacts.putStream(input.content.stream, file, context);
+    const { bytes } = input.content;
+    const stored = await deps.artifacts.put({ ...file, bytes }, context);
+    return { ...stored, size: bytes.byteLength };
+  };
+
+  const fileStored = async (
+    actor: Actor,
+    input: FileDataRoomInput,
+    stored: { id: string; hash: string; size: number },
+  ) => {
+    const { content: _content, signal: _signal, ...fields } = input;
     const { item, created } = await repo
-      .createItem(actor, { ...fields, size: bytes.byteLength, storageKey: stored.id })
+      .createItem(actor, {
+        ...fields,
+        sha256: stored.hash,
+        size: stored.size,
+        storageKey: stored.id,
+      })
       .catch(async (error: unknown) => {
         await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
         throw error;
       });
-    // Lost a race with a concurrent identical request: drop the blob this request stored.
+    // A repeat, or a lost race with a concurrent identical request: drop the blob this call stored.
     if (!created) {
-      await deps.jobs.enqueue(dataRoomBlobDeleteJob(actor.spaceId, stored.id));
+      await dropBlob(actor, stored.id);
       await requeueStuck(actor, item);
     } else {
       // The file itself is saved; a queue outage must not turn it into a failure.
@@ -125,6 +165,10 @@ export function createFileDataRoomItem(
     }
     return { item, created };
   };
+
+  /** Streams or writes the content to storage and files it as one item. */
+  const storeAndFile = async (actor: Actor, input: FileDataRoomInput) =>
+    fileStored(actor, input, await store(actor, input));
 
   /** The folder at `path` under `rootId`, made when it is missing. */
   const folderAt = async (actor: Actor, rootId: string | null, path: string[]) => {
@@ -141,74 +185,77 @@ export function createFileDataRoomItem(
   };
 
   /**
-   * Files each file of a zip as its own item, in the folders the zip names under `input.folderId`.
-   * The zip itself is not kept. Progress shows in the import row: `input.importId` when the caller
-   * tracks one (the zip counted as one file there), else a new one. Throws `ZipRefusal` when the
-   * whole zip is refused, before anything is filed.
+   * Stores a zip, checks its directory, and queues a job that files each entry as its own item.
+   * Progress shows in the import row: `input.importId` when the caller tracks one (the zip counted
+   * as one file there), else a new one. Throws `ZipRefusal` when the whole zip is refused, before
+   * anything is filed and with no blob left behind.
    */
-  const unpackZip = async (actor: Actor, input: FileDataRoomInput) => {
-    const { entries, oversized } = listZip(input.bytes, {
-      maxEntryBytes: DATA_ROOM_UPLOAD_MAX_BYTES,
-    });
-    if (entries.length === 0) throw new ZipRefusal("invalid");
+  const queueZip = async (actor: Actor, input: FileDataRoomInput): Promise<FiledDataRoomItem> => {
+    const stored = await store(actor, input);
+    let entryCount: number;
+    try {
+      const context = dataRoomBlobContext(actor, "data-room.zip", input.signal);
+      const entries = await listZip(
+        storeZipSource(deps.artifacts, stored.id, stored.size, context),
+      );
+      if (entries.length === 0) throw new ZipRefusal("invalid");
+      entryCount = entries.length;
+    } catch (error) {
+      await dropBlob(actor, stored.id);
+      throw error;
+    }
     const prisma = deps.prisma as PrismaClient;
     let importId = input.importId;
-    if (importId) {
-      await prisma.dataRoomImport.update({
-        where: { id: importId },
-        data: { total: { increment: entries.length + oversized - 1 } },
-      });
-    } else {
-      importId = (
-        await createDataRoomImport(prisma, actor, {
-          source: "upload",
-          total: entries.length + oversized,
-        })
-      ).id;
-    }
-    let first: DataRoomItemRecord | undefined;
-    let created = 0;
-    let duplicates = 0;
-    let rejected = oversized;
-    for (const entry of entries) {
-      try {
-        const bytes = readZipEntry(input.bytes, entry);
-        const fullPath = [...entry.folders, entry.name].join("/");
-        const result = await fileOne(actor, {
-          source: input.source,
-          ...dataRoomFileFields(
-            {
-              name: entry.name,
-              mimeType: inferAttachmentMimeType(entry.name) ?? "application/octet-stream",
-              bytes,
-            },
-            "file",
-          ),
-          folderId: await folderAt(actor, input.folderId, entry.folders),
-          importId,
-          ...(input.sourceConnectionId ? { sourceConnectionId: input.sourceConnectionId } : {}),
-          ...(input.externalId ? { externalId: `${input.externalId}#${fullPath}` } : {}),
-          ...(input.sourceUrl ? { sourceUrl: input.sourceUrl } : {}),
+    try {
+      if (importId) {
+        await prisma.dataRoomImport.update({
+          where: { id: importId },
+          data: { total: { increment: entryCount - 1 } },
         });
-        first ??= result.item;
-        if (result.created) created += 1;
-        else duplicates += 1;
-      } catch (error) {
-        // One bad entry does not stop the rest; each is bounded on its own.
-        getLogger().warn("data room zip entry failed", {
-          reason: error instanceof Error ? error.message : "unknown",
-        });
-        rejected += 1;
+      } else {
+        importId = (
+          await createDataRoomImport(prisma, actor, { source: "upload", total: entryCount })
+        ).id;
       }
+      await deps.jobs.enqueue(
+        dataRoomZipUnpackJob({
+          spaceId: actor.spaceId,
+          userId: actor.userId,
+          storageKey: stored.id,
+          size: stored.size,
+          entries: entryCount,
+          importId,
+          name: input.name,
+          source: input.source,
+          folderId: input.folderId,
+          ...(input.sourceConnectionId ? { sourceConnectionId: input.sourceConnectionId } : {}),
+          ...(input.externalId ? { externalId: input.externalId } : {}),
+          ...(input.sourceUrl ? { sourceUrl: input.sourceUrl } : {}),
+        }),
+      );
+    } catch (error) {
+      if (importId && !input.importId) {
+        await prisma.dataRoomImport.delete({ where: { id: importId } }).catch(() => undefined);
+      } else if (importId) {
+        await prisma.dataRoomImport
+          .update({ where: { id: importId }, data: { total: { decrement: entryCount - 1 } } })
+          .catch(() => undefined);
+      }
+      await dropBlob(actor, stored.id);
+      throw error;
     }
-    await recordImportSkips(prisma, importId, { duplicates, rejected });
-    if (!first) throw new ZipRefusal("invalid");
-    return { item: first, created: created > 0 };
+    // Backstop for a job that never runs; the handler only removes blobs no item references.
+    await deps.jobs
+      .enqueue(
+        dataRoomBlobDeleteJob(actor.spaceId, stored.id, new Date(Date.now() + ZIP_BACKSTOP_MS)),
+      )
+      .catch((error: unknown) => getLogger().error("data room zip cleanup enqueue failed", error));
+    return { item: null, created: true, importId };
   };
 
-  const fileItem = (actor: Actor, input: FileDataRoomInput) =>
-    isZipFile(input.name, input.mimeType) ? unpackZip(actor, input) : fileOne(actor, input);
-  return { fileItem, requeueStuck, known };
+  const fileItem = (actor: Actor, input: FileDataRoomInput): Promise<FiledDataRoomItem> =>
+    isZipFile(input.name, input.mimeType) ? queueZip(actor, input) : storeAndFile(actor, input);
+  return { fileItem, storeAndFile, requeueStuck, known, folderAt, dropBlob };
 }
 
 const QUERY_EMBED_TIMEOUT_MS = 10_000;

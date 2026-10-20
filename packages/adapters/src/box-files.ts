@@ -75,10 +75,11 @@ export type BoxFileSummary = {
   isFolder: boolean;
 };
 
-export type BoxFileDownload = {
+export type BoxFileStream = {
   name: string;
   mimeType: string;
-  bytes: Uint8Array;
+  /** The file's bytes, unread. The caller must read it to the end or cancel it. */
+  stream: ReadableStream<Uint8Array>;
   webViewLink: string;
   modifiedTime: string;
 };
@@ -246,50 +247,20 @@ export async function getBoxItem(
   return item;
 }
 
-/** Reads a body into one buffer and gives up the moment it passes `max` bytes. */
-async function readCapped(response: Response, max: number): Promise<Uint8Array> {
-  const declared = Number(response.headers.get("content-length"));
-  if (Number.isFinite(declared) && declared > max) {
-    await response.body?.cancel().catch(() => undefined);
-    throw new BoxFileError("too_large", "The file is too large to import");
-  }
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  const reader = response.body?.getReader();
-  while (reader) {
-    const { done, value } = await reader.read().catch(() => {
-      throw new BoxFileError("failed", "Box download failed");
-    });
-    if (done) break;
-    size += value.byteLength;
-    if (size > max) {
-      await reader.cancel().catch(() => undefined);
-      throw new BoxFileError("too_large", "The file is too large to import");
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(size);
-  let at = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, at);
-    at += chunk.byteLength;
-  }
-  return bytes;
-}
-
-/** One file's bytes. Throws `BoxFileError`: `unsupported` for folders, `too_large` over `maxBytes`. */
-export async function downloadBoxFile(
+/**
+ * One file's bytes as a stream, with no size limit: the caller writes it to storage as it arrives.
+ * Throws `BoxFileError`: `unsupported` for folders, `too_large` when Box itself refuses (413).
+ */
+export async function streamBoxFile(
   deps: BoxFilesDeps,
   scope: Scope & { signal: AbortSignal },
   fileId: string,
-  options: { connectionId?: string; maxBytes: number },
-): Promise<BoxFileDownload> {
+  options: { connectionId?: string } = {},
+): Promise<BoxFileStream> {
   const { json, call, doFetch, sleep } = await connect(deps, scope, options.connectionId);
   const id = assertBoxId(fileId);
   const file = summary(await json(`/files/${id}?fields=${FIELDS}`, scope.signal));
   if (!file || file.isFolder) throw new BoxFileError("unsupported", "Only files can be imported");
-  if (file.size !== undefined && file.size > options.maxBytes)
-    throw new BoxFileError("too_large", "The file is too large to import");
   let response = await call(`${API}/files/${id}/content`, scope.signal);
   // 202: Box is still preparing the file and says how long to wait.
   for (let tries = 0; response.status === 202 && tries < MAX_NOT_READY_RETRIES; tries++) {
@@ -321,12 +292,12 @@ export async function downloadBoxFile(
       ? new BoxFileError("failed", "Box is not ready to send this file")
       : mapStatus(response.status);
   }
-  const bytes = await readCapped(response, options.maxBytes);
+  if (!response.body) throw new BoxFileError("failed", "Box download failed");
   return {
     name: file.name,
     mimeType:
       response.headers.get("content-type")?.split(";")[0]?.trim() || "application/octet-stream",
-    bytes,
+    stream: response.body,
     webViewLink: webLink(id),
     modifiedTime: file.modifiedTime,
   };

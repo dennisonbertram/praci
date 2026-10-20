@@ -492,6 +492,126 @@ describe("GoogleConnector.proxy", () => {
     expect((await call(100)).status).toBe(413);
   });
 
+  describe("streamed responses", () => {
+    const drive = "https://www.googleapis.com/drive/v3/files/f1?alt=media";
+    async function streamer(
+      answer: (init: RequestInit | undefined) => Promise<Response> | Response,
+    ) {
+      const s = setup();
+      await connect(s);
+      s.db.connections[0]!.provider = "googledrive";
+      const realFetch = s.google.fetch;
+      const signals: AbortSignal[] = [];
+      const connector = new GoogleConnector({
+        clientId: "x",
+        clientSecret: CLIENT_SECRET,
+        identitySecret: IDENTITY,
+        prisma: s.db.prisma,
+        secrets: s.secrets,
+        fetch: (async (input: string | URL | Request, init?: RequestInit) => {
+          if (String(input) !== drive) return realFetch(input, init);
+          signals.push(init?.signal as AbortSignal);
+          return answer(init);
+        }) as typeof fetch,
+      });
+      const call = (signal = context.signal) =>
+        connector.proxy(
+          {
+            app: "googledrive",
+            accountRef: "sub-1",
+            method: "GET",
+            url: drive,
+            responseType: "stream",
+          },
+          { ...context, signal },
+        );
+      return { call, signals };
+    }
+
+    it("returns the body unread, with no size limit, and its type", async () => {
+      const chunk = new Uint8Array(1024 * 1024).fill(7);
+      const { call } = await streamer(
+        () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                for (let i = 0; i < 60; i++) controller.enqueue(chunk);
+                controller.close();
+              },
+            }),
+            { headers: { "content-type": "application/pdf" } },
+          ),
+      );
+      const result = await call();
+      expect(result.status).toBe(200);
+      expect(result.contentType).toBe("application/pdf");
+      expect(result.data).toBeInstanceOf(ReadableStream);
+      const bytes = await new Response(result.data as ReadableStream<Uint8Array>).arrayBuffer();
+      expect(bytes.byteLength).toBe(60 * 1024 * 1024);
+    });
+
+    it("answers a non-2xx stream with its small JSON error", async () => {
+      const { call } = await streamer(
+        () =>
+          new Response(
+            JSON.stringify({ error: { errors: [{ reason: "exportSizeLimitExceeded" }] } }),
+            {
+              status: 403,
+              headers: { "content-type": "application/json" },
+            },
+          ),
+      );
+      expect(await call()).toMatchObject({
+        status: 403,
+        data: { error: { errors: [{ reason: "exportSizeLimitExceeded" }] } },
+      });
+    });
+
+    it("limits the wait for headers to 30 s but not the body", async () => {
+      let release: (() => void) | undefined;
+      const open = await streamer(
+        () =>
+          new Response(
+            new ReadableStream<Uint8Array>({
+              start(controller) {
+                release = () => {
+                  controller.enqueue(new Uint8Array([1, 2, 3]));
+                  controller.close();
+                };
+              },
+            }),
+          ),
+      );
+      // A server that never answers is cut off at the header limit.
+      const hung = await streamer(
+        (init) =>
+          new Promise<Response>((_, reject) =>
+            init?.signal?.addEventListener("abort", () => reject(new Error("aborted")), {
+              once: true,
+            }),
+          ),
+      );
+      vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+      try {
+        const result = await open.call();
+        // Well past the header limit, the body is still open and readable.
+        await vi.advanceTimersByTimeAsync(10 * 60_000);
+        expect(open.signals[0]?.aborted).toBe(false);
+        release?.();
+        const body = await new Response(result.data as ReadableStream<Uint8Array>).arrayBuffer();
+        expect(Array.from(new Uint8Array(body))).toEqual([1, 2, 3]);
+
+        const pending = hung.call().catch((error: unknown) => error);
+        // The header timer starts once the request is sent, after the token is read.
+        while (hung.signals.length === 0) await new Promise((resolve) => setImmediate(resolve));
+        await vi.advanceTimersByTimeAsync(31_000);
+        expect(await pending).toBeInstanceOf(Error);
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+  });
+
   it("returns 401 without calling Gmail when Google reports invalid_grant", async () => {
     const s = setup();
     await connect(s);

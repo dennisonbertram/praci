@@ -17,6 +17,9 @@ try {
   const server = serve({ fetch: app.fetch, port: env.port, hostname: env.apiHost }, () => {
     logger.info("api listening", { "http.host": env.apiHost, "http.port": env.port });
   });
+  // Node cuts a request off after 300 s by default, which ends a large Data room upload. Zero
+  // would also remove the server's guard against a client that stalls mid-body, so allow 12 h.
+  if ("requestTimeout" in server) server.requestTimeout = 12 * 60 * 60 * 1000;
 
   // Long-lived connections (threads.subscribe SSE streams) never end on their
   // own, so server.close() alone waits forever for them. Track sockets and

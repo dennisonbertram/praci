@@ -7,6 +7,8 @@ import { createDataRoomImport, createDataRoomRepos, createDb } from "@rakazo/db"
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { DataRoomJobDeps } from "./data-room-jobs.js";
 import {
+  DATA_ROOM_READ_MAX_BYTES,
+  hasThumbnailType,
   reconcileDataRoom,
   runDataRoomClassify,
   runDataRoomIndex,
@@ -23,6 +25,8 @@ import {
 } from "./data-room-test-fakes.js";
 
 import { renderThumbnail } from "./thumbnail-render.js";
+
+const MIB = 1024 * 1024;
 
 const canvas = await import("@napi-rs/canvas").then(
   () => true,
@@ -69,7 +73,14 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
   let counter = 0;
   const addItem = async (
     text: string | Uint8Array,
-    opts: { name?: string; mimeType?: string; folderId?: string | null; importId?: string } = {},
+    opts: {
+      name?: string;
+      mimeType?: string;
+      folderId?: string | null;
+      importId?: string;
+      /** The size the row declares, when the stored bytes stand in for a much larger file. */
+      size?: number;
+    } = {},
   ) => {
     const bytes = typeof text === "string" ? new TextEncoder().encode(text) : text;
     const stored = await artifacts.put({ bytes });
@@ -78,7 +89,7 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
       sha256: createHash("sha256").update(`${run}-${counter++}`).digest("hex"),
       name: opts.name ?? "doc.txt",
       mimeType: opts.mimeType ?? "text/plain",
-      size: bytes.byteLength,
+      size: opts.size ?? bytes.byteLength,
       storageKey: stored.id,
       folderId: opts.folderId ?? null,
       ...(opts.importId ? { importId: opts.importId } : {}),
@@ -598,5 +609,144 @@ describePostgres("data room pipeline jobs (PostgreSQL)", () => {
     const text = await addItem("plain words");
     await runDataRoomThumbnail({ ...deps(), renderThumbnail }, { ...scope(), itemId: text.id });
     expect((await reload(text.id)).thumbnailKey).toBeNull();
+  });
+
+  describe("files too large to read", () => {
+    /** Makes any read of a stored blob fail, so a test proves the job never fetched it. */
+    const forbidReads = () => {
+      artifacts.get = async () => {
+        throw new Error("the blob must not be fetched whole");
+      };
+      artifacts.getStream = async () => {
+        throw new Error("the blob must not be streamed");
+      };
+    };
+
+    it("reads only the first 5 MiB of a large text file and keeps it indexed", async () => {
+      reset();
+      const head = "needle in the head of a very large file. ";
+      const big = new Uint8Array(12 * MIB).fill(32);
+      big.set(new TextEncoder().encode(head));
+      const item = await addItem(big, { name: "huge.txt" });
+      const realGetStream = artifacts.getStream.bind(artifacts);
+      const ranges: Array<{ start: number; end: number } | undefined> = [];
+      artifacts.getStream = async (id, context, range) => {
+        ranges.push(range);
+        return realGetStream(id, context, range);
+      };
+      artifacts.get = async () => {
+        throw new Error("the blob must not be fetched whole");
+      };
+      await drain();
+      expect(ranges).toEqual([{ start: 0, end: 5 * MIB }]);
+      expect(await reload(item.id)).toMatchObject({ status: "ready", notIndexed: false });
+      expect(await repo.getItemText(actor, item.id)).toContain("needle in the head");
+    });
+
+    it("stores a PDF over the bound as ready and not indexed, still findable by name", async () => {
+      reset();
+      const item = await addItem(makePdf("Never read: the file is too big"), {
+        name: "enormous-lease.pdf",
+        mimeType: "application/pdf",
+        size: DATA_ROOM_READ_MAX_BYTES + 1,
+      });
+      forbidReads();
+      await drain();
+      expect(await reload(item.id)).toMatchObject({
+        status: "ready",
+        error: null,
+        notIndexed: true,
+        storageKey: expect.any(String),
+      });
+      expect(await repo.getItemText(actor, item.id)).toBe("");
+      // No text to classify, so the model is never called; the metadata chunk keeps the name searchable.
+      expect(classifier.calls).toEqual([]);
+      expect(await chunksOf(item.id)).toEqual([]);
+      expect(await allChunksOf(item.id)).toHaveLength(1);
+    });
+
+    it("does not fetch a video or other file nobody can read", async () => {
+      reset();
+      const video = await addItem("pretend video bytes", {
+        name: "demo.mp4",
+        mimeType: "video/mp4",
+      });
+      const archive = await addItem("PK", {
+        name: "stuff.7z",
+        mimeType: "application/x-7z-compressed",
+      });
+      forbidReads();
+      await drain();
+      for (const item of [video, archive]) {
+        expect(await reload(item.id)).toMatchObject({ status: "ready", notIndexed: false });
+      }
+    });
+
+    it("clears the marker when a later ingest reads the file", async () => {
+      reset();
+      const item = await addItem(makePdf("Readable after all"), {
+        name: "later.pdf",
+        mimeType: "application/pdf",
+        size: DATA_ROOM_READ_MAX_BYTES + 1,
+      });
+      await drain();
+      expect((await reload(item.id)).notIndexed).toBe(true);
+      await prisma.dataRoomItem.update({
+        where: { id: item.id },
+        data: { status: "pending", size: BigInt(makePdf("Readable after all").byteLength) },
+      });
+      jobs.queue.push({
+        name: "dataroom.ingest",
+        payload: { ...scope(), itemId: item.id },
+      } as BackgroundJob);
+      await drain();
+      expect(await reload(item.id)).toMatchObject({ status: "ready", notIndexed: false });
+      expect(await repo.getItemText(actor, item.id)).toContain("Readable after all");
+    });
+
+    it("settles the import when its oversize file is ready", async () => {
+      reset();
+      const tracked = await createDataRoomImport(prisma, actor, { source: "upload", total: 1 });
+      await addItem(makePdf("big"), {
+        name: "settle.pdf",
+        mimeType: "application/pdf",
+        size: DATA_ROOM_READ_MAX_BYTES + 1,
+        importId: tracked.id,
+      });
+      await drain();
+      expect(
+        (await prisma.dataRoomImport.findUniqueOrThrow({ where: { id: tracked.id } })).finishedAt,
+      ).not.toBeNull();
+    });
+
+    it("claims no thumbnail for a PDF or image over the bound", async () => {
+      reset();
+      const big = {
+        mimeType: "application/pdf",
+        name: "a.pdf",
+        size: BigInt(DATA_ROOM_READ_MAX_BYTES + 1),
+      };
+      expect(hasThumbnailType(big)).toBe(false);
+      expect(hasThumbnailType({ ...big, size: BigInt(DATA_ROOM_READ_MAX_BYTES) })).toBe(true);
+      expect(hasThumbnailType({ ...big, mimeType: "image/png", name: "a.png" })).toBe(false);
+      const item = await addItem(makePdf("huge"), {
+        name: "t.pdf",
+        mimeType: "application/pdf",
+        size: DATA_ROOM_READ_MAX_BYTES + 1,
+      });
+      forbidReads();
+      let drawn = 0;
+      await runDataRoomThumbnail(
+        {
+          ...deps(),
+          renderThumbnail: async () => {
+            drawn += 1;
+            return null;
+          },
+        },
+        { ...scope(), itemId: item.id },
+      );
+      expect(drawn).toBe(0);
+    });
   });
 });
