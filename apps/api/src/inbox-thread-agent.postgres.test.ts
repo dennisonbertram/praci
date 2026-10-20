@@ -1,6 +1,7 @@
 import type { MailProvider } from "@rakazo/adapter-kit";
+import { aiRecipient } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
-import { mailThreadAgentSpawnKey } from "@rakazo/contracts";
+import { inboxAgentSpawnKey, mailThreadAgentSpawnKey } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -154,6 +155,7 @@ describePostgres("Ask agent on an email thread (PostgreSQL)", () => {
       ["p2", "t1"],
       ["p3", "t1"],
       ["p4", "t2"],
+      ["p5", "t3"],
     ] as const) {
       messageIds[key] = (await cache(owner, ownerConnection, key, thread)).id;
     }
@@ -210,6 +212,32 @@ describePostgres("Ask agent on an email thread (PostgreSQL)", () => {
     const first = await inboxAskAgent(deps(), owner, { messageId: messageIds.p1 as string });
     const second = await inboxAskAgent(deps(), owner, { messageId: messageIds.p4 as string });
     expect(second.id).not.toBe(first.id);
+  });
+
+  it("runs on the Inbox agent's model, so the consent the Inbox card grants covers the thread", async () => {
+    // Consent is per model recipient. The Inbox card grants the recipient of the Inbox agent's model.
+    const inbox = await repos.createBot(owner, {
+      spawnKey: inboxAgentSpawnKey(owner.userId),
+      name: "Inbox",
+      title: "",
+      description: "",
+      instructions: "",
+      notifyOnFinish: false,
+      modelProvider: "openrouter",
+      modelId: "vendor/inbox-model",
+    });
+    const inboxRecipient = aiRecipient({
+      provider: inbox.modelProvider as string,
+      modelId: inbox.modelId as string,
+      use: "model",
+    });
+    const thread = await inboxAskAgent(deps(), owner, { messageId: messageIds.p5 as string });
+    const threadRecipient = aiRecipient({
+      provider: (thread.modelProvider ?? "") as string,
+      modelId: (thread.modelId ?? "") as string,
+      use: "model",
+    });
+    expect(threadRecipient?.key).toBe(inboxRecipient?.key);
   });
 
   it("refuses another user's message and creates nothing", async () => {

@@ -190,8 +190,10 @@ import {
   claimIntendedEffect,
   completeExternalEffect,
   createApprovedEffectReplayQueue,
+  DENIED_ACTION_MESSAGE,
   isToolPauseResult,
   parseCatalogApprovalTarget,
+  repeatsDeniedRequest,
   replaceCompletedExternalEffectResult,
   resolveDuplicateEffectGate,
   settleUncertainEffect,
@@ -3525,6 +3527,28 @@ export function createRunExecutor(deps: ExecutorDeps) {
               if (early !== undefined) return early;
             }
           } else if (needsApproval && applied) {
+            // A denial ends this request for the run: a reworded retry gets no new card.
+            const denied = await deps.prisma.externalEffect.findMany({
+              where: {
+                spaceId: run.spaceId,
+                runId,
+                kind: replayEffectToolName,
+                status: "denied",
+              },
+              select: { id: true, status: true, request: true, result: true },
+            });
+            const repeated = denied.find(
+              (prior) =>
+                prior.id !== applied.effect.id &&
+                repeatsDeniedRequest(replayEffectToolName, prior.request, effectRequest),
+            );
+            if (repeated) {
+              const gate = resolveDuplicateEffectGate(repeated, name);
+              const result =
+                gate.action === "return" ? gate.result : { error: DENIED_ACTION_MESSAGE };
+              await completeEffect(deps, applied.effect.id, "intended", result);
+              return result;
+            }
             return requestApproval();
           } else if (bypassApproval && applied) {
             const early = await claimOrReturn("intended");
