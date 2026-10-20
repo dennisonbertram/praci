@@ -11,6 +11,8 @@ export interface PileInput {
   senderMark: SenderMark | null;
   /** True: the user wrote to this address. False: checked, never. Null: not checked yet. */
   priorContact: boolean | null;
+  /** The user chose to skip the inbox for this sender (mail_sender_decisions.skipInboxAt). */
+  skipInbox: boolean;
 }
 
 /** A null pile means the rules did not decide and the model should. Reasons are stable codes, not UI copy. */
@@ -102,6 +104,18 @@ export function classifyPile(input: PileInput): PileDecision {
   if (authFailed && (senderMark === "important" || priorContact === true))
     return { pile: null, reasons: ["auth_failed"] };
   if (senderMark === "important") return { pile: "important", reasons: ["marked_important"] };
+
+  // The user's skip-inbox decision for a sender settles the pile before prior contact is asked.
+  // Failed authentication here may be a forgery of the sender, so it is left to the model.
+  if (input.skipInbox && !authFailed) {
+    const bulkLooking =
+      signals !== null &&
+      (signals.categories.promotions ||
+        signals.listUnsubscribe.length > 0 ||
+        signals.listId !== null ||
+        signals.bulk);
+    return { pile: bulkLooking ? "newsletters" : "updates", reasons: ["skip_inbox"] };
+  }
 
   // 3. Prior contact blocks every bulk decision, and unknown counts as possible contact.
   if (!signals) return { pile: null, reasons: ["no_signals"] };

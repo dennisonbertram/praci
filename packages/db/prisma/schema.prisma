@@ -41,6 +41,8 @@ model User {
   accounts                    Account[]
   cachedMailMessages          CachedMailMessage[]
   mailSenderStats             MailSenderStat[]
+  mailSenderDecisions         MailSenderDecision[]
+  mailActionLogs              MailActionLog[]
   inboxTodos                  InboxTodo[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
@@ -206,8 +208,8 @@ model Member {
 }
 
 model Space {
-  notifications Notification[]
-  notificationEndpoints NotificationEndpoint[]
+  notifications               Notification[]
+  notificationEndpoints       NotificationEndpoint[]
   aiDataConsents              AiDataConsent[]
   id                          String                       @id
   organizationId              String
@@ -242,6 +244,8 @@ model Space {
   connections                 Connection[]
   cachedMailMessages          CachedMailMessage[]
   mailSenderStats             MailSenderStat[]
+  mailSenderDecisions         MailSenderDecision[]
+  mailActionLogs              MailActionLog[]
   inboxTodos                  InboxTodo[]
   inboxSenderFeedback         InboxSenderFeedback[]
   composeSends                ComposeSend[]
@@ -962,36 +966,38 @@ model MailSearchRow {
 }
 
 model Connection {
-  id                 String                @id @default(cuid())
-  spaceId            String
-  space              Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId             String
-  connectorId        String                @default("composio")
-  provider           String
-  displayName        String
-  status             String
-  secretId           String?
-  providerRef        String?
-  metadata           Json                  @default("{}")
-  createdAt          DateTime              @default(now())
-  updatedAt          DateTime              @updatedAt
-  cachedMailMessages CachedMailMessage[]
-  mailSenderStats    MailSenderStat[]
-  inboxTodos         InboxTodo[]
-  mailSyncState      MailSyncState?
-  dataRoomSyncState  DataRoomSyncState?
-  dataRoomItems      DataRoomItem[]
-  composeSends       ComposeSend[]
+  id                  String                @id @default(cuid())
+  spaceId             String
+  space               Space                 @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId              String
+  connectorId         String                @default("composio")
+  provider            String
+  displayName         String
+  status              String
+  secretId            String?
+  providerRef         String?
+  metadata            Json                  @default("{}")
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  cachedMailMessages  CachedMailMessage[]
+  mailSenderStats     MailSenderStat[]
+  mailSenderDecisions MailSenderDecision[]
+  mailActionLogs      MailActionLog[]
+  inboxTodos          InboxTodo[]
+  mailSyncState       MailSyncState?
+  dataRoomSyncState   DataRoomSyncState?
+  dataRoomItems       DataRoomItem[]
+  composeSends        ComposeSend[]
   /// false: only bots with a BotConnectionAccess row may use this connection's tools.
-  allAgents          Boolean               @default(true)
-  botAccess          BotConnectionAccess[]
-  writesEnabled      Boolean               @default(false)
-  agentBotId         String?
-  agentBot           Bot?                  @relation("ConnectionAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
+  allAgents           Boolean               @default(true)
+  botAccess           BotConnectionAccess[]
+  writesEnabled       Boolean               @default(false)
+  agentBotId          String?
+  agentBot            Bot?                  @relation("ConnectionAgent", fields: [agentBotId], references: [id], onDelete: SetNull)
   /// Set once, when begin creates a brand-new row (never on reuse, never cleared): the connection
   /// is private to its own agent from the start, stays private when the agent goes away, and is
   /// always scoped on its own. Older rows keep the shared-by-default rules.
-  privateByDefault   Boolean               @default(false)
+  privateByDefault    Boolean               @default(false)
 
   @@index([spaceId, userId, connectorId])
   @@index([agentBotId])
@@ -1832,6 +1838,8 @@ model CachedMailMessage {
   alreadyHandled    Boolean     @default(false)
   /// Last time a sync or a search wrote this row.
   seenAt            DateTime
+  /// Sync archived this message because its sender skips the inbox. Set once and never cleared, so an undo is not archived again.
+  skipAppliedAt     DateTime?
   /// MailSignals (List-Unsubscribe, auth results, Gmail category flags); null until fetched.
   signals           Json?
   /// MAIL_SIGNALS_VERSION that produced `signals`; an older value makes sync fetch the row again.
@@ -1877,6 +1885,60 @@ model MailSenderStat {
 
   @@unique([connectionId, senderAddress])
   @@map("mail_sender_stats")
+}
+
+/// The user's decision about one sender on one mail account. Deleting the row forgets it.
+model MailSenderDecision {
+  id                String     @id @default(cuid())
+  spaceId           String
+  space             Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId            String
+  user              User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId      String
+  connection        Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  /// Lowercased From address.
+  senderAddress     String
+  /// Set while future mail from the sender is archived during sync; mail received before it is left alone.
+  skipInboxAt       DateTime?
+  /// Last unsubscribe attempt: "done" | "opened" | "sent" | "unknown" | "failed" | "refused". Null: none.
+  unsubscribeStatus String?
+  /// "one_click" | "link" | "mailto".
+  unsubscribeMethod String?
+  unsubscribedAt    DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@unique([connectionId, senderAddress])
+  @@index([spaceId, userId])
+  @@map("mail_sender_decisions")
+}
+
+/// One bulk action on one mail account, kept so it can be listed and undone. A click that spans
+/// accounts writes one row per account, sharing batchId.
+model MailActionLog {
+  id              String     @id @default(cuid())
+  spaceId         String
+  space           Space      @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId    String
+  connection      Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  batchId         String
+  /// "archive" | "skip_inbox" | "unsubscribe" | "spam" | "not_spam" | "trash".
+  kind            String
+  /// "user" | "auto".
+  source          String
+  /// "cleanup" | "selection" | "skip_inbox".
+  reason          String
+  senderAddresses String[]   @default([])
+  /// Provider thread ids that changed. Undo works from these, so it still works after sync prunes the cache rows.
+  threadIds       String[]   @default([])
+  createdAt       DateTime   @default(now())
+  undoneAt        DateTime?
+
+  @@unique([connectionId, batchId])
+  @@index([spaceId, userId, createdAt])
+  @@map("mail_action_logs")
 }
 
 /// A private to-do created by triage from one cached message. Scoped to one user in one space,
@@ -1957,40 +2019,39 @@ model ComposeSend {
 
 /// Sync throttle and in-flight claim for one mail connection.
 model MailSyncState {
-  connectionId   String     @id
-  connection     Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  connectionId    String     @id
+  connection      Connection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
   /// Last successful sync.
-  lastSyncedAt   DateTime?
+  lastSyncedAt    DateTime?
   /// Claim held by the process that is syncing; stale after 2 minutes.
-  syncStartedAt  DateTime?
+  syncStartedAt   DateTime?
   /// Set when the last sync failed outright (provider error, nothing stored). An incomplete sync,
   /// where some messages could not be hydrated, is not a failure. Cleared by any sync that stored mail.
-  lastErrorAt    DateTime?
+  lastErrorAt     DateTime?
   /// The last failure was the provider refusing the login, so the account needs reconnecting.
-  needsReconnect Boolean    @default(false)
+  needsReconnect  Boolean    @default(false)
   /// MailProviderError.kind of the last failure ("rate_limited", "auth", ...); "unknown" for a
   /// non-provider error. Cleared with lastErrorAt.
-  lastErrorKind String?
+  lastErrorKind   String?
   /// A rate-limited sync sets this; no sync for the connection starts before it. Cleared by a complete sync.
-  backoffUntil  DateTime?
+  backoffUntil    DateTime?
   /// Random id of the sync holding the claim; every write checks it.
-  claimToken     String?
+  claimToken      String?
   /// Provider change cursor (Gmail historyId) as of the last complete sync. Null until the first
   /// one; a sync that finds it expired lists the cache window again and replaces it.
-  changeCursor   String?
+  changeCursor    String?
   /// Set when a sync job is queued, cleared when that job finishes. Shows "syncing" before the claim
   /// exists; ignored after 2 minutes.
   syncRequestedAt DateTime?
   /// Older mail still to cache after the first sync: { inbox: "YYYY-MM-DD" | null, sent: ... }. Null: window complete.
-  backfill       Json?
+  backfill        Json?
   /// Lowercased mailbox address of the active Gmail watch; null: no watch.
-  watchAddress   String?
-  watchExpiresAt DateTime?
+  watchAddress    String?
+  watchExpiresAt  DateTime?
   /// historyId the watch started at. Informational: sync keeps its own cursor in changeCursor.
-  watchHistoryId String?
+  watchHistoryId  String?
 
   @@index([watchAddress])
-
   @@map("mail_sync_states")
 }
 
@@ -2500,12 +2561,12 @@ model DataRoomImport {
 /// Extracted document text, kept apart from the item so lists never load it. Lets indexing run
 /// again (new embedding model, consent granted) without reading the blob or calling vision again.
 model DataRoomItemText {
-  itemId  String       @id
-  item    DataRoomItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
-  spaceId String
-  space   Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  userId  String
-  text    String
+  itemId     String       @id
+  item       DataRoomItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  spaceId    String
+  space      Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId     String
+  text       String
   /// What the read depended on (vision model, consent); see `dataRoomVisionKey`. Null: saved before this was recorded.
   extractKey String?
 
@@ -2558,18 +2619,18 @@ model DataRoomSyncState {
 
 /// What the Legal agent concluded about one Data Room item. The document itself stays in the Data Room.
 model LegalContract {
-  id                String       @id @default(cuid())
+  id                String          @id @default(cuid())
   spaceId           String
   userId            String
   dataRoomItemId    String
-  item              DataRoomItem @relation(fields: [dataRoomItemId], references: [id], onDelete: Cascade)
+  item              DataRoomItem    @relation(fields: [dataRoomItemId], references: [id], onDelete: Cascade)
   title             String
   contractType      String
   counterparties    String[]
   /// "active" | "expired" | "terminated" | "draft" | "unknown"
   status            String
-  effectiveDate     DateTime?    @db.Date
-  expirationDate    DateTime?    @db.Date
+  effectiveDate     DateTime?       @db.Date
+  expirationDate    DateTime?       @db.Date
   autoRenews        Boolean?
   renewalNoticeDays Int?
   governingLaw      String?
@@ -2580,8 +2641,8 @@ model LegalContract {
   /// DataRoomItem.revision the analysis was made at; a higher revision means it needs review again.
   analyzedRevision  Int
   analyzedAt        DateTime
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
   deadlines         LegalDeadline[]
   nodes             LegalNode[]
 
@@ -2640,21 +2701,21 @@ model LegalNode {
 }
 
 model LegalEdge {
-  id             String    @id @default(cuid())
+  id             String        @id @default(cuid())
   spaceId        String
   userId         String
   fromId         String
-  from           LegalNode @relation("LegalEdgeFrom", fields: [fromId], references: [id], onDelete: Cascade)
+  from           LegalNode     @relation("LegalEdgeFrom", fields: [fromId], references: [id], onDelete: Cascade)
   toId           String
-  to             LegalNode @relation("LegalEdgeTo", fields: [toId], references: [id], onDelete: Cascade)
+  to             LegalNode     @relation("LegalEdgeTo", fields: [toId], references: [id], onDelete: Cascade)
   /// A short verb: party_to, owes, grants, governed_by, owns, signed_by.
   relation       String
   /// The evidence item; deleting it removes the edge.
   dataRoomItemId String?
   dataRoomItem   DataRoomItem? @relation(fields: [dataRoomItemId], references: [id], onDelete: Cascade)
   sourceQuote    String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@unique([fromId, toId, relation])
   @@index([spaceId, userId])

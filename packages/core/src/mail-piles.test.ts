@@ -30,6 +30,7 @@ function input(patch: Partial<PileInput> = {}): PileInput {
     signals: quiet,
     senderMark: null,
     priorContact: false,
+    skipInbox: false,
     ...patch,
   };
 }
@@ -221,6 +222,41 @@ describe("classifyPile headers", () => {
 
   it("leaves plain mail from an unknown sender to the model", () => {
     expect(classifyPile(input())).toEqual({ pile: null, reasons: [] });
+  });
+});
+
+describe("classifyPile skip inbox", () => {
+  const skipping = (patch: Partial<PileInput> = {}) =>
+    classifyPile(input({ skipInbox: true, ...patch }));
+
+  it("treats a skipped sender with list headers as decided newsletters", () => {
+    expect(skipping({ signals: listMail })).toEqual({
+      pile: "newsletters",
+      reasons: ["skip_inbox"],
+    });
+  });
+
+  it("treats a skipped sender with no bulk headers as decided updates", () => {
+    expect(skipping()).toEqual({ pile: "updates", reasons: ["skip_inbox"] });
+    expect(skipping({ signals: null, priorContact: null }).pile).toBe("updates");
+  });
+
+  it("still decides bulk for a skipped sender the user once wrote to", () => {
+    expect(skipping({ signals: listMail, priorContact: true }).pile).toBe("newsletters");
+  });
+
+  it("never lets a skip decision beat spam, forged brand mail or an important mark", () => {
+    expect(
+      skipping({ signals: withSignals({ categories: { ...quiet.categories, spam: true } }) }).pile,
+    ).toBe("spam");
+    const forged = withSignals({ auth: { dkim: "fail", spf: "fail", dmarc: "fail" } });
+    expect(skipping({ signals: forged, fromName: "PayPal Support" }).pile).toBe("spam");
+    expect(skipping({ senderMark: "important", signals: listMail }).pile).toBe("important");
+  });
+
+  it("leaves failed authentication to the model rather than archiving it as a skipped sender", () => {
+    const forged = withSignals({ auth: { dkim: "fail", spf: "pass", dmarc: "pass" } });
+    expect(skipping({ signals: forged }).pile).toBeNull();
   });
 });
 

@@ -38,7 +38,7 @@ export async function applyPileRules(
   });
   if (rows.length === 0) return;
   const senders = [...new Set(rows.map((row) => row.fromAddress.toLowerCase()))];
-  const [feedback, stats] = await Promise.all([
+  const [feedback, stats, skipping] = await Promise.all([
     tx.inboxSenderFeedback.findMany({
       where: { spaceId, userId },
       select: { senderAddress: true, mark: true },
@@ -47,7 +47,12 @@ export async function applyPileRules(
       where: { spaceId, userId, connectionId, senderAddress: { in: senders } },
       select: { senderAddress: true, priorContact: true },
     }),
+    tx.mailSenderDecision.findMany({
+      where: { spaceId, userId, connectionId, skipInboxAt: { not: null } },
+      select: { senderAddress: true },
+    }),
   ]);
+  const skipped = new Set(skipping.map((decision) => decision.senderAddress));
   const marks = senderMarkMap(feedback);
   const prior = new Map(stats.map((stat) => [stat.senderAddress, stat.priorContact]));
 
@@ -66,6 +71,7 @@ export async function applyPileRules(
       signals: parsed.success ? parsed.data : null,
       senderMark: marks.get(address) ?? null,
       priorContact: prior.get(address) ?? null,
+      skipInbox: skipped.has(address),
     });
     const rulePile = decision.pile;
     const pile = resolvePile(rulePile, row.category);

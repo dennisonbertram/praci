@@ -590,6 +590,7 @@ export async function createApp(
         : []),
     ],
     mail,
+    mailWritesDisabled: env.mailWritesDisabled,
     gmailPush,
   });
   if (inMemoryJobs) {
