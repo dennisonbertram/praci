@@ -420,6 +420,11 @@ export class PhotonAdapter implements Adapter<PhotonThreadId, PhotonRawMessage> 
     return "";
   }
 
+  /** Setup check: mint a line token, which fails on bad project credentials. */
+  async check(): Promise<void> {
+    await this.mintTokens();
+  }
+
   /** One HTTP client for the process; it asks for a fresh token on every call. */
   private async imessage(): Promise<AdvancedIMessage> {
     if (this.client) return this.client;

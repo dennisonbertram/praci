@@ -125,6 +125,7 @@ export * from "./mercury-finance-source.js";
 export * from "./messaging-context.js";
 export * from "./messaging-delivery.js";
 export * from "./messaging-platforms.js";
+export * from "./messaging-settings.js";
 export * from "./messaging-team-chat-emulator.js";
 export * from "./mime-parse.js";
 export * from "./model-connect.js";

@@ -1,8 +1,10 @@
 import { useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
 import { BotAvatar, cn, Switch } from "@rakazo/ui-web";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
+import { Link } from "react-router-dom";
 import type { StatusKind } from "../../lib/integrations";
+import { AppLogo } from "./AppLogo";
 
 export function IntegrationTile({ className, ...props }: ComponentProps<"div">) {
   return (
@@ -87,5 +89,41 @@ export function AgentToggleList({
         </div>
       ))}
     </div>
+  );
+}
+
+export function CardHead({
+  name,
+  logo,
+  sub,
+  to,
+}: {
+  name: string;
+  logo?: string | null;
+  sub?: string;
+  to?: string;
+}) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <AppLogo name={name} logo={logo} />
+      <div className="min-w-0">
+        {to ? (
+          <Link to={to} className="block truncate font-semibold after:absolute after:inset-0">
+            {name}
+          </Link>
+        ) : (
+          <div className="truncate font-semibold">{name}</div>
+        )}
+        {sub ? <div className="line-clamp-2 text-xs text-muted-foreground">{sub}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+export function SectionTitle({ children }: { children: ReactNode }) {
+  return (
+    <h2 className="mb-2.5 mt-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      {children}
+    </h2>
   );
 }

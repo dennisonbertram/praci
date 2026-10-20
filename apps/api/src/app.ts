@@ -59,6 +59,7 @@ import {
   LlmDataRoomClassifier,
   McpConnector,
   McpOAuthBroker,
+  MessagingSettings,
   messagingPlatformsFromEnv,
   PiAgentRuntime,
   PiOAuthLogins,
@@ -349,7 +350,11 @@ export async function createApp(
   // so it's the one that must hold Telegram's live getUpdates connection —
   // see messagingPlatformsFromEnv's docstring for why a second poller
   // elsewhere (e.g. the worker) would actively break this.
-  const messagingPlatforms = messagingPlatformsFromEnv(env, {
+  const messagingSettings = new MessagingSettings(prisma, secrets, {
+    env,
+    apiUrl: env.apiUrl,
+  });
+  const messagingPlatforms = messagingPlatformsFromEnv(await messagingSettings.withSaved(), {
     pollInboundMessages: true,
     bluebubblesPollState: createBlueBubblesPollState(prisma),
   });
@@ -612,6 +617,7 @@ export async function createApp(
     secrets,
     oauthLogins,
     integrationSettings,
+    messagingSettings,
     mcpOAuth,
     composio: stack.composio,
     connectors: stack.connector,

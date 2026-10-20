@@ -801,6 +801,10 @@ msgstr "Added"
 msgid "Adding a contact"
 msgstr "Adding a contact"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Address"
+msgstr "Address"
+
 #: src/components/finance/AddAccountDialog.tsx
 #: src/components/finance/WalletDialog.tsx
 msgid "Address or ENS"
@@ -1057,6 +1061,10 @@ msgstr "Answered: {answer}"
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr "Any model, with your own key"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Anyone who can reach this address can talk to your Mac's server. Use a private network or a tunnel."
+msgstr "Anyone who can reach this address can talk to your Mac's server. Use a private network or a tunnel."
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Anything else"
@@ -1615,6 +1623,7 @@ msgstr "Can't reach the server."
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
 #: src/components/MailApprovalCard.tsx
@@ -1782,6 +1791,7 @@ msgid "Chart hidden while amounts are hidden"
 msgstr "Chart hidden while amounts are hidden"
 
 #: src/components/data-room/FilterBar.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Chat"
@@ -1798,6 +1808,14 @@ msgstr "Chat apps, group channels, and agent connections."
 #: src/pages/Shell.tsx
 msgid "Chat settings"
 msgstr "Chat settings"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Chat with your agents over iMessage"
+msgstr "Chat with your agents over iMessage"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Chat with your agents over iMessage from your Mac"
+msgstr "Chat with your agents over iMessage from your Mac"
 
 #: src/pages/SpaceSearch.tsx
 msgid "Chats"
@@ -2208,6 +2226,7 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -2303,6 +2322,7 @@ msgid "Connect Treg"
 msgstr "Connect Treg"
 
 #: src/components/finance/AddAccountDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/parts.tsx
@@ -2400,12 +2420,14 @@ msgstr "Contracts"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Copied"
 msgstr "Copied"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 #: src/pages/Shell.tsx
@@ -3595,6 +3617,7 @@ msgstr "Each bot keeps its own"
 msgid "Earlier"
 msgstr "Earlier"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Edit"
@@ -4313,6 +4336,14 @@ msgstr "Image hidden while amounts are hidden"
 msgid "Image upload area"
 msgstr "Image upload area"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "iMessage (BlueBubbles)"
+msgstr "iMessage (BlueBubbles)"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "iMessage (Photon)"
+msgstr "iMessage (Photon)"
+
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Import"
@@ -4670,6 +4701,7 @@ msgstr "Linear issue"
 msgid "Link"
 msgstr "Link"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
 msgstr "Link a chat app"
@@ -6354,9 +6386,14 @@ msgstr "Private key"
 msgid "Private workspace with its own bots and groups."
 msgstr "Private workspace with its own bots and groups."
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Project ID"
 msgstr "Project ID"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Project secret"
+msgstr "Project secret"
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Projected cash"
@@ -6846,6 +6883,10 @@ msgstr "Renews {day}"
 msgid "Reopen"
 msgstr "Reopen"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Replace"
+msgstr "Replace"
+
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Replace API key"
@@ -6923,6 +6964,10 @@ msgstr "Resetting…"
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
 msgstr "Resize panel"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Restart required"
+msgstr "Restart required"
 
 #: src/components/DesktopUpdates.tsx
 msgid "Restart to update"
@@ -7083,6 +7128,7 @@ msgstr "Sales & CRM"
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/Board.tsx
 #: src/pages/CapTable.tsx
@@ -7130,6 +7176,7 @@ msgid "Save the workspace and install current software."
 msgstr "Save the workspace and install current software."
 
 #: src/components/AskCard.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/teach/SkillDraftCard.tsx
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -7433,12 +7480,21 @@ msgstr "Serenity endpoint is required."
 msgid "Server integrations"
 msgstr "Server integrations"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Server password"
+msgstr "Server password"
+
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Server URL"
 msgstr "Server URL"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Set by server"
+msgstr "Set by server"
 
 #: src/pages/Legal.tsx
 msgid "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
@@ -8052,6 +8108,10 @@ msgstr "Test"
 msgid "Test API key"
 msgstr "Test API key"
 
+#: src/components/integrations/IMessageSection.tsx
+msgid "Test connection"
+msgstr "Test connection"
+
 #: src/pages/RoutineEditor.tsx
 msgid "Test run"
 msgstr "Test run"
@@ -8060,6 +8120,7 @@ msgstr "Test run"
 msgid "Test sign-in"
 msgstr "Test sign-in"
 
+#: src/components/integrations/IMessageSection.tsx
 #: src/components/ModelConnectionPreflightNotice.tsx
 msgid "Testing…"
 msgstr "Testing…"
@@ -8902,6 +8963,18 @@ msgstr "Web, desktop and mobile apps"
 #: src/pages/RoutineEditor.tsx
 msgid "Webhook"
 msgstr "Webhook"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Webhook signing secret"
+msgstr "Webhook signing secret"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Webhook token"
+msgstr "Webhook token"
+
+#: src/components/integrations/IMessageSection.tsx
+msgid "Webhook URL"
+msgstr "Webhook URL"
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Website login"

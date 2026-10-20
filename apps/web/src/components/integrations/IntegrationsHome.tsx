@@ -46,7 +46,8 @@ import {
   FinanceSection,
   useFinanceStatus,
 } from "./FinanceSection";
-import { AgentStack, IntegrationTile, StatusBadge } from "./parts";
+import { IMessageSection } from "./IMessageSection";
+import { AgentStack, CardHead, IntegrationTile, SectionTitle, StatusBadge } from "./parts";
 import { agentsFor, type IntegrationsData } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
 
@@ -69,34 +70,6 @@ function Card({ children }: { children: ReactNode }) {
     <IntegrationTile className="relative  transition-colors hover:bg-muted/40">
       {children}
     </IntegrationTile>
-  );
-}
-
-function CardHead({
-  name,
-  logo,
-  sub,
-  to,
-}: {
-  name: string;
-  logo?: string | null;
-  sub?: string;
-  to?: string;
-}) {
-  return (
-    <div className="flex min-w-0 items-center gap-3">
-      <AppLogo name={name} logo={logo} />
-      <div className="min-w-0">
-        {to ? (
-          <Link to={to} className="block truncate font-semibold after:absolute after:inset-0">
-            {name}
-          </Link>
-        ) : (
-          <div className="truncate font-semibold">{name}</div>
-        )}
-        {sub ? <div className="truncate text-xs text-muted-foreground">{sub}</div> : null}
-      </div>
-    </div>
   );
 }
 
@@ -305,9 +278,11 @@ function AppTile({
 export function IntegrationsHome({
   data,
   activeBotId,
+  onOpenMessaging,
 }: {
   data: IntegrationsData;
   activeBotId?: string;
+  onOpenMessaging?: () => void;
 }) {
   const { t } = useLingui();
   const [params] = useSearchParams();
@@ -730,6 +705,10 @@ export function IntegrationsHome({
               ) : null;
             })}
 
+            {category === "all" || category === "chat" ? (
+              <IMessageSection query={query} onOpenMessaging={onOpenMessaging} />
+            ) : null}
+
             <SectionTitle>
               <Trans>Anything else</Trans>
             </SectionTitle>
@@ -809,13 +788,5 @@ export function IntegrationsHome({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
-}
-
-function SectionTitle({ children }: { children: ReactNode }) {
-  return (
-    <h2 className="mb-2.5 mt-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-      {children}
-    </h2>
   );
 }
