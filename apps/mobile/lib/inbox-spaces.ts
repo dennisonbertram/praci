@@ -1,14 +1,7 @@
 import type { SpaceBot, SpaceGroup } from "@rakazo/contracts";
 import { nestRosterByParent, sidebarSections } from "@rakazo/core";
-import {
-  adoptDeletedSpaceFallback,
-  type MobileBot,
-  type MobileGroup,
-  type MobileSpace,
-  rpc,
-  selectedSpaceId,
-  selectSpace,
-} from "./api";
+import type { MobileBot, MobileGroup, MobileSpace } from "./api";
+import { adoptDeletedSpaceFallback, rpc, selectedSpaceId, selectSpace } from "./api";
 
 export type InboxSpace = Pick<
   MobileSpace,

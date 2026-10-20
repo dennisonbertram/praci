@@ -1,15 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  adoptDeletedSpaceFallback,
-  type MobileBot,
-  rpc,
-  selectedSpaceId,
-  selectSpace,
-} from "./api";
+import type { MobileBot } from "./api";
+import { adoptDeletedSpaceFallback, rpc, selectedSpaceId, selectSpace } from "./api";
+import type { InboxSpace } from "./inbox-spaces";
 import {
   canDeleteInboxSpace,
   canRenameInboxSpace,
-  type InboxSpace,
   inboxNeedsCreateHint,
   removeInboxSpace,
   renameInboxSpace,

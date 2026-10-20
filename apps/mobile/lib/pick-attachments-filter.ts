@@ -1,8 +1,5 @@
-import {
-  ATTACHMENT_MAX_BYTES,
-  ATTACHMENT_MAX_COUNT,
-  type AttachmentMimeType,
-} from "@rakazo/contracts";
+import type { AttachmentMimeType } from "@rakazo/contracts";
+import { ATTACHMENT_MAX_BYTES, ATTACHMENT_MAX_COUNT } from "@rakazo/contracts";
 
 export type PickedAttachment = {
   id: string;

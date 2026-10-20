@@ -1,19 +1,15 @@
 import type { AvatarFacePose, AvatarMood } from "@rakazo/core";
 import { avatarFacePose, blendAvatarFacePose } from "@rakazo/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { FrameInfo } from "react-native-reanimated";
 import {
-  type FrameInfo,
   useAnimatedProps,
   useFrameCallback,
   useReducedMotion,
   useSharedValue,
 } from "react-native-reanimated";
-import {
-  type AvatarFaceGeometry,
-  faceFrame,
-  MIN_ANIMATED_SIZE,
-  MOOD_BLEND_MS,
-} from "../lib/avatar-face";
+import type { AvatarFaceGeometry } from "../lib/avatar-face";
+import { faceFrame, MIN_ANIMATED_SIZE, MOOD_BLEND_MS } from "../lib/avatar-face";
 
 type Look = { x: number; y: number };
 
