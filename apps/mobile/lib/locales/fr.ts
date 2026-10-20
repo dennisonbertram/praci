@@ -791,4 +791,7 @@ export const FR_MESSAGES: Record<string, string> = {
   "Spam {count}": "Spam {count}",
   "Archive {count} conversations from {sender}?": "Archiver {count} conversations de {sender} ?",
   "Could not archive {count}": "Impossible d’archiver {count} conversations",
+  "Could not load skills": "Impossible de charger les compétences",
+  "Could not update skills": "Impossible de mettre à jour les compétences",
+  "Custom image": "Image personnalisée",
 };

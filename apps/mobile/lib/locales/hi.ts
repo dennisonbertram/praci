@@ -775,4 +775,7 @@ export const HI_MESSAGES: Record<string, string> = {
   "Spam {count}": "स्पैम {count}",
   "Archive {count} conversations from {sender}?": "{sender} की {count} बातचीत आर्काइव करें?",
   "Could not archive {count}": "{count} बातचीत आर्काइव नहीं हो सकीं",
+  "Could not load skills": "स्किल लोड नहीं हो सकीं",
+  "Could not update skills": "स्किल अपडेट नहीं हो सकीं",
+  "Custom image": "कस्टम छवि",
 };

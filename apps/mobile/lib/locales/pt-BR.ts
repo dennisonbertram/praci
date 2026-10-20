@@ -788,4 +788,7 @@ export const PT_BR_MESSAGES: Record<string, string> = {
   "Spam {count}": "Spam {count}",
   "Archive {count} conversations from {sender}?": "Arquivar {count} conversas de {sender}?",
   "Could not archive {count}": "Não foi possível arquivar {count} conversas",
+  "Could not load skills": "Não foi possível carregar as habilidades",
+  "Could not update skills": "Não foi possível atualizar as habilidades",
+  "Custom image": "Imagem personalizada",
 };

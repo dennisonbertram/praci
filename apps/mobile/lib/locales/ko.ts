@@ -780,4 +780,7 @@ export const KO_MESSAGES: Record<string, string> = {
   "Spam {count}": "스팸 {count}",
   "Archive {count} conversations from {sender}?": "{sender}의 대화 {count}개를 보관할까요?",
   "Could not archive {count}": "대화 {count}개를 보관하지 못했습니다",
+  "Could not load skills": "스킬을 불러올 수 없습니다",
+  "Could not update skills": "스킬을 업데이트할 수 없습니다",
+  "Custom image": "사용자 지정 이미지",
 };

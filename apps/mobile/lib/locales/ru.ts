@@ -835,4 +835,7 @@ export const RU_MESSAGES: Record<string, string> = {
   "Spam {count}": "Спам {count}",
   "Archive {count} conversations from {sender}?": "Архивировать {count} бесед от {sender}?",
   "Could not archive {count}": "Не удалось архивировать: {count}",
+  "Could not load skills": "Не удалось загрузить навыки",
+  "Could not update skills": "Не удалось обновить навыки",
+  "Custom image": "Своё изображение",
 };

@@ -810,4 +810,7 @@ export const ZH_MESSAGES: Record<string, string> = {
   "Spam {count}": "垃圾邮件 {count}",
   "Archive {count} conversations from {sender}?": "要归档来自 {sender} 的 {count} 个会话吗？",
   "Could not archive {count}": "无法归档 {count} 个会话",
+  "Could not load skills": "无法加载技能",
+  "Could not update skills": "无法更新技能",
+  "Custom image": "自定义图片",
 };
