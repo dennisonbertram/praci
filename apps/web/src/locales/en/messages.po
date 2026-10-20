@@ -6532,6 +6532,7 @@ msgid "Page not found"
 msgstr "Page not found"
 
 #: src/components/SidebarPages.tsx
+#: src/components/SidebarPagesGroup.tsx
 msgid "Page options"
 msgstr "Page options"
 
