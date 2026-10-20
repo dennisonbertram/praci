@@ -16,6 +16,7 @@ import {
   PopoverTrigger,
 } from "@rakazo/ui-web";
 import {
+  BookUser,
   ChartColumn,
   ChevronDown,
   CircleAlert,
@@ -322,6 +323,7 @@ export type SpaceSidebarProps = {
   hideAmounts: boolean;
   legalMode: boolean;
   capTableMode: boolean;
+  contactsMode: boolean;
   dataRoomMode: boolean;
   artifactsMode: boolean;
   spaceQuery: string;
@@ -434,6 +436,7 @@ export function SpaceSidebar({
   hideAmounts,
   legalMode,
   capTableMode,
+  contactsMode,
   dataRoomMode,
   artifactsMode,
   spaceQuery,
@@ -682,6 +685,7 @@ export function SpaceSidebar({
                 { key: "finance", label: t`Finance` },
                 { key: "legal", label: t`Legal` },
                 { key: "cap-table", label: t`Cap table` },
+                { key: "contacts", label: t`Contacts` },
                 { key: "data-room", label: t`Data room` },
                 { key: "artifacts", label: t`Artifacts` },
                 ...addedPages,
@@ -756,6 +760,19 @@ export function SpaceSidebar({
                     navigate("/app/cap-table");
                   }}
                   {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
+                />
+              )}
+              {hiddenPages.includes("contacts") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-contacts"
+                  current={contactsMode}
+                  icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Contacts`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/contacts");
+                  }}
                 />
               )}
               {hiddenPages.includes("data-room") ? null : (

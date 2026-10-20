@@ -66,6 +66,7 @@ import {
 } from "@rakazo/ui-web";
 import {
   ArrowLeft,
+  BookUser,
   ChartColumn,
   Files,
   FileText,
@@ -234,6 +235,7 @@ import { errorText } from "../lib/user-error";
 import { workingActivity } from "../lib/working-activity";
 import type { ContextMenuPosition } from "./BotContextMenu";
 import { CapTablePage } from "./CapTable";
+import { ContactsPage } from "./Contacts";
 import { DataRoomPage } from "./DataRoom";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
@@ -875,6 +877,7 @@ export function ShellPage() {
   // The route exists only while bootstrap enables the board (see App).
   const boardMode = useMatch("/app/board") != null;
   const capTableMode = useMatch("/app/cap-table/*") != null;
+  const contactsMode = useMatch("/app/contacts") != null;
   // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
   // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
   const pageMode =
@@ -885,6 +888,7 @@ export function ShellPage() {
     integrationsMode ||
     dataRoomMode ||
     artifactsMode ||
+    contactsMode ||
     boardMode;
   useEffect(() => {
     if (!financeMode) setFinanceAgentOpen(false);
@@ -903,7 +907,7 @@ export function ShellPage() {
     applied: botsListApplied.current,
   });
   const active =
-    inGroup || integrationsMode || artifactsMode || boardMode
+    inGroup || integrationsMode || artifactsMode || contactsMode || boardMode
       ? undefined
       : inboxMode
         ? findInboxAgent(bots, userId)
@@ -1913,6 +1917,7 @@ export function ShellPage() {
         keywords: t`equity, ownership, shares, options, Carta`,
         icon: <PieChart {...icon} />,
       },
+      { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
@@ -3771,6 +3776,7 @@ export function ShellPage() {
         hideAmounts={hideAmounts}
         legalMode={legalMode}
         capTableMode={capTableMode}
+        contactsMode={contactsMode}
         dataRoomMode={dataRoomMode}
         artifactsMode={artifactsMode}
         spaceQuery={spaceQuery}
@@ -4063,6 +4069,8 @@ export function ShellPage() {
                 : undefined
             }
           />
+        ) : contactsMode ? (
+          <ContactsPage />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>

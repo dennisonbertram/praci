@@ -36,6 +36,8 @@ export const LEGAL_AGENT_BUILTIN_TOOLS = [
   "legal_link",
   "legal_query",
   "mail_search",
+  "contacts_list",
+  "contacts_add",
   "mail_grep",
   "mail_get",
   "drive_search",

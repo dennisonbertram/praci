@@ -14,7 +14,8 @@ describe("ContactSaveInputSchema", () => {
     );
     expect(ContactSaveInputSchema.safeParse({ name: "   " }).success).toBe(false);
     expect(ContactKindSchema.safeParse("friend").success).toBe(false);
-    expect(ContactKindSchema.safeParse("auditor").success).toBe(true);
+    for (const kind of ["auditor", "customer", "vendor", "partner", "advisor", "legal"])
+      expect(ContactKindSchema.safeParse(kind).success).toBe(true);
   });
 
   it("limits organization and notes", () => {

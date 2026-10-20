@@ -67,14 +67,48 @@ export async function deleteContact(prisma: Db, actor: Scope, id: string): Promi
   if (count === 0) throw new IsolationError("Contact not found");
 }
 
-/** Creates a new contact. Throws ContactEmailTakenError when the email already belongs to one. */
-export const addContact = (prisma: Db, actor: Scope, input: Omit<ContactSaveInput, "id">) =>
-  prisma.contact
-    .create({ data: { ...ownerOf(actor), ...input } })
-    .then(toContact)
-    .catch((error: unknown) => {
-      throw isUniqueViolation(error) ? new ContactEmailTakenError() : error;
-    });
+/**
+ * Saves a contact without ever changing an existing one: a contact with the same email
+ * or, without an email, the same name and organization (case-insensitive) is returned as is.
+ * Safe for unattended callers.
+ */
+export async function addContactIfNew(
+  prisma: Db,
+  actor: Scope,
+  input: Omit<ContactSaveInput, "id">,
+): Promise<{ contact: Contact; created: boolean }> {
+  const scope = ownerOf(actor);
+  // Prisma turns an insensitive equals into ILIKE, so escape its wildcards.
+  const insensitive = (value: string) => ({
+    equals: value.replace(/[\\%_]/g, "\\$&"),
+    mode: "insensitive" as const,
+  });
+  const name = input.name.trim();
+  const organization = input.organization?.trim() || null;
+  // The schema lowercases email, so it matches exactly.
+  const where = input.email
+    ? { ...scope, email: input.email }
+    : {
+        ...scope,
+        name: insensitive(name),
+        organization: organization ? insensitive(organization) : null,
+      };
+  const existing = await prisma.contact.findFirst({ where, orderBy: { id: "asc" } });
+  if (existing) return { contact: toContact(existing), created: false };
+  // ponytail: only email is unique, so concurrent no-email adds can both insert a duplicate row;
+  // upgrade to a unique index on lower(name) plus organization, or an advisory lock.
+  try {
+    const row = await prisma.contact.create({ data: { ...scope, ...input, name, organization } });
+    return { contact: toContact(row), created: true };
+  } catch (error) {
+    // A concurrent run saved the same email first.
+    if (isUniqueViolation(error) && input.email) {
+      const row = await prisma.contact.findFirst({ where: { ...scope, email: input.email } });
+      if (row) return { contact: toContact(row), created: false };
+    }
+    throw error;
+  }
+}
 
 /** Creates or updates a contact. Throws ContactEmailTakenError when another contact has the email. */
 export const saveContact = (prisma: Db, actor: Scope, input: ContactSaveInput) =>

@@ -12,6 +12,8 @@ export const DATA_ROOM_AGENT_BUILTIN_TOOLS = [
   "read_data_room_item",
   "add_to_data_room",
   "read_spreadsheet",
+  "contacts_list",
+  "contacts_add",
   "remember",
   "save_memory",
   "recall_memory",

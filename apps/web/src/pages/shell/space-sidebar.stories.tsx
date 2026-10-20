@@ -159,6 +159,7 @@ function SidebarFixture({ mode }: { mode: Mode }) {
     hideAmounts: false,
     legalMode: false,
     capTableMode: false,
+    contactsMode: false,
     dataRoomMode: false,
     artifactsMode: false,
     spaceQuery,
