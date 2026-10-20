@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 206 of 206
-- Web and shared components: 589
-- Mobile components: 127 in 88 files, mobile — native story pending
+- Web and shared component files with stories: 207 of 207
+- Web and shared components: 591
+- Mobile components: 128 in 89 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -94,6 +94,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
 | SandboxedHtmlViewer | [apps/web/src/components/SandboxedHtmlViewer.tsx](../../apps/web/src/components/SandboxedHtmlViewer.tsx) | [SandboxedHtmlViewer.stories.tsx](../../apps/web/src/components/SandboxedHtmlViewer.stories.tsx) | web |
+| SheetPreview, SheetRow | [apps/web/src/components/SheetPreview.tsx](../../apps/web/src/components/SheetPreview.tsx) | [SheetPreview.stories.tsx](../../apps/web/src/components/SheetPreview.stories.tsx) | web |
 | StatusMark | [apps/web/src/components/sidebar-glance.tsx](../../apps/web/src/components/sidebar-glance.tsx) | [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
 | RailTip, SidebarPageLink | [apps/web/src/components/SidebarPageLink.tsx](../../apps/web/src/components/SidebarPageLink.tsx) | [SidebarPageLink.stories.tsx](../../apps/web/src/components/SidebarPageLink.stories.tsx), [SidebarPagesGroup.stories.tsx](../../apps/web/src/components/SidebarPagesGroup.stories.tsx), [sidebar-glance.stories.tsx](../../apps/web/src/components/sidebar-glance.stories.tsx) | web |
 | SidebarPages | [apps/web/src/components/SidebarPages.tsx](../../apps/web/src/components/SidebarPages.tsx) | [SidebarPages.stories.tsx](../../apps/web/src/components/SidebarPages.stories.tsx) | web |
@@ -382,6 +383,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | SegmentedPills | [apps/mobile/components/segmented-pills.tsx](../../apps/mobile/components/segmented-pills.tsx) | mobile — native story pending | mobile |
 | SelectTextSheet | [apps/mobile/components/select-text-sheet.tsx](../../apps/mobile/components/select-text-sheet.tsx) | mobile — native story pending | mobile |
 | SettingsLabel, SettingsFooter, SettingsGroup, SettingsRow, SettingsSwitch | [apps/mobile/components/settings-group.tsx](../../apps/mobile/components/settings-group.tsx) | mobile — native story pending | mobile |
+| SheetArtifactPreview | [apps/mobile/components/sheet-artifact-preview.tsx](../../apps/mobile/components/sheet-artifact-preview.tsx) | mobile — native story pending | mobile |
 | HeaderTextButton | [apps/mobile/components/sheet-header.tsx](../../apps/mobile/components/sheet-header.tsx) | mobile — native story pending | mobile |
 | ThreadComposer, MentionOptionIcon, MentionChipIcon | [apps/mobile/components/thread-composer.tsx](../../apps/mobile/components/thread-composer.tsx) | mobile — native story pending | mobile |
 | TimeSeparator | [apps/mobile/components/time-separator.tsx](../../apps/mobile/components/time-separator.tsx) | mobile — native story pending | mobile |

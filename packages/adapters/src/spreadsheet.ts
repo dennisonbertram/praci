@@ -217,10 +217,12 @@ function scanXlsxSheet(
   bounds: Bounds,
   maxRows: number,
   explicitRange: boolean,
+  skip: number,
 ): Scan {
   const xml = new TextDecoder().decode(book.files[sheet.part]);
   const result: Scan = { rows: [], truncated: false };
   let chars = 0;
+  let skipped = 0;
   let rowNo = 0;
   let nextCol = 0;
   let cells: CellValue[] = [];
@@ -269,6 +271,10 @@ function scanXlsxSheet(
       } else if (name === "row" && inRow) {
         inRow = false;
         if (!hasValue || rowNo < bounds.r1) return;
+        if (result.rows.length > 0 && skipped < skip) {
+          skipped += 1;
+          return;
+        }
         if (result.rows.length >= maxRows || chars > MAX_RESULT_CHARS) {
           result.truncated = true;
           return false;
@@ -352,7 +358,13 @@ export type SpreadsheetRead = {
   note?: string;
 };
 
-export type SpreadsheetReadOptions = { sheet?: string; range?: string; maxRows?: number };
+export type SpreadsheetReadOptions = {
+  sheet?: string;
+  range?: string;
+  maxRows?: number;
+  /** Data rows to pass over after the first row, which is always returned as the header. */
+  skipRows?: number;
+};
 
 export function readSpreadsheet(
   bytes: Uint8Array,
@@ -367,6 +379,7 @@ export function readSpreadsheet(
     MAX_ROWS,
     Math.max(1, Math.floor(Number(options.maxRows)) || DEFAULT_ROWS),
   );
+  const skip = Math.max(0, Math.floor(Number(options.skipRows)) || 0);
   const bounds: Bounds = parsed ?? { c1: 0, r1: 1, c2: MAX_COLS - 1, r2: Number.MAX_SAFE_INTEGER };
   let capped = false;
   if (bounds.c2 - bounds.c1 >= MAX_COLS) {
@@ -407,7 +420,7 @@ export function readSpreadsheet(
       };
     }
     chosen = sheet.name;
-    scan = scanXlsxSheet(book, sheet, bounds, maxRows, parsed !== null);
+    scan = scanXlsxSheet(book, sheet, bounds, maxRows, parsed !== null, skip);
     if (overBudget) {
       scan.truncated = true;
       note = "The workbook is larger than the size limit, so some sheets were not read.";
@@ -418,6 +431,7 @@ export function readSpreadsheet(
     let rowNo = 0;
     let widest = 0;
     let chars = 0;
+    let skipped = 0;
     scan = { rows: [], truncated: false };
     csvRows(text, delimiter, (fields) => {
       rowNo += 1;
@@ -427,6 +441,10 @@ export function readSpreadsheet(
         .slice(bounds.c1, bounds.c2 + 1)
         .map((f) => (f === "" ? null : f.slice(0, MAX_CELL_CHARS)));
       if (!cells.some((c) => c !== null)) return;
+      if (scan.rows.length > 0 && skipped < skip) {
+        skipped += 1;
+        return;
+      }
       if (scan.rows.length >= maxRows || chars > MAX_RESULT_CHARS) {
         scan.truncated = true;
         return;

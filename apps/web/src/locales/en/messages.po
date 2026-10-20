@@ -2659,6 +2659,10 @@ msgstr "Could not load integrations"
 msgid "Could not load model settings"
 msgstr "Could not load model settings"
 
+#: src/components/SheetPreview.tsx
+msgid "Could not load more rows."
+msgstr "Could not load more rows."
+
 #: src/pages/RoutineRunHistory.tsx
 msgid "Could not load run history"
 msgstr "Could not load run history"
@@ -2693,6 +2697,7 @@ msgid "Could not load this chat."
 msgstr "Could not load this chat."
 
 #: src/components/ArtifactFileCard.tsx
+#: src/components/SheetPreview.tsx
 msgid "Could not load this file."
 msgstr "Could not load this file."
 
@@ -4704,6 +4709,7 @@ msgstr "Load earlier messages"
 
 #: src/components/data-room/ImportFromDrive.tsx
 #: src/components/data-room/ImportFromEmail.tsx
+#: src/components/SheetPreview.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/Inbox.tsx
@@ -6314,6 +6320,7 @@ msgstr "Preview"
 msgid "Preview {0}"
 msgstr "Preview {0}"
 
+#: src/components/SheetPreview.tsx
 #: src/pages/Artifacts.tsx
 msgid "Preview isn't available for this file type — download it to view it."
 msgstr "Preview isn't available for this file type — download it to view it."
@@ -7486,6 +7493,10 @@ msgstr "Shareholders"
 msgid "Shares"
 msgstr "Shares"
 
+#: src/components/SheetPreview.tsx
+msgid "Sheets"
+msgstr "Sheets"
+
 #: src/components/computer/TerminalApp.tsx
 msgid "Shell"
 msgstr "Shell"
@@ -8294,6 +8305,10 @@ msgstr "This server did not ask for a sign-in."
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "This server needs an OAuth client ID."
 msgstr "This server needs an OAuth client ID."
+
+#: src/components/SheetPreview.tsx
+msgid "This sheet is empty."
+msgstr "This sheet is empty."
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This space already uses {selectedProviderName}."
