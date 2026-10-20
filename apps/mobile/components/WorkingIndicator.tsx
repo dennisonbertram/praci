@@ -1,5 +1,5 @@
-import { useEffect } from "react";
-import { View } from "react-native";
+import { useEffect, useState } from "react";
+import { Text, View } from "react-native";
 import type { SharedValue } from "react-native-reanimated";
 import Animated, {
   cancelAnimation,
@@ -105,5 +105,28 @@ export function WorkingIndicator({ compact = false, tint }: { compact?: boolean;
         />
       ))}
     </View>
+  );
+}
+
+const QUIET_WAITING_AFTER_MS = 20_000;
+
+/** Small muted line beside the dots; names what the run waits on once it has gone quiet. */
+export function WorkingStatusText({ text, waitingOn }: { text: string; waitingOn: string | null }) {
+  const tokens = useMobileTokens();
+  const { t } = useI18n();
+  const [quiet, setQuiet] = useState(false);
+  useEffect(() => {
+    setQuiet(false);
+    if (!waitingOn) return;
+    const timer = setTimeout(() => setQuiet(true), QUIET_WAITING_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [text, waitingOn]);
+  const waiting =
+    quiet && waitingOn ? ` · ${t("Still waiting on {service}", { service: waitingOn })}` : "";
+  return (
+    <Text numberOfLines={1} style={{ flexShrink: 1, color: tokens.mutedForeground, fontSize: 12 }}>
+      {text}
+      {waiting}
+    </Text>
   );
 }
