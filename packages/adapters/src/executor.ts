@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import type {
   AdapterContext,
   AgentContextStrategy,
@@ -65,6 +66,7 @@ import {
   isVoiceAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
   LEGAL_AGENT_MODEL,
+  LEGAL_CONSENT_REQUIRED_MESSAGE,
   LEGAL_MODEL_REQUIRED_MESSAGE,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   RunPhaseSchema,
@@ -109,6 +111,7 @@ import {
   nextFence,
   ownsLine,
   parseSkillMd,
+  plainRunError,
   planActionGate,
   promptInvokesSkill,
   redactSecrets,
@@ -166,9 +169,9 @@ import {
   buildApprovalAskBlock,
   buildConsentAskBlock,
   cartaMailSendIsComplete,
-  describeApprovalAction,
   isCartaMailSend,
   isIntegrationAgentWrite,
+  resolveMoneyNames,
 } from "./approval-ask.js";
 import {
   approvalPausedToolResult,
@@ -314,6 +317,7 @@ import {
   driveToolsAllowed,
   listDriveAccounts,
 } from "./drive-tools.js";
+import { unwrapToolResult } from "./finance-call-tool.js";
 import {
   FINANCE_TOOL_NAMES,
   financeAgentRunLine,
@@ -1970,8 +1974,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           // them must be one the user allowed. Without that consent the run ends before any model call.
           const ai = await legalRunAi();
           if (!ai.allowed) {
-            const who = ai.recipients[0]?.name ?? runModelProvider;
-            const message = `Data Room consent is required for ${who} before the Legal agent can run. Allow it on the Legal page.`;
+            const message = LEGAL_CONSENT_REQUIRED_MESSAGE;
             await publishMessage(deps, run, "bot", [{ kind: "text", text: message }]).catch(
               (error) => getLogger().error("legal consent notice", error),
             );
@@ -2153,6 +2156,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
           senderInScope &&
           peerMessage?.ownerOrigin === true &&
           (isInboxAgentSpawnKey(bot.spawnKey) || appAgentIdentity);
+        // The Finance agent answers an owner-originated bot (Chief asked about cash) with its own
+        // read-only finance tools; Carta keeps its stricter rule.
+        const financeAgentPeer =
+          senderInScope &&
+          peerMessage?.ownerOrigin === true &&
+          isFinanceAgentSpawnKey(bot.spawnKey);
         const calendarEnabled =
           mailToolsAllowed({
             ownerAgentPeer: ownerAgentPeer && appAgentIdentity,
@@ -2392,6 +2401,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           });
         const financeEnabled =
           financeToolsAllowed({
+            ownerAgentPeer: financeAgentPeer,
             hasProvider: true,
             groupId: thread.groupId,
             runUserId: run.userId,
@@ -2551,6 +2561,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const connectorTools = new Map(
           exposedConnectorTools.map((tool) => [tool.name, tool] as const),
         );
+        // Names read for approval cards, once per id for the run.
+        const approvalNameReads = new Map<string, Promise<unknown>>();
         let approvalRulesPromise: Promise<ActionApprovalRule[]> | undefined;
         const loadApprovalRules = () => {
           approvalRulesPromise ??= deps.prisma.actionApprovalRule
@@ -3406,22 +3418,57 @@ export function createRunExecutor(deps: ExecutorDeps) {
             return pauseForApproval();
           };
 
-          const requestApproval = async () =>
-            pauseForAsk(
-              buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
-                reviewReason,
-                fullMail: isCartaMailSend(bot.spawnKey, name),
-                integrationWriteTool,
-                serviceName: callRoute?.serverName,
-                mailAccount: await approvalMailAccount(),
-                imessage: imessageCard,
-                schedule: scheduleCard,
-              }),
-              redactSecrets(
-                `Review before ${scheduleCard?.summary ?? describeApprovalAction(name, args, callRoute?.serverName)}`,
-                runSecrets,
-              ),
+          // The recipient and account behind a money request's ids, read with the same server's own
+          // read tools. A failed read leaves the name out of the card.
+          const readApprovalName = (
+            tool: "getRecipient" | "getAccount",
+            readArgs: Record<string, string>,
+          ) => {
+            const sibling = [...connectorTools.values()].find(
+              (candidate) =>
+                candidate.route?.connectorId === "mcp" &&
+                candidate.route.resourceId === callRoute?.resourceId &&
+                candidate.route.toolName === tool,
             );
+            if (!sibling?.route || !deps.connector) return Promise.resolve(undefined);
+            const route = { ...sibling.route, discoveredReadOnly: true };
+            const key = `${route.resourceId}:${tool}:${JSON.stringify(readArgs)}`;
+            let read = approvalNameReads.get(key);
+            if (!read) {
+              read = (async () => {
+                for await (const event of deps.connector!.execute(
+                  { tool: sibling.name, args: readArgs, executionId: `${effectKey}:${key}`, route },
+                  context,
+                )) {
+                  if (event.type === "result")
+                    return unwrapToolResult(event.data as CallToolResult);
+                  if (event.type === "error") throw new Error(event.message);
+                }
+                return undefined;
+              })();
+              approvalNameReads.set(key, read);
+            }
+            return read;
+          };
+
+          const requestApproval = async () => {
+            const moneyNames = await resolveMoneyNames(
+              callRoute?.toolName ?? name,
+              args,
+              readApprovalName,
+            );
+            const block = buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
+              reviewReason,
+              fullMail: isCartaMailSend(bot.spawnKey, name),
+              integrationWriteTool,
+              serviceName: callRoute?.serverName,
+              mailAccount: await approvalMailAccount(),
+              imessage: imessageCard,
+              schedule: scheduleCard,
+              moneyNames,
+            });
+            return pauseForAsk(block, block.kind === "ask" ? block.text : "");
+          };
 
           /**
            * A mail read refused for missing consent, in a chat with its owner: ask on a card that
@@ -7435,10 +7482,8 @@ async function loadBotDirectory(
 }
 
 /**
- * A teammate's description in the bot directory. The Finance and Carta agents read their data only
- * when the user asks them directly, so other bots send the user there instead of messaging them.
- * An integration agent (Mercury, Brex, ...) is the opposite: other bots message it. The two lines say
- * so, because a model that reads both mixes them up and refuses to message the integration agent.
+ * A teammate's description in the bot directory. Integration, Carta and Finance agents are messaged
+ * by other bots: they answer with their own data and the asking bot passes it on to the user.
  */
 export function directoryDescription(peer: {
   description: string;
@@ -7450,10 +7495,7 @@ export function directoryDescription(peer: {
   if (!isFinanceAgentSpawnKey(peer.spawnKey)) {
     return peer.description;
   }
-  const page = isFinanceAgentSpawnKey(peer.spawnKey)
-    ? "[Open Finance](/app/finance)"
-    : "[Open Cap table](/app/cap-table)";
-  return `${peer.description} It reads finance and cap table data only when the user asks it in its own chat, so for those questions tell the user to ask it there instead of messaging it, and end your reply with the link ${page}, where its page and chat live. This applies to this agent only, not to a Mercury, Brex, Carta or other integration agent, which you message with message_bot.`.trim();
+  return `${peer.description} Message it with message_bot whenever the user asks about cash, runway, burn or spending, even if they did not name it. It answers with the figures from the Finance page: quote them in your reply and end with [Open Finance](/app/finance) for the detail. Never estimate a figure yourself; if it cannot answer, say so and link Finance.`.trim();
 }
 
 export const PLAIN_CAPABILITY_GUIDANCE =
@@ -8041,7 +8083,11 @@ async function failRun(
     await notifyRun(deps, run, {
       kind: "failure",
       title: `${bot.name} failed`,
-      body: message.slice(0, 180),
+      body: plainRunError(message, {
+        keyRejected:
+          "The model provider did not accept your API key. Check it in Settings > Models.",
+        generic: "Something went wrong. Try again.",
+      }).slice(0, 180),
       botId: bot.id,
       threadId: run.threadId,
     });

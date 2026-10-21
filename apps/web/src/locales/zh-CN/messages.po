@@ -119,6 +119,11 @@ msgstr ""
 msgid "{0, plural, one {Added # file} other {Added # files}}"
 msgstr ""
 
+#. placeholder {0}: chosen.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
+msgstr ""
+
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "{0, plural, one {Import # file} other {Import # files}}"
@@ -258,6 +263,11 @@ msgstr ""
 #. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
 #: src/pages/Shell.tsx
 msgid "{0} runway"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0} settings"
 msgstr ""
 
 #. placeholder {0}: statement.transactionCount
@@ -584,6 +594,7 @@ msgid "A deposit address at an exchange."
 msgstr ""
 
 #: src/components/sidebar-folders/FolderHeader.tsx
+#: src/pages/shell/dialogs.tsx
 msgid "A folder with that name already exists"
 msgstr ""
 
@@ -986,6 +997,7 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Allow"
 msgstr ""
 
@@ -1054,10 +1066,6 @@ msgstr ""
 msgid "Allowed"
 msgstr ""
 
-#: src/components/AskCard.tsx
-msgid "Allowed once"
-msgstr "已允许一次"
-
 #: src/pages/Auth.tsx
 msgid "Already have an account?"
 msgstr "已有账户？"
@@ -1095,8 +1103,8 @@ msgid "Always act"
 msgstr ""
 
 #: src/components/AskCard.tsx
-msgid "Always allow this tool"
-msgstr "始终允许此工具"
+msgid "Always allow this"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
@@ -1147,6 +1155,10 @@ msgstr "已回答：{0}"
 msgid "Answered: {answer}"
 msgstr "已回答：{answer}"
 
+#: src/lib/slash-skills.ts
+msgid "Answers from your meeting notes and transcripts."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr ""
@@ -1193,7 +1205,6 @@ msgid "Appearance"
 msgstr "外观"
 
 #: src/components/compose/RichTextEditor.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr ""
@@ -1210,6 +1221,10 @@ msgstr "批准"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Approved"
 msgstr ""
 
 #: src/components/ConnectAppsButton.tsx
@@ -1310,6 +1325,10 @@ msgstr ""
 msgid "Ask {botName}"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask a question"
+msgstr ""
+
 #: src/components/FinanceCards.tsx
 msgid "Ask about this"
 msgstr ""
@@ -1348,6 +1367,10 @@ msgstr "购买前询问"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Ask before sending external email"
 msgstr "发送外部邮件前询问"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Ask the server owner to configure this provider."
@@ -1695,6 +1718,10 @@ msgstr ""
 msgid "Box"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Box files"
+msgstr ""
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Brain label"
 msgstr ""
@@ -1925,6 +1952,10 @@ msgstr ""
 msgid "Change password"
 msgstr "修改密码"
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Change settings, export your data or retake this tour from here."
+msgstr ""
+
 #: src/pages/Finance.tsx
 msgid "Change, 3 months"
 msgstr ""
@@ -1976,10 +2007,6 @@ msgstr "聊天应用、群组频道和 Agent 连接。"
 
 #: src/pages/shell/composer.tsx
 msgid "Chat settings"
-msgstr ""
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Chat with Chief here. Agents ask before they send, pay or change anything."
 msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
@@ -2134,6 +2161,7 @@ msgid "Clear formatting"
 msgstr ""
 
 #: src/components/ListControls.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr ""
@@ -2409,6 +2437,7 @@ msgstr "请确认此浏览器会话可以访问该 URL，然后重新测试。"
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
+#: src/pages/shell/message-cards.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "连接"
@@ -2469,7 +2498,6 @@ msgid "Connect API key"
 msgstr "连接 API 密钥"
 
 #: src/components/ConnectAppsButton.tsx
-#: src/components/tour/FirstRunTour.tsx
 msgid "Connect apps"
 msgstr ""
 
@@ -2489,6 +2517,10 @@ msgstr "连接 Executor"
 msgid "Connect Gmail to read, sort and answer your mail here."
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Connect Gmail, Calendar and other apps so agents can read your mail and files."
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
 msgstr ""
@@ -2496,10 +2528,6 @@ msgstr ""
 #: src/pages/shell/message-cards.tsx
 msgid "Connect MCP server “{name}”"
 msgstr "连接 MCP 服务器“{name}”"
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Connect the apps you already use, so agents can work with your mail and files."
-msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect the apps you use so your bots can read and act in them. You choose which bots get access to each one."
@@ -2608,10 +2636,6 @@ msgstr ""
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
 msgstr "通过 {0} 继续"
-
-#: src/pages/Auth.tsx
-msgid "Continue with email"
-msgstr "使用邮箱继续"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -3358,10 +3382,6 @@ msgstr "创建工作区"
 msgid "Create your account"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Create your own agent, group or space."
-msgstr ""
-
 #: src/components/AskCard.tsx
 msgid "Created"
 msgstr "已创建"
@@ -3617,6 +3637,10 @@ msgstr ""
 msgid "Developer"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Devin sessions"
+msgstr ""
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Didn't open?"
 msgstr ""
@@ -3739,6 +3763,7 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr ""
@@ -4220,10 +4245,6 @@ msgstr ""
 msgid "Finance"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Finance shows cash, burn and runway from your bank."
-msgstr ""
-
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -4232,6 +4253,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Find an app"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4763,10 +4788,6 @@ msgstr ""
 msgid "Inbox & email"
 msgstr "收件箱和邮件"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Inbox sorts your mail and drafts replies you approve."
-msgstr ""
-
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Indexing"
 msgstr ""
@@ -4876,6 +4897,10 @@ msgstr ""
 #: src/lib/relative-time.ts
 msgid "just now"
 msgstr "刚刚"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Keep contracts here, and see who owns what in Cap table."
+msgstr ""
 
 #: src/pages/DataRoom.tsx
 msgid "Keep contracts, board decks and investor documents in one place."
@@ -5003,10 +5028,6 @@ msgstr "退出"
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
-msgstr ""
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Legal and Cap table keep contracts and ownership in one place."
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -5361,6 +5382,10 @@ msgstr "中"
 msgid "Medium"
 msgstr "中"
 
+#: src/lib/slash-skills.ts
+msgid "Meeting notes"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Meeting notes and transcripts"
 msgstr ""
@@ -5599,6 +5624,10 @@ msgstr ""
 msgid "More computer actions"
 msgstr ""
 
+#: src/pages/ActivityList.tsx
+msgid "More filters"
+msgstr ""
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5691,10 +5720,6 @@ msgstr ""
 msgid "Needs a server restart"
 msgstr ""
 
-#: src/lib/roster-status.ts
-msgid "Needs an answer"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr ""
@@ -5729,6 +5754,10 @@ msgstr "需要接管"
 msgid "Needs you"
 msgstr ""
 
+#: src/lib/roster-status.ts
+msgid "Needs your answer"
+msgstr ""
+
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Net"
@@ -5747,6 +5776,7 @@ msgstr ""
 msgid "new"
 msgstr ""
 
+#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
@@ -6368,10 +6398,6 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
-#: src/pages/shell/composer-error.tsx
-msgid "Open Data room"
-msgstr ""
-
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr ""
@@ -6418,10 +6444,6 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
-msgstr ""
-
-#: src/pages/shell/composer-error.tsx
-msgid "Open Legal"
 msgstr ""
 
 #: src/components/inbox/InboxCleanup.tsx
@@ -6482,8 +6504,8 @@ msgid "Opening an email"
 msgstr ""
 
 #: src/components/ShellSkeleton.tsx
-msgid "Opening your Space…"
-msgstr "正在打开工作区…"
+msgid "Opening Praci…"
+msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Option pool available"
@@ -6823,6 +6845,10 @@ msgstr ""
 msgid "Preparing… {0}%"
 msgstr ""
 
+#: src/components/tour/FirstRunTour.tsx
+msgid "Press + to create an agent or a group chat."
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Press Scan now to read your Data room for contracts and deadlines."
 msgstr ""
@@ -6975,6 +7001,10 @@ msgstr ""
 #: src/pages/shell/bot-panel.tsx
 msgid "Read replies aloud"
 msgstr "朗读回复"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Read your mail sorted by what needs you, and send replies you approve."
+msgstr ""
 
 #: src/components/finance/AddAccountDialog.tsx
 msgid "Read-only API key"
@@ -7422,6 +7452,10 @@ msgstr ""
 msgid "Replying to {0}"
 msgstr ""
 
+#: src/pages/Auth.tsx
+msgid "Request a new link"
+msgstr ""
+
 #: src/components/DataExport.tsx
 msgid "Request export"
 msgstr ""
@@ -7825,10 +7859,6 @@ msgstr ""
 msgid "Search by domain"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Search chats, files and mail."
-msgstr ""
-
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Search directory"
 msgstr ""
@@ -7839,10 +7869,6 @@ msgstr ""
 
 #: src/components/data-room/ImportFromDrive.tsx
 msgid "Search Drive"
-msgstr ""
-
-#: src/pages/DataRoom.tsx
-msgid "Search looks for these words in names and text."
 msgstr ""
 
 #: src/components/data-room/ImportFromEmail.tsx
@@ -7871,7 +7897,7 @@ msgid "Search older mail"
 msgstr ""
 
 #: src/pages/shell/command-palette.tsx
-msgid "Search pages, bots and groups"
+msgid "Search pages, bots, groups, documents and artifacts"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -7918,6 +7944,10 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "See who owns your company"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "See your cash, burn and runway, pulled from your bank."
 msgstr ""
 
 #: src/components/inbox/InboxRow.tsx
@@ -8073,10 +8103,6 @@ msgstr ""
 #: src/pages/Shell.tsx
 msgid "Settings"
 msgstr "设置"
-
-#: src/components/tour/FirstRunTour.tsx
-msgid "Settings, Export my data and Take the tour are in your account menu."
-msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -8508,6 +8534,10 @@ msgstr ""
 msgid "Start {trialDays}-day free trial"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Start and follow Devin sessions. Each one asks first."
+msgstr ""
+
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Start recording"
 msgstr "开始录制"
@@ -8832,10 +8862,6 @@ msgstr ""
 msgid "The connection timed out."
 msgstr "连接超时。"
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "The Data room holds your files. Artifacts holds what agents make."
-msgstr ""
-
 #: src/components/DataExport.tsx
 msgid "The export failed. Try again."
 msgstr ""
@@ -9113,10 +9139,6 @@ msgstr ""
 msgid "To pick up, press space. Use the arrow keys to move, space to drop, escape to cancel."
 msgstr ""
 
-#: src/pages/shell/bot-picker.tsx
-msgid "To:"
-msgstr "至:"
-
 #: src/components/EmailCards.tsx
 #: src/components/inbox/TodoCard.tsx
 #: src/pages/Artifacts.tsx
@@ -9281,6 +9303,10 @@ msgstr ""
 #: src/components/finance/WalletDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Type"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Type here to find any chat, file or email."
 msgstr ""
 
 #: src/components/teach/TeachRecordingChrome.tsx
@@ -9513,6 +9539,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
+msgstr ""
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Upload files for agents to use. Artifacts holds what agents make."
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -9794,6 +9824,10 @@ msgstr ""
 msgid "What result will you demonstrate?"
 msgstr "你要示范什么结果？"
 
+#: src/pages/Shell.tsx
+msgid "What should I do first this week?"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "What should this routine do each time it runs?"
 msgstr "每次运行时，这个例行任务应做什么？"
@@ -9848,6 +9882,10 @@ msgstr ""
 
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Won't ask again for this kind of action."
 msgstr ""
 
 #: src/lib/ticket-status.ts

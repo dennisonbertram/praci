@@ -1,0 +1,171 @@
+{
+ "round": 4,
+ "date": "2026-10-20",
+ "mockup": "docs/devin/mockup.html (v5)",
+ "method": "agent-browser session ux-walker-devin-r4, light theme, switcher widths 1440, 1100, 900, 390 (frames cropped from full-page screenshots), real browser widths 1100x800, 900x800, 390x844 for the geometry audit, one dark pass on 6 frames at 1440. Geometry audit at every width: pageOverflowX 0, overflowSpills empty; 'wrappedControls' lists only td.dim.tab cells (false positives, as in round 3; no label wraps); unevenRows list only mockup chrome and the dialog footers. At a real 390px viewport the three dialogs are 358px wide inside 16px gutters (left 16, right 374) and the document scrollWidth is 390. Row hit test: every cell of every needs-you/working/finished row resolves to the single row anchor (linksPerRow 1, row heights 38 to 92px). Interaction checks: Ask on 'First visit, panel closed' (1440 and 900), Tab to a row link.",
+ "stories": [
+  "001",
+  "002",
+  "003",
+  "004",
+  "005",
+  "006",
+  "007",
+  "008",
+  "010",
+  "012",
+  "021",
+  "031",
+  "033",
+  "034",
+  "036",
+  "037",
+  "038"
+ ],
+ "previous_findings": [
+  {
+   "id": "F-STORY-001-06",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Connecting frame now reads 'Connecting\u2026' on the disabled button (no spinner drawn). 'Read-only' uses a non-breaking hyphen: at 390px it wraps as 'Connects Devin for everyone in this space. / Read-only.'",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-001/1440-dialog-connecting-refused.png"
+  },
+  {
+   "id": "F-STORY-007-03",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Ask is absent from the key-rejected frames (owner and member), as on Not connected and Load error.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-007/1440-key-rejected-owner.png"
+  },
+  {
+   "id": "F-STORY-007-04",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Two frames: owner sees 'Reconnect'; member sees the same notice with no button. Per the decision, members see no buttons. Related suggestion: F-STORY-007-05.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-007/1440-key-rejected-member.png"
+  },
+  {
+   "id": "F-STORY-008-05",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Frame 'Needs you 0, other sessions present' draws a neutral zero tile (Needs you 0, Working 2), no Needs you group and no sidebar number.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-008/1440-needs-zero.png"
+  },
+  {
+   "id": "F-STORY-010-03",
+   "status": "still present",
+   "severity_now": "suggestion",
+   "evidence": "Wait time is still only the Updated column.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-010/1440-populated.png"
+  },
+  {
+   "id": "F-STORY-010-06",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Keyboard focus draws a 3px ring around the whole row (684x92px for the Prisma row, the same box as the anchor's ::after overlay), so indicator and target match. New cosmetic note: F-STORY-010-07.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-010/1440-keyboard-focus-row.png"
+  },
+  {
+   "id": "F-STORY-012-05",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Collapse icon measures 28x28 (above the 24px WCAG 2.2 minimum; copies the real panel header).",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-012/1440-populated.png"
+  },
+  {
+   "id": "F-STORY-012-09",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "The 'agent cannot read the question' frame is removed (decision: agent has read tools only, questions shown on the page only). The agent's answers name sessions and link to them without quoting a question.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-012/1440-populated.png"
+  },
+  {
+   "id": "F-STORY-021-02",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "'Toast when the question cannot be read' frame: title 'Devin needs input', body 'Add CSV export for invoices is waiting for your answer.', 'Opens Devin'.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-021/1440-toast-unreadable.png"
+  },
+  {
+   "id": "F-STORY-033-06",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "At 900 and 390 the top bar is the hamburger only; no needs-you signal is visible until the drawer opens (the count appears only in the drawer).",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-033/900-populated.png"
+  },
+  {
+   "id": "F-STORY-034-01",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Clicking Ask on 'First visit, panel closed' sets class 'open' and shows the intro dock (384px at 1440; overlay at 900), Ask hides. Measured: dock display flex, intro present.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-034/1440-after-click-ask-first-visit.png"
+  }
+ ],
+ "new_findings": [
+  {
+   "id": "F-STORY-008-07",
+   "severity": "low",
+   "category": "consistency",
+   "criterion": "Counts match rows / information stated once",
+   "score": "warn",
+   "description": "In the 'Unknown status' frame the tile reads Working 2, but the Working group holds one Working row plus the unknown 'pending_review' row. GAP-03's fix says unknown values are excluded from tiles; the frame either counts the unknown row as Working or the tile is wrong. The unknown row is also filed under the 'Working' heading, which says it is working.",
+   "expected": "Tile equals the rows it counts; an unknown status sits in a place that does not claim a state (for example under Earlier, or its own position) and is excluded from both tiles.",
+   "actual": "Working 2 with 1 session whose status is Working; unknown row under the Working heading.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-008/1440-unknown.png",
+   "suggested_fix": "Draw Working 1 in that frame (tiles(0,1)) and decide the group for an unknown status (GAP-03).",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-007-05",
+   "severity": "suggestion",
+   "category": "permissions",
+   "criterion": "Recovery path named",
+   "score": "warn",
+   "description": "The member variant of the key-rejected page shows 'Devin rejected the key. Alerts are paused.' with no button and no hint about who can fix it. The Not connected member frame does name the person ('Ask a space owner to connect Devin.').",
+   "expected": "Same wording family: a member learns who can reconnect without extra chrome.",
+   "actual": "Notice only; the member has no named next step.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-007/1440-key-rejected-member.png",
+   "suggested_fix": "Append 'Ask a space owner to reconnect.' to the member notice only. Not a blocker: the decision says members see the notice without buttons.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-010-07",
+   "severity": "suggestion",
+   "category": "visual",
+   "criterion": "Focus ring clearance",
+   "score": "warn",
+   "description": "The row focus ring has no inset: its inner edge sits on the row edge, so the title and the wrapped question touch the ring on the left (text x = 344 = ring edge; ring is drawn 3px outside).",
+   "expected": "A few px of padding between ring and text, or the ring drawn outside the content box.",
+   "actual": "Ring touches the first characters of each line.",
+   "screenshot": "docs/devin/ux-walker/round-4/STORY-010/1440-keyboard-focus-row.png",
+   "suggested_fix": "Give the first cell a 8px left inset and offset the ::after by -8px.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  }
+ ],
+ "carried_resolved_from_earlier_rounds": "All round 3 findings not listed here were already resolved or n/a in round 3 and nothing observed in v5 reopens them. The sidebar count's link name is 'Devin 3 need you' in the accessibility tree (checked), so no new a11y finding.",
+ "not_observable": [
+  "Click to real Devin (rows, toast, OS banner, phone push)",
+  "Refetch after answering in Devin (GAP-13)",
+  "Notification delivery and dot clearing (GAP-05)",
+  "Skeleton duration",
+  "Where the key link points",
+  "Spinner in the Connecting button (label only is drawn)"
+ ],
+ "totals": {
+  "round3_open": 11,
+  "resolved_in_round_4": 8,
+  "still_present": 3,
+  "new": 3,
+  "open_after_round_4": 6,
+  "by_severity_open": {
+   "low": 3,
+   "suggestion": 3
+  }
+ }
+}

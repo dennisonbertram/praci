@@ -1261,28 +1261,25 @@ describe("splitInboxSearchSkill", () => {
 });
 
 describe("directoryDescription", () => {
-  it("sends finance questions to the Finance agent's own chat", () => {
+  it("tells peers to message the Finance agent and quote its figures, with a link to Finance", () => {
     const line = directoryDescription({
       description: "Answers questions about your bank accounts.",
       spawnKey: financeAgentSpawnKey("u1"),
     });
     expect(line).toContain("Answers questions about your bank accounts.");
-    expect(line).toContain("ask it there instead of messaging it");
+    expect(line).toContain("Message it with message_bot");
+    expect(line).toContain("quote them in your reply");
     expect(line).toContain("[Open Finance](/app/finance)");
+    expect(line).not.toContain("instead of messaging it");
   });
 
-  it("tells peers to message an integration agent, and not to send the user to the Finance agent for it", () => {
+  it("tells peers to message an integration agent too", () => {
     const integration = directoryDescription({
       description: "Works with the user's Mercury account.",
       spawnKey: "integration-agent:server-1",
     });
     expect(integration).toContain("Message it with message_bot");
     expect(integration).not.toContain("instead of messaging it");
-    const finance = directoryDescription({
-      description: "Answers questions about your bank accounts.",
-      spawnKey: financeAgentSpawnKey("u1"),
-    });
-    expect(finance).toContain("not to a Mercury, Brex, Carta or other integration agent");
   });
 
   it("tells peers to message the Carta agent and assembles one consistent directory entry", () => {

@@ -8,6 +8,11 @@ import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-pref
 /** A non-chat result: an app page or a Data room document. */
 export type SearchLink = { id: string; label: string; detail?: string; icon?: ReactNode };
 
+/** Chat snippets come from markdown replies; show them as plain text. */
+export function plainSnippet(text: string): string {
+  return text.replace(/\*\*|__|`/g, "");
+}
+
 function Section({ title, children }: { title: ReactNode; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-0.5">
@@ -178,7 +183,9 @@ export function SpaceSearchResults({
                 </div>
                 <div className="mt-0.5 truncate text-[13px] text-muted-foreground" dir="auto">
                   {/* The chat name is already the title of a conversation hit. */}
-                  {where && where !== hit.title ? `${where} · ${hit.snippet}` : hit.snippet}
+                  {where && where !== hit.title
+                    ? `${where} · ${plainSnippet(hit.snippet)}`
+                    : plainSnippet(hit.snippet)}
                 </div>
               </button>
             );
