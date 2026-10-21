@@ -45,6 +45,7 @@ import {
   computerUpdateView,
   createDevinCallTool,
   createFaviconResolver,
+  createMeetingSourceRegistry,
   createTicket,
   createVoiceProvider,
   defaultCatalogModelId,
@@ -145,6 +146,7 @@ import {
   FIRST_BOT_SPAWN_KEY,
   foldComputerCommands,
   GOOGLE_DESKTOP_REDIRECT_URI,
+  GRANOLA_API_CONNECTOR_ID,
   IntegrationProviderIdSchema,
   integrationAgentSpawnKey,
   integrationPresetForEndpoint,
@@ -152,6 +154,7 @@ import {
   isCartaEndpoint,
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
+  isGranolaEndpoint,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isLegalAgentSpawnKey,
@@ -417,6 +420,15 @@ import {
   revertConnectedMcpApprovals,
 } from "./mcp-approval.js";
 import { buildMcpUpdateMaterial, mcpOrigin } from "./mcp-material.js";
+import type { MeetingsDeps } from "./meetings.js";
+import {
+  connectGranola,
+  deleteStoredMeeting,
+  disconnectGranola,
+  granolaStatus,
+  listStoredMeetings,
+  refreshGranola,
+} from "./meetings.js";
 import {
   disconnectMemoryProvider,
   persistMemoryProviderConfig,
@@ -1087,6 +1099,12 @@ export function createRouter(deps: RouterDeps) {
       actor,
       connectionId,
     );
+  const meetingSources = deps.meetingSources ?? createMeetingSourceRegistry();
+  const meetingsFor = (actor: Actor): MeetingsDeps => ({
+    router: deps,
+    registry: meetingSources,
+    agent: { prisma: deps.prisma, repos, archiveBot: (botId) => archiveActorBot(actor, botId) },
+  });
   const archiveActorBot = async (actor: Actor, botId: string) => {
     const bot = await repos.getBot(actor, botId, { includeArchived: true });
     await archiveBot(
@@ -1144,6 +1162,7 @@ export function createRouter(deps: RouterDeps) {
         : () => Promise.reject(new Error("MCP is not available"))),
     provisionAgent: async (actor, serverId) => (await provisionExclusiveAgent(actor, serverId)).bot,
     archiveBot: archiveActorBot,
+    notificationEvents: deps.notificationEvents,
   };
   const onboardingDeps = { prisma: deps.prisma, events: deps.events, connectors: deps.connectors };
   const mcpOAuth = deps.mcpOAuth ?? new McpOAuthBroker(deps.prisma, deps.secrets);
@@ -5029,8 +5048,13 @@ export function createRouter(deps: RouterDeps) {
             );
             // The deleted row says which agent it had at that moment, so a concurrent relink is seen.
             const deleted = await tx.mcpServer.delete({ where: { id: server.id } });
+            // Carta's agent is shared with the Cap table, and the Granola agent with the API key.
             agentToArchive =
-              deleted.agentBotId && !isCartaEndpoint(deleted.endpoint) ? deleted.agentBotId : null;
+              deleted.agentBotId &&
+              !isCartaEndpoint(deleted.endpoint) &&
+              !isGranolaEndpoint(deleted.endpoint)
+                ? deleted.agentBotId
+                : null;
             // Archived with the server, so the agent is never left active without it.
             if (agentToArchive)
               await tx.bot.updateMany({
@@ -5461,6 +5485,8 @@ export function createRouter(deps: RouterDeps) {
             spaceId: context.actor.spaceId,
             userId: context.actor.userId,
             status: { in: ["connected", "pending", "error"] },
+            // The Granola key shows through meetings.status, never as a generic app.
+            connectorId: { not: GRANOLA_API_CONNECTOR_ID },
           },
           // Without an order Postgres returns rows in storage order, which changes when a row is
           // updated, so the accounts of one app swapped places between loads.
@@ -7065,6 +7091,26 @@ export function createRouter(deps: RouterDeps) {
           dataRoom.autoSort.undo(context.actor, input.batchId),
         ),
       },
+    },
+    meetings: {
+      connect: authed.meetings.connect.handler(({ context, input }) =>
+        connectGranola(meetingsFor(context.actor), context.actor, input, context.signal),
+      ),
+      status: authed.meetings.status.handler(({ context }) =>
+        granolaStatus(meetingsFor(context.actor), context.actor),
+      ),
+      disconnect: authed.meetings.disconnect.handler(({ context }) =>
+        disconnectGranola(meetingsFor(context.actor), context.actor),
+      ),
+      refresh: authed.meetings.refresh.handler(({ context }) =>
+        refreshGranola(meetingsFor(context.actor), context.actor),
+      ),
+      list: authed.meetings.list.handler(({ context, input }) =>
+        listStoredMeetings(meetingsFor(context.actor), context.actor, input.cursor),
+      ),
+      delete: authed.meetings.delete.handler(({ context, input }) =>
+        deleteStoredMeeting(meetingsFor(context.actor), context.actor, input.meetingId),
+      ),
     },
     devin: {
       sessions: authed.devin.sessions.handler(({ context }) =>

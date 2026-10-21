@@ -21,6 +21,7 @@ import type {
   IntegrationProviderSettings,
   McpConnector,
   McpOAuthBroker,
+  MeetingSourceRegistry,
   MemoryProviderResolver,
   MessagingSettings,
   PiOAuthLogins,
@@ -83,6 +84,8 @@ export interface RouterDeps {
   mcp?: Pick<McpConnector, "callServerTool" | "listServerTools">;
   /** Replaces the read-only Devin caller built from `mcp`; tests pass a fake. */
   devinCallTool?: DevinCallTool;
+  /** Meeting providers for the Granola key check; the demo and tests point Granola at the emulator. */
+  meetingSources?: MeetingSourceRegistry;
   /** Reads an uploaded bank statement; wired in app.ts. */
   parseStatement?: ParseStatement;
   financeCrypto?: FinanceCryptoDeps;

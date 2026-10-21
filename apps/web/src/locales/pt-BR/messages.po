@@ -93,6 +93,11 @@ msgstr ""
 msgid "{0, plural, one {# model} other {# models}}"
 msgstr "{0, plural, one {# modelo} other {# modelos}}"
 
+#. placeholder {0}: glance.devinNeedsYou
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# needs you} other {# need you}}"
+msgstr ""
+
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
 msgid "{0, plural, one {# result} other {# results}}"
@@ -348,6 +353,10 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "{count, plural, one {# transaction} other {# transactions}}"
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
 msgstr ""
 
 #: src/lib/billing.ts
@@ -949,6 +958,10 @@ msgstr ""
 msgid "AI data sharing"
 msgstr ""
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "AI data sharing off"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -1149,10 +1162,6 @@ msgstr ""
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Há uma chave de API armazenada para este provedor, não um login de assinatura."
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "An org-scoped Devin service-user key (starts with cog_)."
-msgstr ""
-
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "Resposta"
@@ -1178,6 +1187,10 @@ msgstr "Respondido: {answer}"
 msgid "Answers from your meeting notes and transcripts."
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Answers questions about what Devin is working on."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr ""
@@ -1188,6 +1201,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Anything else"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Anything merged today?"
 msgstr ""
 
 #: src/lib/devin-format.ts
@@ -1203,6 +1220,7 @@ msgstr ""
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1251,6 +1269,7 @@ msgstr ""
 
 #: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/Shell.tsx
@@ -1813,6 +1832,10 @@ msgstr ""
 msgid "Burn by category"
 msgstr ""
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Business plan"
+msgstr ""
+
 #: src/pages/finance/FinanceBurn.tsx
 msgid "By account"
 msgstr ""
@@ -1858,6 +1881,7 @@ msgstr "Não é possível acessar o servidor."
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
@@ -2339,6 +2363,10 @@ msgid "Collapse Data room agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
+msgid "Collapse Devin agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
 msgid "Collapse Finance agent"
 msgstr ""
 
@@ -2476,8 +2504,11 @@ msgstr "Confirme que a URL está acessível nesta sessão do navegador e teste n
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
+#: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2499,6 +2530,7 @@ msgstr ""
 
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
 msgstr ""
@@ -2552,6 +2584,7 @@ msgstr ""
 msgid "Connect Carta"
 msgstr ""
 
+#: src/components/integrations/DevinConnectDialog.tsx
 #: src/pages/Devin.tsx
 msgid "Connect Devin"
 msgstr ""
@@ -2641,6 +2674,8 @@ msgid "Connecting to tools"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/DevinConnectDialog.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/GoogleOAuthCallback.tsx
@@ -2654,6 +2689,10 @@ msgstr "Conectando…"
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "O teste de conexão falhou."
+
+#: src/components/integrations/DevinConnectDialog.tsx
+msgid "Connects Devin for everyone in this space. Read-only."
+msgstr ""
 
 #: src/pages/Contacts.tsx
 #: src/pages/Shell.tsx
@@ -2814,6 +2853,7 @@ msgid "Could not continue"
 msgstr "Não foi possível continuar"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not create agent"
 msgstr ""
@@ -2836,6 +2876,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Data room agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Devin agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2883,6 +2927,7 @@ msgid "Could not discard skill"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not disconnect"
 msgstr ""
@@ -3054,6 +3099,10 @@ msgstr "Não foi possível reproduzir um clipe de teste"
 #. placeholder {0}: hostOf(target.endpoint ?? url)
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Could not reach {0}. Check the address and try again."
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Could not reach Granola"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -3392,6 +3441,7 @@ msgid "Create account"
 msgstr "Criar Conta"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr ""
@@ -3406,6 +3456,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Create Data room agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Create Devin agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3573,6 +3627,7 @@ msgstr "Padrão ({0})"
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/Preview.tsx
+#: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/RoutineEditor.tsx
@@ -3582,7 +3637,9 @@ msgstr "Padrão ({0})"
 msgid "Delete"
 msgstr "Excluir"
 
+#. placeholder {0}: deleting?.title ?? ""
 #. placeholder {0}: pendingDelete.name
+#: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
 msgid "Delete \"{0}\"?"
 msgstr ""
@@ -3697,6 +3754,7 @@ msgid "Developer"
 msgstr ""
 
 #: src/pages/Devin.tsx
+#: src/pages/Shell.tsx
 msgid "Devin"
 msgstr ""
 
@@ -3707,6 +3765,10 @@ msgstr ""
 #: src/lib/slash-skills.ts
 #: src/pages/devin/DevinSessions.tsx
 msgid "Devin sessions"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Devin sessions are not affected."
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
@@ -3740,6 +3802,7 @@ msgstr ""
 msgid "Discarded"
 msgstr ""
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -4482,6 +4545,10 @@ msgstr "ID do gateway"
 msgid "General"
 msgstr "Geral"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Get a key"
+msgstr ""
+
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Get an API key"
@@ -4563,6 +4630,19 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
+msgstr ""
+
+#: src/components/integrations/GranolaPage.tsx
+#: src/components/integrations/McpDetail.tsx
+msgid "Granola agent"
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Granola API key"
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Granola rejected this key"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -6040,6 +6120,10 @@ msgstr ""
 msgid "No folder"
 msgstr ""
 
+#: src/components/inbox/TodoCard.tsx
+msgid "No follow-ups from meetings yet"
+msgstr ""
+
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "No group chats yet."
 msgstr ""
@@ -6474,6 +6558,7 @@ msgstr ""
 msgid "Open deadlines"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/Devin.tsx
 msgid "Open Devin"
 msgstr ""
@@ -6626,6 +6711,10 @@ msgstr ""
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 msgid "Organization API key"
 msgstr "Chave da API da organização"
+
+#: src/components/integrations/DevinConnectDialog.tsx
+msgid "Organization service-user key"
+msgstr ""
 
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
@@ -6900,6 +6989,10 @@ msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Praci keeps your meetings and to-dos."
 msgstr ""
 
 #: src/components/DataExport.tsx
@@ -7187,6 +7280,10 @@ msgstr ""
 msgid "Reconnect Gmail"
 msgstr ""
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Reconnect needed"
+msgstr ""
+
 #: src/App.tsx
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Reconnecting"
@@ -7432,6 +7529,10 @@ msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "Removes the connection and bot access."
+msgstr ""
+
+#: src/components/integrations/StoredMeetingsList.tsx
+msgid "Removes this meeting and its to-dos from Praci. Your note in Granola is not changed."
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
@@ -8118,6 +8219,10 @@ msgstr ""
 msgid "Sending…"
 msgstr "Enviando…"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Sends your meeting notes and transcripts to your AI model."
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
@@ -8260,6 +8365,7 @@ msgid "Show list"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/StoredMeetingsList.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "Mostrar mais"
@@ -8351,6 +8457,10 @@ msgstr "Entre com a assinatura ou teste a chave de API."
 #: src/pages/Welcome.tsx
 msgid "Sign up"
 msgstr "Cadastre-se"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Sign-in"
+msgstr ""
 
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -8773,6 +8883,11 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "Alternando…"
+
+#: src/components/inbox/TodoCard.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Syncing"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
@@ -9927,6 +10042,10 @@ msgstr ""
 msgid "What deadlines are coming up?"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "What did Devin do this week?"
+msgstr ""
+
 #: src/components/PageAgentIntro.tsx
 msgid "What did we spend last month?"
 msgstr ""
@@ -9981,6 +10100,10 @@ msgstr ""
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Where it went"
+msgstr ""
+
+#: src/components/integrations/DevinConnectDialog.tsx
+msgid "Where to find your key"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx

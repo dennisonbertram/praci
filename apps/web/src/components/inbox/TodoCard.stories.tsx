@@ -127,3 +127,48 @@ export const TickStaysStruck: Story = {
     );
   },
 };
+
+function meetingTodo(id: string, text: string, extra: Partial<InboxTodo> = {}): InboxTodo {
+  return todo(id, text, {
+    connectionId: null,
+    meetingId: `meeting_${id}`,
+    detail: "Planning, Oct 19",
+    ...extra,
+  });
+}
+const syncedSource = { source: true, syncing: false, ready: true };
+
+/** A user with no mail account: the follow-ups from meetings are plain text, and only the checkbox acts. */
+export const MeetingOnly: Story = {
+  args: {
+    todos: [
+      meetingTodo("m1", "Send the revised budget", { dueOn: due(2) }),
+      meetingTodo("m2", "Share the sample roadmap"),
+    ],
+    meetings: syncedSource,
+  },
+};
+
+/** Meeting follow-ups sit beside the mail to-dos of the selected account. */
+export const MixedWithMail: Story = {
+  args: {
+    todos: [...todos.slice(0, 2), meetingTodo("m1", "Send the revised budget")],
+    meetings: syncedSource,
+  },
+};
+
+/** The first sync is still running. */
+export const Syncing: Story = {
+  args: { todos: [], meetings: { source: true, syncing: true, ready: true } },
+};
+
+/** A source is connected and synced, and nothing is owed. */
+export const NoFollowUps: Story = { args: { todos: [], meetings: syncedSource } };
+
+/** The last open to-do is done: the card keeps its heading and says there are no more. */
+export const LastOneDone: Story = {
+  args: {
+    todos: [meetingTodo("m1", "Send the revised budget", { doneAt: "2026-01-01T00:00:00.000Z" })],
+    meetings: syncedSource,
+  },
+};

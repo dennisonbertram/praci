@@ -18,6 +18,7 @@ import { CARTA_MCP_ENDPOINT } from "@rakazo/contracts";
 import { loadOrCreateCredentials } from "./demo/credentials.js";
 import {
   DEMO_BOUNCE_DOMAIN,
+  DEMO_GRANOLA_KEY,
   DEMO_NEW_MAIL_DELAY_MS,
   DEMO_RATE_LIMIT_SPACE,
   DEMO_RECONNECT_SPACE,
@@ -25,6 +26,7 @@ import {
   demoCrypto,
   demoFinance,
   demoFinanceMcp,
+  demoGranolaMeetings,
   demoMailboxes,
   demoNewMail,
 } from "./demo/data.js";
@@ -229,6 +231,8 @@ Mail states to try:
   Reconnect:    switch to the space "${DEMO_RECONNECT_SPACE}"
   Rate limit:   switch to the space "${DEMO_RATE_LIMIT_SPACE}"
   Between accounts: mail from Sales mail to Founder mail arrives in Founder mail
+Granola:
+  API key:      ${DEMO_GRANOLA_KEY} (fake demo key; paste it on the Granola page)
 Stop and delete it with: ${SLOT ? `DEMO_SLOT=${SLOT} ` : ""}pnpm demo:down`);
 }
 
@@ -359,8 +363,16 @@ async function serve() {
     () => composio.deliver("mock-demo-mailbox", demoNewMail()),
     DEMO_NEW_MAIL_DELAY_MS,
   ).unref();
+  // Granola's API runs as an emulator with three invented meetings, so Connect works offline.
+  const { GranolaApiEmulator, createMeetingSourceRegistry } = await import("@rakazo/adapters");
+  const granola = new GranolaApiEmulator({
+    meetings: demoGranolaMeetings(),
+    apiKey: DEMO_GRANOLA_KEY,
+  });
+  const granolaBaseUrl = await granola.start();
   const { handles } = await createEmulatedApp(process.env.DATABASE_URL as string, {
     composio,
+    meetingSources: createMeetingSourceRegistry({ granolaBaseUrl }),
     financeCallToolFor: demoFinance().callToolFor,
     mcpServers: {
       [new URL(CARTA_MCP_ENDPOINT).hostname]: demoCarta(WEB_ORIGIN),
@@ -375,7 +387,11 @@ async function serve() {
       ),
   });
   const server = listen({ fetch: handles.app.fetch, port: API_PORT, hostname: "127.0.0.1" });
-  const stop = () => void handles.stop().finally(() => server.close(() => process.exit(0)));
+  const stop = () =>
+    void handles
+      .stop()
+      .then(() => granola.stop())
+      .finally(() => server.close(() => process.exit(0)));
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
 }

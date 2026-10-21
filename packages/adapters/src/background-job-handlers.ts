@@ -11,7 +11,7 @@ import type {
   SecretStore,
 } from "@rakazo/adapter-kit";
 import { messagingDeliverJob } from "@rakazo/adapter-kit";
-import type { PrismaClient, ThreadEvents } from "@rakazo/db";
+import type { NotificationEvents, PrismaClient, ThreadEvents } from "@rakazo/db";
 import { deleteExpiredMessagingTransport, deleteExpiredNotifications } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { cleanupAccountExports, runAccountExport } from "./account-export.js";
@@ -44,10 +44,11 @@ import type { GmailPushConfig } from "./gmail-push.js";
 import { ensureMailWatch, runMailWatchRenewal } from "./gmail-push.js";
 import { compactHistory } from "./history-compaction.js";
 import { createInboxClassifierProvider } from "./inbox-classifier-factory.js";
-import { runInboxTriage } from "./inbox-triage.js";
+import { runInboxTriage, triageReadiness } from "./inbox-triage.js";
 import { runMailAttachmentFiling } from "./mail-attachment-filing.js";
 import { runMailSyncJob } from "./mail-sync-job.js";
 import { expireMailSearch } from "./mail-tools.js";
+import { runMeetingDigest } from "./meeting-digest.js";
 import { createMeetingSourceRegistry } from "./meeting-source-registry.js";
 import type { MeetingSourceRegistry } from "./meeting-sync-job.js";
 import { runMeetingSyncJob } from "./meeting-sync-job.js";
@@ -78,6 +79,8 @@ export function createBackgroundJobHandlers(deps: {
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
   /** Read-only Devin caller; without it `devin.refresh` does nothing. Every process that runs jobs must pass it. */
   devinCallTool?: DevinCallTool;
+  /** Live signal for a new Devin alert; the alert is stored without it. */
+  notificationEvents?: NotificationEvents;
   /** Deletes the blobs of removed Data room items and reads them for ingest. */
   artifacts?: ArtifactStore;
   /** Needed only to import Google Drive folders. */
@@ -194,6 +197,11 @@ export function createBackgroundJobHandlers(deps: {
           mail,
           jobs: deps.jobs,
           mailWritesDisabled: deps.mailWritesDisabled,
+          digestReady: async (scope) =>
+            (await triageReadiness(
+              { prisma: deps.prisma, resolveModel: deps.executor.resolveModel },
+              scope,
+            )) !== null,
           ...(deps.gmailPush
             ? {
                 afterSync: (account, context) =>
@@ -219,8 +227,16 @@ export function createBackgroundJobHandlers(deps: {
         },
         payload,
       ),
-    // The digest slice fills this in; until then a queued digest is a no-op.
-    "meetings.digest": async () => {},
+    "meetings.digest": (payload) =>
+      runMeetingDigest(
+        {
+          prisma: deps.prisma,
+          runtime: deps.runtime,
+          jobs: deps.jobs,
+          resolveModel: deps.executor.resolveModel,
+        },
+        payload,
+      ),
     "mail.attachments": async (payload) => {
       const { mail, artifacts } = deps;
       if (!mail || !artifacts) throw new Error("Mail attachment filing is not configured");
@@ -236,7 +252,14 @@ export function createBackgroundJobHandlers(deps: {
     },
     "devin.refresh": async (payload) => {
       if (!deps.devinCallTool) return;
-      await runDevinRefreshJob({ prisma: deps.prisma, callTool: deps.devinCallTool }, payload);
+      await runDevinRefreshJob(
+        {
+          prisma: deps.prisma,
+          callTool: deps.devinCallTool,
+          notificationEvents: deps.notificationEvents,
+        },
+        payload,
+      );
     },
     "inbox.triage": async (payload) => {
       await runInboxTriage(

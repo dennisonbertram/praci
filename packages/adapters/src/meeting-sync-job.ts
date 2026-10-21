@@ -173,6 +173,7 @@ export async function runMeetingSyncJob(
         ref,
         provider: payload.provider,
         source: entry.create(input, signal),
+        jobs: deps.jobs,
         maxPages: deps.pagesPerRun ?? PAGES_PER_RUN,
         signal,
         holdsClaim: async () => (await prisma.meetingSyncState.count({ where: mine })) === 1,

@@ -386,7 +386,10 @@ export const MailActionUndoOutputSchema = z.object({
 
 export const InboxTodoSchema = z.object({
   id: Id,
-  connectionId: Id,
+  /** Null for a meeting to-do, which does not depend on a mail connection. */
+  connectionId: Id.nullable(),
+  /** Set for a to-do that came from a meeting. */
+  meetingId: Id.nullable().optional(),
   /** Null once the message left the 14-day cache. */
   messageId: Id.nullable(),
   text: z.string(),
@@ -404,6 +407,17 @@ export const InboxTodosOutputSchema = z.object({
   enabled: z.boolean(),
   /** Open to-dos plus those finished in the last 24 hours. Empty when not enabled. */
   todos: z.array(InboxTodoSchema),
+  /** Meeting follow-ups; optional for older servers. */
+  meetings: z
+    .object({
+      /** A meeting source is connected (an API key with a sync state). */
+      source: z.boolean(),
+      /** The first sync of a connected source has not finished. */
+      syncing: z.boolean(),
+      /** A model is usable with the user's AI-data consent, so meetings are digested. */
+      ready: z.boolean(),
+    })
+    .optional(),
 });
 
 /** Another message of the same conversation, as the cache has it; its body loads with inbox.get. */
@@ -568,6 +582,7 @@ export type InboxListInput = z.infer<typeof InboxListInputSchema>;
 export type InboxMessage = z.infer<typeof InboxMessageSchema>;
 export type InboxThreadMessage = z.infer<typeof InboxThreadMessageSchema>;
 export type InboxTodo = z.infer<typeof InboxTodoSchema>;
+export type InboxTodosOutput = z.infer<typeof InboxTodosOutputSchema>;
 export type MailRow = z.infer<typeof MailRowSchema>;
 export type InboxListOutput = z.infer<typeof InboxListOutputSchema>;
 export type CleanupSender = z.infer<typeof CleanupSenderSchema>;

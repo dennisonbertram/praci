@@ -147,8 +147,6 @@ export const FIRST_PARTY_MCP = [
     endpoint: DEVIN_MCP_ENDPOINT,
     section: "tools",
     category: "developer",
-    // Devin takes a service-user key, sent as a bearer token, not a sign-in.
-    apiKey: true,
   },
   {
     id: "box",
@@ -189,7 +187,6 @@ export const FIRST_PARTY_MCP = [
   category: string | null;
   oauthClient?: boolean;
   scope?: string;
-  apiKey?: boolean;
 }[];
 
 const FIRST_PARTY_SLUGS: ReadonlySet<string> = new Set([

@@ -197,6 +197,8 @@ export interface MailSyncJobDeps {
   afterSync?: (account: MailAccount, context: AdapterContext) => Promise<void>;
   /** MAIL_WRITES_DISABLED: no mail is changed in the provider, so skip-inbox senders are not archived. */
   mailWritesDisabled?: boolean;
+  /** Whether meeting digests can run for the user; without it a sync queues none. */
+  digestReady?: (scope: { spaceId: string; userId: string }) => Promise<boolean>;
 }
 
 /**

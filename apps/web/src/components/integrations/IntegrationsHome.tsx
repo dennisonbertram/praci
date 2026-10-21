@@ -3,9 +3,10 @@ import type {
   CapabilityInstall,
   Connection,
   ConnectionCatalogItem,
+  DevinSessionsOutput,
   McpServer,
 } from "@rakazo/contracts";
-import { isCryptoEndpoint } from "@rakazo/contracts";
+import { isCryptoEndpoint, isDevinEndpoint, isGranolaEndpoint } from "@rakazo/contracts";
 import { CONNECTION_CATALOG_PAGE_SIZE } from "@rakazo/core";
 import {
   AlertDialog,
@@ -43,17 +44,21 @@ import { PageHeader } from "../PageHeader";
 import { AppLogo } from "./AppLogo";
 import { ConnectAppDialog } from "./ConnectAppDialog";
 import { CustomConnectionDialog } from "./CustomConnectionDialog";
+import { DevinConnectDialog } from "./DevinConnectDialog";
 import {
   connectedFinanceKeys,
   FINANCE_TILE_COUNT,
   FinanceSection,
   useFinanceStatus,
 } from "./FinanceSection";
+import { GranolaStatusLine, granolaLine } from "./GranolaMeetingsCard";
 import { IMessageSection } from "./IMessageSection";
 import { AgentStack, CardHead, IntegrationTile, SectionTitle, StatusBadge } from "./parts";
 import type { IntegrationsData } from "./useIntegrations";
 import { agentsFor } from "./useIntegrations";
 import { useMcpReconnect } from "./useMcpReconnect";
+
+const GRANOLA_PATH = "/app/integrations/granola";
 
 function hostOf(value: string | null) {
   if (!value) return "";
@@ -94,19 +99,48 @@ function UsedBy({ bots }: { bots: ReturnType<typeof agentsFor> }) {
   );
 }
 
+/** The space's Devin connection, read once while a Devin card is shown. Null until it loads or if it fails. */
+function useDevinConnection(enabled: boolean) {
+  const [connection, setConnection] = useState<DevinSessionsOutput["connection"] | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let live = true;
+    rpc.devin
+      .sessions()
+      .then((result) => live && setConnection(result.connection))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [enabled]);
+  return connection;
+}
+
 function McpCard({
   server,
   data,
   descriptions,
+  onReconnectDevin,
 }: {
   server: McpServer;
   data: IntegrationsData;
   /** What each first-party server does, shown instead of its raw address. */
   descriptions: Partial<Record<string, string>>;
+  onReconnectDevin: () => void;
 }) {
   const { t } = useLingui();
   const reconnect = useMcpReconnect(server.id, () => void data.refresh());
-  const status = reconnect.busy ? "connecting" : mcpStatus(server);
+  const isDevin = "endpoint" in server && isDevinEndpoint(server.endpoint);
+  const connection = useDevinConnection(isDevin);
+  // The space's connection is this card only for the connector's own server; a private Devin
+  // server kept from before is a plain MCP server and must not take the shared key's actions.
+  const devin =
+    connection?.isConnector && connection.agentBotId === (server.agentBotId ?? null)
+      ? connection
+      : null;
+  // A key Devin refused, or a connector who left, is fixed with a new key, not by signing in again.
+  const devinLapsed = devin?.status === "rejected" || devin?.status === "connector_gone";
+  const status = reconnect.busy ? "connecting" : devinLapsed ? "reconnect" : mcpStatus(server);
   const assigned = data.mcpAssignments
     .filter((entry) => entry.serverId === server.id)
     .map((entry) => entry.botId);
@@ -116,7 +150,15 @@ function McpCard({
       : undefined;
   // The app page a known server feeds, opened from its card like Mercury's "Open Finance".
   const page =
-    known?.id === "carta" ? { to: "/app/cap-table", label: t`Open Cap table` } : undefined;
+    known?.id === "carta"
+      ? { to: "/app/cap-table", label: t`Open Cap table` }
+      : devin
+        ? { to: "/app/devin", label: t`Open Devin` }
+        : undefined;
+  const granola = isGranolaEndpoint(server.endpoint);
+  // One line for Granola: the key route's status when it has one, else the sign-in badge.
+  const keyStatus = data.meetings;
+  const keyLine = granola && keyStatus ? granolaLine(keyStatus) : null;
   return (
     <Card>
       <CardHead
@@ -128,19 +170,23 @@ function McpCard({
           server.command ||
           undefined
         }
-        to={`/app/integrations/mcp/${server.id}`}
+        to={granola ? GRANOLA_PATH : `/app/integrations/mcp/${server.id}`}
       />
       <div className="mt-auto flex min-h-7 items-center gap-2">
-        <StatusBadge status={status} />
+        {keyLine && keyStatus ? (
+          <GranolaStatusLine status={keyStatus} />
+        ) : (
+          <StatusBadge status={status} />
+        )}
         {page && status === "connected" ? (
           <OpenPageLink to={page.to}>{page.label}</OpenPageLink>
         ) : null}
-        {status === "reconnect" ? (
+        {status === "reconnect" && !keyLine && (!devin || devin.manage) ? (
           <Button
             size="sm"
             className="relative z-10 ms-auto"
             disabled={reconnect.busy}
-            onClick={() => void reconnect.run()}
+            onClick={() => (devin ? onReconnectDevin() : void reconnect.run())}
           >
             <Trans>Reconnect</Trans>
           </Button>
@@ -155,6 +201,24 @@ function McpCard({
       {reconnect.needsClient ? (
         <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
       ) : null}
+    </Card>
+  );
+}
+
+/** Granola with only the API key connected: there is no sign-in server to build a card from. */
+function GranolaKeyCard({
+  status,
+  description,
+}: {
+  status: NonNullable<IntegrationsData["meetings"]>;
+  description?: string;
+}) {
+  return (
+    <Card>
+      <CardHead name="Granola" sub={description} to={GRANOLA_PATH} />
+      <div className="mt-auto flex min-h-7 items-center gap-2">
+        <GranolaStatusLine status={status} />
+      </div>
     </Card>
   );
 }
@@ -326,8 +390,9 @@ export function IntegrationsHome({
     scope?: string;
     token?: boolean;
     apiKey?: boolean;
-    keyHint?: string;
   } | null>(null);
+  /** The Devin key dialog: connecting the space, or replacing a refused key. */
+  const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
   const [removing, setRemoving] = useState<CapabilityInstall | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
   const labels: Record<CategoryFilter, string> = {
@@ -376,6 +441,10 @@ export function IntegrationsHome({
     (category === "all" || category === "finance") &&
     financeNames.some((name) => name.includes(query.trim().toLowerCase())) &&
     connectedKeys.size < FINANCE_TILE_COUNT;
+  const granolaKey =
+    data.meetings && data.meetings.status !== "disconnected" ? data.meetings : null;
+  const hasGranolaServer = data.servers.some((server) => isGranolaEndpoint(server.endpoint));
+  const keyOnlyGranola = Boolean(granolaKey) && !hasGranolaServer;
   const firstPartyMcp = FIRST_PARTY_MCP.filter(
     (entry) =>
       (category === "all" || category === entry.category) &&
@@ -383,7 +452,9 @@ export function IntegrationsHome({
       !data.servers.some(
         (server) => "endpoint" in server && isSameMcpEndpoint(server.endpoint, entry.endpoint),
       ) &&
-      !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)),
+      !data.sources.some((source) => isSameMcpEndpoint(source.source, entry.endpoint)) &&
+      // A connected API key is already Granola's tile under Connected.
+      !(entry.id === "granola" && keyOnlyGranola),
   );
   const [chatMatches, setChatMatches] = useState(0);
   const financeServerIds = data.financeSources.flatMap((source) =>
@@ -423,7 +494,7 @@ export function IntegrationsHome({
   const wholeList = category === "all";
   const hasConnected = chipOnly
     ? connectedApps.length > 0 || (category === "finance" && connectedKeys.size > 0)
-    : apps.length + servers.length + data.sources.length + connectedKeys.size > 0;
+    : apps.length + servers.length + data.sources.length + connectedKeys.size > 0 || keyOnlyGranola;
   // Native Google items fill the catalog without a managed provider, so ask the setup state. Only
   // the deployment owner is told which providers are configured; a member (whose list is empty)
   // can tell from the catalog itself, and a failed call falls back to whether it has anything.
@@ -445,14 +516,17 @@ export function IntegrationsHome({
   }, [data.loaded]);
 
   function connectFirstParty(entry: (typeof FIRST_PARTY_MCP)[number]) {
+    if (entry.id === "devin") return setDevinDialog("connect");
+    // Granola has its own page: sign-in and the API key are both connected there.
+    if (entry.id === "granola") {
+      void navigate(GRANOLA_PATH);
+      return;
+    }
     setCustom({
       url: entry.endpoint,
       service: entry.name,
       // Treg takes an API token, not a sign-in.
       ...(entry.id === "treg" ? { token: true } : {}),
-      ...("apiKey" in entry
-        ? { apiKey: true, keyHint: t`An org-scoped Devin service-user key (starts with cog_).` }
-        : {}),
       ...("oauthClient" in entry ? { oauthClient: true, scope: entry.scope } : {}),
     });
   }
@@ -549,8 +623,15 @@ export function IntegrationsHome({
                       server={server}
                       data={data}
                       descriptions={firstPartyDescription}
+                      onReconnectDevin={() => setDevinDialog("replace")}
                     />
                   ))}
+                  {granolaKey && keyOnlyGranola && wholeList && !searching ? (
+                    <GranolaKeyCard
+                      status={granolaKey}
+                      description={firstPartyDescription.granola}
+                    />
+                  ) : null}
                   {(wholeList && !searching ? data.sources : []).map((source) => (
                     <SourceCard key={source.id} source={source} onRemove={setRemoving} />
                   ))}
@@ -849,8 +930,6 @@ export function IntegrationsHome({
           initialUrl={custom.url}
           service={custom.service}
           tokenSource={custom.token}
-          apiKey={custom.apiKey}
-          keyHint={custom.keyHint}
           oauthClient={custom.oauthClient}
           oauthScope={custom.scope}
           onClose={() => {
@@ -860,6 +939,9 @@ export function IntegrationsHome({
             if (back) navigate(back);
           }}
         />
+      ) : null}
+      {devinDialog ? (
+        <DevinConnectDialog mode={devinDialog} onClose={() => setDevinDialog(null)} />
       ) : null}
       <AlertDialog open={removing !== null} onOpenChange={(open) => !open && setRemoving(null)}>
         <AlertDialogContent>

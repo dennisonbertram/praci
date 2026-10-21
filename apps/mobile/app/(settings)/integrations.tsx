@@ -25,6 +25,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ConnectionAgent } from "../../components/connection-agent";
 import { ConnectorIcon } from "../../components/connector-icon";
+import { GranolaKeyGroup } from "../../components/granola-key-group";
 import { NativeActionButton } from "../../components/native-action-button";
 import { Chevron } from "../../components/row-accessories";
 import { rpc } from "../../lib/api";
@@ -762,6 +763,8 @@ export default function Integrations() {
             style={styles.input}
           />
         ) : null}
+
+        {!detailItem ? <GranolaKeyGroup /> : null}
 
         {catalogError ? (
           <View style={styles.catalogStack}>
