@@ -2150,12 +2150,6 @@ export const DEMO_WAITING_RUN = {
     { id: "anonymous", label: "Say 'a logistics customer'" },
   ],
 };
-/** A placeholder OpenRouter key for the Legal agent; OpenRouter rejects it, so it never spends. */
-export const DEMO_LEGAL_KEY = {
-  apiKey: "sk-or-v1-mock-demo-not-a-real-key",
-  label: `OpenRouter (${MOCK_NOTE}: placeholder key, scans fail)`,
-};
-
 /**
  * What the Legal agent's last daily scan recorded. Dates are days from today, so the overdue and
  * upcoming deadlines stay that way whenever the demo is seeded. Money is integer cents.

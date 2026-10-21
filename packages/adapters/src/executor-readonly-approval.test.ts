@@ -19,6 +19,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as AiConsentModule from "./ai-consent.js";
 import { DENIED_ACTION_MESSAGE, isApprovalPausedResult } from "./approval-effect.js";
 import { BlueBubblesEmulator, createEmulatedBlueBubblesPlatform } from "./bluebubbles-emulator.js";
+import type { MessageBotOptions } from "./bot-messages.js";
 import { MAX_SHARED_MEMORY_CHARS } from "./builtin-tools.js";
 import { ChatSdkMessagingSurface } from "./chat-sdk-surface.js";
 import { ConnectorRegistry } from "./composio-connector.js";
@@ -82,12 +83,18 @@ vi.mock("./run-notification.js", async (importOriginal) => ({
 }));
 
 /** Records what the executor hands messageBot; the real function has its own tests. */
-const sentBotMessages = vi.hoisted(() => ({ calls: [] as unknown[][] }));
+const sentBotMessages = vi.hoisted(() => ({ calls: [] as unknown[][], held: false }));
 vi.mock("./bot-messages.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./bot-messages.js")>()),
   messageBot: async (...args: unknown[]) => {
     sentBotMessages.calls.push(args);
-    return { ok: true, botId: "bot-fin", name: "Finance", note: "sent" };
+    return {
+      ok: true,
+      botId: "bot-fin",
+      name: "Finance",
+      note: "sent",
+      ...(sentBotMessages.held ? { held: true } : {}),
+    };
   },
 }));
 
@@ -217,7 +224,7 @@ function fixture({
   mail?: unknown;
   /** The messaging dep, as createMessagingContextLoader builds it. */
   messaging?: unknown;
-  afterCall?: (index: number) => void;
+  afterCall?: (index: number) => void | Promise<void>;
   builtin?: boolean;
   disabledBuiltinTools?: string[];
   audience?: "internal" | "external";
@@ -358,7 +365,14 @@ function fixture({
         computerId: "computer-1",
         computer: { id: "computer-1", scope: "dedicated" },
       })),
-      findMany: vi.fn(async () => []),
+      // Sender lookups for the outbound record: the known bots, all internal.
+      findMany: vi.fn(async ({ where }: { where?: { id?: { in?: string[] } } } = {}) =>
+        where?.id?.in
+          ? where.id.in
+              .filter((botId) => knownBots?.[botId] !== undefined)
+              .map((botId) => ({ id: botId, audience: "internal" }))
+          : [],
+      ),
       findFirst: vi.fn(async ({ where }: { where?: { id?: string } } = {}) =>
         where?.id && knownBots?.[where.id] !== undefined
           ? {
@@ -529,7 +543,7 @@ function fixture({
         call.executionId,
       );
       results.push(result);
-      afterCall?.(results.length - 1);
+      await afterCall?.(results.length - 1);
       if (isApprovalPausedResult(result)) return;
     }
     yield { type: "done" as const, text: "Done" };
@@ -1822,7 +1836,12 @@ describe("integration agent write tools", () => {
     const [{ blocks }] = f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }];
     const card = blocks[0] as { detail: string; actions: Array<{ id: string }> };
     expect(card.actions.map((a) => a.id)).toEqual(["allow", "deny"]);
-    expect(card.detail).toContain("requestSendMoney");
+    // A money request's card shows the amount, recipient and account in plain words, never the raw
+    // tool name or ids (arguments are absent in this test, so each reads "not given").
+    expect(card.detail).toContain("Amount: not given");
+    expect(card.detail).toContain("To: not given");
+    expect(card.detail).toContain("From account: not given");
+    expect(card.detail).not.toContain("requestSendMoney");
   });
 
   it("does not ask for a read", async () => {
@@ -3758,5 +3777,91 @@ describe("runs that began with an external bot", () => {
     const open = await run([]);
     expect(JSON.stringify([open.instructions, open.history])).toContain("PRIVATE-USER-MEMORY-FACT");
     expect(open.instructions).not.toContain("Security notice");
+  });
+});
+
+describe("what a run read is checked before it reaches an external bot", () => {
+  it("records private tool results, so a later message repeating one is held", async () => {
+    sentBotMessages.calls.length = 0;
+    const f: ReturnType<typeof fixture> = fixture({
+      name: "demo_get_item",
+      afterCall: async () => {
+        await f.request()!.executeTool!(
+          "message_bot",
+          { bot_id: "bot-ext", message: "Write to priya@halcyon.example" },
+          "send-1",
+        );
+      },
+    });
+    f.setCalls([{ args: { id: "Priya Shah <priya@halcyon.example>" }, executionId: "read-1" }]);
+    await f.run();
+    const options = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    const fragments = await options.outbound!();
+    // The connector read is private: its email is flagged in any case, an unrelated one is not.
+    expect(fragments!.matches("PRIYA@HALCYON.EXAMPLE")).toContain("email");
+    expect(fragments!.matches("support@halcyon.example")).toEqual([]);
+  });
+
+  it("holds every external-bound message of a run that was resumed or reclaimed (its earlier reads are unknown)", async () => {
+    sentBotMessages.calls.length = 0;
+    const f = fixture({ name: "message_bot", builtin: true });
+    f.setCalls([{ args: { bot_id: "bot-ext", message: "hello" }, executionId: "c1" }]);
+    await f.run();
+    const first = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    expect(await first.outbound!()).toBeDefined();
+    // The same run under a later lease: a resume after an approval, or a reclaim after a crash.
+    f.setCalls([{ args: { bot_id: "bot-ext", message: "again" }, executionId: "c2" }]);
+    await f.run();
+    const later = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    expect(await later.outbound!()).toBeUndefined();
+  });
+
+  it("records an internal bot's plain-text relay as private, names included", async () => {
+    sentBotMessages.calls.length = 0;
+    const f = fixture({
+      name: "message_bot",
+      builtin: true,
+      knownBots: { "peer-1": "" },
+      history: [
+        {
+          blocks: [
+            {
+              kind: "bot_message_received",
+              fromBotId: "peer-1",
+              fromBotName: "Finance",
+              text: "Priya Shah at Halcyon Ventures committed the seed round.",
+              hop: 1,
+              intent: "result",
+              returnToMessageId: "m0",
+            },
+          ],
+        },
+      ],
+    });
+    f.setCalls([{ args: { bot_id: "bot-ext", message: "hello" }, executionId: "c1" }]);
+    await f.run();
+    const options = sentBotMessages.calls.at(-1)![4] as MessageBotOptions;
+    const fragments = (await options.outbound!())!;
+    expect(fragments.matches("Our lead is priya shah.")).toContain("name");
+    expect(fragments.matches("We open at 9am.")).toEqual([]);
+  });
+
+  it("sends no completion push when a message to an external bot was held during the run", async () => {
+    const run = async (held: boolean) => {
+      notices.sent.length = 0;
+      sentBotMessages.held = held;
+      try {
+        const f = fixture({ name: "message_bot", builtin: true });
+        f.setCalls([
+          { args: { bot_id: "bot-ext", message: "Priya <priya@x.example>" }, executionId: "c1" },
+        ]);
+        await f.run();
+      } finally {
+        sentBotMessages.held = false;
+      }
+      return notices.sent.map((notice) => notice.body);
+    };
+    expect(await run(false)).not.toEqual([]);
+    expect(await run(true)).toEqual([]);
   });
 });

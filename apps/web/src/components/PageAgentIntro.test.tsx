@@ -22,6 +22,7 @@ it("recognises page agents by their spawn key and leaves other bots alone", () =
   expect(pageAgentKind("carta-agent:user1")).toBe("carta");
   expect(pageAgentKind("data-room-agent:user1")).toBe("data-room");
   expect(pageAgentKind("legal-agent:user1")).toBe("legal");
+  expect(pageAgentKind("investors-agent:user1")).toBe("investors");
   expect(pageAgentKind("onboarding:first")).toBeNull();
   expect(pageAgentKind(null)).toBeNull();
 });

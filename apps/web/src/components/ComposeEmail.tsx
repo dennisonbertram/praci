@@ -730,6 +730,11 @@ export function ComposeEmail({
             if (event.target === event.currentTarget) editor?.commands.focus("end");
           }}
         >
+          {loading && !prefillFailed ? (
+            <p role="status" className="px-4 pt-3 text-sm text-muted-foreground">
+              <Trans>Preparing draft…</Trans>
+            </p>
+          ) : null}
           <div
             data-collapsed={collapsed}
             className="data-[collapsed=true]:[&_blockquote]:hidden data-[collapsed=true]:[&_p:has(+blockquote)]:hidden data-[collapsed=true]:[&_blockquote+p:last-child:has(>br:only-child)]:hidden data-[collapsed=true]:[&_[contenteditable]]:pb-0"

@@ -182,6 +182,18 @@ it("shows Connect Carta only without a Carta server", async () => {
   expect(button("Connect Carta")).toBeDefined();
 });
 
+it("Ask opens the Investors agent whether or not Carta is connected", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  const onShowAgent = vi.fn();
+  await show("/app/investors", { onShowAgent });
+  expect(button("Connect Carta")).toBeDefined();
+  const ask = container.querySelector('[aria-label="Ask Investors agent"]') as HTMLElement;
+  expect(ask).not.toBeNull();
+  expect(container.querySelector('[aria-label="Ask Carta agent"]')).toBeNull();
+  await click(ask);
+  expect(onShowAgent).toHaveBeenCalledTimes(1);
+});
+
 it("shows Reconnect Carta when the Carta sign-in needs attention", async () => {
   rpcMock.servers.mockResolvedValue([{ ...cartaServer, oauthStatus: "reconnect" }]);
   await show();

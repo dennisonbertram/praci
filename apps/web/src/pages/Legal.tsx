@@ -1,7 +1,7 @@
 import { plural, t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { LegalDeadline } from "@rakazo/contracts";
-import { Button, cn, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
+import { Button, Skeleton, Tabs, TabsList, TabsTrigger } from "@rakazo/ui-web";
 import { X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -10,7 +10,6 @@ import {
   AskAgentButton,
   ErrorNotice,
   FinanceChromeProvider,
-  Kpi,
   SpaceName,
   useFinanceQuery,
 } from "../components/finance/ui";
@@ -102,7 +101,7 @@ function Legal({
   const [params, setParams] = useSearchParams();
   const asked = params.get("view");
   const view: View = VIEWS.includes(asked as View) ? (asked as View) : "contracts";
-  // The Overdue tile opens Deadlines on just the overdue ones.
+  // A link with due=overdue opens Deadlines on just the overdue ones.
   const onlyOverdue = view === "deadlines" && params.get("due") === "overdue";
   const setView = (next: View) =>
     setParams(next === "contracts" ? {} : { view: next }, { replace: true });
@@ -195,21 +194,18 @@ function Legal({
     );
   }
   if (!data) return <LegalSkeleton />;
-  const blocker = data.modelBlocker;
   const needsConsent = status?.allowed === false;
-  const setupMissing = blocker !== null || needsConsent;
+  const setupMissing = needsConsent;
   const scanDisabled = running;
   // The banners below already explain the other reasons; only this one has none.
   const scanReason =
-    !running && !blocker && status && needsConsent && status.recipients.length === 0
+    !running && status && needsConsent && status.recipients.length === 0
       ? t`Connect a model in Settings first.`
       : "";
   const { counts } = data;
-  const showActive = counts.activeContracts !== counts.contracts;
   // Counted here so the tile and the row pills use the viewer's date, not the server's.
   const today = todayIso();
   const overdue = data.deadlines.filter((d) => daysBetween(today, d.dueDate) < 0).length;
-  // Legal runs only on the user's OpenRouter key, so a rejected key is always that one.
   const keyRejected =
     lastRun?.status === "failed" &&
     !running &&
@@ -239,7 +235,7 @@ function Legal({
         }
         actions={
           <>
-            {/* Until a key and consent exist the banner or card holds the one action. */}
+            {/* Until consent exists the card holds the one action. */}
             {setupMissing ? null : (
               <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
                 {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
@@ -256,38 +252,14 @@ function Legal({
       {overview.error ? (
         <ErrorNotice message={t`Could not refresh: ${overview.error}`} onRetry={overview.reload} />
       ) : null}
-      {blocker ? <ModelBlockerNotice blocker={blocker} onOpenSettings={onOpenSettings} /> : null}
       {scanError ? (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {scanError}
         </p>
       ) : null}
-      {!blocker && status && !status.allowed && status.recipients.length > 0 ? (
+      {status && !status.allowed && status.recipients.length > 0 ? (
         <LegalConsentPrompt consent={status} onChange={setGranted} />
       ) : null}
-      {setupMissing ? null : (
-        <div
-          className={cn(
-            "mb-4 grid gap-3",
-            // Active is dropped when it equals Contracts: three tiles share one row, never a lone fourth.
-            showActive ? "grid-cols-2 @3xl:grid-cols-4" : "grid-cols-3",
-          )}
-        >
-          <Kpi title={t`Contracts`} value={counts.contracts} />
-          {showActive ? <Kpi title={t`Active`} value={counts.activeContracts} /> : null}
-          <Kpi
-            title={t`Open deadlines`}
-            value={counts.openDeadlines}
-            to={`${LEGAL_PATH}?view=deadlines`}
-          />
-          <Kpi
-            title={t`Overdue`}
-            value={overdue}
-            alert={overdue > 0}
-            to={`${LEGAL_PATH}?view=deadlines&due=overdue`}
-          />
-        </div>
-      )}
       {lastRun?.status === "failed" && !running && lastRun.id !== dismissedRun ? (
         <div
           role="status"
@@ -336,17 +308,7 @@ function Legal({
       {data.contracts.length === 0 && data.deadlines.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-10 text-center">
           <p className="max-w-sm text-sm text-muted-foreground">
-            {blocker === "own_key" ? (
-              <Trans>
-                Add your OpenRouter key above to start. The Legal agent then reads your Data room
-                for contracts and deadlines.
-              </Trans>
-            ) : blocker ? (
-              <Trans>
-                Choose Legal's own model again in the Legal agent's settings to start. It then reads
-                your Data room for contracts and deadlines.
-              </Trans>
-            ) : needsConsent ? (
+            {needsConsent ? (
               <Trans>
                 Allow access above to start. The Legal agent then reads your Data room for contracts
                 and deadlines.
@@ -366,10 +328,15 @@ function Legal({
           <Tabs value={view} onValueChange={(next) => setView(next as View)} className="mb-3">
             <TabsList className="rounded-full" aria-label={t`View`}>
               <TabsTrigger value="contracts" className="rounded-full px-3">
-                <Trans>Contracts</Trans>
+                <Trans>Contracts</Trans> {counts.contracts}
               </TabsTrigger>
               <TabsTrigger value="deadlines" className="rounded-full px-3">
-                <Trans>Deadlines</Trans>
+                <Trans>Deadlines</Trans> {counts.openDeadlines}
+                {overdue > 0 ? (
+                  <span className="ms-1 text-destructive">
+                    <Trans>{overdue} overdue</Trans>
+                  </span>
+                ) : null}
               </TabsTrigger>
               <TabsTrigger value="graph" className="rounded-full px-3">
                 <Trans>Graph</Trans>
@@ -394,35 +361,6 @@ function Legal({
           {view === "graph" ? <GraphTab /> : null}
         </>
       )}
-    </div>
-  );
-}
-
-/** Why the Legal agent cannot run yet, and the one step that fixes it. */
-function ModelBlockerNotice({
-  blocker,
-  onOpenSettings,
-}: {
-  blocker: "own_key" | "model_changed";
-  onOpenSettings?: () => void;
-}) {
-  return (
-    <div
-      role="status"
-      className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warning/40 bg-warning/10 px-4 py-2.5 text-sm"
-    >
-      <p className="min-w-0 flex-1 basis-64">
-        {blocker === "own_key" ? (
-          <Trans>Legal needs an OpenRouter key to read your contracts.</Trans>
-        ) : (
-          <Trans>Legal runs on its own model: choose it again in the Legal agent's settings.</Trans>
-        )}
-      </p>
-      {blocker === "own_key" && onOpenSettings ? (
-        <Button size="sm" variant="outline" onClick={onOpenSettings}>
-          <Trans>Add your OpenRouter key</Trans>
-        </Button>
-      ) : null}
     </div>
   );
 }

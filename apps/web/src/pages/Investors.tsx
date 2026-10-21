@@ -288,7 +288,7 @@ function ConnectCartaDialog({
   );
 }
 
-/** The Cap Table page: the Carta snapshot joined with the user's contacts. The Carta agent beside it does the Carta work. */
+/** The Investors page: the Carta snapshot joined with the user's contacts. Ask opens the Investors agent beside it; the Carta agent only syncs. */
 export function InvestorsPage({
   onShowAgent,
   onCartaStatus,
@@ -588,7 +588,9 @@ export function InvestorsPage({
                   </TooltipContent>
                 </Tooltip>
               ) : null}
-              {onShowAgent ? <AskBotButton botName="Carta agent" onClick={onShowAgent} /> : null}
+              {onShowAgent ? (
+                <AskBotButton botName="Investors agent" onClick={onShowAgent} />
+              ) : null}
             </>
           }
         />
@@ -653,7 +655,7 @@ export function InvestorsPage({
                 <p className="text-sm text-muted-foreground">
                   <Trans>
                     Carta is the service many startups use to record who owns shares, options and
-                    SAFEs. Connect it to see them here and to ask the Carta agent about them.
+                    SAFEs. Connect it to see them here.
                   </Trans>
                 </p>
               )}

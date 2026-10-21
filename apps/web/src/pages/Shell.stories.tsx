@@ -279,6 +279,7 @@ export const PersonalFolders: Story = {
         devinNeedsYou: 0,
         devinConnected: true,
         dataRoomWaiting: 0,
+        hasTickets: false,
         botKinds: { bot_relay: "needs_input" },
       },
     });
@@ -387,7 +388,71 @@ export const SidebarPageAgents: Story = {
         financeRunwayMonths: null,
         legalDueSoon: 0,
         dataRoomWaiting: 0,
+        hasTickets: false,
         botKinds: { bot_counsel: "needs_input" },
+      },
+    });
+  },
+};
+
+const emailChatBots = [
+  agent("bot_chief", "Chief", "#6366f1", { position: 0, pinned: true }),
+  agent("bot_scout", "Scout", BOT_COLORS[0], { position: 1 }),
+  agent("bot_counsel", "Counsel agent", BOT_COLORS[3], {
+    position: 2,
+    spawnKey: "legal-agent:user_demo",
+  }),
+  ...[
+    "Q3 board deck",
+    "Quick question",
+    "Interview feedback",
+    "Redlines",
+    "Investor update",
+    "Lease",
+  ].map((subject, i) =>
+    agent(`bot_mail_${i}`, subject, BOT_COLORS[i % BOT_COLORS.length] ?? "#6366f1", {
+      position: 3 + i,
+      spawnKey: `mail-thread:conn_demo:thread_${i}`,
+    }),
+  ),
+];
+
+/** Six Ask-agent chats fold into one "Email chats" row; the lone Legal agent folds into "Page agents". */
+export const SidebarEmailChats: Story = {
+  // The sidebar only scrolls inside a bounded page, as in the app.
+  decorators: [
+    (Story) => (
+      <div className="h-dvh">
+        <Story />
+      </div>
+    ),
+    at("/app/bot_chief"),
+  ],
+  beforeEach: () => {
+    loadedWith(emailChatBots[0] as ReturnType<typeof makeBot>)();
+    mockRpc({
+      "spaces.list": {
+        ...navigation,
+        current: { ...navigation.current, bots: emailChatBots, groups: [], botSections: [] },
+      },
+      bootstrap: {
+        me: demoMe,
+        bots: emailChatBots,
+        groups: [],
+        botSections: [],
+        archivedBots: [],
+        archivedGroups: [],
+        thread: { ...snapshot, botId: "bot_chief" },
+        routines: [],
+        spaces: [{ ...space, bots: [], groups: [], botSections: [] }],
+      },
+      "notifications.unseenCounts": { counts: {} },
+      "notifications.glance": {
+        financeRunwayMonths: null,
+        legalDueSoon: 0,
+        dataRoomWaiting: 3,
+        hasTickets: false,
+        botKinds: {},
       },
     });
   },

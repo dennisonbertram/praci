@@ -1,6 +1,7 @@
 import type { JobPublisher } from "@rakazo/adapter-kit";
 import { messagingDeliverJob, runContinueJob } from "@rakazo/adapter-kit";
 import type { MessageBlock } from "@rakazo/contracts";
+import type { PrivateFragments } from "@rakazo/core";
 import {
   botMessageHopExhausted,
   buildBotMessageWakePrompt,
@@ -15,7 +16,11 @@ import {
   isUniqueViolation,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
-import { currentBotMessageHop } from "./bot-messages.js";
+import {
+  currentBotMessageHop,
+  EXTERNAL_HAND_OFF_REFUSED,
+  mayReachExternalBot,
+} from "./bot-messages.js";
 import { markMeetingTaintOnDelivery } from "./meeting-tools.js";
 
 export interface AgentConnectionDeps {
@@ -212,6 +217,7 @@ export async function messageConnectedAgent(
   run: ConnectionRun,
   sender: { id: string; name: string },
   input: { address?: string; message: string; deliveryKey?: string },
+  options?: { outbound?: () => Promise<PrivateFragments | undefined> },
 ): Promise<Result> {
   const message = clampBotMessage(String(input.message ?? ""));
   if (!message) return { ok: false, error: "message is required" };
@@ -255,10 +261,27 @@ export async function messageConnectedAgent(
 
   const target = await deps.prisma.bot.findUnique({
     where: { id: targetIdentity.botId },
-    select: { id: true, name: true, archivedAt: true, thread: { select: { id: true } } },
+    select: {
+      id: true,
+      name: true,
+      archivedAt: true,
+      audience: true,
+      spaceId: true,
+      userId: true,
+      thread: { select: { id: true } },
+    },
   });
   if (!target || target.archivedAt || !target.thread) {
     return { ok: false, error: "that agent is not available" };
+  }
+  // An external bot gets a message only if it repeats nothing this run read; no card route here.
+  // A bot in another Space is another account's agent: always treated as external.
+  const crossSpace = target.spaceId !== run.spaceId || target.userId !== run.userId;
+  if (
+    (crossSpace || target.audience === "external") &&
+    !(await mayReachExternalBot(message, options?.outbound))
+  ) {
+    return { ok: false, error: EXTERNAL_HAND_OFF_REFUSED };
   }
   const targetThreadId = target.thread.id;
   const deliveryKey = input.deliveryKey ? `agent-message:${input.deliveryKey}` : undefined;

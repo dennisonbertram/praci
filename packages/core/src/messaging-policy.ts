@@ -1,9 +1,13 @@
-import { isFinanceAgentSpawnKey, isLegalAgentSpawnKey } from "@rakazo/contracts";
+import {
+  isFinanceAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
+  isLegalAgentSpawnKey,
+} from "@rakazo/contracts";
 
 /**
  * Photon's terms (3.8(b)) forbid automating financial or legal advice without
- * professional supervision, so the Finance and Legal agents are not reachable
- * over Photon.
+ * professional supervision, so the Finance, Legal and Investors agents (which read
+ * cap table and financial data) are not reachable over Photon.
  */
 export function messagingProviderBlocksBot(
   provider: string,
@@ -11,7 +15,9 @@ export function messagingProviderBlocksBot(
 ): boolean {
   return (
     messagingProviderRestrictsAgents(provider) &&
-    (isFinanceAgentSpawnKey(spawnKey) || isLegalAgentSpawnKey(spawnKey))
+    (isFinanceAgentSpawnKey(spawnKey) ||
+      isLegalAgentSpawnKey(spawnKey) ||
+      isInvestorsAgentSpawnKey(spawnKey))
   );
 }
 
@@ -21,4 +27,4 @@ export function messagingProviderRestrictsAgents(provider: string): boolean {
 }
 
 export const MESSAGING_PHOTON_BLOCKED_MESSAGE =
-  "Finance and Legal agents can't be linked to iMessage through Photon. Choose a different agent.";
+  "Finance, Legal and Investors agents can't be linked to iMessage through Photon. Choose a different agent.";
