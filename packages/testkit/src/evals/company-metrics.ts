@@ -17,6 +17,8 @@ export function measureCompanyReplay(
   return {
     addedFactsOnReplay: added(before.facts, after.facts),
     addedEvidenceOnReplay: added(before.evidence, after.evidence),
+    removedFactsOnReplay: added(after.facts, before.facts),
+    removedEvidenceOnReplay: added(after.evidence, before.evidence),
   };
 }
 
@@ -30,6 +32,8 @@ export interface CompanyEvalObservations {
   correctionsRetained: number;
   addedFactsOnReplay: number;
   addedEvidenceOnReplay: number;
+  removedFactsOnReplay: number;
+  removedEvidenceOnReplay: number;
   addedModelCallsOnReplay: number;
   repeatedEmploymentPeriods: number;
   aliasEntityIds: string[];
@@ -157,7 +161,7 @@ export function measureCompanyEval(input: {
     ),
   ).length;
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     mode: "offline-recorded" as const,
     claim:
       "Synthetic recorded-output plumbing and regression measurements; not live extraction quality or real provider token measurements.",
@@ -237,7 +241,13 @@ export function assertCompanyEval(report: CompanyEvalReport, targets?: CompanyEv
   );
   check(o.isolationRows === 0, "isolation");
   check(o.correctionsChecked === 3 && o.correctionsRetained === 3, "correction-retention");
-  check(o.addedFactsOnReplay === 0 && o.addedEvidenceOnReplay === 0, "idempotency");
+  check(
+    o.addedFactsOnReplay === 0 &&
+      o.addedEvidenceOnReplay === 0 &&
+      o.removedFactsOnReplay === 0 &&
+      o.removedEvidenceOnReplay === 0,
+    "idempotency",
+  );
   check(o.repeatedEmploymentPeriods === 2, "return-periods");
   check(
     o.aliasEntityIds.length === 3 && o.aliasEntityIds.every((id) => id === "sam-reed"),

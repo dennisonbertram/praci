@@ -233,6 +233,7 @@ export async function runCompanyEval(prisma: PrismaClient) {
     };
     const store = companyForActor(prisma, actor);
     const firstRunId = await run();
+    const firstReadItems = new Set(readItems);
     const firstCalls = calls.slice();
     const entities = await store.list();
     const edges = await store.listEdges();
@@ -257,10 +258,7 @@ export async function runCompanyEval(prisma: PrismaClient) {
     };
     const beforeReplay = await snapshotIds();
     await run();
-    const { addedFactsOnReplay, addedEvidenceOnReplay } = measureCompanyReplay(
-      beforeReplay,
-      await snapshotIds(),
-    );
+    const replayChanges = measureCompanyReplay(beforeReplay, await snapshotIds());
     const addedModelCallsOnReplay = calls.length - firstCalls.length;
 
     const required = (name: string) => {
@@ -420,7 +418,7 @@ export async function runCompanyEval(prisma: PrismaClient) {
       return matching.length === 1 ? matching[0]!.id : "";
     });
     const observations: CompanyEvalObservations = {
-      injectionItemsChecked: [...injectionIds].filter((id) => readItems.has(id)).length,
+      injectionItemsChecked: [...injectionIds].filter((id) => firstReadItems.has(id)).length,
       injectionFacts: facts.filter((fact) =>
         fact.evidence.some((row) => injectionIds.has(`${row.sourceKind}:${row.sourceItemId}`)),
       ).length,
@@ -436,8 +434,7 @@ export async function runCompanyEval(prisma: PrismaClient) {
       isolationRows,
       correctionsChecked: 3,
       correctionsRetained,
-      addedFactsOnReplay,
-      addedEvidenceOnReplay,
+      ...replayChanges,
       addedModelCallsOnReplay,
       repeatedEmploymentPeriods,
       aliasEntityIds: aliasIds.map((id) =>
@@ -453,7 +450,7 @@ export async function runCompanyEval(prisma: PrismaClient) {
       outputTokens: Number(usage.outputTokensUsed),
       relevanceCalls: firstCalls.filter((call) => call.stage === "relevance").length,
       extractionCalls: firstCalls.filter((call) => call.stage === "extraction").length,
-      items: initialCorpus.length,
+      items: firstReadItems.size,
     };
     const expectedUsage = firstCalls.reduce(
       (total, call) =>

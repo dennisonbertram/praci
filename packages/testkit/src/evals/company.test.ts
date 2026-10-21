@@ -73,6 +73,18 @@ const mutations: Array<[string, (report: CompanyEvalReport) => void]> = [
     },
   ],
   [
+    "idempotency",
+    (r) => {
+      r.observations.removedFactsOnReplay = 1;
+    },
+  ],
+  [
+    "idempotency",
+    (r) => {
+      r.observations.removedEvidenceOnReplay = 1;
+    },
+  ],
+  [
     "aliases",
     (r) => {
       r.observations.aliasEntityIds[1] = "different";
@@ -151,18 +163,31 @@ const mutations: Array<[string, (report: CompanyEvalReport) => void]> = [
 ];
 
 describe("company evaluation gates", () => {
-  it("detects replay replacements even when total row counts do not change", () => {
+  it("detects replay deletions and equal-count replacements", () => {
     const before = { facts: ["entity:original"], evidence: ["original-evidence"] };
     expect(measureCompanyReplay(before, before)).toEqual({
       addedFactsOnReplay: 0,
       addedEvidenceOnReplay: 0,
+      removedFactsOnReplay: 0,
+      removedEvidenceOnReplay: 0,
     });
     expect(
       measureCompanyReplay(before, {
         facts: ["entity:replacement"],
         evidence: ["replacement-evidence"],
       }),
-    ).toEqual({ addedFactsOnReplay: 1, addedEvidenceOnReplay: 1 });
+    ).toEqual({
+      addedFactsOnReplay: 1,
+      addedEvidenceOnReplay: 1,
+      removedFactsOnReplay: 1,
+      removedEvidenceOnReplay: 1,
+    });
+    expect(measureCompanyReplay(before, { facts: [], evidence: [] })).toEqual({
+      addedFactsOnReplay: 0,
+      addedEvidenceOnReplay: 0,
+      removedFactsOnReplay: 1,
+      removedEvidenceOnReplay: 1,
+    });
   });
   it("accepts the frozen measured baseline without claiming live quality", () => {
     expect(() => assertCompanyEval(baseline, companyEvalTargets)).not.toThrow();

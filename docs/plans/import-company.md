@@ -402,6 +402,8 @@ Tests are deterministic and offline by default (AGENTS.md); the live-model run i
 
 ### First offline baseline (recorded fixture, not live quality)
 
+Report format 2 also records fact/evidence deletions on replay; all four replay deltas must be zero. Coverage counts unique items actually read during the first import, not the fixture-size constant. These stricter safety observations do not change the original quality scores or frozen floors.
+
 Run `pnpm test:company-eval` with `DATABASE_URL` pointing to a freshly migrated, throwaway **local PostgreSQL 16** database, then drop that database. The command accepts `--output=<report.json>`, rejects live mode, and fails on safety or regression gates. `company-eval.postgres.test.ts` is automatically discovered by `pnpm test:integration`; unit tests mutate the evidence, identities, dates and gate observations to ensure broken results fail. No real account, model, source or paid service is used. The checked-in report is `packages/testkit/src/evals/fixtures/company-baseline.json`; recordings never import the independent ground truth.
 
 The first run read all 990 items through recorded source readers and the real durable engine, no-tools extractor, validation and resolver. This **does not** assert production Slack/tracker readers exist; Data room/Gmail production-reader conformance remains in its separate source integration suite. Sparse hand-authored responses intentionally expose misses rather than manufacture perfect model quality. These measured values are frozen as **offline regression floors**, not deployment quality targets:

@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "mode": "offline-recorded",
   "claim": "Synthetic recorded-output plumbing and regression measurements; not live extraction quality or real provider token measurements.",
   "entityKinds": [
@@ -164,6 +164,8 @@
     "correctionsRetained": 3,
     "addedFactsOnReplay": 0,
     "addedEvidenceOnReplay": 0,
+    "removedFactsOnReplay": 0,
+    "removedEvidenceOnReplay": 0,
     "addedModelCallsOnReplay": 976,
     "repeatedEmploymentPeriods": 2,
     "aliasEntityIds": ["sam-reed", "sam-reed", "sam-reed"],
