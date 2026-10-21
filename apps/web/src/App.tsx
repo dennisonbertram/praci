@@ -12,7 +12,15 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
-import { Navigate, Outlet, Route, Routes, useLocation, useSearchParams } from "react-router-dom";
+import {
+  Navigate,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { LoadingState } from "./components/ai/primitives";
 import { DataRoomDropZone } from "./components/data-room/DropZone";
 import { ErrorBoundary } from "./components/ErrorBoundary";
@@ -209,7 +217,8 @@ function SessionApp() {
             <Route path="/app/legal" element={<ShellPage />} />
             <Route path="/app/devin" element={<ShellPage />} />
             <Route path="/app/data-room" element={<ShellPage />} />
-            <Route path="/app/cap-table/*" element={<ShellPage />} />
+            <Route path="/app/investors/*" element={<ShellPage />} />
+            <Route path="/app/cap-table/*" element={<CapTableRedirect />} />
             <Route path="/app/contacts" element={<ShellPage />} />
             <Route path="/app/:botId" element={<ShellPage />} />
           </Route>
@@ -228,6 +237,19 @@ function SessionApp() {
 function LegacySetupRedirect() {
   const { search } = useLocation();
   return <Navigate to={`/app/integrations/setup${search}`} replace />;
+}
+
+/** Cap table became Investors; old links keep their query, minus the Carta-only kinds that no longer filter. */
+function CapTableRedirect() {
+  const { search } = useLocation();
+  const rest = useParams()["*"];
+  const params = new URLSearchParams(search);
+  if (params.get("kind") === "shareholder" || params.get("kind") === "options")
+    params.delete("kind");
+  const query = params.toString();
+  return (
+    <Navigate to={`/app/investors${rest ? `/${rest}` : ""}${query ? `?${query}` : ""}`} replace />
+  );
 }
 
 /** Signed-out visits to an app page come back to that page after sign-in. */

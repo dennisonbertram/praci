@@ -31,7 +31,15 @@ vi.mock("./lib/rpc", () => ({ rpc: {}, selectedSpaceId: () => "space-1" }));
 vi.mock("./components/SubscriptionGate", () => ({
   SubscriptionGate: ({ children }: { children: ReactNode }) => children,
 }));
-vi.mock("./pages/Shell", () => ({ ShellPage: () => <div>Shell</div> }));
+vi.mock("./pages/Shell", async () => {
+  const { useLocation } = await import("react-router-dom");
+  return {
+    ShellPage: () => {
+      const location = useLocation();
+      return <div data-at={`${location.pathname}${location.search}`}>Shell</div>;
+    },
+  };
+});
 vi.mock("./pages/Board", () => {
   capability.boardLoaded();
   return { BoardPage: () => <div>Board page</div> };
@@ -77,7 +85,10 @@ it("opens the board inside the shell, so the sidebar stays, without App loading 
   }
 });
 
-async function renderAt(path: string): Promise<string> {
+async function renderAt(
+  path: string,
+  read: (container: HTMLElement) => string = (c) => c.textContent ?? "",
+): Promise<string> {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const container = document.createElement("div");
   const root = createRoot(container);
@@ -95,7 +106,7 @@ async function renderAt(path: string): Promise<string> {
     for (let i = 0; i < 100 && !container.textContent; i++) {
       await act(async () => new Promise((resolve) => setTimeout(resolve, 20)));
     }
-    return container.textContent ?? "";
+    return read(container);
   } finally {
     await act(async () => root.unmount());
     vi.unstubAllGlobals();
@@ -106,6 +117,21 @@ it.each(["/pricing", "/app/inbox/x"])("shows Page not found at %s", async (path)
   const text = await renderAt(path);
   expect(text).toContain("Page not found");
   expect(text).toContain("Go to Praci");
+});
+
+it.each([
+  ["/app/cap-table", "/app/investors"],
+  ["/app/cap-table?kind=auditor", "/app/investors?kind=auditor"],
+  ["/app/cap-table?kind=shareholder", "/app/investors"],
+  ["/app/cap-table?kind=options&security=SAFE", "/app/investors?security=SAFE"],
+  ["/app/cap-table/x?kind=investor", "/app/investors/x?kind=investor"],
+  ["/app/CAP-TABLE?kind=auditor", "/app/investors?kind=auditor"],
+])("sends the old Cap table address %s to %s", async (from, to) => {
+  const at = await renderAt(
+    from,
+    (c) => c.querySelector("[data-at]")?.getAttribute("data-at") ?? "",
+  );
+  expect(at).toBe(to);
 });
 
 it("returns a signed-out visitor to the page they asked for", async () => {
