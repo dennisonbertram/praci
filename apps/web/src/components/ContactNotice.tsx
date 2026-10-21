@@ -3,7 +3,7 @@ import { Trans } from "@lingui/react/macro";
 import type { Contact } from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
 import type { RefObject } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { rpc } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 
@@ -88,10 +88,19 @@ export function ContactNotice({
   notice: Notice | null;
   onDismiss: () => void;
 }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // A short list leaves its last row at the bottom edge, where the pinned notice would cover it
+  // (a restored contact lands there). Scrolling to the end puts the notice below the rows.
+  useEffect(() => {
+    const scroller = ref.current?.parentElement;
+    if (notice && !notice.undo && scroller) scroller.scrollTop = scroller.scrollHeight;
+  }, [notice]);
   return (
-    <div role="status" className="sticky bottom-0 pt-3 empty:hidden">
+    <div ref={ref} role="status" className="sticky bottom-0 pt-3 empty:hidden">
       {notice ? (
-        <div className="flex flex-wrap items-center gap-x-2 rounded-lg border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
+        // Left-aligned and no wider than an app toast: the toasts stack in the bottom-right corner
+        // and must not cover Undo.
+        <div className="flex w-fit max-w-full flex-wrap items-center gap-x-2 rounded-lg md:max-w-md border border-border bg-card py-1 ps-3 pe-1 text-sm text-card-foreground shadow-md">
           <span className="min-w-0 flex-1 py-1">{notice.text}</span>
           {notice.undo ? (
             <Button variant="ghost" size="sm" onClick={notice.undo}>

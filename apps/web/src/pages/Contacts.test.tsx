@@ -200,3 +200,18 @@ it("sends null when Notes is cleared, and names the agent that added the contact
   await click(button("Save"));
   expect(rpcMock.save).toHaveBeenCalledWith(expect.objectContaining({ id: "c1", notes: null }));
 });
+
+it("editing the Email clears a duplicate-email error", async () => {
+  const ada = contact("c1", "Ada", "other");
+  const cy = contact("c2", "Cy", "vendor");
+  rpcMock.list.mockResolvedValue([ada, cy]);
+  rpcMock.save.mockRejectedValue(new Error("Another contact already has this email."));
+  await show();
+  await click(container.querySelector("tbody button") as HTMLElement);
+  await typeInto(document.getElementById("contact-email") as HTMLInputElement, "cy@example.test");
+  await click(button("Save"));
+  expect(document.body.textContent).toContain("Another contact already has this email.");
+  expect(button("Open Cy")).toBeDefined();
+  await typeInto(document.getElementById("contact-email") as HTMLInputElement, "cy2@example.test");
+  expect(document.body.textContent).not.toContain("Another contact already has this email.");
+});

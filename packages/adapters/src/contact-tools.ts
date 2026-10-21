@@ -68,7 +68,11 @@ export async function contactToolFromTool(
       );
       return created
         ? { contact }
-        : { contact, alreadySaved: true, note: "Already saved; nothing was changed." };
+        : {
+            contact,
+            alreadySaved: true,
+            note: `Already saved as ${contact.kind}; nothing was changed. Use contacts_save to change the kind.`,
+          };
     }
     if (name === "cap_table_read") {
       // What the Cap Table page shows, so the agent can answer from it without Carta.

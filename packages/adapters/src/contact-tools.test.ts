@@ -115,7 +115,7 @@ describe("contact tools", () => {
     expect(again).toEqual({
       contact: expect.objectContaining({ id: "c1", name: "Ada Fund" }),
       alreadySaved: true,
-      note: expect.any(String),
+      note: "Already saved as investor; nothing was changed. Use contacts_save to change the kind.",
     });
     expect(create).toHaveBeenCalledTimes(1);
     expect(update).not.toHaveBeenCalled();
