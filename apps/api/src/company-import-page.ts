@@ -586,7 +586,7 @@ export function createCompanyImportPage(deps: PageDeps) {
     const [sources, observations] = await Promise.all([
       deps.prisma.companyImportSource.findMany({
         where: { runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
-        select: { id: true, sourceKind: true, connectionId: true },
+        select: { id: true, sourceKind: true, connectionId: true, mcpServerId: true },
       }),
       deps.prisma.companyImportEvidence.findMany({
         where: { runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
@@ -595,6 +595,7 @@ export function createCompanyImportPage(deps: PageDeps) {
             select: {
               sourceKind: true,
               connectionId: true,
+              mcpServerId: true,
               sourceItemId: true,
               quote: true,
               confidence: true,
@@ -610,7 +611,8 @@ export function createCompanyImportPage(deps: PageDeps) {
         const source = sources.find(
           (candidate) =>
             candidate.sourceKind === evidence.sourceKind &&
-            candidate.connectionId === evidence.connectionId,
+            candidate.connectionId === evidence.connectionId &&
+            candidate.mcpServerId === evidence.mcpServerId,
         );
         return source ? { sourceId: source.id, evidence } : null;
       })

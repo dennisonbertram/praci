@@ -115,3 +115,125 @@ describe("Company import page channels", () => {
     expect(state.channels).not.toHaveBeenCalled();
   });
 });
+
+describe("Company import page sample", () => {
+  it("keeps MCP evidence with the source server that produced it", async () => {
+    const sources = [
+      {
+        id: "source-server-one",
+        sourceKind: "mcp",
+        connectionId: null,
+        mcpServerId: "server-one",
+      },
+      {
+        id: "source-server-two",
+        sourceKind: "mcp",
+        connectionId: null,
+        mcpServerId: "server-two",
+      },
+    ];
+    const observations = [
+      {
+        evidence: {
+          sourceKind: "mcp",
+          connectionId: null,
+          mcpServerId: "server-one",
+          sourceItemId: "shared-item",
+          quote: "Quote from server one",
+          confidence: 0.9,
+          factKind: "entity",
+          factId: "entity-one",
+        },
+      },
+      {
+        evidence: {
+          sourceKind: "mcp",
+          connectionId: null,
+          mcpServerId: "server-two",
+          sourceItemId: "shared-item",
+          quote: "Quote from server two",
+          confidence: 0.8,
+          factKind: "entity",
+          factId: "entity-two",
+        },
+      },
+    ];
+    const findSources = vi.fn(async () => sources);
+    const findObservations = vi.fn(async () => observations);
+    const prisma = {
+      spaceMember: { findUnique: vi.fn(async () => ({ id: "member-1" })) },
+      companyImportRun: { findFirst: vi.fn(async () => ({ id: "run-1" })) },
+      companyImportSource: { findMany: findSources },
+      companyImportEvidence: { findMany: findObservations },
+      companyEntity: {
+        findMany: vi.fn(async () => [
+          { id: "entity-one", displayName: "Fact from server one" },
+          { id: "entity-two", displayName: "Fact from server two" },
+        ]),
+      },
+      companyEvent: { findMany: vi.fn(async () => []) },
+      companyEdge: { findMany: vi.fn(async () => []) },
+    } as unknown as PrismaClient;
+    const result = await createCompanyImportPage({
+      prisma,
+      engine: {} as CompanyImportEngine,
+      slack: {} as CompanySlackReader,
+    }).sample(actor, "run-1");
+
+    expect(findSources).toHaveBeenCalledWith({
+      where: { runId: "run-1", spaceId: actor.spaceId, ownerUserId: actor.userId },
+      select: { id: true, sourceKind: true, connectionId: true, mcpServerId: true },
+    });
+    expect(findObservations).toHaveBeenCalledWith({
+      where: { runId: "run-1", spaceId: actor.spaceId, ownerUserId: actor.userId },
+      select: {
+        evidence: {
+          select: {
+            sourceKind: true,
+            connectionId: true,
+            mcpServerId: true,
+            sourceItemId: true,
+            quote: true,
+            confidence: true,
+            factKind: true,
+            factId: true,
+          },
+        },
+      },
+    });
+    expect(result).toEqual([
+      {
+        sourceId: "source-server-one",
+        items: [
+          {
+            sourceItemId: "shared-item",
+            facts: [
+              {
+                kind: "entity",
+                title: "Fact from server one",
+                confidence: 0.9,
+                quote: "Quote from server one",
+              },
+            ],
+          },
+        ],
+      },
+      {
+        sourceId: "source-server-two",
+        items: [
+          {
+            sourceItemId: "shared-item",
+            facts: [
+              {
+                kind: "entity",
+                title: "Fact from server two",
+                confidence: 0.8,
+                quote: "Quote from server two",
+              },
+            ],
+          },
+        ],
+      },
+    ]);
+  });
+});

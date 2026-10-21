@@ -88,62 +88,65 @@ describe("Company Slack source", () => {
     ).rejects.toThrow("source_access_denied");
     expect(calls.map((call) => call.name)).toEqual([names[1]]);
   });
-  it("reads an explicitly selected private channel and paginates replies without storing bodies in cursors", async () => {
-    const privateSource = {
-      ...source,
-      scope: { channelIds: [], privateChannelIds: ["GPRIVATE1"], allTime: true },
-    };
-    const { slack, calls } = harness((name) => {
-      if (name === names[1])
-        return { channel: { id: "GPRIVATE1", is_private: true, name: "selected" } };
-      if (name === names[2])
-        return {
-          messages: [
-            {
-              ts: "1700000000.000001",
-              text: "We launched the invented workshop.",
-              user: "UAUTHOR1",
-              reply_count: 1,
-            },
-          ],
-        };
-      if (name === names[3])
-        return {
-          messages: [
-            { ts: "1700000001.000001", text: "The invented project is ready.", user: "UAUTHOR1" },
-          ],
-        };
-      return {
-        user: {
-          id: "UAUTHOR1",
-          profile: {
-            real_name: "Casey Example",
-            email: "casey@example.test",
-            phone: "must not reach extraction",
-            status_text: "must not reach extraction",
-          },
-        },
+  it.each([{ channelIds: [] as string[] }, { channelIds: ["GPRIVATE1"] }])(
+    "reads an explicitly selected private channel and paginates replies without storing bodies in cursors (%j)",
+    async ({ channelIds }) => {
+      const privateSource = {
+        ...source,
+        scope: { channelIds, privateChannelIds: ["GPRIVATE1"], allTime: true },
       };
-    });
-    const first = await slack.read(privateSource, { channelId: "GPRIVATE1" }, context);
-    expect(first.done).toBe(false);
-    expect(first.document?.text).toContain("Work email: casey@example.test");
-    expect(first.document?.text).not.toContain("must not reach extraction");
-    expect(first.nextCursor).toEqual({
-      channelId: "GPRIVATE1",
-      historyCursor: null,
-      historyDone: true,
-      threadTs: "1700000000.000001",
-    });
-    const reply = await slack.read(privateSource, first.nextCursor, context);
-    expect(reply.document?.id).toBe("GPRIVATE1:1700000001.000001");
-    expect(reply.done).toBe(true);
-    expect(calls.find((call) => call.name === names[3])?.args).toMatchObject({
-      channel: "GPRIVATE1",
-      ts: "1700000000.000001",
-      limit: 1,
-    });
-  });
+      const { slack, calls } = harness((name) => {
+        if (name === names[1])
+          return { channel: { id: "GPRIVATE1", is_private: true, name: "selected" } };
+        if (name === names[2])
+          return {
+            messages: [
+              {
+                ts: "1700000000.000001",
+                text: "We launched the invented workshop.",
+                user: "UAUTHOR1",
+                reply_count: 1,
+              },
+            ],
+          };
+        if (name === names[3])
+          return {
+            messages: [
+              { ts: "1700000001.000001", text: "The invented project is ready.", user: "UAUTHOR1" },
+            ],
+          };
+        return {
+          user: {
+            id: "UAUTHOR1",
+            profile: {
+              real_name: "Casey Example",
+              email: "casey@example.test",
+              phone: "must not reach extraction",
+              status_text: "must not reach extraction",
+            },
+          },
+        };
+      });
+      const first = await slack.read(privateSource, { channelId: "GPRIVATE1" }, context);
+      expect(first.done).toBe(false);
+      expect(first.document?.text).toContain("Work email: casey@example.test");
+      expect(first.document?.text).not.toContain("must not reach extraction");
+      expect(first.nextCursor).toEqual({
+        channelId: "GPRIVATE1",
+        historyCursor: null,
+        historyDone: true,
+        threadTs: "1700000000.000001",
+      });
+      const reply = await slack.read(privateSource, first.nextCursor, context);
+      expect(reply.document?.id).toBe("GPRIVATE1:1700000001.000001");
+      expect(reply.done).toBe(true);
+      expect(calls.find((call) => call.name === names[3])?.args).toMatchObject({
+        channel: "GPRIVATE1",
+        ts: "1700000000.000001",
+        limit: 1,
+      });
+    },
+  );
   it("reports a provider rate limit as a delayed retry and rejects stalled pagination", async () => {
     const limited = harness(() => ({ ok: false, error: "ratelimited", retry_after: 120 }));
     await expect(limited.slack.channels({ source }, context)).rejects.toMatchObject({
