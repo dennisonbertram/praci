@@ -3,8 +3,8 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 250 of 250
-- Web and shared components: 676
+- Web and shared component files with stories: 251 of 251
+- Web and shared components: 677
 - Mobile components: 138 in 95 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -101,6 +101,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | PageEmptyState | [apps/web/src/components/PageEmptyState.tsx](../../apps/web/src/components/PageEmptyState.tsx) | [PageEmptyState.stories.tsx](../../apps/web/src/components/PageEmptyState.stories.tsx) | web |
 | PageHeader | [apps/web/src/components/PageHeader.tsx](../../apps/web/src/components/PageHeader.tsx) | [PageHeader.stories.tsx](../../apps/web/src/components/PageHeader.stories.tsx) | web |
 | PdfViewer | [apps/web/src/components/PdfViewer.tsx](../../apps/web/src/components/PdfViewer.tsx) | [PdfViewer.stories.tsx](../../apps/web/src/components/PdfViewer.stories.tsx) | web |
+| RowsSkeleton | [apps/web/src/components/RowsSkeleton.tsx](../../apps/web/src/components/RowsSkeleton.tsx) | [RowsSkeleton.stories.tsx](../../apps/web/src/components/RowsSkeleton.stories.tsx) | web |
 | RunsOnPicker, DefaultRunsOnSection | [apps/web/src/components/RunsOnPicker.tsx](../../apps/web/src/components/RunsOnPicker.tsx) | [RunsOnPicker.stories.tsx](../../apps/web/src/components/RunsOnPicker.stories.tsx) | web |
 | SandboxedHtmlViewer | [apps/web/src/components/SandboxedHtmlViewer.tsx](../../apps/web/src/components/SandboxedHtmlViewer.tsx) | [SandboxedHtmlViewer.stories.tsx](../../apps/web/src/components/SandboxedHtmlViewer.stories.tsx) | web |
 | SheetPreview, SheetRow | [apps/web/src/components/SheetPreview.tsx](../../apps/web/src/components/SheetPreview.tsx) | [SheetPreview.stories.tsx](../../apps/web/src/components/SheetPreview.stories.tsx) | web |
