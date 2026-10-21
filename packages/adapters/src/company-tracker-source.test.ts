@@ -735,6 +735,90 @@ describe("Company tracker reader", () => {
     expect(state.calls.every((call) => linearDefinitions[call.name])).toBe(true);
   });
 
+  it("accepts exact-capacity Linear full-list milestones and resumes through every item", async () => {
+    const milestones = Array.from({ length: 100 }, (_, index) => ({
+      id: `milestone-${index + 1}`,
+      title: `Milestone ${index + 1}`,
+    }));
+    const tools = linearTools().map((tool) =>
+      tool.name === "list_milestones"
+        ? {
+            ...tool,
+            inputSchema: {
+              type: "object",
+              properties: { project: { type: "string" } },
+              required: ["project"],
+              additionalProperties: false,
+            },
+          }
+        : tool,
+    );
+    const state = harness(
+      (name, args) => {
+        if (name === "get_project") return { project: { id: args.query, name: "Orion" } };
+        if (name === "list_milestones") {
+          expect(args).toEqual({ project: "project-1" });
+          return { milestones };
+        }
+        return null;
+      },
+      { linear: true, tools },
+    );
+    const project = await state.tracker.read(
+      linearSource,
+      { kind: "project", id: "project-1", phase: "project" },
+      context,
+    );
+
+    let cursor = project.nextCursor;
+    for (let index = 0; index < milestones.length; index++) {
+      const milestone = await state.tracker.read(linearSource, cursor, context);
+      expect(milestone.document?.title).toBe(`Linear milestone Milestone ${index + 1}`);
+      expect(milestone.done).toBe(index === milestones.length - 1);
+      cursor = milestone.nextCursor;
+    }
+
+    expect(cursor).toBeNull();
+    expect(state.calls.filter((call) => call.name === "list_milestones")).toHaveLength(100);
+  });
+
+  it("rejects explicit continuation from a Linear full-list milestone tool", async () => {
+    const tools = linearTools().map((tool) =>
+      tool.name === "list_milestones"
+        ? {
+            ...tool,
+            inputSchema: {
+              type: "object",
+              properties: { project: { type: "string" } },
+              required: ["project"],
+              additionalProperties: false,
+            },
+          }
+        : tool,
+    );
+    const state = harness(
+      (name, args) => {
+        if (name === "get_project") return { project: { id: args.query, name: "Orion" } };
+        if (name === "list_milestones")
+          return {
+            milestones: [{ id: "milestone-1", title: "Launch" }],
+            next: "another-page",
+          };
+        return null;
+      },
+      { linear: true, tools },
+    );
+    const project = await state.tracker.read(
+      linearSource,
+      { kind: "project", id: "project-1", phase: "project" },
+      context,
+    );
+
+    await expect(
+      state.tracker.read(linearSource, project.nextCursor, context),
+    ).rejects.toMatchObject({ code: "source_pagination_unavailable" });
+  });
+
   it("rejects unsafe Linear capability gaps and maps bounded 429 delays", async () => {
     const unsafeTools = linearTools().filter((tool) => tool.name !== "list_milestones");
     unsafeTools.push({
@@ -827,5 +911,31 @@ describe("Company tracker reader", () => {
     expect(Buffer.byteLength(document.title)).toBeLessThanOrEqual(1024);
     expect(Buffer.byteLength(document.snippet)).toBeLessThanOrEqual(1200);
     expect(`${document.text}${document.title}${document.snippet}`).not.toContain("\uFFFD");
+  });
+
+  it("rejects empty GitHub issue pages with continuation and completes terminal empty pages", async () => {
+    const cursor = {
+      kind: "repository",
+      id: 21,
+      owner: "northwind",
+      repo: "launch",
+      phase: "issues",
+      page: 1,
+    } as const;
+    const advancing = harness((name) =>
+      name === "GITHUB_LIST_REPOSITORY_ISSUES" ? { issues: [], next: "issue-page" } : null,
+    );
+    await expect(advancing.tracker.read(githubSource, cursor, context)).rejects.toMatchObject({
+      code: "source_cursor_stalled",
+    });
+
+    const terminal = harness((name) =>
+      name === "GITHUB_LIST_REPOSITORY_ISSUES" ? { issues: [], has_next: false } : null,
+    );
+    await expect(terminal.tracker.read(githubSource, cursor, context)).resolves.toMatchObject({
+      document: null,
+      nextCursor: null,
+      done: true,
+    });
   });
 });

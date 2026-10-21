@@ -465,7 +465,7 @@ function linearNext(value: unknown, currentToken: string | null, count: number, 
 
 function githubHasNext(value: unknown, count: number, limit: number, page: number) {
   const metadata = listMetadata(value);
-  if (metadata.hasNext === true && count === 0)
+  if (count === 0 && (metadata.hasNext === true || metadata.next))
     throw new CompanyImportWorkerError("source_cursor_stalled");
   if (metadata.hasNext === false) return false;
   if (metadata.hasNext === true || metadata.next) return true;
@@ -1312,9 +1312,10 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
         cooldownMs: COOLDOWN_MS,
       };
     }
-    const milestoneIds = list.map((row) => opaqueId.parse(record(row).id));
-    if (milestoneIds.length === limit && listMetadata(result).hasNext !== false)
+    const metadata = listMetadata(result);
+    if (metadata.hasNext === true || metadata.next)
       throw new CompanyImportWorkerError("source_pagination_unavailable");
+    const milestoneIds = list.map((row) => opaqueId.parse(record(row).id));
     const expected = state.milestoneIds?.[0];
     if (expected && milestoneIds[state.offset ?? 0] !== expected)
       throw new CompanyImportWorkerError("source_cursor_stalled");
@@ -1324,9 +1325,6 @@ export function createCompanyTrackerReader(reader: CompanyConnectionReader) {
     const milestone = linearMilestone.parse(list[offset]);
     const title = milestone.title ?? milestone.name;
     if (!title) throw new CompanyImportWorkerError("invalid_source_response");
-    const hasNext = listMetadata(result).hasNext;
-    if (hasNext === true && !milestonePlan.cursor)
-      throw new CompanyImportWorkerError("source_pagination_unavailable");
     const nextCursor =
       offset + 1 < milestoneIds.length
         ? { ...state, offset: offset + 1, milestoneIds: [milestoneIds[offset + 1]!] }
