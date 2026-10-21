@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { useState } from "react";
 import { Button } from "./button";
 import {
   Table,
@@ -140,4 +141,50 @@ export const Compact: Story = {
       </TableBody>
     </Table>
   ),
+};
+
+function ClickableRows() {
+  const [opened, setOpened] = useState<string | null>(null);
+  return (
+    <div className="flex flex-col gap-3">
+      <Table compact>
+        <TableHeader>
+          <TableHeadRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Owner</TableHead>
+            <TableHead className="w-16" />
+          </TableHeadRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow key={r.id} onOpen={() => setOpened(r.name)}>
+              <TableCell>
+                <button
+                  type="button"
+                  data-row-open
+                  className="block max-w-full truncate rounded-sm text-start font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {r.name}
+                </button>
+              </TableCell>
+              <TableCell className="truncate">{r.owner ?? dash}</TableCell>
+              <TableCell className="pe-0">
+                <Button variant="ghost" size="xs" onClick={() => setOpened(`Action on ${r.name}`)}>
+                  Act
+                </Button>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+      <p className="text-sm text-muted-foreground">
+        {opened ? `Opened: ${opened}` : "Nothing opened"}
+      </p>
+    </div>
+  );
+}
+
+export const ClickableRowsStory: Story = {
+  name: "Clickable rows",
+  render: () => <ClickableRows />,
 };

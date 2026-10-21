@@ -1,0 +1,80 @@
+{
+  "mode": "judge",
+  "images": [],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 22,
+      "costUsd": 0.0625272,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 4,
+            "simplicity": 5,
+            "consistency": 3,
+            "usability": 4,
+            "visual": 4,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 3,
+            "simplicity": 2,
+            "consistency": 3,
+            "usability": 3,
+            "visual": 3,
+            "effort": 2
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
+            "effort": 4
+          }
+        },
+        "winner": "C",
+        "graft": "From A: reveal Shares from @md rather than @lg, so visibility at the 524px container does not depend on barely clearing the 512px @lg threshold.",
+        "defense": "C deterministically meets the narrow case: at 524px, Email is withheld until @3xl and shown as a second line, while Kind w-28 + Shares w-20 + Ownership w-20 leave Name roughly 252px before padding versus the current 131px. table-fixed prevents content-driven column shift, both tables use compact <=40px rows, and max-w-5xl caps Contacts at exactly 1024px at 1920. Against A, C avoids retaining the Cap table's taller standard density and replaces unspecified post-percentage sizing with explicit, stable column widths; A also reintroduces Email at @2xl where it can again squeeze Name. Against B, C achieves the same priority behaviour without a new Head/Cell priority API that must be kept in sync, table-auto max-w-0 truncation hacks, content-dependent column movement, or the max-w-6xl ambiguity that could violate the 1024px limit."
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 36,
+      "costUsd": 0.02877,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 5,
+            "simplicity": 5,
+            "consistency": 3,
+            "usability": 4,
+            "visual": 3,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 3,
+            "simplicity": 2,
+            "consistency": 3,
+            "usability": 3,
+            "visual": 3,
+            "effort": 2
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
+            "effort": 4
+          }
+        },
+        "winner": "C",
+        "graft": "From A, lower the Shares visibility threshold from @lg (512px) to @md (448px) so a 15px scrollbar or minor padding change on the 524px container never accidentally hides Shares.",
+        "defense": "C solves the root cause of the broken layouts—percentage column widths and unconstrained table stretching—by applying a consistent `Table compact table-fixed max-w-5xl` pattern across both Rakazo tables. Assigning explicit fixed widths (`w-28`, `w-20`, `w-56`) to bounded numeric/metadata columns lets Name absorb all remaining space (~252px instead of 131px at 524px) without design-system churn. Unlike A, which leaves the Cap table at an inconsistent 56px row height and only strips Name's percentage width while leaving other column widths unaddressed, C aligns both tool tables to the same compact density and predictable column sizing. Unlike B, C avoids polluting `ui-web` with a rigid `priority` prop, avoids `max-w-6xl` (which violates the 1024px max-width criterion), and avoids `table-auto` content-driven column jitter and `max-w-0` truncation hacks."
+      }
+    }
+  ]
+}

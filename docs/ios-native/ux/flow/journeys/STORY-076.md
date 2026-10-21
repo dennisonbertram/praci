@@ -1,89 +1,49 @@
 # STORY-076 flow critique: month-end handoff across computer, artifact, page, list and routine
 
-Target: the planned native SwiftUI iPhone app (epic #427, phases P7 #419 and P8 #420). No code exists, so this judges the catalog story against the design boards.
+Previous round: R2 verdict minimal (17 steps vs 14 ideal; six issues, mostly undrawn handoff and chip, laptop-pose gaps). R1 was acceptable.
 
-Evidence read: `docs/ios-native/ux/catalog.md` (STORY-076), `docs/design-system/ios/README.md`, and these board screenshots: PG-A-Computer, PG-A-Artifact, PG-A-AgentPage, PG-A-AgentList, PG-A-Routine, PG-A-Rules. The screenshots show the outer display (466x678) only. The laptop pose that the story uses (626x890) is described in PG-A-Rules text, but no board draws it. I did not open boards live.
+Round 3 (current boards). Target: planned native SwiftUI iPhone app (epic #427, P7 #419, P8 #420). Boards judged (all screenshots opened): PG-A-Home, PG-A-Activity, PG-A-ThreadStates, PG-A-Computer, PH-Computer, Desk-Computer, PG-A-Artifact, PG-A-AgentPage, PG-A-AgentList, PG-A-Routine, PH-Thread. Persona: Jordan Reyes, founder running close alone.
 
 ## 1. Friction scorecard
 
 | Measure | Result |
 | --- | --- |
-| Steps as designed vs Ideal path | 22 vs 22. The Ideal path is the same list, so it measures nothing. Against the simpler version in section 3 it is 22 vs 14. |
-| Steps that change nothing on screen (reads and checks) | 6 (steps 10, 14, 19, 20, 22 and the read in step 9). These are the user's job, not friction. |
-| Optional steps inside the happy path | 3: step 7 (thank-you message), step 11 (compare v5), step 15 (ask a question). They are alternates and should not count toward the ideal. |
-| Forced extra steps | 4: step 6 (second confirm after Release), step 8 (Close), and steps 12 plus 18 (Back to thread, then Home, to reach the routine). |
-| Needless decisions | 1: after Release the user must answer "Skip / I'm done". The user just finished the task, so "I'm done" is the answer nearly every time. |
-| Re-entry of known data | None. No typing is required to finish the journey. |
-| Dead ends | Routine (step 21 to 22): the last screen opens the routine's thread, and the story ends by locking the phone. The routine does not say which run the conversation belongs to (catalog gap, see STORY-075). Computer: leaving while holding control has no rule (catalog gap). |
-| Screens with no board | Handoff prompt "Skip / I'm done" (named in the PG-A-Rules Computer card, not drawn). The pre-control Computer state with "Take control" (PG-A-Computer shows only the "You have control" state). The thread composer on the bottom half of the Computer laptop pose. Every laptop-pose screen. Transitions between a laptop-pose screen and Routine or Artifacts (the catalog marks them NO BOARD). The Thread and Home screens that steps 1, 8, 12 and 18 pass through are not in this story's Design source; I did not judge them. |
-| Same data on several screens | Runway figures and the "Cash fell in the last 30 days, mostly from two vendor payments" sentence appear on the Artifact (PG-A-Artifact) and the Agent page (PG-A-AgentPage). The routine's prompt also names them. The catalog lists four screens with no deep link between them. |
+| Steps | 18 actual on the drawn boards (Home row, Take control, Download, I'm done, Close, chip, read, more menu, Open page, read tiles, Pages icon, tick, tick, three Backs, routine row, read); 13 ideal. |
+| Forced extra steps | 3: the Back chain from the list to Home to reach the routine (page and list never link to it). Artifact to page is now two taps (more menu, Open page), the same count as before, but the menu hides the link. |
+| Needless decisions | 0. "I'm done" with a quiet "Skip" is one tap; no second confirm. |
+| Re-entry | None. |
+| Dead ends | None. Artifact has Open page and Versions; page has Pages (list) and chat; routine has Updates, Open last run and Run now. |
+| Steps with no board | Finance handoff card in the thread (only the Inbox agent draws a computer block); the "Runway summary" chip in the thread; the thread composer in the laptop-pose Computer screen (Desk-Computer has only the remote "Type to the computer" field); the Watching / Take control state in laptop pose. |
+| Data repeated | Runway figures on Artifact and Agent page; verification is the point, acceptable. |
 
-## 2. Take-away pass per screen
+Fixed since R2: artifact titled "Runway summary" on Artifact and Agent page, matching the routine's "Updates" row (R2-2 title part); "Open page" in the Artifact more menu (R2-5); Agent list draws the two receipt and vendor rows open (R2-4); Desk-Computer has "Release control" labeled plus an "Agent waiting" state with "I'm done" and "Skip" (R2-3 label and state parts); PG-A-Rules says "Full height; no split" for Artifact, Agent page and Agent list (R2-6).
 
-**Computer (PG-A-Computer).** Visible: side strip with Close, keyboard and fit buttons, Release at the bottom; Team/Private picker; "You have control" pill; the remote screen; a seven-key bar (Esc, Tab, Ctrl, four arrows).
-- Removable while the user holds control: the Team/Private picker. Switching the machine mid-control is rare and risks losing the lease. Show it only before taking control.
-- Removable: "You have control" pill if the key bar and the Release button already change state. Keep it only if the key bar is hidden at times. This is a judgment call, not a defect.
-- One prominent action: Release (ink fill, bottom left). Correct for this state. The board does not show the state before control, where "Take control" must be the prominent action (PG-A-Rules says so).
-- Fact stated twice: control state appears in the pill and in the Release button. Minor.
+## 2. Take-away pass
 
-**Artifact (PG-A-Artifact).** Visible: title capsule "Runway summary"; card titled "Runway summary" with "Updated today by Finance agent"; Cash and Runway tiles; sentence; two vendor rows; version pill "v5 of 5"; Back, Share, Versions, More.
-- Fact stated twice: the title appears in the capsule and again as the card heading. Drop the card heading or the capsule text.
-- Removable: the Versions button in the side strip, because the bottom version pill already steps through versions. The two controls do the same job.
-- Prominent action: PG-A-Rules says Share is the prominent action, but the board draws Share in a plain capsule with no tint or fill, so nothing is dominant. Fix the board or the rule. For a verification journey the real next action is "go on", not Share; None may be the right answer (the Artifacts rule card already says "None" for the list).
-- The board shows "v5 of 5" while the story says v6. The board should match the story's data.
+- PG-A-Home: one tinted action (New). Nothing removable for this journey.
+- PG-A-Computer: one prominent action per state (Take control, Release control, I'm done). In "Agent waiting" the pill ("Finance agent is waiting for you") and the banner ("Sign in to the bank portal, then tap I'm done") both say the agent waits; keep the banner, drop the pill text or shorten it.
+- Desk-Computer: the Team/Private picker stays on screen while in control and while the agent waits; PG-A-Computer and PH-Computer hide it then. Remove it in those states.
+- PG-A-Artifact: Share is the one light action; nothing removable.
+- PG-A-AgentPage: chat is the only action; nothing removable.
+- PG-A-AgentList: nothing removable; chat is the only prominent target.
+- PG-A-Routine: Open last run and Run now are equal neutral buttons; no ink action, acceptable for a read screen.
 
-**Agent page (PG-A-AgentPage).** Visible: "Finance agent" capsule; title; three tiles (Cash, Burn, Runway); chart; paragraph; two bullets; Back and checklist buttons; Open chat button.
-- Fact stated twice: the paragraph says "the runway is [N] mo", which the Runway tile already shows. Remove that clause.
-- The paragraph "Cash fell in the last 30 days, mostly from two vendor payments" repeats the Artifact card. It is the same document content on two screens, not a drawing flaw.
-- Prominent action: Open chat (ink circle, bottom left). Matches PG-A-Rules. Right for asking a question (step 15). The next step in this story is List, which is a small glass button; that is acceptable because it is a sibling switch.
-- The board shows the Runway tile touching the right margin with the third tile narrower than the others. Tile widths are not equal.
+## 3. Simpler version (13 steps)
 
-**Agent list (PG-A-AgentList).** Visible: "Close checklist" capsule; five rows; "Add item" field with ink plus button; Back, Page and chat buttons; More.
-- Nothing removable that a step uses. The "Add item" field is permanent; the rule card says to keep it, since adding is the list's one prominent action.
-- Prominent action: Add item. This does not match the story's goal (tick two rows), but ticking is a row tap, not a button, so one dominant control is still right.
-- One tap from Page: the side strip has Page and Chat icons, so steps 13 to 16 need no trip through the thread. Good.
+1. Home: tap Finance "Needs you" (copy "Sign in to bank portal"). 2. Tap "Take control" on the thread's handoff card (Computer opens). 3. Tap Download on the remote screen. 4. Tap "I'm done" (control returns, thread resumes). 5. Close; tap the "Runway summary" chip. 6. Read. 7. More, Open page. 8. Read tiles; tap the subtitle "Weekly runway summary, Mondays" (new link). 9. Read schedule. 10. Optionally Open last run. Back on the way to the list: Pages icon, tick two rows. Drop the "Thanks, check the runway" message (step 7 of the catalog): it is not needed to finish the handoff.
 
-**Routine (PG-A-Routine).** Visible: "Weekly runway summary" capsule; schedule card (cadence, "Finance agent - Last ran today, 8:00 AM", "Next run Mon, Oct 26"); PROMPT label and card; Back; Open conversation button.
-- Fact stated twice: the capsule names the routine and the card says "Every Monday at 8:00 AM". These are different facts, so nothing to remove.
-- The PROMPT label above a card is the only label; the card is self-explanatory, but the label separates it from the schedule card. Keep.
-- Prominent action: Open conversation. It matches PG-A-Rules, but the journey's purpose is to confirm schedule and leave, so the screen is correctly passive; the button is acceptable.
-- The prompt card repeats "Update the Runway summary page", which is the only link from the routine to the page, and it is plain text, not a link (catalog gap).
+## 4. Beauty check
 
-## 3. Simpler version
+Glass is limited to the side strip, key bar, Take control or Release button and the capsules; three groups on Computer, at the limit. Content cards are solid. Bot avatars match the shipped shapes and colors (Finance amber warning shape, Inbox blue pill, Legal purple drop). Concentric corners hold on cards. The name "Praci" does not appear in this journey. One ink or light action per view. One mismatch: control copy differs by board ("You are driving" on PG-A and PH, "You have control" on Desk-Computer).
 
-Goal: keep the same five screens and the same user control, remove forced steps and add the missing links.
+## 5. Verdict: minimal
 
-1. Home: tap the Finance agent "needs you" item. Thread opens.
-2. Tap the computer block. Computer opens.
-3. Tap "Take control".
-4. Tap the portal's Download button.
-5. Tap "I'm done". While a handoff request is pending, the Release button is labeled "I'm done" and releases control in the same tap. A "Skip" action stays as a secondary text button for the other answer. The Computer screen then closes to the thread. (Removes old steps 5, 6 and 8: the extra confirm and Close.)
-6. Tap the "Runway summary v6" chip in the thread. Artifact opens.
-7. Read the preview. (Versions stay available from the version pill; comparing v5 is an optional alternate.)
-8. Back to the thread.
-9. Tap "Page". Agent page opens.
-10. Read the three tiles.
-11. Tap the checklist icon in the side strip. "Close checklist" opens directly. (This already exists on PG-A-AgentPage.)
-12. Tick the two rows.
-13. Tap More on the list and choose "Routines" (new control, no board) so the routine opens without going Back to the thread and Home. If no routine menu is added, the old Home route stays and the count is 15.
-14. Read "Every Monday at 8:00 AM" and "Next run Mon, Oct 26". Done. The prompt card read (old step 20) is not needed to confirm timing.
+Every drawn screen has one clear next action, no forced confirm, and no dead end. Remaining issues are two undrawn thread states, a laptop-pose inconsistency and a missing page-to-routine link.
 
-Result: 14 steps, 22 to 14. Removed: the Skip/I'm done double step, Close, the Back-then-Home detour (replaced by one menu), the optional message, version compare, question, and prompt-card read. Nothing needed to finish the task is hidden, and the user keeps control of release and ticking.
+## ISSUES
 
-Smaller changes on screens:
-- Artifact: remove the card heading that repeats the capsule title; remove the side-strip Versions button or the bottom version pill; fix the board to show v6.
-- Agent page: delete "At the current burn the runway is [N] mo." from the paragraph.
-- Computer: hide the Team/Private picker while holding control.
-
-## 4. Beauty check against the iOS design rules
-
-- **Computer (PG-A-Computer).** Glass only on the floating layer: side-strip buttons, the Team/Private capsule, the status pill and the key bar. The remote screen and the individual keys are solid. One prominent action: Release, ink fill. Glass groups: side strip has two capsules, the top has two capsules, the key bar is a third group beside the side strip, so the count is at the limit of three per region. The Team/Private picker and the pill sit at slightly different left insets (about 86 px) than the other boards (about 76 to 80 px).
-- **Artifact (PG-A-Artifact).** Content card is a solid fill; glass is only the capsule, strip and version pill. Corners look concentric. Fails the one tinted prominent action rule: Share has no tint or fill, so the board does not show a prominent action although PG-A-Rules says there is one.
-- **Agent page (PG-A-AgentPage).** Tiles, chart and text are content on the page background; glass is the strip, capsule and chat button. One ink prominent action (Open chat). The orange chart line is the agent's identity color, consistent with the rules. Tile widths are uneven (the Runway tile is narrower).
-- **Agent list (PG-A-AgentList).** Rows are plain with dividers and muted, struck-through done items; the Add item field is a floating glass pill with an ink plus. Matches the rule card. Spacing is consistent with the page board (about 80 px left inset).
-- **Routine (PG-A-Routine).** Two solid cards, glass limited to the capsule, back button and chat button. One ink action. Clean.
-- Type and spacing: titles use the same 28 pt style on Page, glass-capsule titles on the others, as the rules prescribe. Left insets differ by up to about 10 px between boards (Computer 86, Artifact 76, others 80); these are pixel readings of the screenshots and should be measured in the canvas before treating as defects.
-
-## 5. Verdict: convoluted
-
-Each screen on its own is close to minimal; the problems are in the transitions. Under the calibration table the journey has 3+ forced extra steps (the second release confirm, Close, and the Back-then-Home route to the routine), a forced detour to reach the routine, and the same Runway content on the artifact and the page. A fix of one menu entry and one merged release control cuts the journey from 22 to 14 steps. Steps without a board (handoff prompt, pre-control Computer, every laptop-pose screen, laptop-to-full-height transitions) are findings for P8 (#420), not a reason to change the verdict.
+- STORY-076-R3-1 (medium): PG-A-Home, PG-A-ThreadStates. Step 1-2: the Finance row still says "Approve $1,200 payment" (a payment approval, not a portal sign-in) and the only thread computer block is the Inbox agent's, which the user started ("Show me the open invoices"). Fix: draw a Finance row "Sign in to bank portal" with Needs you, and in ThreadStates a handoff card above the composer ("Finance agent is waiting for you", one light "Take control") that opens Computer.
+- STORY-076-R3-2 (medium): PG-A-ThreadStates. Step 5-6: no board draws the "Runway summary" artifact chip the agent posts in the thread, so the entry to the Artifact screen is undrawn. Fix: add an "Artifact posted" state with a solid chip "Runway summary, Version 6" that opens PG-A-Artifact.
+- STORY-076-R3-3 (low): Desk-Computer, PG-A-Computer, PH-Computer. Step 2-6 in laptop pose: the Team/Private picker shows while in control and while the agent waits (the other two boards hide it), the in-control pill reads "You have control" where the others read "You are driving", and no Watching state with "Take control" exists. Fix: hide the picker once control starts, use "You are driving" everywhere, and add a Watching frame with "Take control".
+- STORY-076-R3-4 (low): Desk-Computer, catalog STORY-076. Step 3 and 7: the Agent waiting state shows the key bar and "I'm done" with no Take control tap, so the catalog sequence (Take control, then agent waits) contradicts the boards; and step 7 expects a thread composer, but the laptop board's only text field, "Type to the computer", sends keys to the remote machine. Fix: state in the story that the waiting state grants input directly, and drop the thread-message step (or label the field "Type to the computer" only and draw the thread composer on the other half).
+- STORY-076-R3-5 (low): PG-A-AgentPage, PG-A-AgentList, PG-A-Routine. Step 18: nothing links the page or list to the routine that updates them, so the check costs three Backs and a Home tap. Fix: make the Agent page subtitle "Updated today, 8:02 AM" a tappable "Weekly runway summary, Mondays" that opens the routine.

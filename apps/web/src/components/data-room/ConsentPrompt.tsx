@@ -77,7 +77,6 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
       </Card>
     );
   }
-  const names = status.recipients.map(({ name }) => name).join(", ");
   return (
     <ConsentCard
       id="data-room-consent"
@@ -90,12 +89,6 @@ export function DataRoomConsentPrompt({ onAllowed }: { onAllowed: () => void }) 
         saveDismissed(version);
         setDismissed(version);
       }}
-    >
-      <Trans>
-        Praci can tag files you add and sort them into folders. To do that, their text (and images)
-        is sent to the AI service that runs your bots ({names}). Files that already have tags keep
-        them.
-      </Trans>
-    </ConsentCard>
+    />
   );
 }

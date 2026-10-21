@@ -117,13 +117,11 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   rpcMock.consentGrant.mockResolvedValue(consentFixture);
   await render(<LegalPage />);
-  expect(container.textContent).toContain("Let the Legal agent read your documents");
-  // Settings shows the space's model, so the card names the one that reads the documents.
-  expect(container.textContent).toContain("its own model, Muse Spark 1.2");
+  expect(container.textContent).toContain("Let Praci read your contracts");
   expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
   await click(button("Allow"));
   expect(rpcMock.consentGrant).toHaveBeenCalledWith({ key: "k1", version: "v1" });
-  expect(container.textContent).not.toContain("Let the Legal agent read your documents");
+  expect(container.textContent).not.toContain("Let Praci read your contracts");
 });
 
 it("refetches the prompt when the consent key is stale", async () => {
@@ -131,10 +129,15 @@ it("refetches the prompt when the consent key is stale", async () => {
   rpcMock.consent
     .mockResolvedValueOnce({ ...consentFixture, allowed: false })
     .mockResolvedValue({ ...consentFixture, allowed: false, key: "k2", disclosure: "New model." });
-  rpcMock.consentGrant.mockRejectedValue(Object.assign(new Error("stale"), { code: "CONFLICT" }));
+  rpcMock.consentGrant
+    .mockRejectedValueOnce(Object.assign(new Error("stale"), { code: "CONFLICT" }))
+    .mockResolvedValue(consentFixture);
   await render(<LegalPage />);
   await click(button("Allow"));
-  expect(container.textContent).toContain("New model.");
+  // The stale key is replaced silently; the next Allow grants the fresh one.
+  expect(container.querySelector('[role="alert"]')).toBeNull();
+  await click(button("Allow"));
+  expect(rpcMock.consentGrant).toHaveBeenLastCalledWith({ key: "k2", version: "v1" });
 });
 
 it("scans now without opening the agent panel", async () => {

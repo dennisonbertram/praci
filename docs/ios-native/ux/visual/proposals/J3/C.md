@@ -1,0 +1,8 @@
+# J3 (round 3, cluster C7) proposal C: what best-in-class apps do
+
+Patterns: ChatGPT and Claude iOS "Stop in the send slot, draft kept"; Messages "Tapback row plus Reply and Copy" (the row is the picker, no separate React item); Apple Mail and Things "act, return to the list, Undo toast at the bottom".
+
+- Typing during a run (ChatGPT/Claude pattern): the trailing slot is Stop for the whole run. Typed text and attachments stay in the field as a draft. Nothing sends by itself. When the run ends or is stopped, the slot turns into the Send arrow with the draft intact. No caption. PG-A-ThreadStates "Running, text typed" drops "Sends after run" and a new frame "Run finished, draft kept" shows the Send arrow with the same text. DS-06 Stop rule is the single source and already matches.
+- Reactions (Messages Tapback pattern): ship. Long press shows the six-emoji glass row and a menu with Reply and Copy only. The "React" item is removed because the row is the picker (catalog ideal path 2 taps). Tapping a chosen emoji again removes it. The chip sits under the bubble. DS-06 replaces "(React is deferred)" with this rule; STORY-042 loses its DECISION line.
+- Archive (Mail/Things pattern): after Archive the app pops to Home (the list) and shows a solid bottom toast "<Name> archived" with Undo, no second line. Undo puts the row back on Home and stays there. The menu item reads "Archive agent" in a one-agent chat and "Archive group" in a group, so the toast, the menu and Settings "Archived agents" use the same noun (RED-R3-11).
+Cost: 1 caption removed, 1 frame added, 1 menu item removed on 4 boards, 4 Archive frames redrawn, 1 DS-06 sentence.

@@ -39,11 +39,13 @@
   "board": "docs/design-system/ios/boards/PG-A-Thread.dc.html, docs/design-system/ios/boards/PG-A-GroupThread.dc.html, docs/design-system/ios/boards/PG-A-Rules.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Add a standard-iPhone variant of PG-A-Thread and PG-A-GroupThread (top glass bar with Back, title capsule, and a More menu), and a rule card line for it. Do this before phase 4 starts."
+  "suggested_fix": "Add a standard-iPhone variant of PG-A-Thread and PG-A-GroupThread (top glass bar with Back, title capsule, and a More menu), and a rule card line for it. Do this before phase 4 starts.",
+  "status": "resolved",
+  "note": "PH-Thread draws the standard-iPhone thread (Back, title capsule, Page and List group, composer with plus). Two gaps remain as new findings: no More menu (R1-001) and no standard-iPhone group thread (R1-002)."
  },
  {
   "id": "F-thread-002",
-  "severity": "high",
+  "severity": "medium",
   "category": "consistency",
   "criterion": "Component consistency: the same control looks the same everywhere",
   "story_id": [
@@ -61,7 +63,9 @@
   "board": "docs/design-system/ios/boards/PG-A-Thread.dc.html, docs/design-system/ios/boards/PG-A-GroupThread.dc.html, docs/design-system/ios/boards/Inner.dc.html, docs/design-system/ios/boards/Desk.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add the plus circle to the composer on PG-A-Thread, PG-A-GroupThread, Inner and Desk (same 44 pt glass circle as DS-06)."
+  "suggested_fix": "Add the plus circle to the composer on PG-A-Thread, PG-A-GroupThread, Inner and Desk (same 44 pt glass circle as DS-06).",
+  "status": "resolved",
+  "note": "Plus circle is now on PH-Thread, PG-A-Thread, PG-A-GroupThread, Inner and Desk (checked in each screenshot)."
  },
  {
   "id": "F-thread-003",
@@ -79,7 +83,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add an Attach menu spec (native menu, list the three sources), a chip with progress ring and error, a 4-chip composer, and a skipped-file notice spec to DS-06 Composer."
+  "suggested_fix": "Add an Attach menu spec (native menu, list the three sources), a chip with progress ring and error, a 4-chip composer, and a skipped-file notice spec to DS-06 Composer.",
+  "status": "resolved",
+  "note": "DS-06 \"Attachments and long-press menu\" draws the plus menu (Photos, Files), uploading, error and converting chips, the skipped-file line and a four-chip composer with the plus dimmed. These sections are invisible in the browser until F-thread-R2-001 is fixed. Still undrawn: photo permission denied. The menu has no Camera source (stories 034 and 035 expect one)."
  },
  {
   "id": "F-thread-004",
@@ -99,11 +105,13 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html, docs/design-system/ios/boards/PG-A-Thread.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Draw a thin offline note above the composer and a \"Waiting\" caption state; define what the partial bubble does when the stream drops."
+  "suggested_fix": "Draw a thin offline note above the composer and a \"Waiting\" caption state; define what the partial bubble does when the stream drops.",
+  "status": "resolved",
+  "note": "PG-A-ThreadStates \"Offline\" draws a quiet banner \"Offline. Messages send when you reconnect.\" and a \"Waiting to send\" caption on the queued bubble. Partial bubble on a dropped stream is still undrawn (R1-003)."
  },
  {
   "id": "F-thread-005",
-  "severity": "high",
+  "severity": "medium",
   "category": "consistency",
   "criterion": "Feedback and recovery wording matches behavior",
   "story_id": [
@@ -117,7 +125,9 @@
   "board": "docs/design-system/ios/boards/DS-04-Overlays.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Change the banner copy for the offline case to a waiting state with no Retry button; keep \"Not sent + Retry\" for server refusals only."
+  "suggested_fix": "Change the banner copy for the offline case to a waiting state with no Retry button; keep \"Not sent + Retry\" for server refusals only.",
+  "status": "resolved",
+  "note": "DS-04 toast now reads \"Waiting to send / No connection. Your message is kept and sends when you are back online.\" with no Retry. Matches PG-A-ThreadStates."
  },
  {
   "id": "F-thread-006",
@@ -135,7 +145,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html, docs/design-system/ios/boards/PG-A-Rules.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add a \"refused\" variant to the failed-bubble spec with a reason line and one fix action; add Edit to the long-press menu; pick one string per state."
+  "suggested_fix": "Add a \"refused\" variant to the failed-bubble spec with a reason line and one fix action; add Edit to the long-press menu; pick one string per state.",
+  "status": "resolved",
+  "note": "PG-A-ThreadStates separates Failed (Not sent, Retry) from Refused (Not sent: Attachment is too large, Edit)."
  },
  {
   "id": "F-thread-007",
@@ -149,10 +161,12 @@
   "description": "The AI data sharing prompt (\"Share data with {provider}?\", disclosure, \"Allow\", \"Not now\", \"Privacy policy\", turn-off hint) has no board. The DS-04 Alert is defined as a title, one line of consequence and two buttons, so it cannot hold a disclosure plus three actions. Multiple recipients (model, then memory) and what happens to the typed text after \"Not now\" are undefined.",
   "expected": "A board for the prompt (sheet or alert), with the recipient, disclosure, three actions, the several-recipient sequence, and the rule that the draft stays in the composer.",
   "actual": "No board. Settings only has an \"AI data sharing\" row.",
-  "board": "docs/design-system/ios/boards/DS-04-Overlays.dc.html, docs/design-system/ios/boards/PG-B-Settings.dc.html",
+  "board": "docs/design-system/ios/boards/PG-B-Consent.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add a consent sheet to DS-04 Overlays (title, one-paragraph disclosure, Allow as the one prominent button, Not now, Privacy policy link), and a call-start variant for voice."
+  "suggested_fix": "Add a consent sheet to DS-04 Overlays (title, one-paragraph disclosure, Allow as the one prominent button, Not now, Privacy policy link), and a call-start variant for voice.",
+  "status": "resolved",
+  "note": "Round 3: the model case is now the card 'Model A sharing is off' with Turn on (PG-B-Consent frame 3, PG-A-HomeNoModel 'Sharing off'), and the Connect sheet states what is sent to Model A. A separate first-use sheet is not drawn and is not needed. See F-thread-R3-002 for the mid-run consent ask card."
  },
  {
   "id": "F-thread-008",
@@ -171,7 +185,9 @@
   "board": "docs/design-system/ios/boards/PG-A-Thread.dc.html, docs/design-system/ios/boards/Inner.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html, docs/design-system/ios/boards/PG-A-Home.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Decide the button set (suggest Save, Deny, Send with Send prominent), then update PG-A-Thread, Inner, DS-06 and the thread rule card together."
+  "suggested_fix": "Decide the button set (suggest Save, Deny, Send with Send prominent), then update PG-A-Thread, Inner, DS-06 and the thread rule card together.",
+  "status": "resolved",
+  "note": "PG-A-Thread, PH-Thread, Inner and DS-06 all draw the mail card as Save and Send with \"Needs approval\". The missing Deny is covered by F-thread-025 and R1-005."
  },
  {
   "id": "F-thread-009",
@@ -187,7 +203,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add a \"Secret ask\" specimen to the MCP tool approval, Ask card, Choice card section of DS-06."
+  "suggested_fix": "Add a \"Secret ask\" specimen to the MCP tool approval, Ask card, Choice card section of DS-06.",
+  "status": "resolved",
+  "note": "DS-06 \"Secret ask card\": password field with dots, Save, Saved (\"Saved. The key is hidden.\"), and an error state with the field kept. The error tile sits in the clipped part of the page (F-thread-R2-001)."
  },
  {
   "id": "F-thread-010",
@@ -204,7 +222,9 @@
   "board": "docs/design-system/ios/boards/PG-B-Settings.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#421",
   "quick_fix": false,
-  "suggested_fix": "Add \"Approvals\" to the Settings root list and a rules list board."
+  "suggested_fix": "Add \"Approvals\" to the Settings root list and a rules list board.",
+  "status": "resolved",
+  "note": "PG-B-Settings \"AI data sharing\" now lists Always allow rules (Archive mail, Send mail, Create events) with Remove. See F-thread-R2-004 for the placement and a contradiction with DS-06; no auto review switch is drawn."
  },
  {
   "id": "F-thread-011",
@@ -220,11 +240,13 @@
   "board": "docs/design-system/ios/boards/PG-B-Integrations.dc.html",
   "phase_issue": "#421",
   "quick_fix": false,
-  "suggested_fix": "Add a connector detail board and a \"writes off\" notice specimen."
+  "suggested_fix": "Add a connector detail board and a \"writes off\" notice specimen.",
+  "status": "resolved",
+  "note": "PG-B-Integrations \"Connector detail\" draws a Mail connector page with an \"Allow writes\" switch (Read only caption) and Remove. See F-thread-R2-005 for what is still missing."
  },
  {
   "id": "F-thread-012",
-  "severity": "high",
+  "severity": "medium",
   "category": "happy-path",
   "criterion": "Edit-and-send has a screen",
   "story_id": [
@@ -237,7 +259,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html, docs/design-system/ios/boards/PG-A-Thread.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Draw the editor as a large sheet using the sheet-with-header pattern from DS-04; state that it ships after approve/deny if that is the plan."
+  "suggested_fix": "Draw the editor as a large sheet using the sheet-with-header pattern from DS-04; state that it ships after approve/deny if that is the plan.",
+  "status": "resolved",
+  "note": "PG-A-Compose \"Edit draft\" frames (To, Cc suggestions, invalid address, discard prompt) are the edit-and-send screen; DS-06 says the card body and Edit open the same editor."
  },
  {
   "id": "F-thread-013",
@@ -254,7 +278,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Show \"Always allow\" as a quieter text-weight row or move it behind a \"More\" menu; add an Expand control to the argument well."
+  "suggested_fix": "Show \"Always allow\" as a quieter text-weight row or move it behind a \"More\" menu; add an Expand control to the argument well.",
+  "status": "resolved",
+  "note": "DS-06 MCP card now has Allow once (prominent) and Deny only. Always allow appears only for read-only tools."
  },
  {
   "id": "F-thread-014",
@@ -270,7 +296,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add \"Running with text typed\" and \"Stopping\" composer states."
+  "suggested_fix": "Add \"Running with text typed\" and \"Stopping\" composer states.",
+  "status": "resolved",
+  "note": "DS-06 and PG-A-ThreadStates draw Running, Running with text typed (Stop keeps the slot), Stopping (spinner, disabled) and Approval pending while typing (neutral send)."
  },
  {
   "id": "F-thread-015",
@@ -289,7 +317,9 @@
   "board": "docs/design-system/ios/boards/PG-A-Thread.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html, docs/design-system/ios/boards/PG-A-Rules.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Pick the DS-06 version, update PG-A-Thread to it, and remove the working row when an approval is pending."
+  "suggested_fix": "Pick the DS-06 version, update PG-A-Thread to it, and remove the working row when an approval is pending.",
+  "status": "resolved",
+  "note": "The working line is no longer drawn beside a pending card on PG-A-Thread or PH-Thread; DS-06 says the indicator is hidden while a card awaits approval and draws the Needs approval pill when the card is scrolled away."
  },
  {
   "id": "F-thread-016",
@@ -307,7 +337,9 @@
   "board": "docs/design-system/ios/boards/PG-A-Home.dc.html, docs/design-system/ios/boards/Main.dc.html, docs/design-system/ios/boards/Split.dc.html, docs/design-system/ios/boards/DS-05-Lists.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Put one unread row and two group rows into PG-A-Home, Main and Split; delete the unused unread variant in DS-05."
+  "suggested_fix": "Put one unread row and two group rows into PG-A-Home, Main and Split; delete the unused unread variant in DS-05.",
+  "status": "open",
+  "note": "Round 3: PH-Home now has an Activity group (Needs you, Working, Done) that gives approvals an entry, but Personnel rows still have no unread dot and no group row (Funding room) appears on Home."
  },
  {
   "id": "F-thread-017",
@@ -324,7 +356,9 @@
   "board": "docs/design-system/ios/boards/DS-05-Lists.dc.html, docs/design-system/ios/boards/PG-A-Thread.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Add the divider and a floating jump control to PG-A-Thread; move the divider specimen reference to DS-06."
+  "suggested_fix": "Add the divider and a floating jump control to PG-A-Thread; move the divider specimen reference to DS-06.",
+  "status": "resolved",
+  "note": "PG-A-ThreadStates \"New messages, scrolled up\" draws the NEW divider and a \"Jump to latest\" pill."
  },
  {
   "id": "F-thread-018",
@@ -344,7 +378,9 @@
   "board": "docs/design-system/ios/boards/PG-A-Rules.dc.html, docs/design-system/ios/boards/PG-A-Thread.dc.html, docs/design-system/ios/boards/DS-05-Lists.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Add a state strip to PG-A-Thread with loading, refresh failed, archived and failed run."
+  "suggested_fix": "Add a state strip to PG-A-Thread with loading, refresh failed, archived and failed run.",
+  "status": "resolved",
+  "note": "PG-A-ThreadStates now draws Loading (skeleton rows), Could not refresh (Try again), Archived (Restore, composer disabled), Read only, Session ended (Sign in) and Reconnecting."
  },
  {
   "id": "F-thread-019",
@@ -362,11 +398,13 @@
   "board": "docs/design-system/ios/boards/Split.dc.html, docs/design-system/ios/boards/Inner.dc.html, docs/design-system/ios/boards/Desk.dc.html, docs/design-system/ios/boards/PG-A-Rules.dc.html",
   "phase_issue": "#419",
   "quick_fix": false,
-  "suggested_fix": "Add a Personnel + Thread inner flat board and a thread laptop board, or mark them as derived by recipe and remove them from story steps."
+  "suggested_fix": "Add a Personnel + Thread inner flat board and a thread laptop board, or mark them as derived by recipe and remove them from story steps.",
+  "status": "open",
+  "note": "Round 3: Inner still draws Inbox beside the thread, not Personnel (STORY-030)."
  },
  {
   "id": "F-thread-020",
-  "severity": "medium",
+  "severity": "low",
   "category": "happy-path",
   "criterion": "Empty thread greeting and suggestion tap rule",
   "story_id": [
@@ -379,7 +417,9 @@
   "board": "docs/design-system/ios/boards/PG-A-Rules.dc.html, docs/design-system/ios/boards/DS-05-Lists.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Draw the empty state on PG-A-Thread with 2-3 suggestion rows; state \"fills the composer\"."
+  "suggested_fix": "Draw the empty state on PG-A-Thread with 2-3 suggestion rows; state \"fills the composer\".",
+  "status": "open",
+  "note": "Round 3: chips drawn (PG-A-ThreadStates First message); whether a chip fills the composer or sends is still unstated."
  },
  {
   "id": "F-thread-021",
@@ -396,11 +436,13 @@
   "board": "docs/design-system/ios/boards/PG-B-Models.dc.html, docs/design-system/ios/boards/PG-A-Thread.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add a notice row above the composer with \"Open Models\" and an empty Providers state on PG-B-Models."
+  "suggested_fix": "Add a notice row above the composer with \"Open Models\" and an empty Providers state on PG-B-Models.",
+  "status": "resolved",
+  "note": "PG-A-HomeNoModel draws \"Connect a model to start chatting.\", a Connect sheet and the after state, so the Home route is solved. The in-thread error when a message is sent with no model is a new finding (R1-006)."
  },
  {
   "id": "F-thread-022",
-  "severity": "medium",
+  "severity": "low",
   "category": "happy-path",
   "criterion": "Group thread member list and entry points",
   "story_id": [
@@ -413,7 +455,9 @@
   "board": "docs/design-system/ios/boards/PG-A-GroupThread.dc.html, docs/design-system/ios/boards/PG-A-Rules.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Add a Members pane board and a two-working-agents state."
+  "suggested_fix": "Add a Members pane board and a two-working-agents state.",
+  "status": "open",
+  "note": "Round 3: PH-GroupThread has Members, Page, More and a chat menu with Group settings; empty group and several working lines are still undrawn."
  },
  {
   "id": "F-thread-023",
@@ -430,7 +474,9 @@
   "board": "docs/design-system/ios/boards/DS-04-Overlays.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add React (and the six reactions as a row) to the DS-04 menu and a reaction chip to the DS-06 bubble, or drop reactions from the plan."
+  "suggested_fix": "Add React (and the six reactions as a row) to the DS-04 menu and a reaction chip to the DS-06 bubble, or drop reactions from the plan.",
+  "status": "resolved",
+  "note": "DS-06 states \"Reply and Copy (React is deferred)\" and PH-Thread draws that menu. The decision is made; STORY-042 is now out of step (see F-thread-038)."
  },
  {
   "id": "F-thread-024",
@@ -446,7 +492,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html, docs/design-system/ios/boards/PG-B-Integrations.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add a server-connect card to DS-06; reword the dismiss text."
+  "suggested_fix": "Add a server-connect card to DS-06; reword the dismiss text.",
+  "status": "resolved",
+  "note": "DS-06 draws \"Connect Notes server?\" with the endpoint, a prominent Connect and a Not now. The tile is in the clipped part of the page (F-thread-R2-001)."
  },
  {
   "id": "F-thread-025",
@@ -464,7 +512,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add Saved, Unknown, Failed and \"Answered elsewhere\" specimens to the mail and MCP cards."
+  "suggested_fix": "Add Saved, Unknown, Failed and \"Answered elsewhere\" specimens to the mail and MCP cards.",
+  "status": "resolved",
+  "note": "DS-06 draws Mail conflict (Review), failed (Try again), unknown (Check Sent mail) and read-only (\"Only the owner can approve this.\"). Tiles are in the clipped part of the page (F-thread-R2-001)."
  },
  {
   "id": "F-thread-026",
@@ -481,7 +531,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Add a one-line placeholder row to DS-06 (icon, \"Not shown in this app version\")."
+  "suggested_fix": "Add a one-line placeholder row to DS-06 (icon, \"Not shown in this app version\").",
+  "status": "resolved",
+  "note": "DS-06 draws the unknown block as one dashed muted line, \"This content is not supported here.\""
  },
  {
   "id": "F-thread-027",
@@ -497,7 +549,9 @@
   "board": "docs/design-system/ios/boards/PG-A-Thread.dc.html, docs/design-system/ios/boards/DS-07-Domain.dc.html",
   "phase_issue": "#423",
   "quick_fix": false,
-  "suggested_fix": "Add the entry to the thread strip or the More menu on PG-A-Thread and Inner."
+  "suggested_fix": "Add the entry to the thread strip or the More menu on PG-A-Thread and Inner.",
+  "status": "resolved",
+  "note": "Round 3: Call is now in the chat menu on PH-Thread and PG-A-Thread, so a thread has a way to start a call. Speech consent is drawn for Dictate (PG-B-Consent)."
  },
  {
   "id": "F-thread-028",
@@ -513,7 +567,9 @@
   "board": "docs/design-system/ios/boards/DS-04-Overlays.dc.html, docs/design-system/ios/boards/DS-05-Lists.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Draw a message hit row (DS-05 Search result row already has the snippet pattern) and the thread window with a jump control."
+  "suggested_fix": "Draw a message hit row (DS-05 Search result row already has the snippet pattern) and the thread window with a jump control.",
+  "status": "resolved",
+  "note": "DS-04 now says a chat hit opens the thread scrolled to that message and highlights it. The result row still reads \"2 chats mention pilot\", which hides which message will open."
  },
  {
   "id": "F-thread-029",
@@ -529,7 +585,9 @@
   "board": "docs/design-system/ios/boards/DS-04-Overlays.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Give the pill the glass fill used by other Cancel buttons or set the label to ink on the light fill."
+  "suggested_fix": "Give the pill the glass fill used by other Cancel buttons or set the label to ink on the light fill.",
+  "status": "resolved",
+  "note": "The Cancel button in the search overlay now has a transparent background (checked in the board source), so the label shows against the dark overlay."
  },
  {
   "id": "F-thread-030",
@@ -545,7 +603,9 @@
   "board": "docs/design-system/ios/boards/PG-A-AgentPage.dc.html",
   "phase_issue": "#419",
   "quick_fix": true,
-  "suggested_fix": "Set min-width: 0 on the tiles and drop the font size to 16 px, or move \"/mo\" into the label."
+  "suggested_fix": "Set min-width: 0 on the tiles and drop the font size to 16 px, or move \"/mo\" into the label.",
+  "status": "resolved",
+  "note": "Geometry audit on PG-A-AgentPage is now clean."
  },
  {
   "id": "F-thread-031",
@@ -564,7 +624,9 @@
   "board": "docs/design-system/ios/boards/PG-A-Thread.dc.html, docs/design-system/ios/boards/PG-A-GroupThread.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Align labels to the bubble edge (x 76), move the tool label above the reply, and add the caption to the last user bubble."
+  "suggested_fix": "Align labels to the bubble edge (x 76), move the tool label above the reply, and add the caption to the last user bubble.",
+  "status": "open",
+  "note": "Round 3: not changed; left edges still differ by a few points on the Duo strip."
  },
  {
   "id": "F-thread-032",
@@ -581,7 +643,9 @@
   "board": "docs/design-system/ios/boards/PG-A-GroupThread.dc.html, docs/design-system/ios/boards/DS-05-Lists.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Use the DS-05 avatar in the capsule, or state the capsule variant on DS-05."
+  "suggested_fix": "Use the DS-05 avatar in the capsule, or state the capsule variant on DS-05.",
+  "status": "open",
+  "note": "Round 3: group capsule avatars still differ between PG-A-GroupThread, PH-GroupThread and DS-05."
  },
  {
   "id": "F-thread-033",
@@ -598,7 +662,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": true,
-  "suggested_fix": "Change the PDF chip glyph to doc and the strip bar to the muted color."
+  "suggested_fix": "Change the PDF chip glyph to doc and the strip bar to the muted color.",
+  "status": "open",
+  "note": "Round 3: reply preview bar in DS-06 is still blue; the spec says muted."
  },
  {
   "id": "F-thread-034",
@@ -614,7 +680,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Draw the Expand sheet once for table and code; state the link behavior."
+  "suggested_fix": "Draw the Expand sheet once for table and code; state the link behavior.",
+  "status": "open",
+  "note": "Round 3: DS-06 now draws the table Expand sheet (PH-Thread 'Table, Expand sheet'); code blocks still say 'offer Expand' with no Expand control drawn. Link taps still unstated."
  },
  {
   "id": "F-thread-035",
@@ -630,7 +698,9 @@
   "board": "docs/design-system/ios/boards/PG-A-Image.dc.html",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Swap the Save glyph and add the standard-iPhone layout to the Image rule card."
+  "suggested_fix": "Swap the Save glyph and add the standard-iPhone layout to the Image rule card.",
+  "status": "resolved",
+  "note": "Round 3: the glyph buttons on PG-A-Image carry accessible names (Close, Share, Save to Photos, More); the glyphs are the standard iOS ones."
  },
  {
   "id": "F-thread-036",
@@ -646,7 +716,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Add token and empty specimens to the mention popover."
+  "suggested_fix": "Add token and empty specimens to the mention popover.",
+  "status": "open",
+  "note": "Round 3: DS-06 draws the mention popover (@Fi) but still no empty list and no mention token in the sent bubble."
  },
  {
   "id": "F-thread-037",
@@ -663,7 +735,9 @@
   "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Pick MB for the user and add \"Always allowed: <tool>\" to the Resolved specimen."
+  "suggested_fix": "Pick MB for the user and add \"Always allowed: <tool>\" to the Resolved specimen.",
+  "status": "resolved",
+  "note": "Boards use MB consistently (\"25 MB limit\", \"48 MB\") and one resolved-line pattern (\"Allowed once: Send payment, $1,200 to Northwind\")."
  },
  {
   "id": "F-thread-038",
@@ -685,7 +759,9 @@
   "board": "docs/ios-native/ux/catalog.md",
   "phase_issue": "#416",
   "quick_fix": false,
-  "suggested_fix": "Update the Design gaps lines for the listed stories."
+  "suggested_fix": "Update the Design gaps lines for the listed stories.",
+  "status": "open",
+  "note": "Round 3: catalog.md has 62 NO BOARD marks (was 111). STORY-042 still says the menu has no React; PH-Thread now draws React."
  },
  {
   "id": "F-thread-039",
@@ -702,6 +778,386 @@
   "board": "docs/design-system/ios/boards/DS-04-Overlays.dc.html",
   "phase_issue": "#417",
   "quick_fix": false,
-  "suggested_fix": "Remove Delete or add it to the plan and a story."
+  "suggested_fix": "Remove Delete or add it to the plan and a story.",
+  "status": "resolved",
+  "note": "The message menu is now Reply and Copy only; Delete was removed (PH-Thread, DS-06)."
+ },
+ {
+  "id": "F-thread-R1-001",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Navigation: user always knows where to go",
+  "story_id": [
+   "STORY-017",
+   "STORY-018",
+   "STORY-026"
+  ],
+  "description": "PH-Thread has Back, the title capsule and a Page/List group but no More menu. The Duo strips put More (archive, bot settings, members) at the bottom.",
+  "expected": "A way to reach bot settings, Archive and Members from the standard-iPhone thread.",
+  "actual": "PH-Thread has no More control; the title capsule shows no chevron or hint that it opens anything.",
+  "board": "docs/design-system/ios/boards/PH-Thread.dc.html",
+  "phase_issue": "#416",
+  "quick_fix": false,
+  "suggested_fix": "Add a More button to the trailing group or make the title capsule open the menu and draw it.",
+  "status": "resolved",
+  "note": "PH-Thread \"Chat menu\" draws Agent settings, Open computer, Clear chat, Archive, Delete chat."
+ },
+ {
+  "id": "F-thread-R1-002",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Happy path clarity: every step has a designed screen",
+  "story_id": [
+   "STORY-026",
+   "STORY-037"
+  ],
+  "description": "There is no standard-iPhone group thread board; PH-Thread is one-to-one only.",
+  "expected": "Group thread on a 393 pt iPhone with stacked avatars and Members.",
+  "actual": "Only PG-A-GroupThread (Duo outer strip) exists.",
+  "board": "docs/design-system/ios/boards/PG-A-GroupThread.dc.html",
+  "phase_issue": "#416",
+  "quick_fix": false,
+  "suggested_fix": "Add PH-GroupThread or a group variant of PH-Thread.",
+  "status": "resolved",
+  "note": "PH-GroupThread draws the group thread and its chat menu on a standard iPhone. See F-thread-R2-003 for a clipped header."
+ },
+ {
+  "id": "F-thread-R1-003",
+  "severity": "medium",
+  "category": "error-handling",
+  "criterion": "Network failure: data preserved",
+  "story_id": [
+   "STORY-024",
+   "STORY-038"
+  ],
+  "description": "The Offline state in PG-A-ThreadStates shows the banner and a queued bubble but no case for the live stream dropping mid-reply (partial agent bubble, reconnect, refresh).",
+  "expected": "A drawn state for a partial reply when the connection drops and what replaces it on reconnect.",
+  "actual": "Not drawn.",
+  "board": "docs/design-system/ios/boards/PG-A-ThreadStates.dc.html",
+  "phase_issue": "#416",
+  "quick_fix": false,
+  "suggested_fix": "Add a fourth column \"Reconnecting\" with a partial bubble and the same quiet banner.",
+  "status": "resolved",
+  "note": "PG-A-ThreadStates \"Reconnecting\" draws a quiet banner above the last messages. A partial agent bubble is not shown, which is acceptable."
+ },
+ {
+  "id": "F-thread-R1-004",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Recovery after declining consent",
+  "story_id": [
+   "STORY-048",
+   "STORY-052"
+  ],
+  "description": "PG-B-Consent shows the first-use sheet and the Settings page. It does not show what the thread looks like after Not now (is the typed message kept, is there a notice, how does the user turn sharing on later), and the voice consent prompt has no board.",
+  "expected": "Thread state after Not now with a one-tap way back to the switch.",
+  "actual": "The sheet sits over an empty thread; nothing follows it.",
+  "board": "docs/design-system/ios/boards/PG-B-Consent.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Add a third frame: message kept as Not sent with an action that opens AI data sharing; add the voice consent variant.",
+  "status": "resolved",
+  "note": "Round 3: PG-B-Consent 'Speech, after Not now' draws the thread (typed text kept, no dictation), and Settings > AI data sharing is the place to turn it on later."
+ },
+ {
+  "id": "F-thread-R1-005",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "Primary CTA: approval without a no",
+  "story_id": [
+   "STORY-046",
+   "STORY-047"
+  ],
+  "description": "The mail card now has only Save and Send. A user who does not want the reply has no visible way to decline, while the tool card has Deny.",
+  "expected": "Decide whether a mail card needs Deny or relies on ignoring and the draft staying in the account.",
+  "actual": "Save and Send only.",
+  "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "State the decision in the DS-06 card text.",
+  "status": "open",
+  "note": "Round 3: mail card still has Edit and Send only; no decline control on PH-Thread, PG-A-Thread or Inner. The 'Needs you' list is the only place the card appears."
+ },
+ {
+  "id": "F-thread-R1-006",
+  "severity": "medium",
+  "category": "error-handling",
+  "criterion": "Error messages: specific and actionable",
+  "story_id": [
+   "STORY-040"
+  ],
+  "description": "The no-model path is drawn on Home (PG-A-HomeNoModel), but a thread opened with no model (Chief shows \"No messages yet\") has no drawn failure when the user sends.",
+  "expected": "The send failure names the cause and links to Connect a model.",
+  "actual": "The Refused state in PG-A-ThreadStates only covers \"Attachment is too large\".",
+  "board": "docs/design-system/ios/boards/PG-A-ThreadStates.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Add a Refused variant \"Not sent: Connect a model\" with a Connect action.",
+  "status": "resolved",
+  "note": "PG-A-ThreadStates \"No model\" draws \"Not sent: No model connected\" with a Connect action and a note that the message sends when Connect succeeds."
+ },
+ {
+  "id": "F-thread-R1-007",
+  "severity": "low",
+  "category": "visual",
+  "criterion": "Text fit: small status text",
+  "story_id": [
+   "STORY-038"
+  ],
+  "description": "The \"Waiting to send\" caption under the queued bubble is about 11 pt in mid grey, much smaller and quieter than the Not sent row beside it.",
+  "expected": "Caption legible at the same size as the Not sent row (12 pt).",
+  "actual": "Tiny right-aligned caption.",
+  "board": "docs/design-system/ios/boards/PG-A-ThreadStates.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Use 12 pt mutedForeground with a clock icon.",
+  "status": "resolved",
+  "note": "Round 3: 'Waiting to send' is 12 pt, the same as the DS-06 caption spec."
+ },
+ {
+  "id": "F-thread-R1-008",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "Refused attachment: user can see what to remove",
+  "story_id": [
+   "STORY-035",
+   "STORY-039"
+  ],
+  "description": "In the Refused frame the bubble reads \"Attached the pilot deck.\" but shows no attachment chip, so the user cannot see which file was too large before tapping Edit.",
+  "expected": "The failed bubble shows the file chip.",
+  "actual": "Text only.",
+  "board": "docs/design-system/ios/boards/PG-A-ThreadStates.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Draw the chip with an error mark inside or under the bubble.",
+  "status": "resolved",
+  "note": "The Refused frame now shows the pilot-deck.pdf chip with size and a \"Remove file\" action."
+ },
+ {
+  "id": "F-thread-R1-009",
+  "severity": "low",
+  "category": "a11y",
+  "criterion": "Consent switch effect",
+  "story_id": [
+   "STORY-094"
+  ],
+  "description": "On the Settings frame of PG-B-Consent the switches show no effect text for turning one off (what stops working). \"Privacy details\" is a small underlined link in muted grey.",
+  "expected": "One line of consequence when a switch goes off, or in a confirm.",
+  "actual": "Switches only.",
+  "board": "docs/design-system/ios/boards/PG-B-Consent.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Show an alert or a caption when Model A is turned off.",
+  "status": "resolved",
+  "note": "Round 3: PG-B-Settings AI data sharing now has an effect line under each switch (Model A: bots cannot reply; Speech A: voice stops working; Memory A: no summaries kept)."
+ },
+ {
+  "id": "F-thread-R2-001",
+  "severity": "high",
+  "category": "visual",
+  "criterion": "Visual correctness: broken layout, content clipped",
+  "story_id": [
+   "STORY-034",
+   "STORY-035",
+   "STORY-041",
+   "STORY-050",
+   "STORY-051",
+   "STORY-053"
+  ],
+  "description": "The page wrapper of DS-06-Chat has a fixed height of 7400 px with overflow hidden. The last specimens are cut off: the Secret ask card error state, \"Connect MCP server card and card states\" (conflict, failed, unknown, read-only, unknown block), \"Attachments and long-press menu\", \"Composer, running and pending states\" and \"Pending approval pill\". They exist in the source but cannot be seen in the preview or a full-page screenshot.",
+  "expected": "Every specimen on the board is visible when the page is opened.",
+  "actual": "Scrolling to the end of DS-06 shows the Secret ask card Field and Saved tiles, then the page ends at the label \"ERROR\". With the wrapper height set to auto in the browser, all missing sections render (checked).",
+  "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": true,
+  "suggested_fix": "Remove the fixed height (7400 px) and overflow hidden from the outer wrapper div in DS-06-Chat.dc.html, or raise it to at least 9900 px.",
+  "status": "resolved",
+  "note": "Round 3: DS-06-Chat is no longer clipped (page height 10357 px, no clipped wrapper)."
+ },
+ {
+  "id": "F-thread-R2-003",
+  "severity": "medium",
+  "category": "visual",
+  "criterion": "Layout: nothing clipped at the screen edge",
+  "story_id": [
+   "STORY-026",
+   "STORY-037"
+  ],
+  "description": "On PH-GroupThread (393 pt wide) the header is Back (46), a Funding room capsule (180) and a right group of Members, Page and More (134) with 6 and 12 pt gaps. The row is wider than the screen: the geometry audit reports the capsule spilling 17 px, and in the screenshot the right group touches the right edge and the More dots are cut at the edge.",
+  "expected": "Header controls sit inside the 16 pt safe margins like PH-Thread.",
+  "actual": "Right group ends at the screen edge; margins are 16 pt on the left and 0 on the right.",
+  "board": "docs/design-system/ios/boards/PH-GroupThread.dc.html",
+  "phase_issue": "#416",
+  "quick_fix": true,
+  "suggested_fix": "Shorten the title capsule (names only, or one avatar) or move Members into the chat menu so the right group is 2 buttons wide and ends 16 pt from the edge.",
+  "status": "resolved",
+  "note": "Round 3: PH-GroupThread header fits at 393 pt (Back, Funding room capsule, Members/Page/More group); verified in the screenshot."
+ },
+ {
+  "id": "F-thread-R2-004",
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "Consistent rules across screens",
+  "story_id": [
+   "STORY-045",
+   "STORY-054",
+   "STORY-055"
+  ],
+  "description": "Settings lists standing \"Always allow\" rules for Send mail and Create events, but DS-06 says Always allow appears only for read-only tools and that money and send tools never offer it. Either the rules can be created for send tools or the list can never contain them. The rules also sit under \"AI data sharing\", which is about which services receive data, and there is no switch for auto review.",
+  "expected": "One rule about which tools can be always allowed, and a clearly named place to manage them.",
+  "actual": "The sample list contradicts the card rule; the rules are under a data-sharing title.",
+  "board": "docs/design-system/ios/boards/PG-B-Settings.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Show only read-only tools in the sample list (Archive mail, Search mail) and move the list to its own row, \"Always allowed\", or retitle the page \"AI data sharing and approvals\". Decide whether auto review is in scope.",
+  "status": "resolved",
+  "note": "Round 3: PG-B-Settings 'Allowed without asking' lists read-only tools only (Search mail, Read events, Read files) with a Remove confirm; DS-06 states writes never appear there."
+ },
+ {
+  "id": "F-thread-R2-005",
+  "severity": "medium",
+  "category": "error-handling",
+  "criterion": "Destructive or risky actions need a clear consequence",
+  "story_id": [
+   "STORY-054"
+  ],
+  "description": "The Mail connector detail page switches \"Allow writes\" on or off with no confirmation and no text saying what agents can then do. The Banking connector (money) has no detail frame, and the thread reply when writes are off (\"writes are off\") and the case where the deployment disables writes are not drawn.",
+  "expected": "A short consequence line under the switch for money connectors, a frame for the writes-off reply in the thread and one for a deployment that blocks writes.",
+  "actual": "Only the Mail connector in its read-only state is drawn.",
+  "board": "docs/design-system/ios/boards/PG-B-Integrations.dc.html",
+  "phase_issue": "#418",
+  "quick_fix": false,
+  "suggested_fix": "Add a Banking connector detail frame with a one-line consequence, a confirmation on turning writes on, and the in-thread writes-off message.",
+  "status": "resolved",
+  "note": "Round 3: PG-B-Integrations draws Allow writes confirm ('Bots will be able to ask to send, archive and label mail. You still approve each one.'), writes on, and a Banking connector with a thread frame 'writes off' offering Allow writes."
+ },
+ {
+  "id": "F-thread-R2-006",
+  "severity": "low",
+  "category": "redundancy",
+  "criterion": "Information stated once",
+  "story_id": [
+   "STORY-038"
+  ],
+  "description": "An offline send says the same thing three times: the thread banner \"Offline. Messages send when you reconnect.\", the global toast \"Waiting to send / No connection. Your message is kept and sends when you are back online.\" and the caption \"Waiting to send\" under the bubble.",
+  "expected": "One quiet signal in the thread (banner or caption) and no toast while the thread is open.",
+  "actual": "Banner, caption and toast can all show at once.",
+  "board": "docs/design-system/ios/boards/PG-A-ThreadStates.dc.html, docs/design-system/ios/boards/DS-04-Overlays.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Show the toast only when the user is outside the thread; keep the caption, and drop the banner when a message is queued.",
+  "status": "open",
+  "note": "Round 3: offline still says the same thing in the banner, the queued caption and the global toast."
+ },
+ {
+  "id": "F-thread-R2-007",
+  "severity": "low",
+  "category": "consistency",
+  "criterion": "Component consistency: the same control looks the same everywhere",
+  "story_id": [
+   "STORY-034",
+   "STORY-035"
+  ],
+  "description": "In DS-06 the plus menu shows \"Photos\" and \"Files\" with no icons, but PH-Thread draws the same menu with icons. The uploading and converting chips show text (\"60%\", \"Converting\") but no progress ring or spinner, and the error chip is a red outline only, with no icon or reason (color alone).",
+  "expected": "Chips match the spec text: ring, spinner, error icon; menu rows match PH-Thread.",
+  "actual": "Specimens are plainer than the specification.",
+  "board": "docs/design-system/ios/boards/DS-06-Chat.dc.html, docs/design-system/ios/boards/PH-Thread.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": true,
+  "suggested_fix": "Add icons to the DS-06 plus menu, a progress ring, a spinner and an error glyph with \"Too large\" or \"Failed\" to the chips.",
+  "status": "open",
+  "note": "Round 3: DS-06 plus menu still has no icons while PH-Thread draws them."
+ },
+ {
+  "id": "F-thread-R2-008",
+  "severity": "low",
+  "category": "error-handling",
+  "criterion": "Destructive action has a confirmation",
+  "story_id": [
+   "STORY-021"
+  ],
+  "description": "PG-A-GroupThread draws a \"Delete Funding room?\" confirmation, but PG-A-Thread and PH-Thread draw \"Delete chat\" in the menu with no confirmation frame. Archive has one.",
+  "expected": "The same confirmation for deleting a one-to-one chat.",
+  "actual": "Delete chat has no confirmation frame.",
+  "board": "docs/design-system/ios/boards/PG-A-Thread.dc.html, docs/design-system/ios/boards/PH-Thread.dc.html",
+  "phase_issue": "#416",
+  "quick_fix": true,
+  "suggested_fix": "Add a \"Delete this chat?\" alert frame to PG-A-Thread, matching the group one.",
+  "status": "resolved",
+  "note": "Round 3: PH-Thread and PG-A-Thread now draw 'Delete this chat?' with Cancel and Delete."
+ },
+ {
+  "id": "F-thread-R2-009",
+  "severity": "medium",
+  "category": "happy-path",
+  "criterion": "Happy path clarity: every step has a designed screen",
+  "story_id": [
+   "STORY-048",
+   "STORY-117"
+  ],
+  "description": "STORY-117 step 4 and STORY-048 step 3 rely on a \"Change in Settings\" link that is no longer drawn, and PG-B-Consent first frame was replaced by the speech sheet. The catalog still describes the old frame, so the two stories cannot be walked on the current boards. This is a consequence of F-thread-007; recorded separately because the catalog also needs rewriting.",
+  "expected": "Stories point at frames that exist.",
+  "actual": "Stories 048 and 117 describe a board frame that does not exist.",
+  "board": "docs/ios-native/ux/catalog.md",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "After the model first-use frame returns (F-thread-007), re-check both stories; otherwise rewrite them around the speech sheet.",
+  "status": "resolved",
+  "note": "Round 3: STORY-048 and STORY-117 in catalog.md now point at the 'sharing is off' card and the Speech sheet."
+ },
+ {
+  "id": "F-thread-R3-001",
+  "severity": "medium",
+  "category": "consistency",
+  "criterion": "Component consistency: one rule per control",
+  "story_id": [
+   "STORY-042"
+  ],
+  "description": "The long-press menu is drawn two ways. PH-Thread 'Message menu (long press)' shows an emoji reaction row and Reply, React, Copy. DS-06 says 'Reply and Copy (React is deferred)'.",
+  "expected": "One decision about reactions on every board and in the stories.",
+  "actual": "PH-Thread offers React; DS-06 rule says it is deferred; STORY-042 says the board menu has no React.",
+  "board": "docs/design-system/ios/boards/PH-Thread.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Either remove the reaction row and React from PH-Thread, or change the DS-06 rule and STORY-042 to match.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-thread-R3-002",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "Happy path clarity: every consent route has a screen",
+  "story_id": [
+   "STORY-048"
+  ],
+  "description": "STORY-048 alternate (b) says a routine run or a mid-run ask card shows Allow and Not now inside the thread. No board draws that card; only the 'sharing is off' card and the Speech sheet exist.",
+  "expected": "One frame of the in-thread consent ask for a model or routine.",
+  "actual": "Not drawn.",
+  "board": "docs/design-system/ios/boards/PG-B-Consent.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Add a thread frame with the ask card, or state that the 'Model A sharing is off' card is used for it.",
+  "status": "open",
+  "note": "New in round 3."
+ },
+ {
+  "id": "F-thread-R3-003",
+  "severity": "low",
+  "category": "happy-path",
+  "criterion": "Happy path clarity: attach sources",
+  "story_id": [
+   "STORY-034",
+   "STORY-035"
+  ],
+  "description": "The plus menu offers Photos and Files only. STORY-034 and 035 expect a Camera source, and photo-permission-denied is not drawn.",
+  "expected": "Camera source, or a decision that Photos covers it; a denied-permission state.",
+  "actual": "Menu has two items in DS-06 and PH-Thread.",
+  "board": "docs/design-system/ios/boards/PH-Thread.dc.html, docs/design-system/ios/boards/DS-06-Chat.dc.html",
+  "phase_issue": "#417",
+  "quick_fix": false,
+  "suggested_fix": "Decide on Camera and update the stories, or add it to the menu; draw the permission-denied line once.",
+  "status": "open",
+  "note": "New in round 3."
  }
 ]
