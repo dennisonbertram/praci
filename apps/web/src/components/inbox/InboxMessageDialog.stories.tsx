@@ -67,7 +67,13 @@ export const OwnSentReply: Story = {
 export const WithAttachments: Story = {
   name: "With attachments (image, archive, document)",
   args: { messageId: "msg_files" },
-  beforeEach: () =>
+  beforeEach: () => {
+    // The image chip fetches its bytes; answer with an empty body so no request goes unserved.
+    const original = window.fetch;
+    window.fetch = (input, init) =>
+      String(input).includes("/attachments/")
+        ? Promise.resolve(new Response(new Uint8Array()))
+        : original(input, init);
     mockRpc({
       "inbox.get": {
         ...message,
@@ -83,7 +89,11 @@ export const WithAttachments: Story = {
           },
         ],
       },
-    }),
+    });
+    return () => {
+      window.fetch = original;
+    };
+  },
 };
 
 export const WithInboxActions: Story = {

@@ -648,7 +648,7 @@ export const Transcript = memo(function Transcript({
             following.current = false;
           }
         }}
-        className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-5 md:px-7 md:py-6"
+        className="@container rk-scroll flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-5 md:px-[max(1.75rem,calc((100%-900px)/2))] md:py-6"
       >
         {olderCursor != null ? (
           <button

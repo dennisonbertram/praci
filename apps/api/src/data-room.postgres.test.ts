@@ -1715,4 +1715,26 @@ describePostgres("Data room API (PostgreSQL)", () => {
     expect(bAfter.reading - bBefore.reading).toBe(7);
     expect(bAfter.tagging).toBe(bBefore.tagging);
   });
+  it("fails a file that has stayed in Reading past the limit, so it can be retried", async () => {
+    const item = await prisma.dataRoomItem.create({
+      data: {
+        spaceId: actors.a.spaceId,
+        userId: actors.a.userId,
+        source: "upload",
+        sha256: `stale-${run}`,
+        name: "stale.txt",
+        mimeType: "text/plain",
+        size: 1,
+        status: "extracting",
+      },
+    });
+    const repo = createDataRoomRepos(prisma);
+    await repo.processing(actors.a);
+    expect((await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: item.id } })).status).toBe(
+      "extracting",
+    );
+    await repo.processing(actors.a, new Date(Date.now() + 20 * 60_000));
+    const after = await prisma.dataRoomItem.findUniqueOrThrow({ where: { id: item.id } });
+    expect(after.status).toBe("failed");
+  });
 });

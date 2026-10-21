@@ -86,9 +86,24 @@ export const ErrorOnly: Story = {
     }),
 };
 
+/** Opens the filter form and its "More filters" fields. */
+async function openFilters(canvasElement: HTMLElement) {
+  const canvas = within(canvasElement);
+  await userEvent.click(await canvas.findByTestId("activity-show-filters"));
+  await userEvent.click(canvas.getByText("More filters"));
+}
+
+export const FilterOpen: Story = {
+  beforeEach: () => mockRpc({ "runs.list": byFilter }),
+  play: async ({ canvasElement }) => {
+    await userEvent.click(await within(canvasElement).findByTestId("activity-show-filters"));
+  },
+};
+
 export const FilteredToNothing: Story = {
   beforeEach: () => mockRpc({ "runs.list": byFilter }),
   play: async ({ canvasElement }) => {
+    await openFilters(canvasElement);
     const search = await within(canvasElement).findByTestId("activity-search");
     await userEvent.type(search, "zzz-no-match");
   },
@@ -97,6 +112,7 @@ export const FilteredToNothing: Story = {
 export const WithFilterChips: Story = {
   beforeEach: () => mockRpc({ "runs.list": byFilter }),
   play: async ({ canvasElement }) => {
+    await openFilters(canvasElement);
     const search = await within(canvasElement).findByTestId("activity-search");
     await userEvent.type(search, "sample");
     await userEvent.selectOptions(

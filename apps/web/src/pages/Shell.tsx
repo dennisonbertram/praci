@@ -379,6 +379,29 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
 }
 
+/** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
+async function findDocumentsAndArtifacts(query: string) {
+  const [documents, artifacts] = await Promise.all([
+    rpc.dataRoom
+      .search({ query, limit: 5 })
+      .then((result): SearchLink[] =>
+        result.results.map(({ item }) => ({ id: item.id, label: item.name })),
+      )
+      .catch((): SearchLink[] => []),
+    // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
+    rpc.artifacts
+      .listSpace({ limit: 60 })
+      .then((result): SearchLink[] =>
+        result.items
+          .filter((item) => matchesArtifactQuery(item, query))
+          .slice(0, 5)
+          .map((item) => ({ id: item.id, label: item.name })),
+      )
+      .catch((): SearchLink[] => []),
+  ]);
+  return { documents, artifacts };
+}
+
 export function ShellPage() {
   const { t } = useLingui();
   const { botId, groupId } = useParams();
@@ -1941,6 +1964,12 @@ export function ShellPage() {
       { id: "inbox", label: t`Inbox`, icon: <Mail {...icon} /> },
       { id: "finance", label: t`Finance`, icon: <ChartColumn {...icon} /> },
       {
+        id: "legal",
+        label: t`Legal`,
+        keywords: t`contracts, NDA, deadlines`,
+        icon: <Scale {...icon} />,
+      },
+      {
         id: "cap-table",
         label: t`Cap table`,
         // Words a founder may type for this page; matched along with the label.
@@ -1948,15 +1977,9 @@ export function ShellPage() {
         icon: <PieChart {...icon} />,
       },
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
-      {
-        id: "legal",
-        label: t`Legal`,
-        keywords: t`contracts, NDA, deadlines`,
-        icon: <Scale {...icon} />,
-      },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
-      { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
+      { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
   }, [t]);
@@ -1978,6 +2001,29 @@ export function ShellPage() {
   }, [visiblePages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
   const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
+
+  const searchPaletteLinks = useCallback(
+    async (q: string) => {
+      const found = await findDocumentsAndArtifacts(q);
+      return [
+        {
+          heading: t`Documents`,
+          entries: found.documents.map((doc) => ({
+            id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
+            label: doc.label,
+          })),
+        },
+        {
+          heading: t`Artifacts`,
+          entries: found.artifacts.map((item) => ({
+            id: `/app/artifacts/${encodeURIComponent(item.id)}`,
+            label: item.label,
+          })),
+        },
+      ];
+    },
+    [t],
+  );
 
   function openSearchResult(path: string) {
     setQuery("");
@@ -2004,31 +2050,11 @@ export function ShellPage() {
     const abort = new AbortController();
     const timer = window.setTimeout(() => {
       setSearchLoading(true);
-      // Data room files by name and content; a failure only hides this group.
-      void rpc.dataRoom
-        .search({ query: spaceQuery, limit: 5 })
-        .then((result) => {
-          if (abort.signal.aborted) return;
-          setSearchDocuments(result.results.map(({ item }) => ({ id: item.id, label: item.name })));
-        })
-        .catch(() => {
-          if (!abort.signal.aborted) setSearchDocuments([]);
-        });
-      // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
-      void rpc.artifacts
-        .listSpace({ limit: 60 })
-        .then((result) => {
-          if (abort.signal.aborted) return;
-          setSearchArtifacts(
-            result.items
-              .filter((item) => matchesArtifactQuery(item, spaceQuery))
-              .slice(0, 5)
-              .map((item) => ({ id: item.id, label: item.name })),
-          );
-        })
-        .catch(() => {
-          if (!abort.signal.aborted) setSearchArtifacts([]);
-        });
+      void findDocumentsAndArtifacts(spaceQuery).then((found) => {
+        if (abort.signal.aborted) return;
+        setSearchDocuments(found.documents);
+        setSearchArtifacts(found.artifacts);
+      });
       void rpc.search
         .query({ q: spaceQuery })
         .then((result) => {
@@ -4131,7 +4157,13 @@ export function ShellPage() {
             }
           />
         ) : contactsMode ? (
-          <ContactsPage />
+          <ContactsPage
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
+          />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
@@ -4306,7 +4338,11 @@ export function ShellPage() {
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
-                    <Trans>Settings</Trans>
+                    active ? (
+                      t`${active.name} settings`
+                    ) : (
+                      <Trans>Settings</Trans>
+                    )
                   ) : panel === "page" ? (
                     <Trans>Page</Trans>
                   ) : panel === "list" ? (
@@ -4338,7 +4374,11 @@ export function ShellPage() {
                       onClick={() => setPanel(panel === "settings" ? "computer" : "settings")}
                       className={panel === "settings" ? "text-foreground" : "text-muted-foreground"}
                     >
-                      <Settings size={16} strokeWidth={1.7} />
+                      {panel === "settings" ? (
+                        <Monitor size={16} strokeWidth={1.7} />
+                      ) : (
+                        <Settings size={16} strokeWidth={1.7} />
+                      )}
                     </Button>
                   ) : null}
                   <Button
@@ -5005,6 +5045,9 @@ export function ShellPage() {
         {renameSectionTarget ? (
           <RenameBotSectionDialog
             section={renameSectionTarget.section}
+            takenNames={(
+              spaces.find((space) => space.id === renameSectionTarget.spaceId)?.botSections ?? []
+            ).map((section) => section.name)}
             onCancel={() => setRenameSectionTarget(null)}
             onConfirm={async (name) => {
               await rpc.botSections.update(
@@ -5047,6 +5090,8 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/g/${id}`);
           }}
+          searchLinks={searchPaletteLinks}
+          onOpenPath={openSearchResult}
         />
 
         {newSpaceOpen ? (

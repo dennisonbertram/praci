@@ -114,6 +114,11 @@ msgstr "{0, plural, one {#+ result} other {#+ results}}"
 msgid "{0, plural, one {Added # file} other {Added # files}}"
 msgstr "{0, plural, one {Added # file} other {Added # files}}"
 
+#. placeholder {0}: chosen.length
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "{0, plural, one {Apply # change} other {Apply # changes}}"
+msgstr "{0, plural, one {Apply # change} other {Apply # changes}}"
+
 #. placeholder {0}: picks.size
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "{0, plural, one {Import # file} other {Import # files}}"
@@ -254,6 +259,11 @@ msgstr "{0} rollup hours"
 #: src/pages/Shell.tsx
 msgid "{0} runway"
 msgstr "{0} runway"
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0} settings"
+msgstr "{0} settings"
 
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
@@ -579,6 +589,7 @@ msgid "A deposit address at an exchange."
 msgstr "A deposit address at an exchange."
 
 #: src/components/sidebar-folders/FolderHeader.tsx
+#: src/pages/shell/dialogs.tsx
 msgid "A folder with that name already exists"
 msgstr "A folder with that name already exists"
 
@@ -981,6 +992,7 @@ msgstr "All time"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Allow"
 msgstr "Allow"
 
@@ -1049,10 +1061,6 @@ msgstr "Allow writing"
 msgid "Allowed"
 msgstr "Allowed"
 
-#: src/components/AskCard.tsx
-msgid "Allowed once"
-msgstr "Allowed once"
-
 #: src/pages/Auth.tsx
 msgid "Already have an account?"
 msgstr "Already have an account?"
@@ -1090,8 +1098,8 @@ msgid "Always act"
 msgstr "Always act"
 
 #: src/components/AskCard.tsx
-msgid "Always allow this tool"
-msgstr "Always allow this tool"
+msgid "Always allow this"
+msgstr "Always allow this"
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
@@ -1142,6 +1150,10 @@ msgstr "Answered: {0}"
 msgid "Answered: {answer}"
 msgstr "Answered: {answer}"
 
+#: src/lib/slash-skills.ts
+msgid "Answers from your meeting notes and transcripts."
+msgstr "Answers from your meeting notes and transcripts."
+
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr "Any model, with your own key"
@@ -1188,7 +1200,6 @@ msgid "Appearance"
 msgstr "Appearance"
 
 #: src/components/compose/RichTextEditor.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 msgid "Apply"
 msgstr "Apply"
@@ -1206,6 +1217,10 @@ msgstr "Approve"
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
 msgstr "Approve this server to let your bot use its tools."
+
+#: src/components/AskCard.tsx
+msgid "Approved"
+msgstr "Approved"
 
 #: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
@@ -1687,6 +1702,10 @@ msgstr "Bots with their own computer and browser"
 msgid "Box"
 msgstr "Box"
 
+#: src/lib/slash-skills.ts
+msgid "Box files"
+msgstr "Box files"
+
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 msgid "Brain label"
 msgstr "Brain label"
@@ -2126,6 +2145,7 @@ msgid "Clear formatting"
 msgstr "Clear formatting"
 
 #: src/components/ListControls.tsx
+#: src/pages/DataRoom.tsx
 #: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr "Clear search"
@@ -2600,10 +2620,6 @@ msgstr "Continue in Background"
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
 msgstr "Continue with {0}"
-
-#: src/pages/Auth.tsx
-msgid "Continue with email"
-msgstr "Continue with email"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -3605,6 +3621,10 @@ msgstr "Details"
 msgid "Developer"
 msgstr "Developer"
 
+#: src/lib/slash-skills.ts
+msgid "Devin sessions"
+msgstr "Devin sessions"
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Didn't open?"
 msgstr "Didn't open?"
@@ -3727,6 +3747,7 @@ msgstr "Document date"
 
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
+#: src/pages/Shell.tsx
 #: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr "Documents"
@@ -4217,6 +4238,10 @@ msgstr "Financing"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Find an app"
 msgstr "Find an app"
+
+#: src/lib/slash-skills.ts
+msgid "Find and summarize files in Box. Changes ask first."
+msgstr "Find and summarize files in Box. Changes ask first."
 
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
@@ -5337,6 +5362,10 @@ msgstr "Medium"
 msgid "Medium"
 msgstr "Medium"
 
+#: src/lib/slash-skills.ts
+msgid "Meeting notes"
+msgstr "Meeting notes"
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Meeting notes and transcripts"
 msgstr "Meeting notes and transcripts"
@@ -5575,6 +5604,10 @@ msgstr "More Blockscout actions"
 msgid "More computer actions"
 msgstr "More computer actions"
 
+#: src/pages/ActivityList.tsx
+msgid "More filters"
+msgstr "More filters"
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5667,10 +5700,6 @@ msgstr "Needs a monthly burn"
 msgid "Needs a server restart"
 msgstr "Needs a server restart"
 
-#: src/lib/roster-status.ts
-msgid "Needs an answer"
-msgstr "Needs an answer"
-
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr "Needs approval"
@@ -5704,6 +5733,10 @@ msgstr "Needs takeover"
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Needs you"
+
+#: src/lib/roster-status.ts
+msgid "Needs your answer"
+msgstr "Needs your answer"
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -6345,10 +6378,6 @@ msgstr "Open chat"
 msgid "Open computer settings"
 msgstr "Open computer settings"
 
-#: src/pages/shell/composer-error.tsx
-msgid "Open Data room"
-msgstr "Open Data room"
-
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr "Open deadlines"
@@ -6396,10 +6425,6 @@ msgstr "Open in new tab"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
 msgstr "Open Inbox"
-
-#: src/pages/shell/composer-error.tsx
-msgid "Open Legal"
-msgstr "Open Legal"
 
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
@@ -7407,6 +7432,10 @@ msgstr "Reply cancelled"
 msgid "Replying to {0}"
 msgstr "Replying to {0}"
 
+#: src/pages/Auth.tsx
+msgid "Request a new link"
+msgstr "Request a new link"
+
 #: src/components/DataExport.tsx
 msgid "Request export"
 msgstr "Request export"
@@ -7822,10 +7851,6 @@ msgstr "Search documents"
 msgid "Search Drive"
 msgstr "Search Drive"
 
-#: src/pages/DataRoom.tsx
-msgid "Search looks for these words in names and text."
-msgstr "Search looks for these words in names and text."
-
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/Inbox.tsx
 msgid "Search mail"
@@ -7852,8 +7877,8 @@ msgid "Search older mail"
 msgstr "Search older mail"
 
 #: src/pages/shell/command-palette.tsx
-msgid "Search pages, bots and groups"
-msgstr "Search pages, bots and groups"
+msgid "Search pages, bots, groups, documents and artifacts"
+msgstr "Search pages, bots, groups, documents and artifacts"
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Search providers"
@@ -8497,6 +8522,10 @@ msgstr "Starred"
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
 msgstr "Start {trialDays}-day free trial"
+
+#: src/lib/slash-skills.ts
+msgid "Start and follow Devin sessions. Each one asks first."
+msgstr "Start and follow Devin sessions. Each one asks first."
 
 #: src/components/teach/TeachComputerOverlay.tsx
 msgid "Start recording"
@@ -9843,6 +9872,10 @@ msgstr "Who owns what in the company?"
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
 msgstr "Within 3 days"
+
+#: src/components/AskCard.tsx
+msgid "Won't ask again for this kind of action."
+msgstr "Won't ask again for this kind of action."
 
 #: src/lib/ticket-status.ts
 msgid "Won't do"

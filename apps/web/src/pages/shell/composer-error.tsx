@@ -1,5 +1,9 @@
 import { Trans, useLingui } from "@lingui/react/macro";
-import { LEGAL_AGENT_MODEL, LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import {
+  LEGAL_AGENT_MODEL,
+  LEGAL_CONSENT_REQUIRED_MESSAGE,
+  LEGAL_MODEL_REQUIRED_MESSAGE,
+} from "@rakazo/contracts";
 import { Button } from "@rakazo/ui-web";
 import { X } from "lucide-react";
 import type { Ref } from "react";
@@ -12,14 +16,6 @@ import { runErrorText } from "../../lib/user-error";
 function modelSettingsFor(message: string): { provider: string } | null {
   if (message === LEGAL_MODEL_REQUIRED_MESSAGE) return { provider: LEGAL_AGENT_MODEL.provider };
   return message === runErrorText("401") ? { provider: "" } : null;
-}
-
-/** The page that grants a missing Data Room consent, when the error says to allow it there. */
-function consentPageFor(message: string): { path: string; label: string } | null {
-  if (!message.startsWith("Data Room consent is required")) return null;
-  if (message.includes("Legal page")) return { path: "/app/legal", label: "Legal" };
-  if (message.includes("Data room page")) return { path: "/app/data-room", label: "Data room" };
-  return null;
 }
 
 /** A send or run error above the composer; a model-setup error also offers the settings that fix it. */
@@ -38,7 +34,7 @@ export function ComposerError({
 }) {
   const { t } = useLingui();
   const settings = modelSettingsFor(message);
-  const page = consentPageFor(message);
+  const needsConsent = message === LEGAL_CONSENT_REQUIRED_MESSAGE;
   return (
     <div
       ref={ref}
@@ -57,9 +53,9 @@ export function ComposerError({
             <Trans>Open Models settings</Trans>
           </Button>
         ) : null}
-        {page && onNavigate ? (
-          <Button size="sm" variant="outline" onClick={() => onNavigate(page.path)}>
-            {page.label === "Legal" ? <Trans>Open Legal</Trans> : <Trans>Open Data room</Trans>}
+        {needsConsent && onNavigate ? (
+          <Button size="sm" variant="outline" onClick={() => onNavigate("/app/legal")}>
+            <Trans>Allow</Trans>
           </Button>
         ) : null}
         <button

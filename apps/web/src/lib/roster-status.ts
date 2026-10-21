@@ -20,6 +20,10 @@ export function rosterWorkStatusLabel(status: string, phase?: RunPhase | null): 
       return t`Starting…`;
     case "running":
       return t`Working…`;
+    // A question waiting for the owner is the one state that needs them; it gets the same
+    // highlight as work in progress instead of looking like a message preview.
+    case "waiting_input":
+      return t`Needs your answer`;
     default:
       return null;
   }
@@ -30,8 +34,6 @@ export function compactRosterStatusLabel(status: string, phase?: RunPhase | null
   const workStatus = rosterWorkStatusLabel(status, phase);
   if (workStatus) return workStatus;
   switch (status) {
-    case "waiting_input":
-      return t`Needs an answer`;
     case "waiting_takeover":
       return t`Needs you`;
     case "failed":

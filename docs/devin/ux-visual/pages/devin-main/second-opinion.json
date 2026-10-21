@@ -1,0 +1,392 @@
+{
+  "mode": "inspect",
+  "images": [
+    "1440x900-populated-open-light.png",
+    "1440x900-first-visit-dark.png",
+    "375x812-first-visit-light.png",
+    "768x1024-populated-open-light.png",
+    "1440x900-key-rejected-light.png",
+    "1440x900-loading-light.png",
+    "1440x900-empty-light.png",
+    "1440x900-not-connected-light.png"
+  ],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 55,
+      "costUsd": 0.163736,
+      "result": {
+        "verdict": "Not ship-ready: the priority grouping is sound, but stale data can be mistaken for live truth, the founder's one required action is a tiny text link, the critical Error is buried in Earlier, KPI/header conventions are abandoned, and mobile/tablet layouts hide urgent work or data. The vivid purple agent also breaks the monochrome system and out-competes Needs you.",
+        "findings": [
+          {
+            "level": "page",
+            "element": "'Devin rejected the key.' + 'Reconnect' + still-live table/KPI tiles",
+            "problem": "Auth failure is small red inline text with a weak outline pill while 'Needs you 2', '12m ago' and 'Answer in Devin' still read as current and actionable. Header simultaneously says 'acme · Updated 4m ago'. A glancing founder will trust and act on stale data.",
+            "norm": "Stale/blocked states must be unmissable banners, mark all data stale/dimmed, disable stale actions, and make recovery the primary CTA.",
+            "severity": "P0",
+            "screenshot": "1440x900-key-rejected-light.png",
+            "fix": "Full-width error banner under header: 'Connection failed — showing data from [time]. Answers may be out of date.' Add Stale badges to both tiles/table, disable/grey Answer links, replace Reconnect with solid ink primary button, and explain where the key is fixed."
+          },
+          {
+            "level": "group",
+            "element": "'Earlier' group containing 'Migrate billing webhooks to the new queue' with 'Error' pill",
+            "problem": "A failed session is grouped below Finished work in Earlier, not in Needs you, with only a small pale-red pill. The persona question 'does Devin need me?' is answered wrongly: Needs you says 2, ignoring the error.",
+            "norm": "Anything requiring human intervention (blocked, failed, error) must surface in the attention group and count; history groups are for terminal no-action items.",
+            "severity": "P0",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Move Error (and review Suspended) into Needs you or a distinct 'Needs attention' group, increment the Needs you tile, add plain-language failure summary and next-step link."
+          },
+          {
+            "level": "component",
+            "element": "'Answer in Devin ↗' links under the two Needs input rows",
+            "problem": "The page's only required founder action is a small underlined text link, identical weight to secondary links, with a tiny external icon. No button affordance, poor tap target on mobile.",
+            "norm": "Primary per-row action = filled/outline button, min 40-44px touch target, verb-first, visually dominant over metadata.",
+            "severity": "P1",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Make it a compact ink button 'Answer in Devin ↗' right-aligned in the row (full-width secondary button on mobile), keep question text above it."
+          },
+          {
+            "level": "group",
+            "element": "KPI row: only 'Needs you 2' and 'Working 2' tiles",
+            "problem": "Two oversized, mostly-empty tiles leave the right ~40% of the row void (worst in dark/closed view) and omit Finished/Error, so no sense of progress or failure. Deviates from reference Legal pattern stated in brief.",
+            "norm": "Reference pages use 4 KPI tiles; tiles should be compact, scannable, and cover attention, in-progress, completed, failed.",
+            "severity": "P1",
+            "screenshot": "1440x900-first-visit-dark.png",
+            "fix": "Use 4 compact tiles per Legal: Needs you, Working, Finished today, Error/Blocked. Reduce tile height ~40%, keep amber only on Needs you count."
+          },
+          {
+            "level": "page",
+            "element": "Page header 'Devin / acme' with only 'Ask' on the right (closed state)",
+            "problem": "No freshness timestamp, refresh, Open in Devin, or overflow actions in normal state; 'Updated 4m ago' appears only in the key-rejected state. Founder cannot judge trustworthiness between meetings.",
+            "norm": "Read-only live views always show last-updated + manual refresh in the header; reference pages put actions top-right.",
+            "severity": "P1",
+            "screenshot": "1440x900-first-visit-dark.png",
+            "fix": "Header right: 'Updated 12:04 · Refresh' text button, 'Open Devin ↗' secondary, 'Ask' primary-adjacent. Show same timestamp in all populated/stale states."
+          },
+          {
+            "level": "component",
+            "element": "Devin agent user bubbles 'Anything merged today?' / purple 'D' avatar",
+            "problem": "Saturated purple fills and avatar dominate every open view, violating the monochrome constraint (ink primary, status color only for meaning) and visually outranking the amber Needs you signal.",
+            "norm": "Monochrome system: ink/grey chat bubbles, brand color reserved for status semantics; attention color must be the strongest hue on page.",
+            "severity": "P1",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Recolor user bubbles ink/black with white text, agent bubbles light grey, 'D' avatar ink. Keep purple nowhere; reserve amber/red/green for status."
+          },
+          {
+            "level": "layout",
+            "element": "Second Needs you row 'Upgrade Prisma to 6.x' on 375px list layout",
+            "problem": "Each session expands into stacked Pull request/Source/Updated label-value lines, so only the first Needs you item fits; the second is clipped mid-row at the viewport bottom despite the tile promising 2 urgent items.",
+            "norm": "Mobile glanceable lists keep urgent group fully above the fold; secondary metadata collapses behind row tap/expander.",
+            "severity": "P0",
+            "screenshot": "375x812-first-visit-light.png",
+            "fix": "Mobile row = title, question, status pill, Updated, Answer button only. Move PR/Source into an expanded detail or a single muted line 'acme/api#212 · Linear · 1h ago'."
+          },
+          {
+            "level": "layout",
+            "element": "768px view: table reduced to 'Session / Status' beside overlay panel",
+            "problem": "Pull request, Source and Updated columns silently vanish with no disclosure, while the panel overlays ~50% of the page with no scrim. Founder loses 'merged/open' and recency — core read-only value — and context behind the panel is half-usable.",
+            "norm": "Tablet breakpoints either dock with reflow and preserved key columns, or present a full overlay with scrim/close; data must not silently disappear.",
+            "severity": "P1",
+            "screenshot": "768x1024-populated-open-light.png",
+            "fix": "At 768 make panel a full-width overlay with dimmed backdrop and labelled Close, or collapse table to the same compact card list as 375. Never drop Updated/PR without an expander."
+          },
+          {
+            "level": "component",
+            "element": "Agent composer 'Message Devin agent' at bottom of 1440 panel",
+            "problem": "Composer is clipped by the viewport bottom edge in the main populated view — the panel's input does not fit on one screen, unlike the 768 view where it is fully visible.",
+            "norm": "Docked chat panels pin a fully visible composer within the viewport; primary input never partially off-screen.",
+            "severity": "P1",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Constrain panel to 100dvh flex column: header fixed, messages scroll, composer sticky-bottom fully visible with safe padding."
+          },
+          {
+            "level": "component",
+            "element": "Status pills 'Suspended', 'Working', 'Needs input'",
+            "problem": "'Suspended' is pale grey-on-white and near-invisible; 'Working' is static neutral grey with no activity cue; 'Needs input' duplicates the Needs you group header. Meanings are engineer vocabulary with no plain-language explanation for a non-engineer.",
+            "norm": "Status must meet WCAG AA contrast, pair color with icon/text meaning, show activity (spinner/pulse) for live work, and avoid redundant encoding.",
+            "severity": "P1",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Darken Suspended to AA grey with pause icon, add subtle animated dot to Working, add one-line plain-English subtext e.g. 'Waiting for your answer', 'Devin is coding', 'Paused'."
+          },
+          {
+            "level": "group",
+            "element": "Table columns 'Source (Slack/Linear/Web/API)' and 'Pull request acme/api#212 / open'",
+            "problem": "Founder-facing page leads with engineering provenance and repo jargon. PR state 'open/merged' is tiny muted lowercase, PR text is not visibly a link, and '—' gives no explanation. Non-technical users cannot tell outcome or where to click.",
+            "norm": "Founder views translate to outcomes ('Pull request ready to review/merged'), make links obviously interactive, and demote provenance to secondary detail.",
+            "severity": "P2",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Rename/render as 'Result': linked 'PR #212 · Open' with status dot, tooltip/plain label; move Source into muted secondary line or filter, not a top-level column on mobile/tablet."
+          },
+          {
+            "level": "component",
+            "element": "Working/Earlier session rows (no action/link)",
+            "problem": "Only Needs you rows have 'Answer in Devin'; all other rows appear inert and unclickable, yet agent answers offer 'Open in Devin' for the same sessions. Inconsistent affordance — founder cannot inspect a Working or Finished session from the list.",
+            "norm": "Every row representing an external object needs a consistent, discoverable open affordance (row click + chevron/link).",
+            "severity": "P1",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Make whole row clickable to Devin with hover/focus state and trailing 'Open ↗' on hover/focus (always visible on touch), keeping Answer as the distinct primary action."
+          },
+          {
+            "level": "component",
+            "element": "Agent tool traces 'Done · 3 tools · 5s', 'Session search', 'Session get messages ×2'",
+            "problem": "Raw tool names, counts and timings are exposed to a non-engineer founder, expanded by default in the second answer, adding noise and implying debugging UI. Inconsistent: first trace collapsed, second expanded.",
+            "norm": "Consumer chat hides implementation traces or collapses them under a muted 'How I found this' disclosure, default-collapsed and consistent.",
+            "severity": "P2",
+            "screenshot": "768x1024-populated-open-light.png",
+            "fix": "Default-collapse all traces to one muted line 'Checked 3 sources', remove tool codenames from the visible label, keep detail for a debug disclosure."
+          },
+          {
+            "level": "page",
+            "element": "Dark first-visit page below 'Working' group",
+            "problem": "Content ends at mid-viewport with a vast black void and no Earlier section, count, end-of-list, or scroll cue at 1440x900. Founder reasonably concludes only 4 sessions exist.",
+            "norm": "Lists signal completeness: show all groups, an end state/count, or clear scroll affordance; empty space must not masquerade as missing data.",
+            "severity": "P1",
+            "screenshot": "1440x900-first-visit-dark.png",
+            "fix": "Render Earlier in initial viewport by tightening KPI/header spacing, add '8 sessions · Updated …' summary and end-of-list footer; verify dark screenshot parity with light data."
+          },
+          {
+            "level": "page",
+            "element": "Empty state: 'No Devin sessions yet.'",
+            "problem": "Single muted sentence floating high on an otherwise blank page: no icon/illustration, no explanation of how sessions appear, no CTA to start one in Devin, and KPI tiles/header context abruptly removed causing layout shift. 'Ask' remains enabled to ask about nothing.",
+            "norm": "Empty states teach + activate: what this is, why empty, one primary next action; preserve page structure; disable irrelevant actions.",
+            "severity": "P1",
+            "screenshot": "1440x900-empty-light.png",
+            "fix": "Centered empty block: icon, 'No sessions yet — when Devin starts work (from Slack, Linear or Devin) it will appear here.', primary 'Start a session in Devin ↗', secondary 'Ask' disabled or replaced with suggested questions hidden."
+          },
+          {
+            "level": "page",
+            "element": "Not-connected state: 'Connect Devin to see its sessions here.' + 'Connect Devin' + enabled 'Ask'",
+            "problem": "Good primary button, but no explanation of what connecting entails (API key? workspace 'acme' missing from header here), permissions, or that it is managed in Integrations. Ask is a dead/misleading action pre-connection.",
+            "norm": "Connect flows state source, credential/permission needs, security note, and deep-link to the integration setup; disable downstream features until connected.",
+            "severity": "P1",
+            "screenshot": "1440x900-not-connected-light.png",
+            "fix": "Add 2-line explainer + 'You'll need a Devin API key for workspace acme' + link 'Manage in Integrations'; disable Ask with tooltip 'Connect Devin to ask'."
+          },
+          {
+            "level": "page",
+            "element": "Loading skeleton blocks",
+            "problem": "Skeleton shows an unexplained small pill above the tiles and one giant monolithic table block instead of group headers, rows and pills. It does not match final geometry, so content will shift/reflow, and there is no 'Loading…' text or aria-live cue.",
+            "norm": "Skeletons mirror final layout 1:1 (header meta, 2-4 tiles, group labels, 6 rows with pill shapes) and expose role=status aria-label.",
+            "severity": "P2",
+            "screenshot": "1440x900-loading-light.png",
+            "fix": "Rebuild skeleton to match populated layout row-for-row including 'acme' meta, group bars and pill ovals; add visually-hidden 'Loading Devin sessions'."
+          },
+          {
+            "level": "group",
+            "element": "Left sidebar truncation in loading/empty/not-connected vs populated views",
+            "problem": "'Artifacts' is cut at the viewport edge and Integrations/Demo User disappear in several states, while populated views show them. Navigation appears state-dependent and broken; unlabeled top icons (clock, layout, +) also have no visible labels/tooltips.",
+            "norm": "App chrome is invariant across page states; icon-only controls have tooltips/accessible names; nav must not clip at 900px height.",
+            "severity": "P2",
+            "screenshot": "1440x900-loading-light.png",
+            "fix": "Fix sidebar to full-height flex with scrollable nav and pinned Demo User footer in all states; add tooltips/aria-labels to search-row icons."
+          },
+          {
+            "level": "component",
+            "element": "Amber 'Needs you 2' / 'Needs input' text and muted secondary text ('merged', 'Yesterday', question copy)",
+            "problem": "Gold/amber on white and light-grey microtext are low contrast, especially the tile numeral that carries the page's key message and the truncated question 'Two migrations conflict…run the older one…' (truncated in light, full in dark — inconsistent wrapping).",
+            "norm": "WCAG AA: 4.5:1 for text; urgent counts use dark amber/brown on tinted fill; never truncate the blocking question — it is the decision content.",
+            "severity": "P1",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Use dark amber text (#8a5a00-class) on pale amber fill with border, bump secondary text one grey step and to ≥12px, allow full question wrap in Needs you rows at all themes."
+          },
+          {
+            "level": "group",
+            "element": "Session list controls (none) above table header 'Session/Status/Pull request/Source/Updated'",
+            "problem": "No search, filter by status, sort, or 'show more' for Earlier. With real volume a founder cannot find a session or confirm the list is complete; non-interactive column headers mimic a sortable data table.",
+            "norm": "Lists >~10 rows need filter/search and explicit pagination/expand; static headers should not imitate interactive table chrome.",
+            "severity": "P2",
+            "screenshot": "1440x900-key-rejected-light.png",
+            "fix": "Add compact filter chips (All / Needs you / Working / Finished / Error) doubling as the 4 KPI facets, 'Earlier (4) — Show all' expander, and drop the faux table header on grouped mobile-style lists."
+          },
+          {
+            "level": "component",
+            "element": "'Ask' button and panel collapse icon (top-right of Devin agent)",
+            "problem": "'Ask' is vague (ask whom, about what?) for a first-time founder, and the open panel's only close control is an unlabeled sidebar-collapse glyph. First-visit users get no hint, example prompt, or onboarding in the closed state.",
+            "norm": "Name agent entry points by value ('Ask about sessions'), label icon controls, seed first use with 2-3 suggested prompts.",
+            "severity": "P2",
+            "screenshot": "1440x900-first-visit-dark.png",
+            "fix": "Relabel 'Ask Devin', add aria-label 'Close Devin agent' to collapse icon, and on first open show suggestion chips: 'Anything merged today?', 'What needs me?'."
+          }
+        ],
+        "excellent": [
+          "Priority grouping Needs you → Working → Earlier in 1440x900-populated-open-light.png directly answers 'does Devin need me, and what is it doing?' with Needs you visually outlined in amber.",
+          "Needs you tile count and amber Needs input pills use status color for meaning, consistent between 1440x900-populated-open-light.png and 1440x900-first-visit-dark.png.",
+          "Agent answers in 768x1024-populated-open-light.png cite concrete PRs (acme/web#418, acme/api#215) and provide 'Open in Devin' links per session — verifiable, not vague summaries.",
+          "Not-connected state in 1440x900-not-connected-light.png has a single clear solid-ink 'Connect Devin' primary CTA — the right hierarchy, sadly unmatched elsewhere.",
+          "375x812-first-visit-light.png correctly keeps the Needs you group and Answer in Devin first in the stacked list layout rather than forcing a horizontal table.",
+          "Loading state in 1440x900-loading-light.png preserves sidebar and 'Devin' header chrome so the page does not flash blank."
+        ]
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 135,
+      "costUsd": 0.114108,
+      "result": {
+        "verdict": "The core information architecture—grouping sessions by urgency ('Needs you' first) and surfacing blocker questions inline—serves the non-technical founder persona well, but the execution suffers from severe viewport-clipping bugs across desktop and mobile, broken app-shell states, a violation of the monochrome design constraint in the chat panel, and confusing conceptual overlap between the read-only 'Devin agent' helper and Devin itself.",
+        "findings": [
+          {
+            "level": "layout",
+            "element": "Devin agent chat input bar and left sidebar footer",
+            "problem": "At the standard 1440x900 desktop viewport, both the main app shell and the docked chat panel overflow the bottom of the screen: the 'Message Devin agent' input bar at the bottom right is sliced in half vertically, and the 'DU Demo User' profile footer in the left sidebar is pushed completely off-screen.",
+            "norm": "App shells with docked sidebars and chat panels must constrain their height to the available viewport (100dvh minus any top chrome) with independent internal scroll areas for the main canvas and chat message stream, keeping the composer pinned and fully visible.",
+            "severity": "P0",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Set the app shell container to fill the exact remaining viewport height (`height: calc(100vh - var(--mockup-bar-height))`), make the chat transcript container `flex: 1; overflow-y: auto`, and pin the chat composer and sidebar user footer to the bottom of their respective columns."
+          },
+          {
+            "level": "layout",
+            "element": "Left navigation sidebar and main canvas height in Loading, Empty, and Not-connected states",
+            "problem": "When the main canvas has little content, the entire app shell collapses vertically to ~450px high, leaving the bottom half of the 1440x900 screen as a dead off-white void and truncating the left sidebar navigation (cutting off 'Integrations' and 'DU Demo User' in Loading, and also cutting off 'Artifacts' in Empty and Not-connected states).",
+            "norm": "Navigation chrome and page backgrounds must remain stable and full-viewport (`min-height: 100%`) regardless of whether the main content view is loading, empty, or disconnected.",
+            "severity": "P0",
+            "screenshot": "1440x900-empty-light.png",
+            "fix": "Apply `min-height: 100%` (or full viewport height) to the root layout grid and render the complete sidebar navigation tree ('Artifacts', 'Integrations', 'DU Demo User') identically across all page states."
+          },
+          {
+            "level": "layout",
+            "element": "Mobile viewport scroll container and bottom clipping",
+            "problem": "On the 375x812 mobile screen, the page content clips abruptly at ~680px down the viewport (slicing right through 'Pull request acme/api#212 open'), leaving a ~130px blank white block at the bottom of the screen.",
+            "norm": "Mobile views must use the full vertical viewport height and allow smooth natural scrolling to the bottom of the document.",
+            "severity": "P0",
+            "screenshot": "375x812-first-visit-light.png",
+            "fix": "Remove the fixed height/overflow clip on the mobile wrapper so the list extends to the bottom of the 812px viewport."
+          },
+          {
+            "level": "page",
+            "element": "Missing 'Earlier' section in Dark Mode first-visit state",
+            "problem": "The dark mode view omits the entire 'Earlier' section (4 sessions including the 'Error' and 'Finished' rows visible in the light populated state), leaving the bottom half of the viewport empty and hiding a failed session ('Migrate billing webhooks to the new queue') from the founder.",
+            "norm": "Theme or panel-toggle variations of the same populated state must render the complete dataset consistently.",
+            "severity": "P1",
+            "screenshot": "1440x900-first-visit-dark.png",
+            "fix": "Render the 'Earlier' table section in the closed-panel / dark-mode state to match the populated light view."
+          },
+          {
+            "level": "component",
+            "element": "User message bubbles and brand avatar in Devin agent panel",
+            "problem": "The chat panel uses saturated neon-purple bubbles (`#8B5CF6`) with black text for user prompts and the panel avatar. This directly violates the brief's constraint ('the app is monochrome—ink primary, status colors only for meaning'), fails contrast norms with dark text on a mid-tone purple background, and visually overpowers the amber 'Needs you' alerts on the main page.",
+            "norm": "In a monochrome ink-primary design system where color is strictly reserved for semantic status, user chat bubbles should use primary ink (with light text) or a subtle warm-stone surface tint.",
+            "severity": "P1",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Restyle user message bubbles to use the app's primary ink fill with white/off-white text (or a subtle stone-200 surface with ink text), and change the agent avatar and send button from purple to primary ink."
+          },
+          {
+            "level": "component",
+            "element": "Mobile and tablet top app bar ('[D] Devin agent')",
+            "problem": "At 375px and 768px, the global top navigation bar next to the hamburger menu displays the purple '[D] Devin agent' chat identity instead of the Rakazo app/workspace header, immediately above the page's own 'Devin acme' header. At 768px with the drawer open, '[D] Devin agent' appears twice side-by-side at the top of the screen.",
+            "norm": "A responsive app bar with a hamburger trigger represents the global workspace/page navigation ('Rakazo' or 'Devin · acme'), not a secondary utility drawer.",
+            "severity": "P1",
+            "screenshot": "768x1024-populated-open-light.png",
+            "fix": "Replace '[D] Devin agent' in the mobile/tablet top bar with the workspace or page title, or merge the mobile top bar and page header into a single compact header (`[≡] Devin acme` on the left, `[Ask]` on the right)."
+          },
+          {
+            "level": "group",
+            "element": "Conceptual naming of 'Devin agent' vs. 'Ask' button and read-only constraint",
+            "problem": "The trigger button says 'Ask', but the panel header calls the bot 'Devin agent'. Because Devin itself is an AI coding agent, naming Rakazo's read-only Q&A assistant 'Devin agent' encourages a non-technical founder to reply to Devin's blocker questions directly inside the chat box rather than clicking 'Answer in Devin ↗'.",
+            "norm": "Read-only copilot sidebars that summarize external tool activity should clearly distinguish themselves from the external agent itself, both in naming and input placeholder copy.",
+            "severity": "P1",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Rename the panel header to 'Ask about Devin' (matching the 'Ask' trigger button) and change the composer placeholder to 'Ask about sessions or PRs (read-only)…'."
+          },
+          {
+            "level": "component",
+            "element": "'Ask' button in Not-connected, Empty, and Loading states",
+            "problem": "The '[Ask]' button remains active in the top-right header even when Devin is not connected ('Connect Devin to see its sessions here'), when no sessions exist, and while the page is still loading.",
+            "norm": "Contextual AI actions that query an integration's data should be hidden or disabled when the integration is disconnected or has zero records.",
+            "severity": "P1",
+            "screenshot": "1440x900-not-connected-light.png",
+            "fix": "Hide the 'Ask' button in the Not-connected and Loading states, and either hide or disable it in the Empty state."
+          },
+          {
+            "level": "group",
+            "element": "Key-rejected stale state banner and conflicting timestamps",
+            "problem": "In the key-rejected state, the page header says 'Updated 4m ago', while rows in the 'Working' table below claim they were updated '1m ago' and '3m ago'—a logical impossibility if the API key was rejected 4 minutes ago. Furthermore, the error 'Devin rejected the key. [Reconnect]' is unboxed inline text while stale 'Working' rows remain at 100% opacity, making cached data look live.",
+            "norm": "When credentials fail, stale data must not display relative timestamps newer than the last successful sync, and the error state should use a high-visibility alert banner and visually mute stale live-status rows.",
+            "severity": "P1",
+            "screenshot": "1440x900-key-rejected-light.png",
+            "fix": "Wrap the error in a full-width error banner explaining the impact ('Devin rejected the API key 4m ago. Showing cached sessions—reconnect to resume live updates.'), ensure row timestamps are >=4m ago, and slightly dim the table to signal staleness."
+          },
+          {
+            "level": "group",
+            "element": "KPI summary tiles ('Needs you', 'Working')",
+            "problem": "Reference pages in Rakazo use 4 KPI tiles, whereas this page uses only 2 oversize, mostly empty boxes that stop halfway across the canvas when the panel is closed. Worse, 'Earlier' contains an 'Error' session ('Migrate billing webhooks to the new queue') and unmerged PRs, which are completely invisible in the top summary tiles.",
+            "norm": "Executive KPI rows should span the content grid consistently with peer pages and surface all actionable exceptions (including failed/errored sessions and open/merged PR counts), while clearly distinguishing static summary tiles from interactive filter tabs.",
+            "severity": "P1",
+            "screenshot": "1440x900-first-visit-dark.png",
+            "fix": "Use a balanced 4-tile summary row across the container width—e.g., 'Needs you (2)', 'Working (2)', 'Open PRs (3)', and 'Errored / Blocked (1)' (or 'Merged recently (1)')—and reduce the excessive vertical height of the tiles."
+          },
+          {
+            "level": "component",
+            "element": "Status pills vs. section headers and 'Finished' status on unmerged PRs",
+            "problem": "Section headers and status pills use inconsistent or redundant labels: the section 'Needs you' has pills labeled 'Needs input'; the section 'Working' repeats 'Working' on every pill; and under 'Earlier', 'Bump Expo SDK...' is marked with a green 'Finished' pill even though its pull request (`acme/mobile#97`) is still 'open' (unmerged), right below another 'Finished' row whose PR is 'merged'.",
+            "norm": "For a non-engineer founder, 'Finished' implies the feature has shipped; an ended session whose PR is still awaiting review/merge should be distinguished from merged work, and section labels should align with status terminology.",
+            "severity": "P2",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Align terminology ('Needs you' or 'Needs input' consistently), and differentiate pull request state clearly (e.g., use semantic pills on the PR column for `Open PR` vs. `Merged`, or label the session status `PR open` vs. `Merged`)."
+          },
+          {
+            "level": "component",
+            "element": "Missing action links and unclear click targets on table rows",
+            "problem": "Only 'Needs you' rows have an explicit 'Answer in Devin ↗' link. 'Working', 'Finished', 'Error' ('Migrate billing webhooks to the new queue'), and 'Suspended' rows have no link to open the session in Devin, and PR identifiers (`acme/api#212`) lack underlines or external-link icons (unlike in the chat panel where `acme/web#418` is underlined).",
+            "norm": "Every session row—especially an 'Error' session—and every PR reference should provide a clear, consistent affordance to inspect the session in Devin or the PR in GitHub.",
+            "severity": "P2",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Make PR identifiers underlined links with a subtle `↗` or PR icon, and provide a row-level action or hover link ('Open in Devin ↗') on all sessions, especially on the 'Error' row."
+          },
+          {
+            "level": "component",
+            "element": "Truncated blocker question in 'Needs you' row",
+            "problem": "In the 'Upgrade Prisma to 6.x' row, Devin's blocker question is truncated mid-sentence with an ellipsis ('...Should I squash them or keep both and run the older one...') even though understanding the question is the primary job of the page.",
+            "norm": "Critical blocker questions surfaced for executive triage should wrap up to 2–3 full lines rather than truncating the very options the user is being asked to choose between.",
+            "severity": "P2",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Allow the blocker question subtext in 'Needs you' rows to wrap cleanly without 2-line truncation (as it does in the wider closed-panel view)."
+          },
+          {
+            "level": "group",
+            "element": "Mobile session card metadata layout",
+            "problem": "On mobile (375px), each session stacks 'Pull request', 'Source', and 'Updated' as three separate key-value rows beneath the title, consuming ~90px of vertical height for three short tokens (`—`, `Slack`, `12m ago`). As a result, a busy founder on mobile sees only 1.5 sessions above the fold.",
+            "norm": "Mobile list cards should condense secondary metadata into a single inline row so users can scan 3–4 items per screen.",
+            "severity": "P2",
+            "screenshot": "375x812-first-visit-light.png",
+            "fix": "Collapse 'Pull request', 'Source', and 'Updated' on mobile into a single compact metadata line (e.g., `acme/api#212 (open) · Linear · 1h ago` or `No PR · Slack · 12m ago`)."
+          },
+          {
+            "level": "group",
+            "element": "Tablet overlay panel lack of backdrop and clipped underlying KPI card",
+            "problem": "At 768px, the open chat panel overlays the right half of the page without a backdrop scrim, slicing the 'Working' KPI card in half while leaving the left half of the table looking like an active split-screen view.",
+            "norm": "When a drawer overlays content at tablet breakpoints rather than reflowing the grid, a subtle backdrop scrim or clean full-bleed sheet behavior should indicate that the underlying canvas is occluded.",
+            "severity": "P2",
+            "screenshot": "768x1024-populated-open-light.png",
+            "fix": "Either apply a subtle dimming scrim over the main canvas when the overlay drawer is open at <=768px, or reflow the main canvas into the narrow column layout."
+          },
+          {
+            "level": "group",
+            "element": "Expanded tool-call debug log and generic composer icons in chat panel",
+            "problem": "The chat transcript expands internal tool calls (`v Done · 3 tools · 5s` -> `Session search`, `Session get messages ×2`) by default, exposing API plumbing to a non-engineer founder and pushing the input box off-screen. Meanwhile, the input box includes file-upload (`+`) and voice-dictation (`🎙️`) icons unsuitable for a simple read-only session query tool, while lacking quick-prompt starter chips.",
+            "norm": "For non-technical users, internal agent tool traces should remain collapsed by default, and read-only Q&A panels should prioritize starter prompt chips over file-attachment chrome.",
+            "severity": "P2",
+            "screenshot": "1440x900-populated-open-light.png",
+            "fix": "Keep tool traces collapsed by default, remove the `+` attachment icon from the read-only chat input, and add 2–3 starter chips (e.g., 'What needs my input?', 'Anything merged today?') on first open."
+          },
+          {
+            "level": "group",
+            "element": "Empty, Not-connected, and Loading state content design",
+            "problem": "The Empty state ('No Devin sessions yet.') provides no guidance on how sessions are triggered (via Slack, Linear, or Web); the Not-connected state gives no context on permissions or value; and the Loading skeleton renders a single massive ~230px grey block instead of row skeletons plus an extra top skeleton bar that causes a vertical layout shift once loaded.",
+            "norm": "Empty and onboarding states should explain how data populates and offer next steps, and skeleton states must match the geometry of the loaded view to prevent layout shift.",
+            "severity": "P3",
+            "screenshot": "1440x900-loading-light.png",
+            "fix": "Remove the extra top skeleton pill in Loading and replace the giant grey block with 4–5 row skeletons; in Empty state, add helper copy explaining that sessions started via Slack, Linear, or Devin Web appear here automatically."
+          }
+        ],
+        "excellent": [
+          "Grouping sessions by urgency ('Needs you' -> 'Working' -> 'Earlier') directly answers the founder's primary question ('Does Devin need me?') in under a second.",
+          "Surfacing Devin's exact blocker question inline beneath the session title with a direct 'Answer in Devin ↗' deep link eliminates unnecessary clicks for busy founders.",
+          "Calm, high-legibility typographic hierarchy and warm monochrome surface palette in the main table (when the purple chat bubbles are excluded) feel refined and appropriate for an executive tool."
+        ]
+      }
+    }
+  ]
+}
