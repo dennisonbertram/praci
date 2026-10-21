@@ -20,6 +20,7 @@ export const INVESTORS_AGENT_BUILTIN_TOOLS = [
   "contacts_add",
   "contacts_save",
   "investor_update_draft",
+  "skill_read",
   "finance_overview",
   "finance_breakdown",
   "search_data_room",
