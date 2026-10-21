@@ -201,6 +201,40 @@ describe("company source worker", () => {
     }
   });
 
+  it("rejects an oversized Gmail refresh cursor before returning units", async () => {
+    const changedIds = Array.from(
+      { length: 2_000 },
+      (_, index) => `${String(index).padStart(4, "0")}-${"x".repeat(295)}`,
+    );
+    const worker = createCompanySourceWorker({
+      prisma: prisma(),
+      mail: mailProvider({
+        listChanges: vi.fn(async () => ({
+          cursor: "oversized-next",
+          changedIds,
+          deletedIds: [],
+        })),
+      }),
+      extractor: { relevant: vi.fn(), extract: vi.fn() },
+    });
+    await expect(
+      worker.discover(
+        {
+          source: {
+            id: "gmail-refresh",
+            sourceKind: "gmail",
+            connectionId: "connection-1",
+            scope: { allTime: true },
+          },
+          cursor: null,
+          maxUnits: 1,
+          refresh: { checkpoint: { cursor: "baseline" } },
+        },
+        context(),
+      ),
+    ).rejects.toMatchObject({ code: "refresh_change_limit_exceeded" });
+  });
+
   it("does not replace an expired Gmail history cursor with a full scan", async () => {
     const worker = createCompanySourceWorker({
       prisma: prisma(),

@@ -1221,6 +1221,7 @@ async function importEntity(
           "email_local_part_candidate",
           "ambiguous_organisation_name",
           "conflicting_organisation_domain",
+          "conflicting_strong_identities",
         ],
       },
     },
@@ -1445,7 +1446,7 @@ async function importEntity(
     }
   }
 
-  if (!forceSeparate && !entityId && input.entity.kind === "person") {
+  if (!forceSeparate && matchedGroups.length === 0 && !entityId && input.entity.kind === "person") {
     const normalizedName = normalizeCompanyName(input.entity.displayName);
     const sameName = await db.companyEntity.findMany({
       where: { ...scope, kind: "person", normalizedName },
@@ -4230,11 +4231,8 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
         }),
       ]);
       const resolvedKeys = new Set(resolved.map((item) => `${item.sourceKey}:${item.reason}`));
-      const candidateKeys = new Set(candidates.map((candidate) => candidate.sourceKey));
       const items: CompanyReview["items"] = [];
       for (const fact of factRows) {
-        if (fact.record.evidence.some((evidence) => candidateKeys.has(evidence.sourceKey)))
-          continue;
         const factIds =
           fact.kind === "entity"
             ? await mergedEntityGroupIds(prisma, scope, fact.record.id)
@@ -4666,6 +4664,7 @@ export function companyForActor(prisma: RootDb, actor: Actor) {
             "email_local_part_candidate",
             "ambiguous_organisation_name",
             "conflicting_organisation_domain",
+            "conflicting_strong_identities",
             "rejected_name_only_claim",
           ].includes(candidate.reason)
         ) {

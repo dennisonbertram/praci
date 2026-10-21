@@ -11,6 +11,7 @@ import type {
   MailProvider,
 } from "@rakazo/adapter-kit";
 import {
+  COMPANY_IMPORT_CURSOR_MAX_BYTES,
   CompanyDataRoomScopeSchema,
   CompanyGenericScopeSchema,
   CompanyMailScopeSchema,
@@ -423,18 +424,22 @@ export function createCompanySourceWorker(deps: {
         const selected = ids.slice(offset, offset + maxUnits);
         const nextOffset = offset + selected.length;
         const done = nextOffset >= ids.length;
+        const cursorSnapshot = {
+          refreshIds: ids,
+          refreshOffset: nextOffset,
+          refreshCursor: changes.cursor,
+        };
+        if (
+          Buffer.byteLength(JSON.stringify(cursorSnapshot), "utf8") >
+          COMPANY_IMPORT_CURSOR_MAX_BYTES
+        )
+          throw new CompanyImportWorkerError("refresh_change_limit_exceeded");
         return {
           units: selected.map((id) => ({
             unitKey: `gmail:${hash(id)}`,
             cursor: { itemId: id },
           })),
-          nextCursor: done
-            ? null
-            : {
-                refreshIds: ids,
-                refreshOffset: nextOffset,
-                refreshCursor: changes.cursor,
-              },
+          nextCursor: done ? null : cursorSnapshot,
           done,
           proposedCheckpoint: { kind: "gmail_history", cursor: changes.cursor },
         };

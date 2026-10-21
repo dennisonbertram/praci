@@ -302,6 +302,190 @@ describePostgres("company review (PostgreSQL)", () => {
     expect(await prisma.companyCandidate.findUnique({ where: { id: candidate.id } })).toBeNull();
   });
 
+  it.each([
+    { label: "an explicit target", separate: false },
+    { label: "keep separate", separate: true },
+  ])(
+    "resolves conflicting strong identities through $label and replays the claim",
+    async ({ separate }) => {
+      const company = companyForActor(prisma, actor);
+      const importPerson = async (displayName: string, email: string, sourceItemId: string) => {
+        const result = await company.importEntity({
+          entity: {
+            kind: "person",
+            displayName,
+            attrs: { workEmails: [email] },
+            confidence: 0.9,
+          },
+          evidence: {
+            stance: "supports",
+            sourceKind: "slack",
+            sourceItemId,
+            quote: `Synthetic identity for ${displayName}.`,
+            contentHash: `${sourceItemId}-hash`,
+            extractedAt: "2026-01-06T03:04:05.000Z",
+            extractorModel: null,
+            confidence: 0.9,
+          },
+        });
+        if ("suppressed" in result || "deferred" in result)
+          throw new Error("Expected a seeded person");
+        return result;
+      };
+      const first = await importPerson(
+        "Synthetic Strong Identity One",
+        "strong-one@example.test",
+        "strong-one",
+      );
+      const second = await importPerson(
+        "Synthetic Strong Identity Two",
+        "strong-two@example.test",
+        "strong-two",
+      );
+      expect(
+        await prisma.companyIdentity.findMany({
+          where: { spaceId, ownerUserId: userId, entityId: { in: [first.id, second.id] } },
+          select: { entityId: true, identityType: true, identityValue: true },
+        }),
+      ).toHaveLength(2);
+      const proposal = {
+        entity: {
+          kind: "person" as const,
+          displayName: "Synthetic Conflicting Identity",
+          attrs: { workEmails: ["strong-one@example.test", "strong-two@example.test"] },
+          confidence: 0.9,
+        },
+        evidence: {
+          stance: "supports" as const,
+          sourceKind: "slack" as const,
+          sourceItemId: "strong-conflict",
+          quote: "Synthetic conflicting identity proposal.",
+          contentHash: "strong-conflict-v1",
+          extractedAt: "2026-01-06T03:05:05.000Z",
+          extractorModel: null,
+          confidence: 0.9,
+        },
+      };
+      const imported = await company.importEntity(proposal);
+      if ("suppressed" in imported || "deferred" in imported)
+        throw new Error("Expected the conflicting proposal fact");
+      const candidate = await prisma.companyCandidate.findFirstOrThrow({
+        where: { spaceId, ownerUserId: userId, reason: "conflicting_strong_identities" },
+      });
+      expect(candidate.entityIds).toEqual(expect.arrayContaining([first.id, second.id]));
+      const item = (await company.review()).items.find(
+        (entry) => entry.kind === "candidate" && entry.id === candidate.id,
+      );
+      if (!item || item.kind !== "candidate")
+        throw new Error("Expected a conflicting identity candidate");
+      await company.resolveCandidate({
+        action: "confirm",
+        candidateId: candidate.id,
+        version: item.candidate.version,
+        separate,
+        subjects: {},
+        ...(separate ? {} : { targetId: first.id }),
+      });
+      const replay = await company.importEntity({
+        ...proposal,
+        evidence: {
+          ...proposal.evidence,
+          quote: "Synthetic conflicting identity proposal changed.",
+          contentHash: "strong-conflict-v2",
+        },
+      });
+      if ("suppressed" in replay || "deferred" in replay)
+        throw new Error("Expected the resolved replay");
+      expect(replay.id).toBe(separate ? imported.id : first.id);
+      expect(
+        await prisma.companyCandidate.findMany({
+          where: { spaceId, ownerUserId: userId, reason: "conflicting_strong_identities" },
+        }),
+      ).toEqual([]);
+      expect((await company.review()).items).not.toEqual(
+        expect.arrayContaining([expect.objectContaining({ kind: "candidate" })]),
+      );
+    },
+  );
+
+  it("keeps a low-confidence conflicting fact and its candidate visible through contradiction", async () => {
+    const company = companyForActor(prisma, actor);
+    const seed = async (displayName: string, email: string, sourceItemId: string) => {
+      const result = await company.importEntity({
+        entity: {
+          kind: "person",
+          displayName,
+          attrs: { workEmails: [email] },
+          confidence: 0.9,
+        },
+        evidence: {
+          stance: "supports",
+          sourceKind: "slack",
+          sourceItemId,
+          quote: `Synthetic identity for ${displayName}.`,
+          contentHash: `${sourceItemId}-hash`,
+          extractedAt: "2026-01-07T03:04:05.000Z",
+          extractorModel: null,
+          confidence: 0.9,
+        },
+      });
+      if ("suppressed" in result || "deferred" in result)
+        throw new Error("Expected a seeded person");
+    };
+    await seed("Synthetic Review Identity One", "review-one@example.test", "review-one");
+    await seed("Synthetic Review Identity Two", "review-two@example.test", "review-two");
+    const proposal = {
+      entity: {
+        kind: "person" as const,
+        displayName: "Synthetic Low Confidence Conflict",
+        attrs: { workEmails: ["review-one@example.test", "review-two@example.test"] },
+        confidence: 0.3,
+      },
+      evidence: {
+        stance: "supports" as const,
+        sourceKind: "slack" as const,
+        sourceItemId: "review-conflict",
+        quote: "Synthetic low-confidence conflicting proposal.",
+        contentHash: "review-conflict-v1",
+        extractedAt: "2026-01-07T03:05:05.000Z",
+        extractorModel: null,
+        confidence: 0.3,
+      },
+    };
+    const imported = await company.importEntity(proposal);
+    if ("suppressed" in imported || "deferred" in imported)
+      throw new Error("Expected the low-confidence conflict fact");
+    const initial = await company.review();
+    expect(initial.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "fact", id: imported.id, reason: "low_confidence" }),
+        expect.objectContaining({
+          kind: "candidate",
+          candidate: expect.objectContaining({ reason: "conflicting_strong_identities" }),
+        }),
+      ]),
+    );
+    await company.importEntity({
+      ...proposal,
+      evidence: {
+        ...proposal.evidence,
+        stance: "contradicts",
+        quote: "Synthetic contradictory conflicting proposal.",
+        contentHash: "review-conflict-v2",
+      },
+    });
+    const contradicted = await company.review();
+    expect(contradicted.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "fact", id: imported.id, reason: "contradiction" }),
+        expect.objectContaining({
+          kind: "candidate",
+          candidate: expect.objectContaining({ reason: "conflicting_strong_identities" }),
+        }),
+      ]),
+    );
+  });
+
   it("binds deferred subjects explicitly and retains exact decisions through replay and disconnect", async () => {
     const company = companyForActor(prisma, actor);
     const target = await company.importEntity({

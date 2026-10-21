@@ -1051,10 +1051,13 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         await publish(actor, payload.runId);
         return;
       }
-      if (error instanceof CompanyImportWorkerError && error.code === "gmail_history_expired") {
+      if (
+        error instanceof CompanyImportWorkerError &&
+        (error.code === "gmail_history_expired" || error.code === "refresh_change_limit_exceeded")
+      ) {
         await markCompanyRefreshRecoveryRequired(deps.prisma, actor, {
           ...claimInput,
-          reason: "gmail_history_expired",
+          reason: error.code,
         });
         await notify(
           actor,

@@ -17,6 +17,7 @@ const db = vi.hoisted(() => ({
   awaitCompanyRefreshConsent: vi.fn(async () => true),
   updateCompanyRefreshCapability: vi.fn(async () => undefined),
   markCompanyImportNotificationState: vi.fn(async () => undefined),
+  markCompanyRefreshRecoveryRequired: vi.fn(async () => true),
   clearCompanyImportNotificationPending: vi.fn(async () => undefined),
   claimCompanyImportUnit: vi.fn(),
   completeCompanyImportUnit: vi.fn(async () => undefined),
@@ -82,6 +83,7 @@ vi.mock("@rakazo/db", () => ({
   awaitCompanyRefreshConsent: db.awaitCompanyRefreshConsent,
   updateCompanyRefreshCapability: db.updateCompanyRefreshCapability,
   markCompanyImportNotificationState: db.markCompanyImportNotificationState,
+  markCompanyRefreshRecoveryRequired: db.markCompanyRefreshRecoveryRequired,
   CompanyImportError: class CompanyImportError extends Error {
     constructor(readonly code: string) {
       super(code);
@@ -109,7 +111,7 @@ vi.mock("@rakazo/db", () => ({
   updateCompanyImportRun: vi.fn(),
 }));
 
-import { createCompanyImportEngine } from "./company-import-engine.js";
+import { CompanyImportWorkerError, createCompanyImportEngine } from "./company-import-engine.js";
 
 const actor: Actor = {
   spaceId: "space-1",
@@ -172,6 +174,7 @@ const source = {
   runId: "run-1",
   sourceKind: "data_room",
   connectionId: null,
+  refreshSourceId: "refresh-source",
   scope: {},
   cursor: null,
   run: { status: "running", disclosureVersion: AI_DISCLOSURE_VERSION },
@@ -184,10 +187,11 @@ function createHarness(options?: {
   sourceScope?: Record<string, unknown>;
   ownedItemIds?: string[];
   runStatus?: string;
-  runMode?: "sample" | "full";
+  runMode?: "sample" | "full" | "refresh";
   terminalStatus?: string;
   manualOnly?: boolean;
   readPage?: CompanyImportReadPage;
+  discoverError?: string;
 }) {
   let consentGranted = true;
   let modelId = "synthetic-model";
@@ -216,11 +220,10 @@ function createHarness(options?: {
       descriptor.sourceKind === "mcp"
         ? { kind: "manual_only", reason: "generic_tool_manual_only" }
         : { kind: "supported", checkpointKind: "data_room_updated_at" },
-    discover: async (): Promise<CompanyImportDiscoveryPage> => ({
-      units: [],
-      nextCursor: null,
-      done: true,
-    }),
+    discover: async (): Promise<CompanyImportDiscoveryPage> => {
+      if (options?.discoverError) throw new CompanyImportWorkerError(options.discoverError);
+      return { units: [], nextCursor: null, done: true };
+    },
     read: async (input, context) => {
       readCursors.push(input.cursor);
       await context.executeModelCall({
@@ -345,6 +348,50 @@ describe("company import engine", () => {
       }),
     );
     expect(jobs.enqueue).toHaveBeenCalledTimes(2);
+    expect(realtime.publish).toHaveBeenCalledTimes(1);
+  });
+
+  it("routes an oversized refresh cursor to fenced recovery without publishing completion", async () => {
+    const { engine, jobs, realtime } = createHarness({
+      runMode: "refresh",
+      discoverError: "refresh_change_limit_exceeded",
+    });
+    db.claimCompanyImportUnit.mockResolvedValueOnce({
+      id: "unit-1",
+      unitKey: "discover:synthetic",
+      cursor: null,
+      claimToken: "fence-1",
+      source,
+    });
+
+    await engine.unitJob({
+      spaceId: actor.spaceId,
+      userId: actor.userId,
+      runId: "run-1",
+      unitId: "unit-1",
+    });
+
+    expect(db.markCompanyRefreshRecoveryRequired).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ spaceId: actor.spaceId, userId: actor.userId }),
+      expect.objectContaining({
+        runId: "run-1",
+        sourceId: "source-1",
+        unitId: "unit-1",
+        claimToken: "fence-1",
+        reason: "refresh_change_limit_exceeded",
+      }),
+    );
+    expect(db.completeCompanyImportUnit).not.toHaveBeenCalled();
+    expect(db.failCompanyImportUnit).not.toHaveBeenCalled();
+    expect(db.createNotification).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        title: "Company refresh needs recovery",
+        importance: "attention",
+      }),
+    );
+    expect(jobs.enqueue).toHaveBeenCalledTimes(1);
     expect(realtime.publish).toHaveBeenCalledTimes(1);
   });
 
