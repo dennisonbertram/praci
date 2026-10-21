@@ -5213,7 +5213,13 @@ export function ShellPage() {
             }
           />
         ) : contactsMode ? (
-          <ContactsPage />
+          <ContactsPage
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
+          />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
