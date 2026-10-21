@@ -137,8 +137,8 @@ it("has no switch on other servers", async () => {
 
 it("Carta links back to Cap table, hides the MCP host and names who loses access", async () => {
   await show(false);
-  const link = container.querySelector<HTMLAnchorElement>('a[href="/app/cap-table"]');
-  expect(link?.textContent).toBe("Open Cap table");
+  const link = container.querySelector<HTMLAnchorElement>('a[href="/app/investors"]');
+  expect(link?.textContent).toBe("Open Investors");
   expect(container.textContent).not.toContain("via MCP");
   expect(container.textContent).toContain("asks you before each one");
   await press("Remove Carta");

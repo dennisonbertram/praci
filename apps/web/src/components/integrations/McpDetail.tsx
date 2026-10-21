@@ -233,8 +233,8 @@ export function McpDetail({
         ) : null}
         <div className="mt-4 flex flex-wrap gap-2">
           {carta ? (
-            <Button variant="outline" render={<Link to="/app/cap-table" />}>
-              <Trans>Open Cap table</Trans>
+            <Button variant="outline" render={<Link to="/app/investors" />}>
+              <Trans>Open Investors</Trans>
             </Button>
           ) : null}
           {server.transport !== "stdio" ? (

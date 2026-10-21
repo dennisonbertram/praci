@@ -160,7 +160,7 @@ function McpCard({
   // The app page a known server feeds, opened from its card like Mercury's "Open Finance".
   const page =
     known?.id === "carta"
-      ? { to: "/app/cap-table", label: t`Open Cap table` }
+      ? { to: "/app/investors", label: t`Open Investors` }
       : devin
         ? { to: "/app/devin", label: t`Open Devin` }
         : undefined;
@@ -393,7 +393,7 @@ export function IntegrationsHome({
   const connectOnLoad = useRef(params.get("connect"));
   // /app/integrations?open=gmail shows that app's page, where its accounts can be removed or added.
   const openOnLoad = useRef(params.get("open"));
-  // ...&returnTo=/app/cap-table sends the founder back there when that dialog closes.
+  // ...&returnTo=/app/investors sends the founder back there when that dialog closes.
   const returnTo = useRef(appReturnPath(params.get("returnTo")));
   const navigate = useNavigate();
   const [visible, setVisible] = useState(CONNECTION_CATALOG_PAGE_SIZE);
