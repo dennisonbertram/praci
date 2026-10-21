@@ -51,7 +51,7 @@ export function SendToAgentMenu({
         <Send aria-hidden="true" />
         <Trans>Send to agent</Trans>
       </Trigger>
-      <Content className="max-h-72 min-w-40">
+      <Content className="max-h-72 w-max min-w-40 max-w-[calc(100vw-2rem)]">
         {agents.map((agent) => (
           <Item key={agent.id} onClick={() => onPick(agent)}>
             <BotAvatar color={agent.color} identity={agent.id} size={16} status="idle" />

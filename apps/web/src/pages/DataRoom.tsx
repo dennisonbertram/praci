@@ -506,13 +506,28 @@ export function DataRoomPage({
       .finally(() => window.dispatchEvent(new Event(DATA_ROOM_CHANGED)));
   }
 
+  // Whether the last input was a pointer: focus is put back after a key press, not after a tap,
+  // where the restored row would show a keyboard focus ring.
+  const pointerLast = useRef(false);
+  useEffect(() => {
+    const note = (event: Event) => {
+      pointerLast.current = event.type === "pointerdown";
+    };
+    document.addEventListener("pointerdown", note, true);
+    document.addEventListener("keydown", note, true);
+    return () => {
+      document.removeEventListener("pointerdown", note, true);
+      document.removeEventListener("keydown", note, true);
+    };
+  }, []);
+
   function closePreview() {
     const id = shown?.id;
     setPinned(null);
     setPreviewOpen(false);
     setDialogOpen(false);
     // Keep the keyboard where the user was.
-    if (id) {
+    if (id && !pointerLast.current) {
       requestAnimationFrame(() =>
         document.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(id)}"]`)?.focus(),
       );
@@ -556,9 +571,10 @@ export function DataRoomPage({
       hasDates: facetValues.hasDates || shown.hasDates,
     };
   }, [rows, facetValues]);
-  const subfolderList = () => (
+  const subfolderList = (showStatus?: boolean) => (
     <SubfolderList
       tiles={view === "grid"}
+      showStatus={showStatus}
       contents={(folder) => folderContents(folder, folders)}
       folders={subfolders}
       onOpen={(folderId) => setFilters({ ...filters, folderId })}

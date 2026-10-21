@@ -619,10 +619,10 @@ it("keeps the Type, Party and Date filters while no item has them, and keeps the
   expect(labels()).toContain("Filter by Document date");
   // One source filters nothing, and a source with no files would only lead to "No results".
   expect(labels()).not.toContain("Filter by Source");
-  // The columns never come and go with the rows: the header is the same either way.
+  // No file has a status, so the empty Status column is left out; the header is the same either way.
   const head = () => container.querySelector('[data-testid="data-room-head"]')?.textContent;
   const bareHead = head();
-  expect(bareHead).toBe("NameTypeAddedPartiesStatus");
+  expect(bareHead).toBe("NameTypeAddedParties");
 
   rpcMock.list.mockResolvedValue({
     items: [item("a.txt"), { ...bare("m.txt"), source: "gmail" }],
