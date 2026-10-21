@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 export const OPENING_SLOW_MS = 8000;
 
 /**
- * The centered "Opening your Space…" line, shared by every wait between sign-in and the first chat.
+ * The centered "Opening Praci…" line, shared by every wait between sign-in and the first chat.
  * A slow wait says so and offers Try again, which loads the page afresh.
  */
 export function OpeningSpace({
@@ -24,7 +24,7 @@ export function OpeningSpace({
       role="status"
       className="flex flex-1 flex-col items-center justify-center gap-3 text-[14px] text-muted-foreground"
     >
-      {slow ? <Trans>Still opening…</Trans> : <Trans>Opening your Space…</Trans>}
+      {slow ? <Trans>Still opening…</Trans> : <Trans>Opening Praci…</Trans>}
       {slow ? (
         <Button variant="outline" size="sm" onClick={onRetry}>
           <Trans>Try again</Trans>
