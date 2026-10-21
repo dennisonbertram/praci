@@ -6710,6 +6710,7 @@ msgstr ""
 msgid "Open Models settings"
 msgstr ""
 
+#: src/components/PageHeader.tsx
 #: src/pages/Shell.tsx
 msgid "Open navigation"
 msgstr "Abrir a navegação"

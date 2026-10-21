@@ -556,6 +556,44 @@ export function DataRoomPage({
   const clearFilters = () => setFilters(filters.folderId ? { folderId: filters.folderId } : {});
   const openFolderPath = filters.folderId ? folderPath(filters.folderId) : "";
 
+  // On a phone the toggles move down to the folder row so the title row keeps + and Ask.
+  const viewToggles = (className: string) => (
+    <fieldset className={`m-0 flex min-w-0 gap-0.5 border-0 p-0 ${className}`}>
+      <legend className="sr-only">{t`View`}</legend>
+      <Tip label={t`List view`}>
+        <Toggle
+          size="sm"
+          pressed={!showStats && view === "list"}
+          onPressedChange={() => {
+            setView("list");
+            setShowStats(false);
+          }}
+          aria-label={t`List view`}
+        >
+          <List aria-hidden="true" />
+        </Toggle>
+      </Tip>
+      <Tip label={t`Grid view`}>
+        <Toggle
+          size="sm"
+          pressed={!showStats && view === "grid"}
+          onPressedChange={() => {
+            setView("grid");
+            setShowStats(false);
+          }}
+          aria-label={t`Grid view`}
+        >
+          <LayoutGrid aria-hidden="true" />
+        </Toggle>
+      </Tip>
+      <Tip label={t`Stats`}>
+        <Toggle size="sm" pressed={showStats} onPressedChange={setShowStats} aria-label={t`Stats`}>
+          <ChartColumn aria-hidden="true" />
+        </Toggle>
+      </Tip>
+    </fieldset>
+  );
+
   return (
     <div className="@container/bd flex min-h-0 min-w-0 flex-1 flex-col">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
@@ -572,45 +610,7 @@ export function DataRoomPage({
             <>
               {empty ? null : (
                 <>
-                  <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
-                    <legend className="sr-only">{t`View`}</legend>
-                    <Tip label={t`List view`}>
-                      <Toggle
-                        size="sm"
-                        pressed={!showStats && view === "list"}
-                        onPressedChange={() => {
-                          setView("list");
-                          setShowStats(false);
-                        }}
-                        aria-label={t`List view`}
-                      >
-                        <List aria-hidden="true" />
-                      </Toggle>
-                    </Tip>
-                    <Tip label={t`Grid view`}>
-                      <Toggle
-                        size="sm"
-                        pressed={!showStats && view === "grid"}
-                        onPressedChange={() => {
-                          setView("grid");
-                          setShowStats(false);
-                        }}
-                        aria-label={t`Grid view`}
-                      >
-                        <LayoutGrid aria-hidden="true" />
-                      </Toggle>
-                    </Tip>
-                    <Tip label={t`Stats`}>
-                      <Toggle
-                        size="sm"
-                        pressed={showStats}
-                        onPressedChange={setShowStats}
-                        aria-label={t`Stats`}
-                      >
-                        <ChartColumn aria-hidden="true" />
-                      </Toggle>
-                    </Tip>
-                  </fieldset>
+                  {viewToggles("@max-[639px]/bd:hidden")}
                   <input
                     ref={fileInput}
                     type="file"
@@ -686,6 +686,7 @@ export function DataRoomPage({
             onNewFolder={() => setCreatingFolder(true)}
             onAutoSort={() => setAutoSorting(true)}
             statsView={showStats}
+            trailing={viewToggles("@min-[640px]/bd:hidden")}
           />
           <div ref={setBodyEl} className="relative flex min-h-0 flex-1 border-t border-border">
             {/* With a preview beside the list the tree needs a wider page, or file names get ~100px. */}

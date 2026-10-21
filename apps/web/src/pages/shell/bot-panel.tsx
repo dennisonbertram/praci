@@ -521,7 +521,10 @@ export function BotSettings({
               className="mt-1.5"
             />
           </label>
-          <div className="mt-6 flex items-center justify-between pt-4 border-t border-border/20">
+          <label
+            htmlFor={`${ids}-notify-finish`}
+            className="mt-6 flex items-center justify-between pt-4 border-t border-border/20 pointer-coarse:min-h-11"
+          >
             <div className="space-y-0.5 pe-4">
               <div
                 id={`${ids}-notify-finish-label`}
@@ -546,7 +549,7 @@ export function BotSettings({
                 void enqueueSave({ notifyOnFinish: checked });
               }}
             />
-          </div>
+          </label>
           {botAudienceEditable(bot.spawnKey) ? (
             <div data-testid="bot-audience" className="mt-6 border-t border-border/20 pt-4">
               <div className="text-[13.5px] font-medium text-foreground">
@@ -591,7 +594,7 @@ export function BotSettings({
                         <label
                           key={target.id}
                           htmlFor={`${ids}-target-${target.id}`}
-                          className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80"
+                          className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80 pointer-coarse:min-h-11"
                         >
                           <span>{target.name}</span>
                           <Switch
@@ -611,7 +614,7 @@ export function BotSettings({
                   ) : null}
                   <label
                     htmlFor={`${ids}-external-computer`}
-                    className="mt-4 flex items-center justify-between gap-3 text-[13px] text-foreground/80"
+                    className="mt-4 flex items-center justify-between gap-3 text-[13px] text-foreground/80 pointer-coarse:min-h-11"
                   >
                     <Trans>Computer and browser</Trans>
                     <Switch
@@ -757,7 +760,7 @@ export function BotSettings({
             ) : null}
             <label
               htmlFor={`${ids}-auto-speak`}
-              className="mt-5 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75"
+              className="mt-5 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75 pointer-coarse:min-h-11"
             >
               <Switch
                 id={`${ids}-auto-speak`}
@@ -814,7 +817,7 @@ export function BotSettings({
               <label
                 key={toolName}
                 htmlFor={`${ids}-disabled-${toolName}`}
-                className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80"
+                className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80 pointer-coarse:min-h-11"
               >
                 <span className="font-mono">{toolName}</span>
                 <Switch

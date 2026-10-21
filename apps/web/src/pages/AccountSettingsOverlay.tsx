@@ -284,7 +284,7 @@ export function GeneralSettingsPanels({
               </span>
             </summary>
             <div className="border-t border-border px-4 pb-5">
-              <div className="flex items-start gap-3 pt-5">
+              <div className="flex items-start gap-3 pt-5 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={streamRepliesId}
                   data-testid="response-streaming-toggle"
@@ -297,12 +297,12 @@ export function GeneralSettingsPanels({
                 />
                 <Label
                   htmlFor={streamRepliesId}
-                  className="text-[14px] font-normal text-foreground/75"
+                  className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
                 >
                   <Trans>Stream replies</Trans>
                 </Label>
               </div>
-              <div className="flex items-start gap-3 pt-4">
+              <div className="flex items-start gap-3 pt-4 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={showToolActivityId}
                   data-testid="tool-activity-toggle"
@@ -315,12 +315,12 @@ export function GeneralSettingsPanels({
                 />
                 <Label
                   htmlFor={showToolActivityId}
-                  className="text-[14px] font-normal text-foreground/75"
+                  className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
                 >
                   <Trans>Show tool activity</Trans>
                 </Label>
               </div>
-              <div className="flex items-start gap-3 pt-4">
+              <div className="flex items-start gap-3 pt-4 pointer-coarse:min-h-11 pointer-coarse:items-center">
                 <Switch
                   id={loadRemoteImagesId}
                   data-testid="remote-images-toggle"
@@ -333,7 +333,7 @@ export function GeneralSettingsPanels({
                 />
                 <Label
                   htmlFor={loadRemoteImagesId}
-                  className="text-[14px] font-normal text-foreground/75"
+                  className="text-[14px] font-normal text-foreground/75 pointer-coarse:flex-1 pointer-coarse:self-stretch"
                 >
                   <Trans>Load web images automatically</Trans>
                 </Label>

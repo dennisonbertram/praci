@@ -218,7 +218,7 @@ export function InboxRow({
           <span
             aria-hidden="true"
             data-unread-dot={row.unread ? "" : undefined}
-            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""} ${onPick ? (showPick ? "invisible" : "group-focus-within/row:invisible group-hover/row:invisible") : ""}`}
+            className={`col-start-1 row-start-1 size-2 rounded-full ${row.unread ? "bg-primary" : ""} ${onPick ? (showPick ? "invisible" : "group-focus-within/row:invisible group-hover/row:invisible pointer-coarse:invisible") : ""}`}
           />
           <span
             dir="auto"
@@ -285,7 +285,7 @@ export function InboxRow({
             aria-label={t`Select`}
             checked={picked}
             onClick={(event) => onPick({ shift: event.shiftKey })}
-            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100"}`}
+            className={`absolute start-2 top-1/2 z-10 -translate-y-1/2 @md:start-3 ${showPick ? "" : "opacity-0 focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 pointer-coarse:opacity-100"}`}
           />
         ) : null}
         {marks.length + actions.length ? (

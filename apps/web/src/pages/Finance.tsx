@@ -423,7 +423,7 @@ function Overview({
                     aria-hidden="true"
                     className={`size-1.5 shrink-0 rounded-full ${sourceDot}`}
                   />
-                  <span className="truncate">
+                  <span className="truncate @max-sm/ph:sr-only">
                     {syncing
                       ? t`${sourceNames} · syncing…`
                       : updated
@@ -960,7 +960,7 @@ function SubscriptionsTable({
           return (
             <TableRow
               key={sub.key}
-              className="group/row cursor-pointer"
+              className="group/row cursor-pointer pointer-coarse:h-11"
               {...rowProps(financePath.vendor(sub.key))}
             >
               <TableCell className="font-semibold">

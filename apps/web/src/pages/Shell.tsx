@@ -157,6 +157,7 @@ import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageAgentsRow } from "../components/PageAgentsRow";
+import { PageNavContext } from "../components/PageHeader";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
 import { OpeningSpace, ThreadSkeleton } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
@@ -753,6 +754,18 @@ export function ShellPage() {
     useState<ReadonlySet<string>>(readSeenRunErrorIds);
   const [menuOpen, setMenuOpen] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  // A page header with its own menu button replaces the shell's phone band above it.
+  const [headerMenus, setHeaderMenus] = useState(0);
+  const pageNav = useMemo(
+    () => ({
+      open: () => setMobileSidebarOpen(true),
+      claim: () => {
+        setHeaderMenus((n) => n + 1);
+        return () => setHeaderMenus((n) => n - 1);
+      },
+    }),
+    [],
+  );
   const sidebarDocked = useSidebarDocked();
   const sidebarRef = useRef<HTMLElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
@@ -5302,286 +5315,288 @@ export function ShellPage() {
       )}
 
       {/* Keep the composer's z-index inside the chat so phone overlays like the side panel cover it. */}
-      <main
-        id={MAIN_CONTENT_ID}
-        tabIndex={-1}
-        aria-hidden={mobileSidebarOpen || undefined}
-        inert={mobileSidebarOpen}
-        data-dragging={paneDraggingFiles ? "files" : undefined}
-        onDragEnter={onPaneFileDrag}
-        onDragOver={onPaneFileDrag}
-        onDragLeave={(event) => {
-          if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+      <PageNavContext.Provider value={pageNav}>
+        <main
+          id={MAIN_CONTENT_ID}
+          tabIndex={-1}
+          aria-hidden={mobileSidebarOpen || undefined}
+          inert={mobileSidebarOpen}
+          data-dragging={paneDraggingFiles ? "files" : undefined}
+          onDragEnter={onPaneFileDrag}
+          onDragOver={onPaneFileDrag}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+              setPaneDraggingFiles(false);
+          }}
+          onDrop={(event) => {
+            if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return;
+            event.preventDefault();
             setPaneDraggingFiles(false);
-        }}
-        onDrop={(event) => {
-          if (!paneAcceptsFiles || !isUnclaimedFileDrag(event)) return;
-          event.preventDefault();
-          setPaneDraggingFiles(false);
-          if (!composerDisabled) onAttachmentPick(event.dataTransfer.files);
-        }}
-        className={`isolate flex min-w-0 flex-1 flex-col bg-background outline-none ${
-          paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
-        }`}
-      >
-        {/* Inside main so the composer and its menus stay above it. As wide as the
-            12px phone gutter only, so it never covers a tappable control; the swipe
-            itself is detected on the shell root from a wider edge zone. */}
-        {!mobileSidebarOpen ? (
-          <div
-            data-testid="mobile-sidebar-swipe-edge"
-            aria-hidden="true"
-            className="absolute bottom-20 start-0 top-16 z-20 w-3 touch-none lg:hidden"
-          />
-        ) : null}
-        {/* Page modes keep only the navigation controls, so phones can still open the sidebar. */}
-        <div
-          className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
-            pageMode
-              ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " lg:hidden"}`
-              : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
+            if (!composerDisabled) onAttachmentPick(event.dataTransfer.files);
+          }}
+          className={`isolate flex min-w-0 flex-1 flex-col bg-background outline-none ${
+            paneDraggingFiles ? "ring-2 ring-inset ring-ring" : ""
           }`}
         >
-          <div className="flex min-w-0 items-center gap-2">
-            {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
-            {showHeaderWindowChrome(botsSidebarCollapsed, sidebarDocked) && desktopBridge() ? (
-              <WindowChrome />
-            ) : null}
-            <button
-              type="button"
-              aria-label={t`Open navigation`}
-              onClick={() => setMobileSidebarOpen(true)}
-              className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:hidden"
-            >
-              <Menu size={19} strokeWidth={1.7} />
-            </button>
-            {botsSidebarCollapsed ? (
+          {/* Inside main so the composer and its menus stay above it. As wide as the
+            12px phone gutter only, so it never covers a tappable control; the swipe
+            itself is detected on the shell root from a wider edge zone. */}
+          {!mobileSidebarOpen ? (
+            <div
+              data-testid="mobile-sidebar-swipe-edge"
+              aria-hidden="true"
+              className="absolute bottom-20 start-0 top-16 z-20 w-3 touch-none lg:hidden"
+            />
+          ) : null}
+          {/* Page modes keep only the navigation controls, so phones can still open the sidebar. */}
+          <div
+            className={`app-drag flex items-center justify-between px-3 lg:px-[22px] ${
+              pageMode
+                ? `${TOP_BAR_HEIGHT}${botsSidebarCollapsed ? "" : " lg:hidden"}${headerMenus > 0 ? " max-lg:hidden" : ""}`
+                : `border-b border-sidebar-border ${TOP_BAR_HEIGHT}`
+            }`}
+          >
+            <div className="flex min-w-0 items-center gap-2">
+              {/* Collapsed bots sidebar: this header is the leading edge for window chrome. */}
+              {showHeaderWindowChrome(botsSidebarCollapsed, sidebarDocked) && desktopBridge() ? (
+                <WindowChrome />
+              ) : null}
               <button
                 type="button"
-                data-testid="restore-bots-sidebar"
-                aria-label={t`Show sidebar`}
-                title={t`Show sidebar`}
-                onClick={() => setBotsSidebarCollapsedPref(false)}
-                className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:grid"
+                aria-label={t`Open navigation`}
+                onClick={() => setMobileSidebarOpen(true)}
+                className="app-no-drag grid h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:hidden"
               >
-                <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
+                <Menu size={19} strokeWidth={1.7} />
               </button>
-            ) : null}
-            {pageMode ? null : (
-              <button
-                type="button"
-                data-testid="bot-settings-trigger"
-                onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
-                className="app-no-drag flex min-w-0 items-center gap-3"
-              >
-                {inGroup ? (
-                  <GroupAvatar
-                    members={activeSnapshot?.members ?? activeGroup?.members ?? []}
-                    size={26}
-                  />
-                ) : active ? (
-                  <BotAvatar
-                    color={active.color}
-                    identity={active.id}
-                    size={26}
-                    status={active.status}
-                  />
-                ) : null}
-                <span className="min-w-0">
-                  <span
-                    className="block truncate text-[16px] font-medium text-foreground"
-                    dir="auto"
-                  >
-                    {inGroup
-                      ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
-                      : (active?.name ?? (opening ? "" : t`Select a bot`))}
+              {botsSidebarCollapsed ? (
+                <button
+                  type="button"
+                  data-testid="restore-bots-sidebar"
+                  aria-label={t`Show sidebar`}
+                  title={t`Show sidebar`}
+                  onClick={() => setBotsSidebarCollapsedPref(false)}
+                  className="app-no-drag hidden h-8 w-8 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:grid"
+                >
+                  <PanelLeftOpen size={19} strokeWidth={1.7} aria-hidden="true" />
+                </button>
+              ) : null}
+              {pageMode ? null : (
+                <button
+                  type="button"
+                  data-testid="bot-settings-trigger"
+                  onClick={() => setPanel(inGroup ? "group-settings" : "settings")}
+                  className="app-no-drag flex min-w-0 items-center gap-3"
+                >
+                  {inGroup ? (
+                    <GroupAvatar
+                      members={activeSnapshot?.members ?? activeGroup?.members ?? []}
+                      size={26}
+                    />
+                  ) : active ? (
+                    <BotAvatar
+                      color={active.color}
+                      identity={active.id}
+                      size={26}
+                      status={active.status}
+                    />
+                  ) : null}
+                  <span className="min-w-0">
+                    <span
+                      className="block truncate text-[16px] font-medium text-foreground"
+                      dir="auto"
+                    >
+                      {inGroup
+                        ? (activeGroup?.name ?? activeSnapshot?.groupName ?? t`Group`)
+                        : (active?.name ?? (opening ? "" : t`Select a bot`))}
+                    </span>
                   </span>
-                </span>
-                {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
-              </button>
-            )}
+                  {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
+                </button>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {inGroup && !pageMode && activeGroup ? (
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  data-testid="group-settings-button"
+                  title={t`Members and settings`}
+                  aria-label={t`Members and settings`}
+                  onClick={() => setPanel(panel === "group-settings" ? null : "group-settings")}
+                  data-active={panel === "group-settings" ? "" : undefined}
+                  className="app-no-drag data-active:bg-accent"
+                >
+                  <Users size={18} strokeWidth={1.6} className="text-foreground/75" />
+                </Button>
+              ) : null}
+              {!inGroup && !pageMode && active && pageBotId === active.id ? (
+                <button
+                  type="button"
+                  title={t`Page`}
+                  aria-label={t`Page`}
+                  onClick={() => setPanel(panel === "page" ? null : "page")}
+                  data-active={panel === "page" ? "" : undefined}
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                >
+                  <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
+                </button>
+              ) : null}
+              {!inGroup && !pageMode && active && botPins?.list ? (
+                <button
+                  type="button"
+                  title={t`List`}
+                  aria-label={t`List`}
+                  onClick={() => setPanel(panel === "list" ? null : "list")}
+                  data-active={panel === "list" ? "" : undefined}
+                  className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
+                >
+                  <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
+                </button>
+              ) : null}
+              {!inGroup && !pageMode && active ? (
+                <button
+                  type="button"
+                  title={t`Computer and routines`}
+                  onClick={() => {
+                    const next = panel === "computer" ? null : "computer";
+                    setPanel(next);
+                    if (next === "computer" && active) {
+                      // Refresh run/computer so Take control isn't stuck on a stale busyBotName.
+                      void refreshThread(active.id).catch(() => undefined);
+                    }
+                  }}
+                  data-active={panel === "computer" ? "" : undefined}
+                  className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
+                >
+                  <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
+                </button>
+              ) : null}
+            </div>
           </div>
-          <div className="flex items-center gap-1">
-            {inGroup && !pageMode && activeGroup ? (
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                data-testid="group-settings-button"
-                title={t`Members and settings`}
-                aria-label={t`Members and settings`}
-                onClick={() => setPanel(panel === "group-settings" ? null : "group-settings")}
-                data-active={panel === "group-settings" ? "" : undefined}
-                className="app-no-drag data-active:bg-accent"
-              >
-                <Users size={18} strokeWidth={1.6} className="text-foreground/75" />
+          {integrationsMode ? (
+            <ErrorBoundary fallback={<SectionLoadFailed />}>
+              <Suspense fallback={null}>
+                <IntegrationsPage
+                  activeBotId={activeBotId.current}
+                  onOpenMessaging={() => setMessagingSettingsOpen(true)}
+                  onOpenAiDataSharing={() => openSettings("general")}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          ) : dataRoomMode ? (
+            <DataRoomPage
+              onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
+              onOpenModelSettings={() => openSettings("models")}
+              agents={sendToAgentTargets}
+              onSendToAgent={(item, agent) => void sendFilesToAgent([item], agent)}
+              spaceName={
+                spaces.length > 1
+                  ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                  : undefined
+              }
+            />
+          ) : contactsMode ? (
+            <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
+          ) : artifactsMode ? (
+            <ErrorBoundary fallback={<SectionLoadFailed />}>
+              <Suspense fallback={null}>
+                <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
+              </Suspense>
+            </ErrorBoundary>
+          ) : boardMode ? (
+            <ErrorBoundary fallback={<SectionLoadFailed />}>
+              <Suspense fallback={null}>
+                <BoardPage embedded />
+              </Suspense>
+            </ErrorBoundary>
+          ) : financeMode ? (
+            <FinancePage
+              onAskAgent={financeAgentOpen ? undefined : askFinanceAgent}
+              spaces={spaces}
+              spaceId={bootstrapMe?.spaceId}
+              onSwitchSpace={(spaceId) => {
+                // Like opening another space's chat: the auth boundary changes, so reload. A detail
+                // page belongs to this space, so the other space opens on its dashboard.
+                if (selectSpace(spaceId)) window.location.assign("/app/finance");
+              }}
+            />
+          ) : legalMode ? (
+            <LegalPage
+              onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
+              onAskAbout={askLegalAgentAbout}
+              onConsentChange={setLegalConsentMissing}
+              onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
+              settingsOpen={settingsOpen}
+              spaces={spaces}
+              spaceId={bootstrapMe?.spaceId}
+              onSwitchSpace={(spaceId) => {
+                // Like Finance: the auth boundary changes, so reload on the other space's Legal page.
+                if (selectSpace(spaceId)) window.location.assign("/app/legal");
+              }}
+            />
+          ) : devinMode ? (
+            <DevinPage
+              key={devinPageKey}
+              onAskAgent={devinAgentOpen ? undefined : askDevinAgent}
+              onConnect={() => setDevinDialog("connect")}
+              onReconnect={() => setDevinDialog("replace")}
+            />
+          ) : capTableMode ? (
+            <CapTablePage
+              onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
+              onCartaStatus={setCartaConnected}
+              onOpenModelSettings={() => openSettings("models")}
+              needsModel={bootstrapMe?.needsModel === true}
+              agentBusy={transcriptRunning}
+            />
+          ) : inboxMode ? (
+            <InboxPage
+              paused={false}
+              onShowAgent={
+                inboxAgentHidden
+                  ? () => {
+                      setInboxAgentCollapsedPref(false);
+                      setShowEmptyInboxAgent(true);
+                    }
+                  : undefined
+              }
+              onRefreshed={refreshInboxUnread}
+              onOpenAgent={async (bot) => {
+                await refreshBots();
+                setFocusComposerBotId(bot.id);
+                openBot(bot.id);
+              }}
+              onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
+              onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
+              onAllowMailRules={(connectionId) =>
+                navigate(
+                  appPath(
+                    { connectorId: "google", slug: "gmail" },
+                    { reconnect: connectionId, next: "/app/inbox?cleanup=1" },
+                  ),
+                )
+              }
+              spaceName={
+                spaces.length > 1
+                  ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                  : undefined
+              }
+            />
+          ) : opening ? (
+            <OpeningSpace />
+          ) : !active && !activeGroup ? (
+            <div className="grid flex-1 place-items-center">
+              <Button onClick={() => void createBot()}>
+                <Plus size={16} aria-hidden="true" />
+                <Trans>New bot</Trans>
               </Button>
-            ) : null}
-            {!inGroup && !pageMode && active && pageBotId === active.id ? (
-              <button
-                type="button"
-                title={t`Page`}
-                aria-label={t`Page`}
-                onClick={() => setPanel(panel === "page" ? null : "page")}
-                data-active={panel === "page" ? "" : undefined}
-                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
-              >
-                <FileText size={18} strokeWidth={1.6} className="text-foreground/75" />
-              </button>
-            ) : null}
-            {!inGroup && !pageMode && active && botPins?.list ? (
-              <button
-                type="button"
-                title={t`List`}
-                aria-label={t`List`}
-                onClick={() => setPanel(panel === "list" ? null : "list")}
-                data-active={panel === "list" ? "" : undefined}
-                className={`app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent ${panel === null ? "xl:hidden" : ""}`}
-              >
-                <ListTodo size={18} strokeWidth={1.6} className="text-foreground/75" />
-              </button>
-            ) : null}
-            {!inGroup && !pageMode && active ? (
-              <button
-                type="button"
-                title={t`Computer and routines`}
-                onClick={() => {
-                  const next = panel === "computer" ? null : "computer";
-                  setPanel(next);
-                  if (next === "computer" && active) {
-                    // Refresh run/computer so Take control isn't stuck on a stale busyBotName.
-                    void refreshThread(active.id).catch(() => undefined);
-                  }
-                }}
-                data-active={panel === "computer" ? "" : undefined}
-                className="app-no-drag grid h-[30px] w-[34px] place-items-center rounded-[9px] hover:bg-accent data-active:bg-accent"
-              >
-                <Monitor size={18} strokeWidth={1.6} className="text-foreground/75" />
-              </button>
-            ) : null}
-          </div>
-        </div>
-        {integrationsMode ? (
-          <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={null}>
-              <IntegrationsPage
-                activeBotId={activeBotId.current}
-                onOpenMessaging={() => setMessagingSettingsOpen(true)}
-                onOpenAiDataSharing={() => openSettings("general")}
-              />
-            </Suspense>
-          </ErrorBoundary>
-        ) : dataRoomMode ? (
-          <DataRoomPage
-            onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
-            onOpenModelSettings={() => openSettings("models")}
-            agents={sendToAgentTargets}
-            onSendToAgent={(item, agent) => void sendFilesToAgent([item], agent)}
-            spaceName={
-              spaces.length > 1
-                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                : undefined
-            }
-          />
-        ) : contactsMode ? (
-          <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
-        ) : artifactsMode ? (
-          <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={null}>
-              <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
-            </Suspense>
-          </ErrorBoundary>
-        ) : boardMode ? (
-          <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={null}>
-              <BoardPage embedded />
-            </Suspense>
-          </ErrorBoundary>
-        ) : financeMode ? (
-          <FinancePage
-            onAskAgent={financeAgentOpen ? undefined : askFinanceAgent}
-            spaces={spaces}
-            spaceId={bootstrapMe?.spaceId}
-            onSwitchSpace={(spaceId) => {
-              // Like opening another space's chat: the auth boundary changes, so reload. A detail
-              // page belongs to this space, so the other space opens on its dashboard.
-              if (selectSpace(spaceId)) window.location.assign("/app/finance");
-            }}
-          />
-        ) : legalMode ? (
-          <LegalPage
-            onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
-            onAskAbout={askLegalAgentAbout}
-            onConsentChange={setLegalConsentMissing}
-            onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
-            settingsOpen={settingsOpen}
-            spaces={spaces}
-            spaceId={bootstrapMe?.spaceId}
-            onSwitchSpace={(spaceId) => {
-              // Like Finance: the auth boundary changes, so reload on the other space's Legal page.
-              if (selectSpace(spaceId)) window.location.assign("/app/legal");
-            }}
-          />
-        ) : devinMode ? (
-          <DevinPage
-            key={devinPageKey}
-            onAskAgent={devinAgentOpen ? undefined : askDevinAgent}
-            onConnect={() => setDevinDialog("connect")}
-            onReconnect={() => setDevinDialog("replace")}
-          />
-        ) : capTableMode ? (
-          <CapTablePage
-            onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
-            onCartaStatus={setCartaConnected}
-            onOpenModelSettings={() => openSettings("models")}
-            needsModel={bootstrapMe?.needsModel === true}
-            agentBusy={transcriptRunning}
-          />
-        ) : inboxMode ? (
-          <InboxPage
-            paused={false}
-            onShowAgent={
-              inboxAgentHidden
-                ? () => {
-                    setInboxAgentCollapsedPref(false);
-                    setShowEmptyInboxAgent(true);
-                  }
-                : undefined
-            }
-            onRefreshed={refreshInboxUnread}
-            onOpenAgent={async (bot) => {
-              await refreshBots();
-              setFocusComposerBotId(bot.id);
-              openBot(bot.id);
-            }}
-            onConnectMail={() => navigate("/app/integrations?connect=gmail&returnTo=/app/inbox")}
-            onReconnectMail={() => navigate("/app/integrations?open=gmail&returnTo=/app/inbox")}
-            onAllowMailRules={(connectionId) =>
-              navigate(
-                appPath(
-                  { connectorId: "google", slug: "gmail" },
-                  { reconnect: connectionId, next: "/app/inbox?cleanup=1" },
-                ),
-              )
-            }
-            spaceName={
-              spaces.length > 1
-                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                : undefined
-            }
-          />
-        ) : opening ? (
-          <OpeningSpace />
-        ) : !active && !activeGroup ? (
-          <div className="grid flex-1 place-items-center">
-            <Button onClick={() => void createBot()}>
-              <Plus size={16} aria-hidden="true" />
-              <Trans>New bot</Trans>
-            </Button>
-          </div>
-        ) : (
-          threadView
-        )}
-      </main>
+            </div>
+          ) : (
+            threadView
+          )}
+        </main>
+      </PageNavContext.Provider>
 
       <CallCard onSettings={() => openSettings("voice")} />
 

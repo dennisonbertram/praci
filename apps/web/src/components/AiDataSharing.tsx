@@ -165,7 +165,7 @@ export function AiDataSharingSection() {
         {recipients?.map((recipient) => {
           const model = modelLabel(recipient.detail) || recipient.name;
           return (
-            <li key={recipient.key} className="flex items-center gap-3">
+            <li key={recipient.key} className="flex items-center gap-3 pointer-coarse:min-h-11">
               <Switch
                 aria-label={t`Allow ${model}`}
                 checked={recipient.allowed}
