@@ -488,7 +488,6 @@ export function InvestorsPage({
   const container = useRef<HTMLDivElement>(null);
   const { notify, savedId, setSavedId, deleted } = useContactNotices(load, container, contacts);
 
-  const navigate = useNavigate();
   const [updates, setUpdates] = useState<InvestorUpdate[] | null>(null);
   const [updatesFailed, setUpdatesFailed] = useState(false);
   const [cadence, setCadence] = useState<InvestorReminderCadence>("monthly");
