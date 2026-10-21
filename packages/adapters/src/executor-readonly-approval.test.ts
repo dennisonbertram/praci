@@ -2676,9 +2676,9 @@ describe("send-money approval card names", () => {
     ]);
   });
 
-  it("falls back to the ids when a lookup fails", async () => {
+  it("says a recipient and an account when a lookup fails", async () => {
     const f = await run(() => new Error("not found"));
-    expect(card(f).text).toBe("Send $1,200.00 to rcp-9 from chk-1?");
+    expect(card(f).text).toBe("Send $1,200.00 to a recipient from an account?");
   });
 });
 

@@ -146,6 +146,28 @@ export const TwoAccounts: Story = {
     }),
 };
 
+/** The busiest first screen: two accounts and several to-dos. */
+export const TwoAccountsTodos: Story = {
+  beforeEach: () =>
+    mockRpc({
+      "inbox.list": {
+        ...list,
+        accounts: [
+          { connectionId: "conn_1", label: "demo@example.com" },
+          { connectionId: "conn_2", label: "work@example.com" },
+        ],
+        enabled: true,
+        triageBlocked: null,
+      },
+      "inbox.todos.list": {
+        enabled: true,
+        todos: ["Reply about the demo invoice", "Send the sample deck", "Book the offsite"].map(
+          (text, n) => ({ ...todos[0], id: `t${n + 1}`, text, messageId: null }) as InboxTodo,
+        ),
+      },
+    }),
+};
+
 export const Loading: Story = {
   beforeEach: () => mockRpc({ "inbox.list": () => new Promise(() => undefined) }),
 };

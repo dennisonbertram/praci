@@ -8,6 +8,7 @@ import { SidebarPageLink } from "./SidebarPageLink";
 import { SidebarPagesGroup } from "./SidebarPagesGroup";
 
 vi.mock("@lingui/react/macro", () => ({
+  Trans: ({ children }: { children: unknown }) => children,
   useLingui: () => ({
     t: (parts: TemplateStringsArray, ...values: unknown[]) =>
       parts.reduce((out, part, i) => out + part + String(values[i] ?? ""), ""),
