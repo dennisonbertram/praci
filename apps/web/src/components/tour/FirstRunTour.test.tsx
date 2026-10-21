@@ -161,6 +161,6 @@ it("ends on Escape before the drawer's own Escape handler sees it", async () => 
     document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
   });
   document.removeEventListener("keydown", drawer);
-  expect(onClose).toHaveBeenCalled();
+  expect(onClose).toHaveBeenCalledWith(null, true);
   expect(drawer).not.toHaveBeenCalled();
 });

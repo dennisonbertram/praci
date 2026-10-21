@@ -75,7 +75,8 @@ export function TourPopover({
   /** Label of the last step's button, and what it does after the tour is recorded. Default: Done. */
   doneLabel?: string;
   onDone?: () => void;
-  onFinish: (result: "done" | "skip" | "empty") => void;
+  /** `byEscape` is set when the Escape key ended the tour, so the caller can leave the drawer open. */
+  onFinish: (result: "done" | "skip" | "empty", byEscape?: boolean) => void;
 }) {
   const { t } = useLingui();
   const wide = useWide();
@@ -102,10 +103,11 @@ export function TourPopover({
     const onKey = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       event.stopPropagation();
-      onFinish("skip");
+      onFinish("skip", true);
     };
-    document.addEventListener("keydown", onKey, true);
-    return () => document.removeEventListener("keydown", onKey, true);
+    // On window, so it runs before any drawer listener on the document.
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [wide, onFinish]);
   if (!step) return null;
 

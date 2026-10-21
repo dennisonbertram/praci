@@ -312,7 +312,12 @@ msgstr ""
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s computer screen"
+msgid "{0}' computer"
+msgstr ""
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0}'s computer"
 msgstr ""
 
 #: src/components/finance/ui.tsx
@@ -1418,7 +1423,7 @@ msgid "Ask before sending external email"
 msgstr "发送外部邮件前询问"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -3590,6 +3595,10 @@ msgstr ""
 msgid "day"
 msgstr "天"
 
+#: src/pages/RoutineSchedule.tsx
+msgid "Day of week"
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "Day-to-day work"
 msgstr "日常工作"
@@ -4968,6 +4977,10 @@ msgstr "实例 API 密钥"
 msgid "Instruction"
 msgstr "指令"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Instructions"
+msgstr ""
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
 msgstr ""
@@ -5781,6 +5794,10 @@ msgstr ""
 msgid "More filters"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "More settings"
+msgstr ""
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5853,6 +5870,7 @@ msgstr "静音"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Name"
 msgstr "名称"
@@ -8807,6 +8825,10 @@ msgstr ""
 msgid "Steps"
 msgstr "步骤"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Steps to follow"
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -10091,6 +10113,10 @@ msgstr "你想让我先做什么？"
 
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
+msgstr ""
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "What it does and when to use it"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx

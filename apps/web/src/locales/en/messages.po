@@ -312,8 +312,13 @@ msgstr "{0} will still respond to direct mentions."
 
 #. placeholder {0}: active.name
 #: src/pages/Shell.tsx
-msgid "{0}'s computer screen"
-msgstr "{0}'s computer screen"
+msgid "{0}' computer"
+msgstr "{0}' computer"
+
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0}'s computer"
+msgstr "{0}'s computer"
 
 #: src/components/finance/ui.tsx
 msgid "{accounts} + crypto"
@@ -1418,8 +1423,8 @@ msgid "Ask before sending external email"
 msgstr "Ask before sending external email"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. Agents ask before they send, pay or change anything."
-msgstr "Ask Chief anything. Agents ask before they send, pay or change anything."
+msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
+msgstr "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Ask the server owner to configure this provider."
@@ -3590,6 +3595,10 @@ msgstr "Date"
 msgid "day"
 msgstr "day"
 
+#: src/pages/RoutineSchedule.tsx
+msgid "Day of week"
+msgstr "Day of week"
+
 #: src/pages/shell/message-cards.tsx
 msgid "Day-to-day work"
 msgstr "Day-to-day work"
@@ -4968,6 +4977,10 @@ msgstr "Instance API key"
 msgid "Instruction"
 msgstr "Instruction"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Instructions"
+msgstr "Instructions"
+
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
 msgstr "Integration options"
@@ -5781,6 +5794,10 @@ msgstr "More computer actions"
 msgid "More filters"
 msgstr "More filters"
 
+#: src/pages/shell/bot-panel.tsx
+msgid "More settings"
+msgstr "More settings"
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 msgid "Move"
@@ -5853,6 +5870,7 @@ msgstr "Mute"
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-credentials.tsx
 #: src/pages/shell/bot-panel.tsx
+#: src/pages/shell/BotSkillsSection.tsx
 #: src/pages/shell/dialogs.tsx
 msgid "Name"
 msgstr "Name"
@@ -8807,6 +8825,10 @@ msgstr "Step 2 of 3"
 msgid "Steps"
 msgstr "Steps"
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Steps to follow"
+msgstr "Steps to follow"
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr "Still opening…"
@@ -10092,6 +10114,10 @@ msgstr "What do you want me on first?"
 #: src/lib/finance-agent.ts
 msgid "What is our runway?"
 msgstr "What is our runway?"
+
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "What it does and when to use it"
+msgstr "What it does and when to use it"
 
 #: src/components/PageAgentIntro.tsx
 msgid "What needs my reply today?"
