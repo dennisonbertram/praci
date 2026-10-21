@@ -1572,10 +1572,6 @@ msgstr "Estúdio de avatar"
 msgid "Avatars"
 msgstr ""
 
-#: src/pages/finance/FinanceSpend.tsx
-msgid "Average per month"
-msgstr ""
-
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/ImportFromDrive.tsx
@@ -6934,6 +6930,11 @@ msgstr ""
 msgid "Pending"
 msgstr ""
 
+#: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Per month"
+msgstr ""
+
 #: src/components/finance/ui.tsx
 msgid "Period"
 msgstr ""
@@ -9166,6 +9167,10 @@ msgstr ""
 msgid "The transactions read add up to the closing balance"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure."
+msgstr ""
+
 #: src/pages/shell/message-cards.tsx
 msgid "The web, notes and docs"
 msgstr ""
@@ -9880,12 +9885,8 @@ msgstr ""
 msgid "Uses this server's own {hostCredentialSource} credentials to access {selectedProviderName}."
 msgstr "Usa as credenciais de {hostCredentialSource} próprias deste servidor para acessar {selectedProviderName}."
 
-#: src/pages/Finance.tsx
-msgid "Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names."
-msgstr ""
-
-#: src/pages/Finance.tsx
-msgid "Usual per month"
+#: src/pages/finance/FinanceSpend.tsx
+msgid "Usual charge"
 msgstr ""
 
 #: src/components/finance/ExchangeGroup.tsx

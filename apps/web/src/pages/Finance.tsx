@@ -338,6 +338,8 @@ function Overview({
   const [allUpcoming, setAllUpcoming] = useState(false);
   const [allSubs, setAllSubs] = useState(false);
   const totals = data.spendTotals[period];
+  // A period under a week old is a few days against a few days: too little to call a trend.
+  const elapsedDays = (Date.parse(totals.end) - Date.parse(totals.start)) / 86_400_000;
   const change = changeText(totals.changePct);
   const burning = data.burn.monthlyCents > 0;
   // Without a cash balance (Brex only, or no cash accounts) there is nothing to run out of.
@@ -504,10 +506,11 @@ function Overview({
         <div className="flex flex-col gap-3">
           <div
             // Two per row when narrow, the odd last card taking the whole row. Five cards go 3 + 2
-            // (three-sixths wide, then the last two half each) before they fit one row of five.
+            // (three-sixths wide, then the last two half each) from 28rem, so the Ask panel never
+            // leaves one alone, before they fit one row of five.
             className={`grid grid-cols-2 gap-3 ${
               kpiCount >= 5
-                ? "@max-2xl:[&>:last-child]:col-span-2 @2xl:grid-cols-6 @2xl:[&>*]:col-span-2 @2xl:[&>:nth-last-child(-n+2)]:col-span-3 @5xl:grid-cols-5 @5xl:[&>*]:col-span-1 @5xl:[&>:nth-last-child(-n+2)]:col-span-1"
+                ? "@max-md:[&>:last-child]:col-span-2 @md:grid-cols-6 @md:[&>*]:col-span-2 @md:[&>:nth-last-child(-n+2)]:col-span-3 @5xl:grid-cols-5 @5xl:[&>*]:col-span-1 @5xl:[&>:nth-last-child(-n+2)]:col-span-1"
                 : `[&>:last-child:nth-child(odd)]:col-span-2 @3xl:[&>:last-child:nth-child(odd)]:col-span-1 ${
                     kpiCount === 4
                       ? "@3xl:grid-cols-4"
@@ -610,7 +613,7 @@ function Overview({
                     ? t`${soFar} · ${spentRange}`
                     : t`${soFar} · spent ${spentRange}`
                   : t`Spent ${spentRange}`}
-                {sameAsBefore(totals) ? null : (
+                {sameAsBefore(totals) || elapsedDays < 7 ? null : (
                   <>
                     {" · "}
                     {change ? <span className={toneClass(totals.changePct)}>{change} </span> : null}
@@ -661,14 +664,8 @@ function Overview({
             ) : null}
           </Section>
 
-          {/* Side by side, the two cards share one height, their footers on one line; once one
-          is expanded each keeps its own, so the other does not stretch to match. */}
-          <div
-            className={cn(
-              "grid gap-3 @3xl:grid-cols-2",
-              (allBreakdown || allUpcoming) && "items-start",
-            )}
-          >
+          {/* Each card keeps the height of its own rows, so a short one is not stretched. */}
+          <div className="grid items-start gap-3 @3xl:grid-cols-2">
             <BackHere
               value={{
                 label: t`Breakdown`,
@@ -871,7 +868,7 @@ export function UpcomingRow({ item }: { item: UpcomingItem }) {
         <span className="min-w-0 max-w-full truncate">{item.name}</span>
         <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <span className="@md:hidden">{dates}</span>
-          <span className="shrink-0 rounded-full border border-border px-1.5 text-[10px]">
+          <span className="shrink-0 rounded-full border border-border px-1.5 text-[11px]">
             {upcomingTag(item)}
           </span>
         </span>
@@ -942,9 +939,9 @@ function SubscriptionsTable({
           </TableHead>
           <TableHead
             className="text-end"
-            title={t`Usual charge scaled to a month; usage-based vendors use the last 3 months. A vendor page shows the average of actual spend over the months it names.`}
+            title={t`The usual charge scaled to a month, or for usage-based vendors the average of recent full months. The vendor page shows the same figure.`}
           >
-            <Trans>Usual per month</Trans>
+            <Trans>Per month</Trans>
           </TableHead>
           <TableHead className="text-end hidden @md:table-cell">
             <Trans>3-mo change</Trans>
@@ -974,8 +971,13 @@ function SubscriptionsTable({
                 >
                   {sub.name}
                 </HereLink>
+                {trendText(sub.trendCents) ? (
+                  <div className="text-[11px] font-normal tabular-nums text-muted-foreground @md:hidden">
+                    {trendText(sub.trendCents)}
+                  </div>
+                ) : null}
                 {similar ? (
-                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[10px] font-normal text-muted-foreground">
+                  <span className="ms-1.5 rounded-full border border-border px-1.5 text-[11px] font-normal text-muted-foreground">
                     {similar}
                   </span>
                 ) : null}
