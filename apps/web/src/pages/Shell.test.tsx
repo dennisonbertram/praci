@@ -121,6 +121,28 @@ function pressEnter(textarea: HTMLTextAreaElement) {
 }
 
 describe("Composer", () => {
+  it("keeps a dictated multi-paragraph insertion: draft, caret, saved draft and Send", () => {
+    // System dictation (Wispr Flow) inserts text into the field like a keyboard.
+    const onSend = vi.fn();
+    const textarea = renderComposer(onSend, { draftKey: "bot:dictation" });
+    const send = container?.querySelector<HTMLButtonElement>('button[aria-label="Send"]');
+    const dictated = "First paragraph.\n\nSecond paragraph, with a / slash.";
+    const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
+    act(() => {
+      setValue?.call(textarea, dictated);
+      textarea.setSelectionRange(dictated.length, dictated.length);
+      textarea.dispatchEvent(
+        new InputEvent("input", { bubbles: true, inputType: "insertText", data: dictated }),
+      );
+    });
+    expect(textarea.value).toBe(dictated);
+    expect(textarea.selectionStart).toBe(dictated.length);
+    expect(textarea.selectionEnd).toBe(dictated.length);
+    expect(sessionStorage.getItem("rakazo.chatDraft:bot:dictation")).toBe(dictated);
+    expect(send?.disabled).toBe(false);
+    sessionStorage.clear();
+  });
+
   it("loads connector mentions only when opening the mention picker", () => {
     const onMentionOpen = vi.fn();
     const textarea = renderComposer(vi.fn(), { onMentionOpen });
