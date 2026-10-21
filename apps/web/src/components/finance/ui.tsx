@@ -320,7 +320,7 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
         <Link
           to={previous?.to ?? financePath.dashboard()}
           state={crumbState(previous)}
-          className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-card px-2.5 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
+          className="inline-flex h-8 pointer-coarse:h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border bg-card px-2.5 text-sm font-semibold hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
         >
           <span aria-hidden="true">←</span>
           <span className="ms-1">{previous?.label ?? t`Finance`}</span>
@@ -690,7 +690,7 @@ function TransactionRow({ row }: { row: FinanceTransaction }) {
         <Link
           state={{ ...back, preview: row }}
           to={financePath.transaction(row.id)}
-          className="outline-none hover:underline focus-visible:underline"
+          className="rk-tap outline-none hover:underline focus-visible:underline"
         >
           {row.counterparty}
         </Link>
@@ -949,7 +949,7 @@ export function KvRow({ label, children }: { label: ReactNode; children: ReactNo
 /** A link inside a detail value, with a trailing chevron. */
 export function ValueLink({ to, children }: { to: string; children: ReactNode }) {
   return (
-    <Link to={to} className="hover:underline">
+    <Link to={to} className="rk-tap hover:underline">
       {children} <span aria-hidden="true">›</span>
     </Link>
   );

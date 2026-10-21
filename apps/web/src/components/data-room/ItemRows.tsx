@@ -4,6 +4,7 @@ import type { DataRoomApiFolder, DataRoomApiItem } from "@rakazo/contracts";
 import {
   Badge,
   Button,
+  Checkbox,
   ContextMenu,
   ContextMenuContent,
   ContextMenuTrigger,
@@ -42,6 +43,9 @@ export type RowInteraction = {
   /** The agents a file can be sent to, most recent first; without them there is no such menu. */
   agents?: SendTarget[];
   onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
+  /** Ticked rows (list view); without `onCheck` the list has no checkboxes. */
+  checked?: ReadonlySet<string>;
+  onCheck?: (item: DataRoomApiItem) => void;
 };
 
 /** A file's row or tile, with the item menu on a right-click (or a long press on touch). */
@@ -94,7 +98,8 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction, first: boolean) {
     "data-row": "",
     "data-item-id": item.id,
     tabIndex: first ? 0 : -1,
-    onClick: () => o.onToggle(item),
+    onClick: (event: React.MouseEvent) =>
+      o.onCheck && (event.metaKey || event.ctrlKey) ? o.onCheck(item) : o.onToggle(item),
     onFocus: (event: React.FocusEvent<HTMLElement>) => {
       if (arrowMove && event.target === event.currentTarget) o.onSelect(item);
     },
@@ -103,6 +108,9 @@ function rowProps(item: DataRoomApiItem, o: RowInteraction, first: boolean) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
         moveFocus(event);
+      } else if (event.key === "x" && o.onCheck) {
+        // The keyboard route to a tick, as in the inbox: the checkbox itself is not a Tab stop.
+        o.onCheck(item);
       } else if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         o.onToggle(item);
@@ -261,7 +269,20 @@ function ItemRow({
     >
       <TableCell data-testid="data-room-name">
         <div className="flex min-w-0 items-center gap-2">
-          <Marker item={item} />
+          <span className="relative inline-flex shrink-0">
+            <Marker item={item} />
+            {o.onCheck ? (
+              <Checkbox
+                aria-label={t`Select ${item.name}`}
+                tabIndex={-1}
+                checked={o.checked?.has(item.id) ?? false}
+                onCheckedChange={() => o.onCheck?.(item)}
+                onClick={(event) => event.stopPropagation()}
+                // Over the icon: shown on hover, while ticked, and always on touch screens.
+                className="absolute -inset-0.5 size-auto bg-background opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 data-checked:opacity-100"
+              />
+            ) : null}
+          </span>
           <div className="flex min-w-0 flex-col">
             <span
               className={cn(

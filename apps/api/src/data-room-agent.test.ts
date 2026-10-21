@@ -27,6 +27,7 @@ describe("ensureDataRoomAgent", () => {
       expect.objectContaining({
         spawnKey: "data-room-agent:user-1",
         name: "Data room agent",
+        instructions: expect.stringContaining("markdown link"),
         color: pageAgentColor("data-room"),
       }),
     );
