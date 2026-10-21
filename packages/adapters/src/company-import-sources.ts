@@ -83,7 +83,38 @@ export function createCompanySourceWorker(deps: {
     return {
       spaceId: context.actor.spaceId,
       userId: context.actor.userId,
-      ...(source.connectionId ? { sourceConnectionId: source.connectionId } : {}),
+      ...(scope.itemIds ? { id: { in: [...new Set(scope.itemIds)] } } : {}),
+      ...(scope.folderIds
+        ? {
+            folderId: { in: [...new Set(scope.folderIds)] },
+            folder: { spaceId: context.actor.spaceId, userId: context.actor.userId },
+          }
+        : {}),
+      ...(source.connectionId
+        ? {
+            sourceConnectionId: source.connectionId,
+            sourceConnection: {
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              status: "connected",
+              allAgents: true,
+              privateByDefault: false,
+            },
+          }
+        : {
+            OR: [
+              { sourceConnectionId: null },
+              {
+                sourceConnection: {
+                  spaceId: context.actor.spaceId,
+                  userId: context.actor.userId,
+                  status: "connected",
+                  allAgents: true,
+                  privateByDefault: false,
+                },
+              },
+            ],
+          }),
       ...(scope.itemIds !== undefined ? { id: { in: [...new Set(scope.itemIds)] } } : {}),
       ...(scope.folderIds !== undefined ? { folderId: { in: [...new Set(scope.folderIds)] } } : {}),
     };
@@ -99,6 +130,8 @@ export function createCompanySourceWorker(deps: {
         spaceId: context.actor.spaceId,
         userId: context.actor.userId,
         status: "connected",
+        allAgents: true,
+        privateByDefault: false,
       },
       select: {
         id: true,

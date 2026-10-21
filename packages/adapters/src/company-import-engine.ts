@@ -47,8 +47,10 @@ import { validateCompanyExtraction } from "./company-extraction-safety.js";
 import { companySourceScope } from "./company-import-sources.js";
 
 const MAX_DISCOVERY_UNITS = 100;
+const MAX_SAMPLE_DISCOVERY_UNITS = 25;
 const MAX_READ_BYTES = 500_000;
 const MAX_READ_ITEMS = 100;
+const MAX_SAMPLE_READ_ITEMS = 1;
 const UNIT_LEASE_MS = 120_000;
 const RUN_TOPIC = (spaceId: string, userId: string) => `company-import:${spaceId}:${userId}`;
 
@@ -114,7 +116,10 @@ function boundConsentKey(
     .digest("hex");
 }
 
-function assertSafePage(page: unknown): asserts page is {
+function assertSafePage(
+  page: unknown,
+  maxUnits = MAX_DISCOVERY_UNITS,
+): asserts page is {
   units: { unitKey: string; cursor: unknown }[];
   nextCursor: unknown | null;
   done: boolean;
@@ -124,7 +129,7 @@ function assertSafePage(page: unknown): asserts page is {
   const candidate = page as { units?: unknown; nextCursor?: unknown; done?: unknown };
   if (
     !Array.isArray(candidate.units) ||
-    candidate.units.length > MAX_DISCOVERY_UNITS ||
+    candidate.units.length > maxUnits ||
     typeof candidate.done !== "boolean"
   ) {
     throw new CompanyImportWorkerError("invalid_discovery_page");
@@ -159,14 +164,24 @@ function assertSafePage(page: unknown): asserts page is {
   }
 }
 
-function assertSafeReadPage(page: unknown): asserts page is CompanyImportReadPage {
+function assertSafeReadPage(
+  page: unknown,
+  maxItems = MAX_READ_ITEMS,
+): asserts page is CompanyImportReadPage {
   if (!page || typeof page !== "object") throw new CompanyImportWorkerError("invalid_read_page");
-  const candidate = page as { items?: unknown; facts?: unknown; done?: unknown };
+  const candidate = page as {
+    items?: unknown;
+    facts?: unknown;
+    extractions?: unknown;
+    done?: unknown;
+  };
   if (
     !Array.isArray(candidate.items) ||
-    candidate.items.length > MAX_READ_ITEMS ||
+    candidate.items.length > maxItems ||
     !Array.isArray(candidate.facts) ||
     candidate.facts.length > MAX_READ_ITEMS ||
+    (candidate.extractions !== undefined &&
+      (!Array.isArray(candidate.extractions) || candidate.extractions.length > MAX_READ_ITEMS)) ||
     typeof candidate.done !== "boolean"
   ) {
     throw new CompanyImportWorkerError("invalid_read_page");
@@ -307,6 +322,8 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
           spaceId: actor.spaceId,
           userId: actor.userId,
           status: "connected",
+          allAgents: true,
+          privateByDefault: false,
         },
         select: { id: true },
       });
@@ -559,37 +576,44 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         connectionId: source.connectionId,
         scope: source.scope as Record<string, unknown>,
       };
+      const run = await deps.prisma.companyImportRun.findFirst({
+        where: { id: payload.runId, spaceId: actor.spaceId, ownerUserId: actor.userId },
+        select: { mode: true },
+      });
+      const sample = run?.mode === "sample";
       if (claim.unitKey.startsWith("discover:")) {
         const page = await worker.discover(
           {
             source: sourceDescriptor,
             cursor: source.cursor,
-            maxUnits: MAX_DISCOVERY_UNITS,
+            maxUnits: sample ? MAX_SAMPLE_DISCOVERY_UNITS : MAX_DISCOVERY_UNITS,
           },
           context,
         );
-        assertSafePage(page);
+        assertSafePage(page, sample ? MAX_SAMPLE_DISCOVERY_UNITS : MAX_DISCOVERY_UNITS);
         await completeCompanyImportUnit(deps.prisma, actor, {
           ...claimInput,
           nextCursor: page.nextCursor,
           nextSourceCursor: page.nextCursor,
-          done: page.done,
+          done: sample || page.done,
           itemsDiscovered: page.units.length,
           itemsRead: 0,
           facts: [],
           discoveredUnits: page.units,
         });
       } else {
+        const maxItems = sample ? MAX_SAMPLE_READ_ITEMS : MAX_READ_ITEMS;
         const page = await worker.read(
           {
             source: sourceDescriptor,
             unitKey: claim.unitKey,
             cursor: claim.cursor,
             maxBytes: MAX_READ_BYTES,
+            maxItems,
           },
           context,
         );
-        assertSafeReadPage(page);
+        assertSafeReadPage(page, maxItems);
         assertFactProvenance(page, source.sourceKind, source.connectionId);
         await completeCompanyImportUnit(deps.prisma, actor, {
           ...claimInput,
@@ -745,7 +769,7 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
     action: async (
       actor: Actor,
       runId: string,
-      action: "pause" | "resume" | "retry_failed" | "cancel" | "discard",
+      action: "pause" | "resume" | "continue" | "retry_failed" | "cancel" | "discard",
       tokenCap?: number,
     ) => {
       await updateCompanyImportRun(deps.prisma, actor, {
@@ -753,7 +777,8 @@ export function createCompanyImportEngine(deps: CompanyImportEngineDeps) {
         action,
         ...(tokenCap === undefined ? {} : { tokenCap }),
       });
-      if (action === "resume" || action === "retry_failed") await enqueueRun(actor, runId);
+      if (action === "resume" || action === "continue" || action === "retry_failed")
+        await enqueueRun(actor, runId);
       await publish(actor, runId);
       return getCompanyImportProgress(deps.prisma, actor, runId);
     },

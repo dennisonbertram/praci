@@ -3582,6 +3582,7 @@ model CompanyImportRun {
   ownerUserId           String
   owner                 SpaceMember             @relation("CompanyImportRunOwner", fields: [spaceId, ownerUserId], references: [spaceId, userId], onDelete: Cascade)
   status                String                  @default("draft")
+  mode                  String                  @default("full")
   tokenCap              BigInt
   reservedTokens        BigInt                  @default(0)
   inputTokensUsed       BigInt                  @default(0)
@@ -3630,6 +3631,7 @@ model CompanyImportSource {
   sourceKind          String
   connectionId        String?
   scope               Json               @default("{}")
+  plan                Json               @default("{}")
   cursor              Json?
   status              String             @default("waiting")
   concurrency         Int                @default(1)
