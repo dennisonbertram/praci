@@ -714,7 +714,7 @@ export function DataRoomPage({
                 ) : view === "grid" && !searching ? (
                   <>
                     {subfolderList()}
-                    <GridView rows={rows} o={interaction} />
+                    <GridView rows={rows} o={interaction} sortField={sort?.field} />
                   </>
                 ) : (
                   <ListView

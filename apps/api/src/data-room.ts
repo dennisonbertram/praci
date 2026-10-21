@@ -470,7 +470,7 @@ export function createDataRoomService(deps: DataRoomDeps) {
         dataRoomCall(async () => {
           const done = await sortRepo.undo(actor, batchId);
           await reindexAfterSort(actor, done);
-          return { restored: done.restored, skipped: done.skipped };
+          return { restored: done.itemIds.length, skipped: done.skipped };
         }),
     },
     consent: async (actor: Actor): Promise<DataRoomConsentStatus> => {
