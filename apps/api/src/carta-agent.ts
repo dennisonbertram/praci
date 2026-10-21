@@ -149,7 +149,10 @@ export async function isCartaSyncing(
 }
 
 export type CartaSyncDeps = {
-  prisma: Pick<PrismaClient, "bot" | "mcpServer" | "botMcpServer" | "run" | "$transaction">;
+  prisma: Pick<
+    PrismaClient,
+    "bot" | "mcpServer" | "botMcpServer" | "run" | "capTableSnapshot" | "$transaction"
+  >;
   repos: Pick<ReturnType<typeof createRepos>, "createBot">;
   /** False when no model is set up, so a run would only fail. */
   hasModel: (actor: Actor) => Promise<boolean>;
@@ -169,8 +172,14 @@ export async function startCartaSync(
   deps: CartaSyncDeps,
   actor: Actor,
   reason: "refresh" | "connected" = "refresh",
-): Promise<"started" | "running" | "no_model"> {
+): Promise<"started" | "running" | "no_model" | "other_source"> {
   const bot = await ensureCartaAgent(deps, actor);
+  // Carta reads only while Carta is the table's source; a sheet or typed-in table is never read over.
+  const table = await deps.prisma.capTableSnapshot.findUnique({
+    where: { spaceId_userId: { spaceId: actor.spaceId, userId: actor.userId } },
+    select: { source: true },
+  });
+  if (table && table.source !== "carta") return "other_source";
   if (!(await deps.hasModel(actor))) return "no_model";
   const runId = await deps.prisma.$transaction(async (tx) => {
     // One populate run at a time per user, even for two requests at once.

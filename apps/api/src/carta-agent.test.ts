@@ -264,7 +264,9 @@ describe("ensureCartaAgent", () => {
 });
 
 describe("Carta populate run", () => {
-  function syncFakes(options: { endpoint?: string; active?: boolean; hasModel?: boolean } = {}) {
+  function syncFakes(
+    options: { endpoint?: string; active?: boolean; hasModel?: boolean; source?: string } = {},
+  ) {
     const base = fakes([{ id: "srv-carta", endpoint: CARTA_MCP_ENDPOINT }]);
     const bot = { id: "bot-1", threadId: "thread-1" } as Bot;
     base.createBot.mockResolvedValue(bot);
@@ -293,6 +295,9 @@ describe("Carta populate run", () => {
     const deps = {
       prisma: {
         ...basePrisma,
+        capTableSnapshot: {
+          findUnique: vi.fn(async () => (options.source ? { source: options.source } : null)),
+        },
         mcpServer: {
           ...baseMcpServer,
           findFirst: vi.fn(async () => ({
@@ -363,6 +368,18 @@ describe("Carta populate run", () => {
     const none = syncFakes({ hasModel: false });
     expect(await startCartaSync(none.deps, actor)).toBe("no_model");
     expect(none.runCreate).not.toHaveBeenCalled();
+  });
+
+  it("does not read Carta when the table's source is another one", async () => {
+    for (const source of ["native", "sheet"]) {
+      const f = syncFakes({ source });
+      await onMcpServerConnected(f.deps, actor, "srv-carta");
+      expect(await startCartaSync(f.deps, actor)).toBe("other_source");
+      expect(f.runCreate).not.toHaveBeenCalled();
+      expect(f.enqueueRun).not.toHaveBeenCalled();
+    }
+    const carta = syncFakes({ source: "carta" });
+    expect(await startCartaSync(carta.deps, actor)).toBe("started");
   });
 
   it("does nothing for a server that is not Carta's", async () => {
