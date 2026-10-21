@@ -339,6 +339,9 @@ describe("messageConnectedAgent", () => {
         fromBotName: "Assistant",
         text: "results are in",
         hop: 1,
+        // Every delivery from another Space is marked external.
+        externalOrigin: true,
+        externalOriginName: "Assistant",
       },
     ]);
     const wake = deps.txCalls.runCreate[0] as Record<string, unknown>;
