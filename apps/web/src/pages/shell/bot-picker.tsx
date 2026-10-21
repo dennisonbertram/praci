@@ -47,7 +47,7 @@ export function BotCreatePicker({
     <div data-testid="bot-create-picker" className="w-[min(320px,calc(100vw-2rem))]">
       <label className="flex items-center gap-2 border-b border-border px-3 py-2">
         <span className="shrink-0 text-[13px] text-muted-foreground">
-          <Trans>To:</Trans>
+          <Trans>New</Trans>
         </span>
         <input
           value={query}

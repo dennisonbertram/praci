@@ -55,6 +55,7 @@ export const EmailWideTable: Story = {
   decorators: emailFrame,
 };
 
+const banner = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="600" height="120"><rect width="600" height="120" fill="#9bd"/></svg>')}`;
 const hugeImage = `data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="3000" height="1500"><rect width="3000" height="1500" fill="#9bd"/></svg>')}`;
 
 export const EmailHugeImage: Story = {
@@ -67,7 +68,7 @@ export const EmailHugeImage: Story = {
 
 export const EmailNewsletterWithRemoteImages: Story = {
   args: {
-    html: `<img src="cid:logo" width="120" height="40" alt=""><h2>Orchard weekly</h2><img src="/api/inbox/image?u=https%3A%2F%2Fexample.invalid%2Fbanner.png&s=u.s&t=stub" alt="Harvest banner"><img src="http://example.invalid/direct.png" alt="Direct link banner"><p>Apples, pears and plums are ready.</p><img src="/api/inbox/image?u=x&t=stub" width="1" height="1" alt=""><img src="data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="80"><rect width="300" height="80" fill="#9bd"/></svg>')}" alt="Inline sample"><p style="text-align:center;font-size:12px"><a href="https://example.com/unsubscribe">Unsubscribe</a></p>`,
+    html: `<img src="cid:logo" width="120" height="40" alt=""><h2>Orchard weekly</h2><img src="${banner}" alt="Harvest banner"><img src="http://example.invalid/direct.png" alt="Direct link banner"><p>Apples, pears and plums are ready.</p><img src="data:," width="1" height="1" alt=""><img src="data:image/svg+xml;utf8,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="80"><rect width="300" height="80" fill="#9bd"/></svg>')}" alt="Inline sample"><p style="text-align:center;font-size:12px"><a href="https://example.com/unsubscribe">Unsubscribe</a></p>`,
     email: true,
   },
   decorators: emailFrame,

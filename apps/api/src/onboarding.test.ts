@@ -149,9 +149,11 @@ describe("company focus", () => {
     );
     expect(texts.at(-1)).toContain("[Finance](/app/finance) and [Cap table](/app/cap-table)");
     expect(texts.at(-1)).toContain("[Data room](/app/data-room)");
-    expect(texts).toContain(
-      "Gmail and Google Calendar are a good place to start. Connect them here and I’ll use what you already have.",
+    // One sentence above the cards, not three bubbles that all say connect.
+    expect(texts[0]).toBe(
+      "Got it. Email, calendar, and your company pages. Connect Gmail and Google Calendar here and I’ll use what you already have.",
     );
+    expect(posted).toHaveLength(3);
   });
 });
 
@@ -165,7 +167,7 @@ describe("focus choices", () => {
     await chooseFocus(deps, actor, "bot", "company");
     expect(posted[0]?.blocks[0]).toEqual({
       kind: "text",
-      text: "Got it. Email, calendar, and your company pages. I’ll see what’s already connected so I don’t make you set something up twice.",
+      text: "Got it. Email, calendar, and your company pages.",
     });
   });
 });
