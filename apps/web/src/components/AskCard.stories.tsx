@@ -198,11 +198,11 @@ export const CreatedSpace: Story = {
 export const SecretApiKey: Story = {
   args: {
     block: ask({
-      text: "Paste the API key for the sample service.",
+      text: "Example access for the weekly report. Waiting for the key.",
       input: "secret",
       purpose: "api_key",
       credential: {
-        name: "SAMPLE_KEY",
+        name: "EXAMPLE_API_KEY",
         origin: "https://api.example.com",
         auth: { type: "bearer" },
       },

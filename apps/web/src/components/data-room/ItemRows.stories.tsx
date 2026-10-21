@@ -98,7 +98,10 @@ export const ListWithoutFacets: Story = {
 export const ListByDocumentDate: Story = {
   render: () => <ListView rows={rows} o={o} sortField="date" />,
 };
-/** A file being read and a failed one: Status is its own column, and the failed row offers Try again. */
+/**
+ * A file read for over two minutes (it shows its age), an unreadable file (offers Delete) and a
+ * file that failed for another reason (offers Try again). Status is its own column.
+ */
 export const ListWithStatus: Story = {
   render: () => (
     <ListView
@@ -106,9 +109,17 @@ export const ListWithStatus: Story = {
         ...row,
         item: {
           ...row.item,
-          ...(index === 0 ? { status: "processing" as const } : {}),
+          ...(index === 0
+            ? {
+                status: "processing" as const,
+                createdAt: new Date(Date.now() - 6 * 60_000).toISOString(),
+              }
+            : {}),
           ...(index === 1
             ? { status: "failed" as const, error: "This file isn't a readable PDF." }
+            : {}),
+          ...(index === 2
+            ? { status: "failed" as const, error: "TimeoutError: the step timed out" }
             : {}),
         },
       }))}

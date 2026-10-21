@@ -26,6 +26,7 @@ import {
   TableRow,
   Toggle,
 } from "@rakazo/ui-web";
+import { cn } from "@rakazo/ui-web/lib/utils";
 import {
   ArrowLeft,
   Download,
@@ -51,6 +52,7 @@ import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-ope
 import { takeInitialBootstrap } from "../lib/bootstrap";
 import { formatRelativeTime } from "../lib/relative-time";
 import { rpc } from "../lib/rpc";
+import { canPreviewSpreadsheet } from "../lib/spreadsheet";
 import { errorText } from "../lib/user-error";
 
 type ViewMode = "grid" | "list";
@@ -280,10 +282,40 @@ export function ArtifactsPage({
     }
   }
 
+  const viewToggle = (className: string) => (
+    <fieldset className={`m-0 flex min-w-0 gap-0.5 border-0 p-0 ${className}`}>
+      <legend className="sr-only">{t`View`}</legend>
+      <Tip label={t`List view`}>
+        <Toggle
+          size="sm"
+          pressed={viewMode === "list"}
+          onPressedChange={() => setMode("list")}
+          aria-label={t`List view`}
+        >
+          <List aria-hidden="true" />
+        </Toggle>
+      </Tip>
+      <Tip label={t`Grid view`}>
+        <Toggle
+          size="sm"
+          pressed={viewMode === "grid"}
+          onPressedChange={() => setMode("grid")}
+          aria-label={t`Grid view`}
+        >
+          <LayoutGrid aria-hidden="true" />
+        </Toggle>
+      </Tip>
+    </fieldset>
+  );
+
+  // Nothing to filter or switch views on until the space has an artifact.
+  const nothingYet = items?.length === 0 && !nextCursor && !filterActive;
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-foreground/90">
       <div className={`${PAGE_GUTTER_X} pt-2 md:pt-5`}>
         <PageHeader
+          // The space name drops to a third row on a phone; the header stays one row there.
+          className="max-md:[&_[data-page-header-meta]]:hidden"
           title={<Trans>Artifacts</Trans>}
           meta={
             spaceName ? (
@@ -295,7 +327,7 @@ export function ArtifactsPage({
           actions={
             <>
               {/* Filters act on the list, so they go when an open document hides it (phone, maximized). */}
-              {artifactId && maximized ? null : (
+              {(artifactId && maximized) || nothingYet ? null : (
                 <Toggle
                   variant="outline"
                   size="sm"
@@ -312,31 +344,7 @@ export function ArtifactsPage({
                   ) : null}
                 </Toggle>
               )}
-              {!artifactId ? (
-                <fieldset className="m-0 flex min-w-0 gap-0.5 border-0 p-0">
-                  <legend className="sr-only">{t`View`}</legend>
-                  <Tip label={t`List view`}>
-                    <Toggle
-                      size="sm"
-                      pressed={viewMode === "list"}
-                      onPressedChange={() => setMode("list")}
-                      aria-label={t`List view`}
-                    >
-                      <List aria-hidden="true" />
-                    </Toggle>
-                  </Tip>
-                  <Tip label={t`Grid view`}>
-                    <Toggle
-                      size="sm"
-                      pressed={viewMode === "grid"}
-                      onPressedChange={() => setMode("grid")}
-                      aria-label={t`Grid view`}
-                    >
-                      <LayoutGrid aria-hidden="true" />
-                    </Toggle>
-                  </Tip>
-                </fieldset>
-              ) : null}
+              {!artifactId && !nothingYet ? viewToggle("hidden md:flex") : null}
               {onAskAgent ? <AskBotButton botName="Chief" onClick={onAskAgent} /> : null}
             </>
           }
@@ -384,6 +392,8 @@ export function ArtifactsPage({
               ))}
             </NativeSelect>
           ) : null}
+          {/* On a phone the header has no room for the view switch, so it waits here with the filters. */}
+          {!artifactId ? viewToggle("ms-auto md:hidden") : null}
         </div>
       ) : null}
 
@@ -716,11 +726,7 @@ function EmptyArtifacts({
             write one.
           </Trans>
         }
-      >
-        <Button render={<Link to="/app" />}>
-          <Trans>Open chat</Trans>
-        </Button>
-      </PageEmptyState>
+      />
     );
   }
   if (!nextCursor) {
@@ -832,7 +838,7 @@ function ArtifactCard({
         // h-full: cards in one grid row share a height, so the hover Delete stays inside each.
         className="flex h-full flex-col gap-4 rounded-2xl border border-border bg-card p-4 text-foreground hover:bg-accent/40"
       >
-        <div className="flex items-start justify-between">
+        <div className="flex items-center justify-between">
           <span className="grid h-9 w-9 place-items-center rounded-[10px] bg-accent text-accent-foreground">
             <ArtifactMimeIcon mimeType={artifact.mimeType} />
           </span>
@@ -1137,7 +1143,15 @@ function PreviewPane({
             {state.message}
           </div>
         ) : (
-          <div className="relative h-full overflow-hidden rounded-2xl border border-border">
+          <div
+            className={cn(
+              "relative overflow-hidden rounded-2xl border border-border",
+              // A sheet is as tall as its rows (scrolling past the pane); other files fill it.
+              canPreviewSpreadsheet(state.artifact.name, state.artifact.mimeType)
+                ? "flex max-h-full flex-col"
+                : "h-full",
+            )}
+          >
             <ArtifactPreview artifact={state.artifact} bytes={state.bytes} />
           </div>
         )}

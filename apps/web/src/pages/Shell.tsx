@@ -399,11 +399,28 @@ type SearchLink = { id: string; label: string; detail?: string };
 /** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
 async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
-    rpc.dataRoom
-      .search({ query, limit: 5 })
-      .then((result): SearchLink[] =>
-        result.results.map(({ item }) => ({ id: item.id, label: item.name })),
-      )
+    Promise.all([
+      rpc.dataRoom.search({ query, limit: 5 }),
+      // Only for the folder line; a failure just leaves it off.
+      rpc.dataRoom.folders().catch(() => []),
+    ])
+      .then(([result, folders]): SearchLink[] => {
+        const byId = new Map(folders.map((folder) => [folder.id, folder]));
+        const folderPath = (id: string | null) => {
+          const names: string[] = [];
+          let at = id ? byId.get(id) : undefined;
+          while (at && names.length < 8) {
+            names.unshift(at.name);
+            at = at.parentId ? byId.get(at.parentId) : undefined;
+          }
+          return names.join(" / ");
+        };
+        return result.results.map(({ item }) => ({
+          id: item.id,
+          label: item.name,
+          detail: folderPath(item.folderId) || undefined,
+        }));
+      })
       .catch((): SearchLink[] => []),
     // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
     rpc.artifacts
@@ -2146,14 +2163,15 @@ export function ShellPage() {
             detail: c.detail,
           })),
         },
-        { heading: t`Chats`, entries: chats },
         {
           heading: t`Documents`,
           entries: found.documents.map((doc) => ({
             id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
             label: doc.label,
+            detail: doc.detail,
           })),
         },
+        { heading: t`Chats`, entries: chats },
         {
           heading: t`Artifacts`,
           entries: found.artifacts.map((item) => ({

@@ -173,7 +173,7 @@ it("names its scope while the plan is made, and Apply waits", async () => {
   motion(false);
   autoSort.plan.mockReturnValue(new Promise(() => undefined));
   await render();
-  expect(document.body.textContent).toContain("Sorting every file in the Data room");
+  expect(document.body.textContent).toContain("Looking for changes");
   expect(button("Apply").hasAttribute("disabled")).toBe(true);
 });
 
