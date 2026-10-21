@@ -25,7 +25,7 @@ import { FirstRunTour } from "./FirstRunTour";
 
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
-const anchors = ["sidebar-inbox", "sidebar-legal", "user-menu"];
+const anchors = ["sidebar-inbox", "user-menu", "sidebar-integrations"];
 
 beforeEach(() => {
   window.matchMedia = ((query: string) => ({
@@ -56,7 +56,10 @@ const click = (label: string) =>
 
 it("skips steps whose anchor is missing, walks Next and Back, and records Done", async () => {
   const onClose = vi.fn();
-  await act(async () => root.render(<FirstRunTour open onClose={onClose} />));
+  const onConnectApps = vi.fn();
+  await act(async () =>
+    root.render(<FirstRunTour open onClose={onClose} onConnectApps={onConnectApps} />),
+  );
   // Three anchors exist, so there are three steps.
   expect(document.body.textContent).toContain("1/3");
   await click("Next");
@@ -66,23 +69,28 @@ it("skips steps whose anchor is missing, walks Next and Back, and records Done",
   await click("Next");
   await click("Next");
   expect(document.body.textContent).toContain("3/3");
-  await click("Done");
+  // The last step ends on an action: it records the tour, then opens Connect apps.
+  expect(document.body.textContent).not.toContain("backups");
+  await click("Connect apps");
   expect(update).toHaveBeenCalledWith({ tourSeen: true });
   expect(onClose).toHaveBeenCalled();
+  expect(onConnectApps).toHaveBeenCalled();
 });
 
 it("records Skip tour", async () => {
-  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} />));
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onConnectApps={vi.fn()} />));
   await click("Skip tour");
   expect(update).toHaveBeenCalledWith({ tourSeen: true });
 });
 
 it("shows nothing and saves nothing when closed or when no anchor exists", async () => {
-  await act(async () => root.render(<FirstRunTour open={false} onClose={vi.fn()} />));
+  await act(async () => root.render(<FirstRunTour open={false} onClose={vi.fn()} onConnectApps={vi.fn()} />));
   expect(document.body.textContent).not.toContain("1/");
   for (const el of document.querySelectorAll("[data-tour]")) el.remove();
   const onClose = vi.fn();
-  await act(async () => root.render(<FirstRunTour open onClose={onClose} />));
+  await act(async () =>
+    root.render(<FirstRunTour open onClose={onClose} onConnectApps={vi.fn()} />),
+  );
   expect(update).not.toHaveBeenCalled();
   expect(onClose).toHaveBeenCalledWith(null);
 });

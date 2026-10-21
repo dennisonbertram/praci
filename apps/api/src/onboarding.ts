@@ -332,12 +332,6 @@ export async function chooseFocus(
     },
   ]);
   await post(deps, target, cards);
-  await post(deps, target, [
-    {
-      kind: "text",
-      text: `Authorize ${cards.length === 1 ? "it" : cards.length === 2 ? "both" : "all three"} and I’ll start pulling the picture together.`,
-    },
-  ]);
   if (option.note) await post(deps, target, [{ kind: "text", text: option.note }]);
 }
 
