@@ -1521,12 +1521,6 @@ export const appContract = {
   investors: {
     /** Creates the Investors agent once (idempotent) and returns it. */
     agent: oc.output(BotSchema),
-  },
-  carta: {
-    agent: oc.output(BotSchema),
-    /** The Cap Table page's snapshot and whether the Carta agent is refreshing it. */
-  },
-  investors: {
     /** The Investors page's cap table and whether the Carta agent is refreshing it. */
     capTable: oc.output(CapTableStateSchema),
     /** Starts a Carta agent run that refreshes the snapshot and the investor contacts (Carta source only). */
@@ -1537,6 +1531,9 @@ export const appContract = {
     changeSource: oc.input(CapTableChangeSourceInputSchema).output(CapTableStateSchema),
     /** Restores the table before the last source switch, once. */
     undoSource: oc.output(CapTableStateSchema),
+  },
+  carta: {
+    agent: oc.output(BotSchema),
   },
   contacts: {
     list: oc.input(ContactListInputSchema).output(z.array(ContactSchema)),

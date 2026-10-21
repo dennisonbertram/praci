@@ -7425,15 +7425,6 @@ export function createRouter(deps: RouterDeps) {
           throw mapSpaceLifecycleError(error);
         }),
       ),
-    },
-    carta: {
-      agent: authed.carta.agent.handler(({ context }) =>
-        ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
-          throw mapSpaceLifecycleError(error);
-        }),
-      ),
-    },
-    investors: {
       capTable: authed.investors.capTable.handler(({ context }) => capTableState(context.actor)),
       refresh: authed.investors.refresh.handler(async ({ context }) => {
         const cartaServers = (
@@ -7480,6 +7471,13 @@ export function createRouter(deps: RouterDeps) {
         await undoCapTableSource(deps.prisma, actorScope(context.actor));
         return capTableState(context.actor);
       }),
+    },
+    carta: {
+      agent: authed.carta.agent.handler(({ context }) =>
+        ensureCartaAgent({ prisma: deps.prisma, repos }, context.actor).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
     },
     sidebarPages: {
       list: authed.sidebarPages.list.handler(({ context }) =>
