@@ -11,7 +11,7 @@ import type {
   SecretStore,
 } from "@rakazo/adapter-kit";
 import { messagingDeliverJob } from "@rakazo/adapter-kit";
-import type { PrismaClient, ThreadEvents } from "@rakazo/db";
+import type { NotificationEvents, PrismaClient, ThreadEvents } from "@rakazo/db";
 import { deleteExpiredMessagingTransport, deleteExpiredNotifications } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { cleanupAccountExports, runAccountExport } from "./account-export.js";
@@ -78,6 +78,8 @@ export function createBackgroundJobHandlers(deps: {
   financeCallToolFor?: FinanceSyncDeps["callToolFor"];
   /** Read-only Devin caller; without it `devin.refresh` does nothing. Every process that runs jobs must pass it. */
   devinCallTool?: DevinCallTool;
+  /** Live signal for a new Devin alert; the alert is stored without it. */
+  notificationEvents?: NotificationEvents;
   /** Deletes the blobs of removed Data room items and reads them for ingest. */
   artifacts?: ArtifactStore;
   /** Needed only to import Google Drive folders. */
@@ -236,7 +238,14 @@ export function createBackgroundJobHandlers(deps: {
     },
     "devin.refresh": async (payload) => {
       if (!deps.devinCallTool) return;
-      await runDevinRefreshJob({ prisma: deps.prisma, callTool: deps.devinCallTool }, payload);
+      await runDevinRefreshJob(
+        {
+          prisma: deps.prisma,
+          callTool: deps.devinCallTool,
+          notificationEvents: deps.notificationEvents,
+        },
+        payload,
+      );
     },
     "inbox.triage": async (payload) => {
       await runInboxTriage(
