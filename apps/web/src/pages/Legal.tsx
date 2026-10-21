@@ -277,7 +277,10 @@ function Legal({
       {/* A line, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
       {counts.unreviewedDocuments > 0 ? (
         <p className="-mt-2 mb-4 text-xs text-muted-foreground">
-          <Link to={DATA_ROOM_PATH} className="underline underline-offset-2 hover:text-foreground">
+          <Link
+            to={DATA_ROOM_PATH}
+            className="rk-tap underline underline-offset-2 hover:text-foreground"
+          >
             {plural(counts.unreviewedDocuments, {
               one: "# Data room document not yet checked by Legal",
               other: "# Data room documents not yet checked by Legal",
