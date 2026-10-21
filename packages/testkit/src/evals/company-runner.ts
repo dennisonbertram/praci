@@ -12,7 +12,7 @@ import {
   secondCompanyGroundTruth,
 } from "../company-fixture.js";
 import type { CompanyEvalObservations } from "./company-metrics.js";
-import { measureCompanyEval } from "./company-metrics.js";
+import { measureCompanyEval, measureCompanyReplay } from "./company-metrics.js";
 import { companyRecordedUsage, companyRecordings } from "./company-recordings.js";
 
 const kinds = ["data_room", "gmail", "slack", "github", "linear"] as const;
@@ -238,16 +238,29 @@ export async function runCompanyEval(prisma: PrismaClient) {
     const edges = await store.listEdges();
     const events = await store.listEvents();
     const facts = [...entities, ...edges, ...events];
-    const evidenceCount = await prisma.companyEvidence.count({ where: scope });
-    const factCount = async () =>
-      (await store.list({ includeRejected: true })).length +
-      (await store.listEdges({ includeRejected: true })).length +
-      (await store.listEvents({ includeRejected: true })).length;
-    const firstFactCount = await factCount();
+    const snapshotIds = async () => {
+      const options = { where: scope, select: { id: true } } as const;
+      const [entityIds, edgeIds, eventIds, evidenceIds] = await Promise.all([
+        prisma.companyEntity.findMany(options),
+        prisma.companyEdge.findMany(options),
+        prisma.companyEvent.findMany(options),
+        prisma.companyEvidence.findMany(options),
+      ]);
+      return {
+        facts: [
+          ...entityIds.map((row) => `entity:${row.id}`),
+          ...edgeIds.map((row) => `edge:${row.id}`),
+          ...eventIds.map((row) => `event:${row.id}`),
+        ],
+        evidence: evidenceIds.map((row) => row.id),
+      };
+    };
+    const beforeReplay = await snapshotIds();
     await run();
-    const addedFactsOnReplay = (await factCount()) - firstFactCount;
-    const addedEvidenceOnReplay =
-      (await prisma.companyEvidence.count({ where: scope })) - evidenceCount;
+    const { addedFactsOnReplay, addedEvidenceOnReplay } = measureCompanyReplay(
+      beforeReplay,
+      await snapshotIds(),
+    );
     const addedModelCallsOnReplay = calls.length - firstCalls.length;
 
     const required = (name: string) => {

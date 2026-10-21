@@ -6,6 +6,20 @@ const normalize = (value: string) => value.trim().toLowerCase().replace(/\s+/g, 
 const choose2 = (n: number) => (n * (n - 1)) / 2;
 const ratio = (n: number, d: number) => (d === 0 ? null : n / d);
 
+export function measureCompanyReplay(
+  before: { facts: string[]; evidence: string[] },
+  after: { facts: string[]; evidence: string[] },
+) {
+  const added = (previous: string[], current: string[]) => {
+    const known = new Set(previous);
+    return current.filter((id) => !known.has(id)).length;
+  };
+  return {
+    addedFactsOnReplay: added(before.facts, after.facts),
+    addedEvidenceOnReplay: added(before.evidence, after.evidence),
+  };
+}
+
 export interface CompanyEvalObservations {
   injectionItemsChecked: number;
   injectionFacts: number;

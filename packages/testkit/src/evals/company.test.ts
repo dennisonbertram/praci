@@ -5,7 +5,7 @@ import { validateCompanyExtraction } from "../../../adapters/src/company-extract
 import { LlmCompanyExtractor } from "../../../adapters/src/llm-company-extractor.js";
 import { createNorthwindCompanyFixture } from "../company-fixture.js";
 import type { CompanyEvalReport } from "./company-metrics.js";
-import { assertCompanyEval, measureCompanyEval } from "./company-metrics.js";
+import { assertCompanyEval, measureCompanyEval, measureCompanyReplay } from "./company-metrics.js";
 import { companyRecordings } from "./company-recordings.js";
 import { companyEvalTargets } from "./company-targets.js";
 import recordedBaseline from "./fixtures/company-baseline.json" with { type: "json" };
@@ -151,6 +151,19 @@ const mutations: Array<[string, (report: CompanyEvalReport) => void]> = [
 ];
 
 describe("company evaluation gates", () => {
+  it("detects replay replacements even when total row counts do not change", () => {
+    const before = { facts: ["entity:original"], evidence: ["original-evidence"] };
+    expect(measureCompanyReplay(before, before)).toEqual({
+      addedFactsOnReplay: 0,
+      addedEvidenceOnReplay: 0,
+    });
+    expect(
+      measureCompanyReplay(before, {
+        facts: ["entity:replacement"],
+        evidence: ["replacement-evidence"],
+      }),
+    ).toEqual({ addedFactsOnReplay: 1, addedEvidenceOnReplay: 1 });
+  });
   it("accepts the frozen measured baseline without claiming live quality", () => {
     expect(() => assertCompanyEval(baseline, companyEvalTargets)).not.toThrow();
     expect(baseline.claim).toContain("not live extraction quality");
