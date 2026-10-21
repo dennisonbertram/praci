@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createRouterClient } from "@orpc/server";
 import {
+  aiRecipient,
   SCRIPTED_TRANSCRIPT,
   SCRIPTED_TRANSCRIPTION_TEXT,
   ScriptedTranscriptionProvider,
@@ -9,7 +10,8 @@ import {
 import type { Actor } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb } from "@rakazo/db";
-import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { aiConsentStatus } from "./ai-consent.js";
 import type { RouterDeps } from "./router.js";
 import { createRouter } from "./router.js";
 import { clearTranscription, setTranscription, transcribeVoice } from "./voice.js";
@@ -272,5 +274,129 @@ describePostgres("transcription selection (PostgreSQL)", () => {
 
     await clearTranscription(flakyDeps, actor(userA));
     expect(remote.size).toBe(0);
+  });
+
+  describe("consent for the selected transcription provider", () => {
+    const recipientKey = () =>
+      aiRecipient({ provider: "scripted-transcribe", use: "voice" })?.key as string;
+    const consentCount = () =>
+      prisma.aiDataConsent.count({ where: { userId: userA, recipientKey: recipientKey() } });
+    const select = () =>
+      client(actor(userA)).voice.setTranscription({
+        provider: "scripted-transcribe",
+        apiKey: "dictation-key-1",
+      });
+    const revoke = () =>
+      prisma.aiDataConsent.deleteMany({ where: { userId: userA, recipientKey: recipientKey() } });
+    beforeEach(async () => {
+      await revoke();
+    });
+    const calls = () => vi.spyOn(ScriptedTranscriptionProvider.prototype, "transcribe");
+    const cleanup = async () => {
+      await client(actor(userA)).voice.clearTranscription();
+      await revoke();
+      await prisma.spaceVoicePreference.deleteMany({ where: { userId: userA } });
+      await prisma.userVoiceCredential.deleteMany({ where: { userId: userA } });
+      vi.restoreAllMocks();
+    };
+
+    it("lists the selected provider as a voice recipient", async () => {
+      const status = () =>
+        aiConsentStatus(
+          { prisma, secrets, env: { agentRuntime: "scripted" } } as never,
+          actor(userA),
+        );
+      expect((await status()).recipients).toEqual([]);
+      await select();
+      const listed = (await status()).recipients.find((r) => r.key === recipientKey());
+      expect(listed).toMatchObject({ use: "voice", allowed: true });
+      await cleanup();
+    });
+
+    it("records consent only after the key verifies", async () => {
+      const a = client(actor(userA));
+      await expect(
+        a.voice.setTranscription({ provider: "scripted-transcribe", apiKey: "fail-bad-key-1" }),
+      ).rejects.toThrow("That key was rejected.");
+      expect(await consentCount()).toBe(0);
+      await select();
+      expect(await consentCount()).toBe(1);
+      await cleanup();
+    });
+
+    it("uses the selection when its recipient has consent", async () => {
+      await select();
+      await expect(transcribeVoice(deps(), actor(userA), audio)).resolves.toEqual({
+        text: SCRIPTED_TRANSCRIPTION_TEXT,
+      });
+      await cleanup();
+    });
+
+    it("no audio reaches the transcription provider without its consent", async () => {
+      const a = client(actor(userA));
+      await a.voice.connect({ provider: "scripted", apiKey: "speech-key-1", voiceId: "voice-1" });
+      await select();
+      await revoke();
+      const spy = calls();
+      // The voice provider takes over; the selection's provider sees no request.
+      await expect(transcribeVoice(deps(), actor(userA), audio)).resolves.toEqual({
+        text: SCRIPTED_TRANSCRIPT,
+      });
+      expect(spy).not.toHaveBeenCalled();
+      await cleanup();
+    });
+
+    it("returns the consent error when neither provider has consent", async () => {
+      await select();
+      await revoke();
+      const spy = calls();
+      await expect(transcribeVoice(deps(), actor(userA), audio)).rejects.toThrow(
+        "AI data sharing needs your permission.",
+      );
+      // A voice provider that shares data outside the app and has no consent is no fallback.
+      const secret = await prisma.secret.create({
+        data: { id: id("openai-secret"), userId: userA, kind: "voice", ciphertext: "enc:k" },
+      });
+      const cred = await prisma.userVoiceCredential.create({
+        data: { userId: userA, provider: "openai", secretId: secret.id },
+      });
+      await prisma.spaceVoicePreference.create({
+        data: { spaceId, userId: userA, credentialId: cred.id, voiceId: "alloy", isDefault: true },
+      });
+      await expect(transcribeVoice(deps(), actor(userA), audio)).rejects.toThrow(
+        "AI data sharing needs your permission.",
+      );
+      expect(spy).not.toHaveBeenCalled();
+      await prisma.secret.deleteMany({ where: { id: secret.id } });
+      await cleanup();
+    });
+
+    it("strips context for a provider that ignores it or has no consent", async () => {
+      const context = { vocabulary: ["Rakazo"], beforeText: "Hello" };
+      const seen: unknown[] = [];
+      const spy = calls().mockImplementation(async (request) => {
+        seen.push(request.context);
+        return { text: "ok" };
+      });
+      await select();
+      await transcribeVoice(deps(), actor(userA), { ...audio, context });
+      expect(seen).toEqual([context]);
+
+      seen.length = 0;
+      const describeSpy = vi
+        .spyOn(ScriptedTranscriptionProvider.prototype, "describe")
+        .mockReturnValue({ capabilities: { usesContext: false } } as never);
+      await transcribeVoice(deps(), actor(userA), { ...audio, context });
+      expect(seen).toEqual([undefined]);
+      describeSpy.mockRestore();
+
+      // Without consent the selection is not used, so the context goes nowhere.
+      seen.length = 0;
+      await revoke();
+      await expect(transcribeVoice(deps(), actor(userA), { ...audio, context })).rejects.toThrow();
+      expect(seen).toEqual([]);
+      spy.mockRestore();
+      await cleanup();
+    });
   });
 });

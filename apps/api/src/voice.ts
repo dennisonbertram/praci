@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
 import type { AdapterContext, SecretStore, TranscriptionContext } from "@rakazo/adapter-kit";
 import {
+  aiRecipient,
   createTranscriptionProvider,
   createVoiceProvider,
   isFishSpeechModelId,
@@ -14,6 +15,7 @@ import {
   voiceCatalogEntry,
 } from "@rakazo/adapters";
 import type { Actor, VoiceCredential, VoiceStatus } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import { toUtterances } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import {
@@ -27,6 +29,7 @@ import {
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { Context, Hono } from "hono";
+import { hasVoiceConsent } from "./ai-consent.js";
 import { readBoundedBody } from "./http-body.js";
 import { withSerializableRetry } from "./serializable-retry.js";
 
@@ -128,6 +131,26 @@ export async function setTranscription(
             create: { userId: actor.userId, provider: input.provider, secretId: stored.id },
             update: { provider: input.provider, secretId: stored.id },
           });
+          // Connecting is the consent act; this runs only after the key verified.
+          const recipient = aiRecipient({ provider: input.provider, use: "voice" });
+          if (recipient) {
+            await tx.aiDataConsent.upsert({
+              where: {
+                userId_spaceId_recipientKey: {
+                  userId: actor.userId,
+                  spaceId: actor.spaceId,
+                  recipientKey: recipient.key,
+                },
+              },
+              create: {
+                userId: actor.userId,
+                spaceId: actor.spaceId,
+                recipientKey: recipient.key,
+                version: AI_DISCLOSURE_VERSION,
+              },
+              update: { version: AI_DISCLOSURE_VERSION, grantedAt: new Date() },
+            });
+          }
           if (existing) await tx.secret.deleteMany({ where: { id: existing.secretId } });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -467,9 +490,26 @@ export async function transcribeVoice(
     signal?: AbortSignal;
   },
 ) {
+  // The server picks the provider; clients only upload. A selected provider is used only with its
+  // recipient's consent, otherwise the voice provider (also needing consent while a selection
+  // exists). Without a selection, behaviour is unchanged: the voice provider, no consent check.
   const selected = await loadTranscriptionSelection(deps, actor);
-  const loaded = selected ? null : await loadDefaultVoiceCredential(deps, actor);
-  const target = selected ?? (loaded && { provider: loaded.cred.provider, apiKey: loaded.apiKey });
+  const selectedAllowed = selected
+    ? await hasVoiceConsent(deps.prisma, actor, selected.provider)
+    : false;
+  let target: { provider: string; apiKey: string } | null = null;
+  if (selected && selectedAllowed) target = selected;
+  else {
+    const loaded = await loadDefaultVoiceCredential(deps, actor);
+    if (loaded) target = { provider: loaded.cred.provider, apiKey: loaded.apiKey };
+  }
+  if (
+    selected &&
+    !selectedAllowed &&
+    !(target && (await hasVoiceConsent(deps.prisma, actor, target.provider)))
+  ) {
+    throw new ORPCError("CONFLICT", { message: "AI data sharing needs your permission." });
+  }
   if (!target) throw new NoVoiceConfigured("key");
   const { apiKey } = target;
   const provider = createTranscriptionProvider(target.provider);
@@ -478,6 +518,13 @@ export async function transcribeVoice(
       message: "This voice provider does not transcribe audio. Use on-device dictation instead.",
     });
   }
+  // Context goes only to a provider that uses it and whose recipient has consented.
+  const context =
+    input.context &&
+    provider.describe().capabilities.usesContext &&
+    (await hasVoiceConsent(deps.prisma, actor, target.provider))
+      ? input.context
+      : undefined;
   if (input.audio.byteLength === 0 || input.audio.byteLength > MAX_TRANSCRIBE_BYTES) {
     throw new ORPCError("BAD_REQUEST", { message: "That recording is empty or too large." });
   }
@@ -486,7 +533,7 @@ export async function transcribeVoice(
       audio: input.audio,
       mimeType: input.mimeType || "audio/webm",
       language: input.language,
-      context: input.context,
+      context,
       apiKey,
       signal: input.signal,
     },
