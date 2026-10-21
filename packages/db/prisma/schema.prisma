@@ -2472,6 +2472,10 @@ model CapTableSnapshot {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// CapTableSnapshotInput from @rakazo/contracts.
   data      Json
+  /// The only writer allowed to replace the table: carta, sheet or native. Old rows read as carta.
+  source    String   @default("carta")
+  /// One version back ({ source, sourceRef, data }), written by a source switch and cleared by Undo or the next change.
+  previous  Json?
   updatedAt DateTime @updatedAt
 
   @@unique([spaceId, userId])

@@ -4645,10 +4645,44 @@ describe("Carta server guards", () => {
         { mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) } },
         status,
       );
-      await expect(client.carta.refresh()).rejects.toThrow("Connect Carta first");
+      await expect(client.investors.refresh()).rejects.toThrow("Connect Carta first");
     }
     const none = clientFor({ mcpServer: { findMany: vi.fn().mockResolvedValue([]) } });
-    await expect(none.carta.refresh()).rejects.toThrow("Connect Carta first");
+    await expect(none.investors.refresh()).rejects.toThrow("Connect Carta first");
+  });
+
+  it("refuses to refresh from Carta when the table's source is another one", async () => {
+    const client = clientFor(
+      {
+        mcpServer: { findMany: vi.fn().mockResolvedValue([cartaRow]) },
+        capTableSnapshot: { findUnique: vi.fn().mockResolvedValue({ source: "native" }) },
+      },
+      "connected",
+    );
+    await expect(client.investors.refresh()).rejects.toThrow(
+      "The cap table is not read from Carta",
+    );
+  });
+
+  it("answers a stale typed-in save as a conflict", async () => {
+    const client = clientFor({
+      capTableSnapshot: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ id: "row" }),
+      },
+    });
+    await expect(
+      client.investors.capTableSave({
+        updatedAt: new Date(0).toISOString(),
+        table: {
+          companyName: "Example Co",
+          asOf: "2026-01-31",
+          fullyDilutedShares: 0,
+          shareClasses: [],
+          holders: [],
+        },
+      }),
+    ).rejects.toMatchObject({ code: "CONFLICT" });
   });
 
   it("refuses to give a Carta server to a bot other than the Carta agent", async () => {
