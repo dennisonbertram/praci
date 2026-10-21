@@ -136,6 +136,15 @@ export function AskCard({
       ) : null}
       {block.detail && block.consent ? (
         <p className="mt-2 text-[13px] text-muted-foreground">{block.detail}</p>
+      ) : block.detail && !secretInput && block.detailFolded ? (
+        <details className="mt-3 text-[13px] text-muted-foreground">
+          <summary className="w-fit cursor-pointer">
+            <Trans>Details</Trans>
+          </summary>
+          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted px-3.5 py-3 font-mono text-[12.5px] leading-[1.7]">
+            {block.detail}
+          </pre>
+        </details>
       ) : block.detail && !secretInput ? (
         <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-muted px-3.5 py-3 font-mono text-[12.5px] leading-[1.7] text-muted-foreground">
           {block.detail}

@@ -83,6 +83,7 @@ import {
   Pencil,
   PieChart,
   Plus,
+  Scale,
   Settings,
   Trash2,
   Users,
@@ -1918,23 +1919,34 @@ export function ShellPage() {
         icon: <PieChart {...icon} />,
       },
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
+      {
+        id: "legal",
+        label: t`Legal`,
+        keywords: t`contracts, NDA, deadlines`,
+        icon: <Scale {...icon} />,
+      },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "integrations", label: t`Integrations`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
   }, [t]);
+  // A page hidden in Page options stays out of search and the command palette too.
+  const visiblePages = useMemo(
+    () => appPages.filter((page) => !hiddenPages.includes(page.id)),
+    [appPages, hiddenPages],
+  );
   // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
   const searchPages = useMemo(() => {
     const needle = spaceQuery.toLocaleLowerCase();
     return needle
-      ? appPages.filter((page) =>
+      ? visiblePages.filter((page) =>
           `${page.label} ${"keywords" in page ? page.keywords : ""}`
             .toLocaleLowerCase()
             .includes(needle),
         )
       : [];
-  }, [appPages, spaceQuery]);
+  }, [visiblePages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
   const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
 
@@ -3797,6 +3809,7 @@ export function ShellPage() {
         dropSidebarItem={dropSidebarItem}
         sidebarDragOverlay={sidebarDragOverlay}
         sidebarGroups={sidebarGroups}
+        botSections={botSections}
         bootstrapMe={bootstrapMe}
         collapsedRosterParents={collapsedRosterParents}
         editingFolderId={editingFolderId}
@@ -4975,7 +4988,7 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/${id}`);
           }}
-          pages={appPages}
+          pages={visiblePages}
           groups={groups.map((group) => ({
             id: group.id,
             label: group.name,

@@ -7,18 +7,18 @@ Source: PRs #115 and #134. Code read: `apps/api/src/inbox.ts` (`searchMail`, `in
 - **Sync rate limit: reachable.** `pnpm demo:up` seeds a space named "Mail rate-limited" (`DEMO_RATE_LIMIT_SPACE`, `packages/testkit/src/cli/demo/data.ts`) with a Gmail account labeled "Busy mail". In `packages/testkit/src/cli/demo.ts` the `accountState` hook makes `createE2eComposio` (`packages/testkit/src/cli/e2e-mail.ts`) answer every Gmail call for that account with HTTP 429 `RESOURCE_EXHAUSTED`. The seed calls `inbox/refresh` once, so the account already has a rate-limit error recorded. The walker switches to that space and opens Inbox.
 - **The 429 never stops in that space.** The account answers 429 for every call, for as long as the stack runs. The cache is empty (the seed only runs one refresh that fails), so the Inbox shows the full-page state, not a line above rows. The notice therefore cannot be seen to clear by waiting, and there is no message in that space to open or reply to.
 - **`GmailApiEmulator.failNext(429, { retryAfter, urlIncludes, times, skip })`** (`packages/adapters/src/gmail-api-emulator.ts`) can force a one-time or limited 429, but it is only called from Vitest tests (for example `apps/api/src/inbox.postgres.test.ts`, `inbox-compose.postgres.test.ts`) and is not wired to the demo CLI, an env var, or an HTTP route. A walker on the demo stack cannot call it.
-- **Conclusion.** GR-1 and GR-2 are walkable in the rate-limited space. GR-3 (notice clears) and GR-4 (Reply fallback with a failing Gmail) cannot be reached on the unmodified demo stack: GR-3 needs a 429 that stops, GR-4 needs a cached message plus a failing single-message fetch. To walk them, add a demo hook for `failNext` (or a second seeded space with a populated cache) first. Until then, record them as "not reachable" and read the Vitest cases listed in each story.
+- **Conclusion.** STORY-INB-018 and STORY-INB-119 are walkable in the rate-limited space. STORY-INB-120 (notice clears) and STORY-INB-121 (Reply fallback with a failing Gmail) cannot be reached on the unmodified demo stack: STORY-INB-120 needs a 429 that stops, STORY-INB-121 needs a cached message plus a failing single-message fetch. To walk them, add a demo hook for `failNext` (or a second seeded space with a populated cache) first. Until then, record them as "not reachable" and read the Vitest cases listed in each story.
 
 ---
 
-## STORY-GR-1: Gmail rate-limits the sync and Maya sees a notice
+## STORY-INB-018: Gmail rate-limits the sync and Maya sees a notice (folded into the existing story of this id, updated 2026-10-20)
 
 **Type**: short
 **Topic**: Gmail rate-limit notice
 **Persona**: Maya, first-time founder at Northwind Robotics, opening her Inbox while Gmail is throttling her account
 **Goal**: Understand why her mail is not showing and what to do.
 **Preconditions**: Demo stack running; signed in; the space "Mail rate-limited" selected (account "Busy mail", always 429, empty cache).
-**Ideal path**: 1 — read the notice and press **Try again** once (GR-2); nothing else is needed.
+**Ideal path**: 1 — read the notice and press **Try again** once (STORY-INB-119); nothing else is needed.
 **Alternate paths**: A populated inbox with a throttled account shows the same text as a red line above the rows with a small **Try again** button (not walkable on the demo stack; see the top of this file). Searching while throttled (`searchMail`) also reports the account as rate limited.
 
 ### Steps
@@ -33,17 +33,17 @@ Source: PRs #115 and #134. Code read: `apps/api/src/inbox.ts` (`searchMail`, `in
 
 ### Edge Cases
 - She leaves and comes back: the notice shows again on open, because the list API still reports the account while its 30-second pause is active or the last sync ended in a rate-limit error.
-- The notice has no countdown, so she cannot tell when pressing **Try again** will do anything; GR-2 covers what happens if she presses it early.
+- The notice has no countdown, so she cannot tell when pressing **Try again** will do anything; STORY-INB-119 covers what happens if she presses it early.
 
 ---
 
-## STORY-GR-2: Maya presses "Try again" during the pause
+## STORY-INB-119: Maya presses "Try again" during the pause
 
 **Type**: short
 **Topic**: Try again during a rate-limit pause
 **Persona**: Maya, impatient, presses the button right after she sees the notice
 **Goal**: Get her mail to load now.
-**Preconditions**: As GR-1, immediately after the notice appeared (less than 30 seconds since the last failed sync).
+**Preconditions**: As STORY-INB-018, immediately after the notice appeared (less than 30 seconds since the last failed sync).
 **Ideal path**: 1 — one click, then wait.
 **Alternate paths**: Switch to another tab and back to the Inbox tab: a visibility change re-runs the sync without a click (`Inbox.tsx`, around line 203). The page also looks for new mail about once a minute (`NEW_MAIL_POLL_MS`).
 
@@ -64,7 +64,7 @@ Source: PRs #115 and #134. Code read: `apps/api/src/inbox.ts` (`searchMail`, `in
 
 ---
 
-## STORY-GR-3: The notice clears once the pause is over
+## STORY-INB-120: The notice clears once the pause is over
 
 **Type**: short
 **Topic**: Rate-limit notice clearing
@@ -72,7 +72,7 @@ Source: PRs #115 and #134. Code read: `apps/api/src/inbox.ts` (`searchMail`, `in
 **Goal**: See her mail again without doing anything special.
 **Preconditions**: An account whose Gmail was throttled and has since recovered; at least 30 seconds since the last 429. **Not reachable on the unmodified demo stack** (its throttled account never recovers). Needs a `failNext(429, ...)` hook, or read `apps/api/src/inbox.postgres.test.ts`.
 **Ideal path**: 1 — open or return to the Inbox tab and the notice is gone.
-**Alternate paths**: Press **Try again** (GR-2).
+**Alternate paths**: Press **Try again** (STORY-INB-119).
 
 ### Steps
 1. Returns to the Inbox tab after more than 30 seconds → the tab becoming visible re-runs the sync (`setAttempt`). The sync is no longer inside the pause and goes to Gmail.
@@ -89,7 +89,7 @@ Source: PRs #115 and #134. Code read: `apps/api/src/inbox.ts` (`searchMail`, `in
 
 ---
 
-## STORY-GR-4: Maya taps Reply while Gmail is failing
+## STORY-INB-121: Maya taps Reply while Gmail is failing
 
 **Type**: short
 **Topic**: Reply fallback composer

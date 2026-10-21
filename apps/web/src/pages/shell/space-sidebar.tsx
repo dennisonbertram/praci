@@ -340,6 +340,7 @@ export type SpaceSidebarProps = {
   dropSidebarItem: (result: DropResult) => void;
   sidebarDragOverlay: (dragId: string) => ReactNode;
   sidebarGroups: SidebarGroup[];
+  botSections: readonly { name: string }[];
   bootstrapMe: Me | null | undefined;
   setBootstrapMe: Dispatch<SetStateAction<Me | null | undefined>>;
   tourRestart: boolean;
@@ -453,6 +454,7 @@ export function SpaceSidebar({
   dropSidebarItem,
   sidebarDragOverlay,
   sidebarGroups,
+  botSections,
   bootstrapMe,
   setBootstrapMe,
   tourRestart,
@@ -672,7 +674,8 @@ export function SpaceSidebar({
         className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
       >
         {/* While searching, matching pages are listed with the results instead. */}
-        {showSpaceSearch && !rail ? null : (
+        {(showSpaceSearch && !rail) || bootstrapMe === undefined ? null : (
+          // Waiting for the account (undefined) keeps pages the user hid from flashing in.
           // Inside the scroll area, so on a short screen the chats are never squeezed out.
           <div className="flex shrink-0 flex-col">
             <SidebarPagesGroup
@@ -727,6 +730,7 @@ export function SpaceSidebar({
                     unseen: unseen.finance ?? 0,
                     rail,
                     value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
+                    valueLabel: t`${runwayGlance(glance.financeRunwayMonths, hideAmounts)} runway`,
                   })}
                 />
               )}
@@ -745,6 +749,10 @@ export function SpaceSidebar({
                     unseen: unseen.legal ?? 0,
                     rail,
                     value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+                    valueLabel: plural(glance.legalDueSoon, {
+                      one: "# due soon",
+                      other: "# due soon",
+                    }),
                   })}
                 />
               )}
@@ -790,6 +798,10 @@ export function SpaceSidebar({
                     unseen: unseen["data-room"] ?? 0,
                     rail,
                     value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                    valueLabel: plural(glance.dataRoomWaiting, {
+                      one: "# waiting",
+                      other: "# waiting",
+                    }),
                   })}
                 />
               )}
@@ -831,7 +843,12 @@ export function SpaceSidebar({
             onSelectDocument={(id) =>
               openSearchResult(`/app/data-room?item=${encodeURIComponent(id)}`)
             }
-            onSearchMail={() => openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)}
+            // A page name is a navigation query, so the mail row would only be a second answer.
+            onSearchMail={
+              searchPages.length
+                ? undefined
+                : () => openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
+            }
           />
         ) : (
           <>
@@ -889,11 +906,7 @@ export function SpaceSidebar({
                   name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
                 };
                 return (
-                  <div
-                    key={group.key}
-                    data-sidebar-group={group.key}
-                    data-sidebar-current={group.current ? "" : undefined}
-                  >
+                  <div key={group.key} data-sidebar-group={group.key}>
                     {rail ? (
                       <div
                         className={
@@ -922,6 +935,7 @@ export function SpaceSidebar({
                         onRename={(name) => void renameFolder(folder, name)}
                         onCancelRename={() => setEditingFolderId(null)}
                         onDelete={() => void deleteFolder(folder)}
+                        takenNames={botSections.map((section) => section.name)}
                       />
                     ) : null}
                     {!rail && !folder && (group.title || hasSpaceActions) ? (
@@ -936,6 +950,7 @@ export function SpaceSidebar({
                           <button
                             type="button"
                             aria-current={group.current ? "true" : undefined}
+                            data-sidebar-current={group.current ? "" : undefined}
                             title={group.relabeled ? group.spaceName : undefined}
                             className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-muted-foreground/60"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                             onClick={() => {

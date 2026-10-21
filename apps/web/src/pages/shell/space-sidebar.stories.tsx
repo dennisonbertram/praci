@@ -176,6 +176,7 @@ function SidebarFixture({ mode }: { mode: Mode }) {
     dropSidebarItem: () => undefined,
     sidebarDragOverlay: () => null,
     sidebarGroups,
+    botSections: sections,
     bootstrapMe: null,
     setBootstrapMe: () => undefined,
     tourRestart: false,

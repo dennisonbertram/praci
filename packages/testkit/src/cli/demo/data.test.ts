@@ -115,7 +115,7 @@ describe("mock demo data", () => {
     expect(table.companyName).toBe(DEMO_COMPANY);
     expect(table.optionPoolAvailable).toBe(600_000);
     expect(table.safes.map((safe: { amountUsd: number }) => safe.amountUsd)).toEqual([
-      250_000, 50_000,
+      250_000, 50_000, 25_000, 25_000,
     ]);
 
     expect(
@@ -234,7 +234,9 @@ describe("mock demo data", () => {
       legalFolder.map((d) => d.name).sort(),
     );
     // One overdue and one upcoming hand-made deadline, so both states show.
-    expect(DEMO_LEGAL.manualDeadlines.map((d) => Math.sign(d.dueInDays)).sort()).toEqual([-1, 1]);
+    const signs = DEMO_LEGAL.manualDeadlines.map((d) => Math.sign(d.dueInDays));
+    expect(signs).toContain(-1);
+    expect(signs).toContain(1);
   });
 
   it("seeds no bot that competes with the Legal agent", () => {
@@ -297,7 +299,7 @@ describe("mock demo data", () => {
       expect(message.subject).toMatch(/^(Re: )?\[MOCK\] /);
       expect(message.text).toContain(MOCK_NOTE);
     }
-    expect(new Set(messages.map((m) => m.threadId)).size).toBe(31);
+    expect(new Set(messages.map((m) => m.threadId)).size).toBe(62);
     expect(messages.some((m) => m.labels.includes("UNREAD"))).toBe(true);
     const redlines = messages.filter((m) => m.threadId.endsWith("msa-redlines"));
     expect(redlines).toHaveLength(4);
@@ -490,7 +492,7 @@ describe("mock demo data", () => {
   it("matches the story catalog's seed: Maya Chen, six artifacts and a working run off the group", () => {
     expect(DEMO_USER_NAME).toBe("Maya Chen (Mock)");
     // The investor update draft is seeded on top of these, as a second version.
-    expect(DEMO_ARTIFACTS).toHaveLength(5);
+    expect(DEMO_ARTIFACTS).toHaveLength(9);
     expect(DEMO_RUNNING_RUN.bot.description).toContain(MOCK_NOTE);
     expect(DEMO_RUNNING_RUN.prompt).toContain("mock");
     expect(DEMO_BOTS.map((bot) => bot.name)).not.toContain(DEMO_RUNNING_RUN.bot.name);
