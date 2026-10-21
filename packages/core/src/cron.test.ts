@@ -7,6 +7,7 @@ import {
   cronIntervalAmounts,
   describeCronPreset,
   formatCron,
+  formatSchedule,
   hasMixedOneShotSchedule,
   isOneShotRoutineCrons,
   nextCronDate,
@@ -23,6 +24,7 @@ function preset(partial: Partial<CronPreset> & Pick<CronPreset, "freq">): CronPr
     unit: "minutes",
     time: "9:00 AM",
     cron: "",
+    weekday: 1,
     ...partial,
   };
 }
@@ -63,6 +65,16 @@ describe("presetFromCron", () => {
     });
   });
 
+  it("round-trips every weekday of a weekly routine", () => {
+    for (let weekday = 0; weekday < 7; weekday++) {
+      const cron = cronFromPreset(preset({ freq: "Every week", time: "9:00 AM", weekday }));
+      expect(cron).toBe(`0 9 * * ${weekday}`);
+      expect(presetFromCron(cron)).toMatchObject({ freq: "Every week", weekday, time: "9:00 AM" });
+      expect(formatSchedule(presetFromCron(cron))).toBe(formatCron(cron));
+    }
+    expect(presetFromCron("0 9 * * 7")).toMatchObject({ freq: "Every week", weekday: 0 });
+  });
+
   it("round-trips the named presets", () => {
     const cases: CronPreset[] = [
       preset({ freq: "Every hour" }),
@@ -93,7 +105,7 @@ describe("presetFromCron", () => {
   });
 
   it("falls back to advanced for expressions the picker cannot represent", () => {
-    expect(presetFromCron("0 9 * * 0")).toMatchObject({ freq: "Advanced", cron: "0 9 * * 0" });
+    expect(presetFromCron("0 9 * * 1,3")).toMatchObject({ freq: "Advanced", cron: "0 9 * * 1,3" });
     expect(presetFromCron("30 14 15 * *")).toMatchObject({
       freq: "Advanced",
       cron: "30 14 15 * *",
@@ -148,7 +160,7 @@ describe("formatCron", () => {
     expect(formatCron("0 9 1 * *")).toBe("Monthly on the 1st at 9:00 AM");
     expect(formatCron("0 6 * * 6,0")).toBe("Cron 0 6 * * 6,0");
     expect(formatCron("0 6 1 * 0")).toBe("Cron 0 6 1 * 0");
-    expect(presetFromCron("0 6 * * 0")).toMatchObject({ freq: "Advanced", cron: "0 6 * * 0" });
+    expect(presetFromCron("0 6 * * 0")).toMatchObject({ freq: "Every week", weekday: 0 });
   });
 
   it.each(["* * 2", "* * 1", "* * 7", "* * *", "* * 1-5", "1 * *"])(

@@ -114,8 +114,7 @@ export function SpaceName() {
           <Button
             variant="ghost"
             size="xs"
-            // Pulled back by its padding, so its text lines up with the title on a line of its own.
-            className="-ms-2 min-w-0 max-w-full shrink text-muted-foreground"
+            className="min-w-0 max-w-full shrink text-muted-foreground"
             aria-label={t`Company: ${current.name}. Switch company`}
           />
         }
@@ -315,9 +314,9 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
   const collapsed = (i: number) => trail.length > 3 && i > 0 && i < trail.length - 1;
   return (
     <div className="mb-1.5 flex min-h-8 flex-wrap items-center gap-x-2.5 gap-y-1">
-      {/* A trail of only the page before and this page would repeat the title, so one level down
-      shows Back instead; deeper, the trail's links are the way back. */}
-      {crumbs.length <= 2 ? (
+      {/* Back names the page before, for every page up to two levels down; only a charge, four
+      levels down, needs the trail's links. */}
+      {crumbs.length <= 3 ? (
         <Link
           to={previous?.to ?? financePath.dashboard()}
           state={crumbState(previous)}
@@ -374,7 +373,9 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
  */
 export function CompanyMenu({ children }: { children?: ReactNode }) {
   return (
-    <span className="flex min-w-[min(100%,9rem)] shrink items-center gap-0.5">
+    // A switcher button is pulled back by its padding so its text lines up with the title. The pull
+    // is on this wrapper: on the button it narrowed the wrapper and cut the name short.
+    <span className="flex min-w-[min(100%,9rem)] shrink items-center gap-0.5 has-[button]:-ms-2">
       <SpaceName />
       <span className="flex shrink-0 items-center gap-0.5 text-[11px] text-muted-foreground">
         {children}
@@ -977,7 +978,8 @@ export function cashSubtitle(
 /** Less spend reads as good news and more as bad; a change that rounds to 0% is neither. */
 export const toneClass = (change: number | null) =>
   // While amounts are hidden the colour would still say which way spend went.
-  change === null || Math.round(change) === 0 || getHideAmounts()
+  // Under 10% is noise, not a warning.
+  change === null || Math.abs(change) < 10 || getHideAmounts()
     ? ""
     : change < 0
       ? "text-success"

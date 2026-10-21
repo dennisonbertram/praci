@@ -51,7 +51,7 @@ it("shows the count and progress, and expands to the per-step counts", () => {
   expect(container.textContent).not.toContain("Reading text");
 });
 
-it("names the file being worked on and keeps failed files out of the Processing header", () => {
+it("names the file being worked on and never mentions failed files", () => {
   act(() =>
     root.render(
       <ProcessingStrip
@@ -69,12 +69,12 @@ it("names the file being worked on and keeps failed files out of the Processing 
   const text = container.textContent ?? "";
   expect(text).toContain("Processing 1 file");
   expect(text).toContain("Reading Board minutes.pdf");
-  expect(text).toContain("1 couldn't be read");
+  expect(text).not.toContain("couldn't be read");
   act(() => (container.querySelector("button") as HTMLButtonElement).click());
   expect(container.querySelector("ul")?.textContent).toBe("Reading text1");
 });
 
-it("claims no processing when only failed files remain", () => {
+it("shows nothing when only failed files remain: the row and the sidebar badge carry it", () => {
   act(() =>
     root.render(
       <ProcessingStrip
@@ -83,8 +83,7 @@ it("claims no processing when only failed files remain", () => {
       />,
     ),
   );
-  expect(container.textContent).toBe("1 couldn't be read");
-  expect(container.querySelector('[role="progressbar"]')).toBeNull();
+  expect(container.textContent).toBe("");
 });
 
 it("leaves out steps with nothing left, and says when all files are processed", () => {
@@ -118,23 +117,7 @@ it("puts running imports on the same line as the processing count", () => {
   expect(container.textContent).toContain("Processing 837 files");
 });
 
-it("makes the failed count a button that lists those files, even when nothing is processing", () => {
-  const onShowFailed = vi.fn();
-  const idle = { reading: 0, indexing: 0, tagging: 0, failed: 2, current: null };
-  act(() =>
-    root.render(
-      <ProcessingStrip processing={idle} total={5} finished onShowFailed={onShowFailed} />,
-    ),
-  );
-  const button = Array.from(container.querySelectorAll("button")).find((b) =>
-    b.textContent?.includes("couldn't be read"),
-  );
-  expect(button?.textContent).toBe("2 couldn't be read");
-  act(() => button?.click());
-  expect(onShowFailed).toHaveBeenCalledTimes(1);
-});
-
-it("keeps a failed count on the one line, and draws no bar before any progress", () => {
+it("keeps the strip on one line, and draws no bar before any progress", () => {
   act(() =>
     root.render(
       <ProcessingStrip
@@ -146,14 +129,12 @@ it("keeps a failed count on the one line, and draws no bar before any progress",
           current: "Board minutes.pdf",
         }}
         total={1}
-        onShowFailed={() => undefined}
       />,
     ),
   );
   const line = container.querySelector('[role="status"] > div');
   expect(container.querySelectorAll('[role="status"] > *')).toHaveLength(1);
   expect(line?.textContent).toContain("Processing 1 file");
-  expect(line?.textContent).toContain("1 couldn't be read");
   expect(line?.className).toContain("whitespace-nowrap");
   expect(container.querySelector('[role="progressbar"]')).toBeNull();
 });

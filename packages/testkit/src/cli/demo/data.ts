@@ -1101,7 +1101,10 @@ export function demoFinance(now = new Date()) {
     {
       id: "mock-bill-legal",
       status: "APPROVED",
-      due_at: new Date(now.getTime() + 10 * DAY_MS).toISOString(),
+      // The 30th, as the Chief and Finance replies say ("Oct 30").
+      due_at: new Date(
+        Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + (now.getUTCDate() > 28 ? 1 : 0), 30, 12),
+      ).toISOString(),
       vendor: { name: "Placeholder Legal LLP (Mock)" },
       amount: { value: "2000.00", currency: "USD" },
     },
