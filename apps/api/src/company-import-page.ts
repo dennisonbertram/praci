@@ -167,7 +167,7 @@ export function createCompanyImportPage(deps: PageDeps) {
       deps.prisma.dataRoomFolder.findMany({
         where: { spaceId: actor.spaceId, userId: actor.userId },
         orderBy: [{ name: "asc" }, { id: "asc" }],
-        select: { id: true, name: true, enabled: true },
+        select: { id: true, name: true },
       }),
       deps.prisma.connection.findMany({
         where: { spaceId: actor.spaceId, userId: actor.userId, status: "connected" },

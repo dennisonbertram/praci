@@ -31,6 +31,43 @@ function page(blocks: unknown[] = []) {
 }
 
 describe("Company import page channels", () => {
+  it("lists supported Slack sources without querying nonexistent folder fields", async () => {
+    const folders = vi.fn(async () => [{ id: "folder-1", name: "Company" }]);
+    const prisma = {
+      spaceMember: { findUnique: async () => ({ id: "member-1" }) },
+      companySourceBlock: { findMany: async () => [] },
+      dataRoomItem: { count: async () => 0 },
+      dataRoomFolder: { findMany: folders },
+      connection: {
+        findMany: async () => [
+          {
+            id: "slack-1",
+            provider: "slack",
+            displayName: "Slack",
+            status: "connected",
+            allAgents: true,
+            privateByDefault: false,
+          },
+        ],
+      },
+      mcpServer: { findMany: async () => [] },
+    } as unknown as PrismaClient;
+    const result = await createCompanyImportPage({
+      prisma,
+      engine: {} as CompanyImportEngine,
+      slack: { supports: async () => true } as unknown as CompanySlackReader,
+    }).catalog(actor);
+    expect(folders).toHaveBeenCalledWith({
+      where: { spaceId: actor.spaceId, userId: actor.userId },
+      orderBy: [{ name: "asc" }, { id: "asc" }],
+      select: { id: true, name: true },
+    });
+    expect(result.folders).toEqual([{ id: "folder-1", name: "Company" }]);
+    expect(result.sources).toContainEqual(
+      expect.objectContaining({ sourceKind: "slack", connectionId: "slack-1", available: true }),
+    );
+  });
+
   it("passes an owner-scoped MCP source and explicit metadata-only request to the Slack reader", async () => {
     const state = page();
     const input: CompanyImportChannelsInput = {
