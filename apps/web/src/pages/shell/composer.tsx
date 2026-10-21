@@ -614,7 +614,7 @@ export const Composer = memo(function Composer({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`relative z-30 m-0 min-w-0 border-0 px-3 pb-4 pt-3 md:px-6 md:pb-6 ${
+      className={`relative z-30 m-0 min-w-0 border-0 px-3 pb-4 pt-3 md:px-[max(1.75rem,calc((100%-900px)/2))] md:pb-6 ${
         draggingFiles ? "rounded-[14px] ring-2 ring-inset ring-ring" : ""
       }`}
     >
@@ -1060,7 +1060,8 @@ export const Composer = memo(function Composer({
             disabled={disabled}
             placeholder={
               showComposerPlaceholder
-                ? activeName
+                ? // On a phone the header already names the agent, and a long name wraps.
+                  activeName && !window.matchMedia?.("(max-width: 480px)").matches
                   ? t`Message ${activeName}`
                   : t`Message…`
                 : undefined

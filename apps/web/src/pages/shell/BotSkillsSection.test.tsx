@@ -82,7 +82,8 @@ beforeEach(() => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   for (const fn of Object.values(api)) fn.mockReset();
   catalog = [
-    skill("builtin:Interrogate", "Interrogate", "builtin"),
+    skill("builtin:Researcher", "Researcher", "builtin"),
+    skill("builtin:inbox-search", "inbox-search", "builtin"),
     skill("user-1", "greeting", "user", false),
   ];
   api.forBot.mockImplementation(async () => catalog);
@@ -120,14 +121,17 @@ it("lists skills with a source badge only for non-user skills and a switch each"
   const onSkillsChange = vi.fn();
   const view = await mount(onSkillsChange);
   expect(api.forBot).toHaveBeenCalledWith({ botId: "bot-1" });
-  expect(view.button("Interrogate").textContent).not.toContain("Built-in");
-  expect(view.container.querySelector("details")?.textContent).toContain("Built-in skills (");
+  expect(view.button("Researcher").textContent).not.toContain("Built-in");
+  // The hidden bundled skill is not listed or counted.
+  expect(view.container.querySelector("details")?.textContent).toContain("Built-in skills (1)");
+  expect(view.container.textContent).not.toContain("inbox-search");
   expect(view.button("greeting").textContent).not.toContain("Built-in");
-  expect(view.toggle("Interrogate").checked).toBe(true);
+  expect(view.toggle("Researcher").checked).toBe(true);
   expect(view.toggle("greeting").checked).toBe(false);
   // Only skills switched on reach the slash menu.
   expect(onSkillsChange).toHaveBeenLastCalledWith([
-    expect.objectContaining({ id: "builtin:Interrogate" }),
+    expect.objectContaining({ id: "builtin:Researcher" }),
+    expect.objectContaining({ id: "builtin:inbox-search" }),
   ]);
   await view.unmount();
 });
@@ -143,15 +147,15 @@ it("saves the switch and puts it back when saving fails", async () => {
   });
   expect(view.toggle("greeting").checked).toBe(true);
   api.setEnabled.mockRejectedValueOnce(new Error("offline"));
-  await act(async () => view.toggle("Interrogate").click());
-  expect(view.toggle("Interrogate").checked).toBe(true);
+  await act(async () => view.toggle("Researcher").click());
+  expect(view.toggle("Researcher").checked).toBe(true);
   expect(view.container.textContent).toContain("Could not save skill");
   await view.unmount();
 });
 
 it("opens built-ins read-only and user skills for editing", async () => {
   const view = await mount();
-  await act(async () => view.button("Interrogate").click());
+  await act(async () => view.button("Researcher").click());
   expect(view.container.querySelector("textarea")?.readOnly).toBe(true);
   expect(view.container.textContent).not.toContain("Delete");
   await act(async () => view.button("Close").click());

@@ -49,6 +49,10 @@ msgstr ""
 msgid ", {0} already imported"
 msgstr ""
 
+#: src/pages/devin/DevinSessions.tsx
+msgid "(opens in Devin)"
+msgstr ""
+
 #. placeholder {0}: processing.failed
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
@@ -88,6 +92,11 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "{0, plural, one {# model} other {# models}}"
 msgstr "{0, plural, one {# модель} few {# модели} many {# моделей} other {# модели}}"
+
+#. placeholder {0}: glance.devinNeedsYou
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# needs you} other {# need you}}"
+msgstr ""
 
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
@@ -195,6 +204,11 @@ msgstr ""
 #. placeholder {0}: fullDay(due)
 #: src/pages/Finance.tsx
 msgid "{0} (overdue)"
+msgstr ""
+
+#. placeholder {0}: selected.name
+#: src/pages/VoiceSettingsOverlay.tsx
+msgid "{0} API key"
 msgstr ""
 
 #. placeholder {0}: bot.name
@@ -339,6 +353,10 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 msgid "{count, plural, one {# transaction} other {# transactions}}"
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
 msgstr ""
 
 #: src/lib/billing.ts
@@ -720,6 +738,7 @@ msgstr "Активность"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/ModelBackupsSettings.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "Add"
@@ -823,6 +842,7 @@ msgid "Add email for {0}"
 msgstr ""
 
 #: src/components/data-room/DataRoomImportMenu.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr ""
@@ -941,6 +961,10 @@ msgstr "Подключения агента"
 
 #: src/components/AiDataSharing.tsx
 msgid "AI data sharing"
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "AI data sharing off"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -1143,10 +1167,6 @@ msgstr ""
 msgid "An API key is stored for this provider, not a subscription sign-in."
 msgstr "Для этого поставщика сохранен API-ключ, а не вход по подписке."
 
-#: src/components/integrations/IntegrationsHome.tsx
-msgid "An org-scoped Devin service-user key (starts with cog_)."
-msgstr ""
-
 #: src/components/AskCard.tsx
 msgid "Answer"
 msgstr "Ответ"
@@ -1172,6 +1192,10 @@ msgstr "Ответ: {answer}"
 msgid "Answers from your meeting notes and transcripts."
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Answers questions about what Devin is working on."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr ""
@@ -1184,6 +1208,14 @@ msgstr ""
 msgid "Anything else"
 msgstr ""
 
+#: src/pages/Shell.tsx
+msgid "Anything merged today?"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "API"
+msgstr ""
+
 #: src/components/SoftwareUpdateSection.tsx
 msgid "API is back, but the update did not finish. Check the host logs."
 msgstr "API вернулся, но обновление не завершилось. Проверьте журналы хоста."
@@ -1193,11 +1225,11 @@ msgstr "API вернулся, но обновление не завершило�
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "API key"
 msgstr "API-ключ"
 
@@ -1242,6 +1274,7 @@ msgstr ""
 
 #: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/Shell.tsx
@@ -1340,6 +1373,14 @@ msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask a question"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Ask a space owner to connect Devin."
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Ask a space owner to reconnect."
 msgstr ""
 
 #: src/components/FinanceCards.tsx
@@ -1514,6 +1555,10 @@ msgstr "Автоматические отправители появятся п�
 
 #: src/components/inbox/CleanupHistory.tsx
 msgid "Automatic"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Automation"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -1727,7 +1772,7 @@ msgid "Bots run on"
 msgstr ""
 
 #: src/pages/Welcome.tsx
-msgid "Bots that run your inbox, cash,<0/>cap table and investor documents."
+msgid "Bots that run your inbox, cash, cap table and investor documents."
 msgstr ""
 
 #: src/pages/Paywall.tsx
@@ -1796,6 +1841,10 @@ msgstr ""
 msgid "Burn by category"
 msgstr ""
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Business plan"
+msgstr ""
+
 #: src/pages/finance/FinanceBurn.tsx
 msgid "By account"
 msgstr ""
@@ -1841,6 +1890,7 @@ msgstr "Не удаётся связаться с сервером."
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectionDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
@@ -2187,6 +2237,10 @@ msgstr ""
 msgid "Clearing…"
 msgstr "Очистка…"
 
+#: src/lib/devin-format.ts
+msgid "CLI"
+msgstr ""
+
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Client ID"
@@ -2283,6 +2337,10 @@ msgstr "Облако"
 msgid "Code"
 msgstr "Код"
 
+#: src/lib/devin-format.ts
+msgid "Code scan"
+msgstr ""
+
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Coding sessions and repo docs"
 msgstr ""
@@ -2307,6 +2365,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Collapse Data room agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Collapse Devin agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2447,28 +2509,33 @@ msgstr "Убедитесь, что URL доступен из этого сеан
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
+#: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
 #: src/pages/memory-providers/SupermemorySettingsForm.tsx
 #: src/pages/shell/message-cards.tsx
-#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect"
 msgstr "Подключить"
 
 #. placeholder {0}: exchange.name
 #. placeholder {0}: item.name
+#. placeholder {0}: selected.name
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/VoiceSettingsOverlay.tsx
 msgid "Connect {0}"
 msgstr ""
 
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
 msgstr ""
@@ -2520,6 +2587,15 @@ msgstr ""
 
 #: src/pages/CapTable.tsx
 msgid "Connect Carta"
+msgstr ""
+
+#: src/components/integrations/DevinConnectDialog.tsx
+#: src/pages/Devin.tsx
+msgid "Connect Devin"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Connect Devin to see its sessions here."
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -2603,6 +2679,8 @@ msgid "Connecting to tools"
 msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
+#: src/components/integrations/DevinConnectDialog.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/GoogleOAuthCallback.tsx
@@ -2616,6 +2694,10 @@ msgstr "Подключение…"
 #: src/lib/model-connection-preflight.ts
 msgid "Connection test failed."
 msgstr "Тест соединения не удался."
+
+#: src/components/integrations/DevinConnectDialog.tsx
+msgid "Connects Devin for everyone in this space. Read-only."
+msgstr ""
 
 #: src/pages/Contacts.tsx
 #: src/pages/Shell.tsx
@@ -2776,6 +2858,7 @@ msgid "Could not continue"
 msgstr "Не удалось продолжить"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not create agent"
 msgstr ""
@@ -2798,6 +2881,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Could not create the Data room agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Could not create the Devin agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -2845,6 +2932,7 @@ msgid "Could not discard skill"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not disconnect"
 msgstr ""
@@ -2927,6 +3015,10 @@ msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Could not load credentials."
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Could not load Devin sessions."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -3012,6 +3104,10 @@ msgstr "Не удалось воспроизвести тестовый клип
 #. placeholder {0}: hostOf(target.endpoint ?? url)
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Could not reach {0}. Check the address and try again."
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Could not reach Granola"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -3350,6 +3446,7 @@ msgid "Create account"
 msgstr "Зарегистрироваться"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr ""
@@ -3364,6 +3461,10 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Create Data room agent"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Create Devin agent"
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -3531,6 +3632,7 @@ msgstr "По умолчанию ({0})"
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/Preview.tsx
+#: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/RoutineEditor.tsx
@@ -3540,7 +3642,9 @@ msgstr "По умолчанию ({0})"
 msgid "Delete"
 msgstr "Удалить"
 
+#. placeholder {0}: deleting?.title ?? ""
 #. placeholder {0}: pendingDelete.name
+#: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
 msgid "Delete \"{0}\"?"
 msgstr ""
@@ -3629,6 +3733,10 @@ msgstr "Развертывание по умолчанию"
 msgid "Description"
 msgstr "Описание"
 
+#: src/lib/devin-format.ts
+msgid "Desktop"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 msgid "Desktop app"
 msgstr "Настольное приложение"
@@ -3650,8 +3758,22 @@ msgstr ""
 msgid "Developer"
 msgstr ""
 
+#: src/pages/Devin.tsx
+#: src/pages/Shell.tsx
+msgid "Devin"
+msgstr ""
+
+#: src/pages/Devin.tsx
+msgid "Devin rejected the key. Alerts are paused."
+msgstr ""
+
 #: src/lib/slash-skills.ts
+#: src/pages/devin/DevinSessions.tsx
 msgid "Devin sessions"
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Devin sessions are not affected."
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
@@ -3685,6 +3807,7 @@ msgstr ""
 msgid "Discarded"
 msgstr ""
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -3723,6 +3846,7 @@ msgstr "Отключение…"
 #: src/components/data-room/ImportActivity.tsx
 #: src/components/finance/StatementImport.tsx
 #: src/components/teach/TeachComputerOverlay.tsx
+#: src/pages/Legal.tsx
 #: src/pages/legal/LegalDeadlines.tsx
 #: src/pages/shell/composer.tsx
 #: src/pages/shell/message-cards.tsx
@@ -3761,6 +3885,10 @@ msgstr "Отображаемое имя"
 msgid "Dividends"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Doc"
+msgstr ""
+
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Docker is configured but computers are not responding. Confirm the sandbox supervisor is running, then recreate the stack after changing .env."
 msgstr ""
@@ -3782,7 +3910,7 @@ msgid "Documents"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
-msgid "Documents over time"
+msgid "Documents by document date"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -3924,6 +4052,7 @@ msgstr ""
 msgid "Each bot keeps its own"
 msgstr ""
 
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/Inbox.tsx
 msgid "Earlier"
 msgstr ""
@@ -4062,6 +4191,7 @@ msgstr ""
 msgid "equity, ownership, shares, options, Carta"
 msgstr ""
 
+#: src/lib/devin-format.ts
 #: src/lib/roster-status.ts
 #: src/pages/Shell.tsx
 msgid "Error"
@@ -4303,6 +4433,7 @@ msgstr "Завершите вход по подписке и повторите 
 msgid "finished"
 msgstr "завершено"
 
+#: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
 msgid "Finished"
 msgstr ""
@@ -4420,6 +4551,10 @@ msgstr "ID шлюза"
 msgid "General"
 msgstr "Общие"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Get a key"
+msgstr ""
+
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Get an API key"
@@ -4501,6 +4636,19 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
+msgstr ""
+
+#: src/components/integrations/GranolaPage.tsx
+#: src/components/integrations/McpDetail.tsx
+msgid "Granola agent"
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Granola API key"
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Granola rejected this key"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -4595,10 +4743,6 @@ msgstr ""
 #: src/components/call/VoiceChatCard.tsx
 msgid "Hide transcript"
 msgstr "Скрыть расшифровку"
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts in finance, chat and email."
-msgstr ""
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -4882,6 +5026,10 @@ msgstr ""
 msgid "Its conversation, files, and routines will be permanently deleted. Bots it created stay in your list."
 msgstr "Его диалог, файлы и задачи будут безвозвратно удалены. Созданные им боты останутся в вашем списке."
 
+#: src/lib/devin-format.ts
+msgid "Jira"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Jump to latest"
 msgstr "Перейти к последнему"
@@ -4995,7 +5143,7 @@ msgid "Last scan failed: {0}"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan failed: OpenRouter did not accept your key."
+msgid "Last scan failed: The AI key was rejected."
 msgstr ""
 
 #: src/components/DesktopUpdates.tsx
@@ -5029,6 +5177,7 @@ msgid "Leave"
 msgstr "Выйти"
 
 #: src/components/ContactDialog.tsx
+#: src/components/data-room/FilterBar.tsx
 #: src/pages/Legal.tsx
 #: src/pages/Shell.tsx
 msgid "Legal"
@@ -5077,6 +5226,10 @@ msgstr ""
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "Light"
 msgstr "Светлая"
+
+#: src/lib/devin-format.ts
+msgid "Linear"
+msgstr ""
 
 #: src/pages/SpaceSearch.tsx
 msgid "Link"
@@ -5557,10 +5710,6 @@ msgstr "Модели с сервера"
 msgid "Models list OK. {modelCount, plural, one {# model} other {# models}} available. Chat was not tested."
 msgstr "Список моделей в порядке. {modelCount, plural, one {Доступна # модель} few {Доступны # модели} many {Доступно # моделей} other {Доступно # модели}}. Чат не проверялся."
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Money amounts are hidden in finance, chat and email."
-msgstr ""
-
 #: src/lib/billing.ts
 msgid "month"
 msgstr ""
@@ -5728,6 +5877,7 @@ msgstr ""
 msgid "Needs attention"
 msgstr ""
 
+#: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
 msgid "Needs input"
 msgstr "Требуется ввод данных"
@@ -5748,8 +5898,11 @@ msgstr ""
 msgid "Needs takeover"
 msgstr "Требуется передача управления"
 
+#: src/components/PageAgentsRow.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Devin.tsx
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Требуется ваше участие"
@@ -5776,7 +5929,6 @@ msgstr ""
 msgid "new"
 msgstr ""
 
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr ""
@@ -5951,6 +6103,10 @@ msgstr ""
 msgid "No credentials saved for this bot."
 msgstr ""
 
+#: src/pages/Devin.tsx
+msgid "No Devin sessions yet."
+msgstr ""
+
 #: src/components/data-room/FilterBar.tsx
 msgid "No documents here have a date yet."
 msgstr ""
@@ -5966,6 +6122,10 @@ msgstr ""
 
 #: src/components/data-room/ItemDialogs.tsx
 msgid "No folder"
+msgstr ""
+
+#: src/components/inbox/TodoCard.tsx
+msgid "No follow-ups from meetings yet"
 msgstr ""
 
 #: src/pages/MessagingSettingsOverlay.tsx
@@ -6171,6 +6331,10 @@ msgstr ""
 
 #: src/components/ComposeEmail.tsx
 msgid "Not attached, over the {MAX_COMPOSE_ATTACHMENT_MB} MB limit: {leftOutNames}. Download it from the original to share it another way."
+msgstr ""
+
+#: src/components/data-room/FilterBar.tsx
+msgid "Not checked"
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
@@ -6406,6 +6570,11 @@ msgstr ""
 msgid "Open deadlines"
 msgstr ""
 
+#: src/components/integrations/IntegrationsHome.tsx
+#: src/pages/Devin.tsx
+msgid "Open Devin"
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Open document"
 msgstr ""
@@ -6454,6 +6623,7 @@ msgstr ""
 msgid "Open link"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
 msgstr ""
@@ -6559,6 +6729,10 @@ msgstr ""
 msgid "Organization API key"
 msgstr "Ключ API организации"
 
+#: src/components/integrations/DevinConnectDialog.tsx
+msgid "Organization service-user key"
+msgstr ""
+
 #: src/pages/shell/chat-context.tsx
 msgid "Original message unavailable"
 msgstr "Исходное сообщение недоступно"
@@ -6567,6 +6741,7 @@ msgstr "Исходное сообщение недоступно"
 #: src/components/ContactDialog.tsx
 #: src/components/finance/ui.tsx
 #: src/components/legal/LegalGraph.tsx
+#: src/lib/devin-format.ts
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Other"
@@ -6617,9 +6792,14 @@ msgstr ""
 msgid "Ownership"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page"
+msgstr ""
+
+#: src/components/PageAgentsRow.tsx
+msgid "Page agents"
 msgstr ""
 
 #: src/pages/shell/bot-page-panel.tsx
@@ -6832,8 +7012,8 @@ msgstr ""
 msgid "Praci doesn't tag new files."
 msgstr ""
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Praci keeps your meetings and to-dos."
 msgstr ""
 
 #: src/components/DataExport.tsx
@@ -6941,6 +7121,7 @@ msgid "Providers"
 msgstr "Провайдеры"
 
 #: src/components/CloudAgentCard.tsx
+#: src/pages/devin/DevinSessions.tsx
 msgid "Pull request"
 msgstr "Запрос на слияние"
 
@@ -7103,6 +7284,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
+#: src/pages/Devin.tsx
 #: src/pages/Finance.tsx
 msgid "Reconnect"
 msgstr ""
@@ -7117,6 +7299,10 @@ msgstr ""
 
 #: src/pages/Inbox.tsx
 msgid "Reconnect Gmail"
+msgstr ""
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Reconnect needed"
 msgstr ""
 
 #: src/App.tsx
@@ -7366,6 +7552,10 @@ msgstr ""
 msgid "Removes the connection and bot access."
 msgstr ""
 
+#: src/components/integrations/StoredMeetingsList.tsx
+msgid "Removes this meeting and its to-dos from Praci. Your note in Granola is not changed."
+msgstr ""
+
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/integrations/AppDetail.tsx
@@ -7417,13 +7607,10 @@ msgid "Replace API key"
 msgstr "Заменить ключ API"
 
 #: src/components/integrations/FinanceSection.tsx
+#: src/pages/Legal.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Заменить ключ"
-
-#: src/pages/Legal.tsx
-msgid "Replace OpenRouter key"
-msgstr ""
 
 #: src/pages/shell/bot-credentials.tsx
 msgid "Replace value"
@@ -7483,6 +7670,10 @@ msgstr "Сбросить компьютер"
 #: src/components/ComputerMaintenanceActions.tsx
 msgid "Reset computer?"
 msgstr "Сбросить компьютер?"
+
+#: src/pages/Auth.tsx
+msgid "Reset link expired"
+msgstr ""
 
 #: src/pages/Auth.tsx
 msgid "Reset password"
@@ -8046,6 +8237,10 @@ msgstr ""
 msgid "Sending…"
 msgstr "Отправка…"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Sends your meeting notes and transcripts to your AI model."
+msgstr ""
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
@@ -8077,6 +8272,10 @@ msgstr ""
 #: src/pages/Onboarding.tsx
 msgid "Server URL"
 msgstr "URL-адрес сервера"
+
+#: src/pages/devin/DevinSessions.tsx
+msgid "Session"
+msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Set by server"
@@ -8140,6 +8339,10 @@ msgstr ""
 msgid "Shares"
 msgstr ""
 
+#: src/pages/Artifacts.tsx
+msgid "Sheet"
+msgstr ""
+
 #: src/components/SheetPreview.tsx
 msgid "Sheets"
 msgstr ""
@@ -8180,6 +8383,7 @@ msgid "Show list"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/StoredMeetingsList.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "Показать ещё"
@@ -8271,6 +8475,10 @@ msgstr "Войдите по подписке или протестируйте A
 #: src/pages/Welcome.tsx
 msgid "Sign up"
 msgstr "Зарегистрироваться"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Sign-in"
+msgstr ""
 
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -8377,6 +8585,10 @@ msgstr ""
 msgid "Skipping"
 msgstr ""
 
+#: src/lib/devin-format.ts
+msgid "Slack"
+msgstr ""
+
 #: src/pages/RoutineEditor.tsx
 msgid "Slack message"
 msgstr "Сообщение Slack"
@@ -8401,6 +8613,10 @@ msgstr ""
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Software update"
 msgstr "Обновление программного обеспечения"
+
+#: src/pages/Devin.tsx
+msgid "Some sessions could not be read."
+msgstr ""
 
 #: src/App.tsx
 #: src/lib/user-error.ts
@@ -8429,6 +8645,7 @@ msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/Preview.tsx
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Source"
 msgstr ""
@@ -8567,6 +8784,7 @@ msgstr ""
 #: src/components/finance/ui.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Board.tsx
+#: src/pages/devin/DevinSessions.tsx
 #: src/pages/Finance.tsx
 #: src/pages/finance/FinanceTransaction.tsx
 #: src/pages/legal/LegalContracts.tsx
@@ -8672,6 +8890,10 @@ msgstr ""
 msgid "Supports thinking"
 msgstr "Поддерживает рассуждения"
 
+#: src/lib/devin-format.ts
+msgid "Suspended"
+msgstr ""
+
 #: src/components/inbox/InboxRow.tsx
 msgid "Suspicious"
 msgstr ""
@@ -8679,6 +8901,11 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Switching…"
 msgstr "Переключение…"
+
+#: src/components/inbox/TodoCard.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Syncing"
+msgstr ""
 
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "System"
@@ -8704,6 +8931,10 @@ msgstr ""
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
 msgid "Task board"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "tasks, tickets"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -8732,6 +8963,10 @@ msgstr "Командные диалоги"
 
 #: src/lib/sidebar-page-copy.ts
 msgid "Team health"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Teams"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -8874,12 +9109,20 @@ msgstr ""
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
+#: src/pages/Devin.tsx
+msgid "The member who connected Devin left this space. Alerts are paused."
+msgstr ""
+
 #: src/lib/run-phase.ts
 msgid "the model"
 msgstr ""
 
 #: src/components/data-room/AutoSortDialog.tsx
 msgid "The model could not sort your files."
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model provider did not accept your API key."
 msgstr ""
 
 #: src/lib/user-error.ts
@@ -8909,6 +9152,10 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "The text is sent to the AI model that runs your bots."
+msgstr ""
+
+#: src/components/legal/ConsentPrompt.tsx
+msgid "The text of your Data room documents is sent to the AI model that runs your bots."
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx
@@ -9029,10 +9276,6 @@ msgstr "Этот поставщик еще не подключен."
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "This removes the connection from every space."
 msgstr ""
-
-#: src/pages/Auth.tsx
-msgid "This reset link is invalid or expired"
-msgstr "Эта ссылка для сброса недействительна или срок ее действия истек."
 
 #: src/pages/shell/message-cards.tsx
 msgid "This server cannot be assigned without a bot."
@@ -9363,6 +9606,7 @@ msgstr ""
 
 #: src/components/finance/ui.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/lib/devin-format.ts
 #: src/pages/legal/LegalContracts.tsx
 msgid "Unknown"
 msgstr ""
@@ -9435,6 +9679,10 @@ msgstr ""
 msgid "Untitled folder"
 msgstr ""
 
+#: src/pages/devin/DevinSessions.tsx
+msgid "Untitled session"
+msgstr ""
+
 #: src/components/DesktopUpdates.tsx
 #: src/components/SoftwareUpdateSection.tsx
 msgid "Up to date"
@@ -9476,11 +9724,14 @@ msgid "Update progress"
 msgstr "Ход обновления"
 
 #: src/components/SoftwareUpdateSection.tsx
+#: src/pages/devin/DevinSessions.tsx
 msgid "Updated"
 msgstr "Обновлено"
 
+#. placeholder {0}: formatRelativeTime(data.fetchedAt)
 #. placeholder {0}: formatRelativeTime(snapshot.updatedAt)
 #: src/pages/CapTable.tsx
+#: src/pages/Devin.tsx
 msgid "Updated {0}"
 msgstr ""
 
@@ -9493,7 +9744,6 @@ msgstr ""
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
 #: src/pages/Inbox.tsx
-#: src/pages/SettingsOverlay.tsx
 msgid "Updates"
 msgstr "Обновления"
 
@@ -9517,6 +9767,7 @@ msgstr "Обновление…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -9567,7 +9818,7 @@ msgstr ""
 msgid "URL"
 msgstr ""
 
-#: src/pages/SettingsOverlay.tsx
+#: src/pages/AccountSettingsOverlay.tsx
 msgid "Usage"
 msgstr "Использование"
 
@@ -9707,6 +9958,18 @@ msgstr ""
 msgid "Wait a moment and test again."
 msgstr "Подождите немного и повторите тест."
 
+#: src/lib/devin-format.ts
+msgid "Waiting {days}d"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Waiting {hours}h"
+msgstr ""
+
+#: src/lib/devin-format.ts
+msgid "Waiting {minutes}m"
+msgstr ""
+
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/SignInStep.tsx
 msgid "Waiting for sign-in"
@@ -9757,6 +10020,10 @@ msgstr ""
 msgid "Wallets"
 msgstr ""
 
+#: src/lib/devin-format.ts
+msgid "Web"
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Web, desktop and mobile apps"
 msgstr ""
@@ -9804,6 +10071,10 @@ msgstr ""
 
 #: src/components/PageAgentIntro.tsx
 msgid "What deadlines are coming up?"
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "What did Devin do this week?"
 msgstr ""
 
 #: src/components/PageAgentIntro.tsx
@@ -9862,6 +10133,10 @@ msgstr ""
 msgid "Where it went"
 msgstr ""
 
+#: src/components/integrations/DevinConnectDialog.tsx
+msgid "Where to find your key"
+msgstr ""
+
 #: src/components/PageAgentIntro.tsx
 msgid "Which bills are unpaid?"
 msgstr ""
@@ -9906,7 +10181,10 @@ msgstr ""
 msgid "Work this bot repeats for you, like a cash check every Monday."
 msgstr ""
 
+#: src/lib/devin-format.ts
 #: src/pages/ActivityList.tsx
+#: src/pages/Devin.tsx
+#: src/pages/devin/DevinSessions.tsx
 msgid "Working"
 msgstr ""
 

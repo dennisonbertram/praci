@@ -23,6 +23,8 @@ vi.mock("expo-router", () => ({
     }, [callback, state.focused]);
   },
 }));
+// The Granola key group has its own test; it needs the router and its own status call.
+vi.mock("../components/granola-key-group", () => ({ GranolaKeyGroup: () => null }));
 vi.mock("./api", () => ({ rpc: state.rpc }));
 vi.mock("./integrations-cache", () => ({
   integrationsCacheScope: state.scope,

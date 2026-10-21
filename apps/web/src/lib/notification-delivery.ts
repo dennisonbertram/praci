@@ -1,4 +1,5 @@
 import type { NotificationDto } from "@rakazo/contracts";
+import { isDevinSessionUrl } from "@rakazo/contracts";
 import type { NotificationToastInput } from "@rakazo/ui-web";
 import { enqueueNotificationToast } from "@rakazo/ui-web";
 import { requestBrowserNotificationPermission } from "./browser-notifications";
@@ -19,17 +20,31 @@ export function attentionFromDto(n: NotificationDto): AttentionNotification {
 }
 
 /**
- * A run result for the chat on screen: the composer error or the reply already shows it, so no
- * toast repeats it. A finished run only counts while the tab is in front; otherwise the person is
- * away and still wants the alert.
+ * Results that need no toast. A failure in the chat that is open is already shown by its composer.
+ * A finished run with the tab in front is shown by the agent's sidebar row, whether or not its chat
+ * is open. When the person is away the alert is still sent. Failures elsewhere keep their toast.
  */
 export function resultShownInOpenChat(
   n: Pick<NotificationDto, "botId" | "kind">,
   openBotId: string | undefined,
   tabInFront: boolean,
 ): boolean {
-  if (!openBotId || n.botId !== openBotId) return false;
-  return n.kind === "failed" || (n.kind === "done" && tabInFront);
+  if (n.kind === "done" && n.botId) return tabInFront;
+  return Boolean(openBotId) && n.botId === openBotId && n.kind === "failed";
+}
+
+/**
+ * Opens a notification's link: a Devin session in a new window, which gets no opener or referrer
+ * because Devin is another site; anything else is an in-app path and navigates.
+ */
+export function openNotificationLink(navigate: (href: string) => void | Promise<void>) {
+  return (href: string): void | Promise<void> => {
+    if (isDevinSessionUrl(href)) {
+      window.open(href, "_blank", "noopener,noreferrer");
+      return;
+    }
+    return navigate(href);
+  };
 }
 
 /** An `attention` notification; `info` only puts a dot on the sidebar and never reaches here. */
@@ -45,7 +60,11 @@ export type DeliveryResult = "toast" | "os" | "skipped" | "failed";
 export type DeliveryDeps = {
   toast: (n: AttentionNotification) => void;
   requestPermission: () => Promise<NotificationPermission> | undefined;
-  show: (title: string, options: NotificationOptions) => void;
+  /** `onClick` runs when the person clicks the OS notification. */
+  show: (title: string, options: NotificationOptions, onClick: () => void) => void;
+  focus: () => void;
+  /** Opens a notification's link; the app passes one that navigates with its router. */
+  open: (href: string) => void | Promise<void>;
   state: () => { visible: boolean; focused: boolean };
   delay: (ms: number) => Promise<unknown>;
   /** Server check: was this notification already shown or seen on another device or tab? */
@@ -63,10 +82,12 @@ export const AWAY_DELAY_MS = 1500;
 const defaultDeps = (): DeliveryDeps => ({
   toast: enqueueNotificationToast,
   requestPermission: () => requestBrowserNotificationPermission(),
-  show: (title, options) => {
+  show: (title, options, onClick) => {
     const shown = new Notification(title, options);
-    shown.onclick = () => window.focus();
+    shown.onclick = onClick;
   },
+  focus: () => window.focus(),
+  open: openNotificationLink((href) => window.location.assign(href)),
   state: () => ({ visible: document.visibilityState === "visible", focused: document.hasFocus() }),
   delay: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
   reportError: (error) => console.error(error),
@@ -99,7 +120,10 @@ export async function deliverNotification(
     if (shouldToast(deps.state())) return toast();
     if ((await deps.browserEnabled?.()) === false) return "skipped";
     if ((await deps.requestPermission()) !== "granted") return "skipped";
-    deps.show(n.title, { body: n.body, tag: n.id });
+    deps.show(n.title, { body: n.body, tag: n.id }, () => {
+      deps.focus();
+      if (n.href) void deps.open(n.href);
+    });
     return "os";
   } catch {
     return "failed";

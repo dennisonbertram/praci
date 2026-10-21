@@ -1,5 +1,6 @@
 import type { AutoSortPlan } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
+import { fn } from "storybook/test";
 import { mockRpc } from "../../lib/__mocks__/rpc";
 import { withPageBehind } from "../../stories/decorators";
 import { AutoSortDialog } from "./AutoSortDialog";
@@ -102,5 +103,20 @@ export const Failed: Story = {
   beforeEach: () =>
     mockRpc({
       "dataRoom.autoSort.plan": () => Promise.reject(new Error("Could not plan the sort")),
+    }),
+};
+/** The provider refused the key: the reason, a way to fix it, and no Apply. */
+export const KeyRejected: Story = {
+  render: () => (
+    <AutoSortDialog
+      files={files}
+      onClose={() => undefined}
+      onApplied={() => undefined}
+      onOpenModels={fn()}
+    />
+  ),
+  beforeEach: () =>
+    mockRpc({
+      "dataRoom.autoSort.plan": { mode: "basic", reason: "ai_rejected", operations: [] },
     }),
 };

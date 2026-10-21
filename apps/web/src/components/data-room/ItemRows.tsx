@@ -85,11 +85,15 @@ function moveFocus(event: KeyboardEvent<HTMLElement>) {
   arrowMove = false;
 }
 
-function rowProps(item: DataRoomApiItem, o: RowInteraction) {
+/**
+ * Only the first row is a Tab stop and the arrow keys move between rows, so a page of 50 rows is
+ * one stop, not 100. ponytail: Shift+Tab back into the list lands on the first row, not the last one used.
+ */
+function rowProps(item: DataRoomApiItem, o: RowInteraction, first: boolean) {
   return {
     "data-row": "",
     "data-item-id": item.id,
-    tabIndex: 0,
+    tabIndex: first ? 0 : -1,
     onClick: () => o.onToggle(item),
     onFocus: (event: React.FocusEvent<HTMLElement>) => {
       if (arrowMove && event.target === event.currentTarget) o.onSelect(item);
@@ -164,7 +168,7 @@ function Columns() {
   return (
     <colgroup>
       <col />
-      <col className={cn(MID_COLUMN, "w-28")} />
+      <col className={cn(MID_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-24")} />
       <col className={cn(PARTIES_COLUMN, "w-36")} />
       <col className={cn(MID_COLUMN, "w-20")} />
@@ -224,12 +228,14 @@ function ItemRow({
   snippets,
   o,
   sortField,
+  first,
 }: {
   item: DataRoomApiItem;
-  /** Search only: the text that matched, under the row. */
+  /** Search only: the text that matched, under the name. */
   snippets: string[];
   o: RowInteraction;
   sortField: SortField | undefined;
+  first: boolean;
 }) {
   const label = statusLabel(item.status);
   const folder = item.folderId === (o.openFolderId ?? null) ? "" : o.folderPath(item.folderId);
@@ -238,122 +244,107 @@ function ItemRow({
   const date = dateOf(item, sortField);
   const shown = o.shownId === item.id;
   return (
-    <>
-      <FileContext
-        item={item}
-        o={o}
-        render={
-          <TableRow
-            aria-current={shown}
-            {...rowProps(item, o)}
-            className={cn(
-              "group/row cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
-              // Clearly stronger than the hover tint, so the chosen row stays obvious.
-              shown && "bg-sidebar-accent hover:bg-sidebar-accent",
-            )}
-          />
-        }
-      >
-        <TableCell data-testid="data-room-name">
-          <div className="flex min-w-0 items-center gap-2">
-            <Marker item={item} />
-            <div className="flex min-w-0 flex-col">
-              <span
-                className={cn(
-                  "line-clamp-2 font-medium break-words",
-                  !isSettled(item.status) && item.status !== "failed" && "text-muted-foreground",
-                )}
-                title={item.name}
-              >
-                {item.name}
-              </span>
-              {folder ? (
-                <span className="truncate text-xs text-muted-foreground">{folder}</span>
-              ) : null}
-              {/* Where the Type, Date and Status columns are hidden (a phone), they go under the name. */}
-              <span
-                data-testid="data-room-subline"
-                className={cn(
-                  "truncate text-xs text-muted-foreground @min-[640px]/list:hidden",
-                  item.status === "failed" && "text-destructive",
-                )}
-              >
-                {label || <TypeAndDate item={item} sortField={sortField} />}
-              </span>
-              {item.status === "failed" && !item.error ? (
-                <span data-testid="data-room-failed-reason" className="text-xs text-destructive">
-                  <Trans>Could not read this file. Delete it and upload it again.</Trans>
-                </span>
-              ) : null}
-              {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
-              {item.status === "failed" && item.error ? (
-                <span data-testid="data-room-error" className="text-xs text-destructive">
-                  {item.error}
-                </span>
-              ) : null}
-              {item.status === "failed" ? (
-                <span>
-                  <RetryButton item={item} o={o} />
-                </span>
-              ) : null}
-            </div>
-          </div>
-        </TableCell>
-        <TableCell
-          className={cn(MID_COL, "truncate text-muted-foreground")}
-          title={type || undefined}
-        >
-          {type || (isSettled(item.status) ? <NotTagged /> : empty)}
-        </TableCell>
-        <TableCell className={cn(MID_COL, "truncate text-muted-foreground tabular-nums")}>
-          {date || empty}
-        </TableCell>
-        <TableCell
-          data-testid="data-room-parties"
-          className={cn(PARTIES_COL, "truncate text-muted-foreground")}
-          title={parties || undefined}
-        >
-          {parties || empty}
-        </TableCell>
-        <TableCell
-          data-testid="data-room-status"
-          className={MID_COL}
-          title={item.status === "failed" ? (item.error ?? undefined) : undefined}
-        >
-          {label ? (
-            <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
-          ) : null}
-        </TableCell>
-        <TableCell className="pe-0">
-          <ItemMenu
-            item={item}
-            onAction={o.onAction}
-            canRetry={item.status === "failed"}
-            agents={o.agents}
-            onSendToAgent={o.onSendToAgent}
-            className={ROW_ACTIONS}
-          />
-        </TableCell>
-      </FileContext>
-      {snippets.length ? (
-        // Under the name (past its icon), across the whole row.
+    <FileContext
+      item={item}
+      o={o}
+      render={
         <TableRow
+          aria-current={shown}
+          {...rowProps(item, o, first)}
           className={cn(
-            "h-auto cursor-pointer border-t-0",
+            "group/row cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset",
+            // Clearly stronger than the hover tint, so the chosen row stays obvious.
             shown && "bg-sidebar-accent hover:bg-sidebar-accent",
           )}
-          onClick={() => o.onToggle(item)}
-        >
-          <TableCell colSpan={6} className="pt-0 ps-5.5">
-            <div className="flex flex-col gap-1">
-              {snippets.map((snippet) => (
-                <Snippet key={snippet} text={snippet} />
-              ))}
-            </div>
-          </TableCell>
-        </TableRow>
-      ) : null}
-    </>
+        />
+      }
+    >
+      <TableCell data-testid="data-room-name">
+        <div className="flex min-w-0 items-center gap-2">
+          <Marker item={item} />
+          <div className="flex min-w-0 flex-col">
+            <span
+              className={cn(
+                "line-clamp-2 font-medium break-words",
+                !isSettled(item.status) && item.status !== "failed" && "text-muted-foreground",
+              )}
+              title={item.name}
+            >
+              {item.name}
+            </span>
+            {folder ? (
+              <span className="truncate text-xs text-muted-foreground">{folder}</span>
+            ) : null}
+            {/* Where the Type, Date and Status columns are hidden (a phone), they go under the name. */}
+            <span
+              data-testid="data-room-subline"
+              className={cn(
+                "truncate text-xs text-muted-foreground @min-[640px]/list:hidden",
+                item.status === "failed" && "text-destructive",
+              )}
+            >
+              {label || <TypeAndDate item={item} sortField={sortField} />}
+            </span>
+            {item.status === "failed" && !item.error ? (
+              <span data-testid="data-room-failed-reason" className="text-xs text-destructive">
+                <Trans>Could not read this file. Delete it and upload it again.</Trans>
+              </span>
+            ) : null}
+            {/* Why it failed, in the row itself: a tooltip is easy to miss and absent on touch. */}
+            {item.status === "failed" && item.error ? (
+              <span data-testid="data-room-error" className="text-xs text-destructive">
+                {item.error}
+              </span>
+            ) : null}
+            {item.status === "failed" ? (
+              <span>
+                <RetryButton item={item} o={o} />
+              </span>
+            ) : null}
+            {/* In the name cell, not a row of their own: a row spanning hidden columns squeezed the name. */}
+            {snippets.map((snippet) => (
+              <Snippet key={snippet} text={snippet} />
+            ))}
+          </div>
+        </div>
+      </TableCell>
+      <TableCell
+        className={cn(MID_COL, "truncate text-muted-foreground")}
+        title={type || undefined}
+      >
+        {type || (isSettled(item.status) ? <NotTagged /> : empty)}
+      </TableCell>
+      <TableCell className={cn(MID_COL, "truncate text-muted-foreground tabular-nums")}>
+        {date || empty}
+      </TableCell>
+      <TableCell
+        data-testid="data-room-parties"
+        className={cn(PARTIES_COL, "truncate text-muted-foreground")}
+        title={parties || undefined}
+      >
+        {parties || empty}
+      </TableCell>
+      <TableCell
+        data-testid="data-room-status"
+        className={MID_COL}
+        title={item.status === "failed" ? (item.error ?? undefined) : undefined}
+      >
+        {label ? (
+          <Badge variant={item.status === "failed" ? "destructive" : "secondary"}>{label}</Badge>
+        ) : null}
+      </TableCell>
+      <TableCell className="pe-0">
+        <ItemMenu
+          item={item}
+          onAction={o.onAction}
+          canRetry={item.status === "failed"}
+          agents={o.agents}
+          onSendToAgent={o.onSendToAgent}
+          triggerTabIndex={-1}
+          className={ROW_ACTIONS}
+        />
+      </TableCell>
+    </FileContext>
   );
 }
 
@@ -461,8 +452,15 @@ export function ListView({
         <ListHead sortField={sortField} />
         {lead?.()}
         <TableBody aria-label={t`Items`} data-rows>
-          {rows.map(({ item, snippets }) => (
-            <ItemRow key={item.id} item={item} snippets={snippets} o={o} sortField={sortField} />
+          {rows.map(({ item, snippets }, index) => (
+            <ItemRow
+              key={item.id}
+              item={item}
+              snippets={snippets}
+              o={o}
+              sortField={sortField}
+              first={index === 0}
+            />
           ))}
         </TableBody>
       </Table>
@@ -577,14 +575,14 @@ export function GridView({
 }) {
   return (
     <ul aria-label={t`Items`} data-rows className={TILE_GRID}>
-      {rows.map(({ item }) => (
+      {rows.map(({ item }, index) => (
         <FileContext
           key={item.id}
           item={item}
           o={o}
           render={
             <li
-              {...rowProps(item, o)}
+              {...rowProps(item, o, index === 0)}
               aria-current={o.shownId === item.id}
               className={cn(
                 TILE,
@@ -600,6 +598,7 @@ export function GridView({
             canRetry={item.status === "failed"}
             agents={o.agents}
             onSendToAgent={o.onSendToAgent}
+            triggerTabIndex={-1}
             className="absolute top-3 right-3 bg-card/80"
           />
           {/* Three lines kept for every name, so tiles are one height and long names still differ. */}

@@ -56,6 +56,8 @@ export interface InboxDeps {
 
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_ROWS = 200;
+/** Meetings stored this recently count as still being digested while their digest is empty. */
+const DIGEST_WINDOW_MS = 10 * 60_000;
 /** Updates and Newsletters group by sender, so a noisy sender must not be cut off at 200 rows. */
 const MAX_GROUPED_ROWS = 500;
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
@@ -751,8 +753,8 @@ const todoInclude = {
 function todoOut(row: Prisma.InboxTodoGetPayload<{ include: typeof todoInclude }>): InboxTodo {
   return {
     id: row.id,
-    // Null only for a meeting to-do; S5 gives the contract a nullable id when it lists them.
-    connectionId: row.connectionId ?? "",
+    connectionId: row.connectionId,
+    meetingId: row.meetingId,
     messageId: row.messageId,
     text: row.text,
     detail: row.detail,
@@ -763,28 +765,72 @@ function todoOut(row: Prisma.InboxTodoGetPayload<{ include: typeof todoInclude }
   };
 }
 
+/**
+ * A request with a `connectionId` returns that account's mail to-dos plus all of the user's meeting
+ * to-dos; without one it returns all. Meeting to-dos need no connected connection, so a meeting-only
+ * user and a disconnected source still list and complete them. Mail to-dos need triage; `enabled` is
+ * also true for a user with meeting to-dos or a connected meeting source.
+ */
 export async function inboxTodosList(
   deps: InboxDeps,
   actor: Actor,
   input: { connectionId?: string },
-): Promise<{ enabled: boolean; todos: InboxTodo[] }> {
+): Promise<{
+  enabled: boolean;
+  todos: InboxTodo[];
+  meetings: { source: boolean; syncing: boolean; ready: boolean };
+}> {
   const connections = await connectedMailConnections(deps.prisma, actor);
   if (input.connectionId && !connections.some((c) => c.id === input.connectionId)) {
     throw notFound();
   }
-  const enabled = await triageEnabled(deps, actor);
-  if (!enabled) return { enabled, todos: [] };
-  const rows = await deps.prisma.inboxTodo.findMany({
-    where: {
-      spaceId: actor.spaceId,
-      userId: actor.userId,
-      connectionId: input.connectionId ?? { in: connections.map((c) => c.id) },
-      doneAt: null,
+  const own = { spaceId: actor.spaceId, userId: actor.userId };
+  const triage = await triageEnabled(deps, actor);
+  const [rows, sources] = await Promise.all([
+    deps.prisma.inboxTodo.findMany({
+      where: {
+        ...own,
+        doneAt: null,
+        OR: [
+          { meetingId: { not: null } },
+          ...(triage
+            ? [{ connectionId: input.connectionId ?? { in: connections.map((c) => c.id) } }]
+            : []),
+        ],
+      },
+      include: todoInclude,
+      orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    }),
+    // A source is a sync state of a connected API key; a sign-in alone is not one.
+    deps.prisma.meetingSyncState.findMany({
+      where: { ...own, connection: { status: "connected" } },
+      select: { syncedThrough: true },
+    }),
+  ]);
+  const source = sources.length > 0;
+  // Digests still to come keep a client looking: only while they can run, and only for meetings
+  // stored recently, so a digest that never runs does not keep it polling for ever.
+  const digesting =
+    triage &&
+    source &&
+    (await deps.prisma.meeting.count({
+      where: {
+        ...own,
+        deletedAt: null,
+        OR: [{ digestStatus: null }, { digestStatus: "running" }],
+        createdAt: { gt: new Date(Date.now() - DIGEST_WINDOW_MS) },
+      },
+    })) > 0;
+  const hasMeetingTodo = rows.some((row) => row.meetingId !== null);
+  return {
+    enabled: triage || hasMeetingTodo || source,
+    todos: rows.map(todoOut),
+    meetings: {
+      source,
+      syncing: sources.some((s) => s.syncedThrough === null) || digesting,
+      ready: triage,
     },
-    include: todoInclude,
-    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
-  });
-  return { enabled, todos: rows.map(todoOut) };
+  };
 }
 
 export async function inboxTodoSetDone(
@@ -797,7 +843,8 @@ export async function inboxTodoSetDone(
     id: input.id,
     spaceId: actor.spaceId,
     userId: actor.userId,
-    connection: { status: "connected" },
+    // Only a mail to-do depends on its connection; a meeting to-do has none.
+    OR: [{ connectionId: null }, { connection: { status: "connected" } }],
   };
   // Any user action marks the to-do touched, so triage never replaces or re-creates it.
   const { count } = await deps.prisma.inboxTodo.updateMany({

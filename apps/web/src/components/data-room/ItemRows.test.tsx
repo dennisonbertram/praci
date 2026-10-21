@@ -294,11 +294,27 @@ it("opens the file when its search snippet is clicked", () => {
   const onToggle = vi.fn();
   const rows = [{ item: item("lease", null), snippets: ["a «match» here"] }];
   act(() => root.render(<ListView rows={rows} o={{ ...o(), onToggle }} />));
-  const snippetRow = container.querySelector('tbody[aria-label="Items"] tr:not([data-row])');
-  expect(snippetRow?.textContent).toContain("match");
-  const text = snippetRow?.querySelector("p");
-  act(() => text?.click());
+  // The snippet sits in the name cell, under the name, so a narrow page never squeezes the name.
+  const nameCell = container.querySelector('[data-testid="data-room-name"]');
+  expect(nameCell?.textContent).toContain("match");
+  expect(container.querySelectorAll('tbody[aria-label="Items"] tr')).toHaveLength(1);
+  act(() => nameCell?.querySelector("p")?.click());
   expect(onToggle).toHaveBeenCalledWith(expect.objectContaining({ id: "lease" }));
+});
+
+it("makes only the first row a Tab stop, with menus out of the Tab order", () => {
+  const rows = [item("a", null), item("b", null), item("c", null)].map((i) => ({
+    item: i,
+    snippets: [],
+  }));
+  act(() => root.render(<ListView rows={rows} o={o()} />));
+  expect(
+    Array.from(container.querySelectorAll<HTMLElement>("[data-row]")).map((r) => r.tabIndex),
+  ).toEqual([0, -1, -1]);
+  const menus = Array.from(
+    container.querySelectorAll<HTMLElement>('button[aria-label^="More actions"]'),
+  );
+  expect(menus.map((m) => m.tabIndex)).toEqual([-1, -1, -1]);
 });
 
 it("shows the added date under the name of an untagged file on a phone", () => {

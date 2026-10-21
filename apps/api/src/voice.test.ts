@@ -493,7 +493,7 @@ describe("transcribeVoice", () => {
     vi.unstubAllGlobals();
   });
 
-  const depsFor = (provider: string) =>
+  const depsFor = (provider: string, consented = true) =>
     ({
       prisma: {
         spaceVoicePreference: {
@@ -513,6 +513,7 @@ describe("transcribeVoice", () => {
         },
         secret: { findFirst: vi.fn().mockResolvedValue({ id: "secret-1", ciphertext: "cipher" }) },
         transcriptionSelection: { findUnique: vi.fn().mockResolvedValue(null) },
+        aiDataConsent: { count: vi.fn().mockResolvedValue(consented ? 1 : 0) },
       },
       secrets: { load: vi.fn().mockReturnValue("the-key"), put: vi.fn() },
     }) as unknown as VoiceDeps;
@@ -528,15 +529,22 @@ describe("transcribeVoice", () => {
     });
   });
 
-  it("passes context to the provider", async () => {
+  it("passes context only to a provider that uses it and whose recipient has consent", async () => {
     const transcribe = vi.fn().mockResolvedValue({ text: "ok" });
-    vi.spyOn(adapters, "createTranscriptionProvider").mockReturnValue({ transcribe } as never);
+    const describe = (usesContext: boolean) => ({ capabilities: { usesContext } });
     const context = { appKind: "email" as const, vocabulary: ["Ada"], beforeText: "Dear" };
-    await transcribeVoice(depsFor("openai"), actor, { ...audio, context });
-    expect(transcribe).toHaveBeenCalledWith(
-      expect.objectContaining({ context, apiKey: "the-key" }),
-      expect.anything(),
-    );
+    const run = async (usesContext: boolean, consented: boolean) => {
+      transcribe.mockClear();
+      vi.spyOn(adapters, "createTranscriptionProvider").mockReturnValue({
+        transcribe,
+        describe: () => describe(usesContext),
+      } as never);
+      await transcribeVoice(depsFor("openai", consented), actor, { ...audio, context });
+      return transcribe.mock.calls[0]?.[0].context;
+    };
+    expect(await run(true, true)).toEqual(context);
+    expect(await run(false, true)).toBeUndefined();
+    expect(await run(true, false)).toBeUndefined();
   });
 
   it("keeps the does-not-transcribe error", async () => {

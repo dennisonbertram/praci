@@ -133,6 +133,8 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   rpcMock.consentGrant.mockResolvedValue(consentFixture);
   await render(<LegalPage />);
   expect(container.textContent).toContain("Let Praci read your contracts");
+  // The card says what is sent, not just that an AI model is involved.
+  expect(container.textContent).toContain("The text of your Data room documents is sent");
   expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
   await click(button("Allow"));
   expect(rpcMock.consentGrant).toHaveBeenCalledWith({ key: "k1", version: "v1" });
@@ -409,9 +411,17 @@ it("offers the OpenRouter key field when the last scan's key was rejected", asyn
   });
   const openSettings = vi.fn();
   await render(<LegalPage onOpenSettings={openSettings} />);
-  expect(container.textContent).toContain("Last scan failed: OpenRouter did not accept your key.");
-  await click(button("Replace OpenRouter key"));
+  // Plain words, no vendor name, in a notice under the tiles that can be dismissed.
+  const notice = container.querySelector('[data-testid="scan-failed"]');
+  expect(notice?.textContent).toContain("Last scan failed: The AI key was rejected.");
+  expect(notice?.textContent).not.toContain("OpenRouter");
+  expect(container.querySelector("[data-page-header]")?.textContent ?? "").not.toContain(
+    "Last scan failed",
+  );
+  await click(button("Replace key"));
   expect(openSettings).toHaveBeenCalledTimes(1);
+  await click(container.querySelector('[data-testid="scan-failed"] button[aria-label="Dismiss"]'));
+  expect(container.querySelector('[data-testid="scan-failed"]')).toBeNull();
 });
 
 it("has one Scan now button on an empty page", async () => {
@@ -527,7 +537,7 @@ it("links the unchecked documents line to the Data room and the deadline tiles t
     ],
   });
   await render(<LegalPage />);
-  expect(container.querySelector('a[href="/app/data-room"]')?.textContent).toBe(
+  expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')?.textContent).toBe(
     "3 Data room documents not yet checked by Legal",
   );
   expect(tab("Deadlines")?.getAttribute("aria-selected")).toBe("false");
@@ -584,7 +594,7 @@ it("leaves out the unchecked documents line when Legal has checked everything", 
   });
   await render(<LegalPage />);
   expect(container.textContent).not.toContain("not yet checked");
-  expect(container.querySelector('a[href="/app/data-room"]')).toBeNull();
+  expect(container.querySelector('a[href="/app/data-room?legal=unchecked"]')).toBeNull();
 });
 
 it("words a term with only a start date, and gives the next deadline its year", async () => {

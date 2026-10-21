@@ -415,7 +415,8 @@ async function syncTodos(prisma: PrismaClient, { userId, spaceId }: Scope, windo
         },
       }),
       tx.inboxTodo.findMany({
-        where: { spaceId, userId },
+        // Meeting to-dos are not mail candidates; triage must neither replace them nor count them.
+        where: { spaceId, userId, meetingId: null },
         select: { id: true, messageId: true, doneAt: true, touchedAt: true },
       }),
       tx.inboxSenderFeedback.findMany({

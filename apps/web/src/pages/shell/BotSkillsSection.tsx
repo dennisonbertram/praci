@@ -20,7 +20,7 @@ import {
 import { ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
-import { slashSkillLabel } from "../../lib/slash-skills";
+import { isHiddenBuiltinSkill, slashSkillLabel } from "../../lib/slash-skills";
 import { errorText } from "../../lib/user-error";
 
 export function SkillSourceBadge({
@@ -272,7 +272,9 @@ export function BotSkillsSection({
   }
 
   const editorOpen = creating || open;
-  const builtins = skills.filter((entry) => entry.source === "builtin");
+  const builtins = skills.filter(
+    (entry) => entry.source === "builtin" && !isHiddenBuiltinSkill(entry),
+  );
 
   function renderSkill(entry: BotAgentSkill) {
     const label = slashSkillLabel(entry);
@@ -433,7 +435,7 @@ export function BotSkillsSection({
               >
                 {skillBody(draft.content)}
               </pre>
-              <div className="mt-2 flex items-center gap-2">
+              <div className="sticky bottom-0 mt-2 flex items-center gap-2 bg-background py-1.5">
                 <Button
                   type="button"
                   disabled={busy}

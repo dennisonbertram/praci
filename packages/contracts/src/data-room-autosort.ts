@@ -72,7 +72,7 @@ export const AutoSortPlanSchema = z.object({
   /** "ai": the model proposed the layout. "basic": only duplicate folders are merged. */
   mode: z.enum(["ai", "basic"]),
   /** Why a "basic" plan has no model proposal; unset when there was nothing to sort. */
-  reason: z.enum(["ai_unavailable", "ai_failed"]).optional(),
+  reason: z.enum(["ai_unavailable", "ai_failed", "ai_rejected"]).optional(),
   operations: z.array(AutoSortOperationSchema).max(AUTO_SORT_MAX_OPERATIONS),
 });
 export type AutoSortPlan = z.infer<typeof AutoSortPlanSchema>;

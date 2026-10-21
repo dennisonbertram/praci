@@ -1,7 +1,9 @@
+import { Blocks } from "lucide-react";
 import { useState } from "react";
 
 const SIZES = {
   sm: "size-5 rounded-md text-[10px]",
+  row: "size-9 rounded-[9px] text-sm",
   md: "size-10 rounded-[10px] text-base",
   lg: "size-12 rounded-xl text-lg",
   xl: "size-14 rounded-[14px] text-xl",
@@ -29,25 +31,13 @@ export function localLogoUrl(logo: string): string | null {
   return BUNDLED.has(slug) ? `/logos/simple/${slug}.svg` : null;
 }
 
-/** First letters of the first two words, so "Google Sheets" and "Gmail" differ. */
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  return (
-    words
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase() || "?"
-  );
-}
-
-/** App logo on a neutral tile; a missing or broken image falls back to the app's first letter. */
+/** App logo on a neutral tile; a missing or broken image falls back to one neutral glyph, so a gallery never mixes letters with logos. */
 export function AppLogo({
-  name,
   logo,
   size = "md",
 }: {
-  name: string;
+  /** Kept for callers; the fallback glyph is the same for every app. */
+  name?: string;
   logo?: string | null;
   size?: keyof typeof SIZES;
 }) {
@@ -73,7 +63,7 @@ export function AppLogo({
           onError={() => setFailed(true)}
         />
       ) : (
-        initials(name)
+        <Blocks aria-hidden="true" className="size-[55%]" />
       )}
     </span>
   );

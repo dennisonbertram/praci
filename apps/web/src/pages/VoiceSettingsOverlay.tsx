@@ -216,6 +216,7 @@ export function VoiceSettingsOverlay({
                 <button
                   key={entry.id}
                   type="button"
+                  aria-current={entry.id === provider ? "true" : undefined}
                   disabled={busy}
                   onClick={() => {
                     setProvider(entry.id);
@@ -230,7 +231,7 @@ export function VoiceSettingsOverlay({
                       .finally(() => markPending(null));
                   }}
                   className={`flex w-full items-center gap-3 border-b border-border px-3.5 py-3 text-start transition-colors last:border-0 disabled:pointer-events-none disabled:opacity-50 ${
-                    entry.id === provider ? "bg-muted" : "hover:bg-accent"
+                    entry.id === provider ? "bg-foreground/10" : "hover:bg-accent"
                   }`}
                 >
                   <span className="min-w-0 flex-1">
@@ -266,7 +267,7 @@ export function VoiceSettingsOverlay({
             <>
               <Field className="mt-5">
                 <FieldLabel htmlFor={apiKeyId}>
-                  <Trans>API key</Trans>
+                  <Trans>{selected.name} API key</Trans>
                 </FieldLabel>
                 <Input
                   id={apiKeyId}
@@ -288,7 +289,7 @@ export function VoiceSettingsOverlay({
                 ) : credential ? (
                   <Trans>Replace key</Trans>
                 ) : (
-                  <Trans>Connect</Trans>
+                  <Trans>Connect {selected.name}</Trans>
                 )}
               </Button>
               {credential ? (

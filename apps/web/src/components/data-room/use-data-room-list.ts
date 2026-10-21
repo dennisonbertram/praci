@@ -2,7 +2,7 @@ import { ORPCError } from "@orpc/client";
 import type { DataRoomApiItem } from "@rakazo/contracts";
 import { DATA_ROOM_METADATA_ORDINAL } from "@rakazo/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { canOpenInBrowser, isInProgress } from "../../lib/data-room";
+import { canOpenInBrowser } from "../../lib/data-room";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
 
@@ -14,6 +14,8 @@ export type Filters = {
   source?: string;
   /** Only "failed", set from the failed count. */
   status?: string;
+  /** Only documents the Legal agent has not checked; set by the Legal page's link. */
+  legalUnchecked?: boolean;
   docDateFrom?: string;
   docDateTo?: string;
 };
@@ -32,24 +34,9 @@ export type Row = { item: DataRoomApiItem; snippets: string[] };
 
 const LIST_PAGE = 50;
 const SEARCH_PAGE = 20;
-const POLL_MS = 3_000;
 /** Thumbnails are drawn after the list first shows an item: look again a few times for them. */
 const THUMBNAIL_WAIT_MS = 5_000;
 const THUMBNAIL_TRIES = 3;
-
-/** The value the server orders by, so a change to it means the row's place in the order changed. */
-function sortValue(item: DataRoomApiItem, sort: Sort | null) {
-  switch (sort?.field ?? "createdAt") {
-    case "date":
-      return item.facets.docDate;
-    case "type":
-      return item.facets.docType;
-    case "name":
-      return item.name;
-    default:
-      return item.createdAt;
-  }
-}
 
 /**
  * A metadata hit whose highlights all lie in the file name would only repeat the name shown above
@@ -143,10 +130,6 @@ export function useDataRoomList(q: ListQuery) {
   const generation = useRef(0);
   /** The cursor of the next page of the rows on screen. */
   const cursorRef = useRef<string | null>(null);
-  /** Per item, the newest status read; an older answer is dropped. */
-  const pollSeq = useRef(new Map<string, number>());
-  const rowsRef = useRef(state.rows);
-  rowsRef.current = state.rows;
   const loadedKey = useRef(key);
   const latest = useRef(q);
   latest.current = q;
@@ -156,11 +139,15 @@ export function useDataRoomList(q: ListQuery) {
     const id = ++generation.current;
     const sameQuery = loadedKey.current === key;
     loadedKey.current = key;
-    setState((s) =>
-      sameQuery
-        ? { ...s, loading: true, error: "" }
-        : { key: "", rows: [], nextCursor: null, loading: true, loadingMore: false, error: "" },
-    );
+    // A new query keeps the old rows until its first page arrives, so they never flash to a skeleton.
+    setState((s) => ({
+      ...s,
+      key: sameQuery ? s.key : "",
+      nextCursor: sameQuery ? s.nextCursor : null,
+      loading: true,
+      loadingMore: false,
+      error: "",
+    }));
     fetchPage(latest.current)
       .then((page) => {
         if (id !== generation.current) return;
@@ -169,7 +156,13 @@ export function useDataRoomList(q: ListQuery) {
       })
       .catch((cause) => {
         if (id !== generation.current) return;
-        setState((s) => ({ ...s, loading: false, error: errorText(cause) }));
+        // Rows that answer another query would sit under the error as if they matched it.
+        setState((s) => ({
+          ...s,
+          rows: s.key === key ? s.rows : [],
+          loading: false,
+          error: errorText(cause),
+        }));
       });
   }, [key, attempt]);
 
@@ -212,47 +205,8 @@ export function useDataRoomList(q: ListQuery) {
     [],
   );
 
-  // Items a background job is still working on are read again until they are ready or failed.
-  const pendingIds = state.rows
-    .filter((row) => isInProgress(row.item))
-    .map((row) => row.item.id)
-    .join(",");
-  useEffect(() => {
-    if (!pendingIds) return;
-    const timer = setInterval(() => {
-      const id = generation.current;
-      for (const itemId of pendingIds.split(",")) {
-        const mine = (pollSeq.current.get(itemId) ?? 0) + 1;
-        pollSeq.current.set(itemId, mine);
-        rpc.dataRoom
-          .item({ id: itemId })
-          .then((item) => {
-            // Not if the list was reloaded or re-queried since, or a newer poll was sent.
-            if (id !== generation.current || pollSeq.current.get(itemId) !== mine) return;
-            // Patching a row in place would leave it out of order and the cursor could skip
-            // documents, so when the sort value moved, read the first page again. A relevance
-            // search (no sort) is not ordered by these fields.
-            const old = rowsRef.current.find((row) => row.item.id === itemId)?.item;
-            const { query, sort } = latest.current;
-            if (old && (sort || !query) && sortValue(old, sort) !== sortValue(item, sort)) {
-              setAttempt((n) => n + 1);
-              return;
-            }
-            setState((s) => ({
-              ...s,
-              rows: s.rows.map((row) =>
-                // A finished item never goes back to in progress.
-                row.item.id === itemId && !(isInProgress(item) && !isInProgress(row.item))
-                  ? { ...row, item }
-                  : row,
-              ),
-            }));
-          })
-          .catch(() => undefined);
-      }
-    }, POLL_MS);
-    return () => clearInterval(timer);
-  }, [pendingIds]);
+  // Files still being read are not polled here: the processing counts (use-data-room-processing)
+  // are read every 10 seconds and announce DATA_ROOM_CHANGED when they move, which reloads this list.
 
   // ponytail: refreshes only the first page; rows further down get theirs on the next reload.
   const thumbnailTries = useRef(0);

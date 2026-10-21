@@ -1221,7 +1221,11 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
       const none = await inboxList(deps, a, {});
       expect(none).toMatchObject({ enabled: false, triagePending: false });
       expect(none.rows[0]).toMatchObject({ needsReply: null, priority: null, reason: null });
-      expect(await inboxTodosList(deps, a, {})).toEqual({ enabled: false, todos: [] });
+      expect(await inboxTodosList(deps, a, {})).toEqual({
+        enabled: false,
+        todos: [],
+        meetings: { source: false, syncing: false, ready: false },
+      });
 
       // A resolvable model without the user's consent is still not enabled.
       expect((await inboxList({ ...deps, ...ready }, a, {})).enabled).toBe(false);
@@ -1515,6 +1519,189 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         },
       );
       await wipeConsent();
+    });
+
+    describe("meeting to-dos", () => {
+      let seq = 0;
+      /** A user with no mail account: only a meeting source and meeting to-dos. */
+      const meetingOnlyUser = async () => {
+        const userId = id(`meetings-${seq++}`);
+        await prisma.user.create({
+          data: { id: userId, name: userId, email: `${userId}@rakazo.test`, emailVerified: false },
+        });
+        return actor(userId, spaceA);
+      };
+      const withMeeting = async (
+        who: Actor,
+        text: string,
+        extra: { connectionId?: string } = {},
+      ) => {
+        const meeting = await prisma.meeting.create({
+          data: {
+            spaceId: who.spaceId,
+            userId: who.userId,
+            provider: "granola",
+            externalId: `ext-${seq++}-${suffix}`,
+            title: "Planning",
+            startedAt: new Date(),
+            sourceUpdatedAt: new Date(),
+          },
+        });
+        return prisma.inboxTodo.create({
+          data: {
+            spaceId: who.spaceId,
+            userId: who.userId,
+            meetingId: meeting.id,
+            connectionId: extra.connectionId ?? null,
+            text,
+            detail: "Planning, Oct 19",
+          },
+        });
+      };
+      const source = async (who: Actor, syncedThrough: Date | null, status = "connected") => {
+        const connection = await prisma.connection.create({
+          data: {
+            spaceId: who.spaceId,
+            userId: who.userId,
+            connectorId: "granola-api",
+            provider: "granola",
+            displayName: "Granola",
+            status,
+          },
+        });
+        await prisma.meetingSyncState.create({
+          data: {
+            spaceId: who.spaceId,
+            userId: who.userId,
+            connectionId: connection.id,
+            provider: "granola",
+            syncedThrough,
+          },
+        });
+        return connection.id;
+      };
+      const drop = (who: Actor) => prisma.user.delete({ where: { id: who.userId } });
+
+      it("lists a meeting-only user's to-dos with no mail account and no triage", async () => {
+        const who = await meetingOnlyUser();
+        await withMeeting(who, "Send the notes");
+        const out = await inboxTodosList(deps, who, {});
+        expect(out.enabled).toBe(true);
+        expect(out.todos).toMatchObject([
+          { text: "Send the notes", connectionId: null, detail: "Planning, Oct 19" },
+        ]);
+        expect(out.todos[0]?.meetingId).toEqual(expect.any(String));
+        expect(out.meetings).toEqual({ source: false, syncing: false, ready: false });
+        await drop(who);
+      });
+
+      it("reports a connected source, and syncing until the first sync has a checkpoint", async () => {
+        const who = await meetingOnlyUser();
+        const connectionId = await source(who, null);
+        expect(await inboxTodosList(deps, who, {})).toMatchObject({
+          enabled: true,
+          todos: [],
+          meetings: { source: true, syncing: true },
+        });
+        await prisma.meetingSyncState.update({
+          where: { connectionId },
+          data: { syncedThrough: new Date() },
+        });
+        expect((await inboxTodosList(deps, who, {})).meetings).toMatchObject({
+          source: true,
+          syncing: false,
+        });
+        // A source whose key is gone is not a source.
+        await prisma.connection.update({
+          where: { id: connectionId },
+          data: { status: "needs_reconnect" },
+        });
+        expect((await inboxTodosList(deps, who, {})).meetings.source).toBe(false);
+        await drop(who);
+      });
+
+      it("keeps reporting syncing while recent meetings wait for a digest, so a later result shows up", async () => {
+        await wipeConsent();
+        const who = await meetingOnlyUser();
+        await prisma.member.create({
+          data: {
+            id: `${who.userId}-member`,
+            organizationId: orgA,
+            userId: who.userId,
+            role: "member",
+            createdAt: new Date(),
+          },
+        });
+        await allow(who);
+        await source(who, new Date());
+        const todoDeps = { ...deps, ...ready };
+        await withMeeting(who, "Waiting");
+        const meetingId = (await prisma.meeting.findFirstOrThrow({ where: { userId: who.userId } }))
+          .id;
+        await prisma.meeting.update({ where: { id: meetingId }, data: { digestStatus: null } });
+        expect((await inboxTodosList(todoDeps, who, {})).meetings.syncing).toBe(true);
+        // Without consent the digest cannot run, so the client is not kept waiting.
+        await wipeConsent();
+        expect((await inboxTodosList(todoDeps, who, {})).meetings.syncing).toBe(false);
+        await allow(who);
+        await prisma.meeting.update({ where: { id: meetingId }, data: { digestStatus: "done" } });
+        const done = await inboxTodosList(todoDeps, who, {});
+        expect(done.meetings.syncing).toBe(false);
+        expect(done.todos.map((t) => t.text)).toEqual(["Waiting"]);
+        await wipeConsent();
+        await drop(who);
+      });
+
+      it("completes a meeting to-do after its source is disconnected, and never another user's", async () => {
+        const who = await meetingOnlyUser();
+        const stranger = await meetingOnlyUser();
+        const connectionId = await source(who, new Date());
+        const mine = await withMeeting(who, "Mine");
+        const theirs = await withMeeting(stranger, "Theirs");
+        await prisma.connection.update({
+          where: { id: connectionId },
+          data: { status: "disconnected" },
+        });
+
+        expect((await inboxTodosList(deps, who, {})).todos.map((t) => t.text)).toEqual(["Mine"]);
+        const done = await inboxTodoSetDone(deps, who, { id: mine.id, done: true });
+        expect(done.doneAt).toEqual(expect.any(String));
+        expect(
+          (await prisma.inboxTodo.findUniqueOrThrow({ where: { id: mine.id } })).touchedAt,
+        ).not.toBeNull();
+        await expect(
+          inboxTodoSetDone(deps, who, { id: theirs.id, done: true }),
+        ).rejects.toMatchObject({
+          code: "NOT_FOUND",
+        });
+        expect((await inboxTodosList(deps, stranger, {})).todos.map((t) => t.text)).toEqual([
+          "Theirs",
+        ]);
+        await drop(who);
+        await drop(stranger);
+      });
+
+      it("shows a meeting to-do on All and on every account tab, beside that account's mail to-dos", async () => {
+        await wipe();
+        await wipeConsent();
+        await allow(a);
+        const second = await connect(a, "box-a5");
+        await todo(a, connA, { text: "Mail on A" });
+        await todo(a, second, { text: "Mail on second" });
+        await withMeeting(a, "From a meeting");
+
+        const texts = async (input: { connectionId?: string }) =>
+          (await inboxTodosList({ ...deps, ...ready }, a, input)).todos.map((t) => t.text).sort();
+        expect(await texts({})).toEqual(["From a meeting", "Mail on A", "Mail on second"]);
+        expect(await texts({ connectionId: connA })).toEqual(["From a meeting", "Mail on A"]);
+        expect(await texts({ connectionId: second })).toEqual(["From a meeting", "Mail on second"]);
+
+        // With triage off, mail to-dos stay hidden but the meeting to-do remains.
+        await wipeConsent();
+        expect(await texts({})).toEqual(["From a meeting"]);
+        await prisma.connection.delete({ where: { id: second } });
+        await wipe();
+      });
     });
 
     describe("views and relevance feedback", () => {
