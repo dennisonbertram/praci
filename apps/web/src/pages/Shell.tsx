@@ -5207,6 +5207,7 @@ export function ShellPage() {
         ) : dataRoomMode ? (
           <DataRoomPage
             onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
+            onOpenModelSettings={() => openSettings("models")}
             agents={sendToAgentTargets}
             onSendToAgent={(item, agent) => void sendFilesToAgent([item], agent)}
             spaceName={

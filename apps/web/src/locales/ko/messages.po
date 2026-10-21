@@ -819,6 +819,7 @@ msgid "Add email for {0}"
 msgstr ""
 
 #: src/components/data-room/DataRoomImportMenu.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/pages/DataRoom.tsx
 msgid "Add files"
 msgstr ""
@@ -3778,7 +3779,7 @@ msgid "Documents"
 msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
-msgid "Documents over time"
+msgid "Documents by document date"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -6450,6 +6451,7 @@ msgstr ""
 msgid "Open link"
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
 #: src/pages/shell/composer-error.tsx
 msgid "Open Models settings"
 msgstr ""
@@ -8874,6 +8876,10 @@ msgstr ""
 msgid "The model could not sort your files."
 msgstr ""
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "The model provider did not accept your API key."
+msgstr ""
+
 #: src/lib/user-error.ts
 msgid "The model provider did not accept your API key. Check it in Settings > Models."
 msgstr ""
@@ -9505,6 +9511,7 @@ msgstr "업데이트 중…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"

@@ -83,3 +83,18 @@ export const WithAskAgent: Story = {
   render: () => <DataRoomPage onAskAgent={fn()} />,
 };
 export const Empty: Story = { beforeEach: () => load([]) };
+/** One file being read and one that could not be read: a single status line, the failure on its row. */
+export const ReadingAndFailed: Story = {
+  beforeEach: () => {
+    load(items);
+    mockRpc({
+      "dataRoom.processing": {
+        reading: 1,
+        indexing: 0,
+        tagging: 0,
+        failed: 1,
+        current: "Board minutes with a very long file name.pdf",
+      },
+    });
+  },
+};
