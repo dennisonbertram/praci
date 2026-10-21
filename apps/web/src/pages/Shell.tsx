@@ -4312,7 +4312,7 @@ export function ShellPage() {
                     setMobileSidebarOpen(false);
                     navigate("/app/investors");
                   }}
-                  {...glanceBadge({ unseen: unseen["investors"] ?? 0, rail })}
+                  {...glanceBadge({ unseen: unseen.investors ?? 0, rail })}
                 />
               )}
               {hiddenPages.includes("contacts") ? null : (
