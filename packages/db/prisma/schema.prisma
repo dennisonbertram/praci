@@ -2880,6 +2880,7 @@ model DevinSession {
   @@unique([serverId, sessionId])
   @@index([spaceId, kind])
   @@map("devin_sessions")
+}
 
 // Meetings. Private to the user who connected the source; every query filters on spaceId and userId.
 // The generated tsv column, its GIN index and the one-source CHECK live in the migration SQL.
