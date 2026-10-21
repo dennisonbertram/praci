@@ -1127,6 +1127,9 @@ const DEMO_FINANCE_TOOLS = {
     getAccounts: obj({}),
     getTreasury: obj({}),
     getRecipients: obj({ limit: { type: "number" } }),
+    // Read by the approval card to name the payee and account behind a send-money request.
+    getRecipient: obj({ recipientId: str }, ["recipientId"]),
+    getAccount: obj({ accountId: str }, ["accountId"]),
     listTransactions: obj(
       {
         accountId: { type: "array", items: str },
