@@ -74,6 +74,11 @@ msgstr ""
 msgid "{0, plural, one {# email} other {# emails}}"
 msgstr ""
 
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# file failed} other {# files failed}}"
+msgstr ""
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -102,11 +107,6 @@ msgstr ""
 #. placeholder {0}: usage.runs
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
-msgstr ""
-
-#. placeholder {0}: glance.dataRoomWaiting
-#: src/pages/Shell.tsx
-msgid "{0, plural, one {# waiting} other {# waiting}}"
 msgstr ""
 
 #. placeholder {0}: rows.length
@@ -237,10 +237,8 @@ msgstr ""
 msgid "{0} handling"
 msgstr ""
 
-#. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
-#: src/components/sidebar-glance.tsx
 msgid "{0} mo"
 msgstr ""
 
@@ -263,11 +261,6 @@ msgstr ""
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
-msgstr ""
-
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
-#: src/pages/Shell.tsx
-msgid "{0} runway"
 msgstr ""
 
 #. placeholder {0}: active.name
@@ -812,7 +805,6 @@ msgid "Add connected models to use them as backups."
 msgstr "백업으로 사용할 연결된 모델을 추가하세요."
 
 #: src/components/ContactDialog.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
 msgid "Add contact"
 msgstr ""
@@ -1368,10 +1360,6 @@ msgstr ""
 msgid "Ask {botName}"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Ask a question"
-msgstr ""
-
 #: src/pages/Devin.tsx
 msgid "Ask a space owner to connect Devin."
 msgstr ""
@@ -1424,6 +1412,10 @@ msgstr "결제하기 전에 확인"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Ask before sending external email"
 msgstr "외부 이메일을 보내기 전에 확인"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask Chief"
+msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
@@ -4569,7 +4561,6 @@ msgstr ""
 msgid "Fullscreen"
 msgstr "전체 화면"
 
-#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Fully diluted shares"
 msgstr ""
@@ -5390,6 +5381,7 @@ msgstr "음성 서비스를 불러오는 중…"
 #: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
+#: src/components/RowsSkeleton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
 #: src/pages/finance/FinanceTransaction.tsx
@@ -6647,6 +6639,10 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Open Contacts"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr ""
@@ -6876,6 +6872,10 @@ msgstr ""
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Ownership"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Ownership by share class"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -7965,9 +7965,8 @@ msgstr ""
 msgid "Safe"
 msgstr ""
 
-#. placeholder {0}: safes.length
 #: src/pages/CapTable.tsx
-msgid "SAFEs ({0}, {total}) are not included until they convert"
+msgid "SAFEs are not in the share counts"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx

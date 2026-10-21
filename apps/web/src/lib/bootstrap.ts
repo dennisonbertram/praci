@@ -35,11 +35,12 @@ export function peekInitialBootstrap(): Promise<AppBootstrap> | undefined {
   return primedBootstrap?.promise;
 }
 
+/** A request that fails once (a dropped connection, a server still starting) is tried once more. */
 export function takeInitialBootstrap(botId?: string) {
   const primed = primedBootstrap;
   primedBootstrap = null;
-  if (primed && primed.botId === botId) return primed.promise;
-  return requestBootstrap(botId);
+  const first = primed && primed.botId === botId ? primed.promise : requestBootstrap(botId);
+  return first.catch(() => requestBootstrap(botId));
 }
 
 function requestBootstrap(botId?: string) {

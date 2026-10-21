@@ -33,6 +33,7 @@ vi.mock("@rakazo/ui-web", () => ({
   Label: () => null,
   NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
   NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
+  Skeleton: () => <div data-slot="skeleton" />,
 }));
 
 import { ActivityList } from "./ActivityList";

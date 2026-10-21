@@ -353,23 +353,31 @@ export function createRepos(prisma: PrismaClient) {
             if (windowRunIds.length > 0) {
               await classifyRunIds(windowRunIds);
             }
-            const visible = userVisibleMessages(
-              messages.map((message) => ({
-                ...message,
-                blocks: message.blocks as MessageBlock[],
-                runId: message.runId ?? undefined,
-              })),
-              {
+            const recent = messages.map((message) => ({
+              ...message,
+              blocks: message.blocks as MessageBlock[],
+              runId: message.runId ?? undefined,
+            }));
+            const visible = new Set(
+              userVisibleMessages(recent, {
                 knownPeerRunIds: peerRunIds,
                 backgroundRunIds,
                 includeDelegatedReplyText: false,
-              },
+              }),
             );
             // The latest words: a reaction is shown on its message, and a card (a choice, app
-            // connections) has no words, so the preview reads past both.
-            for (const message of visible) {
+            // connections) has no words, so the preview reads past both. A delegate's answer
+            // (a receipt that returns to a message this agent sent) counts as words, so the row
+            // shows the answer instead of the question that started the hand-off.
+            for (const message of recent) {
               if (messageReaction(message)) continue;
-              preview = previewFromBlocks(message.blocks);
+              if (visible.has(message)) preview = previewFromBlocks(message.blocks);
+              else {
+                const reply = message.blocks.find(
+                  (block) => block.kind === "bot_message_received" && block.returnToMessageId,
+                );
+                if (reply) preview = previewFromBlocks([reply]);
+              }
               if (preview) break;
             }
             if (preview || messages.length === 0 || !bot.thread || attempt === 4) break;
