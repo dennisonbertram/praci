@@ -59,6 +59,7 @@ model User {
   invitations                 Invitation[]
   modelCredentials            UserModelCredential[]
   voiceCredentials            UserVoiceCredential[]
+  transcriptionSelection      TranscriptionSelection?
   secrets                     Secret[]
   mcpServers                  McpServer[]
   botSections                 BotSection[]
@@ -382,6 +383,20 @@ model UserVoiceCredential {
   @@unique([id, userId])
   @@index([userId, provider, updatedAt])
   @@map("user_voice_credentials")
+}
+
+/// The provider that transcribes this user's dictation. Separate from the voice credential, so a
+/// transcription-only provider never changes speech.
+model TranscriptionSelection {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider  String
+  secretId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("transcription_selections")
 }
 
 model SpaceModelPreference {

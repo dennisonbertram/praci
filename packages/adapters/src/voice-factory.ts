@@ -11,6 +11,7 @@ import { CartesiaVoiceProvider } from "./cartesia-voice.js";
 import { ElevenLabsVoiceProvider } from "./elevenlabs-voice.js";
 import { FishAudioVoiceProvider } from "./fish-audio-voice.js";
 import { OpenAIVoiceProvider } from "./openai-voice.js";
+import { ScriptedTranscriptionProvider } from "./scripted-transcription.js";
 import { SCRIPTED_VOICE_CATALOG_ENTRY, ScriptedVoiceProvider } from "./scripted-voice.js";
 
 export const VOICE_CATALOG = [
@@ -57,6 +58,27 @@ export function listVoiceCatalog() {
   return scriptedVoiceEnabled()
     ? [...VOICE_CATALOG, SCRIPTED_VOICE_CATALOG_ENTRY]
     : [...VOICE_CATALOG];
+}
+
+/** A transcription-only test provider: it transcribes but does not speak. */
+export const SCRIPTED_TRANSCRIBE_CATALOG_ENTRY = {
+  id: "scripted-transcribe",
+  name: "Scripted transcription",
+  description: "Deterministic transcription fixture for tests. No speech.",
+  transcribe: true,
+  speech: false,
+} as const;
+
+/** Providers a user can select for transcription. */
+export function listTranscriptionCatalog() {
+  const entries: { id: string; name: string; description: string }[] = listVoiceCatalog().filter(
+    (entry) => entry.transcribe,
+  );
+  return scriptedVoiceEnabled() ? [...entries, SCRIPTED_TRANSCRIBE_CATALOG_ENTRY] : entries;
+}
+
+export function isTranscriptionProviderId(value: string): boolean {
+  return listTranscriptionCatalog().some((entry) => entry.id === value);
 }
 
 export function voiceCatalogEntry(id: string) {
@@ -152,6 +174,9 @@ export function transcriptionFromVoice(voice: VoiceProvider): TranscriptionProvi
 
 /** The transcription provider for a voice provider id, or null when it cannot transcribe. */
 export function createTranscriptionProvider(providerId: string): TranscriptionProvider | null {
+  if (providerId === SCRIPTED_TRANSCRIBE_CATALOG_ENTRY.id && scriptedVoiceEnabled()) {
+    return guardTranscription(new ScriptedTranscriptionProvider());
+  }
   return transcriptionFromVoice(createVoiceProvider(providerId));
 }
 

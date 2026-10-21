@@ -5,8 +5,10 @@ import {
   MAX_TRANSCRIPTION_VOCABULARY_ITEM_CHARS,
 } from "@rakazo/adapter-kit";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ScriptedTranscriptionProvider } from "./scripted-transcription.js";
-import { SCRIPTED_TRANSCRIPT } from "./scripted-voice.js";
+import {
+  SCRIPTED_TRANSCRIPTION_TEXT,
+  ScriptedTranscriptionProvider,
+} from "./scripted-transcription.js";
 import {
   createTranscriptionProvider,
   guardTranscription,
@@ -84,7 +86,7 @@ describe.each(harnesses)("transcription conformance: $name", (h) => {
     h.serve("ok");
     const { provider } = h.make();
     const { text } = await provider.transcribe(request(), ctx);
-    expect(text).toBe(h.name === "scripted" ? SCRIPTED_TRANSCRIPT : "hello there");
+    expect(text).toBe(h.name === "scripted" ? SCRIPTED_TRANSCRIPTION_TEXT : "hello there");
   });
 
   it("rejects empty audio without calling the vendor", async () => {
