@@ -15,6 +15,7 @@ import {
   isCartaAgentSpawnKey,
   isCryptoEndpoint,
   isFinanceAgentSpawnKey,
+  isInvestorsAgentSpawnKey,
   RunwayCryptoScopeSchema,
 } from "@rakazo/contracts";
 import {
@@ -44,7 +45,7 @@ export const FINANCE_TOOL_NAMES = new Set([
   "finance_crypto",
 ]);
 
-/** Only the Finance agent, on a run its owner started (a direct message or their own routine) or on the owner's own bot relaying their question. */
+/** Only the Finance, Carta and Investors agents, on a run its owner started (a direct message or their own routine) or on the owner's own bot relaying their question. */
 export { OWNER_INITIATED_TRIGGERS };
 export function financeToolsAllowed(
   options: Parameters<typeof mailToolsAllowed>[0] & {
@@ -53,7 +54,9 @@ export function financeToolsAllowed(
   },
 ): boolean {
   return (
-    (isFinanceAgentSpawnKey(options.botSpawnKey) || isCartaAgentSpawnKey(options.botSpawnKey)) &&
+    (isFinanceAgentSpawnKey(options.botSpawnKey) ||
+      isCartaAgentSpawnKey(options.botSpawnKey) ||
+      isInvestorsAgentSpawnKey(options.botSpawnKey)) &&
     // A bot of the same owner relaying the owner's own question (the executor decides which).
     (OWNER_INITIATED_TRIGGERS.has(options.trigger) ||
       (options.trigger === "bot_message" && options.ownerAgentPeer === true)) &&

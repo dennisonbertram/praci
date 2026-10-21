@@ -376,7 +376,6 @@ export function FinanceSection({
   cryptoManageTo?: string;
 }) {
   const { t } = useLingui();
-  const navigate = useNavigate();
   const [busy, setBusy] = useState<FinanceProvider | null>(null);
   const [errors, setErrors] = useState<Partial<Record<FinanceProvider, string>>>({});
   const description = {
@@ -455,15 +454,6 @@ export function FinanceSection({
                     <Link to="/app/finance" className={OPEN_LINK}>
                       <Trans>Open Finance</Trans>
                     </Link>
-                    {serverId ? (
-                      <TileMenu label={t`More ${name} actions`}>
-                        <DropdownMenuItem
-                          onClick={() => navigate(`/app/integrations/mcp/${serverId}`)}
-                        >
-                          <Trans>Manage agents</Trans>
-                        </DropdownMenuItem>
-                      </TileMenu>
-                    ) : null}
                   </>
                 ) : (
                   <Button

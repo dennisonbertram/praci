@@ -98,6 +98,13 @@ describePostgres("provisionMessagingIdentity (PostgreSQL)", () => {
       where: { spaceId: result.spaceId, userId: result.userId },
     });
     expect(pref).toBeTruthy();
+    const rules = await prisma.actionApprovalRule.findMany({
+      where: { spaceId: result.spaceId, createdByUserId: result.userId },
+    });
+    expect(rules.map((rule) => [rule.effect, rule.matchKind, rule.matchValue]).sort()).toEqual([
+      ["require_approval", "category", "email"],
+      ["require_approval", "category", "purchase"],
+    ]);
   });
 
   it("does not let a texter claim deployment ownership", async () => {

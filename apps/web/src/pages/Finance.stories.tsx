@@ -229,6 +229,17 @@ export const NamedSpace: Story = {
   beforeEach: load(),
 };
 
+/** One space: the company is named, with nothing to switch to. */
+export const SingleSpace: Story = {
+  args: {
+    onAskAgent: () => {},
+    spaces: [{ id: "s1", name: "Northwind Robotics" }],
+    spaceId: "s1",
+    onSwitchSpace: () => {},
+  },
+  beforeEach: load(),
+};
+
 export const Loading: Story = {
   beforeEach: () => mockRpc({ "finance.overview": () => new Promise(() => {}) }),
 };

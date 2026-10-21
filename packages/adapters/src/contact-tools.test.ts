@@ -2,6 +2,8 @@ import {
   cartaAgentSpawnKey,
   DATA_ROOM_AGENT_BUILTIN_TOOLS,
   financeAgentSpawnKey,
+  INVESTORS_AGENT_BUILTIN_TOOLS,
+  investorsAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
 } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
@@ -40,6 +42,17 @@ describe("contact tools", () => {
     expect(capTableToolsAllowed({ ...base, botSpawnKey: null })).toBe(false);
     expect(capTableToolsAllowed({ ...base, botSpawnKey: financeAgentSpawnKey("u") })).toBe(false);
     expect(capTableToolsAllowed({ ...base, trigger: "bot_message" })).toBe(false);
+  });
+
+  it("the Investors agent passes the cap table gate but its fixed list has no cap_table_update", () => {
+    const investors = { ...base, botSpawnKey: investorsAgentSpawnKey("u") };
+    expect(capTableToolsAllowed(investors)).toBe(true);
+    expect(capTableToolsAllowed({ ...investors, trigger: "bot_message" })).toBe(false);
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("cap_table_read");
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).not.toContain("cap_table_update");
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toEqual(
+      expect.arrayContaining(["contacts_list", "contacts_add", "contacts_save"]),
+    );
   });
 
   it("the Legal and Data room agents are offered contacts_list and contacts_add", () => {

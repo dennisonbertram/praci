@@ -7,7 +7,12 @@ import { afterEach, expect, it, vi } from "vitest";
 const servers = vi.hoisted(() => vi.fn());
 vi.mock("./rpc", () => ({ rpc: { mcp: { servers: { list: servers } } } }));
 
-import { cartaPanelState, useAutoCreateCartaAgent, useOnPhoneWidth } from "./carta-agent";
+import {
+  cartaPanelState,
+  listedInSidebar,
+  useAutoCreateCartaAgent,
+  useOnPhoneWidth,
+} from "./carta-agent";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -120,4 +125,22 @@ it("calls onPhone when the window shrinks below the desktop width, and onWide wh
   expect(onPhone).toHaveBeenCalledTimes(1);
   expect(onWide).toHaveBeenCalledTimes(1);
   vi.unstubAllGlobals();
+});
+
+it("lists the Carta agent only while it has recent history or is open; other bots always", () => {
+  const now = Date.parse("2026-10-21T00:00:00.000Z");
+  const carta = (preview: string, updatedAt: string) => ({
+    id: "carta",
+    spawnKey: "carta-agent:u",
+    preview,
+    updatedAt,
+  });
+  expect(
+    listedInSidebar(carta("Cap table is up to date", "2026-10-20T00:00:00.000Z"), null, now),
+  ).toBe(true);
+  expect(listedInSidebar(carta("", "2026-10-20T00:00:00.000Z"), null, now)).toBe(false);
+  expect(listedInSidebar(carta("Done", "2026-09-01T00:00:00.000Z"), null, now)).toBe(false);
+  expect(listedInSidebar(carta("", "2026-09-01T00:00:00.000Z"), "carta", now)).toBe(true);
+  const other = { id: "o", spawnKey: null, preview: "", updatedAt: "2020-01-01T00:00:00.000Z" };
+  expect(listedInSidebar(other, null, now)).toBe(true);
 });

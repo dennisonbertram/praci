@@ -82,6 +82,7 @@ import {
 import { SkillDraftCard } from "../../components/teach/SkillDraftCard";
 import { bubbleMeasure, UserTextBubble } from "../../components/UserTextBubble";
 import type { ArtifactTarget } from "../../lib/artifact-open";
+import { delegateWaitTarget } from "../../lib/delegate-wait";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { copyableMessageText } from "../../lib/message-text";
 import { messageProviderLabel } from "../../lib/messaging";
@@ -288,6 +289,8 @@ export const Transcript = memo(function Transcript({
                 ? t`${workingBotName} is working`
                 : t`Bots are working`;
   const waitingLabel = (service: string) => t`Still waiting on ${service}`;
+  // After this agent messages another and nothing has come back, the wait is on that agent.
+  const delegate = delegateWaitTarget(messages);
   const [quoteDraft, setQuoteDraft] = useState<{
     message: ThreadMessage;
     text: string;
@@ -894,7 +897,9 @@ export const Transcript = memo(function Transcript({
                 ? activity.detail
                 : activity?.kind === "phase"
                   ? maskCurrencyWhenHidden(runPhaseLine(activity.phase) ?? "")
-                  : undefined
+                  : delegate
+                    ? t`Waiting on ${delegate}`
+                    : undefined
             }
             detailSince={activity?.kind === "phase" ? Date.parse(activity.phase.at) : undefined}
             waitingLabel={
@@ -1736,7 +1741,8 @@ const MessageView = memo(function MessageView({
             <AskCard
               key={i}
               block={block}
-              canAnswer={canAnswer}
+              // A held message is answered without a waiting run, so it stays answerable.
+              canAnswer={canAnswer || block.share === true}
               onAnswer={(text, username) => onAnswer(message, text, username)}
             />
           );

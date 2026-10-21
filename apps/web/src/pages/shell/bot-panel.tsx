@@ -61,6 +61,10 @@ type AudiencePatch = {
   externalComputerTools?: boolean;
 };
 
+/** The selected segment is a filled ink pill, so Internal/External and Team/Private read at a glance. */
+const SELECTED_SEGMENT =
+  "aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground";
+
 const fieldLabelClass = "mt-4 block text-[14px] text-muted-foreground";
 // Advanced sections share the heading style of Notifications, Skills, Memory and Credentials.
 const advancedLabelClass = "mt-4 block text-[13.5px] font-medium text-foreground";
@@ -91,12 +95,19 @@ function ComputerModePicker({
             onPressedChange={(pressed) => {
               if (pressed) onChange(mode);
             }}
-            className="capitalize aria-pressed:border-foreground/40 aria-pressed:text-foreground"
+            className={`capitalize ${SELECTED_SEGMENT}`}
           >
             {mode === "team" ? <Trans>Team</Trans> : <Trans>Private</Trans>}
           </Toggle>
         ))}
       </div>
+      <p className="mt-2 text-[12px] text-muted-foreground/70">
+        {value === "team" ? (
+          <Trans>Shares one computer with your other bots.</Trans>
+        ) : (
+          <Trans>Has its own computer.</Trans>
+        )}
+      </p>
     </div>
   );
 }
@@ -498,18 +509,6 @@ export function BotSettings({
         </Button>
       ) : (
         <>
-          <label htmlFor={`${ids}-title`} className={fieldLabelClass}>
-            <Trans>Title</Trans>
-            <Input
-              id={`${ids}-title`}
-              value={title}
-              maxLength={BOT_TITLE_MAX_LENGTH}
-              onChange={(e) => setTitle(e.target.value)}
-              onBlur={() => void enqueueSave()}
-              placeholder={t`e.g. Recruiting, Sales, Legal`}
-              className="mt-1.5"
-            />
-          </label>
           <label htmlFor={`${ids}-description`} className={fieldLabelClass}>
             <Trans>Description</Trans>
             <Textarea
@@ -519,6 +518,7 @@ export function BotSettings({
               onChange={(e) => setDescription(e.target.value)}
               onBlur={() => void enqueueSave()}
               rows={3}
+              placeholder={t`What this bot handles`}
               className="mt-1.5"
             />
           </label>
@@ -568,7 +568,7 @@ export function BotSettings({
                       setAudience(value);
                       void enqueueSave({ audience: value });
                     }}
-                    className="aria-pressed:border-foreground/40 aria-pressed:text-foreground"
+                    className={SELECTED_SEGMENT}
                   >
                     {value === "internal" ? <Trans>Internal</Trans> : <Trans>External</Trans>}
                   </Toggle>
@@ -750,7 +750,7 @@ export function BotSettings({
                       onPressedChange={(pressed) => {
                         if (pressed) saveOnChange(() => setMemoryScope(option.value));
                       }}
-                      className="flex-1 aria-pressed:border-foreground/40 aria-pressed:text-foreground"
+                      className={`flex-1 ${SELECTED_SEGMENT}`}
                     >
                       {option.label}
                     </Toggle>

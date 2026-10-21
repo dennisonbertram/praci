@@ -39,7 +39,7 @@ export function RunsOnPicker({
             onPressedChange={(pressed) => {
               if (pressed) onChange(option);
             }}
-            className="aria-pressed:border-foreground/40 aria-pressed:text-foreground"
+            className="aria-pressed:border-primary aria-pressed:bg-primary aria-pressed:text-primary-foreground hover:aria-pressed:bg-primary hover:aria-pressed:text-primary-foreground"
           >
             {option === "docker" ? <Trans>Sandbox</Trans> : host}
           </Toggle>
