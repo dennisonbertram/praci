@@ -303,8 +303,12 @@ describePostgres("meetings.* (PostgreSQL)", () => {
   it("reports consent off when the model's recipient is not allowed", async () => {
     await prisma.aiDataConsent.deleteMany({ where: { userId: userA } });
     expect((await client(a).meetings.status())?.consentOff).toBe(true);
+    jobs.enqueue.mockClear();
     await client(a).meetings.connect({ apiKey: KEY });
     expect((await client(a).meetings.status())?.consentOff).toBe(false);
+    // Consent granted: the two stored meetings without a digest are queued.
+    const names = jobs.enqueue.mock.calls.map((call) => (call[0] as { name: string }).name);
+    expect(names.filter((name) => name === "meetings.digest")).toHaveLength(2);
   });
 
   it("reports needs_reconnect when a sync was rejected, and a new key restores it", async () => {

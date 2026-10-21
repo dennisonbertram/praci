@@ -65,6 +65,7 @@ export const CouldNotReach: Story = {
 
 export const Syncing: Story = { args: { status: { ...connected, syncedThrough: null } } };
 export const Synced: Story = { args: { status: connected } };
+export const SyncedOne: Story = { args: { status: { ...connected, syncedCount: 1 } } };
 export const SyncLate: Story = {
   args: { status: { ...connected, lastSyncedAt: "2026-10-18T10:00:00Z" } },
 };

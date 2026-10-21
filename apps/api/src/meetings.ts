@@ -1,12 +1,24 @@
 import { ORPCError } from "@orpc/server";
 import { MeetingSourceError } from "@rakazo/adapter-kit";
 import type { MeetingSourceRegistry } from "@rakazo/adapters";
-import { persistPreparedSecret, requestMeetingSync } from "@rakazo/adapters";
+import {
+  aiRecipient,
+  parseModelSecret,
+  persistPreparedSecret,
+  queueMeetingDigests,
+  requestMeetingSync,
+  selectConfiguredModel,
+} from "@rakazo/adapters";
 import type { Actor, MeetingsStatus, StoredMeeting } from "@rakazo/contracts";
 import { AI_DISCLOSURE_VERSION, GRANOLA_API_CONNECTOR_ID } from "@rakazo/contracts";
-import { deleteMeeting, getMeetingSyncState, IsolationError } from "@rakazo/db";
+import {
+  deleteMeeting,
+  findDefaultModelCredential,
+  findModelCredential,
+  getMeetingSyncState,
+  IsolationError,
+} from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
-import { aiConsentStatus } from "./ai-consent.js";
 import type { ensureConnectedAppAgent } from "./integration-agent.js";
 import { provisionConnectionAgent } from "./integration-agent.js";
 import type { RouterDeps } from "./router.js";
@@ -45,16 +57,66 @@ async function checkKey(deps: MeetingsDeps, actor: Actor, apiKey: string, signal
   }
 }
 
-/** Model recipients that lack consent for the Granola agent (or, with no agent, for the user). */
-async function missingConsent(deps: MeetingsDeps, actor: Actor, botId?: string | null) {
-  const status = await aiConsentStatus(deps.router, actor, {
-    uses: ["model"],
-    ...(botId ? { botId } : {}),
+/**
+ * The recipient of the Granola agent's primary model (its own model, else the space default), the
+ * one meeting text is sent to. Backup and helper models are not used for meetings.
+ */
+async function primaryRecipient(deps: MeetingsDeps, actor: Actor, botId?: string | null) {
+  const { prisma, env } = deps.router;
+  if (env.agentRuntime === "scripted") return null;
+  const [bot, defaultCredential, settings] = await Promise.all([
+    botId
+      ? prisma.bot.findFirst({
+          where: { id: botId, ...owner(actor), archivedAt: null },
+          select: { modelProvider: true, modelId: true, thinkingLevel: true },
+        })
+      : null,
+    findDefaultModelCredential(prisma, actor),
+    prisma.deploymentSettings.findUnique({ where: { id: "default" } }),
+  ]);
+  const overrideCredential =
+    bot?.modelProvider && bot.modelId
+      ? await findModelCredential(prisma, actor, bot.modelProvider, bot.modelId)
+      : null;
+  const model = selectConfiguredModel({
+    override: bot ?? null,
+    overrideCredential,
+    defaultCredential,
+    settings,
+    deployment: env.deploymentModelConfigured
+      ? { provider: env.defaultProvider, model: env.defaultModel }
+      : null,
   });
-  return status.recipients.filter((recipient) => recipient.use === "model" && !recipient.allowed);
+  if (!model.provider || !model.id) return null;
+  let baseUrl: string | undefined;
+  if (model.credential) {
+    const secret = await prisma.secret.findFirst({
+      where: { id: model.credential.secretId, userId: actor.userId, spaceId: null },
+    });
+    try {
+      const parsed = secret
+        ? parseModelSecret(await deps.router.secrets.load(secret.ciphertext, secret.id))
+        : null;
+      if (parsed?.kind === "openai_compatible") baseUrl = parsed.baseUrl;
+    } catch {
+      // An unreadable credential still discloses by provider.
+    }
+  }
+  return aiRecipient({ provider: model.provider, modelId: model.id, baseUrl, use: "model" });
 }
 
-/** Connecting is the consent act: it records consent for the models the agent may send meetings to. */
+/** The primary model's recipient when the user has not consented to it, as a list of 0 or 1. */
+async function missingConsent(deps: MeetingsDeps, actor: Actor, botId?: string | null) {
+  const recipient = await primaryRecipient(deps, actor, botId);
+  if (!recipient) return [];
+  const granted = await deps.router.prisma.aiDataConsent.findFirst({
+    where: { ...owner(actor), recipientKey: recipient.key, version: AI_DISCLOSURE_VERSION },
+    select: { userId: true },
+  });
+  return granted ? [] : [recipient];
+}
+
+/** Connecting is the consent act: it records consent for the primary model's recipient. */
 async function recordConsent(deps: MeetingsDeps, actor: Actor, botId: string | null) {
   for (const recipient of await missingConsent(deps, actor, botId)) {
     await deps.router.prisma.aiDataConsent.upsert({
@@ -141,6 +203,10 @@ export async function connectGranola(
     )?.agentBotId ?? null;
   await recordConsent(deps, actor, agentBotId).catch((error) =>
     getLogger().error("meetings.connect: consent not recorded", error),
+  );
+  // Consent is now recorded, so stored meetings without a digest can be digested.
+  await queueMeetingDigests({ prisma, jobs: deps.router.jobs }, owner(actor)).catch((error) =>
+    getLogger().error("meetings.connect: digests not queued", error),
   );
   await requestMeetingSync(
     { prisma, jobs: deps.router.jobs },

@@ -1,3 +1,4 @@
+import { plural } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { MeetingsStatus } from "@rakazo/contracts";
 import { Button, Input, Label } from "@rakazo/ui-web";
@@ -30,6 +31,10 @@ const TONE: Record<Line, "success" | "warning" | "muted"> = {
 };
 
 /** Dot plus words. On the card the words link on; on a tile (already a link) they are plain text. */
+/** "Synced 1 meeting" / "Synced 3 meetings": what is stored, whatever the route's state. */
+const syncedLabel = (count: number) =>
+  plural(count, { one: "Synced # meeting", other: "Synced # meetings" });
+
 export function GranolaStatusLine({
   status,
   interactive = false,
@@ -47,7 +52,7 @@ export function GranolaStatusLine({
     reconnect: t`Reconnect needed`,
     consent: t`AI data sharing off`,
     syncing: t`Syncing`,
-    synced: t`Synced ${count} meetings`,
+    synced: syncedLabel(count),
   }[line];
   const words =
     line === "syncing" ? (
@@ -164,14 +169,19 @@ export function GranolaMeetingsCard({
         ) : null}
         {state === "disconnected" && status ? (
           <p className="text-sm text-muted-foreground">
-            {status.syncedCount > 0 ? (
-              <Link to={GRANOLA_MEETINGS_PATH} className="hover:underline">
-                <Trans>Praci keeps your meetings and to-dos.</Trans>
-              </Link>
-            ) : (
-              <Trans>Praci keeps your meetings and to-dos.</Trans>
-            )}
+            <Trans>Praci keeps your meetings and to-dos.</Trans>
           </p>
+        ) : null}
+        {/* Deletion never depends on the status words: stored meetings stay reachable in every state. */}
+        {status &&
+        status.syncedCount > 0 &&
+        !["synced", "syncing"].includes(granolaLine(status) ?? "") ? (
+          <Link
+            to={GRANOLA_MEETINGS_PATH}
+            className="w-fit text-sm text-muted-foreground hover:underline"
+          >
+            {syncedLabel(status.syncedCount)}
+          </Link>
         ) : null}
         {showForm ? (
           <div className="flex flex-col gap-2">

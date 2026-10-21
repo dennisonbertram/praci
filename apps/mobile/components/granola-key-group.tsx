@@ -86,7 +86,13 @@ export function GranolaKeyGroup() {
       <SettingsRow
         key="status"
         accessible
-        title={syncing ? t("Syncing") : t("Synced {n} meetings", { n: status.syncedCount })}
+        title={
+          syncing
+            ? t("Syncing")
+            : status.syncedCount === 1
+              ? t("Synced 1 meeting")
+              : t("Synced {n} meetings", { n: status.syncedCount })
+        }
         trailing={syncing ? <ActivityIndicator color={native.secondaryLabel} /> : undefined}
       />
     )

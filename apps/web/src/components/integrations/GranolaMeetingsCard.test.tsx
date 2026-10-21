@@ -17,6 +17,8 @@ vi.mock("@lingui/react/macro", () => ({
 vi.mock("@lingui/core/macro", () => ({
   t: (parts: TemplateStringsArray, ...values: unknown[]) =>
     parts.reduce((out, part, i) => out + part + (i < values.length ? String(values[i]) : ""), ""),
+  plural: (n: number, forms: { one: string; other: string }) =>
+    (n === 1 ? forms.one : forms.other).replace("#", String(n)),
 }));
 
 const meetings = vi.hoisted(() => ({
@@ -152,6 +154,15 @@ it("links Synced to the stored-meetings list and shows no key field while connec
   expect(text()).toContain("Granola agent");
 });
 
+const listHref = (label: string) =>
+  [...container.querySelectorAll("a")].find((a) => a.textContent === label)?.getAttribute("href");
+const LIST = "/app/integrations/granola/meetings";
+
+it("says Synced 1 meeting for one stored meeting", async () => {
+  await show({ ...base, syncedCount: 1 });
+  expect(listHref("Synced 1 meeting")).toBe(LIST);
+});
+
 it("reads Syncing until the first sync finishes", async () => {
   await show({ ...base, syncedThrough: null });
   expect(text()).toContain("Syncing");
@@ -166,7 +177,8 @@ it("shows the relative time only when the sync is late", async () => {
 it("reads Reconnect needed with a warning dot, no Synced and no error line", async () => {
   await show({ ...base, status: "needs_reconnect" });
   expect(text()).toContain("Reconnect needed");
-  expect(text()).not.toContain("Synced");
+  // The stored meetings stay reachable, as a muted link below the status.
+  expect(listHref("Synced 3 meetings")).toBe(LIST);
   expect(container.querySelector("[data-tone='warning']")).not.toBeNull();
   expect(container.querySelector("[data-tone='success']")).toBeNull();
   expect(container.querySelector("[role='alert']")).toBeNull();
@@ -177,7 +189,7 @@ it("reads Reconnect needed with a warning dot, no Synced and no error line", asy
 
 it("reads AI data sharing off instead of Synced, linking to settings", async () => {
   await show({ ...base, consentOff: true });
-  expect(text()).not.toContain("Synced");
+  expect(listHref("Synced 3 meetings")).toBe(LIST);
   await act(async () => button("AI data sharing off").click());
   expect(onOpenAiDataSharing).toHaveBeenCalled();
 });
@@ -190,6 +202,7 @@ it("disconnects and then shows the keep sentence with the agent link and consent
   expect(onChanged).toHaveBeenCalled();
   await show({ ...base, status: "disconnected" });
   expect(text()).toContain("Praci keeps your meetings and to-dos.");
+  expect(listHref("Synced 3 meetings")).toBe(LIST);
   expect(text()).toContain("Granola agent");
   expect(text()).toContain("Sends your meeting notes and transcripts to your AI model.");
   expect(field().value).toBe("");

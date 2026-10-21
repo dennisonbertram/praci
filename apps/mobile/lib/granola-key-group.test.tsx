@@ -236,6 +236,12 @@ it("shows Synced count with Disconnect, no field and no footer, when connected",
   expect(host.querySelector("footer")).toBeNull();
 });
 
+it("says Synced 1 meeting for a single meeting", async () => {
+  await render({ ...base, status: "connected", syncedCount: 1 });
+  expect(text()).toContain("Synced 1 meeting");
+  expect(text()).not.toContain("Synced 1 meetings");
+});
+
 it("shows Syncing with a spinner until syncedThrough is set", async () => {
   await render({ ...base, status: "connected", syncedThrough: null });
   expect(text()).toContain("Syncing");
