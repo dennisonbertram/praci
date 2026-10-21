@@ -5343,7 +5343,11 @@ export function ShellPage() {
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
-                    <Trans>Settings</Trans>
+                    active ? (
+                      t`${active.name} settings`
+                    ) : (
+                      <Trans>Settings</Trans>
+                    )
                   ) : panel === "page" ? (
                     <Trans>Page</Trans>
                   ) : panel === "list" ? (
@@ -5375,7 +5379,11 @@ export function ShellPage() {
                       onClick={() => setPanel(panel === "settings" ? "computer" : "settings")}
                       className={panel === "settings" ? "text-foreground" : "text-muted-foreground"}
                     >
-                      <Settings size={16} strokeWidth={1.7} />
+                      {panel === "settings" ? (
+                        <Monitor size={16} strokeWidth={1.7} />
+                      ) : (
+                        <Settings size={16} strokeWidth={1.7} />
+                      )}
                     </Button>
                   ) : null}
                   <Button

@@ -255,6 +255,11 @@ msgstr "{0} heures de regroupement"
 msgid "{0} runway"
 msgstr ""
 
+#. placeholder {0}: active.name
+#: src/pages/Shell.tsx
+msgid "{0} settings"
+msgstr ""
+
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid "{0} transactions"
@@ -1137,6 +1142,10 @@ msgstr "Répondu : {0}"
 msgid "Answered: {answer}"
 msgstr "Répondu : {answer}"
 
+#: src/lib/slash-skills.ts
+msgid "Answers from your meeting notes and transcripts."
+msgstr ""
+
 #: src/pages/Paywall.tsx
 msgid "Any model, with your own key"
 msgstr ""
@@ -1672,6 +1681,10 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Box files"
 msgstr ""
 
 #: src/pages/memory-providers/SerenitySettingsForm.tsx
@@ -3595,6 +3608,10 @@ msgstr ""
 msgid "Developer"
 msgstr ""
 
+#: src/lib/slash-skills.ts
+msgid "Devin sessions"
+msgstr ""
+
 #: src/components/integrations/SignInStep.tsx
 msgid "Didn't open?"
 msgstr ""
@@ -4210,6 +4227,10 @@ msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Find an app"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Find and summarize files in Box. Changes ask first."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
@@ -5334,6 +5355,10 @@ msgstr "Moyen"
 #: src/lib/model-catalog.ts
 msgid "Medium"
 msgstr "Moyen"
+
+#: src/lib/slash-skills.ts
+msgid "Meeting notes"
+msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Meeting notes and transcripts"
@@ -8489,6 +8514,10 @@ msgstr ""
 
 #: src/pages/Paywall.tsx
 msgid "Start {trialDays}-day free trial"
+msgstr ""
+
+#: src/lib/slash-skills.ts
+msgid "Start and follow Devin sessions. Each one asks first."
 msgstr ""
 
 #: src/components/teach/TeachComputerOverlay.tsx
