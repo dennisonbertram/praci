@@ -632,7 +632,7 @@ it("does not say 'No apps match' while iMessage tiles match the search", async (
     ],
   });
   await show(data(true, true), "/app/integrations?q=imessage");
-  expect(container.textContent).toContain("iMessage (Photon)");
+  expect(container.textContent).toContain("iMessage");
   expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
 });
 
@@ -662,4 +662,15 @@ it("keeps matching connected apps visible while a category chip is active", asyn
   expect(connected).toBeDefined();
   expect(container.querySelector('a[href*="notion"]')).not.toBeNull();
   expect(container.querySelector('a[href*="gmail"]')).toBeNull();
+});
+
+it("lists a connected app with its card when its name is searched", async () => {
+  const value = data(true, true);
+  value.catalog = [
+    { ...google("notion"), connectorId: "composio", name: "Notion", category: "docs_files" },
+  ];
+  value.connections = [composioGmail({ id: "n1", provider: "notion", displayName: "Notion" })];
+  await show(value, "/app/integrations?q=notion");
+  expect(container.querySelector('a[href*="notion"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="no-apps"]')).toBeNull();
 });

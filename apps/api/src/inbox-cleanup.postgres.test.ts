@@ -114,6 +114,35 @@ describePostgres("inbox cleanup (PostgreSQL + Gmail emulator)", () => {
       );
     });
 
+    it("leaves out senders saved as Contacts, unless the user already skips them", async () => {
+      await f.wipe();
+      await sender(f.a, f.connA, "saved@example.test", { count: 5, bulk: false });
+      await sender(f.a, f.connA, "skipped-saved@example.test", { count: 5, bulk: false });
+      await sender(f.a, f.connA, "stranger@example.test", { count: 5, bulk: false });
+      const owner = { spaceId: f.a.spaceId, userId: f.a.userId };
+      await f.prisma.contact.createMany({
+        data: [
+          { ...owner, name: "Sam Saved", email: "Saved@Example.test", kind: "customer" },
+          { ...owner, name: "Skipped", email: "skipped-saved@example.test", kind: "other" },
+        ],
+      });
+      await f.prisma.mailSenderDecision.create({
+        data: {
+          ...owner,
+          connectionId: f.connA,
+          senderAddress: "skipped-saved@example.test",
+          skipInboxAt: new Date(),
+        },
+      });
+
+      const out = await inboxCleanupList(f.deps, f.a, {});
+
+      expect(out.senders.map((s) => s.address).sort()).toEqual([
+        "skipped-saved@example.test",
+        "stranger@example.test",
+      ]);
+    });
+
     it("never preselects a high-volume, unread updates-pile sender (invoices, alerts)", async () => {
       await f.wipe();
       await sender(f.a, f.connA, "invoices@billing.example.test", {

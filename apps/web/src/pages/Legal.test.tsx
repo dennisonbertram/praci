@@ -110,6 +110,21 @@ it("shows the empty state, loading skeleton and load error", async () => {
   root = createRoot(container);
   await render(<LegalPage />);
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
+  // The header stays, so the page is still recognisable and the agent still reachable.
+  expect(container.querySelector("h1")?.textContent).toBe("Legal");
+});
+
+it("drops the Active tile when it repeats Contracts, and colors Overdue when above zero", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    counts: { ...overview.counts, contracts: 2, activeContracts: 2 },
+    deadlines: [{ ...deadlines[0]!, dueDate: "2000-01-01" }],
+  });
+  await render(<LegalPage />);
+  const titles = [...container.querySelectorAll("h2")].map((h) => h.textContent);
+  expect(titles).not.toContain("Active");
+  const overdue = [...container.querySelectorAll("h2")].find((h) => h.textContent === "Overdue");
+  expect(overdue?.nextElementSibling?.className).toContain("text-destructive");
 });
 
 it("asks for consent when it is not allowed, and grants the shown key", async () => {
@@ -555,7 +570,9 @@ it("states the consent wait once, in the banner, when access is not allowed", as
   rpcMock.overview.mockResolvedValue(overview);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage />);
-  expect(container.textContent).toMatch(/Last scan \d+d ago(?!\.)/);
+  // The scan time stays out of the header until Legal may read anything.
+  expect(container.textContent).not.toContain("Last scan");
+  expect(button("Scan now")?.getAttribute("title")).toBe("Allow access first.");
   expect(container.textContent).not.toContain("Daily scans wait");
   expect(container.textContent).not.toContain("Scans daily.");
 });

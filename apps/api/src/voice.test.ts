@@ -11,6 +11,7 @@ import {
   MAX_TRANSCRIBE_REQUEST_BYTES,
   mountVoiceHttpRoutes,
   synthesizeVoice,
+  transcribeVoice,
   toVoiceStatus,
   updateVoiceSpeechModel,
 } from "./voice.js";
@@ -479,5 +480,63 @@ describe("synthesizeVoice", () => {
     await synthesizeVoice(deps, actor, { text: "Hello" });
 
     expect(synthesize.mock.calls[0]?.[0]).toMatchObject({ model: undefined });
+  });
+});
+
+describe("transcribeVoice", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  const depsFor = (provider: string) =>
+    ({
+      prisma: {
+        spaceVoicePreference: {
+          findFirst: vi.fn().mockResolvedValue({
+            isDefault: true,
+            voiceId: "voice-1",
+            speechModel: null,
+            credential: {
+              id: "cred-1",
+              userId: actor.userId,
+              provider,
+              secretId: "secret-1",
+              createdAt: new Date(0),
+              updatedAt: new Date(0),
+            },
+          }),
+        },
+        secret: { findFirst: vi.fn().mockResolvedValue({ id: "secret-1", ciphertext: "cipher" }) },
+      },
+      secrets: { load: vi.fn().mockReturnValue("the-key"), put: vi.fn() },
+    }) as unknown as VoiceDeps;
+  const audio = { audio: new Uint8Array([1, 2]), mimeType: "audio/webm" };
+
+  it("returns the same text for an existing provider", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: " hello there " }))),
+    );
+    await expect(transcribeVoice(depsFor("openai"), actor, audio)).resolves.toEqual({
+      text: "hello there",
+    });
+  });
+
+  it("passes context to the provider", async () => {
+    const transcribe = vi.fn().mockResolvedValue({ text: "ok" });
+    vi.spyOn(adapters, "createTranscriptionProvider").mockReturnValue({ transcribe } as never);
+    const context = { appKind: "email" as const, vocabulary: ["Ada"], beforeText: "Dear" };
+    await transcribeVoice(depsFor("openai"), actor, { ...audio, context });
+    expect(transcribe).toHaveBeenCalledWith(
+      expect.objectContaining({ context, apiKey: "the-key" }),
+      expect.anything(),
+    );
+  });
+
+  it("keeps the does-not-transcribe error", async () => {
+    await expect(transcribeVoice(depsFor("cartesia"), actor, audio)).rejects.toThrow(
+      "This voice provider does not transcribe audio. Use on-device dictation instead.",
+    );
   });
 });

@@ -254,7 +254,7 @@ function ExchangeTile({
               to={financePath.crypto()}
               className="inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
             >
-              <Trans>Open</Trans>
+              <Trans>Open Finance</Trans>
             </Link>
           </>
         ) : (

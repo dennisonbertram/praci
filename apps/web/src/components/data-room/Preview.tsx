@@ -207,7 +207,7 @@ export function Preview({
       <h3 className="break-words text-[15px] font-semibold">{item.name}</h3>
       {sheet ? (
         <div className="h-[50vh] shrink-0 overflow-hidden rounded-md border border-border">
-          <SheetPreview key={item.id} source={{ dataRoomItemId: item.id }} />
+          <SheetPreview key={item.id} source={{ dataRoomItemId: item.id }} name={item.name} />
         </div>
       ) : hidden ? (
         <p className="text-sm text-muted-foreground">{t`Image hidden while amounts are hidden`}</p>

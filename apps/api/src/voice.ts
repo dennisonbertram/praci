@@ -1,6 +1,7 @@
 import { ORPCError } from "@orpc/server";
-import type { AdapterContext, SecretStore } from "@rakazo/adapter-kit";
+import type { AdapterContext, SecretStore, TranscriptionContext } from "@rakazo/adapter-kit";
 import {
+  createTranscriptionProvider,
   createVoiceProvider,
   isFishSpeechModelId,
   isVoiceProviderId,
@@ -368,12 +369,18 @@ export async function synthesizeVoice(
 export async function transcribeVoice(
   deps: VoiceDeps,
   actor: Actor,
-  input: { audio: Uint8Array; mimeType: string; language?: string; signal?: AbortSignal },
+  input: {
+    audio: Uint8Array;
+    mimeType: string;
+    language?: string;
+    context?: TranscriptionContext;
+    signal?: AbortSignal;
+  },
 ) {
   const loaded = await loadDefaultVoiceCredential(deps, actor);
   if (!loaded) throw new NoVoiceConfigured("key");
-  const provider = createVoiceProvider(loaded.cred.provider);
-  if (!provider.transcribe) {
+  const provider = createTranscriptionProvider(loaded.cred.provider);
+  if (!provider) {
     throw new ORPCError("BAD_REQUEST", {
       message: "This voice provider does not transcribe audio. Use on-device dictation instead.",
     });
@@ -386,6 +393,7 @@ export async function transcribeVoice(
       audio: input.audio,
       mimeType: input.mimeType || "audio/webm",
       language: input.language,
+      context: input.context,
       apiKey: loaded.apiKey,
       signal: input.signal,
     },

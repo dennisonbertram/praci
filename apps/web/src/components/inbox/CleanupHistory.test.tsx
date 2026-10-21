@@ -62,9 +62,9 @@ it("shows a cleanup or skip-inbox reason and nothing for a plain selection", asy
   ]);
   const rows = [...document.querySelectorAll("li")].map((li) => li.textContent ?? "");
   expect(rows[0]).toContain("Cleanup");
-  expect(rows[1]).toContain("Skip inbox");
+  expect(rows[1]).toContain("Archive future mail");
   expect(rows[2]).not.toContain("Cleanup");
-  expect(rows[2]).not.toContain("Skip inbox");
+  expect(rows[2]).not.toContain("Archive future mail");
 });
 
 it("marks automatic actions and shows Undone instead of Undo once undone", async () => {

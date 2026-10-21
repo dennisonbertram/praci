@@ -64,7 +64,7 @@ export const Learned: Story = {
   args: { sender: { ...sender, learnedPile: "newsletters" }, onForgetLearned: () => undefined },
 };
 
-/** Never ticked, and Skip inbox and Unsubscribe leave it out. */
+/** Never ticked, and Archive future mail and Unsubscribe leave it out. */
 export const LooksLikeSpam: Story = {
   args: {
     sender: {
