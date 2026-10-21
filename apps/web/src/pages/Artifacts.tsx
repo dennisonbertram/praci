@@ -15,8 +15,6 @@ import {
   Button,
   NativeSelect,
   NativeSelectOption,
-  parseBotAvatar,
-  resolvePersonaColorDef,
   Skeleton,
   Table,
   TableBody,
@@ -60,6 +58,11 @@ const LIST_PAGE_SIZE = 60;
 
 type ArtifactSummary = Artifact & { versionCount: number };
 
+/** The type badge already says "MD" or "CSV", so the title drops the extension. */
+function displayName(name: string): string {
+  return name.replace(/\.[A-Za-z0-9]{1,5}$/, "") || name;
+}
+
 function readViewMode(): ViewMode {
   try {
     return window.localStorage.getItem(VIEW_MODE_STORAGE_KEY) === "list" ? "list" : "grid";
@@ -101,6 +104,8 @@ export function ArtifactsPage() {
   const loadingMoreRef = useRef(false);
   const listingGenerationRef = useRef(0);
   const [activeBotId, setActiveBotId] = useState<string | null>(null);
+  // Bots that own at least one artifact. Only grows, so filtering to one bot keeps the others listed.
+  const [ownerBotIds, setOwnerBotIds] = useState<ReadonlySet<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>(readViewMode);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -167,6 +172,25 @@ export function ArtifactsPage() {
   useEffect(() => {
     setMaximized(false);
   }, [artifactId]);
+
+  useEffect(() => {
+    if (!items) return;
+    setOwnerBotIds((prev) => {
+      const next = new Set(prev);
+      for (const item of items) if (item.botId) next.add(item.botId);
+      return next.size === prev.size ? prev : next;
+    });
+  }, [items]);
+
+  // The filter panel only matters while browsing; opening an artifact gives the viewer the space.
+  useEffect(() => {
+    if (artifactId) setFiltersOpen(false);
+  }, [artifactId]);
+
+  const ownerBots = useMemo(
+    () => bots.filter((bot) => ownerBotIds.has(bot.id)),
+    [bots, ownerBotIds],
+  );
 
   const botsById = useMemo(() => new Map(bots.map((bot) => [bot.id, bot])), [bots]);
 
@@ -315,17 +339,21 @@ export function ArtifactsPage() {
             <NativeSelectOption value="week">{t`This week`}</NativeSelectOption>
             <NativeSelectOption value="month">{t`This month`}</NativeSelectOption>
           </NativeSelect>
-          <FilterChip active={activeBotId === null} onClick={() => setActiveBotId(null)}>
-            <Trans>All bots</Trans>
-          </FilterChip>
-          {bots.map((bot) => (
-            <BotFilterChip
-              key={bot.id}
-              bot={bot}
-              active={activeBotId === bot.id}
-              onClick={() => setActiveBotId(bot.id)}
-            />
-          ))}
+          {ownerBots.length > 1 ? (
+            <NativeSelect
+              aria-label={t`Filter by bot`}
+              className="w-auto text-[13px]"
+              value={activeBotId ?? ""}
+              onChange={(event) => setActiveBotId(event.target.value || null)}
+            >
+              <NativeSelectOption value="">{t`All bots`}</NativeSelectOption>
+              {ownerBots.map((bot) => (
+                <NativeSelectOption key={bot.id} value={bot.id}>
+                  {bot.name}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          ) : null}
         </div>
       ) : null}
 
@@ -559,7 +587,7 @@ function ArtifactTable({
                         className="truncate font-medium"
                         title={artifact.name}
                       >
-                        {artifact.name}
+                        {displayName(artifact.name)}
                       </Link>
                       {/* Where the Bot, Added and Size columns are hidden (a narrow pane), they go under the name. */}
                       <span
@@ -763,65 +791,6 @@ function IndexPane({
   );
 }
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-full px-3 py-1.5 text-[13px] font-medium transition-colors ${
-        active
-          ? "bg-primary text-primary-foreground"
-          : "border border-border text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function useBotColorHex(bot: Bot): string {
-  return useMemo(() => {
-    const parsed = parseBotAvatar(bot.color, bot.id);
-    const effectiveId = bot.id || parsed.color || "agent";
-    return resolvePersonaColorDef(effectiveId, parsed.color).hex;
-  }, [bot.color, bot.id]);
-}
-
-function BotFilterChip({
-  bot,
-  active,
-  onClick,
-}: {
-  bot: Bot;
-  active: boolean;
-  onClick: () => void;
-}) {
-  const hex = useBotColorHex(bot);
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{ backgroundColor: active ? `${hex}26` : undefined, borderColor: `${hex}66` }}
-      className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] font-medium transition-colors ${
-        active
-          ? "text-foreground"
-          : "text-muted-foreground hover:bg-accent/40 hover:text-accent-foreground"
-      }`}
-    >
-      <BotAvatar color={bot.color} identity={bot.id} size={16} status={bot.status} />
-      <span className="max-w-[120px] truncate">{bot.name}</span>
-    </button>
-  );
-}
-
 function ArtifactCard({
   artifact,
   bot,
@@ -855,7 +824,7 @@ function ArtifactCard({
           </div>
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[15px] font-semibold">{artifact.name}</div>
+          <div className="truncate text-[15px] font-semibold">{displayName(artifact.name)}</div>
           {artifact.description ? (
             <div className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-muted-foreground">
               {artifact.description}
@@ -911,7 +880,9 @@ function ArtifactRow({
           <span className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px] bg-accent text-accent-foreground">
             <ArtifactMimeIcon mimeType={artifact.mimeType} small />
           </span>
-          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">{artifact.name}</span>
+          <span className="min-w-0 flex-1 truncate text-[13.5px] font-medium">
+            {displayName(artifact.name)}
+          </span>
           {artifact.versionCount > 1 ? (
             <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-[10.5px] font-semibold text-muted-foreground">
               {`v${artifact.version}`}

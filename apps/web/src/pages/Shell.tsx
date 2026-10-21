@@ -279,6 +279,7 @@ import {
   commitSpaceRename,
   SpaceSidebar,
   sidebarGroupsForSpaces,
+  spaceHoldingChat,
 } from "./shell/space-sidebar";
 import { AppNavigateContext, Transcript, UnreadDivider } from "./shell/transcript";
 import { WindowChrome } from "./WindowChrome";
@@ -735,6 +736,17 @@ export function ShellPage() {
   const [initialBotsLoaded, setInitialBotsLoaded] = useState(false);
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
+  // The tour waits for the first-run focus question, so its popovers never cover the choices.
+  const firstQuestionOpen = Boolean(
+    snapshot?.messages.some((message) =>
+      message.blocks.some(
+        (block) =>
+          block.kind === "choice" &&
+          block.question === "What do you want me on first?" &&
+          !block.answerId,
+      ),
+    ),
+  );
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -1324,6 +1336,16 @@ export function ShellPage() {
           !bootstrap.spaces.some((space) => space.hasContent)
         ) {
           navigate("/onboarding", { replace: true });
+          return;
+        }
+        // A link from another of the person's spaces switches to that space and reloads.
+        const otherSpaceId = spaceHoldingChat(
+          bootstrap.spaces,
+          bootstrap.me.spaceId,
+          groupId ?? botId ?? "",
+        );
+        if (otherSpaceId && selectSpace(otherSpaceId)) {
+          window.location.assign(window.location.pathname);
           return;
         }
         if (groupId) {
@@ -2397,6 +2419,7 @@ export function ShellPage() {
   async function startElioCall() {
     if (voiceCallStarting.current) return;
     if (!voiceStatus?.ready) {
+      setSendError(t`Connect a voice provider to call Elio.`);
       openSettings("voice");
       return;
     }
@@ -3855,6 +3878,7 @@ export function ShellPage() {
         openSettings={openSettings}
         tourRestart={tourRestart}
         setTourRestart={setTourRestart}
+        firstQuestionOpen={firstQuestionOpen}
         setBootstrapMe={setBootstrapMe}
       />
 

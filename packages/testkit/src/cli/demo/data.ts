@@ -2054,7 +2054,10 @@ export const DEMO_CHIEF_HISTORY: Array<{ role: "user" | "bot"; text: string }> =
     text: "The pilot converted to an annual contract for 20 picking robots, starting in Q1.",
   },
   { role: "user", text: "Remind me what our runway was last month." },
-  { role: "bot", text: "About 8.9 months, from $412,000 cash and $46,000 monthly net burn." },
+  {
+    role: "bot",
+    text: "About 24 months, from $1,633,221 cash and $67,621 monthly net burn.",
+  },
   { role: "user", text: "Who still owes us a signed NDA?" },
   {
     role: "bot",

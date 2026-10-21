@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 242 of 242
-- Web and shared components: 654
+- Web and shared components: 651
 - Mobile components: 137 in 94 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -86,7 +86,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | EmailCards | [apps/web/src/components/EmailCards.tsx](../../apps/web/src/components/EmailCards.tsx) | [EmailCards.stories.tsx](../../apps/web/src/components/EmailCards.stories.tsx) | web |
 | SectionLoadFailed | [apps/web/src/components/ErrorBoundary.tsx](../../apps/web/src/components/ErrorBoundary.tsx) | [ErrorBoundary.stories.tsx](../../apps/web/src/components/ErrorBoundary.stories.tsx) | web |
 | FinanceCards, FinanceCardGroup, Header, Preview | [apps/web/src/components/FinanceCards.tsx](../../apps/web/src/components/FinanceCards.tsx) | [FinanceCards.stories.tsx](../../apps/web/src/components/FinanceCards.stories.tsx) | web |
-| HideAmountsButton, HideAmountsMenuItem | [apps/web/src/components/HideAmountsToggle.tsx](../../apps/web/src/components/HideAmountsToggle.tsx) | [HideAmountsToggle.stories.tsx](../../apps/web/src/components/HideAmountsToggle.stories.tsx) | web |
+| HideAmountsMenuItem | [apps/web/src/components/HideAmountsToggle.tsx](../../apps/web/src/components/HideAmountsToggle.tsx) | [HideAmountsToggle.stories.tsx](../../apps/web/src/components/HideAmountsToggle.stories.tsx) | web |
 | I18nBootstrap | [apps/web/src/components/I18nBootstrap.tsx](../../apps/web/src/components/I18nBootstrap.tsx) | [I18nBootstrap.stories.tsx](../../apps/web/src/components/I18nBootstrap.stories.tsx) | web |
 | Tip, SearchField, PickFilter, SortControl | [apps/web/src/components/ListControls.tsx](../../apps/web/src/components/ListControls.tsx) | [ListControls.stories.tsx](../../apps/web/src/components/ListControls.stories.tsx) | web |
 | Row, MailApprovalCard | [apps/web/src/components/MailApprovalCard.tsx](../../apps/web/src/components/MailApprovalCard.tsx) | [MailApprovalCard.stories.tsx](../../apps/web/src/components/MailApprovalCard.stories.tsx) | web |
@@ -190,7 +190,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | StatementImport | [apps/web/src/components/finance/StatementImport.tsx](../../apps/web/src/components/finance/StatementImport.tsx) | [StatementImport.stories.tsx](../../apps/web/src/components/finance/StatementImport.stories.tsx) | web |
 | StatementReminderBanner | [apps/web/src/components/finance/StatementReminderBanner.tsx](../../apps/web/src/components/finance/StatementReminderBanner.tsx) | [StatementReminderBanner.stories.tsx](../../apps/web/src/components/finance/StatementReminderBanner.stories.tsx) | web |
 | CheckLine, Row, StatementGroup | [apps/web/src/components/finance/StatementReviewCard.tsx](../../apps/web/src/components/finance/StatementReviewCard.tsx) | [StatementReviewCard.stories.tsx](../../apps/web/src/components/finance/StatementReviewCard.stories.tsx) | web |
-| SpaceName, AskAgentButton, WithEndings, HereLink, DetailHead, CompanyAndEye, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Chevron, TransactionRow, VendorGroupRows, TransactionTable, TransactionsSection, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
+| SpaceName, AskAgentButton, WithEndings, HereLink, DetailHead, CompanyMenu, NotFoundNotice, ErrorNotice, DetailPage, Section, Kpi, BreakdownRows, Chevron, TransactionRow, VendorGroupRows, TransactionTable, TransactionsSection, Chip, PeriodTabs, Legend, BurnLegend, Kv, KvRow, ValueLink | [apps/web/src/components/finance/ui.tsx](../../apps/web/src/components/finance/ui.tsx) | [ui.stories.tsx](../../apps/web/src/components/finance/ui.stories.tsx) | web |
 | WalletDialog | [apps/web/src/components/finance/WalletDialog.tsx](../../apps/web/src/components/finance/WalletDialog.tsx) | [WalletDialog.stories.tsx](../../apps/web/src/components/finance/WalletDialog.stories.tsx) | web |
 
 ## Web components/inbox
@@ -271,7 +271,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | --- | --- | --- | --- |
 | GeneralSettingsPanels, PrivacySettingsPanels, UsageSettingsPanel, ComputerSettingsPanel, UpdatesSettingsPanel, ChangePasswordSection, SettingsPasswordInput, AppearancePicker, TimezonePicker, UiLocalePicker | [apps/web/src/pages/AccountSettingsOverlay.tsx](../../apps/web/src/pages/AccountSettingsOverlay.tsx) | [AccountSettingsOverlay.stories.tsx](../../apps/web/src/pages/AccountSettingsOverlay.stories.tsx) | web |
 | ActivityList, ActivitySection, ActivityError, ActivityFilters, FilterChip, ActivityRow | [apps/web/src/pages/ActivityList.tsx](../../apps/web/src/pages/ActivityList.tsx) | [ActivityList.stories.tsx](../../apps/web/src/pages/ActivityList.stories.tsx) | web |
-| ArtifactsPage, BrowsingPane, ArtifactTable, LoadMoreButton, EmptyArtifacts, IndexPane, FilterChip, BotFilterChip, ArtifactCard, ArtifactRow, ArtifactMimeIcon, PreviewPane | [apps/web/src/pages/Artifacts.tsx](../../apps/web/src/pages/Artifacts.tsx) | [Artifacts.stories.tsx](../../apps/web/src/pages/Artifacts.stories.tsx) | web |
+| ArtifactsPage, BrowsingPane, ArtifactTable, LoadMoreButton, EmptyArtifacts, IndexPane, ArtifactCard, ArtifactRow, ArtifactMimeIcon, PreviewPane | [apps/web/src/pages/Artifacts.tsx](../../apps/web/src/pages/Artifacts.tsx) | [Artifacts.stories.tsx](../../apps/web/src/pages/Artifacts.stories.tsx) | web |
 | AuthPage, PasswordResetPage, AuthFrame, PasswordField | [apps/web/src/pages/Auth.tsx](../../apps/web/src/pages/Auth.tsx) | [Auth.stories.tsx](../../apps/web/src/pages/Auth.stories.tsx) | web |
 | BillingSettingsPanel | [apps/web/src/pages/BillingSettingsPanel.tsx](../../apps/web/src/pages/BillingSettingsPanel.tsx) | [BillingSettingsPanel.stories.tsx](../../apps/web/src/pages/BillingSettingsPanel.stories.tsx) | web |
 | BoardPage, TicketDialog | [apps/web/src/pages/Board.tsx](../../apps/web/src/pages/Board.tsx) | [Board.stories.tsx](../../apps/web/src/pages/Board.stories.tsx) | web |

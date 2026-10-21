@@ -14,6 +14,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Separator,
 } from "@rakazo/ui-web";
 import {
   BookUser,
@@ -132,6 +133,25 @@ export function activeSpaceFirst<T extends { id: string }>(
 ): T[] {
   const active = spaces.filter((space) => space.id === activeId);
   return [...active, ...spaces.filter((space) => space.id !== activeId)];
+}
+
+/** The id of another space that holds this bot or group, so a link pasted from there can switch to it. */
+export function spaceHoldingChat(
+  spaces: readonly {
+    id: string;
+    bots: readonly { id: string }[];
+    groups: readonly { id: string }[];
+  }[],
+  currentSpaceId: string,
+  chatId: string,
+): string | null {
+  const holder = spaces.find(
+    (space) =>
+      space.id !== currentSpaceId &&
+      (space.bots.some((bot) => bot.id === chatId) ||
+        space.groups.some((group) => group.id === chatId)),
+  );
+  return holder?.id ?? null;
 }
 
 /** What a block of the list is: the whole space, its heading alone, pinned, a folder or the rest. */
@@ -344,6 +364,7 @@ export type SpaceSidebarProps = {
   setBootstrapMe: Dispatch<SetStateAction<Me | null | undefined>>;
   tourRestart: boolean;
   setTourRestart: Dispatch<SetStateAction<boolean>>;
+  firstQuestionOpen: boolean;
   hiddenPages: string[];
   addedPages: { key: string; label: string }[];
   toggleHiddenPage: (key: string) => Promise<void>;
@@ -458,6 +479,7 @@ export function SpaceSidebar({
   setBootstrapMe,
   tourRestart,
   setTourRestart,
+  firstQuestionOpen,
   hiddenPages,
   addedPages,
   toggleHiddenPage,
@@ -1095,6 +1117,7 @@ export function SpaceSidebar({
                                 <div
                                   ref={row.setNodeRef}
                                   data-drops-before={row.dropsBefore ? "" : undefined}
+                                  data-tour={selected ? "sidebar-chat" : undefined}
                                   className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
                                     !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
                                   }`}
@@ -1506,7 +1529,13 @@ export function SpaceSidebar({
         />
       </div>
       <FirstRunTour
-        open={tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0)}
+        open={
+          tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen)
+        }
+        onConnectApps={() => {
+          setMobileSidebarOpen(false);
+          navigate("/app/integrations");
+        }}
         onClose={(me) => {
           setTourRestart(false);
           setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
@@ -1531,10 +1560,12 @@ export function SpaceSidebar({
             side="top"
             align="start"
             alignOffset={11}
+            role="menu"
             className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
           >
             {bootstrapMe?.ticketBoardEnabled ? (
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 onClick={() => {
@@ -1548,6 +1579,7 @@ export function SpaceSidebar({
               </Button>
             ) : null}
             <Button
+              role="menuitem"
               variant="ghost"
               className="w-full justify-start font-normal"
               aria-label={t`Settings`}
@@ -1561,6 +1593,7 @@ export function SpaceSidebar({
             </Button>
             <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
             <Button
+              role="menuitem"
               variant="ghost"
               className="w-full justify-start font-normal"
               data-testid="take-tour"
@@ -1572,7 +1605,9 @@ export function SpaceSidebar({
               <Compass className="text-muted-foreground" strokeWidth={1.75} />
               <Trans>Take the tour</Trans>
             </Button>
+            <Separator className="my-1" />
             <Button
+              role="menuitem"
               variant="ghost"
               className="w-full justify-start font-normal"
               onClick={() =>

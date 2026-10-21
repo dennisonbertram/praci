@@ -9,15 +9,36 @@ const SIZES = {
 
 const SIMPLE_ICONS = "https://cdn.simpleicons.org/";
 
-/**
- * Simple Icons marks default to the brand color, which can be black and vanish on a dark tile.
- * Request an explicit black glyph (the hex is a CDN color parameter, not a product color) and
- * invert it in dark mode, so the mark stays legible on the themed tile in both themes.
- */
-export function themedLogoUrl(logo: string): string {
+/** Simple Icons marks (CC0) vendored in public/logos/simple; the CDN is never requested. */
+const BUNDLED = new Set([
+  "box",
+  "brex",
+  "github",
+  "gmail",
+  "googlecalendar",
+  "googledrive",
+  "notion",
+  "slack",
+  "x",
+]);
+
+/** Local URL of a bundled Simple Icons mark, or null when the mark is not vendored. */
+export function localLogoUrl(logo: string): string | null {
   if (!logo.startsWith(SIMPLE_ICONS)) return logo;
-  const rest = logo.slice(SIMPLE_ICONS.length);
-  return rest.includes("/") ? logo : `${SIMPLE_ICONS}${rest}/000000`;
+  const slug = logo.slice(SIMPLE_ICONS.length).split("/")[0] ?? "";
+  return BUNDLED.has(slug) ? `/logos/simple/${slug}.svg` : null;
+}
+
+/** First letters of the first two words, so "Google Sheets" and "Gmail" differ. */
+function initials(name: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  return (
+    words
+      .slice(0, 2)
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase() || "?"
+  );
 }
 
 /** App logo on a neutral tile; a missing or broken image falls back to the app's first letter. */
@@ -31,7 +52,8 @@ export function AppLogo({
   size?: keyof typeof SIZES;
 }) {
   const [failed, setFailed] = useState(false);
-  const showImage = Boolean(logo) && !failed;
+  const src = logo ? localLogoUrl(logo) : null;
+  const showImage = Boolean(src) && !failed;
   const mono = Boolean(logo?.startsWith(SIMPLE_ICONS));
   return (
     <span
@@ -43,7 +65,7 @@ export function AppLogo({
     >
       {showImage ? (
         <img
-          src={logo ? themedLogoUrl(logo) : undefined}
+          src={src ?? undefined}
           alt=""
           loading="lazy"
           decoding="async"
@@ -51,7 +73,7 @@ export function AppLogo({
           onError={() => setFailed(true)}
         />
       ) : (
-        (name.trim()[0] ?? "?").toUpperCase()
+        initials(name)
       )}
     </span>
   );

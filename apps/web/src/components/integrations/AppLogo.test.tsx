@@ -38,10 +38,24 @@ it("falls back to a letter tile when the image fails to load", async () => {
   expect(container.querySelector("[data-fallback]")).not.toBeNull();
 });
 
-it("renders Simple Icons marks as an explicit black glyph that inverts in dark mode", async () => {
+it("serves bundled Simple Icons marks locally, as a glyph that inverts in dark mode", async () => {
   const { container } = await render("https://cdn.simpleicons.org/brex");
   const img = container.querySelector("img");
-  expect(img?.getAttribute("src")).toBe("https://cdn.simpleicons.org/brex/000000");
+  expect(img?.getAttribute("src")).toBe("/logos/simple/brex.svg");
   expect(img?.className).toContain("dark:invert");
   expect(container.querySelector("[data-testid=app-logo]")?.className).toContain("bg-muted");
+});
+
+it("never requests the Simple Icons CDN, even for marks that are not bundled", async () => {
+  const { container } = await render("https://cdn.simpleicons.org/someunknownapp");
+  expect(container.querySelector("img")).toBeNull();
+  expect(container.textContent).toBe("G");
+});
+
+it("uses two initials so apps from one vendor get different fallback tiles", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  await act(async () => root.render(<AppLogo name="Google Sheets" logo={null} />));
+  expect(container.textContent).toBe("GS");
 });

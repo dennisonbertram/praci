@@ -11,7 +11,12 @@ vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({ t: (parts: TemplateStringsArray) => parts[0] ?? "" }),
 }));
 
-import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./space-sidebar";
+import {
+  activeSpaceFirst,
+  commitSpaceRename,
+  sidebarGroupsForSpaces,
+  spaceHoldingChat,
+} from "./space-sidebar";
 
 function chat(id: string, name: string) {
   return {
@@ -218,5 +223,20 @@ describe("activeSpaceFirst", () => {
     const spaces = [space("a", "Northwind"), space("b", "Empty"), space("c", "Third")];
     expect(activeSpaceFirst(spaces, "b").map((s) => s.id)).toEqual(["b", "a", "c"]);
     expect(activeSpaceFirst(spaces, undefined).map((s) => s.id)).toEqual(["a", "b", "c"]);
+  });
+});
+
+describe("spaceHoldingChat", () => {
+  const spaces = [
+    { id: "s1", bots: [{ id: "b1" }], groups: [] },
+    { id: "s2", bots: [{ id: "b2" }], groups: [{ id: "g2" }] },
+  ];
+  it("finds the other space that holds a bot or group, and nothing for an unknown id", () => {
+    expect(spaceHoldingChat(spaces, "s1", "b2")).toBe("s2");
+    expect(spaceHoldingChat(spaces, "s1", "g2")).toBe("s2");
+    expect(spaceHoldingChat(spaces, "s1", "nope")).toBeNull();
+  });
+  it("ignores the current space, whose chats the page already checked", () => {
+    expect(spaceHoldingChat(spaces, "s1", "b1")).toBeNull();
   });
 });

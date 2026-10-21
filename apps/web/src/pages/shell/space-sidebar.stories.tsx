@@ -181,6 +181,7 @@ function SidebarFixture({ mode }: { mode: Mode }) {
     setBootstrapMe: () => undefined,
     tourRestart: false,
     setTourRestart: () => undefined,
+    firstQuestionOpen: false,
     hiddenPages: [],
     addedPages: [],
     toggleHiddenPage: async () => undefined,

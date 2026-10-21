@@ -31,7 +31,7 @@ const item = (id: string, folderId: string | null) =>
     status: "ready",
     mimeType: "application/pdf",
     source: "upload",
-    createdAt: "2026-03-04T00:00:00.000Z",
+    createdAt: "2026-03-04T12:00:00.000Z",
     facets: { docType: null, docDate: null, parties: [] },
   }) as unknown as DataRoomApiItem;
 
@@ -176,7 +176,7 @@ it("follows the sort in the Date column: Added by default, Document date when so
   const rows = [
     {
       ...tagged("deck", "investor", "2025-12-21T00:00:00.000Z"),
-      createdAt: "2026-03-04T00:00:00.000Z",
+      createdAt: "2026-03-04T12:00:00.000Z",
     },
   ].map((i) => ({ item: i, snippets: [] }));
   const header = () => container.querySelector('[data-testid="data-room-head"]')?.textContent;
@@ -273,7 +273,7 @@ it("gives a tile's type and date a line each, and marks an untagged tile", () =>
     tagged("deck", "presentation", "2025-12-21T00:00:00.000Z"),
     tagged("sheet", null, null),
   ].map((i) => ({ item: i, snippets: [] }));
-  act(() => root.render(<GridView rows={rows} o={o()} />));
+  act(() => root.render(<GridView rows={rows} o={o()} sortField="date" />));
   const tiles = Array.from(container.querySelectorAll("[data-item-id]"));
   const lines = (tile: Element) =>
     Array.from(tile.querySelectorAll('[data-testid="data-room-tile-meta"] > span')).map(
@@ -524,4 +524,30 @@ it("offers Try again on a failed grid tile", () => {
   expect(retry).toHaveLength(1);
   act(() => retry[0]?.click());
   expect(onAction).toHaveBeenCalledWith("retry", expect.objectContaining({ id: "junk" }));
+});
+
+it("shows the date the list is sorted on in a grid tile", async () => {
+  const base = tile({})[0]?.item as DataRoomApiItem;
+  const over = {
+    createdAt: "2026-03-04T12:00:00.000Z",
+    facets: { ...base.facets, docDate: "2025-09-01" },
+  };
+  await act(async () => root.render(<GridView rows={tile(over)} o={o()} sortField="createdAt" />));
+  expect(container.querySelector('[data-testid="data-room-tile-meta"]')?.textContent).toContain(
+    "2026",
+  );
+  await act(async () => root.render(<GridView rows={tile(over)} o={o()} sortField="date" />));
+  expect(container.querySelector('[data-testid="data-room-tile-meta"]')?.textContent).toContain(
+    "2025",
+  );
+});
+
+it("lets a long file name wrap and keeps the Type column off narrow lists", () => {
+  act(() => root.render(<ListView rows={tile({ name: "A long name" })} o={o()} />));
+  const name = container.querySelector('[data-testid="data-room-name"] span[title]');
+  expect(name?.className).toContain("line-clamp-2");
+  expect(name?.className).not.toContain("truncate");
+  expect(container.querySelector("tbody td:nth-child(2)")?.className).toContain(
+    "@min-[640px]/list",
+  );
 });
