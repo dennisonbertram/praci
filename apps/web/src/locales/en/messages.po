@@ -3512,6 +3512,10 @@ msgstr "Credentials"
 msgid "Credentials are encrypted and never sent to the model."
 msgstr "Credentials are encrypted and never sent to the model."
 
+#: src/components/AskCard.tsx
+msgid "Credentials requested:"
+msgstr "Credentials requested:"
+
 #: src/pages/RoutineSchedule.tsx
 msgid "Cron expression"
 msgstr "Cron expression"
@@ -5895,6 +5899,10 @@ msgstr "Moved {0} to trash"
 msgid "Moved {n} to trash"
 msgstr "Moved {n} to trash"
 
+#: src/components/SecretRequestDialog.tsx
+msgid "Multi line"
+msgstr "Multi line"
+
 #: src/components/call/CallCard.tsx
 msgid "Mute"
 msgstr "Mute"
@@ -7192,6 +7200,11 @@ msgstr "Promotions"
 msgid "Protected input"
 msgstr "Protected input"
 
+#: src/components/AskCard.tsx
+#: src/components/SecretRequestDialog.tsx
+msgid "Provide secret"
+msgstr "Provide secret"
+
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Provider"
@@ -7984,7 +7997,6 @@ msgstr "Sales & CRM"
 msgid "Sandbox"
 msgstr "Sandbox"
 
-#: src/components/AskCard.tsx
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/finance/RenameAccountDialog.tsx
@@ -8638,6 +8650,10 @@ msgstr "since {0}"
 msgid "Since {from}"
 msgstr "Since {from}"
 
+#: src/components/SecretRequestDialog.tsx
+msgid "Single line"
+msgstr "Single line"
+
 #: src/pages/shell/bot-credentials.tsx
 msgid "Site"
 msgstr "Site"
@@ -8968,6 +8984,7 @@ msgstr "subagent"
 msgid "Subject"
 msgstr "Subject"
 
+#: src/components/SecretRequestDialog.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/Onboarding.tsx
 msgid "Submit"
@@ -9990,7 +10007,7 @@ msgstr "Use your own key"
 msgid "Used by"
 msgstr "Used by"
 
-#: src/components/AskCard.tsx
+#: src/components/SecretRequestDialog.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Username"
 msgstr "Username"
