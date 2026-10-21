@@ -157,7 +157,7 @@ it("lists contacts and filters by kind", async () => {
 
 it("adds a contact through the dialog and shows a server error", async () => {
   rpcMock.save.mockRejectedValueOnce(new Error("Email already used"));
-  await show();
+  await show("/app/cap-table?kind=other");
   await click(button("Add contact"));
   const name = document.getElementById("contact-name") as HTMLInputElement;
   await act(async () => {
@@ -165,9 +165,7 @@ it("adds a contact through the dialog and shows a server error", async () => {
     name.dispatchEvent(new Event("input", { bubbles: true }));
   });
   await click(button("Save"));
-  expect(rpcMock.save).toHaveBeenCalledWith(
-    expect.objectContaining({ name: "Cy", kind: "investor" }),
-  );
+  expect(rpcMock.save).toHaveBeenCalledWith(expect.objectContaining({ name: "Cy", kind: "other" }));
   expect(document.body.textContent).toContain("Email already used");
   rpcMock.save.mockResolvedValue({});
   await click(button("Save"));
@@ -191,22 +189,22 @@ it("shows Reconnect Carta when the Carta sign-in needs attention", async () => {
 });
 
 it("ignores a contacts response that arrives after a newer reload", async () => {
-  let resolveFirst: (value: Contact[]) => void = () => {};
+  let resolveStale: (value: Contact[]) => void = () => {};
   rpcMock.list.mockReset();
   rpcMock.list
-    .mockReturnValueOnce(new Promise<Contact[]>((resolve) => (resolveFirst = resolve)))
+    .mockResolvedValueOnce([])
+    .mockReturnValueOnce(new Promise<Contact[]>((resolve) => (resolveStale = resolve)))
     .mockResolvedValue([contact("c3", "Newer", "investor")]);
   rpcMock.save.mockResolvedValue({});
-  await show();
-  await click(button("Add contact"));
-  const name = document.getElementById("contact-name") as HTMLInputElement;
-  await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(name, "Cy");
-    name.dispatchEvent(new Event("input", { bubbles: true }));
-  });
-  await click(button("Save"));
+  await show("/app/cap-table?kind=investor");
+  // Two saves start two reloads; the first reload is still pending when the second answers.
+  for (const name of ["Cy", "Di"]) {
+    await click(button("Add investor"));
+    await typeInto("contact-name", name);
+    await click(button("Save"));
+  }
   expect(container.textContent).toContain("Newer");
-  await act(async () => resolveFirst([contact("c1", "Stale", "investor")]));
+  await act(async () => resolveStale([contact("c1", "Stale", "investor")]));
   expect(container.textContent).toContain("Newer");
   expect(container.textContent).not.toContain("Stale");
 });
@@ -460,7 +458,7 @@ it("retries the refresh, not the contacts load, after a failed refresh", async (
 
 it("offers to open the contact that already has the email when adding a duplicate", async () => {
   rpcMock.save.mockRejectedValueOnce(new Error("Another contact already has this email."));
-  await show();
+  await show("/app/cap-table?kind=other");
   await click(button("Add contact"));
   await typeInto("contact-name", "Ada R.");
   await typeInto("contact-email", "ADA@example.test");
@@ -544,7 +542,7 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
 
 it("confirms a save and closes the dialog with Cancel", async () => {
   rpcMock.save.mockResolvedValue(contact("c3", "Cy", "investor"));
-  await show();
+  await show("/app/cap-table?kind=other");
   await click(button("Add contact"));
   await click(button("Cancel"));
   expect(document.getElementById("contact-name")).toBeNull();
@@ -565,13 +563,10 @@ it("scrolls the saved contact into view and marks its row", async () => {
   Element.prototype.scrollIntoView = function (this: Element) {
     scrolled.push(this);
   };
-  await show();
-  rpcMock.list.mockResolvedValue([
-    contact("c1", "Ada", "investor"),
-    contact("c2", "Bo", "auditor"),
-    saved,
-  ]);
-  await click(button("Add contact"));
+  rpcMock.list.mockResolvedValue([]);
+  await show("/app/cap-table?kind=investor");
+  rpcMock.list.mockResolvedValue([saved]);
+  await click(button("Add investor"));
   await typeInto("contact-name", "Cy");
   await click(button("Save"));
   await flush();
@@ -671,8 +666,10 @@ it("keeps the Kind column with or without Carta", async () => {
   expect(headers()).toEqual(["Name", "Email", "Kind", "Shares", "Ownership"]);
 });
 
-it("adds a contact of the open tab's kind from the header", async () => {
+it("adds a contact of the open tab's kind from an empty tab, and has no Add button in the header", async () => {
+  rpcMock.list.mockResolvedValue([]);
   await show("/app/cap-table?kind=other");
+  expect(container.querySelector("[data-page-header]")?.textContent).not.toContain("Add");
   await click(button("Add contact"));
   expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("other");
   await click(button("Cancel"));
@@ -1036,14 +1033,14 @@ describe("search, filter and sort", () => {
   it("says the SAFEs are left out of the donut and links to them on the Investors tab", async () => {
     await showAt("/app/cap-table");
     const note = [...container.querySelectorAll("a")].find((a) =>
-      a.textContent?.startsWith("SAFEs ("),
+      a.textContent?.startsWith("SAFEs "),
     );
-    expect(note?.textContent).toBe("SAFEs (2, $109,000) are not included until they convert");
+    expect(note?.textContent).toBe("SAFEs are not in the share counts");
     expect(note?.getAttribute("href")).toBe("/app/cap-table?kind=investor&security=SAFE");
     // On another tab the overview, and so the note, is gone.
     await showAt("/app/cap-table?kind=investor");
     expect(
-      [...container.querySelectorAll("a")].some((a) => a.textContent?.startsWith("SAFEs (")),
+      [...container.querySelectorAll("a")].some((a) => a.textContent?.startsWith("SAFEs ")),
     ).toBe(false);
   });
 
@@ -1165,7 +1162,18 @@ describe("search, filter and sort", () => {
   });
 });
 
-it("opens a contact from its row, and leaves a Carta-only row inert", async () => {
+it("keeps the donut behind one row on a phone and says the SAFEs are not in the share counts", async () => {
+  rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+  await show();
+  const toggle = button("Ownership by share class") as HTMLElement;
+  expect(toggle.getAttribute("aria-expanded")).toBe("false");
+  expect(toggle.nextElementSibling?.className).toContain("hidden");
+  await click(toggle);
+  expect(toggle.getAttribute("aria-expanded")).toBe("true");
+  expect(toggle.nextElementSibling?.className).not.toContain("hidden");
+});
+
+it("opens a contact from its row, and a Carta-only holder opens the card that saves it", async () => {
   rpcMock.capTable.mockResolvedValue({
     snapshot: { ...snapshot, holders: [holder("Carta Only", "Common", 100, 10)] },
     syncing: false,
@@ -1174,9 +1182,10 @@ it("opens a contact from its row, and leaves a Carta-only row inert", async () =
   const carta = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].find((row) =>
     row.textContent?.includes("Carta Only"),
   ) as HTMLElement;
-  expect(carta.className).not.toContain("cursor-pointer");
+  expect(carta.className).toContain("cursor-pointer");
   await click(carta.querySelector("td") as HTMLElement);
-  expect(document.getElementById("contact-name")).toBeNull();
+  expect((document.getElementById("contact-name") as HTMLInputElement).value).toBe("Carta Only");
+  await click(button("Cancel"));
   await click(button("Auditors"));
   const bo = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].find((row) =>
     row.textContent?.includes("Bo"),
