@@ -30,14 +30,33 @@ function TableBody({ className, ...props }: React.ComponentProps<"tbody">) {
   return <tbody data-slot="table-body" className={cn(className)} {...props} />;
 }
 
-function TableRow({ className, ...props }: React.ComponentProps<"tr">) {
+// `onOpen` makes the whole row open its item. Put `data-row-open` on the one control that names
+// the row (a button with no click handler of its own): it is the row's only tab stop, and Enter on
+// it reaches the row. Clicks on any other control inside the row, and clicks that end a text
+// selection, do not open it.
+function TableRow({
+  className,
+  onOpen,
+  onClick,
+  ...props
+}: React.ComponentProps<"tr"> & { onOpen?: () => void }) {
   return (
     <tr
       data-slot="table-row"
       className={cn(
         "h-14 group-data-[compact]/table:h-auto border-t border-border transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
+        onOpen &&
+          "cursor-pointer has-[:focus-visible]:bg-muted/50 has-[:focus-visible]:outline-2 has-[:focus-visible]:-outline-offset-2 has-[:focus-visible]:outline-ring",
         className,
       )}
+      onClick={(event) => {
+        onClick?.(event);
+        if (!onOpen || event.defaultPrevented) return;
+        const control = (event.target as Element).closest("button,a,input,select,textarea");
+        if (control && !control.hasAttribute("data-row-open")) return;
+        if (window.getSelection()?.toString()) return;
+        onOpen();
+      }}
       {...props}
     />
   );

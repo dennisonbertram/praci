@@ -194,3 +194,68 @@ it("renders no avatar or time when the notification has none", async () => {
   expect(cards()[0]?.querySelector("[data-testid]")).toBeNull();
   expect(cards()[0]?.querySelector("button")?.textContent).toBe("Title 1");
 });
+
+const actionButton = () =>
+  [...document.querySelectorAll<HTMLButtonElement>('[data-slot="notification-toast"] button')].find(
+    (b) => b.textContent === "Undo",
+  );
+
+it("renders an action as a button that runs it, closes the toast and does not open the link", async () => {
+  const onOpen = vi.fn();
+  const onClick = vi.fn();
+  await mount(onOpen);
+  await act(async () => {
+    enqueueNotificationToast({
+      id: "a1",
+      title: "Deleted Ada",
+      timeout: 0,
+      href: "/x",
+      action: { label: "Undo", onClick },
+    });
+  });
+  // Clicking the text must not dismiss the toast and lose the action.
+  await act(async () => (cards()[0]?.querySelector("span") as HTMLElement | null)?.click());
+  expect(cards()).toHaveLength(1);
+  await act(async () => actionButton()?.click());
+  expect(onClick).toHaveBeenCalledTimes(1);
+  expect(onOpen).not.toHaveBeenCalled();
+  await expectClosed();
+});
+
+it("keeps a toast with an action open past the usual delay", () =>
+  withFakeTimers(async () => {
+    await mount();
+    await act(async () => {
+      enqueueNotificationToast({
+        id: "a2",
+        title: "Deleted Ada",
+        timeout: 0,
+        action: { label: "Undo", onClick: () => {} },
+      });
+    });
+    await advance(60_000);
+    expect(cards()).toHaveLength(1);
+  }));
+
+it("moves a toast with an action in front of toasts that arrive later", async () => {
+  await mount();
+  await act(async () => {
+    enqueueNotificationToast({
+      id: "a3",
+      title: "Deleted Ada",
+      timeout: 0,
+      action: { label: "Undo", onClick: () => {} },
+    });
+  });
+  await add(2);
+  expect(cards()[0]?.textContent).toContain("Deleted Ada");
+  expect(cards()).toHaveLength(3);
+  expect(actionButton()).toBeDefined();
+});
+
+it("renders a toast without an action as before: one button for the card, no action button", async () => {
+  await mount();
+  await add(1);
+  expect(cards()[0]?.hasAttribute("data-has-action")).toBe(false);
+  expect(cards()[0]?.querySelectorAll("button")).toHaveLength(2);
+});
