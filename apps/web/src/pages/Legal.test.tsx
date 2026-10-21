@@ -232,7 +232,7 @@ it("says the user's own OpenRouter key is missing, not that OpenRouter is, and l
   expect(page).toContain("shared OpenRouter access can't be used for Legal");
   // The disabled Scan now says why, and the empty page points at the fix.
   expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
-  expect(page).toContain("Needs your OpenRouter key.");
+  expect(page).toContain("needs your own OpenRouter key");
   expect(page).toContain("Add your OpenRouter key above to start.");
   await click(button("Add your OpenRouter key"));
   expect(openSettings).toHaveBeenCalledTimes(1);
@@ -246,7 +246,7 @@ it("says when the Legal agent was set to another model", async () => {
   });
   await render(<LegalPage onOpenSettings={() => {}} />);
   expect(container.textContent).toContain("The Legal agent is set to openai/gpt-6-luna.");
-  expect(container.textContent).toContain("Needs Muse Spark 1.2.");
+  expect(container.textContent).not.toContain("Needs Muse Spark 1.2.");
   expect(button("Add your OpenRouter key")).toBeUndefined();
 });
 
@@ -315,7 +315,7 @@ it("says why Scan now is disabled, and shows no consent card while the model is 
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage onOpenSettings={openSettings} />);
   expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
-  expect(container.textContent).toContain("Needs your OpenRouter key.");
+  expect(container.textContent).not.toContain("Needs your OpenRouter key.");
   expect(button("Allow")).toBeUndefined();
 
   await act(async () => root.unmount());
@@ -323,7 +323,8 @@ it("says why Scan now is disabled, and shows no consent card while the model is 
   rpcMock.overview.mockResolvedValue(overview);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage />);
-  expect(container.textContent).toContain("Allow access below first.");
+  expect(container.textContent).not.toContain("Allow access below first.");
+  expect(container.textContent).not.toContain("Daily scans wait");
   await act(async () => root.unmount());
   root = createRoot(container);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
@@ -490,12 +491,12 @@ it("keeps the page when a re-read fails, says so, and recovers on Try again", as
   expect(container.textContent).toContain("Master Services Agreement");
 });
 
-it("names the Legal agent on Ask and offers the Hide amounts switch", async () => {
+it("names the Legal agent on Ask, with no Hide amounts switch in the header", async () => {
   rpcMock.overview.mockResolvedValue(overview);
   await render(<LegalPage onAskAgent={() => {}} />);
   expect(button("Ask Legal agent")).toBeDefined();
   expect(button("Ask Finance agent")).toBeUndefined();
-  expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).not.toBeNull();
+  expect(container.querySelector('[data-testid="hide-amounts-toggle"]')).toBeNull();
 });
 
 it("links the unchecked documents line to the Data room and the deadline tiles to Deadlines", async () => {
@@ -547,11 +548,12 @@ it("says the Legal agent scans daily next to the last scan time", async () => {
   expect(container.textContent).toMatch(/Last scan .+\. Scans daily\./);
 });
 
-it("says daily scans wait for access when earlier results exist but access is not allowed", async () => {
+it("states the consent wait once, in the banner, when access is not allowed", async () => {
   rpcMock.overview.mockResolvedValue(overview);
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage />);
-  expect(container.textContent).toMatch(/Last scan .+\. Daily scans wait until you allow access\./);
+  expect(container.textContent).toMatch(/Last scan \d+d ago(?!\.)/);
+  expect(container.textContent).not.toContain("Daily scans wait");
   expect(container.textContent).not.toContain("Scans daily.");
 });
 

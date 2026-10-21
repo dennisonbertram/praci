@@ -651,10 +651,7 @@ it("hides dollar amounts but keeps shares and ownership in place while amounts a
   for (const shown of ["10,000,000", "1,000,000", "10.00%", "70.00%"])
     expect(text).toContain(shown);
   expect(text).toContain("Example Ventures");
-  await click(
-    button("Show amounts") ??
-      (document.querySelector("[data-testid=hide-amounts-toggle]") as HTMLElement),
-  );
+  await act(async () => setHideAmounts(false));
   expect(container.textContent).toContain("250,000");
 });
 

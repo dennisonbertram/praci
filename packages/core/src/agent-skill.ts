@@ -65,7 +65,7 @@ export function parseSkillMd(content: string): ParsedSkillMd | { error: string }
   const trimmed = content.replace(/^\uFEFF/, "");
   const match = FRONTMATTER_FENCE.exec(trimmed);
   if (!match) {
-    return { error: "SKILL.md must start with YAML frontmatter (--- ... ---)." };
+    return { error: "This file needs a name and description at the top, between two --- lines." };
   }
   const frontmatterText = match[1] ?? "";
   const body = trimmed.slice(match[0].length).replace(/^\r?\n/, "");

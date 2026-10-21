@@ -16,6 +16,7 @@ import {
   FINANCE_MCP_ENDPOINTS,
 } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
+import { DEMO_CONVERSATIONS } from "./conversations.js";
 import {
   DEMO_ARCHIVED_BOT,
   DEMO_ARTIFACTS,
@@ -23,6 +24,7 @@ import {
   DEMO_CAP_TABLE,
   DEMO_CHIEF_DRAFT,
   DEMO_CHIEF_DRAFT_V1,
+  DEMO_CHIEF_HISTORY,
   DEMO_COMPANY,
   DEMO_CONTACTS,
   DEMO_DOCUMENT_FACETS,
@@ -62,6 +64,17 @@ describe("mock demo data", () => {
     expect(DEMO_BOTS.map((bot) => bot.name)).toContain(DEMO_WAITING_RUN.botName);
     expect(DEMO_WAITING_RUN.intro.startsWith(MOCK_NOTE)).toBe(true);
     expect(DEMO_WAITING_RUN.question.endsWith("?")).toBe(true);
+  });
+
+  it("quotes only the Finance page's cash, burn and runway in chats and artifacts", () => {
+    const texts = [
+      ...DEMO_CHIEF_HISTORY.map((m) => m.text),
+      ...DEMO_ARTIFACTS.map((a) => a.text),
+      JSON.stringify(DEMO_CONVERSATIONS),
+    ].join("\n");
+    // An older invented set (8.9 months from $412,000 cash) once contradicted Finance.
+    expect(texts).not.toMatch(/412,000|8\.9 months|46,000/);
+    expect(texts).toContain("$1,633,221");
   });
 
   it("labels every contact and document as mock", () => {

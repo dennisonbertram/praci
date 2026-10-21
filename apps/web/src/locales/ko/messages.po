@@ -500,6 +500,10 @@ msgid "{service} agent"
 msgstr ""
 
 #: src/pages/Finance.tsx
+msgid "{soFar} · {spentRange}"
+msgstr ""
+
+#: src/pages/Finance.tsx
 msgid "{soFar} · spent {spentRange}"
 msgstr ""
 
@@ -878,7 +882,6 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/RoutineSchedule.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -1008,10 +1011,6 @@ msgstr ""
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
-#: src/pages/Legal.tsx
-msgid "Allow access below first."
-msgstr ""
-
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Allow changes"
@@ -1116,10 +1115,6 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Amounts"
-msgstr ""
-
-#: src/components/HideAmountsToggle.tsx
-msgid "Amounts are hidden: money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -1639,6 +1634,10 @@ msgstr "Bot 화면"
 msgid "Bot screen preview"
 msgstr "Bot 화면 미리보기"
 
+#: src/pages/BotContextMenu.tsx
+msgid "Bot settings"
+msgstr ""
+
 #: src/pages/IntegrationSetup.tsx
 msgid "Bot that gets the apps you connect here"
 msgstr ""
@@ -1718,6 +1717,11 @@ msgstr ""
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Built-in"
 msgstr "기본 제공"
+
+#. placeholder {0}: builtins.length
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Built-in skills ({0})"
+msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
 msgid "Bulleted list"
@@ -2443,6 +2447,10 @@ msgstr ""
 msgid "Connect a provider to add backups."
 msgstr "백업을 추가하려면 제공업체를 연결하세요."
 
+#: src/pages/Shell.tsx
+msgid "Connect a voice provider to call Elio."
+msgstr ""
+
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
 msgid "Connect Alchemy"
@@ -2457,6 +2465,7 @@ msgid "Connect API key"
 msgstr "API 키 연결"
 
 #: src/components/ConnectAppsButton.tsx
+#: src/components/tour/FirstRunTour.tsx
 msgid "Connect apps"
 msgstr ""
 
@@ -2485,7 +2494,7 @@ msgid "Connect MCP server “{name}”"
 msgstr "MCP 서버 ‘{name}’ 연결"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Connect the apps you already use."
+msgid "Connect the apps you already use, so agents can work with your mail and files."
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2573,7 +2582,6 @@ msgid "Contacts are your address book. They do not change Carta."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Context limit"
 msgstr "컨텍스트 한도"
 
@@ -3474,7 +3482,6 @@ msgid "Decline"
 msgstr "거절"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Default"
 msgstr "기본값"
@@ -3485,9 +3492,7 @@ msgstr "기본값"
 msgid "Default ({0})"
 msgstr "기본값 ({0})"
 
-#. placeholder {0}: thinkingLevelLabel("medium")
 #. placeholder {0}: thinkingLevelLabel(defaultThinkingLevel)
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 msgid "Default ({0})"
@@ -3745,6 +3750,10 @@ msgstr ""
 
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Documents over time"
+msgstr ""
+
+#: src/pages/Finance.tsx
+msgid "Does a similar job to another subscription"
 msgstr ""
 
 #: src/components/finance/CountCryptoButton.tsx
@@ -4118,7 +4127,6 @@ msgid "External conversation"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Extra high"
 msgstr "매우 높음"
 
@@ -4160,6 +4168,10 @@ msgstr "실패했을 때 처리"
 msgid "Fee"
 msgstr ""
 
+#: src/pages/shell/BotSkillsSection.tsx
+msgid "Fetching…"
+msgstr ""
+
 #: src/pages/SpaceSearch.tsx
 msgid "File"
 msgstr ""
@@ -4184,6 +4196,10 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/ListControls.tsx
 msgid "Filter by {label}"
+msgstr ""
+
+#: src/pages/Artifacts.tsx
+msgid "Filter by bot"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -4561,13 +4577,8 @@ msgstr "대화 기록 숨기기"
 msgid "Hides money amounts in finance, chat and email."
 msgstr ""
 
-#: src/components/HideAmountsToggle.tsx
-msgid "Hides money amounts, share counts and percentages on screen and in chat text. Small plain numbers may still show. A reply you write keeps the original amounts."
-msgstr ""
-
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "High"
 msgstr "높음"
 
@@ -4939,11 +4950,11 @@ msgid "Last run failed."
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scan paused."
+msgid "Last scan {lastScan}"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Last scan {lastScan}. Daily scans wait until you allow access."
+msgid "Last scan {lastScan}. Daily scan paused."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -5194,7 +5205,6 @@ msgstr ""
 
 #: src/lib/ticket-priority.ts
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Low"
 msgstr "낮음"
 
@@ -5330,7 +5340,6 @@ msgid "Marked unread"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Max"
 msgstr "최대"
 
@@ -5344,7 +5353,6 @@ msgid "Maximize"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Maximum images per request"
 msgstr "요청당 최대 이미지 수"
 
@@ -5353,7 +5361,6 @@ msgid "Maximum of 10 backup models."
 msgstr "백업 모델은 최대 10개까지 추가할 수 있습니다."
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Maximum output tokens"
 msgstr "최대 출력 토큰 수"
 
@@ -5362,7 +5369,6 @@ msgid "MCP endpoint"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Medium"
 msgstr "보통"
 
@@ -5467,7 +5473,6 @@ msgid "Microphone failed"
 msgstr "마이크를 사용할 수 없습니다."
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Minimal"
 msgstr "최소"
 
@@ -5715,10 +5720,6 @@ msgstr ""
 msgid "Needs input"
 msgstr "입력 필요"
 
-#: src/pages/Legal.tsx
-msgid "Needs Muse Spark 1.2."
-msgstr ""
-
 #: src/components/integrations/parts.tsx
 msgid "Needs reconnect"
 msgstr ""
@@ -5739,10 +5740,6 @@ msgstr "인수 필요"
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
 msgid "Needs you"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Needs your OpenRouter key."
 msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
@@ -7075,7 +7072,6 @@ msgid "Ready until {0}"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Reasoning effort"
 msgstr "추론 강도"
 
@@ -8110,7 +8106,6 @@ msgid "Set up app catalog"
 msgstr ""
 
 #: src/components/call/CallCard.tsx
-#: src/pages/BotContextMenu.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 #: src/pages/SettingsOverlay.tsx
 #: src/pages/Shell.tsx
@@ -8118,7 +8113,7 @@ msgid "Settings"
 msgstr "설정"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Settings, backups and Export my data are here, and so is Take the tour."
+msgid "Settings, Export my data and Take the tour are in your account menu."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -8523,6 +8518,10 @@ msgstr ""
 msgid "Spent {spentRange}"
 msgstr ""
 
+#: src/pages/Finance.tsx
+msgid "Spent so far this month"
+msgstr ""
+
 #: src/components/FinanceCards.tsx
 msgid "Spent this month"
 msgstr ""
@@ -8612,6 +8611,10 @@ msgstr ""
 msgid "Steps"
 msgstr "실행 단계"
 
+#: src/components/ShellSkeleton.tsx
+msgid "Still opening…"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "Still waiting on {service}"
 msgstr ""
@@ -8692,12 +8695,10 @@ msgid "Summarize what's new this week"
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Supports images"
 msgstr "이미지 지원"
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 msgid "Supports thinking"
 msgstr "사고 모드 지원"
 
@@ -8961,7 +8962,6 @@ msgid "These saved settings can't be read. Remove it and add it again."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-#: src/pages/Onboarding.tsx
 #: src/pages/RoutineEditor.tsx
 #: src/pages/shell/bot-panel.tsx
 #: src/pages/shell/transcript.tsx
@@ -9295,6 +9295,7 @@ msgstr ""
 #: src/components/integrations/FinanceSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/SignInStep.tsx
+#: src/components/ShellSkeleton.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
@@ -9600,7 +9601,7 @@ msgstr ""
 msgid "Usage"
 msgstr "사용량"
 
-#. placeholder {0}: entry.name
+#. placeholder {0}: label.title
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Use {0}"
 msgstr ""
