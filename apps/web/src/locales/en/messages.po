@@ -1044,10 +1044,6 @@ msgstr "Allow {model}"
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 
-#: src/pages/Legal.tsx
-msgid "Allow access first."
-msgstr "Allow access first."
-
 #: src/pages/Shell.tsx
 msgid "Allow access on the page to ask"
 msgstr "Allow access on the page to ask"
@@ -1772,10 +1768,6 @@ msgstr "Bots that run your inbox, cash, cap table and investor documents."
 msgid "Bots with their own computer and browser"
 msgstr "Bots with their own computer and browser"
 
-#: src/components/AiDataSharing.tsx
-msgid "Bots, mail, files and contracts"
-msgstr "Bots, mail, files and contracts"
-
 #: src/components/data-room/FilterBar.tsx
 msgid "Box"
 msgstr "Box"
@@ -2157,9 +2149,12 @@ msgid "Choose files"
 msgstr "Choose files"
 
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 msgid "Choose how apps connect for everyone on this server."
 msgstr "Choose how apps connect for everyone on this server."
+
+#: src/pages/Legal.tsx
+msgid "Choose Legal's own model again in the Legal agent's settings to start. It then reads your Data room for contracts and deadlines."
+msgstr "Choose Legal's own model again in the Legal agent's settings to start. It then reads your Data room for contracts and deadlines."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Choose the account to connect, then come back here."
@@ -4488,6 +4483,10 @@ msgstr "Folder"
 msgid "Folders"
 msgstr "Folders"
 
+#: src/components/AiDataSharing.tsx
+msgid "For bots, mail, files and contracts"
+msgstr "For bots, mail, files and contracts"
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Forget"
 msgstr "Forget"
@@ -4808,6 +4807,10 @@ msgstr "hour"
 msgid "hours"
 msgstr "hours"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "How Integrations connect for everyone on this server."
+msgstr "How Integrations connect for everyone on this server."
+
 #: src/lib/slash-skills.ts
 msgid "How long cash lasts, with what-ifs."
 msgstr "How long cash lasts, with what-ifs."
@@ -5017,6 +5020,12 @@ msgstr "Instructions"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
 msgstr "Integration options"
+
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/LocalSettings.tsx
+msgid "Integration sign-in"
+msgstr "Integration sign-in"
 
 #: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
@@ -5241,17 +5250,17 @@ msgstr "Legal"
 msgid "Legal document"
 msgstr "Legal document"
 
+#: src/pages/Legal.tsx
+msgid "Legal needs an OpenRouter key to read your contracts."
+msgstr "Legal needs an OpenRouter key to read your contracts."
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Legal relationships"
 msgstr "Legal relationships"
 
 #: src/pages/Legal.tsx
-msgid "Legal runs on Muse Spark 1.2 and needs your own OpenRouter key. The space's shared OpenRouter access can't be used for Legal."
-msgstr "Legal runs on Muse Spark 1.2 and needs your own OpenRouter key. The space's shared OpenRouter access can't be used for Legal."
-
-#: src/pages/Legal.tsx
-msgid "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
-msgstr "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
+msgid "Legal runs on its own model: choose it again in the Legal agent's settings."
+msgstr "Legal runs on its own model: choose it again in the Legal agent's settings."
 
 #: src/components/integrations/IntegrationAgentSection.tsx
 msgid "Let other agents use {service} directly"
@@ -6702,6 +6711,10 @@ msgstr "Open in new tab"
 msgid "Open Inbox"
 msgstr "Open Inbox"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Open integration sign-in"
+msgstr "Open integration sign-in"
+
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
 msgstr "Open link"
@@ -6722,10 +6735,6 @@ msgstr "Open Newsletters"
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open receipt"
 msgstr "Open receipt"
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Open server apps"
-msgstr "Open server apps"
 
 #: src/pages/shell/composer.tsx
 msgid "Open Settings"
@@ -8371,12 +8380,6 @@ msgstr "Sent to {forwardedName}"
 msgid "Serenity endpoint is required."
 msgstr "Serenity endpoint is required."
 
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/LocalSettings.tsx
-msgid "Server apps"
-msgstr "Server apps"
-
 #: src/components/integrations/IMessageSection.tsx
 msgid "Server password"
 msgstr "Server password"
@@ -8396,10 +8399,6 @@ msgstr "Session"
 #: src/components/integrations/IMessageSection.tsx
 msgid "Set by server"
 msgstr "Set by server"
-
-#: src/pages/Legal.tsx
-msgid "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
-msgstr "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
 
 #: src/components/integrations/ConnectAppsStep.tsx
 msgid "Set up"
@@ -9240,10 +9239,6 @@ msgstr "the group"
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
 msgstr "The Inbox page stops showing new mail until you reconnect."
-
-#: src/pages/Legal.tsx
-msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
-msgstr "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 
 #: src/pages/Devin.tsx
 msgid "The member who connected Devin left this space. Alerts are paused."

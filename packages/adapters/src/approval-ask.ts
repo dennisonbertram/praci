@@ -11,6 +11,7 @@ import {
   isMailAgentSpawnKey,
   isReadTool,
   MAX_COMPOSE_BODY,
+  modelLabel,
 } from "@rakazo/contracts";
 import { humanizeToolName, redactSecrets } from "@rakazo/core";
 import { buildRawMessage, displayAddress, parseRecipients } from "./mail-compose.js";
@@ -131,10 +132,12 @@ export function buildConsentAskBlock(
   effectId: string,
   recipient: { name: string; detail?: string },
 ): MessageBlock {
+  // "GPT-6 Luna (via OpenRouter)", not the router's raw "openai/gpt-6-luna, forwarded to its provider".
+  const model = modelLabel(recipient.detail ?? "");
   return {
     kind: "ask",
     approvalEffectId: effectId,
-    text: `Allow your mail to be sent to ${recipient.name}${recipient.detail ? ` (${recipient.detail})` : ""}?`,
+    text: `Allow your mail to be sent to ${model ? `${model} (via ${recipient.name})` : recipient.name}?`,
     // The clause says the permission is standing, not for this one read.
     detail: `${AI_DATA_DISCLOSURES.model} This stays on until you turn it off in Account settings.`,
     consent: { version: AI_DISCLOSURE_VERSION },

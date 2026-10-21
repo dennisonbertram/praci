@@ -13,6 +13,15 @@ export const AI_DATA_DISCLOSURES: Record<AiDataUse, string> = {
   memory:
     "Conversation summaries, memories, searches and bot and Space IDs are sent to store and recall context.",
 };
+/** "vendor/gpt-6-luna, forwarded to its provider" -> "GPT-6 Luna". */
+export const modelLabel = (detail: string) =>
+  (detail.split(",")[0]?.split("/").pop() ?? "")
+    .trim()
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((word) => (/^gpt$/i.test(word) ? "GPT" : word.charAt(0).toUpperCase() + word.slice(1)))
+    .join(" ")
+    .replace(/^GPT (?=\d)/, "GPT-");
 export const AiConsentQuerySchema = z
   .object({
     botId: z.string().optional(),
