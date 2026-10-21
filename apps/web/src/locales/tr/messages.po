@@ -1531,7 +1531,6 @@ msgstr ""
 msgid "Auto-renews, {notice} days notice"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "Auto-sort"
@@ -3639,6 +3638,7 @@ msgstr "Varsayılan ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
@@ -5413,6 +5413,10 @@ msgstr ""
 msgid "Log out"
 msgstr "Çıkış yap"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Looking for changes"
+msgstr ""
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Looks like spam"
 msgstr ""
@@ -6617,10 +6621,6 @@ msgstr ""
 msgid "Open again"
 msgstr ""
 
-#: src/pages/Artifacts.tsx
-msgid "Open chat"
-msgstr ""
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr ""
@@ -7293,6 +7293,18 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Reading Carta…"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {days} d"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {hours} h"
+msgstr ""
+
+#: src/components/data-room/format.ts
+msgid "Reading for {minutes} min"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -8717,12 +8729,12 @@ msgstr ""
 msgid "Sort descending"
 msgstr ""
 
-#: src/components/ListControls.tsx
-msgid "Sort: {fieldLabel}"
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort every file in the Data room"
 msgstr ""
 
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Sorting every file in the Data room"
+#: src/components/ListControls.tsx
+msgid "Sort: {fieldLabel}"
 msgstr ""
 
 #: src/pages/Inbox.tsx

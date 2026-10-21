@@ -586,6 +586,14 @@ function InboxListPage({
     !shown ||
     (!filtered && shown.rows.length === 0 && !synced) ||
     (showTodos && todos === undefined && !sorting);
+  // Nothing to search in a mailbox with no mail in any pile.
+  const mailboxEmpty =
+    !loading &&
+    rows.length === 0 &&
+    !query &&
+    !filter &&
+    !category &&
+    (pileCounts ? Object.values(pileCounts).every((n) => n === 0) : true);
   // Applies a change to every copy of the rows: the list, the pages after it and the cached lists.
   const patchRows = (change: (rows: MailRow[], searched: boolean) => MailRow[]) => {
     const patch = (list: InboxListOutput, searched: boolean) => ({
@@ -1077,55 +1085,57 @@ function InboxListPage({
                     {spaceName}
                   </span>
                 ) : null}
-                <form
-                  ref={searchRef}
-                  className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    setParam("q", draft.trim());
-                  }}
-                >
-                  <InputGroup className="w-full max-w-sm">
-                    <InputGroupAddon>
-                      <Search aria-hidden="true" />
-                    </InputGroupAddon>
-                    <InputGroupInput
-                      type="search"
-                      name="inbox-search"
-                      value={draft}
-                      onChange={(event) => setDraft(event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key !== "Escape") return;
-                        setDraft("");
-                        if (query) setParam("q", "");
-                      }}
-                      // Short enough to fit beside the agent panel; the hover title keeps the example.
-                      placeholder={t`Search mail`}
-                      title={t`Search mail, e.g. from:sam has:attachment`}
-                      aria-label={t`Search mail`}
-                      // Nothing to search or filter before mail is connected.
-                      disabled={Boolean(data) && accounts.length === 0}
-                      maxLength={MAX_QUERY}
-                      className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
-                      autoComplete="off"
-                    />
-                    {draft ? (
-                      <InputGroupAddon align="inline-end">
-                        <InputGroupButton
-                          size="icon-xs"
-                          aria-label={t`Clear`}
-                          onClick={() => {
-                            setDraft("");
-                            setParam("q", "");
-                            searchRef.current?.querySelector("input")?.focus();
-                          }}
-                        >
-                          <X aria-hidden="true" />
-                        </InputGroupButton>
+                {mailboxEmpty ? null : (
+                  <form
+                    ref={searchRef}
+                    className="min-w-40 flex-1 basis-full @lg/ph:basis-0"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      setParam("q", draft.trim());
+                    }}
+                  >
+                    <InputGroup className="w-full max-w-sm">
+                      <InputGroupAddon>
+                        <Search aria-hidden="true" />
                       </InputGroupAddon>
-                    ) : null}
-                  </InputGroup>
-                </form>
+                      <InputGroupInput
+                        type="search"
+                        name="inbox-search"
+                        value={draft}
+                        onChange={(event) => setDraft(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "Escape") return;
+                          setDraft("");
+                          if (query) setParam("q", "");
+                        }}
+                        // Short enough to fit beside the agent panel; the hover title keeps the example.
+                        placeholder={t`Search mail`}
+                        title={t`Search mail, e.g. from:sam has:attachment`}
+                        aria-label={t`Search mail`}
+                        // Nothing to search or filter before mail is connected.
+                        disabled={Boolean(data) && accounts.length === 0}
+                        maxLength={MAX_QUERY}
+                        className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
+                        autoComplete="off"
+                      />
+                      {draft ? (
+                        <InputGroupAddon align="inline-end">
+                          <InputGroupButton
+                            size="icon-xs"
+                            aria-label={t`Clear`}
+                            onClick={() => {
+                              setDraft("");
+                              setParam("q", "");
+                              searchRef.current?.querySelector("input")?.focus();
+                            }}
+                          >
+                            <X aria-hidden="true" />
+                          </InputGroupButton>
+                        </InputGroupAddon>
+                      ) : null}
+                    </InputGroup>
+                  </form>
+                )}
               </>
             }
             actions={

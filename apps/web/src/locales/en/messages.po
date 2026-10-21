@@ -1531,7 +1531,6 @@ msgstr "Auto-renews"
 msgid "Auto-renews, {notice} days notice"
 msgstr "Auto-renews, {notice} days notice"
 
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/FilterBar.tsx
 #: src/components/data-room/FolderTree.tsx
 msgid "Auto-sort"
@@ -3639,6 +3638,7 @@ msgstr "Default ({0})"
 #: src/components/ContactDialog.tsx
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/data-room/Preview.tsx
 #: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
@@ -5413,6 +5413,10 @@ msgstr "Local Server Settings"
 msgid "Log out"
 msgstr "Log out"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Looking for changes"
+msgstr "Looking for changes"
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Looks like spam"
 msgstr "Looks like spam"
@@ -6617,10 +6621,6 @@ msgstr "Open <0>{0}</0> to finish signing in."
 msgid "Open again"
 msgstr "Open again"
 
-#: src/pages/Artifacts.tsx
-msgid "Open chat"
-msgstr "Open chat"
-
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Open computer settings"
 msgstr "Open computer settings"
@@ -7294,6 +7294,18 @@ msgstr "Reading a connected app"
 #: src/pages/Investors.tsx
 msgid "Reading Carta…"
 msgstr "Reading Carta…"
+
+#: src/components/data-room/format.ts
+msgid "Reading for {days} d"
+msgstr "Reading for {days} d"
+
+#: src/components/data-room/format.ts
+msgid "Reading for {hours} h"
+msgstr "Reading for {hours} h"
+
+#: src/components/data-room/format.ts
+msgid "Reading for {minutes} min"
+msgstr "Reading for {minutes} min"
 
 #: src/components/data-room/format.ts
 #: src/components/data-room/ProcessingStrip.tsx
@@ -8717,13 +8729,13 @@ msgstr "Sort ascending"
 msgid "Sort descending"
 msgstr "Sort descending"
 
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sort every file in the Data room"
+msgstr "Sort every file in the Data room"
+
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
 msgstr "Sort: {fieldLabel}"
-
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "Sorting every file in the Data room"
-msgstr "Sorting every file in the Data room"
 
 #: src/pages/Inbox.tsx
 msgid "Sorting is taking longer than usual. Your mail is below."
