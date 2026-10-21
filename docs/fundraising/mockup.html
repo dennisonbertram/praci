@@ -1,0 +1,735 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Investors and Fundraising mockup</title>
+<style>
+:root{
+  --background:#fafafa; --card:#ffffff; --muted:#f2f2f2; --muted-fg:#6b6b6b;
+  --fg:#111; --border:#e6e6e6; --primary:#111; --primary-fg:#fff;
+  --sidebar:#f5f5f4; --sidebar-accent:#e9e9e7; --destructive:#c4352b; --warning:#b7791f; --success:#2f855a;
+  --bot:#e8743b; --ink2:#8a8a8a; --scrim:rgba(0,0,0,.35);
+}
+:root{color-scheme:light}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+    --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+    --sidebar:#141414; --sidebar-accent:#232323; --ink2:#8a8a8a; --warning:#d69e3a; --success:#4fb27f; --destructive:#e5685e; --scrim:rgba(0,0,0,.6);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --background:#0f0f0f; --card:#171717; --muted:#1f1f1f; --muted-fg:#9a9a9a;
+  --fg:#ededed; --border:#2a2a2a; --primary:#ededed; --primary-fg:#111;
+  --sidebar:#141414; --sidebar-accent:#232323; --ink2:#8a8a8a; --warning:#d69e3a; --success:#4fb27f; --destructive:#e5685e; --scrim:rgba(0,0,0,.6);
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--background);color:var(--fg);font:13px/1.45 -apple-system,BlinkMacSystemFont,"Inter",system-ui,sans-serif}
+button{font:inherit;color:inherit}
+/* mock-only view switcher, in normal flow */
+.vbar{display:flex;gap:10px;align-items:center;height:41px;padding:0 12px;border-bottom:1px solid var(--border);background:var(--card);font-size:11px;color:var(--muted-fg)}
+.vbar select{font:inherit;font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--fg);max-width:60vw}
+.app{display:grid;grid-template-columns:240px 1fr;height:calc(100vh - 41px);min-height:600px}
+aside.left{background:var(--sidebar);border-right:1px solid var(--border);padding:12px 8px;display:flex;flex-direction:column;gap:2px}
+.search{margin:4px 4px 10px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;color:var(--muted-fg);background:var(--card)}
+.row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;cursor:default}
+body[data-page="inv"] .r-inv,body[data-page="fund"] .r-fund{background:var(--sidebar-accent);font-weight:600}
+.row .count{margin-left:auto;font-size:11px;color:var(--muted-fg)}
+.row .dot{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--fg)}
+.av{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:700;color:#111;flex:none}
+.label{font-size:11px;color:var(--muted-fg);padding:12px 8px 4px;text-transform:uppercase;letter-spacing:.04em}
+.icon{width:22px;height:22px;display:grid;place-items:center;flex:none}
+.icon svg,.ib svg,.btn svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+main{overflow:auto;padding:20px 28px 12px}
+h1{font-size:18px;margin:0}
+.head{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.head .sp,.sp{flex:1}
+.meta{display:flex;align-items:center;gap:2px}
+.rel{position:relative;display:inline-flex}
+.ib.navbtn,.ib.plus{display:none}
+.ib{border:0;background:transparent;color:var(--muted-fg);cursor:pointer;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;padding:0}
+.ib:hover{background:var(--muted)}
+.ib[disabled]{opacity:.4;cursor:default}
+.src{border:1px solid var(--border);background:transparent;color:var(--muted-fg);cursor:pointer;height:32px;padding:0 8px;border-radius:8px;font-size:12px;display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+.src:hover{background:var(--muted)}
+.src::after{content:"";width:6px;height:6px;border-right:1.5px solid currentColor;border-bottom:1.5px solid currentColor;transform:rotate(45deg) translate(-1px,-1px)}
+.src.warn{color:var(--warning)}
+.src.plain::after{content:none}
+.chip{padding:4px 10px;border-radius:999px;border:1px solid var(--border);color:var(--muted-fg);font-size:12px;display:inline-flex;align-items:center;gap:6px;background:transparent;white-space:nowrap;cursor:pointer}
+.chip.on{background:var(--sidebar-accent);color:var(--fg);border-color:var(--sidebar-accent);font-weight:600}
+.btn{padding:6px 12px;min-height:32px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--fg);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.p{background:var(--primary);color:var(--primary-fg);border-color:var(--primary);font-weight:600}
+.btn.s{padding:2px 10px;min-height:28px;font-size:12px}
+input[type=checkbox],input[type=radio]{width:18px;height:18px;accent-color:var(--primary);margin:0;flex:none}
+input[type=radio]{appearance:none;border:1.5px solid var(--muted-fg);border-radius:50%;background:transparent}
+input[type=radio]:checked{border-color:var(--primary);background:radial-gradient(var(--primary) 0 42%,transparent 48%)}
+input[type=checkbox]{appearance:none;border:1.5px solid var(--muted-fg);border-radius:4px;background:transparent;display:inline-grid;place-items:center}
+input[type=checkbox]:checked{background:var(--primary);border-color:var(--primary)}
+input[type=checkbox]:checked::after{content:"";width:5px;height:9px;border:solid var(--primary-fg);border-width:0 2px 2px 0;transform:translateY(-1px) rotate(45deg)}
+input[type=checkbox]:disabled{border:1.5px dashed var(--muted-fg);opacity:.7}
+td.mn:empty::before{content:"";display:block;height:32px}
+.held{text-decoration:line-through;color:var(--muted-fg)}
+.pe{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border:1px solid var(--border);border-radius:8px;color:var(--fg);text-decoration:none;font-weight:600}
+select.in{appearance:none;padding-right:26px;background-image:linear-gradient(45deg,transparent 50%,var(--muted-fg) 50%),linear-gradient(135deg,var(--muted-fg) 50%,transparent 50%);background-position:calc(100% - 15px) 55%,calc(100% - 10px) 55%;background-size:5px 5px;background-repeat:no-repeat}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:20px;background:var(--fg);color:var(--background);padding:10px 14px;border-radius:10px;z-index:30;display:flex;gap:12px;align-items:center}
+.toast button{border:0;background:transparent;color:inherit;text-decoration:underline;cursor:pointer;min-height:32px;padding:0}
+.btn[disabled]{opacity:.5;cursor:default}
+.lnk{border:0;background:transparent;padding:0;color:var(--muted-fg);text-decoration:underline;cursor:pointer;font-size:11px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px;margin-bottom:12px}
+.card.attn{border-color:var(--fg)}
+.card h2{font-size:12px;margin:0;color:var(--muted-fg);font-weight:600}
+.cardhead{display:flex;align-items:center;gap:8px;margin-bottom:8px;min-height:32px}
+.cardhead .r{margin-left:auto;display:flex;gap:4px;align-items:center}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.kpis .n{font-size:22px;font-weight:650;letter-spacing:-.01em;margin:4px 0 2px;font-variant-numeric:tabular-nums}
+.sub{font-size:11px;color:var(--muted-fg);font-weight:400}
+.warnl{font-size:11px;color:var(--warning)}
+.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+td.num,th.r{padding-left:10px}
+td.num+td,th.r+th{padding-left:12px}
+.mute{color:var(--muted-fg)}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:500;color:var(--muted-fg);text-align:left;padding:4px 0 6px}
+th.r{text-align:right}
+td{padding:4px 0;border-top:1px solid var(--border);vertical-align:middle}
+td.v{font-weight:600}
+td.mn,th.mn{width:36px;padding-left:4px;text-align:right}
+tr.grp td{background:var(--muted);font-weight:600;padding:6px 0}
+tr.grp td:first-child{padding-left:8px}
+tr.grp td.num{padding-right:0}
+tr.grp td.mn{padding-right:4px}
+.tag{font-size:11px;color:var(--muted-fg);border:1px solid var(--border);border-radius:999px;padding:0 8px;white-space:nowrap;font-weight:400}
+.tag.ok{color:var(--success);border-color:var(--success)}
+.tag.warn{color:var(--warning);border-color:var(--warning)}
+.bar{display:flex;gap:2px;height:10px;border-radius:5px;overflow:hidden;background:var(--muted);margin:8px 0 6px}
+.bar i{display:block;height:100%}
+.legend{display:flex;gap:6px 14px;font-size:11px;color:var(--muted-fg);flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.c0{background:var(--fg)} .c1{background:var(--muted-fg)} .c2{background:var(--ink2)}
+.c3{background:repeating-linear-gradient(45deg,var(--fg) 0 1.5px,var(--card) 1.5px 3.5px);border:1px solid var(--fg)}
+/* rows: text on the left, actions on the right */
+.item{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);min-height:44px}
+.cardhead+.item{border-top:0}
+.item .t{font-weight:600}
+.item .d{color:var(--muted-fg);font-size:12px}
+.item .tx{min-width:0}
+.act{display:flex;gap:8px;align-items:center;flex:none}
+.amt{width:84px;text-align:right;font-variant-numeric:tabular-nums}
+.slot{width:84px;display:flex;justify-content:flex-end}
+.lnk.b{font-size:12px;min-height:24px;display:inline-flex;align-items:center}
+a.lnk,a.glnk{display:inline-flex;align-items:center}
+.glnk{color:inherit;text-decoration:none;min-height:24px}
+.nw{white-space:nowrap}
+.d,.sub{text-wrap:pretty}
+.amt.none{color:var(--muted-fg)}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:start}body[data-page=fund] .cols{margin-bottom:0}
+.cols .card{margin:0}
+.tabs{display:flex;gap:4px;margin-bottom:8px;flex-wrap:wrap}
+.stage{margin-bottom:8px}
+.stage h3{font-size:12px;margin:0 0 2px;color:var(--muted-fg);font-weight:600;display:flex;gap:8px;align-items:center}
+.stage h3 .count{font-weight:400}
+.stage .tg{border:0;background:transparent;padding:4px 0;cursor:pointer;font-size:12px;font-weight:600;color:var(--muted-fg);min-height:28px}
+.btns{display:flex;gap:8px;align-items:center}
+.btns.end{justify-content:flex-end;margin-top:14px}
+.pop{position:absolute;z-index:10;top:100%;left:0;min-width:200px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:4px;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.pop.rt{left:auto;right:0}
+.pop.up{top:auto;bottom:100%}
+.pop button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:7px 10px;border-radius:6px;cursor:pointer;min-height:32px}
+.pop button:hover{background:var(--muted)}
+.pop hr{border:0;border-top:1px solid var(--border);margin:4px 0}
+.pop .sub{display:block;padding:4px 10px}
+.m-only{display:none}
+.empty-box{display:flex;flex-direction:column;align-items:center;gap:12px;padding:64px 0}
+.empty-box .opts{display:flex;flex-direction:column;gap:8px;width:260px}
+/* dialogs */
+.scrim{position:fixed;inset:41px 0 0 0;background:var(--scrim);display:grid;grid-template-columns:minmax(0,1fr);place-items:center;z-index:20;padding:16px}
+.dlg{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;width:min(420px,100%);max-width:calc(100vw - 32px);max-height:100%;overflow:auto}
+.dlg h2{font-size:14px;color:var(--fg);margin:0 0 12px}
+.f{display:grid;gap:4px;margin-bottom:10px}
+.f>label,.fl{color:var(--muted-fg);font-size:12px}
+.in{border:1px solid var(--border);border-radius:8px;padding:6px 10px;min-height:32px;background:var(--card);color:var(--fg);font:inherit;width:100%}
+.in.sm{padding:3px 8px}
+.in.r{text-align:right;font-variant-numeric:tabular-nums}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:6px 12px;margin:0 0 4px}
+.kv dt{color:var(--muted-fg)} .kv dd{margin:0}
+.chk{display:flex;gap:8px;align-items:center;min-height:32px}
+/* typed-in cap table */
+.erow{display:grid;grid-template-columns:minmax(0,1.6fr) 130px minmax(0,1fr) minmax(0,1fr) 96px 36px;gap:8px;align-items:center;padding:4px 0;border-top:1px solid var(--border)}
+.erow.h{border-top:0;font-size:11px;color:var(--muted-fg);padding:2px 0}
+.erow.h span:nth-child(3),.erow.h span:nth-child(4){text-align:right}
+.erow .cl{min-width:0}
+.lb{display:block;font-size:11px;color:var(--muted-fg);margin-bottom:2px}
+.lb.m-only{display:none}
+.erow .pc{text-align:right;font-variant-numeric:tabular-nums}
+.erow .nm{font-weight:600}
+.erow.gp{padding-top:8px}.erow.gp .glnk{grid-column:1/5;font-weight:600}.erow.gp .pc{grid-column:5;font-weight:600}
+/* editor */
+.ed-max{max-width:760px}
+.rc{display:flex;gap:8px;align-items:center;min-height:40px}
+.rc.off{color:var(--muted-fg)}
+.rc .st{margin-left:auto}
+.hint{margin:8px 0 10px}.in.hold{padding-top:6px;padding-bottom:6px;resize:none;field-sizing:content;overflow:hidden;line-height:1.3;display:block}
+.body{min-height:160px;height:46vh;line-height:1.55;overflow:auto}
+.body .bh{font-weight:700;margin-top:10px}.body .bh:first-child{margin-top:0}
+.body .bl::before{content:"•";margin-right:8px;color:var(--muted-fg)}
+mark{background:transparent;color:var(--warning);font-weight:700;text-decoration:underline}
+.edfoot{display:flex;gap:8px;align-items:center;margin-top:10px;justify-content:flex-end;flex-wrap:wrap;position:sticky;bottom:-20px;background:var(--background);padding:10px 0;border-top:1px solid var(--border)}
+.edfoot .sub{margin-right:auto}
+.btn.bk{min-width:44px}
+/* portal */
+.portal{max-width:640px;margin:40px auto;padding:0 16px}
+.portal .co{font-weight:650;font-size:16px;display:flex;align-items:center;gap:10px;margin-bottom:20px}
+.portal .co .av{width:26px;height:26px;background:var(--fg);color:var(--primary-fg)}
+.portal .foot{font-size:12px;color:var(--muted-fg);margin-top:24px;display:flex;align-items:center;gap:8px}
+.foot button{border:0;background:transparent;color:var(--muted-fg);text-decoration:underline;cursor:pointer;min-height:32px;padding:0 4px}
+.upd-body{white-space:pre-line;font-size:13px}
+.upd-body b{display:block;margin-top:10px}
+details.old{border-top:1px solid var(--border)}
+details.old summary{display:flex;justify-content:space-between;align-items:center;min-height:44px;cursor:pointer;font-weight:600;list-style:none}
+details.old summary::after{content:"›";color:var(--muted-fg);margin-left:12px}
+details.old summary span{font-weight:400;color:var(--muted-fg);font-size:12px;margin-left:auto}
+.landing{max-width:420px;margin:20vh auto 0;padding:0 16px;text-align:center}
+.landing .co{justify-content:center;margin-bottom:28px}
+.dl{min-height:36px}
+.landing p{margin:0 0 14px;text-wrap:pretty}
+.landing .f{max-width:300px;margin:0 auto 10px;text-align:left}
+.landing.left{text-align:left}.landing.left .f{margin:0 0 10px}
+.email{border:1px solid var(--border);border-radius:12px;background:var(--card);padding:14px 16px}
+.email .hd{display:grid;grid-template-columns:60px 1fr;gap:2px 8px;color:var(--muted-fg);font-size:12px;border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:10px}
+.email .hd b{color:var(--fg);font-weight:600}
+body[data-page="portal"] .app{grid-template-columns:1fr}
+body[data-page="portal"] aside.left{display:none}
+@media (max-width:900px){
+  .app{grid-template-columns:1fr;height:auto}
+  aside.left{display:none}
+  main{padding:12px 16px 24px}
+  .cols,.kpis,.f2{grid-template-columns:minmax(0,1fr)}
+  .warnl.nw{white-space:normal}
+  .kpis{gap:8px}
+  .hm{display:none}
+  .m-only,.lb.m-only{display:block}
+  .ib.navbtn,.ib.plus{display:grid}
+  .head{flex-wrap:wrap;gap:4px;margin-bottom:12px}
+  .head .meta{order:10;flex-basis:100%}
+  .head .ask .lbl,.head .btn.hm{display:none}
+  .head .ask{width:44px;padding:0}
+  .ib{width:44px;height:44px}
+  .btn.s{min-height:44px}
+  .btn{min-height:44px}
+  td.mn,th.mn{width:44px}
+  .legend{display:grid;grid-template-columns:1fr 1fr}
+  .erow{grid-template-columns:1fr 1fr 64px 44px;gap:6px 8px;padding:8px 0;grid-template-areas:"nm nm pc mn" "sec sec sec sec" "sh sh sh sh" "inv inv inv inv"}
+  .erow.h{display:none}
+  .erow .cl.c-sec,.erow .cl.c-sh,.erow .cl.c-inv{display:grid;grid-template-columns:84px minmax(0,1fr);align-items:center;gap:8px}
+  .erow .lb.m-only{margin:0}
+  .erow.se{grid-template-areas:"nm nm pc mn" "sec sec inv inv"}.erow.se .c-sh{display:none}.erow.se .cl.c-sec,.erow.se .cl.c-inv{display:block}.erow.se .c-inv{text-align:right}
+  .erow .nm{grid-area:nm}.erow .pc{grid-area:pc}.erow .c-sec{grid-area:sec}.erow .c-sh{grid-area:sh}.erow .c-inv{grid-area:inv}.erow .ib{grid-area:mn}
+  .landing{margin-top:60px}
+  .portal{margin:24px auto}
+  .landing .f{max-width:none}.landing.left .btn{width:100%}.sub .lnk.b{padding-left:0;display:flex}
+  .foot button{min-height:44px}
+  .btn.p.big,.btn.p,.dlg .btn,.dl.btn{min-height:44px}
+  .in,.landing .in,.chip,.src,.pop button,.stage .tg,.chk,.toast button{min-height:44px}.lnk,.lnk.b{min-height:44px;display:inline-flex;align-items:center;margin:0;padding:0 6px}.glnk{min-height:44px;margin:-6px 0}
+  .in.hold{padding-top:12px;padding-bottom:12px}
+  .rc{flex-wrap:wrap}.head h1{min-width:0}
+  .sepd{display:none}.blk{display:block}
+  .erow.gp{grid-template-areas:none}.erow.gp .glnk{grid-column:1/3}.erow.gp .pc{grid-area:auto;grid-column:3}
+  .rc{min-height:44px}
+  tbody tr{height:44px}
+  .ai{flex-direction:column;align-items:stretch;gap:6px}.ai .act{justify-content:flex-end}
+  .pl .act{flex-wrap:wrap;justify-content:flex-end}.slot:empty{display:none}
+  .pl .slot{flex:1 1 100%;order:3;justify-content:flex-end}
+  .toast{left:16px;right:16px;transform:none;bottom:12px}
+  .pop{max-width:calc(100vw - 32px)}
+  .scrim{align-items:start;padding-top:24px}
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-eye" viewBox="0 0 16 16"><path d="M1.5 8s2.5-4.5 6.5-4.5S14.5 8 14.5 8s-2.5 4.5-6.5 4.5S1.5 8 1.5 8z"/><circle cx="8" cy="8" r="2"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 16 16"><path d="M2.5 3.5h11v7.5H7l-3 2.5V11H2.5z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 16 16"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 16 16"><path d="M8 3v10M3 8h10"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 16 16"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/></symbol>
+</svg>
+
+<div class="vbar"><label for="vsel">View</label><select id="vsel" aria-label="View"></select><span>Invented data</span></div>
+
+<div class="app">
+  <aside class="left" aria-label="Sidebar">
+    <div class="search">Search</div>
+    <div class="row"><span class="icon">&#9993;</span>Inbox<span class="count">12</span></div>
+    <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2 13.5h12M4 11V7.5M8 11V3.5M12 11V6"/></svg></span>Finance</div>
+    <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M3 3.5h10v9H3zM5.5 6.5h5M5.5 9h3"/></svg></span>Legal</div>
+    <div class="row r-inv"><span class="icon"><svg viewBox="0 0 16 16"><path d="M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1.5 13c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5M10.5 3.2a2 2 0 0 1 0 3.6M12 9.6c1.5.4 2.5 1.6 2.5 3.4"/></svg></span>Investors<span class="dot" aria-label="1 unseen notification"></span></div>
+    <div class="row r-fund"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2.5 12.5l3.5-4 3 2.5 4.5-6M11 5h2.5v2.5"/></svg></span>Fundraising</div>
+    <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M5.5 7a2 2 0 1 0 0-4 2 2 0 0 0 0 4zM1.5 13c0-2.2 1.8-3.5 4-3.5s4 1.3 4 3.5"/></svg></span>Contacts</div>
+    <div class="row"><span class="icon"><svg viewBox="0 0 16 16"><path d="M2.5 5.5h11v7.5h-11zM5.5 5.5V3.5h5v2"/></svg></span>Data room</div>
+    <div class="label">Bots</div>
+    <div class="row"><span class="av" style="background:var(--bot)">I</span>Investors agent</div>
+    <div class="row"><span class="av" style="background:var(--ink2)">F</span>Finance agent</div>
+    <div style="flex:1"></div>
+    <div class="row" style="color:var(--muted-fg)"><span class="icon">&#10697;</span>Integrations</div>
+  </aside>
+
+  <main>
+
+  <!-- ===================== INVESTORS PAGE ===================== -->
+  <section data-show="p-inv">
+    <div class="head">
+      <button class="ib navbtn" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
+      <h1>Investors</h1>
+      <span class="meta">
+        <span class="rel">
+          <button class="src" data-show="srccarta" aria-haspopup="menu">Carta · as of Sep 30</button>
+          <button class="src plain" data-show="inv-reading" disabled>Reading sheet…</button>
+          <button class="src warn" data-show="inv-failed" aria-haspopup="menu">Sheet · as of Sep 30</button>
+          <button class="src" data-show="nat" aria-haspopup="menu">Typed in · as of Oct 20</button>
+          <span class="pop" role="menu" data-show="inv-failed"><button role="menuitem">Last read failed · Try again</button><button role="menuitem">Refresh</button><button role="menuitem">Change source</button></span>
+          <span class="pop" role="menu" data-show="inv-menu"><button role="menuitem">Refresh</button><button role="menuitem">Change source</button></span>
+          <span class="pop" role="menu" data-show="inv-native-menu"><button role="menuitem">Change source</button><button role="menuitem">Undo</button></span>
+        </span>
+        <button class="ib" aria-label="Hide amounts"><svg><use href="#i-eye"/></svg></button>
+      </span>
+      <span class="sp"></span>
+      <button class="btn hm">Add contact</button>
+      <button class="ib plus" aria-label="Add contact"><svg><use href="#i-plus"/></svg></button>
+      <button class="btn ask" aria-label="Ask"><svg><use href="#i-chat"/></svg><span class="lbl">Ask</span></button>
+    </div>
+
+    <div class="card attn">
+      <div class="cardhead"><h2>Action items</h2><div class="r"><button class="lnk b" data-hide="inv-auditdone">Show done</button><button class="lnk b" data-show="inv-auditdone">Hide done</button></div></div>
+      <div class="item ai">
+        <div class="tx"><div class="t">Audit request · Northwind Ventures Fund II</div><div class="d">Holdings as of Sep 30 · due Nov 15</div></div>
+        <div class="act"><span class="tag warn">Draft ready</span><button class="btn s p">Open draft</button><span class="rel"><button class="ib" aria-label="Row actions">…</button><span class="pop rt" role="menu" data-show="inv-audit"><button role="menuitem">Mark done</button><button role="menuitem">Dismiss</button></span></span></div>
+      </div>
+      <div class="item ai" data-show="inv-audit">
+        <div class="tx"><div class="t">Audit request · Birch Audit LLP</div><div class="d">Sender not in Auditors · due Nov 30</div></div>
+        <div class="act"><span class="tag">New</span><button class="btn s">Open</button><button class="ib" aria-label="Row actions">…</button></div>
+      </div>
+      <div class="item ai" data-hide="inv-sent inv-partly inv-posted inv-sending">
+        <div class="tx"><div class="t">October update</div><div class="d">Drafted Oct 1</div></div>
+        <div class="act"><button class="btn s">Open</button></div>
+      </div>
+      <div data-show="inv-auditdone">
+        <div class="item ai"><div class="tx"><div class="t mute">Audit request · Silverline Fund I</div><div class="d">Done Oct 3</div></div><div class="act"><span class="tag ok">Done</span></div></div>
+        <div class="item ai"><div class="tx"><div class="t mute">Audit request · Redwood Partners</div><div class="d">Dismissed Sep 19</div></div><div class="act"><span class="tag">Dismissed</span></div></div>
+      </div>
+    </div>
+
+    <div data-hide="inv-nosnap inv-reading">
+    <div class="card kpis">
+      <div><h2>Fully diluted</h2><div class="n">10,000,000</div><div class="sub">shares · 409A $0.42 · Jun 2026</div></div>
+      <div><h2>Equity raised</h2><div class="n">$1.0M</div></div>
+    </div>
+
+    <div class="card">
+      <div class="cardhead"><h2>Cap table</h2><div class="r"><span class="sub" data-show="inv-native inv-native-menu inv-changed">Saved</span><span class="warnl" data-show="inv-notsaved">Not saved</span><button class="btn s" data-show="inv-notsaved">Retry</button></div></div>
+      <div class="bar" aria-hidden="true"><i class="c0" style="width:61%"></i><i class="c1" style="width:20%"></i><i class="c2" style="width:11%"></i><i class="c3" style="width:8%"></i></div>
+      <div class="legend"><span><i class="c0"></i>Founders 61.0%</span><span><i class="c1"></i>Seed preferred 20.0%</span><span><i class="c2"></i>Options granted 11.0%</span><span><i class="c3"></i>Pool available 8.0%</span></div>
+
+      <table style="margin-top:8px" data-hide="nat">
+        <thead><tr><th>Holder</th><th class="hm">Security</th><th class="r hm">Shares</th><th class="r hm">Invested</th><th class="r">Fully diluted</th><th class="mn"></th></tr></thead>
+        <tbody>
+          <tr><td class="v">Maya Chen<div class="sub m-only">Common · 3,300,000</div></td><td class="hm">Common</td><td class="num hm">3,300,000</td><td class="num hm">—</td><td class="num">33.0%</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+          <tr><td class="v">Jonah Park<div class="sub m-only">Common · 2,800,000</div></td><td class="hm">Common</td><td class="num hm">2,800,000</td><td class="num hm">—</td><td class="num">28.0%</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+          <tr><td class="v">Northwind Ventures Fund II <span class="tag">investor</span><div class="sub m-only">Seed Preferred · 1,400,000 · $700,000</div></td><td class="hm">Seed Preferred</td><td class="num hm">1,400,000</td><td class="num hm">$700,000</td><td class="num">14.0%</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+          <tr><td class="v">Harbor Angels <span class="tag">investor</span><div class="sub m-only">Seed Preferred · 600,000 · $300,000</div></td><td class="hm">Seed Preferred</td><td class="num hm">600,000</td><td class="num hm">$300,000</td><td class="num">6.0%</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+          <tr><td class="v">Options granted<div class="sub m-only">Option · 1,100,000</div></td><td class="hm">Option</td><td class="num hm">1,100,000</td><td class="num hm">—</td><td class="num">11.0%</td><td class="mn"></td></tr>
+          <tr><td class="v mute">Unallocated pool<div class="sub m-only">Pool · 800,000</div></td><td class="hm">Pool</td><td class="num hm">800,000</td><td class="num hm">—</td><td class="num">8.0%</td><td class="mn"></td></tr>
+          <tr class="grp"><td><a class="glnk" href="#fundraising" data-go="fundraising">SAFEs, if converted at cap ›</a></td><td class="hm"></td><td class="hm"></td><td class="hm"></td><td class="num">5.0%</td><td class="mn"></td></tr>
+          <tr><td class="v">Lakeside Capital<div class="sub m-only">Post-money SAFE · $250,000</div></td><td class="hm">Post-money SAFE</td><td class="num hm">—</td><td class="num hm">$250,000</td><td class="num">2.5%</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+          <tr><td class="v">Priya Raman<div class="sub m-only">Post-money SAFE · $200,000</div></td><td class="hm">Post-money SAFE</td><td class="num hm">—</td><td class="num hm">$200,000</td><td class="num">2.0%</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+          <tr><td class="v">Harbor Angels<div class="sub m-only">Post-money SAFE · $50,000</div></td><td class="hm">Post-money SAFE</td><td class="num hm">—</td><td class="num hm">$50,000</td><td class="num">0.5%</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+        </tbody>
+      </table>
+
+      <div style="margin-top:8px" data-show="nat">
+        <div class="erow h"><span>Holder</span><span>Security</span><span>Shares</span><span>Invested</span><span class="pc">Fully diluted</span><span></span></div>
+        <div class="erow"><div class="cl nm"><textarea class="in sm hold" rows="1" aria-label="Holder">Maya Chen</textarea></div><div class="cl c-sec"><span class="lb m-only">Security</span><select class="in sm" aria-label="Security"><option selected>Common</option><option>Preferred</option><option>Option</option><option>Other</option></select></div><div class="cl c-sh"><span class="lb m-only">Shares</span><input class="in sm r" value="3,300,000" aria-label="Shares"></div><div class="cl c-inv"><span class="lb m-only">Invested</span><input class="in sm r" placeholder="—" aria-label="Invested"></div><span class="pc">33.0%</span><button class="ib" aria-label="Row actions">…</button></div>
+        <div class="erow"><div class="cl nm"><textarea class="in sm hold" rows="1" aria-label="Holder">Jonah Park</textarea></div><div class="cl c-sec"><span class="lb m-only">Security</span><select class="in sm" aria-label="Security"><option selected>Common</option><option>Preferred</option><option>Option</option><option>Other</option></select></div><div class="cl c-sh"><span class="lb m-only">Shares</span><input class="in sm r" value="2,800,000" aria-label="Shares"></div><div class="cl c-inv"><span class="lb m-only">Invested</span><input class="in sm r" placeholder="—" aria-label="Invested"></div><span class="pc">28.0%</span><button class="ib" aria-label="Row actions">…</button></div>
+        <div class="erow"><div class="cl nm"><textarea class="in sm hold" rows="1" aria-label="Holder">Northwind Ventures Fund II</textarea></div><div class="cl c-sec"><span class="lb m-only">Security</span><select class="in sm" aria-label="Security"><option>Common</option><option>Preferred</option><option selected>Seed Preferred</option><option>Option</option><option>Other</option></select></div><div class="cl c-sh"><span class="lb m-only">Shares</span><input class="in sm r" value="1,400,000" aria-label="Shares"></div><div class="cl c-inv"><span class="lb m-only">Invested</span><input class="in sm r" value="$700,000" aria-label="Invested"></div><span class="pc">14.0%</span><button class="ib" aria-label="Row actions">…</button></div>
+        <div class="erow"><div class="cl nm"><textarea class="in sm hold" rows="1" aria-label="Holder">Harbor Angels</textarea><span class="warnl" data-show="inv-changed">Changed elsewhere</span></div><div class="cl c-sec"><span class="lb m-only">Security</span><select class="in sm" aria-label="Security"><option>Common</option><option>Preferred</option><option selected>Seed Preferred</option><option>Option</option><option>Other</option></select></div><div class="cl c-sh"><span class="lb m-only">Shares</span><input class="in sm r" value="600,000" aria-label="Shares"></div><div class="cl c-inv"><span class="lb m-only">Invested</span><input class="in sm r" value="$300,000" aria-label="Invested"></div><span class="pc">6.0%</span><button class="ib" aria-label="Row actions">…</button></div>
+        <div class="erow"><div class="cl nm"><textarea class="in sm hold" rows="1" aria-label="Holder">Options granted</textarea></div><div class="cl c-sec"><span class="lb m-only">Security</span><select class="in sm" aria-label="Security"><option>Common</option><option>Preferred</option><option selected>Option</option><option>Other</option></select></div><div class="cl c-sh"><span class="lb m-only">Shares</span><input class="in sm r" value="1,100,000" aria-label="Shares"></div><div class="cl c-inv"><span class="lb m-only">Invested</span><input class="in sm r" placeholder="—" aria-label="Invested"></div><span class="pc">11.0%</span><button class="ib" aria-label="Row actions">…</button></div>
+        <div class="erow"><div class="cl nm mute">Unallocated pool</div><div class="cl c-sec mute">Pool</div><div class="cl c-sh"><span class="lb m-only">Shares</span><input class="in sm r" value="800,000" aria-label="Pool shares"></div><span class="c-inv"></span><span class="pc">8.0%</span><span></span></div>
+        <div class="erow"><div class="cl nm"><textarea class="in sm hold" rows="1" placeholder="Add holder" aria-label="Holder"></textarea></div><div class="cl c-sec"><span class="lb m-only">Security</span><select class="in sm" aria-label="Security"><option>Common</option><option>Preferred</option><option>Option</option><option>Other</option></select></div><div class="cl c-sh"><span class="lb m-only">Shares</span><input class="in sm r" placeholder="Shares" aria-label="Shares"></div><div class="cl c-inv"><span class="lb m-only">Invested</span><input class="in sm r" placeholder="Invested" aria-label="Invested"></div><span class="pc mute">—</span><span></span></div>
+        <div class="erow gp"><a class="glnk" href="#fundraising" data-go="fundraising">SAFEs, if converted at cap ›</a><span class="pc">5.0%</span></div>
+        <div class="erow se"><div class="cl nm">Lakeside Capital</div><div class="cl c-sec mute">Post-money SAFE</div><div class="cl c-sh num mute">—</div><div class="cl c-inv num">$250,000</div><span class="pc">2.5%</span><button class="ib" aria-label="Row actions">…</button></div><div class="erow se"><div class="cl nm">Priya Raman</div><div class="cl c-sec mute">Post-money SAFE</div><div class="cl c-sh num mute">—</div><div class="cl c-inv num">$200,000</div><span class="pc">2.0%</span><button class="ib" aria-label="Row actions">…</button></div><div class="erow se"><div class="cl nm">Harbor Angels</div><div class="cl c-sec mute">Post-money SAFE</div><div class="cl c-sh num mute">—</div><div class="cl c-inv num">$50,000</div><span class="pc">0.5%</span><button class="ib" aria-label="Row actions">…</button></div>
+      </div>
+    </div>
+    </div>
+    <div class="empty-box" data-show="inv-reading"><p style="margin:0">Reading Cap table 2026…</p></div>
+    <div class="empty-box" data-show="inv-nosnap"><p style="margin:0">The sheet could not be read.</p><div class="opts"><button class="btn">Try again</button><button class="btn">Type it in</button></div></div>
+
+    <div class="cols">
+      <div class="card">
+        <div class="cardhead"><h2>Updates</h2><div class="r"><button class="btn s">New update</button><span class="rel"><button class="ib" aria-label="Updates menu">…</button><span class="pop rt" role="menu" data-show="inv-reminder"><span class="sub">Reminder</span><button role="menuitem">Monthly ✓</button><button role="menuitem">Quarterly</button><button role="menuitem">Off</button></span></span></div></div>
+        <div class="item" data-show="inv-sent"><div class="tx"><div class="t">October update</div><div class="d">Investors · <span class="nw">Oct 20</span></div></div><div class="act"><span class="tag ok">Sent</span><button class="btn s">Open</button><span class="rel"><button class="ib" aria-label="Row actions">…</button></span></div></div>
+        <div class="item" data-show="inv-posted"><div class="tx"><div class="t">October update</div><div class="d">Investors · <span class="nw">Oct 20</span></div></div><div class="act"><span class="tag">Posted</span><button class="btn s">Open</button><span class="rel"><button class="ib" aria-label="Row actions">…</button></span></div></div>
+        <div class="item" data-show="inv-sending"><div class="tx"><div class="t">October update</div><div class="d">Investors · <span class="nw">Oct 20</span></div></div><div class="act"><span class="tag">Sending</span><button class="btn s">Open</button><button class="ib" aria-label="Row actions" disabled>…</button></div></div>
+        <div class="item" data-show="inv-partly"><div class="tx"><div class="t">October update</div><div class="d"><span class="warnl nw">Tom Okafor: delivery unknown</span><span class="sepd"> · </span><span class="blk">Investors · <span class="nw">Oct 20</span></span></div></div><div class="act"><span class="tag warn">Partly sent</span><button class="btn s">Retry</button><span class="rel"><button class="ib" aria-label="Row actions">…</button><span class="pop rt" role="menu"><button role="menuitem">Mark delivered</button><button role="menuitem">Duplicate</button><button role="menuitem">Delete</button></span></span></div></div>
+        <div class="item" data-hide="inv-sent inv-partly inv-posted inv-sending"><div class="tx"><div class="t">October update</div><div class="d">Investors · Drafted <span class="nw">Oct 1</span></div></div><div class="act"><span class="tag">Draft</span><button class="btn s">Open</button><span class="rel"><button class="ib" aria-label="Row actions">…</button></span></div></div>
+        <div class="item"><div class="tx"><div class="t">September update</div><div class="d">Investors · <span class="nw">Oct 2</span></div></div><div class="act"><span class="tag ok">Sent</span><button class="btn s">Open</button><span class="rel"><button class="ib" aria-label="Row actions">…</button><span class="pop rt" role="menu" data-show="inv-updmenu"><button role="menuitem">Duplicate</button><button role="menuitem">Delete</button></span></span></div></div>
+        <div class="item"><div class="tx"><div class="t">Q3 update</div><div class="d">Board · <span class="nw">Oct 6</span></div></div><div class="act"><span class="tag ok">Sent</span><button class="btn s">Open</button><span class="rel"><button class="ib" aria-label="Row actions">…</button></span></div></div>
+        <div class="item"><div class="tx"><div class="t">August update</div><div class="d">Investors · <span class="nw">Sep 3</span></div></div><div class="act"><span class="tag ok">Sent</span><button class="btn s">Open</button><span class="rel"><button class="ib" aria-label="Row actions">…</button></span></div></div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Contacts</h2></div>
+        <div class="tabs"><button class="chip on">Investors 6</button><button class="chip">Board 3</button><button class="chip">Auditors 1</button></div>
+        <table>
+          <thead><tr><th>Name</th><th class="hm">Organization</th><th>Portal</th><th class="mn"></th></tr></thead>
+          <tbody>
+            <tr><td class="v">Elena Ruiz<div class="sub m-only">Northwind Ventures</div></td><td class="hm">Northwind Ventures</td><td class="mute">Opened Oct 4</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+            <tr><td class="v">Tom Okafor<div class="sub m-only">Harbor Angels</div></td><td class="hm">Harbor Angels</td><td class="mute">Opened Oct 3</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+            <tr><td class="v">Sam Lind<div class="sub m-only">Lakeside Capital</div></td><td class="hm">Lakeside Capital</td><td class="mute"><span data-hide="inv-sent inv-partly inv-posted">Invited Oct 2</span><span data-show="inv-sent inv-partly inv-posted">Invited Oct 20</span></td><td class="mn"><span class="rel"><button class="ib" aria-label="Row actions">…</button><span class="pop rt" role="menu" data-show="inv-contactmenu"><button role="menuitem">Resend link</button><button role="menuitem">Copy link</button><button role="menuitem">Revoke</button><hr><button role="menuitem">Edit</button><button role="menuitem">Delete</button></span></span></td></tr>
+            <tr><td class="v">Priya Raman</td><td class="hm">—</td><td class="mute"><span data-hide="inv-sent inv-partly inv-posted">Invited Oct 2</span><span data-show="inv-sent inv-partly inv-posted">Invited Oct 20</span></td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+            <tr><td class="v">Marcus Webb</td><td class="hm">—</td><td class="mute">—</td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+            <tr><td class="v">Nate Cho</td><td class="hm">—</td><td class="mute">Revoked</td><td class="mn"><span class="rel"><button class="ib" aria-label="Row actions">…</button><span class="pop rt up" role="menu" data-show="inv-unblock"><button role="menuitem">Unblock</button><hr><button role="menuitem">Edit</button><button role="menuitem">Delete</button></span></span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="cardhead"><h2>Documents</h2></div>
+      <table>
+        <thead><tr><th>Name</th><th class="hm">Type</th><th class="hm">Added</th></tr></thead>
+        <tbody>
+          <tr><td class="v">409A valuation report</td><td class="hm">Valuation</td><td class="hm">Jun 2026</td></tr>
+          <tr><td class="v">Seed SPA, signed</td><td class="hm">Contract</td><td class="hm">Feb 2026</td></tr>
+          <tr><td class="v">Audit request, Northwind Fund II</td><td class="hm">Request</td><td class="hm">Oct 14</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="toast" role="status" data-show="inv-sent">Sent to 4</div>
+    <div class="toast" role="status" data-show="inv-posted">Posted · 4 notified</div>
+
+    <div class="scrim" data-show="inv-copylink"><div class="dlg" role="dialog" aria-label="Portal link"><h2>Link · Sam Lind</h2>
+      <div class="f"><label for="cl">Link</label><input id="cl" class="in" readonly value="https://app.example/portal/open#r4Xk9e2Q"><span class="sub">Shown once.</span></div>
+      <div class="btns end"><button class="btn">Close</button><button class="btn p">Copy link</button></div></div></div>
+
+    <div class="scrim" data-show="inv-addcontact"><div class="dlg" role="dialog" aria-label="Add contact"><h2>Add contact</h2>
+      <div class="f"><label for="an">Name</label><input id="an" class="in" placeholder="Name"></div>
+      <div class="f"><label for="ae">Email</label><input id="ae" class="in" placeholder="Optional"></div>
+      <div class="f2"><div class="f"><label for="ao">Organization</label><input id="ao" class="in" placeholder="Optional"></div>
+      <div class="f"><label for="ak">Kind</label><select id="ak" class="in"><option selected>Investor</option><option>Board</option><option>Auditor</option><option>Other</option></select></div></div>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Add contact</button></div></div></div>
+
+    <div class="scrim" data-show="inv-share"><div class="dlg" role="dialog" aria-label="Share document"><h2>Share with investors · Seed SPA, signed</h2>
+      <div class="rc"><span>Elena Ruiz</span><span class="st"><button class="btn s">Unshare</button></span></div>
+      <div class="rc"><span>Tom Okafor</span><span class="st"><button class="btn s">Unshare</button></span></div>
+      <label class="rc"><input type="checkbox"><span>Sam Lind</span></label>
+      <label class="rc"><input type="checkbox"><span>Priya Raman</span></label>
+      <label class="chk"><input type="checkbox" checked>Email them a link</label>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Share</button></div></div></div>
+  </section>
+
+  <!-- ===================== INVESTORS EMPTY ===================== -->
+  <section data-show="empty">
+    <div class="head">
+      <button class="ib navbtn" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
+      <h1>Investors</h1><span class="sp"></span>
+      <button class="btn ask" aria-label="Ask"><svg><use href="#i-chat"/></svg><span class="lbl">Ask</span></button>
+    </div>
+    <div class="empty-box"><div class="opts"><button class="btn">Connect Carta</button><button class="btn">Use a Google Sheet</button><button class="btn">Type it in</button></div></div>
+  </section>
+
+  <!-- ===================== UPDATE EDITOR (a page inside the shell) ===================== -->
+  <section data-show="p-ed">
+    <div class="head">
+      <button class="ib navbtn" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
+      <button class="btn bk" aria-label="Investors">←<span class="hm">&nbsp;Investors</span></button>
+      <h1><span data-hide="ed-boardnog">October</span><span data-show="ed-boardnog">Q4 board</span> update</h1>
+      <span class="tag" data-hide="ed-sending ed-failed ed-unknown">Draft</span><span class="tag" data-show="ed-sending">Sending</span><span class="tag warn" data-show="ed-failed ed-unknown">Partly sent</span>
+    </div>
+    <div class="ed-max">
+      <div class="f"><label for="subj">Subject</label><input id="subj" class="in" value="Example Robotics · October update" data-hide="ed-boardnog"><input class="in" value="Example Robotics · Q4 update" aria-label="Subject" data-show="ed-boardnog"></div>
+      <div class="f" data-hide="ed-nogmail ed-boardnog"><span class="fl">To</span>
+        <div>
+          <label class="rc"><input type="checkbox" checked aria-label="Elena Ruiz"><span>Elena Ruiz <span class="sub">elena@northwind.example</span></span><span class="st tag ok" data-show="ed-sending ed-failed ed-unknown">Sent</span></label>
+          <label class="rc"><input type="checkbox" checked aria-label="Tom Okafor"><span>Tom Okafor <span class="sub">tom@harbor.example</span></span><span class="st tag ok" data-show="ed-sending">Sent</span><span class="st" data-show="ed-failed"><span class="tag warn">Failed</span> <button class="btn s">Retry</button></span><span class="st" data-show="ed-unknown"><span class="tag warn">Unknown — check Sent mail</span> <button class="btn s">Retry</button></span></label>
+          <label class="rc"><input type="checkbox" checked data-uncheck="ed-unticked" aria-label="Sam Lind"><span>Sam Lind <span class="sub">sam@lakeside.example</span></span><span class="st tag" data-show="ed-sending">Sending</span><span class="st tag ok" data-show="ed-failed ed-unknown">Sent</span></label>
+          <label class="rc"><input type="checkbox" checked aria-label="Priya Raman"><span>Priya Raman <span class="sub">priya@raman.example</span></span><span class="st tag" data-show="ed-sending">Sending</span><span class="st tag ok" data-show="ed-failed ed-unknown">Sent</span></label>
+          <label class="rc off"><input type="checkbox" disabled aria-label="Marcus Webb"><span>Marcus Webb <span class="sub">no email</span></span></label>
+          <label class="rc off"><input type="checkbox" disabled aria-label="Nate Cho"><span>Nate Cho <span class="sub">revoked</span></span></label>
+          <div class="sub hint" data-show="ed-unticked">Unticked investors still see this on the portal.</div>
+        </div>
+      </div>
+      <div class="f"><label for="bd">Body</label>
+<div id="bd" class="in body" contenteditable="true" role="textbox" aria-multiline="true"><div class="bh">TL;DR</div><div>Third pilot converted to paid. Runway 13 months.</div><div class="bh">Numbers</div><div>Cash $1.13M · burn $89k/mo · runway 13 mo · revenue $21.1k last month</div><div>Customers: <mark>TBD</mark></div><div class="bh">Highlights</div><div class="bl">Second gripper batch shipped on time.</div><div class="bl">Controls hire started Oct 6.</div><div class="bh">Lowlights</div><div class="bl">One pilot paused for budget until January.</div><div class="bh">Asks</div><div class="bl">Intros to cold-chain operators.</div></div></div>
+      <div class="edfoot">
+        <span class="sub" data-hide="ed-sending ed-failed ed-tbd ed-unknown">Saved</span>
+        <span data-show="ed-tbd" style="margin-right:auto">1 TBD left. Send anyway?</span>
+        <span class="sub" data-show="ed-failed">3 of 4 sent</span>
+        <button class="ib" data-show="ed-unknown" aria-label="Close"><svg><use href="#i-x"/></svg></button>
+        <span data-show="ed-unknown" style="margin-right:auto">May already be delivered. Send again?</span>
+        <button class="btn" data-show="ed-tbd">Keep editing</button>
+        <button class="btn p" data-show="ed-tbd">Send anyway</button>
+        <button class="btn" data-show="ed-unknown">Mark delivered</button>
+        <button class="btn p" data-show="ed-unknown">Send again</button>
+        <button class="btn p" data-show="editor ed-unticked">Send</button>
+        <button class="btn p" disabled data-show="ed-sending">Sending</button>
+        <button class="btn p" data-show="ed-failed">Done</button>
+        <button class="btn p" data-show="ed-boardnog">Connect Gmail to send</button>
+        <button class="btn" data-show="ed-nogmail">Connect Gmail</button>
+        <button class="btn p" data-show="ed-nogmail">Post to portal</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== FUNDRAISING PAGE ===================== -->
+  <section data-show="p-fund">
+    <div class="head">
+      <button class="ib navbtn" aria-label="Menu"><svg><use href="#i-menu"/></svg></button>
+      <h1>Fundraising</h1>
+      <span class="meta">
+        <span class="rel">
+          <button class="src" data-show="mon" aria-haspopup="menu">Mercury · 5 min ago</button>
+          <button class="src plain" data-show="nomerc">Connect Mercury</button>
+          <button class="src warn" data-show="fund-sync" aria-haspopup="menu">Sync failed</button>
+          <span class="pop" role="menu" data-show="fund-sync"><button role="menuitem">Refresh</button><button role="menuitem">Reconnect</button></span>
+        </span>
+        <button class="ib" aria-label="Hide amounts"><svg><use href="#i-eye"/></svg></button>
+      </span>
+      <span class="sp"></span>
+      <button class="btn hm">Add prospect</button>
+      <button class="ib plus" aria-label="Add prospect"><svg><use href="#i-plus"/></svg></button>
+      <button class="btn ask" aria-label="Ask"><svg><use href="#i-chat"/></svg><span class="lbl">Ask</span></button>
+    </div>
+
+    <div class="card attn">
+      <div class="cardhead"><h2>Attention</h2></div>
+      <div class="item ai"><div class="tx"><div class="t">Harbor Angels · $50,000</div><div class="d">Signed Oct 12 · awaiting deposit · <a href="#" class="lnk b">Find in Finance</a></div></div><div class="act"><button class="btn s">Mark funded</button></div></div>
+    </div>
+
+    <div class="card" data-show="rnd">
+      <div class="cardhead"><div><h2>Bridge SAFE round</h2><div class="sub">Post-money cap $10M</div></div>
+        <div class="r"><span class="rel"><button class="ib" aria-label="Round actions">…</button><span class="pop rt" role="menu" data-show="fund-roundmenu"><button role="menuitem">Edit round</button><button role="menuitem">Close round</button></span></span></div></div>
+      <div class="bar" aria-hidden="true"><i class="c0" style="width:45%"></i><i class="c1" style="width:5%"></i><i class="c3" style="width:15%" data-hide="safe-assign fund-unmenu"></i><i class="c3" style="width:25%" data-show="safe-assign fund-unmenu"></i></div>
+      <div class="legend"><span><i class="c0"></i>Funded $450k</span><span><i class="c1"></i>Signed $50k</span><span data-hide="safe-assign fund-unmenu"><i class="c3"></i>Pending $150k</span><span data-show="safe-assign fund-unmenu"><i class="c3"></i>Pending $250k</span><span class="mute">Target $1M</span></div>
+    </div>
+    <div class="card" data-show="noround">
+      <div class="item" style="border:0"><div class="tx"><div class="t">Round</div></div><div class="act"><button class="btn p">Start a round</button></div></div>
+    </div>
+    <div class="card" data-show="fund-closed">
+      <div class="item" style="border:0"><div class="tx"><div class="t">Bridge SAFE round</div><div class="d">Closed Oct 20 · funded $450k</div></div><div class="act"><button class="btn p">Start a round</button><button class="ib" aria-label="Round actions">…</button></div></div>
+    </div>
+
+    <div class="cols">
+      <div class="card">
+        <div class="cardhead"><h2>Pipeline</h2><div class="r"><span class="sub" data-show="merc">8 prospects</span><span class="sub" data-show="nomerc" data-hide="ravisafe">7 prospects</span><span class="sub" data-show="ravisafe">6 prospects</span></div></div>
+        <div class="stage" data-hide="ravisafe"><h3>Committed <span class="count" data-show="merc">2</span><span class="count" data-hide="merc">1</span></h3>
+          <div class="item pl"><div class="tx"><div class="t">Ravi Mehta</div><div class="d"><span data-hide="ravwait">Wire details</span><span data-show="ravwait">Waiting for Mercury · <span class="nw">Oct 20</span></span></div></div><div class="act"><span class="amt">$50,000</span><span class="slot"><button class="btn s p" data-hide="noround fund-closed ravwait">Send SAFE</button><button class="btn s" data-show="noround fund-closed">Send SAFE</button></span><button class="ib" aria-label="Row actions">…</button></div></div>
+          <div class="item pl" data-show="merc"><div class="tx"><div class="t">Dana Whitfield</div><div class="d">Waiting for Mercury · <span class="nw">Oct 18</span></div></div><div class="act"><span class="amt">$100,000</span><span class="slot"></span><span class="rel"><button class="ib" aria-label="Row actions">…</button>
+              <span class="pop rt" role="menu" data-show="fund-waitmenu"><button role="menuitem">Open Mercury</button><button role="menuitem">Not sent</button><button role="menuitem">Passed</button><hr><button role="menuitem">Edit prospect</button></span></span></div></div>
+        </div>
+        <div class="stage"><h3>Diligence <span class="count">1</span></h3>
+          <div class="item pl"><div class="tx"><div class="t">Clearwater Fund</div><div class="d">Call Thu</div></div><div class="act"><span class="amt">$250,000</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
+        </div>
+        <div class="stage"><h3>Meeting <span class="count">1</span></h3>
+          <div class="item pl"><div class="tx"><div class="t">Oakline Partners</div><div class="d">Meeting Oct 24</div></div><div class="act"><span class="amt">$200,000</span><span class="slot"></span><span class="rel"><button class="ib" aria-label="Row actions">…</button>
+              <span class="pop rt" role="menu" data-show="fund-stage"><span class="sub">Move to</span><button role="menuitem">Target</button><button role="menuitem">Intro</button><button role="menuitem">Diligence</button><button role="menuitem">Committed</button><button role="menuitem">Passed</button><hr><button role="menuitem">Edit prospect</button></span></span></div></div>
+        </div>
+        <div class="stage"><h3>Intro <span class="count">2</span></h3>
+          <div class="item pl"><div class="tx"><div class="t">Summit Seed</div><div class="d">Intro via Elena</div></div><div class="act"><span class="amt none">—</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
+          <div class="item pl"><div class="tx"><div class="t">Mira Santos</div><div class="d">Intro requested</div></div><div class="act"><span class="amt none">—</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
+        </div>
+        <div class="stage"><h3>Target <span class="count">1</span></h3>
+          <div class="item pl"><div class="tx"><div class="t">Fjord Ventures</div><div class="d">No contact yet</div></div><div class="act"><span class="amt none">—</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
+        </div>
+        <div class="stage"><button class="tg" aria-expanded="false" data-hide="fund-stage">Passed 1 ›</button>
+          <button class="tg" aria-expanded="true" data-show="fund-stage">Passed 1 ⌄</button>
+          <div class="item pl" data-show="fund-stage"><div class="tx"><div class="t">Hollis Fund</div><div class="d">—</div></div><div class="act"><span class="amt">$150,000</span><span class="slot"></span><button class="ib" aria-label="Row actions">…</button></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="cardhead"><h2>SAFEs</h2></div>
+        <table>
+          <thead><tr><th>Investor</th><th class="r">Amount</th><th>Status</th><th class="mn"></th></tr></thead>
+          <tbody>
+            <tr><td class="v">Lakeside Capital<div class="sub">Sep 28</div></td><td class="num">$250,000</td><td><span class="tag ok">Funded</span></td><td class="mn"><span class="rel"><button class="ib" aria-label="Row actions">…</button>
+                <span class="pop rt" role="menu" data-show="fund-mercmenu"><button role="menuitem">Open</button><button role="menuitem">Unassign</button></span></span></td></tr>
+            <tr><td class="v">Priya Raman<div class="sub">Sep 22</div></td><td class="num">$200,000</td><td><span class="tag ok">Funded</span></td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+            <tr><td class="v">Harbor Angels<div class="sub">Oct 12</div></td><td class="num">$50,000</td><td><span class="tag warn">Signed</span></td><td class="mn"><span class="rel"><button class="ib" aria-label="Row actions">…</button>
+                <span class="pop rt" role="menu" data-show="fund-safemenu"><button role="menuitem">Open</button><button role="menuitem">Mark funded</button><button role="menuitem">Cancel SAFE</button><hr><button role="menuitem">Delete</button></span></span></td></tr>
+            <tr data-show="safe-assign fund-unmenu"><td class="v">D. Whitfield<div class="sub">Oct 19<span class="sepd"> · </span><button class="lnk b blk">Assign to contact</button></div></td><td class="num">$100,000</td><td><span class="tag">Sent</span></td><td class="mn"><span class="rel"><button class="ib" aria-label="Row actions">…</button>
+                <span class="pop rt" role="menu" data-show="fund-unmenu"><button role="menuitem">Open</button><button role="menuitem">Assign to contact</button></span></span></td></tr>
+            <tr data-show="nomerc"><td class="v">Dana Whitfield<div class="sub">Oct 18</div></td><td class="num mute">$100,000</td><td><span class="tag">Draft</span></td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+            <tr data-show="ravisafe"><td class="v">Ravi Mehta<div class="sub">Oct 20</div></td><td class="num mute">$50,000</td><td><span class="tag">Draft</span></td><td class="mn"><button class="ib" aria-label="Row actions">…</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="scrim" data-show="fund-prospect"><div class="dlg" role="dialog" aria-label="Add prospect"><h2>Add prospect</h2>
+      <div class="f"><label for="pn">Name</label><input id="pn" class="in" placeholder="Name"></div>
+      <div class="f"><label for="pe">Email</label><input id="pe" class="in" placeholder="Used to match the SAFE"></div>
+      <div class="f2"><div class="f"><label for="ps">Stage</label><select id="ps" class="in"><option>Target</option><option>Intro</option><option>Meeting</option><option>Diligence</option><option>Committed</option><option>Passed</option></select></div>
+      <div class="f"><label for="pa">Check size</label><input id="pa" class="in r" placeholder="$"></div></div>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Add prospect</button></div></div></div>
+
+    <div class="scrim" data-show="safe-email"><div class="dlg" role="dialog" aria-label="Send SAFE"><h2>Send SAFE · Ravi Mehta</h2>
+      <div class="f"><label for="se">Investor email</label><input id="se" class="in" placeholder="Used to match the SAFE"></div>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Send SAFE</button></div></div></div>
+
+    <div class="scrim" data-show="safe-assign"><div class="dlg" role="dialog" aria-label="Assign to contact"><h2>Assign to contact · D. Whitfield</h2>
+      <p style="margin:0">$100,000 <span class="sub">· <span class="nw">Oct 19</span></span></p>
+      <div class="f"><label for="ap">Contact</label><select id="ap" class="in"><option>Dana Whitfield · Waiting for Mercury</option><option>Ravi Mehta</option><option>Clearwater Fund</option><option>Oakline Partners</option><option>Summit Seed</option><option>Mira Santos</option><option>Fjord Ventures</option><option>Priya Raman · Investor</option></select></div>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Assign</button></div></div></div>
+
+    <div class="scrim" data-show="fund-close"><div class="dlg" role="alertdialog" aria-label="Close round"><h2>Close this round?</h2>
+      <p style="margin:0">Harbor Angels' $50,000 SAFE is signed and unpaid.</p>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Close round</button></div></div></div>
+
+    <div class="scrim" data-show="fund-start"><div class="dlg" role="dialog" aria-label="Start a round"><h2>Start a round</h2>
+      <div class="f"><label for="rn">Name</label><input id="rn" class="in" placeholder="Round name"></div>
+      <div class="f2"><div class="f"><label for="rt">Target</label><input id="rt" class="in r" value="$2,000,000"></div><div class="f"><label for="rc">Post-money cap</label><input id="rc" class="in r" value="$15,000,000"></div></div>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Start a round</button></div></div></div>
+
+    <div class="scrim" data-show="fund-editround"><div class="dlg" role="dialog" aria-label="Edit round"><h2>Edit round</h2>
+      <div class="f"><label for="en">Name</label><input id="en" class="in" value="Bridge SAFE round"></div>
+      <div class="f2"><div class="f"><label for="et">Target</label><input id="et" class="in r" value="$1,000,000"></div><div class="f"><label for="ec">Post-money cap</label><input id="ec" class="in r" value="$10,000,000"></div></div>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Save</button></div></div></div>
+
+    <div class="scrim" data-show="fund-mark"><div class="dlg" role="dialog" aria-label="Mark funded"><h2>Mark funded · Harbor Angels</h2>
+      <div class="f"><label for="md">Date</label><input id="md" class="in" value="Oct 20"></div>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Mark funded</button></div></div></div>
+
+    <div class="scrim" data-show="safe-dialog safe-terms"><div class="dlg" role="dialog" aria-label="Send SAFE"><h2>Send SAFE · Ravi Mehta</h2>
+      <div class="f2"><div class="f"><label for="sa">Amount</label><input id="sa" class="in r" value="$50,000"></div><div class="f"><label for="sd">Date</label><input id="sd" class="in" value="Oct 20"></div></div>
+      <div class="f" data-hide="safe-terms"><span class="fl">Terms</span><div>Post-money cap $10M · <button class="lnk b" style="font-size:13px">Different terms</button></div></div>
+      <div data-show="safe-terms">
+        <div class="f"><label for="sc">Post-money cap</label><input id="sc" class="in r" value="$10,000,000"></div>
+        <label class="chk"><input type="checkbox"> Pro rata</label>
+        <div class="f" style="margin-top:12px"><label for="sg">Governing state</label><input id="sg" class="in" value="Delaware"></div>
+      </div>
+      <div class="btns end"><button class="btn">Cancel</button><button class="btn p">Send SAFE</button></div></div></div>
+
+    <div class="scrim" data-show="safe-cover"><div class="dlg" role="dialog" aria-label="SAFE summary"><h2>SAFE · Ravi Mehta</h2>
+      <dl class="kv"><dt>Amount</dt><dd>$50,000</dd><dt>Date</dt><dd>Oct 20</dd><dt>Post-money cap</dt><dd>$10,000,000</dd><dt>Pro rata</dt><dd>No</dd><dt>Governing state</dt><dd>Delaware</dd></dl>
+      <div class="btns end" style="flex-wrap:wrap"><a href="#" class="glnk mute" style="margin-right:auto">YC documents ›</a><button class="btn">Print</button><button class="btn p">Mark sent</button></div></div></div>
+  </section>
+
+  <!-- ===================== PORTAL ===================== -->
+  <section data-show="portal">
+    <div class="portal">
+      <div class="co"><span class="av">E</span>Example Robotics</div>
+      <div class="card">
+        <div class="cardhead"><h2>September update</h2><div class="r"><span class="sub">Oct 2</span></div></div>
+        <div class="upd-body"><b>TL;DR</b>Shipped the v2 gripper; two pilots converted to paid. Runway 14 months.
+<b>Numbers</b>Cash $1.21M · burn $86k/mo · runway 14 mo · MRR $18.4k (+22%)
+<b>Highlights</b>Pilot with a mid-size logistics customer went live. Hired a controls engineer.
+<b>Lowlights</b>Supplier delay pushed the next batch three weeks.
+<b>Asks</b>Intros to warehouse operators in the Midwest.</div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Earlier updates</h2></div>
+        <details class="old"><summary>August update<span>Sep 3</span></summary><div class="upd-body" style="padding-bottom:10px"><b>TL;DR</b>First pilot live. Runway 15 months.</div></details>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Documents</h2></div>
+        <div class="item" style="border:0"><div class="tx"><div class="t">Seed SPA, signed</div><div class="d">PDF · Feb 2026</div></div><div class="act"><button class="btn s dl">Download</button></div></div>
+      </div>
+      <div class="foot">elena@northwind.example <button>Sign out</button></div>
+    </div>
+  </section>
+
+  <section data-show="portal-empty">
+    <div class="portal">
+      <div class="co"><span class="av">E</span>Example Robotics</div>
+      <div class="card"><p style="margin:0">Nothing shared yet.</p></div>
+      <div class="foot">elena@northwind.example <button>Sign out</button></div>
+    </div>
+  </section>
+
+  <section data-show="portal-email">
+    <div class="portal">
+      <div class="email">
+        <div class="hd"><span>From</span><b>Maya Chen</b><span>To</span><span>Elena Ruiz</span><span>Subject</span><b>Example Robotics · September update</b></div>
+        <div class="upd-body"><b style="margin-top:0">TL;DR</b>Shipped the v2 gripper; two pilots converted to paid. Runway 14 months.
+<b>Numbers</b>Cash $1.21M · burn $86k/mo · runway 14 mo · MRR $18.4k (+22%)
+<b>Highlights</b>Pilot with a mid-size logistics customer went live. Hired a controls engineer.
+<b>Lowlights</b>Supplier delay pushed the next batch three weeks.
+<b>Asks</b>Intros to warehouse operators in the Midwest.</div>
+        <p style="margin:14px 0 0"><a class="pe" href="#">View online and past updates</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section data-show="portal-open">
+    <div class="portal landing">
+      <button class="btn p big" style="padding:8px 22px">Open</button>
+    </div>
+  </section>
+
+  <section data-show="link-dead">
+    <div class="portal landing left">
+      <p>This link no longer works.</p>
+    </div>
+  </section>
+
+  </main>
+</div>
+
+<script>
+// Mock-only view switching. Elements carry data-show / data-hide with view ids or group tokens.
+const VIEWS=[
+ ["Investors","investors","Investors","inv"],["Source menu","inv-menu","Investors","inv"],["Source menu: typed in, after a switch","inv-native-menu","Investors","inv"],["Sheet: reading","inv-reading","Investors","inv"],["Sheet: last read failed","inv-failed","Investors","inv"],["Sheet: first read failed","inv-nosnap","Investors","inv"],
+ ["Typed in","inv-native","Investors","inv"],["Typed in: not saved","inv-notsaved","Investors","inv"],["Typed in: changed elsewhere","inv-changed","Investors","inv"],["Audit row menu and New","inv-audit","Investors","inv"],["Audit: show done","inv-auditdone","Investors","inv"],
+ ["Reminder menu","inv-reminder","Investors","inv"],["Contact row menu","inv-contactmenu","Investors","inv"],["Contact row menu: revoked","inv-unblock","Investors","inv"],["Share a document","inv-share","Investors","inv"],["Updates row menu","inv-updmenu","Investors","inv"],["Copy a portal link","inv-copylink","Investors","inv"],["Add contact","inv-addcontact","Investors","inv"],["Update sending","inv-sending","Investors","inv"],["Update sent","inv-sent","Investors","inv"],["Update posted","inv-posted","Investors","inv"],["Update partly sent","inv-partly","Investors","inv"],["Empty","empty","Investors","inv"],
+ ["Editor","editor","Update editor","inv"],["Editor: TBD prompt","ed-tbd","Update editor","inv"],["Editor: sending","ed-sending","Update editor","inv"],["Editor: failed recipient","ed-failed","Update editor","inv"],["Editor: no Gmail","ed-nogmail","Update editor","inv"],["Editor: someone unticked","ed-unticked","Update editor","inv"],["Editor: unknown outcome","ed-unknown","Update editor","inv"],["Editor: board, no Gmail","ed-boardnog","Update editor","inv"],
+ ["Fundraising","fundraising","Fundraising","fund"],["Round menu","fund-roundmenu","Fundraising","fund"],["Edit round","fund-editround","Fundraising","fund"],["Stage menu and Passed","fund-stage","Fundraising","fund"],["Add prospect","fund-prospect","Fundraising","fund"],["SAFE row menu","fund-safemenu","Fundraising","fund"],["Mark funded","fund-mark","Fundraising","fund"],["Assign to contact","safe-assign","Fundraising","fund"],["SAFE row menu: unassigned Mercury row","fund-unmenu","Fundraising","fund"],["SAFE row menu: attached Mercury row","fund-mercmenu","Fundraising","fund"],["Send SAFE: investor email","safe-email","Fundraising","fund"],["Waiting for Mercury: row menu","fund-waitmenu","Fundraising","fund"],["Close round","fund-close","Fundraising","fund"],
+ ["Send SAFE (no Mercury)","safe-dialog","Fundraising","fund"],["Send SAFE: different terms","safe-terms","Fundraising","fund"],["Send SAFE: waiting for Mercury","safe-mercury","Fundraising","fund"],["SAFE cover summary","safe-cover","Fundraising","fund"],
+ ["No Mercury","fund-nomercury","Fundraising","fund"],["Mercury sync failed","fund-sync","Fundraising","fund"],
+ ["No round","fund-noround","Fundraising","fund"],["Start a round","fund-start","Fundraising","fund"],["Closed round","fund-closed","Fundraising","fund"],
+ ["Portal home","portal","Portal","portal"],["Portal: nothing shared","portal-empty","Portal","portal"],["Update email","portal-email","Portal","portal"],["Link landing","portal-open","Portal","portal"],["Dead link or /portal","link-dead","Portal","portal"]
+];
+const FUND=VIEWS.filter(v=>v[3]==="fund").map(v=>v[1]);
+const GROUPS={
+ "p-inv":VIEWS.filter(v=>v[3]==="inv"&&v[2]==="Investors"&&v[1]!=="empty").map(v=>v[1]),
+ "p-ed":["editor","ed-tbd","ed-sending","ed-failed","ed-nogmail","ed-unticked","ed-unknown","ed-boardnog"],
+ "p-fund":FUND,
+ "nat":["inv-native","inv-notsaved","inv-native-menu","inv-changed"],
+ "srccarta":["investors","inv-menu","inv-audit","inv-auditdone","inv-reminder","inv-contactmenu","inv-unblock","inv-share","inv-updmenu","inv-copylink","inv-addcontact","inv-sending","inv-sent","inv-posted","inv-partly"],
+ "mon":FUND.filter(v=>!["fund-nomercury","safe-dialog","safe-terms","safe-cover","fund-noround","fund-start","fund-sync"].includes(v)),
+ "nomerc":["fund-nomercury","safe-dialog","safe-terms","safe-cover","fund-noround","fund-start"],
+ "rnd":FUND.filter(v=>!["fund-noround","fund-start","fund-closed"].includes(v)),
+ "noround":["fund-noround","fund-start"],
+ "ravisafe":["safe-cover"],
+ "ravwait":["safe-mercury"],
+ "merc":[]
+};
+GROUPS.inv=[];
+GROUPS.merc=[...GROUPS.mon,"fund-sync"];
+const sel=document.getElementById("vsel");
+for(const [label,id,grp] of VIEWS){
+  const o=document.createElement("option");o.value=id;o.textContent=grp+" · "+label;sel.appendChild(o);
+  const r=document.createElement("input");r.type="radio";r.name="v";r.id="v-"+id;r.hidden=true;r.addEventListener("change",()=>apply(id));document.body.appendChild(r);
+}
+function apply(id){
+  const v=VIEWS.find(x=>x[1]===id)||VIEWS[0];
+  const tokens=new Set([v[1]]);
+  for(const g in GROUPS) if(GROUPS[g].includes(v[1])) tokens.add(g);
+  document.body.dataset.page=v[3];
+  sel.value=v[1];
+  document.getElementById("v-"+v[1]).checked=true;
+  document.querySelectorAll("[data-uncheck]").forEach(e=>{e.checked=!e.dataset.uncheck.split(" ").some(t=>tokens.has(t))});
+  document.querySelectorAll("[data-show]").forEach(e=>{e.hidden=!e.dataset.show.split(" ").some(t=>tokens.has(t))});
+  document.querySelectorAll("[data-hide]").forEach(e=>{const hit=e.dataset.hide.split(" ").some(t=>tokens.has(t));if(hit)e.hidden=true;else if(!e.hasAttribute("data-show"))e.hidden=false});
+  if(location.hash.slice(1)!==v[1])history.replaceState(null,"","#"+v[1]);
+}
+sel.addEventListener("change",()=>apply(sel.value));
+document.querySelectorAll("[data-go]").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();apply(a.dataset.go)}));
+addEventListener("hashchange",()=>apply(location.hash.slice(1)));
+apply(location.hash.slice(1)||"investors");
+</script>
+</body>
+</html>
