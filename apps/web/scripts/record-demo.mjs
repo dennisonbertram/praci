@@ -37,11 +37,14 @@ page.on("response", async (response) => {
       const key = url.pathname.slice("/rpc".length);
       if (type.includes("text/event-stream")) return void streams.add(key);
       const input = response.request().postData() ?? "";
-      // The first answer per input is the app's state when the demo opens; later ones reflect the walk.
+      // Keep the fullest answer per input: an early one can be a loading-state empty list.
       rpc[key] ??= [];
       const list = rpc[key];
-      if (!list.some((entry) => entry.input === input))
-        list.push({ input, status: response.status(), body: await response.text() });
+      const body = await response.text();
+      const known = list.find((entry) => entry.input === input);
+      if (!known) list.push({ input, status: response.status(), body });
+      else if (body.length > known.body.length)
+        Object.assign(known, { status: response.status(), body });
     } else if (url.pathname === "/api/auth/get-session") meta.session ??= await response.json();
     else if (url.pathname === "/api/auth/capabilities") meta.capabilities ??= await response.json();
   } catch {
@@ -71,6 +74,8 @@ await page.waitForURL(/\/app/);
 recording = true;
 await page.goto(`${ORIGIN}/app/finance`);
 await settle(3000);
+// A first visit opens a product tour over the sidebar.
+await safe("tour", () => page.getByRole("button", { name: "Skip tour" }).click({ timeout: 3000 }));
 
 /** Presses every harmless control in the main area, one at a time, returning to `home` between presses. */
 async function pressControls(home, limit = 14) {
@@ -90,7 +95,7 @@ async function pressControls(home, limit = 14) {
   });
   let pressed = 0;
   for (const [i, label] of labels.entries()) {
-    if (!label || label.length > 70 || SKIP.test(label) || pressed >= limit) continue;
+    if (!label || label.length > 160 || SKIP.test(label) || pressed >= limit) continue;
     pressed++;
     await safe(label, async () => {
       await page.locator(`[data-demo-idx="${i}"]`).click({ timeout: 1500 });
@@ -150,25 +155,138 @@ for (const id of [
     await sidebar(id);
     await settle(2000);
     await snap(id);
-    await pressControls(homeOf(id));
+    if (id === "sidebar-inbox") {
+      // Mail is sorted into piles a little after it syncs; give it time so each pile has its mail.
+      await settle(20000);
+      for (const name of [
+        "Updates",
+        "Newsletters",
+        "Founder mail",
+        "Sales mail",
+        "Important",
+        "All",
+      ]) {
+        await safe(name, async () => {
+          await tap(name);
+          await settle(1200);
+        });
+      }
+    }
+    await pressControls(homeOf(id), 20);
   });
 }
 
-// Every agent chat and group.
-const bots = JSON.parse(rpc["/bots/list"][0].body).json.filter((bot) => !bot.archivedAt);
-for (const bot of bots) {
-  await safe(bot.name, async () => {
-    await page.getByTestId("bots-sidebar").getByText(bot.name, { exact: true }).first().click();
-    await settle(2000);
-    await snap(`bot-${bot.name}`);
-    await pressControls(async () => {
-      await page.getByTestId("bots-sidebar").getByText(bot.name, { exact: true }).first().click();
-      await settle(900);
-    }, 8);
+// Integrations, Activity and search.
+await safe("integrations", async () => {
+  await page.goto(`${ORIGIN}/app/integrations`);
+  await settle(2200);
+  await snap("integrations");
+  await pressControls(async () => {
+    await page.goto(`${ORIGIN}/app/integrations`);
+    await settle(1200);
+  }, 10);
+});
+await safe("activity", async () => {
+  await page.goto(`${ORIGIN}/app/finance`);
+  await settle(1500);
+  await page.getByRole("button", { name: "Activity" }).first().click();
+  await settle(1500);
+  await snap("activity");
+  await page
+    .getByText(/finished runs?/)
+    .first()
+    .click({ timeout: 2000 });
+  await settle(1200);
+  await snap("activity-finished");
+});
+await safe("search", async () => {
+  await page.goto(`${ORIGIN}/app/finance`);
+  await settle(1500);
+  for (const query of ["Halcyon", "runway", "invoice"]) {
+    await page.getByTestId("sidebar-search").click();
+    await page.keyboard.type(query);
+    await settle(1800);
+    await snap(`search-${query}`);
+    await page.keyboard.press("Escape");
+    await page
+      .getByTestId("sidebar-search")
+      .fill("")
+      .catch(() => undefined);
+  }
+});
+
+// Every agent chat and group, opened by address so each loads from a cold start.
+const nav = JSON.parse(
+  rpc["/bootstrap"].reduce((a, b) => (b.body.length > a.body.length ? b : a)).body,
+).json;
+const chats = [
+  ...nav.bots
+    .filter((bot) => !bot.archivedAt)
+    .map((bot) => ({ name: bot.name, path: `/app/${bot.id}` })),
+  ...nav.groups.map((group) => ({ name: group.name, path: `/app/g/${group.id}` })),
+];
+for (const chat of chats) {
+  // As a visitor would: from another page, click the chat in the sidebar (which loads its thread).
+  const open = async () => {
+    await page.getByTestId("sidebar-finance").click();
+    await settle(700);
+    await page.getByTestId("bots-sidebar").getByText(chat.name, { exact: true }).first().click();
+    await settle(2200);
+  };
+  await safe(chat.name, async () => {
+    await open();
+    await snap(`chat-${chat.name}`);
+    await pressControls(open, 12);
+  });
+}
+
+// A chat opened while the page was busy may not have loaded its thread; open it again until it has.
+const loaded = () =>
+  new Set(
+    (rpc["/threads/get"] ?? []).map((entry) => {
+      const input = JSON.parse(entry.input).json;
+      return input.botId ?? input.groupId;
+    }),
+  );
+for (let attempt = 0; attempt < 3; attempt++) {
+  const have = loaded();
+  const missing = chats.filter((chat) => !have.has(chat.path.split("/").at(-1)));
+  if (!missing.length) break;
+  for (const chat of missing) {
+    await safe(chat.name, async () => {
+      await page.getByTestId("sidebar-finance").click();
+      await settle(1500);
+      await page.getByTestId("bots-sidebar").getByText(chat.name, { exact: true }).first().click();
+      await settle(4000);
+    });
+  }
+}
+if (chats.some((chat) => !loaded().has(chat.path.split("/").at(-1))))
+  console.warn("some chats never loaded a thread");
+
+// Every artifact.
+const artifacts = JSON.parse(rpc["/artifacts/listSpace"][0].body).json.items ?? [];
+for (const artifact of artifacts) {
+  await safe(artifact.name, async () => {
+    await page.goto(`${ORIGIN}/app/artifacts/${artifact.id}`);
+    await settle(2200);
+    await snap(`artifact-${artifact.id}`);
   });
 }
 
 await browser.close();
+
+// The stack also holds spaces made for testing other states (empty, mail needs reconnecting); the
+// demo shows only the company.
+for (const key of ["/spaces/list", "/bootstrap"]) {
+  for (const entry of rpc[key] ?? []) {
+    const parsed = JSON.parse(entry.body);
+    if (Array.isArray(parsed.json?.spaces)) {
+      parsed.json.spaces = parsed.json.spaces.filter((space) => space.isDefault);
+      entry.body = JSON.stringify(parsed);
+    }
+  }
+}
 
 // The demo clock starts just after the first Finance sync, so "Updated just now" reads as it did live.
 meta.recordedAt = Date.parse(JSON.parse(rpc["/finance/overview"][0].body).json.lastSyncedAt) + 3000;
@@ -176,7 +294,9 @@ meta.recordedAt = Date.parse(JSON.parse(rpc["/finance/overview"][0].body).json.l
 // The recorded session carries a throwaway local token; replace it with an obvious placeholder.
 const text = JSON.stringify({ ...meta, streams: [...streams], rpc });
 const clean = text
-  .replaceAll(ORIGIN, "https://demo.invalid")
+  .replaceAll(/"ipAddress":"[^"]*"/g, '"ipAddress":""')
+  .replaceAll(/"userAgent":"[^"]*"/g, '"userAgent":""')
+  .replaceAll(/http:\/\/127\.0\.0\.1:\d+/g, "https://demo.invalid")
   .replaceAll(/"token":"[^"]*"/g, '"token":"demo"');
 writeFileSync(new URL("../src/demo/fixture.json", import.meta.url), clean);
 console.log(
