@@ -1049,10 +1049,6 @@ msgstr ""
 msgid "Allowed"
 msgstr ""
 
-#: src/components/AskCard.tsx
-msgid "Allowed once"
-msgstr "Разрешено один раз"
-
 #: src/pages/Auth.tsx
 msgid "Already have an account?"
 msgstr "У вас уже есть аккаунт?"
@@ -1090,8 +1086,8 @@ msgid "Always act"
 msgstr "Всегда выполнять"
 
 #: src/components/AskCard.tsx
-msgid "Always allow this tool"
-msgstr "Всегда разрешать этот инструмент"
+msgid "Always allow this"
+msgstr ""
 
 #: src/components/AskCard.tsx
 msgid "Always allowed"
@@ -1205,6 +1201,10 @@ msgstr "Утвердить"
 
 #: src/pages/shell/message-cards.tsx
 msgid "Approve this server to let your bot use its tools."
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Approved"
 msgstr ""
 
 #: src/components/ConnectAppsButton.tsx
@@ -5671,10 +5671,6 @@ msgstr ""
 msgid "Needs a server restart"
 msgstr ""
 
-#: src/lib/roster-status.ts
-msgid "Needs an answer"
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Needs approval"
 msgstr ""
@@ -5708,6 +5704,10 @@ msgstr "Требуется передача управления"
 #: src/pages/Shell.tsx
 msgid "Needs you"
 msgstr "Требуется ваше участие"
+
+#: src/lib/roster-status.ts
+msgid "Needs your answer"
+msgstr ""
 
 #: src/pages/finance/FinanceAccounts.tsx
 #: src/pages/finance/FinanceBurn.tsx
@@ -9837,6 +9837,10 @@ msgstr ""
 
 #: src/components/EmailCards.tsx
 msgid "Within 3 days"
+msgstr ""
+
+#: src/components/AskCard.tsx
+msgid "Won't ask again for this kind of action."
 msgstr ""
 
 #: src/lib/ticket-status.ts
