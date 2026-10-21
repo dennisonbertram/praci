@@ -981,6 +981,7 @@ msgstr "All time"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Allow"
 msgstr "Allow"
 
@@ -2600,10 +2601,6 @@ msgstr "Continue in Background"
 #: src/pages/Auth.tsx
 msgid "Continue with {0}"
 msgstr "Continue with {0}"
-
-#: src/pages/Auth.tsx
-msgid "Continue with email"
-msgstr "Continue with email"
 
 #: src/components/finance/WalletDialog.tsx
 #: src/components/legal/LegalGraph.tsx
@@ -6345,10 +6342,6 @@ msgstr "Open chat"
 msgid "Open computer settings"
 msgstr "Open computer settings"
 
-#: src/pages/shell/composer-error.tsx
-msgid "Open Data room"
-msgstr "Open Data room"
-
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr "Open deadlines"
@@ -6396,10 +6389,6 @@ msgstr "Open in new tab"
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Open Inbox"
 msgstr "Open Inbox"
-
-#: src/pages/shell/composer-error.tsx
-msgid "Open Legal"
-msgstr "Open Legal"
 
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
@@ -7406,6 +7395,10 @@ msgstr "Reply cancelled"
 #: src/pages/shell/composer.tsx
 msgid "Replying to {0}"
 msgstr "Replying to {0}"
+
+#: src/pages/Auth.tsx
+msgid "Request a new link"
+msgstr "Request a new link"
 
 #: src/components/DataExport.tsx
 msgid "Request export"

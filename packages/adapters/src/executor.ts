@@ -65,6 +65,7 @@ import {
   isVoiceAgentSpawnKey,
   LEGAL_AGENT_BUILTIN_TOOLS,
   LEGAL_AGENT_MODEL,
+  LEGAL_CONSENT_REQUIRED_MESSAGE,
   LEGAL_MODEL_REQUIRED_MESSAGE,
   OPENAI_COMPATIBLE_PROVIDER_ID,
   RunPhaseSchema,
@@ -109,6 +110,7 @@ import {
   nextFence,
   ownsLine,
   parseSkillMd,
+  plainRunError,
   planActionGate,
   promptInvokesSkill,
   redactSecrets,
@@ -1970,8 +1972,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           // them must be one the user allowed. Without that consent the run ends before any model call.
           const ai = await legalRunAi();
           if (!ai.allowed) {
-            const who = ai.recipients[0]?.name ?? runModelProvider;
-            const message = `Data Room consent is required for ${who} before the Legal agent can run. Allow it on the Legal page.`;
+            const message = LEGAL_CONSENT_REQUIRED_MESSAGE;
             await publishMessage(deps, run, "bot", [{ kind: "text", text: message }]).catch(
               (error) => getLogger().error("legal consent notice", error),
             );
@@ -8037,7 +8038,11 @@ async function failRun(
     await notifyRun(deps, run, {
       kind: "failure",
       title: `${bot.name} failed`,
-      body: message.slice(0, 180),
+      body: plainRunError(message, {
+        keyRejected:
+          "The model provider did not accept your API key. Check it in Settings > Models.",
+        generic: "Something went wrong. Try again.",
+      }).slice(0, 180),
       botId: bot.id,
       threadId: run.threadId,
     });
