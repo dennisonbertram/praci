@@ -34,6 +34,7 @@ const EMPTY: Glance = {
   financeRunwayMonths: null,
   legalDueSoon: 0,
   devinNeedsYou: 0,
+  devinConnected: false,
   dataRoomWaiting: 0,
   botKinds: {},
 };

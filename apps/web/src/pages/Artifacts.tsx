@@ -46,6 +46,7 @@ import { AskBotButton } from "../components/AskBotButton";
 import { Tip } from "../components/data-room/FilterBar";
 import { PageEmptyState } from "../components/PageEmptyState";
 import { PAGE_GUTTER_X, PageHeader } from "../components/PageHeader";
+import { artifactDisplayName as displayName } from "../lib/artifact-name";
 import { decodeArtifactBase64, downloadArtifactBytes } from "../lib/artifact-open";
 import { takeInitialBootstrap } from "../lib/bootstrap";
 import { formatRelativeTime } from "../lib/relative-time";
@@ -58,11 +59,6 @@ const VIEW_MODE_STORAGE_KEY = "rakazo:artifacts-view-mode";
 const LIST_PAGE_SIZE = 60;
 
 type ArtifactSummary = Artifact & { versionCount: number };
-
-/** The type badge already says "MD" or "CSV", so the title drops the extension. */
-function displayName(name: string): string {
-  return name.replace(/\.[A-Za-z0-9]{1,5}$/, "") || name;
-}
 
 const isSheet = (mimeType: string) => /csv|spreadsheet|excel/.test(mimeType);
 
