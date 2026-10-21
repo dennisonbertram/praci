@@ -229,7 +229,8 @@ const snapshot = {
   optionPoolAvailable: 500_000,
   latest409a: { pricePerShareUsd: 1.25, date: "2026-09-01" },
   shareClasses: [
-    { name: "Common", shares: 7_000_000, percent: 70 },
+    { name: "Common", shares: 6_000_000, percent: 60 },
+    { name: "Options", shares: 1_000_000, percent: 10 },
     { name: "Series Seed Preferred", shares: 3_000_000, percent: 30 },
   ],
   holders: [
@@ -266,7 +267,7 @@ it("shows the summary, ownership legend and joined investors", async () => {
   // The 409A figure is named for what it is, with the term explained underneath.
   expect(text).toContain("Common share price$1.25From the latest 409A valuation");
   expect(text).toContain("Series Seed Preferred");
-  expect(text).toContain("70.00%");
+  expect(text).toContain("60.00%");
   expect(text).toContain("1,000,000");
   expect(text).toContain("10.00%");
   expect(text).toContain("Example Ventures");
@@ -718,7 +719,7 @@ it("hides dollar amounts but keeps shares and ownership in place while amounts a
   const text = container.textContent ?? "";
   expect(text).not.toContain("1.25");
   // Share counts and ownership are not money: the rows stay readable for a screen share.
-  for (const shown of ["10,000,000", "1,000,000", "10.00%", "70.00%"])
+  for (const shown of ["10,000,000", "1,000,000", "10.00%", "60.00%"])
     expect(text).toContain(shown);
   expect(text).toContain("Example Ventures");
   await click(button("Investors"));
@@ -1125,6 +1126,17 @@ describe("search, filter and sort", () => {
     expect(container.textContent).not.toContain("Security");
   });
 
+  it("titles the card a holder opens for the whole card, not for one field", async () => {
+    rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
+    await showAt("/app/investors?kind=investor");
+    const safe = [...container.querySelectorAll<HTMLElement>("[data-row-open]")].find(
+      (b) => b.textContent === "Safe Nine",
+    );
+    await click(safe);
+    expect(document.body.textContent).toContain("Save Safe Nine as a contact");
+    expect(document.body.textContent).not.toContain("Add email for");
+  });
+
   it("opens the holder breakdown from the ownership donut", async () => {
     await showAt("/app/investors");
     expect(container.querySelector("[data-testid=ownership-donut]")).not.toBeNull();
@@ -1172,6 +1184,37 @@ describe("search, filter and sort", () => {
     expect(text).not.toContain("100,000");
     expect(text).not.toContain("9,000");
   });
+});
+
+it("leaves the donut out when there are only two slices, and keeps the summary in one row", async () => {
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: {
+      ...snapshot,
+      shareClasses: [
+        { name: "Common", shares: 7_000_000, percent: 70 },
+        { name: "Series Seed Preferred", shares: 3_000_000, percent: 30 },
+      ],
+    },
+    syncing: false,
+  });
+  await show();
+  expect(container.querySelector("[data-testid=ownership-donut]")).toBeNull();
+  expect(button("Ownership by share class")).toBeUndefined();
+  expect(container.textContent).toContain("Fully diluted shares");
+});
+
+it("drops the Email column when no row has an address", async () => {
+  rpcMock.capTable.mockResolvedValue({
+    snapshot: {
+      ...snapshot,
+      holders: snapshot.holders.map((holder) => ({ ...holder, email: null })),
+    },
+    syncing: false,
+  });
+  rpcMock.list.mockResolvedValue([]);
+  await show();
+  expect(container.querySelector("[data-testid=cap-table-email-cell]")).toBeNull();
+  expect(container.textContent).not.toContain("Email");
 });
 
 it("keeps the donut behind one row on a phone and says the SAFEs are not in the share counts", async () => {

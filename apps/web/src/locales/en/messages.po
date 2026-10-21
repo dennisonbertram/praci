@@ -249,6 +249,7 @@ msgstr "{0} needs you to sign in again. Its figures stop updating until you do."
 
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "{0} non-USD not counted"
 msgstr "{0} non-USD not counted"
 
@@ -826,11 +827,6 @@ msgstr "Add custom connection"
 #: src/pages/Investors.tsx
 msgid "Add email"
 msgstr "Add email"
-
-#. placeholder {0}: prefill.name
-#: src/components/ContactDialog.tsx
-msgid "Add email for {0}"
-msgstr "Add email for {0}"
 
 #: src/components/data-room/DataRoomImportMenu.tsx
 #: src/components/data-room/ImportFromEmail.tsx
@@ -2038,7 +2034,6 @@ msgstr "Charges since {0}"
 msgid "Chart failed to render: {error}"
 msgstr "Chart failed to render: {error}"
 
-#: src/components/finance/charts.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Chart hidden while amounts are hidden"
 msgstr "Chart hidden while amounts are hidden"
@@ -3413,14 +3408,6 @@ msgstr "Counted in runway"
 msgid "Counterparty"
 msgstr "Counterparty"
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Counting all crypto"
-msgstr "Counting all crypto"
-
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Counting stablecoins"
-msgstr "Counting stablecoins"
-
 #: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
@@ -3911,10 +3898,6 @@ msgstr "Documents"
 msgid "Documents by document date"
 msgstr "Documents by document date"
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Don't count crypto"
-msgstr "Don't count crypto"
-
 #: src/pages/Auth.tsx
 msgid "Don’t have an account?"
 msgstr "Don’t have an account?"
@@ -4390,6 +4373,10 @@ msgstr "Finance"
 #: src/components/finance/ui.tsx
 msgid "Financing"
 msgstr "Financing"
+
+#: src/components/finance/charts.tsx
+msgid "Financing, {when}"
+msgstr "Financing, {when}"
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Find an app"

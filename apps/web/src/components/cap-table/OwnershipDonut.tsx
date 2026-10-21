@@ -59,6 +59,12 @@ export function groupClasses(classes: DonutClass[], otherLabel = t`Other`): Slic
   return kept.map((c, i) => ({ ...c, percent: (floors[i] ?? 0) / 100 }));
 }
 
+/** How many slices the donut draws: the share classes plus the unissued options and pool. */
+export function donutSliceCount(classes: DonutClass[], fullyDilutedShares: number | null): number {
+  const issued = classes.reduce((n, c) => n + c.shares, 0);
+  return classes.filter((c) => c.shares > 0).length + ((fullyDilutedShares ?? 0) > issued ? 1 : 0);
+}
+
 const point = (angle: number, radius: number) =>
   `${(SIZE / 2 + radius * Math.sin(angle)).toFixed(2)},${(SIZE / 2 - radius * Math.cos(angle)).toFixed(2)}`;
 
