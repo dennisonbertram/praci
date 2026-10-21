@@ -123,6 +123,7 @@ import {
   redactSecrets,
   renderBotDirectory,
   resolveActionApprovalDetail,
+  resolveBotAddress,
   sandboxCommandTimeoutMs,
   toolRequiresApproval,
   toolRequiresExplicitApproval,
@@ -3791,14 +3792,16 @@ export function createRunExecutor(deps: ExecutorDeps) {
            * pauses the run. The recipient comes from the server's own check, never the model. The
            * owner's click records the consent; a decline is remembered so the call is not asked twice.
            */
-          const askMailConsent = (recipient: { key: string; name: string; detail?: string }) =>
+          const askMailConsent = (
+            recipient: { key: string; name: string; detail?: string },
+            delegation?: Record<string, unknown>,
+          ) =>
             // Parallel mail calls share one card: the later ones wait on the first and pause with it.
-            (consentAsk ??= askMailConsentOnce(recipient));
-          const askMailConsentOnce = async (recipient: {
-            key: string;
-            name: string;
-            detail?: string;
-          }) => {
+            (consentAsk ??= askMailConsentOnce(recipient, delegation));
+          const askMailConsentOnce = async (
+            recipient: { key: string; name: string; detail?: string },
+            delegation?: Record<string, unknown>,
+          ) => {
             const request = { recipientKey: recipient.key, version: AI_DISCLOSURE_VERSION };
             const record = () =>
               recordEffect(
@@ -3815,6 +3818,13 @@ export function createRunExecutor(deps: ExecutorDeps) {
               if ((error as { code?: unknown } | null)?.code === "P2002") return record();
               throw error;
             });
+            // A question for the Inbox agent is saved with the card, so Allow delivers exactly it.
+            if (delegation && !recorded.duplicate) {
+              await deps.prisma.externalEffect.update({
+                where: { id: recorded.effect.id },
+                data: { result: { delegation } as Prisma.InputJsonValue },
+              });
+            }
             if (recorded.duplicate) {
               if (recorded.effect.status === "denied") return { error: MAIL_CONSENT_DECLINED };
               if (recorded.effect.status !== "intended") return undefined;
@@ -3829,6 +3839,38 @@ export function createRunExecutor(deps: ExecutorDeps) {
               "Allow access to your mail",
             );
           };
+
+          // A question for the owner's Inbox agent runs in that agent's own chat, where the owner is
+          // not looking. Ask for mail consent here, in the chat they are in, before the call is
+          // approved or claimed and before the agent is woken. Either addressing form counts.
+          const botMessageArgs = {
+            bot_id: args.bot_id ? String(args.bot_id) : undefined,
+            confirm_name: args.confirm_name ? String(args.confirm_name) : undefined,
+            message: redactSecrets(String(args.message ?? ""), runSecrets),
+            intent: args.intent as "request" | "result" | "question" | "status" | "fyi" | undefined,
+          };
+          let delegatesToInbox = false;
+          if (name === "message_bot" && run.trigger === "user") {
+            const owned = await deps.prisma.bot.findMany({
+              where: { spaceId: run.spaceId, userId: run.userId, archivedAt: null },
+              select: { id: true, name: true, spawnKey: true },
+            });
+            const target = resolveBotAddress(owned, {
+              botId: botMessageArgs.bot_id,
+              name: botMessageArgs.confirm_name,
+            });
+            delegatesToInbox = isInboxAgentSpawnKey(target?.spawnKey);
+            if (delegatesToInbox) {
+              const status = await triageStatus(
+                { prisma: deps.prisma, resolveModel },
+                { userId: bot.userId, spaceId: run.spaceId },
+              ).catch(() => null);
+              if (status?.blocked?.reason === "needs_consent") {
+                const asked = await askMailConsent(status.blocked.recipient, botMessageArgs);
+                if (asked) return asked;
+              }
+            }
+          }
 
           if (applied && !applied.duplicate && name === "mail_send") {
             const prior = await deps.prisma.externalEffect.findMany({
@@ -5869,44 +5911,29 @@ export function createRunExecutor(deps: ExecutorDeps) {
             );
           }
           if (name === "message_bot") {
-            // A question for the owner's Inbox agent runs in that agent's own chat, where the owner
-            // is not looking. Ask for mail consent here, in the chat they are in, before waking it.
-            if (run.trigger === "user" && typeof args.bot_id === "string") {
-              const target = await deps.prisma.bot.findFirst({
-                where: {
-                  id: args.bot_id,
-                  spaceId: run.spaceId,
-                  userId: run.userId,
-                  archivedAt: null,
-                },
-                select: { spawnKey: true },
-              });
-              if (isInboxAgentSpawnKey(target?.spawnKey)) {
-                const status = await triageStatus(
-                  { prisma: deps.prisma, resolveModel },
-                  { userId: bot.userId, spaceId: run.spaceId },
-                ).catch(() => null);
-                if (status?.blocked?.reason === "needs_consent") {
-                  const asked = await askMailConsent(status.blocked.recipient);
-                  if (asked) return asked;
-                }
-              }
-            }
+            // After Allow, the question saved with the consent card is what gets delivered.
+            const saved = delegatesToInbox
+              ? (
+                  await deps.prisma.externalEffect.findMany({
+                    where: {
+                      spaceId: run.spaceId,
+                      runId,
+                      kind: AI_CONSENT_EFFECT_KIND,
+                      status: "approved",
+                    },
+                    select: { id: true, result: true },
+                  })
+                ).find((effect) => (effect.result as { delegation?: unknown } | null)?.delegation)
+              : undefined;
+            const delegation = saved
+              ? (saved.result as { delegation: typeof botMessageArgs }).delegation
+              : botMessageArgs;
             const sent = await messageBot(
               deps,
               { ...run, sourceMessageId: run.sourceMessageId },
               { id: bot.id, name: bot.name },
               {
-                bot_id: args.bot_id ? String(args.bot_id) : undefined,
-                confirm_name: args.confirm_name ? String(args.confirm_name) : undefined,
-                message: redactSecrets(String(args.message ?? ""), runSecrets),
-                intent: args.intent as
-                  | "request"
-                  | "result"
-                  | "question"
-                  | "status"
-                  | "fyi"
-                  | undefined,
+                ...delegation,
                 deliveryKey: effectKey,
               },
               // A background run may only ask an agent that owns an account.
@@ -5918,6 +5945,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
             );
             if (!sent.ok) return finish({ error: sent.error });
+            if (saved) {
+              await deps.prisma.externalEffect.update({
+                where: { id: saved.id },
+                data: { result: { delivered: true } },
+              });
+            }
             if (sent.held) heldForOwner = true;
             return finish({
               ok: true,
