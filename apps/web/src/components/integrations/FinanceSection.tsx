@@ -48,7 +48,7 @@ const PHONE_ROW =
 
 /** The tile's one main link, like "Open Inbox" on Gmail. It never wraps. */
 const OPEN_LINK =
-  "relative z-10 ms-auto inline-flex h-7 shrink-0 items-center whitespace-nowrap rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted";
+  "relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 shrink-0 items-center whitespace-nowrap rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted";
 
 /** The tile's one overflow menu: the optional key and other secondary actions live here. */
 function TileMenu({ label, children }: { label: string; children: ReactNode }) {

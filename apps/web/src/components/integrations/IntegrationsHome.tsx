@@ -82,7 +82,7 @@ function OpenPageLink({ to, children }: { to: string; children: ReactNode }) {
   return (
     <Link
       to={to}
-      className="relative z-10 ms-auto inline-flex h-7 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
+      className="relative z-10 ms-auto inline-flex h-7 pointer-coarse:h-11 items-center rounded-lg border border-border px-2.5 text-[0.8rem] font-medium hover:bg-muted"
     >
       {children}
     </Link>
@@ -691,7 +691,7 @@ export function IntegrationsHome({
                       <div className="mt-3">
                         <Link
                           to="/app/integrations/setup?next=/app/integrations"
-                          className="inline-flex h-8 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
+                          className="inline-flex h-8 pointer-coarse:h-11 items-center rounded-lg bg-primary px-2.5 text-sm font-medium text-primary-foreground"
                         >
                           <Trans>Set up app catalog</Trans>
                         </Link>
