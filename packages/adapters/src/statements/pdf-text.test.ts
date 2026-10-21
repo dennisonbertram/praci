@@ -49,6 +49,18 @@ describe("extractPdfText limits", () => {
     await expect(run()).rejects.toThrow("too many pages");
   });
 
+  it("with maxChars reads a long document up to the budget instead of rejecting it", async () => {
+    doc.pages = Array.from({ length: 500 }, () => [{ str: "x".repeat(100), x: 0 }]);
+    const text = await extractPdfText(new Uint8Array([1]), { maxChars: 250 });
+    expect(text.length).toBeLessThanOrEqual(250);
+    expect(text.split("\n\n")).toHaveLength(3);
+    doc.pages = [[{ str: "y".repeat(3000), x: 0 }]];
+    expect((await extractPdfText(new Uint8Array([1]), { maxChars: 1000 })).length).toBe(1000);
+    doc.pages = Array.from({ length: 500 }, () => [{ str: "x".repeat(100), x: 0 }]);
+    const all = await extractPdfText(new Uint8Array([1]), { maxChars: 1e9 });
+    expect(all.split("\n\n")).toHaveLength(200);
+  });
+
   it("rejects when the extracted text is too large", async () => {
     // 100 pages of 100 rows of 300 characters is 3 MB.
     const rows = Array.from({ length: 100 }, (_, i) => ({ str: "x".repeat(300), x: 0, y: i * 10 }));

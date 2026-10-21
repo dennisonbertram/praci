@@ -3,7 +3,7 @@ import { getDocumentProxy } from "unpdf";
 type Item = { str: string; x: number; y: number; w: number };
 
 // A PDF is untrusted: its page count, coordinates and text volume are all attacker controlled.
-const MAX_PAGES = 200;
+export const MAX_PAGES = 200;
 const MAX_TEXT_CHARS = 2_000_000;
 const MAX_COLUMN = 200;
 
@@ -11,16 +11,21 @@ const MAX_COLUMN = 200;
  * Text of every page, one line per row of the page, with items placed at their horizontal
  * position so a table keeps its columns. Pages are separated by a blank line.
  */
-export async function extractPdfText(bytes: Uint8Array): Promise<string> {
+export async function extractPdfText(
+  bytes: Uint8Array,
+  /** With `maxChars`, a long PDF is read in page order until that many characters (or MAX_PAGES pages) and the rest is dropped, instead of rejected. */
+  opts: { maxChars?: number } = {},
+): Promise<string> {
   const pdf = await getDocumentProxy(new Uint8Array(bytes));
-  if (pdf.numPages > MAX_PAGES) {
+  const partial = opts.maxChars !== undefined;
+  if (!partial && pdf.numPages > MAX_PAGES) {
     throw new Error(
       `This PDF has too many pages (limit ${MAX_PAGES}). Upload a smaller statement.`,
     );
   }
   const pages: string[] = [];
   let total = 0;
-  for (let n = 1; n <= pdf.numPages; n++) {
+  for (let n = 1; n <= Math.min(pdf.numPages, MAX_PAGES); n++) {
     const content = await (await pdf.getPage(n)).getTextContent();
     const items: Item[] = [];
     for (const it of content.items) {
@@ -36,6 +41,13 @@ export async function extractPdfText(bytes: Uint8Array): Promise<string> {
     }
     const text = rows.map(layoutRow).join("\n");
     total += text.length;
+    if (partial) {
+      // Count the "\n\n" the join adds, and cut the page that crosses the budget.
+      const room = opts.maxChars! - (total - text.length) - 2 * pages.length;
+      pages.push(text.slice(0, Math.max(0, room)));
+      if (text.length >= room) break;
+      continue;
+    }
     if (total > MAX_TEXT_CHARS) {
       throw new Error("This PDF holds too much text to read. Upload a smaller statement.");
     }

@@ -28,7 +28,7 @@ import { dataRoomVisionKey } from "./data-room-models.js";
 import { LlmDataRoomClassifier } from "./llm-data-room-classifier.js";
 import { modelAcceptsImageInput } from "./model-vision.js";
 import { extractOfficeText, MAX_INPUT_BYTES, OFFICE_TYPES } from "./office-text.js";
-import { extractPdfText, pdfPageCount } from "./statements/pdf-text.js";
+import { extractPdfText, MAX_PAGES, pdfPageCount } from "./statements/pdf-text.js";
 import { streamChunks } from "./stream-chunks.js";
 
 /** Stored text per item; longer documents are cut. */
@@ -350,19 +350,22 @@ export async function extractItemText(
   const type = effectiveType(item.mimeType, item.name);
   let text = "";
   if (type === "application/pdf") {
-    text = await extractPdfText(bytes).catch((cause: unknown) => {
-      const name = cause instanceof Error ? cause.name : "";
-      throw new DataRoomUnreadableError(
-        name === "PasswordException"
-          ? "This PDF is password-protected."
-          : // A plain Error is one of the page or text limits; the parser's own errors are named.
-            name === "Error"
-            ? "This PDF is too long to read."
-            : "This file isn't a readable PDF.",
-      );
-    });
+    text = await extractPdfText(bytes, { maxChars: DATA_ROOM_TEXT_MAX_CHARS }).catch(
+      (cause: unknown) => {
+        const name = cause instanceof Error ? cause.name : "";
+        throw new DataRoomUnreadableError(
+          name === "PasswordException"
+            ? "This PDF is password-protected."
+            : // A plain Error is one of the page or text limits; the parser's own errors are named.
+              name === "Error"
+              ? "This PDF is too long to read."
+              : "This file isn't a readable PDF.",
+        );
+      },
+    );
     if (text.trim().length < PDF_SCAN_MIN_CHARS_PER_PAGE * 400 && deps.renderPdfPages) {
-      const pageCount = await pdfPageCount(bytes).catch(() => 1);
+      // Only the first MAX_PAGES pages are read, so only they count toward the expected text.
+      const pageCount = Math.min(await pdfPageCount(bytes).catch(() => 1), MAX_PAGES);
       if (text.trim().length < PDF_SCAN_MIN_CHARS_PER_PAGE * pageCount) {
         // Keep the sparse text layer when vision gives nothing (no consent, model or renderer).
         text = (await readScannedPdf(deps, ai, item, bytes, ctx)) || text;
