@@ -13,7 +13,7 @@ import {
   rowSummary,
 } from "@rakazo/core";
 import { useFocusEffect, useNavigation, useRouter } from "expo-router";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -64,6 +64,8 @@ interface ListItem {
 }
 const messageItem = (row: MailRow, child = false): ListItem => ({ id: row.id, row, child });
 
+type MeetingsState = NonNullable<Awaited<ReturnType<typeof listMailTodos>>["meetings"]>;
+
 export default function InboxScreen() {
   const navigation = useNavigation();
   const router = useRouter();
@@ -80,6 +82,7 @@ export default function InboxScreen() {
   const [digest, setDigest] = useState(false);
   const [data, setData] = useState<Awaited<ReturnType<typeof listMailInbox>> | null>(null);
   const [todos, setTodos] = useState<InboxTodo[]>([]);
+  const [meetings, setMeetings] = useState<MeetingsState>();
   const [error, setError] = useState("");
   const [synced, setSynced] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -98,8 +101,9 @@ export default function InboxScreen() {
     if (generation !== generationRef.current) return null;
     setData(list);
     setDataPile(asked);
-    // To-dos belong to the Important pile.
-    if (asked !== "important" || list.accounts.length === 0 || !list.enabled) {
+    // To-dos belong to the Important pile. The server decides what a user gets: mail to-dos need
+    // triage, meeting follow-ups need only a meeting source, so a user with no mail still asks.
+    if (asked !== "important") {
       setTodos([]);
       return list;
     }
@@ -107,8 +111,17 @@ export default function InboxScreen() {
     const next = await listMailTodos(connectionId).catch(() => null);
     if (generation !== generationRef.current) return null;
     setTodos(next?.todos.filter((todo) => todo.doneAt === null) ?? []);
+    setMeetings(next?.meetings);
     return list;
   }, []);
+
+  // The first meeting sync has no event to wait for; look again until it has a checkpoint.
+  const meetingsSyncing = Boolean(meetings?.syncing);
+  useEffect(() => {
+    if (!meetingsSyncing) return;
+    const timer = setTimeout(() => void fetchList(tabRef.current, generationRef.current), 5_000);
+    return () => clearTimeout(timer);
+  }, [meetingsSyncing, fetchList, todos]);
 
   const pollTriage = useCallback(
     async (connectionId: string | undefined, generation: number) => {
@@ -501,8 +514,8 @@ export default function InboxScreen() {
               </View>
             ) : null}
             {error && !loading ? <Text style={styles.empty}>{error}</Text> : null}
-            {pile === "important" && todos.length > 0 ? (
-              <TodoCard todos={todos} onComplete={completeTodo} />
+            {pile === "important" ? (
+              <TodoCard todos={todos} meetings={meetings} onComplete={completeTodo} />
             ) : null}
           </>
         }
@@ -546,15 +559,22 @@ export default function InboxScreen() {
 
 function TodoCard({
   todos,
+  meetings,
   onComplete,
 }: {
   todos: InboxTodo[];
+  meetings: MeetingsState | undefined;
   onComplete: (todo: InboxTodo) => void;
 }) {
   const { t } = useI18n();
   const styles = useThemedStyles(createStyles);
   const tokens = mobileTokens();
   const now = new Date();
+  const syncing = Boolean(meetings?.source && meetings.syncing);
+  // A connected source with consent and nothing owed says so; the heading stays after the last one.
+  const noFollowUps =
+    Boolean(meetings?.source && meetings.ready && !meetings.syncing) && todos.length === 0;
+  if (todos.length === 0 && !syncing && !noFollowUps) return null;
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{t("To do")}</Text>
@@ -568,7 +588,8 @@ function TodoCard({
               accessibilityRole="checkbox"
               accessibilityState={{ checked: false }}
               accessibilityLabel={todo.text}
-              hitSlop={8}
+              // The 22 pt circle plus 11 pt each side is the 44 pt target; the rest of the row does nothing.
+              hitSlop={11}
               onPress={() => onComplete(todo)}
             >
               <NativeSymbol
@@ -600,6 +621,13 @@ function TodoCard({
           </View>
         );
       })}
+      {syncing ? (
+        <View style={styles.todoRow}>
+          <ActivityIndicator />
+          <Text style={styles.todoText}>{t("Syncing")}</Text>
+        </View>
+      ) : null}
+      {noFollowUps ? <Text style={styles.meta}>{t("No follow-ups from meetings yet")}</Text> : null}
     </View>
   );
 }
