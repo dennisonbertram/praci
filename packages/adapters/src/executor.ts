@@ -2108,9 +2108,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
           const ai = await legalRunAi();
           if (!ai.allowed) {
             const message = LEGAL_CONSENT_REQUIRED_MESSAGE;
-            await publishMessage(deps, run, "bot", [{ kind: "text", text: message }]).catch(
-              (error) => getLogger().error("legal consent notice", error),
-            );
+            // The web chat shows the run's error above the composer, with Allow; a linked
+            // messaging chat only receives stored bot messages.
+            if (run.trigger === "messaging")
+              await publishMessage(deps, run, "bot", [{ kind: "text", text: message }]).catch(
+                (error) => getLogger().error("legal consent notice", error),
+              );
             await failRunBeforeModel(message);
             return;
           }

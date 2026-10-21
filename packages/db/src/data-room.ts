@@ -33,6 +33,8 @@ export interface DataRoomFilters {
   docDateTo?: Date;
   status?: string;
   source?: string;
+  /** Only ready items with no Legal analysis at their current revision (as Legal counts them). */
+  legalUnchecked?: boolean;
   /** Hides items imported through these connections. Items with no connection stay visible. */
   excludeConnectionIds?: string[];
 }
@@ -228,6 +230,14 @@ function eligibleSql(actor: Actor, filters: DataRoomFilters = {}): Prisma.Sql {
   if (filters.tag) parts.push(Prisma.sql`${filters.tag} = ANY(i."tags")`);
   if (filters.status) parts.push(Prisma.sql`i."status" = ${filters.status}`);
   if (filters.source) parts.push(Prisma.sql`i."source" = ${filters.source}`);
+  if (filters.legalUnchecked) {
+    parts.push(
+      Prisma.sql`i."status" = 'ready' AND NOT EXISTS (
+        SELECT 1 FROM legal_contracts c
+        WHERE c."dataRoomItemId" = i.id AND c."spaceId" = i."spaceId" AND c."userId" = i."userId"
+          AND c."analyzedRevision" >= i.revision)`,
+    );
+  }
   if (filters.excludeConnectionIds?.length) {
     parts.push(
       Prisma.sql`(i."sourceConnectionId" IS NULL OR NOT (i."sourceConnectionId" = ANY(${filters.excludeConnectionIds})))`,
