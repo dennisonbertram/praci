@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { runContinueJob } from "@rakazo/adapter-kit";
 import type { BotMessageIntent, MessageBlock } from "@rakazo/contracts";
 import {
-  BOT_SHARE_EFFECT_KIND,
   BOT_SHARE_DECLINED_MESSAGE,
+  BOT_SHARE_EFFECT_KIND,
   BOT_SHARE_HELD_MESSAGE,
   isOwnerAgentSpawnKey,
 } from "@rakazo/contracts";
