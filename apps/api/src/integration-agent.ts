@@ -7,6 +7,7 @@ import {
   integrationAgentSpawnKey,
   integrationPresetForEndpoint,
   isCartaEndpoint,
+  isDevinEndpoint,
   isIntegrationAgentForServer,
 } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
@@ -445,6 +446,8 @@ export async function setIntegrationAgentWrites(
 ) {
   return prisma.$transaction(async (tx) => {
     const current = await loadServer(tx, actor, serverId);
+    if (isDevinEndpoint(current.endpoint))
+      throw new ORPCError("BAD_REQUEST", { message: "Devin is read-only" });
     if (!current.agentBotId)
       throw new ORPCError("BAD_REQUEST", { message: "This server has no agent" });
     const agent = await tx.bot.findFirst({
