@@ -3580,6 +3580,7 @@ msgstr ""
 msgid "Desktop update"
 msgstr "Обновление настольного приложения"
 
+#: src/components/AskCard.tsx
 #: src/components/data-room/ProcessingStrip.tsx
 msgid "Details"
 msgstr ""
@@ -8771,6 +8772,10 @@ msgstr ""
 
 #: src/components/integrations/McpDetail.tsx
 msgid "The agent will be able to change your {service} data. It asks before each change."
+msgstr ""
+
+#: src/components/integrations/McpDetail.tsx
+msgid "The agent will be able to move money and change your {service} accounts. It asks before each change."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
