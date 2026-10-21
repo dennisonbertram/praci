@@ -40,10 +40,6 @@ msgstr " (읽지 않음)"
 msgid " (urgent)"
 msgstr ""
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "— tokens of AI text"
-msgstr ""
-
 #. placeholder {0}: statement.duplicateCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid ", {0} already imported"
@@ -726,10 +722,6 @@ msgstr ""
 msgid "Active"
 msgstr "활성"
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Active model"
-msgstr "현재 모델"
-
 #: src/components/computer/TerminalApp.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
@@ -832,10 +824,6 @@ msgstr ""
 msgid "Add email"
 msgstr ""
 
-#: src/components/AutoFileEmailSetting.tsx
-msgid "Add email attachments to the Data room"
-msgstr ""
-
 #. placeholder {0}: prefill.name
 #: src/components/ContactDialog.tsx
 msgid "Add email for {0}"
@@ -859,6 +847,10 @@ msgstr "항목 추가"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add MCP server"
 msgstr "MCP 서버 추가"
+
+#: src/components/AutoFileEmailSetting.tsx
+msgid "Add new email attachments automatically"
+msgstr ""
 
 #: src/components/AddSidebarPage.tsx
 msgid "Add page"
@@ -1059,6 +1051,10 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Allow access first."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Allow access on the page to ask"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1383,7 +1379,13 @@ msgid "Ask about this"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 msgid "Ask agent"
+msgstr ""
+
+#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Ask agent about {0}"
 msgstr ""
 
 #. placeholder {0}: rule.matchValue
@@ -2482,10 +2484,6 @@ msgstr ""
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "컴퓨터가 꺼져 있습니다. SANDBOX_PROVIDER=docker와 SANDBOX_SUPERVISOR_TOKEN을 설정하거나, SANDBOX_PROVIDER를 e2b, daytona, box 중 하나로 두고 해당 API 키를 넣으세요. .env 변경 후 스택을 다시 만드세요."
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Configured by deployment"
-msgstr "서버에서 설정됨"
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
@@ -3718,10 +3716,6 @@ msgstr "거부됨"
 msgid "Deny"
 msgstr "거부"
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Deployment default"
-msgstr "서버 기본값"
-
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -4710,6 +4704,14 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hear a sample"
 msgstr "샘플 듣기"
+
+#: src/pages/Legal.tsx
+msgid "Help me with \"{title}\" on {contractTitle}, due {due}."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Help me with \"{title}\", due {due}."
+msgstr ""
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hi, this is how I'll sound when I read replies out loud."
@@ -6312,7 +6314,6 @@ msgstr ""
 msgid "None"
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
 msgstr "아직 없음"
@@ -6852,7 +6853,6 @@ msgid "Party"
 msgstr ""
 
 #: src/components/AskCard.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Auth.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Password"
@@ -7612,6 +7612,7 @@ msgstr "API 키 교체"
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/Legal.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "키 교체"
@@ -7699,6 +7700,10 @@ msgstr ""
 #: src/pages/ResizableSidePanel.tsx
 msgid "Resize panel"
 msgstr "패널 크기 조절"
+
+#: src/pages/Shell.tsx
+msgid "Resize sidebar"
+msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Restart the Praci server to start using iMessage."
@@ -9181,10 +9186,6 @@ msgstr ""
 #: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "생각 깊이"
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Thinking: {activeThinkingLabel}"
-msgstr ""
 
 #: src/components/AgentPanelIntro.tsx
 msgid "This agent needs a model before it can answer. Add one in Settings, Models."

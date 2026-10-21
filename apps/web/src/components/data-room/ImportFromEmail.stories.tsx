@@ -52,6 +52,8 @@ const meta = {
         },
       ],
       "mcp.servers.list": [],
+      "models.autoFileEmail": { enabled: true },
+      "models.setAutoFileEmail": (input: unknown) => input,
       "connections.catalog": [
         { connectorId: "google", slug: "gmail" },
         { connectorId: "google", slug: "googledrive" },

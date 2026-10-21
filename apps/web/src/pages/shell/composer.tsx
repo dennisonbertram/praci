@@ -57,6 +57,7 @@ export const Composer = memo(function Composer({
   activeName,
   running,
   disabled,
+  disabledPlaceholder,
   pendingAttachments,
   dataRoomItems = [],
   onRemoveDataRoomItem,
@@ -90,6 +91,8 @@ export const Composer = memo(function Composer({
   activeName?: string;
   running: boolean;
   disabled?: boolean;
+  /** Says why the composer is disabled, in place of the usual placeholder. */
+  disabledPlaceholder?: string;
   pendingAttachments: PendingAttachment[];
   /** Data room files sent by reference with the next message. */
   dataRoomItems?: DataRoomRef[];
@@ -1060,10 +1063,12 @@ export const Composer = memo(function Composer({
             disabled={disabled}
             placeholder={
               showComposerPlaceholder
-                ? // On a phone the header already names the agent, and a long name wraps.
-                  activeName && !window.matchMedia?.("(max-width: 480px)").matches
-                  ? t`Message ${activeName}`
-                  : t`Message…`
+                ? disabled && disabledPlaceholder
+                  ? disabledPlaceholder
+                  : // On a phone the header already names the agent, and a long name wraps.
+                    activeName && !window.matchMedia?.("(max-width: 480px)").matches
+                    ? t`Message ${activeName}`
+                    : t`Message…`
                 : undefined
             }
             aria-label={activeName ? t`Message ${activeName}` : t`Message`}
