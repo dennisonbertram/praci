@@ -9,7 +9,7 @@ export function HideAmountsMenuItem({ onDone }: { onDone?: () => void }) {
   return (
     <Button
       variant="ghost"
-      className="h-auto w-full justify-start py-1.5 font-normal whitespace-normal"
+      className="h-auto w-full justify-start py-1.5 font-normal"
       role="menuitemcheckbox"
       aria-checked={hidden}
       data-testid="hide-amounts-menu-item"
@@ -23,14 +23,7 @@ export function HideAmountsMenuItem({ onDone }: { onDone?: () => void }) {
       ) : (
         <Eye className="text-muted-foreground" strokeWidth={1.75} />
       )}
-      <span className="flex min-w-0 flex-col items-start text-start">
-        <span>{hidden ? t`Show amounts` : t`Hide amounts`}</span>
-        <span className="text-xs text-muted-foreground">
-          {hidden
-            ? t`Money amounts are hidden in finance, chat and email.`
-            : t`Hides money amounts in finance, chat and email.`}
-        </span>
-      </span>
+      <span>{hidden ? t`Show amounts` : t`Hide amounts`}</span>
     </Button>
   );
 }
