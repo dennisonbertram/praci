@@ -169,7 +169,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               </Button>
             </>
           ) : null}
-          <Link to="/sign-in" className="font-medium text-foreground">
+          <Link to="/sign-in" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
             <Trans>Back to sign in</Trans>
           </Link>
         </div>
@@ -281,7 +281,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   ) : null}
                   {mode === "in" && reset?.passwordReset ? (
                     <div className="mt-2 text-right text-sm">
-                      <Link to="/forgot-password" className="font-medium text-foreground">
+                      <Link to="/forgot-password" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
                         <Trans>Forgot password?</Trans>
                       </Link>
                     </div>
@@ -320,19 +320,19 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 {mode === "in" ? (
                   <>
                     <Trans>Don’t have an account?</Trans>{" "}
-                    <Link to="/sign-up" className="font-medium text-foreground">
+                    <Link to="/sign-up" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
                       <Trans>Sign up</Trans>
                     </Link>
                   </>
                 ) : mode === "up" ? (
                   <>
                     <Trans>Already have an account?</Trans>{" "}
-                    <Link to="/sign-in" className="font-medium text-foreground">
+                    <Link to="/sign-in" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
                       <Trans>Sign in</Trans>
                     </Link>
                   </>
                 ) : (
-                  <Link to="/sign-in" className="font-medium text-foreground">
+                  <Link to="/sign-in" className="inline-block font-medium text-foreground pointer-coarse:py-3.5">
                     <Trans>Back to sign in</Trans>
                   </Link>
                 )}
