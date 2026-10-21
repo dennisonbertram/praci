@@ -65,6 +65,10 @@ export async function loadBotMessageContext(
   return { ...context, repliesToRequest };
 }
 
+/** The fixed refusal an external bot gets for any target its owner has not chosen. */
+export const EXTERNAL_MESSAGE_REFUSED =
+  "You can only message the bots your owner has chosen for you.";
+
 export async function messageBot(
   deps: Pick<ExecutorDeps, "prisma" | "events" | "jobs">,
   run: {
@@ -103,21 +107,43 @@ export async function messageBot(
   const intent = input.intent ?? "request";
   const hop = nextBotMessageHop(sourceContext?.hop);
 
-  const candidates = await deps.prisma.bot.findMany({
+  // The sender's audience comes from the database, never from the call. An external bot may
+  // message only the internal bots its owner chose, and may answer the bot that asked it.
+  const senderRow = await deps.prisma.bot.findFirst({
+    where: { id: sender.id, spaceId: run.spaceId, userId: run.userId },
+    select: { audience: true, externalMessageTargets: true },
+  });
+  if (!senderRow) return { ok: false as const, error: "sender not found" };
+  const externalSender = senderRow.audience === "external";
+  const allowedTargets = new Set(senderRow.externalMessageTargets);
+  const allCandidates = await deps.prisma.bot.findMany({
     where: { spaceId: run.spaceId, userId: run.userId, archivedAt: null },
     select: {
       id: true,
       name: true,
       title: true,
       spawnKey: true,
+      audience: true,
       thread: { select: { id: true } },
     },
   });
+  const candidates = externalSender
+    ? allCandidates.filter(
+        (candidate) =>
+          (candidate.audience === "internal" && allowedTargets.has(candidate.id)) ||
+          (options?.allowTerminalSource === true && candidate.id === sourceContext?.fromBotId),
+      )
+    : allCandidates;
   const target = resolveBotAddress(candidates, {
     botId: input.bot_id,
     name: input.confirm_name,
   });
-  if (!target) return { ok: false as const, error: "no bot found with that id or name" };
+  if (!target) {
+    return {
+      ok: false as const,
+      error: externalSender ? EXTERNAL_MESSAGE_REFUSED : "no bot found with that id or name",
+    };
+  }
   if (target.id === sender.id) return { ok: false as const, error: "a bot cannot message itself" };
   if (!target.thread)
     return { ok: false as const, error: `${target.name} has no chat to deliver to` };
@@ -128,6 +154,13 @@ export async function messageBot(
       sourceContext.intent === "request" ||
       sourceContext.intent === "question") &&
     sourceContext?.fromBotId === target.id;
+  if (
+    externalSender &&
+    !returnsToSender &&
+    !(allowedTargets.has(target.id) && target.audience === "internal")
+  ) {
+    return { ok: false as const, error: EXTERNAL_MESSAGE_REFUSED };
+  }
   // A chain that began in a background run stays limited to owner agents, except answering its caller.
   const ownerAgentsOnly =
     options?.ownerAgentsOnly === true || sourceContext?.backgroundOrigin === true;

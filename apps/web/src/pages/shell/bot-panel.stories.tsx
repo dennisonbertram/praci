@@ -28,6 +28,15 @@ const setup = () => {
     "agentSkills.list": [],
     "agentSkills.forBot": manySkills,
     "agentSkills.drafts": [],
+    "connections.list": [
+      { id: "conn_slack", displayName: "Slack", status: "connected" },
+      { id: "conn_notion", displayName: "Notion", status: "connected" },
+    ],
+    // Slack was granted to this bot by name; Notion is shared with all agents and does not reach it.
+    "connections.effectiveAccess": {
+      conn_slack: { shared: "some", botIds: [scoutBot.id] },
+      conn_notion: { shared: "all", botIds: ["bot_other"] },
+    },
   });
 };
 
@@ -129,4 +138,34 @@ export const UnknownToolName: Story = {
 export const NewBotNameOnly: Story = {
   beforeEach: setup,
   args: { focusName: true, bot: { ...scoutBot, name: "New Bot" } },
+};
+
+const targets = [
+  { id: "bot_chief", name: "Chief" },
+  { id: "bot_docs", name: "Docs" },
+];
+
+/** External: the helper line, the bots it may message (none chosen yet), the computer switch, and the connections it still reaches. */
+export const ExternalSelected: Story = {
+  beforeEach: setup,
+  args: { bot: { ...scoutBot, audience: "external" }, messageTargets: targets },
+};
+
+export const ExternalWithAllowedBot: Story = {
+  beforeEach: setup,
+  args: {
+    bot: {
+      ...scoutBot,
+      audience: "external",
+      externalMessageTargets: ["bot_docs"],
+      externalComputerTools: true,
+    },
+    messageTargets: targets,
+  },
+};
+
+/** A page or integration agent holds private data by design and has no switch. */
+export const PageAgentHasNoAudienceSwitch: Story = {
+  beforeEach: setup,
+  args: { bot: { ...scoutBot, spawnKey: "finance-agent:user_demo" } },
 };

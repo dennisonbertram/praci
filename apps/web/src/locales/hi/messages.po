@@ -1489,6 +1489,10 @@ msgstr ""
 msgid "Attachments: {0}"
 msgstr ""
 
+#: src/pages/shell/bot-panel.tsx
+msgid "Audience"
+msgstr ""
+
 #: src/components/ContactDialog.tsx
 msgid "Auditor"
 msgstr ""
@@ -1866,6 +1870,10 @@ msgstr ""
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Callback URL"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Can message"
 msgstr ""
 
 #: src/App.tsx
@@ -2442,6 +2450,10 @@ msgstr ""
 #: src/pages/shell/transcript.tsx
 msgid "Computer"
 msgstr "कंप्यूटर"
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Computer and browser"
+msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Computer and routines"
@@ -4286,6 +4298,11 @@ msgstr ""
 msgid "Export this week's list from the CRM and drop it in the shared folder"
 msgstr "CRM से इस सप्ताह की सूची एक्सपोर्ट करें और उसे साझा फ़ोल्डर में डालें"
 
+#: src/components/BotAudienceTag.tsx
+#: src/pages/shell/bot-panel.tsx
+msgid "External"
+msgstr ""
+
 #: src/pages/ExternalConversationSettings.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "External conversation"
@@ -5007,6 +5024,10 @@ msgstr ""
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/Shell.tsx
 msgid "Integrations"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Internal"
 msgstr ""
 
 #: src/pages/RoutineEditor.tsx
@@ -8884,6 +8905,11 @@ msgstr "चरण"
 msgid "Steps to follow"
 msgstr ""
 
+#. placeholder {0}: grantedConnections.join(", ")
+#: src/pages/shell/bot-panel.tsx
+msgid "Still has access to: {0}"
+msgstr ""
+
 #: src/components/ShellSkeleton.tsx
 msgid "Still opening…"
 msgstr ""
@@ -9007,6 +9033,10 @@ msgstr "नियंत्रण लें"
 
 #: src/pages/Shell.tsx
 msgid "Take the tour"
+msgstr ""
+
+#: src/pages/shell/bot-panel.tsx
+msgid "Talks to people outside your company. Private tools are turned off."
 msgstr ""
 
 #: src/pages/Board.tsx

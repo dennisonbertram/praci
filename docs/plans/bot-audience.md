@@ -1,6 +1,6 @@
 # Bot audience: Internal / External
 
-Status: plan only, no code. File and line references are to `origin/main` at f7390bb72 and were read directly; lines move, so use the function names to find things.
+Status: phase 1 built on `feat/bot-audience-1`; phases 2 and 3 next; the classifier (phase 4) and mobile (phase 5) are deferred. File and line references are to `origin/main` at f7390bb72 and were read directly; lines move, so use the function names to find things.
 
 ## Summary
 
@@ -12,6 +12,29 @@ Every bot gets one setting, **Audience**, with two values: Internal (the default
 4. Anything an internal bot sends back to an External bot can be held for the owner. The first check is a set of deterministic rules. A TypeSafe "Jev" classifier is an optional second check behind a provider-neutral interface.
 
 Smallest data change: one column, `Bot.audience`. The chain mark rides on the existing bot-message block, like `ownerOrigin` and `backgroundOrigin` do today.
+
+## Owner decisions (final)
+
+These answer the open questions at the end of this plan and override anything earlier in the plan that says otherwise.
+
+1. Build phases 1 to 3 now. The classifier (phase 4) and mobile (phase 5) come later.
+2. The GTM page agent stays Internal.
+3. An External bot may message only the Internal bots on an allowlist the owner picks for that External bot. It is not "any Internal bot". A message to any other bot is refused by the server with a fixed message. The allowlist is empty by default. Phase 1 adds the allowlist data, the settings control and the refusal in `message_bot`; phase 2 adds the receiving-side notice and the card gate. An External bot may still answer the bot that asked it (the automatic result return), and it may never message another External bot.
+4. Browser and computer tools are off for External bots by default. The owner can turn them on per bot.
+5. Existing and new bots default to Internal. Page agents stay Internal and have no switch. Agents from other Spaces are treated as External (phase 2).
+
+Deferred: open questions 6 (classifier key), 7 (pre-approved topics) and 8 (visibility of External threads) are not part of phases 1 to 3. Question 7 stays "not in v1". Question 8 stays "no" for now: phase 1 does not change `search_history`.
+
+### What phase 1 built (differences from the design text)
+
+- Data: three columns on `Bot`: `audience` (default `internal`), `externalMessageTargets` (a `String[]` of bot ids, default empty) and `externalComputerTools` (default `false`). The allowlist is an array column, the same shape as `disabledBuiltinTools`, instead of a join table: it is small, always read with the bot row, and a stale id is harmless because `messageBot` resolves every target against live bots of the same space and user. Migration `20261219000000_bot_audience`.
+- `bots.update` takes `audience`, `externalMessageTargets` and `externalComputerTools`. The bot is looked up by space and user first, so another user or Space is refused. Only a bot with no spawn key can be External (page, integration, voice and mail-thread agents cannot). Allowlist ids must be Internal, non-archived bots of the same space and user, other than the bot itself. A duplicated bot keeps its audience, allowlist and computer setting. No bot tool reads or sets any of these.
+- Tool list: `EXTERNAL_BUILTIN_TOOLS` and `EXTERNAL_COMPUTER_TOOLS` in `packages/contracts/src/builtin-tools.ts`; `selectBuiltinToolsForRun` keeps only that closed list for an External bot, and the cross-Space agent-connection tools are not offered. The offered list is also what the executor enforces at call time.
+- Connectors: for an External bot, "all agents" access is ignored (`connectionRowsForAudience`). It reaches a connection only through an explicit `botAccess` row. The Integrations page's "who can use this" list follows the same rule.
+- Bot directory: an External bot's directory in its instructions lists only its allowlisted bots.
+- Protective prompt: `EXTERNAL_BOT_PROMPT`, appended last by `runIdentityInstruction`.
+- `message_bot`: `messageBot` reads the sender's audience and allowlist from the database. An External sender resolves targets only among its allowlisted Internal bots (and the caller it is answering); anything else, including a name that does not exist, gets the same fixed message so the refusal does not reveal which bots exist.
+- UI: an Audience row (Internal / External) in the bot settings, with the helper, "Can message" switches, a "Computer and browser" switch and the "Still has access to" line shown only for External; an "External" tag beside the bot name in the chat header.
 
 ## Problem and threat model
 
@@ -114,8 +137,8 @@ If the owner approves a private read, the data is now in that run's context, and
 
 Yes: an External bot is blocked from private tools outright, regardless of anything else. The notice protects the receiver; this protects the sender. Proposal:
 
-- **Built-in tools:** a closed allowlist, applied the way `selectBuiltinToolsForRun` and the fixed page-agent lists already work: `web_search`, `web_fetch`, `ask_user`, own scratchpad, own page, `skill_read`, and `message_bot`. Not offered: `mail_*`, Finance, Carta and data room tools, `meetings_*`, `memory` and `search_history` across threads, `spawn_bot`, `handoff_to_bot`, `connect_agent`, `message_agent`, `run_subagent`, `request_takeover`, `request_secret`, shell and file tools on the computer, `schedule_*` (open question 5 covers `computer_*` and browser).
-- **`message_bot` target restriction:** an External bot may message only Internal bots the owner has chosen to expose (open question 2; default: any Internal bot in the Space, with the notice and card gate protecting the receiver). It may never message another External bot (no loops).
+- **Built-in tools:** a closed allowlist, applied the way `selectBuiltinToolsForRun` and the fixed page-agent lists already work: `web_search`, `web_fetch`, `ask_user`, own scratchpad, own page, `skill_read`, and `message_bot`. Not offered: `mail_*`, Finance, Carta and data room tools, `meetings_*`, `memory` and `search_history` across threads, `spawn_bot`, `handoff_to_bot`, `connect_agent`, `message_agent`, `run_subagent`, `request_takeover`, `request_secret`, shell and file tools on the computer, `schedule_*` (browser and computer tools are added only when the owner turns them on for that bot; owner decision 4).
+- **`message_bot` target restriction:** an External bot may message only the Internal bots on the allowlist its owner chose for it (empty by default; owner decision 3). Any other target is refused by the server with a fixed message. It may never message another External bot (no loops).
 - **Connectors:** an External bot ignores `Connection.allAgents` and `privateByDefault`; it sees a connector only through an explicit `botAccess` row. Switching a bot to External does not delete existing rows, so the owner is not surprised later, but it shows a one-line list of connectors still granted (see UI).
 - **Protective prompt** (added by `runIdentityInstruction`, code-owned, after the bot's own instructions, so editing instructions cannot remove it):
 
@@ -186,7 +209,7 @@ Every phase starts from `origin/main`, is behind no flag (Internal default means
 
 ### Phase 1: the switch and External defaults
 
-Scope: `Bot.audience` column and migration; `BotAudienceSchema` in contracts; `bots.update` and bot DTO; settings row, helper, header tag, connector warning; External built-in allowlist and protective prompt; connector rule (explicit `botAccess` only); `spawn_bot` and page agents stay Internal.
+Scope: `Bot.audience` column, the per-bot allowlist and computer opt-in, and the migration; `BotAudienceSchema` in contracts; `bots.update` and bot DTO; settings row, helper, header tag, connector warning; External built-in allowlist and protective prompt; connector rule (explicit `botAccess` only); `spawn_bot` and page agents stay Internal.
 
 Files: `packages/db/prisma/schema.prisma` and a new migration; `packages/contracts/src/*bot*`; `apps/api/src/router.ts` (`bots.update`, ~2342); `packages/adapters/src/executor.ts` (`selectBuiltinToolsForRun`, `runIdentityInstruction`, connector selection); `apps/web/src/pages/shell/bot-panel.tsx` and its stories.
 
@@ -238,7 +261,7 @@ What this cannot prove: how a real model reacts to the notice, since model behav
 - **GTM and mail read.** See open question 3.
 - **Voice agent (Elio) and messaging channels.** Out of scope; existing privacy blocks apply (`messagingChannelPrivacyBlock`). A public group chat bot would be the natural second use of External in a later plan.
 
-## Open questions for the owner
+## Open questions for the owner (answered, see "Owner decisions (final)")
 
 1. **Default for existing bots and new bots.** Recommended: Internal for all existing and new bots; External is opt-in per bot. Alternative: new bots created from a "support" template start External.
 2. **Which internal bots may an External bot message?** Recommended: any Internal bot in the Space at first (the notice and the gate protect the receiver), with a later optional per-bot allowlist. Alternative: External bots may message only one designated bot (for example Chief), which shrinks the surface.

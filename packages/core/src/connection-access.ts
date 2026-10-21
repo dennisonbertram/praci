@@ -37,6 +37,17 @@ export type ConnectionAccessRow = {
   botAccess: { botId: string }[];
 };
 
+/**
+ * What an external bot sees of the connection rows: "all agents" does not reach it, only an
+ * explicit access row does. Every place that reads connection rows for a run applies this.
+ */
+export function connectionRowsForAudience<T extends { allAgents: boolean }>(
+  rows: T[],
+  audience: string | null | undefined,
+): T[] {
+  return audience === "external" ? rows.map((row) => ({ ...row, allAgents: false })) : rows;
+}
+
 /** A connection limited to chosen agents is usable only by a bot with an access row. */
 export function botMayUseConnection(row: {
   allAgents: boolean;
@@ -123,15 +134,18 @@ export type EffectiveAccess = { shared: "all" | "some" | "none"; botIds: string[
  */
 export function effectiveAccessByConnection(
   rows: ConnectionAccessRow[],
-  bots: { id: string; spawnKey: string | null; archivedAt: Date | null }[],
+  bots: { id: string; spawnKey: string | null; archivedAt: Date | null; audience?: string }[],
 ): Record<string, EffectiveAccess> {
   const active = bots.filter((bot) => !bot.archivedAt);
   const usable = new Map<string, string[]>(rows.map((row) => [row.id, []]));
   for (const bot of active) {
-    const own = rows.map((row) => ({
-      ...row,
-      botAccess: row.botAccess.filter((entry) => entry.botId === bot.id),
-    }));
+    const own = connectionRowsForAudience(
+      rows.map((row) => ({
+        ...row,
+        botAccess: row.botAccess.filter((entry) => entry.botId === bot.id),
+      })),
+      bot.audience,
+    );
     const denied = deniedConnectionIds(own);
     for (const row of own) {
       if (row.status !== "connected" || !botCanReachConnection(bot, row)) continue;

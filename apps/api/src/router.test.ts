@@ -3285,8 +3285,11 @@ describe("bot model auth on save", () => {
       isDefault: boolean;
       modelId: string;
     } | null;
+    bot?: Record<string, unknown>;
+    /** How many of the chosen message targets are internal bots of this space and user. */
+    internalTargets?: number;
   }) {
-    const bot = storedBot(options.modelId);
+    const bot = { ...storedBot(options.modelId), ...options.bot };
     const preferenceFindFirst = vi.fn(options.preferences);
     const secretFindFirst = vi.fn(async (args: { where: { id?: string } }) => {
       if (args.where.id === "secret-api") {
@@ -3310,8 +3313,11 @@ describe("bot model auth on save", () => {
     };
     const prisma = {
       bot: {
-        findFirst: vi.fn(async () => bot),
+        findFirst: vi.fn(async (args: { where: { spaceId?: string; userId?: string } }) =>
+          args.where.spaceId === bot.spaceId && args.where.userId === bot.userId ? bot : null,
+        ),
         findMany: vi.fn(async () => [{ ...bot, name: "Ada renamed" }]),
+        count: vi.fn(async () => options.internalTargets ?? 0),
         update: botUpdate,
       },
       spaceModelPreference: { findFirst: preferenceFindFirst },
@@ -3431,6 +3437,72 @@ describe("bot model auth on save", () => {
         where: expect.objectContaining({ id: "secret-api", userId: actor.userId, spaceId: null }),
       }),
     );
+  });
+
+  describe("audience", () => {
+    const setup = (extra: Partial<Parameters<typeof saveDeps>[0]> = {}) =>
+      saveDeps({ modelId: luna, preferences: () => null, ...extra });
+
+    it("lets the owner make a bot external and saves the allowed targets", async () => {
+      const { botUpdate, handler } = setup({ internalTargets: 2 });
+      const response = await call(handler, "bots/update", {
+        botId: "bot-1",
+        audience: "external",
+        externalMessageTargets: ["bot-2", "bot-3", "bot-2"],
+        externalComputerTools: true,
+      });
+      expect(response.status).toBe(200);
+      expect(botUpdate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            audience: "external",
+            externalMessageTargets: ["bot-2", "bot-3"],
+            externalComputerTools: true,
+          }),
+        }),
+      );
+    });
+
+    it("leaves audience alone when the request does not name it", async () => {
+      const { botUpdate, handler } = setup();
+      await call(handler, "bots/update", { botId: "bot-1", name: "Ada renamed" });
+      const data = (botUpdate.mock.calls[0] as unknown as [{ data: Record<string, unknown> }])[0]
+        .data;
+      expect(data).not.toHaveProperty("audience");
+      expect(data).not.toHaveProperty("externalMessageTargets");
+    });
+
+    it("refuses a bot of another user or space", async () => {
+      const { botUpdate, handler } = setup({ bot: { userId: "someone-else" } });
+      const response = await call(handler, "bots/update", { botId: "bot-1", audience: "external" });
+      expect(response.status).not.toBe(200);
+      expect(botUpdate).not.toHaveBeenCalled();
+      const otherSpace = setup({ bot: { spaceId: "another-space" } });
+      const second = await call(otherSpace.handler, "bots/update", {
+        botId: "bot-1",
+        audience: "external",
+      });
+      expect(second.status).not.toBe(200);
+      expect(otherSpace.botUpdate).not.toHaveBeenCalled();
+    });
+
+    it("keeps page and integration agents internal", async () => {
+      const { botUpdate, handler } = setup({ bot: { spawnKey: "finance-agent:user-1" } });
+      const response = await call(handler, "bots/update", { botId: "bot-1", audience: "external" });
+      expect(response.status).toBe(400);
+      expect(botUpdate).not.toHaveBeenCalled();
+    });
+
+    it("rejects message targets that are not internal bots of this space and user", async () => {
+      const { botUpdate, handler } = setup({ internalTargets: 1 });
+      const response = await call(handler, "bots/update", {
+        botId: "bot-1",
+        audience: "external",
+        externalMessageTargets: ["bot-2", "foreign-bot"],
+      });
+      expect(response.status).not.toBe(200);
+      expect(botUpdate).not.toHaveBeenCalled();
+    });
   });
 });
 

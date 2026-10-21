@@ -2,6 +2,7 @@ import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import {
   currentBotMessageHop,
+  EXTERNAL_MESSAGE_REFUSED,
   loadBotMessageContext,
   messageBot,
   returnBotMessageOutcome,
@@ -28,6 +29,7 @@ function deps(
     /** Simulate a unique (threadId, clientNonce) race after both retries miss. */
     uniqueConflictOnCommit?: boolean;
     transactionConflictOnce?: boolean;
+    sender?: { audience: string; externalMessageTargets: string[] };
   } = {},
 ) {
   const enqueue = vi.fn().mockResolvedValue(undefined);
@@ -68,13 +70,20 @@ function deps(
   let transactionAttempts = 0;
   const prisma = {
     bot: {
-      findMany: vi
+      findFirst: vi
         .fn()
-        .mockResolvedValue(
-          options.bots ?? [
-            { id: "bot-target", name: "Analyst", title: "", thread: { id: "thread-target" } },
-          ],
-        ),
+        .mockResolvedValue(options.sender ?? { audience: "internal", externalMessageTargets: [] }),
+      findMany: vi.fn().mockResolvedValue(
+        options.bots ?? [
+          {
+            id: "bot-target",
+            name: "Analyst",
+            title: "",
+            audience: "internal",
+            thread: { id: "thread-target" },
+          },
+        ],
+      ),
     },
     message: { findUnique: messageFindUnique, findMany: vi.fn().mockResolvedValue([]) },
     run: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
@@ -843,5 +852,62 @@ describe("automatic outcome return", () => {
     expect(returned).toBe(true);
     expect(harness.enqueue).not.toHaveBeenCalled();
     expect(harness.deps.prisma.run.updateMany).toHaveBeenCalled();
+  });
+});
+
+describe("an external bot messaging another bot", () => {
+  const bots = [
+    { id: "bot-allowed", name: "Docs", title: "", audience: "internal", thread: { id: "t-1" } },
+    { id: "bot-other", name: "Chief", title: "", audience: "internal", thread: { id: "t-2" } },
+    {
+      id: "bot-ext",
+      name: "Other Support",
+      title: "",
+      audience: "external",
+      thread: { id: "t-3" },
+    },
+  ];
+  const external = { audience: "external", externalMessageTargets: ["bot-allowed", "bot-ext"] };
+
+  it("delivers to an internal bot the owner chose", async () => {
+    const harness = deps({ bots, sender: external });
+    const sent = await messageBot(harness.deps, run, sender, {
+      bot_id: "bot-allowed",
+      message: "What are your opening hours?",
+    });
+    expect(sent).toMatchObject({ ok: true, botId: "bot-allowed" });
+  });
+
+  it.each([
+    ["an internal bot that is not on the list, by id", { bot_id: "bot-other" }],
+    ["an internal bot that is not on the list, by name", { confirm_name: "Chief" }],
+    ["another external bot, even if listed", { bot_id: "bot-ext" }],
+    ["a bot that does not exist", { bot_id: "nope" }],
+  ])("refuses %s with the fixed message and delivers nothing", async (_label, target) => {
+    const harness = deps({ bots, sender: external });
+    const sent = await messageBot(harness.deps, run, sender, { ...target, message: "hello" });
+    expect(sent).toEqual({ ok: false, error: EXTERNAL_MESSAGE_REFUSED });
+    expect(harness.tx.task.create).not.toHaveBeenCalled();
+  });
+
+  it("refuses everything when the list is empty (the default)", async () => {
+    const harness = deps({
+      bots,
+      sender: { audience: "external", externalMessageTargets: [] },
+    });
+    const sent = await messageBot(harness.deps, run, sender, {
+      bot_id: "bot-allowed",
+      message: "hello",
+    });
+    expect(sent).toEqual({ ok: false, error: EXTERNAL_MESSAGE_REFUSED });
+  });
+
+  it("does not restrict an internal bot", async () => {
+    const harness = deps({ bots });
+    const sent = await messageBot(harness.deps, run, sender, {
+      bot_id: "bot-other",
+      message: "hello",
+    });
+    expect(sent).toMatchObject({ ok: true, botId: "bot-other" });
   });
 });
