@@ -279,10 +279,13 @@ export function NewBotSectionDialog({
 
 export function RenameBotSectionDialog({
   section,
+  takenNames = [],
   onCancel,
   onConfirm,
 }: {
   section: Pick<BotSection, "name">;
+  /** Names of the other folders, so a duplicate is refused before anything is sent. */
+  takenNames?: string[];
   onCancel: () => void;
   onConfirm: (name: string) => Promise<void>;
 }) {
@@ -302,6 +305,10 @@ export function RenameBotSectionDialog({
           onSubmit={(event) => {
             event.preventDefault();
             if (!trimmed || saving || unchanged) return;
+            if (takenNames.includes(trimmed)) {
+              setError(t`A folder with that name already exists`);
+              return;
+            }
             setSaving(true);
             setError(null);
             void onConfirm(trimmed).catch((err: unknown) => {
