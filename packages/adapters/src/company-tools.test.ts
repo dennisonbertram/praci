@@ -247,6 +247,13 @@ describe("Company tools", () => {
             body: "must not be returned",
           },
         },
+        {
+          id: "source-2",
+          sourceKind: "data_room",
+          connectionId: null,
+          scope: {},
+          plan: {},
+        },
       ],
     };
     const findFirst = vi.fn(async () => run);
@@ -289,10 +296,12 @@ describe("Company tools", () => {
               estimateBasis: "sample",
             },
           },
+          { sourceKind: "data_room", connectionId: null, scope: {}, plan: null },
         ],
       },
     });
     expect(JSON.stringify(result)).not.toContain("consents");
+    expect(JSON.stringify(result)).not.toContain("must not be returned");
 
     const empty = await companyToolFromTool(
       {

@@ -486,10 +486,10 @@ async function snapshotImportPlan(deps: CompanyToolsDeps, runId: string) {
       inputTokensUsed: Number(run.inputTokensUsed),
       outputTokensUsed: Number(run.outputTokensUsed),
     },
-    sources: run.sources.map(({ plan, ...source }) => ({
-      ...source,
-      plan: CompanyImportPlanSchema.parse(plan),
-    })),
+    sources: run.sources.map(({ plan, ...source }) => {
+      const parsed = CompanyImportPlanSchema.safeParse(plan);
+      return { ...source, plan: parsed.success ? parsed.data : null };
+    }),
     consents,
   };
 }
