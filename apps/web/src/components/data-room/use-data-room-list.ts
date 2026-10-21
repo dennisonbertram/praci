@@ -12,6 +12,8 @@ export type Filters = {
   docType?: string;
   party?: string;
   source?: string;
+  /** Only "failed", set from the failed count. */
+  status?: string;
   docDateFrom?: string;
   docDateTo?: string;
 };

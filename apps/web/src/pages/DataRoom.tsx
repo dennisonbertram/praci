@@ -267,9 +267,16 @@ export function DataRoomPage({
     listReload();
     setFacetsVersion((n) => n + 1);
   }, [listReload]);
+  // A poll tick while the list is still loading would cancel that request and start it over, so a
+  // slow search never got to show its answer.
+  const listLoading = useRef(list.loading);
+  listLoading.current = list.loading;
   useEffect(() => {
-    window.addEventListener(DATA_ROOM_CHANGED, reload);
-    return () => window.removeEventListener(DATA_ROOM_CHANGED, reload);
+    const onChanged = () => {
+      if (!listLoading.current) reload();
+    };
+    window.addEventListener(DATA_ROOM_CHANGED, onChanged);
+    return () => window.removeEventListener(DATA_ROOM_CHANGED, onChanged);
   }, [reload]);
 
   // Preview: a click (or Enter) on a row shows it; clicking the shown row again closes the pane.
@@ -635,12 +642,14 @@ export function DataRoomPage({
                   onDismiss={importActivity.dismiss}
                   hideRunning={processing.active}
                 />
-                {processing.processing && (processing.active || processing.finished) ? (
+                {processing.processing &&
+                (processing.active || processing.finished || processing.processing.failed > 0) ? (
                   <ProcessingStrip
                     importing={processing.active ? importProgress(importActivity.imports) : null}
                     processing={processing.processing}
                     total={processing.total}
                     finished={!processing.active}
+                    onShowFailed={() => setFilters({ ...filters, status: "failed" })}
                   />
                 ) : null}
                 {searching && openFolderPath ? (
