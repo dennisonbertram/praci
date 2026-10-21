@@ -1,11 +1,20 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { AccountSecurity } from "@rakazo/contracts";
 import { Button, Input, Label } from "@rakazo/ui-web";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { fetchAccountSecurity, requestAccountDeletionCode } from "../lib/account-security";
 import { authClient } from "../lib/auth";
 import { runSsoFlow } from "../lib/sso-flow";
 import { authErrorText, errorText } from "../lib/user-error";
+
+/** Brings the opened form into view by scrolling only the pane that holds it, never the dialog around it. */
+function revealInPane(node: HTMLElement) {
+  let pane = node.parentElement;
+  while (pane && !/auto|scroll/.test(getComputedStyle(pane).overflowY)) pane = pane.parentElement;
+  if (!pane) return;
+  const overflow = node.getBoundingClientRect().bottom - pane.getBoundingClientRect().bottom;
+  if (overflow > 0) pane.scrollTop += overflow;
+}
 
 export function AccountAccess({
   onSecurity,
@@ -24,6 +33,10 @@ export function AccountAccess({
     return code ? authErrorText({ code }, t`Could not continue`) : null;
   });
   const [attempt, setAttempt] = useState(0);
+  const formRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open && formRef.current) revealInPane(formRef.current);
+  }, [open]);
   // A failed load is shown only where it matters: in the opened delete panel, beside Retry.
   const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
@@ -78,17 +91,15 @@ export function AccountAccess({
           <Trans>Link SSO</Trans>
         </Button>
       ) : null}
-      <div className="pt-1">
-        <Button
-          variant="destructive"
-          aria-expanded={open}
-          onClick={() => setOpen((value) => !value)}
-        >
-          <Trans>Delete account</Trans>
-        </Button>
-      </div>
+      {open ? null : (
+        <div className="pt-1">
+          <Button variant="destructive" onClick={() => setOpen(true)}>
+            <Trans>Delete account</Trans>
+          </Button>
+        </div>
+      )}
       {open ? (
-        <div className="space-y-3">
+        <div ref={formRef} className="space-y-3">
           <p className="text-sm">
             <Trans>This permanently deletes your account and data.</Trans>
           </p>
@@ -203,6 +214,14 @@ export function AccountAccess({
             }
           >
             <Trans>Delete account</Trans>
+          </Button>
+          <Button
+            variant="ghost"
+            className="ms-2"
+            disabled={pending}
+            onClick={() => setOpen(false)}
+          >
+            <Trans>Cancel</Trans>
           </Button>
         </div>
       ) : null}

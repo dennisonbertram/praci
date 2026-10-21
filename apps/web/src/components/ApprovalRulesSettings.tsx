@@ -145,25 +145,25 @@ export function ApprovalRulesSettings() {
             </Label>
           </div>
         ))}
-      </div>
-      <div className="mt-5 flex items-start gap-3">
-        <Switch
-          id={autoReviewId}
-          data-testid="auto-review-toggle"
-          className="mt-0.5"
-          checked={autoReview?.enabled ?? false}
-          disabled={loading || savingAutoReview || !autoReview}
-          onCheckedChange={(checked) => void toggleAutoReview(checked)}
-        />
-        <div>
-          <Label htmlFor={autoReviewId} className="text-[14px] font-normal text-foreground/75">
-            <Trans>Flag unexpected actions</Trans>
-          </Label>
-          {autoReview?.enabled && !autoReview.checkerAvailable ? (
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              <Trans>Add a model in Settings to use this.</Trans>
-            </p>
-          ) : null}
+        <div className="flex items-start gap-3">
+          <Switch
+            id={autoReviewId}
+            data-testid="auto-review-toggle"
+            className="mt-0.5"
+            checked={autoReview?.enabled ?? false}
+            disabled={loading || savingAutoReview || !autoReview}
+            onCheckedChange={(checked) => void toggleAutoReview(checked)}
+          />
+          <div>
+            <Label htmlFor={autoReviewId} className="text-[14px] font-normal text-foreground/75">
+              <Trans>Flag unexpected actions</Trans>
+            </Label>
+            {autoReview?.enabled && !autoReview.checkerAvailable ? (
+              <p className="mt-1 text-[13px] text-muted-foreground">
+                <Trans>Add a model in Settings to use this.</Trans>
+              </p>
+            ) : null}
+          </div>
         </div>
       </div>
       {error ? <p className="mt-3 text-[13px] text-destructive">{error}</p> : null}

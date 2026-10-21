@@ -29,7 +29,7 @@ const matches = (contact: Contact, needle: string, kindName: string) =>
   );
 
 /** The people and companies the business works with, saved by the user or by their agents. */
-export function ContactsPage() {
+export function ContactsPage({ spaceName }: { spaceName?: string }) {
   const [contacts, setContacts] = useState<Contact[] | null>(null);
   const [error, setError] = useState("");
   const [params, setParams] = useSearchParams();
@@ -81,6 +81,13 @@ export function ContactsPage() {
     >
       <PageHeader
         title={<Trans>Contacts</Trans>}
+        meta={
+          spaceName ? (
+            <span className="truncate" title={spaceName}>
+              {spaceName}
+            </span>
+          ) : null
+        }
         actions={
           <Button onClick={() => setEditing("new")}>
             <Plus aria-hidden="true" />
@@ -146,17 +153,17 @@ export function ContactsPage() {
               </Button>
             </div>
           ) : (
-            <div className="max-w-5xl">
+            <div>
               <Table compact className="table-fixed">
                 <TableHeader>
                   <TableHeadRow>
                     <TableHead>
                       <Trans>Name</Trans>
                     </TableHead>
-                    <TableHead className="hidden w-56 @md:table-cell">
+                    <TableHead className="hidden w-[30%] @md:table-cell">
                       <Trans>Email</Trans>
                     </TableHead>
-                    <TableHead className="hidden w-44 @lg:table-cell">
+                    <TableHead className="hidden w-[24%] @lg:table-cell">
                       <Trans>Organization</Trans>
                     </TableHead>
                     <TableHead className="w-28">
@@ -186,10 +193,16 @@ export function ContactsPage() {
                           {contact.organization ?? contact.email}
                         </div>
                       </TableCell>
-                      <TableCell className="hidden truncate @md:table-cell">
+                      <TableCell
+                        className="hidden truncate @md:table-cell"
+                        title={contact.email ?? undefined}
+                      >
                         {contact.email}
                       </TableCell>
-                      <TableCell className="hidden truncate @lg:table-cell">
+                      <TableCell
+                        className="hidden truncate @lg:table-cell"
+                        title={contact.organization ?? undefined}
+                      >
                         {contact.organization}
                       </TableCell>
                       <TableCell>{names[contact.kind]}</TableCell>

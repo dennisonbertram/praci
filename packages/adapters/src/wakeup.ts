@@ -99,6 +99,8 @@ export const RECURRING_JOBS: CronItem[] = [
   { task: "account.export.cleanup", match: "29 3 * * *" },
   // Gmail push watches last 7 days; renew daily. Does nothing unless push is configured.
   { task: "mail.watch.renew", match: "11 4 * * *" },
+  // Devin sessions for the Devin page and its alerts.
+  { task: "devin.refresh", match: "*/2 * * * *" },
 ];
 
 export class GraphileJobWorkerHost implements JobWorkerHost {

@@ -1,4 +1,4 @@
-import { maskCurrencyText, maskPinFigures } from "@rakazo/chat-ui/mask-currency";
+import { maskCurrencyText } from "@rakazo/chat-ui/mask-currency";
 import { useSyncExternalStore } from "react";
 import { createSecureStorePreference } from "./secure-preference-store";
 
@@ -29,6 +29,6 @@ export const maskSvgWhenHidden = (svg: string): string =>
   getHideAmounts()
     ? svg.replace(
         />([^<>]+)<\/(text|tspan)>/g,
-        (_, label, tag) => `>${maskPinFigures(label)}</${tag}>`,
+        (_, label, tag) => `>${maskCurrencyText(label)}</${tag}>`,
       )
     : svg;

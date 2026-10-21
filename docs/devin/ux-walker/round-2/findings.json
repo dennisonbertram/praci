@@ -1,0 +1,404 @@
+{
+ "round": 2,
+ "date": "2026-10-20",
+ "mockup": "docs/devin/mockup.html (v3)",
+ "round1_status": [
+  {
+   "id": "F-STORY-001-01",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Dialog still has a hint and a visible label, no app tile, unlike the generic ConnectionDialog (round-1 text). Help link now added, so the gap is smaller; severity lowered.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-001/step-1-dialog.png"
+  },
+  {
+   "id": "F-STORY-001-02",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Dialog now shows the link 'Where to find your key' under the field (target is '#', not observable).",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-001/step-1-dialog.png"
+  },
+  {
+   "id": "F-STORY-001-03",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "No Devin tile is drawn in v3; still unobservable.",
+   "screenshot": ""
+  },
+  {
+   "id": "F-STORY-001-04",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Caption under the dialog frame: 'Connect closes the dialog and opens /app/devin.' This is a caption, not a drawn frame, so the landing is planned behaviour.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-001/step-1-dialog.png"
+  },
+  {
+   "id": "F-STORY-002-01",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Not connected frame now sits inside the shell with sidebar, one line 'Connect Devin to see its sessions here.' and one primary button.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-002/step-1-not-connected.png"
+  },
+  {
+   "id": "F-STORY-002-02",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Disabled-Connect (empty field) and error states of the dialog are not drawn; only the prefilled state. The after-connect result is now covered by the caption.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-001/step-1-dialog.png"
+  },
+  {
+   "id": "F-STORY-002-03",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Not connected frame shows the Devin sidebar link without a dot.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-002/step-1-not-connected.png"
+  },
+  {
+   "id": "F-STORY-004-01",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Loading skeleton, empty, load error and stale frames are drawn.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-004/step-2-loading.png"
+  },
+  {
+   "id": "F-STORY-004-02",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "ACUs and PRs open tiles and the ACUs column are gone; only Needs you and Working tiles remain.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-004/step-1-first-visit-closed.png"
+  },
+  {
+   "id": "F-STORY-004-03",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Titles wrap (no ellipsis) and the question wraps to two lines at 1440 and at every width tested. Residual clamp logged as F-STORY-004-06.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-004/step-1-first-visit-closed.png"
+  },
+  {
+   "id": "F-STORY-004-04",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Geometry audit at 1440, 1100, 900, 390: overflowSpills is empty; PR cells no longer spill.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-1-panel-open.png"
+  },
+  {
+   "id": "F-STORY-004-05",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "'First visit, panel closed' frame exists; the Ask button is the only entry. The closed-to-open transition is not drawn (F-STORY-012-08).",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-004/step-1-first-visit-closed.png"
+  },
+  {
+   "id": "F-STORY-008-01",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Needs you tile has an amber border and amber value, and the Needs you group is first. Squint test: tile and dot now read as the lead signal.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-008/step-1-glance-first-visit.png"
+  },
+  {
+   "id": "F-STORY-008-02",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Count is still stated by tile, dot (no number), two badges, and the agent reply in the open-panel frame. The header count and the ACUs repeat are gone, so severity lowered.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-1-panel-open.png"
+  },
+  {
+   "id": "F-STORY-008-03",
+   "status": "still present",
+   "severity_now": "medium",
+   "evidence": "Measured at 1440 light: warning badge text 3.48:1, success badge text 4.17:1 (12px). Unchanged tokens. Destructive 4.62:1 passes.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-004/step-1-first-visit-closed.png"
+  },
+  {
+   "id": "F-STORY-008-04",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Sidebar dot is a span with aria-label '2 need you' and role=null.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-008/step-1-glance-first-visit.png"
+  },
+  {
+   "id": "F-STORY-008-05",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Empty frame draws no tiles; 'Needs you 0' with other sessions present (dot gone, tile not emphasised) is not drawn.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-005/step-1-empty.png"
+  },
+  {
+   "id": "F-STORY-010-01",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Each needs-you row has a visible 'Answer in Devin' link with an external-link icon; keyboard focus ring is visible.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-010/step-2-keyboard-focus-answer-link.png"
+  },
+  {
+   "id": "F-STORY-010-02",
+   "status": "still present",
+   "severity_now": "medium",
+   "evidence": "No refresh control or cue is drawn; the header shows 'Updated 4m ago' only on the stale frame. The refetch rule is planned behaviour and cannot be observed in the static mockup.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-007/step-1-key-rejected-stale.png"
+  },
+  {
+   "id": "F-STORY-010-03",
+   "status": "still present",
+   "severity_now": "suggestion",
+   "evidence": "Wait time is still only the Updated column.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-004/step-1-first-visit-closed.png"
+  },
+  {
+   "id": "F-STORY-012-01",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Ask is hidden whenever the panel is open: 1440 open frame, and after clicking Ask at 1100, 900, 390.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-1-panel-open.png"
+  },
+  {
+   "id": "F-STORY-012-02",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "User bubbles are still purple (bot colour). Not re-checked against the real bubble story this round.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-1-panel-open.png"
+  },
+  {
+   "id": "F-STORY-012-03",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Tool rows now read 'Session search' and 'Session get messages x2' (noun first, like 'Mail search'); the invented verbs are gone. Not compared with humanizeToolName output.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-1-panel-open.png"
+  },
+  {
+   "id": "F-STORY-012-04",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "At the 384px panel, 'Open in Devin' stays on one line in both bullets (no orphan word).",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-1-panel-open.png"
+  },
+  {
+   "id": "F-STORY-012-05",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Panel collapse icon measured 28x28.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-1-panel-open.png"
+  },
+  {
+   "id": "F-STORY-012-06",
+   "status": "still present",
+   "severity_now": "suggestion",
+   "evidence": "No suggestion chip; the first-open intro state is not drawn.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-2-ask-on-first-visit-frame.png"
+  },
+  {
+   "id": "F-STORY-012-07",
+   "status": "still present",
+   "severity_now": "medium",
+   "evidence": "Agent reply still shows only the ideal case; wording when question text cannot be read is not drawn.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-1-panel-open.png"
+  },
+  {
+   "id": "F-STORY-021-01",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Toast title 'Devin has a question', body '<session title>: <question>', caption says click opens the session in Devin. Remaining duplication is logged under F-STORY-008-02.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-021/step-1-toast.png"
+  },
+  {
+   "id": "F-STORY-021-02",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Body when the question is unavailable is not drawn.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-021/step-1-toast.png"
+  },
+  {
+   "id": "F-STORY-021-03",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Dot clearing rule is not observable and still undecided in the catalog.",
+   "screenshot": ""
+  },
+  {
+   "id": "F-STORY-033-01",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "Width switcher: 1100 keeps sidebar and shows overlay panel (dock 384, absolute); 900 and 390 swap the sidebar for a top bar; no frame overflow (pg scrollWidth equals clientWidth).",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-033/switcher-900-closed.png"
+  },
+  {
+   "id": "F-STORY-033-02",
+   "status": "resolved",
+   "severity_now": "",
+   "evidence": "At 390 the table becomes a list with the badge at top right, 'Answer in Devin' inside the row, and a Pull request/Source/Updated block.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-033/switcher-390-closed.png"
+  },
+  {
+   "id": "F-STORY-033-03",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Open overlay covers Pull request, Source, Updated at 1100 and 900 (dock left edge 716 of 1100, 516 of 900). Same pattern as the real app; status and title stay visible. Severity lowered.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-033/switcher-900-ask-open.png"
+  },
+  {
+   "id": "F-STORY-033-04",
+   "status": "still present",
+   "severity_now": "low",
+   "evidence": "Real viewport 390: dialog stays 440px, document scrollWidth 456 (66px overflow), Connect button clipped. Mockup artifact.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-001/browser-390-dialog.png"
+  },
+  {
+   "id": "F-STORY-033-05",
+   "status": "not applicable",
+   "severity_now": "",
+   "evidence": "Decision: mobile gets push only, no native screen. Residual question (push tap target) moved to catalog GAP-48.",
+   "screenshot": ""
+  }
+ ],
+ "new_findings": [
+  {
+   "id": "F-STORY-001-05",
+   "severity": "medium",
+   "category": "disclosure",
+   "criterion": "Information stated once",
+   "score": "warn",
+   "description": "Connect dialog does not say the connection is shared with the whole space or that every member will see all org sessions; hint still says 'org-scoped' (jargon).",
+   "expected": "One connection per space is now the rule, so the person connecting should know who it exposes.",
+   "actual": "Dialog: 'An org-scoped Devin service-user key (starts with cog_).' only.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-001/step-1-dialog.png",
+   "suggested_fix": "Replace 'org-scoped' with a plain phrase and add one short clause only if needed.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-002-04",
+   "severity": "low",
+   "category": "happy-path",
+   "criterion": "Primary CTA",
+   "score": "warn",
+   "description": "Ask button is drawn on Not connected, Loading, Empty and Load error frames; before connecting there is no Devin agent, and what Ask does is not drawn.",
+   "expected": "Controls that cannot work are hidden until they can.",
+   "actual": "Ask shows in all states.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-002/step-1-not-connected.png",
+   "suggested_fix": "Hide Ask while not connected.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-002-05",
+   "severity": "low",
+   "category": "error-handling",
+   "criterion": "Empty states",
+   "score": "warn",
+   "description": "Not connected frame does not cover a member who is not allowed to connect or replace the shared connection; no 'ask whoever connected it' state is drawn.",
+   "expected": "State for members who cannot connect.",
+   "actual": "Same Connect Devin button for everyone.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-002/step-1-not-connected.png",
+   "suggested_fix": "Decide who may connect, then draw one variant.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-007-02",
+   "severity": "medium",
+   "category": "error-handling",
+   "criterion": "Network failure",
+   "score": "warn",
+   "description": "Key-rejected frame keeps the tile (2), the Needs input badges, 'Answer in Devin' links and the sidebar dot looking live. The notice says only 'Devin rejected the key.'; nothing says alerts have stopped, and a member who did not connect gets a Reconnect button with no word on who can use it.",
+   "expected": "Stale rows are marked as stale and the user learns that needs-you alerts are off.",
+   "actual": "Notice plus full live-looking page; 'Updated 4m ago' in the header is the only stale cue.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-007/step-1-key-rejected-stale.png",
+   "suggested_fix": "Dim the tile and dot while stale, or add three words to the notice.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-004-06",
+   "severity": "low",
+   "category": "layout",
+   "criterion": "Overflow/clipping",
+   "score": "warn",
+   "description": "At the open-panel width (page column 740px) the second needs-you question clamps at two lines with an ellipsis ('...the older one...'). Full text only in Devin.",
+   "expected": "Ellipsis with the full value reachable.",
+   "actual": "Clamped; the 'Answer in Devin' link is the way to read more.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-012/step-1-panel-open.png",
+   "suggested_fix": "Accept (GAP-45 chose the clamp) or add a title attribute.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-010-04",
+   "severity": "low",
+   "category": "a11y",
+   "criterion": "Interactive sizing",
+   "score": "warn",
+   "description": "'Answer in Devin' link measures 102x18px; both small. Under the 24px minimum target of WCAG 2.2.",
+   "expected": "Targets of at least 24px height.",
+   "actual": "18px high.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-010/step-2-keyboard-focus-answer-link.png",
+   "suggested_fix": "Add vertical padding to the link.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-010-05",
+   "severity": "suggestion",
+   "category": "flow",
+   "criterion": "One way per task",
+   "score": "warn",
+   "description": "Each needs-you row has two links (title and 'Answer in Devin') that presumably open the same Devin session, so two tab stops per row; row hover highlights the whole row with a pointer cursor but a click on the row outside the links does nothing.",
+   "expected": "One route per task and hover that matches what is clickable.",
+   "actual": "Both links have href '#'; tab order: title, Answer, title, Answer.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-010/step-1-needs-you-row-hover.png",
+   "suggested_fix": "Make the whole row the link or drop the row hover; keep one tab stop.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-021-04",
+   "severity": "low",
+   "category": "flow",
+   "criterion": "Information stated once",
+   "score": "warn",
+   "description": "Toast frame is drawn on the Devin page itself (needs-you rows visible behind it), although the catalog proposes suppressing it on /app/devin; the toast also covers the right part of the Working rows.",
+   "expected": "Toast not shown on the page that already shows the fact.",
+   "actual": "Toast over the Devin page.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-021/step-1-toast.png",
+   "suggested_fix": "Confirm suppression rule; redraw frame on another page (for example Inbox).",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-033-06",
+   "severity": "low",
+   "category": "hierarchy",
+   "criterion": "Information stated once",
+   "score": "warn",
+   "description": "Under 1024px the sidebar dot is hidden with the sidebar and the top bar has no indicator; the top bar names the page 'Devin agent' while the page title is 'Devin'.",
+   "expected": "Needs-you signal reachable at every width; one name per screen.",
+   "actual": "Top bar: menu icon and 'Devin agent'; no dot.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-033/switcher-900-closed.png",
+   "suggested_fix": "Dot on the menu button; top bar shows the page name.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  },
+  {
+   "id": "F-STORY-008-06",
+   "severity": "low",
+   "category": "consistency",
+   "criterion": "Component consistency",
+   "score": "warn",
+   "description": "Three labels for one state: group and tile 'Needs you', row badge 'Needs input', toast 'Devin has a question'.",
+   "expected": "One term for the state.",
+   "actual": "Three terms on one screen.",
+   "screenshot": "docs/devin/ux-walker/round-2/STORY-021/step-1-toast.png",
+   "suggested_fix": "Pick 'Needs you' for tile, group and badge; keep the toast wording.",
+   "files_likely_involved": [
+    "docs/devin/mockup.html"
+   ]
+  }
+ ]
+}

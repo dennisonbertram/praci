@@ -61,5 +61,6 @@ export function setInboxListParam(
   if (value) next.set(name, value);
   else next.delete(name);
   next.delete("mail");
+  next.delete("digest");
   return next;
 }

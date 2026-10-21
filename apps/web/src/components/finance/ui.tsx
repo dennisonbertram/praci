@@ -310,7 +310,9 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
   const crumbs = trailFor(own, cameFrom);
   // Before the page's own name loads (or when it never will), Back still returns to the real origin.
   const previous = crumbs.length > 1 ? crumbs[crumbs.length - 2] : (cameFrom ?? undefined);
-  const collapsed = (i: number) => crumbs.length > 3 && i > 0 && i < crumbs.length - 2;
+  // The page's own name is the heading below, so the trail stops at the page before it.
+  const trail = crumbs.slice(0, -1);
+  const collapsed = (i: number) => trail.length > 3 && i > 0 && i < trail.length - 1;
   return (
     <div className="mb-1.5 flex min-h-8 flex-wrap items-center gap-x-2.5 gap-y-1">
       {/* A trail of only the page before and this page would repeat the title, so one level down
@@ -329,13 +331,13 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
         // they move to the next line rather than cutting the company's name to a letter or two.
         <nav aria-label={t`Breadcrumb`} className="min-w-0 max-w-full shrink-0">
           <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
-            {crumbs.map((crumb, i) => (
+            {trail.map((crumb, i) => (
               <li
                 key={i}
                 // Narrow, a deep trail keeps Finance, the page before and this page.
                 className={cn("flex items-center gap-1", collapsed(i) && "hidden @md:flex")}
               >
-                {crumb.to && i < crumbs.length - 1 ? (
+                {crumb.to ? (
                   <Link
                     to={crumb.to}
                     state={crumbState(crumb)}
@@ -344,16 +346,13 @@ export function DetailHead({ crumbs: own }: { crumbs: Crumb[] }) {
                     {crumb.label}
                   </Link>
                 ) : (
-                  <span
-                    aria-current={i === crumbs.length - 1 ? "page" : undefined}
-                    className="text-foreground"
-                  >
+                  <span className="text-foreground">
                     <WithEndings text={crumb.label} />
                   </span>
                 )}
                 {/* The slash ends a crumb, so a wrapped trail never starts a line with one. */}
-                {i < crumbs.length - 1 ? <span aria-hidden="true">/</span> : null}
-                {i === 0 && crumbs.length > 3 ? (
+                {i < trail.length - 1 ? <span aria-hidden="true">/</span> : null}
+                {i === 0 && trail.length > 3 ? (
                   <span aria-hidden="true" className="flex items-center gap-1 @md:hidden">
                     <span>…</span>
                     <span>/</span>
@@ -398,13 +397,28 @@ export function NotFoundNotice() {
   );
 }
 
-export function ErrorNotice({ message, onRetry }: { message: string; onRetry: () => void }) {
+/** `action` replaces "Try again" when the fix is something else, such as Reconnect; with neither, there is no button. */
+export function ErrorNotice({
+  message,
+  onRetry,
+  action,
+}: {
+  message: string;
+  onRetry?: () => void;
+  action?: { label: string; onClick: () => void };
+}) {
   return (
     <div role="alert" className="my-4 flex items-center gap-3 text-sm text-destructive">
       <span>{message}</span>
-      <Button variant="outline" size="sm" onClick={onRetry}>
-        <Trans>Try again</Trans>
-      </Button>
+      {action ? (
+        <Button variant="outline" size="sm" onClick={action.onClick}>
+          {action.label}
+        </Button>
+      ) : onRetry ? (
+        <Button variant="outline" size="sm" onClick={onRetry}>
+          <Trans>Try again</Trans>
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -509,17 +523,27 @@ export function Kpi({
   sub,
   to,
   hover,
+  alert,
 }: {
   title: ReactNode;
   value: ReactNode;
   sub?: ReactNode;
   to?: string;
   hover?: ReactNode;
+  /** Colors the figure as bad news, e.g. overdue items. */
+  alert?: boolean;
 }) {
   const body = (
     <>
       <h2 className="text-xs font-semibold text-muted-foreground">{title}</h2>
-      <div className="mt-1 text-[22px] font-semibold leading-tight tabular-nums">{value}</div>
+      <div
+        className={cn(
+          "mt-1 text-[22px] font-semibold leading-tight tabular-nums",
+          alert && "text-destructive",
+        )}
+      >
+        {value}
+      </div>
       <div className="text-[11px] text-muted-foreground">{sub ?? " "}</div>
     </>
   );
@@ -896,7 +920,7 @@ export function BurnLegend() {
       <Legend className="bg-muted-foreground">
         <Trans>Revenue</Trans>
       </Legend>
-      <Legend className="border border-foreground bg-[repeating-linear-gradient(45deg,var(--foreground)_0_1.5px,var(--card)_1.5px_3.5px)]">
+      <Legend className="rounded-full border border-foreground bg-card">
         <Trans>Financing</Trans>
       </Legend>
     </div>

@@ -30,6 +30,8 @@ const status: VoiceStatus = {
   transcribe: true,
   provider: "sample-speech",
   voiceId: "voice_a",
+  transcriptionProvider: null,
+  transcriptionReady: false,
 };
 
 const meta = {

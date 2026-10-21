@@ -132,3 +132,21 @@ it("shows an error when the file cannot be loaded", async () => {
   await show();
   expect(container.querySelector('[role="alert"]')).not.toBeNull();
 });
+
+it("opens a CSV as a plain table: header row on top, readable names, grouped numbers", async () => {
+  preview.mockResolvedValue(
+    page({
+      header: ["monthly_burn", "Region", "value_usd"] as Cell[],
+      rows: [{ row: 2, cells: ["1234567", "North", "5"] as Cell[] }],
+    }),
+  );
+  await act(async () => {
+    root.render(<SheetPreview source={{ artifactId: "a1" }} name="burn.csv" />);
+  });
+  expect([...container.querySelectorAll("th")].map((h) => h.textContent)).toEqual([
+    "Monthly burn",
+    "Region",
+    "Value (USD)",
+  ]);
+  expect(cell("1,234,567")?.className).toContain("text-end");
+});

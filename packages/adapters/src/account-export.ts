@@ -207,6 +207,7 @@ memories.json          Your agents' memory documents.
 skills.json            Your skills.
 routines.json          Your routines, with their cron schedules.
 contacts.json          Your contacts.
+meetings.json          Your synced meetings, with notes and transcripts.
 cap-table.json         The latest cap table snapshot.
 legal-*.json           The legal graph: contracts, deadlines, nodes and edges.
 data-room/             folders.json, items.json (metadata) and files/ (the original files).
@@ -253,6 +254,7 @@ function collectors(prisma: PrismaClient, userId: string, spaceIds: string[]) {
     ["skills.json", (a) => prisma.agentSkill.findMany(page({ where: own, ...after(a) }))],
     ["routines.json", (a) => prisma.routine.findMany(page({ where: own, ...after(a) }))],
     ["contacts.json", (a) => prisma.contact.findMany(page({ where: own, ...after(a) }))],
+    ["meetings.json", (a) => prisma.meeting.findMany(page({ where: own, ...after(a) }))],
     ["cap-table.json", (a) => prisma.capTableSnapshot.findMany(page({ where: own, ...after(a) }))],
     [
       "legal-contracts.json",

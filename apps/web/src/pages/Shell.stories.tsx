@@ -276,6 +276,7 @@ export const PersonalFolders: Story = {
       "notifications.glance": {
         financeRunwayMonths: null,
         legalDueSoon: 0,
+        devinNeedsYou: 0,
         dataRoomWaiting: 0,
         botKinds: { bot_relay: "needs_input" },
       },

@@ -105,6 +105,19 @@ it("lists contacts, searches them and filters by kind", async () => {
   expect(container.textContent).toContain("No matches");
 });
 
+it("names the workspace when there is more than one", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/app/contacts"]}>
+        <ContactsPage spaceName="Example Co" />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => {});
+  expect(container.querySelector("h1")?.parentElement?.textContent).toContain("Example Co");
+});
+
 it("shows a single line when there are no contacts", async () => {
   rpcMock.list.mockResolvedValueOnce([]);
   await show();
@@ -294,4 +307,12 @@ it("shows the organization, else the email, under the name", async () => {
     (div) => div.textContent,
   );
   expect(under).toEqual(["Acme Corp", "cy@example.test"]);
+});
+
+it("lets the table fill the page and titles a long email", async () => {
+  rpcMock.list.mockResolvedValue([contact("c1", "Ada", "customer")]);
+  await show();
+  const email = [...container.querySelectorAll("td")].find((td) => td.title.includes("@"));
+  expect(email?.title).toContain("@");
+  expect(container.querySelector(".max-w-5xl")).toBeNull();
 });

@@ -1,0 +1,70 @@
+[
+  {
+    "run_id": "2026-10-20-devin-mockup-1",
+    "date": "2026-10-20",
+    "targets": [
+      "mockup (docs/devin/mockup.html, static)",
+      "Storybook (apps/web, port 6106)"
+    ],
+    "session": "ux-walker-devin",
+    "viewport": "1440x900",
+    "stories": {
+      "001": {
+        "status": "partial",
+        "steps_with_evidence": 3,
+        "steps_total": 5,
+        "findings": 4
+      },
+      "002": {
+        "status": "partial",
+        "steps_with_evidence": 3,
+        "steps_total": 4,
+        "findings": 3
+      },
+      "004": {
+        "status": "partial",
+        "steps_with_evidence": 4,
+        "steps_total": 5,
+        "findings": 5
+      },
+      "008": {
+        "status": "partial",
+        "steps_with_evidence": 4,
+        "steps_total": 5,
+        "findings": 5
+      },
+      "010": {
+        "status": "partial",
+        "steps_with_evidence": 3,
+        "steps_total": 7,
+        "findings": 3
+      },
+      "012": {
+        "status": "partial",
+        "steps_with_evidence": 6,
+        "steps_total": 7,
+        "findings": 7
+      },
+      "021": {
+        "status": "partial",
+        "steps_with_evidence": 3,
+        "steps_total": 6,
+        "findings": 3
+      },
+      "033": {
+        "status": "fail",
+        "steps_with_evidence": 3,
+        "steps_total": 7,
+        "findings": 5
+      }
+    },
+    "findings_by_severity": {
+      "medium": 18,
+      "low": 13,
+      "suggestion": 2,
+      "high": 2
+    },
+    "quick_fixes_applied": 0,
+    "issues_filed": 0
+  }
+]

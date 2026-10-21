@@ -7,7 +7,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
-import { AuthPage } from "./Auth";
+import { AuthPage, PasswordResetPage } from "./Auth";
 
 vi.mock("@lingui/react/macro", () => ({
   useLingui: () => ({
@@ -39,6 +39,7 @@ vi.mock("../lib/auth", () => ({
   authClient: {
     signIn: { social: vi.fn(async () => ({})) },
     requestPasswordReset: vi.fn(async () => ({})),
+    resetPassword: vi.fn(async () => ({})),
   },
 }));
 vi.mock("../lib/rpc", () => ({ clearSpaceSelection: vi.fn() }));
@@ -48,6 +49,10 @@ const capabilities: AuthCapabilities = {
   passwordReset: false,
   resetUrl: null,
 };
+function setValue(input: HTMLInputElement, value: string) {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(input, value);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+}
 let host: HTMLDivElement;
 let root: ReturnType<typeof createRoot>;
 beforeEach(() => {
@@ -188,4 +193,54 @@ it("names the address after a reset request and can send it again", async () => 
   const again = [...host.querySelectorAll("button")].find((b) => b.textContent === "Send again")!;
   await act(async () => again.click());
   expect(authClient.requestPasswordReset).toHaveBeenCalledTimes(2);
+});
+
+it("shows only the message and a new-link action for an invalid reset link", async () => {
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/reset-password?error=INVALID_TOKEN"]}>
+        <PasswordResetPage />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector("h1")?.textContent).toBe("Reset link expired");
+  expect(host.querySelector("input")).toBeNull();
+  expect(host.querySelector('button[type="submit"]')).toBeNull();
+  expect(host.querySelector('a[href="/forgot-password"]')?.textContent).toBe("Request a new link");
+});
+
+it("swaps to the expired page when a typed link's token is rejected", async () => {
+  vi.mocked(authClient.resetPassword).mockResolvedValueOnce({
+    error: { code: "INVALID_TOKEN", message: "Invalid token" },
+  } as never);
+  await act(async () =>
+    root.render(
+      <MemoryRouter initialEntries={["/reset-password?token=bad"]}>
+        <PasswordResetPage />
+      </MemoryRouter>,
+    ),
+  );
+  expect(host.querySelector("h1")?.textContent).toBe("Choose a new password");
+  await act(async () => {
+    for (const input of host.querySelectorAll("input")) setValue(input, "longenough1");
+  });
+  await act(async () => {
+    host
+      .querySelector("form")
+      ?.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+  });
+  expect(host.querySelector("h1")?.textContent).toBe("Reset link expired");
+  expect(host.querySelector("input")).toBeNull();
+});
+
+it("names the sign-in button Sign in and keeps room for an error line", async () => {
+  vi.mocked(fetchAuthCapabilities).mockResolvedValue({
+    ...capabilities,
+    sso: null,
+    passwordAuth: true,
+  });
+  await render("in");
+  expect(host.querySelector('button[type="submit"]')?.textContent).toBe("Sign in");
+  // The alert line exists before any error, so showing one moves no field.
+  expect(host.querySelector('[role="alert"]')?.textContent).toBe("");
 });

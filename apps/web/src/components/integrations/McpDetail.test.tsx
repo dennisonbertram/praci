@@ -309,3 +309,16 @@ it("disables the row buttons and shows Creating agent while the agent is being c
   expect(button("Create agent")).toBeUndefined();
   await act(async () => finish({ server: {}, botId: "bot_new" }));
 });
+
+it("shows a Devin agent section without the changes switch, and Mercury with it", async () => {
+  await show(false, "https://mcp.devin.ai/mcp", { agentBotId: "bot_dev", agentExclusive: true });
+  expect(container.querySelector('section[aria-label="Agent"]')).not.toBeNull();
+  expect(container.textContent).toContain("Let other agents use");
+  expect(writesSwitch()).toBeNull();
+  expect(container.textContent).not.toContain("Allow changes in");
+  await show(false, "https://mcp.mercury.com/mcp", {
+    agentBotId: "bot_mer",
+    agentExclusive: true,
+  });
+  expect(writesSwitch()).not.toBeNull();
+});

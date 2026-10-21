@@ -11,7 +11,7 @@ vi.mock("@lingui/react/macro", () => ({
 }));
 
 import { setHideAmounts } from "../lib/hide-amounts-preference";
-import { SpaceSearchResults } from "./SpaceSearch";
+import { plainSnippet, SpaceSearchResults } from "./SpaceSearch";
 
 it("shows a matching Data room document and a mail search instead of No results", () => {
   const html = renderToStaticMarkup(
@@ -97,4 +97,8 @@ it("lists matching artifacts", () => {
   );
   expect(html).toContain("MOCK Investor Update - September.md");
   expect(html).not.toContain("No matches in chats");
+});
+
+it("strips markdown markers from chat snippets", () => {
+  expect(plainSnippet("**Halcyon** closes `Friday`")).toBe("Halcyon closes Friday");
 });

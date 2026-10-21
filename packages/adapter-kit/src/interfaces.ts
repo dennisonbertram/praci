@@ -1,4 +1,4 @@
-import type { DataRoomClassification, DataRoomQueryPlan } from "@rakazo/contracts";
+import type { DataRoomClassification, DataRoomQueryPlan, SourceMeeting } from "@rakazo/contracts";
 import type {
   AdapterContext,
   AdapterDescriptor,
@@ -94,6 +94,7 @@ import type {
   SpeechClip,
   TerminalRequest,
   TransactionalEmail,
+  TranscriptionCapabilities,
   VoiceCapabilities,
   VoiceInfo,
   VoiceSynthesizeRequest,
@@ -603,6 +604,13 @@ export interface VoiceProvider {
   transcribe?(request: VoiceTranscribeRequest, context: AdapterContext): Promise<{ text: string }>;
 }
 
+/** Speech-to-text only. A voice provider that can transcribe is adapted to this shape. */
+export interface TranscriptionProvider {
+  describe(): AdapterDescriptor<TranscriptionCapabilities>;
+  verify(apiKey: string, context: AdapterContext): Promise<VoiceVerifyResult>;
+  transcribe(request: VoiceTranscribeRequest, context: AdapterContext): Promise<{ text: string }>;
+}
+
 /**
  * Deployment-wide external chat surface: one bot presence across messaging
  * platforms (iMessage/SMS, Slack, WhatsApp, …). Conversations are addressed
@@ -785,4 +793,18 @@ export interface DataRoomClassifier {
     input: { question: string; today: string },
     context: AdapterContext,
   ): Promise<DataRoomQueryPlan>;
+}
+
+/** A source of meeting notes and transcripts. Vendor names appear only in the adapter. */
+export interface MeetingSource {
+  provider: string;
+  /**
+   * All matching ids across pages, in no guaranteed order; a caller needs a complete pass before
+   * trusting a checkpoint. Throws MeetingSourceError.
+   */
+  list(filter: { updatedAfter?: Date; createdAfter?: Date; cursor?: string }): Promise<{
+    items: { externalId: string; updatedAt: string; deleted?: boolean }[];
+    nextCursor?: string;
+  }>;
+  get(externalId: string, options: { includeTranscript: boolean }): Promise<SourceMeeting>;
 }

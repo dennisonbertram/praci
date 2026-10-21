@@ -202,6 +202,15 @@ export function useDataRoomList(q: ListQuery) {
   }, [state.loadingMore, state.loading]);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
+  /** Shows a changed item at once, before the next read confirms it. */
+  const patchItem = useCallback(
+    (item: DataRoomApiItem) =>
+      setState((s) => ({
+        ...s,
+        rows: s.rows.map((row) => (row.item.id === item.id ? { ...row, item } : row)),
+      })),
+    [],
+  );
 
   // Items a background job is still working on are read again until they are ready or failed.
   const pendingIds = state.rows
@@ -278,5 +287,5 @@ export function useDataRoomList(q: ListQuery) {
     return () => clearTimeout(timer);
   }, [waiting, state.rows, state.loading, q.query]);
 
-  return { ...state, loadMore, reload };
+  return { ...state, loadMore, reload, patchItem };
 }

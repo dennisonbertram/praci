@@ -19,7 +19,7 @@ import {
   Toggle,
 } from "@rakazo/ui-web";
 import { ChevronDown } from "lucide-react";
-import type { KeyboardEvent as ReactKeyboardEvent, RefObject } from "react";
+import type { KeyboardEvent as ReactKeyboardEvent, ReactNode } from "react";
 import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
 import { Link } from "react-router-dom";
 import { AccountAccess } from "../components/AccountAccess";
@@ -69,6 +69,8 @@ export type SettingsGeneralProps = {
   messagingEnabled?: boolean;
   onOpenMessaging?: () => void;
   isDeploymentOwner?: boolean;
+  /** Usage and update cards, shown above the rarely used password and delete actions. */
+  children?: ReactNode;
 };
 
 export function GeneralSettingsPanels({
@@ -81,6 +83,7 @@ export function GeneralSettingsPanels({
   messagingEnabled = false,
   onOpenMessaging,
   isDeploymentOwner = false,
+  children,
 }: SettingsGeneralProps) {
   const { t } = useLingui();
   const [accountSecurity, setAccountSecurity] = useState<AccountSecurity | null>(null);
@@ -168,20 +171,21 @@ export function GeneralSettingsPanels({
             setUiAppearance(next);
           }}
         />
-        <div className="mt-4 flex items-center justify-between gap-3">
+        {/* The sidebar is a drawer below 1024px, where density does nothing. */}
+        <div className="mt-4 hidden lg:block">
           <span id={sidebarDensityLabelId} className="text-[13px] text-foreground/75">
             <Trans>Sidebar density</Trans>
           </span>
           <fieldset
             aria-labelledby={sidebarDensityLabelId}
             data-testid="bots-sidebar-density-select"
-            className="grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+            className="mt-2 grid min-w-0 grid-cols-2 gap-1 rounded-lg bg-muted p-1"
           >
             <Toggle
               data-testid="bots-sidebar-density-comfortable"
               pressed={sidebarDensity === "comfortable"}
               onPressedChange={() => setBotsSidebarDensity("comfortable")}
-              className="text-[13px] aria-pressed:bg-background aria-pressed:shadow-sm"
+              className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
             >
               <Trans>Comfortable</Trans>
             </Toggle>
@@ -189,7 +193,7 @@ export function GeneralSettingsPanels({
               data-testid="bots-sidebar-density-compact"
               pressed={sidebarDensity === "compact"}
               onPressedChange={() => setBotsSidebarDensity("compact")}
-              className="text-[13px] aria-pressed:bg-background aria-pressed:shadow-sm"
+              className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
             >
               <Trans>Compact</Trans>
             </Toggle>
@@ -338,6 +342,8 @@ export function GeneralSettingsPanels({
         </div>
       </details>
 
+      {children}
+
       {/* Rare actions come last, below everything that loads on its own, so nothing above them moves. */}
       {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
         <ChangePasswordSection email={email} />
@@ -366,7 +372,6 @@ export function PrivacySettingsPanels() {
 
 export function UsageSettingsPanel({
   usage,
-  panelRef,
 }: {
   usage?: {
     runs: number;
@@ -374,18 +379,15 @@ export function UsageSettingsPanel({
     outputTokens: number | null;
     totalTokens?: number | null;
   } | null;
-  panelRef?: RefObject<HTMLDivElement | null>;
 }) {
   const tokens = usage?.totalTokens;
   return (
-    <div
-      ref={panelRef}
-      tabIndex={-1}
-      data-testid="usage-settings"
-      className="rounded-xl border border-border px-4 py-4 outline-none"
-    >
+    <section data-testid="usage-settings" className="rounded-xl border border-border px-4 py-4">
+      <h3 className="text-[15px] font-medium text-foreground">
+        <Trans>Usage</Trans>
+      </h3>
       {usage ? (
-        <p className="text-[14px] text-foreground/75">
+        <p className="mt-3 text-[14px] text-foreground/75">
           <Plural
             value={usage.runs}
             one="# task done by your bots"
@@ -399,10 +401,10 @@ export function UsageSettingsPanel({
           )}
         </p>
       ) : null}
-      <p className={`text-[12.5px] text-muted-foreground/80 ${usage ? "mt-2" : ""}`}>
+      <p className="mt-2 text-[12.5px] text-muted-foreground/80">
         <Trans>Model spend uses your provider keys.</Trans>
       </p>
-    </div>
+    </section>
   );
 }
 
@@ -439,14 +441,11 @@ export function UpdatesSettingsPanel({
   isDeploymentOwner?: boolean;
 }) {
   return (
-    <div className="space-y-5">
-      {/* Both sections can render nothing (hosted installs), so the tab is never blank. */}
-      <p className="text-[13.5px] text-muted-foreground">
-        <Trans>Praci keeps itself up to date. If an update ever needs you, it shows here.</Trans>
-      </p>
+    <>
+      {/* Both sections render nothing on hosted installs. */}
       <DesktopUpdateSection />
       <SoftwareUpdateSection isDeploymentOwner={isDeploymentOwner} />
-    </div>
+    </>
   );
 }
 
@@ -596,7 +595,7 @@ function AppearancePicker({
           data-testid={`ui-appearance-${option.value}`}
           pressed={option.value === value}
           onPressedChange={() => onChange(option.value)}
-          className="text-[13px] aria-pressed:bg-background aria-pressed:shadow-sm"
+          className="text-[13px] aria-pressed:bg-primary aria-pressed:text-primary-foreground"
         >
           {option.label}
         </Toggle>

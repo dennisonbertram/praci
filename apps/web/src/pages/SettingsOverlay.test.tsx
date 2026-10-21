@@ -58,11 +58,43 @@ async function navIds(props: { isDeploymentOwner?: boolean }) {
   return ids;
 }
 
-it("shows the Updates tab only when there is something to update", async () => {
-  expect(await navIds({})).not.toContain("settings-nav-updates");
-  expect(await navIds({ isDeploymentOwner: true })).toContain("settings-nav-updates");
+it("has no Usage or Updates tab: both live in General", async () => {
   updates.desktop = true;
-  expect(await navIds({})).toContain("settings-nav-updates");
+  const ids = await navIds({ isDeploymentOwner: true });
+  expect(ids).not.toContain("settings-nav-usage");
+  expect(ids).not.toContain("settings-nav-updates");
+  updates.desktop = false;
+});
+
+it("marks the dialog modal and gives phones a select instead of a clipped strip", async () => {
+  await navIds({});
+  // navIds unmounts, so render again and inspect while open.
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () =>
+    root.render(
+      <I18nProvider i18n={i18n}>
+        <SettingsOverlay
+          name="Demo"
+          onUsageOpen={() => undefined}
+          avatarStyle="robot"
+          onAvatarStyleChange={async () => undefined}
+          memoryConfig={null}
+          onMemoryConfigChange={() => undefined}
+          onClose={() => undefined}
+        />
+      </I18nProvider>,
+    ),
+  );
+  expect(document.querySelector("[data-testid=user-settings]")?.getAttribute("aria-modal")).toBe(
+    "true",
+  );
+  expect(document.querySelector("select[data-testid=settings-nav-select]")).not.toBeNull();
+  await act(async () => root.unmount());
+  container.remove();
+  vi.unstubAllGlobals();
 });
 
 it("lists Privacy and approvals as its own tab", async () => {
