@@ -490,6 +490,12 @@ model Bot {
   modelId                String?
   thinkingLevel          String?
   disabledBuiltinTools   String[]              @default([])
+  // "internal" (default) or "external": talks to people outside the company. Server-owned; no bot tool reads or sets it.
+  audience               String                @default("internal")
+  // For an external bot: the internal bots it may message (bot ids; empty means none).
+  externalMessageTargets String[]              @default([])
+  // For an external bot: whether the browser and computer tools are on. Off unless the owner turns them on.
+  externalComputerTools  Boolean               @default(false)
   // Where this bot runs commands; null follows DeploymentSettings.computerHost.
   runsOn                 String?
   webhookSecretId        String?

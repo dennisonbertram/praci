@@ -166,6 +166,7 @@ import {
   actorScope,
   appContract,
   BotSecretAuth,
+  botAudienceEditable,
   ComputerCommandSchema,
   FIRST_BOT_SPAWN_KEY,
   foldComputerCommands,
@@ -776,7 +777,7 @@ async function allEffectiveAccess(prisma: PrismaClient, actor: Actor) {
     }),
     prisma.bot.findMany({
       where: { ...scope, archivedAt: null },
-      select: { id: true, spawnKey: true, archivedAt: true },
+      select: { id: true, spawnKey: true, archivedAt: true, audience: true },
     }),
   ]);
   return effectiveAccessByConnection(rows, bots);
@@ -2295,6 +2296,9 @@ export function createRouter(deps: RouterDeps) {
             modelId: source.modelId,
             thinkingLevel: source.thinkingLevel,
             disabledBuiltinTools: source.disabledBuiltinTools,
+            audience: source.audience === "external" ? "external" : "internal",
+            externalMessageTargets: source.externalMessageTargets,
+            externalComputerTools: source.externalComputerTools,
           })
           .catch((error: unknown) => {
             throw mapSpaceLifecycleError(error);
@@ -2460,6 +2464,27 @@ export function createRouter(deps: RouterDeps) {
             });
           }
         }
+        // Only the signed-in owner reaches this (getBot above is scoped to space and user), and no
+        // bot tool can set audience. Agents that hold private data by design stay internal.
+        if (input.audience === "external" && !botAudienceEditable(existing.spawnKey)) {
+          throw new ORPCError("BAD_REQUEST", { message: "This agent cannot be external" });
+        }
+        const messageTargets =
+          input.externalMessageTargets === undefined
+            ? undefined
+            : [...new Set(input.externalMessageTargets)];
+        if (messageTargets?.length) {
+          const allowed = await deps.prisma.bot.count({
+            where: {
+              id: { in: messageTargets, not: input.botId },
+              spaceId: context.actor.spaceId,
+              userId: context.actor.userId,
+              archivedAt: null,
+              audience: "internal",
+            },
+          });
+          if (allowed !== messageTargets.length) throw new IsolationError();
+        }
         await commitBotUpdate({
           prisma: deps.prisma,
           notify: (threadId, seq) => deps.events.notify(threadId, seq),
@@ -2491,6 +2516,11 @@ export function createRouter(deps: RouterDeps) {
               ? { disabledBuiltinTools: input.disabledBuiltinTools }
               : {}),
             ...(input.runsOn !== undefined ? { runsOn: input.runsOn } : {}),
+            ...(input.audience !== undefined ? { audience: input.audience } : {}),
+            ...(messageTargets !== undefined ? { externalMessageTargets: messageTargets } : {}),
+            ...(input.externalComputerTools !== undefined
+              ? { externalComputerTools: input.externalComputerTools }
+              : {}),
           },
         });
         const bots = await repos.listBots(context.actor);

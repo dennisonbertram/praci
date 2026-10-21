@@ -29,6 +29,7 @@ import {
   DEFAULT_AVATAR_STYLE,
   FIRST_BOT_SPAWN_KEY,
   isIntegrationAgentSpawnKey,
+  isMailThreadAgentSpawnKey,
   LEGAL_AGENT_MODEL,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
   NOTIFICATION_KINDS,
@@ -136,6 +137,7 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import { AgentPanelIntro } from "../components/AgentPanelIntro";
+import { BotAudienceTag } from "../components/BotAudienceTag";
 import type { BotToolControls, ComposerDraft } from "../components/BotToolControls";
 import { BotToolControlsContext } from "../components/BotToolControls";
 import { ComposeEmail, NEW_MESSAGE } from "../components/ComposeEmail";
@@ -5395,6 +5397,7 @@ export function ShellPage() {
                       : (active?.name ?? (opening ? "" : t`Select a bot`))}
                   </span>
                 </span>
+                {!inGroup && active?.audience === "external" ? <BotAudienceTag /> : null}
               </button>
             )}
           </div>
@@ -5875,6 +5878,15 @@ export function ShellPage() {
                     ? { defaultHost: bootstrapMe?.computerHost ?? "docker" }
                     : undefined
                 }
+                messageTargets={bots
+                  .filter(
+                    (bot) =>
+                      bot.id !== active.id &&
+                      !bot.archivedAt &&
+                      bot.audience === "internal" &&
+                      !isMailThreadAgentSpawnKey(bot.spawnKey),
+                  )
+                  .map(({ id, name }) => ({ id, name }))}
                 onSkillsChange={setAgentSkills}
                 skillsRefreshKey={skillsRefreshKey}
                 onSave={async ({ computerMode, ...patch }) => {
