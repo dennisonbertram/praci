@@ -1,6 +1,7 @@
 import type { Bot } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { userEvent, within } from "storybook/test";
+import { mockRpc } from "../../lib/__mocks__/rpc";
 import {
   ClearConversationDialog,
   DeleteBotDialog,
@@ -147,15 +148,24 @@ export const ClearConversationClearing: Story = {
   play: submit("Clear"),
 };
 
+const memories = [{ id: "mem_1", scope: "bot", botId: "bot_demo", path: "notes.md", content: "x" }];
 export const DeleteBot: Story = {
+  beforeEach: () => mockRpc({ "memory.list": memories }),
+  render: () => <DeleteBotDialog bot={bot} onCancel={noop} onConfirm={done} />,
+};
+/** A bot with no memories skips the memory question. */
+export const DeleteBotNoMemories: Story = {
+  beforeEach: () => mockRpc({ "memory.list": [] }),
   render: () => <DeleteBotDialog bot={bot} onCancel={noop} onConfirm={done} />,
 };
 export const DeleteBotLongName: Story = {
+  beforeEach: () => mockRpc({ "memory.list": memories }),
   render: () => (
     <DeleteBotDialog bot={{ ...bot, name: longName }} onCancel={noop} onConfirm={done} />
   ),
 };
 export const DeleteBotError: Story = {
+  beforeEach: () => mockRpc({ "memory.list": memories }),
   render: () => <DeleteBotDialog bot={bot} onCancel={noop} onConfirm={reject} />,
   play: async () => {
     await userEvent.click(await body().findByLabelText(/Delete memories too/));

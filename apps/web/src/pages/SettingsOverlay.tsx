@@ -53,6 +53,7 @@ export function SettingsOverlay({
   onUsageOpen,
   initialSection = "general",
   modelProvider,
+  notice,
   avatarStyle,
   onAvatarStyleChange,
   timezone,
@@ -80,6 +81,8 @@ export function SettingsOverlay({
   initialSection?: SettingsSection;
   /** Models opens on this provider with its own-key form open (the Legal page's "Add your OpenRouter key"). */
   modelProvider?: string;
+  /** Why Settings opened; shown at the top of the pane. */
+  notice?: string;
   avatarStyle: AvatarStyle;
   onAvatarStyleChange: (style: AvatarStyle) => Promise<void>;
   timezone?: string;
@@ -318,6 +321,11 @@ export function SettingsOverlay({
                   onConfigChange={onMemoryConfigChange}
                   onBusyChange={setMemoryBusy}
                 />
+              ) : null}
+              {notice && section === "voice" ? (
+                <p role="status" className="mb-3 text-sm text-muted-foreground">
+                  {notice}
+                </p>
               ) : null}
               {section === "voice" ? (
                 <VoiceSettingsOverlay embedded onClose={requestClose} onBusyChange={setVoiceBusy} />

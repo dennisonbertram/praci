@@ -4,7 +4,7 @@
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
 - Web and shared component files with stories: 240 of 240
-- Web and shared components: 651
+- Web and shared components: 653
 - Mobile components: 137 in 94 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
@@ -262,7 +262,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
 | FirstRunTour | [apps/web/src/components/tour/FirstRunTour.tsx](../../apps/web/src/components/tour/FirstRunTour.tsx) | [FirstRunTour.stories.tsx](../../apps/web/src/components/tour/FirstRunTour.stories.tsx) | web |
-| TourPopover | [apps/web/src/components/tour/TourPopover.tsx](../../apps/web/src/components/tour/TourPopover.tsx) | [TourPopover.stories.tsx](../../apps/web/src/components/tour/TourPopover.stories.tsx) | web |
+| Ring, TourPopover | [apps/web/src/components/tour/TourPopover.tsx](../../apps/web/src/components/tour/TourPopover.tsx) | [TourPopover.stories.tsx](../../apps/web/src/components/tour/TourPopover.stories.tsx) | web |
 
 ## Web pages
 
@@ -340,7 +340,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 
 | Component | File | Story file | Surface |
 | --- | --- | --- | --- |
-| App, SessionApp, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
+| App, SessionApp, LegacySetupRedirect, SignInRedirect, SessionUnavailable, AppFailed, GateFallback | [apps/web/src/App.tsx](../../apps/web/src/App.tsx) | [App.stories.tsx](../../apps/web/src/App.stories.tsx) | web |
 
 ## Mobile app (screens)
 

@@ -1012,448 +1012,439 @@ function InboxListPage({
       data-inbox-page
       className="@container rk-scroll flex-1 overflow-y-auto px-4 pb-20 pt-2 md:px-7 md:pt-5 xl:px-10"
     >
-      <div className="sticky top-0 z-10 -mx-4 -mt-2 bg-background px-4 pt-2 md:-mx-7 md:-mt-5 md:px-7 md:pt-5 xl:-mx-10 xl:px-10">
-        <PageHeader
-          title={<Trans>Inbox</Trans>}
-          meta={
-            <>
-              {spaceName ? (
-                // The full name is in the hover title when the row is too short for it.
-                <span title={spaceName} className="truncate @2xl/ph:max-w-72">
-                  {spaceName}
-                </span>
-              ) : null}
-              <form
-                ref={searchRef}
-                className="min-w-40 flex-1 basis-full @2xl/ph:basis-0"
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  setParam("q", draft.trim());
-                }}
-              >
-                <InputGroup className="w-full max-w-sm">
-                  <InputGroupAddon>
-                    <Search aria-hidden="true" />
-                  </InputGroupAddon>
-                  <InputGroupInput
-                    type="search"
-                    name="inbox-search"
-                    value={draft}
-                    onChange={(event) => setDraft(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Escape") return;
-                      setDraft("");
-                      if (query) setParam("q", "");
-                    }}
-                    // Short enough to fit beside the agent panel; the hover title keeps the example.
-                    placeholder={t`Search mail`}
-                    title={t`Search mail, e.g. from:sam has:attachment`}
-                    aria-label={t`Search mail`}
-                    // Nothing to search or filter before mail is connected.
-                    disabled={Boolean(data) && accounts.length === 0}
-                    maxLength={MAX_QUERY}
-                    className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
-                    autoComplete="off"
-                  />
-                  {draft ? (
-                    <InputGroupAddon align="inline-end">
-                      <InputGroupButton
-                        size="icon-xs"
-                        aria-label={t`Clear`}
-                        onClick={() => {
-                          setDraft("");
-                          setParam("q", "");
-                          searchRef.current?.querySelector("input")?.focus();
+      <div className="mx-auto max-w-[1440px]">
+        <div className="sticky top-0 z-10 -mx-4 -mt-2 bg-background px-4 pt-2 md:-mx-7 md:-mt-5 md:px-7 md:pt-5 xl:-mx-10 xl:px-10">
+          <PageHeader
+            title={<Trans>Inbox</Trans>}
+            meta={
+              <>
+                {spaceName ? (
+                  // The full name is in the hover title when the row is too short for it.
+                  <span title={spaceName} className="truncate @2xl/ph:max-w-72">
+                    {spaceName}
+                  </span>
+                ) : null}
+                <form
+                  ref={searchRef}
+                  className="min-w-40 flex-1 basis-full @2xl/ph:basis-0"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    setParam("q", draft.trim());
+                  }}
+                >
+                  <InputGroup className="w-full max-w-sm">
+                    <InputGroupAddon>
+                      <Search aria-hidden="true" />
+                    </InputGroupAddon>
+                    <InputGroupInput
+                      type="search"
+                      name="inbox-search"
+                      value={draft}
+                      onChange={(event) => setDraft(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key !== "Escape") return;
+                        setDraft("");
+                        if (query) setParam("q", "");
+                      }}
+                      // Short enough to fit beside the agent panel; the hover title keeps the example.
+                      placeholder={t`Search mail`}
+                      title={t`Search mail, e.g. from:sam has:attachment`}
+                      aria-label={t`Search mail`}
+                      // Nothing to search or filter before mail is connected.
+                      disabled={Boolean(data) && accounts.length === 0}
+                      maxLength={MAX_QUERY}
+                      className="min-w-0 [&::-webkit-search-cancel-button]:appearance-none"
+                      autoComplete="off"
+                    />
+                    {draft ? (
+                      <InputGroupAddon align="inline-end">
+                        <InputGroupButton
+                          size="icon-xs"
+                          aria-label={t`Clear`}
+                          onClick={() => {
+                            setDraft("");
+                            setParam("q", "");
+                            searchRef.current?.querySelector("input")?.focus();
+                          }}
+                        >
+                          <X aria-hidden="true" />
+                        </InputGroupButton>
+                      </InputGroupAddon>
+                    ) : null}
+                  </InputGroup>
+                </form>
+              </>
+            }
+            actions={
+              <>
+                {tools ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    data-testid="inbox-cleanup"
+                    aria-label={t`Cleanup`}
+                    title={t`Cleanup`}
+                    className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                    onClick={() =>
+                      setParams((before) => {
+                        const next = new URLSearchParams(before);
+                        next.set("cleanup", "1");
+                        return next;
+                      })
+                    }
+                  >
+                    <ListChecks aria-hidden="true" />
+                  </Button>
+                ) : null}
+                {tools ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger
+                      data-testid="inbox-filter"
+                      render={
+                        <Button
+                          variant={filter || (triage && category) ? "secondary" : "outline"}
+                          size="sm"
+                          className="pointer-coarse:h-10 pointer-coarse:min-w-10"
+                        />
+                      }
+                      aria-label={filter || (triage && category) ? undefined : t`Filter`}
+                    >
+                      <ListFilter aria-hidden="true" />
+                      {filter
+                        ? filterLabels()[filter]
+                        : triage && category
+                          ? categoryLabels()[category]
+                          : null}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="min-w-48">
+                      <DropdownMenuRadioGroup
+                        value={filter ?? (triage ? category : undefined) ?? ""}
+                        onValueChange={(value) => {
+                          const named = InboxFilterSchema.safeParse(value);
+                          setParam(named.success ? "filter" : "category", String(value));
                         }}
                       >
-                        <X aria-hidden="true" />
-                      </InputGroupButton>
-                    </InputGroupAddon>
-                  ) : null}
-                </InputGroup>
-              </form>
-            </>
-          }
-          actions={
-            <>
-              {tools ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  data-testid="inbox-cleanup"
-                  aria-label={t`Cleanup`}
-                  title={t`Cleanup`}
-                  className="pointer-coarse:h-10 pointer-coarse:min-w-10"
-                  onClick={() =>
-                    setParams((before) => {
-                      const next = new URLSearchParams(before);
-                      next.set("cleanup", "1");
-                      return next;
-                    })
-                  }
-                >
-                  <ListChecks aria-hidden="true" />
-                </Button>
-              ) : null}
-              {tools ? (
-                <DropdownMenu>
-                  <DropdownMenuTrigger
-                    data-testid="inbox-filter"
-                    render={
-                      <Button
-                        variant={filter || (triage && category) ? "secondary" : "outline"}
-                        size="sm"
-                        className="pointer-coarse:h-10 pointer-coarse:min-w-10"
-                      />
-                    }
-                    aria-label={filter || (triage && category) ? undefined : t`Filter`}
-                  >
-                    <ListFilter aria-hidden="true" />
-                    {filter
-                      ? filterLabels()[filter]
-                      : triage && category
-                        ? categoryLabels()[category]
-                        : null}
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-48">
-                    <DropdownMenuRadioGroup
-                      value={filter ?? (triage ? category : undefined) ?? ""}
-                      onValueChange={(value) => {
-                        const named = InboxFilterSchema.safeParse(value);
-                        setParam(named.success ? "filter" : "category", String(value));
-                      }}
-                    >
-                      {(triage
-                        ? (["unread", "starred", "attachment"] as const)
-                        : (["unread", "starred", "important", "attachment"] as const)
-                      ).map((name) => (
-                        <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                          {filterLabels()[name]}
-                        </DropdownMenuRadioItem>
-                      ))}
-                      <DropdownMenuSeparator />
-                      <DropdownMenuGroup>
-                        <DropdownMenuLabel>
-                          <Trans>Gmail tabs</Trans>
-                        </DropdownMenuLabel>
-                        {(["primary", "promotions", "social", "updates"] as const).map((name) => (
+                        {(triage
+                          ? (["unread", "starred", "attachment"] as const)
+                          : (["unread", "starred", "important", "attachment"] as const)
+                        ).map((name) => (
                           <DropdownMenuRadioItem key={name} value={name} closeOnClick>
                             {filterLabels()[name]}
                           </DropdownMenuRadioItem>
                         ))}
-                      </DropdownMenuGroup>
-                      {triage ? (
+                        <DropdownMenuSeparator />
+                        <DropdownMenuGroup>
+                          <DropdownMenuLabel>
+                            <Trans>Gmail tabs</Trans>
+                          </DropdownMenuLabel>
+                          {(["primary", "promotions", "social", "updates"] as const).map((name) => (
+                            <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                              {filterLabels()[name]}
+                            </DropdownMenuRadioItem>
+                          ))}
+                        </DropdownMenuGroup>
+                        {triage ? (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuGroup>
+                              <DropdownMenuLabel>
+                                <Trans>Categories</Trans>
+                              </DropdownMenuLabel>
+                              {InboxViewCategorySchema.options.map((name) => (
+                                <DropdownMenuRadioItem key={name} value={name} closeOnClick>
+                                  {categoryLabels()[name]}
+                                </DropdownMenuRadioItem>
+                              ))}
+                            </DropdownMenuGroup>
+                          </>
+                        ) : null}
+                      </DropdownMenuRadioGroup>
+                      {filter || (triage && category) ? (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuGroup>
-                            <DropdownMenuLabel>
-                              <Trans>Categories</Trans>
-                            </DropdownMenuLabel>
-                            {InboxViewCategorySchema.options.map((name) => (
-                              <DropdownMenuRadioItem key={name} value={name} closeOnClick>
-                                {categoryLabels()[name]}
-                              </DropdownMenuRadioItem>
-                            ))}
-                          </DropdownMenuGroup>
+                          <DropdownMenuItem
+                            onClick={() => setParam(filter ? "filter" : "category", "")}
+                          >
+                            <Trans>Clear</Trans>
+                          </DropdownMenuItem>
                         </>
                       ) : null}
-                    </DropdownMenuRadioGroup>
-                    {filter || (triage && category) ? (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setParam(filter ? "filter" : "category", "")}
-                        >
-                          <Trans>Clear</Trans>
-                        </DropdownMenuItem>
-                      </>
-                    ) : null}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              ) : null}
-              {tools ? (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        size="icon-sm"
-                        className="pointer-coarse:size-10"
-                        aria-label={t`Compose`}
-                        onClick={() => setComposing(true)}
-                      />
-                    }
-                  >
-                    <SquarePen aria-hidden="true" />
-                  </TooltipTrigger>
-                  <TooltipContent>{t`Compose`}</TooltipContent>
-                </Tooltip>
-              ) : null}
-              {onShowAgent ? <AskBotButton botName="Inbox agent" onClick={onShowAgent} /> : null}
-            </>
-          }
-        />
-        {tools ? (
-          <div className="flex items-start justify-between gap-2">
-            <InboxPileTabs
-              value={pile}
-              counts={pileCounts}
-              onChange={(next) => setParam("pile", next === "important" ? "" : next)}
-            />
-            {pile === "newsletters" ? (
-              <Toggle
-                size="sm"
-                className="-mt-2 mb-4"
-                aria-label={t`Digest`}
-                pressed={digest}
-                onPressedChange={setDigest}
-              >
-                <Newspaper aria-hidden="true" />
-              </Toggle>
-            ) : null}
-          </div>
-        ) : null}
-        {accounts.length > 1 ? (
-          <Tabs
-            className="-mt-2 mb-4"
-            value={tab ?? ALL}
-            onValueChange={(value) => setTab(value === ALL ? undefined : value)}
-          >
-            <TabsList className="max-w-full rounded-full">
-              <TabsTrigger value={ALL} className="rounded-full px-3">
-                <Trans>All</Trans>
-              </TabsTrigger>
-              {accounts.map((account) => (
-                <TabsTrigger
-                  key={account.connectionId}
-                  value={account.connectionId}
-                  className="max-w-40 rounded-full px-3"
-                >
-                  <span className="truncate">{account.label}</span>
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        ) : null}
-      </div>
-
-      {failed && !failedEmpty ? (
-        <div
-          role="alert"
-          className={`mb-4 flex items-center gap-3 text-sm ${limited ? "text-warning" : "text-destructive"}`}
-        >
-          <span>{failed}</span>
-          {fixButton}
-        </div>
-      ) : null}
-
-      {failedEmpty ? (
-        <PageEmptyState
-          icon={<MailWarning className="size-8" strokeWidth={1.6} aria-hidden="true" />}
-          title={
-            reconnect ? (
-              <Trans>Gmail needs to be reconnected</Trans>
-            ) : (
-              <Trans>Your mail didn't load</Trans>
-            )
-          }
-          description={
-            <span role="alert" className={limited ? "text-warning" : undefined}>
-              {reconnect ? (
-                <Trans>Gmail signed this account out. Sign in again to see your mail here.</Trans>
-              ) : (
-                failed
-              )}
-            </span>
-          }
-        >
-          {fixButton}
-        </PageEmptyState>
-      ) : data && accounts.length === 0 ? (
-        <PageEmptyState
-          icon={<Mail className="size-8" strokeWidth={1.6} aria-hidden="true" />}
-          title={<Trans>No mail connected</Trans>}
-          description={<Trans>Connect Gmail to read, sort and answer your mail here.</Trans>}
-        >
-          <Button onClick={onConnectMail}>
-            <Trans>Connect mail</Trans>
-          </Button>
-        </PageEmptyState>
-      ) : loading ? (
-        <div className="flex flex-col gap-2" aria-busy="true">
-          {[0, 1, 2, 3, 4].map((n) => (
-            <Skeleton key={n} className="h-9 w-full" />
-          ))}
-        </div>
-      ) : shown && rows.length === 0 ? (
-        failed ? null : (
-          <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
-            {query ? (
-              <>
-                <p>
-                  <Trans>No results for "{query}"</Trans>
-                </p>
-                <Button variant="outline" size="sm" onClick={clearFilters}>
-                  <Trans>Clear</Trans>
-                </Button>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+                {tools ? (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          size="icon-sm"
+                          className="pointer-coarse:size-10"
+                          aria-label={t`Compose`}
+                          onClick={() => setComposing(true)}
+                        />
+                      }
+                    >
+                      <SquarePen aria-hidden="true" />
+                    </TooltipTrigger>
+                    <TooltipContent>{t`Compose`}</TooltipContent>
+                  </Tooltip>
+                ) : null}
+                {onShowAgent ? <AskBotButton botName="Inbox agent" onClick={onShowAgent} /> : null}
               </>
-            ) : filter || category ? (
-              <>
-                <p>
-                  <Trans>No mail matches this filter</Trans>
-                </p>
-                <Button variant="outline" size="sm" onClick={clearFilters}>
-                  <Trans>Clear</Trans>
-                </Button>
-              </>
-            ) : (
-              <p>
-                <Trans>No mail</Trans>
-              </p>
-            )}
-          </div>
-        )
-      ) : shown ? (
-        <>
-          {pile !== "important" ? null : shown.triageBlocked?.reason === "needs_consent" ? (
-            // Allowing syncs again, which is what queues triage now that it may run.
-            consentDismissed ? null : (
-              <InboxConsentPrompt
-                recipient={shown.triageBlocked.recipient}
-                onAllowed={() => {
-                  setJustAllowed(true);
-                  setAttempt((n) => n + 1);
-                  setReload((n) => n + 1);
-                }}
-                onDismiss={() => setConsentDismissed(true)}
+            }
+          />
+          {tools ? (
+            <div className="flex items-start justify-between gap-2">
+              <InboxPileTabs
+                value={pile}
+                counts={pileCounts}
+                onChange={(next) => setParam("pile", next === "important" ? "" : next)}
               />
-            )
-          ) : sorting && stalled ? (
-            <div
-              role="status"
-              className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground"
+              {pile === "newsletters" ? (
+                <Toggle
+                  size="sm"
+                  className="-mt-2 mb-4"
+                  aria-label={t`Digest`}
+                  pressed={digest}
+                  onPressedChange={setDigest}
+                >
+                  <Newspaper aria-hidden="true" />
+                </Toggle>
+              ) : null}
+            </div>
+          ) : null}
+          {accounts.length > 1 ? (
+            <Tabs
+              className="-mt-2 mb-4"
+              value={tab ?? ALL}
+              onValueChange={(value) => setTab(value === ALL ? undefined : value)}
             >
-              <Trans>Sorting is taking longer than usual. Your mail is below.</Trans>
-              <Button variant="outline" size="sm" onClick={retry}>
-                <Trans>Try sorting again</Trans>
-              </Button>
-            </div>
-          ) : sorting ? (
-            // After Allow it takes the consent card's place at its height, so the list does not jump.
-            <p
-              role="status"
-              className={cn(
-                "mb-4 flex items-center gap-2 text-sm text-muted-foreground",
-                justAllowed && "mb-5 min-h-28 items-start",
-              )}
-            >
-              <Spinner aria-hidden="true" />
-              <Trans>Sorting your mail…</Trans>
-            </p>
-          ) : showTodos && todos ? (
-            <TodoCard
-              todos={todos}
-              onOpen={openMessage}
-              onChange={(next) =>
-                setTodosByTab((all) => ({
-                  ...all,
-                  [tabKey]: (all[tabKey] ?? []).map((item) => (item.id === next.id ? next : item)),
-                }))
-              }
-            />
-          ) : null}
-          {resultsView ? (
-            <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
-              <span>
-                {more.token && fresh
-                  ? plural(rows.length, { one: "#+ result", other: "#+ results" })
-                  : plural(rows.length, { one: "# result", other: "# results" })}
-              </span>
-              <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <Trans>Clear</Trans>
-              </Button>
-            </div>
-          ) : null}
-          {pickedRows.length > 0 ? (
-            <div className="sticky top-0 z-20 mb-3 flex items-center gap-2 rounded-lg bg-muted py-1 ps-3 pe-1 text-sm">
-              <span className="tabular-nums">{t`${pickedCount} selected`}</span>
-              <Button size="sm" onClick={() => archiveMany(pickedRows)}>
-                <Archive aria-hidden="true" />
-                <Trans>Archive</Trans>
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={spamView ? t`Not spam` : t`Spam`}
-                title={spamView ? t`Not spam` : t`Spam`}
-                onClick={() => moveMany(spamView ? "notSpam" : "spam", pickedRows)}
-              >
-                {spamView ? <ShieldCheck aria-hidden="true" /> : <ShieldAlert aria-hidden="true" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t`Trash`}
-                title={t`Trash`}
-                onClick={() => moveMany("trash", pickedRows)}
-              >
-                <Trash2 aria-hidden="true" />
-              </Button>
-              <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
-                <Trans>Clear</Trans>
-              </Button>
-            </div>
-          ) : null}
-          {digestOn ? (
-            <InboxDigest
-              rows={digestList}
-              onOpen={openMessage}
-              onArchiveAll={() => archiveMany(digestList)}
-              selectedId={selectedId}
-            />
-          ) : grouped ? (
-            <section className="mb-5">
-              <div className="border-t border-foreground/10">
-                {senderGroups.map((group) => (
-                  <InboxSenderGroup
-                    key={group.key}
-                    group={group}
-                    expanded={expanded.has(group.key)}
-                    onToggle={() => toggleGroup(senderGroupId(group.key))}
-                    onOpen={openMessage}
-                    onMark={triage ? mark : undefined}
-                    onArchive={archive}
-                    onRead={setRead}
-                    onArchiveGroup={() => archiveMany(group.rows)}
-                    onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
-                    selectedId={selectedId}
-                    pickedIds={pickedSet}
-                    onPick={pick}
-                    onMove={moveOne}
-                    hideNewsletter={pile === "newsletters"}
-                  />
+              <TabsList className="max-w-full rounded-full">
+                <TabsTrigger value={ALL} className="rounded-full px-3">
+                  <Trans>All</Trans>
+                </TabsTrigger>
+                {accounts.map((account) => (
+                  <TabsTrigger
+                    key={account.connectionId}
+                    value={account.connectionId}
+                    className="max-w-40 rounded-full px-3"
+                  >
+                    <span className="truncate">{account.label}</span>
+                  </TabsTrigger>
                 ))}
+              </TabsList>
+            </Tabs>
+          ) : null}
+        </div>
+
+        {failed && !failedEmpty ? (
+          <div
+            role="alert"
+            className={`mb-4 flex items-center gap-3 text-sm ${limited ? "text-warning" : "text-destructive"}`}
+          >
+            <span>{failed}</span>
+            {fixButton}
+          </div>
+        ) : null}
+
+        {failedEmpty ? (
+          <PageEmptyState
+            icon={<MailWarning className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+            title={
+              reconnect ? (
+                <Trans>Gmail needs to be reconnected</Trans>
+              ) : (
+                <Trans>Your mail didn't load</Trans>
+              )
+            }
+            description={
+              <span role="alert" className={limited ? "text-warning" : undefined}>
+                {reconnect ? (
+                  <Trans>Gmail signed this account out. Sign in again to see your mail here.</Trans>
+                ) : (
+                  failed
+                )}
+              </span>
+            }
+          >
+            {fixButton}
+          </PageEmptyState>
+        ) : data && accounts.length === 0 ? (
+          <PageEmptyState
+            icon={<Mail className="size-8" strokeWidth={1.6} aria-hidden="true" />}
+            title={<Trans>No mail connected</Trans>}
+            description={<Trans>Connect Gmail to read, sort and answer your mail here.</Trans>}
+          >
+            <Button onClick={onConnectMail}>
+              <Trans>Connect mail</Trans>
+            </Button>
+          </PageEmptyState>
+        ) : loading ? (
+          <div className="flex flex-col gap-2" aria-busy="true">
+            {[0, 1, 2, 3, 4].map((n) => (
+              <Skeleton key={n} className="h-9 w-full" />
+            ))}
+          </div>
+        ) : shown && rows.length === 0 ? (
+          failed ? null : (
+            <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
+              {query ? (
+                <>
+                  <p>
+                    <Trans>No results for "{query}"</Trans>
+                  </p>
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    <Trans>Clear</Trans>
+                  </Button>
+                </>
+              ) : filter || category ? (
+                <>
+                  <p>
+                    <Trans>No mail matches this filter</Trans>
+                  </p>
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    <Trans>Clear</Trans>
+                  </Button>
+                </>
+              ) : (
+                <p>
+                  <Trans>No mail</Trans>
+                </p>
+              )}
+            </div>
+          )
+        ) : shown ? (
+          <>
+            {pile !== "important" ? null : shown.triageBlocked?.reason === "needs_consent" ? (
+              // Allowing syncs again, which is what queues triage now that it may run.
+              consentDismissed ? null : (
+                <InboxConsentPrompt
+                  recipient={shown.triageBlocked.recipient}
+                  onAllowed={() => {
+                    setJustAllowed(true);
+                    setAttempt((n) => n + 1);
+                    setReload((n) => n + 1);
+                  }}
+                  onDismiss={() => setConsentDismissed(true)}
+                />
+              )
+            ) : sorting && stalled ? (
+              <div
+                role="status"
+                className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground"
+              >
+                <Trans>Sorting is taking longer than usual. Your mail is below.</Trans>
+                <Button variant="outline" size="sm" onClick={retry}>
+                  <Trans>Try sorting again</Trans>
+                </Button>
               </div>
-            </section>
-          ) : spamView ? (
-            <InboxGroup
-              rows={rows}
-              onOpen={openMessage}
-              onMark={triage ? mark : undefined}
-              onArchive={archive}
-              onRead={setRead}
-              selectedId={selectedId}
-              pickedIds={pickedSet}
-              onPick={pick}
-              onMove={moveOne}
-              showArchived={false}
-            />
-          ) : (
-            <>
+            ) : sorting ? (
+              // After Allow it takes the consent card's place at its height, so the list does not jump.
+              <p
+                role="status"
+                className={cn(
+                  "mb-4 flex items-center gap-2 text-sm text-muted-foreground",
+                  justAllowed && "mb-5 min-h-28 items-start",
+                )}
+              >
+                <Spinner aria-hidden="true" />
+                <Trans>Sorting your mail…</Trans>
+              </p>
+            ) : showTodos && todos ? (
+              <TodoCard
+                todos={todos}
+                onOpen={openMessage}
+                onChange={(next) =>
+                  setTodosByTab((all) => ({
+                    ...all,
+                    [tabKey]: (all[tabKey] ?? []).map((item) =>
+                      item.id === next.id ? next : item,
+                    ),
+                  }))
+                }
+              />
+            ) : null}
+            {resultsView ? (
+              <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">
+                <span>
+                  {more.token && fresh
+                    ? plural(rows.length, { one: "#+ result", other: "#+ results" })
+                    : plural(rows.length, { one: "# result", other: "# results" })}
+                </span>
+                <Button variant="ghost" size="sm" onClick={clearFilters}>
+                  <Trans>Clear</Trans>
+                </Button>
+              </div>
+            ) : null}
+            {pickedRows.length > 0 ? (
+              <div className="sticky top-0 z-20 mb-3 flex items-center gap-2 rounded-lg bg-muted py-1 ps-3 pe-1 text-sm">
+                <span className="tabular-nums">{t`${pickedCount} selected`}</span>
+                <Button size="sm" onClick={() => archiveMany(pickedRows)}>
+                  <Archive aria-hidden="true" />
+                  <Trans>Archive</Trans>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={spamView ? t`Not spam` : t`Spam`}
+                  title={spamView ? t`Not spam` : t`Spam`}
+                  onClick={() => moveMany(spamView ? "notSpam" : "spam", pickedRows)}
+                >
+                  {spamView ? (
+                    <ShieldCheck aria-hidden="true" />
+                  ) : (
+                    <ShieldAlert aria-hidden="true" />
+                  )}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={t`Trash`}
+                  title={t`Trash`}
+                  onClick={() => moveMany("trash", pickedRows)}
+                >
+                  <Trash2 aria-hidden="true" />
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())}>
+                  <Trans>Clear</Trans>
+                </Button>
+              </div>
+            ) : null}
+            {digestOn ? (
+              <InboxDigest
+                rows={digestList}
+                onOpen={openMessage}
+                onArchiveAll={() => archiveMany(digestList)}
+                selectedId={selectedId}
+              />
+            ) : grouped ? (
+              <section className="mb-5">
+                <div className="border-t border-foreground/10">
+                  {senderGroups.map((group) => (
+                    <InboxSenderGroup
+                      key={group.key}
+                      group={group}
+                      expanded={expanded.has(group.key)}
+                      onToggle={() => toggleGroup(senderGroupId(group.key))}
+                      onOpen={openMessage}
+                      onMark={triage ? mark : undefined}
+                      onArchive={archive}
+                      onRead={setRead}
+                      onArchiveGroup={() => archiveMany(group.rows)}
+                      onPickGroup={() => togglePicked(group.rows.map((row) => row.id))}
+                      selectedId={selectedId}
+                      pickedIds={pickedSet}
+                      onPick={pick}
+                      onMove={moveOne}
+                      hideNewsletter={pile === "newsletters"}
+                    />
+                  ))}
+                </div>
+              </section>
+            ) : spamView ? (
               <InboxGroup
-                title={<Trans>Needs reply</Trans>}
-                hideAttention
-                rows={groups.needsReply}
+                rows={rows}
                 onOpen={openMessage}
                 onMark={triage ? mark : undefined}
                 onArchive={archive}
@@ -1462,10 +1453,14 @@ function InboxListPage({
                 pickedIds={pickedSet}
                 onPick={pick}
                 onMove={moveOne}
+                showArchived={false}
               />
-              {resultsView ? (
+            ) : (
+              <>
                 <InboxGroup
-                  rows={[...groups.today, ...groups.earlier]}
+                  title={<Trans>Needs reply</Trans>}
+                  hideAttention
+                  rows={groups.needsReply}
                   onOpen={openMessage}
                   onMark={triage ? mark : undefined}
                   onArchive={archive}
@@ -1475,18 +1470,9 @@ function InboxListPage({
                   onPick={pick}
                   onMove={moveOne}
                 />
-              ) : (
-                <>
+                {resultsView ? (
                   <InboxGroup
-                    // Today's mail that needs a reply is above, so this group says it holds the rest.
-                    title={
-                      groups.needsReply.length ? (
-                        <Trans>Other mail today</Trans>
-                      ) : (
-                        <Trans>Today</Trans>
-                      )
-                    }
-                    rows={groups.today}
+                    rows={[...groups.today, ...groups.earlier]}
                     onOpen={openMessage}
                     onMark={triage ? mark : undefined}
                     onArchive={archive}
@@ -1496,121 +1482,143 @@ function InboxListPage({
                     onPick={pick}
                     onMove={moveOne}
                   />
-                  <InboxGroup
-                    title={<Trans>Earlier</Trans>}
-                    rows={groups.earlier}
-                    onOpen={openMessage}
-                    onMark={triage ? mark : undefined}
-                    onArchive={archive}
-                    onRead={setRead}
-                    selectedId={selectedId}
-                    pickedIds={pickedSet}
-                    onPick={pick}
-                    onMove={moveOne}
-                  />
-                </>
-              )}
-            </>
-          )}
-          {filtered && fresh && more.token ? (
-            <div className="grid place-items-center pb-2">
-              <Button variant="outline" size="sm" disabled={more.busy} onClick={loadMore}>
-                {more.busy ? <Trans>Loading…</Trans> : <Trans>Load more</Trans>}
-              </Button>
-            </div>
-          ) : resultsView && fresh && rows.length > 0 ? (
-            <p className="pb-2 text-center text-xs text-muted-foreground">
-              <Trans>No more results</Trans>
-            </p>
-          ) : pile === "important" && rows.length > 0 ? (
-            <div className="grid place-items-center pb-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                className="text-muted-foreground"
-                onClick={focusSearch}
-              >
-                <Trans>Search older mail</Trans>
-              </Button>
-            </div>
-          ) : null}
-        </>
-      ) : null}
-      <InboxMessageDialog
-        messageId={openId}
-        subject={openRow?.subject}
-        preview={
-          openRow
-            ? { from: openRow.from, receivedAt: openRow.receivedAt, snippet: openRow.snippet }
-            : undefined
-        }
-        onClose={closeMessage}
-        previousId={openIndex > 0 ? messageIds[openIndex - 1] : undefined}
-        nextId={openIndex >= 0 ? messageIds[openIndex + 1] : undefined}
-        onNavigate={goToMessage}
-        unread={openRow?.unread}
-        inInbox={openRow?.inInbox}
-        onAskAgent={
-          onOpenAgent && openId
-            ? async () => onOpenAgent(await rpc.inbox.askAgent({ messageId: openId }))
-            : undefined
-        }
-        onArchive={
-          openRow?.inInbox
-            ? () => {
-                // Back to the list, as Archive from the list does; the toast there offers Undo.
-                archive(openRow.id);
-                closeMessage();
-              }
-            : undefined
-        }
-        onMoveToInbox={
-          openRow && !openRow.inInbox
-            ? () => {
-                const { id, subject } = openRow;
-                patchRows((list) =>
-                  list.map((row) => (row.id === id ? { ...row, inInbox: true } : row)),
-                );
-                setStatus({ kind: "moved", messageId: id, subject });
-                setError("");
-                const pending = (archiving.current.get(id) ?? Promise.resolve())
-                  .then(() => rpc.inbox.unarchive({ messageId: id }))
-                  .then(onRefreshed);
-                // Undo (an archive) waits for this move to finish.
-                archiving.current.set(
-                  id,
-                  pending.then(
-                    () => true,
-                    () => false,
-                  ),
-                );
-                pending
-                  .catch((cause) => setError(errorText(cause)))
-                  .then(() => setReload((n) => n + 1));
-              }
-            : undefined
-        }
-        onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
-        notice={openId ? toast : null}
-      />
-      <InboxShortcuts open={help} onClose={() => setHelp(false)} />
-      <div aria-live="polite" className="sr-only">
-        {announcement}
-      </div>
-      <div
-        role="status"
-        className="pointer-events-none fixed inset-x-0 bottom-4 z-100 flex justify-center px-4"
-      >
-        {openId ? null : toast}
-      </div>
-      {composing ? (
-        <ComposeEmail
-          seed={NEW_MESSAGE}
-          accounts={accounts}
-          connectionId={tab}
-          onClose={() => setComposing(false)}
+                ) : (
+                  <>
+                    <InboxGroup
+                      // Today's mail that needs a reply is above, so this group says it holds the rest.
+                      title={
+                        groups.needsReply.length ? (
+                          <Trans>Other mail today</Trans>
+                        ) : (
+                          <Trans>Today</Trans>
+                        )
+                      }
+                      rows={groups.today}
+                      onOpen={openMessage}
+                      onMark={triage ? mark : undefined}
+                      onArchive={archive}
+                      onRead={setRead}
+                      selectedId={selectedId}
+                      pickedIds={pickedSet}
+                      onPick={pick}
+                      onMove={moveOne}
+                    />
+                    <InboxGroup
+                      title={<Trans>Earlier</Trans>}
+                      rows={groups.earlier}
+                      onOpen={openMessage}
+                      onMark={triage ? mark : undefined}
+                      onArchive={archive}
+                      onRead={setRead}
+                      selectedId={selectedId}
+                      pickedIds={pickedSet}
+                      onPick={pick}
+                      onMove={moveOne}
+                    />
+                  </>
+                )}
+              </>
+            )}
+            {filtered && fresh && more.token ? (
+              <div className="grid place-items-center pb-2">
+                <Button variant="outline" size="sm" disabled={more.busy} onClick={loadMore}>
+                  {more.busy ? <Trans>Loading…</Trans> : <Trans>Load more</Trans>}
+                </Button>
+              </div>
+            ) : resultsView && fresh && rows.length > 0 ? (
+              <p className="pb-2 text-center text-xs text-muted-foreground">
+                <Trans>No more results</Trans>
+              </p>
+            ) : pile === "important" && rows.length > 0 ? (
+              <div className="grid place-items-center pb-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  onClick={focusSearch}
+                >
+                  <Trans>Search older mail</Trans>
+                </Button>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+        <InboxMessageDialog
+          messageId={openId}
+          subject={openRow?.subject}
+          preview={
+            openRow
+              ? { from: openRow.from, receivedAt: openRow.receivedAt, snippet: openRow.snippet }
+              : undefined
+          }
+          onClose={closeMessage}
+          previousId={openIndex > 0 ? messageIds[openIndex - 1] : undefined}
+          nextId={openIndex >= 0 ? messageIds[openIndex + 1] : undefined}
+          onNavigate={goToMessage}
+          unread={openRow?.unread}
+          inInbox={openRow?.inInbox}
+          onAskAgent={
+            onOpenAgent && openId
+              ? async () => onOpenAgent(await rpc.inbox.askAgent({ messageId: openId }))
+              : undefined
+          }
+          onArchive={
+            openRow?.inInbox
+              ? () => {
+                  // Back to the list, as Archive from the list does; the toast there offers Undo.
+                  archive(openRow.id);
+                  closeMessage();
+                }
+              : undefined
+          }
+          onMoveToInbox={
+            openRow && !openRow.inInbox
+              ? () => {
+                  const { id, subject } = openRow;
+                  patchRows((list) =>
+                    list.map((row) => (row.id === id ? { ...row, inInbox: true } : row)),
+                  );
+                  setStatus({ kind: "moved", messageId: id, subject });
+                  setError("");
+                  const pending = (archiving.current.get(id) ?? Promise.resolve())
+                    .then(() => rpc.inbox.unarchive({ messageId: id }))
+                    .then(onRefreshed);
+                  // Undo (an archive) waits for this move to finish.
+                  archiving.current.set(
+                    id,
+                    pending.then(
+                      () => true,
+                      () => false,
+                    ),
+                  );
+                  pending
+                    .catch((cause) => setError(errorText(cause)))
+                    .then(() => setReload((n) => n + 1));
+                }
+              : undefined
+          }
+          onRead={openRow ? (read) => setRead(openRow.id, read) : undefined}
+          notice={openId ? toast : null}
         />
-      ) : null}
+        <InboxShortcuts open={help} onClose={() => setHelp(false)} />
+        <div aria-live="polite" className="sr-only">
+          {announcement}
+        </div>
+        <div
+          role="status"
+          className="pointer-events-none fixed inset-x-0 bottom-4 z-100 flex justify-center px-4"
+        >
+          {openId ? null : toast}
+        </div>
+        {composing ? (
+          <ComposeEmail
+            seed={NEW_MESSAGE}
+            accounts={accounts}
+            connectionId={tab}
+            onClose={() => setComposing(false)}
+          />
+        ) : null}
+      </div>
     </div>
   );
 }

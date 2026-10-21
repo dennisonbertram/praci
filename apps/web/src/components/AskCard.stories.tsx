@@ -50,11 +50,33 @@ export const WithDetail: Story = {
 export const MoneyApprovalWithFoldedDetails: Story = {
   args: {
     block: ask({
-      text: "Review before Mercury: Request send money → $1,200.00",
+      text: "Send $1,200.00 to Acme Supplies from Operating?",
       detail:
-        'tool: mcp__finance-mercury__requestSendMoney\narguments: {\n  "amount": 1200,\n  "accountId": "acct-demo"\n}',
+        'tool: mcp__finance-mercury__requestSendMoney\narguments: {\n  "amount": 1200,\n  "recipientId": "rcp-demo",\n  "accountId": "acct-demo"\n}',
       detailFolded: true,
       approvalEffectId: "effect_money",
+      actions: approvalActions,
+    }),
+  },
+};
+
+export const McpToolApproval: Story = {
+  args: {
+    block: ask({
+      text: "Review before Linear: Create issue → Fix the signup form",
+      detail: "tool: mcp__linear__createIssue\ntitle: Fix the signup form",
+      approvalEffectId: "effect_mcp",
+      actions: approvalActions,
+    }),
+  },
+};
+
+export const ConnectorToolApproval: Story = {
+  args: {
+    block: ask({
+      text: "Review before Slack: Post message → #general",
+      detail: "tool: SLACK_POST_MESSAGE\nbody: Weekly summary is ready.",
+      approvalEffectId: "effect_connector",
       actions: approvalActions,
     }),
   },

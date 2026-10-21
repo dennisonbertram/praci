@@ -1,0 +1,51 @@
+[
+  {
+    "id": "F-STORY-002-01",
+    "story_id": "STORY-002",
+    "severity": "medium",
+    "category": "disclosure",
+    "criterion": "Empty states",
+    "score": "warn",
+    "description": "The Not connected frame is a title and one black button on an empty card. The real Legal not-ready page explains what is needed and shows zeroed tiles and a centered one-line explanation. The mockup version gives a first-time visitor nothing about what the page will show; the frame is also drawn without sidebar and panel, so the real page chrome is not designed for this state.",
+    "expected": "One short line or the real page's zero-state pattern, inside the shell.",
+    "actual": "Header and button only.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-002/screenshots/step-2.png",
+    "suggested_fix": "Draw it inside the shell; reuse PageEmptyState with action (exists as a story).",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-002-02",
+    "story_id": "STORY-002",
+    "severity": "low",
+    "category": "flow",
+    "criterion": "Dead ends",
+    "score": "warn",
+    "description": "The dialog frame is shown with a prefilled key and enabled Connect; the empty-field state (Connect disabled) and the after-connect result on this surface are not drawn. Catalog gap on whether the dialog closes onto the page is still open.",
+    "expected": "Draw empty, error and post-connect states for the page entry.",
+    "actual": "Only the filled state.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-002/screenshots/step-3.png",
+    "suggested_fix": "Add frames or a note; reuse the real dialog story states.",
+    "files_likely_involved": [
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-002-03",
+    "story_id": "STORY-002",
+    "severity": "low",
+    "category": "a11y",
+    "criterion": "Keyboard nav",
+    "score": "warn",
+    "description": "Not observed: whether the sidebar link shows a dot or label when not connected is not drawn; the dot is a span with aria-label but no role.",
+    "expected": "Decision recorded and drawn.",
+    "actual": "Not represented.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-002/screenshots/step-1.png",
+    "suggested_fix": "Add a not-connected sidebar frame.",
+    "files_likely_involved": [
+      "docs/devin/mockup.html"
+    ]
+  }
+]

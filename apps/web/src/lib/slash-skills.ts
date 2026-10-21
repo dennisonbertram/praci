@@ -53,6 +53,21 @@ export function slashSkillLabel(
           title: t`Categorize transactions`,
           description: t`Suggests categories for uncategorized transactions.`,
         };
+      case "devin-sessions":
+        return {
+          title: t`Devin sessions`,
+          description: t`Start and follow Devin sessions. Each one asks first.`,
+        };
+      case "meeting-notes":
+        return {
+          title: t`Meeting notes`,
+          description: t`Answers from your meeting notes and transcripts.`,
+        };
+      case "box-files":
+        return {
+          title: t`Box files`,
+          description: t`Find and summarize files in Box. Changes ask first.`,
+        };
     }
   }
   return { title: skill.name, description: skill.description };

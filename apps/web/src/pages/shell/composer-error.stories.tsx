@@ -1,4 +1,4 @@
-import { LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
+import { LEGAL_CONSENT_REQUIRED_MESSAGE, LEGAL_MODEL_REQUIRED_MESSAGE } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { ComposerError } from "./composer-error";
 
@@ -33,7 +33,6 @@ export const KeyRejected: Story = {
 /** The Legal agent's Data Room consent is missing: the error offers the page that grants it. */
 export const ConsentRequired: Story = {
   args: {
-    message:
-      "Data Room consent is required for OpenRouter before the Legal agent can run. Allow it on the Legal page.",
+    message: LEGAL_CONSENT_REQUIRED_MESSAGE,
   },
 };

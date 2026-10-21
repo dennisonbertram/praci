@@ -1,0 +1,117 @@
+[
+  {
+    "id": "F-STORY-012-01",
+    "story_id": "STORY-012",
+    "severity": "medium",
+    "category": "hierarchy",
+    "criterion": "Same control duplicated",
+    "score": "warn",
+    "description": "The Ask button stays in the header while the panel is already open. The existing pattern (Legal) shows Ask only when the panel is closed.",
+    "expected": "Hide Ask while the panel is open.",
+    "actual": "Visible and focusable.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-012/screenshots/step-3.png",
+    "suggested_fix": "Render Ask only when closed.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-012-02",
+    "story_id": "STORY-012",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Component consistency",
+    "score": "warn",
+    "description": "User bubbles are purple (bot colour) in the mockup. The real user bubble is a neutral grey (sb-chat-usertextbubble--text); the mockup even defines an unused --chat-user token. If real threads are bot-tinted this needs confirming in the shell, since only a bubble story was seen.",
+    "expected": "Match the real thread.",
+    "actual": "Purple vs grey.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-012/screenshots/extra-1-sb-chat-usertextbubble--text.png",
+    "suggested_fix": "Use --chat-user in the mockup unless confirmed otherwise.",
+    "files_likely_involved": [
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-012-03",
+    "story_id": "STORY-012",
+    "severity": "low",
+    "category": "consistency",
+    "criterion": "Labels/copy",
+    "score": "warn",
+    "description": "Tool step labels 'Searched Devin sessions' and 'Read Devin messages x2' are invented; real labels come from humanizeToolName and look like 'Checked active integration' and 'Mail search'.",
+    "expected": "Mockup uses the real label pattern.",
+    "actual": "Different verbs.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-012/screenshots/step-5.png",
+    "suggested_fix": "Verify after tool names exist.",
+    "files_likely_involved": [
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-012-04",
+    "story_id": "STORY-012",
+    "severity": "low",
+    "category": "visual",
+    "criterion": "Wrap quality",
+    "score": "warn",
+    "description": "'Open in Devin' wraps in both bullets and leaves 'Devin' alone on a line at 384px; the same link is repeated twice.",
+    "expected": "Link text that fits or sits on its own line.",
+    "actual": "Orphan word.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-012/screenshots/step-6.png",
+    "suggested_fix": "Put the link on its own line or shorten to 'Open'.",
+    "files_likely_involved": [
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-012-05",
+    "story_id": "STORY-012",
+    "severity": "low",
+    "category": "a11y",
+    "criterion": "Interactive sizing",
+    "score": "warn",
+    "description": "Panel collapse icon is 28x28 and the sidebar icon buttons are 34x30, under 32/44px targets. Sidebar ones come from the real app; the 28px one is mockup-specific.",
+    "expected": "32px minimum.",
+    "actual": "28x28.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-012/screenshots/step-7.png",
+    "suggested_fix": "Use the real panel header component.",
+    "files_likely_involved": [
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-012-06",
+    "story_id": "STORY-012",
+    "severity": "suggestion",
+    "category": "disclosure",
+    "criterion": "Secondary features",
+    "score": "warn",
+    "description": "The composer has no suggestion chip; 'What is Devin stuck on?' is the obvious one and the real intro panel pattern supports chips.",
+    "expected": "Chips on empty thread.",
+    "actual": "None.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-012/screenshots/step-4.png",
+    "suggested_fix": "Pass suggestions to the panel.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  },
+  {
+    "id": "F-STORY-012-07",
+    "story_id": "STORY-012",
+    "severity": "medium",
+    "category": "error-handling",
+    "criterion": "Error messages",
+    "score": "warn",
+    "description": "Not observed: wording and UI when the agent cannot read question text (write-gated get_messages) is not drawn; the mockup only shows the ideal reply.",
+    "expected": "A drawn fallback reply.",
+    "actual": "Not represented.",
+    "screenshot": "docs/devin/ux-walker/stories/STORY-012/screenshots/step-6.png",
+    "suggested_fix": "Draw fallback and an approval-card variant.",
+    "files_likely_involved": [
+      "apps/web/src/pages/devin/",
+      "docs/devin/mockup.html"
+    ]
+  }
+]

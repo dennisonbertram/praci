@@ -2487,6 +2487,74 @@ describe("integration agent asked by another bot", () => {
   });
 });
 
+describe("send-money approval card names", () => {
+  const server = integrationAgentSpawnKey("server-1");
+  const readTool = (toolName: string): ConnectorTool => ({
+    name: `mcp__demo__${toolName}`,
+    description: toolName,
+    readOnly: true,
+    inputSchema: { type: "object" },
+    route: { connectorId: "mcp", resourceId: "server-1", toolName },
+  });
+  const send = (): ConnectorTool => ({
+    name: "mcp__demo__requestSendMoney",
+    description: "Send money",
+    readOnly: false,
+    inputSchema: { type: "object" },
+    route: { connectorId: "mcp", resourceId: "server-1", toolName: "requestSendMoney" },
+  });
+  const asText = (data: unknown) => ({ content: [{ type: "text", text: JSON.stringify(data) }] });
+  const card = (f: ReturnType<typeof fixture>) => {
+    const [{ blocks }] = f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }];
+    return blocks[0] as { text: string; detail: string; detailFolded?: boolean };
+  };
+  const run = async (lookup: (call: ConnectorCall) => unknown) => {
+    const f = fixture({
+      name: "mcp__demo__requestSendMoney",
+      readOnly: false,
+      spawnKey: server,
+      route: send().route,
+      availableTools: [send(), readTool("getRecipient"), readTool("getAccount")],
+    });
+    f.execute.mockImplementation(async function* (call: ConnectorCall) {
+      const data = lookup(call);
+      if (data instanceof Error) yield { type: "error" as const, message: data.message };
+      else yield { type: "result" as const, data };
+    } as never);
+    f.setCalls([
+      {
+        args: { amount: 1200, recipientId: "rcp-9", accountId: "chk-1" },
+        executionId: "call-1",
+      },
+    ]);
+    await f.run();
+    return f;
+  };
+
+  it("reads the recipient and account names and puts them in the title, not the ids", async () => {
+    const f = await run((call) =>
+      asText(
+        call.route?.toolName === "getRecipient"
+          ? { name: "Acme Supplies" }
+          : { nickname: "Operating", name: "Checking 1234" },
+      ),
+    );
+    expect(card(f).text).toBe("Send $1,200.00 to Acme Supplies from Operating?");
+    expect(card(f).detailFolded).toBe(true);
+    expect(f.execute).toHaveBeenCalledTimes(2);
+    expect(f.execute.mock.calls.map(([call]) => call.route?.toolName).sort()).toEqual([
+      "getAccount",
+      "getRecipient",
+    ]);
+  });
+
+  it("falls back to words when a lookup fails", async () => {
+    const f = await run(() => new Error("not found"));
+    expect(card(f).text).toBe("Send $1,200.00 to a recipient from an account?");
+    expect(card(f).text).not.toMatch(/rcp-9|chk-1/);
+  });
+});
+
 describe("Inbox agent asked by another bot", () => {
   const mail = () => ({
     listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),

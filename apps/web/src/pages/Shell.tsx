@@ -423,6 +423,29 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
 }
 
+/** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
+async function findDocumentsAndArtifacts(query: string) {
+  const [documents, artifacts] = await Promise.all([
+    rpc.dataRoom
+      .search({ query, limit: 5 })
+      .then((result): SearchLink[] =>
+        result.results.map(({ item }) => ({ id: item.id, label: item.name })),
+      )
+      .catch((): SearchLink[] => []),
+    // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
+    rpc.artifacts
+      .listSpace({ limit: 60 })
+      .then((result): SearchLink[] =>
+        result.items
+          .filter((item) => matchesArtifactQuery(item, query))
+          .slice(0, 5)
+          .map((item) => ({ id: item.id, label: item.name })),
+      )
+      .catch((): SearchLink[] => []),
+  ]);
+  return { documents, artifacts };
+}
+
 export function ShellPage() {
   const { t } = useLingui();
   const { botId, groupId } = useParams();
@@ -671,6 +694,8 @@ export function ShellPage() {
   useEffect(() => setSettingsOpen(false), [pathname]);
   const [settingsSection, setSettingsSection] = useState<SettingsSection>("general");
   const [settingsModelProvider, setSettingsModelProvider] = useState<string | undefined>();
+  /** Why Settings opened, shown at the top of its pane (Call Elio without a voice provider). */
+  const [settingsNotice, setSettingsNotice] = useState<string | undefined>();
   const [messagingSettingsOpen, setMessagingSettingsOpen] = useState(false);
   const [messagingSurfaceEnabled, setMessagingSurfaceEnabled] = useState(false);
   const [messagingProviders, setMessagingProviders] = useState<string[]>([]);
@@ -780,6 +805,7 @@ export function ShellPage() {
   const [initialBotsLoaded, setInitialBotsLoaded] = useState(false);
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
+  const tourQuestion = useRef(false);
   // The tour waits for the first-run focus question, so its popovers never cover the choices.
   const firstQuestionOpen = Boolean(
     snapshot?.messages.some((message) =>
@@ -791,6 +817,12 @@ export function ShellPage() {
       ),
     ),
   );
+  const tourOpen =
+    tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen);
+  // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
+  useEffect(() => {
+    if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
+  }, [tourOpen]);
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -1978,6 +2010,12 @@ export function ShellPage() {
       { id: "inbox", label: t`Inbox`, icon: <Mail {...icon} /> },
       { id: "finance", label: t`Finance`, icon: <ChartColumn {...icon} /> },
       {
+        id: "legal",
+        label: t`Legal`,
+        keywords: t`contracts, NDA, deadlines`,
+        icon: <Scale {...icon} />,
+      },
+      {
         id: "cap-table",
         label: t`Cap table`,
         // Words a founder may type for this page; matched along with the label.
@@ -1985,15 +2023,9 @@ export function ShellPage() {
         icon: <PieChart {...icon} />,
       },
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
-      {
-        id: "legal",
-        label: t`Legal`,
-        keywords: t`contracts, NDA, deadlines`,
-        icon: <Scale {...icon} />,
-      },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
-      { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
+      { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
   }, [t]);
@@ -2015,6 +2047,29 @@ export function ShellPage() {
   }, [visiblePages, spaceQuery]);
   const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
   const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
+
+  const searchPaletteLinks = useCallback(
+    async (q: string) => {
+      const found = await findDocumentsAndArtifacts(q);
+      return [
+        {
+          heading: t`Documents`,
+          entries: found.documents.map((doc) => ({
+            id: `/app/data-room?item=${encodeURIComponent(doc.id)}`,
+            label: doc.label,
+          })),
+        },
+        {
+          heading: t`Artifacts`,
+          entries: found.artifacts.map((item) => ({
+            id: `/app/artifacts/${encodeURIComponent(item.id)}`,
+            label: item.label,
+          })),
+        },
+      ];
+    },
+    [t],
+  );
 
   function openSearchResult(path: string) {
     setQuery("");
@@ -2041,31 +2096,11 @@ export function ShellPage() {
     const abort = new AbortController();
     const timer = window.setTimeout(() => {
       setSearchLoading(true);
-      // Data room files by name and content; a failure only hides this group.
-      void rpc.dataRoom
-        .search({ query: spaceQuery, limit: 5 })
-        .then((result) => {
-          if (abort.signal.aborted) return;
-          setSearchDocuments(result.results.map(({ item }) => ({ id: item.id, label: item.name })));
-        })
-        .catch(() => {
-          if (!abort.signal.aborted) setSearchDocuments([]);
-        });
-      // ponytail: matches the 60 newest artifacts by name and description; a server query when spaces hold more.
-      void rpc.artifacts
-        .listSpace({ limit: 60 })
-        .then((result) => {
-          if (abort.signal.aborted) return;
-          setSearchArtifacts(
-            result.items
-              .filter((item) => matchesArtifactQuery(item, spaceQuery))
-              .slice(0, 5)
-              .map((item) => ({ id: item.id, label: item.name })),
-          );
-        })
-        .catch(() => {
-          if (!abort.signal.aborted) setSearchArtifacts([]);
-        });
+      void findDocumentsAndArtifacts(spaceQuery).then((found) => {
+        if (abort.signal.aborted) return;
+        setSearchDocuments(found.documents);
+        setSearchArtifacts(found.artifacts);
+      });
       void rpc.search
         .query({ q: spaceQuery })
         .then((result) => {
@@ -2463,8 +2498,8 @@ export function ShellPage() {
   async function startElioCall() {
     if (voiceCallStarting.current) return;
     if (!voiceStatus?.ready) {
-      setSendError(t`Connect a voice provider to call Elio.`);
       openSettings("voice");
+      setSettingsNotice(t`Connect a voice provider to call Elio.`);
       return;
     }
     const originBotId = activeBotId.current;
@@ -3151,6 +3186,7 @@ export function ShellPage() {
   function openSettings(section: SettingsSection = "general", modelProvider?: string) {
     setSettingsSection(section);
     setSettingsModelProvider(modelProvider);
+    setSettingsNotice(undefined);
     setSettingsOpen(true);
   }
 
@@ -3522,9 +3558,20 @@ export function ShellPage() {
   }
   useEffect(() => {
     if (!focusComposerBotId || active?.id !== focusComposerBotId) return;
-    document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']")?.focus();
+    const input = document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']");
+    input?.focus();
+    // The tour's last step leaves a sample question to send or edit; an existing draft stays.
+    if (input && tourQuestion.current && !input.value) {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
+        input,
+        t`What should I do first this week?`,
+      );
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+      input.select();
+    }
+    tourQuestion.current = false;
     setFocusComposerBotId(null);
-  }, [active?.id, focusComposerBotId]);
+  }, [active?.id, focusComposerBotId, t]);
   const threadView = (
     <>
       {cartaAgentPage ? (
@@ -3931,6 +3978,7 @@ export function ShellPage() {
                   <PopoverTrigger
                     className="app-no-drag flex h-8 w-8 items-center justify-center text-[21px] text-muted-foreground/70 hover:text-foreground/75"
                     title={t`Create`}
+                    aria-label={t`Create`}
                     data-testid="create-menu-trigger"
                     data-tour="create-menu"
                   >
@@ -3982,167 +4030,166 @@ export function ShellPage() {
             )
           }
         />
+        {/* While searching, matching pages are listed with the results instead. */}
+        {(showSpaceSearch && !rail) || bootstrapMe === undefined ? null : (
+          // Waiting for the account (undefined) keeps pages the user hid from flashing in.
+          // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
+          <div className="flex max-h-[40vh] shrink-0 flex-col overflow-y-auto px-2.5">
+            <SidebarPagesGroup
+              title={t`Pages`}
+              collapsed={collapsedSidebarSections.has("pages")}
+              rail={rail}
+              onToggle={() => toggleSidebarSection("pages")}
+              pages={[
+                { key: "inbox", label: t`Inbox` },
+                { key: "finance", label: t`Finance` },
+                { key: "legal", label: t`Legal` },
+                { key: "cap-table", label: t`Cap table` },
+                { key: "contacts", label: t`Contacts` },
+                { key: "data-room", label: t`Data room` },
+                { key: "artifacts", label: t`Artifacts` },
+                ...addedPages,
+              ]}
+              hidden={hiddenPages}
+              onToggleHidden={toggleHiddenPage}
+            >
+              {hiddenPages.includes("inbox") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-inbox"
+                  current={inboxMode}
+                  icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Inbox`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/inbox");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.inbox ?? 0,
+                    value: inboxUnread > 0 ? String(inboxUnread) : undefined,
+                    valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
+                    rail,
+                  })}
+                />
+              )}
+              {hiddenPages.includes("finance") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-finance"
+                  current={financeMode}
+                  icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Finance`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/finance");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.finance ?? 0,
+                    rail,
+                    value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
+                    valueLabel: t`${runwayGlance(glance.financeRunwayMonths, hideAmounts)} runway`,
+                  })}
+                />
+              )}
+              {hiddenPages.includes("legal") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-legal"
+                  current={legalMode}
+                  icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Legal`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/legal");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen.legal ?? 0,
+                    rail,
+                    value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
+                    valueLabel: plural(glance.legalDueSoon, {
+                      one: "# due soon",
+                      other: "# due soon",
+                    }),
+                  })}
+                />
+              )}
+              {hiddenPages.includes("cap-table") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-cap-table"
+                  current={capTableMode}
+                  icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Cap table`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/cap-table");
+                  }}
+                  {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
+                />
+              )}
+              {hiddenPages.includes("contacts") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-contacts"
+                  current={contactsMode}
+                  icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Contacts`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/contacts");
+                  }}
+                />
+              )}
+              {hiddenPages.includes("data-room") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-data-room"
+                  current={dataRoomMode}
+                  icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Data room`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/data-room");
+                  }}
+                  {...glanceBadge({
+                    unseen: unseen["data-room"] ?? 0,
+                    rail,
+                    value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                    valueLabel: plural(glance.dataRoomWaiting, {
+                      one: "# waiting",
+                      other: "# waiting",
+                    }),
+                  })}
+                />
+              )}
+              {hiddenPages.includes("artifacts") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-artifacts"
+                  current={artifactsMode}
+                  // Not the Data room's folder icon: these are files bots made.
+                  icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Artifacts`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/artifacts");
+                  }}
+                  {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
+                />
+              )}
+              <SidebarPages
+                rail={rail}
+                hidden={hiddenPages}
+                onListed={setAddedPages}
+                onOpen={() => setMobileSidebarOpen(false)}
+              />
+            </SidebarPagesGroup>
+          </div>
+        )}
         <div
           ref={sidebarScrollRef}
           className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
         >
-          {/* While searching, matching pages are listed with the results instead. */}
-          {(showSpaceSearch && !rail) || bootstrapMe === undefined ? null : (
-            // Waiting for the account (undefined) keeps pages the user hid from flashing in.
-            // Inside the scroll area, so on a short screen the chats are never squeezed out.
-            <div className="flex shrink-0 flex-col">
-              <SidebarPagesGroup
-                title={t`Pages`}
-                collapsed={collapsedSidebarSections.has("pages")}
-                rail={rail}
-                onToggle={() => toggleSidebarSection("pages")}
-                pages={[
-                  { key: "inbox", label: t`Inbox` },
-                  { key: "finance", label: t`Finance` },
-                  { key: "legal", label: t`Legal` },
-                  { key: "cap-table", label: t`Cap table` },
-                  { key: "contacts", label: t`Contacts` },
-                  { key: "data-room", label: t`Data room` },
-                  { key: "artifacts", label: t`Artifacts` },
-                  ...addedPages,
-                ]}
-                hidden={hiddenPages}
-                onToggleHidden={toggleHiddenPage}
-              >
-                {hiddenPages.includes("inbox") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-inbox"
-                    current={inboxMode}
-                    icon={<Mail size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Inbox`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/inbox");
-                    }}
-                    {...glanceBadge({
-                      unseen: unseen.inbox ?? 0,
-                      value: inboxUnread > 0 ? String(inboxUnread) : undefined,
-                      valueLabel: plural(inboxUnread, { one: "# unread", other: "# unread" }),
-                      rail,
-                    })}
-                  />
-                )}
-                {hiddenPages.includes("finance") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-finance"
-                    current={financeMode}
-                    icon={<ChartColumn size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Finance`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/finance");
-                    }}
-                    {...glanceBadge({
-                      unseen: unseen.finance ?? 0,
-                      rail,
-                      value: runwayGlance(glance.financeRunwayMonths, hideAmounts),
-                      valueLabel: t`${runwayGlance(glance.financeRunwayMonths, hideAmounts)} runway`,
-                    })}
-                  />
-                )}
-                {hiddenPages.includes("legal") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-legal"
-                    current={legalMode}
-                    icon={<Scale size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Legal`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/legal");
-                    }}
-                    {...glanceBadge({
-                      unseen: unseen.legal ?? 0,
-                      rail,
-                      value: glance.legalDueSoon > 0 ? String(glance.legalDueSoon) : undefined,
-                      valueLabel: plural(glance.legalDueSoon, {
-                        one: "# due soon",
-                        other: "# due soon",
-                      }),
-                    })}
-                  />
-                )}
-                {hiddenPages.includes("cap-table") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-cap-table"
-                    current={capTableMode}
-                    icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Cap table`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/cap-table");
-                    }}
-                    {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
-                  />
-                )}
-                {hiddenPages.includes("contacts") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-contacts"
-                    current={contactsMode}
-                    icon={<BookUser size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Contacts`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/contacts");
-                    }}
-                  />
-                )}
-                {hiddenPages.includes("data-room") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-data-room"
-                    current={dataRoomMode}
-                    icon={<FolderOpen size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Data room`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/data-room");
-                    }}
-                    {...glanceBadge({
-                      unseen: unseen["data-room"] ?? 0,
-                      rail,
-                      value:
-                        glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
-                      valueLabel: plural(glance.dataRoomWaiting, {
-                        one: "# waiting",
-                        other: "# waiting",
-                      }),
-                    })}
-                  />
-                )}
-                {hiddenPages.includes("artifacts") ? null : (
-                  <SidebarPageLink
-                    testId="sidebar-artifacts"
-                    current={artifactsMode}
-                    // Not the Data room's folder icon: these are files bots made.
-                    icon={<Files size={15} strokeWidth={1.8} aria-hidden="true" />}
-                    label={t`Artifacts`}
-                    rail={rail}
-                    onOpen={() => {
-                      setMobileSidebarOpen(false);
-                      navigate("/app/artifacts");
-                    }}
-                    {...glanceBadge({ unseen: unseen.artifacts ?? 0, rail })}
-                  />
-                )}
-                <SidebarPages
-                  rail={rail}
-                  hidden={hiddenPages}
-                  onListed={setAddedPages}
-                  onOpen={() => setMobileSidebarOpen(false)}
-                />
-              </SidebarPagesGroup>
-            </div>
-          )}
           {showSpaceSearch && !rail ? (
             <SpaceSearchResults
               query={spaceQuery}
@@ -4845,16 +4892,17 @@ export function ShellPage() {
           />
         </div>
         <FirstRunTour
-          open={
-            tourRestart ||
-            (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen)
-          }
-          onConnectApps={() => {
-            setMobileSidebarOpen(false);
-            navigate("/app/integrations");
+          open={tourOpen}
+          onAsk={() => {
+            const id = active?.id ?? bots[0]?.id;
+            if (!id) return;
+            tourQuestion.current = true;
+            setFocusComposerBotId(id);
+            openBot(id);
           }}
           onClose={(me) => {
             setTourRestart(false);
+            setMobileSidebarOpen(false);
             setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
           }}
         />
@@ -5168,7 +5216,13 @@ export function ShellPage() {
             }
           />
         ) : contactsMode ? (
-          <ContactsPage />
+          <ContactsPage
+            spaceName={
+              spaces.length > 1
+                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
+                : undefined
+            }
+          />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
@@ -5343,7 +5397,11 @@ export function ShellPage() {
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-[13.5px] text-muted-foreground">
                   {panel === "settings" ? (
-                    <Trans>Settings</Trans>
+                    active ? (
+                      t`${active.name} settings`
+                    ) : (
+                      <Trans>Settings</Trans>
+                    )
                   ) : panel === "page" ? (
                     <Trans>Page</Trans>
                   ) : panel === "list" ? (
@@ -5375,7 +5433,11 @@ export function ShellPage() {
                       onClick={() => setPanel(panel === "settings" ? "computer" : "settings")}
                       className={panel === "settings" ? "text-foreground" : "text-muted-foreground"}
                     >
-                      <Settings size={16} strokeWidth={1.7} />
+                      {panel === "settings" ? (
+                        <Monitor size={16} strokeWidth={1.7} />
+                      ) : (
+                        <Settings size={16} strokeWidth={1.7} />
+                      )}
                     </Button>
                   ) : null}
                   <Button
@@ -6050,6 +6112,9 @@ export function ShellPage() {
         {renameSectionTarget ? (
           <RenameBotSectionDialog
             section={renameSectionTarget.section}
+            takenNames={(
+              spaces.find((space) => space.id === renameSectionTarget.spaceId)?.botSections ?? []
+            ).map((section) => section.name)}
             onCancel={() => setRenameSectionTarget(null)}
             onConfirm={async (name) => {
               await rpc.botSections.update(
@@ -6092,6 +6157,8 @@ export function ShellPage() {
             setMobileSidebarOpen(false);
             navigate(`/app/g/${id}`);
           }}
+          searchLinks={searchPaletteLinks}
+          onOpenPath={openSearchResult}
         />
 
         {newSpaceOpen ? (
@@ -6171,6 +6238,7 @@ export function ShellPage() {
             onUsageOpen={refreshUsage}
             initialSection={settingsSection}
             modelProvider={settingsModelProvider}
+            notice={settingsNotice}
             avatarStyle={bootstrapMe?.avatarStyle ?? DEFAULT_AVATAR_STYLE}
             isDeploymentOwner={bootstrapMe?.isDeploymentOwner === true}
             billingEnabled={bootstrapMe?.billingEnabled === true}
