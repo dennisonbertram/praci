@@ -5292,6 +5292,7 @@ msgid "Load web images automatically"
 msgstr "Charger automatiquement les images web"
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/components/integrations/McpDetail.tsx
 #: src/pages/Finance.tsx
 #: src/pages/Shell.tsx
 msgid "Loading"
@@ -5304,6 +5305,10 @@ msgstr "Chargement de l'activité…"
 #: src/pages/MemorySettingsOverlay.tsx
 msgid "Loading memory settings…"
 msgstr "Chargement des paramètres de mémoire…"
+
+#: src/components/ShellSkeleton.tsx
+msgid "Loading messages"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Loading model catalog…"
@@ -7735,6 +7740,7 @@ msgstr "Restauration de votre espace de travail"
 #: src/pages/Auth.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/ModelBackupsSettings.tsx
+#: src/pages/shell/composer-error.tsx
 msgid "Retry"
 msgstr "Réessayer"
 

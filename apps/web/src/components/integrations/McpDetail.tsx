@@ -5,7 +5,7 @@ import {
   isDevinEndpoint,
   isGranolaEndpoint,
 } from "@rakazo/contracts";
-import { Button, Input } from "@rakazo/ui-web";
+import { Button, Input, Skeleton } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -61,7 +61,12 @@ export function McpDetail({
           <p className="text-muted-foreground">
             <Trans>This connection no longer exists.</Trans>
           </p>
-        ) : null}
+        ) : (
+          <div role="status" aria-label={t`Loading`} data-testid="mcp-detail-loading">
+            <Skeleton className="h-7 w-56" />
+            <Skeleton className="mt-4 h-24 w-full max-w-xl rounded-xl" />
+          </div>
+        )}
       </div>
     );
   }
