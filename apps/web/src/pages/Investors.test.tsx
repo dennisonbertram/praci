@@ -74,7 +74,7 @@ vi.mock("../components/integrations/useIntegrations", () => ({
 }));
 
 import { setHideAmounts } from "../lib/hide-amounts-preference";
-import { CapTablePage, rowKind } from "./CapTable";
+import { InvestorsPage, rowKind } from "./Investors";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -100,11 +100,11 @@ const button = (label: string) =>
     | undefined;
 const click = (el: HTMLElement | undefined) => act(async () => el?.click());
 
-async function show(url = "/app/cap-table", props: Parameters<typeof CapTablePage>[0] = {}) {
+async function show(url = "/app/investors", props: Parameters<typeof InvestorsPage>[0] = {}) {
   await act(async () =>
     root.render(
       <MemoryRouter initialEntries={[url]}>
-        <CapTablePage {...props} />
+        <InvestorsPage {...props} />
         <NotificationToaster onOpen={() => {}} />
       </MemoryRouter>,
     ),
@@ -157,7 +157,7 @@ it("lists contacts and filters by kind", async () => {
 
 it("adds a contact through the dialog and shows a server error", async () => {
   rpcMock.save.mockRejectedValueOnce(new Error("Email already used"));
-  await show("/app/cap-table?kind=other");
+  await show("/app/investors?kind=other");
   await click(button("Add contact"));
   const name = document.getElementById("contact-name") as HTMLInputElement;
   await act(async () => {
@@ -196,7 +196,7 @@ it("ignores a contacts response that arrives after a newer reload", async () => 
     .mockReturnValueOnce(new Promise<Contact[]>((resolve) => (resolveStale = resolve)))
     .mockResolvedValue([contact("c3", "Newer", "investor")]);
   rpcMock.save.mockResolvedValue({});
-  await show("/app/cap-table?kind=investor");
+  await show("/app/investors?kind=investor");
   // Two saves start two reloads; the first reload is still pending when the second answers.
   for (const name of ["Cy", "Di"]) {
     await click(button("Add investor"));
@@ -357,7 +357,7 @@ it("shows Ownership in the same font as the other figures", async () => {
 
 it("offers Add email for a holder without a contact and prefills the dialog", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
-  await show("/app/cap-table?kind=investor");
+  await show("/app/investors?kind=investor");
   const add = [
     ...container.querySelectorAll<HTMLButtonElement>("[data-testid=cap-table-email-cell] button"),
   ].filter((b) => b.textContent === "Add email");
@@ -458,7 +458,7 @@ it("retries the refresh, not the contacts load, after a failed refresh", async (
 
 it("offers to open the contact that already has the email when adding a duplicate", async () => {
   rpcMock.save.mockRejectedValueOnce(new Error("Another contact already has this email."));
-  await show("/app/cap-table?kind=other");
+  await show("/app/investors?kind=other");
   await click(button("Add contact"));
   await typeInto("contact-name", "Ada R.");
   await typeInto("contact-email", "ADA@example.test");
@@ -542,7 +542,7 @@ it("keeps the contact restorable when Undo fails, and restores it on Try again",
 
 it("confirms a save and closes the dialog with Cancel", async () => {
   rpcMock.save.mockResolvedValue(contact("c3", "Cy", "investor"));
-  await show("/app/cap-table?kind=other");
+  await show("/app/investors?kind=other");
   await click(button("Add contact"));
   await click(button("Cancel"));
   expect(document.getElementById("contact-name")).toBeNull();
@@ -564,7 +564,7 @@ it("scrolls the saved contact into view and marks its row", async () => {
     scrolled.push(this);
   };
   rpcMock.list.mockResolvedValue([]);
-  await show("/app/cap-table?kind=investor");
+  await show("/app/investors?kind=investor");
   rpcMock.list.mockResolvedValue([saved]);
   await click(button("Add investor"));
   await typeInto("contact-name", "Cy");
@@ -577,7 +577,7 @@ it("scrolls the saved contact into view and marks its row", async () => {
 
 it("reads the kind filter from the URL and names the kind when it is empty", async () => {
   rpcMock.list.mockResolvedValue([contact("c1", "Ada", "investor")]);
-  await show("/app/cap-table?kind=auditor");
+  await show("/app/investors?kind=auditor");
   expect(button("Auditors")?.getAttribute("aria-selected")).toBe("true");
   expect(container.textContent).not.toContain("Ada");
   expect(container.textContent).toContain("No auditors yet");
@@ -633,7 +633,7 @@ it("lists only investors on the Investors tab and offers Add email only to inves
     },
     syncing: false,
   });
-  await show("/app/cap-table?kind=investor");
+  await show("/app/investors?kind=investor");
   const text = container.textContent ?? "";
   expect(text).toContain("Angel Person");
   expect(text).toContain("Ada");
@@ -668,7 +668,7 @@ it("keeps the Kind column with or without Carta", async () => {
 
 it("adds a contact of the open tab's kind from an empty tab, and has no Add button in the header", async () => {
   rpcMock.list.mockResolvedValue([]);
-  await show("/app/cap-table?kind=other");
+  await show("/app/investors?kind=other");
   expect(container.querySelector("[data-page-header]")?.textContent).not.toContain("Add");
   await click(button("Add contact"));
   expect((document.getElementById("contact-kind") as HTMLSelectElement).value).toBe("other");
@@ -684,8 +684,8 @@ it("opens the Carta sign-in on Cap Table and tells the shell whether Carta is co
   const status = vi.fn();
   await act(async () =>
     root.render(
-      <MemoryRouter initialEntries={["/app/cap-table"]}>
-        <CapTablePage onCartaStatus={status} />
+      <MemoryRouter initialEntries={["/app/investors"]}>
+        <InvestorsPage onCartaStatus={status} />
       </MemoryRouter>,
     ),
   );
@@ -718,7 +718,7 @@ it("hides dollar amounts but keeps shares and ownership in place while amounts a
 
 it("repeats each email under the name, for phones where the Email column is hidden", async () => {
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
-  await show("/app/cap-table?kind=investor");
+  await show("/app/investors?kind=investor");
   const under = [...container.querySelectorAll("[data-testid=cap-table-row-email]")].map(
     (cell) => cell.textContent,
   );
@@ -731,8 +731,8 @@ it("reloads contacts and the cap table when the agent finishes a chat turn", asy
   const render = (agentBusy: boolean) =>
     act(async () =>
       root.render(
-        <MemoryRouter initialEntries={["/app/cap-table"]}>
-          <CapTablePage agentBusy={agentBusy} />
+        <MemoryRouter initialEntries={["/app/investors"]}>
+          <InvestorsPage agentBusy={agentBusy} />
         </MemoryRouter>,
       ),
     );
@@ -773,7 +773,7 @@ it("offers to read the cap table when Carta is connected but nothing was read", 
 
 it("says a model is needed and opens Models settings when none is set up", async () => {
   const onOpenModelSettings = vi.fn();
-  await show("/app/cap-table", { onOpenModelSettings, needsModel: true });
+  await show("/app/investors", { onOpenModelSettings, needsModel: true });
   await flush();
   expect(container.textContent).toContain("needs a model before it can read your cap table");
   expect(button("Read cap table")).toBeUndefined();
@@ -787,7 +787,7 @@ it("offers Add a model, not Try again, when a refresh fails for want of a model"
   rpcMock.capTable.mockResolvedValue({ snapshot, syncing: false });
   rpcMock.refresh.mockRejectedValue(new Error("Add a model before refreshing"));
   const onOpenModelSettings = vi.fn();
-  await show("/app/cap-table", { onOpenModelSettings, needsModel: true });
+  await show("/app/investors", { onOpenModelSettings, needsModel: true });
   await click(container.querySelector('[aria-label="Refresh from Carta"]') as HTMLElement);
   await flush();
   expect(container.textContent).toContain("Add a model before refreshing");
@@ -815,7 +815,7 @@ it("filters Carta's shareholders and option grants on their own tabs", async () 
     },
     syncing: false,
   });
-  await show("/app/cap-table?kind=shareholder");
+  await show("/app/investors?kind=shareholder");
   expect(container.textContent).toContain("Founder Person");
   expect(container.textContent).not.toContain("Granted options");
   expect(container.textContent).not.toContain("Angel Person");
@@ -836,7 +836,7 @@ it("lists only investors, auditors and other contacts, plus holders joined from 
     snapshot: { ...snapshot, holders: [joined] },
     syncing: false,
   });
-  await show("/app/cap-table?kind=investor");
+  await show("/app/investors?kind=investor");
   const rows = container.querySelector("table:not(.sr-only) tbody")?.textContent ?? "";
   expect(rows).toContain("Ada");
   expect(rows).not.toContain("Bo");
@@ -852,7 +852,7 @@ it("keeps an option grant on Options when a contact with the holder's email is O
     snapshot: { ...snapshot, holders: [granted] },
     syncing: false,
   });
-  await show("/app/cap-table?kind=options");
+  await show("/app/investors?kind=options");
   expect(container.textContent).not.toContain("No option grants in Carta");
   expect(container.querySelector("table:not(.sr-only) tbody")?.textContent).toContain("Bo");
 });
@@ -865,8 +865,8 @@ it("shows All and drops ?kind when its tab is missing without a cap table", asyn
   };
   await act(async () =>
     root.render(
-      <MemoryRouter initialEntries={["/app/cap-table?kind=options"]}>
-        <CapTablePage />
+      <MemoryRouter initialEntries={["/app/investors?kind=options"]}>
+        <InvestorsPage />
         <Where />
       </MemoryRouter>,
     ),
@@ -891,7 +891,7 @@ it("shows a holder's Carta email and offers Save as contact instead of Add email
     },
     syncing: false,
   });
-  await show("/app/cap-table?kind=investor");
+  await show("/app/investors?kind=investor");
   const row = [...container.querySelectorAll("table:not(.sr-only) tbody tr")].find((r) =>
     r.textContent?.includes("Priya Holder"),
   );
@@ -1023,7 +1023,7 @@ describe("search, filter and sort", () => {
       root.render(
         <MemoryRouter key={url} initialEntries={[url]}>
           <Spy />
-          <CapTablePage />
+          <InvestorsPage />
         </MemoryRouter>,
       ),
     );
@@ -1031,21 +1031,21 @@ describe("search, filter and sort", () => {
   };
 
   it("says the SAFEs are left out of the donut and links to them on the Investors tab", async () => {
-    await showAt("/app/cap-table");
+    await showAt("/app/investors");
     const note = [...container.querySelectorAll("a")].find((a) =>
       a.textContent?.startsWith("SAFEs "),
     );
     expect(note?.textContent).toBe("SAFEs are not in the share counts");
-    expect(note?.getAttribute("href")).toBe("/app/cap-table?kind=investor&security=SAFE");
+    expect(note?.getAttribute("href")).toBe("/app/investors?kind=investor&security=SAFE");
     // On another tab the overview, and so the note, is gone.
-    await showAt("/app/cap-table?kind=investor");
+    await showAt("/app/investors?kind=investor");
     expect(
       [...container.querySelectorAll("a")].some((a) => a.textContent?.startsWith("SAFEs ")),
     ).toBe(false);
   });
 
   it("sorts by ownership, largest first, until another sort is chosen", async () => {
-    await showAt("/app/cap-table");
+    await showAt("/app/investors");
     expect(rowNames().slice(0, 3)).toEqual(["Ten", "Nine", "Two"]);
   });
 
@@ -1057,7 +1057,7 @@ describe("search, filter and sort", () => {
     ["name", "asc", ["Nine", "Ten", "Two"]],
     ["name", "desc", ["Two", "Ten", "Nine"]],
   ])("sorts by %s %s as numbers", async (field, dir, expected) => {
-    await showAt(`/app/cap-table?sort=${field}&dir=${dir}`);
+    await showAt(`/app/investors?sort=${field}&dir=${dir}`);
     expect(rowNames()).toEqual(expected);
   });
 
@@ -1066,20 +1066,20 @@ describe("search, filter and sort", () => {
     ["desc", ["Safe Hundred", "Safe Nine", "Two"]],
     ["asc", ["Safe Nine", "Safe Hundred", "Two"]],
   ])("sorts investors by amount %s, with missing values last", async (dir, expected) => {
-    await showAt(`/app/cap-table?kind=investor&sort=amountUsd&dir=${dir}`);
+    await showAt(`/app/investors?kind=investor&sort=amountUsd&dir=${dir}`);
     expect(rowNames()).toEqual(expected);
   });
 
   it("sorts by kind", async () => {
-    await showAt("/app/cap-table?sort=kind&dir=asc");
+    await showAt("/app/investors?sort=kind&dir=asc");
     // Investors (the preferred holder) before Shareholders.
     expect(rowNames()[0]).toBe("Two");
-    await showAt("/app/cap-table?sort=kind&dir=desc");
+    await showAt("/app/investors?sort=kind&dir=desc");
     expect(rowNames().slice(0, 2).sort()).toEqual(["Nine", "Ten"]);
   });
 
   it("searches name, company and email", async () => {
-    await showAt("/app/cap-table");
+    await showAt("/app/investors");
     await type("two");
     expect(rowNames()).toEqual(["Two"]);
     await type("ACME");
@@ -1091,11 +1091,11 @@ describe("search, filter and sort", () => {
   });
 
   it("filters by security, and shows the filter only with a choice", async () => {
-    await showAt("/app/cap-table?kind=investor&security=SAFE");
+    await showAt("/app/investors?kind=investor&security=SAFE");
     expect(rowNames().sort()).toEqual(["Safe Hundred", "Safe Nine"]);
     expect(button("Security: SAFE")).toBeDefined();
     // A security the rows do not have is ignored.
-    await showAt("/app/cap-table?security=Missing");
+    await showAt("/app/investors?security=Missing");
     expect(rowNames()).toHaveLength(3);
     // One security means nothing to filter.
     rpcMock.capTable.mockResolvedValue({
@@ -1104,8 +1104,8 @@ describe("search, filter and sort", () => {
     });
     await act(async () =>
       root.render(
-        <MemoryRouter key="one-security" initialEntries={["/app/cap-table"]}>
-          <CapTablePage />
+        <MemoryRouter key="one-security" initialEntries={["/app/investors"]}>
+          <InvestorsPage />
         </MemoryRouter>,
       ),
     );
@@ -1114,7 +1114,7 @@ describe("search, filter and sort", () => {
   });
 
   it("opens the holder breakdown from the ownership donut", async () => {
-    await showAt("/app/cap-table");
+    await showAt("/app/investors");
     expect(container.querySelector("[data-testid=ownership-donut]")).not.toBeNull();
     const legend = [...container.querySelectorAll("ul button")].find((b) =>
       b.textContent?.startsWith("Series Seed Preferred"),
@@ -1126,7 +1126,7 @@ describe("search, filter and sort", () => {
   });
 
   it("keeps search in the URL and clears it from the empty state", async () => {
-    await showAt("/app/cap-table");
+    await showAt("/app/investors");
     await type("nobody");
     expect(search$).toContain("q=nobody");
     expect(container.textContent).toContain("No matches");
@@ -1136,14 +1136,14 @@ describe("search, filter and sort", () => {
   });
 
   it("restores search and sort from a link", async () => {
-    await showAt("/app/cap-table?q=Ten&sort=name&dir=desc");
+    await showAt("/app/investors?q=Ten&sort=name&dir=desc");
     expect(search()?.value).toBe("Ten");
     expect(rowNames()).toEqual(["Ten"]);
     expect(button("Sort: Name")).toBeDefined();
   });
 
   it("flips direction and writes the sort to the URL", async () => {
-    await showAt("/app/cap-table");
+    await showAt("/app/investors");
     await click(
       document.querySelector<HTMLElement>("button[aria-label='Sort ascending']") ?? undefined,
     );
@@ -1154,7 +1154,7 @@ describe("search, filter and sort", () => {
 
   it("sorts by amount while amounts are hidden, without showing them", async () => {
     setHideAmounts(true);
-    await showAt("/app/cap-table?kind=investor&sort=amountUsd&dir=desc");
+    await showAt("/app/investors?kind=investor&sort=amountUsd&dir=desc");
     expect(rowNames().slice(0, 2)).toEqual(["Safe Hundred", "Safe Nine"]);
     const text = container.textContent ?? "";
     expect(text).not.toContain("100,000");

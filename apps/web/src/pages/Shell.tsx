@@ -245,13 +245,13 @@ import { useSidebarGlance } from "../lib/use-sidebar-glance";
 import { errorText } from "../lib/user-error";
 import { workingActivity } from "../lib/working-activity";
 import type { ContextMenuPosition } from "./BotContextMenu";
-import { CapTablePage } from "./CapTable";
 import { ContactsPage } from "./Contacts";
 import { DataRoomPage } from "./DataRoom";
 import { DevinPage } from "./Devin";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { InboxPage } from "./Inbox";
+import { InvestorsPage } from "./Investors";
 import { LegalPage } from "./Legal";
 import { NotFoundPage } from "./NotFound";
 import { ResizableSidePanel } from "./ResizableSidePanel";
@@ -1016,16 +1016,16 @@ export function ShellPage() {
   const artifactsMode = useMatch("/app/artifacts/*") != null;
   // The route exists only while bootstrap enables the board (see App).
   const boardMode = useMatch("/app/board") != null;
-  const capTableMode = useMatch("/app/cap-table/*") != null;
+  const investorsMode = useMatch("/app/investors/*") != null;
   const contactsMode = useMatch("/app/contacts") != null;
-  // Inbox, Finance, Legal, Data room, Cap Table and Integrations are pages of their own: no bot
-  // route. Inbox, Finance, Legal and Cap Table keep their agent in a side panel.
+  // Inbox, Finance, Legal, Data room, Investors and Integrations are pages of their own: no bot
+  // route. Inbox, Finance, Legal and Investors keep their agent in a side panel.
   const pageMode =
     inboxMode ||
     financeMode ||
     legalMode ||
     devinMode ||
-    capTableMode ||
+    investorsMode ||
     integrationsMode ||
     dataRoomMode ||
     artifactsMode ||
@@ -1066,7 +1066,7 @@ export function ShellPage() {
               ? findLegalAgent(bots, userId)
               : devinMode
                 ? bots.find((bot) => bot.id === devinAgentId)
-                : capTableMode
+                : investorsMode
                   ? findCartaAgent(bots, userId)
                   : routeBot.bot;
   // A bot made with "New bot" opens with only its name until it has answered a message.
@@ -2088,10 +2088,10 @@ export function ShellPage() {
         ? [{ id: "devin", label: t`Devin`, icon: <CodeXml {...icon} /> }]
         : []),
       {
-        id: "cap-table",
-        label: t`Cap table`,
+        id: "investors",
+        label: t`Investors`,
         // Words a founder may type for this page; matched along with the label.
-        keywords: t`equity, ownership, shares, options, Carta`,
+        keywords: t`cap table, equity, ownership, Carta`,
         icon: <PieChart {...icon} />,
       },
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
@@ -3150,7 +3150,7 @@ export function ShellPage() {
 
   // Carta needs no Create click: the agent appears once Carta is connected.
   useAutoCreateCartaAgent(
-    capTableMode && cartaConnected && initialBotsLoaded && Boolean(userId),
+    investorsMode && cartaConnected && initialBotsLoaded && Boolean(userId),
     findCartaAgent(bots, userId) !== undefined,
     createCartaAgent,
     bots,
@@ -3260,7 +3260,7 @@ export function ShellPage() {
                 creating: creatingLegalAgent,
                 error: legalAgentError,
               }
-            : capTableMode
+            : investorsMode
               ? {
                   name: "carta-agent",
                   testId: "carta-agent-panel",
@@ -3277,7 +3277,7 @@ export function ShellPage() {
                   suggestions: cartaSuggestions,
                 }
               : null;
-  // The Carta agent opened full screen from its panel: same intro, and a way back to Cap table.
+  // The Carta agent opened full screen from its panel: same intro, and a way back to Investors.
   const cartaAgentPage =
     !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
   // Without a model a page agent cannot answer, so its panel offers Add a model, not questions.
@@ -3702,11 +3702,11 @@ export function ShellPage() {
       {cartaAgentPage ? (
         <div className="shrink-0 px-4 pt-2 md:px-7">
           <Link
-            to="/app/cap-table"
+            to="/app/investors"
             className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="size-4" aria-hidden="true" />
-            <Trans>Back to Cap table</Trans>
+            <Trans>Back to Investors</Trans>
           </Link>
         </div>
       ) : null}
@@ -4030,7 +4030,7 @@ export function ShellPage() {
         glance={glance}
         legalMode={legalMode}
         devinMode={devinMode}
-        capTableMode={capTableMode}
+        investorsMode={investorsMode}
         contactsMode={contactsMode}
         dataRoomMode={dataRoomMode}
         artifactsMode={artifactsMode}
@@ -4374,8 +4374,8 @@ export function ShellPage() {
               onConnect={() => setDevinDialog("connect")}
               onReconnect={() => setDevinDialog("replace")}
             />
-          ) : capTableMode ? (
-            <CapTablePage
+          ) : investorsMode ? (
+            <InvestorsPage
               onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
               onCartaStatus={setCartaConnected}
               onOpenModelSettings={() => openSettings("models")}
@@ -4476,10 +4476,10 @@ export function ShellPage() {
                   {transcriptMessages.length === 0 &&
                   !transcriptRunning &&
                   !inboxMode &&
-                  (!capTableMode || activeSnapshot) ? (
+                  (!investorsMode || activeSnapshot) ? (
                     <AgentPanelIntro
                       description={
-                        capTableMode
+                        investorsMode
                           ? cartaAgentIntro
                           : devinMode
                             ? t`Answers questions about what Devin is working on.`

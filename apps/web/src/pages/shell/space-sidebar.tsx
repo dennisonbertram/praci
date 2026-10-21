@@ -338,7 +338,7 @@ export type SpaceSidebarProps = {
   };
   legalMode: boolean;
   devinMode: boolean;
-  capTableMode: boolean;
+  investorsMode: boolean;
   contactsMode: boolean;
   dataRoomMode: boolean;
   artifactsMode: boolean;
@@ -443,7 +443,7 @@ export function SpaceSidebar({
   glance,
   legalMode,
   devinMode,
-  capTableMode,
+  investorsMode,
   contactsMode,
   dataRoomMode,
   artifactsMode,
@@ -659,7 +659,6 @@ export function SpaceSidebar({
           )
         }
       />
-      {/* While searching, matching pages are listed with the results instead. */}
       {bootstrapMe === undefined ? null : (
         // Waiting for the account (undefined) keeps pages the user hid from flashing in.
         // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
@@ -674,7 +673,7 @@ export function SpaceSidebar({
               { key: "finance", label: t`Finance` },
               { key: "legal", label: t`Legal` },
               ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
-              { key: "cap-table", label: t`Cap table` },
+              { key: "investors", label: t`Investors` },
               { key: "contacts", label: t`Contacts` },
               { key: "data-room", label: t`Data room` },
               { key: "artifacts", label: t`Artifacts` },
@@ -761,18 +760,18 @@ export function SpaceSidebar({
                 })}
               />
             )}
-            {hiddenPages.includes("cap-table") ? null : (
+            {hiddenPages.includes("investors") ? null : (
               <SidebarPageLink
-                testId="sidebar-cap-table"
-                current={capTableMode}
+                testId="sidebar-investors"
+                current={investorsMode}
                 icon={<PieChart size={15} strokeWidth={1.8} aria-hidden="true" />}
-                label={t`Cap table`}
+                label={t`Investors`}
                 rail={rail}
                 onOpen={() => {
                   setMobileSidebarOpen(false);
-                  navigate("/app/cap-table");
+                  navigate("/app/investors");
                 }}
-                {...glanceBadge({ unseen: unseen["cap-table"] ?? 0, rail })}
+                {...glanceBadge({ unseen: unseen.investors ?? 0, rail })}
               />
             )}
             {hiddenPages.includes("contacts") ? null : (

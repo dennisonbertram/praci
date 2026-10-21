@@ -92,6 +92,7 @@ export function SidebarFixture({
   devinMode = false,
   devinConnected = false,
   devinNeedsYou = 0,
+  investorsMode = false,
   pageAgents = false,
   activePageAgent = false,
 }: {
@@ -99,6 +100,7 @@ export function SidebarFixture({
   devinMode?: boolean;
   devinConnected?: boolean;
   devinNeedsYou?: number;
+  investorsMode?: boolean;
   pageAgents?: boolean;
   activePageAgent?: boolean;
 }) {
@@ -185,7 +187,7 @@ export function SidebarFixture({
     },
     legalMode: false,
     devinMode,
-    capTableMode: false,
+    investorsMode,
     contactsMode: false,
     dataRoomMode: false,
     artifactsMode: false,

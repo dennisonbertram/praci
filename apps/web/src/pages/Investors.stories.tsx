@@ -1,7 +1,7 @@
 import type { Contact } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { mockRpc } from "../lib/__mocks__/rpc";
-import { CapTablePage } from "./CapTable";
+import { InvestorsPage } from "./Investors";
 
 const contact = (id: string, name: string, kind: Contact["kind"], organization: string | null) => ({
   id,
@@ -76,8 +76,8 @@ const snapshot = {
 };
 
 const meta = {
-  title: "CapTable/CapTablePage",
-  component: CapTablePage,
+  title: "Investors/InvestorsPage",
+  component: InvestorsPage,
   parameters: { layout: "fullscreen" },
   args: { onShowAgent: () => {} },
   decorators: [
@@ -87,7 +87,7 @@ const meta = {
       </div>
     ),
   ],
-} satisfies Meta<typeof CapTablePage>;
+} satisfies Meta<typeof InvestorsPage>;
 export default meta;
 type Story = StoryObj<typeof meta>;
 
@@ -144,7 +144,7 @@ export const CartaNeedsSignIn: Story = {
 
 /** A kind tab with no contacts of that kind names the kind and offers to add one. */
 export const NoAuditors: Story = {
-  parameters: { initialEntries: ["/app/cap-table?kind=auditor"] },
+  parameters: { initialEntries: ["/app/investors?kind=auditor"] },
   beforeEach: () =>
     mockRpc({ "contacts.list": [contacts[0], contacts[2]], "mcp.servers.list": [cartaServer] }),
 };
@@ -193,7 +193,7 @@ export const Refreshing: Story = {
 
 /** Shareholders tab: Carta's common holders only. */
 export const ShareholdersTab: Story = {
-  parameters: { initialEntries: ["/app/cap-table?kind=shareholder"] },
+  parameters: { initialEntries: ["/app/investors?kind=shareholder"] },
   beforeEach: () =>
     mockRpc({
       "contacts.list": contacts,
@@ -213,19 +213,19 @@ const withHolders = (entry: string) => ({
 });
 
 /** Sorted by shares, smallest first; the contact with no holding stays last. */
-export const SortedByShares: Story = withHolders("/app/cap-table?sort=shares&dir=asc");
+export const SortedByShares: Story = withHolders("/app/investors?sort=shares&dir=asc");
 
 /** Filtered to one security, with the Security pill showing it. */
-export const SecurityFilter: Story = withHolders("/app/cap-table?kind=investor&security=SAFE");
+export const SecurityFilter: Story = withHolders("/app/investors?kind=investor&security=SAFE");
 
 /** Investors: SAFEs have an Amount instead of empty Shares and Ownership. */
-export const InvestorsTab: Story = withHolders("/app/cap-table?kind=investor");
+export const InvestorsTab: Story = withHolders("/app/investors?kind=investor");
 
 /** A search that matches no one. */
-export const NoMatches: Story = withHolders("/app/cap-table?q=nobody");
+export const NoMatches: Story = withHolders("/app/investors?q=nobody");
 
 /** Search finds a holder by company. */
-export const SearchByCompany: Story = withHolders("/app/cap-table?q=newcomer");
+export const SearchByCompany: Story = withHolders("/app/investors?q=newcomer");
 
 /** The cap table read failed: the error sits where the figures would be. */
 export const CapTableLoadFailed: Story = {
