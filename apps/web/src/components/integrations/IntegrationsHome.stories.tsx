@@ -86,6 +86,59 @@ export const WithConnections: Story = {
   },
 };
 
+const catalogNames = [
+  "Linear",
+  "Airtable",
+  "Asana",
+  "Trello",
+  "HubSpot",
+  "Stripe",
+  "Zoom",
+  "Figma",
+  "Jira",
+  "Dropbox",
+  "Calendly",
+  "Mailchimp",
+  "Intercom",
+  "Zendesk",
+  "Shopify",
+  "Twilio",
+  "Discord",
+  "Webflow",
+  "Typeform",
+  "Segment",
+  "Salesforce",
+  "Pipedrive",
+];
+
+/** A realistic catalog: a few connected apps and a long Popular list that collapses to three on a phone. */
+export const FullCatalog: Story = {
+  args: {
+    data: mockIntegrations({
+      catalog: [
+        ...mockCatalog,
+        ...catalogNames.map((name) => ({
+          ...mockCatalog[0]!,
+          slug: name.toLowerCase(),
+          name,
+          description: `Read and update ${name} from your bots, with approval for changes.`,
+          logo: ["Linear", "Airtable"].includes(name)
+            ? `https://cdn.simpleicons.org/${name.toLowerCase()}`
+            : null,
+        })),
+      ],
+      connections: ["gmail", "googlecalendar", "googledrive", "slack"].map((provider) => ({
+        ...mockConnections[0]!,
+        id: `conn_${provider}`,
+        provider,
+        displayName: "demo@example.com",
+      })),
+      servers: [mockServer("srv_carta", "Carta", { endpoint: "https://mcp.app.carta.com/mcp" })],
+      mcpAssignments: mockAssignments,
+    }),
+  },
+};
+
 /** A connected app whose sign-in lapsed offers Reconnect on its tile; its label equals its name. */
 export const NeedsReconnect: Story = {
   args: {

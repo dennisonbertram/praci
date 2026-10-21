@@ -1,12 +1,13 @@
 // @vitest-environment jsdom
 import type { Routine } from "@rakazo/contracts";
+import { presetFromCron } from "@rakazo/core";
 import type { ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 
 vi.mock("@lingui/react/macro", () => ({
-  useLingui: () => ({ t: (parts: TemplateStringsArray) => parts.join("") }),
+  useLingui: () => ({ i18n: { locale: "en" }, t: (parts: TemplateStringsArray) => parts.join("") }),
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 vi.mock("../lib/rpc", () => ({
@@ -93,6 +94,55 @@ it("lets an existing routine's time zone be changed in Advanced", async () => {
   });
   const select = document.querySelector("select") as HTMLSelectElement;
   expect(select.value).toBe("America/Chicago");
+  await act(async () => root.unmount());
+  el.remove();
+  vi.unstubAllGlobals();
+});
+
+it("keeps Save off for a saved routine until a field changes, and shows its next run", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const el = document.body.appendChild(document.createElement("div"));
+  const root = createRoot(el);
+  const noop = () => undefined;
+  const editing = {
+    id: "routine-1",
+    timezone: "America/Chicago",
+    crons: ["0 9 * * 1"],
+    nextRunAt: "2026-10-26T14:00:00.000Z",
+    lastRunAt: null,
+  } as Routine;
+  const draft = { ...emptyRoutineDraft(), schedules: [presetFromCron("0 9 * * 1")] };
+  const render = (next: typeof draft) =>
+    act(async () =>
+      root.render(
+        <RoutineEditor
+          draft={next}
+          onChange={noop}
+          editing={editing}
+          timezone="America/Chicago"
+          webhook={{ path: "/hook", secret: null, configured: false }}
+          githubPath="/gh"
+          messageProviders={[]}
+          saving={false}
+          running={false}
+          error={null}
+          onBack={noop}
+          onClose={noop}
+          onSave={noop}
+          onTestRun={noop}
+          onDelete={noop}
+          onEnsureWebhook={async () => undefined}
+        />,
+      ),
+    );
+  const save = () =>
+    [...el.querySelectorAll("button")].find((button) => button.textContent === "Save");
+  await render(draft);
+  expect(save()?.disabled).toBe(true);
+  expect(el.textContent).toContain("Next run");
+  await render({ ...draft, name: "Monday cash check" });
+  expect(save()?.disabled).toBe(false);
+  expect(el.textContent).not.toContain("Next run");
   await act(async () => root.unmount());
   el.remove();
   vi.unstubAllGlobals();
