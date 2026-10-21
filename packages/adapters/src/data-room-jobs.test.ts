@@ -7,6 +7,7 @@ import {
   CHUNK_OVERLAP_CHARS,
   CHUNK_TARGET_CHARS,
   chunkText,
+  DATA_ROOM_TEXT_MAX_CHARS,
   extractItemText,
 } from "./data-room-jobs.js";
 import { fakeAi, MemoryArtifacts, makePdf, RecordingJobs } from "./data-room-test-fakes.js";
@@ -81,6 +82,12 @@ describe("extractItemText", () => {
       "Office lease for 100 Placeholder Street. Monthly rent 7500 dollars. Renewal date 31 January. Notice of renewal due 30 November.";
     const text = await extract("lease.pdf", "application/pdf", makePdf(lease));
     expect(text.replace(/\s+/g, " ")).toBe(lease);
+  });
+
+  it("reads a PDF of more than 200 pages instead of failing", async () => {
+    const text = await extract("policy.pdf", "application/pdf", makePdf("Policy clause 7", 250));
+    expect(text).toContain("Policy clause 7");
+    expect(text.length).toBeLessThanOrEqual(DATA_ROOM_TEXT_MAX_CHARS);
   });
 
   it("gives no text for a PDF without a text layer", async () => {

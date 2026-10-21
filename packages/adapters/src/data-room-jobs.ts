@@ -350,17 +350,19 @@ export async function extractItemText(
   const type = effectiveType(item.mimeType, item.name);
   let text = "";
   if (type === "application/pdf") {
-    text = await extractPdfText(bytes).catch((cause: unknown) => {
-      const name = cause instanceof Error ? cause.name : "";
-      throw new DataRoomUnreadableError(
-        name === "PasswordException"
-          ? "This PDF is password-protected."
-          : // A plain Error is one of the page or text limits; the parser's own errors are named.
-            name === "Error"
-            ? "This PDF is too long to read."
-            : "This file isn't a readable PDF.",
-      );
-    });
+    text = await extractPdfText(bytes, { maxChars: DATA_ROOM_TEXT_MAX_CHARS }).catch(
+      (cause: unknown) => {
+        const name = cause instanceof Error ? cause.name : "";
+        throw new DataRoomUnreadableError(
+          name === "PasswordException"
+            ? "This PDF is password-protected."
+            : // A plain Error is one of the page or text limits; the parser's own errors are named.
+              name === "Error"
+              ? "This PDF is too long to read."
+              : "This file isn't a readable PDF.",
+        );
+      },
+    );
     if (text.trim().length < PDF_SCAN_MIN_CHARS_PER_PAGE * 400 && deps.renderPdfPages) {
       const pageCount = await pdfPageCount(bytes).catch(() => 1);
       if (text.trim().length < PDF_SCAN_MIN_CHARS_PER_PAGE * pageCount) {
