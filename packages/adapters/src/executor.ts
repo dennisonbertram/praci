@@ -2671,6 +2671,10 @@ export function createRunExecutor(deps: ExecutorDeps) {
           trigger: run.trigger,
           messagingChannelRun,
         });
+        // The Investors agent may overwrite the cap table only on the routine sheet read, so text in a
+        // document or email cannot steer a chat turn into writing it.
+        const capTableWriteBlocked =
+          isInvestorsAgentSpawnKey(bot.spawnKey) && run.trigger !== "routine";
         const legalToolSet: ReadonlySet<string> = new Set(LEGAL_AGENT_BUILTIN_TOOLS);
         const dataRoomAgentToolSet: ReadonlySet<string> = new Set(DATA_ROOM_AGENT_BUILTIN_TOOLS);
         const investorsToolSet: ReadonlySet<string> = new Set(INVESTORS_AGENT_BUILTIN_TOOLS);
@@ -2724,6 +2728,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             (!legalOnly || legalToolSet.has(tool.name)) &&
             (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)) &&
             (!investorsAgent || investorsToolSet.has(tool.name)) &&
+            !(capTableWriteBlocked && tool.name === "cap_table_update") &&
             (!meetingAgent || meetingAgentToolSet.has(tool.name)) &&
             // pi-runtime runs run_subagent itself, before the executor's approval gate.
             ((!meetingTaint && externalChain === undefined) ||
@@ -4855,7 +4860,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
           }
           if (
             (CONTACT_ONLY_TOOL_NAMES.has(name) && contactsEnabled) ||
-            (CAP_TABLE_TOOL_NAMES.has(name) && capTableEnabled)
+            (CAP_TABLE_TOOL_NAMES.has(name) &&
+              capTableEnabled &&
+              !(capTableWriteBlocked && name === "cap_table_update"))
           ) {
             return finish(
               await contactToolFromTool(
@@ -4864,6 +4871,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                   prisma: deps.prisma,
                   scope: { spaceId: run.spaceId, userId: bot.userId },
                   botId: bot.id,
+                  writer: isInvestorsAgentSpawnKey(bot.spawnKey) ? "sheet" : "carta",
                 },
                 args,
               ),

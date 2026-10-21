@@ -1216,12 +1216,17 @@ export const builtinAgentTools: ConnectorTool[] = [
   {
     name: "cap_table_update",
     description:
-      "Replace the cap table on the user's Cap Table page. Pass exact figures from Carta; never estimate, and use null for anything Carta does not give you. Dates are YYYY-MM-DD, percents are 0-100, amounts are US dollars.",
+      "Replace the cap table on the user's Cap Table page. Pass exact figures from Carta, or from the Google Sheet you were asked to read; never estimate, and use null for anything the source does not give you. Dates are YYYY-MM-DD, percents are 0-100, amounts are US dollars.",
     inputSchema: {
       type: "object",
       properties: {
         companyName: { type: "string" },
-        asOf: { type: "string", description: "The date Carta's figures are as of." },
+        asOf: { type: "string", description: "The date the figures are as of." },
+        sourceRef: {
+          type: "object",
+          description: "A Google Sheet read only: the sheet's file id and name.",
+          properties: { driveFileId: { type: "string" }, name: { type: "string" } },
+        },
         fullyDilutedShares: { type: "number" },
         amountRaisedUsd: { type: ["number", "null"] },
         optionPoolAvailable: { type: ["number", "null"] },

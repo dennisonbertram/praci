@@ -39,12 +39,12 @@ describe("ensureInvestorsAgent", () => {
     }
   });
 
-  it("offers read tools only: no mail_send, no cap_table_update, nothing that deletes", () => {
+  it("offers no mail_send and nothing that deletes; cap_table_update is for the sheet read", () => {
     expect(INVESTORS_AGENT_BUILTIN_TOOLS).toEqual(
       expect.arrayContaining(["cap_table_read", "search_data_room", "finance_overview"]),
     );
     expect(INVESTORS_AGENT_BUILTIN_TOOLS).not.toContain("mail_send");
-    expect(INVESTORS_AGENT_BUILTIN_TOOLS).not.toContain("cap_table_update");
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("cap_table_update");
     for (const name of INVESTORS_AGENT_BUILTIN_TOOLS) {
       expect(name).not.toMatch(/delete|remove|trash|^mcp__/);
     }

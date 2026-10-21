@@ -448,6 +448,7 @@ import {
 } from "./integration-agent.js";
 import { searchIntegrationCatalog } from "./integration-catalog.js";
 import { ensureInvestorsAgent } from "./investors-agent.js";
+import { sheetReadState, startSheetRead } from "./investors-sheet-sync.js";
 import {
   legalAgent,
   legalConsent,
@@ -1320,10 +1321,26 @@ export function createRouter(deps: RouterDeps) {
     hasModel: async (actor) => !(await modelSetup(deps, actor)).needsModel,
     enqueueRun: (runId) => deps.jobs.enqueue(runContinueJob(runId)),
   };
-  const capTableState = async (actor: Actor) => ({
-    snapshot: await getCapTableSnapshot(deps.prisma, actorScope(actor)),
-    syncing: await isCartaSyncing(deps.prisma, actor),
-  });
+  const capTableState = async (actor: Actor) => {
+    const snapshot = await getCapTableSnapshot(deps.prisma, actorScope(actor));
+    return {
+      snapshot,
+      syncing: await isCartaSyncing(deps.prisma, actor),
+      ...(snapshot?.source === "sheet"
+        ? await sheetReadState(deps.prisma, actor, snapshot.updatedAt)
+        : { reading: false, lastReadFailed: false }),
+    };
+  };
+  /** Starts the sheet read and turns its refusals into the messages the page shows. */
+  const readSheet = async (actor: Actor) => {
+    const result = await startSheetRead(cartaSyncDeps, actor).catch((error: unknown) => {
+      throw mapSpaceLifecycleError(error);
+    });
+    if (result === "no_model")
+      throw new ORPCError("BAD_REQUEST", { message: "Add a model before reading the sheet" });
+    if (result === "other_source")
+      throw new ORPCError("BAD_REQUEST", { message: "The cap table is not read from a sheet" });
+  };
   const beginMcpOAuth = (input: {
     serverId: string;
     spaceId: string;
@@ -7460,6 +7477,14 @@ export function createRouter(deps: RouterDeps) {
       ),
       capTable: authed.investors.capTable.handler(({ context }) => capTableState(context.actor)),
       refresh: authed.investors.refresh.handler(async ({ context }) => {
+        const current = await deps.prisma.capTableSnapshot.findUnique({
+          where: { spaceId_userId: actorScope(context.actor) },
+          select: { source: true },
+        });
+        if (current?.source === "sheet") {
+          await readSheet(context.actor);
+          return { ok: true as const };
+        }
         const cartaServers = (
           await deps.prisma.mcpServer.findMany({ where: actorScope(context.actor) })
         ).filter((server) => server.enabled && isCartaEndpoint(server.endpoint));
@@ -7478,6 +7503,20 @@ export function createRouter(deps: RouterDeps) {
         if (result === "other_source")
           throw new ORPCError("BAD_REQUEST", { message: "The cap table is not read from Carta" });
         return { ok: true as const };
+      }),
+      useSheet: authed.investors.useSheet.handler(async ({ context, input }) => {
+        const space = await deps.prisma.space.findUnique({
+          where: { id: context.actor.spaceId },
+          select: { name: true },
+        });
+        if (!space) throw new ORPCError("NOT_FOUND");
+        await changeCapTableSource(deps.prisma, actorScope(context.actor), {
+          source: "sheet",
+          sourceRef: input,
+          companyName: space.name,
+        }).catch(capTableConflict);
+        await readSheet(context.actor);
+        return capTableState(context.actor);
       }),
       capTableSave: authed.investors.capTableSave.handler(async ({ context, input }) => {
         await saveCapTableSnapshot(

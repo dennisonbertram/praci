@@ -44,12 +44,12 @@ describe("contact tools", () => {
     expect(capTableToolsAllowed({ ...base, trigger: "bot_message" })).toBe(false);
   });
 
-  it("the Investors agent passes the cap table gate but its fixed list has no cap_table_update", () => {
+  it("the Investors agent passes the cap table gate and its fixed list has cap_table_update", () => {
     const investors = { ...base, botSpawnKey: investorsAgentSpawnKey("u") };
     expect(capTableToolsAllowed(investors)).toBe(true);
     expect(capTableToolsAllowed({ ...investors, trigger: "bot_message" })).toBe(false);
     expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("cap_table_read");
-    expect(INVESTORS_AGENT_BUILTIN_TOOLS).not.toContain("cap_table_update");
+    expect(INVESTORS_AGENT_BUILTIN_TOOLS).toContain("cap_table_update");
     expect(INVESTORS_AGENT_BUILTIN_TOOLS).toEqual(
       expect.arrayContaining(["contacts_list", "contacts_add", "contacts_save"]),
     );
@@ -189,6 +189,32 @@ describe("contact tools", () => {
     expect(updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ ...scope, source: "carta" }) }),
     );
+  });
+
+  it("cap_table_update writes as the sheet for the Investors agent and refuses a table of another source", async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { capTableSnapshot: { updateMany } } as never;
+    const args = {
+      companyName: "Example Co",
+      asOf: "2026-01-31",
+      fullyDilutedShares: 1000,
+      source: "carta",
+      sourceRef: { driveFileId: "file-1", name: "Cap table" },
+      shareClasses: [],
+      holders: [{ name: "Ada Fund", security: "Common", shares: 1000 }],
+    };
+    expect(
+      await contactToolFromTool("cap_table_update", { prisma, scope, writer: "sheet" }, args),
+    ).toEqual({ ok: true });
+    expect(updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ ...scope, source: "sheet" }) }),
+    );
+    const empty = await contactToolFromTool(
+      "cap_table_update",
+      { prisma, scope, writer: "sheet" },
+      { ...args, holders: [] },
+    );
+    expect(empty).toEqual({ error: expect.stringContaining("nothing was changed") });
   });
 
   it("cap_table_update says so when another source owns the table", async () => {

@@ -33,6 +33,7 @@ const rpcMock = vi.hoisted(() => ({
   capTableSave: vi.fn(),
   changeSource: vi.fn(),
   undoSource: vi.fn(),
+  useSheet: vi.fn(),
   folders: vi.fn(),
   folderCreate: vi.fn(),
   items: vi.fn(),
@@ -51,6 +52,7 @@ vi.mock("../lib/rpc", () => ({
       capTableSave: rpcMock.capTableSave,
       changeSource: rpcMock.changeSource,
       undoSource: rpcMock.undoSource,
+      useSheet: rpcMock.useSheet,
     },
     connections: { list: rpcMock.connections, catalog: rpcMock.catalog },
     dataRoom: {
@@ -835,6 +837,110 @@ it("changes the source at once and keeps one Undo", async () => {
   expect(rpcMock.undoSource).toHaveBeenCalled();
   await openSourceMenu();
   expect(menuItem("Undo")).toBeUndefined();
+});
+
+// ---- Google Sheet source ----
+
+const sheetRef = { driveFileId: "file-1", name: "Cap table sheet" };
+const sheet = { ...carta, source: "sheet" as const, sourceRef: sheetRef };
+/** The empty table a switch to a sheet creates before the first read lands. */
+const emptySheet = { ...sheet, fullyDilutedShares: 0, holders: [], optionPoolAvailable: null };
+const sheetState = (
+  snapshot: object | null,
+  flags: { reading?: boolean; failed?: boolean } = {},
+) => ({
+  snapshot,
+  syncing: false,
+  reading: flags.reading ?? false,
+  lastReadFailed: flags.failed ?? false,
+});
+const driveConnected = [{ connectorId: "google", provider: "googledrive", status: "connected" }];
+
+it("offers Use a Google Sheet in the empty view, and Connect Google Drive when Drive is not connected", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  await show();
+  expect(button("Use a Google Sheet")).toBeDefined();
+  await click(button("Use a Google Sheet"));
+  expect(button("Connect Google Drive")).toBeDefined();
+  expect(rpcMock.useSheet).not.toHaveBeenCalled();
+  expect(rpcMock.driveList).not.toHaveBeenCalled();
+  // The table is unchanged: still the empty view.
+  expect(button("Type it in")).toBeDefined();
+});
+
+it("picks a sheet with the Drive picker and starts reading it", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  rpcMock.connections.mockResolvedValue(driveConnected);
+  rpcMock.driveList.mockResolvedValue({
+    files: [
+      {
+        id: "file-1",
+        name: "Cap table sheet",
+        mimeType: "application/vnd.google-apps.spreadsheet",
+        isFolder: false,
+      },
+    ],
+  });
+  rpcMock.useSheet.mockImplementation(async () => {
+    rpcMock.capTable.mockResolvedValue(sheetState(emptySheet, { reading: true }));
+    return sheetState(emptySheet, { reading: true });
+  });
+  await show();
+  await click(button("Use a Google Sheet"));
+  await click(
+    document.querySelector<HTMLElement>('[role="checkbox"][aria-label="Select Cap table sheet"]') ??
+      undefined,
+  );
+  await click(button("Use this sheet"));
+  expect(rpcMock.useSheet).toHaveBeenCalledWith(sheetRef);
+  expect(rpcMock.importDrive).not.toHaveBeenCalled();
+  // The first read: one line, no buttons.
+  expect(container.textContent).toContain("Reading Cap table sheet…");
+  expect(button("Type it in")).toBeUndefined();
+  expect(button("Connect Carta")).toBeUndefined();
+});
+
+it("shows Reading sheet while a read runs and keeps the old table", async () => {
+  rpcMock.capTable.mockResolvedValue(sheetState(sheet, { reading: true }));
+  await show();
+  expect(container.textContent).toContain("Reading sheet…");
+  expect(container.textContent).toContain("Ada Example");
+});
+
+it("reads a sheet from the source menu, which has Refresh without Carta", async () => {
+  rpcMock.servers.mockResolvedValue([]);
+  rpcMock.capTable.mockResolvedValue(sheetState(sheet));
+  rpcMock.refresh.mockResolvedValue({ ok: true });
+  await show();
+  expect(container.textContent).toContain("Sheet · as of");
+  await openSourceMenu();
+  await click(menuItem("Refresh"));
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(1);
+});
+
+it("keeps the old table after a failed read and offers Try again in the menu", async () => {
+  rpcMock.capTable.mockResolvedValue(sheetState(sheet, { failed: true }));
+  rpcMock.refresh.mockResolvedValue({ ok: true });
+  await show();
+  expect(container.textContent).toContain("Ada Example");
+  const line = [...container.querySelectorAll<HTMLElement>("button")].find((b) =>
+    /Sheet · as of/.test(b.textContent ?? ""),
+  );
+  expect(line?.className).toContain("text-warning");
+  await openSourceMenu();
+  await click(menuItem("Last read failed · Try again"));
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(1);
+});
+
+it("says the sheet could not be read when the first read fails", async () => {
+  rpcMock.capTable.mockResolvedValue(sheetState(emptySheet, { failed: true }));
+  rpcMock.refresh.mockResolvedValue({ ok: true });
+  await show();
+  expect(container.textContent).toContain("The sheet could not be read.");
+  expect(button("Type it in")).toBeDefined();
+  expect(container.querySelector("button[aria-haspopup=menu]")?.textContent).not.toContain("as of");
+  await click(button("Try again"));
+  expect(rpcMock.refresh).toHaveBeenCalledTimes(1);
 });
 
 // ---- documents ----

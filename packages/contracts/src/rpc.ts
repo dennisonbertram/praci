@@ -25,6 +25,7 @@ import { BotSecretMetadata, BotSecretPutInput, StoredBotSecretName } from "./bot
 import {
   CapTableChangeSourceInputSchema,
   CapTableSaveInputSchema,
+  CapTableSourceRefSchema,
   CapTableStateSchema,
 } from "./carta.js";
 import { ContactListInputSchema, ContactSaveInputSchema, ContactSchema } from "./contacts.js";
@@ -1530,8 +1531,10 @@ export const appContract = {
     agent: oc.output(BotSchema),
     /** The Investors page's cap table and whether the Carta agent is refreshing it. */
     capTable: oc.output(CapTableStateSchema),
-    /** Starts a Carta agent run that refreshes the snapshot and the investor contacts (Carta source only). */
+    /** Starts the read for the cap table source: a Carta agent run that refreshes the snapshot and the investor contacts, or a Google Sheet read. */
     refresh: oc.output(z.object({ ok: z.literal(true) })),
+    /** Makes a Google Sheet the cap table source and starts reading it. */
+    useSheet: oc.input(CapTableSourceRefSchema).output(CapTableStateSchema),
     /** Saves the typed-in table whole; CONFLICT when the table changed since it was loaded. */
     capTableSave: oc.input(CapTableSaveInputSchema).output(CapTableStateSchema),
     /** Makes another source the writer at once, keeping the data and one Undo. */

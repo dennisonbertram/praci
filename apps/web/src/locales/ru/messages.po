@@ -2145,6 +2145,10 @@ msgstr "Выберите форму и цвет бота или загрузит
 msgid "Choose a bot…"
 msgstr "Выбрать бота…"
 
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Choose a Google Sheet"
+msgstr ""
+
 #: src/pages/Auth.tsx
 msgid "Choose a new password"
 msgstr "Выберите новый пароль"
@@ -2613,6 +2617,10 @@ msgstr ""
 msgid "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "Connect Google Drive"
+msgstr ""
+
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
 msgstr ""
@@ -2802,6 +2810,10 @@ msgstr "Не удалось изменить модель по умолчани�
 
 #: src/pages/Investors.tsx
 msgid "Could not change the source"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Could not check Google Drive"
 msgstr ""
 
 #: src/lib/model-connection-preflight.ts
@@ -3144,6 +3156,10 @@ msgstr "Не удалось связаться с сервером модели.
 msgid "Could not reach the server"
 msgstr "Не удалось связаться с сервером"
 
+#: src/pages/Investors.tsx
+msgid "Could not read the sheet"
+msgstr ""
+
 #: src/components/data-room/ItemRows.tsx
 #: src/components/finance/StatementImport.tsx
 msgid "Could not read this file"
@@ -3362,6 +3378,10 @@ msgstr "Не удалось обновить область памяти по у
 
 #: src/components/computer/FilesApp.tsx
 msgid "Could not upload file"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Could not use the sheet"
 msgstr ""
 
 #: src/components/ComputersUnavailableHint.tsx
@@ -5220,6 +5240,10 @@ msgstr ""
 
 #: src/pages/Finance.tsx
 msgid "Last month, after fees"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Last read failed · Try again"
 msgstr ""
 
 #: src/pages/shell/transcript.tsx
@@ -7313,6 +7337,11 @@ msgstr ""
 msgid "Reading {0} again"
 msgstr ""
 
+#. placeholder {0}: raw?.sourceRef?.name ?? ""
+#: src/pages/Investors.tsx
+msgid "Reading {0}…"
+msgstr ""
+
 #: src/components/data-room/DropZone.tsx
 msgid "Reading {done} of {total}"
 msgstr ""
@@ -7335,6 +7364,10 @@ msgstr ""
 
 #: src/components/data-room/format.ts
 msgid "Reading for {minutes} min"
+msgstr ""
+
+#: src/pages/Investors.tsx
+msgid "Reading sheet…"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -9259,6 +9292,10 @@ msgstr "Выбранный поставщик памяти недоступен 
 msgid "The sender, subject and a preview of each message are sent to the AI model that runs your bots."
 msgstr ""
 
+#: src/pages/Investors.tsx
+msgid "The sheet could not be read."
+msgstr ""
+
 #. placeholder {0}: shortDay(first.dueFor)
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the statement through {0}"
@@ -9960,6 +9997,10 @@ msgstr ""
 msgid "Use a found model"
 msgstr "Использовать найденную модель"
 
+#: src/pages/Investors.tsx
+msgid "Use a Google Sheet"
+msgstr ""
+
 #: src/pages/Onboarding.tsx
 msgid "Use an API key instead"
 msgstr ""
@@ -9979,6 +10020,10 @@ msgstr ""
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use this model"
 msgstr "Используйте эту модель"
+
+#: src/components/data-room/ImportFromDrive.tsx
+msgid "Use this sheet"
+msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
 msgid "Use your own key"

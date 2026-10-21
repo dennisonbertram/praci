@@ -32,20 +32,25 @@ const EXPORTABLE = ["document", "spreadsheet", "presentation", "drawing"].map(
 const importable = (file: DataRoomApiDriveFile) =>
   !file.mimeType.startsWith(GOOGLE_APPS) || EXPORTABLE.includes(file.mimeType);
 
+const SPREADSHEET = `${GOOGLE_APPS}spreadsheet`;
+
 export function DrivePicker({
   box = false,
-  folderId,
+  folderId = null,
   reconnectPath,
   onClose,
   onDone,
+  onPickSheet,
 }: {
   /** Browse and import the user's Box instead of Google Drive; the picker is the same. */
   box?: boolean;
-  folderId: string | null;
+  folderId?: string | null;
   /** Where the user signs in to this account again, when the server says the sign-in has lapsed. */
   reconnectPath: string;
   onClose: () => void;
-  onDone: (message: string, changed: boolean) => void;
+  onDone?: (message: string, changed: boolean) => void;
+  /** Single-sheet mode: choose one Google Sheet and get it back; nothing is imported. */
+  onPickSheet?: (sheet: { id: string; name: string }) => void;
 }) {
   const [input, setInput] = useState("");
   const [query, setQuery] = useState("");
@@ -58,6 +63,8 @@ export function DrivePicker({
   // Ticked files and folders by Drive id (true for a folder); kept across folders and searches.
   const [picks, setPicks] = useState<Map<string, boolean>>(new Map());
   const [busy, setBusy] = useState(false);
+  // Single-sheet mode: the name of the one ticked sheet.
+  const [sheetName, setSheetName] = useState("");
   const here = path.at(-1)?.id;
   const list = box ? rpc.dataRoom.boxList : rpc.dataRoom.driveList;
   // Which listing is on screen; an answer for an earlier folder or search is dropped.
@@ -112,6 +119,11 @@ export function DrivePicker({
   }
 
   function toggle(file: DataRoomApiDriveFile) {
+    if (onPickSheet) {
+      setPicks((prev) => (prev.has(file.id) ? new Map() : new Map([[file.id, false]])));
+      setSheetName(file.name);
+      return;
+    }
     setPicks((prev) => {
       const copy = new Map(prev);
       if (!copy.delete(file.id)) copy.set(file.id, file.isFolder);
@@ -120,6 +132,8 @@ export function DrivePicker({
   }
 
   async function submit() {
+    const [chosen] = picks.keys();
+    if (onPickSheet && chosen) return onPickSheet({ id: chosen, name: sheetName });
     setBusy(true);
     setError("");
     try {
@@ -131,7 +145,7 @@ export function DrivePicker({
         : await rpc.dataRoom.importDrive({ fileIds, driveFolderIds: folderIds, folderId });
       // The folders and files of a folder import are written by background jobs.
       const waiting = queued ?? 0;
-      onDone(
+      onDone?.(
         waiting > 0
           ? importingText(waiting)
           : imported > 0 || (duplicates > 0 && failed === 0)
@@ -154,7 +168,13 @@ export function DrivePicker({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {box ? <Trans>Import from Box</Trans> : <Trans>Import from Google Drive</Trans>}
+            {onPickSheet ? (
+              <Trans>Choose a Google Sheet</Trans>
+            ) : box ? (
+              <Trans>Import from Box</Trans>
+            ) : (
+              <Trans>Import from Google Drive</Trans>
+            )}
           </DialogTitle>
         </DialogHeader>
         <div className="flex items-center gap-2">
@@ -198,9 +218,12 @@ export function DrivePicker({
                   <DriveRow
                     file={file}
                     checked={picks.has(file.id)}
+                    showCheckbox={Boolean(onPickSheet)}
                     disabled={
-                      (!box && !file.isFolder && !importable(file)) ||
-                      (!picks.has(file.id) && picks.size >= MAX_PICKS)
+                      onPickSheet
+                        ? file.mimeType !== SPREADSHEET
+                        : (!box && !file.isFolder && !importable(file)) ||
+                          (!picks.has(file.id) && picks.size >= MAX_PICKS)
                     }
                     onToggle={() => toggle(file)}
                     onOpen={() => open(file)}
@@ -224,7 +247,7 @@ export function DrivePicker({
         </div>
         <DialogFooter>
           <Button disabled={busy || picks.size === 0} onClick={() => void submit()}>
-            {picks.size > 0 ? t`Import ${picks.size}` : t`Import`}
+            {onPickSheet ? t`Use this sheet` : picks.size > 0 ? t`Import ${picks.size}` : t`Import`}
           </Button>
         </DialogFooter>
       </DialogContent>
