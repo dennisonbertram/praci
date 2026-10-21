@@ -223,11 +223,11 @@ export function SettingsOverlay({
       >
         <div className="flex min-h-0 flex-1 flex-col md:flex-row">
           {/* A phone cannot fit every section in a strip, so it gets a select. */}
-          <div className="border-b border-border px-4 py-3 md:hidden">
+          <div className="flex items-center gap-2 border-b border-border px-4 py-3 md:hidden">
             <NativeSelect
               data-testid="settings-nav-select"
               aria-label={t`Settings`}
-              className="w-full"
+              className="min-w-0 flex-1"
               value={section}
               disabled={panelBusy}
               onChange={(event) => setSection(event.target.value as SettingsSection)}
@@ -238,6 +238,13 @@ export function SettingsOverlay({
                 </NativeSelectOption>
               ))}
             </NativeSelect>
+            <DialogClose
+              aria-label={closeLabel}
+              disabled={panelBusy}
+              render={<Button variant="ghost" size="icon-sm" />}
+            >
+              <XIcon />
+            </DialogClose>
           </div>
           <nav
             data-testid="settings-nav"
@@ -271,7 +278,7 @@ export function SettingsOverlay({
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
             {/* Scrolling sections get a divider so cards never look tucked under the title. */}
             <div
-              className={`flex items-start justify-between gap-4 px-6 pt-6 max-md:justify-end max-md:px-4 max-md:pt-2 sm:px-8 sm:pt-7 ${
+              className={`flex items-start justify-between gap-4 px-6 pt-6 max-md:p-0 sm:px-8 sm:pt-7 ${
                 section === "models" || section === "voice" || section === "memory"
                   ? ""
                   : "border-b border-border pb-4 max-md:border-b-0 max-md:pb-0"
@@ -284,7 +291,7 @@ export function SettingsOverlay({
               <DialogClose
                 aria-label={closeLabel}
                 disabled={panelBusy}
-                render={<Button variant="ghost" size="icon-sm" />}
+                render={<Button variant="ghost" size="icon-sm" className="max-md:hidden" />}
               >
                 <XIcon />
               </DialogClose>

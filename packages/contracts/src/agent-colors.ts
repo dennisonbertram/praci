@@ -6,6 +6,7 @@ const PAGE_AGENT_COLOR: Record<string, number> = {
   finance: 0,
   "data-room": 1,
   carta: 3,
+  investors: 3,
   legal: 6,
 };
 

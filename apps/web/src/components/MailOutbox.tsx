@@ -15,8 +15,7 @@ export function MailOutbox() {
   const undoable = view?.kind === "discarded" || (view?.kind === "sending" && view.undoable);
   return (
     <>
-      {/* Between the end of the undo window and the answer there is nothing to undo or to report. */}
-      {view && !(view.kind === "sending" && !view.undoable)
+      {view
         ? // A modal preview marks everything already on the page as inert; a notice added to the
           // body afterwards stays readable and clickable above it.
           createPortal(

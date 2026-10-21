@@ -29,7 +29,6 @@ import {
   FIRST_BOT_SPAWN_KEY,
   isIntegrationAgentSpawnKey,
   isMailThreadAgentSpawnKey,
-  LEGAL_AGENT_MODEL,
   LEGAL_CONSENT_REQUIRED_MESSAGE,
   NOTIFICATION_KINDS,
   RunPhaseSchema,
@@ -202,6 +201,7 @@ import { startCall, useCallSession } from "../lib/call-session";
 import {
   cartaPanelState,
   findCartaAgent,
+  listedInSidebar,
   useAutoCreateCartaAgent,
   useOnPhoneWidth,
 } from "../lib/carta-agent";
@@ -218,6 +218,7 @@ import { financeAgentSuggestions, findFinanceAgent } from "../lib/finance-agent"
 import { maskCurrencyWhenHidden, useHideAmounts } from "../lib/hide-amounts-preference";
 import { findInboxAgent } from "../lib/inbox-agent";
 import { appPath } from "../lib/integrations";
+import { findInvestorsAgent, investorsAgentSuggestions } from "../lib/investors-agent";
 import { findLegalAgent } from "../lib/legal-agent";
 import { accountTimezone, markTimezoneReported, timezoneToReport } from "../lib/local-timezone";
 import { parseModelOptionKey } from "../lib/model-catalog";
@@ -606,6 +607,8 @@ export function ShellPage() {
   // Reported by the Cap Table page. Without Carta the agent has nothing to read, so its panel stays shut.
   const [cartaConnected, setCartaConnected] = useState(false);
   const [cartaAgentError, setCartaAgentError] = useState("");
+  const [creatingInvestorsAgent, setCreatingInvestorsAgent] = useState(false);
+  const [investorsAgentError, setInvestorsAgentError] = useState("");
   useEffect(() => {
     const phone = !wideScreen();
     setInboxAgentCollapsed(readInboxAgentCollapsed(userId) || phone);
@@ -1138,7 +1141,7 @@ export function ShellPage() {
               : devinMode
                 ? bots.find((bot) => bot.id === devinAgentId)
                 : investorsMode
-                  ? findCartaAgent(bots, userId)
+                  ? findInvestorsAgent(bots, userId)
                   : routeBot.bot;
   // A bot made with "New bot" opens with only its name until it has answered a message.
   useEffect(() => {
@@ -1853,11 +1856,17 @@ export function ShellPage() {
     };
   }, [activeGroup?.id, groupId]);
 
+  const listedBots = useMemo(
+    () => bots.filter((bot) => listedInSidebar(bot, botId)),
+    [bots, botId],
+  );
   const sidebarGroups = useMemo(() => {
     const sidebarSpaces =
       spaces.length > 0
         ? activeSpaceFirst(spaces, bootstrapMe?.spaceId).map((space) =>
-            space.id === bootstrapMe?.spaceId ? { ...space, bots, groups, botSections } : space,
+            space.id === bootstrapMe?.spaceId
+              ? { ...space, bots: listedBots, groups, botSections }
+              : space,
           )
         : bootstrapMe
           ? [
@@ -1868,14 +1877,14 @@ export function ShellPage() {
                 hasContent: true,
                 canRename: false,
                 canDelete: false,
-                bots,
+                bots: listedBots,
                 groups,
                 botSections,
               },
             ]
           : [];
     return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, t`Personal`);
-  }, [bootstrapMe, botSections, bots, groups, spaces, t]);
+  }, [bootstrapMe, botSections, listedBots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
     const folders: string[] = [];
@@ -3201,6 +3210,25 @@ export function ShellPage() {
     }
   }
 
+  function askInvestorsAgent() {
+    setCartaAgentCollapsedPref(false);
+    // The agent may have been archived since the page opened.
+    if (!active && !creatingInvestorsAgent) void createInvestorsAgent();
+  }
+
+  async function createInvestorsAgent() {
+    setCreatingInvestorsAgent(true);
+    setInvestorsAgentError("");
+    try {
+      await rpc.investors.agent();
+      await refreshBots();
+    } catch (error) {
+      setInvestorsAgentError(errorText(error, t`Could not create the Investors agent`));
+    } finally {
+      setCreatingInvestorsAgent(false);
+    }
+  }
+
   function askFinanceAgent() {
     setFinanceAgentOpen(true);
     if (!active && !creatingFinanceAgent) void createFinanceAgent();
@@ -3227,12 +3255,25 @@ export function ShellPage() {
     bots,
   );
 
-  const cartaPanel = cartaPanelState({
-    connected: cartaConnected,
+  // The Investors agent is made when the page first opens, with or without Carta.
+  const investorsAgentAsked = useRef(false);
+  const hasInvestorsAgent = findInvestorsAgent(bots, userId) !== undefined;
+  useEffect(() => {
+    if (!investorsMode || !initialBotsLoaded || !userId || hasInvestorsAgent) return;
+    if (investorsAgentAsked.current) return;
+    investorsAgentAsked.current = true;
+    void createInvestorsAgent();
+  });
+  useEffect(() => {
+    if (!investorsMode) investorsAgentAsked.current = false;
+  }, [investorsMode]);
+  // One collapsed preference (kept under its original Carta key) serves the Investors panel.
+  const investorsPanel = cartaPanelState({
+    connected: true,
     collapsed: cartaAgentCollapsed,
     hasAgent: Boolean(active),
-    creating: creatingCartaAgent,
-    error: cartaAgentError,
+    creating: creatingInvestorsAgent,
+    error: investorsAgentError,
   });
   // A window dragged down to phone width would leave a remembered-open panel covering the page.
   // Only the view collapses; the saved preference comes back when the window is wide again.
@@ -3247,7 +3288,7 @@ export function ShellPage() {
     },
   );
 
-  const cartaSuggestions = [t`Who are our investors?`, t`Draft this month's investor update`];
+  const cartaSuggestions = [t`Who are our investors?`];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
   // The connector's agent is made on first visit, as the plan says; anyone else gets null.
   useEffect(() => {
@@ -3333,19 +3374,18 @@ export function ShellPage() {
               }
             : investorsMode
               ? {
-                  name: "carta-agent",
-                  testId: "carta-agent-panel",
+                  name: "investors-agent",
+                  testId: "investors-agent-panel",
                   // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-                  // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
-                  open: cartaPanel.open,
+                  open: investorsPanel.open,
                   collapse: () => setCartaAgentCollapsedPref(true),
-                  collapseLabel: t`Collapse Carta agent`,
+                  collapseLabel: t`Collapse Investors agent`,
                   // A failed creation is retried from the panel; the agent otherwise appears by itself.
-                  create: cartaAgentError ? createCartaAgent : undefined,
+                  create: investorsAgentError ? createInvestorsAgent : undefined,
                   createLabel: t`Try again`,
-                  creating: creatingCartaAgent,
-                  error: cartaAgentError,
-                  suggestions: cartaSuggestions,
+                  creating: creatingInvestorsAgent,
+                  error: investorsAgentError,
+                  suggestions: investorsAgentSuggestions(),
                 }
               : null;
   // The Carta agent opened full screen from its panel: same intro, and a way back to Investors.
@@ -3765,18 +3805,13 @@ export function ShellPage() {
     if (!focusComposerBotId || active?.id !== focusComposerBotId) return;
     const input = document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']");
     input?.focus();
-    // The tour's last step leaves a sample question to send or edit; an existing draft stays.
-    if (input && tourQuestion.current && !input.value) {
-      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
-        input,
-        t`What should I do first this week?`,
-      );
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.select();
+    // The tour's last step sends its sample question at once, so it never lands in a draft.
+    if (tourQuestion.current) {
+      void sendMessage(t`What should I do first this week?`, [], newClientId());
     }
     tourQuestion.current = false;
     setFocusComposerBotId(null);
-  }, [active?.id, focusComposerBotId, t]);
+  }, [active?.id, focusComposerBotId, sendMessage, t]);
   const threadView = (
     <>
       {cartaAgentPage ? (
@@ -5524,7 +5559,7 @@ export function ShellPage() {
               onAskAgent={legalAgentOpen ? undefined : askLegalAgent}
               onAskAbout={askLegalAgentAbout}
               onConsentChange={setLegalConsentMissing}
-              onOpenSettings={() => openSettings("models", LEGAL_AGENT_MODEL.provider)}
+              onOpenSettings={() => openSettings("models")}
               settingsOpen={settingsOpen}
               spaces={spaces}
               spaceId={bootstrapMe?.spaceId}
@@ -5542,7 +5577,7 @@ export function ShellPage() {
             />
           ) : investorsMode ? (
             <InvestorsPage
-              onShowAgent={cartaPanel.canShow ? () => setCartaAgentCollapsedPref(false) : undefined}
+              onShowAgent={investorsPanel.open ? undefined : askInvestorsAgent}
               onCartaStatus={setCartaConnected}
               onOpenModelSettings={() => openSettings("models")}
               needsModel={bootstrapMe?.needsModel === true}
@@ -5645,11 +5680,9 @@ export function ShellPage() {
                   (!investorsMode || activeSnapshot) ? (
                     <AgentPanelIntro
                       description={
-                        investorsMode
-                          ? cartaAgentIntro
-                          : devinMode
-                            ? t`Answers questions about what Devin is working on.`
-                            : active.description
+                        devinMode
+                          ? t`Answers questions about what Devin is working on.`
+                          : active.description
                       }
                       suggestions={agentPanel.suggestions ?? []}
                       onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}

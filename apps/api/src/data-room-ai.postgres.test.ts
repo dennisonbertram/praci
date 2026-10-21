@@ -4,7 +4,7 @@ import { DATA_ROOM_EMBEDDING_DIMENSIONS } from "@rakazo/adapter-kit";
 import type { DataRoomAi } from "@rakazo/adapters";
 import { runDataRoomIndex } from "@rakazo/adapters";
 import type { Actor } from "@rakazo/contracts";
-import { DATA_ROOM_DISCLOSURE_VERSION } from "@rakazo/contracts";
+import { AI_DISCLOSURE_VERSION, DATA_ROOM_DISCLOSURE_VERSION } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDataRoomRepos, createDb } from "@rakazo/db";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -258,6 +258,17 @@ describePostgres("Data room search, consent and embedding model (PostgreSQL)", (
       expect(
         await prisma.aiDataConsent.count({
           where: { userId: a.userId, spaceId: a.spaceId, recipientKey: ai.consentKey },
+        }),
+      ).toBe(1);
+      // Settings lists the same model as allowed.
+      expect(
+        await prisma.aiDataConsent.count({
+          where: {
+            userId: a.userId,
+            spaceId: a.spaceId,
+            recipientKey: ai.recipients[0]?.key,
+            version: AI_DISCLOSURE_VERSION,
+          },
         }),
       ).toBe(1);
       const queued = enqueued.map((j) => `${j.name}:${(j.payload as { itemId: string }).itemId}`);
