@@ -399,6 +399,10 @@ export function BotSettings({
     return saveQueueRef.current;
   }
 
+  // A bot just created as "New bot" shows only its name until it has replied once.
+  const [unfolded, setUnfolded] = useState(false);
+  const folded = focusName && !unfolded;
+
   return (
     <div data-testid="bot-settings">
       <div className="flex h-6 justify-end" aria-live="polite">
@@ -429,270 +433,290 @@ export function BotSettings({
           className="mt-1.5"
         />
       </label>
-      <label htmlFor={`${ids}-title`} className={fieldLabelClass}>
-        <Trans>Title</Trans>
-        <Input
-          id={`${ids}-title`}
-          value={title}
-          maxLength={BOT_TITLE_MAX_LENGTH}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={() => void enqueueSave()}
-          placeholder={t`e.g. Recruiting, Sales, Legal`}
-          className="mt-1.5"
-        />
-      </label>
-      <label htmlFor={`${ids}-description`} className={fieldLabelClass}>
-        <Trans>Description</Trans>
-        <Textarea
-          id={`${ids}-description`}
-          value={description}
-          maxLength={BOT_DESCRIPTION_MAX_LENGTH}
-          onChange={(e) => setDescription(e.target.value)}
-          onBlur={() => void enqueueSave()}
-          rows={3}
-          className="mt-1.5"
-        />
-      </label>
-      <div className="mt-6 flex items-center justify-between pt-4 border-t border-border/20">
-        <div className="space-y-0.5 pe-4">
-          <div
-            id={`${ids}-notify-finish-label`}
-            className="text-[13.5px] font-medium text-foreground"
-          >
-            <Trans>Notifications</Trans>
-          </div>
-          <div id={`${ids}-notify-finish-desc`} className="text-[12px] text-muted-foreground/70">
-            <Trans>Get notified when this bot finishes or needs input</Trans>
-          </div>
-        </div>
-        <Switch
-          id={`${ids}-notify-finish`}
-          checked={notifyOnFinish}
-          aria-labelledby={`${ids}-notify-finish-label`}
-          aria-describedby={`${ids}-notify-finish-desc`}
-          onCheckedChange={(checked) => {
-            setNotifyOnFinish(checked);
-            void enqueueSave({ notifyOnFinish: checked });
-          }}
-        />
-      </div>
-      <BotSkillsSection
-        botId={bot.id}
-        refreshKey={skillsRefreshKey}
-        onSkillsChange={onSkillsChange}
-      />
-      <details
-        data-testid="bot-settings-advanced"
-        className="group mt-5"
-        onToggle={(event) => {
-          if (!event.currentTarget.open) return;
-          setAdvancedOpened(true);
-          event.currentTarget.scrollIntoView?.({ block: "start", behavior: "smooth" });
-        }}
-      >
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[14px] text-muted-foreground">
-          <span className="text-muted-foreground">
-            <Trans>Advanced</Trans>
-          </span>
-          <span aria-hidden="true" className="transition-transform group-open:rotate-90">
-            ›
-          </span>
-        </summary>
-        <ComputerModePicker
-          value={computerMode}
-          onChange={(value) => saveOnChange(() => setComputerMode(value))}
-        />
-        {hostComputer ? (
-          <div className="mt-4">
-            <div className="text-[13.5px] font-medium text-foreground">
-              <Trans>Runs on</Trans>
-            </div>
-            <RunsOnPicker
-              value={runsOn}
-              onChange={(value) => saveOnChange(() => setRunsOn(value))}
-            />
-          </div>
-        ) : null}
-        <ErrorBoundary fallback={<SectionLoadFailed />}>
-          <Suspense fallback={null}>
-            <ScratchpadSection botId={bot.id} />
-          </Suspense>
-        </ErrorBoundary>
-        {advancedOpened ? (
-          <ErrorBoundary fallback={<SectionLoadFailed />}>
-            <Suspense fallback={null}>
-              <KnowledgeSection botId={bot.id} />
-            </Suspense>
-          </ErrorBoundary>
-        ) : null}
-        <label htmlFor={`${ids}-model`} className={advancedLabelClass}>
-          <Trans>Model</Trans>
-          <NativeSelect
-            id={`${ids}-model`}
-            className="mt-2 w-full"
-            value={selectedModelKey}
-            onChange={(event) => {
-              saveOnChange(() => {
-                setModelKey(event.target.value);
-                setThinkingLevel("");
-              });
-            }}
-          >
-            <NativeSelectOption value="">
-              {t`Space default`}
-              {me?.defaultModel
-                ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
-                : ""}
-            </NativeSelectOption>
-            {selectedModelKey &&
-            !connectedOptions.some((option) => option.key === selectedModelKey) ? (
-              <NativeSelectOption value={selectedModelKey}>
-                {selectedModel?.modelId ?? selectedModelKey}
-              </NativeSelectOption>
-            ) : null}
-            {connectedOptions.map((option) => (
-              <NativeSelectOption key={option.key} value={option.key}>
-                {option.label}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
-        </label>
-        {thinkingOptions.length ? (
-          <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>
-            <Trans>Thinking</Trans>
-            <NativeSelect
-              id={`${ids}-thinking`}
-              className="mt-2 w-full"
-              value={thinkingLevel}
-              onChange={(event) => saveOnChange(() => setThinkingLevel(event.target.value))}
-            >
-              <NativeSelectOption value="">
-                {t`Default (${thinkingLevelLabel(defaultThinkingLevel)})`}
-              </NativeSelectOption>
-              {thinkingOptions.map((level) => (
-                <NativeSelectOption key={level} value={level}>
-                  {thinkingLevelLabel(level)}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </label>
-        ) : null}
-        {memoryProviderConfigured ? (
-          <div className="mt-4 text-[13.5px] font-medium text-foreground">
-            <Trans>Memory scope</Trans>
-            <div className="mt-2 flex gap-2">
-              {(
-                [
-                  { value: null, label: t`Inherit default` },
-                  { value: "isolated" as const, label: t`Isolated` },
-                  { value: "shared" as const, label: t`Shared` },
-                ] satisfies Array<{ value: "isolated" | "shared" | null; label: string }>
-              ).map((option) => (
-                <Toggle
-                  key={option.label}
-                  variant="outline"
-                  size="sm"
-                  pressed={memoryScope === option.value}
-                  onPressedChange={(pressed) => {
-                    if (pressed) saveOnChange(() => setMemoryScope(option.value));
-                  }}
-                  className="flex-1 aria-pressed:border-foreground/40 aria-pressed:text-foreground"
-                >
-                  {option.label}
-                </Toggle>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        <label
-          htmlFor={`${ids}-auto-speak`}
-          className="mt-5 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75"
-        >
-          <Switch
-            id={`${ids}-auto-speak`}
-            checked={autoSpeak}
-            onCheckedChange={(checked) => saveOnChange(() => setAutoSpeak(checked))}
-          />
-          <Trans>Read replies aloud</Trans>
-        </label>
-        {voices.length ? (
-          <label htmlFor={`${ids}-voice`} className={advancedLabelClass}>
-            <Trans>Voice</Trans>
-            <NativeSelect
-              id={`${ids}-voice`}
-              className="mt-2 w-full"
-              value={voiceId}
-              onChange={(event) => saveOnChange(() => setVoiceId(event.target.value))}
-            >
-              <NativeSelectOption value="">{t`Account default`}</NativeSelectOption>
-              {voices.map((voice) => (
-                <NativeSelectOption key={voice.id} value={voice.id}>
-                  {voice.label}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          </label>
-        ) : null}
-        <label htmlFor={`${ids}-disabled-tools`} className={advancedLabelClass}>
-          <Trans>Disabled tools</Trans>
-          <Input
-            id={`${ids}-disabled-tools`}
-            value={toolNameDraft}
-            placeholder="web_search"
-            spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-            onChange={(event) => {
-              setToolNameDraft(event.target.value);
-              setToolError(null);
-            }}
-            onKeyDown={(event) => {
-              if (event.key !== "Enter") return;
-              event.preventDefault();
-              disableBuiltinTools(event.currentTarget.value);
-            }}
-            onBlur={(event) => {
-              if (event.currentTarget.value.trim()) disableBuiltinTools(event.currentTarget.value);
-            }}
-            className="mt-1.5 font-mono"
-          />
-        </label>
-        {toolError ? <p className="mt-1.5 text-[13px] text-destructive">{toolError}</p> : null}
-        {disabledBuiltinTools.map((toolName) => (
-          <label
-            key={toolName}
-            htmlFor={`${ids}-disabled-${toolName}`}
-            className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80"
-          >
-            <span className="font-mono">{toolName}</span>
-            <Switch
-              id={`${ids}-disabled-${toolName}`}
-              checked
-              onCheckedChange={(checked) => {
-                if (checked) return;
-                const next = disabledBuiltinTools.filter((entry) => entry !== toolName);
-                setDisabledBuiltinTools(next);
-                void enqueueSave({ disabledBuiltinTools: next });
-              }}
-            />
-          </label>
-        ))}
-        {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
-      </details>
-      {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
-      <div className="mt-5 flex flex-col items-start gap-3">
-        <Button variant="ghost" size="sm" className="-ms-2.5" onClick={() => void onExport()}>
-          <Trans>Export</Trans>
-        </Button>
+      {folded ? (
         <Button
           variant="ghost"
           size="sm"
-          className="-ms-2.5 text-destructive hover:text-destructive"
-          onClick={onClear}
+          className="mt-4 -ms-2.5 text-muted-foreground"
+          onClick={() => setUnfolded(true)}
         >
-          <Trans>Clear conversation</Trans>
+          <Trans>More settings</Trans>
         </Button>
-      </div>
+      ) : (
+        <>
+          <label htmlFor={`${ids}-title`} className={fieldLabelClass}>
+            <Trans>Title</Trans>
+            <Input
+              id={`${ids}-title`}
+              value={title}
+              maxLength={BOT_TITLE_MAX_LENGTH}
+              onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => void enqueueSave()}
+              placeholder={t`e.g. Recruiting, Sales, Legal`}
+              className="mt-1.5"
+            />
+          </label>
+          <label htmlFor={`${ids}-description`} className={fieldLabelClass}>
+            <Trans>Description</Trans>
+            <Textarea
+              id={`${ids}-description`}
+              value={description}
+              maxLength={BOT_DESCRIPTION_MAX_LENGTH}
+              onChange={(e) => setDescription(e.target.value)}
+              onBlur={() => void enqueueSave()}
+              rows={3}
+              className="mt-1.5"
+            />
+          </label>
+          <div className="mt-6 flex items-center justify-between pt-4 border-t border-border/20">
+            <div className="space-y-0.5 pe-4">
+              <div
+                id={`${ids}-notify-finish-label`}
+                className="text-[13.5px] font-medium text-foreground"
+              >
+                <Trans>Notifications</Trans>
+              </div>
+              <div
+                id={`${ids}-notify-finish-desc`}
+                className="text-[12px] text-muted-foreground/70"
+              >
+                <Trans>Get notified when this bot finishes or needs input</Trans>
+              </div>
+            </div>
+            <Switch
+              id={`${ids}-notify-finish`}
+              checked={notifyOnFinish}
+              aria-labelledby={`${ids}-notify-finish-label`}
+              aria-describedby={`${ids}-notify-finish-desc`}
+              onCheckedChange={(checked) => {
+                setNotifyOnFinish(checked);
+                void enqueueSave({ notifyOnFinish: checked });
+              }}
+            />
+          </div>
+          <BotSkillsSection
+            botId={bot.id}
+            refreshKey={skillsRefreshKey}
+            onSkillsChange={onSkillsChange}
+          />
+          <details
+            data-testid="bot-settings-advanced"
+            className="group mt-5"
+            onToggle={(event) => {
+              if (!event.currentTarget.open) return;
+              setAdvancedOpened(true);
+              event.currentTarget.scrollIntoView?.({ block: "start", behavior: "smooth" });
+            }}
+          >
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[14px] text-muted-foreground">
+              <span className="text-muted-foreground">
+                <Trans>Advanced</Trans>
+              </span>
+              <span aria-hidden="true" className="transition-transform group-open:rotate-90">
+                ›
+              </span>
+            </summary>
+            <ComputerModePicker
+              value={computerMode}
+              onChange={(value) => saveOnChange(() => setComputerMode(value))}
+            />
+            {hostComputer ? (
+              <div className="mt-4">
+                <div className="text-[13.5px] font-medium text-foreground">
+                  <Trans>Runs on</Trans>
+                </div>
+                <RunsOnPicker
+                  value={runsOn}
+                  onChange={(value) => saveOnChange(() => setRunsOn(value))}
+                />
+              </div>
+            ) : null}
+            <ErrorBoundary fallback={<SectionLoadFailed />}>
+              <Suspense fallback={null}>
+                <ScratchpadSection botId={bot.id} />
+              </Suspense>
+            </ErrorBoundary>
+            {advancedOpened ? (
+              <ErrorBoundary fallback={<SectionLoadFailed />}>
+                <Suspense fallback={null}>
+                  <KnowledgeSection botId={bot.id} />
+                </Suspense>
+              </ErrorBoundary>
+            ) : null}
+            <label htmlFor={`${ids}-model`} className={advancedLabelClass}>
+              <Trans>Model</Trans>
+              <NativeSelect
+                id={`${ids}-model`}
+                className="mt-2 w-full"
+                value={selectedModelKey}
+                onChange={(event) => {
+                  saveOnChange(() => {
+                    setModelKey(event.target.value);
+                    setThinkingLevel("");
+                  });
+                }}
+              >
+                <NativeSelectOption value="">
+                  {t`Space default`}
+                  {me?.defaultModel
+                    ? ` (${catalogLabel(catalog, me.defaultProvider, me.defaultModel) ?? me.defaultModel})`
+                    : ""}
+                </NativeSelectOption>
+                {selectedModelKey &&
+                !connectedOptions.some((option) => option.key === selectedModelKey) ? (
+                  <NativeSelectOption value={selectedModelKey}>
+                    {selectedModel?.modelId ?? selectedModelKey}
+                  </NativeSelectOption>
+                ) : null}
+                {connectedOptions.map((option) => (
+                  <NativeSelectOption key={option.key} value={option.key}>
+                    {option.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </label>
+            {thinkingOptions.length ? (
+              <label htmlFor={`${ids}-thinking`} className={advancedLabelClass}>
+                <Trans>Thinking</Trans>
+                <NativeSelect
+                  id={`${ids}-thinking`}
+                  className="mt-2 w-full"
+                  value={thinkingLevel}
+                  onChange={(event) => saveOnChange(() => setThinkingLevel(event.target.value))}
+                >
+                  <NativeSelectOption value="">
+                    {t`Default (${thinkingLevelLabel(defaultThinkingLevel)})`}
+                  </NativeSelectOption>
+                  {thinkingOptions.map((level) => (
+                    <NativeSelectOption key={level} value={level}>
+                      {thinkingLevelLabel(level)}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </label>
+            ) : null}
+            {memoryProviderConfigured ? (
+              <div className="mt-4 text-[13.5px] font-medium text-foreground">
+                <Trans>Memory scope</Trans>
+                <div className="mt-2 flex gap-2">
+                  {(
+                    [
+                      { value: null, label: t`Inherit default` },
+                      { value: "isolated" as const, label: t`Isolated` },
+                      { value: "shared" as const, label: t`Shared` },
+                    ] satisfies Array<{ value: "isolated" | "shared" | null; label: string }>
+                  ).map((option) => (
+                    <Toggle
+                      key={option.label}
+                      variant="outline"
+                      size="sm"
+                      pressed={memoryScope === option.value}
+                      onPressedChange={(pressed) => {
+                        if (pressed) saveOnChange(() => setMemoryScope(option.value));
+                      }}
+                      className="flex-1 aria-pressed:border-foreground/40 aria-pressed:text-foreground"
+                    >
+                      {option.label}
+                    </Toggle>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <label
+              htmlFor={`${ids}-auto-speak`}
+              className="mt-5 flex cursor-pointer items-center gap-3 text-[14px] text-foreground/75"
+            >
+              <Switch
+                id={`${ids}-auto-speak`}
+                checked={autoSpeak}
+                onCheckedChange={(checked) => saveOnChange(() => setAutoSpeak(checked))}
+              />
+              <Trans>Read replies aloud</Trans>
+            </label>
+            {voices.length ? (
+              <label htmlFor={`${ids}-voice`} className={advancedLabelClass}>
+                <Trans>Voice</Trans>
+                <NativeSelect
+                  id={`${ids}-voice`}
+                  className="mt-2 w-full"
+                  value={voiceId}
+                  onChange={(event) => saveOnChange(() => setVoiceId(event.target.value))}
+                >
+                  <NativeSelectOption value="">{t`Account default`}</NativeSelectOption>
+                  {voices.map((voice) => (
+                    <NativeSelectOption key={voice.id} value={voice.id}>
+                      {voice.label}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              </label>
+            ) : null}
+            <label htmlFor={`${ids}-disabled-tools`} className={advancedLabelClass}>
+              <Trans>Disabled tools</Trans>
+              <Input
+                id={`${ids}-disabled-tools`}
+                value={toolNameDraft}
+                placeholder="web_search"
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                onChange={(event) => {
+                  setToolNameDraft(event.target.value);
+                  setToolError(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  disableBuiltinTools(event.currentTarget.value);
+                }}
+                onBlur={(event) => {
+                  if (event.currentTarget.value.trim())
+                    disableBuiltinTools(event.currentTarget.value);
+                }}
+                className="mt-1.5 font-mono"
+              />
+            </label>
+            {toolError ? <p className="mt-1.5 text-[13px] text-destructive">{toolError}</p> : null}
+            {disabledBuiltinTools.map((toolName) => (
+              <label
+                key={toolName}
+                htmlFor={`${ids}-disabled-${toolName}`}
+                className="mt-2 flex items-center justify-between gap-3 text-[13px] text-foreground/80"
+              >
+                <span className="font-mono">{toolName}</span>
+                <Switch
+                  id={`${ids}-disabled-${toolName}`}
+                  checked
+                  onCheckedChange={(checked) => {
+                    if (checked) return;
+                    const next = disabledBuiltinTools.filter((entry) => entry !== toolName);
+                    setDisabledBuiltinTools(next);
+                    void enqueueSave({ disabledBuiltinTools: next });
+                  }}
+                />
+              </label>
+            ))}
+            {advancedOpened ? <BotCredentialsSection botId={bot.id} /> : null}
+          </details>
+          {error ? <p className="mt-2 text-[13px] text-destructive">{error}</p> : null}
+          <div className="mt-5 flex flex-col items-start gap-3">
+            <Button
+              variant="ghost"
+              className="h-auto p-0 text-[14px] font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
+              onClick={() => void onExport()}
+            >
+              <Trans>Export</Trans>
+            </Button>
+            <Button
+              variant="ghost"
+              className="h-auto p-0 text-[14px] font-normal text-destructive hover:bg-transparent hover:text-destructive"
+              onClick={onClear}
+            >
+              <Trans>Clear conversation</Trans>
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

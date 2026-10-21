@@ -27,8 +27,8 @@ export function FirstRunTour({
   open: boolean;
   /** The last step's button: finishes the tour and focuses the composer on a sample question. */
   onAsk: () => void;
-  /** Called as soon as the tour ends. */
-  onClose: (me: Me | null) => void;
+  /** Called as soon as the tour ends; `byEscape` when the Escape key ended it. */
+  onClose: (me: Me | null, byEscape?: boolean) => void;
 }) {
   const { t } = useLingui();
   // Top to bottom, in the order the sidebar shows them. Each line says what Maya can do there.
@@ -67,7 +67,7 @@ export function FirstRunTour({
       {
         id: "chat",
         anchor: '[data-tour="sidebar-chat"]',
-        text: t`Ask Chief anything. Agents ask before they send, pay or change anything.`,
+        text: t`Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings.`,
       },
       {
         id: "apps",
@@ -83,12 +83,12 @@ export function FirstRunTour({
     [t],
   );
   const finish = useCallback(
-    (result: "done" | "skip" | "empty") => {
+    (result: "done" | "skip" | "empty", byEscape?: boolean) => {
       // With nothing to point at (the page has not loaded) nothing is recorded, so it can run later.
       if (result === "empty") return onClose(null);
       // Close at once; the save runs behind it so the popover never lingers on the next page.
       rpc.preferences.update({ tourSeen: true }).catch(() => undefined);
-      onClose(null);
+      onClose(null, byEscape);
     },
     [onClose],
   );

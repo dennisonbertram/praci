@@ -226,6 +226,19 @@ describePostgres("data room repository (PostgreSQL)", () => {
     expect(after[0]!.hasVec).toBe(false);
   });
 
+  it("finds an item by a word in its name when it has no chunks (a file that could not be read)", async () => {
+    const failed = await upload(a, "Signed NDA - Quuxfreight.pdf", `nochunk-${run}`);
+    await prisma.dataRoomItem.update({
+      where: { id: failed.item.id },
+      data: { status: "failed", error: "This file isn't a readable PDF" },
+    });
+    for (const query of ["Quuxfreight", "signed nda"]) {
+      const found = await dr.searchKeyword(a, { query });
+      expect(found.map((r) => r.item.id)).toContain(failed.item.id);
+    }
+    expect(await dr.searchKeyword(b, { query: "Quuxfreight" })).toEqual([]);
+  });
+
   it("ranks keyword results, applies facet filters and caps the limit", async () => {
     const strong = await upload(a, "strong.txt", `strong-${run}`, {
       docType: "invoice",
