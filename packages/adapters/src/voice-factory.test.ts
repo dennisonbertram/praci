@@ -11,6 +11,7 @@ import {
   ScriptedVoiceProvider,
 } from "./scripted-voice.js";
 import {
+  createTranscriptionProvider,
   createVoiceProvider,
   isVoiceProviderId,
   listVoiceCatalog,
@@ -750,5 +751,40 @@ describe("ScriptedVoiceProvider", () => {
         ctx,
       ),
     ).resolves.toEqual({ text: SCRIPTED_TRANSCRIPT });
+  });
+});
+
+describe("transcription adapter", () => {
+  it("flags the catalog for speech and transcription", () => {
+    for (const entry of VOICE_CATALOG) {
+      expect(entry.speech).toBe(true);
+      expect(entry.transcription).toBe(entry.transcribe);
+    }
+  });
+
+  it("adapts providers that transcribe and refuses those that do not", () => {
+    for (const id of ["elevenlabs", "openai", "fish-audio"]) {
+      expect(createTranscriptionProvider(id)?.describe().capabilities).toEqual({
+        usesContext: false,
+      });
+    }
+    expect(createTranscriptionProvider("cartesia")).toBeNull();
+    expect(() => createTranscriptionProvider("nope")).toThrow("Unknown voice provider");
+  });
+
+  it("drops context the voice provider cannot use", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ text: "hi" })));
+    vi.stubGlobal("fetch", fetchMock);
+    await createTranscriptionProvider("openai")!.transcribe(
+      {
+        audio: new Uint8Array([1]),
+        mimeType: "audio/webm",
+        apiKey: "sk-test",
+        context: { vocabulary: ["Ada"], beforeText: "Dear" },
+      },
+      ctx,
+    );
+    const form = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    expect([...form.keys()].sort()).toEqual(["file", "model"]);
   });
 });

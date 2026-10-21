@@ -97,6 +97,7 @@ import type {
   VoiceCapabilities,
   VoiceInfo,
   VoiceSynthesizeRequest,
+  TranscriptionCapabilities,
   VoiceTranscribeRequest,
   VoiceVerifyResult,
   WebFetchCapabilities,
@@ -601,6 +602,13 @@ export interface VoiceProvider {
   listVoices(apiKey: string, context: AdapterContext): Promise<VoiceInfo[]>;
   synthesize(request: VoiceSynthesizeRequest, context: AdapterContext): Promise<SpeechClip>;
   transcribe?(request: VoiceTranscribeRequest, context: AdapterContext): Promise<{ text: string }>;
+}
+
+/** Speech-to-text only. A voice provider that can transcribe is adapted to this shape. */
+export interface TranscriptionProvider {
+  describe(): AdapterDescriptor<TranscriptionCapabilities>;
+  verify(apiKey: string, context: AdapterContext): Promise<VoiceVerifyResult>;
+  transcribe(request: VoiceTranscribeRequest, context: AdapterContext): Promise<{ text: string }>;
 }
 
 /**

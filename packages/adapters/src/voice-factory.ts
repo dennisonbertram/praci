@@ -1,4 +1,12 @@
-import type { VoiceProvider } from "@rakazo/adapter-kit";
+import type {
+  AdapterContext,
+  AdapterDescriptor,
+  TranscriptionCapabilities,
+  TranscriptionProvider,
+  VoiceProvider,
+  VoiceTranscribeRequest,
+} from "@rakazo/adapter-kit";
+import { capTranscriptionContext } from "@rakazo/adapter-kit";
 import { CartesiaVoiceProvider } from "./cartesia-voice.js";
 import { ElevenLabsVoiceProvider } from "./elevenlabs-voice.js";
 import { FishAudioVoiceProvider } from "./fish-audio-voice.js";
@@ -11,24 +19,32 @@ export const VOICE_CATALOG = [
     name: "ElevenLabs",
     description: "Highest quality and cloning. Flash v2.5 for conversational calls.",
     transcribe: true,
+    speech: true,
+    transcription: true,
   },
   {
     id: "openai",
     name: "OpenAI",
     description: "Simple TTS plus Whisper-class transcription. Reuse an OpenAI key.",
     transcribe: true,
+    speech: true,
+    transcription: true,
   },
   {
     id: "cartesia",
     name: "Cartesia",
     description: "Lowest-latency Sonic voices for interruptible calls.",
     transcribe: false,
+    speech: true,
+    transcription: false,
   },
   {
     id: "fish-audio",
     name: "Fish Audio",
     description: "Voice models, cloning, and expressive speech with optional transcription.",
     transcribe: true,
+    speech: true,
+    transcription: true,
   },
 ] as const;
 
@@ -77,6 +93,53 @@ export function createVoiceProvider(kind: string): VoiceProvider {
   throw new Error(
     `Unknown voice provider "${kind}". Use elevenlabs | openai | cartesia | fish-audio.`,
   );
+}
+
+/** Wrap a transcription provider with the checks every provider shares. */
+export function guardTranscription(inner: TranscriptionProvider): TranscriptionProvider {
+  return {
+    describe: () => inner.describe(),
+    verify: (apiKey, context) => inner.verify(apiKey, context),
+    async transcribe(request: VoiceTranscribeRequest, context: AdapterContext) {
+      const signal = request.signal ?? context.signal;
+      if (request.audio.byteLength === 0 || request.audio.byteLength > MAX_TRANSCRIBE_BYTES) {
+        throw new Error("That recording is empty or too large.");
+      }
+      if (signal.aborted) throw new Error("Transcription was cancelled.");
+      const capped = {
+        ...request,
+        context: request.context ? capTranscriptionContext(request.context) : undefined,
+      };
+      try {
+        return await inner.transcribe(capped, context);
+      } catch (error) {
+        // Never let the key reach a user-visible message.
+        const message = error instanceof Error ? error.message : "Transcription failed.";
+        throw new Error(request.apiKey ? message.split(request.apiKey).join("[key]") : message);
+      }
+    },
+  };
+}
+
+/** Adapt a voice provider that can transcribe. */
+export function transcriptionFromVoice(voice: VoiceProvider): TranscriptionProvider | null {
+  const { transcribe } = voice;
+  if (!transcribe) return null;
+  return guardTranscription({
+    describe: (): AdapterDescriptor<TranscriptionCapabilities> => ({
+      ...voice.describe(),
+      capabilities: { usesContext: false },
+    }),
+    verify: (apiKey, context) => voice.verify(apiKey, context),
+    // The voice providers cannot use `context`, so it is dropped here.
+    transcribe: (request, context) =>
+      transcribe.call(voice, { ...request, context: undefined }, context),
+  });
+}
+
+/** The transcription provider for a voice provider id, or null when it cannot transcribe. */
+export function createTranscriptionProvider(providerId: string): TranscriptionProvider | null {
+  return transcriptionFromVoice(createVoiceProvider(providerId));
 }
 
 export class NoVoiceConfigured extends Error {
