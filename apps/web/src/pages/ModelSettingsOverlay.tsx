@@ -1516,7 +1516,7 @@ export function ModelSettingsOverlay({
                     serverCredentialsNote
                   ) : (
                     <p className="text-sm leading-[1.5] text-muted-foreground">
-                      <Trans>This space already uses {selectedProviderName}.</Trans>
+                      <Trans>Your bots already use {selectedProviderName}.</Trans>
                     </p>
                   )}
                   <details

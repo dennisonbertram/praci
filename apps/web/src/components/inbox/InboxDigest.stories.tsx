@@ -29,6 +29,8 @@ const rows: MailRow[] = [
     reason: "Three papers on sleep and memory, one on tiny models.",
     receivedAt: daysAgo(0.2),
   }),
+  row("n4", { subject: "Issue 4: last week's papers", receivedAt: daysAgo(3), unread: true }),
+  row("n5", { subject: "Issue 5: reading list", receivedAt: daysAgo(6) }),
   row("n2", {
     from: "Garden Notes",
     fromAddress: "hello@garden.example",

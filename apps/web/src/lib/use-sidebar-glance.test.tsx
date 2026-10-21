@@ -20,6 +20,7 @@ const quiet = {
   devinNeedsYou: 0,
   devinConnected: false,
   dataRoomWaiting: 0,
+  hasTickets: false,
   botKinds: {},
 };
 let seen: ReturnType<typeof useSidebarGlance>;

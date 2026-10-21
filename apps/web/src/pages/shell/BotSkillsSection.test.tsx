@@ -177,7 +177,10 @@ function typeInto(el: HTMLTextAreaElement | HTMLInputElement | null, value: stri
 const SKILL_MD = "---\nname: my-skill\ndescription: Does a thing.\n---\n\nSteps.";
 
 function field(view: { container: HTMLElement }, label: string) {
-  return view.container.querySelector(`[aria-label="${label}"]`) as
+  const owner = [...view.container.querySelectorAll("label")].find((item) =>
+    item.textContent?.startsWith(label),
+  );
+  return (owner ? document.getElementById(owner.htmlFor) : null) as
     | HTMLInputElement
     | HTMLTextAreaElement
     | null;

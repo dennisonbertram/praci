@@ -20,3 +20,4 @@ type Story = StoryObj<typeof meta>;
 export const Folded: Story = {};
 export const FoldedNeedsYou: Story = { args: { needsYou: true } };
 export const Open: Story = { args: { open: true } };
+export const EmailChats: Story = { args: { label: "Email chats", count: 5 } };

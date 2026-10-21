@@ -1,5 +1,7 @@
+import { PrivateFragments } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
+import { EXTERNAL_HAND_OFF_REFUSED } from "./bot-messages.js";
 import { handoffToGroupBot } from "./group-handoff.js";
 
 const run = {
@@ -13,6 +15,7 @@ const run = {
 function harness(
   sourceBlocks: unknown,
   existing?: { sourceRuns: { id: string; botId: string }[] },
+  externalIds: string[] = [],
 ) {
   const runCreate = vi.fn(async () => ({ id: "run-b" }));
   const messageCreate = vi.fn(async () => ({ id: "message-1" }));
@@ -22,7 +25,11 @@ function harness(
       findFirst: vi.fn(async () => ({
         id: "group-1",
         members: ["bot-a", "bot-b", "bot-c"].map((id) => ({
-          bot: { id, name: id.toUpperCase() },
+          bot: {
+            id,
+            name: id.toUpperCase(),
+            audience: externalIds.includes(id) ? "external" : "internal",
+          },
         })),
       })),
       update: vi.fn(async () => ({ id: "group-1" })),
@@ -153,5 +160,37 @@ describe("group handoff ownership", () => {
       }),
     ).resolves.toEqual({ error: "cannot verify the group handoff chain" });
     expect(runCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("group handoff to an external member", () => {
+  const fragments = () => {
+    const f = new PrivateFragments();
+    f.addPrivate('{"from":"Priya Shah <priya@halcyon.example>"}');
+    return f;
+  };
+  const handoff = (
+    h: ReturnType<typeof harness>,
+    message: string,
+    outbound?: () => Promise<PrivateFragments | undefined>,
+  ) => handoffToGroupBot(h.deps as never, run, "group-1", { bot_id: "bot-b", message, outbound });
+
+  it("refuses a handoff that repeats what the run read, or whose reads are unknown", async () => {
+    for (const outbound of [async () => fragments(), async () => undefined, undefined]) {
+      const h = harness([{ kind: "text", text: "go" }], undefined, ["bot-b"]);
+      expect(await handoff(h, "Mail priya@halcyon.example", outbound)).toEqual({
+        error: EXTERNAL_HAND_OFF_REFUSED,
+      });
+      expect(h.runCreate).not.toHaveBeenCalled();
+    }
+  });
+
+  it("hands a clean message over, and never checks an internal member", async () => {
+    const clean = harness([{ kind: "text", text: "go" }], undefined, ["bot-b"]);
+    expect(await handoff(clean, "We open at 9am.", async () => fragments())).toMatchObject({
+      ok: true,
+    });
+    const internal = harness([{ kind: "text", text: "go" }]);
+    expect(await handoff(internal, "priya@halcyon.example")).toMatchObject({ ok: true });
   });
 });

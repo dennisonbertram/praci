@@ -9,6 +9,7 @@ import { fullDay } from "../../lib/finance-format";
 import { maskCurrencyWhenHidden, useHideAmounts } from "../../lib/hide-amounts-preference";
 import { daysBetween, todayIso } from "../../lib/legal-format";
 import { rpc } from "../../lib/rpc";
+import { NOTIFICATIONS_CHANGED_EVENT } from "../../lib/use-sidebar-glance";
 import { errorText } from "../../lib/user-error";
 
 /** How long the Undo stays after Done or Dismiss. */
@@ -59,6 +60,8 @@ export function LegalDeadlines({
       clearTimeout(undoTimer.current);
       undoTimer.current = setTimeout(() => setUndo(null), UNDO_MS);
       onChanged();
+      // The sidebar Legal badge counts open deadlines, so it refreshes now, not on the next page change.
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     } catch (cause) {
       setError(errorText(cause));
     } finally {
@@ -77,6 +80,7 @@ export function LegalDeadlines({
       });
       setUndo(null);
       onChanged();
+      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED_EVENT));
     } catch (cause) {
       setError(errorText(cause));
     }
@@ -155,6 +159,12 @@ export function LegalDeadlines({
           const days = daysBetween(today, deadline.dueDate);
           const overdue = days < 0;
           const late = -days;
+          // The visible title includes the contract, so the button names do too.
+          const name = maskCurrencyWhenHidden(
+            deadline.contractTitle
+              ? `${deadline.title}: ${deadline.contractTitle}`
+              : deadline.title,
+          );
           return (
             <li
               key={deadline.id}
@@ -219,7 +229,7 @@ export function LegalDeadlines({
                   <Button
                     size="sm"
                     variant="outline"
-                    aria-label={t`Ask agent about ${maskCurrencyWhenHidden(deadline.title)}`}
+                    aria-label={t`Ask agent about ${name}`}
                     onClick={() => onAsk(deadline)}
                   >
                     <Trans>Ask agent</Trans>
@@ -229,7 +239,7 @@ export function LegalDeadlines({
                   size="sm"
                   variant="outline"
                   disabled={closing === deadline.id}
-                  aria-label={t`Mark ${maskCurrencyWhenHidden(deadline.title)} done`}
+                  aria-label={t`Mark ${name} done`}
                   onClick={(event) => void close(deadline, "done", rowHeight(event))}
                 >
                   <Trans>Done</Trans>
@@ -239,7 +249,7 @@ export function LegalDeadlines({
                   variant="ghost"
                   disabled={closing === deadline.id}
                   title={t`Not a real deadline: hide it`}
-                  aria-label={t`Dismiss ${maskCurrencyWhenHidden(deadline.title)}`}
+                  aria-label={t`Dismiss ${name}`}
                   onClick={(event) => void close(deadline, "dismissed", rowHeight(event))}
                 >
                   <Trans>Dismiss</Trans>

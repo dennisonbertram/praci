@@ -208,6 +208,7 @@ export function GeneralSettingsPanels({
               <TimezonePicker value={timezone} onChange={onTimezoneChange} />
             ) : null}
           </section>
+          <NotificationSettingsSection />
         </div>
         <div className="min-w-0 space-y-5">
           <section
@@ -378,7 +379,6 @@ export function PrivacySettingsPanels() {
       <section className="rounded-xl border border-border px-4 py-4">
         <ApprovalRulesSettings />
       </section>
-      <NotificationSettingsSection />
     </div>
   );
 }
