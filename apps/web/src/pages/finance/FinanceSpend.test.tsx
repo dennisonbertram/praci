@@ -133,3 +133,25 @@ it("charts a category's last six full months, like a vendor's chart, with month 
   expect(labels.filter((l) => /^[A-Z][a-z]{2}/.test(l ?? ""))).toHaveLength(6);
   vi.restoreAllMocks();
 });
+
+it("says how many non-USD transactions a category's total leaves out", async () => {
+  rpcMock.category.mockResolvedValue({
+    slug: "rent",
+    label: "Rent",
+    last90Cents: 2_250_000,
+    excludedNonUsdCount: 1,
+    trend: [],
+    vendors: [],
+    recent: [],
+  });
+  await act(async () =>
+    root.render(
+      <MemoryRouter>
+        <FinanceCategoryPage slug="rent" />
+      </MemoryRouter>,
+    ),
+  );
+  await act(async () => {});
+  expect(container.textContent).toContain("$22,500");
+  expect(container.textContent).toContain("1 non-USD not counted");
+});

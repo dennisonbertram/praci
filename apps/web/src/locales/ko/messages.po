@@ -244,6 +244,7 @@ msgstr ""
 
 #. placeholder {0}: data.excludedNonUsdCount
 #: src/pages/Finance.tsx
+#: src/pages/finance/FinanceSpend.tsx
 msgid "{0} non-USD not counted"
 msgstr ""
 
@@ -817,11 +818,6 @@ msgstr ""
 
 #: src/pages/Investors.tsx
 msgid "Add email"
-msgstr ""
-
-#. placeholder {0}: prefill.name
-#: src/components/ContactDialog.tsx
-msgid "Add email for {0}"
 msgstr ""
 
 #: src/components/data-room/DataRoomImportMenu.tsx
@@ -2042,7 +2038,6 @@ msgstr ""
 msgid "Chart failed to render: {error}"
 msgstr "차트를 표시하지 못했습니다: {error}"
 
-#: src/components/finance/charts.tsx
 #: src/pages/shell/message-cards.tsx
 msgid "Chart hidden while amounts are hidden"
 msgstr ""
@@ -3417,14 +3412,6 @@ msgstr ""
 msgid "Counterparty"
 msgstr ""
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Counting all crypto"
-msgstr ""
-
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Counting stablecoins"
-msgstr ""
-
 #: src/components/data-room/ItemDialogs.tsx
 #: src/pages/Board.tsx
 #: src/pages/Shell.tsx
@@ -3916,10 +3903,6 @@ msgstr ""
 msgid "Documents by document date"
 msgstr ""
 
-#: src/components/finance/CountCryptoButton.tsx
-msgid "Don't count crypto"
-msgstr ""
-
 #: src/pages/Auth.tsx
 msgid "Don’t have an account?"
 msgstr "계정이 없나요?"
@@ -4389,6 +4372,10 @@ msgstr ""
 #: src/components/finance/charts.tsx
 #: src/components/finance/ui.tsx
 msgid "Financing"
+msgstr ""
+
+#: src/components/finance/charts.tsx
+msgid "Financing, {when}"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx

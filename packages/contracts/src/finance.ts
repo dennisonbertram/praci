@@ -728,6 +728,8 @@ export const FinanceCategoryOutputSchema = z.object({
   trend: z.array(MonthCentsSchema),
   /** Over the same window; sums to `last90Cents`. */
   vendors: z.array(BreakdownRowSchema),
+  /** Transactions in this window left out of the total because they are not in USD. */
+  excludedNonUsdCount: z.number().int().nonnegative().optional(),
   /** The window's transactions, newest first (at most 100). */
   recent: z.array(FinanceTransactionSchema),
 });
