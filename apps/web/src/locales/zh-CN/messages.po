@@ -5748,6 +5748,7 @@ msgstr ""
 msgid "Needs takeover"
 msgstr "需要接管"
 
+#: src/components/PageAgentsRow.tsx
 #: src/lib/roster-status.ts
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
@@ -6612,6 +6613,10 @@ msgstr ""
 #: src/pages/Shell.tsx
 #: src/pages/shell/bot-page-panel.tsx
 msgid "Page"
+msgstr ""
+
+#: src/components/PageAgentsRow.tsx
+msgid "Page agents"
 msgstr ""
 
 #: src/pages/shell/bot-page-panel.tsx

@@ -27,6 +27,7 @@ import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
   DEFAULT_AVATAR_STYLE,
+  isIntegrationAgentSpawnKey,
   LEGAL_AGENT_MODEL,
   NOTIFICATION_KINDS,
   RunPhaseSchema,
@@ -148,6 +149,7 @@ import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/Err
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
+import { PageAgentsRow } from "../components/PageAgentsRow";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
 import { OpeningSpace } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
@@ -480,6 +482,7 @@ export function ShellPage() {
   const [archivedBots, setArchivedBots] = useState<Bot[]>([]);
   const [archivedGroups, setArchivedGroups] = useState<Group[]>([]);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
   const [collapsedSidebarSections, setCollapsedSidebarSections] = useState(() => new Set<string>());
   const [collapsedRosterParents, setCollapsedRosterParents] = useState(() => new Set<string>());
 
@@ -4034,7 +4037,7 @@ export function ShellPage() {
         {(showSpaceSearch && !rail) || bootstrapMe === undefined ? null : (
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
           // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
-          <div className="flex max-h-[40vh] shrink-0 flex-col overflow-y-auto px-2.5">
+          <div className="flex max-h-[50vh] shrink-0 flex-col overflow-y-auto border-b border-border px-2.5 pb-1">
             <SidebarPagesGroup
               title={t`Pages`}
               collapsed={collapsedSidebarSections.has("pages")}
@@ -4254,6 +4257,29 @@ export function ShellPage() {
                   const dragEnabled =
                     activeSpace && !rail && !showSpaceSearch && group.kind !== "pinned";
                   const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
+                  // Page and integration agents fold into one row; Chief and the person's bots stay listed.
+                  const isPageAgent = (row: (typeof nestedRows)[number]) => {
+                    const key = "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
+                    return (
+                      row.item.kind === "bot" &&
+                      (pageAgentKind(key) !== null || isIntegrationAgentSpawnKey(key))
+                    );
+                  };
+                  const pageAgentRows =
+                    !rail && !folder && group.kind !== "pinned"
+                      ? nestedRows.filter(isPageAgent)
+                      : [];
+                  const foldPageAgents = pageAgentRows.length >= 2;
+                  const showPageAgents =
+                    pageAgentsOpen || pageAgentRows.some((row) => row.item.chat.id === active?.id);
+                  const displayRows: ((typeof nestedRows)[number] | { pageAgentsHeader: true })[] =
+                    foldPageAgents
+                      ? [
+                          ...nestedRows.filter((row) => !isPageAgent(row)),
+                          { pageAgentsHeader: true },
+                          ...(showPageAgents ? pageAgentRows : []),
+                        ]
+                      : nestedRows;
                   const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
                   // Reorder among visible siblings so keyboard and drag moves match the tree.
                   const siblingBotIds = (parentId: string | null) =>
@@ -4318,7 +4344,7 @@ export function ShellPage() {
                               aria-current={group.current ? "true" : undefined}
                               data-sidebar-current={group.current ? "" : undefined}
                               title={group.relabeled ? group.spaceName : undefined}
-                              className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-muted-foreground/60"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
+                              className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                               onClick={() => {
                                 if (group.emptySpaceId) {
                                   openSpaceChat(group.emptySpaceId, "/onboarding");
@@ -4410,11 +4436,28 @@ export function ShellPage() {
                       ) : null}
                       {rail || !collapsed ? (
                         <SortableList
-                          ids={nestedRows.map(({ item }) =>
-                            itemDragId({ kind: item.kind, id: item.chat.id }),
+                          ids={displayRows.flatMap((row) =>
+                            "item" in row
+                              ? [itemDragId({ kind: row.item.kind, id: row.item.chat.id })]
+                              : [],
                           )}
                         >
-                          {nestedRows.map(({ item, depth, hasChildren, parentId }) => {
+                          {displayRows.map((displayRow) => {
+                            if ("pageAgentsHeader" in displayRow) {
+                              return (
+                                <PageAgentsRow
+                                  key="page-agents"
+                                  open={showPageAgents}
+                                  count={pageAgentRows.length}
+                                  needsYou={pageAgentRows.some(
+                                    (row) =>
+                                      row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                  )}
+                                  onToggle={() => setPageAgentsOpen((open) => !open)}
+                                />
+                              );
+                            }
+                            const { item, depth, hasChildren, parentId } = displayRow;
                             const parentCollapsed =
                               hasChildren && collapsedRosterParents.has(item.chat.id);
                             const selected =

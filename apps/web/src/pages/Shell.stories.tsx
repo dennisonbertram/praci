@@ -333,3 +333,60 @@ export const ConversationUnreadPill: Story = {
     } as typeof snapshot,
   ),
 };
+
+const rootAgents = folderBots.map((bot) => ({ ...bot, sectionId: null }));
+
+/** Activity open above the Pages box, and the page and integration agents folded into one row. */
+export const SidebarPageAgents: Story = {
+  decorators: [at("/app/bot_chief")],
+  beforeEach: () => {
+    loadedWith(rootAgents[0] as ReturnType<typeof makeBot>)();
+    try {
+      localStorage.setItem("rakazo.activity-mode", "1");
+    } catch {}
+    mockRpc({
+      "spaces.list": {
+        ...navigation,
+        current: { ...navigation.current, bots: rootAgents, groups: [], botSections: [] },
+      },
+      "runs.list": (input: unknown) =>
+        (input as { filter: string }).filter === "active"
+          ? {
+              runs: [
+                {
+                  runId: "run_1",
+                  botId: "bot_counsel",
+                  botName: "Counsel agent",
+                  groupId: null,
+                  groupName: null,
+                  threadId: "thread_1",
+                  status: "waiting_input",
+                  trigger: "user",
+                  notificationsEnabled: false,
+                  promptSnippet: "Which contract should I review?",
+                  updatedAt: STAMP,
+                },
+              ],
+            }
+          : { runs: [] },
+      bootstrap: {
+        me: demoMe,
+        bots: rootAgents,
+        groups: [],
+        botSections: [],
+        archivedBots: [],
+        archivedGroups: [],
+        thread: { ...snapshot, botId: "bot_chief" },
+        routines: [],
+        spaces: [{ ...space, bots: [], groups: [], botSections: [] }],
+      },
+      "notifications.unseenCounts": { counts: {} },
+      "notifications.glance": {
+        financeRunwayMonths: null,
+        legalDueSoon: 0,
+        dataRoomWaiting: 0,
+        botKinds: { bot_counsel: "needs_input" },
+      },
+    });
+  },
+};
