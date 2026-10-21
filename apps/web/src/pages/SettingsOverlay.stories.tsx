@@ -23,6 +23,7 @@ const meta = {
   beforeEach: () => {
     mockRpc({
       "aiConsent.status": { recipients: [] },
+      "notifications.preferences": { channels: {}, hasPhone: false, hasImessage: false },
       "approvalRules.list": [],
       "autoReview.get": { enabled: false, checkerAvailable: true },
       "memory.list": [],
@@ -87,6 +88,20 @@ export const GeneralAsOwner: Story = {
   args: { isDeploymentOwner: true, messagingEnabled: true, onOpenMessaging: () => undefined },
 };
 export const Privacy: Story = { args: { initialSection: "privacy" } };
+export const PrivacyWithModels: Story = {
+  args: { initialSection: "privacy" },
+  beforeEach: () =>
+    mockRpc({
+      "aiConsent.status": {
+        scope: "space_demo",
+        version: "2026-01-01",
+        recipients: [
+          { key: "a", name: "Demo Provider", use: "model", detail: "demo/model-a", allowed: true },
+          { key: "b", name: "Demo Provider", use: "model", detail: "demo/model-b", allowed: true },
+        ],
+      },
+    }),
+};
 export const Models: Story = { args: { initialSection: "models" } };
 export const Memory: Story = {
   args: {

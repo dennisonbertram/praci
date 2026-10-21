@@ -911,6 +911,7 @@ msgstr ""
 msgid "Address or ENS"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1031,16 +1032,16 @@ msgstr "Permitir el conector {0} sin preguntar"
 msgid "Allow {0} without asking"
 msgstr "Permitir {0} sin preguntar"
 
-#: src/components/AiDataSharing.tsx
-msgid "Allow {model}"
-msgstr ""
-
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/pages/Shell.tsx
 msgid "Allow access on the page to ask"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "Allow AI models"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1406,7 +1407,7 @@ msgid "Ask Chief"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
+msgid "Ask Chief anything."
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
@@ -1732,10 +1733,6 @@ msgstr "Bots"
 #: src/pages/shell/transcript.tsx
 msgid "Bots are working"
 msgstr "Los bots están trabajando"
-
-#: src/components/AiDataSharing.tsx
-msgid "Bots cannot use a model until you allow it."
-msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
@@ -2596,7 +2593,7 @@ msgid "Connect Gmail to send files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Connect Gmail, Calendar and other apps so agents can read your mail and files."
+msgid "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -7093,7 +7090,7 @@ msgid "Preparing… {0}%"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Press + to create an agent or a group chat."
+msgid "Press + to create a bot or a group chat."
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -9384,10 +9381,6 @@ msgid "This sheet is empty."
 msgstr ""
 
 #: src/pages/ModelSettingsOverlay.tsx
-msgid "This space already uses {selectedProviderName}."
-msgstr ""
-
-#: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider."
 msgstr "Este inicio de sesión por suscripción aún no está disponible en Praci. Usa una credencial de despliegue o elige otro proveedor."
 
@@ -9883,7 +9876,7 @@ msgid "Upload files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Upload files for agents to use. Artifacts holds what agents make."
+msgid "Upload files for bots to use. Artifacts holds what bots make."
 msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
@@ -10375,6 +10368,10 @@ msgstr "Tienes el control"
 #. placeholder {0}: item.name
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "You'll sign in to {0} in a new window."
+msgstr ""
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots already use {selectedProviderName}."
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx

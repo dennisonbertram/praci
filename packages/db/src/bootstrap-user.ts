@@ -8,6 +8,9 @@ export interface SignupPolicyEnv {
   signupAllowlist: string | undefined;
 }
 
+/** New users start with external email and purchases asking first; existing users keep their rules. */
+export const NEW_SPACE_APPROVAL_CATEGORIES = ["email", "purchase"] as const;
+
 function newId(): string {
   return randomBytes(16).toString("hex");
 }
@@ -116,7 +119,7 @@ export async function bootstrapUserSpace(
           userId: user.id,
           scope: "user",
           path: "MEMORY.md",
-          content: "# Space memory\n\nPreferences and context kept within this space live here.\n",
+          content: "# Memory\n\n",
         },
       })
       .catch((error: unknown) => {
@@ -133,5 +136,15 @@ export async function bootstrapUserSpace(
     .catch((error: unknown) => {
       if (!isUniqueViolation(error)) throw error;
     });
+  await prisma.actionApprovalRule.createMany({
+    data: NEW_SPACE_APPROVAL_CATEGORIES.map((matchValue) => ({
+      spaceId: orgId,
+      createdByUserId: user.id,
+      effect: "require_approval",
+      matchKind: "category",
+      matchValue,
+    })),
+    skipDuplicates: true,
+  });
   return { spaceId: orgId };
 }

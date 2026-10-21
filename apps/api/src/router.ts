@@ -1438,7 +1438,12 @@ export function createRouter(deps: RouterDeps) {
           where: {
             userId: context.actor.userId,
             spaceId: context.actor.spaceId,
-            recipientKey: input.key ?? undefined,
+            // Taking a model back also takes back the document grants given on top of it.
+            ...(input.key
+              ? {
+                  OR: [{ recipientKey: input.key }, { recipientKey: { startsWith: "data-room:" } }],
+                }
+              : {}),
           },
         });
         return aiConsentStatus(deps, context.actor);
