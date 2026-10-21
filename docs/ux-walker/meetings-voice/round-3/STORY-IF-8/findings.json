@@ -1,0 +1,13 @@
+{
+  "story_id": "STORY-IF-8",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-IF-8-01",
+      "status": "still-open",
+      "evidence": "An MCP-only user sees an Inbox with no meeting source and nothing says the API key feeds it (plan: MCP tile alone is not a meeting source). Low, accepted with GS-4 F2-GS-4-02."
+    }
+  ],
+  "findings": []
+}

@@ -1,0 +1,34 @@
+{
+  "story_id": "STORY-MX-5",
+  "round": 3,
+  "result": "PASS",
+  "round2_status": [
+    {
+      "id": "F2-MX-5-01",
+      "status": "still-open",
+      "evidence": "A to-do from a summary-only meeting looks like any other; plan adds no UI. Low."
+    },
+    {
+      "id": "F2-MX-5-02",
+      "status": "fixed",
+      "evidence": "Flow citation popover (Delete only, no link) is drawn (w-d-flow-meetings-cite.png)."
+    }
+  ],
+  "findings": [
+    {
+      "id": "F3-MX-5-01",
+      "severity": "low",
+      "category": "state",
+      "criterion": "Responsive",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "At 390 px the Flow citation popover is not visible (same clipping as the Granola popover), so the Flow Delete entry point cannot be seen at phone width.",
+      "expected": "The journey step has a drawn, unambiguous surface.",
+      "actual": "At 390 px the Flow citation popover is not visible (same clipping as the Granola popover), so the Flow Delete entry point cannot be seen at phone width.",
+      "screenshot": "w-m-flow-meetings-cite.png",
+      "suggested_fix": "Position the popover inside the frame at narrow widths.",
+      "files_likely_involved": [],
+      "jf": "NEW"
+    }
+  ]
+}

@@ -3,11 +3,13 @@
 **Date**: 2026-10-20
 **Total stories**: 38 kept (41 written; 3 merged, see "Merged stories")
 **Coverage**: 15 of 17 planned features covered (88%), counted from the feature map in `discovery.md`. "Covered" means at least one kept story walks a user-visible path that the feature creates or changes. The two uncovered features are internal and have no user path: Granola S1 (`MeetingSource`, tables, `meetings.json` export; only mentioned in GS-7 step 5) and Flow S1 (`TranscriptionProvider` interface and conformance suite). Granola S2 (API source adapter) is counted as covered through key validation in GS-2 although its 429 and 413 handling is invisible to users.
-**Scope**: both plans are unbuilt. Plans: `docs/plans/granola.md` (epic #444), `docs/plans/wispr-flow.md` (epic #452). Mockups: `docs/granola/mockup.html` (screen ids `screen-integrations`, `screen-api-key`, `screen-agent`, `screen-inbox`, `screen-citation`, `screen-disconnect`, `screen-routine`, `screen-mobile`) and `docs/wispr-flow/mockup.html` (`screen-settings-voice`, `screen-consent`, `screen-call`, `screen-flow-meetings`, `screen-mobile`). Open a state with `mockup.html#screen-id`, then press the state pill named in the "Mockup screen" line.
+**Scope**: both plans are unbuilt. Plans: `docs/plans/granola.md` (epic #444), `docs/plans/wispr-flow.md` (epic #452). Mockups: `docs/granola/mockup.html` (screen ids `screen-integrations`, `screen-api-key`, `screen-agent`, `screen-inbox`, `screen-citation`, `screen-disconnect`, `screen-mobile`; the weekly routine screen was removed when S7 was deferred) and `docs/wispr-flow/mockup.html` (`screen-settings-voice`, `screen-consent`, `screen-call`, `screen-flow-meetings`, `screen-mobile`). Open a state with `mockup.html#screen-id`, then press the state pill named in the "Mockup screen" line.
 
 Story IDs keep their topic prefix and are not renumbered: GS (granola-setup-recovery), IF (inbox-followups), MX (meetings-cross-provider), WF (wispr-flow-voice), MB (mobile). Issue numbers known from the plans: Granola S1 #437, S2 #438, S3 #439, S4 #440; Flow S5 #450. Granola S5, S6, S7 and Flow S1, S1b, S1c, S2, S3a, S3b, S4, S6 have no issue number in the plans and are written as slice names.
 
 All people, companies and meetings in the stories are invented.
+
+**History:** the story steps were refreshed after round 3 and match the current plans. The sections after the stories record what round 1 found. These are the mobile comparison table, Redundancy Candidates, Gaps and the JF findings, and they are kept as history. Where they contradict the plans, for example "two Granola agents", "no delete" or "API access required", the plans and the fix lists win. The fix lists are `fix-list.md`, `fix-list-round-2.md` and `fix-list-round-3.md`.
 
 ## Summary by type
 
@@ -46,7 +48,7 @@ Columns: stories that walk the feature. Mockup: the mockup screen that draws it,
 | Meeting tools, allowlist, consent gate (S4 #440) | GS-1, MX-1, MX-2, MX-4, MX-7 | agent |
 | Digest and Inbox to-dos (Granola S5) | IF-1, IF-2, IF-4, IF-5, IF-6, IF-7, IF-8, GS-7, MB-3, MB-4, MX-8 | inbox, mobile (Inbox) |
 | Granola key card, agent provisioning (S6) | GS-1 to GS-7, MB-1, MB-2, MB-9, MX-8 | integrations, api-key, disconnect, mobile |
-| Weekly memory routine (S7) | MX-3 | routine |
+| Weekly memory routine (S7, deferred) | MX-3 | routine |
 | Cross-agent access with `message_bot` | MX-2, MX-7 | none |
 | Flow dictation compatibility (S2) | WF-1, WF-2, WF-4, WF-5, MB-7, MB-8 | none |
 | `TranscriptionProvider` interface (S1) | none (WF-6 uses it indirectly) | none |
@@ -105,21 +107,21 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 **Mockup screen**: docs/granola/mockup.html#screen-integrations (Detail page), then docs/granola/mockup.html#screen-api-key (Connected), docs/granola/mockup.html#screen-agent (Question with citations), docs/granola/mockup.html#screen-inbox (With to-dos)
 #### Steps
 1. Maya opens Integrations from the sidebar and sees the Granola tile → tile is listed with the AppLogo letter fallback (no brand mark exists). [exists]
-2. She clicks the Granola tile → detail page opens. She expects to see a key field. The plan says only "shown on the Granola tile's detail". GAP: granola.md Surfaces does not say whether the card is visible before the MCP tile is connected; discovery assumed it is.
-3. She finds the field "Granola API key", pastes the key and presses "Connect" → [planned: Granola S6] the app checks the key with one list call. No loading text is defined. GAP: granola.md Surfaces gives no "checking" state, so a slow check looks like a dead button.
-4. The key is valid → status reads "Synced 0 meetings, just now" or similar. GAP: granola.md Surfaces defines only "Synced {n} meetings, {relative time}", with nothing for "first sync running" or "0 meetings so far"; the 90-day backfill runs in batches across several jobs.
-5. Behind the card, the Granola agent is created once (spawn key `integration-agent:<connectionId>`), private to Maya, writes off. [planned: Granola S6] Nothing on the card says the agent now exists. GAP: granola.md "Agent provisioning" does not say how Maya is told or sent to it. After MCP connect today, `McpDetail` shows `IntegrationAgentSection` with an agent link [exists]; the plan does not say the card shows the same link for the key connection.
-6. About a minute later she reopens the Granola detail → status now reads "Synced 41 meetings, 2 minutes ago". Maya cannot tell whether 41 is "everything" or "a first batch".
+2. She clicks the Granola tile → the detail page opens. With neither route connected, the MCP sign-in is the main block and the key card is below it: the label "Granola API key" with a muted "Business plan", a field, and a link to Granola's key settings. [planned: Granola S6]
+3. She pastes the key and presses "Connect" → the button reads "Connecting…" while one list call checks the key; the sentence under the button, "Sends your meeting notes and transcripts to your AI model.", is the consent act, and Connect records AI data consent. [planned: Granola S6]
+4. The key is valid → the status row reads "Syncing" (shimmer) until the first sync finishes, then "Synced 41 meetings". The connected card shows the status, Disconnect and the agent link, not the key field. [planned: Granola S6]
+5. Behind the card, the existing Granola agent is attached, or one is created if none exists (private to Maya, writes off). The connected card shows the agent link (`IntegrationAgentSection`); the chat does not open. [planned: Granola S6]
+6. About a minute later she reopens the Granola detail → the status reads "Synced 41 meetings"; the 90-day backfill runs in batches and "Syncing" shows until the first sync has finished.
 7. She opens the Granola agent from the bot list and types "What did I promise Dana in the pricing review?" → [planned: Granola S4] the agent calls `meetings_search`, then `meetings_get`, and answers with "Pricing review, 12 Oct" cited by title and date.
 8. She asks a follow-up, "Who else was on that call?" → the agent answers from the stored attendees. If the answer is wrong she has no way to see the stored meeting; there is no meetings screen by design.
-9. Several minutes later she opens Inbox from the sidebar → the "To do" card on the Important pile now shows "Send Dana the revised pricing" with "From: Pricing review, 12 Oct". [planned: Granola S5] Today the card shows only when `triage && pile === "important"` [exists, `Inbox.tsx:548`], which is true for Maya because she has mail.
+9. Several minutes later she opens Inbox from the sidebar → the "To do" card on the Important pile shows "Send Dana the revised pricing" with "Pricing review, 12 Oct" (no "From:" prefix). [planned: Granola S5]
 10. She marks the to-do done → it moves to done. For a mail user this works as today. [exists for mail; planned: Granola S5 for meeting to-dos]
 #### Variations
-- Maya has AI data sharing off: the card connects and syncs, but the digest does not run and `meetings_*` tools are withheld. The plan says "silent". She sees "Synced 41 meetings" and an agent that answers from nothing. GAP: granola.md "Digest and Inbox follow-ups" and the open consent question define no prompt on the card.
+- Maya's model later has no AI data consent (for example after a model change): Connect recorded consent, so a first connect never leaves it off. The status line reads "AI data sharing off", linking to Settings, AI data sharing, instead of "Synced"; meeting tools are withheld until consent returns.
 - Maya uses mobile: Settings, Integrations has a field and status row with native controls. [planned: Granola S6]
 - Maya asks within the first minute: the agent calls `meetings_search`, sees nothing synced, falls back to MCP tools if the MCP tile is connected; if not, it says "no synced meetings". GAP: the wording the user sees is not defined.
 #### Edge Cases
-- The key is pasted with surrounding spaces or a line break. The plan does not say whether it is trimmed.
+- The key is pasted with surrounding spaces or a line break. `meetings.connect` trims it server-side.
 - Maya presses "Connect" twice. The plan requires one agent and one connection ("connecting twice yields one agent").
 - The first agent answer arrives before the backfill finishes, so a meeting from 80 days ago is "not found". She concludes Granola data is missing.
 - Same fact on several surfaces: sync count on the card, the agent's answer, and the Inbox to-do each reflect meeting data with different freshness.
@@ -135,40 +137,40 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 **Plan status**: error line [planned: Granola S6]; nothing stored, no connection, no agent [planned: Granola S6].
 **Mockup screen**: docs/granola/mockup.html#screen-api-key (Key rejected)
 #### Steps
-1. Tomas opens Integrations, Granola, and pastes the truncated key into "Granola API key" → field shows the text. Whether it is masked is not stated. GAP: granola.md Surfaces gives no masking rule.
-2. He presses "Connect" → [planned: Granola S6] Granola rejects the key (401).
+1. Tomas opens Integrations, Granola, and pastes the truncated key into "Granola API key" → the field is masked (password field, autocomplete off).
+2. He presses "Connect" → the button reads "Connecting…"; Granola rejects the key (401). [planned: Granola S6]
 3. The card shows "Granola rejected this key" → nothing is stored, no connection row, no agent. [planned: Granola S6]
-4. Tomas does not know why. The text does not say whether the key is mistyped, expired, wrong scope, or on a plan without API access. GAP: granola.md Surfaces fixes a single line for every rejection.
-5. He checks the Granola app, sees the key looks different, copies the full key, replaces the field and presses "Connect" → success path from GS-1 step 4. The old error line clears. GAP: the plan does not say when the error line clears (on typing or on the next Connect).
+4. Tomas does not know why → one line, "Granola rejected this key", covers every cause (typo, expired, wrong scope, no API access); the plan does not branch on 401 versus 403. The key link beside the field opens Granola's key settings.
+5. He checks the Granola app, sees the key looks different, copies the full key and edits the field → the red line clears as soon as he edits the field; he presses "Connect" and the success path from GS-1 step 4 follows.
 #### Variations
 - A workspace key (admin-made) is pasted instead of a personal key: it is valid but cannot read private notes. Tomas sees "Synced 12 meetings" and the agent says it cannot find his own private notes. The plan does not tell him why.
 - Enterprise member scopes are off: Granola rejects the key. Tomas sees the same line as a typo.
 #### Edge Cases
-- Granola is down (5xx or network failure). The plan defines only rejection. GAP: no text for "could not reach Granola"; Tomas may read a failure as a rejected key.
+- Granola is down (5xx or network failure). The card shows "Could not reach Granola", the field keeps its value, and the line clears when he edits the field. [planned: Granola S6]
 - Rate limit (429) while validating: back off, nothing visible.
 
-### STORY-GS-3: MCP tile first, then the key (two Granola agents)
+### STORY-GS-3: MCP tile first, then the key (one Granola agent)
 **Type**: long
 **Topic**: Granola setup, agent provisioning
 **Persona**: Priya Natarajan, head of ops at Lakeside Freight (example.net), Granola Business.
 **Goal**: Keep her existing Granola agent and add stored meetings.
-**Preconditions**: Granola MCP tile connected three weeks ago; its private agent "Granola agent" exists and has answered questions. Priya now has a Business API key.
+**Preconditions**: Granola MCP tile connected three weeks ago; its private "Granola agent" exists and has answered questions. Priya now has a Business API key.
 **Ideal path**: 3. Paste key, Connect, keep asking the same agent. One agent should serve both sources.
 **Alternate paths**: Remove the MCP tile and start over (loses the existing agent's thread history context); keep only the MCP tile.
-**Plan status**: MCP tile and agent [exists]; key card [planned: Granola S6]; second agent [planned: Granola S6, plan says "two Granola agents ... unless `isIntegrationAgentForServer` lets one bot serve both"]; shared `meetings_*` tools on both [planned: Granola S4].
-**Mockup screen**: none (not mocked: the two-agent list and account labels are not drawn)
+**Plan status**: MCP tile and agent [exists]; compact MCP row above the key card, key card, attach to the existing agent [planned: Granola S6]; shared `meetings_*` tools [planned: Granola S4].
+**Mockup screen**: docs/granola/mockup.html#screen-integrations (Both connected: compact sign-in row above the key card)
 #### Steps
-1. Priya opens Integrations, Granola → the detail shows "via MCP · mcp.granola.ai", `IntegrationAgentSection` and "Reconnect" if the sign-in expired. [exists] The key card appears too. [planned: Granola S6]
-2. She pastes the key and presses "Connect" → connection `granola-api` is created and its own agent is created. [planned: Granola S6]
-3. She opens the bot list → two agents are listed, each with an account label. GAP: granola.md "Agent provisioning" and Open questions say the Agents list shows "each with its account label" but give no label text. She does not know which to ask.
-4. Priya asks the old agent "What did we decide about the Q4 route changes?" → the old agent now also reads synced meetings ("both are meeting-source agents with the same meetings tools"). It answers from stored data with citations.
-5. She asks the new agent the same question → same answer. The two agents are interchangeable for her. She wonders why there are two.
-6. Priya tries to delete the extra one → the bot delete path [exists] works, but the plan says "Create agent" repairs it; she may delete the wrong one. See GS-6.
+1. Priya opens Integrations, Granola → the MCP sign-in is connected, so it shows as one compact row (its own status and Disconnect, and "Reconnect" if the sign-in expired) with her agent link; the key card is below it. [planned: Granola S6]
+2. She pastes the key and presses "Connect" → connection `granola-api` is created and attaches to her existing Granola agent; no second agent is created. [planned: Granola S6]
+3. She opens the bot list → the same single Granola agent is listed, with its thread history intact.
+4. Priya asks "What did we decide about the Q4 route changes?" → the agent now also reads synced meetings and answers from stored data with citations.
+5. She sees both rows connected, each labelled with its route ("via MCP", "Granola API key"); each Disconnect affects only its own route. There is nothing to choose between.
+6. Priya has nothing to delete; removing the key or the MCP server keeps the agent.
 #### Variations
-- If S6 finds one bot can serve both connections, it links instead of creating a second. The plan does not depend on that, so both outcomes must be written; this story shows the two-agent case.
-- Reverse order (key first, then MCP tile): the tile gets its own agent as today. Same two-agent outcome.
+- One agent serves both routes by decision; there is no two-agent outcome.
+- Reverse order (key first, then MCP tile): the MCP sign-in attaches to the key's agent; still one agent.
 #### Edge Cases
-- Another agent asking via `message_bot` ("Granola agent") finds two bots with the same name and picks one by directory text. The plan does not say how names are disambiguated.
+- Another agent asking via `message_bot` finds one Granola agent.
 - The MCP session expires: the old agent still answers from stored meetings but says live MCP fallback failed. The user may think Granola is down overall.
 - The same meeting appears in both sources only if both were synced. The plan stores meetings from the key connection only for the stored table; MCP gives live results. Citations could differ in format between the two paths.
 
@@ -180,24 +182,24 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 **Preconditions**: Jonas has no API key option in his Granola app because the free plan has no API access.
 **Ideal path**: 2. See that the key path needs Business, then connect through the MCP tile and ask the agent.
 **Alternate paths**: MCP tile directly [exists]; skip Granola.
-**Plan status**: key card shows to all users [planned: Granola S6, "Free plan: the card explains nothing"]; MCP tile [exists]; MCP agent [exists].
-**Mockup screen**: docs/granola/mockup.html#screen-integrations (Detail page; the "Business plan" hint is drawn on the tile and Sync row only)
+**Plan status**: key card shows to all users with a muted "Business plan" after the field label and a key link [planned: Granola S6]; MCP tile [exists]; MCP agent [exists].
+**Mockup screen**: docs/granola/mockup.html#screen-integrations (Detail page: "Business plan" after the key field label; the tile carries no plan label)
 #### Steps
-1. Jonas opens Integrations, Granola. The page shows the key card and the existing MCP controls. [planned: Granola S6] He assumes the key card is required.
+1. Jonas opens Integrations, Granola. With neither route connected, the MCP sign-in is the main block and the key card is below it, its label reading "Granola API key" followed by "Business plan". [planned: Granola S6]
 2. He looks for a key in Granola's app → there is no Connectors, API keys entry for the free plan. He pastes a random token or an old OpenAI key by mistake into "Granola API key".
 3. He presses "Connect" → "Granola rejected this key". [planned: Granola S6]
-4. He is stuck. The card says nothing about plans. GAP: granola.md Surfaces says the card "explains nothing" for the free plan; the user cannot tell the key path is not for him.
-5. He notices the detail also offers the MCP sign-in. He presses the existing MCP connect control → browser OAuth with Granola opens. [exists]
+4. He sees one line, "Granola rejected this key", for every cause; "Business plan" beside the field label already said which plan the key is for, and the MCP sign-in is above.
+5. He presses the MCP sign-in, the main block on the page → browser OAuth with Granola opens. [exists]
 6. After sign-in, the MCP tile is connected and the Granola agent is created. [exists]
 7. He asks the agent "What did I discuss yesterday?" → live MCP tools return recent notes. On free plan, folder, search and transcript tools are paid-only, so some questions fail. [exists]
-8. He asks "What did I promise last week?" → the agent answers from MCP only. No Inbox to-do is created. GAP: the plan never tells a free user that to-dos need the key path.
+8. He asks "What did I promise last week?" → the agent answers from MCP only. No Inbox to-do is created; the "Business plan" label on the key card is the only hint that to-dos need the key path.
 #### Variations
 - Pro (non-Business) user: same as free; Pro is not named in the plan's tier table beyond "Business or Enterprise for the API key". Rejection looks the same.
 - Jonas upgrades to Business later, creates a key and pastes it: becomes GS-3 (two agents).
 #### Edge Cases
-- The key card is placed above the MCP section, so Jonas never reaches the MCP control. Page order is not specified (discovery ambiguity 6/7).
-- A free user who sees the key field and does not own a key gives up at step 4.
-- Two visible ways to connect Granola on one page, with no stated difference. Redundancy point.
+- The MCP sign-in comes first on the page, so Jonas always reaches it.
+- A free user who sees the key field and does not own a key sees "Business plan" on its label and the MCP sign-in above it.
+- Two ways to connect Granola on one page: the MCP sign-in is the main block until either route is connected, then becomes a compact row.
 
 ### STORY-GS-5: The key stops working (needs_reconnect)
 **Type**: medium
@@ -208,21 +210,21 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 **Ideal path**: 3. Open the Granola page, paste the new key, Connect.
 **Alternate paths**: Disconnect, then connect again; MCP tile as a stopgap.
 **Plan status**: `needs_reconnect` on 401/403 with one line on the card and no retries until a new key is pasted [planned: Granola S3 #439, S6].
-**Mockup screen**: docs/granola/mockup.html#screen-api-key (Key rejected; the mockup reuses the same line for needs_reconnect)
+**Mockup screen**: docs/granola/mockup.html#screen-api-key (Reconnect needed: passive status and no red line; Key rejected: the red line after a failed Connect)
 #### Steps
 1. Amara asks the Granola agent about a meeting held today → it answers from stored meetings up to the last good sync, with nothing marking the data as stale. GAP: the plan does not tell the agent or the user that sync has stopped.
-2. She notices today's meeting is missing and opens Integrations, Granola. The card shows a one-line state. GAP: granola.md Sync says "one line on the card" but gives no text; only "Granola rejected this key" has copy, and it may or may not be reused for a revoked key.
-3. She looks for "Reconnect". The existing MCP detail has a "Reconnect" button [exists, McpDetail.tsx:203]. GAP: the plan does not say whether the key card shows a similar action, whether "Connect" and "Disconnect" are both visible, or whether a key can be replaced without disconnecting (discovery ambiguity 6).
-4. She pastes the new key and presses "Connect" → [planned: Granola S6] the key validates, status returns to connected. The plan assumes this works ("until the user pastes a new key"); it does not state that the same connection and agent are reused.
+2. She notices today's meeting is missing and opens Integrations, Granola → the status row reads "Reconnect needed" with the warning dot, and the Integrations tile shows the same two words. There is no red line yet. [planned: Granola S6]
+3. The same card shows Disconnect, the editable "Granola API key" field, Connect and the key link → she pastes the new key without disconnecting first. A connected MCP sign-in stays a compact row above and is unaffected.
+4. She presses "Connect" → the key validates, the same connection and agent are reused, and the status returns to "Syncing". [planned: Granola S6]
 5. The next sync runs → status reads "Synced 58 meetings, just now". Meetings edited in the gap are caught by `updated_after` with overlap. [planned: Granola S3]
 6. Amara asks the same question → the agent now cites today's meeting.
 #### Variations
 - Mobile: Settings, Integrations row shows the state; she pastes into the native field. [planned: Granola S6]
 - Amara ignores the line for a month. Backfill covers only the 90-day window from the original start; if the checkpoint is older than the window, meetings in between may be missed. GAP: granola.md Sync does not state what a long gap does.
 #### Edge Cases
-- The new key belongs to a different Granola account. The plan keys sync state to the connection; meetings from the old account remain, mixed with the new one. The plan does not define this case.
-- 403 because Enterprise disabled member scopes: same line as a revoked key.
-- She pastes the old key again; she is told "Granola rejected this key" and nothing changes, which is correct.
+- The new key belongs to a different Granola account. The first sync stores the Granola user id; a key with a different id is rejected with "Granola rejected this key", so two accounts never mix.
+- 403 because Enterprise disabled member scopes: same outcome as a revoked key ("Reconnect needed", and the rejection line after a failed Connect).
+- She pastes the old key again; Connect fails and the red line "Granola rejected this key" appears; the status stays "Reconnect needed".
 - No in-app notification: she finds out only by noticing missing data. The plan defines no push or Inbox message for `needs_reconnect`.
 
 ### STORY-GS-6: The agent is removed and recreated
@@ -238,14 +240,14 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 #### Steps
 1. Leila deletes the "Granola agent" from the bot list, believing it only held old chats → bot is removed. [exists] Sync continues. [planned: Granola S3]
 2. A week later she asks a teammate bot about a meeting via `message_bot` → no meeting-source agent exists, so nothing answers. GAP: granola.md Agent provisioning says "meetings reach no one until one exists" and defines no message to the user or caller.
-3. She remembers Granola and opens Integrations, Granola. The card still shows "Synced 60 meetings, 4 minutes ago". The sync status says everything is fine. [planned: Granola S6]
-4. She looks for the agent. For the MCP connection the detail would show "Create agent" because `hasAgent` is false [exists]. For the key connection, GAP: granola.md names "Create agent" as the repair but does not say where it appears on the key card or whether it shares the MCP button.
-5. She presses "Create agent" → label changes to "Creating agent", then the app navigates to the new agent thread (`/app/{botId}`). [exists for MCP; planned for key connection]
+3. She remembers Granola and opens Integrations, Granola. The card still shows "Synced 60 meetings"; the agent's absence does not affect sync status. [planned: Granola S6]
+4. She looks for the agent → the connected key card shows `IntegrationAgentSection` with "Create agent" because the agent is missing, as the MCP detail does. [planned: Granola S6]
+5. She presses "Create agent" → the label changes to "Creating agent", then the app navigates to the new agent thread (`/app/{botId}`). One agent serves both routes. [exists for MCP; planned for the key connection]
 6. She asks her question → the new agent answers from stored meetings. Nothing was lost because meetings never depended on the agent.
 7. Inbox to-dos from the whole period are present, and she completes one. [planned: Granola S5]
 #### Variations
-- Both agents existed and she removed the MCP-linked one: the key-connection agent still works with no action. She sees no problem.
-- Both removed: she must press "Create agent" twice (once per connection) or choose one. GAP: not defined whether the page shows one button or two.
+- MCP tile also connected: the one agent serves both routes, so one "Create agent" restores both.
+- Mobile has no repair surface in the first release (see MB-9); she repairs it from web or Electron.
 #### Edge Cases
 - She presses "Create agent" twice quickly: idempotent by spawn key, one bot.
 - She removes the MCP server itself (`Remove Granola`). The existing note says "Your data in Granola is not deleted." The plan says the key connection and stored meetings are untouched. The sentence on that dialog could read as covering stored meetings; it was written for MCP only.
@@ -264,18 +266,18 @@ Source: `docs/ux-paths/meetings-voice/topics/granola-setup-recovery.md`
 **Merged from**: STORY-IF-3 (see the merge notes in the topic section)
 #### Steps
 1. Ethan opens Integrations, Granola and presses "Disconnect" → [planned: Granola S6] the secret is deleted and sync stops. No confirmation about data. GAP: granola.md S6 says "no confirm about data" and does not say whether any confirmation appears at all.
-2. The card returns to a blank "Granola API key" field with "Connect". The status line is gone. GAP: granola.md does not say whether it shows "Disconnected" or whether the user is told the meetings remain.
-3. He opens the Granola agent and asks "What did we agree with Dana?" → the agent still answers from stored meetings. Ethan expected disconnect to remove access. This is the mismatch: the existing app text "Your data in {name} is not deleted." [exists] refers to the vendor's data, while here Rakazo keeps its own copy.
+2. The card returns to an empty "Granola API key" field with "Connect". "Rakazo keeps your meetings and to-dos." shows above the field, and the agent link stays. No confirmation dialog.
+3. He opens the Granola agent and asks "What did we agree with Dana?" → the agent still answers from stored meetings, as the card's sentence said.
 4. He opens Inbox and completes a meeting to-do → works with no connected source. [planned: Granola S5]
-5. He wants the meetings gone. GAP: granola.md has no deletion control (discovery ambiguity 21). The account export includes meetings (`meetings.json`) [planned: Granola S1], but there is no delete.
-6. He pastes a new key later → connection becomes connected again; his stored meetings are still there plus new ones.
+5. He wants one meeting gone → on web he opens an answer, clicks the citation chip and chooses "Delete"; after the standard confirmation ("Removes this meeting and its to-dos from Rakazo. Your note in Granola is not changed.") the meeting, its digest and its to-dos are removed and not re-synced. Only the person who connected can delete, also after Disconnect; everything else is kept permanently. [planned: Granola S6]
+6. He pastes a new key later → the same connection and agent are reused; his stored meetings are still there plus new ones.
 #### Variations
 - Ethan disconnects the key but keeps the MCP tile: the MCP agent still reads stored meetings and live data.
 - Disconnect while a sync is running: the job loads the source, finds no secret, and stops with an error. The plan does not say whether a half-written batch is kept.
 #### Edge Cases
 - Another user in the same space connected Granola: their meetings stay private and unaffected.
 - The to-do text can name attendees who never agreed to AI processing. Disconnect does not purge it.
-- Ethan is never told that the meetings are kept permanently (privacy policy decision in granola.md Decisions), so he may assume deletion.
+- Ethan is told by the card's sentence "Rakazo keeps your meetings and to-dos."; Delete is the only way to remove a meeting.
 
 ### STORY-GS-8: Meeting-only user, no mail, first answer and first to-do (MERGED into IF-1)
 **Merged into**: STORY-IF-1. Same path as IF-1 (meeting-only user opens Inbox, no mail account). Unique points to walk together with IF-1: connecting before AI consent gives no to-dos with no reason; a Granola identity email that matches no attendee gives no to-dos.
@@ -293,19 +295,19 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Preconditions**: Maya has pasted a Granola API key on the Granola card (S6) and the first sync finished. AI data sharing is allowed for her model. No mail connection. Signed in as maya@fernhill.example.com; the meeting attendee list includes that address. The call "Pricing review" ended 20 minutes ago.
 **Ideal path**: 3. Open Inbox; see the "To do" card with the meeting items; tick one. No extra setup step should stand between her and the items.
 **Alternate paths**: Ask the Granola agent in chat "what did I promise in the pricing review?" [exists as a concept; planned: Granola S4 `meetings_*` tools]. Shows the same commitments as text, with no checkbox.
-**Plan status**: Sync and digest [planned: Granola S3, S5]; Inbox sidebar entry [exists]; "To do" card for a user with no mail account [planned: Granola S5, but the empty state "No mail connected" is [exists] and takes the whole page]; tick [planned: Granola S5].
+**Plan status**: Sync and digest [planned: Granola S3, S5]; Inbox sidebar entry [exists]; "To do" card above "Connect mail" for a user with a meeting source [planned: Granola S5]; tick [planned: Granola S5].
 **Mockup screen**: docs/granola/mockup.html#screen-inbox (Empty, With to-dos). The mockup draws only the To do card; today's page shows "No mail connected" instead
 **Merged from**: STORY-GS-8 (see the merge notes in the topic section)
 #### Steps
 1. Maya opens the sidebar "Inbox" → [exists] the page loads; `inbox.list` returns no accounts and `rows: []`.
-2. Web shows the empty state "No mail connected" with "Connect mail" → [exists]. GAP: granola.md S5 says the list is shown "even with no mail account, with an empty state for a connected meeting source and no to-dos", but does not say where the "To do" card sits on a page whose only content today is the "No mail connected" empty state, or whether that state stays above or below the card (granola.md, "Digest and Inbox follow-ups", last bullet).
-3. Maya, expecting follow-ups, reads "Connect Gmail to read, sort and answer your mail here" and hesitates; she does not own a Gmail account she wants connected → she scrolls looking for her meeting items. If the card is placed below the empty state she finds "To do" with "Send Dana the revised pricing" and "From: Pricing review, 12 Oct" [planned: Granola S5].
-4. She notices the row has no sender name (mail rows show the sender in the small line; meeting rows have `from: null`) and no link; the text is plain → she cannot open the meeting (no meetings page by design, granola.md "Out of scope").
+2. Because Maya has a connected meeting source, the page shows the "To do" card above "Connect mail"; the full "No mail connected" page shows only when there is no meeting source. [planned: Granola S5]
+3. Maya sees "Send Dana the revised pricing" with "Pricing review, 12 Oct" and does not need to connect Gmail. [planned: Granola S5]
+4. She notices the row has no sender and no link; the text is plain and only the checkbox acts → she cannot open the meeting (no meetings page by design, granola.md "Out of scope").
 5. She ticks "Send Dana the revised pricing" → [planned: Granola S5] the checkbox fills, the text gets a strike-through, and after about 1.5 seconds (400 ms strike plus 1100 ms fade, `TodoCard.tsx`) the row collapses and leaves.
 6. She reloads the page → the ticked item stays gone; open items remain.
 #### Variations
 - Phone width: the card shows the first 2 open items and a "{n} more" button (`COLLAPSED_OPEN = 2`).
-- Mobile: `fetchList` clears todos when `accounts.length === 0`, so unless S5 changes it, the mobile screen shows only the single "Connect mail" button. GAP in the plan's text: it lists `apps/mobile/app/inbox.tsx` as touched but defines no mobile layout for zero accounts.
+- Mobile: the same layout through the existing `TodoCard`; the zero-account gate, the early return and the `!list.enabled` check change in Granola S5.
 #### Edge Cases
 - The Inbox agent panel and search bar are hidden when there are no accounts (`show = accounts.length > 0` on mobile; "Nothing to search or filter before mail is connected" on web), so a meeting-only user has no search over their to-dos.
 - Maya may tick the wrong item and untick it within the fade window; the fade cancels (`TodoCard.tsx` effect). After the row has left, there is no "show done" view, so a mistaken tick cannot be undone from the list. [exists, same for mail to-dos]
@@ -319,14 +321,14 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Preconditions**: Mail triage is ready. Triage created two mail to-dos ("Sign the vendor form", due Friday; "Reply with venue options"). The digest of "Board prep" created "Send the updated runway slide to Priya" from a meeting. Two Gmail accounts connected: "Work" and "Personal".
 **Ideal path**: 1. Open Inbox; the single "To do" card shows all three.
 **Alternate paths**: Switch the account tab to "Work" or "Personal" and read the card again; ask the Inbox agent panel.
-**Plan status**: Mail to-dos [exists]; combined list [planned: Granola S5]; per-tab behaviour for meeting to-dos: GAP.
-**Mockup screen**: none (not mocked: mail and meeting to-dos together, account tabs)
+**Plan status**: Mail to-dos [exists]; combined list, and each account tab lists its mail plus all meeting to-dos [planned: Granola S5].
+**Mockup screen**: docs/granola/mockup.html#screen-inbox (Mail connected: two account tabs)
 #### Steps
 1. Tomas opens Inbox on the "All" tab → [exists] mail rows load; the "To do" card appears above them on the Important pile.
-2. The card lists the two mail to-dos with a sender plus reason line, and the meeting to-do with "From: Board prep, 14 Oct" only [planned: Granola S5] → he can tell the source from the small line, but there is no icon, label or link difference besides that the mail items are links and the meeting item is plain text. GAP: plan does not define a visual cue for meeting versus mail; the only difference is the detail string (granola.md, "Digest and Inbox follow-ups").
+2. The card lists the two mail to-dos with a sender plus reason line, and the meeting to-do with "Board prep, 14 Oct" only [planned: Granola S5] → he tells the source from the small line; mail items are links and the meeting item is plain text, by decision (no provider label).
 3. He clicks the mail to-do text "Reply with venue options" → [exists] the email opens in a dialog. He clicks the meeting item text → nothing happens (no `messageId`, so it is not a link) and he clicks twice more.
-4. He selects the "Work" tab → the web client calls `rpc.inbox.todos.list({ connectionId })`. GAP: meeting to-dos have `connectionId` null (granola.md, Data model), and `inboxTodosList` filters by `connectionId` when given. The plan says the list returns "mail to-dos as today plus meeting to-dos" but does not say whether a filtered tab keeps or drops meeting items. If dropped, the item vanishes on every account tab; if kept, it appears on both "Work" and "Personal".
-5. He returns to "All" → the three items are back.
+4. He selects the "Work" tab → the card lists Work's mail to-dos plus the meeting to-do; "All" lists everything. [planned: Granola S5]
+5. He returns to "All" → the same three items; switching tabs never hides the meeting to-do.
 #### Variations
 - Tomas ticks the meeting item from the "All" tab; the cached lists of other tabs (`todosByTab`) still hold the open copy until `todoRefresh` runs, so "Work" may briefly show it as open. [exists behaviour for mail to-dos; applies equally]
 #### Edge Cases
@@ -348,11 +350,11 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Plan status**: Identity matching [planned: Granola S5]; any UI that says why nothing appeared: GAP.
 **Mockup screen**: none (not mocked)
 #### Steps
-1. Jonas opens Inbox after the call → the page shows "No mail connected" [exists], no "To do" card.
-2. He waits 10 minutes, reloads, and checks again → nothing. There is no status such as "meeting analyzed, no commitments matched your email".
+1. Jonas opens Inbox after the call → the "To do" card shows "No follow-ups from meetings yet" above "Connect mail" (a source is connected, consent is on, the first sync has finished). [planned: Granola S5]
+2. He waits 10 minutes, reloads, and checks again → the same line. "No identity match", "no commitments" and "digest failed" look the same, by choice.
 3. He asks the Granola agent "what did I promise Anna?" → the agent answers from the stored meeting and cites it, listing two commitments. He now sees information on one surface (chat) that is absent on another (Inbox) and cannot tell why.
 4. He asks "why aren't these in my Inbox?" → GAP: the agent has no tool for explaining digest ownership results, and the plan defines no user-visible reason. The plan notes only that creation "is suppressed" (granola.md, Identity).
-5. He connects his work Gmail account to fix it → the connected account's address joins the identity set; GAP: the plan does not say whether the already-stored digest is re-evaluated, so the earlier commitments may never become to-dos (granola.md, S5 behaviour: digest runs "after a meeting is stored").
+5. He connects his work Gmail account → its address joins the identity set, and stored digests of meetings that have no to-do are matched again with no model call, so the earlier commitments become to-dos. [planned: Granola S5]
 #### Variations
 - The digest labels the speaker with the first name only ("Jonas") and the attendee has an email. Matching is by email against the owner field, so a name-only owner never matches.
 - A different person in the meeting shares a nickname with the user. The regression "a commitment by someone else is never added to the user's to-dos" covers this; the user sees nothing and cannot audit.
@@ -365,23 +367,23 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Topic**: Meeting follow-ups, AI-data consent
 **Persona**: Elena Petrova, controller at Marlowe Freight (example.com). She declined AI data sharing for her model when first asked in Gmail triage. She now has Granola only.
 **Goal**: Understand why her meeting follow-ups never show up.
-**Preconditions**: Granola synced; no mail account; AI-data consent for her model's recipient is not recorded.
+**Preconditions**: Granola connected and synced (Connect recorded consent); no mail account. She later switched AI data sharing off for her model's recipient in Settings, AI data sharing.
 **Ideal path**: 3. Open Inbox; see a clear prompt; allow; see items. In the plan, the digest "runs only with AI-data consent" (granola.md, Digest) but where the user is asked is not defined.
 **Alternate paths**: Settings, AI data sharing (named in granola.md Open questions as "the existing AI data sharing setting") [exists].
-**Plan status**: Digest gate [planned: Granola S5]; consent prompt for a meeting-only user: GAP.
+**Plan status**: Digest gate [planned: Granola S5]; "AI data sharing off" status on the Granola card [planned: Granola S6]; a meeting-only user never sees the mail consent prompt.
 **Mockup screen**: none (not mocked)
 #### Steps
-1. Elena opens Inbox → [exists] `inbox.list` returns `triageBlocked: { reason: "needs_consent", recipient }` (from `triageStatus`) but the web page shows the empty state "No mail connected" first, and the consent card `InboxConsentPrompt` lives only in the branch for a loaded mail list. GAP: with zero accounts she never sees the consent prompt (Inbox.tsx).
-2. She sees no to-dos and no explanation. After three days she asks the Granola agent about her calls → the meeting tools also require consent (granola.md, Reading) so the agent says it cannot read meetings, or answers from live MCP if the tile exists. The reason shown is the agent's text only.
-3. She finds Settings → AI data sharing, allows the recipient → [exists] consent saved.
-4. She returns to Inbox → no to-dos yet. GAP: the plan does not say whether meetings stored while consent was off get a digest after consent (the digest job "runs only with AI-data consent"), so old meetings may stay undigested forever.
-5. After the next meeting ends she sees one new to-do.
+1. Elena opens Inbox → meeting to-dos already stored stay visible and completable; no prompt is shown (the mail consent prompt is only for users with a mail account).
+2. New meetings produce no to-dos. She asks the Granola agent about her calls → the meeting tools are withheld, so it says it cannot read meetings, or answers from live MCP if that tile exists. On the Granola page the status line reads "AI data sharing off", linking to Settings, AI data sharing, instead of "Synced".
+3. She follows the link, allows the recipient → consent is saved. [exists]
+4. She returns to Inbox → granting consent queues digests for meetings whose digest status is empty, so earlier meetings can now produce to-dos. [planned: Granola S5]
+5. After a short wait the new to-dos appear.
 #### Variations
-- Elena has Gmail and Granola. She sees the consent card on the Important pile (existing behaviour, `shown.triageBlocked.reason === "needs_consent"`), and allowing it queues mail triage. GAP: whether Allow also queues meeting digests is unstated.
+- Elena has Gmail and Granola. She sees the consent card on the Important pile (existing behaviour). "Not now" leaves the Inbox as it is today, and meeting to-dos already stored stay visible; allowing it queues digests too.
 - She allows consent for the mail model but the digest uses the user's "configured model", possibly a different recipient; no single consent covers both unless they match (granola.md, Digest).
 #### Edge Cases
-- Consent withdrawn later: existing open to-dos stay visible; `inboxTodosList` returns no to-dos when `enabled` is false for mail today. The plan says `enabled` becomes true if the user has meeting to-dos, so withdrawing consent would still show previously created meeting items. Plan does not say whether that is intended.
-- Mobile: no consent card was found in `apps/mobile/app/inbox.tsx` for this state, only the zero-account button.
+- Consent withdrawn later: existing open to-dos stay visible and completable (intended); with none left, the card shows nothing.
+- Mobile: no consent control on the meeting-only path, by decision.
 
 ### STORY-IF-6: The same commitment appears from two meetings
 **Type**: short
@@ -391,12 +393,12 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Preconditions**: Both meetings are synced and digested. Digest text: Monday "Send Dana the revised pricing"; Wednesday "Send the revised pricing to Dana by Friday".
 **Ideal path**: 1. A single to-do on the card.
 **Alternate paths**: none found.
-**Plan status**: dedupe key `(userId, meetingId, normalized text)` [planned: Granola S5].
+**Plan status**: dedupe per `(userId, normalized text)` among open and recently completed to-dos [planned: Granola S5].
 **Mockup screen**: none (not mocked)
 #### Steps
-1. Samir opens Inbox → the card shows "Send Dana the revised pricing" (From: Pricing review, 12 Oct) and "Send the revised pricing to Dana by Friday" (From: Pricing follow-up, 14 Oct, due Fri). Two rows for one promise, since the key includes `meetingId` and the text differs; even identical text from two meetings would yield two rows. GAP: the plan defines dedupe within a meeting, not across meetings (granola.md, Digest and Inbox follow-ups).
-2. He ticks the first, then the second → the same action done twice.
-3. Next Monday's sync adds nothing new, but if the digest re-runs for an updated note (newer `sourceUpdatedAt`), a reworded commitment could produce a third row. Whether a re-digest of the same meeting creates new rows with new wording is not stated (granola.md, Sync says newer updates replace the meeting; S5 says "deduplicated"). Severity med.
+1. Samir opens Inbox → the card shows "Send Dana the revised pricing" (Pricing review, 12 Oct) once: to-dos are deduplicated per user and normalized text, even across meetings. The reworded "Send the revised pricing to Dana by Friday" (Pricing follow-up, 14 Oct, due Fri) differs in text, so it is a second row.
+2. He ticks the first, then the second → two actions for a reworded promise.
+3. A re-digest of an updated note never regenerates to-dos when any to-do already exists for that meeting, so no third row appears.
 #### Variations
 - Samir has already ticked the Monday item and then the Wednesday meeting repeats it: a new open item appears for a thing he finished.
 #### Edge Cases
@@ -408,22 +410,22 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Topic**: Meeting follow-ups, source deleted
 **Persona**: Hannah Cole, partner at Quill & Pine (example.com). Deleted a confidential call, "Layoff planning", in Granola last night, but Rakazo created a to-do from it yesterday afternoon.
 **Goal**: Have the deleted meeting's follow-up and stored notes go away, or at least know they remain.
-**Preconditions**: Personal Granola API key. The to-do "Draft the severance memo" with detail "From: Layoff planning, 15 Oct" is open. Retention is permanent (granola.md, Data model, retention).
-**Ideal path**: 2. See that the item is tied to a deleted meeting, and remove it. In the plan no such path exists.
+**Preconditions**: Personal Granola API key. The to-do "Draft the severance memo" with detail "Layoff planning, 15 Oct" is open. Stored meetings are kept permanently unless the connecting user deletes one (granola.md, Data model, retention).
+**Ideal path**: 2. See that the item is tied to a meeting she deleted in Granola, and delete it in Rakazo.
 **Alternate paths**: Tick the item (marks done, does not delete it). Ask the agent to forget the meeting: no such tool (the meeting tools are read-only, granola.md, Reading).
-**Plan status**: Deletion not mirrored [planned: Granola Sync, "Deletions: Granola deletions are not mirrored"]; no delete for meetings or to-dos: GAP.
+**Plan status**: Granola deletions are not mirrored [planned: Granola Sync]; per-meeting Delete by the connecting user in the web citation popover [planned: Granola S6, `meetings.delete`].
 **Mockup screen**: none (not mocked)
 #### Steps
-1. Hannah opens Inbox next morning → [planned: Granola S5] the item "Draft the severance memo — From: Layoff planning, 15 Oct" is still listed; the synced copy remains because a personal key cannot see `deleted_at` (granola.md, Sync).
-2. She expects deletion in Granola to carry over and is unsettled to see the title → she ticks the item to clear it; it fades out. The row is marked done, not deleted (`doneAt` set); the `InboxTodo` row and the `Meeting` row with its transcript stay (no delete-on-disconnect, no expiry).
+1. Hannah opens Inbox next morning → [planned: Granola S5] the item "Draft the severance memo" with "Layoff planning, 15 Oct" is still listed; the synced copy remains because a personal key cannot see `deleted_at` (granola.md, Sync).
+2. She expects deletion in Granola to carry over and is unsettled to see the title → ticking the item only marks it done (`doneAt` set); the `Meeting` row stays.
 3. She asks the Granola agent "what do you have on Layoff planning?" → the agent still answers from the stored meeting (granola.md, Retention). She now has data in Rakazo she believed deleted.
-4. She looks for a way to delete the stored meeting → GAP: no UI, RPC or agent tool deletes a stored `Meeting`; the plan mentions that the account export includes meetings and nothing about erase (granola.md, S1 behaviour). Severity high for privacy.
-5. She disconnects Granola, hoping that clears the data → disconnect keeps all meetings and to-dos by design (S6), so the item is still there.
+4. She looks for a way to delete the stored meeting → on web she asks the Granola agent about it, clicks the citation chip and chooses "Delete"; after the standard confirmation the meeting, its digest and its to-dos are removed, and sync skips it afterwards (tombstone). Only the person who connected can do this. [planned: Granola S6]
+5. If she disconnects Granola instead, hoping that clears the data → Disconnect keeps all meetings and to-dos by design, and the card says "Rakazo keeps your meetings and to-dos."
 #### Variations
 - Detail text is plain text with no link, so there is no dead link to a missing meeting; the user sees only a title and date.
 - If a to-do was completed already, the user never sees the meeting again in the Inbox, but the transcript remains stored.
 #### Edge Cases
-- A tombstone exists in the S1 repository for providers that report deletions (granola.md, S1 behaviour), but the Granola adapter "never reports deletions", so it is unused for Granola.
+- A tombstone left by Delete in Rakazo stops the next sync from restoring the meeting.
 - A shared note deleted by its owner leaves the same artifact for every recipient's sync.
 
 ### STORY-IF-8: Connected Granola, no commitments yet
@@ -437,10 +439,10 @@ Source: `docs/ux-paths/meetings-voice/topics/inbox-followups.md`
 **Plan status**: Empty state for connected source and no to-dos [planned: Granola S5, wording not given: GAP]; `TodoCard` returns null when empty [exists].
 **Mockup screen**: docs/granola/mockup.html#screen-inbox (Empty)
 #### Steps
-1. Leo opens Inbox → [exists] "No mail connected / Connect Gmail to read, sort and answer your mail here." with "Connect mail".
-2. He thinks Rakazo wants Gmail for meeting notes and follows the button → Settings, Integrations opens [mobile pushes `/integrations`]. He connects nothing, returns.
-3. He checks the Granola card → "Synced 12 meetings, 3 min ago" [planned: S6]. He sees the meetings synced and no to-dos in the Inbox, with no sentence connecting the two.
-4. GAP: the plan requires "an empty state for a connected meeting source and no to-dos" but gives no text, and AGENTS.md requires quoting copy and justifying it in the PR. The risk is the opposite: adding a line that repeats the interface.
+1. Leo opens Inbox → the "To do" card shows "No follow-ups from meetings yet" (once the first sync has finished and consent is on; while it runs the card shows "Syncing"), with "Connect mail" below. [planned: Granola S5]
+2. He does not need to connect mail; the line says what is waiting.
+3. He checks the Granola card → "Synced 12 meetings". The Inbox line and the card agree.
+4. The line is the plan's copy; the S5 PR quotes it and argues why it is needed.
 #### Variations
 - Digests failed and were silent (granola.md, Digest: "failed and silent after retries"); Leo cannot tell failure from "no commitments".
 #### Edge Cases
@@ -461,7 +463,7 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 **Plan status**: Agent chat [exists]. `meetings_list` with `provider` filter [planned: Granola S4 #440]. Flow rows [planned: Flow S5 #450]. How answers label provider: GAP: granola.md "Reading" says tools "may filter by provider" but no answer format says whether the provider is shown to the user.
 **Mockup screen**: docs/granola/mockup.html#screen-agent (Question with citations) and docs/wispr-flow/mockup.html#screen-flow-meetings (Agent answer); provider is not shown in either
 #### Steps
-1. Maya opens the sidebar bot list and sees two Granola-related agents and one Wispr Flow agent → [exists] each is labelled with its account; she is unsure which to pick. GAP: granola.md "Agent provisioning" and discovery ambiguity 9 (two Granola agents, no guidance which to ask).
+1. Maya opens the sidebar bot list and sees one Granola agent and one Wispr Flow agent → each is a meeting-source agent with the same tools; she picks either.
 2. She picks the Wispr Flow agent because "Flow" feels like the newer tool, and types "What did we decide about the Q4 price change?" → [planned: Granola S4] the agent calls `meetings_search`; it is not limited to Flow.
 3. The agent answers with two decisions, each citing a meeting title and date → [planned: Granola S4] cited per "Trustworthy" in the User story. She cannot tell from the plan whether a line says "Granola" or "Flow". GAP: granola.md "Reading" and discovery ambiguity 20.
 4. She types "Only the calls recorded in Flow" → [planned: Granola S4] the model sets `provider: "wisprflow"` on `meetings_list`; the answer shrinks to one meeting.
@@ -490,22 +492,22 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 4. The Carta agent writes a line in the draft → [exists] Tomas sees text, possibly without the meeting title if the Carta agent drops it. GAP: no rule requires the citation to survive the hand-off (granola.md "Reading").
 5. Tomas hesitates, wonders where the number came from, and asks "Which meeting was that?" → the Carta agent re-asks the Granola agent; second round trip.
 #### Variations
-- Tomas has two Granola agents (MCP and API key); the Carta agent has to pick one. Plan does not say which `message_bot` target is chosen. GAP: discovery ambiguity 9.
+- Tomas has one Granola agent serving both Granola routes, so `message_bot` has one target.
 - A teammate's Carta agent in the same space asks Tomas's Granola agent; the plan says triggers must be "a bot message from the owner's own agent", so it is refused. The teammate sees an error whose text the plan does not define.
 #### Edge Cases
 - Consent is off: the Granola agent returns no meeting tools; the Carta agent reports it could not read meetings. The message text is undefined (granola.md "Reading", consent gate).
 - No meeting-source agent exists (removed): the Carta agent finds no target. "Create agent" is the repair path but the Carta agent does not offer it.
 
-### STORY-MX-3: The weekly memory routine, and where Priya sees what it wrote
+### STORY-MX-3: The weekly memory routine, and where Priya sees what it wrote (DEFERRED)
 **Type**: long
 **Topic**: Granola S7 routine, bot-scope memory, visibility
 **Persona**: Priya, founder of Lumen Cooperative (example.com), connected Granola two weeks ago.
 **Goal**: Know what the Granola agent has remembered from her meetings, and delete one wrong entry.
-**Preconditions**: Granola API key connected, agent created, S7 routine created with the agent; at least three meetings digested; routine ran once (Sunday).
+**Preconditions**: DEFERRED (decision D1): the weekly memory routine S7 (#443) is deferred, so this story cannot be walked until S7 is revived. Original setup: Granola API key connected, agent created, S7 routine created with the agent; at least three meetings digested; routine ran once (Sunday).
 **Ideal path**: 4 steps. Open the agent, open its Memory view, read entries with meeting title and date, delete the wrong one.
 **Alternate paths**: Ask the agent "What have you remembered?" in chat (uses `recall_memory`, read-only). Open Settings memory screen with "Filter memory" and "Memory scope" [exists] and filter by bot.
 **Plan status**: Routine creation [planned: Granola S7]. Routine UI "Routines" [exists]. Memory settings screen [exists]. Notification of the result: none (notify off). Where the user finds the result: GAP: granola.md S7 does not say where the user sees, edits, deletes or turns off the routine's memories (discovery ambiguity 11).
-**Mockup screen**: docs/granola/mockup.html#screen-routine
+**Mockup screen**: none for now (S7 deferred; `docs/granola/mockup.html#screen-routine` is not a shipped surface)
 #### Steps
 1. Priya connects the key, then forgets about it for a week → [planned: Granola S6]. The S7 routine was created silently with the agent; she never saw a prompt or a toggle. GAP: granola.md S7 "Owns" says the routine is created "with the agent's setup" and names no disclosure.
 2. On Monday she notices nothing new anywhere. The routine has notify off, so no message, no badge → [planned: Granola S7].
@@ -536,7 +538,7 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 3. If the agent says it saved it, nothing was written; Jonas believes it. If it says it cannot, Jonas is confused because the shipped experience paragraph promised this. 
 4. He retries: "Add it to memory" → same result.
 5. He gives up and opens Memory settings [exists] hoping to type the decision himself. Whether a manual add exists is not planned or confirmed. GAP.
-6. A week later the S7 routine may write something similar from the digest, so the decision could appear without his asking, with a meeting title, from a different path.
+6. S7 is deferred, so nothing writes memory from digests; only a different agent with `remember` can save his decision.
 #### Variations
 - He says it in a different agent that has `remember`: works [exists], but that agent has no meeting context, so he must retype the decision.
 - He pastes the decision and says "ask the Granola agent to remember it" in the Carta thread: `message_bot` to the Granola agent gives it no write tools.
@@ -562,7 +564,7 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 #### Variations
 - Granola Enterprise "Meeting transcripts" setting blocks AI transcripts: same shape of problem from the Granola side (granola.md Open questions).
 #### Edge Cases
-- She asks for action items; the digest may still run on the summary alone, and a to-do appears "From: Partner call, Tue" with a weaker basis than a transcript-based one; the to-do does not say so.
+- She asks for action items; the digest may still run on the summary alone, and a to-do appears "Partner call, Tue" with a weaker basis than a transcript-based one; the to-do does not say so.
 - Flow Notetaker is not enabled on her account: the tile is connected but returns nothing. GAP: discovery ambiguity 19.
 
 ### STORY-MX-6: Flow S5 stops after the allowlist pin
@@ -602,10 +604,10 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 2. The model may follow the line. With the S4 set it has no mail, no `message_bot`, no `web_fetch`, no memory write. It can only reply with words. → [planned: Granola S4] no external side effect.
 3. The reply may say "The vendor asked me to forward invoices; I can't do that." or may silently comply in words ("I will forward invoices"). Hannah reads the second one and panics. GAP: the plan accepts wrong answers but gives no prompt-level instruction about telling the user.
 4. She checks the Inbox: the digest produced a to-do "Forward all invoices to billing@example.invalid" if the speaker attribution matched her. The plan says commitments match only her verified email or `speaker.attribution: "me"`, so a vendor line does not, but a line from the vendor with a matching attendee address could. → [planned: Granola S5] to-do text is plain, no link.
-5. She taps the to-do. Mail to-dos are not clickable today; detail reads "From: Cobalt vendor call, 12 Oct" → [exists]/[planned: Granola S5]. GAP: discovery ambiguity 13 (no path from to-do to the meeting).
+5. She taps the to-do. Mail to-dos are not clickable today; detail reads "Cobalt vendor call, 12 Oct" → [exists]/[planned: Granola S5]. GAP: discovery ambiguity 13 (no path from to-do to the meeting).
 6. She completes or removes it; nothing was sent anywhere.
 #### Variations
-- The injected line asks the agent to "remember" a false fact. User chat run: no write tool, so refused. S7 routine run: the one bot-scope write exists, so the false fact could be saved (see MX-3). Hannah sees it only if she opens bot memory.
+- The injected line asks the agent to "remember" a false fact. A user chat run has no write tool, so it is refused; S7 is deferred, so no routine writes memory either.
 - Injection asks to fetch a URL: `web_fetch` is removed, so nothing leaves.
 #### Edge Cases
 - Another agent asks via `message_bot` (MX-2); the Granola agent's text reply carries the injected wording into the Carta agent's prompt, which does have more tools. The allowlist protects only the Granola agent run, not the next agent in the chain. GAP: granola.md "Reading" protects "a run which can read meetings" but not agents that receive its output.
@@ -616,24 +618,24 @@ Source: `docs/ux-paths/meetings-voice/topics/meetings-cross-provider.md`
 **Topic**: meetings as context across Inbox, agents, and both providers
 **Persona**: Sara, founder of Tidewell Health (example.com), has no mail account connected in Rakazo, uses Granola for calls and Flow Notetaker for in-person recordings.
 **Goal**: Connect both sources and see her follow-ups and be able to ask about both.
-**Preconditions**: Rakazo space, no mail connection, AI-data consent on after a first prompt.
+**Preconditions**: Rakazo space, no mail connection; Connect on the Granola card records AI data consent.
 **Ideal path**: 6 steps. Connect Granola key, connect Flow tile, ask one question, open Inbox, see follow-ups, complete one.
 **Alternate paths**: Only connect the MCP tiles (exist); no stored meetings, no to-dos.
 **Plan status**: Granola card [planned: Granola S6]; Flow tile [exists]; sync [planned: Granola S3, Flow S5]; Inbox to-dos for meeting-only users [planned: Granola S5]; the Inbox position: GAP: granola.md "Retrieval and completion" says the list shows with no mail account but today's Inbox shows "Connect mail" when no account exists (discovery ambiguity 1).
 **Mockup screen**: docs/granola/mockup.html#screen-api-key (Connected), docs/wispr-flow/mockup.html#screen-flow-meetings (Tile), docs/granola/mockup.html#screen-inbox (With to-dos)
 #### Steps
-1. Sara opens Integrations, finds the Granola tile, opens it, sees "Granola API key", pastes the key, taps "Connect" → [planned: Granola S6] status "Synced N meetings" after the first batch; no progress text during backfill. GAP: discovery ambiguity 4.
+1. Sara opens Integrations, finds the Granola tile, opens it, sees "Granola API key", pastes the key, taps "Connect" → "Connecting…", then "Syncing" (shimmer) during backfill, then "Synced N meetings". [planned: Granola S6]
 2. She opens the Wispr Flow tile and connects through the browser → [exists] a Flow agent appears. Flow meetings sync only if S5 delivered (see MX-6).
 3. She asks the Granola agent about last week → [planned: Granola S4] answer with citations.
-4. She opens Inbox → [exists] her screen says "Connect mail". The meeting to-dos exist but the plan gives no position for them. GAP: discovery ambiguity 1.
-5. If the to-do list shows, she sees "Send Dana the revised pricing / From: Pricing review, 12 Oct" → [planned: Granola S5]. She cannot tell which tool the meeting came from; the detail shows title and date only. GAP: provider is not shown on the to-do.
+4. She opens Inbox → the "To do" card shows above "Connect mail". [planned: Granola S5]
+5. She sees "Send Dana the revised pricing / Pricing review, 12 Oct". She cannot tell which tool the meeting came from, by decision (provider is not shown on a to-do).
 6. She completes it → [planned: Granola S5] works with no connection.
-7. Later she disconnects Granola; to-dos and meetings stay → [planned: Granola S6]. The Granola agent still answers from stored data, which she may not expect after "Disconnect". GAP: granola.md S6 "no confirm about data".
+7. Later she disconnects Granola; to-dos and meetings stay, and the card says "Rakazo keeps your meetings and to-dos." [planned: Granola S6]
 #### Variations
 - Sara connects Flow first: no stored meetings, the Granola card is on a tile she has not opened.
-- AI-data consent is off: no digest, no to-dos, no meeting tools, and no explanation shown. GAP: discovery ambiguity 12.
+- AI data sharing is switched off later: no new digests, tools withheld, and the Granola status line reads "AI data sharing off" linking to the setting.
 #### Edge Cases
-- Same meeting appears twice: a Granola note and a Flow note of one in-person call, each yielding its own to-do for the same commitment. Dedupe is by `(userId, meetingId, text)`, so two to-dos appear. GAP: granola.md S5 dedupe key is per meeting.
+- Same meeting appears twice: a Granola note and a Flow note of one in-person call yield one to-do, because dedupe is per `(userId, normalized text)`.
 - Information duplication: the same commitment appears in the agent answer, the Inbox to-do and the stored digest.
 
 ## Topic WF: Wispr Flow voice
@@ -742,8 +744,8 @@ Source: `docs/ux-paths/meetings-voice/topics/wispr-flow-voice.md`
 **Topic**: Flow as transcription provider (Flow S1b, S1c, S3a, S3b, S4)
 **Persona**: Maya, founder of Fernhill Labs (example.com); Wispr approved her organization's API access and gave her a key and hostname
 **Goal**: Have Call Elio transcribe her speech through Flow, with names from her workspace passed as hints, while Elio's voice stays on her current provider.
-**Preconditions**: Voice provider (an OpenAI key, say) connected; S1, S1b, S1c, S3a, S3b have shipped (all except S1/S2 are blocked on API access today); AI-data consent recorded at the older disclosure version; base URL connection setting in place.
-**Ideal path**: 6. Open Settings, Voice; pick transcription provider; paste key; Connect; accept the updated disclosure; start the call.
+**Preconditions**: Voice provider (an OpenAI key, say) connected; S1, S1b, S1c, S3a, S3b have shipped (all except S1/S2 are blocked on API access today); no consent recorded yet for the Flow recipient; base URL connection setting in place.
+**Ideal path**: 5. Open Settings, Voice; tap the "Transcribe only" Flow row; paste the key; Connect; start the call.
 **Alternate paths**: none found (no other way to choose a provider; WebSocket is not built).
 **Plan status**: Settings, Voice overlay [exists]; transcription row, picker, key entry, verify, clear [planned: S1b; layout GAP, see discovery ambiguity 14 and 23]; consent text and re-prompt [planned: S1c; wording GAP: the plan gives only the idea, not the sentence]; call routing to record-and-upload and WAV [planned: S3b]; Flow provider [planned: S3a]; vocabulary [planned: S4].
 **Mockup screen**: docs/wispr-flow/mockup.html#screen-settings-voice (Connected), docs/wispr-flow/mockup.html#screen-consent (Prompt), docs/wispr-flow/mockup.html#screen-call (During a call)
@@ -758,12 +760,12 @@ Source: `docs/ux-paths/meetings-voice/topics/wispr-flow-voice.md`
 8. She clicks Disconnect on the Flow row later → secret removed; transcription goes back to her voice provider; calls revert to the old routing.
 #### Variations
 - Mobile: native picker and secure entry in `(settings)/voice.tsx` (assumption from AGENTS.md; plan says "web and mobile" only).
-- She declines the updated disclosure: GAP: discovery ambiguity 15; assumption is voice is blocked as today.
-- She selects Flow before accepting new consent: any attempt to use context before consent sends audio only.
+- She later switches off AI data sharing for Flow: the Flow row reads "AI data sharing off", linking to the setting, and calls transcribe through her voice provider with no prompt until consent returns.
+- Flow cannot be selected before consent: Connect is the consent act.
 #### Edge Cases
-- Wrong key: `verify` rejects; message text not defined (GAP). Nothing is stored.
-- Wrong hostname/connection setting: error shows as a user error without the key; text GAP.
-- Consent shown during a call start vs. app launch is undefined (S1c).
+- Wrong key: `verify` rejects with "Could not connect this voice provider". Nothing is stored and no consent is recorded.
+- Wrong hostname/connection setting: the same message, without the key.
+- Consent is asked at Connect only; there is no prompt at call start.
 - Same fact in several places: provider selection (Voice row), consent recipients (AI data sharing page lists the Flow recipient), `voice.status` (hidden). Redundant status risk.
 - Vocabulary has no visible effect on providers other than Flow, so a user on OpenAI cannot see what S4 did.
 
@@ -781,7 +783,7 @@ Source: `docs/ux-paths/meetings-voice/topics/wispr-flow-voice.md`
 1. Tomas is in a call and speaks for a long stretch with no pause → utterance exceeds 6 minutes or 25 MB; request rejected before reaching Wispr; he sees a message (GAP: text).
 2. He tries again with a shorter sentence → works.
 3. Later in the day he hits the per-user daily cap → the call card shows one line, "Daily voice limit reached. You can keep typing."; Wispr is not called; no reset time.
-4. The call stays open and the card keeps the composer; Mute is disabled while blocked; the client stops uploading his speech until the next call or the reset, and the caption shows once.
+4. The call stays open and the thread composer stays available below the call card; Mute is disabled while blocked; the client stops uploading his speech until the next call or the reset, and the caption shows once.
 5. He types in the composer to continue → works; typing is unaffected.
 6. He opens Settings, Voice, and presses Disconnect on the Flow row → calls use the old provider again.
 7. Next day his counter resets → no visible reset notice.
@@ -802,7 +804,7 @@ Source: `docs/ux-paths/meetings-voice/topics/wispr-flow-voice.md`
 **Ideal path**: 1. Learn from a short message that Flow works in the composer already and that Flow as a call provider needs API access.
 **Alternate paths**: Use the Flow hotkey in the composer (WF-1); request API access from Wispr (outside Rakazo).
 **Plan status**: Settings, Voice transcription row [planned: S1b]; whether the picker lists Flow when S3a is unbuilt: GAP (discovery ambiguity 14); user-facing "blocked" message: none defined; plan says "Flow API blocked on access: issues stay filed, nothing user-visible."
-**Mockup screen**: docs/wispr-flow/mockup.html#screen-settings-voice (API access required)
+**Mockup screen**: docs/wispr-flow/mockup.html#screen-settings-voice (Connected; the row appears only when the deployment has the Flow base URL setting, so there is no blocked state)
 #### Steps
 1. Elena opens Settings, Voice → sees the existing provider list.
 2. She looks for Wispr Flow → on a deployment without the Flow base URL setting there is no Flow row; on one with it, the "Transcribe only" row is there and the app cannot tell whether she has API access.
@@ -828,21 +830,21 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 **Preconditions**: Signed in to the mobile app. Granola API key created in the Granola desktop app earlier and saved in her password manager. Granola MCP tile not connected. Granola S6 is shipped.
 **Ideal path**: 4 steps: open Settings, Integrations; open the Granola tile; paste the key into the field; tap "Connect". A key is a paste, so no other input is needed.
 **Alternate paths**: (a) Web: Integrations, Granola tile detail, the "Granola API key" card [planned: Granola S6]. (b) On the phone, "Advanced", "Add MCP server" with `https://mcp.granola.ai/mcp` [exists] is the only Granola route the mobile code has today, and it offers only a bearer token or none, not Granola's browser sign-in. (c) Pick the key up on web and finish there: "Open web app" exists only in `integration-setup.tsx` for server provider setup, not for tiles.
-**Plan status**: Open Settings, Integrations [exists]. Find the Granola tile: GAP (granola.md Surfaces says "the same RPCs back a field and status row on `apps/mobile/app/(settings)/integrations.tsx`" but mobile has no Granola tile, only server catalog tiles and Advanced; whether the new `granola-api` connector appears in `connections/catalog` is not stated). Secure field for the key [planned: Granola S6]. "Connect" [planned: Granola S6]. Status "Synced {n} meetings, {relative time}" [planned: Granola S6]. Agent appears in the bot list [planned: Granola S6, `ensureConnectedAppAgent`].
-**Mockup screen**: docs/granola/mockup.html#screen-mobile (Key card state: Empty, Connected). Its "Live questions / Signed in with Granola" group has no mobile equivalent
+**Plan status**: Settings, Integrations [exists]; dedicated Granola group with a secure key field and Connect, visible without searching [planned: Granola S6].
+**Mockup screen**: docs/granola/mockup.html#screen-mobile (Key card state: Empty, Connected). The mobile card shows only the key group
 #### Steps
-1. Maya opens the app, Settings, Integrations → a catalog with a "Search apps" field, tiles with "Add" buttons, and "Advanced" at the bottom.
-2. She types "Granola" in "Search apps" → expected by the plan: a Granola tile. GAP: today nothing in mobile code produces one. If the server catalog does list the `granola-api` connector, the tile would show the generic "Add" button, which starts the browser OAuth flow (`connections/begin`), not a key paste.
-3. She taps "Add" anyway (she sees no other button) → a browser opens to an authorization URL, or nothing opens because an API-key connector has no URL. She returns to the app and waits through a spinner on the button labelled "Working…" for up to 45 polling attempts, then sees "Connection pending" and the message "Finish connecting in the browser, then refresh this page." (existing alert). She is confused: she was told to paste a key.
-4. She opens "Advanced" → "Add MCP server" and pastes the Granola MCP address, leaves "Bearer authentication" on, and is asked for a bearer token → she pastes the Granola API key there out of habit. This is the wrong credential for the MCP address and it does not start the sync.
-5. She backs out and tries the web app on her laptop instead → the web card works as in the plan; she later sees the sync on her phone only through the agent and Inbox.
+1. Maya opens the app, Settings, Integrations → a dedicated "Granola" group is visible without searching. While disconnected, its first row reads "Rakazo keeps your meetings and to-dos.", then a secure "Granola API key" row with a muted "Business plan". [planned: Granola S6]
+2. She pastes the key into the secure field → there is no key link on the phone, because there is no detail page.
+3. She taps Connect (native action button, loading state) → the key is checked; the group footer, "Sends your meeting notes and transcripts to your AI model.", is the consent act.
+4. The status row reads "Syncing" (activity indicator), then "Synced 42 meetings"; the group then shows the status and Disconnect, not the key field.
+5. She opens the Granola agent from the bot list and asks a question; the to-dos appear in Inbox. There is no meetings screen, by design.
 #### Variations
-- If Granola S6 lands a dedicated mobile row (the mockup draws it as a "Sync" group with a secure "Granola API key" row, a "Connect" row, then a "Synced 42 meetings, 3 minutes ago" row and a red "Disconnect" row), steps 2 to 4 collapse to the ideal path.
-- Key pasted with a trailing newline from the password manager: the field must trim it (the voice screen trims, `apiKey.trim()`; the plan does not say).
+- The mobile group has no MCP rows, by decision; the sign-in is web only.
+- Key pasted with a trailing newline from the password manager: `meetings.connect` trims it server-side.
 #### Edge Cases
 - Keyboard covers the status row after "Connect"; the screen uses `keyboardShouldPersistTaps="handled"` in `ScrollView`, so a first tap still reaches "Connect".
 - The same text appears on web and on mobile: "Synced {n} meetings, {relative time}". Relative time must localize (mobile has `i18n`; plan strings are not yet in the locale files).
-- The mockup's mobile screen shows a "Live questions / Signed in with Granola / Connected" group above the key group. Mobile has no Granola MCP tile, so that group has nothing to read from.
+- The mockup's mobile screen must not draw a "Live questions / Signed in with Granola" group; mobile has no Granola MCP tile.
 
 ### STORY-MB-2: Granola rejects the key on the phone, and later needs a new one
 **Type**: medium
@@ -861,34 +863,34 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 4. He tries a second key made in the Granola desktop app → same line. He concludes Rakazo is broken.
 5. He goes back to Integrations and looks for another Granola route → on mobile there is none (see MB-1); on web there is a "Signed in with Granola" tile.
 #### Variations
-- A Business user whose key was revoked later: the status row changes from "Synced 42 meetings, 3 minutes ago" to the same rejection line after the next sync; on the phone he sees this only if he opens Integrations. No push, no badge on the Inbox.
-- Pasting a new key into the same field while connected: GAP, the plan does not say whether the field is shown while connected (granola.md ambiguity 6).
+- A Business user whose key was revoked later: the status row changes from "Synced 42 meetings" to "Reconnect needed" with the warning dot, and no red line shows until a Connect fails; on the phone he sees this only if he opens Integrations.
+- Pasting a new key while connected: the key field is not shown while connected; in "Reconnect needed" it is shown with Connect.
 #### Edge Cases
 - A pasted key that has a leading space or a quote mark is rejected with the same line; the line gives no hint.
 - Rate limited by Granola (429): the plan retries silently, so the phone shows the old sync time with no message.
-- Offline: `rpc` fails; the plan defines no text for a network failure on the card, so the user would see either nothing or the generic error style used elsewhere ("Could not connect").
+- Offline: the row shows "Could not reach Granola" and the field keeps its value.
 
 ### STORY-MB-3: Meeting-only user opens the Inbox on the phone
 **Type**: medium
 **Topic**: Granola S5 meeting to-dos, user with no mail account
 **Persona**: Priya Nair, solo founder of Kestrel Works (example.net). She uses Granola and has no Gmail account connected to Rakazo.
 **Goal**: See the follow-ups she promised in her last meeting and tick one off.
-**Preconditions**: Granola API key connected, one synced meeting with a digest, one to-do "Send Dana the revised pricing", detail "From: Pricing review, 12 Oct". AI-data consent on. Granola S5 shipped.
+**Preconditions**: Granola API key connected, one synced meeting with a digest, one to-do "Send Dana the revised pricing", detail "Pricing review, 12 Oct". AI-data consent on. Granola S5 shipped.
 **Ideal path**: 2 steps: open Inbox, tap the checkbox. The list is already there.
 **Alternate paths**: Web Inbox shows the same card [planned: Granola S5]. The Granola agent can answer "what did I promise" in chat [planned: Granola S4].
 **Plan status**: Inbox opens [exists]. To-do list for a meeting-only user [planned: Granola S5, says the list shows "with no mail account"]. Where on the screen it sits: GAP (granola.md S5 gives no layout; the mockup draws a "To do" section with no mail UI). Checkbox completes without a connected source [planned: Granola S5].
 **Mockup screen**: docs/granola/mockup.html#screen-mobile (Inbox state: Empty, With to-dos)
 #### Steps
-1. Priya opens Inbox from the app → the screen loads `inbox/list`. With zero accounts, the screen shows one button, "Connect mail". Today the to-do fetch is skipped because the code returns early when `list.accounts.length === 0` or `!list.enabled`.
-2. She sees only "Connect mail" and no to-dos → by the plan's intent she should see "To do" with three items. Today's code gives nothing.
-3. She taps "Connect mail" because it is the only control → Integrations opens. She does not want mail, so she goes back.
-4. She tries the Important/Updates pile picker → it is hidden when there are no accounts (`pilePicker` is `null` for zero accounts), so there is no pile to switch to.
+1. Priya opens Inbox → with a connected meeting source the screen shows the "To do" card (the existing `TodoCard`) above "Connect mail". [planned: Granola S5]
+2. She sees "Send Dana the revised pricing / Pricing review, 12 Oct" and the other open items.
+3. She taps the checkbox → the row leaves; completing works with no connected mail account.
+4. The pile picker stays hidden with no accounts, so there is nothing to switch.
 5. She gives up and asks the Granola agent in chat → the answer lists her commitments with the meeting title and date (planned S4).
 #### Variations
-- If S5 shows the To do card above the "Connect mail" button, step 1 is the ideal path, and the button is still present beside a working list. The plan does not say whether it should remain.
-- Empty state after connecting the source, before any digest: the mockup draws "No follow-ups from meetings yet". The plan gives no wording (granola.md S5: "an empty state for a connected meeting source").
+- The "Connect mail" button stays below the card.
+- Empty state after connecting the source and the first sync: "No follow-ups from meetings yet"; while the first sync runs, "Syncing" with an activity indicator.
 #### Edge Cases
-- Consent off: no digest, no to-dos, no message. Priya sees "Connect mail" and has no clue why. The plan does not say whether a prompt appears (granola.md ambiguity 12).
+- Consent off: stored to-dos stay visible; there is no consent control on mobile for this path, and the Granola row reads "AI data sharing off".
 - The mockup states "the mobile Inbox has no to-do component to copy today". That is not true: `TodoCard` exists in `apps/mobile/app/inbox.tsx`. The work is to feed it meeting rows, not to build a component.
 - Version skew: `InboxTodoSchema` has a required `connectionId`. An older installed app that parses strictly would reject a to-do with `connectionId: null`. The mobile code uses plain `rpc` without that parse, so it would likely just render, but this was not confirmed.
 
@@ -900,13 +902,13 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 **Preconditions**: Two mail accounts, triage on, three mail to-dos, two meeting to-dos, Granola S5 shipped.
 **Ideal path**: 2 steps plus one tick per item: open Inbox, tick items. All five show without choosing a tab.
 **Alternate paths**: Web Inbox keys to-dos by account tab as well (`todosByTab`, per discovery); the meeting to-do tab is undefined there too.
-**Plan status**: "All" tab, Important pile, To do card [exists]. Meeting to-dos in that card [planned: Granola S5]. Meeting to-dos under an account tab: GAP (granola.md S5 says to-dos are scoped by space and user "regardless of any connection's status" but mobile passes `connectionId` for a tab and the server filters on it today: `connectionId: input.connectionId ?? { in: ... }`).
+**Plan status**: "All" tab, Important pile, To do card [exists]. Meeting to-dos in that card, and under each account tab with that account's mail to-dos [planned: Granola S5].
 **Mockup screen**: none (not mocked: mixed mail and meeting to-dos, account tabs)
 #### Steps
 1. Jonas opens Inbox → "All" tab, "Important" pile. The To do card lists three mail to-dos and two meeting to-dos mixed in creation order (`orderBy createdAt asc`), if the server returns both for no `connectionId`.
-2. He reads "Send Dana the revised pricing / From: Pricing review, 12 Oct" next to a mail to-do whose line reads "Dana Cho · Revised pricing" → the card does not mark which are meeting items; the detail line is the only clue.
-3. He taps the "Work" account tab → `listMailTodos(workConnectionId)` runs. The two meeting to-dos disappear because they have no `connectionId`. The To do card shrinks to the work mail items.
-4. He assumes the meeting items were completed and never goes back to "All" that day.
+2. He reads "Send Dana the revised pricing / Pricing review, 12 Oct" next to a mail to-do whose line reads "Dana Cho · Revised pricing" → the card does not mark which are meeting items; the detail line is the only clue.
+3. He taps the "Work" account tab → the card lists Work's mail to-dos plus both meeting to-dos. [planned: Granola S5]
+4. He sees the meeting items on every tab, so nothing seems to vanish.
 5. He taps a meeting to-do's text to see the meeting → nothing happens (only the checkbox is pressable). Mail to-dos behave the same on mobile today.
 6. He taps the checkbox of a meeting to-do → the row leaves at once (optimistic), `inbox/todos/setDone` runs. If it fails, the row returns in place and `Alert` shows the error text.
 7. He pulls to refresh → the list reloads. Completed items stay hidden.
@@ -927,7 +929,7 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 **Ideal path**: 3 steps: open Settings, Voice; pick Wispr Flow as the transcription provider; paste the key and confirm.
 **Alternate paths**: Web Settings, Voice has the same row [planned: Flow S1b]. Provider rows for ElevenLabs, OpenAI, Fish Audio also transcribe today ("Speak + transcribe") and could be the transcription provider with no new setting [exists].
 **Plan status**: Open Settings, Voice [exists]. Transcription row, picker, key entry, verify, clear [planned: Flow S1b]; layout and states: GAP (wispr-flow.md S1b says only "reuses the provider-picker pattern already there"; the mobile screen has no picker, only a flat list, and picking "This device" hides the key area). Whether Flow appears for a user without access: GAP.
-**Mockup screen**: docs/wispr-flow/mockup.html#screen-mobile (Voice, Picker, Wispr Flow key, Connected, API access required)
+**Mockup screen**: docs/wispr-flow/mockup.html#screen-mobile (Voice, Wispr Flow key, Connected)
 #### Steps
 1. Lena opens Settings, Voice → "This device" row shows "On · Free, works offline"; the provider list sits below it as a real settings group (title-case header, rows of 52 pt or more), including a "Transcribe only" Flow row.
 2. She taps the Flow row → a key field (native secure field) and Connect appear; under Connect: "Sends your recordings and workspace names to Wispr Flow."
@@ -935,21 +937,22 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 4. A rejected key shows "Could not connect this voice provider"; Connect stays disabled until she edits the field; no consent is recorded.
 5. A valid key records consent; the row's status word is "Transcribing"; speech replies still use "This device", which keeps the single checkmark.
 6. Later she taps Disconnect on the Flow row → the secret is cleared and calls go back to the voice provider.
+7. If she later switches off AI data sharing for Flow, the Flow row reads "AI data sharing off", linking to the setting, and calls go through the voice provider with no prompt until consent returns.
 #### Variations
 - Lena selects ElevenLabs as her voice provider after setting up Flow: the plan says the transcription selection is independent.
-- A user without API access: S3a and S3b are blocked; the row should not offer Flow. GAP: how the app knows (no `voice/catalog` flag is in the plan).
+- A deployment without the Flow base URL setting shows no Flow row; a user without API access sees the row, and a rejected key shows "Could not connect this voice provider".
 #### Edge Cases
 - `voice.status` reports the selected transcription provider [planned: Flow S1b]. Mobile `VoiceStatus` today is `{ configured, ready, provider, voiceId }` and call code reads `{ ready, transcribe }`. Both need a new field; the plan does not name it.
 - Android users see the same screen; Flow on Android is out of scope (wispr-flow.md "not built"), so the row would show for Android users with no benefit.
-- The Voice settings subtitle on each row reads "Speak + transcribe" or "Speak only". A transcription-only provider fits neither phrase; GAP.
+- The Flow row's subtitle is "Transcribe only", so it does not claim to speak.
 
 ### STORY-MB-6: Call Elio with Flow selected, on a phone that can recognize speech itself
 **Type**: long
 **Topic**: Flow S3b call routing, S1c consent, mobile
 **Persona**: Lena Fischer again, a week later, driving mode off, headphones in.
 **Goal**: Talk to Elio and have Flow, not Apple's recognizer, transcribe her speech.
-**Preconditions**: Flow selected as transcription provider (MB-5). Flow S3a and S3b shipped. iOS speech recognition permission granted. "This device" voice on. AI disclosure version bumped by S1c; Lena has not seen the new text.
-**Ideal path**: 2 steps: tap "Call Elio"; talk. Routing and consent happen without extra choices, except one consent prompt the first time.
+**Preconditions**: Flow selected as transcription provider (MB-5), consent recorded at Connect. Flow S3a and S3b shipped. iOS speech recognition permission granted. "This device" voice on.
+**Ideal path**: 2 steps: tap "Call Elio"; talk. Routing and consent need no extra choices and no prompt.
 **Alternate paths**: Web `Shell.tsx` "Call Elio" with `webSpeechAvailable()` [planned: Flow S3b]. Without Flow selected the phone routes as today.
 **Plan status**: "Call Elio" button [exists]. Server routing when a server provider needs WAV, even where native recognition is available [planned: Flow S3b]. 16 kHz mono WAV capture on iOS [planned: Flow S3b, "unverified until run on device"]. Consent re-prompt: wording [planned: Flow S1c]; where it appears on mobile: GAP (wispr-flow.md S1c).
 **Mockup screen**: docs/wispr-flow/mockup.html#screen-mobile (Connected); call routing is not drawn
@@ -959,13 +962,13 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 3. The call connects → `startCall` runs with `transcribe` true; in `openMic` the recorder runs before native recognition for this provider.
 4. She speaks → `recordClip` records 16 kHz mono WAV, stops after 1.2 seconds of quiet or 30 seconds, and uploads [unverified on device].
 5. The reply plays → no consent prompt appears: consent for Flow was recorded at Connect.
-6. If she had switched off AI data sharing, the next call shows the existing consent prompt; "Not now" mutes the call and holds for an explicit retry, and no audio reaches Flow without consent (the server rejects it with the typed consent error).
+6. If she had switched off AI data sharing for Flow, the Flow row reads "AI data sharing off" and the call transcribes through her voice provider with no prompt; no audio reaches Flow without consent (the server rejects with the typed consent error).
 7. If the daily cap is reached, the caption shows "Daily voice limit reached. You can keep typing." once; the cap error does not count toward `MAX_TURN_FAILURES`, the call stays open for typing, and the phone stops uploading until the next call or the reset.
 #### Variations
 - Native recognition denied in iOS Settings and Flow not selected: the existing alert "Calls need transcription" (text: "Allow speech recognition in Settings, or connect ElevenLabs, OpenAI, or Fish Audio.") still omits Flow.
 - Call over cellular with a 6 minute uninterrupted turn: the mobile cap is 30 seconds per turn, so the Flow 6 minute limit is never reached from this path. The plan's "over 6 minutes is rejected" has no mobile trigger.
 #### Edge Cases
-- Daily seconds cap reached [planned: Flow S3a]: a call turn fails. The mobile call shows `errorText(error)` as a caption ("Could not hear that." is the fallback), and after repeated failures `MAX_TURN_FAILURES` ends the call. The plan defines the message text but no reset time.
+- Daily seconds cap reached [planned: Flow S3a]: the caption shows "Daily voice limit reached. You can keep typing." once, the error does not count toward `MAX_TURN_FAILURES`, and the call stays open for typing.
 - Format rejection (non-WAV): mobile can only hit it if WAV capture silently falls back to m4a. The plan (ambiguity 17) lists this as unreachable by choice.
 - The microphone is also in use by the Flow keyboard if she left it open in another app; the plan says S6 only records this.
 
@@ -1022,16 +1025,16 @@ Source: `docs/ux-paths/meetings-voice/topics/mobile.md`
 **Topic**: Granola agent provisioning, Flow S5 meetings, mobile degradation
 **Persona**: Maya Okafor (MB-1) in a taxi, wanting a pre-meeting brief.
 **Goal**: Ask "what did we agree with Dana last month" and get an answer that cites the meeting.
-**Preconditions**: Granola API key connected on web; sync done; AI-data consent on. Maya also removed her MCP-tile Granola agent last week by mistake.
+**Preconditions**: Granola API key connected on web; sync done; AI data consent on. Maya also removed her Granola agent last week by mistake.
 **Ideal path**: 3 steps: open the Granola agent, type the question, read the cited answer.
 **Alternate paths**: Another agent asks the Granola agent through `message_bot` [planned: Granola S4]. Wispr Flow users ask the Flow agent after Flow S5, if that slice ships.
 **Plan status**: Bot list on mobile [exists]. Granola agent for the API-key connection [planned: Granola S6]. Meeting tools and cited answer [planned: Granola S4]. "Create agent" repair [exists on web `McpDetail`; not found in mobile]. The mobile detail shows `ConnectionAgent` only when the connection has `agentBotId`.
 **Mockup screen**: none (not mocked)
 #### Steps
-1. Maya opens the bot list → the Granola agent from the API-key connection is there, created once on connect (planned S6).
-2. She also sees an older Granola agent if she had the MCP tile; the two are distinguished only by account label (granola.md open question).
+1. Maya opens the bot list → the Granola agent is there, attached or created when she connected (planned S6).
+2. There is one Granola agent, serving both routes if the MCP tile is also connected.
 3. She opens the agent and types the question → the agent answers from stored meetings, with the meeting title and date. Tapping the citation does nothing on mobile; the mockup's citation popover is a web design.
-4. In another case her API-key agent was deleted → sync continues; there is no agent to ask. She looks for "Create agent". On mobile Integrations, the connection detail shows an agent only when `agentBotId` is set, so there is no create button. GAP: mobile has no repair path from the phone.
+4. In another case her agent was deleted → sync continues; there is no agent to ask. The phone has no "Create agent" in the first release, by decision; she repairs it from web or Electron.
 5. She asks a different bot about the meeting → that bot cannot read meetings; it may answer that it has no access or ask the meeting agent via `message_bot` if the user has one.
 #### Variations
 - Flow-only user: the Flow tile is web-only on mobile, so the phone cannot connect Flow. After connecting on web, the Flow agent appears in the bot list and answers (planned Flow S5; may not ship if tool shapes cannot be mapped).

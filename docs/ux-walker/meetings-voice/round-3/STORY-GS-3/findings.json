@@ -1,0 +1,23 @@
+{
+  "story_id": "STORY-GS-3",
+  "round": 3,
+  "result": "OUTDATED",
+  "round2_status": [],
+  "findings": [
+    {
+      "id": "F3-GS-3-01",
+      "severity": "medium",
+      "category": "state",
+      "criterion": "State coverage",
+      "score": "warn",
+      "kind": "mockup",
+      "description": "The detail page with both routes connected is not drawn. It would carry two Disconnect buttons (MCP card, key card) with different effects: the MCP one signs out of Granola, the key one stops sync and keeps stored meetings. Nothing tells them apart.",
+      "expected": "The journey step has a drawn, unambiguous surface.",
+      "actual": "The detail page with both routes connected is not drawn. It would carry two Disconnect buttons (MCP card, key card) with different effects: the MCP one signs out of Granola, the key one stops sync and keeps stored meetings. Nothing tells them apart.",
+      "screenshot": "g-d-api-key-mcp.png",
+      "suggested_fix": "Draw a 'Both connected' frame and label the buttons or the cards so the effects are distinguishable (for example the key card's sentence 'Rakazo keeps your meetings and to-dos.' appears only after its Disconnect).",
+      "files_likely_involved": [],
+      "jf": "NEW"
+    }
+  ]
+}

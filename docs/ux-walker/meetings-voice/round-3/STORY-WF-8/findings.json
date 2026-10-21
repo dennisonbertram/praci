@@ -1,0 +1,32 @@
+{
+  "story": "STORY-WF-8",
+  "round": 3,
+  "verdict": "PASS",
+  "round2_dispositions": [
+    {
+      "id": "F-WF-8-1",
+      "sev": "high",
+      "status": "fixed",
+      "evidence": "Round 1 high (misleading \"API access required\" state) is gone; the rejected line is the existing generic message (step-voice-rejected.png)."
+    },
+    {
+      "id": "F-WF-8-2",
+      "sev": "medium",
+      "status": "obsolete",
+      "evidence": "Blocked state removed by D3."
+    },
+    {
+      "id": "F-WF-8-3",
+      "sev": "low",
+      "status": "obsolete",
+      "evidence": "Blocked state removed by D3."
+    },
+    {
+      "id": "F2-WF-8-1",
+      "sev": "medium",
+      "status": "still-open",
+      "evidence": "A user with a consumer Flow Pro account and no API access still meets the generic \"Could not connect this voice provider\" with no next step. The plan accepts this because the app cannot know. Not a blocker; a journey weakness."
+    }
+  ],
+  "new_findings": []
+}

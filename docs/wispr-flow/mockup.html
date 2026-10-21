@@ -60,7 +60,7 @@ a{color:inherit}
 .sh .sw{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
 .note{color:var(--muted-fg);font-size:12px;margin:8px 0 0;max-width:720px}
 /* app window */
-.win{display:grid;grid-template-columns:200px 1fr;border:1px solid var(--border);border-radius:12px;overflow:hidden;min-height:300px;background:var(--background)}
+.win{position:relative;display:grid;grid-template-columns:200px 1fr;border:1px solid var(--border);border-radius:12px;overflow:hidden;min-height:300px;background:var(--background)}
 .win.nosb{grid-template-columns:1fr}
 .win .side{background:var(--sidebar);border-right:1px solid var(--border);padding:10px 8px;display:flex;flex-direction:column;gap:2px}
 .row{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px}
@@ -122,6 +122,7 @@ a.tile{text-decoration:none;color:inherit}
 .anchor{position:relative;display:inline-block}
 .anchor .pop{position:absolute;top:100%;left:0;margin-top:6px;z-index:4;max-width:min(280px,calc(100vw - 72px))}
 .composer{margin-top:18px;max-width:640px;border:1px solid var(--border);border-radius:12px;padding:10px 12px;color:var(--muted-fg);background:var(--card)}
+.pop a{display:inline-flex;align-items:center;min-height:32px}
 .pop{border:1px solid var(--border);background:var(--card);border-radius:10px;padding:10px 12px;box-shadow:0 8px 24px rgba(0,0,0,.14);width:fit-content;min-width:240px;display:flex;flex-direction:column;gap:2px}
 /* to-do card */
 .todo h2{font-size:12px;margin:0 0 4px;color:var(--muted-fg);font-weight:600}
@@ -191,7 +192,20 @@ a.tile{text-decoration:none;color:inherit}
   .sh .sw{margin-left:0}
 }
 @media (max-width:430px){.phone{width:100%;max-width:390px}}
-@media (max-width:560px){.anchor{position:static}.anchor .pop{left:16px;right:16px;width:auto;max-width:none}}
+@media (max-width:560px){
+  .pane{position:static}
+  .anchor{position:static}
+  .anchor .pop{position:absolute;top:auto;bottom:0;left:0;right:0;margin:0;width:auto;max-width:none;border-width:1px 0 0;border-radius:12px 12px 0 0;padding:14px 16px 16px;gap:6px;box-shadow:0 -8px 24px rgba(0,0,0,.18)}
+  .anchor .pop a,.anchor .pop .btn{min-height:44px}
+}
+@media (max-width:620px){.vkey{padding-top:0!important}}
+.vsplit{display:flex;gap:8px 20px;flex-wrap:wrap}
+.ir .tr.ok-t{color:var(--success)}
+a.ir{text-decoration:none;color:inherit}
+.prow.sp{padding:0 14px 0 0;gap:0}
+.prow .rb{flex:1;display:flex;align-items:center;min-height:44px;padding:8px 14px;background:transparent;border:0;text-align:left;color:inherit}
+.prow .st{display:inline-flex;align-items:center;min-height:44px;padding-left:8px;font-size:12px;white-space:nowrap}
+.prow .st.warn{color:var(--warning)}
 .prow{display:flex;gap:12px;align-items:center;width:100%;min-height:44px;padding:8px 14px;background:transparent;border:0;border-top:1px solid var(--border);text-align:left;color:inherit}
 .prow:first-child{border-top:0}.prow .grow{flex:1}.prow small{color:var(--muted-fg);display:block}.prow.sel{background:var(--muted);box-shadow:inset 3px 0 0 var(--fg)}
 </style>
@@ -212,7 +226,7 @@ a.tile{text-decoration:none;color:inherit}
 <section class="screen" id="screen-settings-voice">
   <header class="sh"><h2>1 Settings, Voice: Wispr Flow in the providers list</h2>
     <div class="sw" role="group" aria-label="State">
-      <button class="pill on" data-s="default">Default</button><button class="pill" data-s="empty">Wispr Flow, no key</button><button class="pill" data-s="verifying">Verifying</button><button class="pill" data-s="connected">Connected</button><button class="pill" data-s="rejected">Key rejected</button>
+      <button class="pill on" data-s="default">Default</button><button class="pill" data-s="empty">Wispr Flow, no key</button><button class="pill" data-s="verifying">Verifying</button><button class="pill" data-s="connected">Connected</button><button class="pill" data-s="aioff">AI data sharing off</button><button class="pill" data-s="rejected">Key rejected</button>
     </div></header>
   <!--
   D3 / FX-64: Flow is one row in the existing Voice providers list, labelled "Transcribe only" (it mirrors "Speak only"). There is no separate "Transcription" selector, no "Connected" badge inside the card and no "API access required" state. A rejected key and an unapproved organization both show the existing line "Could not connect this voice provider".
@@ -220,12 +234,13 @@ a.tile{text-decoration:none;color:inherit}
   The Flow key pane is the existing provider key pane: API key, Connect. One sentence under Connect lists only the fields sent (FX-42, RX-25: calls send no text from the screen). Consent is asked once, here, for this recipient (D3); the consent is recorded after the key verifies (the sentence is read before pressing Connect). The sentence stays visible while verifying and after a rejection, and is not shown once connected. New copy for the PR to quote: "Transcribe only", "Transcribing", "Sends your recordings and workspace names to Wispr Flow."
   RX-54 / RX-26: once connected, Flow is the transcriber, so its row status reads "Transcribing". The ElevenLabs row keeps its own status and still describes speech. Disconnect on the Flow row is the way back. The selected row carries aria-current and a 3 px bar, visible at 3:1 or better in light and dark.
   RX-55: after a rejection the key stays in the field and Connect stays disabled until the field is edited (editing clears the line and the red border). Verifying disables the field and the button and shows the AI shimmer on the button text.
+  TX-16: the Flow key pane has the header "Wispr Flow". TX-4 / TX-20: if consent for the Flow recipient is turned off (screen 2), the Flow row status reads "AI data sharing off" and links to that setting, mirroring Granola; the key stays stored and transcription falls back to the voice provider with no prompt until consent returns. TX-19: at 620 px and below the list and the key pane stack with an 8 px gap.
   Users who never choose Flow see no change: the "Default" state shows the list with one extra row and the ElevenLabs pane as today.
   -->
   <div class="win nosb">
     <div class="pane">
       <div class="pr" style="padding:0 0 14px;border:0"><h1 style="margin:0;flex:1">Voice</h1><button class="btn ghost" aria-label="Close voice settings">✕</button></div>
-      <div style="display:flex;gap:20px;flex-wrap:wrap">
+      <div class="vsplit">
         <div style="width:280px;max-width:100%">
           <div class="mut" style="margin-bottom:8px">Providers</div>
           <div class="panel" style="overflow:hidden">
@@ -233,17 +248,19 @@ a.tile{text-decoration:none;color:inherit}
             <button class="prow" data-s="default"><div class="grow">OpenAI<small>Speak + transcribe</small></div></button>
             <button class="prow" data-s="default"><div class="grow">Fish Audio<small>Speak + transcribe</small></div></button>
             <button class="prow" data-s="default"><div class="grow">Cartesia<small>Speak only</small></div></button>
-            <button class="prow" data-s="empty" data-sel="empty verifying connected rejected"><div class="grow">Wispr Flow<small>Transcribe only</small></div><span class="ok-t" style="font-size:12px" data-st="connected" hidden>Transcribing</span></button>
+            <div class="prow sp" data-sel="empty verifying connected aioff rejected"><button class="rb" data-s="empty"><span class="grow">Wispr Flow<small>Transcribe only</small></span></button><span class="st ok-t" data-st="connected" hidden>Transcribing</span><a class="st warn" href="#screen-consent" data-go="screen-consent:off" data-st="aioff" hidden>AI data sharing off</a></div>
           </div>
         </div>
-        <div style="flex:1;min-width:260px;max-width:460px;padding-top:28px">
+        <div class="vkey" style="flex:1;min-width:260px;max-width:460px;padding-top:28px">
           <div class="card" data-st="default">
+            <h2 style="font-size:14px;margin:0 0 8px">ElevenLabs</h2>
             <label class="fld" style="margin:0"><span>API key</span><input class="f" type="password" autocomplete="off" placeholder="Paste a replacement key" aria-label="API key"></label>
             <label class="fld" style="margin:0"><span>Voice</span><select class="f" aria-label="Voice"><option>Rachel</option></select></label>
             <label class="fld" style="margin:0"><span>Speech model</span><select class="f" aria-label="Speech model"><option>Multilingual v2</option></select></label>
             <div><button class="btn">Hear a sample</button></div>
           </div>
-          <div class="card" data-st="empty verifying connected rejected" hidden>
+          <div class="card" data-st="empty verifying connected aioff rejected" hidden>
+            <h2 style="font-size:14px;margin:0 0 8px">Wispr Flow</h2>
             <div data-st="empty" hidden>
               <label class="fld"><span>API key</span><input class="f" type="password" autocomplete="off" aria-label="API key"></label>
               <button class="btn pri kb" disabled data-dim>Connect</button>
@@ -254,7 +271,7 @@ a.tile{text-decoration:none;color:inherit}
               <button class="btn pri kb" disabled><span class="shim">Connecting…</span></button>
               <p class="mut" style="margin:8px 0 0">Sends your recordings and workspace names to Wispr Flow.</p>
             </div>
-            <div data-st="connected" hidden>
+            <div data-st="connected aioff" hidden>
               <label class="fld"><span>API key</span><input class="f" type="password" autocomplete="off" placeholder="Paste a replacement key" aria-label="API key"></label>
               <div style="display:flex;gap:8px;align-items:center"><button class="btn pri" disabled>Replace key</button><button class="btn sm bad" data-s="default">Disconnect</button></div>
             </div>
@@ -273,18 +290,22 @@ a.tile{text-decoration:none;color:inherit}
 
 <!-- 2 -->
 <section class="screen" id="screen-consent">
-  <header class="sh"><h2>2 AI data sharing</h2></header>
+  <header class="sh"><h2>2 AI data sharing</h2>
+    <div class="sw" role="group" aria-label="State">
+      <button class="pill on" data-s="on">All on</button><button class="pill" data-s="off">Wispr Flow off</button><button class="pill" data-s="model">Anthropic off</button>
+    </div></header>
   <!--
   D3 / FX-65: there is no Inbox consent card and no "Voice sharing has changed" heading, and no global disclosure-version bump. Consent for Flow is asked once, at Connect (screen 1), per recipient.
-  This is the existing AI data sharing setting with one more recipient row. The "Wispr Flow" row appears only after the Flow key is connected; its detail text is invented. Turning it off makes /api/voice/transcribe reject Flow requests, and both clients show the existing consent prompt.
+  This is the existing AI data sharing setting with one more recipient row. The "Wispr Flow" row appears only after the Flow key is connected; its detail text is invented. Turning it off makes /api/voice/transcribe reject Flow requests; transcription falls back to the voice provider with no prompt (TX-4), and the Flow row in Voice settings reads "AI data sharing off" with a link back here. The states are the toggles in each position. The "Anthropic" row is the AI model recipient (rows follow AiDataSharing.tsx: switch, name, detail); Granola's "AI data sharing off" opens the "Anthropic off" state.
   Users who never connect Flow see nothing new.
   -->
   <div class="win" data-sidebar="Settings" data-bots="Research agent">
     <div class="pane">
       <h1 style="font-size:15px">AI data sharing</h1>
       <div class="panel" style="max-width:560px;margin-top:10px">
-        <div class="pr"><div class="grow"><b>ElevenLabs</b><small>Voice · recordings and text you play</small></div><button class="tgl" role="switch" aria-checked="true" aria-label="Allow ElevenLabs"></button></div>
-        <div class="pr"><div class="grow"><b>Wispr Flow</b><small>Voice · recordings and workspace names</small></div><button class="tgl" role="switch" aria-checked="true" aria-label="Allow Wispr Flow"></button></div>
+        <div class="pr"><button class="tgl" role="switch" aria-checked="true" aria-label="Allow Anthropic, Model" data-st="on off" data-s="model"></button><button class="tgl" role="switch" aria-checked="false" aria-label="Allow Anthropic, Model" data-st="model" data-s="on" hidden></button><div class="grow"><b>Anthropic</b><small>Model</small></div></div>
+        <div class="pr"><button class="tgl" role="switch" aria-checked="true" aria-label="Allow ElevenLabs, Voice" data-st="on off model"></button><div class="grow"><b>ElevenLabs</b><small>Voice · recordings and text you play</small></div></div>
+        <div class="pr"><button class="tgl" role="switch" aria-checked="true" aria-label="Allow Wispr Flow, Voice" data-st="on model" data-s="off"></button><button class="tgl" role="switch" aria-checked="false" aria-label="Allow Wispr Flow, Voice" data-st="off" data-s="on" hidden></button><div class="grow"><b>Wispr Flow</b><small>Voice · recordings and workspace names</small></div></div>
       </div>
     </div>
   </div>
@@ -297,7 +318,7 @@ a.tile{text-decoration:none;color:inherit}
       <button class="pill on" data-s="normal">During a call</button><button class="pill" data-s="cap">Daily limit reached</button>
     </div></header>
   <!--
-  FX-66 / RX-27 / RX-56: with Flow transcription the call looks the same as today, so no footnote is drawn. The only visible change is the daily cap: one line in the call card through the existing error-caption path, saying that typing still works, with no reset time (FX-45). The call card keeps the composer, Mute is disabled while blocked, and on the phone the call stays open for typing (D-5). Typing in the composer must still work while the call is blocked (a test in S3a). New copy for the PR to quote: "Daily voice limit reached. You can keep typing." The alert shows only in the Daily limit state.
+  FX-66 / RX-27 / RX-56: with Flow transcription the call looks the same as today, so no footnote is drawn. The only visible change is the daily cap: one line in the call card through the existing error-caption path, saying that typing still works, with no reset time (FX-45). TX-5 / TX-20: the call card has no input. The thread composer below the card stays available, so typing works while the call is blocked. Mute is disabled while blocked, and on the phone the call stays open for typing (D-5). Typing in the composer must still work while the call is blocked (a test in S3a). New copy for the PR to quote: "Daily voice limit reached. You can keep typing." The alert shows only in the Daily limit state.
   The unsupported-format message is not drawn: the recorder produces WAV itself, so the user does not meet it.
   -->
   <div class="win" data-sidebar="Elio" data-bots="Elio">
@@ -308,8 +329,8 @@ a.tile{text-decoration:none;color:inherit}
         <div data-st="normal" class="mut">Can you move my two o'clock with Dana to Thursday?</div>
         <div data-st="cap" hidden class="err-t" role="alert">Daily voice limit reached. You can keep typing.</div>
         <div style="display:flex;gap:8px;margin-top:6px"><button class="btn sm" data-st="normal">Mute</button><button class="btn sm" data-st="cap" disabled hidden>Mute</button><button class="btn sm bad">End</button></div>
-        <div class="composer" data-st="cap" hidden style="width:100%;margin-top:6px;text-align:left">Ask Elio</div>
       </div>
+      <div class="composer" style="max-width:380px">Ask Elio</div>
     </div>
   </div>
 </section>
@@ -323,6 +344,7 @@ a.tile{text-decoration:none;color:inherit}
   <!--
   The Flow tile, preset and agent already exist; the plan adds the sync into the shared meetings store with no visible change to the tile. No sync status is shown for Flow (FX-47).
   Agent answer: "Security sync" is a Wispr Flow meeting and "Vendor call" is a Granola meeting. The answer does not say which is which (FX-11: the provider is only the chip's hover title, set as the chip's title attribute, RX-57). The Flow agent and the Granola agent read the same stored meetings and either answers any meeting question (FX-48); there is one Granola agent (D2). Chips are 32 px high filled pills. The Flow bot and the Granola bot have different identity colours (RX-60).
+  TX-7 / TX-8: the popover shows the meeting title and date, closes on Escape or a click outside, opens as a bottom sheet inside the window at 560 px and below, and the layout does not move when it opens.
   Citation: a Flow meeting has no known source link, so its popover has no "Open in" row but still offers Delete (RX-57, see Granola screen 5). The confirmation names the meeting and says the note in Wispr Flow is not changed (RX-3, with the provider name swapped in). New copy for the PR to quote: "Delete", Delete "{meeting title}"?, "Removes this meeting and its to-dos from Rakazo. Your note in Wispr Flow is not changed.", "Cancel".
   Inbox: the first to-do comes from a Wispr Flow meeting and the second from a Granola meeting. They share one list, and a promise recorded by both sources gives one row (FX-18). The detail line has no "From:" prefix (RX-58). A meeting-only user sees the "Connect mail" card below the To do card (FX-14); with a mail account the To do card sits above the account tabs.
   Plan S5 may stop after pinning the tool allowlist if Flow's output cannot be mapped (FX-47); then the agent answer and Inbox states would not exist for Flow.
@@ -345,14 +367,14 @@ a.tile{text-decoration:none;color:inherit}
           <div class="bm"><span class="av bot bot2">W</span><div class="body">
             <span class="tool">Searched meetings</span>
             <div>Two meetings covered it. The team agreed to start the review after the vendor sends its questionnaire. <span class="anchor"><button class="cite" title="Wispr Flow" data-s="cite" aria-haspopup="dialog">Security sync, 14 Oct</button>
-              <span class="pop" role="dialog" aria-label="Security sync" data-st="cite" hidden>
+              <span class="pop" role="dialog" aria-label="Security sync" data-st="cite" data-close="agent" hidden>
+                <b>Security sync, 14 Oct</b>
                 <span class="mut">Priya Natarajan, you</span>
                 <button class="btn sm bad" data-s="confirm" style="align-self:flex-start">Delete</button>
               </span></span></div>
             <div>The vendor said the questionnaire will arrive next week. <a class="cite" title="Granola" href="#screen-flow-meetings">Vendor call, 16 Oct</a></div>
           </div></div>
         </div>
-        <div style="min-height:70px" aria-hidden="true" data-st="cite" hidden></div>
         <div class="composer">Ask Wispr Flow agent</div>
       </div>
       <div class="scrim" role="alertdialog" aria-label="Delete Security sync" data-st="confirm" hidden>
@@ -385,7 +407,7 @@ a.tile{text-decoration:none;color:inherit}
   <header class="sh"><h2>5 Mobile: Voice settings</h2></header>
   <!--
   The frame stands for native SwiftUI/Expo UI: a grouped List, a SecureField row and native back with Liquid Glass chrome (the round back button is a glass control, 44 pt; the system draws the real one).
-  D3 / FX-67 / RX-59: there is no "Transcription" row and no picker. Flow is a "Transcribe only" row in the providers list. "This device" is a checkmark row (apps/mobile/app/(settings)/voice.tsx:334, a Pressable, not a switch) and keeps the single checkmark in every state, even before the key verifies. The Flow row never takes the checkmark; it shows only its own status, "Transcribing" once connected. "works offline" drops from the "This device" subtitle only when Flow is connected (FX-44: the server provider wins for listening). The Flow key rows follow the Flow row without a repeated header.
+  D3 / FX-67 / RX-59: there is no "Transcription" row and no picker. Flow is a "Transcribe only" row in the providers list. "This device" is a checkmark row (apps/mobile/app/(settings)/voice.tsx:334, a Pressable, not a switch) and keeps the single checkmark in every state, even before the key verifies. The Flow row never takes the checkmark; it shows only its own status, "Transcribing" once connected. "works offline" drops from the "This device" subtitle only when Flow is connected (FX-44: the server provider wins for listening). TX-16: the Flow key rows sit under a "Wispr Flow" group header, so Disconnect clearly belongs to Flow. TX-18: "Transcribing" and "Connected" use the success colour, as on the web, and Fish Audio is in the list. TX-4: with consent off the Flow row reads "AI data sharing off" and opens the setting; transcription falls back to the voice provider with no prompt, so "This device" reads "Free".
   RX-59: the group is the real SettingsGroup: title-case 13 pt header, rows of 52 pt or more, Connect as a NativeActionButton (full-width prominent button with a progress indicator while connecting), a 44 pt back control. The 14 pt subtitle under each row title is native secondary text.
   RX-29: Connect is dimmed while the field is empty and, after a rejection, until the key is edited (editing clears the error line). The consent sentence is the group footer in key, verifying and rejected, and is gone once connected. A rejected key shows the existing line in the destructive colour.
   The provider pane's own menus (Voice, Speech model) are native inline menus in the app; Flow has none, so none is drawn.
@@ -393,26 +415,29 @@ a.tile{text-decoration:none;color:inherit}
   <div class="phones">
     <div class="phonewrap" data-scope>
       <div class="sw" role="group" aria-label="State">
-        <button class="pill on" data-s="list">Voice</button><button class="pill" data-s="key">Wispr Flow, key</button><button class="pill" data-s="verifying">Verifying</button><button class="pill" data-s="rejected">Key rejected</button><button class="pill" data-s="connected">Connected</button>
+        <button class="pill on" data-s="list">Voice</button><button class="pill" data-s="key">Wispr Flow, key</button><button class="pill" data-s="verifying">Verifying</button><button class="pill" data-s="rejected">Key rejected</button><button class="pill" data-s="connected">Connected</button><button class="pill" data-s="aioff">AI data sharing off</button>
       </div>
       <div class="phone">
         <div class="sbar"><span>9:41</span><span>●●●</span></div>
         <div class="nav"><span class="glass bk" role="button" aria-label="Back">‹</span><span class="tt"></span><span style="width:44px"></span></div>
         <div class="large">Voice</div>
         <div class="pbody">
-          <div class="ig"><div class="ir" data-s="list" role="button" tabindex="0"><div class="g">This device<small data-st="list key verifying rejected">Free, works offline</small><small data-st="connected" hidden>Free</small></div><div class="tr chk">✓</div></div></div>
+          <div class="ig"><div class="ir" data-s="list" role="button" tabindex="0"><div class="g">This device<small data-st="list key verifying rejected">Free, works offline</small><small data-st="connected aioff" hidden>Free</small></div><div class="tr chk">✓</div></div></div>
           <div class="ih">Providers</div>
           <div class="ig">
-            <div class="ir"><div class="g">ElevenLabs<small>Speak + transcribe</small></div><div class="tr">Connected</div></div>
+            <div class="ir"><div class="g">ElevenLabs<small>Speak + transcribe</small></div><div class="tr ok-t">Connected</div></div>
             <div class="ir"><div class="g">OpenAI<small>Speak + transcribe</small></div></div>
+            <div class="ir"><div class="g">Fish Audio<small>Speak + transcribe</small></div></div>
             <div class="ir"><div class="g">Cartesia<small>Speak only</small></div></div>
-            <div class="ir" data-s="key" role="button" tabindex="0"><div class="g">Wispr Flow<small>Transcribe only</small></div><div class="tr ok-t" data-st="connected" hidden>Transcribing</div></div>
+            <div class="ir" data-st="list key verifying rejected connected" data-s="key" role="button" tabindex="0"><div class="g">Wispr Flow<small>Transcribe only</small></div><div class="tr ok-t" data-st="connected" hidden>Transcribing</div></div>
+            <a class="ir" href="#screen-consent" data-go="screen-consent:off" data-st="aioff" hidden><div class="g">Wispr Flow<small>Transcribe only</small></div><div class="tr" style="color:var(--warning)">AI data sharing off</div><span class="chev"></span></a>
           </div>
-          <div data-st="key verifying rejected connected" hidden>
+          <div data-st="key verifying rejected connected aioff" hidden>
+            <div class="ih">Wispr Flow</div>
             <div data-st="key" hidden><div class="ig"><div class="ir"><input type="password" autocomplete="off" aria-label="API key" placeholder="API key"></div></div><div class="nab dim" data-dim role="button" tabindex="0">Connect</div><div class="if">Sends your recordings and workspace names to Wispr Flow.</div></div>
             <div data-st="verifying" hidden data-auto="connected"><div class="ig"><div class="ir"><input type="password" autocomplete="off" aria-label="API key" placeholder="API key" value="flow_example_key_000" disabled></div></div><div class="nab dim"><span class="spin"></span>Connecting…</div><div class="if">Sends your recordings and workspace names to Wispr Flow.</div></div>
             <div data-st="rejected" hidden><div class="ig"><div class="ir"><input type="password" autocomplete="off" aria-label="API key" placeholder="API key" value="flow_example_key_000"></div></div><div class="if err-t">Could not connect this voice provider</div><div class="nab dim" data-dim role="button" tabindex="0">Connect</div><div class="if">Sends your recordings and workspace names to Wispr Flow.</div></div>
-            <div data-st="connected" hidden><div class="ig"><div class="ir link dst" data-s="list" role="button" tabindex="0">Disconnect</div></div></div>
+            <div data-st="connected aioff" hidden><div class="ig"><div class="ir link dst" data-s="list" role="button" tabindex="0">Disconnect</div></div></div>
           </div>
         </div>
         <div class="homebar"></div>
@@ -435,7 +460,16 @@ a.tile{text-decoration:none;color:inherit}
     sc.querySelectorAll('input[aria-invalid]').forEach(function(i){i.setAttribute('aria-invalid','true');i.style.borderColor='var(--destructive)'});
     sc.querySelectorAll('[data-dim]').forEach(function(b){if(b.tagName==='BUTTON'){b.disabled=true;b.removeAttribute('data-s')}else{b.classList.add('dim');b.removeAttribute('data-s')}});
   }
+  function closePop(focus){
+    var p=document.querySelector('.pop[data-close]:not([hidden])');if(!p)return;
+    setState(p.closest('section'),p.dataset.close);
+    if(focus){var c=p.parentNode.querySelector('.cite');if(c)c.focus()}
+  }
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closePop(true)});
   document.addEventListener('click',function(e){
+    if(!e.target.closest('.anchor'))closePop(false);
+    var g=e.target.closest('[data-go]');
+    if(g){var q=g.dataset.go.split(':');setState(document.getElementById(q[0]),q[1])}
     var t=e.target.closest('[data-s]');
     if(t){var sc=t.closest('[data-scope]')||t.closest('section');setState(sc,t.dataset.s);}
     var th=e.target.closest('#theme');
@@ -459,7 +493,7 @@ a.tile{text-decoration:none;color:inherit}
     if(i.hasAttribute('aria-invalid')){i.removeAttribute('aria-invalid');i.style.borderColor=''}
     var b=blk&&blk.querySelector('button[data-dim]');if(b){b.disabled=!i.value;if(i.value)b.dataset.s='verifying';else b.removeAttribute('data-s')}
   });
-  document.querySelectorAll('.tgl').forEach(function(b){b.addEventListener('click',function(){b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true')})});
+  document.querySelectorAll('.tgl:not([data-s])').forEach(function(b){b.addEventListener('click',function(){b.setAttribute('aria-checked',b.getAttribute('aria-checked')!=='true')})});
   document.querySelectorAll('[data-sidebar]').forEach(function(w){
     var a=w.dataset.sidebar,bots=(w.dataset.bots||'Granola agent').split('|');
     var h='<div class="side"><div class="row" style="color:var(--muted-fg)">Search</div>'+
@@ -468,6 +502,8 @@ a.tile{text-decoration:none;color:inherit}
     h+='<div style="flex:1"></div><div class="row'+(a==='Integrations'?' active':'')+'" data-row="Integrations">Integrations</div></div>';
     w.insertAdjacentHTML('afterbegin',h);
   });
+  function fromHash(){if(location.hash==='#screen-consent-model'){var c=document.getElementById('screen-consent');setState(c,'model');c.scrollIntoView()}}
+  fromHash();addEventListener('hashchange',fromHash);
   document.querySelectorAll('[data-scope],section.screen').forEach(function(sc){
     var on=sc.querySelector('.pill[data-s].on');
     if(on&&(sc.matches('[data-scope]')||!sc.querySelector('[data-scope]')))setState(sc,on.dataset.s);
