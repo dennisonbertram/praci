@@ -5776,7 +5776,6 @@ msgstr "Never changes your account"
 msgid "new"
 msgstr "new"
 
-#: src/pages/shell/bot-picker.tsx
 #: src/pages/shell/transcript.tsx
 msgid "New"
 msgstr "New"
@@ -8697,6 +8696,10 @@ msgstr "Take the tour"
 #: src/pages/Shell.tsx
 msgid "Task board"
 msgstr "Task board"
+
+#: src/pages/Shell.tsx
+msgid "tasks, tickets"
+msgstr "tasks, tickets"
 
 #: src/components/data-room/format.ts
 msgid "Tax document"

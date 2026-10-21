@@ -419,7 +419,12 @@ export function DeleteBotDialog({
   useEffect(() => {
     rpc.memory
       .list({ botId: bot.id, scope: "bot" })
-      .then((docs) => setHasMemories(!Array.isArray(docs) || docs.length > 0))
+      // A new bot starts with a MEMORY.md holding only its "# Name" heading; that is no memory.
+      .then((docs) =>
+        setHasMemories(
+          !Array.isArray(docs) || docs.some((doc) => doc.content.replace(/^#.*$/m, "").trim()),
+        ),
+      )
       .catch(() => setHasMemories(true));
   }, [bot.id]);
 
