@@ -24,6 +24,7 @@ export function CompanyHistory({
   const [zoom, setZoom] = useState(initialZoom);
   const pointers = useRef(new Map<number, number>());
   const pinch = useRef<number | null>(null);
+  const dragged = useRef(false);
   const viewport = useRef<HTMLElement>(null);
   useEffect(() => {
     const element = viewport.current;
@@ -106,6 +107,7 @@ export function CompanyHistory({
             }
           }}
           onPointerDown={(event) => {
+            if (pointers.current.size === 0) dragged.current = false;
             if (event.pointerType !== "touch") return;
             pointers.current.set(event.pointerId, event.clientX);
             if (pointers.current.size === 2)
@@ -113,9 +115,17 @@ export function CompanyHistory({
           }}
           onPointerMove={(event) => {
             if (!pointers.current.has(event.pointerId)) return;
+            const previous = pointers.current.get(event.pointerId)!;
             pointers.current.set(event.pointerId, event.clientX);
             const values = [...pointers.current.values()];
+            if (values.length === 1) {
+              const delta = previous - event.clientX;
+              event.currentTarget.scrollLeft += delta;
+              if (Math.abs(delta) > 3) dragged.current = true;
+              return;
+            }
             if (values.length !== 2) return;
+            dragged.current = true;
             const distance = Math.abs(values[0]! - values[1]!);
             if (pinch.current !== null && Math.abs(distance - pinch.current) > 40) {
               changeZoom(distance > pinch.current ? 1 : -1);
@@ -166,7 +176,10 @@ export function CompanyHistory({
                       tabIndex={0}
                       aria-label={label}
                       className="group cursor-pointer text-foreground outline-none"
-                      onClick={() => open(item.kind, item.id)}
+                      onClick={() => {
+                        if (!dragged.current) open(item.kind, item.id);
+                        dragged.current = false;
+                      }}
                       onKeyDown={(event) => {
                         if (event.key === "Enter" || event.key === " ") {
                           event.preventDefault();
@@ -179,7 +192,7 @@ export function CompanyHistory({
                         x={item.x - 4}
                         y={item.y - 12}
                         width={Math.max(220, item.width) + 8}
-                        height={44}
+                        height={52}
                         rx={4}
                         className="fill-transparent stroke-transparent group-focus:stroke-ring"
                       />
@@ -199,6 +212,11 @@ export function CompanyHistory({
                       <text x={item.x} y={item.y + 20} className="fill-foreground text-xs">
                         {name.length > 30 ? `${name.slice(0, 29)}…` : name}
                       </text>
+                      {item.status !== "confirmed" && (
+                        <text x={item.x} y={item.y + 34} className="fill-muted-foreground text-xs">
+                          {t`Not confirmed`}
+                        </text>
+                      )}
                     </g>
                   );
                 })}

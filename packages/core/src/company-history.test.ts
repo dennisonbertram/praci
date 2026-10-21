@@ -160,4 +160,72 @@ describe("company history", () => {
     ).toEqual([]);
     expect(layoutCompanyHistory([], "month", "2024-01-01").lanes).toHaveLength(6);
   });
+  it("shows founded profile dates and treats founded relationships as point markers", () => {
+    const founded = { date: "2019-03-08", precision: "day" } as const;
+    const company = {
+      id: "company",
+      kind: "company",
+      displayName: "Northwind Robotics",
+      attrs: { founded },
+      status: "suggested",
+    } as const;
+    const profileItems = companyHistoryItems({ entities: [company], edges: [], events: [] });
+    expect(profileItems).toMatchObject([
+      {
+        id: "company",
+        kind: "entity",
+        stream: "company",
+        start: founded,
+        period: false,
+        status: "suggested",
+      },
+    ]);
+
+    const foundedEdge = {
+      id: "founded-edge",
+      fromId: "founder",
+      toId: "company",
+      relation: "founded",
+      role: null,
+      startsOn: founded,
+      endsOn: null,
+      status: "confirmed",
+    } as const;
+    const matchingItems = companyHistoryItems({
+      entities: [company],
+      edges: [foundedEdge],
+      events: [],
+    });
+    expect(matchingItems).toHaveLength(1);
+    expect(matchingItems[0]).toMatchObject({
+      id: "founded-edge",
+      kind: "edge",
+      start: founded,
+      period: false,
+    });
+    expect(
+      layoutCompanyHistory(matchingItems, "year", "2024-12-31")
+        .lanes.flatMap((lane) => lane.items)
+        .find((item) => item.id === "founded-edge")?.marker,
+    ).toBe(true);
+
+    const conflictingItems = companyHistoryItems({
+      entities: [company],
+      edges: [{ ...foundedEdge, startsOn: { date: "2020-01-01", precision: "year" } }],
+      events: [],
+    });
+    expect(conflictingItems).toHaveLength(2);
+
+    const invalidProfileItems = companyHistoryItems({
+      entities: [
+        {
+          ...company,
+          attrs: { founded: { date: "2019-02-01", precision: "year" } },
+        },
+      ],
+      edges: [],
+      events: [],
+    });
+    expect(invalidProfileItems).toEqual([]);
+  });
 });

@@ -4,6 +4,7 @@ import type {
   CompanyEventRecord,
   CompanyPartialDate,
 } from "@rakazo/contracts";
+import { CompanyPartialDateSchema } from "@rakazo/contracts";
 
 export type CompanyHistoryZoom = "year" | "quarter" | "month";
 export const companyHistoryStreams = [
@@ -87,11 +88,34 @@ export function companyHistoryItems(data: {
       title: `${names.get(edge.fromId) ?? "—"} · ${edge.role ?? edge.relation.replaceAll("_", " ")} · ${names.get(edge.toId) ?? "—"}`,
       start: edge.startsOn,
       end: edge.endsOn,
-      period: true,
+      period: edge.relation !== "founded",
       status: edge.status,
     });
   }
   for (const entity of data.entities) {
+    if (entity.kind === "company") {
+      const founded = CompanyPartialDateSchema.safeParse(entity.attrs.founded);
+      if (founded.success) {
+        const hasMatchingFoundedEdge = data.edges.some(
+          (edge) =>
+            edge.relation === "founded" &&
+            edge.toId === entity.id &&
+            edge.startsOn?.date === founded.data.date &&
+            edge.startsOn?.precision === founded.data.precision,
+        );
+        if (!hasMatchingFoundedEdge) {
+          items.push({
+            id: entity.id,
+            kind: "entity",
+            stream: "company",
+            title: entity.displayName,
+            start: founded.data,
+            period: false,
+            status: entity.status,
+          });
+        }
+      }
+    }
     if (entity.kind === "matter") {
       const opens = data.events.filter(
         (event) =>
