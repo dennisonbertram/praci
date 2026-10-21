@@ -238,6 +238,19 @@ describePostgres("notifications (PostgreSQL)", () => {
     expect(ok.status).toBe("created");
   });
 
+  it("stores an external link only when the caller's predicate accepts it, and link still refuses a URL", async () => {
+    const url = "https://app.example.test/sessions/abc";
+    const allow = (value: string) => value === url;
+    await expect(createNotification(prisma, base({ link: url }))).rejects.toBeInstanceOf(
+      NotificationValidationError,
+    );
+    await expect(
+      createNotification(prisma, base({ externalLink: { url: `${url}x`, allow } })),
+    ).rejects.toBeInstanceOf(NotificationValidationError);
+    const ok = await createNotification(prisma, base({ externalLink: { url, allow } }));
+    expect(ok.status === "created" && ok.notification.link).toBe(url);
+  });
+
   it("scopes list, markSeen, markShown and counts to space and user", async () => {
     const ctx = { spaceId: `iso-${suffix}`, userId: sameSpace.userId };
     await prisma.space.create({ data: { id: ctx.spaceId, organizationId, name: ctx.spaceId } });

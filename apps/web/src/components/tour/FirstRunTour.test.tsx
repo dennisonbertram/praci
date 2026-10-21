@@ -19,7 +19,7 @@ vi.mock("@lingui/react/macro", () => ({
 const update = vi.hoisted(() => vi.fn());
 vi.mock("../../lib/rpc", () => ({ rpc: { preferences: { update } } }));
 
-import { FirstRunTour } from "./FirstRunTour";
+import { connectCardsOpen, FirstRunTour } from "./FirstRunTour";
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -132,4 +132,35 @@ it("is a complete tour, top to bottom, ending on the composer", async () => {
   expect(seen[7]).toContain("Connect Gmail");
   expect(seen[8]).toContain("retake this tour");
   expect(button("Ask a question")).toBeTruthy();
+});
+
+const msg = (role: "user" | "bot", ...blocks: unknown[]) => ({ role, blocks }) as never;
+const card = (status: "pending" | "connected") => ({ kind: "app_connect", status });
+
+it("waits for pending Connect cards until they are connected or the user writes", () => {
+  expect(connectCardsOpen([msg("bot", card("pending"), card("connected"))])).toBe(true);
+  expect(connectCardsOpen([msg("bot", card("connected"))])).toBe(false);
+  expect(connectCardsOpen([msg("bot", card("pending")), msg("user", { kind: "text" })])).toBe(
+    false,
+  );
+  expect(connectCardsOpen([])).toBe(false);
+});
+
+it("ends on Escape before the drawer's own Escape handler sees it", async () => {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  })) as unknown as typeof window.matchMedia;
+  const drawer = vi.fn();
+  document.addEventListener("keydown", drawer);
+  const onClose = vi.fn();
+  await act(async () => root.render(<FirstRunTour open onClose={onClose} onAsk={vi.fn()} />));
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+  });
+  document.removeEventListener("keydown", drawer);
+  expect(onClose).toHaveBeenCalled();
+  expect(drawer).not.toHaveBeenCalled();
 });

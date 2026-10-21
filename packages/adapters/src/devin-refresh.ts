@@ -1,5 +1,7 @@
-import { randomUUID } from "node:crypto";
-import type { Prisma, PrismaClient } from "@rakazo/db";
+import { createHash, randomUUID } from "node:crypto";
+import { devinSessionUrl, isDevinSessionUrl } from "@rakazo/contracts";
+import type { NotificationEvents, Prisma, PrismaClient } from "@rakazo/db";
+import { createNotification, NOTIFICATION_BODY_MAX } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import type { DevinCallTool } from "./devin-call-tool.js";
 import { devinFailureOf } from "./devin-call-tool.js";
@@ -22,9 +24,17 @@ const MIN = 60_000;
 export type DevinRefreshDeps = {
   prisma: Pick<
     PrismaClient,
-    "devinConnectionState" | "devinSession" | "spaceMember" | "$transaction"
+    | "devinConnectionState"
+    | "devinSession"
+    | "spaceMember"
+    | "notification"
+    | "notificationDelivery"
+    | "notificationPreference"
+    | "$transaction"
   >;
   callTool: DevinCallTool;
+  /** Sends the live signal for a new alert; without it the alert is stored and found on the next poll. */
+  notificationEvents?: NotificationEvents;
   now?: () => Date;
 };
 
@@ -65,6 +75,53 @@ async function readQuestion(
   }
 }
 
+type DevinAlert = { sessionId: string; title: string; question: string | null; identity: string };
+
+/**
+ * Tells the connector that a session waits on them: one "needs_input" notification per Devin
+ * message, linking to the session in Devin. `help: false` in their preferences creates nothing.
+ * A repeat of the same message is a no-op, so a crash before it was recorded alerts once.
+ */
+export async function notifyDevinNeedsInput(
+  prisma: DevinRefreshDeps["prisma"],
+  events: NotificationEvents | undefined,
+  target: { serverId: string; spaceId: string; userId: string; botId: string | null },
+  alert: DevinAlert,
+): Promise<"created" | "deduped" | "off"> {
+  const preference = await prisma.notificationPreference.findUnique({
+    where: { spaceId_userId: { spaceId: target.spaceId, userId: target.userId } },
+    select: { help: true },
+  });
+  if (preference?.help === false) return "off";
+  const title = alert.title || "A Devin session";
+  const question = alert.question?.replace(/\s+/g, " ").trim();
+  const result = await createNotification(prisma, {
+    spaceId: target.spaceId,
+    userId: target.userId,
+    botId: target.botId,
+    surface: "devin",
+    title: "Devin needs input",
+    body: (question ? `${title}: ${question}` : `${title} is waiting for your answer.`).slice(
+      0,
+      NOTIFICATION_BODY_MAX,
+    ),
+    externalLink: { url: devinSessionUrl(alert.sessionId), allow: isDevinSessionUrl },
+    importance: "attention",
+    kind: "needs_input",
+    dedupeKey: createHash("sha256")
+      .update(`devin\n${target.serverId}\n${alert.sessionId}\n${alert.identity}`)
+      .digest("hex"),
+    skipRateLimits: true,
+  });
+  if (result.status !== "created") return "deduped";
+  const { id, importance } = result.notification;
+  await events?.notify(
+    { spaceId: target.spaceId, userId: target.userId },
+    { id, surface: "devin", importance },
+  );
+  return "created";
+}
+
 /**
  * Reads Devin once for the page and the worker: the only code that does. A fenced lease keeps
  * several processes from reading or writing together; no transaction is open while Devin is
@@ -79,12 +136,14 @@ export async function refreshDevinConnection(
 
   const state = await prisma.devinConnectionState.findUnique({
     where: { serverId },
-    include: { server: { select: { spaceId: true, userId: true, revision: true } } },
+    include: {
+      server: { select: { spaceId: true, userId: true, revision: true, agentBotId: true } },
+    },
   });
   if (!state || state.rejectedAt || (state.backoffUntil && state.backoffUntil > now)) {
     return "skipped";
   }
-  const { spaceId, userId, revision } = state.server;
+  const { spaceId, userId, revision, agentBotId } = state.server;
   const member = await prisma.spaceMember.findFirst({
     where: { spaceId, userId },
     select: { id: true },
@@ -146,6 +205,7 @@ export async function refreshDevinConnection(
       { timeout: 30_000 },
     );
 
+  const alerts: DevinAlert[] = [];
   let phase: "listing" | "session" = "listing";
   let result: {
     data: Record<string, unknown>;
@@ -199,6 +259,9 @@ export async function refreshDevinConnection(
       let question = kind === "needs_you" ? (before?.question ?? null) : null;
       let lastMessageId = before?.lastMessageId ?? null;
       let notifiedMessageId = before?.notifiedMessageId ?? null;
+      // Without a message id the update time stands in for the question's identity.
+      const surrogate = `t:${updatedAt.toISOString()}`;
+      let readFailed = false;
       const changed =
         before?.kind !== "needs_you" ||
         before.devinUpdatedAt < updatedAt ||
@@ -206,9 +269,21 @@ export async function refreshDevinConnection(
       if (kind === "needs_you" && changed) {
         const read = await readQuestion(deps, serverId, session.id);
         question = read?.question ?? null;
-        lastMessageId = read?.messageId ?? lastMessageId;
-        // Only the connection's first refresh is a silent baseline; S5 alerts for the rest.
-        if (first) notifiedMessageId = lastMessageId;
+        // A failed read forgets the old id: it belongs to an earlier question.
+        readFailed = !read;
+        lastMessageId = read ? read.messageId : null;
+      }
+      if (kind === "needs_you") {
+        const identity = readFailed ? surrogate : (lastMessageId ?? surrogate);
+        if (first) {
+          // Only the connection's first refresh is a silent baseline.
+          notifiedMessageId = identity;
+        } else if (lastMessageId && notifiedMessageId === surrogate) {
+          // A late successful read of the question already alerted for: record it, alert nothing.
+          notifiedMessageId = lastMessageId;
+        } else if (identity !== notifiedMessageId) {
+          alerts.push({ sessionId: session.id, title: session.title ?? "", question, identity });
+        }
       }
       rows.push({
         sessionId: session.id,
@@ -268,6 +343,35 @@ export async function refreshDevinConnection(
     result = { data, failed: true };
   }
   if (!(await commit(result.data, result.write))) return "discarded";
+  // After the commit, with no transaction open: a failure here leaves the row unrecorded, so the
+  // next run tries again and the notification's dedupe key keeps it to one.
+  // The connector may have left, or the connection been removed or replaced, since the lease was
+  // taken; alert nobody then. The check and the alerts are not one transaction, so a change in
+  // the milliseconds between them can still send one alert to the previous connector.
+  const stillActive =
+    alerts.length > 0 &&
+    !result.failed &&
+    (await prisma.spaceMember.findFirst({ where: { spaceId, userId }, select: { id: true } })) &&
+    (await prisma.devinConnectionState.findUnique({
+      where: { serverId },
+      select: { serverId: true },
+    }));
+  for (const alert of stillActive ? alerts : []) {
+    try {
+      await notifyDevinNeedsInput(
+        prisma,
+        deps.notificationEvents,
+        { serverId, spaceId, userId, botId: agentBotId },
+        alert,
+      );
+      await prisma.devinSession.updateMany({
+        where: { serverId, sessionId: alert.sessionId },
+        data: { notifiedMessageId: alert.identity },
+      });
+    } catch (error) {
+      getLogger().error("devin.refresh alert error", error);
+    }
+  }
   return result.failed ? "failed" : "refreshed";
 }
 

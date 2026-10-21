@@ -139,6 +139,16 @@ export const ErrorNoticeDefault: Story = {
   render: () => <ErrorNotice message="Could not load vendors." onRetry={() => undefined} />,
 };
 
+export const ErrorNoticeWithAction: Story = {
+  name: "Error notice with action",
+  render: () => (
+    <ErrorNotice
+      message="Devin rejected the key. Alerts are paused."
+      action={{ label: "Reconnect", onClick: () => undefined }}
+    />
+  ),
+};
+
 export const DetailPageLoaded: Story = {
   decorators: [(Story) => withAgent(Story)],
   render: () => (

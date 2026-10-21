@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
-import { deliverNotification, resultShownInOpenChat, shouldToast } from "./notification-delivery";
+import {
+  deliverNotification,
+  openNotificationLink,
+  resultShownInOpenChat,
+  shouldToast,
+} from "./notification-delivery";
 
 describe("shouldToast", () => {
   it.each([
@@ -55,7 +60,7 @@ describe("deliverNotification", () => {
     const t = tab(false, { wasShown: async () => false });
     expect(await deliverNotification(n, t)).toBe("os");
     expect(t.delay).toHaveBeenCalledWith(1500);
-    expect(t.show).toHaveBeenCalledWith("Title", { body: "Body", tag: "n1" });
+    expect(t.show).toHaveBeenCalledWith("Title", { body: "Body", tag: "n1" }, expect.any(Function));
   });
 
   it("skips the OS notification when the Browser switch is off, but still toasts", async () => {
@@ -142,5 +147,46 @@ describe("deliverNotification", () => {
     });
     expect(await deliverNotification(n, t)).toBe("toast");
     expect(t.reportError).toHaveBeenCalledTimes(1);
+  });
+});
+
+const DEVIN_URL = "https://app.devin.ai/sessions/devin-0001";
+
+describe("opening a notification link", () => {
+  it("opens a Devin session in a new window without opener or referrer, and navigates in-app links", () => {
+    const open = vi.fn();
+    vi.stubGlobal("window", { open });
+    const navigate = vi.fn();
+    openNotificationLink(navigate)(DEVIN_URL);
+    expect(open).toHaveBeenCalledWith(DEVIN_URL, "_blank", "noopener,noreferrer");
+    expect(navigate).not.toHaveBeenCalled();
+    openNotificationLink(navigate)("/app/bot-1");
+    expect(navigate).toHaveBeenCalledWith("/app/bot-1");
+    expect(open).toHaveBeenCalledTimes(1);
+    // Any other absolute URL is not opened either.
+    openNotificationLink(navigate)("https://evil.example/sessions/x");
+    expect(open).toHaveBeenCalledTimes(1);
+    vi.unstubAllGlobals();
+  });
+
+  it("an OS banner click focuses the window, then opens the link", async () => {
+    const focus = vi.fn();
+    const open = vi.fn();
+    const t = tab(false, { wasShown: async () => false, focus, open });
+    await deliverNotification({ ...n, href: DEVIN_URL }, t);
+    expect(t.show).toHaveBeenCalledWith("Title", { body: "Body", tag: "n1" }, expect.any(Function));
+    t.show.mock.calls[0]?.[2]();
+    expect(focus).toHaveBeenCalledTimes(1);
+    expect(open).toHaveBeenCalledWith(DEVIN_URL);
+  });
+
+  it("a banner without a link only focuses the window", async () => {
+    const focus = vi.fn();
+    const open = vi.fn();
+    const t = tab(false, { wasShown: async () => false, focus, open });
+    await deliverNotification(n, t);
+    t.show.mock.calls[0]?.[2]();
+    expect(focus).toHaveBeenCalledTimes(1);
+    expect(open).not.toHaveBeenCalled();
   });
 });

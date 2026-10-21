@@ -27,6 +27,7 @@ import {
   ATTACHMENT_MAX_BYTES,
   ATTACHMENT_MAX_COUNT,
   DEFAULT_AVATAR_STYLE,
+  isIntegrationAgentSpawnKey,
   LEGAL_AGENT_MODEL,
   NOTIFICATION_KINDS,
   RunPhaseSchema,
@@ -80,6 +81,7 @@ import {
   ChartColumn,
   ChevronDown,
   CircleAlert,
+  CodeXml,
   Compass,
   Files,
   FileText,
@@ -148,7 +150,9 @@ import type { SendTarget } from "../components/data-room/SendToAgent";
 import { ErrorBoundary, lazyOverlay, SectionLoadFailed } from "../components/ErrorBoundary";
 import { HideAmountsMenuItem } from "../components/HideAmountsToggle";
 import { AgentAvatar } from "../components/integrations/AgentAvatar";
+import { DevinConnectDialog } from "../components/integrations/DevinConnectDialog";
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
+import { PageAgentsRow } from "../components/PageAgentsRow";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
 import { OpeningSpace } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
@@ -169,7 +173,7 @@ import { glanceBadge, runwayGlance, StatusMark } from "../components/sidebar-gla
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { FirstRunTour } from "../components/tour/FirstRunTour";
+import { connectCardsOpen, FirstRunTour } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import type { ArtifactTarget } from "../lib/artifact-open";
@@ -280,6 +284,7 @@ import type { ContextMenuPosition } from "./BotContextMenu";
 import { CapTablePage } from "./CapTable";
 import { ContactsPage } from "./Contacts";
 import { DataRoomPage } from "./DataRoom";
+import { DevinPage } from "./Devin";
 import { FinancePage } from "./Finance";
 import { CreateGroupForm, GroupSettings, memberName } from "./GroupPanel";
 import { InboxPage } from "./Inbox";
@@ -449,6 +454,26 @@ async function findDocumentsAndArtifacts(query: string) {
   return { documents, artifacts };
 }
 
+/** Contacts whose name, email or organization contain the text. */
+function findContacts(query: string): Promise<SearchLink[]> {
+  const needle = query.toLowerCase();
+  return rpc.contacts
+    .list({})
+    .then((list) =>
+      list
+        .filter((c) =>
+          [c.name, c.email, c.organization].some((v) => v?.toLowerCase().includes(needle)),
+        )
+        .slice(0, 5)
+        .map((c) => ({
+          id: c.name,
+          label: c.name,
+          detail: c.organization ?? c.email ?? undefined,
+        })),
+    )
+    .catch((): SearchLink[] => []);
+}
+
 export function ShellPage() {
   const { t } = useLingui();
   const { botId, groupId } = useParams();
@@ -483,6 +508,7 @@ export function ShellPage() {
   const [archivedBots, setArchivedBots] = useState<Bot[]>([]);
   const [archivedGroups, setArchivedGroups] = useState<Group[]>([]);
   const [archivedOpen, setArchivedOpen] = useState(false);
+  const [pageAgentsOpen, setPageAgentsOpen] = useState(false);
   const [collapsedSidebarSections, setCollapsedSidebarSections] = useState(() => new Set<string>());
   const [collapsedRosterParents, setCollapsedRosterParents] = useState(() => new Set<string>());
 
@@ -509,6 +535,14 @@ export function ShellPage() {
   const [legalAgentOpen, setLegalAgentOpen] = useState(false);
   const [creatingLegalAgent, setCreatingLegalAgent] = useState(false);
   const [legalAgentError, setLegalAgentError] = useState("");
+  const [devinAgentOpen, setDevinAgentOpen] = useState(false);
+  const [creatingDevinAgent, setCreatingDevinAgent] = useState(false);
+  const [devinAgentError, setDevinAgentError] = useState("");
+  /** The connector's Devin agent: undefined until asked, null for everyone else. */
+  const [devinAgentId, setDevinAgentId] = useState<string | null | undefined>(undefined);
+  const [devinDialog, setDevinDialog] = useState<"connect" | "replace" | null>(null);
+  /** Remounts the Devin page after a key is accepted, so it shows the new connection at once. */
+  const [devinPageKey, setDevinPageKey] = useState(0);
   // The Carta agent panel remembers being collapsed, and starts collapsed on a phone, where it
   // would cover the page.
   const [cartaAgentCollapsed, setCartaAgentCollapsed] = useState(() => !wideScreen());
@@ -820,8 +854,13 @@ export function ShellPage() {
       ),
     ),
   );
+  // It also waits for the Connect cards, so two prompts never compete; writing a message skips them.
   const tourOpen =
-    tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen);
+    tourRestart ||
+    (bootstrapMe?.tourSeen === false &&
+      bots.length > 0 &&
+      !firstQuestionOpen &&
+      !connectCardsOpen(snapshot?.messages ?? []));
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
   useEffect(() => {
     if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
@@ -965,6 +1004,7 @@ export function ShellPage() {
   const financeMode = useMatch("/app/finance/*") != null;
   const dataRoomMode = useMatch("/app/data-room") != null;
   const legalMode = useMatch("/app/legal") != null;
+  const devinMode = useMatch("/app/devin") != null;
   const artifactsMode = useMatch("/app/artifacts/*") != null;
   // The route exists only while bootstrap enables the board (see App).
   const boardMode = useMatch("/app/board") != null;
@@ -976,6 +1016,7 @@ export function ShellPage() {
     inboxMode ||
     financeMode ||
     legalMode ||
+    devinMode ||
     capTableMode ||
     integrationsMode ||
     dataRoomMode ||
@@ -991,6 +1032,12 @@ export function ShellPage() {
   useEffect(() => {
     if (!legalMode) setLegalAgentOpen(false);
   }, [legalMode]);
+  useEffect(() => {
+    if (!devinMode) setDevinAgentOpen(false);
+  }, [devinMode]);
+  // Pages that name the workspace beside their title show it only when the user has several.
+  const pageSpaceName =
+    spaces.length > 1 ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name : undefined;
   const routeBot = resolveRouteBot({
     bots,
     botId,
@@ -1009,9 +1056,11 @@ export function ShellPage() {
             ? findDataRoomAgent(bots, userId)
             : legalMode
               ? findLegalAgent(bots, userId)
-              : capTableMode
-                ? findCartaAgent(bots, userId)
-                : routeBot.bot;
+              : devinMode
+                ? bots.find((bot) => bot.id === devinAgentId)
+                : capTableMode
+                  ? findCartaAgent(bots, userId)
+                  : routeBot.bot;
   /** The open bot's colour. A group or a missing bot has no `active`, so its thread stays monochrome. */
   const threadAccent = botAccentHex(active?.color);
   const [botPins, setBotPins] = useBotPins(active?.id, pinsSeq);
@@ -2019,6 +2068,11 @@ export function ShellPage() {
         icon: <Scale {...icon} />,
       },
       {
+        id: "devin",
+        label: t`Devin`,
+        icon: <CodeXml {...icon} />,
+      },
+      {
         id: "cap-table",
         label: t`Cap table`,
         // Words a founder may type for this page; matched along with the label.
@@ -2028,10 +2082,20 @@ export function ShellPage() {
       { id: "contacts", label: t`Contacts`, icon: <BookUser {...icon} /> },
       { id: "data-room", label: t`Data room`, icon: <FolderOpen {...icon} /> },
       { id: "artifacts", label: t`Artifacts`, icon: <Files {...icon} /> },
+      ...(bootstrapMe?.ticketBoardEnabled
+        ? [
+            {
+              id: "board",
+              label: t`Task board`,
+              keywords: t`tasks, tickets`,
+              icon: <SquareKanban {...icon} />,
+            },
+          ]
+        : []),
       { id: "integrations", label: t`Apps`, icon: <LayoutGrid {...icon} /> },
       { id: "settings", label: t`Settings`, icon: <Settings {...icon} /> },
     ];
-  }, [t]);
+  }, [t, bootstrapMe?.ticketBoardEnabled]);
   // A page hidden in Page options stays out of search and the command palette too.
   const visiblePages = useMemo(
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
@@ -2053,8 +2117,15 @@ export function ShellPage() {
 
   const searchPaletteLinks = useCallback(
     async (q: string) => {
-      const found = await findDocumentsAndArtifacts(q);
+      const [found, contacts] = await Promise.all([findDocumentsAndArtifacts(q), findContacts(q)]);
       return [
+        {
+          heading: t`Contacts`,
+          entries: contacts.map((c) => ({
+            id: `/app/contacts?q=${encodeURIComponent(c.id)}`,
+            label: c.label,
+          })),
+        },
         {
           heading: t`Documents`,
           entries: found.documents.map((doc) => ({
@@ -2097,24 +2168,25 @@ export function ShellPage() {
       return;
     }
     const abort = new AbortController();
+    // Loading from the first keystroke, so "No matches" cannot show during the debounce.
+    setSearchLoading(true);
     const timer = window.setTimeout(() => {
-      setSearchLoading(true);
-      void findDocumentsAndArtifacts(spaceQuery).then((found) => {
+      const docs = findDocumentsAndArtifacts(spaceQuery).then((found) => {
         if (abort.signal.aborted) return;
         setSearchDocuments(found.documents);
         setSearchArtifacts(found.artifacts);
       });
-      void rpc.search
+      const chats = rpc.search
         .query({ q: spaceQuery })
         .then((result) => {
           if (!abort.signal.aborted) setSearchHits(result.hits);
         })
         .catch(() => {
           if (!abort.signal.aborted) setSearchHits([]);
-        })
-        .finally(() => {
-          if (!abort.signal.aborted) setSearchLoading(false);
         });
+      void Promise.all([docs, chats]).finally(() => {
+        if (!abort.signal.aborted) setSearchLoading(false);
+      });
     }, 200);
     return () => {
       abort.abort();
@@ -3036,6 +3108,25 @@ export function ShellPage() {
     }
   }
 
+  async function createDevinAgent() {
+    setCreatingDevinAgent(true);
+    setDevinAgentError("");
+    try {
+      const agent = await rpc.devin.agent();
+      setDevinAgentId(agent?.bot.id ?? null);
+      await refreshBots();
+    } catch (error) {
+      setDevinAgentError(errorText(error, t`Could not create the Devin agent`));
+    } finally {
+      setCreatingDevinAgent(false);
+    }
+  }
+
+  function askDevinAgent() {
+    setDevinAgentOpen(true);
+    if (!active && !creatingDevinAgent) void createDevinAgent();
+  }
+
   function askLegalAgent() {
     setLegalAgentOpen(true);
     if (!active && !creatingLegalAgent) void createLegalAgent();
@@ -3103,6 +3194,22 @@ export function ShellPage() {
 
   const cartaSuggestions = [t`Who are our investors?`, t`Draft this month's investor update`];
   const cartaAgentIntro = t`The Carta agent reads your cap table from Carta and answers questions about it. Try one:`;
+  // The connector's agent is made on first visit, as the plan says; anyone else gets null.
+  useEffect(() => {
+    if (!devinMode) return;
+    let live = true;
+    rpc.devin
+      .agent()
+      .then(async (agent) => {
+        if (!live) return;
+        setDevinAgentId(agent?.bot.id ?? null);
+        if (agent) await refreshBots();
+      })
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, [devinMode, bootstrapMe?.spaceId, refreshBots]);
   // The agent panel of the current page; null on bot and group routes, which have their own panels.
   const agentPanel = inboxMode
     ? {
@@ -3144,35 +3251,48 @@ export function ShellPage() {
             error: dataRoomAgentError,
             suggestions: dataRoomAgentSuggestions(),
           }
-        : legalMode
+        : devinMode
           ? {
-              name: "legal-agent",
-              testId: "legal-agent-panel",
-              open: legalAgentOpen,
-              collapse: () => setLegalAgentOpen(false),
-              collapseLabel: t`Collapse Legal agent`,
-              create: createLegalAgent,
-              createLabel: t`Create Legal agent`,
-              creating: creatingLegalAgent,
-              error: legalAgentError,
+              name: "devin-agent",
+              testId: "devin-agent-panel",
+              open: devinAgentOpen,
+              collapse: () => setDevinAgentOpen(false),
+              collapseLabel: t`Collapse Devin agent`,
+              create: createDevinAgent,
+              createLabel: t`Create Devin agent`,
+              creating: creatingDevinAgent,
+              error: devinAgentError,
+              suggestions: [t`Anything merged today?`, t`What did Devin do this week?`],
             }
-          : capTableMode
+          : legalMode
             ? {
-                name: "carta-agent",
-                testId: "carta-agent-panel",
-                // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
-                // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
-                open: cartaPanel.open,
-                collapse: () => setCartaAgentCollapsedPref(true),
-                collapseLabel: t`Collapse Carta agent`,
-                // A failed creation is retried from the panel; the agent otherwise appears by itself.
-                create: cartaAgentError ? createCartaAgent : undefined,
-                createLabel: t`Try again`,
-                creating: creatingCartaAgent,
-                error: cartaAgentError,
-                suggestions: cartaSuggestions,
+                name: "legal-agent",
+                testId: "legal-agent-panel",
+                open: legalAgentOpen,
+                collapse: () => setLegalAgentOpen(false),
+                collapseLabel: t`Collapse Legal agent`,
+                create: createLegalAgent,
+                createLabel: t`Create Legal agent`,
+                creating: creatingLegalAgent,
+                error: legalAgentError,
               }
-            : null;
+            : capTableMode
+              ? {
+                  name: "carta-agent",
+                  testId: "carta-agent-panel",
+                  // Never an empty panel: it holds the agent, or the agent being created, or why it failed.
+                  // Without Carta the agent can read nothing, so the page's Connect Carta card shows instead.
+                  open: cartaPanel.open,
+                  collapse: () => setCartaAgentCollapsedPref(true),
+                  collapseLabel: t`Collapse Carta agent`,
+                  // A failed creation is retried from the panel; the agent otherwise appears by itself.
+                  create: cartaAgentError ? createCartaAgent : undefined,
+                  createLabel: t`Try again`,
+                  creating: creatingCartaAgent,
+                  error: cartaAgentError,
+                  suggestions: cartaSuggestions,
+                }
+              : null;
   // The Carta agent opened full screen from its panel: same intro, and a way back to Cap table.
   const cartaAgentPage =
     !pageMode && !inGroup && active !== undefined && findCartaAgent(bots, userId)?.id === active.id;
@@ -3794,7 +3914,7 @@ export function ShellPage() {
                   return;
                 }
                 if (action === "settings-usage") {
-                  openSettings("usage");
+                  openSettings("general");
                 }
               }}
             />
@@ -4037,7 +4157,7 @@ export function ShellPage() {
         {(showSpaceSearch && !rail) || bootstrapMe === undefined ? null : (
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
           // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
-          <div className="flex max-h-[40vh] shrink-0 flex-col overflow-y-auto px-2.5">
+          <div className="flex max-h-[50vh] shrink-0 flex-col overflow-y-auto border-b border-border px-2.5 pb-1">
             <SidebarPagesGroup
               title={t`Pages`}
               collapsed={collapsedSidebarSections.has("pages")}
@@ -4047,6 +4167,7 @@ export function ShellPage() {
                 { key: "inbox", label: t`Inbox` },
                 { key: "finance", label: t`Finance` },
                 { key: "legal", label: t`Legal` },
+                { key: "devin", label: t`Devin` },
                 { key: "cap-table", label: t`Cap table` },
                 { key: "contacts", label: t`Contacts` },
                 { key: "data-room", label: t`Data room` },
@@ -4112,6 +4233,29 @@ export function ShellPage() {
                     valueLabel: plural(glance.legalDueSoon, {
                       one: "# due soon",
                       other: "# due soon",
+                    }),
+                  })}
+                />
+              )}
+              {hiddenPages.includes("devin") ? null : (
+                <SidebarPageLink
+                  testId="sidebar-devin"
+                  current={devinMode}
+                  icon={<CodeXml size={15} strokeWidth={1.8} aria-hidden="true" />}
+                  label={t`Devin`}
+                  rail={rail}
+                  onOpen={() => {
+                    setMobileSidebarOpen(false);
+                    navigate("/app/devin");
+                  }}
+                  // A count, never a dot: the page lists what needs you.
+                  {...glanceBadge({
+                    unseen: 0,
+                    rail,
+                    value: glance.devinNeedsYou > 0 ? String(glance.devinNeedsYou) : undefined,
+                    valueLabel: plural(glance.devinNeedsYou, {
+                      one: "# needs you",
+                      other: "# need you",
                     }),
                   })}
                 />
@@ -4267,6 +4411,29 @@ export function ShellPage() {
                   const dragEnabled =
                     activeSpace && !rail && !showSpaceSearch && group.kind !== "pinned";
                   const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
+                  // Page and integration agents fold into one row; Chief and the person's bots stay listed.
+                  const isPageAgent = (row: (typeof nestedRows)[number]) => {
+                    const key = "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
+                    return (
+                      row.item.kind === "bot" &&
+                      (pageAgentKind(key) !== null || isIntegrationAgentSpawnKey(key))
+                    );
+                  };
+                  const pageAgentRows =
+                    !rail && !folder && group.kind !== "pinned"
+                      ? nestedRows.filter(isPageAgent)
+                      : [];
+                  const foldPageAgents = pageAgentRows.length >= 2;
+                  const showPageAgents =
+                    pageAgentsOpen || pageAgentRows.some((row) => row.item.chat.id === active?.id);
+                  const displayRows: ((typeof nestedRows)[number] | { pageAgentsHeader: true })[] =
+                    foldPageAgents
+                      ? [
+                          ...nestedRows.filter((row) => !isPageAgent(row)),
+                          { pageAgentsHeader: true },
+                          ...(showPageAgents ? pageAgentRows : []),
+                        ]
+                      : nestedRows;
                   const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
                   // Reorder among visible siblings so keyboard and drag moves match the tree.
                   const siblingBotIds = (parentId: string | null) =>
@@ -4331,7 +4498,7 @@ export function ShellPage() {
                               aria-current={group.current ? "true" : undefined}
                               data-sidebar-current={group.current ? "" : undefined}
                               title={group.relabeled ? group.spaceName : undefined}
-                              className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-muted-foreground/60"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
+                              className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
                               onClick={() => {
                                 if (group.emptySpaceId) {
                                   openSpaceChat(group.emptySpaceId, "/onboarding");
@@ -4423,11 +4590,28 @@ export function ShellPage() {
                       ) : null}
                       {rail || !collapsed ? (
                         <SortableList
-                          ids={nestedRows.map(({ item }) =>
-                            itemDragId({ kind: item.kind, id: item.chat.id }),
+                          ids={displayRows.flatMap((row) =>
+                            "item" in row
+                              ? [itemDragId({ kind: row.item.kind, id: row.item.chat.id })]
+                              : [],
                           )}
                         >
-                          {nestedRows.map(({ item, depth, hasChildren, parentId }) => {
+                          {displayRows.map((displayRow) => {
+                            if ("pageAgentsHeader" in displayRow) {
+                              return (
+                                <PageAgentsRow
+                                  key="page-agents"
+                                  open={showPageAgents}
+                                  count={pageAgentRows.length}
+                                  needsYou={pageAgentRows.some(
+                                    (row) =>
+                                      row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                  )}
+                                  onToggle={() => setPageAgentsOpen((open) => !open)}
+                                />
+                              );
+                            }
+                            const { item, depth, hasChildren, parentId } = displayRow;
                             const parentCollapsed =
                               hasChildren && collapsedRosterParents.has(item.chat.id);
                             const selected =
@@ -5214,6 +5398,7 @@ export function ShellPage() {
               <IntegrationsPage
                 activeBotId={activeBotId.current}
                 onOpenMessaging={() => setMessagingSettingsOpen(true)}
+                onOpenAiDataSharing={() => openSettings("general")}
               />
             </Suspense>
           </ErrorBoundary>
@@ -5229,17 +5414,11 @@ export function ShellPage() {
             }
           />
         ) : contactsMode ? (
-          <ContactsPage
-            spaceName={
-              spaces.length > 1
-                ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
-                : undefined
-            }
-          />
+          <ContactsPage spaceName={pageSpaceName} />
         ) : artifactsMode ? (
           <ErrorBoundary fallback={<SectionLoadFailed />}>
             <Suspense fallback={null}>
-              <ArtifactsPage />
+              <ArtifactsPage spaceName={pageSpaceName} />
             </Suspense>
           </ErrorBoundary>
         ) : boardMode ? (
@@ -5270,6 +5449,13 @@ export function ShellPage() {
               // Like Finance: the auth boundary changes, so reload on the other space's Legal page.
               if (selectSpace(spaceId)) window.location.assign("/app/legal");
             }}
+          />
+        ) : devinMode ? (
+          <DevinPage
+            key={devinPageKey}
+            onAskAgent={devinAgentOpen ? undefined : askDevinAgent}
+            onConnect={() => setDevinDialog("connect")}
+            onReconnect={() => setDevinDialog("replace")}
           />
         ) : capTableMode ? (
           <CapTablePage
@@ -5374,7 +5560,13 @@ export function ShellPage() {
                   !inboxMode &&
                   (!capTableMode || activeSnapshot) ? (
                     <AgentPanelIntro
-                      description={capTableMode ? cartaAgentIntro : active.description}
+                      description={
+                        capTableMode
+                          ? cartaAgentIntro
+                          : devinMode
+                            ? t`Answers questions about what Devin is working on.`
+                            : active.description
+                      }
                       suggestions={agentPanel.suggestions ?? []}
                       onAddModel={pageAgentNeedsModel ? () => openSettings("models") : undefined}
                       disabled={sending}
@@ -6243,6 +6435,13 @@ export function ShellPage() {
       </Suspense>
 
       <Suspense fallback={null}>
+        {devinDialog ? (
+          <DevinConnectDialog
+            mode={devinDialog}
+            onConnected={() => setDevinPageKey((key) => key + 1)}
+            onClose={() => setDevinDialog(null)}
+          />
+        ) : null}
         {settingsOpen ? (
           <SettingsOverlay
             name={userName}

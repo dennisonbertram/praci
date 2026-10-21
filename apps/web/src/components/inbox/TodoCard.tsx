@@ -5,6 +5,7 @@ import { Button, Card, Checkbox } from "@rakazo/ui-web";
 import { useRef, useState } from "react";
 import { rpc } from "../../lib/rpc";
 import { errorText } from "../../lib/user-error";
+import { Shimmer } from "../ai/primitives";
 
 const COLLAPSED_OPEN = 2;
 
@@ -13,18 +14,26 @@ export function TodoCard({
   todos,
   onChange,
   onOpen,
+  meetings,
 }: {
   todos: InboxTodo[];
   onChange: (todo: InboxTodo) => void;
   /** Opens the email a to-do came from. */
   onOpen?: (messageId: string) => void;
+  /** The user's meeting source, from the list reply; adds the Syncing and empty lines. */
+  meetings?: { source: boolean; syncing: boolean; ready: boolean };
 }) {
   const { t, i18n: lingui } = useLingui();
   const [error, setError] = useState("");
   const [expanded, setExpanded] = useState(false);
   // Done to-dos sort last by their state when first shown, so ticking one leaves it in place.
   const doneWhenShown = useRef(new Map<string, boolean>());
-  if (todos.length === 0) return null;
+  const syncing = Boolean(meetings?.source && meetings.syncing);
+  const openCount = todos.filter((todo) => todo.doneAt === null).length;
+  // The first sync decides nothing yet; afterwards a connected source with consent and no open to-do says so.
+  const noFollowUps =
+    Boolean(meetings?.source && meetings.ready && !meetings.syncing) && openCount === 0;
+  if (todos.length === 0 && !syncing && !noFollowUps) return null;
   for (const todo of todos)
     if (!doneWhenShown.current.has(todo.id))
       doneWhenShown.current.set(todo.id, todo.doneAt !== null);
@@ -123,6 +132,18 @@ export function TodoCard({
           );
         })}
       </ul>
+      {syncing ? (
+        <p role="status" className="py-1.5 text-sm">
+          <Shimmer>
+            <Trans>Syncing</Trans>
+          </Shimmer>
+        </p>
+      ) : null}
+      {noFollowUps ? (
+        <p className="py-1.5 text-sm text-muted-foreground">
+          <Trans>No follow-ups from meetings yet</Trans>
+        </p>
+      ) : null}
       {hiddenCount > 0 ? (
         <Button
           variant="ghost"

@@ -20,6 +20,7 @@ const rpcMock = vi.hoisted(() => ({
   capabilities: { list: vi.fn(async () => []), catalogSearch: vi.fn(async () => ({})) },
   integrationSetup: { get: vi.fn(async () => null) },
   finance: { overview: vi.fn(async () => null) },
+  meetings: { status: vi.fn() },
 }));
 vi.mock("../../lib/rpc", () => ({ rpc: rpcMock }));
 
@@ -46,4 +47,51 @@ it("loads effective access once for all connections", async () => {
   expect(data?.access.a?.effectiveAccess.botIds).toEqual(["x"]);
   expect(data?.access.c?.effectiveAccess).toEqual({ shared: "none", botIds: [] });
   await act(async () => root.unmount());
+});
+
+it("polls meetings.status every 5 seconds while Syncing and stops once Synced", async () => {
+  vi.useFakeTimers();
+  try {
+    const status = (syncedThrough: string | null) => ({
+      connectionId: "c",
+      status: "connected" as const,
+      syncedThrough,
+      lastSyncedAt: null,
+      syncedCount: 2,
+      consentOff: false,
+      agentBotId: null,
+    });
+    rpcMock.connections.list.mockResolvedValue([]);
+    rpcMock.connections.effectiveAccess.mockResolvedValue({});
+    rpcMock.meetings.status.mockReset();
+    rpcMock.meetings.status
+      .mockResolvedValueOnce(status(null))
+      .mockResolvedValueOnce(status(null))
+      .mockResolvedValue(status("2026-10-20T10:00:00Z"));
+    let data: IntegrationsData | undefined;
+    function Probe() {
+      data = useIntegrations();
+      return null;
+    }
+    const root = createRoot(document.createElement("div"));
+    await act(async () => root.render(<Probe />));
+    await act(async () => {});
+    expect(data?.meetings?.syncedThrough).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(data?.meetings?.syncedThrough).toBeNull();
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(data?.meetings?.syncedThrough).toBe("2026-10-20T10:00:00Z");
+    const calls = rpcMock.meetings.status.mock.calls.length;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(30_000);
+    });
+    expect(rpcMock.meetings.status.mock.calls.length).toBe(calls);
+    await act(async () => root.unmount());
+  } finally {
+    vi.useRealTimers();
+  }
 });

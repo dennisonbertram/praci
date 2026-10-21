@@ -527,6 +527,11 @@ export interface AgentRunRequest {
   allowSilentEmpty?: boolean;
   /** Contextual fallback when a non-silent run produces no written response. */
   emptyResponseText?: string;
+  /**
+   * Awaited before every model request. A rejection stops the run; the executor uses it to re-check
+   * the thread's meeting mark and the model's data-sharing consent.
+   */
+  beforeModelRequest?: () => Promise<void>;
   executeTool?: (
     name: string,
     args: Record<string, unknown>,
@@ -751,6 +756,16 @@ export interface BackgroundJobPayloads {
   /** Refreshes the space's Devin sessions; run every two minutes by cron without a payload (every connection), or for the one server named. */
   "devin.refresh": { serverId?: string };
   /** Syncs a user's finance accounts and transactions from their Mercury and Brex servers; one queued job per user and space. */
+  /** Names exactly one source: a Connection or an MCP server. */
+  "meetings.sync": {
+    spaceId: string;
+    userId: string;
+    provider: string;
+    connectionId?: string;
+    mcpServerId?: string;
+  };
+  /** Extracts commitments from a stored meeting; the handler is filled in by the digest slice. */
+  "meetings.digest": { spaceId: string; userId: string; meetingId: string; continue?: boolean };
   "finance.sync": { userId: string; spaceId: string };
   /** Removes a deleted Data room item's blob. Idempotent: a missing blob is success. */
   "dataroom.blob.delete": { spaceId: string; storageKey: string };

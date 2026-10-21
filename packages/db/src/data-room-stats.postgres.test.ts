@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { PrismaClient } from "./client.js";
 import { createDb } from "./client.js";
 import { createDataRoomRepos } from "./data-room.js";
+import { createLegalRepos } from "./legal.js";
 
 const databaseUrl = process.env.DATABASE_URL;
 const describePostgres =
@@ -93,6 +94,38 @@ describePostgres("Data room stats (PostgreSQL)", () => {
     await prisma.organization.deleteMany({ where: { id: { startsWith: "drs-org-" } } });
     await prisma.user.deleteMany({ where: { id: { startsWith: "drs-user-" } } });
     await close();
+  });
+
+  it("lists only ready items Legal has not analyzed at their current revision", async () => {
+    const repo = createDataRoomRepos(prisma);
+    const legalRepo = createLegalRepos(prisma);
+    const byName = async (name: string) =>
+      prisma.dataRoomItem.findFirstOrThrow({ where: { userId: a.userId, name } });
+    const [nda, copy, big] = await Promise.all([
+      byName("nda.pdf"),
+      byName("nda-copy.pdf"),
+      byName("big.mov"),
+    ]);
+    const analysis = (id: string, analyzedRevision: number) =>
+      prisma.legalContract.create({
+        data: {
+          spaceId: a.spaceId,
+          userId: a.userId,
+          dataRoomItemId: id,
+          title: "NDA (Mock)",
+          contractType: "nda",
+          status: "active",
+          analyzedAt: new Date(),
+          analyzedRevision,
+        },
+      });
+    await analysis(nda.id, nda.revision);
+    // Analyzed before the file changed, so it counts as unchecked again.
+    await analysis(copy.id, copy.revision - 1);
+    const page = await repo.listItemsPage(a, { legalUnchecked: true });
+    // deck.pdf failed and wip.pdf is still reading: neither is ready, so neither is listed.
+    expect(page.items.map((item) => item.name).sort()).toEqual([big.name, copy.name].sort());
+    expect(page.items).toHaveLength(await legalRepo.countUnreviewed(a));
   });
 
   it("counts each group for the caller only", async () => {
