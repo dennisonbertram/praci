@@ -100,3 +100,49 @@ it("marks the dialog modal and gives phones a select instead of a clipped strip"
 it("lists Privacy and approvals as its own tab", async () => {
   expect(await navIds({})).toContain("settings-nav-privacy");
 });
+
+it("keeps one dialog height for every section and locks the app behind it while open", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const app = document.createElement("div");
+  app.id = "root";
+  const trigger = document.createElement("button");
+  trigger.setAttribute("data-testid", "user-menu-trigger");
+  app.append(trigger);
+  document.body.append(app);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const show = (open: boolean) =>
+    act(async () =>
+      root.render(
+        <I18nProvider i18n={i18n}>
+          {open ? (
+            <SettingsOverlay
+              name="Demo"
+              onUsageOpen={() => undefined}
+              avatarStyle="robot"
+              onAvatarStyleChange={async () => undefined}
+              memoryConfig={null}
+              onMemoryConfigChange={() => undefined}
+              onClose={() => undefined}
+            />
+          ) : null}
+        </I18nProvider>,
+      ),
+    );
+  await show(true);
+  const panel = () => document.querySelector("[data-testid=user-settings]");
+  const general = panel()?.className;
+  expect(general).toContain("h-[min(760px");
+  expect(app.hasAttribute("inert")).toBe(true);
+  await act(async () =>
+    (document.querySelector("[data-testid=settings-nav-voice]") as HTMLElement).click(),
+  );
+  expect(panel()?.className).toBe(general);
+  await show(false);
+  expect(app.hasAttribute("inert")).toBe(false);
+  await act(async () => root.unmount());
+  container.remove();
+  app.remove();
+  vi.unstubAllGlobals();
+});

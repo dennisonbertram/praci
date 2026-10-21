@@ -651,3 +651,52 @@ it("says the daily scan is paused when the Legal routine is off", async () => {
   expect(container.textContent).toContain("Daily scan paused.");
   expect(container.textContent).not.toContain("Scans daily");
 });
+
+it("tells the shell while consent is missing, so the agent composer waits for the page's one Allow", async () => {
+  rpcMock.overview.mockResolvedValue(overview);
+  rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
+  rpcMock.consentGrant.mockResolvedValue(consentFixture);
+  const onConsentChange = vi.fn();
+  const onAskAbout = vi.fn();
+  await render(<LegalPage onConsentChange={onConsentChange} onAskAbout={onAskAbout} />);
+  expect(onConsentChange).toHaveBeenLastCalledWith(true);
+  // No row offers the agent before the page's Allow.
+  await click(tab("Deadlines"));
+  expect(button("Ask agent about Send non-renewal notice")).toBeUndefined();
+  await click(button("Allow"));
+  expect(onConsentChange).toHaveBeenLastCalledWith(false);
+});
+
+it("offers Ask agent on each deadline row, with the row as the question", async () => {
+  const onAsk = vi.fn();
+  await render(
+    <LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" onAsk={onAsk} />,
+  );
+  expect(container.querySelectorAll("li")).toHaveLength(2);
+  await click(button("Ask agent about Send non-renewal notice"));
+  expect(onAsk).toHaveBeenCalledWith(deadlines[1]);
+});
+
+it("gives each deadline row its own first line, naming the contract", async () => {
+  const twin = {
+    ...deadlines[1],
+    id: id(13),
+    contractTitle: "Hosting renewal",
+  } as (typeof deadlines)[number];
+  await render(
+    <LegalDeadlines deadlines={[...deadlines, twin]} onChanged={() => {}} today="2026-10-16" />,
+  );
+  const firstLines = [...container.querySelectorAll("li")].map(
+    (li) => li.querySelector(".font-medium")?.parentElement?.textContent?.split("Due")[0],
+  );
+  expect(new Set(firstLines).size).toBe(firstLines.length);
+  expect(firstLines.join()).toContain("Hosting renewal");
+});
+
+it("shows a status chip only for a contract that is not active", async () => {
+  await render(<LegalContracts contracts={contracts} />);
+  const text = (selector: string) =>
+    [...container.querySelectorAll(selector)].map((el) => el.textContent).join(" ");
+  expect(text("tbody tr")).toContain("Expired");
+  expect(text("tbody tr")).not.toContain("Active");
+});

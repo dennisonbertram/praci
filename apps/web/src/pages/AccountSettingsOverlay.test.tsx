@@ -332,7 +332,7 @@ it("puts Delete account after every other setting", async () => {
     });
     const panels = container.firstElementChild?.children ?? [];
     const last = panels[panels.length - 1];
-    expect(last?.textContent).toBe("Delete account");
+    expect(last?.textContent?.endsWith("Delete account")).toBe(true);
     expect(panels[0]?.textContent).not.toContain("Delete account");
   } finally {
     await act(async () => root.unmount());

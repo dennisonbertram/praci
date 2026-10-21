@@ -40,10 +40,6 @@ msgstr " (sin leer)"
 msgid " (urgent)"
 msgstr ""
 
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "— tokens of AI text"
-msgstr ""
-
 #. placeholder {0}: statement.duplicateCount
 #: src/components/finance/StatementReviewCard.tsx
 msgid ", {0} already imported"
@@ -726,10 +722,6 @@ msgstr ""
 msgid "Active"
 msgstr "Activo"
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Active model"
-msgstr "Modelo activo"
-
 #: src/components/computer/TerminalApp.tsx
 #: src/pages/ActivityList.tsx
 #: src/pages/Shell.tsx
@@ -832,10 +824,6 @@ msgstr ""
 msgid "Add email"
 msgstr ""
 
-#: src/components/AutoFileEmailSetting.tsx
-msgid "Add email attachments to the Data room"
-msgstr ""
-
 #. placeholder {0}: prefill.name
 #: src/components/ContactDialog.tsx
 msgid "Add email for {0}"
@@ -859,6 +847,10 @@ msgstr "Agregar elemento"
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Add MCP server"
 msgstr "Agregar servidor MCP"
+
+#: src/components/AutoFileEmailSetting.tsx
+msgid "Add new email attachments automatically"
+msgstr ""
 
 #: src/components/AddSidebarPage.tsx
 msgid "Add page"
@@ -1059,6 +1051,10 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Allow access first."
+msgstr ""
+
+#: src/pages/Shell.tsx
+msgid "Allow access on the page to ask"
 msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
@@ -1384,7 +1380,13 @@ msgid "Ask about this"
 msgstr ""
 
 #: src/components/inbox/InboxMessageDialog.tsx
+#: src/pages/legal/LegalDeadlines.tsx
 msgid "Ask agent"
+msgstr ""
+
+#. placeholder {0}: maskCurrencyWhenHidden(deadline.title)
+#: src/pages/legal/LegalDeadlines.tsx
+msgid "Ask agent about {0}"
 msgstr ""
 
 #. placeholder {0}: rule.matchValue
@@ -2479,10 +2481,6 @@ msgstr ""
 #: src/components/ComputersUnavailableHint.tsx
 msgid "Computers are off. Set SANDBOX_PROVIDER=docker with SANDBOX_SUPERVISOR_TOKEN, or set SANDBOX_PROVIDER to e2b, daytona, or box with its API key. Recreate the stack after changing .env."
 msgstr "Las computadoras están apagadas. Configura SANDBOX_PROVIDER=docker con SANDBOX_SUPERVISOR_TOKEN, o establece SANDBOX_PROVIDER en e2b, daytona o box con su clave de API. Recrea el stack después de cambiar .env."
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Configured by deployment"
-msgstr "Configurado por el despliegue"
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Confirm delete"
@@ -3720,10 +3718,6 @@ msgstr "Denegado"
 msgid "Deny"
 msgstr "Denegar"
 
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Deployment default"
-msgstr "Predeterminado del despliegue"
-
 #: src/pages/Board.tsx
 #: src/pages/finance/FinanceSpend.tsx
 #: src/pages/shell/bot-panel.tsx
@@ -4713,6 +4707,14 @@ msgstr ""
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hear a sample"
 msgstr "Escuchar una muestra"
+
+#: src/pages/Legal.tsx
+msgid "Help me with \"{title}\" on {contractTitle}, due {due}."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Help me with \"{title}\", due {due}."
+msgstr ""
 
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Hi, this is how I'll sound when I read replies out loud."
@@ -6335,7 +6337,6 @@ msgstr ""
 msgid "None"
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/ScratchpadSection.tsx
 msgid "None yet"
 msgstr "Ninguno aún"
@@ -6875,7 +6876,6 @@ msgid "Party"
 msgstr ""
 
 #: src/components/AskCard.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/Auth.tsx
 #: src/pages/shell/bot-credentials.tsx
 msgid "Password"
@@ -7640,6 +7640,7 @@ msgstr "Reemplazar clave de API"
 
 #: src/components/integrations/FinanceSection.tsx
 #: src/pages/Legal.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
 msgid "Replace key"
 msgstr "Reemplazar clave"
@@ -9229,10 +9230,6 @@ msgstr ""
 #: src/pages/shell/working-label.ts
 msgid "Thinking"
 msgstr "Pensando"
-
-#: src/pages/ModelSettingsOverlay.tsx
-msgid "Thinking: {activeThinkingLabel}"
-msgstr ""
 
 #: src/components/AgentPanelIntro.tsx
 msgid "This agent needs a model before it can answer. Add one in Settings, Models."
