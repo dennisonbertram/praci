@@ -4,7 +4,7 @@ import { Toast } from "@base-ui/react/toast";
 import { Button } from "@rakazo/ui-web/components/ui/button";
 import { cn } from "@rakazo/ui-web/lib/utils";
 import { XIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 export const MAX_VISIBLE_NOTIFICATION_TOASTS = 3;
@@ -124,7 +124,7 @@ function ToastList({
   dismissLabel: string;
   formatTime?: (iso: string) => string;
 }) {
-  const { toasts, close, add } = Toast.useToastManager<NotificationToastData>();
+  const { toasts, close } = Toast.useToastManager<NotificationToastData>();
   const [, tick] = useState(0);
   // The relative time is refreshed while any toast is open.
   const open = toasts.length > 0 && Boolean(formatTime);
@@ -133,77 +133,116 @@ function ToastList({
     const timer = setInterval(() => tick((n) => n + 1), 30_000);
     return () => clearInterval(timer);
   }, [open]);
-  // A toast with an action goes to the front: behind another toast its button cannot be reached.
-  // New toasts always open at the front, so one that has fallen behind a plain toast is added again.
-  useEffect(() => {
-    const live = toasts.filter((t) => t.transitionStatus !== "ending");
-    const front = live.findIndex((t) => !t.data?.action);
-    const behind = front < 0 ? undefined : live.slice(front).find((t) => t.data?.action);
-    if (!behind) return;
-    close(behind.id);
-    add({
-      id: behind.id,
-      title: behind.title,
-      description: behind.description,
-      timeout: behind.timeout,
-      priority: behind.priority,
-      data: behind.data,
-    });
-  }, [toasts, close, add]);
-  const hidden = toasts.filter((t) => t.limited).length;
-  // Newest first: the first visible toast is the front sheet of the deck.
-  const visible = toasts.filter((t) => !t.limited);
+  // Toasts with an action sit in a flat column above the stack of plain toasts, so a new plain
+  // toast never covers an action button. Base UI's own `limit` is off (see the provider) because it
+  // would count actions against the plain toasts; the limit is applied to the plain stack here.
+  const actions = toasts.filter((t) => t.data?.action);
+  const plain = toasts.filter((t) => !t.data?.action);
+  let active = 0;
+  const visible = plain.filter(
+    (t) => t.transitionStatus === "ending" || active++ < MAX_VISIBLE_NOTIFICATION_TOASTS,
+  );
+  const hidden = plain.length - visible.length;
+  // Stack height once fanned out: each visible toast's height plus the gap between them.
+  const GAP_PX = 8;
+  const heights = visible.map((t) => t.height || 0);
+  const fanned = heights.reduce((sum, h) => sum + h, 0) + GAP_PX * Math.max(0, visible.length - 1);
+  // Offset of each toast from the bottom when fanned out.
+  const offsets = heights.map((_, i) => heights.slice(0, i).reduce((sum, h) => sum + h, 0));
+  const renderCard = (
+    toast: ToastItem,
+    className: string,
+    style?: CSSProperties,
+    extra?: ReactNode,
+    behind?: boolean,
+  ) => (
+    <Toast.Root
+      key={toast.id}
+      toast={toast}
+      data-slot="notification-toast"
+      data-has-action={toast.data?.action ? "" : undefined}
+      data-behind={behind ? "" : undefined}
+      style={style}
+      className={cn(
+        "group pointer-events-auto rounded-xl border border-border bg-card text-left text-card-foreground shadow-lg data-[has-action]:flex data-[has-action]:items-center",
+        "transition-[opacity,transform,height] duration-300 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-opacity motion-reduce:duration-150",
+        "data-[ending-style]:opacity-0",
+        className,
+      )}
+    >
+      {extra}
+      <ToastBody toast={toast} formatTime={formatTime} onOpen={onOpen} close={close} />
+      {toast.data?.action ? (
+        <Button
+          size="sm"
+          className="me-10 shrink-0 self-center pointer-coarse:min-h-11 pointer-coarse:min-w-11"
+          onClick={() => {
+            toast.data?.action?.onClick();
+            close(toast.id);
+          }}
+        >
+          {toast.data.action.label}
+        </Button>
+      ) : null}
+      <Toast.Close
+        className="absolute top-2 right-2 inline-flex size-6 cursor-pointer group-data-[has-action]:opacity-100 group-data-[has-action]:pointer-coarse:top-0 group-data-[has-action]:pointer-coarse:right-0 group-data-[has-action]:pointer-coarse:size-11 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
+        aria-label={dismissLabel}
+      >
+        <XIcon className="size-3.5" aria-hidden="true" />
+      </Toast.Close>
+    </Toast.Root>
+  );
+  let shown = 0;
   return (
     <>
-      {visible.map((toast, i) => (
-        <Toast.Root
-          key={toast.id}
-          toast={toast}
-          data-slot="notification-toast"
-          data-behind={i > 0 ? "" : undefined}
-          data-has-action={toast.data?.action ? "" : undefined}
-          className={cn(
-            // Sheets of paper: every toast is pinned to the bottom edge and moved up and
-            // scaled down by its index; hover or focus fans them into a column.
-            "group pointer-events-auto absolute data-[has-action]:flex data-[has-action]:items-center right-0 bottom-0 left-0 z-[calc(100-var(--toast-index))] origin-bottom rounded-xl border border-border bg-card text-left text-card-foreground shadow-lg",
-            "[--gap:0.5rem] [--peek:1rem] [--height:var(--toast-frontmost-height,var(--toast-height))]",
-            "h-[var(--height)] translate-y-[calc(var(--toast-index)*var(--peek)*-1)] scale-[calc(1-var(--toast-index)*0.05)]",
-            "data-[expanded]:h-[var(--toast-height)] data-[expanded]:translate-y-[calc(var(--toast-offset-y)*-1-var(--toast-index)*var(--gap))] data-[expanded]:scale-100",
-            "[&[data-behind]:not([data-expanded])]:border-foreground/25! [&[data-behind]:not([data-expanded])]:bg-muted! [&[data-behind]:not([data-expanded])>*]:opacity-0",
-            "transition-[opacity,transform,height] duration-300 ease-[cubic-bezier(.22,1,.36,1)] motion-reduce:transition-opacity motion-reduce:duration-150",
-            "data-[starting-style]:translate-y-[150%] data-[starting-style]:opacity-0 motion-reduce:data-[starting-style]:translate-y-[calc(var(--toast-index)*var(--peek)*-1)]",
-            "data-[ending-style]:opacity-0",
+      {actions.length > 0 ? (
+        <div className="mb-2 flex flex-col gap-2">
+          {actions.map((toast) =>
+            renderCard(
+              toast,
+              "relative data-[starting-style]:translate-y-[150%] data-[starting-style]:opacity-0 motion-reduce:data-[starting-style]:translate-y-0",
+            ),
           )}
+        </div>
+      ) : null}
+      {visible.length > 0 ? (
+        <div
+          className="relative group-data-[expanded]/viewport:h-[var(--fanned)] h-[var(--front)] transition-[height] duration-300"
+          style={
+            {
+              "--front": `${heights[0] || 0}px`,
+              "--fanned": `${fanned}px`,
+            } as CSSProperties
+          }
         >
-          {i === 0 && hidden > 0 ? (
-            <div
-              data-slot="notification-toast-overflow"
-              className="pointer-events-none absolute -top-9 right-3 rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground group-data-[expanded]:hidden"
-            >
-              +{hidden}
-            </div>
-          ) : null}
-          <ToastBody toast={toast} formatTime={formatTime} onOpen={onOpen} close={close} />
-          {toast.data?.action ? (
-            <Button
-              size="sm"
-              className="me-10 shrink-0 self-center pointer-coarse:min-h-11 pointer-coarse:min-w-11"
-              onClick={() => {
-                toast.data?.action?.onClick();
-                close(toast.id);
-              }}
-            >
-              {toast.data.action.label}
-            </Button>
-          ) : null}
-          <Toast.Close
-            className="absolute top-2 right-2 inline-flex size-6 cursor-pointer group-data-[has-action]:opacity-100 group-data-[has-action]:pointer-coarse:top-0 group-data-[has-action]:pointer-coarse:right-0 group-data-[has-action]:pointer-coarse:size-11 items-center justify-center rounded-sm text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-focus-within:opacity-100 group-hover:opacity-100 pointer-coarse:opacity-100"
-            aria-label={dismissLabel}
-          >
-            <XIcon className="size-3.5" aria-hidden="true" />
-          </Toast.Close>
-        </Toast.Root>
-      ))}
+          {visible.map((toast, i) => {
+            const index = toast.transitionStatus === "ending" ? i : shown++;
+            return renderCard(
+              toast,
+              cn(
+                // Sheets of paper: every toast is pinned to the bottom edge and moved up and
+                // scaled down by its index; hover or focus fans them into a column.
+                "absolute right-0 bottom-0 left-0 z-[calc(100-var(--i))] origin-bottom",
+                "[--gap:0.5rem] [--peek:1rem] [--height:var(--front)]",
+                "h-[var(--height)] translate-y-[calc(var(--i)*var(--peek)*-1)] scale-[calc(1-var(--i)*0.05)]",
+                "data-[expanded]:h-[var(--toast-height)] data-[expanded]:translate-y-[calc(var(--oy)*-1-var(--i)*var(--gap))] data-[expanded]:scale-100",
+                "[&[data-behind]:not([data-expanded])]:border-foreground/25! [&[data-behind]:not([data-expanded])]:bg-muted! [&[data-behind]:not([data-expanded])>*]:opacity-0",
+                "data-[starting-style]:translate-y-[150%] data-[starting-style]:opacity-0 motion-reduce:data-[starting-style]:translate-y-[calc(var(--i)*var(--peek)*-1)]",
+              ),
+              { "--i": index, "--oy": `${offsets[i]}px` } as CSSProperties,
+              i === 0 && hidden > 0 ? (
+                <div
+                  data-slot="notification-toast-overflow"
+                  className="pointer-events-none absolute -top-9 right-3 rounded-full border border-border bg-card px-2 py-0.5 text-xs text-muted-foreground group-data-[expanded]:hidden"
+                >
+                  +{hidden}
+                </div>
+              ) : null,
+              i > 0,
+            );
+          })}
+        </div>
+      ) : null}
     </>
   );
 }
@@ -223,7 +262,7 @@ export function NotificationToaster({
   return (
     <Toast.Provider
       toastManager={manager}
-      limit={MAX_VISIBLE_NOTIFICATION_TOASTS}
+      limit={Number.POSITIVE_INFINITY}
       timeout={NOTIFICATION_TOAST_TIMEOUT_MS}
     >
       <Toast.Portal>
@@ -231,7 +270,7 @@ export function NotificationToaster({
           role="status"
           aria-live="polite"
           // Bottom-right with 16 px side insets; lifted above the chat composer. Centred on phones.
-          className="pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+1rem))] z-50 w-[min(28rem,calc(100vw-2rem))] max-sm:right-auto max-sm:left-1/2 max-sm:-translate-x-1/2"
+          className="group/viewport pointer-events-none fixed right-[max(1rem,env(safe-area-inset-right))] bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+1rem))] z-50 w-[min(28rem,calc(100vw-2rem))] max-sm:right-auto max-sm:left-1/2 max-sm:-translate-x-1/2"
         >
           <ToastList onOpen={onOpen} dismissLabel={dismissLabel} formatTime={formatTime} />
         </Toast.Viewport>

@@ -237,6 +237,41 @@ it("keeps a toast with an action open past the usual delay", () =>
     expect(cards()).toHaveLength(1);
   }));
 
+const addUndo = (n: number) =>
+  act(async () => {
+    for (let i = 1; i <= n; i++)
+      enqueueNotificationToast({
+        id: `a${i}`,
+        title: `Deleted ${i}`,
+        timeout: 0,
+        action: { label: "Undo", onClick: () => {} },
+      });
+  });
+
+it("keeps plain toasts for their full delay while three Undo toasts are pending", () =>
+  withFakeTimers(async () => {
+    await mount();
+    await addUndo(3);
+    await act(async () => enqueueNotificationToast({ id: "p1", title: "Chief finished" }));
+    await advance(5_000);
+    expect(document.body.textContent).toContain("Chief finished");
+    expect(cards()).toHaveLength(4);
+    await advance(SLOW);
+    expect(document.body.textContent).not.toContain("Chief finished");
+    expect(cards()).toHaveLength(3);
+  }));
+
+it("does not move focus when a plain toast arrives while Undo has focus", async () => {
+  await mount();
+  await addUndo(1);
+  const undo = actionButton();
+  await act(async () => undo?.focus());
+  expect(document.activeElement).toBe(undo);
+  await act(async () => enqueueNotificationToast({ id: "p1", title: "Chief finished" }));
+  expect(document.activeElement).toBe(undo);
+  expect(actionButton()).toBe(undo);
+});
+
 it("moves a toast with an action in front of toasts that arrive later", async () => {
   await mount();
   await act(async () => {

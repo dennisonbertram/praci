@@ -248,22 +248,25 @@ it("focuses the restored contact's name after Undo", async () => {
   expect(document.activeElement?.closest("tr")?.getAttribute("data-contact-id")).toBe("c9");
 });
 
-it("reports an invalid email under the field and focuses it, without saving", async () => {
-  rpcMock.list.mockResolvedValue([]);
-  await show();
-  await click(button("Add contact"));
-  await typeInto(document.getElementById("contact-name") as HTMLInputElement, "Cy");
-  const email = document.getElementById("contact-email") as HTMLInputElement;
-  await typeInto(email, "not an email");
-  await click(button("Save"));
-  expect(rpcMock.save).not.toHaveBeenCalled();
-  expect(email.getAttribute("aria-invalid")).toBe("true");
-  const message = document.getElementById(email.getAttribute("aria-describedby") ?? "");
-  expect(message?.textContent).toBe("Enter a valid email");
-  expect(document.activeElement).toBe(email);
-  await typeInto(email, "cy@example.test");
-  expect(email.getAttribute("aria-invalid")).toBeNull();
-});
+it.each(["not an email", "name@example..com"])(
+  "reports the invalid email %s under the field and focuses it, without saving",
+  async (bad) => {
+    rpcMock.list.mockResolvedValue([]);
+    await show();
+    await click(button("Add contact"));
+    await typeInto(document.getElementById("contact-name") as HTMLInputElement, "Cy");
+    const email = document.getElementById("contact-email") as HTMLInputElement;
+    await typeInto(email, bad);
+    await click(button("Save"));
+    expect(rpcMock.save).not.toHaveBeenCalled();
+    expect(email.getAttribute("aria-invalid")).toBe("true");
+    const message = document.getElementById(email.getAttribute("aria-describedby") ?? "");
+    expect(message?.textContent).toBe("Enter a valid email");
+    expect(document.activeElement).toBe(email);
+    await typeInto(email, "cy@example.test");
+    expect(email.getAttribute("aria-invalid")).toBeNull();
+  },
+);
 
 it("marks the Email invalid and focuses it when another contact has it", async () => {
   const cy = contact("c2", "Cy", "vendor");

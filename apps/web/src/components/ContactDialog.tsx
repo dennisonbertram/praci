@@ -1,6 +1,7 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
 import type { Contact, ContactKind } from "@rakazo/contracts";
+import { ContactEmailSchema } from "@rakazo/contracts";
 import {
   Button,
   Dialog,
@@ -106,7 +107,7 @@ export function ContactDialog({
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (email.trim() && !/^[^\s@]+@[^\s@]+$/.test(email.trim())) {
+    if (email.trim() && !ContactEmailSchema.safeParse(email).success) {
       setEmailError(t`Enter a valid email`);
       emailInput.current?.focus();
       return;
