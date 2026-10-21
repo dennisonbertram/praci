@@ -473,6 +473,16 @@ describe("recordHistoryCompactAttemptsExhausted", () => {
 });
 
 describe("compactHistory", () => {
+  it("does not summarize a thread that holds meeting text", async () => {
+    const harness = compactionHarness({ deploymentModelKey: "openrouter-key" });
+    (harness.thread as { meetingTaintedAt?: Date }).meetingTaintedAt = new Date();
+
+    await compactHistory(harness.deps, "thread-1");
+
+    expect(harness.runtime.run).not.toHaveBeenCalled();
+    expect(harness.saveMemory).not.toHaveBeenCalled();
+  });
+
   it("summarizes the next batch, saves it through the provider, and advances the cursor", async () => {
     const harness = compactionHarness({ deploymentModelKey: "openrouter-key" });
 

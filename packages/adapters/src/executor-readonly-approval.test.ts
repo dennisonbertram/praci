@@ -146,7 +146,7 @@ function fixture({
   peer,
   mcpServers,
   history,
-  threadReplySenders,
+  threadMarkedAtStart = false,
   knownBots,
   connectionRows = mail ? [mailConnectionRow()] : [],
   googleConnectors = false,
@@ -171,8 +171,8 @@ function fixture({
   mcpServers?: { id: string; endpoint: string; agentBotId: string }[];
   /** Earlier thread messages, and the spawn key of each bot they name. */
   history?: { blocks: unknown[] }[];
-  /** Senders of replies anywhere in the thread, as the whole-thread scan finds them. */
-  threadReplySenders?: string[] | Error;
+  /** The thread already carries the durable meeting mark when the run starts. */
+  threadMarkedAtStart?: boolean;
   knownBots?: Record<string, string>;
   connectionRows?: Record<string, unknown>[];
   /** Offers the native Google Calendar and Drive tools. */
@@ -214,6 +214,7 @@ function fixture({
     },
     route: route ?? { connectorId: "demo", resourceId: "resource-1", toolName: name },
   };
+  const mark = { at: threadMarkedAtStart ? new Date() : (null as Date | null) };
   const effects: Effect[] = [];
   const results: unknown[] = [];
   const sharedMemoryState = {
@@ -293,10 +294,6 @@ function fixture({
   };
   const prisma = {
     user: { findUnique: vi.fn(async () => ({ timezone: null })) },
-    $queryRaw: vi.fn(async () => {
-      if (threadReplySenders instanceof Error) throw threadReplySenders;
-      return (threadReplySenders ?? []).map((id) => ({ id }));
-    }),
     run: {
       findUnique: vi.fn(async () => run),
       findUniqueOrThrow: vi.fn(async () => run),
@@ -356,7 +353,14 @@ function fixture({
       update: vi.fn(),
       updateMany: vi.fn(async () => ({ count: 1 })),
     },
-    thread: { findUniqueOrThrow: vi.fn(async () => ({ id: run.threadId, groupId: null })) },
+    thread: {
+      findUniqueOrThrow: vi.fn(async () => ({
+        id: run.threadId,
+        groupId: null,
+        meetingTaintedAt: mark.at,
+      })),
+      findUnique: vi.fn(async () => ({ meetingTaintedAt: mark.at })),
+    },
     message: {
       findMany: vi.fn(async () =>
         (history ?? []).map((m, index) => ({
@@ -528,6 +532,9 @@ function fixture({
   return {
     offeredTools,
     request: () => lastRequest,
+    markThread: () => {
+      mark.at = new Date();
+    },
     effects,
     results,
     execute,
@@ -537,9 +544,19 @@ function fixture({
     setCalls(next: typeof calls) {
       calls = next;
     },
-    async run(options: { expectFailure?: boolean } = {}) {
+    async run(options: { expectFailure?: boolean; noModel?: boolean } = {}) {
       run.status = "queued";
       await executor.continueRun(run.id, "worker-1");
+      if (options.noModel) {
+        expect(runtimeRun).not.toHaveBeenCalled();
+        expect(finalizeRun).toHaveBeenCalledWith(
+          expect.objectContaining({
+            outcome: "failed",
+            error: "AI data sharing is off for this model.",
+          }),
+        );
+        return;
+      }
       expect(runtimeRun).toHaveBeenCalled();
       expect(prisma.attempt.update).not.toHaveBeenCalled();
       if (!options.expectFailure)
@@ -2307,6 +2324,26 @@ describe("Mercury agent writes, offline end to end", () => {
     expect(mercury.sendMoneyRequests).toHaveLength(0);
   });
 
+  it("looks up no payee or account name for the card of a call in a marked thread", async () => {
+    const lookups = () =>
+      mercury.calls.filter((c) => c.name === "getRecipient" || c.name === "getAccount");
+    const open = agentRun(mercuryConnector("bot-1", agentKey));
+    await open.run();
+    expect(lookups().length).toBeGreaterThan(0);
+    mercury.calls.length = 0;
+    const marked = fixture({
+      name: "mcp__demo__requestSendMoney",
+      readOnly: false,
+      spawnKey: agentKey,
+      connector: mercuryConnector("bot-1", agentKey),
+      threadMarkedAtStart: true,
+    });
+    marked.setCalls([{ args: sendArgs, executionId: "call-1" }]);
+    await marked.run();
+    expect(marked.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(lookups()).toEqual([]);
+  });
+
   it("sends exactly one request once the user approves", async () => {
     const f = agentRun(mercuryConnector("bot-1", agentKey));
     await f.run();
@@ -2979,17 +3016,11 @@ describe("meeting-source agent", () => {
     }
   });
 
-  it("leaves no meetings tool and no live MCP tool when AI data sharing is off", async () => {
+  it("calls no model, so offers no meetings or live MCP tool, when AI data sharing is off", async () => {
     triage.chatNeedsConsent = true;
     const f = meetingRun();
-    await f.run();
-    expect(f.offeredTools.filter((name) => MEETINGS.includes(name))).toEqual([]);
-    expect(f.offeredTools).not.toContain(granolaTool.name);
-    // Calling the live tool by name anyway reaches nothing.
-    const direct = meetingRun({ name: granolaTool.name });
-    await direct.run();
-    expect(direct.results.at(-1)).toMatchObject({ error: expect.any(String) });
-    expect(direct.execute).not.toHaveBeenCalled();
+    await f.run({ noModel: true });
+    expect(f.offeredTools).toEqual([]);
   });
 });
 
@@ -3129,18 +3160,62 @@ describe("meeting taint and consent are not escaped", () => {
     }
   });
 
-  it("holds a run whose meeting reply is older than the loaded history window", async () => {
-    const f = heldAfterReply("web_fetch", { history: [], threadReplySenders: ["peer-1"] });
+  it("holds a run in a marked thread even when the source agent is gone and no reply is loaded", async () => {
+    const f = heldAfterReply("web_fetch", {
+      history: [],
+      knownBots: {},
+      mcpServers: [],
+      threadMarkedAtStart: true,
+    });
     f.setCalls([{ args: { url: "https://example.invalid" }, executionId: "c" }]);
     await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    // The same thread without the mark is not held.
+    const open = heldAfterReply("web_fetch", { history: [], knownBots: {}, mcpServers: [] });
+    await open.run();
+    expect(open.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("gates the next call of a run that is marked part-way through", async () => {
+    let f: ReturnType<typeof fixture>;
+    f = fixture({
+      name: "save_shared_memory",
+      builtin: true,
+      autoReview: true,
+      rules: [{ effect: "always_allow", matchKind: "tool", matchValue: "save_shared_memory" }],
+      afterCall: (index) => {
+        if (index === 0) f.markThread();
+      },
+    });
+    f.setCalls([
+      { args: { path: "MEMORY.md", content: "a" }, executionId: "c1" },
+      { args: { path: "MEMORY.md", content: "b" }, executionId: "c2" },
+    ]);
+    await f.run();
+    expect(f.commit).toHaveBeenCalledOnce();
     expect(f.pauseRunForInput).toHaveBeenCalledOnce();
   });
 
-  it("holds every run when the whole-thread scan fails", async () => {
-    const f = heldAfterReply("web_fetch", { history: [], threadReplySenders: new Error("db") });
-    f.setCalls([{ args: { url: "https://example.invalid" }, executionId: "c" }]);
+  it("gives a marked thread no backup model, run_subagent or request_takeover", async () => {
+    const f = fixture({ builtin: true, threadMarkedAtStart: true });
     await f.run();
-    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(f.request()?.fallbackModels ?? []).toEqual([]);
+    expect(f.offeredTools).not.toContain("run_subagent");
+    expect(f.offeredTools).not.toContain("request_takeover");
+    expect(MEETING_TAINT_FREE_TOOLS.has("recall_memory")).toBe(false);
+    const open = fixture({ builtin: true });
+    await open.run();
+    expect(open.offeredTools).toEqual(expect.arrayContaining(["run_subagent", "request_takeover"]));
+  });
+
+  it("calls no model for a marked thread whose model has no consent", async () => {
+    triage.chatNeedsConsent = true;
+    try {
+      const f = fixture({ builtin: true, threadMarkedAtStart: true });
+      await f.run({ noModel: true });
+    } finally {
+      triage.chatNeedsConsent = false;
+    }
   });
 
   it("keeps asking on a resumed run after the approval pause", async () => {
@@ -3196,11 +3271,11 @@ describe("meeting taint and consent are not escaped", () => {
       triage.needsConsent = false;
       triage.chatNeedsConsent = false;
     });
-    it("offers no meeting tool when the Inbox model is consented but this model is not", async () => {
+    it("calls no model when the Inbox model is consented but this model is not", async () => {
       triage.needsConsent = false;
       triage.chatNeedsConsent = true;
       const f = meetingRun();
-      await f.run();
+      await f.run({ noModel: true });
       expect(f.offeredTools).toEqual([]);
     });
     it("offers the tools when this model is consented", async () => {

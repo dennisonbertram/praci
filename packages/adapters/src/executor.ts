@@ -382,6 +382,7 @@ import {
   isMeetingSourceAgent,
   MEETING_AGENT_BUILTIN_TOOLS,
   MEETING_CONSENT_OFF,
+  MEETING_CONSENT_REQUIRED_MESSAGE,
   MEETING_TOOL_NAMES,
   meetingToolFromTool,
   wrapMeetingNotes,
@@ -1516,26 +1517,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
         const senderInScope = Boolean(senderBot);
         // A reply from a meeting-source agent carries untrusted meeting text. Wrap it for the model,
         // and treat the whole run as holding it (see meetingTaint at the approval gate).
-        // Taint comes from the stored sender ids of every reply in the thread's loaded history plus
-        // the current sender, never from message text, so a resumed run or a later turn keeps it.
+        // Sender ids come from stored blocks, never from message text.
         const replySenderIds = new Set<string>(senderBot ? [senderBot.id] : []);
         for (const message of loadedMessages) {
           for (const block of message.blocks as MessageBlock[]) {
             if (block.kind === "bot_message_received") replySenderIds.add(block.fromBotId);
           }
-        }
-        // The loaded window may not reach an old reply, so ask the database about the whole thread.
-        // If that fails the run is treated as tainted.
-        let threadScanFailed = false;
-        try {
-          const rows = await deps.prisma.$queryRaw<{ id: string | null }[]>`
-            SELECT DISTINCT e->>'fromBotId' AS "id"
-            FROM "messages" m, jsonb_array_elements(m."blocks") e
-            WHERE m."threadId" = ${run.threadId} AND e->>'kind' = 'bot_message_received'`;
-          for (const row of rows) if (row.id) replySenderIds.add(row.id);
-        } catch (error) {
-          getLogger().error("meeting taint scan", error);
-          threadScanFailed = true;
         }
         const meetingSenderIds = new Set<string>();
         for (const id of replySenderIds) {
@@ -1557,7 +1544,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
             meetingSenderIds.add(id);
           }
         }
-        const meetingTaint = meetingSenderIds.size > 0 || threadScanFailed;
+        // The durable mark on the thread (set when meeting text is delivered into it, never cleared)
+        // is the main signal; the trigger's sender and loaded replies are extra.
+        const meetingTaint =
+          meetingSenderIds.size > 0 ||
+          (thread as { meetingTaintedAt?: Date | null }).meetingTaintedAt != null;
         // The wake prompt carries the reply body (already escaped); mark that body as meeting text too.
         const task =
           senderBot && meetingSenderIds.has(senderBot.id)
@@ -1875,6 +1866,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           : undefined;
         const recallPromise =
           !voiceAgent &&
+          !meetingTaint &&
           threadContext.includeSemanticRecall &&
           semanticMemory &&
           memoryScope &&
@@ -2047,6 +2039,41 @@ export function createRunExecutor(deps: ExecutorDeps) {
             },
             { spaceId: run.spaceId, userId: bot.userId },
           );
+        // A meeting-source agent sends meeting text to its own model, so consent is for the recipient
+        // of this run's actual model on every trigger (not the Inbox agent's), and unknown means no.
+        const meetingConsentOk = async (): Promise<boolean> => {
+          try {
+            if (!runModelProvider || !runModelId) return false;
+            const recipient = aiRecipient({
+              provider: runModelProvider,
+              modelId: runModelId,
+              baseUrl: resolved.baseUrl,
+              use: "model",
+            });
+            if (!recipient) return runModelProvider === "scripted";
+            const granted = await deps.prisma.aiDataConsent.findFirst({
+              where: {
+                userId: bot.userId,
+                spaceId: run.spaceId,
+                recipientKey: recipient.key,
+                version: AI_DISCLOSURE_VERSION,
+              },
+              select: { userId: true },
+            });
+            return Boolean(granted);
+          } catch {
+            return false;
+          }
+        };
+        // Meeting text (a meeting-source agent's own run, or any run in a marked thread) goes to this
+        // run's model only with consent for that recipient. Checked before any model call.
+        if ((meetingAgent || meetingTaint) && !(await meetingConsentOk())) {
+          await publishMessage(deps, run, "bot", [
+            { kind: "text", text: MEETING_CONSENT_REQUIRED_MESSAGE },
+          ]).catch((error) => getLogger().error("meeting consent notice", error));
+          await failRunBeforeModel(MEETING_CONSENT_REQUIRED_MESSAGE);
+          return;
+        }
         if (
           legalOnly &&
           (runModelProvider !== LEGAL_AGENT_MODEL.provider || runModelId !== LEGAL_AGENT_MODEL.id)
@@ -2314,32 +2341,6 @@ export function createRunExecutor(deps: ExecutorDeps) {
             // Unknown is treated as not allowed: mail content never leaves on a failed check.
             (): { recipient?: { key: string; name: string; detail?: string } } => ({}),
           );
-        };
-        // A meeting-source agent sends meeting text to its own model, so consent is for the recipient
-        // of this run's actual model on every trigger (not the Inbox agent's), and unknown means no.
-        const meetingConsentOk = async (): Promise<boolean> => {
-          try {
-            if (!runModelProvider || !runModelId) return false;
-            const recipient = aiRecipient({
-              provider: runModelProvider,
-              modelId: runModelId,
-              baseUrl: resolved.baseUrl,
-              use: "model",
-            });
-            if (!recipient) return runModelProvider === "scripted";
-            const granted = await deps.prisma.aiDataConsent.findFirst({
-              where: {
-                userId: bot.userId,
-                spaceId: run.spaceId,
-                recipientKey: recipient.key,
-                version: AI_DISCLOSURE_VERSION,
-              },
-              select: { userId: true },
-            });
-            return Boolean(granted);
-          } catch {
-            return false;
-          }
         };
         // An "Ask agent" chat opens with the mail thread as its first message. History carries only
         // a placeholder for it until mail consent covers this run's model: the same check mail tools
@@ -2612,7 +2613,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
             (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)) &&
             (!meetingAgent || meetingAgentToolSet.has(tool.name)) &&
             // pi-runtime runs run_subagent itself, before the executor's approval gate.
-            (!meetingTaint || tool.name !== "run_subagent"),
+            (!meetingTaint || !["run_subagent", "request_takeover"].includes(tool.name)),
         );
         // Generic connector tools (Composio, Pipedream, MCP) reach the owner's accounts, so a run
         // another agent started (bot_message, possibly from another account) gets none of them.
@@ -2917,6 +2918,19 @@ export function createRunExecutor(deps: ExecutorDeps) {
               messageSegments = attachToolNotes(messageSegments, name, { lines, summary });
             },
           };
+        };
+        const threadMarkedNow = async (): Promise<boolean> => {
+          try {
+            const row = await deps.prisma.thread.findUnique({
+              where: { id: thread.id },
+              select: { meetingTaintedAt: true },
+            });
+            return row?.meetingTaintedAt != null;
+          } catch (error) {
+            // Unknown is treated as marked.
+            getLogger().error("meeting taint read", error);
+            return true;
+          }
         };
         const applyTool = async (
           name: string,
@@ -3227,7 +3241,9 @@ export function createRunExecutor(deps: ExecutorDeps) {
             : undefined;
           // A run that read a meeting agent's reply holds untrusted meeting text: every call that
           // writes, sends or reaches the network asks, on a card that cannot become a saved rule.
-          const meetingTaintedCall = meetingTaint && !MEETING_TAINT_FREE_TOOLS.has(name);
+          // Read at each call, so a run that is marked mid-way (a reply arrives) asks from then on.
+          const meetingTaintedCall =
+            !MEETING_TAINT_FREE_TOOLS.has(name) && (meetingTaint || (await threadMarkedNow()));
           const requiresMandatoryApproval =
             requiresUnattendedApproval ||
             meetingTaintedCall ||
@@ -3582,18 +3598,17 @@ export function createRunExecutor(deps: ExecutorDeps) {
           };
 
           const requestApproval = async () => {
-            const moneyNames = await resolveMoneyNames(
-              callRoute?.toolName ?? name,
-              args,
-              readApprovalName,
-            );
+            // A card for a call in a marked thread makes no lookups; it shows the raw ids.
+            const moneyNames = meetingTaintedCall
+              ? undefined
+              : await resolveMoneyNames(callRoute?.toolName ?? name, args, readApprovalName);
             const block = buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
               reviewReason,
               fullMail: isCartaMailSend(bot.spawnKey, name),
               integrationWriteTool,
               noAlwaysAllow: meetingTaintedCall,
               serviceName: callRoute?.serverName,
-              mailAccount: await approvalMailAccount(),
+              mailAccount: meetingTaintedCall ? undefined : await approvalMailAccount(),
               imessage: imessageCard,
               schedule: scheduleCard,
               moneyNames,
@@ -6110,7 +6125,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         let fallbackModels: { provider: string; modelId: string }[] = [];
         // Backup models would receive the Legal agent's history under a consent given for another
         // recipient, so the Legal agent has none. A meeting-source agent has none for the same reason.
-        if (!scripted && !legalOnly && !meetingAgent) {
+        if (!scripted && !legalOnly && !meetingAgent && !meetingTaint) {
           try {
             fallbackModels = await deps.prisma.spaceBackupModel.findMany({
               where: { userId: run.userId, spaceId: run.spaceId },
@@ -7160,7 +7175,6 @@ export const MEETING_TAINT_FREE_TOOLS = new Set([
   "ask_user",
   "search_history",
   "read_history",
-  "recall_memory",
   "skill_read",
   "meetings_list",
   "meetings_search",

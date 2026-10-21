@@ -28,6 +28,7 @@ export const MEETING_AGENT_BUILTIN_TOOLS = [
 ] as const;
 
 export const MEETING_CONSENT_OFF = "AI data sharing off";
+export const MEETING_CONSENT_REQUIRED_MESSAGE = "AI data sharing is off for this model.";
 const NO_SYNCED_MEETINGS = "no synced meetings";
 const STILL_SYNCING = "still syncing";
 const NO_MATCHING_MEETINGS = "no matching meetings";
@@ -232,4 +233,42 @@ export async function isMeetingSourceAgent(
 ): Promise<boolean> {
   for (const check of meetingAgentChecks) if (await check(bot, deps)) return true;
   return false;
+}
+
+/**
+ * Called inside the delivery transaction of every bot-to-bot message. The target thread is marked
+ * (once, never cleared) when the sender is a meeting-source agent, or when the sender's own thread
+ * is already marked, so meeting text forwarded through other agents keeps its mark. The mark lives
+ * on the thread, so archiving or removing the source agent does not lift it.
+ */
+export async function markMeetingTaintOnDelivery(
+  tx: Pick<PrismaClient, "thread" | "bot" | "mcpServer">,
+  delivery: {
+    spaceId: string;
+    userId: string;
+    senderBotId: string;
+    sourceThreadId: string;
+    targetThreadId: string;
+  },
+): Promise<void> {
+  const source = await tx.thread.findUnique({
+    where: { id: delivery.sourceThreadId },
+    select: { meetingTaintedAt: true },
+  });
+  let tainted = source?.meetingTaintedAt != null;
+  if (!tainted) {
+    const sender = await tx.bot.findFirst({
+      where: { id: delivery.senderBotId, spaceId: delivery.spaceId, userId: delivery.userId },
+      select: { id: true, spaceId: true, userId: true, spawnKey: true },
+    });
+    tainted = sender
+      ? await isMeetingSourceAgent({ ...sender, archivedAt: null }, { prisma: tx })
+      : false;
+  }
+  if (tainted) {
+    await tx.thread.updateMany({
+      where: { id: delivery.targetThreadId, meetingTaintedAt: null },
+      data: { meetingTaintedAt: new Date() },
+    });
+  }
 }
