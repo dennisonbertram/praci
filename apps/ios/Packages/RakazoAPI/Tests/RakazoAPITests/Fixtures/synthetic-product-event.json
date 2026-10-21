@@ -1,0 +1,13 @@
+{
+  "id": "synthetic-event-1",
+  "spaceId": "synthetic-space-1",
+  "threadId": "synthetic-thread-1",
+  "botId": "synthetic-bot-1",
+  "seq": 1,
+  "type": "thread.future_event",
+  "createdAt": "2025-01-01T00:00:00.000Z",
+  "payload": {
+    "synthetic": true,
+    "futureField": "preserved"
+  }
+}
