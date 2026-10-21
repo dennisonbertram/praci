@@ -3735,18 +3735,13 @@ export function ShellPage() {
     if (!focusComposerBotId || active?.id !== focusComposerBotId) return;
     const input = document.querySelector<HTMLTextAreaElement>("textarea[name='chat-message']");
     input?.focus();
-    // The tour's last step leaves a sample question to send or edit; an existing draft stays.
-    if (input && tourQuestion.current && !input.value) {
-      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set?.call(
-        input,
-        t`What should I do first this week?`,
-      );
-      input.dispatchEvent(new Event("input", { bubbles: true }));
-      input.select();
+    // The tour's last step sends its sample question at once, so it never lands in a draft.
+    if (tourQuestion.current) {
+      void sendMessage(t`What should I do first this week?`, [], newClientId());
     }
     tourQuestion.current = false;
     setFocusComposerBotId(null);
-  }, [active?.id, focusComposerBotId, t]);
+  }, [active?.id, focusComposerBotId, sendMessage, t]);
   const threadView = (
     <>
       {cartaAgentPage ? (

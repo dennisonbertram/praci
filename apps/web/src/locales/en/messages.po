@@ -916,6 +916,7 @@ msgstr "Address"
 msgid "Address or ENS"
 msgstr "Address or ENS"
 
+#: src/components/AiDataSharing.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/AccountSettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1036,10 +1037,6 @@ msgstr "Allow {0} connector without asking"
 msgid "Allow {0} without asking"
 msgstr "Allow {0} without asking"
 
-#: src/components/AiDataSharing.tsx
-msgid "Allow {model}"
-msgstr "Allow {model}"
-
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
 msgstr "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
@@ -1047,6 +1044,10 @@ msgstr "Allow access above to start. The Legal agent then reads your Data room f
 #: src/pages/Shell.tsx
 msgid "Allow access on the page to ask"
 msgstr "Allow access on the page to ask"
+
+#: src/components/AiDataSharing.tsx
+msgid "Allow AI models"
+msgstr "Allow AI models"
 
 #: src/components/integrations/AppDetail.tsx
 #: src/components/integrations/McpDetail.tsx
@@ -1411,8 +1412,8 @@ msgid "Ask Chief"
 msgstr "Ask Chief"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
-msgstr "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
+msgid "Ask Chief anything."
+msgstr "Ask Chief anything."
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Ask the server owner to configure this provider."
@@ -1737,10 +1738,6 @@ msgstr "Bots"
 #: src/pages/shell/transcript.tsx
 msgid "Bots are working"
 msgstr "Bots are working"
-
-#: src/components/AiDataSharing.tsx
-msgid "Bots cannot use a model until you allow it."
-msgstr "Bots cannot use a model until you allow it."
 
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Bots lose access to its tools."
@@ -2605,8 +2602,8 @@ msgid "Connect Gmail to send files"
 msgstr "Connect Gmail to send files"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Connect Gmail, Calendar and other apps so agents can read your mail and files."
-msgstr "Connect Gmail, Calendar and other apps so agents can read your mail and files."
+msgid "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
+msgstr "Connect Gmail, Calendar and more in Integrations so bots can read your mail and files."
 
 #: src/pages/Inbox.tsx
 msgid "Connect mail"
@@ -7107,8 +7104,8 @@ msgid "Preparing… {0}%"
 msgstr "Preparing… {0}%"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Press + to create an agent or a group chat."
-msgstr "Press + to create an agent or a group chat."
+msgid "Press + to create a bot or a group chat."
+msgstr "Press + to create a bot or a group chat."
 
 #: src/pages/Legal.tsx
 msgid "Press Scan now to read your Data room for contracts and deadlines."
@@ -9393,10 +9390,6 @@ msgid "This sheet is empty."
 msgstr "This sheet is empty."
 
 #: src/pages/ModelSettingsOverlay.tsx
-msgid "This space already uses {selectedProviderName}."
-msgstr "This space already uses {selectedProviderName}."
-
-#: src/pages/ModelSettingsOverlay.tsx
 msgid "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider."
 msgstr "This subscription sign-in is not available in Praci yet. Use a deployment credential or choose another provider."
 
@@ -9892,8 +9885,8 @@ msgid "Upload files"
 msgstr "Upload files"
 
 #: src/components/tour/FirstRunTour.tsx
-msgid "Upload files for agents to use. Artifacts holds what agents make."
-msgstr "Upload files for agents to use. Artifacts holds what agents make."
+msgid "Upload files for bots to use. Artifacts holds what bots make."
+msgstr "Upload files for bots to use. Artifacts holds what bots make."
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Upload SKILL.md"
@@ -10383,6 +10376,10 @@ msgstr "You have control"
 #: src/components/integrations/ConnectAppDialog.tsx
 msgid "You'll sign in to {0} in a new window."
 msgstr "You'll sign in to {0} in a new window."
+
+#: src/pages/ModelSettingsOverlay.tsx
+msgid "Your bots already use {selectedProviderName}."
+msgstr "Your bots already use {selectedProviderName}."
 
 #: src/components/integrations/SignInStep.tsx
 msgid "Your browser blocked the sign-in window"

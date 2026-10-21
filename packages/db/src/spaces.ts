@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { NEW_SPACE_APPROVAL_CATEGORIES } from "./bootstrap-user.js";
 import type { PrismaClient } from "./client.js";
 import { Prisma } from "./client.js";
 import { IsolationError } from "./scope.js";
@@ -80,6 +81,7 @@ type SpaceClient = Pick<
   | "spaceVoicePreference"
   | "memoryDocument"
   | "notificationPreference"
+  | "actionApprovalRule"
   | "bot"
   | "chatGroup"
 >;
@@ -133,6 +135,15 @@ async function createSpaceDefaults(
       spaceId: input.spaceId,
       userId: input.userId,
     },
+  });
+  await prisma.actionApprovalRule.createMany({
+    data: NEW_SPACE_APPROVAL_CATEGORIES.map((matchValue) => ({
+      spaceId: input.spaceId,
+      createdByUserId: input.userId,
+      effect: "require_approval",
+      matchKind: "category",
+      matchValue,
+    })),
   });
 }
 
@@ -230,7 +241,7 @@ export async function createSpaceForMember(
         await createSpaceDefaults(tx, {
           spaceId,
           userId: input.userId,
-          memoryContent: "# Space memory\n\n",
+          memoryContent: "# Memory\n\n",
         });
         await copyProviderPreferences(tx, {
           sourceSpaceId: input.currentSpaceId,

@@ -150,13 +150,12 @@ function MemoryDocumentList({
     };
   }, [t]);
 
-  const hasDocs = docs.length > 0;
+  // A document with nothing in it is not a memory; it only shows when nothing else does.
+  const remembered = docs.filter((doc) => memoryDocPreview(doc.content) !== null);
+  const hasDocs = remembered.length > 0;
   useEffect(() => {
     onHasDocs?.(hasDocs);
   }, [hasDocs, onHasDocs]);
-
-  // A document with nothing in it is not a memory; it only shows when nothing else does.
-  const remembered = docs.filter((doc) => memoryDocPreview(doc.content) !== null);
   const needle = filter.trim().toLowerCase();
   const visible = needle
     ? remembered.filter(
@@ -300,7 +299,7 @@ function MemoryDocumentList({
           ))}
         </div>
       ))}
-      {docs.length ? (
+      {hasDocs ? (
         <Button
           variant="ghost"
           type="button"

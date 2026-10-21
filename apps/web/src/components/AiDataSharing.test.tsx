@@ -146,112 +146,107 @@ it("shows the error and does not report consent when allowing fails", async () =
   expect(container.querySelector("button")?.disabled).toBe(false);
 });
 
-it("lists only model recipients, each off until the user turns it on, with the shared disclosure", async () => {
+const modelA = { key: "a", name: "OpenRouter", use: "model", detail: "vendor/alpha, x" } as const;
+const modelB = { key: "b", name: "OpenRouter", use: "model", detail: "vendor/beta, x" } as const;
+const switchStates = () =>
+  [...container.querySelectorAll('[role="switch"]')].map((s) => [
+    s.getAttribute("aria-label"),
+    s.getAttribute("aria-checked"),
+  ]);
+
+it("shows one switch for every model, off until all are allowed, with the models under Advanced", async () => {
   consent.aiConsentStatus.mockResolvedValue(statusOf());
   await render(<AiDataSharingSection />);
 
-  const switches = [...container.querySelectorAll('[role="switch"]')];
-  expect(
-    switches.map((s) => [s.getAttribute("aria-label"), s.getAttribute("aria-checked")]),
-  ).toEqual([
-    ["Allow Model", "true"],
-    ["Allow TypeSafe", "false"],
+  expect(switchStates()).toEqual([
+    ["Allow AI models", "false"],
+    ["Model", "true"],
+    ["TypeSafe", "false"],
   ]);
+  expect(container.querySelector("details")?.textContent).toContain("Advanced");
   expect(container.textContent).toContain(AI_DATA_DISCLOSURES.model);
   expect(container.textContent).not.toContain("ElevenLabs");
 });
 
-it("holds its place with a skeleton until the status loads, then says what off does", async () => {
+it("shows the one switch on when every model is allowed, as after Allow on the Legal card", async () => {
+  consent.aiConsentStatus.mockResolvedValue(
+    statusOf([
+      { ...modelA, allowed: true },
+      { ...modelB, allowed: true },
+    ]),
+  );
+  await render(<AiDataSharingSection />);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
+});
+
+it("holds its place with a skeleton until the status loads", async () => {
   let resolve: (status: AiConsentStatus) => void = () => undefined;
   consent.aiConsentStatus.mockReturnValue(new Promise((r) => (resolve = r)));
   await render(<AiDataSharingSection />);
   expect(container.querySelector("[data-skeleton]")).not.toBeNull();
   await act(async () => resolve(statusOf()));
   expect(container.querySelector("[data-skeleton]")).toBeNull();
-  expect(container.textContent).toContain("Bots cannot use a model until you allow it.");
 });
 
-it("shows a model slug as its display name", async () => {
+it("shows a model slug as its display name under Advanced, so two models are told apart", async () => {
   consent.aiConsentStatus.mockResolvedValue(
     statusOf([
-      { key: "a", name: "OpenRouter", use: "model", detail: "vendor/gpt-6-luna, x", allowed: true },
-      {
-        key: "b",
-        name: "OpenRouter",
-        use: "model",
-        detail: "vendor/muse-spark-1.2",
-        allowed: false,
-      },
+      { ...modelA, detail: "vendor/gpt-6-luna, x", allowed: true },
+      { ...modelB, detail: "vendor/muse-spark-1.2", allowed: false },
     ]),
   );
   await render(<AiDataSharingSection />);
   expect([...container.querySelectorAll("li")].map((r) => r.textContent)).toEqual([
-    "Allow GPT-6 LunaFor bots, mail, files and contracts",
-    "Allow Muse Spark 1.2For bots, mail, files and contracts",
-  ]);
-});
-
-it("tells two models from the same provider apart", async () => {
-  consent.aiConsentStatus.mockResolvedValue(
-    statusOf([
-      {
-        key: "a",
-        name: "OpenRouter",
-        use: "model",
-        detail: "vendor/alpha, forwarded",
-        allowed: true,
-      },
-      {
-        key: "b",
-        name: "OpenRouter",
-        use: "model",
-        detail: "vendor/beta, forwarded",
-        allowed: false,
-      },
-    ]),
-  );
-  await render(<AiDataSharingSection />);
-  const rows = [...container.querySelectorAll("li")];
-  // Each row leads with its model name, so the two switches never share a title.
-  expect(rows.map((r) => r.textContent)).toEqual([
-    "Allow Alpha" + "For bots, mail, files and contracts",
-    "Allow Beta" + "For bots, mail, files and contracts",
+    "GPT-6 Luna",
+    "Muse Spark 1.2",
   ]);
   expect(container.textContent).not.toContain("OpenRouter");
-  expect(
-    [...container.querySelectorAll('[role="switch"]')].map((s) => s.getAttribute("aria-label")),
-  ).toEqual(["Allow Alpha", "Allow Beta"]);
 });
 
-it("revokes only the switched-off recipient and allows only the switched-on one", async () => {
+it("allows every model with the one switch and revokes every model when it is turned off", async () => {
+  const list = (allowed: boolean) =>
+    statusOf([
+      { ...modelA, allowed },
+      { ...modelB, allowed },
+    ]);
+  consent.aiConsentStatus.mockResolvedValue(
+    statusOf([
+      { ...modelA, allowed: true },
+      { ...modelB, allowed: false },
+    ]),
+  );
+  consent.allowRecipient.mockResolvedValue(list(true));
+  consent.revokeRecipient.mockResolvedValue(list(false));
+  await render(<AiDataSharingSection />);
+
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
+  expect(consent.allowRecipient.mock.calls).toEqual([["a"], ["b"]]);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "true"]);
+
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
+  expect(consent.revokeRecipient.mock.calls).toEqual([["a"], ["b"]]);
+  expect(switchStates()[0]).toEqual(["Allow AI models", "false"]);
+});
+
+it("changes only one model from its switch under Advanced", async () => {
   consent.aiConsentStatus.mockResolvedValue(statusOf());
   consent.revokeRecipient.mockResolvedValue(
     statusOf(recipients.map((r) => (r.key === "model-key" ? { ...r, allowed: false } : r))),
   );
-  consent.allowRecipient.mockResolvedValue(
-    statusOf(recipients.map((r) => (r.key === "typesafe-key" ? { ...r, allowed: true } : r))),
-  );
   await render(<AiDataSharingSection />);
-
-  await click(container.querySelector('[aria-label="Allow Model"]'));
+  await click(container.querySelector('[aria-label="Model"]'));
   expect(consent.revokeRecipient).toHaveBeenCalledExactlyOnceWith("model-key");
   expect(consent.allowRecipient).not.toHaveBeenCalled();
-  expect(container.querySelector('[aria-label="Allow Model"]')?.getAttribute("aria-checked")).toBe(
-    "false",
-  );
-
-  await click(container.querySelector('[aria-label="Allow TypeSafe"]'));
-  expect(consent.allowRecipient).toHaveBeenCalledExactlyOnceWith("typesafe-key");
 });
 
 it("tells an open Inbox to reload once a switch changes", async () => {
   consent.aiConsentStatus.mockResolvedValue(statusOf());
-  consent.revokeRecipient.mockResolvedValue(statusOf());
+  consent.allowRecipient.mockResolvedValue(statusOf());
   const changed = vi.fn();
   window.addEventListener("rakazo:inbox-changed", changed);
   await render(<AiDataSharingSection />);
   expect(changed).not.toHaveBeenCalled();
-  await click(container.querySelector('[aria-label="Allow Model"]'));
+  await click(container.querySelector('[aria-label="Allow AI models"]'));
   expect(changed).toHaveBeenCalledTimes(1);
   window.removeEventListener("rakazo:inbox-changed", changed);
 });
