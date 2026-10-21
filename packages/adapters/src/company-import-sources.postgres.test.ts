@@ -1497,7 +1497,15 @@ describePostgres("company source pipeline (PostgreSQL + Gmail emulator)", () => 
     const callsBeforeReplay = extractionCalls;
     expect((await runToCompletion(engine, second.runId)).status).toBe("completed");
     expect(extractionCalls).toBe(callsBeforeReplay);
-    expect(await prisma.companyEvidence.count({ where: { spaceId, ownerUserId: userId } })).toBe(8);
+    expect(
+      await prisma.companyEvidence.count({
+        where: {
+          spaceId,
+          ownerUserId: userId,
+          connectionId: { in: [notionConnection.id, genericConnection.id] },
+        },
+      }),
+    ).toBe(8);
     expect(await prisma.companyImportEvidence.count({ where: { runId: second.runId } })).toBe(8);
     await expect(engine.progress({ ...actor, userId: otherUserId }, first.runId)).rejects.toThrow();
   });
