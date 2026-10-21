@@ -1,6 +1,6 @@
 import { t } from "@lingui/core/macro";
 import { Trans } from "@lingui/react/macro";
-import type { CompanyFact } from "@rakazo/contracts";
+import type { CompanyFact, CompanyPartialDate } from "@rakazo/contracts";
 import {
   CompanyEdgeEditInputSchema,
   CompanyEntityEditInputSchema,
@@ -78,7 +78,7 @@ export function CompanyFactDetail({
         if (!open && !busy) onClose();
       }}
     >
-      <DialogContent className="inset-y-0 left-auto right-0 h-full max-h-screen w-full translate-x-0 translate-y-0 overflow-y-auto rounded-none sm:max-w-lg">
+      <DialogContent className="inset-y-0 left-auto right-0 h-full max-h-screen w-full translate-x-0 translate-y-0 content-start overflow-y-auto rounded-none sm:max-w-lg">
         <DialogTitle className="pr-8">{maskCurrencyWhenHidden(companyFactTitle(fact))}</DialogTitle>
         <div className="flex items-center gap-2">
           <Badge variant="secondary">
@@ -100,13 +100,17 @@ export function CompanyFactDetail({
           <dl className="space-y-2">
             {Object.entries(fact.record.attrs).map(([key, value]) => (
               <div key={key}>
-                <dt className="text-muted-foreground">{key}</dt>
+                <dt className="text-muted-foreground capitalize">
+                  {key.replace(/([a-z])([A-Z])/g, "$1 $2")}
+                </dt>
                 <dd>
                   {maskCurrencyWhenHidden(
                     Array.isArray(value)
                       ? value.join(", ")
-                      : typeof value === "object"
-                        ? JSON.stringify(value)
+                      : typeof value === "object" && value !== null
+                        ? "date" in value && "precision" in value
+                          ? companyDate(value as CompanyPartialDate)
+                          : JSON.stringify(value)
                         : String(value),
                   )}
                 </dd>

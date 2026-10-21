@@ -27,7 +27,8 @@ test("Company shows owner facts, precision and provenance with masked money", as
   await page.getByRole("tab", { name: "People", exact: true }).click();
   await expect(page.getByRole("cell", { name: "2024", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Alex Reed", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText("Alex Reed joined as an engineer.");
-  await expect(page.getByRole("dialog")).toContainText("Roles over time");
+  const personDetail = page.getByRole("dialog", { name: "Alex Reed" });
+  await expect(personDetail).toContainText("Alex Reed joined as an engineer.");
+  await expect(personDetail).toContainText("Roles over time");
   await captureScreenshot(page, testInfo, "company-fact-detail");
 });
