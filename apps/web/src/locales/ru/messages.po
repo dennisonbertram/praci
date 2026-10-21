@@ -976,7 +976,6 @@ msgstr ""
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
-#: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr ""
 
@@ -996,11 +995,7 @@ msgid "Allow {0} without asking"
 msgstr "Разрешить {0} без запроса"
 
 #: src/components/AiDataSharing.tsx
-msgid "Allow {name}"
-msgstr ""
-
-#: src/components/AiDataSharing.tsx
-msgid "Allow {name}, {detail}"
+msgid "Allow {model}"
 msgstr ""
 
 #: src/pages/Legal.tsx
@@ -5012,16 +5007,16 @@ msgstr ""
 msgid "Let Praci read documents"
 msgstr ""
 
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Let Praci read your contracts"
+msgstr ""
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Praci read your documents"
 msgstr ""
 
 #: src/components/AiDataSharing.tsx
 msgid "Let Praci sort your mail"
-msgstr ""
-
-#: src/components/legal/ConsentPrompt.tsx
-msgid "Let the Legal agent read your documents"
 msgstr ""
 
 #: src/components/data-room/format.ts
@@ -6786,10 +6781,6 @@ msgid "Posted"
 msgstr ""
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "Praci can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
-msgstr ""
-
-#: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr ""
 
@@ -7983,10 +7974,6 @@ msgstr ""
 msgid "Send to agent"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews go to the AI service that runs your bots ({name})."
-msgstr ""
-
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr ""
@@ -8857,10 +8844,6 @@ msgstr ""
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
-msgstr ""
-
 #: src/lib/run-phase.ts
 msgid "the model"
 msgstr ""
@@ -8888,6 +8871,10 @@ msgstr "Выбранный поставщик памяти недоступен 
 #. placeholder {0}: shortDay(first.dueFor)
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the statement through {0}"
+msgstr ""
+
+#: src/components/AiDataSharing.tsx
+msgid "The text is sent to the AI model that runs your bots."
 msgstr ""
 
 #: src/components/finance/StatementReviewCard.tsx

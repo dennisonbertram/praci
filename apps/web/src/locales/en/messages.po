@@ -976,7 +976,6 @@ msgstr "All time"
 
 #: src/components/AiDataSharing.tsx
 #: src/components/AskCard.tsx
-#: src/components/legal/ConsentPrompt.tsx
 msgid "Allow"
 msgstr "Allow"
 
@@ -996,12 +995,8 @@ msgid "Allow {0} without asking"
 msgstr "Allow {0} without asking"
 
 #: src/components/AiDataSharing.tsx
-msgid "Allow {name}"
-msgstr "Allow {name}"
-
-#: src/components/AiDataSharing.tsx
-msgid "Allow {name}, {detail}"
-msgstr "Allow {name}, {detail}"
+msgid "Allow {model}"
+msgstr "Allow {model}"
 
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
@@ -5012,6 +5007,10 @@ msgstr "Let other agents use {service} directly"
 msgid "Let Praci read documents"
 msgstr "Let Praci read documents"
 
+#: src/components/legal/ConsentPrompt.tsx
+msgid "Let Praci read your contracts"
+msgstr "Let Praci read your contracts"
+
 #: src/components/data-room/ConsentPrompt.tsx
 msgid "Let Praci read your documents"
 msgstr "Let Praci read your documents"
@@ -5019,10 +5018,6 @@ msgstr "Let Praci read your documents"
 #: src/components/AiDataSharing.tsx
 msgid "Let Praci sort your mail"
 msgstr "Let Praci sort your mail"
-
-#: src/components/legal/ConsentPrompt.tsx
-msgid "Let the Legal agent read your documents"
-msgstr "Let the Legal agent read your documents"
 
 #: src/components/data-room/format.ts
 msgid "Letter or email"
@@ -6786,10 +6781,6 @@ msgid "Posted"
 msgstr "Posted"
 
 #: src/components/data-room/ConsentPrompt.tsx
-msgid "Praci can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
-msgstr "Praci can tag files you add and sort them into folders. To do that, their text (and images) is sent to the AI service that runs your bots ({names}). Files that already have tags keep them."
-
-#: src/components/data-room/ConsentPrompt.tsx
 msgid "Praci doesn't tag new files."
 msgstr "Praci doesn't tag new files."
 
@@ -7983,10 +7974,6 @@ msgstr "Send saved draft"
 msgid "Send to agent"
 msgstr "Send to agent"
 
-#: src/components/AiDataSharing.tsx
-msgid "Senders, recipients, subjects and short previews go to the AI service that runs your bots ({name})."
-msgstr "Senders, recipients, subjects and short previews go to the AI service that runs your bots ({name})."
-
 #: src/components/MailApprovalCard.tsx
 msgid "Sending is off for {botName}. Turn it back on in its tools."
 msgstr "Sending is off for {botName}. Turn it back on in its tools."
@@ -8857,10 +8844,6 @@ msgstr "The Inbox page stops showing new mail until you reconnect."
 msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 
-#: src/components/legal/ConsentPrompt.tsx
-msgid "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
-msgstr "The Legal agent reads with its own model, Muse Spark 1.2, through your OpenRouter key. Your other agents keep the model chosen in Settings."
-
 #: src/lib/run-phase.ts
 msgid "the model"
 msgstr "the model"
@@ -8889,6 +8872,10 @@ msgstr "The selected memory provider is not available in this build."
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "the statement through {0}"
 msgstr "the statement through {0}"
+
+#: src/components/AiDataSharing.tsx
+msgid "The text is sent to the AI model that runs your bots."
+msgstr "The text is sent to the AI model that runs your bots."
 
 #: src/components/finance/StatementReviewCard.tsx
 msgid "The transactions read add up to the closing balance"
