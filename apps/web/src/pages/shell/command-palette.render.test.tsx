@@ -54,7 +54,10 @@ async function mount(onSelectPage = vi.fn()) {
           bot("b3", "Finance agent"),
         ]}
         onSelectBot={() => undefined}
-        pages={[{ id: "finance", label: "Finance" }]}
+        pages={[
+          { id: "finance", label: "Finance" },
+          { id: "legal", label: "Legal", keywords: "contracts, NDA, deadlines" },
+        ]}
         groups={[{ id: "g1", label: "Leadership sync" }]}
         onSelectPage={onSelectPage}
       />,
@@ -88,7 +91,7 @@ const headings = () =>
 
 it("puts the section with the best name match first and drops a group with no matches", async () => {
   await mount();
-  expect(headings()).toEqual(["Bots", "Groups", "Pages"]);
+  expect(headings()).toEqual(["Pages", "Bots", "Groups"]);
   await search("finance");
   expect(headings()).toEqual(["Pages", "Bots"]);
   await search("lead");
@@ -126,4 +129,13 @@ it("hides bots that only mention the search once something matches by name", asy
   await search("investor");
   // With no name match, the description match is still offered.
   expect(document.querySelector("[data-testid=command-palette-bot-b1]")).not.toBeNull();
+});
+
+it("shows Pages above Bots before typing, and finds Legal by a keyword", async () => {
+  await mount();
+  const text = document.body.textContent ?? "";
+  expect(text.indexOf("Pages")).toBeGreaterThanOrEqual(0);
+  expect(text.indexOf("Pages")).toBeLessThan(text.indexOf("Bots"));
+  await search("nda");
+  expect(document.body.textContent).toContain("Legal");
 });

@@ -59,6 +59,11 @@ msgstr "{0, plural, one {# couldn't be read} other {# couldn't be read}}"
 msgid "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 msgstr "{0, plural, one {# Data room document not yet checked by Legal} other {# Data room documents not yet checked by Legal}}"
 
+#. placeholder {0}: glance.legalDueSoon
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# due soon} other {# due soon}}"
+msgstr "{0, plural, one {# due soon} other {# due soon}}"
+
 #. placeholder {0}: stats.duplicates
 #: src/components/data-room/DataRoomStats.tsx
 msgid "{0, plural, one {# duplicate} other {# duplicates}}"
@@ -93,6 +98,11 @@ msgstr "{0, plural, one {# subscription} other {# subscriptions}}"
 #: src/pages/AccountSettingsOverlay.tsx
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
 msgstr "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
+
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# waiting} other {# waiting}}"
+msgstr "{0, plural, one {# waiting} other {# waiting}}"
 
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
@@ -244,6 +254,11 @@ msgstr "{0} of {1}"
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
 msgstr "{0} rollup hours"
+
+#. placeholder {0}: runwayGlance(glance.financeRunwayMonths, hideAmounts)
+#: src/pages/Shell.tsx
+msgid "{0} runway"
+msgstr "{0} runway"
 
 #. placeholder {0}: statement.transactionCount
 #: src/components/finance/StatementReviewCard.tsx
@@ -563,6 +578,10 @@ msgstr "A bit of everything"
 #: src/components/finance/WalletDialog.tsx
 msgid "A deposit address at an exchange."
 msgstr "A deposit address at an exchange."
+
+#: src/components/sidebar-folders/FolderHeader.tsx
+msgid "A folder with that name already exists"
+msgstr "A folder with that name already exists"
 
 #: src/components/finance/WalletDialog.tsx
 msgid "A Safe multisig. Its owners and threshold are shown."
@@ -2588,6 +2607,10 @@ msgstr "Contract"
 #: src/pages/legal/LegalContracts.tsx
 msgid "Contracts"
 msgstr "Contracts"
+
+#: src/pages/Shell.tsx
+msgid "contracts, NDA, deadlines"
+msgstr "contracts, NDA, deadlines"
 
 #: src/components/ComputersUnavailableHint.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
