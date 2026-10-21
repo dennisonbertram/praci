@@ -751,7 +751,8 @@ const todoInclude = {
 function todoOut(row: Prisma.InboxTodoGetPayload<{ include: typeof todoInclude }>): InboxTodo {
   return {
     id: row.id,
-    connectionId: row.connectionId,
+    // Null only for a meeting to-do; S5 gives the contract a nullable id when it lists them.
+    connectionId: row.connectionId ?? "",
     messageId: row.messageId,
     text: row.text,
     detail: row.detail,

@@ -124,6 +124,19 @@ describePostgres("account export (PostgreSQL)", () => {
         },
       });
       await prisma.contact.create({ data: { spaceId, userId, name: `contact-${tag}` } });
+      await prisma.meeting.create({
+        data: {
+          spaceId,
+          userId,
+          provider: "granola",
+          externalId: `ext-${tag}`,
+          title: `meeting-${tag}`,
+          startedAt: new Date("2026-01-10T15:00:00Z"),
+          sourceUpdatedAt: new Date("2026-01-10T16:00:00Z"),
+          privateNotes: `notes-${tag}`,
+          transcript: `Ada: transcript-${tag}`,
+        },
+      });
       await prisma.capTableSnapshot.create({ data: { spaceId, userId, data: { tag } } });
       await prisma.notificationPreference.create({ data: { spaceId, userId } });
       await prisma.connection.create({
@@ -236,6 +249,16 @@ describePostgres("account export (PostgreSQL)", () => {
     expect(names("bots.json", "name")).toEqual(["bot-A-only", "bot-A-shared"]);
     expect(names("memories.json", "content")).toEqual(["mem-A-only", "mem-A-shared"]);
     expect(names("skills.json", "name")).toEqual(["skill-A-only", "skill-A-shared"]);
+    expect(names("meetings.json", "title")).toEqual(["meeting-A-only", "meeting-A-shared"]);
+    expect(
+      zip
+        .json("meetings.json")
+        .map((m) => [m.privateNotes, m.transcript])
+        .sort(),
+    ).toEqual([
+      ["notes-A-only", "Ada: transcript-A-only"],
+      ["notes-A-shared", "Ada: transcript-A-shared"],
+    ]);
     expect(zip.json("routines.json")[0].crons).toEqual(["0 9 * * *"]);
     expect(zip.json("messages.json")).toHaveLength(2);
     expect(zip.json("legal-edges.json")).toHaveLength(2);

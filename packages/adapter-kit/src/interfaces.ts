@@ -1,4 +1,4 @@
-import type { DataRoomClassification, DataRoomQueryPlan } from "@rakazo/contracts";
+import type { DataRoomClassification, DataRoomQueryPlan, SourceMeeting } from "@rakazo/contracts";
 import type {
   AdapterContext,
   AdapterDescriptor,
@@ -793,4 +793,15 @@ export interface DataRoomClassifier {
     input: { question: string; today: string },
     context: AdapterContext,
   ): Promise<DataRoomQueryPlan>;
+}
+
+/** A source of meeting notes and transcripts. Vendor names appear only in the adapter. */
+export interface MeetingSource {
+  provider: string;
+  /** Ids ordered oldest update first. Throws MeetingSourceError. */
+  list(filter: { updatedAfter?: Date; createdAfter?: Date; cursor?: string }): Promise<{
+    items: { externalId: string; updatedAt: string; deleted?: boolean }[];
+    nextCursor?: string;
+  }>;
+  get(externalId: string, options: { includeTranscript: boolean }): Promise<SourceMeeting>;
 }
