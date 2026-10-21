@@ -69,7 +69,7 @@ export function isTechnicalErrorMessage(message: string): boolean {
 }
 
 const INTERNAL_RUN_ERROR =
-  /invocation in|prisma|at Object\.|\bECONN[A-Z]*\b|(?:^|[\s(])\/(?:[\w.-]+\/)+[\w.-]+|[A-Za-z]:\\|\.[cm]?[jt]sx?:\d+|\b(?:SELECT|INSERT INTO|UPDATE \w+ SET|DELETE FROM)\b|\bat \S+ \(/i;
+  /upstream connect error|reset reason|invocation in|prisma|at Object\.|\bECONN[A-Z]*\b|(?:^|[\s(])\/(?:[\w.-]+\/)+[\w.-]+|[A-Za-z]:\\|\.[cm]?[jt]sx?:\d+|\b(?:SELECT|INSERT INTO|UPDATE \w+ SET|DELETE FROM)\b|\bat \S+ \(/i;
 
 /** True for a stored run error that is implementation detail (database or stack-trace text). */
 export function isInternalRunError(error: string): boolean {

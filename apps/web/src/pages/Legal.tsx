@@ -197,15 +197,13 @@ function Legal({
   if (!data) return <LegalSkeleton />;
   const blocker = data.modelBlocker;
   const needsConsent = status?.allowed === false;
-  const scanDisabled = running || blocker !== null || needsConsent;
+  const setupMissing = blocker !== null || needsConsent;
+  const scanDisabled = running;
   // The banners below already explain the other reasons; only this one has none.
   const scanReason =
     !running && !blocker && status && needsConsent && status.recipients.length === 0
       ? t`Connect a model in Settings first.`
       : "";
-  // The consent card names the other reason in words; the disabled button says it on hover too.
-  const scanTitle =
-    scanReason || (needsConsent && !blocker && !running ? t`Allow access first.` : "");
   const { counts } = data;
   const showActive = counts.activeContracts !== counts.contracts;
   // Counted here so the tile and the row pills use the viewer's date, not the server's.
@@ -241,14 +239,12 @@ function Legal({
         }
         actions={
           <>
-            <Button
-              variant="outline"
-              disabled={scanDisabled}
-              title={scanDisabled && scanTitle ? scanTitle : undefined}
-              onClick={() => void scan()}
-            >
-              {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
-            </Button>
+            {/* Until a key and consent exist the banner or card holds the one action. */}
+            {setupMissing ? null : (
+              <Button variant="outline" disabled={scanDisabled} onClick={() => void scan()}>
+                {running ? <Trans>Scanning…</Trans> : <Trans>Scan now</Trans>}
+              </Button>
+            )}
             <AskAgentButton />
           </>
         }
@@ -260,13 +256,7 @@ function Legal({
       {overview.error ? (
         <ErrorNotice message={t`Could not refresh: ${overview.error}`} onRetry={overview.reload} />
       ) : null}
-      {blocker ? (
-        <ModelBlockerNotice
-          blocker={blocker}
-          model={data.model?.id ?? null}
-          onOpenSettings={onOpenSettings}
-        />
-      ) : null}
+      {blocker ? <ModelBlockerNotice blocker={blocker} onOpenSettings={onOpenSettings} /> : null}
       {scanError ? (
         <p role="alert" className="mb-3 text-sm text-destructive">
           {scanError}
@@ -275,27 +265,29 @@ function Legal({
       {!blocker && status && !status.allowed && status.recipients.length > 0 ? (
         <LegalConsentPrompt consent={status} onChange={setGranted} />
       ) : null}
-      <div
-        className={cn(
-          "mb-4 grid gap-3",
-          // Active is dropped when it equals Contracts: three tiles share one row, never a lone fourth.
-          showActive ? "grid-cols-2 @3xl:grid-cols-4" : "grid-cols-3",
-        )}
-      >
-        <Kpi title={t`Contracts`} value={counts.contracts} />
-        {showActive ? <Kpi title={t`Active`} value={counts.activeContracts} /> : null}
-        <Kpi
-          title={t`Open deadlines`}
-          value={counts.openDeadlines}
-          to={`${LEGAL_PATH}?view=deadlines`}
-        />
-        <Kpi
-          title={t`Overdue`}
-          value={overdue}
-          alert={overdue > 0}
-          to={`${LEGAL_PATH}?view=deadlines&due=overdue`}
-        />
-      </div>
+      {setupMissing ? null : (
+        <div
+          className={cn(
+            "mb-4 grid gap-3",
+            // Active is dropped when it equals Contracts: three tiles share one row, never a lone fourth.
+            showActive ? "grid-cols-2 @3xl:grid-cols-4" : "grid-cols-3",
+          )}
+        >
+          <Kpi title={t`Contracts`} value={counts.contracts} />
+          {showActive ? <Kpi title={t`Active`} value={counts.activeContracts} /> : null}
+          <Kpi
+            title={t`Open deadlines`}
+            value={counts.openDeadlines}
+            to={`${LEGAL_PATH}?view=deadlines`}
+          />
+          <Kpi
+            title={t`Overdue`}
+            value={overdue}
+            alert={overdue > 0}
+            to={`${LEGAL_PATH}?view=deadlines&due=overdue`}
+          />
+        </div>
+      )}
       {lastRun?.status === "failed" && !running && lastRun.id !== dismissedRun ? (
         <div
           role="status"
@@ -329,10 +321,10 @@ function Legal({
       ) : null}
       {/* A line, not a fifth tile: four tiles fill two rows of two, or one row, with none alone. */}
       {counts.unreviewedDocuments > 0 ? (
-        <p className="-mt-2 mb-4 text-xs text-muted-foreground">
+        <p className="-mt-2 mb-4 text-sm text-muted-foreground">
           <Link
             to={`${DATA_ROOM_PATH}?legal=unchecked`}
-            className="rk-tap underline underline-offset-2 hover:text-foreground"
+            className="rk-tap text-sm underline underline-offset-2 hover:text-foreground"
           >
             {plural(counts.unreviewedDocuments, {
               one: "# Data room document not yet checked by Legal",
@@ -351,8 +343,8 @@ function Legal({
               </Trans>
             ) : blocker ? (
               <Trans>
-                Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room
-                for contracts and deadlines.
+                Choose Legal's own model again in the Legal agent's settings to start. It then reads
+                your Data room for contracts and deadlines.
               </Trans>
             ) : needsConsent ? (
               <Trans>
@@ -406,15 +398,12 @@ function Legal({
   );
 }
 
-/** Why the Legal agent cannot run on Muse Spark 1.2, and the one step that fixes it. */
+/** Why the Legal agent cannot run yet, and the one step that fixes it. */
 function ModelBlockerNotice({
   blocker,
-  model,
   onOpenSettings,
 }: {
   blocker: "own_key" | "model_changed";
-  /** The model the agent would run on instead, when one resolves. */
-  model: string | null;
   onOpenSettings?: () => void;
 }) {
   return (
@@ -424,19 +413,9 @@ function ModelBlockerNotice({
     >
       <p className="min-w-0 flex-1 basis-64">
         {blocker === "own_key" ? (
-          <Trans>
-            Legal runs on Muse Spark 1.2 and needs your own OpenRouter key. The space's shared
-            OpenRouter access can't be used for Legal.
-          </Trans>
-        ) : model ? (
-          <Trans>
-            The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in
-            the Legal agent's settings.
-          </Trans>
+          <Trans>Legal needs an OpenRouter key to read your contracts.</Trans>
         ) : (
-          <Trans>
-            Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings.
-          </Trans>
+          <Trans>Legal runs on its own model: choose it again in the Legal agent's settings.</Trans>
         )}
       </p>
       {blocker === "own_key" && onOpenSettings ? (

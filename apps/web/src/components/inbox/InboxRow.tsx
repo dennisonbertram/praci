@@ -90,6 +90,7 @@ export function InboxGroup({
   /** Set when the group heading already says the rows need attention. */
   hideAttention?: boolean;
 } & RowPicking) {
+  const { t } = useLingui();
   if (rows.length === 0) return null;
   // The same number the sidebar badge counts: mail not yet read, not every row in the group.
   const unread = rows.filter((row) => row.unread).length;
@@ -98,7 +99,9 @@ export function InboxGroup({
       {title ? (
         <h2 className="mb-2 text-[13px] font-semibold text-muted-foreground">
           {title}
-          {unread > 0 ? <span className="ms-1.5 font-normal tabular-nums">{unread}</span> : null}
+          {unread > 0 ? (
+            <span className="ms-1.5 font-normal tabular-nums">{t`${unread} unread`}</span>
+          ) : null}
         </h2>
       ) : null}
       <div className="border-t border-foreground/10">

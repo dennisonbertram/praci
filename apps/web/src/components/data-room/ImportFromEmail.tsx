@@ -350,6 +350,15 @@ export function ImportSources({
     box: boolean;
   } | null>(null);
   const [open, setOpen] = useState<Source | null>(null);
+  // The menu's label stays hidden while it is open and for a moment after, when focus returns.
+  const [quiet, setQuiet] = useState(false);
+  const quietTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const menuChanged = (isOpen: boolean) => {
+    clearTimeout(quietTimer.current);
+    if (isOpen) setQuiet(true);
+    else quietTimer.current = setTimeout(() => setQuiet(false), 1_000);
+  };
+  useEffect(() => () => clearTimeout(quietTimer.current), []);
   const [ensured, setEnsured] = useState<string | null>(null);
   const target = ensureFolder ? ensured : folderId;
   useEffect(() => {
@@ -394,8 +403,8 @@ export function ImportSources({
   };
   return (
     <>
-      <DropdownMenu>
-        <ToolbarTip label={onUpload ? t`Add files` : t`Import`} compact={compact}>
+      <DropdownMenu onOpenChange={menuChanged}>
+        <ToolbarTip label={onUpload ? t`Add files` : t`Import`} compact={compact} disabled={quiet}>
           <DropdownMenuTrigger
             render={
               <Button
@@ -418,7 +427,7 @@ export function ImportSources({
           {onUpload ? (
             <DropdownMenuItem onClick={onUpload}>
               <Upload aria-hidden="true" />
-              <Trans>Upload</Trans>
+              <Trans>Upload files</Trans>
             </DropdownMenuItem>
           ) : null}
           {apps?.gmail.offered ? (
@@ -426,7 +435,7 @@ export function ImportSources({
               onClick={() => choose("email", apps?.gmail.connected ?? false, GMAIL_PAGE)}
             >
               <Mail aria-hidden="true" />
-              <Trans>Email</Trans>
+              <Trans>From email</Trans>
             </DropdownMenuItem>
           ) : null}
           {apps?.drive.offered ? (
@@ -434,13 +443,13 @@ export function ImportSources({
               onClick={() => choose("drive", apps?.drive.connected ?? false, DRIVE_PAGE)}
             >
               <HardDrive aria-hidden="true" />
-              <Trans>Google Drive</Trans>
+              <Trans>From Google Drive</Trans>
             </DropdownMenuItem>
           ) : null}
           {apps ? (
             <DropdownMenuItem onClick={() => choose("box", apps.box, BOX_CONNECT)}>
               <Box aria-hidden="true" />
-              <Trans>Box</Trans>
+              <Trans>From Box</Trans>
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuContent>

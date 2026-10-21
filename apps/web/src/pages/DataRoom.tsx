@@ -108,7 +108,7 @@ export function DataRoomPage({
   onOpenModelSettings?: () => void;
   /** The agents a file can be sent to; without them the menu item is not offered. */
   agents?: SendTarget[];
-  onSendToAgent?: (item: DataRoomApiItem, agent: SendTarget) => void;
+  onSendToAgent?: (items: DataRoomApiItem[], agent: SendTarget) => void;
 } = {}) {
   const [params, setParams] = useSearchParams();
   const linkedItem = params.get("item");
@@ -367,7 +367,9 @@ export function DataRoomPage({
     item ? (list.rows.find((row) => row.item.id === item.id)?.item ?? item) : null;
   const shown = previewOpen ? fresh(pinned) : null;
 
-  const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(new Set());
+  // Ticked files by id, kept across searches and filters; only a folder change or Clear drops them.
+  const [checked, setChecked] = useState<ReadonlyMap<string, DataRoomApiItem>>(new Map());
+  const checkedIds = new Set(checked.keys());
   const interaction: RowInteraction = {
     shownId: shown?.id,
     onSelect: (item) => {
@@ -393,15 +395,24 @@ export function DataRoomPage({
       ? {
           checked: checkedIds,
           onCheck: (item: DataRoomApiItem) =>
-            setCheckedIds((current) => {
-              const next = new Set(current);
-              if (!next.delete(item.id)) next.add(item.id);
+            setChecked((current) => {
+              const next = new Map(current);
+              if (!next.delete(item.id)) next.set(item.id, item);
+              return next;
+            }),
+          onCheckAll: (on: boolean) =>
+            setChecked((current) => {
+              const next = new Map(current);
+              for (const { item } of list.rows) {
+                if (on) next.set(item.id, item);
+                else next.delete(item.id);
+              }
               return next;
             }),
         }
       : {}),
     agents,
-    onSendToAgent,
+    onSendToAgent: onSendToAgent && ((item, agent) => onSendToAgent([item], agent)),
     folderPath,
     openFolderId: filters.folderId,
   };
@@ -409,10 +420,13 @@ export function DataRoomPage({
   const [action, setAction] = useState<{ kind: ItemAction; item: DataRoomEntry } | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
   const [compose, setCompose] = useState<ComposeRestore | null>(null);
-  // A new search, filter or folder starts a new selection.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: the key is the trigger.
-  useEffect(() => setCheckedIds((current) => (current.size ? new Set() : current)), [queryKey]);
-  const checkedItems = list.rows.map((row) => row.item).filter((item) => checkedIds.has(item.id));
+  // A search or filter keeps the selection; another folder starts a new one.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the folder is the trigger.
+  useEffect(
+    () => setChecked((current) => (current.size ? new Map() : current)),
+    [filters.folderId],
+  );
+  const checkedItems = [...checked.values()];
 
   /** Saves each ticked file in turn; one that cannot be read is named, the rest still download. */
   async function downloadChecked() {
@@ -738,7 +752,12 @@ export function DataRoomPage({
                   busy={bulkBusy}
                   onDownload={() => void downloadChecked()}
                   onSend={() => void sendChecked()}
-                  onClear={() => setCheckedIds(new Set())}
+                  agents={agents}
+                  onSendToAgent={(agent) => {
+                    onSendToAgent?.(checkedItems, agent);
+                    setChecked(new Map());
+                  }}
+                  onClear={() => setChecked(new Map())}
                 />
                 <PathBar
                   nodes={nodes}
@@ -853,7 +872,7 @@ export function DataRoomPage({
                 onAction={interaction.onAction}
                 onClose={closePreview}
                 agents={agents}
-                onSendToAgent={onSendToAgent}
+                onSendToAgent={onSendToAgent && ((item, agent) => onSendToAgent([item], agent))}
               />
             ) : null}
           </div>
@@ -875,14 +894,13 @@ export function DataRoomPage({
               onAction={interaction.onAction}
               onClose={closePreview}
               agents={agents}
-              onSendToAgent={onSendToAgent}
+              onSendToAgent={onSendToAgent && ((item, agent) => onSendToAgent([item], agent))}
             />
           </DialogContent>
         </Dialog>
       ) : null}
       {autoSorting ? (
         <AutoSortDialog
-          files={rows.map(({ item }) => ({ id: item.id, name: item.name }))}
           onClose={() => setAutoSorting(false)}
           onOpenModels={onOpenModelSettings}
           onApplied={({ batchId, items }) => {

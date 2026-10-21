@@ -1,0 +1,62 @@
+---
+import "../styles/global.css";
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <meta name="referrer" content="no-referrer" />
+    <title>Praci</title>
+  </head>
+  <body>
+    <header>
+      <a class="brand" href="/">praci</a>
+    </header>
+    <main>
+      <div id="result" hidden>
+        <h1 id="standing"></h1>
+        <p>Each friend who joins with your link moves you up 10 places.</p>
+        <div class="row">
+          <input id="link" readonly aria-label="Referral link" />
+          <button id="copy" type="button">Copy link</button>
+        </div>
+        <p id="joined" hidden></p>
+      </div>
+      <p id="expired" hidden>This link has expired. Join again to get a new one. <a href="/#hosted">Join the waitlist</a></p>
+      <p id="error" hidden>Something went wrong. Try again.</p>
+    </main>
+    <script>
+      const result = document.querySelector<HTMLElement>("#result")!;
+      const link = document.querySelector<HTMLInputElement>("#link")!;
+      const joined = document.querySelector<HTMLElement>("#joined")!;
+      const token = new URLSearchParams(location.search).get("token");
+
+      async function load() {
+        if (!token) throw new Error("404");
+        const response = await fetch("/api/me", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ token }),
+        });
+        if (!response.ok) throw new Error(String(response.status));
+        const data = await response.json();
+        document.querySelector("#standing")!.textContent = `You're #${data.position} of ${data.total}.`;
+        link.value = data.referralUrl;
+        if (data.referrals > 0) {
+          joined.textContent = `${data.referrals} ${data.referrals === 1 ? "friend" : "friends"} joined.`;
+          joined.hidden = false;
+        }
+        result.hidden = false;
+      }
+      load().catch((error: Error) => {
+        document.querySelector<HTMLElement>(error.message === "404" ? "#expired" : "#error")!.hidden = false;
+      });
+
+      document.querySelector("#copy")!.addEventListener("click", () => {
+        navigator.clipboard.writeText(link.value).catch(() => link.select());
+      });
+    </script>
+  </body>
+</html>

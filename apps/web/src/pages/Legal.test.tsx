@@ -135,7 +135,9 @@ it("asks for consent when it is not allowed, and grants the shown key", async ()
   expect(container.textContent).toContain("Let Praci read your contracts");
   // The card says what is sent, not just that an AI model is involved.
   expect(container.textContent).toContain("The text of your Data room documents is sent");
-  expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
+  // The card's Allow is the one action: no dimmed Scan now, no zero tiles.
+  expect(button("Scan now")).toBeUndefined();
+  expect(container.querySelectorAll("h2")).toHaveLength(1);
   await click(button("Allow"));
   expect(rpcMock.consentGrant).toHaveBeenCalledWith({ key: "k1", version: "v1" });
   expect(container.textContent).not.toContain("Let Praci read your contracts");
@@ -180,7 +182,10 @@ it("marks overdue deadlines and closes one with Done", async () => {
   expect(page.match(/Overdue by/g)).toHaveLength(1);
   await click(button(`Mark ${deadlines[0]?.title} done`));
   expect(rpcMock.updateDeadline).toHaveBeenCalledWith({ id: deadlines[0]?.id, status: "done" });
-  expect(container.querySelectorAll("li")).toHaveLength(1);
+  // The closed row's slot now holds the Undo line, so the rows below stay where they were.
+  const rows = container.querySelectorAll("li");
+  expect(rows).toHaveLength(2);
+  expect(rows[0]?.textContent).toContain("Undo");
   expect(onChanged).toHaveBeenCalled();
 });
 
@@ -248,11 +253,10 @@ it("says the user's own OpenRouter key is missing, not that OpenRouter is, and l
   rpcMock.overview.mockResolvedValue(needsKeyOverview);
   await render(<LegalPage onOpenSettings={openSettings} />);
   const page = container.textContent ?? "";
-  expect(page).toContain("needs your own OpenRouter key");
-  expect(page).toContain("shared OpenRouter access can't be used for Legal");
-  // The disabled Scan now says why, and the empty page points at the fix.
-  expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
-  expect(page).toContain("needs your own OpenRouter key");
+  expect(page).toContain("Legal needs an OpenRouter key to read your contracts.");
+  expect(page).not.toMatch(/Muse Spark|space|shared OpenRouter access/);
+  // One action, no dimmed Scan now, and the empty page points at the fix.
+  expect(button("Scan now")).toBeUndefined();
   expect(page).toContain("Add your OpenRouter key above to start.");
   await click(button("Add your OpenRouter key"));
   expect(openSettings).toHaveBeenCalledTimes(1);
@@ -265,8 +269,8 @@ it("says when the Legal agent was set to another model", async () => {
     modelBlocker: "model_changed",
   });
   await render(<LegalPage onOpenSettings={() => {}} />);
-  expect(container.textContent).toContain("The Legal agent is set to openai/gpt-6-luna.");
-  expect(container.textContent).not.toContain("Needs Muse Spark 1.2.");
+  expect(container.textContent).toContain("Legal runs on its own model");
+  expect(container.textContent).not.toContain("Muse Spark");
   expect(button("Add your OpenRouter key")).toBeUndefined();
 });
 
@@ -280,7 +284,7 @@ it("warns on first load when no model resolves, and shows no consent card withou
   rpcMock.overview.mockResolvedValue({ ...overview, model: null, modelBlocker: "own_key" });
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false, recipients: [] });
   await render(<LegalPage />);
-  expect(container.textContent).toContain("needs your own OpenRouter key");
+  expect(container.textContent).toContain("Legal needs an OpenRouter key");
   expect(button("Allow")).toBeUndefined();
 });
 
@@ -334,7 +338,7 @@ it("says why Scan now is disabled, and shows no consent card while the model is 
   });
   rpcMock.consent.mockResolvedValue({ ...consentFixture, allowed: false });
   await render(<LegalPage onOpenSettings={openSettings} />);
-  expect(button("Scan now")?.hasAttribute("disabled")).toBe(true);
+  expect(button("Scan now")).toBeUndefined();
   expect(container.textContent).not.toContain("Needs your OpenRouter key.");
   expect(button("Allow")).toBeUndefined();
 
@@ -582,7 +586,7 @@ it("states the consent wait once, in the banner, when access is not allowed", as
   await render(<LegalPage />);
   // The scan time stays out of the header until Legal may read anything.
   expect(container.textContent).not.toContain("Last scan");
-  expect(button("Scan now")?.getAttribute("title")).toBe("Allow access first.");
+  expect(button("Scan now")).toBeUndefined();
   expect(container.textContent).not.toContain("Daily scans wait");
   expect(container.textContent).not.toContain("Scans daily.");
 });
@@ -699,4 +703,19 @@ it("shows a status chip only for a contract that is not active", async () => {
     [...container.querySelectorAll(selector)].map((el) => el.textContent).join(" ");
   expect(text("tbody tr")).toContain("Expired");
   expect(text("tbody tr")).not.toContain("Active");
+});
+
+it("opens no two deadline rows with the same words and leaves out an all-active Status column", async () => {
+  rpcMock.overview.mockResolvedValue({
+    ...overview,
+    contracts: overview.contracts.map((c) => ({ ...c, status: "active" as const })),
+  });
+  await render(<LegalPage />);
+  expect(container.textContent).not.toContain("Status");
+});
+
+it("puts the contract name in the deadline title", async () => {
+  await render(<LegalDeadlines deadlines={deadlines} onChanged={() => {}} today="2026-10-16" />);
+  const first = [...container.querySelectorAll("li .font-medium")].map((el) => el.textContent);
+  expect(first).toContain(`${deadlines[0]?.title}: ${deadlines[0]?.contractTitle}`);
 });

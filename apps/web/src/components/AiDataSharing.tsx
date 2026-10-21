@@ -1,7 +1,7 @@
 import { i18n } from "@lingui/core";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { AiConsentStatus, AiRecipient } from "@rakazo/contracts";
-import { AI_DATA_DISCLOSURES } from "@rakazo/contracts";
+import { AI_DATA_DISCLOSURES, modelLabel } from "@rakazo/contracts";
 import { Button, Card, cn, Skeleton, Switch } from "@rakazo/ui-web";
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
@@ -101,16 +101,6 @@ export function InboxConsentPrompt({
   );
 }
 
-/** "vendor/gpt-6-luna, forwarded to its provider" -> "GPT-6 Luna". */
-export const modelLabel = (detail: string) =>
-  (detail.split(",")[0]?.split("/").pop() ?? "")
-    .trim()
-    .split(/[-_\s]+/)
-    .filter(Boolean)
-    .map((word) => (/^gpt$/i.test(word) ? "GPT" : word.charAt(0).toUpperCase() + word.slice(1)))
-    .join(" ")
-    .replace(/^GPT (?=\d)/, "GPT-");
-
 /** One switch per AI model that receives data; hidden when there is none or it cannot load. */
 export function AiDataSharingSection() {
   const { t } = useLingui();
@@ -173,10 +163,10 @@ export function AiDataSharingSection() {
                 onCheckedChange={(allowed) => set(recipient, allowed)}
               />
               <span className="flex min-w-0 flex-col">
-                <span className="text-[14px] text-foreground/75">
-                  <Trans>Bots, mail, files and contracts</Trans>
+                <span className="text-[14px] text-foreground/75">{t`Allow ${model}`}</span>
+                <span className="text-[12.5px] text-muted-foreground">
+                  <Trans>For bots, mail, files and contracts</Trans>
                 </span>
-                <span className="text-[12.5px] text-muted-foreground">{model}</span>
               </span>
             </li>
           );

@@ -1,6 +1,16 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Command, CommandGroup, CommandItem, CommandList, CommandSeparator } from "@rakazo/ui-web";
 import { Info, Lock, Plus, Users } from "lucide-react";
+import type { KeyboardEvent } from "react";
+
+// Enter and Space on an info button must not select the row; Escape and Tab must still reach the popover.
+function stopActivationKeys(event: KeyboardEvent<HTMLElement>) {
+  if (event.key === "Enter" || event.key === " ") event.stopPropagation();
+}
+
+// Initial focus for the popover: the list itself (arrow keys pick a row), not the first info button.
+export const pickerInitialFocus = () =>
+  document.querySelector<HTMLElement>('[data-testid="bot-create-picker"] [cmdk-root]');
 
 export function BotCreatePicker({
   onCreateBot,
@@ -18,7 +28,11 @@ export function BotCreatePicker({
   const { t } = useLingui();
   return (
     <div data-testid="bot-create-picker" className="w-[min(240px,calc(100vw-2rem))]">
-      <Command shouldFilter={false} className="rounded-none border-0 bg-transparent p-0">
+      <Command
+        shouldFilter={false}
+        tabIndex={-1}
+        className="rounded-none border-0 bg-transparent p-0"
+      >
         <CommandList className="max-h-72 p-1">
           <CommandGroup>
             <CommandItem
@@ -55,7 +69,7 @@ export function BotCreatePicker({
                   event.preventDefault();
                   onShowGroupInfo();
                 }}
-                onKeyDown={(event) => event.stopPropagation()}
+                onKeyDown={stopActivationKeys}
                 className="-mr-2 shrink-0 rounded p-1 text-muted-foreground/70 opacity-0 transition-opacity duration-150 group-focus-within/command-item:opacity-100 group-hover/command-item:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <Info size={14} strokeWidth={1.8} aria-hidden="true" />
@@ -83,7 +97,7 @@ export function BotCreatePicker({
                   event.preventDefault();
                   onShowSpaceInfo();
                 }}
-                onKeyDown={(event) => event.stopPropagation()}
+                onKeyDown={stopActivationKeys}
                 className="-mr-2 shrink-0 rounded p-1 text-muted-foreground/70 opacity-0 transition-opacity duration-150 group-focus-within/command-item:opacity-100 group-hover/command-item:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring"
               >
                 <Info size={14} strokeWidth={1.8} aria-hidden="true" />

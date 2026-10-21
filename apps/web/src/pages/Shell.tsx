@@ -158,6 +158,7 @@ import { DevinConnectDialog } from "../components/integrations/DevinConnectDialo
 import { PageAgentIntro, pageAgentKind } from "../components/PageAgentIntro";
 import { PageAgentsRow } from "../components/PageAgentsRow";
 import { PageNavContext } from "../components/PageHeader";
+import { RowsSkeleton } from "../components/RowsSkeleton";
 import { canOfferHostComputer } from "../components/RunsOnPicker";
 import { OpeningSpace, ThreadSkeleton } from "../components/ShellSkeleton";
 import { RailTip, SidebarPageLink } from "../components/SidebarPageLink";
@@ -174,11 +175,11 @@ import {
   SortableRow,
 } from "../components/sidebar-folders/SidebarDnd";
 import { SidebarUndoNotice } from "../components/sidebar-folders/SidebarUndoNotice";
-import { glanceBadge, runwayGlance, StatusMark } from "../components/sidebar-glance";
+import { glanceBadge, StatusMark } from "../components/sidebar-glance";
 import { TeachCaptureOverlay } from "../components/teach/TeachCaptureOverlay";
 import { TeachComputerOverlayControl } from "../components/teach/TeachComputerOverlay";
 import { TeachRecordingChrome, TeachStopButton } from "../components/teach/TeachRecordingChrome";
-import { connectCardsOpen, FirstRunTour } from "../components/tour/FirstRunTour";
+import { FirstRunTour } from "../components/tour/FirstRunTour";
 import { readActivityMode, writeActivityMode } from "../lib/activity-mode";
 import { clearAgentAppCache, useAgentApp } from "../lib/agent-app";
 import { artifactDisplayName } from "../lib/artifact-name";
@@ -313,7 +314,7 @@ import { SpaceSearchResults } from "./SpaceSearch";
 import type { PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotPagePanel } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
-import { BotCreatePicker } from "./shell/bot-picker";
+import { BotCreatePicker, pickerInitialFocus } from "./shell/bot-picker";
 import { PinsList, PinsStrip, useBotPins } from "./shell/bot-pins";
 import { CommandPalette, isCommandPaletteHotkey } from "./shell/command-palette";
 import type { PendingAttachment } from "./shell/composer";
@@ -329,6 +330,7 @@ import {
   RenameSpaceDialog,
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
+import { moveRosterFocus, rosterRowId, syncRosterTabStops } from "./shell/roster-tab-stops";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
 import {
   activeSpaceFirst,
@@ -769,6 +771,9 @@ export function ShellPage() {
   const sidebarDocked = useSidebarDocked();
   const sidebarRef = useRef<HTMLElement>(null);
   const sidebarScrollRef = useRef<HTMLDivElement>(null);
+  const rosterStopId = useRef<string | null>(null);
+  // After every render, since rows come and go: keeps the chat list to one tab stop.
+  useEffect(() => syncRosterTabStops(sidebarRef.current, rosterStopId.current));
   const closeMobileSidebar = useCallback(() => setMobileSidebarOpen(false), []);
   useDrawerFocus(mobileSidebarOpen, closeMobileSidebar, sidebarRef);
   const mobileSidebarSwipeRef = useRef<{ startX: number; startY: number } | null>(null);
@@ -876,13 +881,8 @@ export function ShellPage() {
       ),
     ),
   );
-  // It also waits for the Connect cards, so two prompts never compete; writing a message skips them.
   const tourOpen =
-    tourRestart ||
-    (bootstrapMe?.tourSeen === false &&
-      bots.length > 0 &&
-      !firstQuestionOpen &&
-      !connectCardsOpen(snapshot?.messages ?? []));
+    tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen);
   // On a phone the tour points into the sidebar drawer, so open it while the tour runs.
   useEffect(() => {
     if (tourOpen && !window.matchMedia("(min-width: 1024px)").matches) setMobileSidebarOpen(true);
@@ -4067,8 +4067,16 @@ export function ShellPage() {
           className="absolute inset-y-0 end-0 start-[min(calc(100%-48px),316px)] z-30 bg-overlay lg:hidden"
         />
       ) : null}
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: key and focus events bubble up from the row buttons inside */}
       <aside
         ref={sidebarRef}
+        onKeyDown={(event) => moveRosterFocus(sidebarRef.current, event)}
+        onFocus={(event) => {
+          const id = rosterRowId(event.target as HTMLElement);
+          if (!id) return;
+          rosterStopId.current = id;
+          syncRosterTabStops(sidebarRef.current, id);
+        }}
         data-testid="bots-sidebar"
         data-bots-sidebar-density={botsSidebarDensity}
         data-collapsed={botsSidebarCollapsed ? "true" : "false"}
@@ -4186,6 +4194,7 @@ export function ShellPage() {
                   {/* Closes with no animation, so the panel it opens never coexists with the menu. */}
                   <PopoverContent
                     align="end"
+                    initialFocus={pickerInitialFocus}
                     className="app-no-drag w-auto gap-0 overflow-hidden p-0 data-closed:animate-none"
                   >
                     <BotCreatePicker
@@ -4235,7 +4244,7 @@ export function ShellPage() {
                 { key: "inbox", label: t`Inbox` },
                 { key: "finance", label: t`Finance` },
                 { key: "legal", label: t`Legal` },
-                { key: "devin", label: t`Devin` },
+                ...(glance.devinConnected ? [{ key: "devin", label: t`Devin` }] : []),
                 { key: "cap-table", label: t`Cap table` },
                 { key: "contacts", label: t`Contacts` },
                 { key: "data-room", label: t`Data room` },
@@ -4275,12 +4284,7 @@ export function ShellPage() {
                     setMobileSidebarOpen(false);
                     navigate("/app/finance");
                   }}
-                  {...glanceBadge({
-                    unseen: unseen.finance ?? 0,
-                    rail,
-                    value: runwayGlance(glance.financeRunwayMonths),
-                    valueLabel: t`${runwayGlance(glance.financeRunwayMonths)} runway`,
-                  })}
+                  {...glanceBadge({ unseen: unseen.finance ?? 0, rail })}
                 />
               )}
               {hiddenPages.includes("legal") ? null : (
@@ -4370,9 +4374,10 @@ export function ShellPage() {
                     unseen: unseen["data-room"] ?? 0,
                     rail,
                     value: glance.dataRoomWaiting > 0 ? String(glance.dataRoomWaiting) : undefined,
+                    // The count is failed files, the only ones a person can retry or remove.
                     valueLabel: plural(glance.dataRoomWaiting, {
-                      one: "# waiting",
-                      other: "# waiting",
+                      one: "# file failed",
+                      other: "# files failed",
                     }),
                   })}
                 />
@@ -4553,6 +4558,7 @@ export function ShellPage() {
                       ) : null}
                       {!rail && !folder && (group.title || hasSpaceActions) ? (
                         <div
+                          data-roster-item={group.key}
                           className={
                             group.title && hasSpaceActions
                               ? "grid pt-3 pb-0.5"
@@ -4563,6 +4569,7 @@ export function ShellPage() {
                             <button
                               type="button"
                               aria-current={group.current ? "true" : undefined}
+                              data-roster-row={group.key}
                               data-sidebar-current={group.current ? "" : undefined}
                               title={group.relabeled ? group.spaceName : undefined}
                               className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
@@ -4632,6 +4639,7 @@ export function ShellPage() {
                                   ? "col-start-1 row-start-1 justify-self-end self-center"
                                   : undefined
                               }
+                              data-roster-actions=""
                               aria-label={t`Actions for ${group.spaceName}`}
                               onClick={(event) => {
                                 const rect = event.currentTarget.getBoundingClientRect();
@@ -4734,7 +4742,10 @@ export function ShellPage() {
                                   <div
                                     ref={row.setNodeRef}
                                     data-drops-before={row.dropsBefore ? "" : undefined}
-                                    data-tour={selected ? "sidebar-chat" : undefined}
+                                    data-roster-item={item.chat.id}
+                                    data-tour={
+                                      item.chat.id === chiefId ? "sidebar-chat" : undefined
+                                    }
                                     className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
                                       !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
                                     }`}
@@ -4778,6 +4789,7 @@ export function ShellPage() {
                                             : undefined
                                         }
                                         {...row.handleProps}
+                                        data-roster-row={item.chat.id}
                                         data-roster-bot-id={
                                           item.kind === "bot" ? item.chat.id : undefined
                                         }
@@ -5023,6 +5035,7 @@ export function ShellPage() {
                                         variant="ghost"
                                         size="icon"
                                         data-testid="roster-row-actions"
+                                        data-roster-actions=""
                                         aria-label={t`Actions for ${item.chat.name}`}
                                         aria-haspopup="menu"
                                         onClick={(event) => {
@@ -5158,11 +5171,10 @@ export function ShellPage() {
         <FirstRunTour
           open={tourOpen}
           onAsk={() => {
-            const id = active?.id ?? bots[0]?.id;
-            if (!id) return;
+            if (!chiefId) return;
             tourQuestion.current = true;
-            setFocusComposerBotId(id);
-            openBot(id);
+            setFocusComposerBotId(chiefId);
+            openBot(chiefId);
           }}
           onClose={(me, byEscape) => {
             setTourRestart(false);
@@ -5476,7 +5488,7 @@ export function ShellPage() {
           </div>
           {integrationsMode ? (
             <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <Suspense fallback={null}>
+              <Suspense fallback={<RowsSkeleton className="p-6" />}>
                 <IntegrationsPage
                   activeBotId={activeBotId.current}
                   onOpenMessaging={() => setMessagingSettingsOpen(true)}
@@ -5489,7 +5501,7 @@ export function ShellPage() {
               onAskAgent={dataRoomAgentOpen ? undefined : askDataRoomAgent}
               onOpenModelSettings={() => openSettings("models")}
               agents={sendToAgentTargets}
-              onSendToAgent={(item, agent) => void sendFilesToAgent([item], agent)}
+              onSendToAgent={(items, agent) => void sendFilesToAgent(items, agent)}
               spaceName={
                 spaces.length > 1
                   ? spaces.find((space) => space.id === bootstrapMe?.spaceId)?.name
@@ -5500,13 +5512,13 @@ export function ShellPage() {
             <ContactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
           ) : artifactsMode ? (
             <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <Suspense fallback={null}>
+              <Suspense fallback={<RowsSkeleton className="p-6" />}>
                 <ArtifactsPage spaceName={pageSpaceName} onAskAgent={askChief} />
               </Suspense>
             </ErrorBoundary>
           ) : boardMode ? (
             <ErrorBoundary fallback={<SectionLoadFailed />}>
-              <Suspense fallback={null}>
+              <Suspense fallback={<RowsSkeleton className="p-6" />}>
                 <BoardPage embedded />
               </Suspense>
             </ErrorBoundary>
