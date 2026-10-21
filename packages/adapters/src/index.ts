@@ -77,6 +77,7 @@ export * from "./deployment-model.js";
 export * from "./desktop-sandbox.js";
 export * from "./destination-emulator.js";
 export * from "./devin-call-tool.js";
+export * from "./devin-refresh.js";
 export * from "./devin-sessions.js";
 export * from "./docker-sandbox.js";
 export * from "./drive-api-emulator.js";

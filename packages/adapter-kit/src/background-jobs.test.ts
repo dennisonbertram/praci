@@ -36,6 +36,7 @@ function handlers(): BackgroundJobHandlers {
     "mail.sync": vi.fn(async () => undefined),
     "mail.attachments": vi.fn(async () => undefined),
     "mail.watch.renew": vi.fn(async () => undefined),
+    "devin.refresh": vi.fn(async () => undefined),
     "finance.sync": vi.fn(async () => undefined),
     "dataroom.blob.delete": vi.fn(async () => undefined),
     "dataroom.ingest": vi.fn(async () => undefined),
@@ -155,6 +156,17 @@ describe("background job contracts", () => {
     expect(mailSyncJob({ spaceId: "s", userId: "u", connectionId: "c2" }).replaceKey).not.toBe(
       job.replaceKey,
     );
+  });
+
+  it("devin.refresh takes an optional server id", async () => {
+    expect(parseBackgroundJob("devin.refresh", {}).payload).toEqual({});
+    expect(parseBackgroundJob("devin.refresh", { serverId: "srv-1" }).payload).toEqual({
+      serverId: "srv-1",
+    });
+    expect(() => parseBackgroundJob("devin.refresh", { serverId: "" })).toThrow();
+    const target = handlers();
+    await dispatchBackgroundJob(target, "devin.refresh", { serverId: "srv-1" });
+    expect(target["devin.refresh"]).toHaveBeenCalledWith({ serverId: "srv-1" });
   });
 
   it("mail.watch.renew takes an empty payload", () => {
