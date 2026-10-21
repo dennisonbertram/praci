@@ -90,11 +90,13 @@ type MeetingsState = { source: boolean; syncing: boolean; ready: boolean };
 const ALL = "all";
 /** While a refresh reports its sync still running, ask again this often, at most this many times. */
 const SYNC_POLL_MS = 2_000;
+/** The wait doubles after each answer that still says syncing, up to this. */
+const SYNC_POLL_MAX_MS = 10_000;
 const SYNC_POLL_MAX = 60;
 const couldNotArchive = (count: number) => t`Couldn't archive ${count}`;
 // ponytail: bounded polling while triage runs; add a user-level event if it often takes longer than 30 seconds.
 const TRIAGE_POLL_MS = 5_000;
-const TRIAGE_MAX_POLLS = 12;
+const TRIAGE_MAX_POLLS = 6;
 // ponytail: an open Inbox looks for new mail once a minute (the server syncs at most that often);
 // switch to a pushed event if the delay matters.
 const NEW_MAIL_POLL_MS = 60_000;
@@ -103,6 +105,8 @@ const STATUS_MS = 10_000;
 const PREFETCH_DELAY_MS = 250;
 /** Marks the `?mail=` history entry the list pushed, so closing the message can go Back. */
 const LIST_OPEN = { inboxList: true };
+
+const coarsePointer = () => window.matchMedia?.("(pointer: coarse)").matches ?? false;
 
 /** The account tab last chosen in this window; a removed account falls back to All. */
 let rememberedTab: string | undefined;
@@ -132,7 +136,8 @@ const filterLabels = (): Record<InboxFilter, string> => ({
   primary: t`Primary`,
   promotions: t`Promotions`,
   social: t`Social`,
-  updates: t`Updates`,
+  // The Updates pile above is a different list, so the Gmail tab says which one it is.
+  updates: t`Gmail Updates`,
 });
 
 /** Triage categories the filter menu offers, narrowing the cached list. */
@@ -431,8 +436,6 @@ function InboxListPage({
   // `attempt` re-runs the sync for "Try again".
   useEffect(() => {
     if (paused) return;
-    polls.current = 0;
-    setStalled(false);
     let live = true;
     let wake: (() => void) | undefined;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -442,7 +445,7 @@ function InboxListPage({
       for (let i = 0; i < SYNC_POLL_MAX && live && result?.syncing; i++) {
         await new Promise<void>((resolve) => {
           wake = resolve;
-          timer = setTimeout(resolve, SYNC_POLL_MS);
+          timer = setTimeout(resolve, Math.min(SYNC_POLL_MS * 2 ** i, SYNC_POLL_MAX_MS));
         });
         if (live) result = await rpc.inbox.refresh({});
       }
@@ -560,11 +563,17 @@ function InboxListPage({
     Boolean(failed) && (!shown || rows.length === 0) && !(data && accounts.length === 0);
   // Cleanup, Filter, Compose and the pile tabs act on loaded mail, so they wait for it.
   const tools = accounts.length > 0 && !failedEmpty;
+  // The once-a-minute new-mail sync must not restart the sorting clock, or the stall line never shows.
+  const restartSortWatch = () => {
+    polls.current = 0;
+    setStalled(false);
+  };
   const retry = () => {
     if (retrying) return;
     setRetried(true);
     setError("");
     setRetrying(true);
+    restartSortWatch();
     setAttempt((n) => n + 1);
     setReload((n) => n + 1);
   };
@@ -614,7 +623,8 @@ function InboxListPage({
     // The selection and the open message move on to a neighbor before the row goes.
     const index = ids.indexOf(messageId);
     const neighbor = ids[index + 1] ?? ids[index - 1];
-    if (selectedId === messageId) setSelectedId(neighbor);
+    // A touch screen has no keyboard cursor to carry over, so no row stays highlighted.
+    if (selectedId === messageId) setSelectedId(coarsePointer() ? undefined : neighbor);
     const subject = rows.find((row) => row.id === messageId)?.subject ?? "";
     // A search also finds archived mail, so its row stays and says Archived.
     patchRows((list, searched) =>
@@ -693,7 +703,10 @@ function InboxListPage({
     if (selectedId && !stays(selectedId)) {
       const index = ids.indexOf(selectedId);
       setSelectedId(
-        ids.slice(index + 1).find(stays) ?? ids.slice(0, Math.max(index, 0)).reverse().find(stays),
+        coarsePointer()
+          ? undefined
+          : (ids.slice(index + 1).find(stays) ??
+              ids.slice(0, Math.max(index, 0)).reverse().find(stays)),
       );
     }
     patchRows((list, searched) =>
@@ -1283,7 +1296,7 @@ function InboxListPage({
             }
           />
           {tools ? (
-            <div className="flex flex-wrap items-start gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <InboxPileTabs
                 value={pile}
                 counts={pileCounts}
@@ -1292,7 +1305,8 @@ function InboxListPage({
               {pile === "newsletters" ? (
                 <Toggle
                   size="sm"
-                  className="-mt-2 mb-4 aria-pressed:bg-primary aria-pressed:text-primary-foreground"
+                  variant="outline"
+                  className="-mt-2 mb-4 rounded-full aria-pressed:bg-primary aria-pressed:text-primary-foreground"
                   pressed={digest}
                   onPressedChange={(on) => {
                     const next = new URLSearchParams(params);
@@ -1366,6 +1380,11 @@ function InboxListPage({
           </PageEmptyState>
         ) : loading ? (
           <div className="flex flex-col gap-2" aria-busy="true">
+            {synced ? null : (
+              <p role="status" className="text-sm text-muted-foreground">
+                <Trans>Reading your mail…</Trans>
+              </p>
+            )}
             {[0, 1, 2, 3, 4].map((n) => (
               <Skeleton key={n} className="h-9 w-full" />
             ))}
@@ -1410,6 +1429,7 @@ function InboxListPage({
               <InboxConsentPrompt
                 recipient={shown.triageBlocked.recipient}
                 onAllowed={() => {
+                  restartSortWatch();
                   setJustAllowed(true);
                   setAttempt((n) => n + 1);
                   setReload((n) => n + 1);
@@ -1419,7 +1439,7 @@ function InboxListPage({
             ) : sorting && stalled ? (
               <div
                 role="status"
-                className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground"
+                className="mb-4 flex min-h-9 flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground"
               >
                 <Trans>Sorting is taking longer than usual. Your mail is below.</Trans>
                 <Button variant="outline" size="sm" onClick={retry}>
@@ -1431,7 +1451,7 @@ function InboxListPage({
               <p
                 role="status"
                 className={cn(
-                  "mb-4 flex items-center gap-2 text-sm text-muted-foreground",
+                  "mb-4 flex min-h-9 items-center gap-2 text-sm text-muted-foreground",
                   justAllowed && "min-h-16",
                 )}
               >

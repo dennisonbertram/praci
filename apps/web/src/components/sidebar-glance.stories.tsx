@@ -1,8 +1,8 @@
 import type { NotificationKind } from "@rakazo/contracts";
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { ChartColumn, Mail, Scale } from "lucide-react";
+import { FolderOpen, Mail, Scale } from "lucide-react";
 import { SidebarPageLink } from "./SidebarPageLink";
-import { glanceBadge, runwayGlance, StatusMark } from "./sidebar-glance";
+import { glanceBadge, StatusMark } from "./sidebar-glance";
 
 const meta = {
   title: "Shell/Sidebar glance",
@@ -45,9 +45,9 @@ export const ValuesAndDot: Story = {
         glanceBadge({ unseen: 0, value: "3", valueLabel: "3 unread", rail: false }),
       )}
       {row(
-        "Finance",
-        <ChartColumn size={15} aria-hidden="true" />,
-        glanceBadge({ unseen: 0, value: runwayGlance(24.4), rail: false }),
+        "Data room",
+        <FolderOpen size={15} aria-hidden="true" />,
+        glanceBadge({ unseen: 0, value: "1", valueLabel: "1 file failed", rail: false }),
       )}
       {row(
         "Legal",

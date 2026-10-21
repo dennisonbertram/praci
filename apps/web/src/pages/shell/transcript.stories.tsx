@@ -100,3 +100,57 @@ export const Running: Story = {
     </div>
   ),
 };
+
+const ago = (minutes: number) => new Date(Date.now() - minutes * 60_000).toISOString();
+
+/** Email cards run the full width of the transcript, the same width as the "New" divider. */
+export const UnreadEmailCards: Story = {
+  render: () => (
+    <div className="h-[640px]">
+      <Transcript
+        {...baseProps}
+        messages={[
+          message(1, "user", "Check my inbox."),
+          {
+            ...message(2, "bot", ""),
+            blocks: [
+              { kind: "text", text: "Three emails need a reply." },
+              {
+                kind: "emails",
+                emails: [
+                  {
+                    id: "mail_1",
+                    urgency: "today",
+                    from: "Sample Vendor",
+                    subject: "Invoice due today",
+                    snippet:
+                      "Your sample invoice is due today. Please review the attached statement.",
+                    receivedAt: ago(20),
+                    attachments: 2,
+                  },
+                  {
+                    id: "mail_2",
+                    urgency: "within_3_days",
+                    from: "Demo Teammate",
+                    subject: "Draft agenda for Thursday",
+                    snippet: "Attached is a first pass at the agenda. Tell me what to cut.",
+                    receivedAt: ago(300),
+                  },
+                  {
+                    id: "mail_3",
+                    urgency: "this_week",
+                    from: "Example Co",
+                    subject: "Renewal reminder",
+                    snippet: "Your demo plan renews at the end of the week.",
+                    receivedAt: ago(60 * 30),
+                  },
+                ],
+              },
+            ],
+          },
+        ]}
+        lastReadSeq={1}
+      />
+    </div>
+  ),
+};

@@ -74,6 +74,11 @@ msgstr ""
 msgid "{0, plural, one {# email} other {# emails}}"
 msgstr ""
 
+#. placeholder {0}: glance.dataRoomWaiting
+#: src/pages/Shell.tsx
+msgid "{0, plural, one {# file failed} other {# files failed}}"
+msgstr ""
+
 #. placeholder {0}: items.length
 #: src/components/FinanceCards.tsx
 msgid "{0, plural, one {# finance lookup} other {# finance lookups}}"
@@ -104,11 +109,6 @@ msgstr ""
 msgid "{0, plural, one {# task done by your bots} other {# tasks done by your bots}}"
 msgstr ""
 
-#. placeholder {0}: glance.dataRoomWaiting
-#: src/pages/Shell.tsx
-msgid "{0, plural, one {# waiting} other {# waiting}}"
-msgstr ""
-
 #. placeholder {0}: rows.length
 #: src/pages/Inbox.tsx
 msgid "{0, plural, one {#+ result} other {#+ results}}"
@@ -137,11 +137,6 @@ msgstr ""
 #. placeholder {0}: data.monthlyAvgMonths ?? 6
 #: src/pages/finance/FinanceSpend.tsx
 msgid "{0, plural, one {Last full month} other {Last # full months}}"
-msgstr ""
-
-#. placeholder {0}: files.length
-#: src/components/data-room/AutoSortDialog.tsx
-msgid "{0, plural, one {Reviewing # file} other {Reviewing # files}}"
 msgstr ""
 
 #. placeholder {0}: filteredRecent.length
@@ -237,10 +232,8 @@ msgstr ""
 msgid "{0} handling"
 msgstr ""
 
-#. placeholder {0}: months.toFixed(0)
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
-#: src/components/sidebar-glance.tsx
 msgid "{0} mo"
 msgstr ""
 
@@ -263,11 +256,6 @@ msgstr ""
 #. placeholder {0}: sender.name
 #: src/pages/ExternalConversationSettings.tsx
 msgid "{0} rollup hours"
-msgstr ""
-
-#. placeholder {0}: runwayGlance(glance.financeRunwayMonths)
-#: src/pages/Shell.tsx
-msgid "{0} runway"
 msgstr ""
 
 #. placeholder {0}: active.name
@@ -576,6 +564,10 @@ msgstr ""
 msgid "{unpriced} unpriced"
 msgstr ""
 
+#: src/components/inbox/InboxRow.tsx
+msgid "{unread} unread"
+msgstr ""
+
 #: src/pages/shell/transcript.tsx
 msgid "{workingBotName} is working"
 msgstr "{workingBotName} 작업 중"
@@ -598,7 +590,6 @@ msgid "* So far"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/data-room/AutoSortDialog.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 msgid "+{more} more"
 msgstr ""
@@ -812,7 +803,6 @@ msgid "Add connected models to use them as backups."
 msgstr "백업으로 사용할 연결된 모델을 추가하세요."
 
 #: src/components/ContactDialog.tsx
-#: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
 msgid "Add contact"
 msgstr ""
@@ -1052,10 +1042,6 @@ msgstr ""
 
 #: src/pages/Legal.tsx
 msgid "Allow access above to start. The Legal agent then reads your Data room for contracts and deadlines."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Allow access first."
 msgstr ""
 
 #: src/pages/Shell.tsx
@@ -1368,10 +1354,6 @@ msgstr ""
 msgid "Ask {botName}"
 msgstr ""
 
-#: src/components/tour/FirstRunTour.tsx
-msgid "Ask a question"
-msgstr ""
-
 #: src/pages/Devin.tsx
 msgid "Ask a space owner to connect Devin."
 msgstr ""
@@ -1424,6 +1406,10 @@ msgstr "결제하기 전에 확인"
 #: src/components/ApprovalRulesSettings.tsx
 msgid "Ask before sending external email"
 msgstr "외부 이메일을 보내기 전에 확인"
+
+#: src/components/tour/FirstRunTour.tsx
+msgid "Ask Chief"
+msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
 msgid "Ask Chief anything. To approve emails and purchases before they happen, turn on Action confirmations in Settings."
@@ -1782,12 +1768,7 @@ msgstr ""
 msgid "Bots with their own computer and browser"
 msgstr ""
 
-#: src/components/AiDataSharing.tsx
-msgid "Bots, mail, files and contracts"
-msgstr ""
-
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 msgid "Box"
 msgstr ""
 
@@ -2168,8 +2149,11 @@ msgid "Choose files"
 msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/AccountSettingsOverlay.tsx
 msgid "Choose how apps connect for everyone on this server."
+msgstr ""
+
+#: src/pages/Legal.tsx
+msgid "Choose Legal's own model again in the Legal agent's settings to start. It then reads your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/components/integrations/SignInStep.tsx
@@ -4102,7 +4086,7 @@ msgid "Edit wallet"
 msgstr ""
 
 #: src/components/ContactDialog.tsx
-#: src/components/data-room/ImportFromEmail.tsx
+#: src/components/data-room/SelectionBar.tsx
 #: src/pages/Auth.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/Contacts.tsx
@@ -4499,6 +4483,10 @@ msgstr ""
 msgid "Folders"
 msgstr ""
 
+#: src/components/AiDataSharing.tsx
+msgid "For bots, mail, files and contracts"
+msgstr ""
+
 #: src/components/inbox/CleanupSenderRow.tsx
 msgid "Forget"
 msgstr ""
@@ -4545,10 +4533,16 @@ msgstr ""
 msgid "From another app (advanced)"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "From Box"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/Preview.tsx
 msgid "From email"
 msgstr ""
 
+#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/data-room/Preview.tsx
 msgid "From Google Drive"
 msgstr ""
@@ -4569,7 +4563,6 @@ msgstr ""
 msgid "Fullscreen"
 msgstr "전체 화면"
 
-#: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Fully diluted shares"
 msgstr ""
@@ -4653,6 +4646,10 @@ msgstr ""
 msgid "Gmail tabs"
 msgstr ""
 
+#: src/pages/Inbox.tsx
+msgid "Gmail Updates"
+msgstr ""
+
 #: src/pages/shell/command-palette.tsx
 msgid "Go to"
 msgstr ""
@@ -4666,7 +4663,6 @@ msgid "Google apps"
 msgstr ""
 
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr ""
 
@@ -4810,6 +4806,10 @@ msgstr "시간"
 #: src/pages/RoutineSchedule.tsx
 msgid "hours"
 msgstr "시간"
+
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "How Integrations connect for everyone on this server."
+msgstr ""
 
 #: src/lib/slash-skills.ts
 msgid "How long cash lasts, with what-ifs."
@@ -5019,6 +5019,12 @@ msgstr ""
 
 #: src/components/integrations/IntegrationSetup.tsx
 msgid "Integration options"
+msgstr ""
+
+#: src/components/integrations/IntegrationSetup.tsx
+#: src/pages/AccountSettingsOverlay.tsx
+#: src/pages/LocalSettings.tsx
+msgid "Integration sign-in"
 msgstr ""
 
 #: src/components/ConnectAppsButton.tsx
@@ -5244,16 +5250,16 @@ msgstr ""
 msgid "Legal document"
 msgstr ""
 
+#: src/pages/Legal.tsx
+msgid "Legal needs an OpenRouter key to read your contracts."
+msgstr ""
+
 #: src/components/legal/LegalGraph.tsx
 msgid "Legal relationships"
 msgstr ""
 
 #: src/pages/Legal.tsx
-msgid "Legal runs on Muse Spark 1.2 and needs your own OpenRouter key. The space's shared OpenRouter access can't be used for Legal."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
+msgid "Legal runs on its own model: choose it again in the Legal agent's settings."
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
@@ -5390,6 +5396,7 @@ msgstr "음성 서비스를 불러오는 중…"
 #: src/App.tsx
 #: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/ui.tsx
+#: src/components/RowsSkeleton.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/Auth.tsx
 #: src/pages/finance/FinanceTransaction.tsx
@@ -6569,7 +6576,6 @@ msgid "Off: other agents reach {service} only through this agent."
 msgstr ""
 
 #: src/components/integrations/IntegrationAgentSection.tsx
-#: src/components/integrations/McpDetail.tsx
 msgid "Off: the agent only reads. On: it can also make changes, and asks you before each one."
 msgstr ""
 
@@ -6647,6 +6653,10 @@ msgstr ""
 msgid "Open computer settings"
 msgstr ""
 
+#: src/pages/CapTable.tsx
+msgid "Open Contacts"
+msgstr ""
+
 #: src/pages/Legal.tsx
 msgid "Open deadlines"
 msgstr ""
@@ -6701,6 +6711,10 @@ msgstr ""
 msgid "Open Inbox"
 msgstr ""
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Open integration sign-in"
+msgstr ""
+
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Open link"
 msgstr ""
@@ -6720,10 +6734,6 @@ msgstr ""
 
 #: src/pages/finance/FinanceTransaction.tsx
 msgid "Open receipt"
-msgstr ""
-
-#: src/pages/AccountSettingsOverlay.tsx
-msgid "Open server apps"
 msgstr ""
 
 #: src/pages/shell/composer.tsx
@@ -6876,6 +6886,10 @@ msgstr ""
 #: src/components/cap-table/OwnershipDonut.tsx
 #: src/pages/CapTable.tsx
 msgid "Ownership"
+msgstr ""
+
+#: src/pages/CapTable.tsx
+msgid "Ownership by share class"
 msgstr ""
 
 #: src/pages/Artifacts.tsx
@@ -7327,6 +7341,10 @@ msgstr ""
 
 #: src/pages/shell/working-label.ts
 msgid "Reading your finances"
+msgstr ""
+
+#: src/pages/Inbox.tsx
+msgid "Reading your mail…"
 msgstr ""
 
 #: src/components/finance/StatementImport.tsx
@@ -7965,9 +7983,8 @@ msgstr ""
 msgid "Safe"
 msgstr ""
 
-#. placeholder {0}: safes.length
 #: src/pages/CapTable.tsx
-msgid "SAFEs ({0}, {total}) are not included until they convert"
+msgid "SAFEs are not in the share counts"
 msgstr ""
 
 #: src/components/integrations/IntegrationsHome.tsx
@@ -8271,6 +8288,8 @@ msgstr "대화할 Bot을 선택하세요"
 msgid "Select a connected model"
 msgstr "연결된 모델 선택"
 
+#: src/components/data-room/AutoSortDialog.tsx
+#: src/components/data-room/ItemRows.tsx
 #: src/components/inbox/InboxCleanup.tsx
 msgid "Select all"
 msgstr ""
@@ -8284,7 +8303,6 @@ msgid "Self-custody"
 msgstr ""
 
 #: src/components/ComposeEmail.tsx
-#: src/components/data-room/SelectionBar.tsx
 #: src/components/inbox/InboxCleanup.tsx
 #: src/components/inbox/InboxShortcuts.tsx
 #: src/components/MailApprovalCard.tsx
@@ -8325,6 +8343,7 @@ msgstr "재설정 링크 보내기"
 msgid "Send saved draft"
 msgstr ""
 
+#: src/components/data-room/SelectionBar.tsx
 #: src/components/data-room/SendToAgent.tsx
 msgid "Send to agent"
 msgstr ""
@@ -8361,12 +8380,6 @@ msgstr ""
 msgid "Serenity endpoint is required."
 msgstr ""
 
-#: src/components/integrations/IntegrationSetup.tsx
-#: src/pages/AccountSettingsOverlay.tsx
-#: src/pages/LocalSettings.tsx
-msgid "Server apps"
-msgstr ""
-
 #: src/components/integrations/IMessageSection.tsx
 msgid "Server password"
 msgstr ""
@@ -8385,10 +8398,6 @@ msgstr ""
 
 #: src/components/integrations/IMessageSection.tsx
 msgid "Set by server"
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "Set the Legal agent back to Muse Spark 1.2 to start. It then reads your Data room for contracts and deadlines."
 msgstr ""
 
 #: src/components/integrations/ConnectAppsStep.tsx
@@ -8742,6 +8751,10 @@ msgstr ""
 
 #: src/components/ListControls.tsx
 msgid "Sort: {fieldLabel}"
+msgstr ""
+
+#: src/components/data-room/AutoSortDialog.tsx
+msgid "Sorting every file in the Data room"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -9225,10 +9238,6 @@ msgstr ""
 
 #: src/components/integrations/AppDetail.tsx
 msgid "The Inbox page stops showing new mail until you reconnect."
-msgstr ""
-
-#: src/pages/Legal.tsx
-msgid "The Legal agent is set to {model}. Legal runs only on Muse Spark 1.2: choose it again in the Legal agent's settings."
 msgstr ""
 
 #: src/pages/Devin.tsx
@@ -9869,7 +9878,6 @@ msgstr ""
 
 #: src/components/inbox/CleanupSenderRow.tsx
 #: src/components/inbox/InboxPileTabs.tsx
-#: src/pages/Inbox.tsx
 msgid "Updates"
 msgstr "업데이트"
 
@@ -9893,7 +9901,6 @@ msgstr "업데이트 중…"
 
 #: src/components/computer/FilesApp.tsx
 #: src/components/data-room/FilterBar.tsx
-#: src/components/data-room/ImportFromEmail.tsx
 #: src/components/finance/StatementReminderBanner.tsx
 #: src/pages/shell/avatar-studio-popover.tsx
 msgid "Upload"
@@ -9910,6 +9917,10 @@ msgstr ""
 
 #: src/components/data-room/DropZone.tsx
 msgid "Upload failed"
+msgstr ""
+
+#: src/components/data-room/ImportFromEmail.tsx
+msgid "Upload files"
 msgstr ""
 
 #: src/components/tour/FirstRunTour.tsx
