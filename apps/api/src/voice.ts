@@ -30,12 +30,14 @@ import {
 import { getLogger } from "@rakazo/logging";
 import type { Context, Hono } from "hono";
 import { hasVoiceConsent } from "./ai-consent.js";
+import { dictationVocabulary } from "./dictation-vocabulary.js";
 import { readBoundedBody } from "./http-body.js";
 import { withSerializableRetry } from "./serializable-retry.js";
 
 export interface VoiceDeps {
   prisma: PrismaClient;
   secrets: SecretStore;
+  ticketBoardEnabled?: boolean;
 }
 
 export { listVoiceCatalog };
@@ -518,10 +520,12 @@ export async function transcribeVoice(
     });
   }
   // Context goes only to a provider that uses it and whose recipient has consented.
-  const context =
-    input.context && consented && provider.describe().capabilities.usesContext
-      ? input.context
-      : undefined;
+  // The vocabulary is built here, per request, and only when the provider will receive it.
+  let context: TranscriptionContext | undefined;
+  if (consented && provider.describe().capabilities.usesContext) {
+    const vocabulary = input.context?.vocabulary ?? (await dictationVocabulary(deps, actor));
+    context = { ...input.context, vocabulary };
+  }
   if (input.audio.byteLength === 0 || input.audio.byteLength > MAX_TRANSCRIBE_BYTES) {
     throw new ORPCError("BAD_REQUEST", { message: "That recording is empty or too large." });
   }

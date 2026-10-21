@@ -1316,6 +1316,10 @@ export const appContract = {
   runs: {
     list: oc.input(z.object({ filter: z.enum(["active", "recent"]) })).output(RunsListOutputSchema),
   },
+  /** Names that help a transcription provider spell: built per request, never stored. */
+  dictation: {
+    vocabulary: oc.output(z.array(z.string())),
+  },
   voice: {
     agent: oc.output(BotSchema),
     catalog: oc.output(z.array(VoiceCatalogEntrySchema)),
