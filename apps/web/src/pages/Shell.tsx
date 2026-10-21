@@ -13,7 +13,6 @@ import type {
   MessageReaction,
   ProductEvent,
   Routine,
-  SearchHit,
   SidebarSnapshot,
   Space,
   SpaceMemoryConfig,
@@ -69,7 +68,6 @@ import {
   GroupAvatar,
   InputGroup,
   InputGroupAddon,
-  InputGroupButton,
   InputGroupInput,
   Popover,
   PopoverContent,
@@ -307,14 +305,13 @@ import {
   routineNeedsOneShotArm,
 } from "./RoutineEditor";
 import type { SettingsSection } from "./SettingsOverlay";
-import type { SearchLink } from "./SpaceSearch";
-import { SpaceSearchResults } from "./SpaceSearch";
 import type { PageRemoteUpdate } from "./shell/bot-page-panel";
 import { BotPagePanel } from "./shell/bot-page-panel";
 import { BotSettings } from "./shell/bot-panel";
 import { BotCreatePicker } from "./shell/bot-picker";
 import { PinsList, PinsStrip, useBotPins } from "./shell/bot-pins";
-import { CommandPalette, isCommandPaletteHotkey } from "./shell/command-palette";
+import type { PaletteEntry } from "./shell/command-palette";
+import { CommandPalette, isCommandPaletteHotkey, plainSnippet } from "./shell/command-palette";
 import type { PendingAttachment } from "./shell/composer";
 import { Composer } from "./shell/composer";
 import {
@@ -437,6 +434,9 @@ function readCollapsedRosterParents(userId: string | null | undefined): Set<stri
   return readCollapsedIdSet(collapsedRosterParentsStorageKey(userId));
 }
 
+/** A non-chat search result: a Data room document, artifact or contact. */
+type SearchLink = { id: string; label: string; detail?: string };
+
 /** Data room files (by name and content) and artifacts matching a search; a failure only hides that group. */
 async function findDocumentsAndArtifacts(query: string) {
   const [documents, artifacts] = await Promise.all([
@@ -470,14 +470,58 @@ function findContacts(query: string): Promise<SearchLink[]> {
         .filter((c) =>
           [c.name, c.email, c.organization].some((v) => v?.toLowerCase().includes(needle)),
         )
+        .sort(
+          (a, b) =>
+            Number(b.name.toLowerCase().includes(needle)) -
+            Number(a.name.toLowerCase().includes(needle)),
+        )
         .slice(0, 5)
         .map((c) => ({
           id: c.name,
           label: c.name,
-          detail: c.organization ?? c.email ?? undefined,
+          // The field that matched, so a hit on "halcyon" shows why; else the usual second line.
+          detail:
+            [c.organization, c.email].find((v) => v?.toLowerCase().includes(needle)) ??
+            c.organization ??
+            c.email ??
+            undefined,
         })),
     )
     .catch((): SearchLink[] => []);
+}
+
+/** Chats with a matching message, once per chat: the newest match and its date. */
+function findChats(query: string) {
+  return rpc.search
+    .query({ q: query })
+    .then(({ hits }) => {
+      const seen = new Set<string>();
+      const entries: PaletteEntry[] = [];
+      for (const hit of hits) {
+        const chatId = hit.groupId ?? hit.botId;
+        const name = hit.groupName ?? hit.botName ?? hit.title;
+        if (!chatId || seen.has(chatId)) continue;
+        seen.add(chatId);
+        const params = new URLSearchParams();
+        if (hit.messageId) params.set("m", hit.messageId);
+        if (hit.routineId) params.set("routine", hit.routineId);
+        const search = params.toString();
+        const isChatText = hit.kind === "conversation" || hit.kind === "message";
+        entries.push({
+          id: `${hit.groupId ? `/app/g/${chatId}` : `/app/${chatId}`}${search ? `?${search}` : ""}`,
+          label: name,
+          detail: isChatText ? plainSnippet(hit.snippet) : hit.title,
+          date: hit.createdAt
+            ? new Date(hit.createdAt).toLocaleDateString(undefined, {
+                month: "short",
+                day: "numeric",
+              })
+            : undefined,
+        });
+      }
+      return entries.slice(0, 5);
+    })
+    .catch((): PaletteEntry[] => []);
 }
 
 export function ShellPage() {
@@ -562,9 +606,6 @@ export function ShellPage() {
     setInboxAgentCollapsed(readInboxAgentCollapsed(userId) || phone);
     setCartaAgentCollapsed(readCartaAgentCollapsed(userId) || phone);
   }, [userId]);
-  const [query, setQuery] = useState("");
-  const [searchHits, setSearchHits] = useState<SearchHit[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<ThreadSnapshot | null>(null);
   const snapshotRef = useRef<ThreadSnapshot | null>(null);
   const streamResponses = useSyncExternalStore(
@@ -771,12 +812,6 @@ export function ShellPage() {
   useEffect(() => {
     if (rail) sidebarScrollRef.current?.scrollTo({ top: 0 });
   }, [rail]);
-  const focusSearchOnExpand = useRef(false);
-  useEffect(() => {
-    if (botsSidebarCollapsed || !focusSearchOnExpand.current) return;
-    focusSearchOnExpand.current = false;
-    document.querySelector<HTMLInputElement>('[data-testid="sidebar-search"] input')?.focus();
-  }, [botsSidebarCollapsed]);
   const botsSidebarEdgeDragRef = useRef<{ startX: number; mode: "expand" | "collapse" } | null>(
     null,
   );
@@ -1804,8 +1839,8 @@ export function ShellPage() {
               },
             ]
           : [];
-    return sidebarGroupsForSpaces(sidebarSpaces, query, bootstrapMe?.spaceId, t`Personal`);
-  }, [bootstrapMe, botSections, bots, groups, spaces, query, t]);
+    return sidebarGroupsForSpaces(sidebarSpaces, "", bootstrapMe?.spaceId, t`Personal`);
+  }, [bootstrapMe, botSections, bots, groups, spaces, t]);
   // What the list shows now, so a drop can be turned into a move.
   const sidebarLayout = useMemo<SidebarLayout>(() => {
     const folders: string[] = [];
@@ -2071,8 +2106,6 @@ export function ShellPage() {
     },
     [userId],
   );
-  const spaceQuery = query.trim();
-  const showSpaceSearch = spaceQuery.length > 0;
 
   // App pages that search and the command palette can open (route under /app/).
   const appPages = useMemo(() => {
@@ -2124,31 +2157,23 @@ export function ShellPage() {
     () => appPages.filter((page) => !hiddenPages.includes(page.id)),
     [appPages, hiddenPages],
   );
-  // Matched by name, so "Finance" finds the Finance page and not only the Finance agent.
-  const searchPages = useMemo(() => {
-    const needle = spaceQuery.toLocaleLowerCase();
-    return needle
-      ? visiblePages.filter((page) =>
-          `${page.label} ${"keywords" in page ? page.keywords : ""}`
-            .toLocaleLowerCase()
-            .includes(needle),
-        )
-      : [];
-  }, [visiblePages, spaceQuery]);
-  const [searchDocuments, setSearchDocuments] = useState<SearchLink[]>([]);
-  const [searchArtifacts, setSearchArtifacts] = useState<SearchLink[]>([]);
-
   const searchPaletteLinks = useCallback(
     async (q: string) => {
-      const [found, contacts] = await Promise.all([findDocumentsAndArtifacts(q), findContacts(q)]);
+      const [found, contacts, chats] = await Promise.all([
+        findDocumentsAndArtifacts(q),
+        findContacts(q),
+        findChats(q),
+      ]);
       return [
         {
           heading: t`Contacts`,
           entries: contacts.map((c) => ({
             id: `/app/contacts?q=${encodeURIComponent(c.id)}`,
             label: c.label,
+            detail: c.detail,
           })),
         },
+        { heading: t`Chats`, entries: chats },
         {
           heading: t`Documents`,
           entries: found.documents.map((doc) => ({
@@ -2163,70 +2188,27 @@ export function ShellPage() {
             label: item.label,
           })),
         },
+        {
+          heading: t`Mail`,
+          entries: [
+            { id: `/app/inbox?q=${encodeURIComponent(q)}`, label: t`Search mail for “${q}”` },
+          ],
+        },
       ];
     },
     [t],
   );
 
   function openSearchResult(path: string) {
-    setQuery("");
     setMobileSidebarOpen(false);
     navigate(path);
   }
 
   /** Opens an entry of appPages; Settings is a dialog, not a route. */
   function openAppPage(id: string) {
-    setQuery("");
     setMobileSidebarOpen(false);
     if (id === "settings") openSettings("general");
     else navigate(`/app/${id}`);
-  }
-
-  useEffect(() => {
-    if (!showSpaceSearch) {
-      setSearchHits([]);
-      setSearchDocuments([]);
-      setSearchArtifacts([]);
-      setSearchLoading(false);
-      return;
-    }
-    const abort = new AbortController();
-    // Loading from the first keystroke, so "No matches" cannot show during the debounce.
-    setSearchLoading(true);
-    const timer = window.setTimeout(() => {
-      const docs = findDocumentsAndArtifacts(spaceQuery).then((found) => {
-        if (abort.signal.aborted) return;
-        setSearchDocuments(found.documents);
-        setSearchArtifacts(found.artifacts);
-      });
-      const chats = rpc.search
-        .query({ q: spaceQuery })
-        .then((result) => {
-          if (!abort.signal.aborted) setSearchHits(result.hits);
-        })
-        .catch(() => {
-          if (!abort.signal.aborted) setSearchHits([]);
-        });
-      void Promise.all([docs, chats]).finally(() => {
-        if (!abort.signal.aborted) setSearchLoading(false);
-      });
-    }, 200);
-    return () => {
-      abort.abort();
-      window.clearTimeout(timer);
-    };
-  }, [showSpaceSearch, spaceQuery]);
-
-  async function jumpToSearchHit(hit: SearchHit) {
-    setQuery("");
-    setSearchHits([]);
-    const params = new URLSearchParams();
-    if (hit.messageId) params.set("m", hit.messageId);
-    if (hit.routineId) params.set("routine", hit.routineId);
-    navigate({
-      pathname: hit.groupId ? `/app/g/${hit.groupId}` : `/app/${hit.botId}`,
-      search: params.toString() ? `?${params.toString()}` : undefined,
-    });
   }
 
   async function jumpToMessage(target: { botId?: string; groupId?: string; messageId: string }) {
@@ -4074,10 +4056,7 @@ export function ShellPage() {
                   type="button"
                   aria-label={t`Search`}
                   data-testid="sidebar-search-rail"
-                  onClick={() => {
-                    focusSearchOnExpand.current = true;
-                    setBotsSidebarCollapsedPref(false);
-                  }}
+                  onClick={() => setCommandPaletteOpen(true)}
                   className="app-no-drag mx-auto grid size-9 place-items-center rounded-xl text-muted-foreground hover:bg-sidebar-accent focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                 >
                   <Search size={16} strokeWidth={1.8} aria-hidden="true" />
@@ -4092,31 +4071,22 @@ export function ShellPage() {
                 <InputGroupAddon>
                   <Search size={16} strokeWidth={1.8} aria-hidden="true" />
                 </InputGroupAddon>
+                {/* One search surface: the box opens the Cmd+K palette. */}
                 <InputGroupInput
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
+                  readOnly
+                  value=""
+                  onClick={() => setCommandPaletteOpen(true)}
                   onKeyDown={(e) => {
-                    if (e.key === "Escape" && query) {
+                    if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      setQuery("");
+                      setCommandPaletteOpen(true);
                     }
                   }}
-                  // Chats, documents and mail, so the box says only "Search".
                   placeholder={t`Search`}
                   autoComplete="off"
                   name="sidebar-search"
+                  className="cursor-pointer"
                 />
-                {query ? (
-                  <InputGroupAddon align="inline-end">
-                    <InputGroupButton
-                      size="icon-xs"
-                      aria-label={t`Clear search`}
-                      onClick={() => setQuery("")}
-                    >
-                      <X aria-hidden="true" />
-                    </InputGroupButton>
-                  </InputGroupAddon>
-                ) : null}
               </InputGroup>
             )
           }
@@ -4208,8 +4178,7 @@ export function ShellPage() {
             )
           }
         />
-        {/* While searching, matching pages are listed with the results instead. */}
-        {(showSpaceSearch && !rail) || bootstrapMe === undefined ? null : (
+        {bootstrapMe === undefined ? null : (
           // Waiting for the account (undefined) keeps pages the user hid from flashing in.
           // Outside the chat scroll area so it stays put; on a short screen it scrolls on its own.
           <div className="flex max-h-[50vh] shrink-0 flex-col overflow-y-auto border-b border-border px-2.5 pb-1">
@@ -4392,661 +4361,619 @@ export function ShellPage() {
           ref={sidebarScrollRef}
           className="rk-scroll rk-scroll-fade-bottom flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5 pb-2.5"
         >
-          {showSpaceSearch && !rail ? (
-            <SpaceSearchResults
-              query={spaceQuery}
-              hits={searchHits}
-              loading={searchLoading}
-              pages={searchPages}
-              documents={searchDocuments}
-              artifacts={searchArtifacts}
-              onSelectArtifact={(id) =>
-                openSearchResult(`/app/artifacts/${encodeURIComponent(id)}`)
-              }
-              onSelect={(hit) => void jumpToSearchHit(hit)}
-              onSelectPage={openAppPage}
-              onSelectDocument={(id) =>
-                openSearchResult(`/app/data-room?item=${encodeURIComponent(id)}`)
-              }
-              // A page name is a navigation query, so the mail row would only be a second answer.
-              onSearchMail={
-                searchPages.length
-                  ? undefined
-                  : () => openSearchResult(`/app/inbox?q=${encodeURIComponent(spaceQuery)}`)
-              }
-            />
-          ) : (
-            <>
-              {activityMode && !rail ? (
-                <ActivityList
-                  onOpenRun={(run) => {
-                    setMobileSidebarOpen(false);
-                    if (run.groupId) navigate(`/app/g/${run.groupId}`);
-                    else navigate(`/app/${run.botId}`);
-                  }}
-                />
-              ) : null}
-              {!initialBotsLoaded && bots.length === 0 && !rail ? (
-                <div className="space-y-2 px-1 pt-2" aria-hidden="true">
-                  {[0, 1, 2, 3].map((row) => (
-                    <div key={row} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
-                      <Skeleton className="size-9 rounded-full" />
-                      <Skeleton className="h-3 w-2/5" />
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-              <SidebarDnd
-                layout={sidebarLayout}
-                labelFor={sidebarDragLabel}
-                onDrop={dropSidebarItem}
-                overlay={sidebarDragOverlay}
-              >
-                {sidebarGroups.map((group) => {
-                  const activeSpace = group.spaceId === bootstrapMe?.spaceId;
-                  const folder =
-                    group.kind === "folder" && group.sectionId ? group.sectionId : null;
-                  // Closing the heading hides everything under it.
-                  if (!rail && group.parentKey && collapsedSidebarSections.has(group.parentKey)) {
-                    return null;
-                  }
-                  const collapsed = folder
-                    ? activeSpace
-                      ? group.collapsed
-                      : collapsedSidebarSections.has(group.key)
-                    : Boolean(group.title) && collapsedSidebarSections.has(group.key);
-                  // The most urgent status in a folder, so a closed folder hides nothing.
-                  const folderStatus = folder
-                    ? NOTIFICATION_KINDS.find((kind) =>
-                        group.bots.some(
-                          (item) => item.kind === "bot" && glance.botKinds[item.chat.id] === kind,
-                        ),
-                      )
-                    : undefined;
-                  const dragEnabled =
-                    activeSpace && !rail && !showSpaceSearch && group.kind !== "pinned";
-                  const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
-                  // Page and integration agents fold into one row; Chief and the person's bots stay listed.
-                  const isPageAgent = (row: (typeof nestedRows)[number]) => {
-                    const key = "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
-                    return (
-                      row.item.kind === "bot" &&
-                      (pageAgentKind(key) !== null || isIntegrationAgentSpawnKey(key))
-                    );
-                  };
-                  const pageAgentRows =
-                    !rail && !folder && group.kind !== "pinned"
-                      ? nestedRows.filter(isPageAgent)
-                      : [];
-                  const foldPageAgents = pageAgentRows.length >= 2;
-                  const showPageAgents = pageAgentsOpen;
-                  const displayRows: ((typeof nestedRows)[number] | { pageAgentsHeader: true })[] =
-                    foldPageAgents
-                      ? [
-                          ...nestedRows.filter((row) => !isPageAgent(row)),
-                          { pageAgentsHeader: true },
-                          ...(showPageAgents ? pageAgentRows : []),
-                        ]
-                      : nestedRows;
-                  const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
-                  // Reorder among visible siblings so keyboard and drag moves match the tree.
-                  const siblingBotIds = (parentId: string | null) =>
-                    nestedRows.flatMap((row) =>
-                      row.item.kind === "bot" && row.parentId === parentId
-                        ? [row.item.chat.id]
-                        : [],
-                    );
-                  // The heading's menu: space rename and delete where allowed, and the folder actions.
-                  const hasSpaceActions =
-                    group.canRenameSpace ||
-                    group.canDeleteSpace ||
-                    (activeSpace && Boolean(group.title) && ["head", "space"].includes(group.kind));
-                  // "Personal" replaces the lone space's name, so the name stays in the label.
-                  const sidebarHeader = {
-                    name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
-                  };
+          <>
+            {activityMode && !rail ? (
+              <ActivityList
+                onOpenRun={(run) => {
+                  setMobileSidebarOpen(false);
+                  if (run.groupId) navigate(`/app/g/${run.groupId}`);
+                  else navigate(`/app/${run.botId}`);
+                }}
+              />
+            ) : null}
+            {!initialBotsLoaded && bots.length === 0 && !rail ? (
+              <div className="space-y-2 px-1 pt-2" aria-hidden="true">
+                {[0, 1, 2, 3].map((row) => (
+                  <div key={row} className="flex items-center gap-3 rounded-xl px-2 py-2.5">
+                    <Skeleton className="size-9 rounded-full" />
+                    <Skeleton className="h-3 w-2/5" />
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <SidebarDnd
+              layout={sidebarLayout}
+              labelFor={sidebarDragLabel}
+              onDrop={dropSidebarItem}
+              overlay={sidebarDragOverlay}
+            >
+              {sidebarGroups.map((group) => {
+                const activeSpace = group.spaceId === bootstrapMe?.spaceId;
+                const folder = group.kind === "folder" && group.sectionId ? group.sectionId : null;
+                // Closing the heading hides everything under it.
+                if (!rail && group.parentKey && collapsedSidebarSections.has(group.parentKey)) {
+                  return null;
+                }
+                const collapsed = folder
+                  ? activeSpace
+                    ? group.collapsed
+                    : collapsedSidebarSections.has(group.key)
+                  : Boolean(group.title) && collapsedSidebarSections.has(group.key);
+                // The most urgent status in a folder, so a closed folder hides nothing.
+                const folderStatus = folder
+                  ? NOTIFICATION_KINDS.find((kind) =>
+                      group.bots.some(
+                        (item) => item.kind === "bot" && glance.botKinds[item.chat.id] === kind,
+                      ),
+                    )
+                  : undefined;
+                const dragEnabled = activeSpace && !rail && group.kind !== "pinned";
+                const nestedRows = nestRosterByParent(group.bots, collapsedRosterParents);
+                // Page and integration agents fold into one row; Chief and the person's bots stay listed.
+                const isPageAgent = (row: (typeof nestedRows)[number]) => {
+                  const key = "spawnKey" in row.item.chat ? String(row.item.chat.spawnKey) : null;
                   return (
-                    <div key={group.key} data-sidebar-group={group.key}>
-                      {rail ? (
-                        <div
-                          className={
-                            group.title && group.kind !== "head"
-                              ? "mx-2 mt-2 mb-1 border-t border-border"
-                              : undefined
-                          }
-                        />
-                      ) : null}
-                      {!rail && folder ? (
-                        <FolderHeader
-                          id={folder}
-                          name={group.title ?? ""}
-                          count={group.bots.length}
-                          collapsed={collapsed}
-                          status={folderStatus}
-                          unread={group.bots.some((item) => item.chat.unread)}
-                          editing={editingFolderId === folder}
-                          readOnly={!activeSpace || showSpaceSearch}
-                          onToggle={() =>
-                            activeSpace
-                              ? void toggleFolder(folder, !collapsed)
-                              : toggleSidebarSection(group.key)
-                          }
-                          onStartRename={() => setEditingFolderId(folder)}
-                          onRename={(name) => void renameFolder(folder, name)}
-                          onCancelRename={() => setEditingFolderId(null)}
-                          onDelete={() => void deleteFolder(folder)}
-                          takenNames={botSections.map((section) => section.name)}
-                        />
-                      ) : null}
-                      {!rail && !folder && (group.title || hasSpaceActions) ? (
-                        <div
-                          className={
-                            group.title && hasSpaceActions
-                              ? "grid pt-3 pb-0.5"
-                              : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
-                          }
-                        >
-                          {group.title ? (
-                            <button
-                              type="button"
-                              aria-current={group.current ? "true" : undefined}
-                              data-sidebar-current={group.current ? "" : undefined}
-                              title={group.relabeled ? group.spaceName : undefined}
-                              className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
-                              onClick={() => {
-                                if (group.emptySpaceId) {
-                                  openSpaceChat(group.emptySpaceId, "/onboarding");
-                                  return;
-                                }
-                                toggleSidebarSection(group.key);
-                              }}
-                              onContextMenu={
-                                hasSpaceActions
-                                  ? (event) => {
-                                      event.preventDefault();
-                                      spaceMenuAnchor.current = event.currentTarget;
-                                      setSpaceMenu({
-                                        id: group.spaceId,
-                                        position: { x: event.clientX, y: event.clientY },
-                                      });
-                                    }
-                                  : undefined
+                    row.item.kind === "bot" &&
+                    (pageAgentKind(key) !== null || isIntegrationAgentSpawnKey(key))
+                  );
+                };
+                const pageAgentRows =
+                  !rail && !folder && group.kind !== "pinned" ? nestedRows.filter(isPageAgent) : [];
+                const foldPageAgents = pageAgentRows.length >= 2;
+                const showPageAgents = pageAgentsOpen;
+                const displayRows: ((typeof nestedRows)[number] | { pageAgentsHeader: true })[] =
+                  foldPageAgents
+                    ? [
+                        ...nestedRows.filter((row) => !isPageAgent(row)),
+                        { pageAgentsHeader: true },
+                        ...(showPageAgents ? pageAgentRows : []),
+                      ]
+                    : nestedRows;
+                const treeActive = nestedRows.some((row) => row.depth > 0 || row.hasChildren);
+                // Reorder among visible siblings so keyboard and drag moves match the tree.
+                const siblingBotIds = (parentId: string | null) =>
+                  nestedRows.flatMap((row) =>
+                    row.item.kind === "bot" && row.parentId === parentId ? [row.item.chat.id] : [],
+                  );
+                // The heading's menu: space rename and delete where allowed, and the folder actions.
+                const hasSpaceActions =
+                  group.canRenameSpace ||
+                  group.canDeleteSpace ||
+                  (activeSpace && Boolean(group.title) && ["head", "space"].includes(group.kind));
+                // "Personal" replaces the lone space's name, so the name stays in the label.
+                const sidebarHeader = {
+                  name: group.relabeled ? `${group.title} (${group.spaceName})` : group.title,
+                };
+                return (
+                  <div key={group.key} data-sidebar-group={group.key}>
+                    {rail ? (
+                      <div
+                        className={
+                          group.title && group.kind !== "head"
+                            ? "mx-2 mt-2 mb-1 border-t border-border"
+                            : undefined
+                        }
+                      />
+                    ) : null}
+                    {!rail && folder ? (
+                      <FolderHeader
+                        id={folder}
+                        name={group.title ?? ""}
+                        count={group.bots.length}
+                        collapsed={collapsed}
+                        status={folderStatus}
+                        unread={group.bots.some((item) => item.chat.unread)}
+                        editing={editingFolderId === folder}
+                        readOnly={!activeSpace}
+                        onToggle={() =>
+                          activeSpace
+                            ? void toggleFolder(folder, !collapsed)
+                            : toggleSidebarSection(group.key)
+                        }
+                        onStartRename={() => setEditingFolderId(folder)}
+                        onRename={(name) => void renameFolder(folder, name)}
+                        onCancelRename={() => setEditingFolderId(null)}
+                        onDelete={() => void deleteFolder(folder)}
+                        takenNames={botSections.map((section) => section.name)}
+                      />
+                    ) : null}
+                    {!rail && !folder && (group.title || hasSpaceActions) ? (
+                      <div
+                        className={
+                          group.title && hasSpaceActions
+                            ? "grid pt-3 pb-0.5"
+                            : `flex items-center pt-3 pb-0.5${group.title ? "" : " justify-end"}`
+                        }
+                      >
+                        {group.title ? (
+                          <button
+                            type="button"
+                            aria-current={group.current ? "true" : undefined}
+                            data-sidebar-current={group.current ? "" : undefined}
+                            title={group.relabeled ? group.spaceName : undefined}
+                            className={`flex min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1 text-[11px] font-semibold tracking-wider uppercase ${group.current ? "text-foreground" : "text-foreground/70"} hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring ${hasSpaceActions ? "col-start-1 row-start-1 w-full pe-8" : "flex-1"}`}
+                            onClick={() => {
+                              if (group.emptySpaceId) {
+                                openSpaceChat(group.emptySpaceId, "/onboarding");
+                                return;
                               }
-                              aria-expanded={group.emptySpaceId ? undefined : !collapsed}
-                              aria-label={
-                                group.emptySpaceId
-                                  ? t`Open ${group.title}`
-                                  : collapsed
-                                    ? t`Expand ${sidebarHeader.name}`
-                                    : t`Collapse ${sidebarHeader.name}`
-                              }
-                            >
-                              <span className="flex min-w-0 items-center gap-1.5">
-                                {group.current ? (
-                                  <span
-                                    className="size-1.5 shrink-0 rounded-full bg-primary"
-                                    aria-hidden="true"
-                                  />
-                                ) : null}
-                                {group.showLock ? (
-                                  <Lock size={11} strokeWidth={2} aria-hidden="true" />
-                                ) : null}
-                                {/* Long space names wrap to a second line instead of being cut off. */}
-                                <span className="line-clamp-2 text-start break-words">
-                                  {group.title}
-                                </span>
-                              </span>
-                              {group.emptySpaceId ? null : (
-                                <ChevronDown
-                                  size={14}
-                                  strokeWidth={1.8}
-                                  className={
-                                    collapsed
-                                      ? "-rotate-90 transition-transform"
-                                      : "transition-transform"
+                              toggleSidebarSection(group.key);
+                            }}
+                            onContextMenu={
+                              hasSpaceActions
+                                ? (event) => {
+                                    event.preventDefault();
+                                    spaceMenuAnchor.current = event.currentTarget;
+                                    setSpaceMenu({
+                                      id: group.spaceId,
+                                      position: { x: event.clientX, y: event.clientY },
+                                    });
                                   }
+                                : undefined
+                            }
+                            aria-expanded={group.emptySpaceId ? undefined : !collapsed}
+                            aria-label={
+                              group.emptySpaceId
+                                ? t`Open ${group.title}`
+                                : collapsed
+                                  ? t`Expand ${sidebarHeader.name}`
+                                  : t`Collapse ${sidebarHeader.name}`
+                            }
+                          >
+                            <span className="flex min-w-0 items-center gap-1.5">
+                              {group.current ? (
+                                <span
+                                  className="size-1.5 shrink-0 rounded-full bg-primary"
                                   aria-hidden="true"
                                 />
-                              )}
-                            </button>
-                          ) : null}
-                          {hasSpaceActions ? (
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              className={
-                                group.title
-                                  ? "col-start-1 row-start-1 justify-self-end self-center"
-                                  : undefined
-                              }
-                              aria-label={t`Actions for ${group.spaceName}`}
-                              onClick={(event) => {
-                                const rect = event.currentTarget.getBoundingClientRect();
-                                spaceMenuAnchor.current = event.currentTarget;
-                                setSpaceMenu({
-                                  id: group.spaceId,
-                                  position: { x: rect.left, y: rect.bottom },
-                                });
-                              }}
-                            >
-                              <MoreHorizontal size={14} aria-hidden="true" />
-                            </Button>
-                          ) : null}
-                        </div>
-                      ) : null}
-                      {!rail &&
-                      group.kind === "root" &&
-                      group.parentKey &&
-                      group.bots.length > 0 ? (
-                        <div className="mt-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground/80">
-                          <Trans>Chats</Trans>
-                        </div>
-                      ) : null}
-                      {rail || !collapsed ? (
-                        <SortableList
-                          ids={displayRows.flatMap((row) =>
-                            "item" in row
-                              ? [itemDragId({ kind: row.item.kind, id: row.item.chat.id })]
-                              : [],
-                          )}
-                        >
-                          {displayRows.map((displayRow) => {
-                            if ("pageAgentsHeader" in displayRow) {
-                              return (
-                                <PageAgentsRow
-                                  key="page-agents"
-                                  open={showPageAgents}
-                                  count={pageAgentRows.length}
-                                  needsYou={pageAgentRows.some(
-                                    (row) =>
-                                      row.item.chat.unread || glance.botKinds[row.item.chat.id],
-                                  )}
-                                  onToggle={() => setPageAgentsOpen((open) => !open)}
-                                />
-                              );
+                              ) : null}
+                              {group.showLock ? (
+                                <Lock size={11} strokeWidth={2} aria-hidden="true" />
+                              ) : null}
+                              {/* Long space names wrap to a second line instead of being cut off. */}
+                              <span className="line-clamp-2 text-start break-words">
+                                {group.title}
+                              </span>
+                            </span>
+                            {group.emptySpaceId ? null : (
+                              <ChevronDown
+                                size={14}
+                                strokeWidth={1.8}
+                                className={
+                                  collapsed
+                                    ? "-rotate-90 transition-transform"
+                                    : "transition-transform"
+                                }
+                                aria-hidden="true"
+                              />
+                            )}
+                          </button>
+                        ) : null}
+                        {hasSpaceActions ? (
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className={
+                              group.title
+                                ? "col-start-1 row-start-1 justify-self-end self-center"
+                                : undefined
                             }
-                            const { item, depth, hasChildren, parentId } = displayRow;
-                            const parentCollapsed =
-                              hasChildren && collapsedRosterParents.has(item.chat.id);
-                            const selected =
-                              (item.kind === "bot" &&
-                                !inGroup &&
-                                !pageMode &&
-                                active?.id === item.chat.id) ||
-                              (item.kind === "group" &&
-                                inGroup &&
-                                activeGroup?.id === item.chat.id);
-                            const compact = botsSidebarDensity === "compact";
-                            const workStatusLabel =
-                              item.kind === "bot"
-                                ? maskOptional(
-                                    rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
-                                  )
-                                : null;
-                            const rowError =
-                              item.kind === "bot" &&
-                              (rosterHasUndismissedRunError(
-                                item.chat.runErrorId,
-                                dismissedRunErrorIds,
-                              ) ||
-                                (active?.id === item.chat.id && Boolean(displayedRunError)));
-                            const compactStatusLabel =
-                              compact && item.kind === "bot"
-                                ? rowError
-                                  ? t`Error`
-                                  : maskOptional(
-                                      compactRosterStatusLabel(
-                                        item.chat.status,
-                                        item.chat.runPhase,
-                                      ),
-                                    )
-                                : null;
-                            const rosterLine = compact
-                              ? compactStatusLabel
-                              : (workStatusLabel ??
-                                (item.kind === "bot"
-                                  ? maskCurrencyWhenHidden(item.chat.preview) ||
-                                    (item.chat.status !== "idle" ? item.chat.status : "")
-                                  : maskCurrencyWhenHidden(item.chat.preview) ||
-                                    item.chat.members.map((member) => member.name).join(", ")));
-                            const rowDragEnabled =
-                              dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
+                            aria-label={t`Actions for ${group.spaceName}`}
+                            onClick={(event) => {
+                              const rect = event.currentTarget.getBoundingClientRect();
+                              spaceMenuAnchor.current = event.currentTarget;
+                              setSpaceMenu({
+                                id: group.spaceId,
+                                position: { x: rect.left, y: rect.bottom },
+                              });
+                            }}
+                          >
+                            <MoreHorizontal size={14} aria-hidden="true" />
+                          </Button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {!rail && group.kind === "root" && group.parentKey && group.bots.length > 0 ? (
+                      <div className="mt-1 px-2.5 py-1.5 text-[13px] font-medium text-foreground/80">
+                        <Trans>Chats</Trans>
+                      </div>
+                    ) : null}
+                    {rail || !collapsed ? (
+                      <SortableList
+                        ids={displayRows.flatMap((row) =>
+                          "item" in row
+                            ? [itemDragId({ kind: row.item.kind, id: row.item.chat.id })]
+                            : [],
+                        )}
+                      >
+                        {displayRows.map((displayRow) => {
+                          if ("pageAgentsHeader" in displayRow) {
                             return (
-                              <SortableRow
-                                key={`${item.kind}:${item.chat.id}`}
-                                id={itemDragId({ kind: item.kind, id: item.chat.id })}
-                                disabled={!rowDragEnabled}
-                              >
-                                {(row) => (
-                                  <div
-                                    ref={row.setNodeRef}
-                                    data-drops-before={row.dropsBefore ? "" : undefined}
-                                    data-tour={selected ? "sidebar-chat" : undefined}
-                                    className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
-                                      !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
-                                    }`}
-                                    style={{ ...row.style, opacity: row.isDragging ? 0.4 : 1 }}
-                                  >
-                                    {hasChildren && !rail ? (
-                                      <span
-                                        className="absolute inset-y-0 z-10 flex w-3.5 items-center justify-center"
-                                        style={{ insetInlineStart: `${10 + depth * 14}px` }}
-                                      >
-                                        <button
-                                          type="button"
-                                          aria-expanded={!parentCollapsed}
-                                          aria-label={
-                                            parentCollapsed
-                                              ? t`Expand ${item.chat.name}`
-                                              : t`Collapse ${item.chat.name}`
-                                          }
-                                          className="inline-flex size-3.5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
-                                          onClick={() => toggleRosterParent(item.chat.id)}
-                                        >
-                                          <ChevronDown
-                                            size={12}
-                                            strokeWidth={2}
-                                            className={`transition-transform ${
-                                              parentCollapsed ? "-rotate-90" : ""
-                                            }`}
-                                            aria-hidden="true"
-                                          />
-                                        </button>
-                                      </span>
-                                    ) : null}
-                                    <RailTip rail={rail} label={item.chat.name}>
+                              <PageAgentsRow
+                                key="page-agents"
+                                open={showPageAgents}
+                                count={pageAgentRows.length}
+                                needsYou={pageAgentRows.some(
+                                  (row) =>
+                                    row.item.chat.unread || glance.botKinds[row.item.chat.id],
+                                )}
+                                onToggle={() => setPageAgentsOpen((open) => !open)}
+                              />
+                            );
+                          }
+                          const { item, depth, hasChildren, parentId } = displayRow;
+                          const parentCollapsed =
+                            hasChildren && collapsedRosterParents.has(item.chat.id);
+                          const selected =
+                            (item.kind === "bot" &&
+                              !inGroup &&
+                              !pageMode &&
+                              active?.id === item.chat.id) ||
+                            (item.kind === "group" && inGroup && activeGroup?.id === item.chat.id);
+                          const compact = botsSidebarDensity === "compact";
+                          const workStatusLabel =
+                            item.kind === "bot"
+                              ? maskOptional(
+                                  rosterWorkStatusLabel(item.chat.status, item.chat.runPhase),
+                                )
+                              : null;
+                          const rowError =
+                            item.kind === "bot" &&
+                            (rosterHasUndismissedRunError(
+                              item.chat.runErrorId,
+                              dismissedRunErrorIds,
+                            ) ||
+                              (active?.id === item.chat.id && Boolean(displayedRunError)));
+                          const compactStatusLabel =
+                            compact && item.kind === "bot"
+                              ? rowError
+                                ? t`Error`
+                                : maskOptional(
+                                    compactRosterStatusLabel(item.chat.status, item.chat.runPhase),
+                                  )
+                              : null;
+                          const rosterLine = compact
+                            ? compactStatusLabel
+                            : (workStatusLabel ??
+                              (item.kind === "bot"
+                                ? maskCurrencyWhenHidden(item.chat.preview) ||
+                                  (item.chat.status !== "idle" ? item.chat.status : "")
+                                : maskCurrencyWhenHidden(item.chat.preview) ||
+                                  item.chat.members.map((member) => member.name).join(", ")));
+                          const rowDragEnabled =
+                            dragEnabled && item.chat.spaceId === bootstrapMe?.spaceId;
+                          return (
+                            <SortableRow
+                              key={`${item.kind}:${item.chat.id}`}
+                              id={itemDragId({ kind: item.kind, id: item.chat.id })}
+                              disabled={!rowDragEnabled}
+                            >
+                              {(row) => (
+                                <div
+                                  ref={row.setNodeRef}
+                                  data-drops-before={row.dropsBefore ? "" : undefined}
+                                  data-tour={selected ? "sidebar-chat" : undefined}
+                                  className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
+                                    !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
+                                  }`}
+                                  style={{ ...row.style, opacity: row.isDragging ? 0.4 : 1 }}
+                                >
+                                  {hasChildren && !rail ? (
+                                    <span
+                                      className="absolute inset-y-0 z-10 flex w-3.5 items-center justify-center"
+                                      style={{ insetInlineStart: `${10 + depth * 14}px` }}
+                                    >
                                       <button
                                         type="button"
+                                        aria-expanded={!parentCollapsed}
                                         aria-label={
-                                          rail
-                                            ? item.chat.unread
-                                              ? `${item.chat.name}${t` (unread)`}`
-                                              : item.chat.name
-                                            : undefined
+                                          parentCollapsed
+                                            ? t`Expand ${item.chat.name}`
+                                            : t`Collapse ${item.chat.name}`
                                         }
-                                        {...row.handleProps}
-                                        data-roster-bot-id={
-                                          item.kind === "bot" ? item.chat.id : undefined
-                                        }
-                                        data-roster-unread={item.chat.unread ? "true" : undefined}
-                                        data-file-drop={
-                                          fileDropBotId === item.chat.id ? "" : undefined
-                                        }
-                                        data-roster-error={rowError && compact ? "true" : undefined}
-                                        data-roster-depth={
-                                          item.kind === "bot" && treeActive ? depth : undefined
-                                        }
-                                        aria-current={selected ? "page" : undefined}
-                                        aria-keyshortcuts={
-                                          item.kind === "bot"
-                                            ? "Alt+ArrowUp Alt+ArrowDown"
-                                            : undefined
-                                        }
-                                        onDragEnter={(event) => {
-                                          if (item.kind === "bot") rowFileDrag(event, item.chat);
-                                        }}
-                                        onDragOver={(event) => {
-                                          if (item.kind === "bot") rowFileDrag(event, item.chat);
-                                        }}
-                                        onDragLeave={(event) => {
-                                          if (
-                                            !event.currentTarget.contains(
-                                              event.relatedTarget as Node | null,
-                                            )
-                                          )
-                                            setFileDropBotId(null);
-                                        }}
-                                        onDrop={(event) => {
-                                          if (item.kind === "bot" && isUnclaimedFileDrag(event)) {
-                                            event.preventDefault();
-                                            setFileDropBotId(null);
-                                            if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
-                                            // Keep the "Skipped ..." notice through the thread-change reset.
-                                            if (item.chat.id !== active?.id)
-                                              keepNoticeFor.current = item.chat.id;
-                                            onAttachmentPick(
-                                              event.dataTransfer.files,
-                                              item.chat.id,
-                                            );
-                                            setFocusComposerBotId(item.chat.id);
-                                            setMobileSidebarOpen(false);
-                                            openBot(item.chat.id);
-                                            return;
-                                          }
-                                        }}
-                                        onKeyDown={(event) => {
-                                          if (
-                                            item.kind !== "bot" ||
-                                            !event.altKey ||
-                                            (event.key !== "ArrowUp" && event.key !== "ArrowDown")
-                                          ) {
-                                            (
-                                              row.handleProps.onKeyDown as
-                                                | KeyboardEventHandler
-                                                | undefined
-                                            )?.(event);
-                                            return;
-                                          }
-                                          const siblings = siblingBotIds(parentId);
-                                          const index = siblings.indexOf(item.chat.id);
-                                          const target =
-                                            siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
-                                          if (!target) return;
-                                          event.preventDefault();
-                                          // Up goes before the neighbor; down goes before whatever follows it.
-                                          const order = group.bots.map((entry) => entry.chat.id);
-                                          const beforeId =
-                                            event.key === "ArrowUp"
-                                              ? target
-                                              : (order[order.indexOf(target) + 1] ?? null);
-                                          void moveSidebarItem(
-                                            { kind: "bot", id: item.chat.id },
-                                            folder,
-                                            beforeId === null
-                                              ? null
-                                              : {
-                                                  kind: group.bots.find(
-                                                    (entry) => entry.chat.id === beforeId,
-                                                  )!.kind,
-                                                  id: beforeId,
-                                                },
-                                          );
-                                        }}
-                                        onClick={() => {
-                                          openSpaceChat(
-                                            item.chat.spaceId,
-                                            item.kind === "bot"
-                                              ? `/app/${item.chat.id}`
-                                              : `/app/g/${item.chat.id}`,
-                                          );
-                                        }}
-                                        onContextMenu={(event) => {
-                                          if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
-                                          event.preventDefault();
-                                          botMenuAnchor.current = event.currentTarget;
-                                          setBotMenu({
-                                            kind: item.kind,
-                                            id: item.chat.id,
-                                            position: { x: event.clientX, y: event.clientY },
-                                          });
-                                        }}
-                                        className={`relative flex w-full items-center ${
-                                          rail
-                                            ? "justify-center rounded-xl px-0 py-1"
-                                            : compact
-                                              ? "gap-2.5 rounded-xl px-2.5 py-1"
-                                              : "gap-3 rounded-xl px-2.5 py-2"
-                                        } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring text-start ${
-                                          rowDragEnabled ? "cursor-grab active:cursor-grabbing" : ""
-                                        } ${
-                                          selected
-                                            ? "bg-sidebar-accent"
-                                            : "group-hover/row:bg-sidebar-accent"
-                                        } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
-                                        style={
-                                          treeActive && !rail
-                                            ? { paddingInlineStart: `${24 + depth * 14}px` }
-                                            : undefined
-                                        }
+                                        className="inline-flex size-3.5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground"
+                                        onClick={() => toggleRosterParent(item.chat.id)}
                                       >
-                                        {item.kind === "bot" ? (
-                                          <AgentAvatar
-                                            app={agentAppFor(item.chat.id, item.chat.spaceId)}
-                                            color={item.chat.color}
-                                            identity={item.chat.id}
-                                            size={36}
-                                            status={item.chat.status}
-                                          />
-                                        ) : (
-                                          <GroupAvatar
-                                            members={
-                                              item.chat.id === activeSnapshot?.groupId
-                                                ? (activeSnapshot.members ?? item.chat.members)
-                                                : item.chat.members
-                                            }
-                                            size={36}
-                                          />
-                                        )}
-                                        {rail && item.chat.unread ? (
-                                          <span
-                                            data-testid="rail-badge"
-                                            aria-hidden="true"
-                                            className="absolute end-1 top-0.5 size-2.5 rounded-full border-2 border-sidebar bg-primary"
-                                          />
-                                        ) : null}
-                                        {rail ? null : (
-                                          <div className="min-w-0 flex-1">
-                                            <div className="flex items-start justify-between gap-1.5">
-                                              <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
-                                                <span
-                                                  dir="auto"
-                                                  data-roster-bot-name={
-                                                    item.kind === "bot" ? "" : undefined
-                                                  }
-                                                  title={item.chat.name}
-                                                  className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
-                                                    item.chat.unread ? "font-medium" : ""
-                                                  }`}
-                                                >
-                                                  {item.chat.name}
-                                                </span>
-                                                {item.chat.unread ? (
-                                                  <span className="sr-only">
-                                                    <Trans> (unread)</Trans>
-                                                  </span>
-                                                ) : null}
-                                              </div>
-                                              <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
-                                                {item.kind === "bot" &&
-                                                glance.botKinds[item.chat.id] ? (
-                                                  <StatusMark
-                                                    kind={glance.botKinds[item.chat.id]!}
-                                                    botId={item.chat.id}
-                                                  />
-                                                ) : null}
-                                                {!compact ? (
-                                                  <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
-                                                    {formatRosterTime(item.chat.updatedAt)}
-                                                  </span>
-                                                ) : null}
-                                                {item.chat.unread ? (
-                                                  <span
-                                                    aria-hidden="true"
-                                                    className="inline-block h-2 w-2 rounded-full bg-foreground"
-                                                  />
-                                                ) : null}
-                                              </div>
-                                            </div>
-                                            {compact ? (
-                                              compactStatusLabel ? (
-                                                <div
-                                                  dir="auto"
-                                                  data-roster-status={
-                                                    rowError
-                                                      ? "error"
-                                                      : item.kind === "bot"
-                                                        ? item.chat.status
-                                                        : undefined
-                                                  }
-                                                  className={`flex items-center gap-1 text-[12px] leading-[18px] ${
-                                                    rowError
-                                                      ? "font-medium text-destructive"
-                                                      : workStatusLabel
-                                                        ? "font-semibold text-status-working"
-                                                        : "font-medium text-foreground/75"
-                                                  }`}
-                                                >
-                                                  {rowError ? (
-                                                    <CircleAlert size={12} aria-hidden="true" />
-                                                  ) : null}
-                                                  <span>{compactStatusLabel}</span>
-                                                </div>
-                                              ) : null
-                                            ) : (
-                                              <div
-                                                dir="auto"
-                                                data-roster-preview={
-                                                  !workStatusLabel ? "true" : undefined
-                                                }
-                                                className={`truncate text-[12px] leading-[18px] ${
-                                                  workStatusLabel
-                                                    ? "font-semibold text-status-working"
-                                                    : item.chat.unread
-                                                      ? "font-medium text-foreground/75"
-                                                      : "text-muted-foreground"
-                                                }`}
-                                              >
-                                                {rosterLine}
-                                              </div>
-                                            )}
-                                          </div>
-                                        )}
-                                      </button>
-                                    </RailTip>
-                                    {/* The right-click menu, also reachable on hover or by keyboard. */}
-                                    {!rail && item.chat.spaceId === bootstrapMe?.spaceId ? (
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        data-testid="roster-row-actions"
-                                        aria-label={t`Actions for ${item.chat.name}`}
-                                        aria-haspopup="menu"
-                                        onClick={(event) => {
-                                          const rect = event.currentTarget.getBoundingClientRect();
-                                          botMenuAnchor.current = event.currentTarget;
-                                          setBotMenu({
-                                            kind: item.kind,
-                                            id: item.chat.id,
-                                            position: { x: rect.left, y: rect.bottom },
-                                          });
-                                        }}
-                                        className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:hidden ${
-                                          botMenu?.id === item.chat.id ? "opacity-100" : ""
-                                        }`}
-                                      >
-                                        <MoreHorizontal
-                                          size={15}
-                                          strokeWidth={1.7}
+                                        <ChevronDown
+                                          size={12}
+                                          strokeWidth={2}
+                                          className={`transition-transform ${
+                                            parentCollapsed ? "-rotate-90" : ""
+                                          }`}
                                           aria-hidden="true"
                                         />
-                                      </Button>
-                                    ) : null}
-                                  </div>
-                                )}
-                              </SortableRow>
-                            );
-                          })}
-                        </SortableList>
-                      ) : null}
-                    </div>
-                  );
-                })}
-                {rail || showSpaceSearch ? null : <RootEnd />}
-              </SidebarDnd>
-            </>
-          )}
-          {archivedBots.length + archivedGroups.length > 0 && !showSpaceSearch && !rail ? (
+                                      </button>
+                                    </span>
+                                  ) : null}
+                                  <RailTip rail={rail} label={item.chat.name}>
+                                    <button
+                                      type="button"
+                                      aria-label={
+                                        rail
+                                          ? item.chat.unread
+                                            ? `${item.chat.name}${t` (unread)`}`
+                                            : item.chat.name
+                                          : undefined
+                                      }
+                                      {...row.handleProps}
+                                      data-roster-bot-id={
+                                        item.kind === "bot" ? item.chat.id : undefined
+                                      }
+                                      data-roster-unread={item.chat.unread ? "true" : undefined}
+                                      data-file-drop={
+                                        fileDropBotId === item.chat.id ? "" : undefined
+                                      }
+                                      data-roster-error={rowError && compact ? "true" : undefined}
+                                      data-roster-depth={
+                                        item.kind === "bot" && treeActive ? depth : undefined
+                                      }
+                                      aria-current={selected ? "page" : undefined}
+                                      aria-keyshortcuts={
+                                        item.kind === "bot"
+                                          ? "Alt+ArrowUp Alt+ArrowDown"
+                                          : undefined
+                                      }
+                                      onDragEnter={(event) => {
+                                        if (item.kind === "bot") rowFileDrag(event, item.chat);
+                                      }}
+                                      onDragOver={(event) => {
+                                        if (item.kind === "bot") rowFileDrag(event, item.chat);
+                                      }}
+                                      onDragLeave={(event) => {
+                                        if (
+                                          !event.currentTarget.contains(
+                                            event.relatedTarget as Node | null,
+                                          )
+                                        )
+                                          setFileDropBotId(null);
+                                      }}
+                                      onDrop={(event) => {
+                                        if (item.kind === "bot" && isUnclaimedFileDrag(event)) {
+                                          event.preventDefault();
+                                          setFileDropBotId(null);
+                                          if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
+                                          // Keep the "Skipped ..." notice through the thread-change reset.
+                                          if (item.chat.id !== active?.id)
+                                            keepNoticeFor.current = item.chat.id;
+                                          onAttachmentPick(event.dataTransfer.files, item.chat.id);
+                                          setFocusComposerBotId(item.chat.id);
+                                          setMobileSidebarOpen(false);
+                                          openBot(item.chat.id);
+                                          return;
+                                        }
+                                      }}
+                                      onKeyDown={(event) => {
+                                        if (
+                                          item.kind !== "bot" ||
+                                          !event.altKey ||
+                                          (event.key !== "ArrowUp" && event.key !== "ArrowDown")
+                                        ) {
+                                          (
+                                            row.handleProps.onKeyDown as
+                                              | KeyboardEventHandler
+                                              | undefined
+                                          )?.(event);
+                                          return;
+                                        }
+                                        const siblings = siblingBotIds(parentId);
+                                        const index = siblings.indexOf(item.chat.id);
+                                        const target =
+                                          siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
+                                        if (!target) return;
+                                        event.preventDefault();
+                                        // Up goes before the neighbor; down goes before whatever follows it.
+                                        const order = group.bots.map((entry) => entry.chat.id);
+                                        const beforeId =
+                                          event.key === "ArrowUp"
+                                            ? target
+                                            : (order[order.indexOf(target) + 1] ?? null);
+                                        void moveSidebarItem(
+                                          { kind: "bot", id: item.chat.id },
+                                          folder,
+                                          beforeId === null
+                                            ? null
+                                            : {
+                                                kind: group.bots.find(
+                                                  (entry) => entry.chat.id === beforeId,
+                                                )!.kind,
+                                                id: beforeId,
+                                              },
+                                        );
+                                      }}
+                                      onClick={() => {
+                                        openSpaceChat(
+                                          item.chat.spaceId,
+                                          item.kind === "bot"
+                                            ? `/app/${item.chat.id}`
+                                            : `/app/g/${item.chat.id}`,
+                                        );
+                                      }}
+                                      onContextMenu={(event) => {
+                                        if (item.chat.spaceId !== bootstrapMe?.spaceId) return;
+                                        event.preventDefault();
+                                        botMenuAnchor.current = event.currentTarget;
+                                        setBotMenu({
+                                          kind: item.kind,
+                                          id: item.chat.id,
+                                          position: { x: event.clientX, y: event.clientY },
+                                        });
+                                      }}
+                                      className={`relative flex w-full items-center ${
+                                        rail
+                                          ? "justify-center rounded-xl px-0 py-1"
+                                          : compact
+                                            ? "gap-2.5 rounded-xl px-2.5 py-1"
+                                            : "gap-3 rounded-xl px-2.5 py-2"
+                                      } focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring text-start ${
+                                        rowDragEnabled ? "cursor-grab active:cursor-grabbing" : ""
+                                      } ${
+                                        selected
+                                          ? "bg-sidebar-accent"
+                                          : "group-hover/row:bg-sidebar-accent"
+                                      } data-file-drop:ring-2 data-file-drop:ring-inset data-file-drop:ring-ring`}
+                                      style={
+                                        treeActive && !rail
+                                          ? { paddingInlineStart: `${24 + depth * 14}px` }
+                                          : undefined
+                                      }
+                                    >
+                                      {item.kind === "bot" ? (
+                                        <AgentAvatar
+                                          app={agentAppFor(item.chat.id, item.chat.spaceId)}
+                                          color={item.chat.color}
+                                          identity={item.chat.id}
+                                          size={36}
+                                          status={item.chat.status}
+                                        />
+                                      ) : (
+                                        <GroupAvatar
+                                          members={
+                                            item.chat.id === activeSnapshot?.groupId
+                                              ? (activeSnapshot.members ?? item.chat.members)
+                                              : item.chat.members
+                                          }
+                                          size={36}
+                                        />
+                                      )}
+                                      {rail && item.chat.unread ? (
+                                        <span
+                                          data-testid="rail-badge"
+                                          aria-hidden="true"
+                                          className="absolute end-1 top-0.5 size-2.5 rounded-full border-2 border-sidebar bg-primary"
+                                        />
+                                      ) : null}
+                                      {rail ? null : (
+                                        <div className="min-w-0 flex-1">
+                                          <div className="flex items-start justify-between gap-1.5">
+                                            <div className="flex min-w-0 items-center gap-1.5 overflow-hidden">
+                                              <span
+                                                dir="auto"
+                                                data-roster-bot-name={
+                                                  item.kind === "bot" ? "" : undefined
+                                                }
+                                                title={item.chat.name}
+                                                className={`min-w-0 line-clamp-2 break-words text-[14.5px] leading-[18px] font-normal text-foreground ${
+                                                  item.chat.unread ? "font-medium" : ""
+                                                }`}
+                                              >
+                                                {item.chat.name}
+                                              </span>
+                                              {item.chat.unread ? (
+                                                <span className="sr-only">
+                                                  <Trans> (unread)</Trans>
+                                                </span>
+                                              ) : null}
+                                            </div>
+                                            <div className="flex shrink-0 items-center gap-1.5 group-hover/row:pointer-fine:opacity-0">
+                                              {item.kind === "bot" &&
+                                              glance.botKinds[item.chat.id] ? (
+                                                <StatusMark
+                                                  kind={glance.botKinds[item.chat.id]!}
+                                                  botId={item.chat.id}
+                                                />
+                                              ) : null}
+                                              {!compact ? (
+                                                <span className="text-[12px] leading-[18px] text-muted-foreground tabular-nums">
+                                                  {formatRosterTime(item.chat.updatedAt)}
+                                                </span>
+                                              ) : null}
+                                              {item.chat.unread ? (
+                                                <span
+                                                  aria-hidden="true"
+                                                  className="inline-block h-2 w-2 rounded-full bg-foreground"
+                                                />
+                                              ) : null}
+                                            </div>
+                                          </div>
+                                          {compact ? (
+                                            compactStatusLabel ? (
+                                              <div
+                                                dir="auto"
+                                                data-roster-status={
+                                                  rowError
+                                                    ? "error"
+                                                    : item.kind === "bot"
+                                                      ? item.chat.status
+                                                      : undefined
+                                                }
+                                                className={`flex items-center gap-1 text-[12px] leading-[18px] ${
+                                                  rowError
+                                                    ? "font-medium text-destructive"
+                                                    : workStatusLabel
+                                                      ? "font-semibold text-status-working"
+                                                      : "font-medium text-foreground/75"
+                                                }`}
+                                              >
+                                                {rowError ? (
+                                                  <CircleAlert size={12} aria-hidden="true" />
+                                                ) : null}
+                                                <span>{compactStatusLabel}</span>
+                                              </div>
+                                            ) : null
+                                          ) : (
+                                            <div
+                                              dir="auto"
+                                              data-roster-preview={
+                                                !workStatusLabel ? "true" : undefined
+                                              }
+                                              className={`truncate text-[12px] leading-[18px] ${
+                                                workStatusLabel
+                                                  ? "font-semibold text-status-working"
+                                                  : item.chat.unread
+                                                    ? "font-medium text-foreground/75"
+                                                    : "text-muted-foreground"
+                                              }`}
+                                            >
+                                              {rosterLine}
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </button>
+                                  </RailTip>
+                                  {/* The right-click menu, also reachable on hover or by keyboard. */}
+                                  {!rail && item.chat.spaceId === bootstrapMe?.spaceId ? (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      data-testid="roster-row-actions"
+                                      aria-label={t`Actions for ${item.chat.name}`}
+                                      aria-haspopup="menu"
+                                      onClick={(event) => {
+                                        const rect = event.currentTarget.getBoundingClientRect();
+                                        botMenuAnchor.current = event.currentTarget;
+                                        setBotMenu({
+                                          kind: item.kind,
+                                          id: item.chat.id,
+                                          position: { x: rect.left, y: rect.bottom },
+                                        });
+                                      }}
+                                      className={`absolute end-2 top-1.5 size-7 rounded-lg text-muted-foreground opacity-0 hover:bg-background/60 hover:text-foreground focus-visible:opacity-100 group-hover/row:opacity-100 pointer-coarse:hidden ${
+                                        botMenu?.id === item.chat.id ? "opacity-100" : ""
+                                      }`}
+                                    >
+                                      <MoreHorizontal
+                                        size={15}
+                                        strokeWidth={1.7}
+                                        aria-hidden="true"
+                                      />
+                                    </Button>
+                                  ) : null}
+                                </div>
+                              )}
+                            </SortableRow>
+                          );
+                        })}
+                      </SortableList>
+                    ) : null}
+                  </div>
+                );
+              })}
+              {rail ? null : <RootEnd />}
+            </SidebarDnd>
+          </>
+          {archivedBots.length + archivedGroups.length > 0 && !rail ? (
             <div className="mt-2 border-t border-border pt-2">
               <button
                 type="button"
@@ -5444,6 +5371,7 @@ export function ShellPage() {
               <button
                 type="button"
                 title={t`Computer and routines`}
+                aria-label={t`Computer and routines`}
                 onClick={() => {
                   const next = panel === "computer" ? null : "computer";
                   setPanel(next);
@@ -5701,19 +5629,16 @@ export function ShellPage() {
                       }}
                     />
                   ) : null}
-                  {active ? (
+                  {/* The Monitor button in the chat header is the way back to the computer. */}
+                  {active && panel !== "settings" ? (
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={panel === "settings" ? t`Show computer` : t`Show settings`}
-                      onClick={() => setPanel(panel === "settings" ? "computer" : "settings")}
-                      className={panel === "settings" ? "text-foreground" : "text-muted-foreground"}
+                      aria-label={t`Show settings`}
+                      onClick={() => setPanel("settings")}
+                      className="text-muted-foreground"
                     >
-                      {panel === "settings" ? (
-                        <Monitor size={16} strokeWidth={1.7} />
-                      ) : (
-                        <Settings size={16} strokeWidth={1.7} />
-                      )}
+                      <Settings size={16} strokeWidth={1.7} />
                     </Button>
                   ) : null}
                   <Button

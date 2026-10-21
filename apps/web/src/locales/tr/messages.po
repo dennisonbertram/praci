@@ -1356,7 +1356,6 @@ msgstr ""
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Artifacts"
 msgstr ""
 
@@ -2071,7 +2070,6 @@ msgstr ""
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Chat"
 msgstr ""
 
@@ -2096,7 +2094,6 @@ msgid "Chat with your agents over iMessage from your Mac"
 msgstr ""
 
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Chats"
 msgstr ""
 
@@ -2236,7 +2233,6 @@ msgstr ""
 
 #: src/components/ListControls.tsx
 #: src/pages/DataRoom.tsx
-#: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr ""
 
@@ -3930,7 +3926,6 @@ msgstr ""
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr ""
 
@@ -4356,10 +4351,6 @@ msgstr ""
 
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Fetching…"
-msgstr ""
-
-#: src/pages/SpaceSearch.tsx
-msgid "File"
 msgstr ""
 
 #: src/components/computer/FilesApp.tsx
@@ -5288,10 +5279,6 @@ msgstr "Açık"
 msgid "Linear"
 msgstr ""
 
-#: src/pages/SpaceSearch.tsx
-msgid "Link"
-msgstr ""
-
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
@@ -5442,7 +5429,7 @@ msgid "Lowercase letters, numbers, hyphens and underscores, starting with a lett
 msgstr ""
 
 #: src/components/MailApprovalCard.tsx
-#: src/pages/SpaceSearch.tsx
+#: src/pages/Shell.tsx
 msgid "Mail"
 msgstr ""
 
@@ -5659,7 +5646,6 @@ msgstr ""
 #: src/components/MailApprovalCard.tsx
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/composer.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "Mesaj"
 
@@ -6234,10 +6220,6 @@ msgstr ""
 msgid "No matches"
 msgstr ""
 
-#: src/pages/SpaceSearch.tsx
-msgid "No matches in chats, pages, documents or artifacts."
-msgstr ""
-
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr ""
@@ -6318,7 +6300,6 @@ msgstr ""
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/shell/command-palette.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "Sonuç yok"
 
@@ -6903,7 +6884,6 @@ msgstr ""
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Pages"
 msgstr ""
 
@@ -7886,7 +7866,6 @@ msgstr ""
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Routine"
 msgstr "Rutin"
 
@@ -8173,8 +8152,8 @@ msgstr ""
 msgid "Search mail"
 msgstr ""
 
-#: src/pages/SpaceSearch.tsx
-msgid "Search mail for “{query}”"
+#: src/pages/Shell.tsx
+msgid "Search mail for “{q}”"
 msgstr ""
 
 #: src/pages/Inbox.tsx
@@ -8225,10 +8204,6 @@ msgstr ""
 #: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr ""
-
-#: src/pages/SpaceSearch.tsx
-msgid "Searching…"
-msgstr "Aranıyor…"
 
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
@@ -8468,10 +8443,6 @@ msgstr ""
 
 #: src/components/HideAmountsToggle.tsx
 msgid "Show amounts"
-msgstr ""
-
-#: src/pages/Shell.tsx
-msgid "Show computer"
 msgstr ""
 
 #: src/components/finance/ui.tsx

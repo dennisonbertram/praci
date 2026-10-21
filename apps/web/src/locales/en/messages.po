@@ -1356,7 +1356,6 @@ msgstr "Artifact"
 
 #: src/pages/Artifacts.tsx
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Artifacts"
 msgstr "Artifacts"
 
@@ -2071,7 +2070,6 @@ msgstr "Chart hidden while amounts are hidden"
 #: src/components/data-room/FilterBar.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationsHome.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Chat"
 msgstr "Chat"
 
@@ -2096,7 +2094,6 @@ msgid "Chat with your agents over iMessage from your Mac"
 msgstr "Chat with your agents over iMessage from your Mac"
 
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Chats"
 msgstr "Chats"
 
@@ -2236,7 +2233,6 @@ msgstr "Clear formatting"
 
 #: src/components/ListControls.tsx
 #: src/pages/DataRoom.tsx
-#: src/pages/Shell.tsx
 msgid "Clear search"
 msgstr "Clear search"
 
@@ -3930,7 +3926,6 @@ msgstr "Document date"
 #: src/components/data-room/DataRoomStats.tsx
 #: src/components/data-room/FolderDocuments.tsx
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Documents"
 msgstr "Documents"
 
@@ -4357,10 +4352,6 @@ msgstr "Fee"
 #: src/pages/shell/BotSkillsSection.tsx
 msgid "Fetching…"
 msgstr "Fetching…"
-
-#: src/pages/SpaceSearch.tsx
-msgid "File"
-msgstr "File"
 
 #: src/components/computer/FilesApp.tsx
 msgid "File is too large to upload."
@@ -5288,10 +5279,6 @@ msgstr "Light"
 msgid "Linear"
 msgstr "Linear"
 
-#: src/pages/SpaceSearch.tsx
-msgid "Link"
-msgstr "Link"
-
 #: src/components/integrations/IMessageSection.tsx
 #: src/pages/MessagingSettingsOverlay.tsx
 msgid "Link a chat app"
@@ -5442,7 +5429,7 @@ msgid "Lowercase letters, numbers, hyphens and underscores, starting with a lett
 msgstr "Lowercase letters, numbers, hyphens and underscores, starting with a letter."
 
 #: src/components/MailApprovalCard.tsx
-#: src/pages/SpaceSearch.tsx
+#: src/pages/Shell.tsx
 msgid "Mail"
 msgstr "Mail"
 
@@ -5659,7 +5646,6 @@ msgstr "Merge"
 #: src/components/MailApprovalCard.tsx
 #: src/pages/shell/chat-context.tsx
 #: src/pages/shell/composer.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Message"
 msgstr "Message"
 
@@ -6234,10 +6220,6 @@ msgstr "No mail matches this filter"
 msgid "No matches"
 msgstr "No matches"
 
-#: src/pages/SpaceSearch.tsx
-msgid "No matches in chats, pages, documents or artifacts."
-msgstr "No matches in chats, pages, documents or artifacts."
-
 #: src/pages/shell/composer.tsx
 msgid "No matches. Press Escape to send as typed."
 msgstr "No matches. Press Escape to send as typed."
@@ -6318,7 +6300,6 @@ msgstr "No response from the server. Check the address."
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/pages/DataRoom.tsx
 #: src/pages/shell/command-palette.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "No results"
 msgstr "No results"
 
@@ -6903,7 +6884,6 @@ msgstr "Page options"
 
 #: src/pages/Shell.tsx
 #: src/pages/shell/command-palette.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Pages"
 msgstr "Pages"
 
@@ -7886,7 +7866,6 @@ msgstr "Rotate key"
 
 #: src/pages/RoutineEditor.tsx
 #: src/pages/Shell.tsx
-#: src/pages/SpaceSearch.tsx
 msgid "Routine"
 msgstr "Routine"
 
@@ -8173,9 +8152,9 @@ msgstr "Search Drive"
 msgid "Search mail"
 msgstr "Search mail"
 
-#: src/pages/SpaceSearch.tsx
-msgid "Search mail for “{query}”"
-msgstr "Search mail for “{query}”"
+#: src/pages/Shell.tsx
+msgid "Search mail for “{q}”"
+msgstr "Search mail for “{q}”"
 
 #: src/pages/Inbox.tsx
 msgid "Search mail, e.g. from:sam has:attachment"
@@ -8225,10 +8204,6 @@ msgstr "Searching in {openFolderPath}"
 #: src/pages/shell/working-label.ts
 msgid "Searching your mail"
 msgstr "Searching your mail"
-
-#: src/pages/SpaceSearch.tsx
-msgid "Searching…"
-msgstr "Searching…"
 
 #: src/pages/CapTable.tsx
 #: src/pages/Inbox.tsx
@@ -8469,10 +8444,6 @@ msgstr "Show all {total}"
 #: src/components/HideAmountsToggle.tsx
 msgid "Show amounts"
 msgstr "Show amounts"
-
-#: src/pages/Shell.tsx
-msgid "Show computer"
-msgstr "Show computer"
 
 #: src/components/finance/ui.tsx
 msgid "Show finances for"
