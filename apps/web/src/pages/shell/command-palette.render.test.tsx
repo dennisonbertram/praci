@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import type { Bot } from "@rakazo/contracts";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
@@ -16,7 +16,7 @@ vi.mock("@lingui/react/macro", () => ({
   Trans: ({ children }: { children: ReactNode }) => children,
 }));
 
-import { CommandPalette, paletteMatchScore } from "./command-palette";
+import { CommandPalette, paletteMatchScore, plainSnippet } from "./command-palette";
 
 const bot = (id: string, name: string) =>
   ({ id, name, title: "", description: "", preview: "", color: "#000", status: "idle" }) as Bot;
@@ -25,7 +25,10 @@ afterEach(() => {
   document.body.innerHTML = "";
 });
 
-async function mount(onSelectPage = vi.fn()) {
+async function mount(
+  onSelectPage = vi.fn(),
+  searchLinks?: ComponentProps<typeof CommandPalette>["searchLinks"],
+) {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   vi.stubGlobal("matchMedia", () => ({
     matches: false,
@@ -60,6 +63,7 @@ async function mount(onSelectPage = vi.fn()) {
         ]}
         groups={[{ id: "g1", label: "Leadership sync" }]}
         onSelectPage={onSelectPage}
+        searchLinks={searchLinks}
       />,
     );
   });
@@ -146,4 +150,33 @@ it("underlines the typed text in a result", async () => {
   const marks = [...document.querySelectorAll("[data-testid=command-palette-list] mark")];
   expect(marks.length).toBeGreaterThan(0);
   expect(marks.every((mark) => mark.textContent?.toLowerCase() === "fin")).toBe(true);
+});
+
+it("shows the matched field under a contact and a date on a chat hit, with the match underlined", async () => {
+  await mount(undefined, async () => [
+    {
+      heading: "Contacts",
+      entries: [{ id: "/c", label: "Dana Counselor", detail: "Halcyon Legal LLP" }],
+    },
+    {
+      heading: "Chats",
+      entries: [
+        { id: "/chat", label: "Leadership sync", detail: "Halcyon term sheet", date: "Oct 3" },
+      ],
+    },
+  ]);
+  await search("halcyon");
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+  const list = document.querySelector("[data-testid=command-palette-list]")?.textContent ?? "";
+  expect(list).toContain("Dana Counselor");
+  expect(list).toContain("Halcyon Legal LLP");
+  expect(list).toContain("Oct 3");
+  const marks = [...document.querySelectorAll("[data-testid=command-palette-list] mark")];
+  expect(marks.filter((mark) => mark.textContent === "Halcyon")).toHaveLength(2);
+});
+
+it("strips markdown from a chat snippet", () => {
+  expect(plainSnippet("**Halcyon** closes `Friday`")).toBe("Halcyon closes Friday");
 });

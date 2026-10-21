@@ -1,7 +1,7 @@
 import { Button } from "@rakazo/ui-web";
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { Plus } from "lucide-react";
-import { PageHeader } from "./PageHeader";
+import { PageHeader, PageNavContext } from "./PageHeader";
 
 const meta = {
   title: "Pages/Page header",
@@ -79,6 +79,20 @@ export const Phone375: Story = {
       <div className="w-[343px]">
         <Story />
       </div>
+    ),
+  ],
+};
+
+/** Inside the shell on a phone the menu button leads the title row (hidden from 1024px up). */
+export const PhoneWithMenu: Story = {
+  args: Phone375.args,
+  decorators: [
+    (Story) => (
+      <PageNavContext.Provider value={{ open: () => undefined, claim: () => () => undefined }}>
+        <div className="w-[343px]">
+          <Story />
+        </div>
+      </PageNavContext.Provider>
     ),
   ],
 };

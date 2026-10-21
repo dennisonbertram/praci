@@ -1,5 +1,17 @@
+import { t } from "@lingui/core/macro";
 import { cn } from "@rakazo/ui-web/lib/utils";
+import { Menu } from "lucide-react";
 import type { ReactNode } from "react";
+import { createContext, useContext, useLayoutEffect } from "react";
+
+/**
+ * The shell provides this so a phone page puts the navigation button on its title row. A header
+ * claims the shell's own menu band while mounted; a page without a header keeps the band.
+ */
+export const PageNavContext = createContext<{
+  open: () => void;
+  claim: () => () => void;
+} | null>(null);
 
 /** The page's side padding. Page rows and panels that must line up with the title share it. */
 export const PAGE_GUTTER_X = "px-4 md:px-7";
@@ -29,11 +41,23 @@ export function PageHeader({
   /** Keeps the meta on the title's line down to a narrower pane (512px, not 672px). */
   compact?: boolean;
 }) {
+  const nav = useContext(PageNavContext);
+  useLayoutEffect(() => nav?.claim(), [nav]);
   return (
     <div
       data-page-header
       className={cn("@container/ph mb-4 flex flex-wrap items-center gap-x-3", className)}
     >
+      {nav ? (
+        <button
+          type="button"
+          aria-label={t`Open navigation`}
+          onClick={nav.open}
+          className="-ms-2 grid size-10 shrink-0 place-items-center rounded-lg text-foreground/75 hover:bg-accent lg:hidden"
+        >
+          <Menu size={19} strokeWidth={1.7} />
+        </button>
+      ) : null}
       <h1
         className={cn(
           PAGE_HEADER_ROW,
