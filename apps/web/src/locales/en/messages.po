@@ -232,6 +232,11 @@ msgstr "{0} files were not added. Attachments can be up to {MAX_COMPOSE_ATTACHME
 msgid "{0} handling"
 msgstr "{0} handling"
 
+#. placeholder {0}: group.count
+#: src/components/inbox/InboxDigest.tsx
+msgid "{0} messages"
+msgstr "{0} messages"
+
 #. placeholder {0}: runwayText(card.runwayMonths) ?? ""
 #: src/components/FinanceCards.tsx
 msgid "{0} mo"
@@ -4443,6 +4448,10 @@ msgstr "Finishing sign-in…"
 msgid "First seen"
 msgstr "First seen"
 
+#: src/pages/Inbox.tsx
+msgid "First sync can take a minute"
+msgstr "First sync can take a minute"
+
 #: src/components/ComposeEmail.tsx
 msgid "Fix or remove the highlighted addresses."
 msgstr "Fix or remove the highlighted addresses."
@@ -7080,6 +7089,10 @@ msgstr "Praci doesn't tag new files."
 msgid "Praci keeps your meetings and to-dos."
 msgstr "Praci keeps your meetings and to-dos."
 
+#: src/components/ComposeEmail.tsx
+msgid "Preparing draft…"
+msgstr "Preparing draft…"
+
 #: src/components/DataExport.tsx
 msgid "Preparing…"
 msgstr "Preparing…"
@@ -9473,6 +9486,10 @@ msgstr "Today"
 #: src/pages/finance/FinanceCrypto.tsx
 msgid "Token"
 msgstr "Token"
+
+#: src/components/inbox/TodoCard.tsx
+msgid "Tomorrow"
+msgstr "Tomorrow"
 
 #. placeholder {0}: formatBytes(attachment.size)
 #: src/components/inbox/MailAttachments.tsx

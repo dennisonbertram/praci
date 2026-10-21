@@ -434,6 +434,34 @@ it("explains an invalid address and moves focus into a revealed Cc", async () =>
   expect(document.activeElement).toBe(field("Cc"));
 });
 
+it("shows Preparing draft until the reply prefill arrives", async () => {
+  let arrive: (value: unknown) => void = () => {};
+  prefill.mockImplementation(() => new Promise((resolve) => (arrive = resolve)));
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mounted.push(root);
+  await act(async () =>
+    root.render(
+      <ComposeEmail seed={reply("reply")} accounts={[]} connectionId="c1" onClose={() => {}} />,
+    ),
+  );
+  expect(document.body.textContent).toContain("Preparing draft…");
+  await act(async () =>
+    arrive({
+      connectionId: "c1",
+      replyToMessageId: "m1",
+      to: "Sam Lee <sam@example.test>",
+      cc: "",
+      subject: "Re: Offsite",
+      body,
+      attachments: [],
+    }),
+  );
+  expect(document.body.textContent).not.toContain("Preparing draft…");
+});
+
 it("retries a failed reply prefill", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   prefill.mockRejectedValueOnce(new Error("down"));
