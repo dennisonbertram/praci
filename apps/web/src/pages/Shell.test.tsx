@@ -121,24 +121,32 @@ function pressEnter(textarea: HTMLTextAreaElement) {
 }
 
 describe("Composer", () => {
-  it("keeps a dictated multi-paragraph insertion: draft, caret, saved draft and Send", () => {
+  it("inserts a dictated multi-paragraph block at the caret: draft, caret, saved draft and Send", () => {
     // System dictation (Wispr Flow) inserts text into the field like a keyboard.
     const onSend = vi.fn();
     const textarea = renderComposer(onSend, { draftKey: "bot:dictation" });
     const send = container?.querySelector<HTMLButtonElement>('button[aria-label="Send"]');
+    const prefix = "Before ";
+    const suffix = " after";
+    type(textarea, prefix + suffix);
     const dictated = "First paragraph.\n\nSecond paragraph, with a / slash.";
     const setValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")?.set;
     act(() => {
-      setValue?.call(textarea, dictated);
-      textarea.setSelectionRange(dictated.length, dictated.length);
+      textarea.setSelectionRange(prefix.length, prefix.length);
+      // What the browser does for insertText: replace the selection, caret after the text.
+      setValue?.call(textarea, prefix + dictated + suffix);
+      const caret = prefix.length + dictated.length;
+      textarea.setSelectionRange(caret, caret);
       textarea.dispatchEvent(
         new InputEvent("input", { bubbles: true, inputType: "insertText", data: dictated }),
       );
     });
-    expect(textarea.value).toBe(dictated);
-    expect(textarea.selectionStart).toBe(dictated.length);
-    expect(textarea.selectionEnd).toBe(dictated.length);
-    expect(sessionStorage.getItem("rakazo.chatDraft:bot:dictation")).toBe(dictated);
+    const expected = prefix + dictated + suffix;
+    const caret = prefix.length + dictated.length;
+    expect(textarea.value).toBe(expected);
+    expect(textarea.selectionStart).toBe(caret);
+    expect(textarea.selectionEnd).toBe(caret);
+    expect(sessionStorage.getItem("rakazo.chatDraft:bot:dictation")).toBe(expected);
     expect(send?.disabled).toBe(false);
     sessionStorage.clear();
   });
