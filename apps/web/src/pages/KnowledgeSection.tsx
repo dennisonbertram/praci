@@ -38,6 +38,8 @@ export function memoryDocPreview(content: string): string | null {
   for (const raw of content.split("\n")) {
     if (/^\s*#/.test(raw)) continue;
     const line = raw
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")
+      .replace(/\s*\(\/[^)\s]*\)/g, "")
       .replace(/^\s*([-*+]|\d+\.)\s+/, "")
       .replace(/\s+/g, " ")
       .trim();
@@ -153,13 +155,15 @@ function MemoryDocumentList({
     onHasDocs?.(hasDocs);
   }, [hasDocs, onHasDocs]);
 
+  // A document with nothing in it is not a memory; it only shows when nothing else does.
+  const remembered = docs.filter((doc) => memoryDocPreview(doc.content) !== null);
   const needle = filter.trim().toLowerCase();
   const visible = needle
-    ? docs.filter(
+    ? remembered.filter(
         (doc) =>
           doc.path.toLowerCase().includes(needle) || doc.content.toLowerCase().includes(needle),
       )
-    : docs;
+    : remembered;
   const groups = new Map<string, { label: string; docs: MemoryDocument[] }>();
   for (const doc of visible) {
     const key = groupLabel ? (doc.scope === "user" ? "" : (doc.botId ?? "?")) : "";
@@ -217,12 +221,12 @@ function MemoryDocumentList({
     <div data-testid={testId}>
       {error ? <div className="px-2.5 pb-2 text-[13px] text-destructive">{error}</div> : null}
       {loading ? <Skeleton className="h-10 w-full" /> : null}
-      {!loading && docs.length === 0 && !error ? (
+      {!loading && remembered.length === 0 && !error ? (
         <div className="px-2.5 py-1 text-[13.5px] text-muted-foreground">
           <Trans>Nothing remembered yet</Trans>
         </div>
       ) : null}
-      {!loading && docs.length > 0 && visible.length === 0 ? (
+      {!loading && remembered.length > 0 && visible.length === 0 ? (
         <div className="px-2.5 py-1 text-[13.5px] text-muted-foreground">
           <Trans>No matches</Trans>
         </div>
@@ -256,11 +260,7 @@ function MemoryDocumentList({
                   dir="auto"
                   title={doc.path}
                 >
-                  {maskCurrencyWhenHidden(memoryDocPreview(doc.content) ?? "") || (
-                    <span className="font-normal text-muted-foreground">
-                      <Trans>Nothing remembered yet</Trans>
-                    </span>
-                  )}
+                  {maskCurrencyWhenHidden(memoryDocPreview(doc.content) ?? "")}
                 </span>
               </Button>
               {openId === doc.id ? (

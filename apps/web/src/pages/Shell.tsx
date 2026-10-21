@@ -70,6 +70,7 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
+  Separator,
   Spinner,
 } from "@rakazo/ui-web";
 import {
@@ -316,7 +317,12 @@ import {
 } from "./shell/dialogs";
 import { GroupIntro } from "./shell/GroupIntro";
 import { SidebarHeaderRow, TOP_BAR_HEIGHT } from "./shell/sidebar-header-row";
-import { activeSpaceFirst, commitSpaceRename, sidebarGroupsForSpaces } from "./shell/space-sidebar";
+import {
+  activeSpaceFirst,
+  commitSpaceRename,
+  sidebarGroupsForSpaces,
+  spaceHoldingChat,
+} from "./shell/space-sidebar";
 import { AppNavigateContext, Transcript, UnreadDivider } from "./shell/transcript";
 import { WindowChrome } from "./WindowChrome";
 
@@ -774,6 +780,17 @@ export function ShellPage() {
   const [initialBotsLoaded, setInitialBotsLoaded] = useState(false);
   const [bootstrapMe, setBootstrapMe] = useState<Me | null>();
   const [tourRestart, setTourRestart] = useState(false);
+  // The tour waits for the first-run focus question, so its popovers never cover the choices.
+  const firstQuestionOpen = Boolean(
+    snapshot?.messages.some((message) =>
+      message.blocks.some(
+        (block) =>
+          block.kind === "choice" &&
+          block.question === "What do you want me on first?" &&
+          !block.answerId,
+      ),
+    ),
+  );
   const activeSpaceId = bootstrapMe?.spaceId;
   const agentAppFor = useAgentApp(
     userId,
@@ -1363,6 +1380,16 @@ export function ShellPage() {
           !bootstrap.spaces.some((space) => space.hasContent)
         ) {
           navigate("/onboarding", { replace: true });
+          return;
+        }
+        // A link from another of the person's spaces switches to that space and reloads.
+        const otherSpaceId = spaceHoldingChat(
+          bootstrap.spaces,
+          bootstrap.me.spaceId,
+          groupId ?? botId ?? "",
+        );
+        if (otherSpaceId && selectSpace(otherSpaceId)) {
+          window.location.assign(window.location.pathname);
           return;
         }
         if (groupId) {
@@ -2436,6 +2463,7 @@ export function ShellPage() {
   async function startElioCall() {
     if (voiceCallStarting.current) return;
     if (!voiceStatus?.ready) {
+      setSendError(t`Connect a voice provider to call Elio.`);
       openSettings("voice");
       return;
     }
@@ -4395,6 +4423,7 @@ export function ShellPage() {
                                   <div
                                     ref={row.setNodeRef}
                                     data-drops-before={row.dropsBefore ? "" : undefined}
+                                    data-tour={selected ? "sidebar-chat" : undefined}
                                     className={`group/row relative mb-1 data-drops-before:border-t-2 data-drops-before:border-ring ${
                                       !rail && (folder || group.kind === "pinned") ? "ms-3" : ""
                                     }`}
@@ -4816,7 +4845,14 @@ export function ShellPage() {
           />
         </div>
         <FirstRunTour
-          open={tourRestart || (bootstrapMe?.tourSeen === false && bots.length > 0)}
+          open={
+            tourRestart ||
+            (bootstrapMe?.tourSeen === false && bots.length > 0 && !firstQuestionOpen)
+          }
+          onConnectApps={() => {
+            setMobileSidebarOpen(false);
+            navigate("/app/integrations");
+          }}
           onClose={(me) => {
             setTourRestart(false);
             setBootstrapMe((current) => me ?? (current && { ...current, tourSeen: true }));
@@ -4841,10 +4877,12 @@ export function ShellPage() {
               side="top"
               align="start"
               alignOffset={11}
+              role="menu"
               className="w-[calc(316px-1.5rem)] max-w-[calc(100vw-3rem)] gap-0 p-1 data-closed:animate-none"
             >
               {bootstrapMe?.ticketBoardEnabled ? (
                 <Button
+                  role="menuitem"
                   variant="ghost"
                   className="w-full justify-start font-normal"
                   onClick={() => {
@@ -4858,6 +4896,7 @@ export function ShellPage() {
                 </Button>
               ) : null}
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 aria-label={t`Settings`}
@@ -4871,6 +4910,7 @@ export function ShellPage() {
               </Button>
               <HideAmountsMenuItem onDone={() => setMenuOpen(false)} />
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 data-testid="take-tour"
@@ -4882,7 +4922,9 @@ export function ShellPage() {
                 <Compass className="text-muted-foreground" strokeWidth={1.75} />
                 <Trans>Take the tour</Trans>
               </Button>
+              <Separator className="my-1" />
               <Button
+                role="menuitem"
                 variant="ghost"
                 className="w-full justify-start font-normal"
                 onClick={() =>

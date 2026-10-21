@@ -74,11 +74,12 @@ function SetupDialog({
     /^https?:\/\//.test(url) &&
     !isPrivateServerUrl(url);
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try {
+  const filled = specs.every(
+    (spec) => spec.optional || (values[spec.id] ?? provider.fields[spec.id]?.value ?? "").trim(),
+  );
+
+  async function persist() {
+    {
       const entered = Object.fromEntries(
         Object.entries(values)
           .filter(([, value]) => value.trim())
@@ -97,6 +98,15 @@ function SetupDialog({
       setTest(null);
       setSaved(true);
       onSaved();
+    }
+  }
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      await persist();
     } catch (cause) {
       setError(errorText(cause));
     } finally {
@@ -107,8 +117,11 @@ function SetupDialog({
   async function runTest() {
     setBusy(true);
     setTest(null);
+    setError("");
     let timer: ReturnType<typeof setTimeout> | undefined;
     try {
+      // The server tests the saved settings, so an unsaved form is saved first.
+      if (!provider.configured) await persist();
       const timeout = new Promise<never>((_, reject) => {
         timer = setTimeout(
           () => reject(new Error(t`No response from the server. Check the address.`)),
@@ -250,7 +263,7 @@ function SetupDialog({
             <Button
               type="button"
               variant="outline"
-              disabled={busy || !provider.configured}
+              disabled={busy || !(provider.configured || filled)}
               onClick={() => void runTest()}
             >
               {busy ? <Trans>Testing…</Trans> : <Trans>Test connection</Trans>}
