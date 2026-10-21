@@ -233,6 +233,11 @@ import {
 } from "./legal.js";
 import { McpOauthClientSchema } from "./mcp.js";
 import {
+  MeetingConnectInputSchema,
+  MeetingsStatusSchema,
+  StoredMeetingsPageSchema,
+} from "./meetings.js";
+import {
   MessagingSetupSaveSchema,
   MessagingSetupStateSchema,
   MessagingSetupTestResultSchema,
@@ -1463,6 +1468,22 @@ export const appContract = {
       apply: oc.input(AutoSortApplyInputSchema).output(AutoSortApplyOutputSchema),
       undo: oc.input(z.object({ batchId: Id })).output(AutoSortUndoOutputSchema),
     },
+  },
+  meetings: {
+    /** Checks the Granola key with one list call, stores it, connects, provisions the agent and queues a sync. Trims the key. Errors: "Granola rejected this key", "Could not reach Granola". */
+    connect: oc.input(MeetingConnectInputSchema).output(z.object({ ok: z.literal(true) })),
+    /** The caller's key route; null before a key was pasted. Never returns the key. */
+    status: oc.output(MeetingsStatusSchema),
+    /** Deletes the stored key and stops the sync; stored meetings and to-dos stay. */
+    disconnect: oc.output(z.object({ ok: z.literal(true) })),
+    /** Asks for a sync now (throttled). */
+    refresh: oc.output(z.object({ ok: z.literal(true) })),
+    /** The caller's stored meetings, newest first; a plain query that works with consent off and after disconnect. */
+    list: oc
+      .input(z.object({ cursor: z.string().max(200).optional() }))
+      .output(StoredMeetingsPageSchema),
+    /** Deletes one of the caller's meetings with its to-dos; sync does not bring it back. */
+    delete: oc.input(z.object({ meetingId: Id })).output(z.object({ ok: z.literal(true) })),
   },
   devin: {
     /** Any member reads the space's cached sessions; a read older than a minute refreshes them first. */

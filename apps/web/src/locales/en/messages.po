@@ -355,6 +355,10 @@ msgstr "{count, plural, one {# message} other {# messages}}"
 msgid "{count, plural, one {# transaction} other {# transactions}}"
 msgstr "{count, plural, one {# transaction} other {# transactions}}"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
+msgstr "{count, plural, one {Synced # meeting} other {Synced # meetings}}"
+
 #: src/lib/billing.ts
 msgid "{count} days"
 msgstr "{count} days"
@@ -954,6 +958,10 @@ msgstr "Agent connections"
 msgid "AI data sharing"
 msgstr "AI data sharing"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "AI data sharing off"
+msgstr "AI data sharing off"
+
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/pages/CapTable.tsx
 #: src/pages/finance/FinanceSpend.tsx
@@ -1212,6 +1220,7 @@ msgstr "API is back, but the update did not finish. Check the host logs."
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/lib/localized-provider-hint.ts
 #: src/pages/ModelSettingsOverlay.tsx
@@ -1260,6 +1269,7 @@ msgstr "Approved"
 
 #: src/components/ConnectAppsButton.tsx
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 #: src/components/integrations/McpDetail.tsx
 #: src/pages/Shell.tsx
@@ -1821,6 +1831,10 @@ msgstr "Burn"
 #: src/pages/finance/FinanceBurn.tsx
 msgid "Burn by category"
 msgstr "Burn by category"
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Business plan"
+msgstr "Business plan"
 
 #: src/pages/finance/FinanceBurn.tsx
 msgid "By account"
@@ -2493,6 +2507,8 @@ msgstr "Confirm the URL is reachable from this browser session, then test again.
 #: src/components/integrations/DevinConnectDialog.tsx
 #: src/components/integrations/ExchangeConnectDialog.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
+#: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IMessageSection.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/IntegrationsHome.tsx
@@ -2514,6 +2530,7 @@ msgstr "Connect {0}"
 
 #: src/components/integrations/ConnectAppsStep.tsx
 #: src/components/integrations/FinanceSection.tsx
+#: src/components/integrations/GranolaPage.tsx
 #: src/components/integrations/IntegrationsHome.tsx
 msgid "Connect {name}"
 msgstr "Connect {name}"
@@ -2658,6 +2675,7 @@ msgstr "Connecting to tools"
 
 #: src/components/integrations/CustomConnectionDialog.tsx
 #: src/components/integrations/DevinConnectDialog.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/IntegrationSetup.tsx
 #: src/components/integrations/parts.tsx
 #: src/pages/GoogleOAuthCallback.tsx
@@ -2835,6 +2853,7 @@ msgid "Could not continue"
 msgstr "Could not continue"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not create agent"
 msgstr "Could not create agent"
@@ -2908,6 +2927,7 @@ msgid "Could not discard skill"
 msgstr "Could not discard skill"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Could not disconnect"
 msgstr "Could not disconnect"
@@ -3084,6 +3104,10 @@ msgstr "Could not play a test clip"
 #: src/components/integrations/CustomConnectionDialog.tsx
 msgid "Could not reach {0}. Check the address and try again."
 msgstr "Could not reach {0}. Check the address and try again."
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Could not reach Granola"
+msgstr "Could not reach Granola"
 
 #: src/lib/model-connection-preflight.ts
 msgid "Could not reach the model server."
@@ -3421,6 +3445,7 @@ msgid "Create account"
 msgstr "Create account"
 
 #: src/components/integrations/AppDetail.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/components/integrations/McpDetail.tsx
 msgid "Create agent"
 msgstr "Create agent"
@@ -3606,6 +3631,7 @@ msgstr "Default ({0})"
 #: src/components/data-room/ItemDialogs.tsx
 #: src/components/data-room/ItemMenu.tsx
 #: src/components/data-room/Preview.tsx
+#: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
 #: src/pages/BotContextMenu.tsx
 #: src/pages/RoutineEditor.tsx
@@ -3615,7 +3641,9 @@ msgstr "Default ({0})"
 msgid "Delete"
 msgstr "Delete"
 
+#. placeholder {0}: deleting?.title ?? ""
 #. placeholder {0}: pendingDelete.name
+#: src/components/integrations/StoredMeetingsList.tsx
 #: src/pages/Artifacts.tsx
 msgid "Delete \"{0}\"?"
 msgstr "Delete \"{0}\"?"
@@ -3778,6 +3806,7 @@ msgstr "Discard"
 msgid "Discarded"
 msgstr "Discarded"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
 #: src/pages/MemorySettingsOverlay.tsx
 #: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/VoiceSettingsOverlay.tsx
@@ -4520,6 +4549,10 @@ msgstr "Gateway ID"
 msgid "General"
 msgstr "General"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Get a key"
+msgstr "Get a key"
+
 #: src/components/integrations/AlchemyConnectDialog.tsx
 #: src/components/integrations/BlockscoutConnectDialog.tsx
 msgid "Get an API key"
@@ -4602,6 +4635,19 @@ msgstr "Google apps"
 #: src/components/data-room/ImportFromEmail.tsx
 msgid "Google Drive"
 msgstr "Google Drive"
+
+#: src/components/integrations/GranolaPage.tsx
+#: src/components/integrations/McpDetail.tsx
+msgid "Granola agent"
+msgstr "Granola agent"
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Granola API key"
+msgstr "Granola API key"
+
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Granola rejected this key"
+msgstr "Granola rejected this key"
 
 #: src/pages/Legal.tsx
 msgid "Graph"
@@ -6955,6 +7001,10 @@ msgstr "Posted"
 msgid "Praci doesn't tag new files."
 msgstr "Praci doesn't tag new files."
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Praci keeps your meetings and to-dos."
+msgstr "Praci keeps your meetings and to-dos."
+
 #: src/components/DataExport.tsx
 msgid "Preparing…"
 msgstr "Preparing…"
@@ -7240,6 +7290,10 @@ msgstr "Reconnect Carta"
 msgid "Reconnect Gmail"
 msgstr "Reconnect Gmail"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Reconnect needed"
+msgstr "Reconnect needed"
+
 #: src/App.tsx
 #: src/components/ComputerUpdateProgress.tsx
 msgid "Reconnecting"
@@ -7486,6 +7540,10 @@ msgstr "Removes the account and bot access."
 #: src/components/integrations/McpDetail.tsx
 msgid "Removes the connection and bot access."
 msgstr "Removes the connection and bot access."
+
+#: src/components/integrations/StoredMeetingsList.tsx
+msgid "Removes this meeting and its to-dos from Praci. Your note in Granola is not changed."
+msgstr "Removes this meeting and its to-dos from Praci. Your note in Granola is not changed."
 
 #: src/components/data-room/AutoSortDialog.tsx
 #: src/components/data-room/ItemMenu.tsx
@@ -8173,6 +8231,10 @@ msgstr "Sending is turned off."
 msgid "Sending…"
 msgstr "Sending…"
 
+#: src/components/integrations/GranolaMeetingsCard.tsx
+msgid "Sends your meeting notes and transcripts to your AI model."
+msgstr "Sends your meeting notes and transcripts to your AI model."
+
 #: src/components/inbox/InboxMessageDialog.tsx
 #: src/components/MailApprovalCard.tsx
 #: src/components/MailOutbox.tsx
@@ -8315,6 +8377,7 @@ msgid "Show list"
 msgstr "Show list"
 
 #: src/components/integrations/IntegrationsHome.tsx
+#: src/components/integrations/StoredMeetingsList.tsx
 #: src/components/MailApprovalCard.tsx
 msgid "Show more"
 msgstr "Show more"
@@ -8406,6 +8469,10 @@ msgstr "Sign in with the subscription, or test the API key instead."
 #: src/pages/Welcome.tsx
 msgid "Sign up"
 msgstr "Sign up"
+
+#: src/components/integrations/McpDetail.tsx
+msgid "Sign-in"
+msgstr "Sign-in"
 
 #: src/components/integrations/ConnectAppDialog.tsx
 #: src/components/integrations/CustomConnectionDialog.tsx
@@ -8830,6 +8897,7 @@ msgid "Switching…"
 msgstr "Switching…"
 
 #: src/components/inbox/TodoCard.tsx
+#: src/components/integrations/GranolaMeetingsCard.tsx
 msgid "Syncing"
 msgstr "Syncing"
 

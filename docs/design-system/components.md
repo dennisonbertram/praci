@@ -3,9 +3,9 @@
 
 Every rendered React component, grouped by area. A web or shared component file is covered when it has a sibling `<name>.stories.tsx` or a stories file that imports it. Run `pnpm design-system` after adding or moving a component.
 
-- Web and shared component files with stories: 244 of 244
-- Web and shared components: 660
-- Mobile components: 137 in 94 files, mobile — native story pending
+- Web and shared component files with stories: 247 of 247
+- Web and shared components: 665
+- Mobile components: 138 in 95 files, mobile — native story pending
 
 ## Chat markdown (packages/chat-ui)
 
@@ -227,13 +227,16 @@ Every rendered React component, grouped by area. A web or shared component file 
 | DevinConnectDialog | [apps/web/src/components/integrations/DevinConnectDialog.tsx](../../apps/web/src/components/integrations/DevinConnectDialog.tsx) | [DevinConnectDialog.stories.tsx](../../apps/web/src/components/integrations/DevinConnectDialog.stories.tsx) | web |
 | ExchangeConnectDialog | [apps/web/src/components/integrations/ExchangeConnectDialog.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.tsx) | [ExchangeConnectDialog.stories.tsx](../../apps/web/src/components/integrations/ExchangeConnectDialog.stories.tsx) | web |
 | TileName, CryptoTile, AlchemyTile, ExchangeTile, FinanceSection | [apps/web/src/components/integrations/FinanceSection.tsx](../../apps/web/src/components/integrations/FinanceSection.tsx) | [FinanceSection.stories.tsx](../../apps/web/src/components/integrations/FinanceSection.stories.tsx) | web |
+| GranolaStatusLine, GranolaMeetingsCard | [apps/web/src/components/integrations/GranolaMeetingsCard.tsx](../../apps/web/src/components/integrations/GranolaMeetingsCard.tsx) | [GranolaMeetingsCard.stories.tsx](../../apps/web/src/components/integrations/GranolaMeetingsCard.stories.tsx) | web |
+| GranolaPage | [apps/web/src/components/integrations/GranolaPage.tsx](../../apps/web/src/components/integrations/GranolaPage.tsx) | [GranolaPage.stories.tsx](../../apps/web/src/components/integrations/GranolaPage.stories.tsx) | web |
 | Labeled, SetupDialog, IMessageSection | [apps/web/src/components/integrations/IMessageSection.tsx](../../apps/web/src/components/integrations/IMessageSection.tsx) | [IMessageSection.stories.tsx](../../apps/web/src/components/integrations/IMessageSection.stories.tsx) | web |
 | WritesSwitch, IntegrationAgentSection | [apps/web/src/components/integrations/IntegrationAgentSection.tsx](../../apps/web/src/components/integrations/IntegrationAgentSection.tsx) | [IntegrationAgentSection.stories.tsx](../../apps/web/src/components/integrations/IntegrationAgentSection.stories.tsx) | web |
 | IntegrationSetup | [apps/web/src/components/integrations/IntegrationSetup.tsx](../../apps/web/src/components/integrations/IntegrationSetup.tsx) | [IntegrationSetup.stories.tsx](../../apps/web/src/components/integrations/IntegrationSetup.stories.tsx) | web |
-| Card, OpenPageLink, UsedBy, McpCard, AppCard, SourceCard, AppTile, IntegrationsHome | [apps/web/src/components/integrations/IntegrationsHome.tsx](../../apps/web/src/components/integrations/IntegrationsHome.tsx) | [IntegrationsHome.stories.tsx](../../apps/web/src/components/integrations/IntegrationsHome.stories.tsx) | web |
+| Card, OpenPageLink, UsedBy, McpCard, GranolaKeyCard, AppCard, SourceCard, AppTile, IntegrationsHome | [apps/web/src/components/integrations/IntegrationsHome.tsx](../../apps/web/src/components/integrations/IntegrationsHome.tsx) | [IntegrationsHome.stories.tsx](../../apps/web/src/components/integrations/IntegrationsHome.stories.tsx) | web |
 | McpDetail | [apps/web/src/components/integrations/McpDetail.tsx](../../apps/web/src/components/integrations/McpDetail.tsx) | [McpDetail.stories.tsx](../../apps/web/src/components/integrations/McpDetail.stories.tsx) | web |
 | IntegrationTile, StatusBadge, AgentStack, AgentToggleList, CardHead, SectionTitle, SourceBadge | [apps/web/src/components/integrations/parts.tsx](../../apps/web/src/components/integrations/parts.tsx) | [parts.stories.tsx](../../apps/web/src/components/integrations/parts.stories.tsx) | web |
 | SignInStep | [apps/web/src/components/integrations/SignInStep.tsx](../../apps/web/src/components/integrations/SignInStep.tsx) | [SignInStep.stories.tsx](../../apps/web/src/components/integrations/SignInStep.stories.tsx) | web |
+| StoredMeetingsList | [apps/web/src/components/integrations/StoredMeetingsList.tsx](../../apps/web/src/components/integrations/StoredMeetingsList.tsx) | [StoredMeetingsList.stories.tsx](../../apps/web/src/components/integrations/StoredMeetingsList.stories.tsx) | web |
 
 ## Web components/legal
 
@@ -411,6 +414,7 @@ Every rendered React component, grouped by area. A web or shared component file 
 | GlassSurface | [apps/mobile/components/glass-surface.ios.tsx](../../apps/mobile/components/glass-surface.ios.tsx) | mobile — native story pending | mobile |
 | GlassSurface | [apps/mobile/components/glass-surface.tsx](../../apps/mobile/components/glass-surface.tsx) | mobile — native story pending | mobile |
 | GlassTitle | [apps/mobile/components/glass-title.ios.tsx](../../apps/mobile/components/glass-title.ios.tsx) | mobile — native story pending | mobile |
+| GranolaKeyGroup | [apps/mobile/components/granola-key-group.tsx](../../apps/mobile/components/granola-key-group.tsx) | mobile — native story pending | mobile |
 | GroupAvatar | [apps/mobile/components/group-avatar.tsx](../../apps/mobile/components/group-avatar.tsx) | mobile — native story pending | mobile |
 | ZoomableImage, ImageArtifactViewer | [apps/mobile/components/image-artifact-viewer.tsx](../../apps/mobile/components/image-artifact-viewer.tsx) | mobile — native story pending | mobile |
 | SearchRow | [apps/mobile/components/inbox-render-item.tsx](../../apps/mobile/components/inbox-render-item.tsx) | mobile — native story pending | mobile |
