@@ -98,6 +98,7 @@ vi.mock("@rakazo/ui-web", () => {
     ModelThinkingOptions: () => null,
     NativeSelect: (props: ComponentProps<"select">) => <select {...props} />,
     NativeSelectOption: (props: ComponentProps<"option">) => <option {...props} />,
+    Skeleton: (props: ComponentProps<"div">) => <div {...props} />,
   };
 });
 
@@ -469,6 +470,9 @@ it("lists the server's own provider under Connected, ahead of the A-Z list", asy
   ]);
   const view = await renderSettings();
   try {
+    await act(async () => {
+      buttons(view.container, "More")[0]?.click();
+    });
     const text = view.container.textContent ?? "";
     expect(text).toContain("Connected");
     expect(text.indexOf("OpenRouter")).toBeLessThan(text.indexOf("Amazon Bedrock"));
@@ -477,14 +481,50 @@ it("lists the server's own provider under Connected, ahead of the A-Z list", asy
   }
 });
 
-it("saves the setting that adds email attachments to the Data room", async () => {
+it("shows a skeleton, not 'No providers found', while the catalog loads", async () => {
+  models.list.mockReturnValue(new Promise(() => undefined));
   const view = await renderSettings();
-  const box = view.container.querySelector<HTMLInputElement>('input[type="checkbox"]');
-  expect(box?.checked).toBe(true);
-  await act(async () => {
-    box?.click();
-  });
-  expect(models.setAutoFileEmail).toHaveBeenCalledWith({ enabled: false });
-  expect(box?.checked).toBe(false);
-  await view.unmount();
+  try {
+    expect(view.container.textContent).not.toContain("No providers found");
+    expect(view.container.querySelector("[data-testid='provider-skeleton']")).not.toBeNull();
+  } finally {
+    await view.unmount();
+  }
+});
+
+it("says no providers were found once an empty catalog has loaded", async () => {
+  models.list.mockResolvedValue([]);
+  const view = await renderSettings();
+  try {
+    expect(view.container.textContent).toContain("No providers found");
+  } finally {
+    await view.unmount();
+  }
+});
+
+it("keeps the Data room attachment setting out of Models", async () => {
+  const view = await renderSettings();
+  try {
+    expect(view.container.textContent).not.toContain("Add email attachments to the Data room");
+  } finally {
+    await view.unmount();
+  }
+});
+
+it("lists common providers first and reveals the rest behind More", async () => {
+  models.list.mockResolvedValue([
+    { ...deepseekEntry, provider: "anthropic", providerName: "Anthropic", id: "c" },
+    { ...deepseekEntry, provider: "zeta", providerName: "Zeta AI", id: "z" },
+  ]);
+  const view = await renderSettings();
+  try {
+    expect(view.container.textContent).toContain("Anthropic");
+    expect(view.container.textContent).not.toContain("Zeta AI");
+    await act(async () => {
+      buttons(view.container, "More")[0]?.click();
+    });
+    expect(view.container.textContent).toContain("Zeta AI");
+  } finally {
+    await view.unmount();
+  }
 });

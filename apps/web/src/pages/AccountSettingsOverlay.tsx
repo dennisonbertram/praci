@@ -25,6 +25,7 @@ import { Link } from "react-router-dom";
 import { AccountAccess } from "../components/AccountAccess";
 import { AiDataSharingSection } from "../components/AiDataSharing";
 import { ApprovalRulesSettings } from "../components/ApprovalRulesSettings";
+import { AutoFileEmailSetting } from "../components/AutoFileEmailSetting";
 import { SuccessPop } from "../components/ai/primitives";
 import { ComputersUnavailableHint } from "../components/ComputersUnavailableHint";
 import { DataExportSection } from "../components/DataExport";
@@ -142,10 +143,6 @@ export function GeneralSettingsPanels({
         {email ? <p className="mt-1 text-[13px] text-muted-foreground/70">{email}</p> : null}
       </section>
 
-      {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
-        <ChangePasswordSection email={email} />
-      ) : null}
-
       {messagingEnabled && onOpenMessaging ? (
         <section className="rounded-xl border border-border px-4 py-4">
           <h3 className="text-[15px] font-medium text-foreground">
@@ -159,12 +156,6 @@ export function GeneralSettingsPanels({
           </Button>
         </section>
       ) : null}
-
-      <AiDataSharingSection />
-
-      <NotificationSettingsSection />
-
-      <DataExportSection />
 
       <section className="rounded-xl border border-border px-4 py-4">
         <h3 className="text-[15px] font-medium text-foreground">
@@ -208,16 +199,15 @@ export function GeneralSettingsPanels({
 
       <section className="rounded-xl border border-border px-4 py-4">
         <h3 className="text-[15px] font-medium text-foreground">
-          <Trans>Language</Trans>
+          {timezone && onTimezoneChange ? (
+            <Trans>Language and time zone</Trans>
+          ) : (
+            <Trans>Language</Trans>
+          )}
         </h3>
         <UiLocalePicker value={locale} onChange={chooseLocale} />
         {timezone && onTimezoneChange ? (
-          <>
-            <h3 className="mt-5 text-[15px] font-medium text-foreground">
-              <Trans>Time zone</Trans>
-            </h3>
-            <TimezonePicker value={timezone} onChange={onTimezoneChange} />
-          </>
+          <TimezonePicker value={timezone} onChange={onTimezoneChange} />
         ) : null}
       </section>
 
@@ -237,7 +227,7 @@ export function GeneralSettingsPanels({
               disabled={avatarPending}
               onPressedChange={() => void chooseAvatarStyle(style)}
               data-testid={`avatar-style-${style}`}
-              className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal"
+              className="h-auto justify-start gap-3 px-3.5 py-3 text-[14px] font-normal aria-pressed:border-foreground aria-pressed:ring-1 aria-pressed:ring-foreground"
             >
               <BotAvatar
                 color="#D9508A"
@@ -281,6 +271,8 @@ export function GeneralSettingsPanels({
           </Button>
         </section>
       ) : null}
+
+      <DataExportSection />
 
       <details data-testid="advanced-settings" className="group rounded-xl border border-border">
         <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-4 py-4 text-[14px] text-foreground/75">
@@ -343,14 +335,31 @@ export function GeneralSettingsPanels({
               <Trans>Load web images automatically</Trans>
             </Label>
           </div>
-          <ApprovalRulesSettings />
         </div>
       </details>
+
+      {/* Rare actions come last, below everything that loads on its own, so nothing above them moves. */}
+      {accountSecurity?.hasPassword && accountSecurity.passwordChangeEnabled !== false ? (
+        <ChangePasswordSection email={email} />
+      ) : null}
 
       {/* Last, so a destructive action is never the first thing on the page. */}
       <section data-testid="account-access" className="rounded-xl border border-border px-4 pb-4">
         <AccountAccess onSecurity={setAccountSecurity} />
       </section>
+    </div>
+  );
+}
+
+export function PrivacySettingsPanels() {
+  return (
+    <div className="space-y-5">
+      <AiDataSharingSection />
+      <AutoFileEmailSetting />
+      <section className="rounded-xl border border-border px-4 py-4">
+        <ApprovalRulesSettings />
+      </section>
+      <NotificationSettingsSection />
     </div>
   );
 }
@@ -645,7 +654,7 @@ function TimezonePicker({
     <div className="mt-3">
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          render={<Button variant="outline" className="w-full justify-between font-normal" />}
+          render={<Button variant="outline" className="h-9 w-full justify-between font-normal" />}
           aria-label={t`Time zone`}
           disabled={pending !== null}
         >

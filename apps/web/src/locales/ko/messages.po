@@ -765,7 +765,7 @@ msgstr ""
 msgid "Add email"
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
+#: src/components/AutoFileEmailSetting.tsx
 msgid "Add email attachments to the Data room"
 msgstr ""
 
@@ -1581,7 +1581,7 @@ msgid "Blocked"
 msgstr ""
 
 #: src/components/NotificationSettings.tsx
-msgid "Blocked in browser settings"
+msgid "Blocked. Allow notifications for this site in your browser settings."
 msgstr ""
 
 #: src/components/compose/RichTextEditor.tsx
@@ -3084,7 +3084,7 @@ msgstr ""
 msgid "Could not save the page."
 msgstr ""
 
-#: src/pages/ModelSettingsOverlay.tsx
+#: src/components/AutoFileEmailSetting.tsx
 msgid "Could not save the setting"
 msgstr ""
 
@@ -4888,6 +4888,10 @@ msgstr ""
 msgid "Language"
 msgstr "언어"
 
+#: src/pages/AccountSettingsOverlay.tsx
+msgid "Language and time zone"
+msgstr ""
+
 #: src/components/data-room/DataRoomStats.tsx
 msgid "Largest files"
 msgstr ""
@@ -5554,6 +5558,7 @@ msgstr ""
 #: src/components/inbox/CleanupActionBar.tsx
 #: src/components/inbox/InboxRow.tsx
 #: src/components/MailApprovalCard.tsx
+#: src/pages/ModelSettingsOverlay.tsx
 #: src/pages/shell/transcript.tsx
 msgid "More"
 msgstr ""
@@ -6809,6 +6814,10 @@ msgstr ""
 msgid "Praci keeps itself up to date. If an update ever needs you, it shows here."
 msgstr ""
 
+#: src/components/DataExport.tsx
+msgid "Preparing…"
+msgstr ""
+
 #. placeholder {0}: job.progress
 #: src/components/DataExport.tsx
 msgid "Preparing… {0}%"
@@ -6852,6 +6861,10 @@ msgstr ""
 
 #: src/pages/Board.tsx
 msgid "Priority"
+msgstr ""
+
+#: src/pages/SettingsOverlay.tsx
+msgid "Privacy and approvals"
 msgstr ""
 
 #: src/pages/shell/bot-panel.tsx
@@ -7412,6 +7425,10 @@ msgstr ""
 
 #: src/components/DataExport.tsx
 msgid "Request export"
+msgstr ""
+
+#: src/components/DataExport.tsx
+msgid "Request new export"
 msgstr ""
 
 #: src/pages/shell/message-cards.tsx
@@ -8826,6 +8843,10 @@ msgstr "연결 시간이 초과되었습니다."
 msgid "The Data room holds your files. Artifacts holds what agents make."
 msgstr ""
 
+#: src/components/DataExport.tsx
+msgid "The export failed. Try again."
+msgstr ""
+
 #: src/components/finance/StatementImport.tsx
 msgid "The file is too large"
 msgstr ""
@@ -9523,7 +9544,6 @@ msgid "URL"
 msgstr ""
 
 #: src/pages/SettingsOverlay.tsx
-#: src/pages/Shell.tsx
 msgid "Usage"
 msgstr "사용량"
 
