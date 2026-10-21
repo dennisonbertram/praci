@@ -111,6 +111,6 @@ These need Wispr's Voice Interface API, which is available only by exclusive acc
 | 6.7 | Daily cap reached. | Line reads exactly: "Daily voice limit reached. You can keep typing." | blocked, not runnable yet | not run |
 | 6.8 | Disconnect. | Transcription returns to the voice provider. | blocked, not runnable yet | not run |
 
-## Summary of rows not run
+## After a run
 
-TBD. List every row left as "not run" when the PR is opened.
+List every row still "not run" and why, in the PR or issue that records the run.
