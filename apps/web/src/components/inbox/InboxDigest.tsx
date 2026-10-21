@@ -56,7 +56,7 @@ export function InboxDigest({
             key={row.id}
             data-row-id={row.id}
             aria-current={row.id === selectedId ? "true" : undefined}
-            className={`flex min-w-0 flex-col gap-1.5 rounded-xl border bg-card p-4 text-card-foreground ${row.id === selectedId ? "border-primary" : "border-foreground/10"}`}
+            className={`flex min-w-0 flex-col gap-1 rounded-xl border bg-card p-3 text-card-foreground ${row.id === selectedId ? "border-primary" : "border-foreground/10"}`}
           >
             <div className="flex min-w-0 items-center gap-2">
               <span
@@ -78,20 +78,19 @@ export function InboxDigest({
               >
                 {formatMailTime(row.receivedAt)}
               </time>
-            </div>
-            <p dir="auto" className="text-[15px]">
-              {maskCurrencyWhenHidden(row.subject)}
-            </p>
-            {summary ? (
-              <p dir="auto" className="line-clamp-2 text-sm text-muted-foreground">
-                {maskCurrencyWhenHidden(summary)}
-              </p>
-            ) : null}
-            <div className="flex justify-end">
-              <Button variant="outline" size="sm" onClick={() => onOpen(row.id)}>
+              <Button variant="outline" size="xs" onClick={() => onOpen(row.id)}>
                 <Trans>Open</Trans>
               </Button>
             </div>
+            <p dir="auto" className="truncate text-[15px]">
+              {maskCurrencyWhenHidden(row.subject)}
+              {summary && summary.trim() !== row.subject.trim() ? (
+                <span className="text-sm text-muted-foreground">
+                  {" "}
+                  · {maskCurrencyWhenHidden(summary)}
+                </span>
+              ) : null}
+            </p>
           </article>
         );
       })}

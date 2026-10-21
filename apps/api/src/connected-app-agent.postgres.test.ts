@@ -50,7 +50,7 @@ describePostgres("connected app agents (PostgreSQL)", () => {
         spaceId: who.spaceId,
         userId: who.userId,
         connectorId: "composio",
-        provider: "GMAIL",
+        provider: "SLACK",
         providerRef: `account-${id(who.userId)}`,
         displayName: `Gmail ${id(who.userId)}`,
         status,
@@ -235,6 +235,29 @@ describePostgres("connected app agents (PostgreSQL)", () => {
     expect(await prisma.connection.findUniqueOrThrow({ where: { id: first.id } })).toMatchObject({
       writesEnabled: false,
     });
+  });
+
+  it("links a Composio Gmail account to the Inbox agent too, so the agent can read it", async () => {
+    const composioGmail = await prisma.connection.create({
+      data: {
+        spaceId,
+        userId,
+        connectorId: "composio",
+        provider: "GMAIL",
+        providerRef: `account-${id("composio-gmail")}`,
+        displayName: "Founder mail",
+        status: "connected",
+        allAgents: false,
+        privateByDefault: true,
+      },
+    });
+    const { botId } = await connections().createAgent({ connectionId: composioGmail.id });
+    expect(await prisma.bot.findUniqueOrThrow({ where: { id: botId } })).toMatchObject({
+      spawnKey: inboxAgentSpawnKey(userId),
+    });
+    expect(
+      await prisma.connection.findUniqueOrThrow({ where: { id: composioGmail.id } }),
+    ).toMatchObject({ agentBotId: botId, writesEnabled: true });
   });
 
   it.each(["googlecalendar", "googledrive"])(

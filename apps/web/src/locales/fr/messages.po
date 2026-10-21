@@ -6451,7 +6451,7 @@ msgid "Nothing remembered yet"
 msgstr "Rien n'est mémorisé pour le moment"
 
 #: src/components/inbox/InboxCleanup.tsx
-msgid "Nothing to clean up"
+msgid "Nothing to clean up. People you have written to or saved as contacts are left out."
 msgstr ""
 
 #: src/components/NotificationSettings.tsx

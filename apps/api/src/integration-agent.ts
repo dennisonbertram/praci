@@ -152,7 +152,7 @@ export async function ensureConnectedAppAgent(
 ): Promise<{ connection: Awaited<ReturnType<typeof loadConnectedApp>>; bot: Bot }> {
   const initial = await loadConnectedApp(deps.prisma, actor, connectionId);
   // A Gmail account is read and answered by the user's one Inbox agent, so it links there.
-  const inbox = initial.connectorId === "google" && initial.provider === "gmail";
+  const inbox = isGmailConnection(initial);
   // A user has one Granola agent, whichever of the sign-in and the key came first.
   const granola = initial.connectorId === GRANOLA_API_CONNECTOR_ID;
   const service = initial.displayName || initial.provider;
@@ -290,15 +290,17 @@ export async function provisionConnectionAgent(
   }
 }
 
+/** Gmail through any connector (native Google or Composio): the Inbox page reads it, so the Inbox agent does too. */
+const isGmailConnection = (connection: { provider: string }) =>
+  connection.provider.toLowerCase() === "gmail";
+
 /** The identities that may own a connection: its own agent, or the Inbox agent for Gmail. */
 export const connectionAgentSpawnKeys = (
   actor: Actor,
   connection: { id: string; connectorId: string; provider: string },
 ) => [
   integrationAgentSpawnKey(connection.id),
-  ...(connection.connectorId === "google" && connection.provider === "gmail"
-    ? [inboxAgentSpawnKey(actor.userId)]
-    : []),
+  ...(isGmailConnection(connection) ? [inboxAgentSpawnKey(actor.userId)] : []),
   ...(connection.connectorId === GRANOLA_API_CONNECTOR_ID
     ? [granolaAgentSpawnKey(actor.userId)]
     : []),

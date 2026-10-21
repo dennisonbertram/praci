@@ -66,11 +66,13 @@ export function botUsesNativeGoogle(spawnKey: string | null | undefined): boolea
 /** The rule the executor applies before access rows: can this bot's identity reach the connection. */
 export function botCanReachConnection(
   bot: { id: string; spawnKey: string | null },
-  row: { id: string; connectorId: string; agentBotId: string | null },
+  row: { id: string; connectorId: string; agentBotId: string | null; provider?: string },
 ): boolean {
   // A connected-app agent works on its own linked connection only; a Calendar or Drive agent
   // uses the built-in tools of that one native Google account.
   if (row.agentBotId === bot.id && bot.spawnKey === integrationAgentSpawnKey(row.id)) return true;
+  // The Inbox agent reads every Gmail account with the built-in mail tools, whatever the connector.
+  if (row.provider?.toLowerCase() === "gmail" && isInboxAgentSpawnKey(bot.spawnKey)) return true;
   return row.connectorId === "google"
     ? botUsesNativeGoogle(bot.spawnKey)
     : botUsesConnectorTools(bot.spawnKey);
