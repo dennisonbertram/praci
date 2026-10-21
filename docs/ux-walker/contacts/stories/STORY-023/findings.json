@@ -1,0 +1,19 @@
+[
+  {
+    "id": "F-023-01",
+    "story_id": "STORY-023",
+    "severity": "medium",
+    "category": "layout",
+    "criterion": "Text Fit & Wrap: long content / overflow",
+    "score": "fail",
+    "description": "In the Data room agent side panel, my first, long user message rendered as a bubble about one character wide, so the text stacks one letter per line in a tall orange strip. A later, shorter message rendered normally. It stayed broken after a viewport resize.",
+    "expected": "The user bubble wraps at word boundaries within the panel width, like the second message.",
+    "actual": "Bubble width collapses to about 30px; letters stacked vertically (see step-3.png, step-4.png, step-7-after-resize.png). It may only happen for the first message sent right after the panel opens, I did not isolate the trigger.",
+    "screenshot": "docs/ux-walker/contacts/stories/STORY-023/screenshots/step-3.png",
+    "suggested_fix": "Give the user message bubble a min-width or max-width relative to the panel and verify the panel's container width when the first message is optimistically rendered.",
+    "files_likely_involved": [
+      "apps/web/src/components/chat",
+      "apps/web/src/pages/data-room"
+    ]
+  }
+]

@@ -269,13 +269,6 @@ export async function chooseFocus(
 
   // Keep the name and title the user chose when creating the bot; the focus
   // step only suggests apps, it must not rename the bot.
-  await post(deps, target, [
-    {
-      kind: "text",
-      text: `Got it. ${capitalize(option.summary)}. I’ll see what’s already connected so I don’t make you set something up twice.`,
-    },
-  ]);
-
   const providers = deps.connectors.managedProviders();
   const catalog = (
     await Promise.all(
@@ -312,7 +305,9 @@ export async function chooseFocus(
       },
     ];
   });
+  const got = `Got it. ${capitalize(option.summary)}.`;
   if (!cards.length) {
+    await post(deps, target, [{ kind: "text", text: got }]);
     await post(deps, target, [
       { kind: "text", text: option.note ?? "What would you like to work on first?" },
     ]);
@@ -328,7 +323,7 @@ export async function chooseFocus(
   await post(deps, target, [
     {
       kind: "text",
-      text: `${named} are a good place to start. Connect them here and I’ll use what you already have.`,
+      text: `${got} Connect ${named} here and I’ll use what you already have.`,
     },
   ]);
   await post(deps, target, cards);

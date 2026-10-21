@@ -100,6 +100,35 @@ describePostgres("contacts (PostgreSQL)", () => {
       await deleteContact(prisma, owner, id);
   });
 
+  it("records the agent that added a contact, finds notes, and forgets the agent when it is deleted", async () => {
+    const bot = await prisma.bot.create({
+      data: { spaceId: mine.spaceId, userId: mine.userId, name: "Chief", color: "#000000" },
+    });
+    const added = await addContactIfNew(
+      prisma,
+      mine,
+      { name: "Agent Found", notes: "outside counsel for the lease" },
+      bot.id,
+    );
+    expect(added.contact.addedBy).toEqual({ id: bot.id, name: "Chief" });
+    const byHand = await saveContact(prisma, mine, { name: "By Hand" });
+    expect(byHand.addedBy).toBeNull();
+    // An update keeps the agent.
+    const edited = await saveContact(prisma, mine, { id: added.contact.id, name: "Agent Found 2" });
+    expect(edited.addedBy).toEqual({ id: bot.id, name: "Chief" });
+    // Text search covers notes.
+    expect((await listContacts(prisma, mine, { text: "LEASE" })).map((c) => c.id)).toEqual([
+      added.contact.id,
+    ]);
+    // Another user in the same space never sees it.
+    expect(await listContacts(prisma, sameSpace, { text: "lease" })).toEqual([]);
+    await prisma.bot.delete({ where: { id: bot.id } });
+    const [after] = await listContacts(prisma, mine, { text: "lease" });
+    expect(after?.addedBy).toBeNull();
+    await deleteContact(prisma, mine, added.contact.id);
+    await deleteContact(prisma, mine, byHand.id);
+  });
+
   it("addContactIfNew matches an email exactly and an empty organization as none", async () => {
     const dotted = await addContactIfNew(prisma, mine, {
       name: "Dot",
@@ -141,6 +170,24 @@ describePostgres("contacts (PostgreSQL)", () => {
       organization: "Example Capital",
       notes: "Lead",
     });
+  });
+
+  it("clears notes and organization given null, and keeps them when omitted", async () => {
+    const saved = await saveContact(prisma, sameSpace, {
+      name: "Clear Me",
+      organization: "Org",
+      notes: "keep?",
+    });
+    const kept = await saveContact(prisma, sameSpace, { id: saved.id, name: "Clear Me" });
+    expect(kept).toMatchObject({ organization: "Org", notes: "keep?" });
+    const cleared = await saveContact(prisma, sameSpace, {
+      id: saved.id,
+      name: "Clear Me",
+      organization: null,
+      notes: null,
+    });
+    expect(cleared).toMatchObject({ organization: null, notes: null });
+    await deleteContact(prisma, sameSpace, saved.id);
   });
 
   it("ignores extra actor fields such as email", async () => {

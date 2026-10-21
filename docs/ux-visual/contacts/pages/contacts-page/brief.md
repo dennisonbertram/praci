@@ -1,0 +1,5 @@
+Surface: Contacts page (list of important people, search, Kind filter, add/edit dialog) and the ContactNotice (a left-aligned pill that sits at the bottom of the page column: "Deleted X  Undo  Dismiss"). It lives next to the app's agent toasts, which stack bottom-right (centered and full-width under 640px).
+
+Screenshots, in order: 1440 populated; 1920 populated; 375 populated; 1440 no matches (with Clear filters); 375 deleted notice; 768 notice with a real agent toast ("Chief finished / Hi") on screen; 375 notice with the same toast; Storybook empty state (light theme).
+
+Judge as a ruthless senior designer: density and whitespace, hierarchy, row affordance (only the name text is clickable; the rest of a 56px row is inert but tints on hover), column spacing on wide screens, empty/no-match/error states, notice design and whether the toast covers Undo at narrow widths. Name the norm each finding breaks (layout, density, hierarchy, clarity, interaction, accessibility). Be concrete: say what you see in which screenshot. Do not invent measurements.

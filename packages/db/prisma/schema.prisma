@@ -496,6 +496,7 @@ model Bot {
   assignedTickets        Ticket[]              @relation("TicketAssigneeBot")
   createdTickets         Ticket[]              @relation("TicketCreatorBot")
   ticketComments         TicketComment[]       @relation("TicketCommentAuthorBot")
+  contacts               Contact[]
 
   externalConversations ExternalConversation[]
 
@@ -2408,14 +2409,18 @@ model Contact {
   email        String?
   /// For example the investor's fund.
   organization String?
-  /// "investor", "auditor" or "other"
+  /// A ContactKind: "investor", "auditor", "customer", "vendor", "partner", "advisor", "legal" or "other"
   kind         String   @default("investor")
   notes        String?
+  /// The agent that added the contact, set by the server; null for a contact added by hand or after the agent was deleted.
+  botId        String?
+  bot          Bot?     @relation(fields: [botId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   @@unique([spaceId, userId, email])
   @@index([spaceId, userId])
+  @@index([botId])
   @@map("contacts")
 }
 

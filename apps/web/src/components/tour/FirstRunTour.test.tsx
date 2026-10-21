@@ -56,10 +56,8 @@ const click = (label: string) =>
 
 it("skips steps whose anchor is missing, walks Next and Back, and records Done", async () => {
   const onClose = vi.fn();
-  const onConnectApps = vi.fn();
-  await act(async () =>
-    root.render(<FirstRunTour open onClose={onClose} onConnectApps={onConnectApps} />),
-  );
+  const onAsk = vi.fn();
+  await act(async () => root.render(<FirstRunTour open onClose={onClose} onAsk={onAsk} />));
   // Three anchors exist, so there are three steps.
   expect(document.body.textContent).toContain("1/3");
   await click("Next");
@@ -69,32 +67,69 @@ it("skips steps whose anchor is missing, walks Next and Back, and records Done",
   await click("Next");
   await click("Next");
   expect(document.body.textContent).toContain("3/3");
-  // The last step ends on an action: it records the tour, then opens Connect apps.
-  expect(document.body.textContent).not.toContain("backups");
-  await click("Connect apps");
+  // The last step ends on an action: it ends the tour, records it, then hands off to the composer.
+  await click("Ask a question");
   expect(update).toHaveBeenCalledWith({ tourSeen: true });
   expect(onClose).toHaveBeenCalled();
-  expect(onConnectApps).toHaveBeenCalled();
+  expect(onAsk).toHaveBeenCalled();
 });
 
 it("records Skip tour", async () => {
-  await act(async () =>
-    root.render(<FirstRunTour open onClose={vi.fn()} onConnectApps={vi.fn()} />),
-  );
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
   await click("Skip tour");
   expect(update).toHaveBeenCalledWith({ tourSeen: true });
 });
 
 it("shows nothing and saves nothing when closed or when no anchor exists", async () => {
   await act(async () =>
-    root.render(<FirstRunTour open={false} onClose={vi.fn()} onConnectApps={vi.fn()} />),
+    root.render(<FirstRunTour open={false} onClose={vi.fn()} onAsk={vi.fn()} />),
   );
   expect(document.body.textContent).not.toContain("1/");
   for (const el of document.querySelectorAll("[data-tour]")) el.remove();
   const onClose = vi.fn();
-  await act(async () =>
-    root.render(<FirstRunTour open onClose={onClose} onConnectApps={vi.fn()} />),
-  );
+  await act(async () => root.render(<FirstRunTour open onClose={onClose} onAsk={vi.fn()} />));
   expect(update).not.toHaveBeenCalled();
   expect(onClose).toHaveBeenCalledWith(null);
+});
+
+it("closes the tour on the last step's action without waiting for the save", async () => {
+  update.mockReturnValue(new Promise(() => undefined));
+  const onClose = vi.fn();
+  await act(async () => root.render(<FirstRunTour open onClose={onClose} onAsk={vi.fn()} />));
+  await click("Next");
+  await click("Next");
+  await click("Ask a question");
+  expect(onClose).toHaveBeenCalledTimes(1);
+});
+
+it("is a complete tour, top to bottom, ending on the composer", async () => {
+  for (const el of document.querySelectorAll("[data-tour]")) el.remove();
+  const order = [
+    "sidebar-search",
+    "create-menu",
+    "sidebar-inbox",
+    "sidebar-finance",
+    "sidebar-legal",
+    "sidebar-data-room",
+    "sidebar-chat",
+    "sidebar-integrations",
+    "user-menu",
+  ];
+  for (const id of order) {
+    const el = document.createElement("button");
+    el.dataset.tour = id;
+    document.body.append(el);
+  }
+  await act(async () => root.render(<FirstRunTour open onClose={vi.fn()} onAsk={vi.fn()} />));
+  const seen: string[] = [];
+  for (let i = 0; i < order.length; i++) {
+    seen.push(document.querySelector("[data-testid='tour-popover'] p")?.textContent ?? "");
+    if (i < order.length - 1) await click("Next");
+  }
+  expect(document.body.textContent).toContain("9/9");
+  expect(seen[0]).toContain("find any chat");
+  expect(seen[6]).toContain("Ask Chief");
+  expect(seen[7]).toContain("Connect Gmail");
+  expect(seen[8]).toContain("retake this tour");
+  expect(button("Ask a question")).toBeTruthy();
 });

@@ -1,0 +1,19 @@
+[
+  {
+    "id": "F-016-01",
+    "story_id": "STORY-016",
+    "severity": "low",
+    "category": "layout",
+    "criterion": "Visual correctness",
+    "score": "warn",
+    "description": "The 'Restored <name>' bar covers the restored row for about 5 seconds when the filtered list is short (row is at the bottom of the scroll area).",
+    "expected": "Restored row visible so the user can confirm the result.",
+    "actual": "Row y 720-776 sits under the bar (y 739-776) until the bar auto-dismisses.",
+    "screenshot": "STORY-016/screenshots/step-4.png",
+    "suggested_fix": "Reserve bottom padding in the page scroll area equal to the bar height.",
+    "files_likely_involved": [
+      "apps/web/src/components/contacts/undo-bar.tsx",
+      "apps/web/src/components/ui/sonner.tsx"
+    ]
+  }
+]

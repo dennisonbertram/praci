@@ -1,0 +1,18 @@
+[
+  {
+    "id": "F-018-01",
+    "story_id": "STORY-018",
+    "severity": "suggestion",
+    "category": "feedback",
+    "criterion": "Happy path clarity",
+    "score": "warn",
+    "description": "After changing Kind from Investor to Other, the toast says only 'Saved <name>' and the row vanishes from the Investors tab with no hint where it went.",
+    "expected": "A cue that the contact moved (for example 'Moved to Other').",
+    "actual": "Row disappears; user must find it on the Other tab.",
+    "screenshot": "STORY-018/screenshots/step-9.png",
+    "suggested_fix": "Name the new kind in the toast when the edit changes the current tab's membership.",
+    "files_likely_involved": [
+      "apps/web/src/components/cap-table/cap-table-page.tsx"
+    ]
+  }
+]
