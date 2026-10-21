@@ -96,6 +96,7 @@ import {
   deniedConnectionIds,
   endsSentence,
   expandSkillReferencesInPrompt,
+  externalOriginNotice,
   findSkillByName,
   formatSkillRunPrompt,
   formatSkillsCatalogInstruction,
@@ -1567,6 +1568,24 @@ export function createRunExecutor(deps: ExecutorDeps) {
           !meetingAgent &&
           (meetingSenderIds.size > 0 ||
             (thread as { meetingTaintedAt?: Date | null }).meetingTaintedAt != null);
+        // A run that began with an external bot (or another Space's agent) is marked. Rebuilt every
+        // run from the stored blocks of the triggering message and the loaded history window, so a
+        // message that arrives while another run is active still marks the run that answers it.
+        // An external bot is held by its fixed tool list instead.
+        const externalChain =
+          bot.audience === "external"
+            ? undefined
+            : externalChainOf([
+                ...(run.trigger === "bot_message" && peerMessage
+                  ? [{ ...peerMessage, kind: "bot_message_received" } as MessageBlock]
+                  : []),
+                ...loadedMessages.flatMap((message) => message.blocks as MessageBlock[]),
+              ]);
+        // Set when a message that carries the mark is claimed as steering mid-run.
+        let steeredExternal: { name?: string } | undefined;
+        const externalTaint = () => externalChain !== undefined || steeredExternal !== undefined;
+        // No automatic private context for an external bot, or for any bot answering an external chain.
+        const restrictedContext = bot.audience === "external" || externalChain !== undefined;
         // The wake prompt carries the reply body (already escaped); mark that body as meeting text too.
         const task =
           senderBot && meetingSenderIds.has(senderBot.id)
@@ -1607,13 +1626,12 @@ export function createRunExecutor(deps: ExecutorDeps) {
         runSecrets.push(...Object.values(agentEnvironment));
         // Encoded forms too: read_file redacts with these values before any shell command runs.
         runSecrets.push(...commandCredentialRedactions(initialBotCommandEnvironment));
-        const agentEnvironmentInstruction =
-          bot.audience === "external"
-            ? undefined
-            : formatAgentEnvironmentInstruction({
-                ...agentEnvironment,
-                ...initialBotCommandEnvironment,
-              });
+        const agentEnvironmentInstruction = restrictedContext
+          ? undefined
+          : formatAgentEnvironmentInstruction({
+              ...agentEnvironment,
+              ...initialBotCommandEnvironment,
+            });
         // modelPinned distinguishes the captured choice from an attempt's recorded model.
         const modelChoice = runModelChoice(run, bot);
         const hasModelOverride = Boolean(modelChoice.modelProvider && modelChoice.modelId);
@@ -1888,7 +1906,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
           : undefined;
         const recallPromise =
           !voiceAgent &&
-          bot.audience !== "external" &&
+          !restrictedContext &&
           !meetingTaint &&
           threadContext.includeSemanticRecall &&
           semanticMemory &&
@@ -1915,7 +1933,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
         ] = await Promise.all([
           discoveredPromise,
           loadCurrentTurnImages(deps, turnBlocks, context),
-          messagingChannelRun || voiceAgent || bot.audience === "external"
+          messagingChannelRun || voiceAgent || restrictedContext
             ? Promise.resolve("")
             : loadAgentMemoryContext(deps.memory, bot.id, context),
           messagingChannelRun || voiceAgent
@@ -1925,7 +1943,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
                 botId: bot.id,
               }),
           messagingChannelRun ||
-          bot.audience === "external" ||
+          restrictedContext ||
           !deps.ticketBoardEnabled ||
           (voiceAgent && !voiceWorkspaceReadAllowed)
             ? Promise.resolve(undefined)
@@ -2656,7 +2674,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
             (!dataRoomAgent || dataRoomAgentToolSet.has(tool.name)) &&
             (!meetingAgent || meetingAgentToolSet.has(tool.name)) &&
             // pi-runtime runs run_subagent itself, before the executor's approval gate.
-            (!meetingTaint || !["run_subagent", "request_takeover"].includes(tool.name)),
+            ((!meetingTaint && externalChain === undefined) ||
+              !["run_subagent", "request_takeover"].includes(tool.name)),
         );
         // Generic connector tools (Composio, Pipedream, MCP) reach the owner's accounts, so a run
         // another agent started (bot_message, possibly from another account) gets none of them.
@@ -3289,9 +3308,14 @@ export function createRunExecutor(deps: ExecutorDeps) {
             !meetingAgent &&
             !MEETING_TAINT_FREE_TOOLS.has(name) &&
             (meetingTaint || (await threadMarkedNow()));
+          // Likewise for a run that began with an external bot: everything outside the short free
+          // list asks, whether it reads private data or writes. Read at each call so a marked
+          // message claimed as steering mid-run counts from then on.
+          const externalTaintedCall = externalTaint() && !EXTERNAL_TAINT_FREE_TOOLS.has(name);
           const requiresMandatoryApproval =
             requiresUnattendedApproval ||
             meetingTaintedCall ||
+            externalTaintedCall ||
             toolRequiresExplicitApproval(name) ||
             // No saved rule or Auto Review may send mail for the Carta agent (investor email).
             isCartaMailSend(bot.spawnKey, name) ||
@@ -3368,7 +3392,7 @@ export function createRunExecutor(deps: ExecutorDeps) {
               : toolEffectIdempotencyKey(runId, replayEffectToolName, args, occurrence);
           // Connector read-only hints must not bypass approval, review, or replay decisions.
           const applied =
-            READ_ONLY_AGENT_TOOLS.has(name) && !meetingTaintedCall
+            READ_ONLY_AGENT_TOOLS.has(name) && !meetingTaintedCall && !externalTaintedCall
               ? undefined
               : await recordEffect(
                   deps,
@@ -3644,16 +3668,20 @@ export function createRunExecutor(deps: ExecutorDeps) {
 
           const requestApproval = async () => {
             // A card for a call in a marked thread makes no lookups; it shows the raw ids.
-            const moneyNames = meetingTaintedCall
-              ? undefined
-              : await resolveMoneyNames(callRoute?.toolName ?? name, args, readApprovalName);
+            const moneyNames =
+              meetingTaintedCall || externalTaintedCall
+                ? undefined
+                : await resolveMoneyNames(callRoute?.toolName ?? name, args, readApprovalName);
             const block = buildApprovalAskBlock(applied!.effect.id, name, args, runSecrets, {
-              reviewReason,
+              reviewReason: externalTaintedCall
+                ? [EXTERNAL_REQUEST_REASON, reviewReason].filter(Boolean).join("\n")
+                : reviewReason,
               fullMail: isCartaMailSend(bot.spawnKey, name),
               integrationWriteTool,
-              noAlwaysAllow: meetingTaintedCall,
+              noAlwaysAllow: meetingTaintedCall || externalTaintedCall,
               serviceName: callRoute?.serverName,
-              mailAccount: meetingTaintedCall ? undefined : await approvalMailAccount(),
+              mailAccount:
+                meetingTaintedCall || externalTaintedCall ? undefined : await approvalMailAccount(),
               imessage: imessageCard,
               schedule: scheduleCard,
               moneyNames,
@@ -6104,7 +6132,8 @@ export function createRunExecutor(deps: ExecutorDeps) {
           .filter(Boolean)
           .join("\n\n");
         const historicalContext: AgentRunRequest["history"] = [];
-        if (compactedHistory.usedLocalSummary && compactedHistory.summary) {
+        // A summary of the owner's earlier private chat stays out of a run answering an external chain.
+        if (compactedHistory.usedLocalSummary && compactedHistory.summary && !externalChain) {
           historicalContext.push({
             role: "user",
             content: redactSecrets(
@@ -6219,40 +6248,43 @@ export function createRunExecutor(deps: ExecutorDeps) {
               },
               prompt,
               contextStrategy,
-              instructions: withExternalBotPrompt(
-                userTurnInstructions({
-                  botInstructions: runIdentityInstruction(bot, run.trigger, bot.spawnKey),
-                  voiceAgent,
-                  groupContext,
-                  messagingContext,
-                  redactedMemoryContext: memoryContext
-                    ? redactSecrets(memoryContext, runSecrets)
-                    : undefined,
-                  redactedScratchpadContext: scratchpadContext
-                    ? redactSecrets(scratchpadContext, runSecrets)
-                    : undefined,
-                  redactedTicketContext: ticketContext
-                    ? redactSecrets(ticketContext, runSecrets)
-                    : undefined,
-                  hasHistoricalContext: historicalContext.length > 0,
-                  historyRetrievalEnabled: contextStrategy !== "current" && !externalBot,
-                  computerInstruction,
-                  pageBrowserAllowed,
-                  taskCatalogInstruction,
-                  workspaceInstruction,
-                  agentEnvironmentInstruction,
-                  botDirectory,
-                  pluginLine,
-                  mailSearchGuidance: mailSkill.guidance,
-                  dataRoomEnabled: dataRoomEnabled && !legalOnly && !externalBot,
-                  agentSkillsLine: externalBot ? undefined : agentSkillsLine,
-                  taughtSkillsLine: externalBot ? undefined : taughtSkillsLine,
-                  replyGuidance: runReplyGuidance(run.trigger),
-                  disabledBuiltinTools: instructionDisabledTools,
-                })
-                  .filter((instruction): instruction is string => Boolean(instruction))
-                  .join("\n\n"),
-                bot.audience,
+              instructions: withExternalChainNotice(
+                withExternalBotPrompt(
+                  userTurnInstructions({
+                    botInstructions: runIdentityInstruction(bot, run.trigger, bot.spawnKey),
+                    voiceAgent,
+                    groupContext,
+                    messagingContext,
+                    redactedMemoryContext: memoryContext
+                      ? redactSecrets(memoryContext, runSecrets)
+                      : undefined,
+                    redactedScratchpadContext: scratchpadContext
+                      ? redactSecrets(scratchpadContext, runSecrets)
+                      : undefined,
+                    redactedTicketContext: ticketContext
+                      ? redactSecrets(ticketContext, runSecrets)
+                      : undefined,
+                    hasHistoricalContext: historicalContext.length > 0,
+                    historyRetrievalEnabled: contextStrategy !== "current" && !externalBot,
+                    computerInstruction,
+                    pageBrowserAllowed,
+                    taskCatalogInstruction,
+                    workspaceInstruction,
+                    agentEnvironmentInstruction,
+                    botDirectory,
+                    pluginLine,
+                    mailSearchGuidance: mailSkill.guidance,
+                    dataRoomEnabled: dataRoomEnabled && !legalOnly && !externalBot,
+                    agentSkillsLine: externalBot ? undefined : agentSkillsLine,
+                    taughtSkillsLine: externalBot ? undefined : taughtSkillsLine,
+                    replyGuidance: runReplyGuidance(run.trigger),
+                    disabledBuiltinTools: instructionDisabledTools,
+                  })
+                    .filter((instruction): instruction is string => Boolean(instruction))
+                    .join("\n\n"),
+                  bot.audience,
+                ),
+                externalChain,
               ),
               history: runtimeHistory,
               currentTurnImages,
@@ -6366,6 +6398,11 @@ export function createRunExecutor(deps: ExecutorDeps) {
                         leaseFence: fence,
                         seenIds,
                       });
+                      // A claimed message that carries the external mark marks the rest of this run.
+                      for (const item of steering) {
+                        const chain = externalChainOf(item.blocks as MessageBlock[]);
+                        if (chain && bot.audience !== "external") steeredExternal = chain;
+                      }
                       return Promise.all(
                         steering.map(async (item) => {
                           const { images, files, unavailableInstruction } =
@@ -7255,6 +7292,39 @@ const OWNER_PEER_WRITE_TOOLS = new Set([
  * data and reach no network. Everything else (MCP and connector reads, Drive, calendar, web,
  * writes, sends) asks on every call. Add to this list only a tool that cannot send data out.
  */
+/**
+ * Calls a run that began with an external bot may make without asking the owner: everything else
+ * (private reads, writes, the network) shows a card with no "Always allow". Smaller than the
+ * meeting list: history reads return private text.
+ */
+export const EXTERNAL_TAINT_FREE_TOOLS = new Set(["ask_user", "skill_read"]);
+
+/** First line of the reason on a card for a call in a run that began with an external bot. */
+export const EXTERNAL_REQUEST_REASON = "Requested by an external bot";
+
+/** Last in the final instruction string, after everything else, so nothing assembled later can countermand it. */
+export function withExternalChainNotice(
+  instructions: string,
+  chain: { name?: string } | undefined,
+): string {
+  return chain ? `${instructions}\n\n${externalOriginNotice(chain.name)}` : instructions;
+}
+
+/**
+ * Whether stored message blocks carry the external-chain mark, and the name of the bot that
+ * started it. Reads only the server-written fields of bot_message_received blocks.
+ */
+export function externalChainOf(
+  blocks: readonly MessageBlock[],
+): { externalOrigin: true; name?: string } | undefined {
+  for (const block of blocks) {
+    if (block.kind === "bot_message_received" && block.externalOrigin === true) {
+      return { externalOrigin: true, name: block.externalOriginName };
+    }
+  }
+  return undefined;
+}
+
 export const MEETING_TAINT_FREE_TOOLS = new Set([
   "ask_user",
   "search_history",

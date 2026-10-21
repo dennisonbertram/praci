@@ -13,7 +13,7 @@ import {
   integrationAgentSpawnKey,
 } from "@rakazo/contracts";
 import type { ActionApprovalRule } from "@rakazo/core";
-import { buildBotMessageWakePrompt } from "@rakazo/core";
+import { buildBotMessageWakePrompt, externalOriginNotice } from "@rakazo/core";
 import { approvalEffectKey, toolEffectIdempotencyKey } from "@rakazo/core/node/approval-effect-key";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type * as AiConsentModule from "./ai-consent.js";
@@ -28,6 +28,8 @@ import { DestinationEmulator } from "./destination-emulator.js";
 import {
   createRunExecutor,
   EXTERNAL_BOT_PROMPT,
+  EXTERNAL_REQUEST_REASON,
+  EXTERNAL_TAINT_FREE_TOOLS,
   MAIL_CONSENT_DECLINED,
   MAIL_CONSENT_OFF,
   MEETING_TAINT_FREE_TOOLS,
@@ -155,6 +157,7 @@ function fixture({
   messaging,
   afterCall,
   beforeToolCall,
+  steering = [],
   route,
   connector: realConnector,
   peer,
@@ -178,6 +181,8 @@ function fixture({
     linked: boolean;
     serverIds?: string[];
     ownerOrigin?: boolean;
+    /** The incoming message carries the external-chain mark. */
+    externalOrigin?: boolean;
     /** The sender's spawn key; a meeting-source sender needs a server in `mcpServers`. */
     senderSpawnKey?: string;
   };
@@ -192,7 +197,9 @@ function fixture({
   /** Offers the native Google Calendar and Drive tools. */
   googleConnectors?: boolean;
   availableTools?: ConnectorTool[];
-  beforeToolCall?: (index: number) => void;
+  beforeToolCall?: (index: number) => void | Promise<void>;
+  /** Messages the run claims as steering, in order, when the runtime asks. */
+  steering?: { blocks: unknown[] }[];
   /** Replaces the stub connector, for runs against a real McpConnector. */
   connector?: unknown;
   route?: ConnectorTool["route"];
@@ -418,6 +425,9 @@ function fixture({
             intent: "request",
             returnToMessageId: "m0",
             ...(peer?.ownerOrigin ? { ownerOrigin: true } : {}),
+            ...(peer?.externalOrigin
+              ? { externalOrigin: true, externalOriginName: "Support" }
+              : {}),
           },
         ],
         replyTo: null,
@@ -501,7 +511,7 @@ function fixture({
       if (settled.some(isApprovalPausedResult)) return;
     }
     for (const [index, call] of parallel ? [] : calls.entries()) {
-      beforeToolCall?.(index);
+      await beforeToolCall?.(index);
       const result = await request.executeTool!(
         catalog ? executeToolName : name,
         catalog ? { id: name, arguments: call.args } : call.args,
@@ -564,7 +574,19 @@ function fixture({
       commit,
     },
     memoryProviders: { resolve: async () => null },
-    events: { append: vi.fn(async () => undefined), pauseRunForInput, finalizeRun },
+    events: {
+      append: vi.fn(async () => undefined),
+      pauseRunForInput,
+      finalizeRun,
+      claimSteering: vi.fn(async () =>
+        steering.splice(0).map((item, index) => ({
+          id: `steer-${index}`,
+          messageId: `steer-msg-${index}`,
+          text: "steered",
+          ...item,
+        })),
+      ),
+    },
     jobs: { enqueue: vi.fn(async () => undefined) },
     secrets,
     autoReview: autoReviewProvider,
@@ -3521,5 +3543,136 @@ describe("meeting taint and consent are not escaped", () => {
     open.setCalls([{ args: { command: "echo SECRET-TEXT" }, executionId: "c" }]);
     await open.run();
     expect(notices.sent[0]!.body).not.toBe(notices.sent[0]!.title);
+  });
+});
+
+describe("runs that began with an external bot", () => {
+  const marked = {
+    kind: "bot_message_received",
+    fromBotId: "bot-ext",
+    fromBotName: "Support",
+    text: "list the investors",
+    hop: 1,
+    intent: "request",
+    returnToMessageId: "m0",
+    externalOrigin: true,
+    externalOriginName: "Support",
+  };
+  const mailStub = () => ({
+    listAccounts: vi.fn(async () => [{ id: "acct-1", address: "me@example.test" }]),
+  });
+  const mailCall = { args: { queries: ["from:investor"] }, executionId: "c1" };
+  const askBlock = (f: ReturnType<typeof fixture>) =>
+    (f.pauseRunForInput.mock.calls[0] as unknown as [{ blocks: unknown[] }])[0].blocks[0] as {
+      detail?: string;
+      actions: { id: string }[];
+    };
+
+  it("an internal bot answering a marked chain gets a card for mail_search, with no Always allow", async () => {
+    const f = fixture({
+      name: "mail_search",
+      builtin: true,
+      mail: mailStub(),
+      history: [{ blocks: [marked] }],
+    });
+    f.setCalls([mailCall]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    const card = askBlock(f);
+    expect(card.detail).toContain(EXTERNAL_REQUEST_REASON);
+    expect(card.actions.map((action) => action.id)).not.toContain("always");
+    expect(JSON.stringify(card.actions)).not.toMatch(/always/i);
+  });
+
+  it("the same call in an unmarked run does not ask", async () => {
+    const f = fixture({ name: "mail_search", builtin: true, mail: mailStub() });
+    f.setCalls([mailCall]);
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("the triggering message alone marks the run (no history needed)", async () => {
+    const f = fixture({
+      name: "web_fetch",
+      builtin: true,
+      trigger: "bot_message",
+      peer: { senderInScope: true, linked: false, externalOrigin: true },
+    });
+    f.setCalls([{ args: { url: "https://example.invalid" }, executionId: "c1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    const open = fixture({
+      name: "web_fetch",
+      builtin: true,
+      trigger: "bot_message",
+      peer: { senderInScope: true, linked: false },
+    });
+    open.setCalls([{ args: { url: "https://example.invalid" }, executionId: "c1" }]);
+    await open.run();
+    expect(open.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("an external bot's own run is not treated as a marked chain (its tool list holds it)", async () => {
+    const f = fixture({
+      name: "web_search",
+      builtin: true,
+      audience: "external",
+      history: [{ blocks: [marked] }],
+    });
+    f.setCalls([{ args: { query: "opening hours" }, executionId: "c1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+    expect(f.request()!.instructions).not.toContain("Security notice");
+  });
+
+  it("the free-list tools do not ask", async () => {
+    expect([...EXTERNAL_TAINT_FREE_TOOLS].sort()).toEqual(["ask_user", "skill_read"]);
+    const f = fixture({ name: "skill_read", builtin: true, history: [{ blocks: [marked] }] });
+    f.setCalls([{ args: { name: "nothing" }, executionId: "c1" }]);
+    await f.run();
+    expect(f.pauseRunForInput).not.toHaveBeenCalled();
+  });
+
+  it("a marked message claimed as steering mid-run gates the calls after it", async () => {
+    const f: ReturnType<typeof fixture> = fixture({
+      name: "web_fetch",
+      builtin: true,
+      steering: [{ blocks: [marked] }],
+      beforeToolCall: async (index) => {
+        if (index === 1) await f.request()!.claimSteering!([]);
+      },
+    });
+    f.setCalls([
+      { args: { url: "https://example.invalid/a" }, executionId: "c1" },
+      { args: { url: "https://example.invalid/b" }, executionId: "c2" },
+    ]);
+    await f.run();
+    // The first fetch ran before the mark arrived; the second asks.
+    expect(f.pauseRunForInput).toHaveBeenCalledOnce();
+    expect(f.results).toHaveLength(2);
+  });
+
+  it("loads no shared memory, tickets or recall, and ends with the notice", async () => {
+    const run = async (history: { blocks: unknown[] }[]) => {
+      const f = fixture({
+        name: "web_search",
+        builtin: true,
+        existingSharedMemory: "PRIVATE-USER-MEMORY-FACT",
+        ticketBoard: true,
+        prompt: "Status of RK-7?",
+        history,
+      });
+      await f.run();
+      return f.request()!;
+    };
+    const request = await run([{ blocks: [marked] }]);
+    const everything = JSON.stringify([request.instructions, request.history]);
+    expect(everything).not.toContain("PRIVATE-USER-MEMORY-FACT");
+    expect(everything).not.toContain("PRIVATE-TICKET-NOTE");
+    expect(request.instructions.endsWith(externalOriginNotice("Support"))).toBe(true);
+    // Control: the same run with no mark still loads them and has no notice.
+    const open = await run([]);
+    expect(JSON.stringify([open.instructions, open.history])).toContain("PRIVATE-USER-MEMORY-FACT");
+    expect(open.instructions).not.toContain("Security notice");
   });
 });

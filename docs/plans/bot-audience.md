@@ -1,6 +1,6 @@
 # Bot audience: Internal / External
 
-Status: phase 1 built on `feat/bot-audience-1`; phases 2 and 3 next; the classifier (phase 4) and mobile (phase 5) are deferred. File and line references are to `origin/main` at f7390bb72 and were read directly; lines move, so use the function names to find things.
+Status: phases 1 and 2 built; phase 3 next; the classifier (phase 4) and mobile (phase 5) are deferred. File and line references are to `origin/main` at f7390bb72 and were read directly; lines move, so use the function names to find things.
 
 ## Summary
 
@@ -37,6 +37,15 @@ Deferred: open questions 6 (classifier key), 7 (pre-approved topics) and 8 (visi
 - Automatic result return: a result goes back to its caller only while the caller is Internal, or is External and its owner allowed it to message the sender.
 - `message_bot`: `messageBot` reads the sender's audience and allowlist from the database. An External sender resolves targets only among its allowlisted Internal bots (and the caller it is answering); anything else, including a name that does not exist, gets the same fixed message so the refusal does not reveal which bots exist.
 - UI: an Audience row (Internal / External) in the bot settings, with the helper, "Can message" switches, a "Computer and browser" switch and the "Still has access to" line shown only for External; an "External" tag beside the bot name in the chat header.
+
+### What phase 2 built (differences from the design text)
+
+- Chain mark: `externalOrigin` and `externalOriginName` on `bot_message_received`, written inside `messageBot`'s transaction from the sender's stored audience or the incoming chain (`loadBotMessageContext`), only ever added. Results sent back along the chain keep it. Every delivery from another Space (`messageConnectedAgent`) is marked.
+- Per run: the executor derives the mark from the triggering message and the loaded history window; a marked message claimed as steering mid-run marks the calls that follow it. An External bot's own runs are not "marked": its fixed tool list holds it.
+- Notice: `externalOriginNotice` (core). It is the last paragraph of the wake prompt, after the untrusted body, and the last text of the final instruction string (after the External prompt rule of phase 1).
+- Gate: `externalTaintedCall` makes every call outside `EXTERNAL_TAINT_FREE_TOOLS` (`ask_user`, `skill_read`) ask on a card with no "Always allow", no money-name or mail-account lookups, and the first reason line "Requested by an external bot". Read-only tools (mail_search and similar) no longer skip the gate in a marked run. `message_bot` asks too, as the plan says; this over-asks for External to Chief to Finance and can be loosened later.
+- Automatic private context: the plan wanted reads to ask first; injected context cannot ask, so a run answering a marked chain gets none of it (the safer choice): no bot or shared user memory, ticket context, semantic recall, agent environment names, connected-plugin list, or compacted summary of the thread. Backup models stay as they were. `run_subagent` and `request_takeover` are not offered in a marked run.
+- Known gap: the marked bot's own earlier thread history (for example Chief's chat with the owner) is still in its context window. The notice and the approval card cover disclosure; phase 3's outbound check is the control that sees what leaves. Trimming that history is a follow-up.
 
 ## Problem and threat model
 
