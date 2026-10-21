@@ -103,6 +103,8 @@ export * from "./github-webhook-emulator.js";
 export * from "./gmail-api-emulator.js";
 export * from "./gmail-mail-provider.js";
 export * from "./gmail-push.js";
+export * from "./granola-api-emulator.js";
+export * from "./granola-meeting-source.js";
 export * from "./graphql-connectors.js";
 export * from "./group-handoff.js";
 export * from "./home.js";
