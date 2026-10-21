@@ -94,10 +94,10 @@ import type {
   SpeechClip,
   TerminalRequest,
   TransactionalEmail,
+  TranscriptionCapabilities,
   VoiceCapabilities,
   VoiceInfo,
   VoiceSynthesizeRequest,
-  TranscriptionCapabilities,
   VoiceTranscribeRequest,
   VoiceVerifyResult,
   WebFetchCapabilities,
@@ -798,7 +798,10 @@ export interface DataRoomClassifier {
 /** A source of meeting notes and transcripts. Vendor names appear only in the adapter. */
 export interface MeetingSource {
   provider: string;
-  /** Ids ordered oldest update first. Throws MeetingSourceError. */
+  /**
+   * All matching ids across pages, in no guaranteed order; a caller needs a complete pass before
+   * trusting a checkpoint. Throws MeetingSourceError.
+   */
   list(filter: { updatedAfter?: Date; createdAfter?: Date; cursor?: string }): Promise<{
     items: { externalId: string; updatedAt: string; deleted?: boolean }[];
     nextCursor?: string;

@@ -28,3 +28,9 @@ export const GRANOLA_READ_TOOLS = [
  * user's other AI tools, so they are left out of the preset's allowed tools.
  */
 export const GRANOLA_BLOCKED_TOOLS = ["switch_workspace", "sign_out"] as const;
+
+/** Granola's public REST API (https://docs.granola.ai/introduction); keys look like `grn_...`. */
+export const GRANOLA_API_BASE_URL = "https://public-api.granola.ai/v1";
+
+/** Connection.connectorId for a Granola API key. */
+export const GRANOLA_API_CONNECTOR_ID = "granola-api";

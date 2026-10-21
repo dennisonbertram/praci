@@ -8,6 +8,11 @@
       "types": "./src/index.ts",
       "development": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./meeting-source.conformance": {
+      "types": "./src/meeting-source.conformance.ts",
+      "development": "./src/meeting-source.conformance.ts",
+      "default": "./src/meeting-source.conformance.ts"
     }
   },
   "scripts": {
