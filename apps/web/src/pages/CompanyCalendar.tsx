@@ -52,8 +52,10 @@ export function CompanyCalendar({
     if (!item.fact) return;
     try {
       const fact = await rpc.company.fact(item.fact);
-      if (fact) onOpen(fact);
-      else {
+      if (fact) {
+        setError("");
+        onOpen(fact);
+      } else {
         setError(t`Fact unavailable`);
         query.reload();
       }
