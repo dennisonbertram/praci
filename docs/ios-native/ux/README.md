@@ -1,24 +1,55 @@
 # iOS native app: UX planning index
 
-This folder holds UX planning for the native iPhone app (epic #427, phases #412 to #426). It was generated on 2026-10-20 by `/ux-paths`, `/ux-flow` and `/ux-walker`. No native code exists, so every check was made against the 40 design boards in `docs/design-system/ios/boards/` (rendered locally with a preview shim, then screenshotted). Boards are static, so steps were judged against the board that defines each screen, and a screen with no board is recorded as a finding.
+This folder holds UX planning for the native iPhone app (epic #427, phases #412 to #426). No native code exists, so every check is made against the design boards in `docs/design-system/ios/boards/`, rendered locally with a preview shim and screenshotted. Boards are static, so each journey step is judged against the board that draws it.
 
 ## Files
 
 - [discovery.md](discovery.md): what the app must cover, from the plan and the Expo app.
-- [catalog.md](catalog.md): 105 user stories, coverage matrix, redundancy candidates, and "Design Gaps by Phase".
-- [flow/report.md](flow/report.md): friction scorecard for six journeys and the top 10 simplifications.
-- [flow/redundancy.md](flow/redundancy.md): duplicate paths, duplicate information, naming and cross-board consistency.
-- [walker/latest-report.md](walker/latest-report.md): 156 walker findings, quick fixes applied to the boards, and design work needed per phase.
+- [catalog.md](catalog.md): the journey stories, coverage matrix, redundancy candidates and design gaps by phase.
+- [flow/journeys/](flow/journeys/) and [flow/redundancy.md](flow/redundancy.md): the latest `/ux-flow` critiques.
+- [walker/](walker/): the latest `/ux-walker` findings per topic, with each earlier finding marked resolved or open.
+- [visual/problems.md](visual/problems.md), [visual/pages/](visual/pages/), [visual/decisions/](visual/decisions/): the latest `/ux-visual` problem register, page critiques and judged design decisions.
+- [flow/report.md](flow/report.md) and [walker/latest-report.md](walker/latest-report.md): the first run's reports, kept as the baseline.
 
-## Resolve these before Devin builds the matching phases
+## Rounds
 
-1. **#415 Home: a first-run "Connect a model" prompt.** Home shows nothing when no model is connected, so a new user fails at the first send. Needs a Home empty state, a first-run Models variant and a decision on where Create lands.
-2. **#417 Thread write: one mail approval card.** The card has three label sets (Deny/Allow, Save/Send, Allow once/Always allow/Deny). Choose one, and decide whether edit-and-send ships at all (the composer route needs no new screen).
-3. **#424 Pages: the outer-display route to Finance, Legal, Cap table and Data room.** No board draws it (the only critical walker finding), and the Legal, Cap table and Data room states are mostly undrawn.
-4. **#419 Duo: posture-change behavior and the inner, half-folded and laptop boards.** Decide whether a fold relaunches the app and what survives (drafts, scroll, selection). Only Finance has a laptop board.
-5. **#414 and #416: a standard-iPhone (393 pt) board.** Every board is the Duo outer display, but most stories name a standard iPhone. Also draw sign-up, forgot-password and offline states before the sign-in and thread phases.
+The five largest gaps from the first run were designed, then `/ux-paths`, `/ux-flow`, `/ux-walker` and `/ux-visual` ran in rounds. Each round audited every board, judged the problems that had more than one reasonable design, and fixed the rest. Counts are open issues found at the start of each round, before that round's fixes.
 
-## Decisions needed (34, from the catalog's Design Gaps by Phase)
+| Round | Boards | Critical | High | Medium | Low |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 54 | 2 | 40 | 150 | 90 |
+| 2 | 58 | 0 | 21 | 100 | 100 |
+| 3 | 59 | 0 | 9 | 62 | 120 |
+
+Round 3's fixes have not been re-audited. Low findings are mostly polish and were fixed only when they were one-line changes.
+
+## The five gaps from the first run
+
+1. **Outer-display route to Finance, Legal, Cap table and Data room:** Home has a Pages section on the Duo outer display, the inner sidebar and standard iPhone (`PG-A-Home`, `Split`, `PH-Home`, `PH-Pages`).
+2. **Standard iPhone:** `PH-Home`, `PH-Pages`, `PH-Spaces`, `PH-Thread`, `PH-GroupThread`, `PH-Inbox`, `PH-Computer`. Artifacts, Agent page, Routine and the form sheets use the Duo layout only (see the decisions below).
+3. **No model connected:** Home shows one "Connect a model" action that opens a provider sheet, then "Message Chief" (`PG-A-HomeNoModel`, `PH-Home`).
+4. **Mail approval card and send states:** one mail card everywhere; offline, failed (Retry) and refused (Edit) sends; the AI data consent sheet (`PG-A-Thread`, `PG-A-ThreadStates`, `PG-B-Consent`, `DS-06-Chat`).
+5. **Missing screens:** space switcher and Space settings, sign-up, password reset, Account with sign out and delete account, Compose, Cleanup, Activity (`PG-B-Spaces`, `PH-Spaces`, `PG-B-SignUp`, `PG-B-ForgotPassword`, `PG-B-Account`, `PG-A-Compose`, `PG-A-Cleanup`, `PG-A-Activity`).
+
+## Product decisions made with a default
+
+The boards use these defaults. Each one can be changed by the owner.
+
+- Standard iPhone coverage: Artifacts, Artifact, Image, Agent page, Routine and the form sheets are drawn for the Duo only.
+- Reactions in chat: in v1, with the six-emoji picker specified in `DS-06-Chat` and drawn on `PH-Thread`.
+- Sample signed-in person: Alex Morgan (AM) everywhere.
+- Inner display: Compose sits in More while a message is open.
+- Provider failure copy (contract scanning, Carta, Mercury): plain wording, no vendor names.
+- Delete account for SSO users: re-authenticate with the provider, then confirm. The server must support this.
+- Standing "Always allow" is offered only for read-only tools. Money and send tools always ask, in the thread and in Settings (`DS-06-Chat`, `PG-B-Settings`).
+- Unsubscribe in Cleanup cannot be undone, and the confirmation says so before it runs.
+- Inbox swipe actions: Archive and Spam only, matching the API.
+- Routine actions: Pause and Edit; "Run now" waits for an API.
+- Hosted voice, the banking connector and "Allow writes" confirmation are drawn as specified; their server behavior is still planned.
+
+## Decisions listed in the first run (34, from the catalog's Design Gaps by Phase)
+
+Several of these are now settled on the boards; the catalog's current Design Gaps by Phase section is the up-to-date list.
 
 ### #412 (Scaffold and tokens)
 - Working-indicator color: three blue dots (Thread rule card) or neutral dots with a `statusWorking` ring (DS-06).

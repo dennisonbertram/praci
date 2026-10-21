@@ -1,0 +1,80 @@
+{
+  "mode": "judge",
+  "images": [],
+  "results": [
+    {
+      "model": "meta/muse-wonder",
+      "ok": true,
+      "seconds": 22,
+      "costUsd": 0.0599912,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 2,
+            "simplicity": 5,
+            "consistency": 2,
+            "usability": 3,
+            "visual": 4,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 2,
+            "simplicity": 2,
+            "consistency": 2,
+            "usability": 3,
+            "visual": 3,
+            "effort": 1
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 4,
+            "effort": 4
+          }
+        },
+        "winner": "C",
+        "graft": "From A: delete the 'Sends after run' caption outright with no replacement caption during the run, so C's only added drawing is the 'Run finished, draft kept' frame.",
+        "defense": "C is the only proposal meeting all acceptance points: draft-kept matches DS-06 with Stop occupying the existing composer slot (one prominent action, no added glass group), the Messages-style row becomes the sole reaction picker after removing the duplicate React menu item so DS-06 and PH-Thread can state the same shipped rule, and Archive returns Home with a named bottom Undo toast while menu/Settings/toast share 'agent'/'group'. A merely deletes the caption but leaves deferred-vs-drawn reactions contradictory, keeps both reaction entry points, and leaves toast text/noun unchanged without Undo. B contradicts DS-06's draft rule, requires a backend queue, crowds Stop with a second Send action, removes the persona's desired thumbs-up entirely, and specifies no bottom Undo toast."
+      }
+    },
+    {
+      "model": "google/gemini-4-argon",
+      "ok": true,
+      "seconds": 27,
+      "costUsd": 0.021838,
+      "result": {
+        "scores": {
+          "A": {
+            "criteria": 3,
+            "simplicity": 5,
+            "consistency": 3,
+            "usability": 3,
+            "visual": 4,
+            "effort": 5
+          },
+          "B": {
+            "criteria": 2,
+            "simplicity": 2,
+            "consistency": 2,
+            "usability": 3,
+            "visual": 3,
+            "effort": 2
+          },
+          "C": {
+            "criteria": 5,
+            "simplicity": 4,
+            "consistency": 5,
+            "usability": 5,
+            "visual": 5,
+            "effort": 4
+          }
+        },
+        "winner": "C",
+        "graft": "From A, skip adding the extra 'Run finished, draft kept' board frame and simply remove the 'Sends after run' caption so the running composer is drawn only once.",
+        "defense": "C is the only proposal that fulfills every acceptance criterion and persona goal: it preserves typed text as a draft with a single Stop control in the composer slot, aligns DS-06 and PH-Thread on a clean iOS Messages-style emoji row (removing the redundant React menu item so the founder can easily thumbs-up), and pops Archive back to Home with a bottom Undo toast and unified nouns across menu, toast, and Settings. A falls short because leaving toast and menu copy unchanged fails the single-noun rule and keeping both the emoji row and a 'React' menu item duplicates the interaction. B is rejected because introducing a 'Queued' bubble and a Send button alongside Stop requires backend queuing (high effort/risk), crowds the composer against the single prominent action rule, and strips out reactions that the persona explicitly needs."
+      }
+    }
+  ]
+}
