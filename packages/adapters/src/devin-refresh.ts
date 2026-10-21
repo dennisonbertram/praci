@@ -345,7 +345,18 @@ export async function refreshDevinConnection(
   if (!(await commit(result.data, result.write))) return "discarded";
   // After the commit, with no transaction open: a failure here leaves the row unrecorded, so the
   // next run tries again and the notification's dedupe key keeps it to one.
-  for (const alert of result.failed ? [] : alerts) {
+  // The connector may have left, or the connection been removed or replaced, since the lease was
+  // taken; alert nobody then. The check and the alerts are not one transaction, so a change in
+  // the milliseconds between them can still send one alert to the previous connector.
+  const stillActive =
+    alerts.length > 0 &&
+    !result.failed &&
+    (await prisma.spaceMember.findFirst({ where: { spaceId, userId }, select: { id: true } })) &&
+    (await prisma.devinConnectionState.findUnique({
+      where: { serverId },
+      select: { serverId: true },
+    }));
+  for (const alert of stillActive ? alerts : []) {
     try {
       await notifyDevinNeedsInput(
         prisma,
