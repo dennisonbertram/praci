@@ -41,6 +41,7 @@ import {
 } from "./lib/session-gate";
 import { signInFor, signInNext } from "./lib/sign-in-next";
 import { completeSsoCallback, SSO_CALLBACK_PATH } from "./lib/sso-flow";
+import { ConnectedCallbackPage } from "./pages/ConnectedCallback";
 import { GoogleOAuthCallbackPage } from "./pages/GoogleOAuthCallback";
 import { LocalSettingsPage } from "./pages/LocalSettings";
 import { McpOAuthCallbackPage } from "./pages/McpOAuthCallback";
@@ -189,6 +190,7 @@ function SessionApp() {
             path="/integrations/google/callback"
             element={user ? <GoogleOAuthCallbackPage /> : <Navigate to="/sign-in" replace />}
           />
+          <Route path="/integrations/connected" element={<ConnectedCallbackPage />} />
           {/* Setup links from the server use this path; the page itself lives inside the shell. */}
           <Route path="/integrations/setup" element={<LegacySetupRedirect />} />
           <Route

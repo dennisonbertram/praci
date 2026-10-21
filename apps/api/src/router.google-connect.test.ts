@@ -317,6 +317,18 @@ describe("connections.begin for the native Google connector", () => {
     });
   });
 
+  it.each(["composio", "pipedream"])(
+    "sends %s back to the page that closes the popup",
+    async (id) => {
+      const h = beginHarness(id);
+      const response = await h.post({ connectorId: id });
+      expect(response.status).toBe(200);
+      expect(h.begin.mock.calls[0]![0].redirectUrl).toBe(
+        "http://127.0.0.1:5173/integrations/connected",
+      );
+    },
+  );
+
   it("asks for the desktop loopback redirect and records it on the pending row", async () => {
     const h = beginHarness();
     const response = await h.post({ connectorId: "google", redirect: "desktop" });

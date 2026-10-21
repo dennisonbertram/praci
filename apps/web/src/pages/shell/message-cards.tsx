@@ -11,6 +11,7 @@ import type { ArtifactTarget } from "../../lib/artifact-open";
 import { chartViewport } from "../../lib/chart-viewport";
 import { useHideAmounts } from "../../lib/hide-amounts-preference";
 import { connectMcpOauth } from "../../lib/mcp-connect";
+import { PLUGIN_CONNECT_WINDOW } from "../../lib/plugin-connect";
 import { rpc } from "../../lib/rpc";
 import { useArtifactImageState } from "../../lib/use-artifact-image";
 import { errorText } from "../../lib/user-error";
@@ -198,7 +199,17 @@ export function AppConnectCard({
         displayName: block.name,
       });
       if (started.authorizationUrl) {
-        window.open(started.authorizationUrl, "rakazo-app-connect", "popup,width=560,height=720");
+        const opened = window.open(
+          started.authorizationUrl,
+          PLUGIN_CONNECT_WINDOW,
+          "popup,width=560,height=720",
+        );
+        try {
+          // The provider's page must not reach back into Praci.
+          if (opened) opened.opener = null;
+        } catch {
+          // Cross-origin handles may refuse; the named window still works.
+        }
       }
       for (let i = 0; i < 60; i += 1) {
         if (controller.signal.aborted) return;
