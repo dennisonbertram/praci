@@ -44,7 +44,7 @@ import type { GmailPushConfig } from "./gmail-push.js";
 import { ensureMailWatch, runMailWatchRenewal } from "./gmail-push.js";
 import { compactHistory } from "./history-compaction.js";
 import { createInboxClassifierProvider } from "./inbox-classifier-factory.js";
-import { runInboxTriage } from "./inbox-triage.js";
+import { runInboxTriage, triageReadiness } from "./inbox-triage.js";
 import { runMailAttachmentFiling } from "./mail-attachment-filing.js";
 import { runMailSyncJob } from "./mail-sync-job.js";
 import { expireMailSearch } from "./mail-tools.js";
@@ -197,6 +197,11 @@ export function createBackgroundJobHandlers(deps: {
           mail,
           jobs: deps.jobs,
           mailWritesDisabled: deps.mailWritesDisabled,
+          digestReady: async (scope) =>
+            (await triageReadiness(
+              { prisma: deps.prisma, resolveModel: deps.executor.resolveModel },
+              scope,
+            )) !== null,
           ...(deps.gmailPush
             ? {
                 afterSync: (account, context) =>
@@ -227,6 +232,7 @@ export function createBackgroundJobHandlers(deps: {
         {
           prisma: deps.prisma,
           runtime: deps.runtime,
+          jobs: deps.jobs,
           resolveModel: deps.executor.resolveModel,
         },
         payload,

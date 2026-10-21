@@ -1620,6 +1620,38 @@ describePostgres("inbox procedures (PostgreSQL)", () => {
         await drop(who);
       });
 
+      it("keeps reporting syncing while recent meetings wait for a digest, so a later result shows up", async () => {
+        await wipeConsent();
+        const who = await meetingOnlyUser();
+        await prisma.member.create({
+          data: {
+            id: `${who.userId}-member`,
+            organizationId: orgA,
+            userId: who.userId,
+            role: "member",
+            createdAt: new Date(),
+          },
+        });
+        await allow(who);
+        await source(who, new Date());
+        const todoDeps = { ...deps, ...ready };
+        await withMeeting(who, "Waiting");
+        const meetingId = (await prisma.meeting.findFirstOrThrow({ where: { userId: who.userId } }))
+          .id;
+        await prisma.meeting.update({ where: { id: meetingId }, data: { digestStatus: null } });
+        expect((await inboxTodosList(todoDeps, who, {})).meetings.syncing).toBe(true);
+        // Without consent the digest cannot run, so the client is not kept waiting.
+        await wipeConsent();
+        expect((await inboxTodosList(todoDeps, who, {})).meetings.syncing).toBe(false);
+        await allow(who);
+        await prisma.meeting.update({ where: { id: meetingId }, data: { digestStatus: "done" } });
+        const done = await inboxTodosList(todoDeps, who, {});
+        expect(done.meetings.syncing).toBe(false);
+        expect(done.todos.map((t) => t.text)).toEqual(["Waiting"]);
+        await wipeConsent();
+        await drop(who);
+      });
+
       it("completes a meeting to-do after its source is disconnected, and never another user's", async () => {
         const who = await meetingOnlyUser();
         const stranger = await meetingOnlyUser();

@@ -315,7 +315,9 @@ export async function allowAiConsent(
   );
   // Granting consent lets stored meetings without a digest be digested; a lost enqueue is retried
   // by the next trigger.
-  await queueMeetingDigests(deps, actor).catch(() => undefined);
+  await queueMeetingDigests(deps, { spaceId: actor.spaceId, userId: actor.userId }).catch(
+    () => undefined,
+  );
   return {
     ...current,
     recipients: current.recipients.map((recipient) =>

@@ -337,6 +337,30 @@ it("shows Syncing while the first meeting sync runs", async () => {
   expect(container.textContent).not.toContain("No follow-ups from meetings yet");
 });
 
+it("looks again every 5 seconds while meetings sync, and stops once the screen is gone", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  listReply = () => inboxList({ accounts: [], agent: null });
+  todosReply = () => ({
+    enabled: true,
+    todos: [],
+    meetings: { source: true, syncing: true, ready: true },
+  });
+  await render();
+  const asked = () => procs().filter((proc) => proc === "inbox/todos/list").length;
+  const before = asked();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(5_100);
+  });
+  expect(asked()).toBe(before + 1);
+  await act(async () => root.unmount());
+  const after = asked();
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(20_000);
+  });
+  expect(asked()).toBe(after);
+  root = createRoot(container);
+});
+
 it("parses a to-do reply whose connectionId is null", () => {
   const parsed = InboxTodosOutputSchema.parse({
     enabled: true,

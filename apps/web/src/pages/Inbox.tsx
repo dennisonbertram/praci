@@ -826,6 +826,19 @@ function InboxListPage({
     setSelectedId(id);
     setParams(next, { state: LIST_OPEN });
   };
+  const todoCard = todos ? (
+    <TodoCard
+      todos={todos}
+      meetings={meetings ?? undefined}
+      onOpen={openMessage}
+      onChange={(next) =>
+        setTodosByTab((all) => ({
+          ...all,
+          [tabKey]: (all[tabKey] ?? []).map((item) => (item.id === next.id ? next : item)),
+        }))
+      }
+    />
+  ) : null;
   const closeMessage = () => {
     if ((location.state as typeof LIST_OPEN | null)?.inboxList) return navigate(-1);
     const next = new URLSearchParams(params);
@@ -1297,20 +1310,7 @@ function InboxListPage({
         ) : data && accounts.length === 0 && meetingTodos ? (
           // A meeting-only user: the follow-ups come first, with a plain way to add mail.
           <>
-            {todos ? (
-              <TodoCard
-                todos={todos}
-                meetings={meetings ?? undefined}
-                onChange={(next) =>
-                  setTodosByTab((all) => ({
-                    ...all,
-                    [tabKey]: (all[tabKey] ?? []).map((item) =>
-                      item.id === next.id ? next : item,
-                    ),
-                  }))
-                }
-              />
-            ) : null}
+            {todoCard}
             <Button onClick={onConnectMail}>
               <Trans>Connect mail</Trans>
             </Button>
@@ -1332,33 +1332,37 @@ function InboxListPage({
             ))}
           </div>
         ) : shown && rows.length === 0 ? (
-          failed ? null : (
-            <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
-              {query ? (
-                <>
+          <>
+            {/* Meeting follow-ups do not depend on the mail list, so an empty list does not hide them. */}
+            {pile === "important" && meetingTodos ? todoCard : null}
+            {failed ? null : (
+              <div className="flex flex-col items-center gap-3 py-16 text-sm text-muted-foreground">
+                {query ? (
+                  <>
+                    <p>
+                      <Trans>No results for "{query}"</Trans>
+                    </p>
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                      <Trans>Clear</Trans>
+                    </Button>
+                  </>
+                ) : filter || category ? (
+                  <>
+                    <p>
+                      <Trans>No mail matches this filter</Trans>
+                    </p>
+                    <Button variant="outline" size="sm" onClick={clearFilters}>
+                      <Trans>Clear</Trans>
+                    </Button>
+                  </>
+                ) : (
                   <p>
-                    <Trans>No results for "{query}"</Trans>
+                    <Trans>No mail</Trans>
                   </p>
-                  <Button variant="outline" size="sm" onClick={clearFilters}>
-                    <Trans>Clear</Trans>
-                  </Button>
-                </>
-              ) : filter || category ? (
-                <>
-                  <p>
-                    <Trans>No mail matches this filter</Trans>
-                  </p>
-                  <Button variant="outline" size="sm" onClick={clearFilters}>
-                    <Trans>Clear</Trans>
-                  </Button>
-                </>
-              ) : (
-                <p>
-                  <Trans>No mail</Trans>
-                </p>
-              )}
-            </div>
-          )
+                )}
+              </div>
+            )}
+          </>
         ) : shown ? (
           <>
             {pile !== "important" ? null : shown.triageBlocked?.reason === "needs_consent" &&
@@ -1395,20 +1399,8 @@ function InboxListPage({
                 <Spinner aria-hidden="true" />
                 <Trans>Sorting your mail…</Trans>
               </p>
-            ) : showTodos && todos ? (
-              <TodoCard
-                todos={todos}
-                meetings={meetings ?? undefined}
-                onOpen={openMessage}
-                onChange={(next) =>
-                  setTodosByTab((all) => ({
-                    ...all,
-                    [tabKey]: (all[tabKey] ?? []).map((item) =>
-                      item.id === next.id ? next : item,
-                    ),
-                  }))
-                }
-              />
+            ) : showTodos ? (
+              todoCard
             ) : null}
             {resultsView ? (
               <div className="mb-1.5 flex items-center justify-between text-xs text-muted-foreground">

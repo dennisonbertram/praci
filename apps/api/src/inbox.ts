@@ -56,6 +56,8 @@ export interface InboxDeps {
 
 const WINDOW_MS = 14 * 86_400_000;
 const MAX_ROWS = 200;
+/** Meetings stored this recently count as still being digested while their digest is empty. */
+const DIGEST_WINDOW_MS = 10 * 60_000;
 /** Updates and Newsletters group by sender, so a noisy sender must not be cut off at 200 rows. */
 const MAX_GROUPED_ROWS = 500;
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
@@ -806,13 +808,26 @@ export async function inboxTodosList(
     }),
   ]);
   const source = sources.length > 0;
+  // Digests still to come keep a client looking: only while they can run, and only for meetings
+  // stored recently, so a digest that never runs does not keep it polling for ever.
+  const digesting =
+    triage &&
+    source &&
+    (await deps.prisma.meeting.count({
+      where: {
+        ...own,
+        deletedAt: null,
+        OR: [{ digestStatus: null }, { digestStatus: "running" }],
+        createdAt: { gt: new Date(Date.now() - DIGEST_WINDOW_MS) },
+      },
+    })) > 0;
   const hasMeetingTodo = rows.some((row) => row.meetingId !== null);
   return {
     enabled: triage || hasMeetingTodo || source,
     todos: rows.map(todoOut),
     meetings: {
       source,
-      syncing: sources.some((s) => s.syncedThrough === null),
+      syncing: sources.some((s) => s.syncedThrough === null) || digesting,
       ready: triage,
     },
   };

@@ -119,7 +119,11 @@ export default function InboxScreen() {
   const meetingsSyncing = Boolean(meetings?.syncing);
   useEffect(() => {
     if (!meetingsSyncing) return;
-    const timer = setTimeout(() => void fetchList(tabRef.current, generationRef.current), 5_000);
+    // Losing focus bumps the generation, so a timer set while focused does nothing once it is blurred.
+    const generation = generationRef.current;
+    const timer = setTimeout(() => {
+      if (generation === generationRef.current) void fetchList(tabRef.current, generation);
+    }, 5_000);
     return () => clearTimeout(timer);
   }, [meetingsSyncing, fetchList, todos]);
 

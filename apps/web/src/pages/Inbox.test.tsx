@@ -1053,6 +1053,31 @@ it("shows meeting follow-ups on every account tab", async () => {
   await click(tab("All") ?? null);
 });
 
+it("shows meeting follow-ups even when the mail list is empty, on All and on an account tab", async () => {
+  const accounts = [
+    { connectionId: "c1", label: "Me" },
+    { connectionId: "c2", label: "Sales" },
+  ] as InboxListOutput["accounts"];
+  rpcMock.list.mockResolvedValue(list([], { accounts, syncedAt: "2026-10-12T00:00:00.000Z" }));
+  rpcMock.todos.mockResolvedValue({
+    enabled: true,
+    todos: [meetingTodo("t1", "From a meeting")],
+    meetings: sourceOn,
+  });
+  const c = await render();
+  expect(c.textContent).toContain("No mail");
+  expect(c.textContent).toContain("From a meeting");
+  const sales = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (el) => el.textContent === "Sales",
+  );
+  await click(sales ?? null);
+  expect(c.textContent).toContain("From a meeting");
+  const all = [...c.querySelectorAll<HTMLElement>('[role="tab"]')].find(
+    (el) => el.textContent === "All",
+  );
+  await click(all ?? null);
+});
+
 it("opens the shortcut list with ? while a message is open", async () => {
   await render(["/app/inbox?mail=b"]);
   await press("?");

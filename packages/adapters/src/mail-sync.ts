@@ -58,6 +58,8 @@ export interface MailSyncDeps {
   mail: MailProvider;
   /** Queues triage after each successful sync. */
   jobs: JobPublisher;
+  /** Whether meeting digests can run for the user; without it a sync queues none. */
+  digestReady?: (scope: { spaceId: string; userId: string }) => Promise<boolean>;
   /** Clock for the cache window; defaults to the system clock. */
   now?: () => Date;
   /** Caps every provider call of a sync. Without it an incremental sync gets 90 seconds and a full window re-list 240, both shorter than the 5-minute stale claim. */
@@ -536,10 +538,14 @@ export async function syncMailbox(
             reason: error instanceof Error ? error.name : "error",
           });
         });
-        // A connected account adds an identity, so stored meeting digests are matched again.
-        // ponytail: runs on every successful sync; a meeting is queued again only while its digest is
-        // missing or was matched against another identity set.
-        await queueMeetingDigests(deps, { spaceId, userId }).catch((error) => {
+        // A connected account adds an identity, so stored meeting digests are matched again. Only
+        // when digests can run (a model and consent), so a skipped meeting is not queued every sync.
+        // A failed digest is never queued again; a meeting is queued while its digest is missing or
+        // was matched against another identity set.
+        await (async () => {
+          if (!(await deps.digestReady?.({ spaceId, userId }))) return;
+          await queueMeetingDigests(deps, { spaceId, userId });
+        })().catch((error) => {
           getLogger().warn("meeting digest queue failed", {
             reason: error instanceof Error ? error.name : "error",
           });

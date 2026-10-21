@@ -61,11 +61,16 @@ describePostgres("meeting digest (PostgreSQL)", () => {
   let prisma: PrismaClient;
   let handle: Awaited<ReturnType<typeof createDb>>;
 
-  async function addUser(options: { consent?: boolean; gmail?: string } = {}) {
+  async function addUser(options: { consent?: boolean; gmail?: string; verified?: boolean } = {}) {
     const userId = `digest-user-${suffix}-${userIds.length}`;
     userIds.push(userId);
     await prisma.user.create({
-      data: { id: userId, name: userId, email: `${userId}@Rakazo.test`, emailVerified: false },
+      data: {
+        id: userId,
+        name: userId,
+        email: `${userId}@Rakazo.test`,
+        emailVerified: options.verified !== false,
+      },
     });
     await prisma.member.create({
       data: {
@@ -216,18 +221,179 @@ describePostgres("meeting digest (PostgreSQL)", () => {
     expect((await todos(user.userId)).map((t) => t.text)).toEqual(["Call the vendor"]);
   });
 
-  it("treats a commitment owned by 'me' as the user's only when the transcript has a Me speaker", async () => {
+  it("ignores a Me speaker line in the transcript: transcript text never decides who the user is", async () => {
     const user = await addUser();
-    const withMe = await addMeeting(user.userId, { transcript: "x" });
-    await prisma.meeting.update({
-      where: { id: withMe },
-      data: { transcript: "Me: I will do it" },
+    const id = await addMeeting(user.userId, { transcript: "x" });
+    await prisma.meeting.update({ where: { id }, data: { transcript: "Me: I will do it" } });
+    await digest(
+      user.userId,
+      id,
+      fakeRuntime([digestJson([{ owner: "me", text: "Claimed by a transcript line" }])]).runtime,
+    );
+    expect(await todos(user.userId)).toHaveLength(0);
+  });
+
+  it("counts an owner given as a name only when exactly one attendee has that name", async () => {
+    const gmail = `alex-${suffix}@gmail.test`;
+    const user = await addUser({ gmail });
+    const ambiguous = await addMeeting(user.userId, {
+      attendees: [
+        { name: "Alex", email: gmail },
+        { name: "alex", email: "other-alex@x.test" },
+      ],
     });
-    const without = await addMeeting(user.userId);
-    const answer = (text: string) => fakeRuntime([digestJson([{ owner: "me", text }])]).runtime;
-    await digest(user.userId, without, answer("Not mine"));
-    await digest(user.userId, withMe, answer("Mine from the me line"));
-    expect((await todos(user.userId)).map((t) => t.text)).toEqual(["Mine from the me line"]);
+    const answer = (text: string) => fakeRuntime([digestJson([{ owner: "ALEX", text }])]).runtime;
+    await digest(user.userId, ambiguous, answer("Two Alexes"));
+    expect(await todos(user.userId)).toHaveLength(0);
+    const single = await addMeeting(user.userId, { attendees: [{ name: "Alex", email: gmail }] });
+    await digest(user.userId, single, answer("One Alex"));
+    expect((await todos(user.userId)).map((t) => t.text)).toEqual(["One Alex"]);
+  });
+
+  it("does not use an unverified User.email, but still uses a connected Gmail account", async () => {
+    const gmail = `v-${suffix}@gmail.test`;
+    const user = await addUser({ verified: false });
+    const id = await addMeeting(user.userId, { attendees: [{ email: user.email }] });
+    await digest(
+      user.userId,
+      id,
+      fakeRuntime([digestJson([{ owner: user.email, text: "Unverified" }])]).runtime,
+    );
+    expect(await todos(user.userId)).toHaveLength(0);
+    await addGmail(user.userId, gmail);
+    const other = await addMeeting(user.userId, { attendees: [{ email: gmail }] });
+    await digest(
+      user.userId,
+      other,
+      fakeRuntime([digestJson([{ owner: gmail, text: "Verified by OAuth" }])]).runtime,
+    );
+    expect((await todos(user.userId)).map((t) => t.text)).toEqual(["Verified by OAuth"]);
+  });
+
+  it("stores the digest and its to-dos together: a failed insert leaves the meeting retryable", async () => {
+    const user = await addUser();
+    const id = await addMeeting(user.userId, { attendees: [{ email: user.email }] });
+    let fail = true;
+    const flaky = new Proxy(prisma, {
+      get(target, prop, receiver) {
+        if (prop !== "$transaction") return Reflect.get(target, prop, receiver);
+        return (fn: (tx: PrismaClient) => Promise<unknown>) =>
+          target.$transaction((tx) =>
+            fn(
+              new Proxy(tx, {
+                get(t, p, r) {
+                  if (p === "inboxTodo") {
+                    return new Proxy(t.inboxTodo, {
+                      get(model, method, receiver) {
+                        if (method === "createMany" && fail) {
+                          return () => {
+                            fail = false;
+                            throw new Error("insert failed");
+                          };
+                        }
+                        return Reflect.get(model, method, receiver);
+                      },
+                    });
+                  }
+                  return Reflect.get(t, p, r);
+                },
+              }) as PrismaClient,
+            ),
+          );
+      },
+    }) as PrismaClient;
+    const rt = fakeRuntime([digestJson([{ owner: user.email, text: "Do it" }])]);
+    const run = (client: PrismaClient) =>
+      runMeetingDigest(
+        { prisma: client, runtime: rt.runtime, resolveModel: async () => model },
+        { spaceId, userId: user.userId, meetingId: id },
+      );
+    await expect(run(flaky)).rejects.toThrow("insert failed");
+    const after = await prisma.meeting.findUniqueOrThrow({ where: { id } });
+    expect(after.digestStatus).toBeNull();
+    expect(after.digest).toBeNull();
+    await run(prisma);
+    expect((await todos(user.userId)).map((t) => t.text)).toEqual(["Do it"]);
+    expect((await prisma.meeting.findUniqueOrThrow({ where: { id } })).digestStatus).toBe("done");
+  });
+
+  it("makes one model call when two jobs digest the same meeting at once", async () => {
+    const user = await addUser();
+    const id = await addMeeting(user.userId, { attendees: [{ email: user.email }] });
+    const requests: unknown[] = [];
+    const runtime = {
+      run: async function* (request: unknown) {
+        requests.push(request);
+        await new Promise((resolve) => setTimeout(resolve, 150));
+        yield { type: "done" as const, text: digestJson([{ owner: user.email, text: "Once" }]) };
+      },
+    } as unknown as AgentRuntime;
+    await Promise.all([digest(user.userId, id, runtime), digest(user.userId, id, runtime)]);
+    expect(requests).toHaveLength(1);
+    expect(await todos(user.userId)).toHaveLength(1);
+  });
+
+  it("counts a model error toward the attempt limit and ends failed", async () => {
+    const user = await addUser();
+    const id = await addMeeting(user.userId);
+    let calls = 0;
+    const runtime = {
+      run: async function* () {
+        calls++;
+        if (calls > 0) throw new Error("model down");
+        yield { type: "done" as const, text: "" };
+      },
+    } as unknown as AgentRuntime;
+    await digest(user.userId, id, runtime);
+    expect(calls).toBe(3);
+    expect((await prisma.meeting.findUniqueOrThrow({ where: { id } })).digestStatus).toBe("failed");
+  });
+
+  it("filters matched digests before the limit, and continues a longer backlog", async () => {
+    const user = await addUser();
+    const scope = { spaceId, userId: user.userId };
+    const pending = await addMeeting(user.userId);
+    await prisma.meeting.update({
+      where: { id: pending },
+      data: { startedAt: new Date("2020-01-01T00:00:00Z") },
+    });
+    const queue = fakeJobs();
+    // Newer meetings with a digest already matched against this identity set need nothing.
+    for (let i = 0; i < 3; i++) {
+      const done = await addMeeting(user.userId);
+      await digest(user.userId, done, fakeRuntime([digestJson([])]).runtime);
+    }
+    expect(await queueMeetingDigests({ prisma, jobs: queue.jobs }, scope, 2)).toBe(1);
+    expect(queue.enqueued.map((j) => (j.payload as { meetingId: string }).meetingId)).toEqual([
+      pending,
+    ]);
+
+    // Three empty digests with a limit of 2: the last queued job carries on with the rest.
+    const more = fakeJobs();
+    const user2 = await addUser();
+    const ids = [
+      await addMeeting(user2.userId),
+      await addMeeting(user2.userId),
+      await addMeeting(user2.userId),
+    ];
+    expect(
+      await queueMeetingDigests({ prisma, jobs: more.jobs }, { spaceId, userId: user2.userId }, 2),
+    ).toBe(2);
+    expect(more.enqueued.map((j) => (j.payload as { continue?: boolean }).continue)).toEqual([
+      undefined,
+      true,
+    ]);
+    const rest = fakeJobs();
+    await runMeetingDigest(
+      {
+        prisma,
+        runtime: fakeRuntime(["{}"]).runtime,
+        jobs: rest.jobs,
+        resolveModel: async () => model,
+      },
+      { spaceId, userId: user2.userId, meetingId: ids[0] as string, continue: true },
+    );
+    expect(rest.enqueued).toHaveLength(2);
   });
 
   it("stores the digest but creates no to-do when the user has no matching attendee", async () => {
