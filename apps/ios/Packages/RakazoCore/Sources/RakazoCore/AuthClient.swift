@@ -287,7 +287,7 @@ public actor AuthClient {
     if action == .signUp, normalizedName.isEmpty {
       throw AuthClientError.invalidName
     }
-    if action == .signUp, password.count < 8 {
+    if action == .signUp, password.utf16.count < 8 {
       throw AuthClientError.invalidPassword
     }
 
@@ -445,14 +445,23 @@ public actor AuthClient {
     let attemptID = UUID()
     activeSSOAttempt = attemptID
     do {
+      var callbackComponents = URLComponents()
+      callbackComponents.scheme = "rakazo"
+      callbackComponents.host = "sign-in"
+      callbackComponents.queryItems = [
+        URLQueryItem(name: "nativeAttempt", value: attemptID.uuidString)
+      ]
+      guard let callbackURL = callbackComponents.string else {
+        throw AuthClientError.invalidSSOResponse
+      }
       let response = try await sendJSON(
         path: "/api/auth/sign-in/social",
         endpoint: currentEndpoint,
         method: "POST",
         payload: [
           "provider": "oidc",
-          "callbackURL": "rakazo://sign-in",
-          "errorCallbackURL": "rakazo://sign-in",
+          "callbackURL": callbackURL,
+          "errorCallbackURL": callbackURL,
           "disableRedirect": true,
         ],
         headers: ["x-skip-oauth-proxy": "true"],
@@ -501,8 +510,14 @@ public actor AuthClient {
     defer {
       if activeSSOAttempt == challenge.attemptID { activeSSOAttempt = nil }
     }
+    guard let callbackComponents = URLComponents(url: callback, resolvingAgainstBaseURL: false)
+    else {
+      throw AuthClientError.invalidCallback
+    }
+    let nativeAttempts = callbackComponents.queryItems?.filter { $0.name == "nativeAttempt" } ?? []
     guard isValidCallback(callback),
-      let callbackComponents = URLComponents(url: callback, resolvingAgainstBaseURL: false),
+      nativeAttempts.count == 1,
+      nativeAttempts[0].value == challenge.attemptID.uuidString,
       let cookie = callbackComponents.queryItems?.first(where: { $0.name == "cookie" })?.value,
       let token = cookieValue(cookie, name: "better-auth.session_token")
         ?? cookieValue(cookie, name: "__Secure-better-auth.session_token"),

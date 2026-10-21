@@ -198,6 +198,40 @@ func extractsJSONAndCookieSessionTokensAndRequiresExplicitSignupNull() async thr
 }
 
 @Test
+func signupUsesUTF16PasswordLengthAndPreservesPasswordPayload() async throws {
+  let password = "😀😀😀😀😀😀😀"
+  #expect(password.count == 7)
+  #expect(password.utf16.count >= 8)
+
+  let storage = TestStorage()
+  let transport = TestTransport(responses: [
+    try jsonResponse([
+      "passwordAuth": true, "passwordReset": false, "resetUrl": NSNull(), "sso": NSNull(),
+    ]),
+    try jsonResponse(["token": "signup-token"]),
+  ])
+  let client = AuthClient(
+    endpoint: ServerEndpoint.defaultURL, storage: storage, transport: transport)
+  #expect(
+    try await client.authenticate(
+      .signUp, email: "ada@example.test", password: password, name: "Ada") == .signedIn)
+  #expect(storage.session?.token == "signup-token")
+  let calls = await transport.calls
+  let requestBody = try #require(calls.last?.body)
+  let request = try #require(JSONSerialization.jsonObject(with: requestBody) as? [String: Any])
+  #expect(request["password"] as? String == password)
+
+  let shortPasswordTransport = TestTransport(responses: [])
+  let shortPasswordClient = AuthClient(
+    endpoint: ServerEndpoint.defaultURL, storage: TestStorage(), transport: shortPasswordTransport)
+  await #expect(throws: AuthClientError.invalidPassword) {
+    try await shortPasswordClient.authenticate(
+      .signUp, email: "ada@example.test", password: "1234567", name: "Ada")
+  }
+  #expect((await shortPasswordTransport.calls).isEmpty)
+}
+
+@Test
 func malformedCookieHeaderIsTreatedAsMissingSession() async throws {
   let storage = TestStorage()
   let transport = TestTransport(responses: [
@@ -441,8 +475,21 @@ func ssoUsesProxyStateAndOnlyCommitsVerifiedCallback() async throws {
     URLComponents(url: challenge.url, resolvingAgainstBaseURL: false)?.queryItems?.contains {
       $0.name == "oauthState" && $0.value == "state/value"
     } == true)
-  let callback = URL(
-    string: "rakazo://sign-in?cookie=better-auth.session_token%3Dsso-token%3B%20Path%3D%2F")!
+  let calls = await transport.calls
+  let socialRequest = try #require(calls.dropFirst().first)
+  let socialBody = try #require(socialRequest.body)
+  let socialPayload = try #require(JSONSerialization.jsonObject(with: socialBody) as? [String: Any])
+  let callbackString = try #require(socialPayload["callbackURL"] as? String)
+  #expect(socialPayload["errorCallbackURL"] as? String == callbackString)
+  let nativeAttempts = URLComponents(string: callbackString)?.queryItems?.filter {
+    $0.name == "nativeAttempt"
+  } ?? []
+  #expect(nativeAttempts.count == 1)
+  let callback = try callbackURL(
+    from: socialRequest,
+    adding: [
+      URLQueryItem(name: "cookie", value: "better-auth.session_token=sso-token; Path=/")
+    ])
   try await client.completeSSO(callback: callback, challenge: challenge)
   #expect(storage.session?.token == "sso-token")
 }
@@ -481,23 +528,22 @@ func canceledSSOCallbackCannotSaveToken() async throws {
   let client = AuthClient(
     endpoint: ServerEndpoint.defaultURL, storage: storage, transport: transport)
   let challenge = try await client.beginSSO()
+  let calls = await transport.calls
+  let callback = try callbackURL(
+    from: try #require(calls.dropFirst().first),
+    adding: [
+      URLQueryItem(name: "cookie", value: "better-auth.session_token=bad; Path=/")
+    ])
   await client.cancelSSO(challenge)
   await #expect(throws: AuthClientError.staleRequest) {
-    try await client.completeSSO(
-      callback: URL(string: "rakazo://sign-in?cookie=better-auth.session_token%3Dbad")!,
-      challenge: challenge
-    )
+    try await client.completeSSO(callback: callback, challenge: challenge)
   }
   #expect(storage.session == nil)
 }
 
 @Test
 func rejectsSSOCallbackWithWrongHostOrError() async throws {
-  for callback in [
-    URL(string: "rakazo://wrong-host?cookie=better-auth.session_token%3Dbad")!,
-    URL(string: "rakazo://sign-in:3100?cookie=better-auth.session_token%3Dbad")!,
-    URL(string: "rakazo://sign-in?error=access_denied")!,
-  ] {
+  for invalidity in ["wrong-host", "port", "error"] {
     let transport = TestTransport(responses: [
       try jsonResponse([
         "passwordAuth": false,
@@ -511,11 +557,125 @@ func rejectsSSOCallbackWithWrongHostOrError() async throws {
     let client = AuthClient(
       endpoint: ServerEndpoint.defaultURL, storage: storage, transport: transport)
     let challenge = try await client.beginSSO()
+    let calls = await transport.calls
+    let validCallback = try callbackURL(
+      from: try #require(calls.dropFirst().first),
+      adding: [
+        URLQueryItem(name: "cookie", value: "better-auth.session_token=bad; Path=/")
+      ])
+    var components = try #require(
+      URLComponents(url: validCallback, resolvingAgainstBaseURL: false))
+    switch invalidity {
+    case "wrong-host":
+      components.host = "wrong-host"
+    case "port":
+      components.port = 3100
+    case "error":
+      components.queryItems?.append(URLQueryItem(name: "error", value: "access_denied"))
+    default:
+      break
+    }
+    let callback = try #require(components.url)
     await #expect(throws: AuthClientError.invalidCallback) {
       try await client.completeSSO(callback: callback, challenge: challenge)
     }
     #expect(storage.session == nil)
+    #expect((await transport.calls).count == 2)
   }
+}
+
+@Test
+func rejectsMissingWrongOrDuplicateSSOAttemptNonceBeforeSessionValidation() async throws {
+  for invalidity in ["missing", "wrong", "duplicate"] {
+    let transport = TestTransport(responses: [
+      try jsonResponse([
+        "passwordAuth": false,
+        "passwordReset": false,
+        "resetUrl": NSNull(),
+        "sso": ["name": "Example", "availability": "available"],
+      ]),
+      try jsonResponse(["url": "https://identity.example/authorize?state=abc"]),
+      try jsonResponse(["user": ["id": "user-1"]]),
+    ])
+    let storage = TestStorage()
+    let client = AuthClient(
+      endpoint: ServerEndpoint.defaultURL, storage: storage, transport: transport)
+    let challenge = try await client.beginSSO()
+    let calls = await transport.calls
+    let socialRequest = try #require(calls.dropFirst().first)
+    var components = try #require(
+      URLComponents(
+        url: try callbackURL(from: socialRequest),
+        resolvingAgainstBaseURL: false))
+    var queryItems = components.queryItems ?? []
+    let attemptIndex = try #require(queryItems.firstIndex { $0.name == "nativeAttempt" })
+    switch invalidity {
+    case "missing":
+      queryItems.remove(at: attemptIndex)
+    case "wrong":
+      queryItems[attemptIndex].value = "not-this-attempt"
+    case "duplicate":
+      queryItems.append(queryItems[attemptIndex])
+    default:
+      break
+    }
+    queryItems.append(
+      URLQueryItem(name: "cookie", value: "better-auth.session_token=sso-token; Path=/"))
+    components.queryItems = queryItems
+    let callback = try #require(components.url)
+    await #expect(throws: AuthClientError.invalidCallback) {
+      try await client.completeSSO(callback: callback, challenge: challenge)
+    }
+    #expect(storage.session == nil)
+    #expect((await transport.calls).count == 2)
+  }
+}
+
+@Test
+func rejectsPreviousSSOAttemptNonce() async throws {
+  let transport = TestTransport(responses: [
+    try jsonResponse([
+      "passwordAuth": false,
+      "passwordReset": false,
+      "resetUrl": NSNull(),
+      "sso": ["name": "Example", "availability": "available"],
+    ]),
+    try jsonResponse(["url": "https://identity.example/authorize?state=first"]),
+    try jsonResponse(["url": "https://identity.example/authorize?state=second"]),
+    try jsonResponse(["user": ["id": "user-1"]]),
+  ])
+  let storage = TestStorage()
+  let client = AuthClient(
+    endpoint: ServerEndpoint.defaultURL, storage: storage, transport: transport)
+  let firstChallenge = try await client.beginSSO()
+  let firstCalls = await transport.calls
+  let firstRequest = try #require(firstCalls.dropFirst().first)
+  let firstCallback = try callbackURL(from: firstRequest)
+  let firstAttempt = try #require(
+    URLComponents(url: firstCallback, resolvingAgainstBaseURL: false)?.queryItems?
+      .first(where: { $0.name == "nativeAttempt" })?.value)
+  await client.cancelSSO(firstChallenge)
+
+  let secondChallenge = try await client.beginSSO()
+  let calls = await transport.calls
+  let secondRequest = try #require(calls.last)
+  var components = try #require(
+    URLComponents(
+      url: try callbackURL(from: secondRequest),
+      resolvingAgainstBaseURL: false))
+  #expect(
+    components.queryItems?.first(where: { $0.name == "nativeAttempt" })?.value != firstAttempt)
+  var queryItems = (components.queryItems ?? []).filter { $0.name != "nativeAttempt" }
+  queryItems.append(URLQueryItem(name: "nativeAttempt", value: firstAttempt))
+  queryItems.append(
+    URLQueryItem(name: "cookie", value: "better-auth.session_token=sso-token; Path=/"))
+  components.queryItems = queryItems
+  let callback = try #require(components.url)
+  await #expect(throws: AuthClientError.invalidCallback) {
+    try await client.completeSSO(callback: callback, challenge: secondChallenge)
+  }
+  #expect(storage.session == nil)
+  #expect((await transport.calls).count == 3)
 }
 
 @Test
@@ -534,12 +694,15 @@ func changingServerInvalidatesAnOutstandingSSOChallenge() async throws {
   let client = AuthClient(
     endpoint: ServerEndpoint.defaultURL, storage: storage, transport: transport)
   let challenge = try await client.beginSSO()
+  let calls = await transport.calls
+  let callback = try callbackURL(
+    from: try #require(calls.dropFirst().first),
+    adding: [
+      URLQueryItem(name: "cookie", value: "better-auth.session_token=bad; Path=/")
+    ])
   try await client.changeServer(to: URL(string: "https://other.example.test")!)
   await #expect(throws: AuthClientError.staleRequest) {
-    try await client.completeSSO(
-      callback: URL(string: "rakazo://sign-in?cookie=better-auth.session_token%3Dbad")!,
-      challenge: challenge
-    )
+    try await client.completeSSO(callback: callback, challenge: challenge)
   }
   #expect(storage.session == nil)
 }
@@ -668,4 +831,16 @@ private func jsonResponse(_ object: Any, status: Int = 200) throws -> HTTPRespon
     statusCode: status,
     body: try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
   )
+}
+
+private func callbackURL(
+  from call: TestTransport.Call,
+  adding queryItems: [URLQueryItem] = []
+) throws -> URL {
+  let body = try #require(call.body)
+  let payload = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+  let callbackString = try #require(payload["callbackURL"] as? String)
+  var components = try #require(URLComponents(string: callbackString))
+  components.queryItems = (components.queryItems ?? []) + queryItems
+  return try #require(components.url)
 }
