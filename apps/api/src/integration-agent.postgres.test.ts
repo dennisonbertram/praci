@@ -16,7 +16,10 @@ import {
   CARTA_READ_TOOLS,
   CARTA_WRITE_TOOLS,
   cartaAgentSpawnKey,
+  gtmAgentSpawnKey,
   integrationAgentSpawnKey,
+  ZERNIO_MCP_ENDPOINT,
+  ZERNIO_READ_TOOLS,
 } from "@rakazo/contracts";
 import type { PrismaClient } from "@rakazo/db";
 import { createDb, createRepos, createThreadEvents } from "@rakazo/db";
@@ -121,6 +124,16 @@ describePostgres("integration agents (PostgreSQL)", () => {
         },
       });
     }
+    await prisma.spaceMember.create({
+      data: {
+        id: id("space-member-other"),
+        spaceId: otherSpaceId,
+        organizationId: orgId,
+        userId: userA,
+        role: "member",
+        createdAt: new Date(),
+      },
+    });
     server = await mkServer(userA, "mercury", "https://mcp.mercury.com/mcp");
     plain = await mkServer(userA, "plain", "https://example.test/mcp");
     bServer = await mkServer(userB, "mercury-b", "https://mcp.mercury.com/mcp");
@@ -160,6 +173,37 @@ describePostgres("integration agents (PostgreSQL)", () => {
         jobs: { cancel: async () => undefined },
       } as unknown as RouterDeps),
       { context: { actor: a } as never },
+    );
+
+  const zernioListServerTools = vi.fn(async () => {
+    throw new Error("Zernio tool probing is forbidden during provisioning");
+  });
+  let zernioSecretSequence = 0;
+  const zernioSecrets = {
+    put: async (plaintext: string) => ({
+      id: `zernio-secret-${suffix}-${++zernioSecretSequence}`,
+      ciphertext: plaintext,
+    }),
+    load: async (ciphertext: string) => {
+      if (ciphertext === "unreadable") throw new Error("synthetic unreadable secret");
+      return ciphertext;
+    },
+  };
+  const zernioClient = (who: Actor = a) =>
+    createRouterClient(
+      createRouter({
+        prisma,
+        env: { webOrigin: "http://localhost", sandboxProvider: "docker" },
+        remoteConnectors: {
+          resolveHostname: async () => [{ address: "203.0.113.10", family: 4 }],
+        },
+        secrets: zernioSecrets,
+        mcp: { listServerTools: zernioListServerTools, callServerTool: async () => ({}) },
+        jobs: { enqueue: async () => undefined, cancel: async () => undefined },
+        sandbox: {},
+        home: {},
+      } as unknown as RouterDeps),
+      { context: { actor: who } as never },
     );
 
   it("creates the agent once, links it and assigns the server", async () => {
@@ -414,6 +458,27 @@ describePostgres("integration agents (PostgreSQL)", () => {
     ).toBeNull();
   });
 
+  it("rejects generic linking if the endpoint changes to Zernio mid-link", async () => {
+    const target = await mkServer(userA, "race-zernio", "https://api.brex.com/mcp");
+    const switching = {
+      ...repos,
+      createBot: async (...args: Parameters<typeof repos.createBot>) => {
+        const bot = await repos.createBot(...args);
+        await prisma.mcpServer.update({
+          where: { id: target.id },
+          data: { endpoint: ZERNIO_MCP_ENDPOINT },
+        });
+        return bot;
+      },
+    };
+    await expect(
+      ensureIntegrationAgent({ prisma, repos: switching, archiveBot: archiveById }, a, target.id),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    expect(
+      (await prisma.mcpServer.findUniqueOrThrow({ where: { id: target.id } })).agentBotId,
+    ).toBeNull();
+  });
+
   it("editing a server to another service archives its agent, and create then makes a fresh one", async () => {
     const s = await mkServer(userA, "edit-service", "https://mcp.mercury.com/mcp");
     const old = await client(a).integrationAgents.create({ serverId: s.id });
@@ -588,6 +653,163 @@ describePostgres("integration agents (PostgreSQL)", () => {
         spawnKey: integrationAgentSpawnKey("anything"),
       }),
     ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("provisions Zernio as an exclusive read-only GTM server without probing tools", async () => {
+    zernioListServerTools.mockClear();
+    const created = await zernioClient().mcp.servers.create({
+      transport: "streamable_http",
+      slug: `zernio-${suffix}`,
+      name: "Zernio",
+      endpoint: ZERNIO_MCP_ENDPOINT,
+      headers: {},
+      secret: "synthetic-zernio-key",
+      enabled: true,
+    });
+    expect(zernioListServerTools).not.toHaveBeenCalled();
+    expect(created).toMatchObject({
+      endpoint: ZERNIO_MCP_ENDPOINT,
+      agentExclusive: true,
+      writesEnabled: false,
+    });
+    const bot = await prisma.bot.findUniqueOrThrow({ where: { id: created.agentBotId! } });
+    expect(bot.spawnKey).toBe(gtmAgentSpawnKey(userA));
+    expect(
+      await prisma.botMcpServer.findUniqueOrThrow({
+        where: { botId_serverId: { botId: bot.id, serverId: created.id } },
+      }),
+    ).toMatchObject({ allowAllTools: false, allowedTools: [...ZERNIO_READ_TOOLS] });
+    const oauthServer = await zernioClient().mcp.servers.create({
+      transport: "streamable_http",
+      slug: `zernio-oauth-${suffix}`,
+      name: "Zernio OAuth connection",
+      endpoint: ZERNIO_MCP_ENDPOINT,
+      headers: {},
+      enabled: true,
+    });
+    expect(oauthServer).toMatchObject({
+      enabled: true,
+      agentExclusive: true,
+      writesEnabled: false,
+      agentBotId: bot.id,
+    });
+    expect(
+      await prisma.mcpServer.findUniqueOrThrow({
+        where: { id: oauthServer.id },
+        select: { id: true },
+      }),
+    ).toEqual({ id: oauthServer.id });
+    expect(zernioListServerTools).not.toHaveBeenCalled();
+    await expect(
+      zernioClient().integrationAgents.setExclusive({ serverId: created.id, exclusive: false }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+    await expect(
+      zernioClient().mcp.servers.setWrites({ id: created.id, enabled: true }),
+    ).rejects.toMatchObject({ code: "BAD_REQUEST" });
+  });
+
+  it("relinks Zernio from a generic agent and archives only that orphan", async () => {
+    const server = await mkServer(userA, `zernio-relink-${suffix}`, ZERNIO_MCP_ENDPOINT);
+    const disabled = await mkServer(userA, `zernio-disabled-${suffix}`, ZERNIO_MCP_ENDPOINT);
+    await prisma.mcpServer.update({
+      where: { id: disabled.id },
+      data: { enabled: false },
+    });
+    const orphan = await repos.createBot(a, {
+      name: "Old Zernio agent",
+      title: "",
+      description: "",
+      instructions: "",
+      notifyOnFinish: false,
+      spawnKey: integrationAgentSpawnKey(server.id),
+    });
+    const unrelated = await repos.createBot(a, {
+      name: "Unrelated",
+      title: "",
+      description: "",
+      instructions: "",
+      notifyOnFinish: false,
+    });
+    await prisma.botMcpServer.create({
+      data: {
+        spaceId,
+        userId: userA,
+        botId: unrelated.id,
+        serverId: disabled.id,
+        allowAllTools: true,
+        allowedTools: [],
+      },
+    });
+    await prisma.mcpServer.update({
+      where: { id: server.id },
+      data: { agentBotId: orphan.id, agentExclusive: true, writesEnabled: true },
+    });
+    const linked = await zernioClient().integrationAgents.create({ serverId: server.id });
+    expect(linked.botId).not.toBe(orphan.id);
+    expect(
+      await prisma.bot.findUniqueOrThrow({
+        where: { id: orphan.id },
+        select: { archivedAt: true },
+      }),
+    ).toEqual({ archivedAt: expect.any(Date) });
+    expect(
+      await prisma.bot.findUniqueOrThrow({
+        where: { id: unrelated.id },
+        select: { archivedAt: true },
+      }),
+    ).toEqual({ archivedAt: null });
+    expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: server.id } })).toMatchObject({
+      agentBotId: linked.botId,
+      agentExclusive: true,
+      writesEnabled: false,
+    });
+    expect(await prisma.mcpServer.findUniqueOrThrow({ where: { id: disabled.id } })).toMatchObject({
+      agentBotId: linked.botId,
+      agentExclusive: true,
+      writesEnabled: false,
+    });
+    expect(await prisma.botMcpServer.count({ where: { serverId: disabled.id } })).toBe(0);
+  });
+
+  it("reports posting capability from actor-scoped encrypted static material", async () => {
+    const isolated = actor(userA, otherSpaceId);
+    const isolatedClient = zernioClient(isolated);
+    const missing = await isolatedClient.mcp.servers.create({
+      transport: "streamable_http",
+      slug: `zernio-missing-${suffix}`,
+      name: "Zernio missing key",
+      endpoint: ZERNIO_MCP_ENDPOINT,
+      headers: {},
+      enabled: true,
+    });
+    expect(missing).toMatchObject({ agentExclusive: true, agentBotId: expect.any(String) });
+    expect(await isolatedClient.gtm.postingCapability()).toBe("api_key_required");
+
+    const secretId = `zernio-oauth-${suffix}`;
+    await prisma.secret.create({
+      data: {
+        id: secretId,
+        userId: isolated.userId,
+        spaceId: isolated.spaceId,
+        kind: "mcp",
+        ciphertext: JSON.stringify({ oauth: { tokens: { access_token: "oauth-only" } } }),
+      },
+    });
+    await prisma.mcpServer.update({ where: { id: missing.id }, data: { secretId } });
+    expect(await isolatedClient.gtm.postingCapability()).toBe("api_key_required");
+
+    await isolatedClient.mcp.servers.update({ id: missing.id, secret: "synthetic-api-key" });
+    const updated = await prisma.mcpServer.findUniqueOrThrow({ where: { id: missing.id } });
+    const stored = await prisma.secret.findUniqueOrThrow({ where: { id: updated.secretId! } });
+    expect(JSON.parse(stored.ciphertext)).toMatchObject({
+      oauth: { tokens: { access_token: "oauth-only" } },
+      secret: "synthetic-api-key",
+    });
+    expect(await isolatedClient.gtm.postingCapability()).toBe("ready");
+
+    await prisma.secret.update({ where: { id: stored.id }, data: { ciphertext: "unreadable" } });
+    expect(await isolatedClient.gtm.postingCapability()).toBe("api_key_required");
+    expect(await zernioClient(b).gtm.postingCapability()).toBe("not_connected");
   });
 
   it("will not assign or copy an exclusive server to another bot", async () => {

@@ -4,6 +4,7 @@ import {
   isCartaEndpoint,
   isDevinEndpoint,
   isGranolaEndpoint,
+  isZernioEndpoint,
 } from "@rakazo/contracts";
 import { Button, Input, Skeleton } from "@rakazo/ui-web";
 import { ArrowLeft } from "lucide-react";
@@ -50,6 +51,7 @@ export function McpDetail({
   // The switch reads on from the moment the user confirms, until the server has answered.
   const [writesPending, setWritesPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [configuringKey, setConfiguringKey] = useState(false);
 
   const back = (
     <Link
@@ -151,6 +153,7 @@ export function McpDetail({
 
   const host = server.endpoint ? new URL(server.endpoint).host : (server.command ?? "");
   const carta = isCartaEndpoint(server.endpoint);
+  const zernio = isZernioEndpoint(server.endpoint);
   const bank = Boolean(financeProviderForEndpoint(server.endpoint));
   const service = carta ? "Carta" : server.name;
   // The same mark the list card shows.
@@ -283,6 +286,11 @@ export function McpDetail({
           <Button variant="outline" disabled={busy} onClick={() => setDraft(server.name)}>
             <Trans>Rename</Trans>
           </Button>
+          {zernio ? (
+            <Button variant="outline" disabled={busy} onClick={() => setConfiguringKey(true)}>
+              <Trans>Configure API key</Trans>
+            </Button>
+          ) : null}
         </div>
 
         {granola ? (
@@ -308,9 +316,11 @@ export function McpDetail({
             writesEnabled={server.writesEnabled || writesPending}
             shared={!server.agentExclusive}
             disabled={busy || writesPending}
-            onWrites={isDevinEndpoint(server.endpoint) || granola ? undefined : setWrites}
+            onWrites={isDevinEndpoint(server.endpoint) || granola || zernio ? undefined : setWrites}
             usedBy={usedBy}
-            onShared={hasAgent ? (shared) => void setShared(shared) : () => undefined}
+            onShared={
+              zernio ? undefined : hasAgent ? (shared) => void setShared(shared) : () => undefined
+            }
             sharedLocked={!hasAgent}
           />
         ) : null}
@@ -407,6 +417,15 @@ export function McpDetail({
       </ConfirmDialog>
       {reconnect.needsClient ? (
         <CustomConnectionDialog data={data} existingServer={server} onClose={reconnect.dismiss} />
+      ) : null}
+      {configuringKey ? (
+        <CustomConnectionDialog
+          data={data}
+          existingServer={server}
+          service="Zernio"
+          apiKey
+          onClose={() => setConfiguringKey(false)}
+        />
       ) : null}
     </div>
   );

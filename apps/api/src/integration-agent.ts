@@ -13,10 +13,12 @@ import {
   isDevinEndpoint,
   isGranolaEndpoint,
   isIntegrationAgentForServer,
+  isZernioEndpoint,
 } from "@rakazo/contracts";
 import type { createRepos, PrismaClient } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { ensureCartaAgent } from "./carta-agent.js";
+import { ensureGtmBot } from "./gtm-agent.js";
 import { ensureInboxAgent } from "./inbox-agent.js";
 
 const instructions = (service: string, extra = "", readOnly = false) =>
@@ -407,6 +409,20 @@ export async function ensureIntegrationAgent(
   serverId: string,
 ): Promise<{ server: Awaited<ReturnType<typeof loadServer>>; bot: Bot }> {
   const server = await loadServer(deps.prisma, actor, serverId);
+  if (isZernioEndpoint(server.endpoint)) {
+    const bot = await ensureGtmBot({ prisma: deps.prisma, repos: deps.repos }, actor);
+    const linked = await deps.prisma.mcpServer.findFirst({
+      where: scope(actor, server.id),
+      include: {
+        agentBot: {
+          select: { id: true, spaceId: true, userId: true, spawnKey: true, archivedAt: true },
+        },
+      },
+    });
+    if (!linked || !isIntegrationAgentForServer(linked, linked.agentBot))
+      throw new ORPCError("CONFLICT", { message: "The Zernio integration changed; retry" });
+    return { server: linked, bot };
+  }
   if (isCartaEndpoint(server.endpoint)) {
     const bot = await ensureCartaAgent({ prisma: deps.prisma, repos: deps.repos }, actor);
     const linked = await deps.prisma.$transaction(async (tx) => {
@@ -461,6 +477,8 @@ export async function ensureIntegrationAgent(
       if (!current) throw new ORPCError("NOT_FOUND", { message: "Integration not found" });
       if (isCartaEndpoint(current.endpoint))
         throw new ORPCError("BAD_REQUEST", { message: "Carta has its own agent" });
+      if (isZernioEndpoint(current.endpoint))
+        throw new ORPCError("BAD_REQUEST", { message: "Zernio uses the GTM agent" });
       // The gate classifies each tool, so the agent's row can allow all of them.
       await tx.botMcpServer.upsert({
         where: { botId_serverId: { botId: bot.id, serverId: server.id } },
@@ -526,6 +544,8 @@ export async function setIntegrationExclusive(
   exclusive: boolean,
 ) {
   const server = await loadServer(prisma, actor, serverId);
+  if (isZernioEndpoint(server.endpoint) && !exclusive)
+    throw new ORPCError("BAD_REQUEST", { message: "Zernio is always exclusive" });
   if (!server.agentBotId)
     throw new ORPCError("BAD_REQUEST", { message: "This server has no agent" });
   // Archiving the agent can release the server after the check above: only the checked agent counts.
@@ -547,6 +567,8 @@ export async function setIntegrationAgentWrites(
     const current = await loadServer(tx, actor, serverId);
     if (isDevinEndpoint(current.endpoint))
       throw new ORPCError("BAD_REQUEST", { message: "Devin is read-only" });
+    if (isZernioEndpoint(current.endpoint) && enabled)
+      throw new ORPCError("BAD_REQUEST", { message: "Zernio is read-only" });
     if (!current.agentBotId)
       throw new ORPCError("BAD_REQUEST", { message: "This server has no agent" });
     const agent = await tx.bot.findFirst({

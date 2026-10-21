@@ -32,6 +32,23 @@ export const Connected: Story = {
   },
 };
 
+export const ZernioReadOnly: Story = {
+  parameters: { entry: "/app/integrations/mcp/srv_1" },
+  args: {
+    data: mockIntegrations({
+      servers: [
+        mockServer("srv_1", "Zernio", {
+          endpoint: "https://mcp.zernio.com/mcp",
+          agentBotId: "gtm_demo",
+          agentExclusive: true,
+          writesEnabled: false,
+        }),
+      ],
+      bots: [makeBot({ id: "gtm_demo", name: "GTM agent", spawnKey: "gtm-agent:user_demo" })],
+    }),
+  },
+};
+
 const cartaServer = (writesEnabled: boolean) =>
   mockServer("srv_1", "Carta", {
     endpoint: "https://mcp.app.carta.com/mcp",

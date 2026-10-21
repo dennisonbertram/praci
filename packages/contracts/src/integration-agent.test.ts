@@ -14,6 +14,7 @@ import {
   GRANOLA_READ_TOOLS,
   granolaAgentSpawnKey,
 } from "./granola.js";
+import { gtmAgentSpawnKey } from "./gtm.js";
 import {
   INTEGRATION_PRESETS,
   integrationAgentSpawnKey,
@@ -24,6 +25,7 @@ import {
   isReadTool,
 } from "./integration-agent.js";
 import { WISPR_FLOW_MCP_ENDPOINT } from "./wispr-flow.js";
+import { ZERNIO_MCP_ENDPOINT } from "./zernio.js";
 
 const mercury = INTEGRATION_PRESETS.mercury;
 const brex = INTEGRATION_PRESETS.brex;
@@ -34,9 +36,41 @@ describe("Zernio preset data", () => {
     expect(preset.allowedTools).toEqual(preset.reads);
     expect(preset.allowedTools).toHaveLength(9);
     expect(preset.forcedWrites).toEqual([]);
-    expect(preset).not.toHaveProperty("requiresAgent");
+    expect(preset.requiresAgent).toBe(true);
     expect(preset.allowedTools).not.toContain("posts_create");
     expect(preset.allowedTools).not.toContain("gtm_post");
+  });
+});
+
+describe("Zernio integration-agent identity", () => {
+  const server = {
+    id: "server-zernio",
+    spaceId: "space-1",
+    userId: "user-1",
+    endpoint: ZERNIO_MCP_ENDPOINT,
+    agentBotId: "bot-1",
+  };
+  const bot = {
+    id: "bot-1",
+    spaceId: "space-1",
+    userId: "user-1",
+    spawnKey: gtmAgentSpawnKey("user-1"),
+    archivedAt: null,
+  };
+
+  it("uses the owner's GTM identity and requires an active exact link", () => {
+    expect(integrationAgentSpawnKeyForServer(server)).toBe(gtmAgentSpawnKey("user-1"));
+    expect(isIntegrationAgentForServer(server, bot)).toBe(true);
+    expect(
+      isIntegrationAgentForServer(server, {
+        ...bot,
+        spawnKey: integrationAgentSpawnKey(server.id),
+      }),
+    ).toBe(false);
+    expect(isIntegrationAgentForServer(server, { ...bot, userId: "user-2" })).toBe(false);
+    expect(isIntegrationAgentForServer(server, { ...bot, spaceId: "space-2" })).toBe(false);
+    expect(isIntegrationAgentForServer(server, { ...bot, archivedAt: new Date() })).toBe(false);
+    expect(isIntegrationAgentForServer({ ...server, agentBotId: null }, bot)).toBe(false);
   });
 });
 

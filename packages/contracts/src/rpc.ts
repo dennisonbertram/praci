@@ -305,6 +305,7 @@ import {
   SidebarSnapshotSchema,
 } from "./sidebar-folders.js";
 import { SidebarPageInputSchema, SidebarPagesStateSchema } from "./sidebar-pages.js";
+import { ZernioPostingCapabilitySchema } from "./zernio.js";
 
 const botId = z.object({ botId: Id });
 const groupId = z.object({ groupId: Id });
@@ -1541,6 +1542,12 @@ export const appContract = {
     /** Space owners only. The old rows and key go; the acting owner becomes the connector. */
     replaceKey: oc.input(DevinKeyInputSchema).output(z.object({ ok: z.literal(true) })),
     disconnect: oc.output(z.object({ ok: z.literal(true) })),
+  },
+  gtm: {
+    /** Idempotent: creates the GTM agent and hourly work routine. */
+    agent: oc.output(BotSchema),
+    /** Configuration status for app-owned Zernio posting; never validates a live API key. */
+    postingCapability: oc.output(ZernioPostingCapabilitySchema),
   },
   legal: {
     /** Idempotent: creates the Legal agent and its daily scan routine; returns the bot to open in the side panel. */

@@ -3,11 +3,13 @@ import type {
   IntegrationCatalogResult,
   IntegrationCatalogSurface,
   McpServer,
+  ZernioPostingCapability,
 } from "@rakazo/contracts";
 import {
   integrationPresetForEndpoint,
   isCartaAgentSpawnKey,
   isCartaEndpoint,
+  isZernioEndpoint,
   MCP_OAUTH_CLIENT_ID_REQUIRED,
 } from "@rakazo/contracts";
 import { deriveMcpName, newClientId } from "@rakazo/core";
@@ -21,7 +23,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@rakazo/ui-web";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCopyText } from "../../lib/copy-text";
 import { beginMcpOauth, openMcpAuthorization, waitForMcpOauth } from "../../lib/mcp-connect";
 import { rpc } from "../../lib/rpc";
@@ -96,6 +98,8 @@ export function CustomConnectionDialog({
   const [headerValue, setHeaderValue] = useState("");
   const [transport, setTransport] = useState<"streamable_http" | "sse">("streamable_http");
   const [token, setToken] = useState("");
+  const [useApiKey, setUseApiKey] = useState(apiKey);
+  const [postingCapability, setPostingCapability] = useState<ZernioPostingCapability | null>(null);
   const [needsClient, setNeedsClient] = useState(oauthClient || existingServer !== undefined);
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
@@ -121,6 +125,24 @@ export function CustomConnectionDialog({
 
   const serverName = server?.name ?? (name.trim() || deriveMcpName(url.trim()));
   const carta = isCartaEndpoint(server?.endpoint ?? url.trim());
+  const zernio = isZernioEndpoint(server?.endpoint ?? url.trim());
+
+  useEffect(() => {
+    if (!zernio || view.kind !== "done") return;
+    let cancelled = false;
+    setPostingCapability(null);
+    void rpc.gtm.postingCapability().then(
+      (capability) => {
+        if (!cancelled) setPostingCapability(capability);
+      },
+      () => {
+        if (!cancelled) setPostingCapability(null);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [zernio, view.kind]);
 
   function close() {
     attempt.current?.abort();
@@ -203,7 +225,7 @@ export function CustomConnectionDialog({
       }
       // Sign-in could not even start, usually because the server is unreachable. A connection this
       // dialog just added would only sit in the list looking connected, so remove it and say why.
-      if (createdHere.current === target.id) {
+      if (createdHere.current === target.id && !isZernioEndpoint(target.endpoint)) {
         createdHere.current = null;
         await rpc.mcp.servers.remove({ id: target.id }).catch(() => undefined);
         setServer(null);
@@ -227,7 +249,9 @@ export function CustomConnectionDialog({
   /** Carta belongs to the Carta agent alone and the API gives every new server its own agent, so
    * there is no agent to choose. Only a server whose agent could not be made asks. */
   function afterSignIn(target: McpServer): View {
-    return isCartaEndpoint(target.endpoint) || target.agentBotId
+    return isCartaEndpoint(target.endpoint) ||
+      isZernioEndpoint(target.endpoint) ||
+      target.agentBotId
       ? { kind: "done", hint: null }
       : { kind: "agents" };
   }
@@ -252,10 +276,14 @@ export function CustomConnectionDialog({
   }
 
   async function createServer(): Promise<McpServer> {
-    if (server) return server;
     const endpoint = url.trim();
-    const existing = data.servers.find((entry) => entry.endpoint === endpoint);
-    if (existing) return existing;
+    const existing = server ?? data.servers.find((entry) => entry.endpoint === endpoint);
+    if (existing) {
+      if (isZernioEndpoint(existing.endpoint) && token.trim()) {
+        return await rpc.mcp.servers.update({ id: existing.id, secret: token.trim() });
+      }
+      return existing;
+    }
     const customHeader = authHeader.trim();
     const created = await rpc.mcp.servers.create({
       slug: `integration-${newClientId().slice(0, 8)}`,
@@ -272,7 +300,7 @@ export function CustomConnectionDialog({
 
   async function connectUrl() {
     // The key-only form needs its key, and never falls back to a browser sign-in.
-    if (apiKey && !token.trim()) return;
+    if (useApiKey && !token.trim()) return;
     if (!isHttpUrl(url.trim())) {
       setError(t`Enter the server URL, starting with https://.`);
       return;
@@ -284,7 +312,11 @@ export function CustomConnectionDialog({
       // The API creates the agent of a new server, so there is no agent to choose. A server that
       // signs in still does so first; afterSignIn then skips the bot step.
       if (token.trim() || headerValue.trim()) setView(afterSignIn(created));
-      else if (integrationPresetForEndpoint(created.endpoint)?.requiresAgent)
+      else if (
+        integrationPresetForEndpoint(created.endpoint)?.requiresAgent &&
+        !isCartaEndpoint(created.endpoint) &&
+        !isZernioEndpoint(created.endpoint)
+      )
         setView({ kind: "done", hint: null });
       else await signIn(created);
     }, t`Could not add the connection`);
@@ -490,7 +522,9 @@ export function CustomConnectionDialog({
               {service ? <Trans>Connect {service}</Trans> : <Trans>Add a custom connection</Trans>}
             </DialogTitle>
             <DialogDescription>
-              {service && apiKey ? (
+              {zernio ? (
+                <Trans>OAuth connects reads only. Posting requires an API key.</Trans>
+              ) : service && useApiKey ? (
                 keyHint
               ) : service ? null : (
                 <Trans>Paste the MCP server URL from the app's documentation.</Trans>
@@ -513,7 +547,20 @@ export function CustomConnectionDialog({
                 />
               </div>
             )}
-            {apiKey ? (
+            {zernio ? (
+              <Button
+                variant="link"
+                size="sm"
+                className="mt-2"
+                onClick={() => {
+                  setUseApiKey(!useApiKey);
+                  setToken("");
+                }}
+              >
+                {useApiKey ? <Trans>Use OAuth</Trans> : <Trans>Use API key</Trans>}
+              </Button>
+            ) : null}
+            {useApiKey ? (
               <div className="mt-3 text-xs text-muted-foreground">
                 <Trans>API key</Trans>
                 <Input
@@ -528,7 +575,7 @@ export function CustomConnectionDialog({
                 />
               </div>
             ) : null}
-            {needsClient ? (
+            {needsClient && !useApiKey ? (
               <div className="mt-3 space-y-3 text-xs text-muted-foreground">
                 <div>
                   <Trans>Callback URL</Trans>
@@ -696,14 +743,14 @@ export function CustomConnectionDialog({
                 disabled={
                   busy ||
                   !url.trim() ||
-                  (apiKey && !token.trim()) ||
-                  (needsClient && !clientId.trim())
+                  (useApiKey && !token.trim()) ||
+                  (!useApiKey && needsClient && !clientId.trim())
                 }
                 onClick={() => void connectUrl()}
               >
                 {busy ? (
                   <Trans>Connecting…</Trans>
-                ) : service && !apiKey ? (
+                ) : service && !useApiKey ? (
                   <Trans>Sign in with {service}</Trans>
                 ) : (
                   <Trans>Connect</Trans>
@@ -869,6 +916,19 @@ export function CustomConnectionDialog({
             {carta ? (
               <DialogDescription className="text-center">
                 <Trans>The Carta agent can now read your cap table.</Trans>
+              </DialogDescription>
+            ) : null}
+            {zernio ? (
+              <DialogDescription className="text-center">
+                {postingCapability === "ready" ? (
+                  <Trans>API key configured (not verified).</Trans>
+                ) : postingCapability === "api_key_required" ? (
+                  <Trans>Posting needs an API key.</Trans>
+                ) : postingCapability === "not_connected" ? (
+                  <Trans>Connect Zernio to enable reads.</Trans>
+                ) : (
+                  <Trans>Posting readiness unavailable.</Trans>
+                )}
               </DialogDescription>
             ) : null}
             <div className="mt-4 flex justify-end">

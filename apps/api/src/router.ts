@@ -188,6 +188,7 @@ import {
   isDataRoomAgentSpawnKey,
   isFinanceAgentSpawnKey,
   isGranolaEndpoint,
+  isGtmAgentSpawnKey,
   isInboxAgentSpawnKey,
   isIntegrationAgentSpawnKey,
   isInvestorsAgentSpawnKey,
@@ -195,6 +196,7 @@ import {
   isMailThreadAgentSpawnKey,
   isRetiredVoiceAgentSpawnKey,
   isVoiceAgentSpawnKey,
+  isZernioEndpoint,
   NOTIFICATION_HEARTBEAT_ID,
   notificationKindOf,
   OPENAI_COMPATIBLE_PROVIDER_ID,
@@ -446,6 +448,7 @@ import {
   financeStatements,
   financeStatementUpload,
 } from "./finance-statements.js";
+import { ensureGtmAgent, gtmPostingCapability } from "./gtm-agent.js";
 import {
   inboxFeedbackSet,
   inboxGet,
@@ -2395,6 +2398,7 @@ export function createRouter(deps: RouterDeps) {
           isInvestorsAgentSpawnKey(input.spawnKey) ||
           isDataRoomAgentSpawnKey(input.spawnKey) ||
           isCartaAgentSpawnKey(input.spawnKey) ||
+          isGtmAgentSpawnKey(input.spawnKey) ||
           isIntegrationAgentSpawnKey(input.spawnKey) ||
           isVoiceAgentSpawnKey(input.spawnKey)
         ) {
@@ -5173,7 +5177,7 @@ export function createRouter(deps: RouterDeps) {
           // checked, so the first tool call already works and a rejected key leaves nothing behind.
           if (!isCartaEndpoint(row.endpoint)) {
             const preset = integrationPresetForEndpoint(row.endpoint);
-            if (preset?.requiresAgent && deps.mcp) {
+            if (preset?.requiresAgent && !isZernioEndpoint(row.endpoint) && deps.mcp) {
               try {
                 await deps.mcp.listServerTools(
                   row,
@@ -7536,6 +7540,23 @@ export function createRouter(deps: RouterDeps) {
         await devinDisconnect(devinDeps, context.actor);
         return { ok: true as const };
       }),
+    },
+    gtm: {
+      agent: authed.gtm.agent.handler(({ context }) =>
+        ensureGtmAgent(
+          {
+            prisma: deps.prisma,
+            repos,
+            jobs: deps.jobs,
+          },
+          context.actor,
+        ).catch((error: unknown) => {
+          throw mapSpaceLifecycleError(error);
+        }),
+      ),
+      postingCapability: authed.gtm.postingCapability.handler(({ context }) =>
+        gtmPostingCapability({ prisma: deps.prisma, secrets: deps.secrets }, context.actor),
+      ),
     },
     legal: {
       agent: authed.legal.agent.handler(({ context }) =>
